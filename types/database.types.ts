@@ -802,6 +802,8 @@ export type Database = {
           modified_by: string | null
           name: string
           port: string | null
+          query_port: number | null
+          query_protocol: string | null
           region: Database["public"]["Enums"]["region"] | null
         }
         Insert: {
@@ -818,6 +820,8 @@ export type Database = {
           modified_by?: string | null
           name?: string
           port?: string | null
+          query_port?: number | null
+          query_protocol?: string | null
           region?: Database["public"]["Enums"]["region"] | null
         }
         Update: {
@@ -834,6 +838,8 @@ export type Database = {
           modified_by?: string | null
           name?: string
           port?: string | null
+          query_port?: number | null
+          query_protocol?: string | null
           region?: Database["public"]["Enums"]["region"] | null
         }
         Relationships: [
@@ -880,6 +886,24 @@ export type Database = {
           modified_by?: string | null
           type?: Database["public"]["Enums"]["kvstore_type"]
           value?: Json
+        }
+        Relationships: []
+      }
+      metrics: {
+        Row: {
+          captured_at: string
+          data: Json
+          id: number
+        }
+        Insert: {
+          captured_at?: string
+          data: Json
+          id?: number
+        }
+        Update: {
+          captured_at?: string
+          data?: Json
+          id?: number
         }
         Relationships: []
       }
@@ -2262,6 +2286,8 @@ export type Database = {
           cursor_time: string
           page_index: number
           predecessor_count: number
+          prev_cursor_id: string
+          prev_cursor_time: string
         }[]
       }
       get_discussion_topic_breadcrumbs: {
@@ -2807,4 +2833,3 @@ export const Constants = {
     },
   },
 } as const
-

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
+import type { MetricsSnapshot } from '@/types/metrics'
 import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import EventCardLanding from '@/components/Events/EventCardLanding.vue'
@@ -58,13 +59,13 @@ const communityStats = ref({
   forumPosts: 1000,
 })
 
-function applyMetrics(snapshot: { totals: { users: number, gameservers: number, projects: number, forumPosts: number } }): void {
-  const users = snapshot.totals.users
+function applyMetrics(snapshot: MetricsSnapshot): void {
+  const users = snapshot.members.total
   communityStats.value.membersAccurate = users > 0
   communityStats.value.members = users > 0 ? users : 100
-  communityStats.value.gameservers = snapshot.totals.gameservers
-  communityStats.value.projects = snapshot.totals.projects
-  communityStats.value.forumPosts = snapshot.totals.forumPosts
+  communityStats.value.gameservers = snapshot.gameservers.total
+  communityStats.value.projects = snapshot.community.projects
+  communityStats.value.forumPosts = snapshot.community.forumPosts
 }
 
 // Pre-populate from cache synchronously - avoids placeholder numbers on warm visits

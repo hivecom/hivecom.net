@@ -4,18 +4,11 @@ import type { MetricsSnapshot } from '@/types/metrics'
 import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
-const METRICS_CACHE_KEY = 'metrics:daily'
-const METRICS_TTL = 60 * 60 * 1000 // 1 hour - metrics are daily snapshots
+const METRICS_CACHE_KEY = 'metrics:latest'
+const METRICS_TTL = 30 * 60 * 1000 // 30 minutes - aligns with collection interval
 
 const METRICS_BUCKET = 'hivecom-content-static'
-
-function buildPathFromDate(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-
-  return `metrics/${year}/${month}/${day}.json`
-}
+const METRICS_LATEST_PATH = 'metrics/latest.json'
 
 function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
   if (snapshot === null || snapshot === undefined || typeof snapshot !== 'object')
@@ -23,47 +16,45 @@ function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
 
   const record = snapshot as Record<string, unknown>
   const collectedAt = record.collectedAt
-  const totals = record.totals as Record<string, unknown> | undefined
-  const breakdowns = record.breakdowns as Record<string, unknown> | undefined
+  const members = record.members as Record<string, unknown> | undefined
+  const community = record.community as Record<string, unknown> | undefined
+  const teamspeak = record.teamspeak as Record<string, unknown> | undefined
+  const gameservers = record.gameservers as Record<string, unknown> | undefined
 
-  if (typeof collectedAt !== 'string' || totals === undefined)
+  if (typeof collectedAt !== 'string' || members === undefined)
     return null
-
-  const users = totals.users
-  const gameservers = totals.gameservers
-  const projects = totals.projects
-  const forumPosts = totals.forumPosts
-
-  if (
-    typeof users !== 'number'
-    || typeof gameservers !== 'number'
-    || typeof projects !== 'number'
-    || typeof forumPosts !== 'number'
-  ) {
-    return null
-  }
-
-  const usersByCountry
-    = typeof breakdowns?.usersByCountry === 'object' && breakdowns.usersByCountry !== null
-      ? (breakdowns.usersByCountry as Record<string, number>)
-      : {}
 
   return {
     collectedAt,
-    totals: {
-      users,
-      gameservers,
-      projects,
-      forumPosts,
+    members: {
+      total: typeof members.total === 'number' ? members.total : 0,
+      online: typeof members.online === 'number' ? members.online : 0,
+      byCountry: (typeof members.byCountry === 'object' && members.byCountry !== null)
+        ? (members.byCountry as Record<string, number>)
+        : {},
+      byGame: (typeof members.byGame === 'object' && members.byGame !== null)
+        ? (members.byGame as Record<string, number>)
+        : {},
     },
-    breakdowns: {
-      usersByCountry,
+    community: {
+      projects: typeof community?.projects === 'number' ? community.projects : 0,
+      forumPosts: typeof community?.forumPosts === 'number' ? community.forumPosts : 0,
+    },
+    teamspeak: {
+      online: typeof teamspeak?.online === 'number' ? teamspeak.online : 0,
+    },
+    gameservers: {
+      total: typeof gameservers?.total === 'number' ? gameservers.total : 0,
+      players: typeof gameservers?.players === 'number' ? gameservers.players : 0,
+      byServer: (typeof gameservers?.byServer === 'object' && gameservers.byServer !== null)
+        ? (gameservers.byServer as MetricsSnapshot['gameservers']['byServer'])
+        : {},
     },
   }
 }
 
-async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>, path: string) {
-  const { data, error } = await supabase.storage.from(METRICS_BUCKET).download(path)
+async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>) {
+  const { data, error } = await supabase.storage.from(METRICS_BUCKET).download(METRICS_LATEST_PATH)
 
   if (error !== null || data === null)
     return null
@@ -76,22 +67,6 @@ async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>, path:
   catch {
     return null
   }
-}
-
-async function fetchMetricsWithFallback(supabase: SupabaseClient<Database>) {
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(today.getDate() - 1)
-
-  for (const date of [today, yesterday]) {
-    const path = buildPathFromDate(date)
-    const snapshot = await fetchMetricsFromStorage(supabase, path)
-
-    if (snapshot)
-      return snapshot
-  }
-
-  return null
 }
 
 export function useDataMetrics() {
@@ -116,7 +91,7 @@ export function useDataMetrics() {
     error.value = null
 
     try {
-      const snapshot = await fetchMetricsWithFallback(supabase)
+      const snapshot = await fetchMetricsFromStorage(supabase)
       metrics.value = snapshot
       if (snapshot !== null)
         metricsCache.set(METRICS_CACHE_KEY, snapshot, METRICS_TTL)
