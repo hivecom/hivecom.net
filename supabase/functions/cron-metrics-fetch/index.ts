@@ -9,7 +9,7 @@ import {
   fetchSnapshotFromStorage,
   isSnapshotFresh,
 } from "../_shared/teamspeak.ts";
-import type { Database, Tables } from "database-types";
+import type { Database, Json, Tables } from "database-types";
 import { COUNTRIES } from "../../../app/lib/utils/country.ts";
 import type { MetricsServerDetail, MetricsSnapshot } from "metrics-types";
 
@@ -32,30 +32,18 @@ function normalizeCountryCode(value: string | null | undefined): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// Local row shapes for tables not yet in generated types
+// Local row shapes
 // ---------------------------------------------------------------------------
 
-interface GameRow {
-  id: number;
-  steam_id: number | null;
-}
+type GameRow = Pick<Tables<"games">, "id" | "steam_id">;
 
-// presences_steam row with embedded profile (rich_presence_enabled only)
+type GameserverRow = Pick<Tables<"gameservers">, "id" | "name" | "query_protocol" | "query_port" | "port" | "addresses" | "container">;
+
+// presences_steam row with embedded profile
 interface SteamPresenceRow {
   current_app_id: number | null;
   status: string | null;
   profile: { rich_presence_enabled: boolean } | null;
-}
-
-// gameservers row shape after migration adds query_protocol / query_port
-interface GameserverRow {
-  id: number;
-  name: string;
-  query_protocol: string | null;
-  query_port: number | null;
-  port: string | null;
-  addresses: string[] | null;
-  container: string | null;
 }
 
 // Container row with embedded server
@@ -70,22 +58,6 @@ interface DockerQueryResult {
   playerCount: number;
   maxPlayers: number;
   map: string;
-}
-
-// Narrow client interface for tables not yet in generated types (pending migrations).
-// Remove once migrations are applied and types are regenerated.
-type RawQueryResult = Promise<{ data: unknown; error: { message: string } | null }>;
-interface RawFilterBuilder extends RawQueryResult {
-  not: (col: string, op: string, val: string | null) => RawFilterBuilder;
-  in: (col: string, vals: string[]) => RawFilterBuilder;
-  neq: (col: string, val: string) => RawFilterBuilder;
-}
-interface RawQueryBuilder {
-  select: (cols: string) => RawFilterBuilder;
-  insert: (data: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
-}
-interface RawSupabaseClient {
-  from: (table: string) => RawQueryBuilder;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +116,7 @@ Deno.serve(async (req: Request) => {
         .select("current_app_id, profile:profiles!presences_steam_profile_id_fkey(rich_presence_enabled)")
         .neq("status", "offline")
         .not("current_app_id", "is", null),
-      (supabaseClient as unknown as RawSupabaseClient)
+      supabaseClient
         .from("gameservers")
         .select("id, name, query_protocol, query_port, port, addresses, container")
         .not("container", "is", null),
@@ -213,7 +185,7 @@ Deno.serve(async (req: Request) => {
     // Gameservers - docker-control queries
     // ---------------------------------------------------------------------------
 
-    const gameservers = (gameserversRes.data as GameserverRow[] | null) ?? [];
+    const gameservers = (gameserversRes.data ?? []) as GameserverRow[];
     const totalGameservers = gameservers.length;
 
     // Find gameservers that support querying
@@ -342,9 +314,9 @@ Deno.serve(async (req: Request) => {
     // Persist: INSERT into metrics table
     // ---------------------------------------------------------------------------
 
-    const { error: insertError } = await (supabaseClient as unknown as RawSupabaseClient)
+    const { error: insertError } = await supabaseClient
       .from("metrics")
-      .insert({ captured_at: now.toISOString(), data: payload as unknown as Record<string, unknown> });
+      .insert({ captured_at: now.toISOString(), data: payload as unknown as Json });
 
     if (insertError) {
       throw new Error(`Failed to insert metrics row: ${insertError.message}`);

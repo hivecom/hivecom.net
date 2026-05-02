@@ -24,6 +24,7 @@
  */
 
 import type { Database, Json } from './database.types'
+import type { MetricsSnapshot } from './metrics'
 
 // Re-export pass-throughs so callers only need one import source.
 export type { Database, Json }
@@ -88,11 +89,15 @@ interface TableColumnOverrides {
       show_forum_recently_visited: boolean
       show_forum_archived: boolean
       show_forum_unread_bubbles: boolean
+      show_user_banners: boolean
       editor_floating: boolean
       strip_image_metadata: boolean
-      show_user_banners: boolean
       allow_custom_css: boolean
     }
+  }
+
+  metrics: {
+    data: MetricsSnapshot
   }
 
 }
