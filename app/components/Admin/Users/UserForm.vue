@@ -716,8 +716,8 @@ function clearBirthday() {
 
         <RichTextEditor
           v-model="userForm.markdown"
-          label="Profile Content (Markdown)"
-          hint="You can use markdown"
+          label="Content"
+          hint="You can use markdown and add media by drag-and-drop"
           placeholder="Detailed profile content in markdown format"
           min-height="216px"
           show-expand-button

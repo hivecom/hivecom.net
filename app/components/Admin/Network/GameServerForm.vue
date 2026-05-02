@@ -22,6 +22,8 @@ interface QueryGameserver {
   modified_by: string | null
   name: string
   port: string | null
+  query_protocol: string | null
+  query_port: number | null
   region: 'eu' | 'na' | 'all' | null
 }
 
@@ -59,6 +61,8 @@ const gameserverForm = ref({
   region: null as Tables<'gameservers'>['region'],
   addresses: [] as string[],
   port: '',
+  query_protocol: null as string | null,
+  query_port: '' as string,
   game: null as number | null,
   container: null as string | null,
   administrator: null as string | null, // UUID of the administrator
@@ -80,6 +84,11 @@ const { games, loading: loadingGames } = useDataGames()
 // Options for dropdowns
 const containers = ref<Tables<'containers'>[]>([])
 const profiles = ref<ProfileSelect[]>([])
+
+// Query protocol options
+const queryProtocolOptions = [
+  { label: 'Source (A2S)', value: 'source' },
+]
 
 // Region options
 const regionOptions = [
@@ -159,6 +168,21 @@ const selectedAdministratorComputed = computed({
   },
 })
 
+const selectedQueryProtocolComputed = computed({
+  get: () => {
+    if (!gameserverForm.value.query_protocol)
+      return []
+    const option = queryProtocolOptions.find(opt => opt.value === gameserverForm.value.query_protocol)
+    return option ? [option] : []
+  },
+  set: (value: SelectOption[] | null | undefined) => {
+    gameserverForm.value.query_protocol = (value && value.length > 0) ? value[0]!.value : null
+    // Clear query port when protocol is cleared
+    if (!gameserverForm.value.query_protocol)
+      gameserverForm.value.query_port = ''
+  },
+})
+
 // Form validation
 const validation = computed(() => ({
   name: !!gameserverForm.value.name.trim(),
@@ -208,6 +232,8 @@ watch(
         region: newGameserver.region,
         addresses: newGameserver.addresses || [],
         port: newGameserver.port || '',
+        query_protocol: newGameserver.query_protocol,
+        query_port: newGameserver.query_port?.toString() || '',
         game: newGameserver.game?.id || null,
         container: newGameserver.container,
         administrator: newGameserver.administrator,
@@ -222,6 +248,8 @@ watch(
         region: null,
         addresses: [],
         port: '',
+        query_protocol: null,
+        query_port: '',
         game: null,
         container: null,
         administrator: null,
@@ -263,6 +291,8 @@ function handleSubmit() {
     region: gameserverForm.value.region,
     addresses: gameserverForm.value.addresses.length > 0 ? gameserverForm.value.addresses : null,
     port: gameserverForm.value.port || null,
+    query_protocol: gameserverForm.value.query_protocol,
+    query_port: gameserverForm.value.query_port ? Number(gameserverForm.value.query_port) : null,
     game: gameserverForm.value.game,
     container: gameserverForm.value.container,
     administrator: gameserverForm.value.administrator,
@@ -321,28 +351,6 @@ onMounted(fetchDropdownData)
           :valid="validation.name"
           error="Game server name is required"
           placeholder="Enter game server name"
-        />
-
-        <Textarea
-          v-model="gameserverForm.description"
-          expand
-          name="description"
-          label="Description"
-          placeholder="Enter game server description (optional)"
-          :rows="3"
-        />
-
-        <!-- Markdown Content -->
-        <RichTextEditor
-          v-model="gameserverForm.markdown"
-          label="Markdown"
-          hint="You can use markdown"
-          placeholder="Enter markdown content (optional)"
-          min-height="216px"
-          show-expand-button
-          :media-context="props.gameserver?.id ? `gameservers/${props.gameserver.id}/markdown/media` : undefined"
-          :media-bucket-id="CMS_BUCKET_ID"
-          :show-attachment-button="!!props.gameserver?.id"
         />
 
         <Select
@@ -412,6 +420,29 @@ onMounted(fetchDropdownData)
             placeholder="Enter port (optional)"
           />
         </Flex>
+
+        <!-- Third row: Query Protocol and Query Port -->
+        <Flex gap="m" wrap expand>
+          <Select
+            v-model="selectedQueryProtocolComputed"
+            expand
+            name="query_protocol"
+            label="Query Protocol"
+            placeholder="None"
+            :options="queryProtocolOptions"
+            show-clear
+          />
+
+          <Input
+            v-model="gameserverForm.query_port"
+            expand
+            name="query_port"
+            label="Query Port"
+            placeholder="Defaults to port if unset"
+            :disabled="!gameserverForm.query_protocol"
+            type="number"
+          />
+        </Flex>
       </Flex>
 
       <!-- Addresses Section -->
@@ -455,9 +486,33 @@ onMounted(fetchDropdownData)
           </Flex>
         </Flex>
       </Flex>
-    </Flex>
 
-    <!-- Form Actions -->
+      <!-- Markdown Content -->
+      <Flex column gap="m" expand>
+        <h4>Content</h4>
+
+        <Textarea
+          v-model="gameserverForm.description"
+          expand
+          name="description"
+          label="Description"
+          placeholder="Enter game server description (optional)"
+          :rows="3"
+        />
+
+        <RichTextEditor
+          v-model="gameserverForm.markdown"
+          label="Content"
+          hint="You can use markdown and add media by drag-and-drop"
+          placeholder="Enter markdown content (optional)"
+          min-height="216px"
+          show-expand-button
+          :media-context="props.gameserver?.id ? `gameservers/${props.gameserver.id}/markdown/media` : undefined"
+          :media-bucket-id="CMS_BUCKET_ID"
+          :show-attachment-button="!!props.gameserver?.id"
+        />
+      </Flex>
+    </Flex>
     <template #footer>
       <Flex gap="xs" class="form-actions">
         <Button

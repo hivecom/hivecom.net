@@ -173,24 +173,6 @@ function confirmDelete() {
           </Flex>
         </Card>
 
-        <!-- Description -->
-        <Card v-if="props.gameserver.description" separators>
-          <template #header>
-            <h6>Description</h6>
-          </template>
-
-          <p>{{ props.gameserver.description }}</p>
-        </Card>
-
-        <!-- Markdown Content -->
-        <Card v-if="props.gameserver.markdown" separators>
-          <template #header>
-            <h6>Markdown</h6>
-          </template>
-
-          <MarkdownRenderer :md="props.gameserver.markdown" class="gameserver-details__markdown-content" />
-        </Card>
-
         <!-- Network Details -->
         <Card separators>
           <template #header>
@@ -210,9 +192,42 @@ function confirmDelete() {
 
             <Grid expand :columns="2">
               <span class="text-color-light text-bold">Port:</span>
-              <span>{{ props.gameserver.port || 'Not specified' }}</span>
+              <span><code v-if="props.gameserver.port">{{ props.gameserver.port }}</code>
+              <span v-else>Not specified</span></span>
+            </Grid>
+
+            <Grid expand :columns="2">
+              <span class="text-color-light text-bold">Query Protocol:</span>
+              <Flex v-if="props.gameserver.query_protocol">
+                <Badge>{{ props.gameserver.query_protocol.toUpperCase() }}</Badge>
+              </Flex>
+              <span v-else>None</span>
+            </Grid>
+
+            <Grid expand :columns="2">
+              <span class="text-color-light text-bold">Query Port:</span>
+              <span><code v-if="props.gameserver.query_protocol && (props.gameserver.query_port ?? props.gameserver.port)">{{ props.gameserver.query_port ?? props.gameserver.port }}</code>
+              <code v-else>{{ props.gameserver.query_protocol ? 'not specified' : 'n/a' }}</code></span>
             </Grid>
           </Flex>
+        </Card>
+
+        <!-- Description -->
+        <Card v-if="props.gameserver.description" separators>
+          <template #header>
+            <h6>Description</h6>
+          </template>
+
+          <p>{{ props.gameserver.description }}</p>
+        </Card>
+
+        <!-- Markdown Content -->
+        <Card v-if="props.gameserver.markdown" separators>
+          <template #header>
+            <h6>Markdown</h6>
+          </template>
+
+          <MarkdownRenderer :md="props.gameserver.markdown" class="gameserver-details__markdown-content" />
         </Card>
 
         <!-- Metadata -->

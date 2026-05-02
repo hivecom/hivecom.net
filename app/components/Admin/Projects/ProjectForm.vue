@@ -436,8 +436,8 @@ function handleTagInputEnter() {
 
         <RichTextEditor
           v-model="projectForm.markdown"
-          label="Markdown Content"
-          hint="You can use markdown"
+          label="Content"
+          hint="You can use markdown and add media by drag-and-drop"
           placeholder="Enter markdown content"
           min-height="216px"
           :errors="validation.markdown ? [] : ['Markdown content is required']"
