@@ -26,8 +26,6 @@ const emit = defineEmits<{
   (e: 'deleted', discussionId: string): void
 }>()
 
-const SLUG_DATE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}/
-
 interface Props {
   open: boolean
   editedItem?: Tables<'discussions'>
@@ -159,6 +157,8 @@ const showDraftTooltip = computed(() => {
 const slugTouched = ref(false)
 const isAutoUpdatingSlug = ref(false)
 
+const SLUG_DATE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}/
+
 function getDatePrefix() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -193,12 +193,29 @@ watch(() => editedDiscussion.value, async (item) => {
   activeTab.value = 'create'
 }, { immediate: true })
 
+function buildAutoSlug(title: string) {
+  const baseSlug = slugify(title)
+  if (!baseSlug)
+    return ''
+  const topicSlug = form.discussion_topic_id
+    ? (resolvedTopics.value.find(t => t.id === form.discussion_topic_id)?.slug ?? null)
+    : null
+  const datePrefix = getSlugPrefix(form.slug) ?? getDatePrefix()
+  const parts = [datePrefix, topicSlug, baseSlug].filter(Boolean)
+  return parts.join('-')
+}
+
 watch(() => form.title, (value) => {
   if (!slugTouched.value || !form.slug) {
-    const baseSlug = slugify(value)
-    const prefix = getSlugPrefix(form.slug) ?? getDatePrefix()
     isAutoUpdatingSlug.value = true
-    form.slug = baseSlug ? `${prefix}-${baseSlug}` : ''
+    form.slug = buildAutoSlug(value)
+  }
+})
+
+watch(() => form.discussion_topic_id, () => {
+  if (!slugTouched.value) {
+    isAutoUpdatingSlug.value = true
+    form.slug = buildAutoSlug(form.title)
   }
 })
 
@@ -319,6 +336,12 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
         drafts.value = drafts.value.filter(d => d.id !== data[0].id)
         emit('draftUpdated')
       }
+      // Capture old identifier now - emitting 'created' propagates the new data
+      // back up through the parent chain reactively, so editedDiscussion.value
+      // will already reflect the new slug by the time we check after nextTick.
+      const oldIdentifier = isEditing.value && editedDiscussion.value
+        ? (editedDiscussion.value.slug ?? editedDiscussion.value.id)
+        : null
       emit('created', data[0])
       emit('close')
       // Defer navigation until after the modal has had a tick to tear down.
@@ -327,8 +350,7 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
       await nextTick()
       // Navigate to the new slug when editing and the slug changed, or to the
       // newly published discussion when creating.
-      if (isEditing.value && editedDiscussion.value) {
-        const oldIdentifier = editedDiscussion.value.slug ?? editedDiscussion.value.id
+      if (oldIdentifier !== null) {
         const newIdentifier = data[0].slug ?? data[0].id
         if (oldIdentifier !== newIdentifier) {
           await navigateTo(`/forum/${newIdentifier}`)

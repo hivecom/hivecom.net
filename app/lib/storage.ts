@@ -137,6 +137,7 @@ export async function convertImageToWebP(file: File, quality: number = 0.8): Pro
       // Convert to WebP blob
       canvas.toBlob(
         (blob) => {
+          URL.revokeObjectURL(img.src)
           if (blob) {
             // Create new File with WebP format
             const webpFile = new File([blob], file.name.replace(FILE_EXTENSION_RE, '.webp'), {
@@ -154,7 +155,10 @@ export async function convertImageToWebP(file: File, quality: number = 0.8): Pro
       )
     }
 
-    img.onerror = () => reject(new Error('Failed to load image for conversion'))
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src)
+      reject(new Error('Failed to load image for conversion'))
+    }
     img.src = URL.createObjectURL(file)
   })
 }

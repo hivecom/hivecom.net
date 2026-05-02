@@ -2,6 +2,7 @@
 import type { MDCRoot } from '@nuxtjs/mdc'
 import { onMounted, onUnmounted } from 'vue'
 import SharedLinkEmbed from '@/components/LinkEmbed/index.vue'
+import ProseImg from '@/components/Shared/ProseImg.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { groupImagesAST } from '@/lib/imageGrouping'
 import { transformLinkEmbeds } from '@/lib/linkEmbedAST'
@@ -31,7 +32,9 @@ const emit = defineEmits<{
 // MDCRenderer.components prop is typed as Record<string, string | DefineComponent<any,any,any>>.
 // Casting via unknown as Record<string, string> satisfies the type (string is a subtype of the union)
 // while keeping the actual runtime value as the component object.
-const mdcComponents = { SharedUserMention, SharedLinkEmbed } as unknown as Record<string, string>
+// 'img' key matches the AST node tag so MDCRenderer uses ProseImg for every
+// markdown image, giving us lazy loading and a fade-in without DOM post-processing.
+const mdcComponents = { SharedUserMention, SharedLinkEmbed, img: ProseImg } as unknown as Record<string, string>
 
 const container = useTemplateRef('container')
 

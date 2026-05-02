@@ -58,6 +58,8 @@ export interface ReplyPageCursorResult {
   pageIndex: number
   predecessorCount: number
   cursor: PageCursor | null // null when the target is on page 0
+  /** Cursor for the page BEFORE the target's page (page N-1). Non-null only when pageIndex >= 2. */
+  prevCursor: PageCursor | null
 }
 
 // Shape returned by get_discussion_reply_page_cursor RPC rows.
@@ -69,6 +71,8 @@ interface RawCursorRow {
   predecessor_count: number
   cursor_time: string | null
   cursor_id: string | null
+  prev_cursor_time: string | null
+  prev_cursor_id: string | null
 }
 
 // Shape returned by get_discussion_replies_tail RPC rows — derived from the
@@ -324,10 +328,16 @@ export function useDiscussionRepliesCache() {
           ? { cursorTime: row.cursor_time, cursorId: row.cursor_id }
           : null
 
+      const prevCursor: PageCursor | null
+        = row.prev_cursor_time != null && row.prev_cursor_id != null
+          ? { cursorTime: row.prev_cursor_time, cursorId: row.prev_cursor_id }
+          : null
+
       return {
         pageIndex: row.page_index,
         predecessorCount: row.predecessor_count,
         cursor,
+        prevCursor,
       }
     }
     catch (err) {

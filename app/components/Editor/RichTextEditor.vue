@@ -26,7 +26,7 @@ import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, stripImageMetadata } from '@/lib/storage'
+import { allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, convertImageToWebP, stripImageMetadata } from '@/lib/storage'
 import { BUCKET_SIZE_LIMITS, formatBytes, FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import EditorMathModal from './EditorMathModal.vue'
 import EditorTableMenu from './EditorTableMenu.vue'
@@ -53,6 +53,14 @@ const {
 const emit = defineEmits<{
   (e: 'submit'): void
 }>()
+
+// Extend the stock Image node to add loading="lazy" and decoding="async" so
+// images in the editor view defer decode and don't block the main thread.
+const LazyImage = Image.extend({
+  renderHTML({ HTMLAttributes }) {
+    return ['img', { loading: 'lazy', decoding: 'async', ...HTMLAttributes }]
+  },
+})
 
 const ENCODE_AMP_RE = /&/g
 const ENCODE_LT_RE = /</g
@@ -272,7 +280,7 @@ const editor = useEditor({
     StarterKit,
     // eslint-disable-next-line ts/no-explicit-any
     Markdown.configure({ marked: noHtmlMarked as any }),
-    Image,
+    LazyImage,
     ImageGroup,
     // Ctrl+Enter to submit
     Extension.create({
@@ -721,14 +729,44 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     // shift the cursor between now and when we actually insert the placeholder.
     const insertPos = pos ?? editor.value.state.selection.anchor
 
-    // Strip EXIF/metadata from images unless the caller explicitly opts out via
-    // prop, or the user has disabled it in their settings.
+    // Always convert raster images to WebP - it's a format/size optimisation
+    // that benefits every upload regardless of the metadata-stripping preference.
+    // Exceptions:
+    //   GIFs  - canvas round-trip drops animation; keep as-is (or strip metadata below)
+    //   WebP  - already optimal, no re-encode needed
+    //   Video - never processed here
+    const shouldConvert = !isVideo
+      && originalFile.type !== 'image/gif'
+      && originalFile.type !== 'image/webp'
+
+    // Strip EXIF from formats we can't convert (currently only GIF), but only
+    // when the user has the metadata-stripping preference enabled.
     const shouldStrip = !isVideo
+      && !shouldConvert
+      && originalFile.type !== 'image/webp'
       && props.stripImageMetadata !== false
       && settings.value.strip_image_metadata !== false
-    const file = shouldStrip
-      ? await stripImageMetadata(originalFile)
-      : originalFile
+
+    let file: File
+    if (shouldConvert) {
+      try {
+        file = await convertImageToWebP(originalFile, 0.85)
+      }
+      catch {
+        // Conversion failed - upload the original so the user isn't silently
+        // stuck. A toast lets them know something went wrong.
+        pushToast('Image conversion failed', {
+          description: 'Could not convert to WebP - uploading original format.',
+        })
+        file = originalFile
+      }
+    }
+    else if (shouldStrip) {
+      file = await stripImageMetadata(originalFile)
+    }
+    else {
+      file = originalFile
+    }
 
     // Create a local object URL so we can insert a placeholder immediately.
     const blobUrl = URL.createObjectURL(file)

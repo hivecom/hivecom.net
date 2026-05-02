@@ -728,7 +728,7 @@ onBeforeMount(fetchAssets)
                   <Icon name="ph:folder-simple" size="32" />
                 </template>
                 <template v-else-if="isImageAsset(asset) && asset.publicUrl">
-                  <img :src="asset.publicUrl" :alt="asset.name">
+                  <img :src="asset.publicUrl" :alt="asset.name" loading="lazy">
                 </template>
                 <template v-else>
                   <Icon name="ph:file" size="32" />

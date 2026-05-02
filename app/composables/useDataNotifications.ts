@@ -5,6 +5,9 @@ import { pushToast, removeToast } from '@dolanske/vui'
 import ToastBodyFriendRequest from '@/components/Toast/ToastBodyFriendRequest.vue'
 import ToastBodyNotification from '@/components/Toast/ToastBodyNotification.vue'
 import { useDataUser } from '@/composables/useDataUser'
+import { usePageVisibility } from '@/composables/usePageVisibility'
+
+const BACKGROUND_POLL_INTERVAL_MS = 5 * 60 * 1000
 
 const BIRTHDAY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
@@ -37,6 +40,11 @@ const pendingComplaintCount = ref(0)
 let notificationChannel: RealtimeChannel | null = null
 let friendChannel: RealtimeChannel | null = null
 let subscribedUserId: string | null = null
+
+// Background polling when tab is hidden.
+let backgroundPollTimer: ReturnType<typeof setInterval> | null = null
+let pausedUserId: string | null = null
+let visibilityInitialized = false
 
 function parseBirthdayDate(value: string | null): Date | null {
   if (value == null || value === '')
@@ -410,6 +418,38 @@ export function useDataNotifications() {
     },
     { immediate: true },
   )
+
+  // Pause channels when tab is hidden; background-poll instead.
+  // Guard ensures this only runs once across all composable instances.
+  if (import.meta.client && !visibilityInitialized) {
+    visibilityInitialized = true
+    const { isHidden } = usePageVisibility()
+
+    watch(isHidden, (hidden) => {
+      if (hidden) {
+        if (subscribedUserId != null) {
+          pausedUserId = subscribedUserId
+          void unsubscribeRealtime()
+          backgroundPollTimer ??= setInterval(() => {
+            void fetch()
+          }, BACKGROUND_POLL_INTERVAL_MS)
+        }
+      }
+      else {
+        if (backgroundPollTimer != null) {
+          clearInterval(backgroundPollTimer)
+          backgroundPollTimer = null
+        }
+        if (pausedUserId != null) {
+          const uid = pausedUserId
+          pausedUserId = null
+          // Re-subscribe then catch up on any missed notifications.
+          subscribeRealtime(uid)
+          void fetch()
+        }
+      }
+    })
+  }
 
   onScopeDispose(() => {
     void unsubscribeRealtime()

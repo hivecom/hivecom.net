@@ -156,11 +156,13 @@ export function scrollToId(id: string, block: ScrollIntoViewOptions['block'] = '
  * been stable for `stableForMs` milliseconds, or the hard `timeoutMs`
  * deadline is hit.
  *
- * This solves the problem where `waitForLayoutStability` + `scrollToId` fires
- * once at the right position, but content *above* the target later expands and
- * pushes the target down — leaving the viewport anchored to the wrong spot.
- * By re-scrolling every frame we stay locked onto the element throughout the
- * settling period.
+ * The first scroll fires immediately on the first rAF tick - no pre-flight
+ * wait. The loop then keeps re-anchoring so any content that loads above the
+ * target (images, markdown, late-rendered cards) gets corrected on the next
+ * frame.
+ *
+ * If the user scrolls (wheel, touch, or keyboard) the loop exits immediately
+ * and cedes control to them.
  */
 export async function scrollToIdWhenStable(
   id: string,
@@ -178,7 +180,32 @@ export async function scrollToIdWhenStable(
   return new Promise((resolve) => {
     const deadline = Date.now() + timeoutMs
     let lastAbsoluteTop: number | null = null
+    let lastScrollHeight: number | null = null
     let stableStart: number | null = null
+    let rafId = 0
+
+    const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', ' ', 'Home', 'End'])
+
+    function finish() {
+      window.removeEventListener('wheel', onUserScroll)
+      window.removeEventListener('touchmove', onUserScroll)
+      window.removeEventListener('keydown', onKeydown)
+      resolve()
+    }
+
+    function onUserScroll() {
+      cancelAnimationFrame(rafId)
+      finish()
+    }
+
+    function onKeydown(e: KeyboardEvent) {
+      if (SCROLL_KEYS.has(e.key))
+        onUserScroll()
+    }
+
+    window.addEventListener('wheel', onUserScroll, { passive: true, once: true })
+    window.addEventListener('touchmove', onUserScroll, { passive: true, once: true })
+    window.addEventListener('keydown', onKeydown, { once: true })
 
     const tick = () => {
       const now = Date.now()
@@ -199,9 +226,18 @@ export async function scrollToIdWhenStable(
       // Always re-apply the scroll so we stay pinned to the element.
       window.scrollTo({ top: Math.max(0, target), behavior: 'instant' })
 
-      // Track whether the element's absolute position has stabilised.
-      if (lastAbsoluteTop === null || Math.abs(absoluteTop - lastAbsoluteTop) > 1) {
+      // Track whether the element's absolute position AND the page's total
+      // scroll height have both stabilised. Checking scrollHeight catches
+      // content loading above (or below) the target - e.g. MarkdownRenderer
+      // suspense boundaries resolving - which shifts absoluteTop but can be
+      // masked by the compensating scrollTo call above.
+      const scrollHeight = document.body.scrollHeight
+      const positionChanged = lastAbsoluteTop === null || Math.abs(absoluteTop - lastAbsoluteTop) > 1
+      const heightChanged = lastScrollHeight === null || Math.abs(scrollHeight - lastScrollHeight) > 1
+
+      if (positionChanged || heightChanged) {
         lastAbsoluteTop = absoluteTop
+        lastScrollHeight = scrollHeight
         stableStart = now
       }
       else {
@@ -209,14 +245,14 @@ export async function scrollToIdWhenStable(
       }
 
       if (now >= deadline || (stableStart !== null && now - stableStart >= stableForMs)) {
-        resolve()
+        finish()
         return
       }
 
-      requestAnimationFrame(tick)
+      rafId = requestAnimationFrame(tick)
     }
 
-    requestAnimationFrame(tick)
+    rafId = requestAnimationFrame(tick)
   })
 }
 

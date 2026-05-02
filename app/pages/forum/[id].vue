@@ -13,7 +13,6 @@ import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
-import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
@@ -50,14 +49,6 @@ type TopicBreadcrumb = Pick<Tables<'discussion_topics'>, 'id' | 'name' | 'slug' 
 const route = useRoute()
 const router = useRouter()
 
-function goBack() {
-  const prev = window.history.state?.back as string | undefined
-  if (prev && prev.startsWith('/forum'))
-    router.back()
-  else
-    router.push('/forum')
-}
-
 const { settings } = useDataUserSettings()
 const forumUnread = useDataForumUnread()
 
@@ -88,6 +79,16 @@ const breadcrumbItems = computed(() =>
     onClick: () => router.push(`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`),
   })),
 )
+
+function goBack() {
+  // Navigate up to the immediate parent topic rather than using browser history,
+  // so the back button always moves up the breadcrumb tree predictably.
+  const parent = breadcrumbItems.value.at(-1)
+  if (parent)
+    router.push(parent.href)
+  else
+    router.push('/forum')
+}
 const publishConfirmOpen = ref(false)
 const showNSFWWarning = ref(false)
 const nsfwRevealed = ref(false)
@@ -312,6 +313,11 @@ onBeforeMount(async () => {
       // Mark the discussion seen in localStorage so the unread dot clears
       // even when navigating here by direct URL rather than from the forum index.
       forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
+      // Advance the parent topic's seenActivityAt to this discussion's last
+      // activity timestamp - not now, so we don't shadow concurrent activity
+      // in other discussions that may have happened more recently.
+      if (data.discussion_topic_id)
+        forumUnread.markTopicSeen(data.discussion_topic_id, data.last_activity_at ?? undefined)
     }
 
     loading.value = false
@@ -374,6 +380,11 @@ onBeforeMount(async () => {
         void fetchSubscription(data.id)
         // Mark seen in localStorage so the unread dot clears on direct URL visits.
         forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
+        // Advance the parent topic's seenActivityAt to this discussion's last
+        // activity timestamp - not now, so we don't shadow concurrent activity
+        // in other discussions that may have happened more recently.
+        if (data.discussion_topic_id)
+          forumUnread.markTopicSeen(data.discussion_topic_id, data.last_activity_at ?? undefined)
       }
 
       loading.value = false
@@ -479,8 +490,11 @@ function publish() {
  */
 function handleReplySubmitted(newReplyCount: number, discussionId: string) {
   forumUnread.markDiscussionSeen(discussionId, newReplyCount)
-  // Topic-level seen is timestamp-based; markTopicSeen is called when the user
-  // navigates to the topic, so no extra bump needed after posting a reply.
+  // Advance the topic watermark to now - your reply just became the latest
+  // activity, so any dot that appears after returning to the forum index would
+  // be from concurrent activity that happened after you posted.
+  if (post.value?.discussion_topic_id)
+    forumUnread.markTopicSeen(post.value.discussion_topic_id)
 }
 
 const pageTitle = useTemplateRef('page-title')
@@ -544,15 +558,14 @@ function revealNsfw() {
                   >
                     <Icon class="text-color" name="ph:arrow-left" :size="16" />
                   </Button>
-                  {{ post.title ?? 'Unnamed discussion' }}
+                  <span class="forum-post__scroll-title-text">{{ post.title ?? 'Unnamed discussion' }}</span>
                 </strong>
-                <p v-if="post.description">
+                <p v-if="post.description" class="forum-post__scroll-description">
                   {{ post.description }}
                 </p>
               </div>
 
-              <UserAvatar v-if="isMobile" :user-id="post.created_by" linked />
-              <UserDisplay v-else :user-id="post.created_by" show-role />
+              <UserDisplay :user-id="post.created_by" :show-role="!isMobile" :hide-username="isMobile" />
             </div>
           </section>
         </Transition>
@@ -938,9 +951,17 @@ function revealNsfw() {
   font-weight: var(--font-weight-black);
   position: relative;
 
+  &-text {
+    display: block;
+    font-size: inherit;
+    font-weight: inherit;
+    @include line-clamp(2);
+  }
+
   & + p {
     color: var(--color-text-lighter);
     margin-top: var(--space-xs);
+    @include line-clamp(1);
   }
 }
 
@@ -988,9 +1009,12 @@ function revealNsfw() {
   .forum-post__scroll-title {
     font-size: var(--font-size-l);
 
+    &-text {
+      @include line-clamp(1);
+    }
+
     & + p {
       font-size: var(--font-size-s);
-      @include line-clamp(1);
     }
   }
 }

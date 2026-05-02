@@ -590,7 +590,7 @@ async function reassignToTopic(topicId: string) {
                   style="height: 120px; border-radius: var(--border-radius-s); overflow: hidden;"
                 >
                   <template v-if="isImageAsset(asset) && asset.publicUrl">
-                    <img :src="asset.publicUrl" :alt="asset.name" style="width: 100%; height: 100%; object-fit: cover;">
+                    <img :src="asset.publicUrl" :alt="asset.name" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
                   </template>
                   <template v-else>
                     <Icon name="ph:file" size="24" />

@@ -866,6 +866,13 @@ function appendDiscussionToTopic(discussion: Tables<'discussions'>) {
     // Bust topic discussion page caches for all pages of this topic so next open fetches fresh
     forumCache.invalidateByPattern(new RegExp(`^topic-discussions:${discussion.discussion_topic_id}:`))
     forumCache.delete(FORUM_DISCUSSIONS_INDEX_CACHE_KEY)
+    // You created this discussion - seed it as seen so initializeTopics doesn't
+    // treat it as an unseen discussion in a known topic (seenReplyCount = -1).
+    forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)
+    // Advance the topic watermark to now so the act of creating a discussion
+    // doesn't produce a topic dot when returning from the discussion page.
+    if (discussion.discussion_topic_id)
+      forumUnread.markTopicSeen(discussion.discussion_topic_id)
   }
 }
 
@@ -1332,7 +1339,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               :discussion-count="subtopic.total_discussion_count"
               :reply-count="subtopic.total_reply_count"
               :view-count="subtopic.total_view_count"
-              :has-new="settings.show_forum_unread_bubbles && forumUnread.isTopicNew(subtopic.id, subtopic.last_activity_at)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isTopicNewWithDiscussions(subtopic.id, subtopic.last_activity_at, [...(subtopic.stickyDiscussions ?? []), ...(subtopic.discussions ?? [])], subtopic.discussionsLoaded)"
               @click="setActiveTopicFromTopic(subtopic)"
               @update="replaceItemData('topic', $event)"
               @remove="removeItem('topic', $event)"
@@ -1384,10 +1391,14 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
                 </Button>
               </template>
               <template v-else>
-                <p>There are no discussions in this topic{{ topic.is_archived ? '' : ' - start one!' }}</p>
-                <Button v-if="!topic.is_archived && !topic.is_locked && user" size="s" variant="accent" @click="requestCreate('discussion')">
-                  Create discussion
-                </Button>
+                <Flex :column="isMobile" :x-between="!isMobile" y-center expand class="empty-state-wrap">
+                  <p class="text-s empty-state-text">
+                    There are no discussions in this topic{{ topic.is_archived ? '' : ' - start one!' }}
+                  </p>
+                  <Button v-if="!topic.is_archived && !topic.is_locked && user" size="s" variant="accent" class="empty-state-btn" @click="requestCreate('discussion')">
+                    Create discussion
+                  </Button>
+                </Flex>
               </template>
             </Flex>
           </div>
@@ -1722,6 +1733,16 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
 
   .forum__category-post .forum__category-post--item .forum__category-post--meta span {
     font-size: var(--font-size-xxs);
+  }
+
+  .empty-state-btn {
+    width: 100%;
+  }
+
+  .empty-state-text {
+    width: 100%;
+    font-size: var(--font-size-xs);
+    text-align: center;
   }
 }
 </style>

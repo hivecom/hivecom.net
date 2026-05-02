@@ -697,6 +697,7 @@ defineExpose({ openJumpModal })
     text-align: left;
     border-radius: var(--border-radius-s);
     font-family: inherit;
+    color: var(--color-text);
     transition: background-color var(--transition);
 
     &:hover {

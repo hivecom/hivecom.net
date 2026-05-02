@@ -331,9 +331,15 @@ export function useDataDiscussionReplies(
     try {
       const fetchOpts = { ascending: ascending.value, pageSize: pageSize.value, hash: props.hash, rootOnly: false }
 
-      // Fetch page 1 and the target page in parallel.
-      const [firstPage, targetPage] = await Promise.all([
+      // Fetch page 1, an optional context page (page N-1), and the target
+      // page in parallel. When the target is on page N >= 2 and prevCursor is
+      // available, we also load page N-1 so the user always sees at least one
+      // page of context immediately before the target comment.
+      const [firstPage, prevPage, targetPage] = await Promise.all([
         repliesCache.fetchPage(discussionId, { ...fetchOpts, cursor: null }),
+        result.prevCursor != null
+          ? repliesCache.fetchPage(discussionId, { ...fetchOpts, cursor: result.prevCursor })
+          : Promise.resolve(null),
         result.pageIndex === 0
           ? Promise.resolve(null) // target is on page 1, no second fetch needed
           : repliesCache.fetchPage(discussionId, { ...fetchOpts, cursor: result.cursor }),
@@ -347,28 +353,26 @@ export function useDataDiscussionReplies(
         applyPage(firstPage, true)
       }
       else {
-        // Page 1 + target page loaded. Establish a gap between them.
+        // Page 1 + target page (and optionally page N-1) loaded.
+        // Tail block = [prevPage rows] + [target page rows], deduped.
         const firstPageIds = new Set(firstPage.rows.map(r => r.id))
-        const freshTarget = targetPage.rows.filter(r => !firstPageIds.has(r.id))
+        const prevRows = prevPage?.rows.filter(r => !firstPageIds.has(r.id)) ?? []
+        const prevIds = new Set(prevRows.map(r => r.id))
+        const freshTarget = targetPage.rows.filter(r => !firstPageIds.has(r.id) && !prevIds.has(r.id))
 
-        _tailBlock.value = freshTarget
-        comments.value = [...firstPage.rows, ...freshTarget]
+        const tailRows = [...prevRows, ...freshTarget]
+        _tailBlock.value = tailRows
+        comments.value = [...firstPage.rows, ...tailRows]
 
-        // predecessorCount is the number of replies strictly before the target
-        // reply itself - it includes items on the target page that precede the
-        // target. Those items are already loaded as part of the target page, so
-        // using predecessorCount directly over-counts the gap.
+        // Gap sits between the end of page 1 and the start of the first tail
+        // page (page N-1 when prevCursor was available, page N otherwise).
         //
-        // The correct gap size is the number of items between the END of page 1
-        // and the START of the target page:
-        //   page_index * pageSize - firstPage.rows.length
-        //
-        // page_index = floor(predecessorCount / pageSize), so:
-        //   result.pageIndex * pageSize.value
-        // gives the 0-based index of the first item on the target page, which
-        // is exactly where the gap ends. Subtracting firstPage.rows.length
-        // (the items already loaded on page 1) gives the true unloaded count.
-        const gapCount = result.pageIndex * pageSize.value - firstPage.rows.length
+        // When prevPage is loaded: gap ends at page N-1 start, so:
+        //   gapCount = (pageIndex - 1) * pageSize - firstPage.rows.length
+        // When no prevPage: gap ends at page N start, so:
+        //   gapCount = pageIndex * pageSize - firstPage.rows.length
+        const tailStartPageIndex = result.prevCursor != null ? result.pageIndex - 1 : result.pageIndex
+        const gapCount = tailStartPageIndex * pageSize.value - firstPage.rows.length
 
         if (gapCount > 0 && firstPage.nextCursor != null) {
           gap.value = {
