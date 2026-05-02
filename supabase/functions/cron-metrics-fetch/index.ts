@@ -174,7 +174,7 @@ Deno.serve(async (req: Request) => {
     // TeamSpeak
     // ---------------------------------------------------------------------------
 
-    const tsOnline = isSnapshotFresh(tsSnapshot, 5 * 60 * 1000)
+    const tsOnline = isSnapshotFresh(tsSnapshot, 20 * 60 * 1000)
       ? (tsSnapshot?.servers ?? []).reduce(
           (sum, s) => sum + (s.serverInfo?.totalClients ?? 0),
           0,

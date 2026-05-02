@@ -5,7 +5,7 @@ import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 const METRICS_CACHE_KEY = 'metrics:latest'
-const METRICS_TTL = 30 * 60 * 1000 // 30 minutes - aligns with collection interval
+const METRICS_TTL = 15 * 60 * 1000 // 15 minutes - aligns with collection interval
 
 const METRICS_BUCKET = 'hivecom-content-static'
 const METRICS_LATEST_PATH = 'metrics/latest.json'
