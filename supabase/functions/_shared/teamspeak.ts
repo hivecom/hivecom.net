@@ -678,7 +678,7 @@ function normalizeServerInfo(raw: Record<string, unknown> | null): TeamSpeakServ
     version: typeof raw.virtualserver_version === "string" ? raw.virtualserver_version : undefined,
     uptimeSeconds: safeNumber(raw.virtualserver_uptime),
     maxClients: safeNumber(raw.virtualserver_maxclients),
-    totalClients: safeNumber(raw.virtualserver_clientsonline),
+    totalClients: Math.max(0, (safeNumber(raw.virtualserver_clientsonline) ?? 0) - 1),
     totalChannels: safeNumber(raw.virtualserver_channelsonline),
   };
 }
