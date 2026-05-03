@@ -391,7 +391,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
                 label="Upload Background"
                 :loading="assetsUploading.background"
                 :error="assetsError.background"
-                :aspect-ratio="1920 / 1080"
                 :min-height="120"
                 @upload="(file) => handleAssetUpload('background', file)"
                 @remove="() => handleAssetRemove('background')"

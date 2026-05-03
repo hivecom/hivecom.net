@@ -1,11 +1,47 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import type { MetricsSnapshot } from '@/types/metrics'
 import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
+export type MetricsPeriod = '24h' | '7d' | '30d' | '90d'
+
+interface PeriodConfig {
+  label: string
+  hours: number
+  bucketMs: number
+}
+
+const PERIOD_CONFIGS: Record<MetricsPeriod, PeriodConfig> = {
+  '24h': { label: 'Last 24 Hours', hours: 24, bucketMs: 15 * 60 * 1000 },
+  '7d': { label: 'Last 7 Days', hours: 168, bucketMs: 60 * 60 * 1000 },
+  '30d': { label: 'Last 30 Days', hours: 720, bucketMs: 3 * 60 * 60 * 1000 },
+  '90d': { label: 'Last 90 Days', hours: 2160, bucketMs: 24 * 60 * 60 * 1000 },
+}
+
+export const METRICS_PERIOD_OPTIONS = (Object.entries(PERIOD_CONFIGS) as [MetricsPeriod, PeriodConfig][]).map(
+  ([value, cfg]) => ({ value, label: cfg.label }),
+)
+
+export interface MetricsHistoryEntry {
+  capturedAt: string
+  membersOnline: number
+  membersTotal: number
+}
+
 const METRICS_CACHE_KEY = 'metrics:latest'
-const METRICS_TTL = 15 * 60 * 1000 // 15 minutes - aligns with collection interval
+const METRICS_COLLECTION_INTERVAL = 15 * 60 * 1000 // 15 minutes
+
+/**
+ * Returns ms until the next 15-min collection boundary.
+ * e.g. at 12:07 -> 8 min; at 12:00 -> 15 min (fresh boundary).
+ */
+function msUntilNextCollection(): number {
+  const now = Date.now()
+  const elapsed = now % METRICS_COLLECTION_INTERVAL
+  return METRICS_COLLECTION_INTERVAL - elapsed
+}
 
 const METRICS_BUCKET = 'hivecom-content-static'
 const METRICS_LATEST_PATH = 'metrics/latest.json'
@@ -42,6 +78,9 @@ function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
     },
     teamspeak: {
       online: typeof teamspeak?.online === 'number' ? teamspeak.online : 0,
+      byServer: (typeof teamspeak?.byServer === 'object' && teamspeak.byServer !== null)
+        ? (teamspeak.byServer as Record<string, number>)
+        : {},
     },
     gameservers: {
       total: typeof gameservers?.total === 'number' ? gameservers.total : 0,
@@ -69,6 +108,56 @@ async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>) {
   }
 }
 
+async function fetchMetricsHistoryFromDB(
+  supabase: SupabaseClient<Database>,
+  period: MetricsPeriod,
+): Promise<MetricsHistoryEntry[]> {
+  const config = PERIOD_CONFIGS[period]
+  const since = new Date(Date.now() - config.hours * 60 * 60 * 1000).toISOString()
+
+  const { data, error } = await supabase
+    .from('metrics')
+    .select('*')
+    .gte('captured_at', since)
+    .order('captured_at', { ascending: true })
+
+  if (error !== null || data === null)
+    return []
+
+  const bucketMap = new Map<number, { onlineSum: number, totalSum: number, count: number }>()
+
+  for (const row of data as unknown as Tables<'metrics'>[]) {
+    const snapshot = normalizeMetricsSnapshot(row.data)
+    if (snapshot === null)
+      continue
+
+    const ts = new Date(row.captured_at).getTime()
+    const bucketKey = Math.floor(ts / config.bucketMs) * config.bucketMs
+    const existing = bucketMap.get(bucketKey)
+
+    if (existing) {
+      existing.onlineSum += snapshot.members.online
+      existing.totalSum += snapshot.members.total
+      existing.count += 1
+    }
+    else {
+      bucketMap.set(bucketKey, {
+        onlineSum: snapshot.members.online,
+        totalSum: snapshot.members.total,
+        count: 1,
+      })
+    }
+  }
+
+  return Array.from(bucketMap.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([bucketKey, { onlineSum, totalSum, count }]) => ({
+      capturedAt: new Date(bucketKey).toISOString(),
+      membersOnline: Math.round(onlineSum / count),
+      membersTotal: Math.round(totalSum / count),
+    }))
+}
+
 export function useDataMetrics() {
   const supabase = useSupabaseClient<Database>()
   const metricsCache = useCache(CACHE_NAMESPACES.community)
@@ -80,7 +169,7 @@ export function useDataMetrics() {
   const error = ref<string | null>(null)
 
   const fetchMetrics = async () => {
-    // Serve from cache - metrics are daily, 1hr TTL is conservative
+    // Serve from cache until next 15-min collection boundary
     const cached = metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
     if (cached !== null) {
       metrics.value = cached
@@ -94,7 +183,7 @@ export function useDataMetrics() {
       const snapshot = await fetchMetricsFromStorage(supabase)
       metrics.value = snapshot
       if (snapshot !== null)
-        metricsCache.set(METRICS_CACHE_KEY, snapshot, METRICS_TTL)
+        metricsCache.set(METRICS_CACHE_KEY, snapshot, msUntilNextCollection())
       return snapshot
     }
     catch (err) {
@@ -107,10 +196,43 @@ export function useDataMetrics() {
     }
   }
 
+  const metricsHistory = ref<MetricsHistoryEntry[]>([])
+  const loadingHistory = ref(false)
+
+  const fetchMetricsHistory = async (period: MetricsPeriod = '24h') => {
+    const cacheKey = `metrics:history:${period}`
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null) {
+      metricsHistory.value = cached
+      return cached
+    }
+
+    loadingHistory.value = true
+    error.value = null
+
+    try {
+      const entries = await fetchMetricsHistoryFromDB(supabase, period)
+      metricsHistory.value = entries
+      metricsCache.set(cacheKey, entries, msUntilNextCollection())
+      return entries
+    }
+    catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch metrics history'
+      error.value = message
+      throw new Error(message)
+    }
+    finally {
+      loadingHistory.value = false
+    }
+  }
+
   return {
     metrics,
     loading,
     error,
     fetchMetrics,
+    metricsHistory,
+    loadingHistory,
+    fetchMetricsHistory,
   }
 }

@@ -232,12 +232,19 @@ Deno.serve(async (req: Request) => {
     // TeamSpeak
     // ---------------------------------------------------------------------------
 
-    const tsOnline = isSnapshotFresh(tsSnapshot, 20 * 60 * 1000)
-      ? (tsSnapshot?.servers ?? []).reduce(
-        (sum, s) => sum + (s.serverInfo?.totalClients ?? 0),
-        0,
-      )
-      : 0;
+    const tsServers = isSnapshotFresh(tsSnapshot, 20 * 60 * 1000)
+      ? (tsSnapshot?.servers ?? [])
+      : [];
+
+    const tsByServer: Record<string, number> = {};
+    for (const s of tsServers) {
+      tsByServer[s.id] = s.serverInfo?.totalClients ?? 0;
+    }
+
+    const tsOnline = tsServers.reduce(
+      (sum, s) => sum + (s.serverInfo?.totalClients ?? 0),
+      0,
+    );
 
     // ---------------------------------------------------------------------------
     // Gameservers - docker-control queries
@@ -282,10 +289,9 @@ Deno.serve(async (req: Request) => {
 
     // Initialise all gameservers with null detail so every entry is present
     for (const gs of gameservers) {
-      byServer[String(gs.id)] = {
-        protocol: gs.query_protocol ?? "source",
-        data: { players: null, maxPlayers: null, map: null },
-      };
+      byServer[String(gs.id)] = gs.query_protocol
+        ? { protocol: gs.query_protocol, data: { players: null, maxPlayers: null, map: null } }
+        : { protocol: null, data: null };
     }
 
     if (queryableGameservers.length > 0) {
@@ -405,6 +411,7 @@ Deno.serve(async (req: Request) => {
       },
       teamspeak: {
         online: tsOnline,
+        byServer: tsByServer,
       },
       gameservers: {
         total: totalGameservers,

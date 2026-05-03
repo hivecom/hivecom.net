@@ -1,22 +1,31 @@
 <script setup lang="ts">
-import { Card, Flex } from '@dolanske/vui'
+import type { Database } from '@/types/database.types'
+import { Button, Flex } from '@dolanske/vui'
+import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
 
 definePageMeta({ layout: false })
 
-const { metrics, fetchMetrics } = useDataMetrics()
+const { fetchMetrics, fetchMetricsHistory } = useDataMetrics()
 
-onMounted(fetchMetrics)
+onMounted(async () => {
+  await Promise.all([fetchMetrics(), fetchMetricsHistory()])
+})
+
+const supabase = useSupabaseClient<Database>()
+const { data: { publicUrl } } = supabase.storage.from('hivecom-content-static').getPublicUrl('metrics/latest.json')
+
+function openRawData() {
+  window.open(publicUrl, '_blank')
+}
 </script>
 
 <template>
   <div class="page container-l">
-    <Flex column expand gap="m" style="padding: var(--space-l); max-width: 800px; margin: 0 auto;">
-      <Card v-if="metrics">
-        <pre style="font-size: var(--font-size-xs); overflow-x: auto;">{{ JSON.stringify(metrics, null, 2) }}</pre>
-      </Card>
-      <p v-else class="text-color-light">
-        No snapshot available.
-      </p>
+    <Flex column expand gap="m">
+      <Button variant="gray" @click="openRawData">
+        View Raw Snapshot
+      </Button>
+      <ChartOnlineUsers />
     </Flex>
   </div>
 </template>

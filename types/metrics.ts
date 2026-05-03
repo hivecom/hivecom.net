@@ -8,8 +8,14 @@ export interface MetricsServerDetailSource {
   }
 }
 
+// Servers with no query protocol configured
+export interface MetricsServerDetailNone {
+  protocol: null
+  data: null
+}
+
 // Union - extend with new protocol interfaces as they are implemented
-export type MetricsServerDetail = MetricsServerDetailSource
+export type MetricsServerDetail = MetricsServerDetailSource | MetricsServerDetailNone
 
 export interface MetricsMembers {
   total: number
@@ -25,6 +31,7 @@ export interface MetricsCommunity {
 
 export interface MetricsTeamSpeak {
   online: number
+  byServer: Record<string, number>
 }
 
 export interface MetricsGameServers {
