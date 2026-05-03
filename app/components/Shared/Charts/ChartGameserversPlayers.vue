@@ -69,10 +69,10 @@ const chartData = computed(() => {
     labels,
     datasets: [
       {
-        label: 'Users Online',
-        data: metricsHistory.value.map(e => e.membersOnline),
-        borderColor: palette.datasets[1],
-        backgroundColor: palette.datasets[1],
+        label: 'Players Online',
+        data: metricsHistory.value.map(e => e.gameserversPlayers),
+        borderColor: palette.datasets[3],
+        backgroundColor: palette.datasets[3],
         fill: false,
       },
     ],
@@ -97,11 +97,11 @@ const localChartOptions: ChartOptions<'line'> = {
       },
     },
     y: {
-      beginAtZero: false,
+      beginAtZero: true,
       suggestedMax: 10,
       title: {
         display: true,
-        text: 'Users',
+        text: 'Players',
       },
     },
   },
@@ -144,7 +144,7 @@ watchEffect(() => {
     </div>
 
     <div v-else-if="!metricsHistory.length" class="chart-empty">
-      <p>No member activity data available</p>
+      <p>No gameserver activity data available</p>
     </div>
 
     <div v-else ref="chartWrapperRef" :key="`${theme}-${activeTheme?.id}`" class="chart-wrapper">

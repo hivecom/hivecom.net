@@ -387,7 +387,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const totalPlayers = Object.values(byServer).reduce(
-      (sum, d) => sum + (d.data.players ?? 0),
+      (sum, d) => sum + (d.data?.players ?? 0),
       0,
     );
 

@@ -28,6 +28,8 @@ export interface MetricsHistoryEntry {
   capturedAt: string
   membersOnline: number
   membersTotal: number
+  teamspeakOnline: number
+  gameserversPlayers: number
 }
 
 const METRICS_CACHE_KEY = 'metrics:latest'
@@ -124,7 +126,7 @@ async function fetchMetricsHistoryFromDB(
   if (error !== null || data === null)
     return []
 
-  const bucketMap = new Map<number, { onlineSum: number, totalSum: number, count: number }>()
+  const bucketMap = new Map<number, { onlineSum: number, totalSum: number, tsOnlineSum: number, gsPlayersSum: number, count: number }>()
 
   for (const row of data as unknown as Tables<'metrics'>[]) {
     const snapshot = normalizeMetricsSnapshot(row.data)
@@ -138,12 +140,16 @@ async function fetchMetricsHistoryFromDB(
     if (existing) {
       existing.onlineSum += snapshot.members.online
       existing.totalSum += snapshot.members.total
+      existing.tsOnlineSum += snapshot.teamspeak.online
+      existing.gsPlayersSum += snapshot.gameservers.players
       existing.count += 1
     }
     else {
       bucketMap.set(bucketKey, {
         onlineSum: snapshot.members.online,
         totalSum: snapshot.members.total,
+        tsOnlineSum: snapshot.teamspeak.online,
+        gsPlayersSum: snapshot.gameservers.players,
         count: 1,
       })
     }
@@ -151,10 +157,12 @@ async function fetchMetricsHistoryFromDB(
 
   return Array.from(bucketMap.entries())
     .sort(([a], [b]) => a - b)
-    .map(([bucketKey, { onlineSum, totalSum, count }]) => ({
+    .map(([bucketKey, { onlineSum, totalSum, tsOnlineSum, gsPlayersSum, count }]) => ({
       capturedAt: new Date(bucketKey).toISOString(),
       membersOnline: Math.round(onlineSum / count),
       membersTotal: Math.round(totalSum / count),
+      teamspeakOnline: Math.round(tsOnlineSum / count),
+      gameserversPlayers: Math.round(gsPlayersSum / count),
     }))
 }
 

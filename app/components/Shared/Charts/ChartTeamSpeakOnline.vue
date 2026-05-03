@@ -69,10 +69,10 @@ const chartData = computed(() => {
     labels,
     datasets: [
       {
-        label: 'Users Online',
-        data: metricsHistory.value.map(e => e.membersOnline),
-        borderColor: palette.datasets[1],
-        backgroundColor: palette.datasets[1],
+        label: 'TeamSpeak Online',
+        data: metricsHistory.value.map(e => e.teamspeakOnline),
+        borderColor: palette.datasets[0],
+        backgroundColor: palette.datasets[0],
         fill: false,
       },
     ],
@@ -97,11 +97,14 @@ const localChartOptions: ChartOptions<'line'> = {
       },
     },
     y: {
-      beginAtZero: false,
+      beginAtZero: true,
       suggestedMax: 10,
+      ticks: {
+        stepSize: 1,
+      },
       title: {
         display: true,
-        text: 'Users',
+        text: 'Connections',
       },
     },
   },
@@ -144,7 +147,7 @@ watchEffect(() => {
     </div>
 
     <div v-else-if="!metricsHistory.length" class="chart-empty">
-      <p>No member activity data available</p>
+      <p>No TeamSpeak activity data available</p>
     </div>
 
     <div v-else ref="chartWrapperRef" :key="`${theme}-${activeTheme?.id}`" class="chart-wrapper">
