@@ -1,8 +1,15 @@
-export interface MetricsServerDetail {
-  players: number | null
-  maxPlayers: number | null
-  map: string | null
+// Protocol-specific server detail shapes
+export interface MetricsServerDetailSource {
+  protocol: 'source'
+  data: {
+    players: number | null
+    maxPlayers: number | null
+    map: string | null
+  }
 }
+
+// Union - extend with new protocol interfaces as they are implemented
+export type MetricsServerDetail = MetricsServerDetailSource
 
 export interface MetricsMembers {
   total: number

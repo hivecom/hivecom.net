@@ -291,7 +291,7 @@ function handleSubmit() {
     region: gameserverForm.value.region,
     addresses: gameserverForm.value.addresses.length > 0 ? gameserverForm.value.addresses : null,
     port: gameserverForm.value.port || null,
-    query_protocol: gameserverForm.value.query_protocol,
+    query_protocol: gameserverForm.value.query_protocol as TablesInsert<'gameservers'>['query_protocol'],
     query_port: gameserverForm.value.query_port ? Number(gameserverForm.value.query_port) : null,
     game: gameserverForm.value.game,
     container: gameserverForm.value.container,

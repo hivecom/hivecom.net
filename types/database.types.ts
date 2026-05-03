@@ -803,7 +803,9 @@ export type Database = {
           name: string
           port: string | null
           query_port: number | null
-          query_protocol: string | null
+          query_protocol:
+            | Database["public"]["Enums"]["game_query_protocol"]
+            | null
           region: Database["public"]["Enums"]["region"] | null
         }
         Insert: {
@@ -821,7 +823,9 @@ export type Database = {
           name?: string
           port?: string | null
           query_port?: number | null
-          query_protocol?: string | null
+          query_protocol?:
+            | Database["public"]["Enums"]["game_query_protocol"]
+            | null
           region?: Database["public"]["Enums"]["region"] | null
         }
         Update: {
@@ -839,7 +843,9 @@ export type Database = {
           name?: string
           port?: string | null
           query_port?: number | null
-          query_protocol?: string | null
+          query_protocol?:
+            | Database["public"]["Enums"]["game_query_protocol"]
+            | null
           region?: Database["public"]["Enums"]["region"] | null
         }
         Relationships: [
@@ -2599,6 +2605,7 @@ export type Database = {
       app_role: "admin" | "moderator"
       events_rsvp_scope: "occurrence" | "series"
       events_rsvp_status: "yes" | "no" | "tentative"
+      game_query_protocol: "source"
       kvstore_type: "NUMBER" | "BOOLEAN" | "STRING" | "JSON"
       presence_steam_status:
         | "offline"
@@ -2818,6 +2825,7 @@ export const Constants = {
       app_role: ["admin", "moderator"],
       events_rsvp_scope: ["occurrence", "series"],
       events_rsvp_status: ["yes", "no", "tentative"],
+      game_query_protocol: ["source"],
       kvstore_type: ["NUMBER", "BOOLEAN", "STRING", "JSON"],
       presence_steam_status: [
         "offline",
