@@ -82,7 +82,7 @@ const chartData = computed(() => {
         fill: false,
         pointRadius: 3,
         pointHoverRadius: 5,
-        clip: false,
+        clip: false as const,
         spanGaps: false,
       },
     ],

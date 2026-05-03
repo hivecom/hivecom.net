@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ChartOptions } from 'chart.js'
+import type { ChartDataset, ChartOptions } from 'chart.js'
 import type { ChartComponentRef } from 'vue-chartjs'
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
 import { Skeleton, theme } from '@dolanske/vui'
@@ -82,10 +82,10 @@ const chartData = computed(() => {
         fill: false,
         pointRadius: 3,
         pointHoverRadius: 5,
-        clip: false,
+        clip: false as const,
         spanGaps: false,
       },
-    ],
+    ] as ChartDataset<'line'>[],
   }
 })
 
