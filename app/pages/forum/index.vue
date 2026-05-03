@@ -299,6 +299,25 @@ const feedOptions = computed(() => ({
   onTopicClick: (id: string) => setActiveTopicById(id),
 }))
 
+const {
+  latestPosts,
+  latestPostMentionIds,
+  latestPostAuthorIds,
+  postSinceYesterday,
+  fetchLatestReplies,
+  fetchTodayCount,
+  prependReplyItem,
+  prependDiscussionItem,
+} = useForumActivityFeed({
+  topics,
+  allDiscussions,
+  settings,
+  discussionLookup,
+  visibleDiscussionIds,
+  hiddenTopicIds,
+  onTopicClick: (id: string) => setActiveTopicById(id),
+})
+
 const FEED_STALE_MS = 15 * 60 * 1000 // 15 minutes
 let hiddenAt: number | null = null
 
@@ -322,26 +341,6 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', onVisibilityChange)
 })
-
-const {
-  latestPosts,
-  latestPostMentionIds,
-  latestPostAuthorIds,
-  postSinceYesterday,
-  fetchLatestReplies,
-  fetchTodayCount,
-  prependReplyItem,
-  prependDiscussionItem,
-} = useForumActivityFeed({
-  topics,
-  allDiscussions,
-  settings,
-  discussionLookup,
-  visibleDiscussionIds,
-  hiddenTopicIds,
-  onTopicClick: (id: string) => setActiveTopicById(id),
-})
-
 // ── Realtime feed updates ─────────────────────────────────────────────────
 
 // Count of incoming items not yet reflected in the paginated sheet feed.

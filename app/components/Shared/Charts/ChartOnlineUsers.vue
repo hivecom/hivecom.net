@@ -36,8 +36,14 @@ ChartJS.register(
 
 const { metricsHistory, loadingHistory, fetchMetricsHistory, scheduleRefresh } = useDataMetrics()
 
-onMounted(() => { fetchMetricsHistory(props.period); scheduleRefresh(props.period) })
-watch(() => props.period, (period) => { fetchMetricsHistory(period); scheduleRefresh(period) })
+onMounted(() => {
+  fetchMetricsHistory(props.period)
+  scheduleRefresh(props.period)
+})
+watch(() => props.period, (period) => {
+  fetchMetricsHistory(period)
+  scheduleRefresh(period)
+})
 
 const chartWrapperRef = ref<HTMLElement | null>(null)
 const chartRef = ref<ChartComponentRef<'line'> | null>(null)

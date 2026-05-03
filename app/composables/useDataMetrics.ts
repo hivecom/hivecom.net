@@ -267,7 +267,7 @@ export function useDataMetrics() {
       clearTimeout(refreshTimer)
 
     const delay = msUntilNextCollection() + REFRESH_BUFFER_MS
-    refreshTimer = setTimeout(async () => {
+    const doRefresh = async () => {
       const snapshot = await fetchMetricsFromStorage(supabase)
       if (snapshot === null) {
         // Fetch failed - append a null entry for this bucket so the gap shows
@@ -314,6 +314,9 @@ export function useDataMetrics() {
       }
 
       scheduleRefresh(period)
+    }
+    refreshTimer = setTimeout(() => {
+      void doRefresh()
     }, delay)
   }
 

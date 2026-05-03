@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { Database } from '@/types/database.types'
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
+import type { Database } from '@/types/database.types'
 import { Button, Flex, Select } from '@dolanske/vui'
 import { ref } from 'vue'
+import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
 import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
 import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
-import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
 import { METRICS_PERIOD_OPTIONS, useDataMetrics } from '@/composables/useDataMetrics'
 
 definePageMeta({ layout: false })
