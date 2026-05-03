@@ -299,8 +299,28 @@ const feedOptions = computed(() => ({
   onTopicClick: (id: string) => setActiveTopicById(id),
 }))
 
+const FEED_STALE_MS = 15 * 60 * 1000 // 15 minutes
+let hiddenAt: number | null = null
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    hiddenAt = Date.now()
+  }
+  else if (document.visibilityState === 'visible') {
+    if (hiddenAt != null && Date.now() - hiddenAt >= FEED_STALE_MS) {
+      void Promise.all([fetchLatestReplies(), fetchTodayCount()])
+    }
+    hiddenAt = null
+  }
+}
+
 onMounted(() => {
   lastFeedVisitedAt.value = forumUnread.recordFeedVisit()
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
 const {

@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import type { MetricsSnapshot } from '@/types/metrics'
+import { onUnmounted, ref } from 'vue'
 import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
@@ -26,10 +27,10 @@ export const METRICS_PERIOD_OPTIONS = (Object.entries(PERIOD_CONFIGS) as [Metric
 
 export interface MetricsHistoryEntry {
   capturedAt: string
-  membersOnline: number
-  membersTotal: number
-  teamspeakOnline: number
-  gameserversPlayers: number
+  membersOnline: number | null
+  membersTotal: number | null
+  teamspeakOnline: number | null
+  gameserversPlayers: number | null
 }
 
 const METRICS_CACHE_KEY = 'metrics:latest'
@@ -155,15 +156,37 @@ async function fetchMetricsHistoryFromDB(
     }
   }
 
-  return Array.from(bucketMap.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([bucketKey, { onlineSum, totalSum, tsOnlineSum, gsPlayersSum, count }]) => ({
-      capturedAt: new Date(bucketKey).toISOString(),
-      membersOnline: Math.round(onlineSum / count),
-      membersTotal: Math.round(totalSum / count),
-      teamspeakOnline: Math.round(tsOnlineSum / count),
-      gameserversPlayers: Math.round(gsPlayersSum / count),
-    }))
+  // Generate all expected buckets for the period and null-fill missing ones
+  // so spanGaps: false renders visible breaks in the chart
+  const now = Date.now()
+  const periodStart = now - config.hours * 60 * 60 * 1000
+  const firstBucket = Math.ceil(periodStart / config.bucketMs) * config.bucketMs
+  const lastBucket = Math.floor(now / config.bucketMs) * config.bucketMs
+
+  const result: MetricsHistoryEntry[] = []
+  for (let bucket = firstBucket; bucket <= lastBucket; bucket += config.bucketMs) {
+    const entry = bucketMap.get(bucket)
+    if (entry) {
+      result.push({
+        capturedAt: new Date(bucket).toISOString(),
+        membersOnline: Math.round(entry.onlineSum / entry.count),
+        membersTotal: Math.round(entry.totalSum / entry.count),
+        teamspeakOnline: Math.round(entry.tsOnlineSum / entry.count),
+        gameserversPlayers: Math.round(entry.gsPlayersSum / entry.count),
+      })
+    }
+    else {
+      result.push({
+        capturedAt: new Date(bucket).toISOString(),
+        membersOnline: null,
+        membersTotal: null,
+        teamspeakOnline: null,
+        gameserversPlayers: null,
+      })
+    }
+  }
+
+  return result
 }
 
 export function useDataMetrics() {
@@ -234,6 +257,71 @@ export function useDataMetrics() {
     }
   }
 
+  // Auto-refresh: after each 15-min boundary + 1 min buffer, fetch latest.json
+  // and append the new data point to the history without hitting the DB.
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null
+  const REFRESH_BUFFER_MS = 60 * 1000
+
+  const scheduleRefresh = (period: MetricsPeriod) => {
+    if (refreshTimer !== null)
+      clearTimeout(refreshTimer)
+
+    const delay = msUntilNextCollection() + REFRESH_BUFFER_MS
+    refreshTimer = setTimeout(async () => {
+      const snapshot = await fetchMetricsFromStorage(supabase)
+      if (snapshot === null) {
+        // Fetch failed - append a null entry for this bucket so the gap shows
+        const bucketMs = PERIOD_CONFIGS[period].bucketMs
+        const bucketKey = Math.floor(Date.now() / bucketMs) * bucketMs
+        metricsHistory.value = [
+          ...metricsHistory.value,
+          {
+            capturedAt: new Date(bucketKey).toISOString(),
+            membersOnline: null,
+            membersTotal: null,
+            teamspeakOnline: null,
+            gameserversPlayers: null,
+          },
+        ]
+      }
+      else {
+        metrics.value = snapshot
+        metricsCache.set(METRICS_CACHE_KEY, snapshot, msUntilNextCollection())
+
+        const bucketMs = PERIOD_CONFIGS[period].bucketMs
+        const bucketKey = Math.floor(Date.now() / bucketMs) * bucketMs
+        const newEntry: MetricsHistoryEntry = {
+          capturedAt: new Date(bucketKey).toISOString(),
+          membersOnline: snapshot.members.online,
+          membersTotal: snapshot.members.total,
+          teamspeakOnline: snapshot.teamspeak.online,
+          gameserversPlayers: snapshot.gameservers.players,
+        }
+
+        // Replace the last bucket if it matches (null placeholder), otherwise append
+        const last = metricsHistory.value.at(-1)
+        const lastBucket = last ? Math.floor(new Date(last.capturedAt).getTime() / bucketMs) * bucketMs : null
+        if (lastBucket === bucketKey) {
+          metricsHistory.value = [...metricsHistory.value.slice(0, -1), newEntry]
+        }
+        else {
+          metricsHistory.value = [...metricsHistory.value, newEntry]
+        }
+
+        // Evict the history cache so next full load re-fetches from DB
+        const cacheKey = `metrics:history:${period}`
+        metricsCache.delete(cacheKey)
+      }
+
+      scheduleRefresh(period)
+    }, delay)
+  }
+
+  onUnmounted(() => {
+    if (refreshTimer !== null)
+      clearTimeout(refreshTimer)
+  })
+
   return {
     metrics,
     loading,
@@ -242,5 +330,6 @@ export function useDataMetrics() {
     metricsHistory,
     loadingHistory,
     fetchMetricsHistory,
+    scheduleRefresh,
   }
 }

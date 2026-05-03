@@ -22,6 +22,8 @@ import { useUserTheme } from '@/composables/useUserTheme'
 import { getChartPalette, getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
+const props = defineProps<{ period: MetricsPeriod }>()
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -32,12 +34,10 @@ ChartJS.register(
   Legend,
 )
 
-const props = defineProps<{ period: MetricsPeriod }>()
+const { metricsHistory, loadingHistory, fetchMetricsHistory, scheduleRefresh } = useDataMetrics()
 
-const { metricsHistory, loadingHistory, fetchMetricsHistory } = useDataMetrics()
-
-onMounted(() => fetchMetricsHistory(props.period))
-watch(() => props.period, period => fetchMetricsHistory(period))
+onMounted(() => { fetchMetricsHistory(props.period); scheduleRefresh(props.period) })
+watch(() => props.period, (period) => { fetchMetricsHistory(period); scheduleRefresh(period) })
 
 const chartWrapperRef = ref<HTMLElement | null>(null)
 const chartRef = ref<ChartComponentRef<'line'> | null>(null)
@@ -74,6 +74,10 @@ const chartData = computed(() => {
         borderColor: palette.datasets[1],
         backgroundColor: palette.datasets[1],
         fill: false,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        clip: false,
+        spanGaps: false,
       },
     ],
   }
@@ -121,7 +125,6 @@ watchEffect(() => {
 
 <template>
   <div class="chart-container">
-
     <div v-if="loadingHistory" class="chart-loading">
       <div class="chart-skeleton">
         <div class="legend-skeleton">

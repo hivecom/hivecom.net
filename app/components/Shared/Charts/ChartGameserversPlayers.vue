@@ -34,10 +34,10 @@ ChartJS.register(
 
 const props = defineProps<{ period: MetricsPeriod }>()
 
-const { metricsHistory, loadingHistory, fetchMetricsHistory } = useDataMetrics()
+const { metricsHistory, loadingHistory, fetchMetricsHistory, scheduleRefresh } = useDataMetrics()
 
-onMounted(() => fetchMetricsHistory(props.period))
-watch(() => props.period, period => fetchMetricsHistory(period))
+onMounted(() => { fetchMetricsHistory(props.period); scheduleRefresh(props.period) })
+watch(() => props.period, (period) => { fetchMetricsHistory(period); scheduleRefresh(period) })
 
 const chartWrapperRef = ref<HTMLElement | null>(null)
 const chartRef = ref<ChartComponentRef<'line'> | null>(null)
@@ -74,6 +74,10 @@ const chartData = computed(() => {
         borderColor: palette.datasets[3],
         backgroundColor: palette.datasets[3],
         fill: false,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        clip: false,
+        spanGaps: false,
       },
     ],
   }
