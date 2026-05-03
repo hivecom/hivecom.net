@@ -4,7 +4,25 @@ export interface MetricsServerDetailSource {
   data: {
     players: number | null
     maxPlayers: number | null
-    map: string | null
+    world: string | null
+  }
+}
+
+export interface MetricsServerDetailMinecraft {
+  protocol: 'minecraft'
+  data: {
+    players: number | null
+    maxPlayers: number | null
+    world: string | null
+    playerList: string[] | null
+    motd: string | null
+    gameType: string | null
+    gameId: string | null
+    version: string | null
+    plugins: string | null
+    hostPort: number | null
+    hostIp: string | null
+    extra: Record<string, string> | null
   }
 }
 
@@ -15,7 +33,10 @@ export interface MetricsServerDetailNone {
 }
 
 // Union - extend with new protocol interfaces as they are implemented
-export type MetricsServerDetail = MetricsServerDetailSource | MetricsServerDetailNone
+export type MetricsServerDetail
+  = | MetricsServerDetailSource
+    | MetricsServerDetailMinecraft
+    | MetricsServerDetailNone
 
 export interface MetricsMembers {
   total: number

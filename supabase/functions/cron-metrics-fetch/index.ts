@@ -66,7 +66,17 @@ interface DockerQueryResult {
   success: boolean;
   playerCount: number;
   maxPlayers: number;
-  map: string;
+  world: string;
+  // Minecraft-specific
+  players?: string[];
+  motd?: string;
+  gameType?: string;
+  gameId?: string;
+  version?: string;
+  plugins?: string;
+  hostPort?: number;
+  hostIp?: string;
+  extra?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -290,25 +300,30 @@ Deno.serve(async (req: Request) => {
     // Initialise all gameservers with null detail so every entry is present
     for (const gs of gameservers) {
       byServer[String(gs.id)] = gs.query_protocol
-        ? { protocol: gs.query_protocol, data: { players: null, maxPlayers: null, map: null } }
+        ? {
+          protocol: gs.query_protocol,
+          data: { players: null, maxPlayers: null, world: null },
+        }
         : { protocol: null, data: null };
     }
 
     if (queryableGameservers.length > 0) {
       const queryResults = await Promise.allSettled(
         queryableGameservers.map(async (gs) => {
+          const nullDetail = {
+            id: gs.id,
+            detail: {
+              protocol: gs.query_protocol!,
+              data: { players: null, maxPlayers: null, world: null },
+            } as MetricsServerDetail,
+          };
+
           const server = containerServerMap.get(gs.container!);
           if (!server) {
             console.warn(
               `No server found for container "${gs.container}" (gameserver ${gs.id})`,
             );
-            return {
-              id: gs.id,
-              detail: {
-                protocol: gs.query_protocol!,
-                data: { players: null, maxPlayers: null, map: null },
-              } as MetricsServerDetail,
-            };
+            return nullDetail;
           }
 
           const port = gs.query_port?.toString() ?? gs.port ?? undefined;
@@ -331,50 +346,50 @@ Deno.serve(async (req: Request) => {
               console.warn(
                 `Query failed for gameserver ${gs.id} (${gs.name}): HTTP ${res.status}`,
               );
-              return {
-                id: gs.id,
-                detail: {
-                  protocol: gs.query_protocol!,
-                  data: { players: null, maxPlayers: null, map: null },
-                } as MetricsServerDetail,
-              };
+              return nullDetail;
             }
 
             const body = await res.json() as DockerQueryResult;
             if (!body.success) {
-              return {
-                id: gs.id,
-                detail: {
-                  protocol: gs.query_protocol!,
-                  data: { players: null, maxPlayers: null, map: null },
-                } as MetricsServerDetail,
-              };
+              return nullDetail;
             }
 
-            return {
-              id: gs.id,
-              detail: {
-                protocol: gs.query_protocol!,
+            const protocol = gs.query_protocol!;
+            const detail: MetricsServerDetail = protocol === "minecraft"
+              ? {
+                protocol,
                 data: {
                   players: body.playerCount,
                   maxPlayers: body.maxPlayers,
-                  map: body.map,
+                  world: body.world,
+                  playerList: body.players ?? null,
+                  motd: body.motd ?? null,
+                  gameType: body.gameType ?? null,
+                  gameId: body.gameId ?? null,
+                  version: body.version ?? null,
+                  plugins: body.plugins ?? null,
+                  hostPort: body.hostPort ?? null,
+                  hostIp: body.hostIp ?? null,
+                  extra: body.extra ?? null,
                 },
-              } as MetricsServerDetail,
-            };
+              }
+              : {
+                protocol,
+                data: {
+                  players: body.playerCount,
+                  maxPlayers: body.maxPlayers,
+                  world: body.world,
+                },
+              };
+
+            return { id: gs.id, detail };
           } catch (err) {
             const error = err as Error;
             console.warn(
               `Query error for gameserver ${gs.id} (${gs.name}):`,
               error.message,
             );
-            return {
-              id: gs.id,
-              detail: {
-                protocol: gs.query_protocol!,
-                data: { players: null, maxPlayers: null, map: null },
-              } as MetricsServerDetail,
-            };
+            return nullDetail;
           }
         }),
       );

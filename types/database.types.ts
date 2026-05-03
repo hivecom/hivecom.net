@@ -2605,7 +2605,7 @@ export type Database = {
       app_role: "admin" | "moderator"
       events_rsvp_scope: "occurrence" | "series"
       events_rsvp_status: "yes" | "no" | "tentative"
-      game_query_protocol: "source"
+      game_query_protocol: "source" | "minecraft"
       kvstore_type: "NUMBER" | "BOOLEAN" | "STRING" | "JSON"
       presence_steam_status:
         | "offline"
@@ -2825,7 +2825,7 @@ export const Constants = {
       app_role: ["admin", "moderator"],
       events_rsvp_scope: ["occurrence", "series"],
       events_rsvp_status: ["yes", "no", "tentative"],
-      game_query_protocol: ["source"],
+      game_query_protocol: ["source", "minecraft"],
       kvstore_type: ["NUMBER", "BOOLEAN", "STRING", "JSON"],
       presence_steam_status: [
         "offline",
@@ -2841,3 +2841,4 @@ export const Constants = {
     },
   },
 } as const
+

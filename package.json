@@ -14,7 +14,7 @@
     "postinstall": "nuxi prepare",
     "supabase": "npx supabase",
     "lint": "eslint . && nuxi typecheck",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix && nuxi typecheck --fix"
   },
   "dependencies": {
     "@dolanske/v-valid": "^2.1.1",
