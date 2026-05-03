@@ -193,7 +193,7 @@ function confirmDelete() {
             <Grid expand :columns="2">
               <span class="text-color-light text-bold">Port:</span>
               <span><code v-if="props.gameserver.port">{{ props.gameserver.port }}</code>
-              <span v-else>Not specified</span></span>
+                <span v-else>Not specified</span></span>
             </Grid>
 
             <Grid expand :columns="2">
@@ -207,7 +207,7 @@ function confirmDelete() {
             <Grid expand :columns="2">
               <span class="text-color-light text-bold">Query Port:</span>
               <span><code v-if="props.gameserver.query_protocol && (props.gameserver.query_port ?? props.gameserver.port)">{{ props.gameserver.query_port ?? props.gameserver.port }}</code>
-              <code v-else>{{ props.gameserver.query_protocol ? 'not specified' : 'n/a' }}</code></span>
+                <code v-else>{{ props.gameserver.query_protocol ? 'not specified' : 'n/a' }}</code></span>
             </Grid>
           </Flex>
         </Card>
