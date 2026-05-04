@@ -22,7 +22,7 @@ defineProps<{
     <div class="hero-section__divider" />
     <div class="hero-section__stats-grid">
       <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
-        <Flex x-center class="hero-section__stats-value">
+        <Flex x-center y-center class="hero-section__stats-value">
           <template v-if="loading">
             <Skeleton height="2.5rem" width="4rem" />
           </template>
@@ -34,7 +34,7 @@ defineProps<{
       </NuxtLink>
 
       <NuxtLink to="/forum" class="hero-section__stats-card hero-section__stats-card--clickable">
-        <Flex x-center class="hero-section__stats-value">
+        <Flex x-center y-center class="hero-section__stats-value">
           <template v-if="loading">
             <Skeleton height="2.5rem" width="4rem" />
           </template>
@@ -46,7 +46,7 @@ defineProps<{
       </NuxtLink>
 
       <NuxtLink to="/servers/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
-        <Flex x-center class="hero-section__stats-value">
+        <Flex x-center y-center class="hero-section__stats-value">
           <template v-if="loading">
             <Skeleton height="2.5rem" width="2rem" />
           </template>
@@ -58,7 +58,9 @@ defineProps<{
       </NuxtLink>
 
       <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
-        <span class="hero-section__stats-value">{{ communityStats.age }} Years</span>
+        <Flex x-center y-center class="hero-section__stats-value">
+          <span class="text-xxl">{{ communityStats.age }} Years</span>
+        </Flex>
         <span class="text-xs">Founded in 2013</span>
       </NuxtLink>
 
@@ -156,7 +158,6 @@ defineProps<{
 }
 
 .hero-section__stats-value {
-  display: block;
   font-size: 2.5rem;
   font-weight: bold;
   margin-bottom: var(--space-xs);

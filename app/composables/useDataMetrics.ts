@@ -14,7 +14,7 @@ interface PeriodConfig {
   bucketMs: number
 }
 
-const PERIOD_CONFIGS: Record<MetricsPeriod, PeriodConfig> = {
+export const PERIOD_CONFIGS: Record<MetricsPeriod, PeriodConfig> = {
   '24h': { label: 'Last 24 Hours', hours: 24, bucketMs: 15 * 60 * 1000 },
   '7d': { label: 'Last 7 Days', hours: 168, bucketMs: 60 * 60 * 1000 },
   '30d': { label: 'Last 30 Days', hours: 720, bucketMs: 3 * 60 * 60 * 1000 },
@@ -31,6 +31,10 @@ export interface MetricsHistoryEntry {
   membersTotal: number | null
   teamspeakOnline: number | null
   gameserversPlayers: number | null
+  teamspeakByServer: Record<string, number> | null
+  gameserversByServer: Record<string, number> | null
+  discussionsTotal: number | null
+  discussionsReplies: number | null
 }
 
 const METRICS_CACHE_KEY = 'metrics:latest'
@@ -77,7 +81,10 @@ function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
     },
     community: {
       projects: typeof community?.projects === 'number' ? community.projects : 0,
-      forumPosts: typeof community?.forumPosts === 'number' ? community.forumPosts : 0,
+    },
+    discussions: {
+      total: typeof (record.discussions as Record<string, unknown>)?.total === 'number' ? (record.discussions as Record<string, unknown>).total as number : 0,
+      replies: typeof (record.discussions as Record<string, unknown>)?.replies === 'number' ? (record.discussions as Record<string, unknown>).replies as number : 0,
     },
     teamspeak: {
       online: typeof teamspeak?.online === 'number' ? teamspeak.online : 0,
@@ -127,7 +134,18 @@ async function fetchMetricsHistoryFromDB(
   if (error !== null || data === null)
     return []
 
-  const bucketMap = new Map<number, { onlineSum: number, totalSum: number, tsOnlineSum: number, gsPlayersSum: number, count: number }>()
+  interface BucketEntry {
+    onlineSum: number
+    totalSum: number
+    tsOnlineSum: number
+    gsPlayersSum: number
+    discussionsTotalSum: number
+    discussionsRepliesSum: number
+    count: number
+    tsServerSums: Record<string, number>
+    gsServerSums: Record<string, number>
+  }
+  const bucketMap = new Map<number, BucketEntry>()
 
   for (const row of data as unknown as Tables<'metrics'>[]) {
     const snapshot = normalizeMetricsSnapshot(row.data)
@@ -143,15 +161,35 @@ async function fetchMetricsHistoryFromDB(
       existing.totalSum += snapshot.members.total
       existing.tsOnlineSum += snapshot.teamspeak.online
       existing.gsPlayersSum += snapshot.gameservers.players
+      existing.discussionsTotalSum += snapshot.discussions.total
+      existing.discussionsRepliesSum += snapshot.discussions.replies
       existing.count += 1
+      for (const [name, count] of Object.entries(snapshot.teamspeak.byServer)) {
+        existing.tsServerSums[name] = (existing.tsServerSums[name] ?? 0) + count
+      }
+      for (const [name, detail] of Object.entries(snapshot.gameservers.byServer)) {
+        existing.gsServerSums[name] = (existing.gsServerSums[name] ?? 0) + (detail.data?.players ?? 0)
+      }
     }
     else {
+      const tsServerSums: Record<string, number> = {}
+      for (const [name, count] of Object.entries(snapshot.teamspeak.byServer)) {
+        tsServerSums[name] = count
+      }
+      const gsServerSums: Record<string, number> = {}
+      for (const [name, detail] of Object.entries(snapshot.gameservers.byServer)) {
+        gsServerSums[name] = detail.data?.players ?? 0
+      }
       bucketMap.set(bucketKey, {
         onlineSum: snapshot.members.online,
         totalSum: snapshot.members.total,
         tsOnlineSum: snapshot.teamspeak.online,
         gsPlayersSum: snapshot.gameservers.players,
+        discussionsTotalSum: snapshot.discussions.total,
+        discussionsRepliesSum: snapshot.discussions.replies,
         count: 1,
+        tsServerSums,
+        gsServerSums,
       })
     }
   }
@@ -173,6 +211,14 @@ async function fetchMetricsHistoryFromDB(
         membersTotal: Math.round(entry.totalSum / entry.count),
         teamspeakOnline: Math.round(entry.tsOnlineSum / entry.count),
         gameserversPlayers: Math.round(entry.gsPlayersSum / entry.count),
+        teamspeakByServer: Object.fromEntries(
+          Object.entries(entry.tsServerSums).map(([k, v]) => [k, Math.round(v / entry.count)]),
+        ),
+        gameserversByServer: Object.fromEntries(
+          Object.entries(entry.gsServerSums).map(([k, v]) => [k, Math.round(v / entry.count)]),
+        ),
+        discussionsTotal: Math.round(entry.discussionsTotalSum / entry.count),
+        discussionsReplies: Math.round(entry.discussionsRepliesSum / entry.count),
       })
     }
     else {
@@ -182,12 +228,27 @@ async function fetchMetricsHistoryFromDB(
         membersTotal: null,
         teamspeakOnline: null,
         gameserversPlayers: null,
+        teamspeakByServer: null,
+        gameserversByServer: null,
+        discussionsTotal: null,
+        discussionsReplies: null,
       })
     }
   }
 
   return result
 }
+
+// Shared module-level state so all callers react to the same fetches.
+const metricsHistory = ref<MetricsHistoryEntry[]>([])
+const loadingHistory = ref(false)
+export const metricsWindow = ref<{ start: Date, end: Date } | null>(null)
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+
+// Separate 90d overview dataset exclusively for the brush - never overwritten
+// by period fetches so the brush always shows the full context.
+const metricsOverview = ref<MetricsHistoryEntry[]>([])
+const loadingOverview = ref(false)
 
 export function useDataMetrics() {
   const supabase = useSupabaseClient<Database>()
@@ -227,8 +288,156 @@ export function useDataMetrics() {
     }
   }
 
-  const metricsHistory = ref<MetricsHistoryEntry[]>([])
-  const loadingHistory = ref(false)
+  const fetchMetricsWindow = async (start: Date, end: Date): Promise<MetricsHistoryEntry[]> => {
+    const cacheKey = `metrics:history:window:${start.getTime()}:${end.getTime()}`
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null) {
+      metricsHistory.value = cached
+      return cached
+    }
+
+    loadingHistory.value = true
+    error.value = null
+
+    try {
+      const { data, error: dbError } = await supabase
+        .from('metrics')
+        .select('*')
+        .gte('captured_at', start.toISOString())
+        .lte('captured_at', end.toISOString())
+        .order('captured_at', { ascending: true })
+
+      if (dbError !== null || data === null) {
+        metricsHistory.value = []
+        return []
+      }
+
+      const durationMs = end.getTime() - start.getTime()
+      let bucketMs: number
+      if (durationMs <= 24 * 60 * 60 * 1000) {
+        bucketMs = 15 * 60 * 1000
+      }
+      else if (durationMs <= 7 * 24 * 60 * 60 * 1000) {
+        bucketMs = 60 * 60 * 1000
+      }
+      else if (durationMs <= 30 * 24 * 60 * 60 * 1000) {
+        bucketMs = 3 * 60 * 60 * 1000
+      }
+      else {
+        bucketMs = 24 * 60 * 60 * 1000
+      }
+
+      interface WindowBucketEntry {
+        onlineSum: number
+        totalSum: number
+        tsOnlineSum: number
+        gsPlayersSum: number
+        discussionsTotalSum: number
+        discussionsRepliesSum: number
+        count: number
+        tsServerSums: Record<string, number>
+        gsServerSums: Record<string, number>
+      }
+      const bucketMap = new Map<number, WindowBucketEntry>()
+
+      for (const row of data as unknown as Tables<'metrics'>[]) {
+        const snapshot = normalizeMetricsSnapshot(row.data)
+        if (snapshot === null)
+          continue
+
+        const ts = new Date(row.captured_at).getTime()
+        const bucketKey = Math.floor(ts / bucketMs) * bucketMs
+        const existing = bucketMap.get(bucketKey)
+
+        if (existing) {
+          existing.onlineSum += snapshot.members.online
+          existing.totalSum += snapshot.members.total
+          existing.tsOnlineSum += snapshot.teamspeak.online
+          existing.gsPlayersSum += snapshot.gameservers.players
+          existing.discussionsTotalSum += snapshot.discussions.total
+          existing.discussionsRepliesSum += snapshot.discussions.replies
+          existing.count += 1
+          for (const [name, count] of Object.entries(snapshot.teamspeak.byServer)) {
+            existing.tsServerSums[name] = (existing.tsServerSums[name] ?? 0) + count
+          }
+          for (const [name, detail] of Object.entries(snapshot.gameservers.byServer)) {
+            existing.gsServerSums[name] = (existing.gsServerSums[name] ?? 0) + (detail.data?.players ?? 0)
+          }
+        }
+        else {
+          const tsServerSums: Record<string, number> = {}
+          for (const [name, count] of Object.entries(snapshot.teamspeak.byServer)) {
+            tsServerSums[name] = count
+          }
+          const gsServerSums: Record<string, number> = {}
+          for (const [name, detail] of Object.entries(snapshot.gameservers.byServer)) {
+            gsServerSums[name] = detail.data?.players ?? 0
+          }
+          bucketMap.set(bucketKey, {
+            onlineSum: snapshot.members.online,
+            totalSum: snapshot.members.total,
+            tsOnlineSum: snapshot.teamspeak.online,
+            gsPlayersSum: snapshot.gameservers.players,
+            discussionsTotalSum: snapshot.discussions.total,
+            discussionsRepliesSum: snapshot.discussions.replies,
+            count: 1,
+            tsServerSums,
+            gsServerSums,
+          })
+        }
+      }
+
+      const firstBucket = Math.ceil(start.getTime() / bucketMs) * bucketMs
+      const lastBucket = Math.floor(end.getTime() / bucketMs) * bucketMs
+
+      const result: MetricsHistoryEntry[] = []
+      for (let bucket = firstBucket; bucket <= lastBucket; bucket += bucketMs) {
+        const entry = bucketMap.get(bucket)
+        if (entry) {
+          result.push({
+            capturedAt: new Date(bucket).toISOString(),
+            membersOnline: Math.round(entry.onlineSum / entry.count),
+            membersTotal: Math.round(entry.totalSum / entry.count),
+            teamspeakOnline: Math.round(entry.tsOnlineSum / entry.count),
+            gameserversPlayers: Math.round(entry.gsPlayersSum / entry.count),
+            teamspeakByServer: Object.fromEntries(
+              Object.entries(entry.tsServerSums).map(([k, v]) => [k, Math.round(v / entry.count)]),
+            ),
+            gameserversByServer: Object.fromEntries(
+              Object.entries(entry.gsServerSums).map(([k, v]) => [k, Math.round(v / entry.count)]),
+            ),
+            discussionsTotal: Math.round(entry.discussionsTotalSum / entry.count),
+            discussionsReplies: Math.round(entry.discussionsRepliesSum / entry.count),
+          })
+        }
+        else {
+          result.push({
+            capturedAt: new Date(bucket).toISOString(),
+            membersOnline: null,
+            membersTotal: null,
+            teamspeakOnline: null,
+            gameserversPlayers: null,
+            teamspeakByServer: null,
+            gameserversByServer: null,
+            discussionsTotal: null,
+            discussionsReplies: null,
+          })
+        }
+      }
+
+      metricsHistory.value = result
+      metricsCache.set(cacheKey, result, msUntilNextCollection())
+      return result
+    }
+    catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch metrics window'
+      error.value = message
+      throw new Error(message)
+    }
+    finally {
+      loadingHistory.value = false
+    }
+  }
 
   const fetchMetricsHistory = async (period: MetricsPeriod = '24h') => {
     const cacheKey = `metrics:history:${period}`
@@ -259,7 +468,6 @@ export function useDataMetrics() {
 
   // Auto-refresh: after each 15-min boundary + 1 min buffer, fetch latest.json
   // and append the new data point to the history without hitting the DB.
-  let refreshTimer: ReturnType<typeof setTimeout> | null = null
   const REFRESH_BUFFER_MS = 60 * 1000
 
   const scheduleRefresh = (period: MetricsPeriod) => {
@@ -281,6 +489,10 @@ export function useDataMetrics() {
             membersTotal: null,
             teamspeakOnline: null,
             gameserversPlayers: null,
+            teamspeakByServer: null,
+            gameserversByServer: null,
+            discussionsTotal: null,
+            discussionsReplies: null,
           },
         ]
       }
@@ -296,6 +508,12 @@ export function useDataMetrics() {
           membersTotal: snapshot.members.total,
           teamspeakOnline: snapshot.teamspeak.online,
           gameserversPlayers: snapshot.gameservers.players,
+          teamspeakByServer: snapshot.teamspeak.byServer,
+          gameserversByServer: Object.fromEntries(
+            Object.entries(snapshot.gameservers.byServer).map(([k, v]) => [k, v.data?.players ?? 0]),
+          ),
+          discussionsTotal: snapshot.discussions.total,
+          discussionsReplies: snapshot.discussions.replies,
         }
 
         // Replace the last bucket if it matches (null placeholder), otherwise append
@@ -325,14 +543,67 @@ export function useDataMetrics() {
       clearTimeout(refreshTimer)
   })
 
+  const latestMetrics = ref<MetricsSnapshot | null>(null)
+  const loadingLatest = ref(false)
+
+  const fetchLatestMetrics = async () => {
+    loadingLatest.value = true
+    try {
+      const { data, error: dbError } = await supabase
+        .from('metrics')
+        .select('*')
+        .order('captured_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (dbError !== null || data === null)
+        return null
+
+      const snapshot = normalizeMetricsSnapshot((data as unknown as Tables<'metrics'>).data)
+      latestMetrics.value = snapshot
+      return snapshot
+    }
+    finally {
+      loadingLatest.value = false
+    }
+  }
+
+  const fetchMetricsOverview = async () => {
+    const cacheKey = 'metrics:history:90d'
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null) {
+      metricsOverview.value = cached
+      return cached
+    }
+
+    loadingOverview.value = true
+    try {
+      const entries = await fetchMetricsHistoryFromDB(supabase, '90d')
+      metricsOverview.value = entries
+      metricsCache.set(cacheKey, entries, msUntilNextCollection())
+      return entries
+    }
+    finally {
+      loadingOverview.value = false
+    }
+  }
+
   return {
     metrics,
     loading,
     error,
     fetchMetrics,
+    latestMetrics,
+    loadingLatest,
+    fetchLatestMetrics,
     metricsHistory,
     loadingHistory,
     fetchMetricsHistory,
+    fetchMetricsWindow,
+    metricsWindow,
+    metricsOverview,
+    loadingOverview,
+    fetchMetricsOverview,
     scheduleRefresh,
   }
 }

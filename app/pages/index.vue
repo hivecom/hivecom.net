@@ -65,7 +65,7 @@ function applyMetrics(snapshot: MetricsSnapshot): void {
   communityStats.value.members = users > 0 ? users : 100
   communityStats.value.gameservers = snapshot.gameservers.total
   communityStats.value.projects = snapshot.community.projects
-  communityStats.value.forumPosts = snapshot.community.forumPosts
+  communityStats.value.forumPosts = snapshot.discussions.total
 }
 
 // Pre-populate from cache synchronously - avoids placeholder numbers on warm visits

@@ -36,8 +36,6 @@ ChartJS.register(
 interface MonthlyUserData {
   month: string
   totalUsers: number
-  patreonSupporters: number
-  totalSupporters: number
 }
 
 // Setup client and state
@@ -54,41 +52,24 @@ const { activeTheme } = useUserTheme()
 async function fetchUsersData() {
   const { data: profiles, error } = await supabase
     .from('profiles')
-    .select('created_at, supporter_lifetime, supporter_patreon')
+    .select('created_at')
     .order('created_at', { ascending: true })
 
   if (error)
     throw error
 
   // Group users by month
-  const usersByMonth: Record<string, { total: number, supporters: number }> = {}
+  const usersByMonth: Record<string, { total: number }> = {}
 
   profiles?.forEach((profile) => {
     const month = dayjs(profile.created_at).format('YYYY-MM')
     if (!usersByMonth[month]) {
-      usersByMonth[month] = { total: 0, supporters: 0 }
+      usersByMonth[month] = { total: 0 }
     }
     usersByMonth[month].total++
-
-    // Count as supporter if they have lifetime or patreon support
-    if (profile.supporter_lifetime || profile.supporter_patreon) {
-      usersByMonth[month].supporters++
-    }
   })
 
   return usersByMonth
-}
-
-// Fetch monthly funding data for Patreon supporters
-async function fetchMonthlyFundings() {
-  const { data, error } = await supabase
-    .from('monthly_funding')
-    .select('month, patreon_count')
-    .order('month', { ascending: true })
-
-  if (error)
-    throw error
-  return data || []
 }
 
 // Combine and process all data
@@ -97,59 +78,14 @@ async function fetchAllData() {
   errorMessage.value = ''
 
   try {
-    const [usersByMonth, monthlyFundings] = await Promise.all([
-      fetchUsersData(),
-      fetchMonthlyFundings(),
-    ])
+    const usersByMonth = await fetchUsersData()
 
-    // Normalize month formats and create a combined dataset
-    const monthsMap = new Map<string, MonthlyUserData>()
+    const sortedEntries = Object.entries(usersByMonth).toSorted(([a], [b]) => dayjs(a).valueOf() - dayjs(b).valueOf())
 
-    // Add user data
-    Object.entries(usersByMonth).forEach(([month, users]) => {
-      const normalizedMonth = dayjs(month).format('YYYY-MM')
-      monthsMap.set(normalizedMonth, {
-        month: normalizedMonth,
-        totalUsers: users.total,
-        patreonSupporters: 0,
-        totalSupporters: users.supporters,
-      })
-    })
-
-    // Add/merge funding data
-    monthlyFundings.forEach((funding) => {
-      const normalizedMonth = dayjs(funding.month).format('YYYY-MM')
-      const existing = monthsMap.get(normalizedMonth)
-
-      if (existing) {
-        existing.patreonSupporters = funding.patreon_count || 0
-      }
-      else {
-        monthsMap.set(normalizedMonth, {
-          month: normalizedMonth,
-          totalUsers: 0,
-          patreonSupporters: funding.patreon_count || 0,
-          totalSupporters: 0,
-        })
-      }
-    })
-
-    // Convert to sorted array
-    const combinedData = [...monthsMap.values()].toSorted((a: MonthlyUserData, b: MonthlyUserData) => dayjs(a.month).valueOf() - dayjs(b.month).valueOf())
-
-    // Calculate cumulative values
     let cumulativeUsers = 0
-    let cumulativeSupporters = 0
-
-    monthlyData.value = combinedData.map((data) => {
-      cumulativeUsers += data.totalUsers
-      cumulativeSupporters += data.totalSupporters
-
-      return {
-        ...data,
-        totalUsers: cumulativeUsers,
-        totalSupporters: cumulativeSupporters,
-      }
+    monthlyData.value = sortedEntries.map(([month, users]) => {
+      cumulativeUsers += users.total
+      return { month: dayjs(month).format('YYYY-MM'), totalUsers: cumulativeUsers }
     })
   }
   catch (error: unknown) {
@@ -183,8 +119,6 @@ const chartData = computed(() => {
   })
 
   const totalUsersData = sortedData.map(data => data.totalUsers)
-  const patreonSupportersData = sortedData.map(data => data.patreonSupporters)
-  const totalSupportersData = sortedData.map(data => data.totalSupporters)
 
   const palette = getChartPalette()
 
@@ -196,20 +130,6 @@ const chartData = computed(() => {
         data: totalUsersData,
         borderColor: palette.datasets[0], // blue
         backgroundColor: palette.datasets[0],
-        yAxisID: 'y',
-      },
-      {
-        label: 'Patreon Supporters',
-        data: patreonSupportersData,
-        borderColor: palette.datasets[2], // red
-        backgroundColor: palette.datasets[2],
-        yAxisID: 'y',
-      },
-      {
-        label: 'Supporters',
-        data: totalSupportersData,
-        borderColor: palette.datasets[1], // green
-        backgroundColor: palette.datasets[1],
         yAxisID: 'y',
       },
     ],
@@ -273,8 +193,6 @@ onBeforeMount(fetchAllData)
 
         <!-- Legend skeleton -->
         <div class="legend-skeleton">
-          <Skeleton :width="80" :height="16" :radius="4" />
-          <Skeleton :width="120" :height="16" :radius="4" />
           <Skeleton :width="80" :height="16" :radius="4" />
         </div>
 

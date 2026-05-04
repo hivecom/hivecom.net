@@ -88,6 +88,7 @@ const profiles = ref<ProfileSelect[]>([])
 // Query protocol options
 const queryProtocolOptions = [
   { label: 'Source (A2S)', value: 'source' },
+  { label: 'Minecraft (Query)', value: 'minecraft' },
 ]
 
 // Region options

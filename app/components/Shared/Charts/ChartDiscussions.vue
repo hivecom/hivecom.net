@@ -2,7 +2,6 @@
 import type { ChartDataset, ChartOptions } from 'chart.js'
 import type { ChartComponentRef } from 'vue-chartjs'
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
-
 import { Flex, Select, Skeleton, theme } from '@dolanske/vui'
 import { useElementSize } from '@vueuse/core'
 import {
@@ -18,11 +17,11 @@ import { Bar } from 'vue-chartjs'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { barGapPlugin, getBarChartDefaults, getChartPalette } from '@/lib/charts'
-import { deepMergePlainObjects, getCSSVariable } from '@/lib/utils/common'
+import { deepMergePlainObjects } from '@/lib/utils/common'
 
-interface ServerOption {
+interface SeriesOption {
   label: string
-  value: string
+  value: 'total' | 'replies' | 'both'
 }
 
 const props = defineProps<{
@@ -40,7 +39,7 @@ ChartJS.register(
   barGapPlugin,
 )
 
-const { metrics, fetchMetrics, metricsHistory, loadingHistory, fetchMetricsHistory, fetchMetricsWindow, scheduleRefresh } = useDataMetrics()
+const { metricsHistory, loadingHistory, fetchMetricsHistory, fetchMetricsWindow, scheduleRefresh } = useDataMetrics()
 
 async function loadData() {
   if (props.window !== null) {
@@ -50,8 +49,6 @@ async function loadData() {
     await fetchMetricsHistory(props.period)
     scheduleRefresh(props.period)
   }
-  if (metrics.value === null)
-    fetchMetrics()
 }
 
 onMounted(() => loadData())
@@ -62,82 +59,55 @@ const chartRef = ref<ChartComponentRef<'bar'> | null>(null)
 const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
 const { activeTheme } = useUserTheme()
 
-const serverListKey = computed(() => {
-  const keys = metricsHistory.value
-    .flatMap(e => e.teamspeakByServer ? Object.keys(e.teamspeakByServer) : [])
-    .filter((v, i, a) => a.indexOf(v) === i)
-    .sort()
-  return keys.join(',')
-})
+const seriesOptions: SeriesOption[] = [
+  { label: 'All', value: 'both' },
+  { label: 'Discussions', value: 'total' },
+  { label: 'Replies', value: 'replies' },
+]
 
-const currentCount = computed(() =>
-  metrics.value?.teamspeak.online
-  ?? [...metricsHistory.value].reverse().find(e => e.teamspeakOnline !== null)?.teamspeakOnline,
-)
-
-const serverOptions = computed<ServerOption[]>(() => {
-  const names = new Set<string>()
-  metricsHistory.value.forEach((e) => {
-    if (e.teamspeakByServer)
-      Object.keys(e.teamspeakByServer).forEach(k => names.add(k))
-  })
-  return [...names].sort().map(n => ({ label: n.toUpperCase(), value: n }))
-})
-
-const _selectedServerOptions = ref<ServerOption[] | undefined>([])
-const selectedServerOptions = computed({
-  get: () => _selectedServerOptions.value ?? [],
-  set: (v) => { _selectedServerOptions.value = v ?? [] },
-})
-const selectedServerNames = computed(() =>
-  selectedServerOptions.value.length > 0
-    ? new Set(selectedServerOptions.value.map(o => o.value))
-    : null,
-)
+const DEFAULT_SERIES: SeriesOption = { label: 'All', value: 'both' }
+const selectedSeriesArr = ref<SeriesOption[]>([DEFAULT_SERIES])
+const activeSeries = computed<SeriesOption>(() => selectedSeriesArr.value[0] ?? DEFAULT_SERIES)
 
 const chartData = computed(() => {
   void theme.value
   void activeTheme.value
 
-  if (!metricsHistory.value.length) {
+  if (!metricsHistory.value.length)
     return { datasets: [] }
-  }
 
   const palette = getChartPalette()
-  const blueBase = getCSSVariable('--color-text-blue').trim()
-  const alphas = ['ff', 'bf', '8c', '61']
+  const show = activeSeries.value.value
 
-  const isFiltered = selectedServerNames.value !== null
-  const names = isFiltered
-    ? [...selectedServerNames.value!]
-    : [...new Set(metricsHistory.value.flatMap(e => e.teamspeakByServer ? Object.keys(e.teamspeakByServer) : []))].sort()
+  const datasets: ChartDataset<'bar'>[] = []
 
-  if (names.length === 0) {
-    return {
-      datasets: [{
-        label: 'TeamSpeak Online',
-        data: metricsHistory.value.map(e => ({ x: new Date(e.capturedAt).getTime(), y: e.teamspeakOnline })),
-        backgroundColor: `${palette.datasets[0]}cc`,
-        clip: false,
-        stack: 'ts',
-      }] as unknown as ChartDataset<'bar'>[],
-    }
-  }
-
-  return {
-    datasets: names.map((name, i) => ({
-      label: name.toUpperCase(),
+  if (show === 'total' || show === 'both') {
+    datasets.push({
+      label: 'Discussions',
       data: metricsHistory.value.map(e => ({
         x: new Date(e.capturedAt).getTime(),
-        y: e.teamspeakByServer?.[name] ?? null,
+        y: e.discussionsTotal,
       })),
-      backgroundColor: isFiltered
-        ? `${blueBase}${alphas[i % alphas.length]}`
-        : `${palette.datasets[0]}cc`,
-      clip: false,
-      stack: 'ts',
-    })) as unknown as ChartDataset<'bar'>[],
+      backgroundColor: `${palette.datasets[0]}cc`,
+      clip: false as const,
+      stack: 'discussions',
+    } as unknown as ChartDataset<'bar'>)
   }
+
+  if (show === 'replies' || show === 'both') {
+    datasets.push({
+      label: 'Replies',
+      data: metricsHistory.value.map(e => ({
+        x: new Date(e.capturedAt).getTime(),
+        y: e.discussionsReplies,
+      })),
+      backgroundColor: `${palette.datasets[1]}cc`,
+      clip: false as const,
+      stack: 'discussions',
+    } as unknown as ChartDataset<'bar'>)
+  }
+
+  return { datasets }
 })
 
 const localChartOptions: ChartOptions<'bar'> = {
@@ -168,7 +138,6 @@ const localChartOptions: ChartOptions<'bar'> = {
       beginAtZero: true,
       suggestedMax: 10,
       stacked: true,
-      ticks: { stepSize: 1 },
     },
     x: {
       stacked: true,
@@ -203,17 +172,14 @@ watchEffect(() => {
 <template>
   <div class="chart-container">
     <Flex x-between y-center class="text-m text-bold-row">
-      <Flex x-between y-center>
-        <span class="text-m text-bold">TeamSpeak Online</span>
-        <span v-if="currentCount !== undefined" class="text-xs text-color-lightest">({{ currentCount }} online now)</span>
+      <Flex y-center gap="s">
+        <span class="text-m text-bold">Discussions</span>
       </Flex>
       <Select
-        v-model="selectedServerOptions"
-        :options="serverOptions"
-        placeholder="All Servers"
-        show-clear
-        search
-        :single="false"
+        v-model="selectedSeriesArr"
+        :options="seriesOptions"
+        :single="true"
+        placeholder="Both"
       />
     </Flex>
 
@@ -235,10 +201,15 @@ watchEffect(() => {
     </div>
 
     <div v-else-if="!metricsHistory.length" class="chart-empty">
-      <p>No TeamSpeak activity data available</p>
+      <p>No discussion data available</p>
     </div>
 
-    <div v-else ref="chartWrapperRef" :key="`${theme}-${activeTheme?.id}-${props.utc}-${serverListKey}-${selectedServerOptions.length}`" class="chart-wrapper">
+    <div
+      v-else
+      ref="chartWrapperRef"
+      :key="`${theme}-${activeTheme?.id}-${props.utc}-${activeSeries.value}`"
+      class="chart-wrapper"
+    >
       <Bar
         ref="chartRef"
         :data="chartData"

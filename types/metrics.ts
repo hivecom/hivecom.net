@@ -47,7 +47,11 @@ export interface MetricsMembers {
 
 export interface MetricsCommunity {
   projects: number
-  forumPosts: number
+}
+
+export interface MetricsDiscussions {
+  total: number
+  replies: number
 }
 
 export interface MetricsTeamSpeak {
@@ -65,6 +69,7 @@ export interface MetricsSnapshot {
   collectedAt: string
   members: MetricsMembers
   community: MetricsCommunity
+  discussions: MetricsDiscussions
   teamspeak: MetricsTeamSpeak
   gameservers: MetricsGameServers
 }

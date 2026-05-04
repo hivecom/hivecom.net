@@ -1,121 +1,135 @@
 <script setup lang="ts">
-import type { ChartOptions } from 'chart.js'
+import type { ChartDataset, ChartOptions } from 'chart.js'
 import type { ChartComponentRef } from 'vue-chartjs'
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
-import { Skeleton, theme } from '@dolanske/vui'
+import { Flex, Skeleton, theme } from '@dolanske/vui'
 import { useElementSize } from '@vueuse/core'
 import {
-  CategoryScale,
+  BarElement,
   Chart as ChartJS,
   Legend,
   LinearScale,
-  LineElement,
-  PointElement,
   Title,
   Tooltip,
 } from 'chart.js'
-import dayjs from 'dayjs'
-import { computed, onMounted, ref, watch, watchEffect } from 'vue'
-import { Line } from 'vue-chartjs'
+import { computed, nextTick, onMounted, ref, watch, watchEffect } from 'vue'
+import { Bar } from 'vue-chartjs'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useUserTheme } from '@/composables/useUserTheme'
-import { getChartPalette, getLineChartDefaults } from '@/lib/charts'
+import { barGapPlugin, getBarChartDefaults, getChartPalette } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
-const props = defineProps<{ period: MetricsPeriod }>()
+const props = defineProps<{
+  period: MetricsPeriod
+  window: { start: Date, end: Date } | null
+  utc?: boolean
+  fresh?: boolean
+}>()
 
 ChartJS.register(
-  CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
+  barGapPlugin,
 )
 
-const { metricsHistory, loadingHistory, fetchMetricsHistory, scheduleRefresh } = useDataMetrics()
+const { metrics, latestMetrics, fetchLatestMetrics, metricsHistory, loadingHistory, fetchMetricsHistory, fetchMetricsWindow, scheduleRefresh } = useDataMetrics()
+
+async function loadData() {
+  if (props.window !== null) {
+    await fetchMetricsWindow(props.window.start, props.window.end)
+  }
+  else {
+    await fetchMetricsHistory(props.period)
+    scheduleRefresh(props.period)
+  }
+}
 
 onMounted(() => {
-  fetchMetricsHistory(props.period)
-  scheduleRefresh(props.period)
+  loadData()
+  if (props.fresh)
+    fetchLatestMetrics()
 })
-watch(() => props.period, (period) => {
-  fetchMetricsHistory(period)
-  scheduleRefresh(period)
-})
+watch(() => [props.period, props.window] as const, () => loadData())
+
+const currentCount = computed(() =>
+  props.fresh ? latestMetrics.value?.members.online : metrics.value?.members.online,
+)
 
 const chartWrapperRef = ref<HTMLElement | null>(null)
-const chartRef = ref<ChartComponentRef<'line'> | null>(null)
+const chartRef = ref<ChartComponentRef<'bar'> | null>(null)
 const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
 const { activeTheme } = useUserTheme()
-
-const xAxisFormat = computed<string>(() => {
-  switch (props.period) {
-    case '7d': return 'ddd HH:mm'
-    case '30d': return 'MMM D HH:mm'
-    case '90d': return 'MMM D'
-    default: return 'HH:mm'
-  }
-})
 
 const chartData = computed(() => {
   void theme.value
   void activeTheme.value
 
   if (!metricsHistory.value.length) {
-    return { labels: [], datasets: [] }
+    return { datasets: [] }
   }
 
-  const fmt = xAxisFormat.value
-  const labels = metricsHistory.value.map(e => dayjs(e.capturedAt).format(fmt))
   const palette = getChartPalette()
+  const rawData = metricsHistory.value.map(e => ({
+    x: new Date(e.capturedAt).getTime(),
+    y: e.membersOnline,
+  }))
 
   return {
-    labels,
     datasets: [
       {
         label: 'Users Online',
-        data: metricsHistory.value.map(e => e.membersOnline),
-        borderColor: palette.datasets[1],
-        backgroundColor: palette.datasets[1],
-        fill: false,
-        pointRadius: 3,
-        pointHoverRadius: 5,
+        data: rawData,
+        backgroundColor: `${palette.datasets[1]}cc`,
         clip: false as const,
-        spanGaps: false,
       },
-    ],
+    ] as unknown as ChartDataset<'bar'>[],
   }
 })
 
-const localChartOptions: ChartOptions<'line'> = {
+const localChartOptions: ChartOptions<'bar'> = {
   plugins: {
-    title: {
-      display: false,
-    },
     tooltip: {
       mode: 'index',
       intersect: false,
+      callbacks: {
+        label: (item) => {
+          const raw = item.raw as { y: number | null } | null | undefined
+          if (raw === null || raw === undefined || raw.y === null)
+            return ''
+          return `${item.dataset.label}: ${item.parsed.y}`
+        },
+        afterBody(items: import('chart.js').TooltipItem<'bar'>[]) {
+          const allNull = items.every((i) => {
+            const raw = i.raw as { y: number | null } | null | undefined
+            return raw === null || raw === undefined || raw.y === null
+          })
+          return allNull ? 'No data was collected for this period - collection may not have started yet or encountered an error.' : ''
+        },
+      },
     },
   },
   scales: {
-    x: {
-      title: {
-        display: true,
-        text: 'Time',
-      },
-    },
     y: {
-      beginAtZero: false,
+      beginAtZero: true,
       suggestedMax: 10,
-      title: {
-        display: true,
-        text: 'Users',
-      },
     },
   },
 }
+
+const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions) : {})
+
+function refreshChartOptions() {
+  nextTick(() => {
+    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions)
+  })
+}
+
+onMounted(() => refreshChartOptions())
+watch(theme, () => refreshChartOptions())
+watch(() => props.utc, () => refreshChartOptions())
 
 watchEffect(() => {
   const width = chartWrapperWidth.value
@@ -131,18 +145,21 @@ watchEffect(() => {
 
 <template>
   <div class="chart-container">
+    <Flex x-between y-center class="text-m text-bold-row">
+      <Flex x-between y-center>
+        <span class="text-m text-bold">Users Online</span>
+        <span v-if="currentCount !== undefined" class="text-xs text-color-lightest">({{ currentCount }} online now)</span>
+      </Flex>
+    </Flex>
+
     <div v-if="loadingHistory" class="chart-loading">
       <div class="chart-skeleton">
-        <div class="legend-skeleton">
-          <Skeleton :width="140" :height="16" :radius="4" />
-        </div>
-
         <div class="chart-area-skeleton">
           <div class="y-axis-skeleton">
             <Skeleton v-for="i in 6" :key="i" :width="40" :height="12" :radius="2" />
           </div>
           <div class="chart-lines-skeleton">
-            <Skeleton :height="200" :radius="8" style="opacity: 0.3;" />
+            <Skeleton :height="280" :radius="8" style="opacity: 0.3;" />
           </div>
         </div>
 
@@ -156,86 +173,12 @@ watchEffect(() => {
       <p>No member activity data available</p>
     </div>
 
-    <div v-else ref="chartWrapperRef" :key="`${theme}-${activeTheme?.id}`" class="chart-wrapper">
-      <Line
+    <div v-else ref="chartWrapperRef" :key="`${theme}-${activeTheme?.id}-${props.utc}`" class="chart-wrapper">
+      <Bar
         ref="chartRef"
         :data="chartData"
-        :options="deepMergePlainObjects(getLineChartDefaults(), localChartOptions)"
+        :options="chartOptions"
       />
     </div>
   </div>
 </template>
-
-<style scoped lang="scss">
-.chart-container {
-  width: 100%;
-  min-height: 320px;
-  background-color: var(--color-bg);
-  border-radius: var(--border-radius-m);
-  padding: var(--space-m);
-  border: 1px solid var(--color-border);
-
-  .chart-title {
-    font-size: var(--font-size-m);
-    font-weight: 600;
-    color: var(--color-text);
-  }
-}
-
-.chart-wrapper {
-  height: 320px;
-  width: 100%;
-  position: relative;
-}
-
-.chart-wrapper :deep(canvas) {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.chart-loading,
-.chart-error,
-.chart-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 320px;
-  color: var(--color-text-light);
-}
-
-.chart-skeleton {
-  width: 100%;
-
-  .legend-skeleton {
-    display: flex;
-    justify-content: center;
-    gap: var(--space-l);
-    margin-bottom: var(--space-l);
-  }
-
-  .chart-area-skeleton {
-    display: flex;
-    align-items: center;
-
-    .y-axis-skeleton {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      height: 200px;
-    }
-
-    .chart-lines-skeleton {
-      flex: 1;
-      height: 200px;
-    }
-  }
-
-  .x-axis-skeleton {
-    display: flex;
-    justify-content: space-between;
-    margin-left: 48px;
-    margin-right: 48px;
-  }
-}
-</style>

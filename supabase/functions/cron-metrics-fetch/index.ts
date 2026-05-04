@@ -118,6 +118,7 @@ Deno.serve(async (req: Request) => {
       countryRes,
       projectsRes,
       forumRes,
+      repliesRes,
       gamesRes,
       presencesRes,
       gameserversRes,
@@ -140,6 +141,10 @@ Deno.serve(async (req: Request) => {
         .from("discussions")
         .select("id", { count: "exact", head: true })
         .not("discussion_topic_id", "is", null),
+      supabaseClient
+        .from("discussion_replies")
+        .select("id", { count: "exact", head: true })
+        .not("discussion_id", "is", null),
       supabaseClient.from("games").select("id, steam_id").not(
         "steam_id",
         "is",
@@ -185,6 +190,11 @@ Deno.serve(async (req: Request) => {
     if (forumRes.error) {
       throw new Error(
         `Unable to get forum post count: ${forumRes.error.message}`,
+      );
+    }
+    if (repliesRes.error) {
+      throw new Error(
+        `Unable to get discussion reply count: ${repliesRes.error.message}`,
       );
     }
     if (gamesRes.error) {
@@ -422,7 +432,10 @@ Deno.serve(async (req: Request) => {
       },
       community: {
         projects: projectsRes.count ?? 0,
-        forumPosts: forumRes.count ?? 0,
+      },
+      discussions: {
+        total: forumRes.count ?? 0,
+        replies: repliesRes.count ?? 0,
       },
       teamspeak: {
         online: tsOnline,

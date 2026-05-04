@@ -80,12 +80,8 @@ const chartData = computed(() => {
     return patreonAmount + donationAmount
   })
 
-  // Calculate lifetime total earnings (Patreon + donations)
-  const lifetimeEarningsData = sortedData.map((funding) => {
-    const patreonLifetime = (funding.patreon_lifetime_amount_cents || 0) / 100
-    const donationLifetime = (funding.donation_lifetime_amount_cents || 0) / 100
-    return patreonLifetime + donationLifetime
-  })
+  const patreonSupportersData = sortedData.map(f => f.patreon_count ?? 0)
+  const supportersData = sortedData.map(f => f.donation_count ?? 0)
 
   const palette = getChartPalette()
 
@@ -97,15 +93,20 @@ const chartData = computed(() => {
         data: monthlyIncomeData,
         borderColor: palette.datasets[0], // blue
         backgroundColor: palette.datasets[0],
-        yAxisID: 'y',
         fill: false,
       },
       {
-        label: 'Lifetime Earnings (€)',
-        data: lifetimeEarningsData,
-        borderColor: palette.datasets[4], // accent
-        backgroundColor: palette.datasets[4],
-        yAxisID: 'y1',
+        label: 'Patreon Supporters',
+        data: patreonSupportersData,
+        borderColor: palette.datasets[2], // red
+        backgroundColor: palette.datasets[2],
+        fill: false,
+      },
+      {
+        label: 'Supporters',
+        data: supportersData,
+        borderColor: palette.datasets[1], // green
+        backgroundColor: palette.datasets[1],
         fill: false,
       },
     ],
@@ -116,7 +117,7 @@ const chartData = computed(() => {
 const localChartOptions: ChartOptions<'line'> = {
   plugins: {
     title: {
-      text: 'Monthly Income vs Lifetime Earnings',
+      text: 'Monthly Income & Supporters',
     },
     tooltip: {
       mode: 'index',
@@ -145,20 +146,7 @@ const localChartOptions: ChartOptions<'line'> = {
     y: {
       title: {
         display: true,
-        text: 'Monthly Income (€)',
-      },
-    },
-    y1: {
-      type: 'linear',
-      display: true,
-      position: 'right',
-      title: {
-        display: true,
-        text: 'Lifetime Earnings (€)',
-      },
-      beginAtZero: true,
-      grid: {
-        drawOnChartArea: false,
+        text: 'Value',
       },
     },
   },
@@ -201,6 +189,7 @@ watchEffect(() => {
         <div class="legend-skeleton">
           <Skeleton :width="120" :height="16" :radius="4" />
           <Skeleton :width="140" :height="16" :radius="4" />
+          <Skeleton :width="80" :height="16" :radius="4" />
         </div>
 
         <!-- Chart area skeleton -->
@@ -213,11 +202,6 @@ watchEffect(() => {
           <!-- Chart lines simulation -->
           <div class="chart-lines-skeleton">
             <Skeleton :height="200" :radius="8" style="opacity: 0.3;" />
-          </div>
-
-          <!-- Right Y-axis labels -->
-          <div class="y-axis-skeleton">
-            <Skeleton v-for="i in 6" :key="i" :width="40" :height="12" :radius="2" />
           </div>
         </div>
 

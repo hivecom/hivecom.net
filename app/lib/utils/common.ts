@@ -30,6 +30,8 @@ export function normalizeInternalRedirect(value: unknown): string | null {
 }
 
 export function getCSSVariable(key: string) {
+  if (typeof window === 'undefined')
+    return ''
   return window
     .getComputedStyle(document.body)
     .getPropertyValue(key)
