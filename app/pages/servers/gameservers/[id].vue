@@ -5,7 +5,6 @@ import { Button, Flex } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import GameServerHeader from '@/components/GameServers/GameServerHeader.vue'
 import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
-import GameServerStats from '@/components/GameServers/GameServerStats.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
@@ -208,8 +207,6 @@ useHead({
         :state="state"
         :state-config="stateConfig"
       />
-
-      <GameServerStats :id="gameserver.id" />
 
       <!-- Server Details (Markdown) -->
       <GameServerMarkdown :gameserver="gameserver" />

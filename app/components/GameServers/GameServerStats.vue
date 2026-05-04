@@ -45,7 +45,7 @@ onBeforeMount(() => {
         </p>
       </Flex>
 
-      <ChartActivityHistogram :data :height="40">
+      <ChartActivityHistogram :data :height="32">
         <template #tooltip="{ value }">
           <p>{{ value }} players</p>
         </template>

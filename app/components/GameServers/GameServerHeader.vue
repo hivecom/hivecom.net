@@ -9,6 +9,7 @@ import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import UserLink from '../Shared/UserLink.vue'
+import GameServerStats from './GameServerStats.vue'
 
 const _props = defineProps<Props>()
 const addresses = computed(() => _props.gameserver.addresses as string[] | null)
@@ -118,96 +119,96 @@ const dockerControlAccessible = computed(() => {
       </Flex>
     </Flex>
 
+    <GameServerStats :id="gameserver.id" class="mb-l" />
+
     <Flex y-start x-between gap="l" expand>
       <Flex column gap="xs" expand>
         <!-- Quick info badges and status -->
         <div class="gameserver-header__info-section">
           <!-- Status Information -->
-          <div class="gameserver-header__status-info">
-            <Flex gap="m" wrap y-end>
-              <div v-if="game" class="gameserver-header__status-item">
-                <span class="gameserver-header__status-label">Game</span>
-                <GameDetailsModalTrigger v-slot="{ open }" :game-id="game.id">
-                  <button
-                    type="button"
-                    class="gameserver-header__game-badge-button"
-                    :aria-label="`Open details for ${game.name ?? 'game'}`"
-                    @click.stop="open"
-                  >
-                    <Badge>
-                      <Icon name="ph:game-controller" />
-                      {{ game.name }}
-                    </Badge>
-                  </button>
-                </GameDetailsModalTrigger>
-              </div>
-
-              <div v-if="gameserver.region" class="gameserver-header__status-item">
-                <span class="gameserver-header__status-label">Region</span>
-                <Badge v-if="gameserver.region" variant="neutral" size="l">
-                  <RegionIndicator :region="gameserver.region" show-label />
-                </Badge>
-              </div>
-
-              <div v-if="container" class="gameserver-header__status-item">
-                <span class="gameserver-header__status-label">Running</span>
-                <Tooltip placement="top" :disabled="!dockerControlEnabled || !dockerControlAccessible || !container.reported_at">
-                  <template #tooltip>
-                    <Flex column gap="xxs">
-                      <span class="text-xs">Last reported</span>
-                      <TimestampDate size="xs" :date="container.reported_at" :tooltip="false" />
-                    </Flex>
-                  </template>
-                  <Badge
-                    :variant="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'success' : 'neutral') : 'neutral'"
-                    size="s"
-                  >
-                    <Icon
-                      :name="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'ph:check' : 'ph:x') : 'ph:question'"
-                    />
-                    {{ dockerControlEnabled && dockerControlAccessible ? (container.running ? 'Yes' : 'No') : 'Unknown' }}
+          <Flex gap="m" wrap y-end>
+            <div v-if="game" class="gameserver-header__status-item">
+              <span class="gameserver-header__status-label">Game</span>
+              <GameDetailsModalTrigger v-slot="{ open }" :game-id="game.id">
+                <button
+                  type="button"
+                  class="gameserver-header__game-badge-button"
+                  :aria-label="`Open details for ${game.name ?? 'game'}`"
+                  @click.stop="open"
+                >
+                  <Badge>
+                    <Icon name="ph:game-controller" />
+                    {{ game.name }}
                   </Badge>
-                </Tooltip>
-              </div>
+                </button>
+              </GameDetailsModalTrigger>
+            </div>
 
-              <div
-                v-if="container && dockerControlEnabled && dockerControlAccessible && container.healthy !== null && container.running"
-                class="gameserver-header__status-item"
-              >
-                <span class="gameserver-header__status-label">Healthy</span>
-                <Tooltip placement="top" :disabled="!container.reported_at">
-                  <template #tooltip>
-                    <Flex column gap="xxs">
-                      <span class="text-xs">Last reported</span>
-                      <TimestampDate size="xs" :date="container.reported_at" :tooltip="false" />
-                    </Flex>
-                  </template>
-                  <Badge :variant="container.healthy ? 'success' : 'warning'" size="l">
-                    <Icon :name="container.healthy ? 'ph:check' : 'ph:warning'" />
-                    {{ container.healthy ? 'Yes' : 'No' }}
-                  </Badge>
-                </Tooltip>
-              </div>
+            <div v-if="gameserver.region" class="gameserver-header__status-item">
+              <span class="gameserver-header__status-label">Region</span>
+              <Badge v-if="gameserver.region" variant="neutral" size="l">
+                <RegionIndicator :region="gameserver.region" show-label />
+              </Badge>
+            </div>
 
-              <!-- Administrator -->
-              <div v-if="gameserver.administrator" class="gameserver-header__status-item">
-                <span class="gameserver-header__status-label">Admin</span>
-                <Badge size="l">
-                  <UserLink :user-id="gameserver.administrator" size="s" show-avatar public />
+            <div v-if="container" class="gameserver-header__status-item">
+              <span class="gameserver-header__status-label">Running</span>
+              <Tooltip placement="top" :disabled="!dockerControlEnabled || !dockerControlAccessible || !container.reported_at">
+                <template #tooltip>
+                  <Flex column gap="xxs">
+                    <span class="text-xs">Last reported</span>
+                    <TimestampDate size="xs" :date="container.reported_at" :tooltip="false" />
+                  </Flex>
+                </template>
+                <Badge
+                  :variant="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'success' : 'neutral') : 'neutral'"
+                  size="s"
+                >
+                  <Icon
+                    :name="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'ph:check' : 'ph:x') : 'ph:question'"
+                  />
+                  {{ dockerControlEnabled && dockerControlAccessible ? (container.running ? 'Yes' : 'No') : 'Unknown' }}
                 </Badge>
-              </div>
+              </Tooltip>
+            </div>
 
-              <template v-if="!isMobile">
-                <div class="flex-1" />
-                <Button variant="danger" size="s" @click="openComplaintModal">
-                  <template #start>
-                    <Icon name="ph:flag" />
-                  </template>
-                  Report Issue
-                </Button>
-              </template>
-            </Flex>
-          </div>
+            <div
+              v-if="container && dockerControlEnabled && dockerControlAccessible && container.healthy !== null && container.running"
+              class="gameserver-header__status-item"
+            >
+              <span class="gameserver-header__status-label">Healthy</span>
+              <Tooltip placement="top" :disabled="!container.reported_at">
+                <template #tooltip>
+                  <Flex column gap="xxs">
+                    <span class="text-xs">Last reported</span>
+                    <TimestampDate size="xs" :date="container.reported_at" :tooltip="false" />
+                  </Flex>
+                </template>
+                <Badge :variant="container.healthy ? 'success' : 'warning'" size="l">
+                  <Icon :name="container.healthy ? 'ph:check' : 'ph:warning'" />
+                  {{ container.healthy ? 'Yes' : 'No' }}
+                </Badge>
+              </Tooltip>
+            </div>
+
+            <!-- Administrator -->
+            <div v-if="gameserver.administrator" class="gameserver-header__status-item">
+              <span class="gameserver-header__status-label">Admin</span>
+              <Badge size="l">
+                <UserLink :user-id="gameserver.administrator" size="s" show-avatar public />
+              </Badge>
+            </div>
+
+            <template v-if="!isMobile">
+              <div class="flex-1" />
+              <Button variant="danger" size="s" @click="openComplaintModal">
+                <template #start>
+                  <Icon name="ph:flag" />
+                </template>
+                Report Issue
+              </Button>
+            </template>
+          </Flex>
         </div>
       </Flex>
     </Flex>
@@ -228,7 +229,7 @@ const dockerControlAccessible = computed(() => {
 
 .gameserver-header {
   &__title-container {
-    margin-bottom: var(--space-l);
+    margin-bottom: var(--space-m);
   }
 
   &__game-icon-button {
@@ -316,11 +317,6 @@ const dockerControlAccessible = computed(() => {
 
   &__badges-section {
     margin-bottom: var(--space-s);
-  }
-
-  &__status-info {
-    padding-top: var(--space-m);
-    border-top: 1px solid var(--color-border);
   }
 
   &__status-item {
