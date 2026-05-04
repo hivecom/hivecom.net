@@ -411,14 +411,6 @@ const dockerControlAccessible = computed(() => {
     &__title {
       font-size: var(--font-size-xl);
     }
-
-    &__status-info {
-      // Dw about it
-      .vui-flex {
-        display: grid !important;
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
   }
 }
 </style>
