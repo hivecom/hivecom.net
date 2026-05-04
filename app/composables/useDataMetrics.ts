@@ -35,6 +35,8 @@ export interface MetricsHistoryEntry {
   gameserversByServer: Record<string, number> | null
   discussionsTotal: number | null
   discussionsReplies: number | null
+  discussionsNewTotal: number | null
+  discussionsNewReplies: number | null
 }
 
 const METRICS_CACHE_KEY = 'metrics:latest'
@@ -85,6 +87,8 @@ function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
     discussions: {
       total: typeof (record.discussions as Record<string, unknown>)?.total === 'number' ? (record.discussions as Record<string, unknown>).total as number : 0,
       replies: typeof (record.discussions as Record<string, unknown>)?.replies === 'number' ? (record.discussions as Record<string, unknown>).replies as number : 0,
+      newTotal: typeof (record.discussions as Record<string, unknown>)?.newTotal === 'number' ? (record.discussions as Record<string, unknown>).newTotal as number : 0,
+      newReplies: typeof (record.discussions as Record<string, unknown>)?.newReplies === 'number' ? (record.discussions as Record<string, unknown>).newReplies as number : 0,
     },
     teamspeak: {
       online: typeof teamspeak?.online === 'number' ? teamspeak.online : 0,
@@ -141,6 +145,8 @@ async function fetchMetricsHistoryFromDB(
     gsPlayersSum: number
     discussionsTotalSum: number
     discussionsRepliesSum: number
+    discussionsNewTotalSum: number
+    discussionsNewRepliesSum: number
     count: number
     tsServerSums: Record<string, number>
     gsServerSums: Record<string, number>
@@ -163,6 +169,8 @@ async function fetchMetricsHistoryFromDB(
       existing.gsPlayersSum += snapshot.gameservers.players
       existing.discussionsTotalSum += snapshot.discussions.total
       existing.discussionsRepliesSum += snapshot.discussions.replies
+      existing.discussionsNewTotalSum += snapshot.discussions.newTotal
+      existing.discussionsNewRepliesSum += snapshot.discussions.newReplies
       existing.count += 1
       for (const [name, count] of Object.entries(snapshot.teamspeak.byServer)) {
         existing.tsServerSums[name] = (existing.tsServerSums[name] ?? 0) + count
@@ -187,6 +195,8 @@ async function fetchMetricsHistoryFromDB(
         gsPlayersSum: snapshot.gameservers.players,
         discussionsTotalSum: snapshot.discussions.total,
         discussionsRepliesSum: snapshot.discussions.replies,
+        discussionsNewTotalSum: snapshot.discussions.newTotal,
+        discussionsNewRepliesSum: snapshot.discussions.newReplies,
         count: 1,
         tsServerSums,
         gsServerSums,
@@ -219,6 +229,8 @@ async function fetchMetricsHistoryFromDB(
         ),
         discussionsTotal: Math.round(entry.discussionsTotalSum / entry.count),
         discussionsReplies: Math.round(entry.discussionsRepliesSum / entry.count),
+        discussionsNewTotal: entry.discussionsNewTotalSum,
+        discussionsNewReplies: entry.discussionsNewRepliesSum,
       })
     }
     else {
@@ -232,6 +244,8 @@ async function fetchMetricsHistoryFromDB(
         gameserversByServer: null,
         discussionsTotal: null,
         discussionsReplies: null,
+        discussionsNewTotal: null,
+        discussionsNewReplies: null,
       })
     }
   }
@@ -334,6 +348,8 @@ export function useDataMetrics() {
         gsPlayersSum: number
         discussionsTotalSum: number
         discussionsRepliesSum: number
+        discussionsNewTotalSum: number
+        discussionsNewRepliesSum: number
         count: number
         tsServerSums: Record<string, number>
         gsServerSums: Record<string, number>
@@ -356,6 +372,8 @@ export function useDataMetrics() {
           existing.gsPlayersSum += snapshot.gameservers.players
           existing.discussionsTotalSum += snapshot.discussions.total
           existing.discussionsRepliesSum += snapshot.discussions.replies
+          existing.discussionsNewTotalSum += snapshot.discussions.newTotal
+          existing.discussionsNewRepliesSum += snapshot.discussions.newReplies
           existing.count += 1
           for (const [name, count] of Object.entries(snapshot.teamspeak.byServer)) {
             existing.tsServerSums[name] = (existing.tsServerSums[name] ?? 0) + count
@@ -380,6 +398,8 @@ export function useDataMetrics() {
             gsPlayersSum: snapshot.gameservers.players,
             discussionsTotalSum: snapshot.discussions.total,
             discussionsRepliesSum: snapshot.discussions.replies,
+            discussionsNewTotalSum: snapshot.discussions.newTotal,
+            discussionsNewRepliesSum: snapshot.discussions.newReplies,
             count: 1,
             tsServerSums,
             gsServerSums,
@@ -408,6 +428,8 @@ export function useDataMetrics() {
             ),
             discussionsTotal: Math.round(entry.discussionsTotalSum / entry.count),
             discussionsReplies: Math.round(entry.discussionsRepliesSum / entry.count),
+            discussionsNewTotal: entry.discussionsNewTotalSum,
+            discussionsNewReplies: entry.discussionsNewRepliesSum,
           })
         }
         else {
@@ -421,6 +443,8 @@ export function useDataMetrics() {
             gameserversByServer: null,
             discussionsTotal: null,
             discussionsReplies: null,
+            discussionsNewTotal: null,
+            discussionsNewReplies: null,
           })
         }
       }
@@ -493,6 +517,8 @@ export function useDataMetrics() {
             gameserversByServer: null,
             discussionsTotal: null,
             discussionsReplies: null,
+            discussionsNewTotal: null,
+            discussionsNewReplies: null,
           },
         ]
       }
@@ -514,6 +540,8 @@ export function useDataMetrics() {
           ),
           discussionsTotal: snapshot.discussions.total,
           discussionsReplies: snapshot.discussions.replies,
+          discussionsNewTotal: snapshot.discussions.newTotal,
+          discussionsNewReplies: snapshot.discussions.newReplies,
         }
 
         // Replace the last bucket if it matches (null placeholder), otherwise append

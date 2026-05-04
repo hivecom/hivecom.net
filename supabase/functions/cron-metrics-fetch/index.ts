@@ -119,6 +119,8 @@ Deno.serve(async (req: Request) => {
       projectsRes,
       forumRes,
       repliesRes,
+      newForumRes,
+      newRepliesRes,
       gamesRes,
       presencesRes,
       gameserversRes,
@@ -145,6 +147,15 @@ Deno.serve(async (req: Request) => {
         .from("discussion_replies")
         .select("id", { count: "exact", head: true })
         .not("discussion_id", "is", null),
+      supabaseClient
+        .from("discussions")
+        .select("id", { count: "exact", head: true })
+        .not("discussion_topic_id", "is", null)
+        .gte("created_at", onlineThreshold),
+      supabaseClient
+        .from("discussion_replies")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", onlineThreshold),
       supabaseClient.from("games").select("id, steam_id").not(
         "steam_id",
         "is",
@@ -195,6 +206,16 @@ Deno.serve(async (req: Request) => {
     if (repliesRes.error) {
       throw new Error(
         `Unable to get discussion reply count: ${repliesRes.error.message}`,
+      );
+    }
+    if (newForumRes.error) {
+      throw new Error(
+        `Unable to get new discussion count: ${newForumRes.error.message}`,
+      );
+    }
+    if (newRepliesRes.error) {
+      throw new Error(
+        `Unable to get new reply count: ${newRepliesRes.error.message}`,
       );
     }
     if (gamesRes.error) {
@@ -436,6 +457,8 @@ Deno.serve(async (req: Request) => {
       discussions: {
         total: forumRes.count ?? 0,
         replies: repliesRes.count ?? 0,
+        newTotal: newForumRes.count ?? 0,
+        newReplies: newRepliesRes.count ?? 0,
       },
       teamspeak: {
         online: tsOnline,

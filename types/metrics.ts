@@ -52,6 +52,8 @@ export interface MetricsCommunity {
 export interface MetricsDiscussions {
   total: number
   replies: number
+  newTotal: number
+  newReplies: number
 }
 
 export interface MetricsTeamSpeak {

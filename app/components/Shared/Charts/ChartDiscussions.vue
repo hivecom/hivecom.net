@@ -60,12 +60,12 @@ const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0,
 const { activeTheme } = useUserTheme()
 
 const seriesOptions: SeriesOption[] = [
-  { label: 'All', value: 'both' },
+  { label: 'Discussions + Replies', value: 'both' },
   { label: 'Discussions', value: 'total' },
   { label: 'Replies', value: 'replies' },
 ]
 
-const DEFAULT_SERIES: SeriesOption = { label: 'All', value: 'both' }
+const DEFAULT_SERIES: SeriesOption = { label: 'Discussions + Replies', value: 'both' }
 const selectedSeriesArr = ref<SeriesOption[]>([DEFAULT_SERIES])
 const activeSeries = computed<SeriesOption>(() => selectedSeriesArr.value[0] ?? DEFAULT_SERIES)
 
@@ -86,7 +86,7 @@ const chartData = computed(() => {
       label: 'Discussions',
       data: metricsHistory.value.map(e => ({
         x: new Date(e.capturedAt).getTime(),
-        y: e.discussionsTotal,
+        y: e.discussionsNewTotal,
       })),
       backgroundColor: `${palette.datasets[0]}cc`,
       clip: false as const,
@@ -99,7 +99,7 @@ const chartData = computed(() => {
       label: 'Replies',
       data: metricsHistory.value.map(e => ({
         x: new Date(e.capturedAt).getTime(),
-        y: e.discussionsReplies,
+        y: e.discussionsNewReplies,
       })),
       backgroundColor: `${palette.datasets[1]}cc`,
       clip: false as const,
@@ -179,7 +179,7 @@ watchEffect(() => {
         v-model="selectedSeriesArr"
         :options="seriesOptions"
         :single="true"
-        placeholder="Both"
+        placeholder="Discussions + Replies"
       />
     </Flex>
 
