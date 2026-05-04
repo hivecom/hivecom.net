@@ -61,7 +61,7 @@
     "globe.gl": "^2.45.3",
     "katex": "^0.16.45",
     "luxon": "^3.7.2",
-    "marked": "^18.0.0",
+    "marked": "^18.0.2",
     "monaco-editor": "^0.55.1",
     "nuxt": "^4.4.2",
     "nuxt-og-image": "^6.4.0",
