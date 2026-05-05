@@ -7,6 +7,7 @@ import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import UserLink from '../Shared/UserLink.vue'
 import GameServerStats from './GameServerStats.vue'
@@ -63,6 +64,15 @@ const dockerControlAccessible = computed(() => {
 
   return _props.container?.server?.accessible === true
 })
+
+const { metrics } = useDataMetrics()
+
+const currentMap = computed<string | null>(() => {
+  const detail = metrics.value?.gameservers.byServer[String(_props.gameserver.id)]
+  if (detail?.protocol === 'source')
+    return detail.data?.map ?? null
+  return null
+})
 </script>
 
 <template>
@@ -76,14 +86,27 @@ const dockerControlAccessible = computed(() => {
             v-slot="{ open }"
             :game-id="game.id"
           >
-            <button
-              type="button"
-              class="gameserver-header__game-icon-button"
-              :aria-label="`Open details for ${game.name ?? 'game'}`"
-              @click.stop="open"
-            >
-              <GameIcon :game="game" :size="isMobile ? 'l' : 'xl'" />
-            </button>
+            <div class="gameserver-header__game-icon-wrapper">
+              <button
+                type="button"
+                class="gameserver-header__game-icon-button"
+                :aria-label="`Open details for ${game.name ?? 'game'}`"
+                @click.stop="open"
+              >
+                <GameIcon :game="game" :size="isMobile ? 'l' : 'xl'" />
+              </button>
+              <Button
+                v-if="isMobile"
+                variant="danger"
+                size="s"
+                square
+                class="gameserver-header__mobile-report"
+                aria-label="Report Issue"
+                @click="openComplaintModal"
+              >
+                <Icon name="ph:flag" />
+              </Button>
+            </div>
           </GameDetailsModalTrigger>
           <div>
             <h1 class="gameserver-header__title">
@@ -97,29 +120,33 @@ const dockerControlAccessible = computed(() => {
         </Flex>
       </div>
 
-      <Flex gap="m" class="gameserver-header__aside" y-start>
-        <!-- Mobile report issue button -->
-        <Button v-if="isMobile" variant="danger" size="s" @click="openComplaintModal">
-          <template #start>
-            <Icon name="ph:flag" />
-          </template>
-          Report Issue
+      <Flex :gap="4" class="gameserver-header__aside" y-start>
+        <Button
+          v-if="!isMobile"
+          variant="danger"
+          size="m"
+          square
+          aria-label="Report Issue"
+          @click="openComplaintModal"
+        >
+          <Icon name="ph:flag" />
         </Button>
 
-        <!-- Connect Button -->
-        <div class="gameserver-header__connect-button">
+        <div v-if="!isMobile" class="gameserver-header__connect-button">
           <GameServerConnectButton
             :addresses="addresses"
             :port="gameserver.port"
             :game-shorthand="game?.shorthand ?? null"
             variant="accent"
-            :size="isMobile ? 's' : 'm'"
+            size="m"
           />
         </div>
       </Flex>
     </Flex>
 
-    <GameServerStats :id="gameserver.id" class="mb-l" />
+    <Flex class="mb-m">
+      <GameServerStats v-if="gameserver.query_protocol != null" :id="gameserver.id" />
+    </Flex>
 
     <Flex y-start x-between gap="l" expand>
       <Flex column gap="xs" expand>
@@ -146,9 +173,19 @@ const dockerControlAccessible = computed(() => {
 
             <div v-if="gameserver.region" class="gameserver-header__status-item">
               <span class="gameserver-header__status-label">Region</span>
-              <Badge v-if="gameserver.region" variant="neutral" size="l">
+              <Badge v-if="gameserver.region" variant="neutral" :size="isMobile ? 's' : undefined">
                 <RegionIndicator :region="gameserver.region" show-label />
               </Badge>
+            </div>
+
+            <div v-if="isMobile && addresses && addresses.length > 0" class="gameserver-header__status-item">
+              <span class="gameserver-header__status-label">Address{{ addresses.length > 1 ? 'es' : '' }}</span>
+              <Flex gap="xs" wrap>
+                <Badge v-for="addr in addresses" :key="addr" variant="neutral" :size="isMobile ? 's' : undefined">
+                  <Icon name="ph:link" />
+                  {{ addr }}
+                </Badge>
+              </Flex>
             </div>
 
             <div v-if="container" class="gameserver-header__status-item">
@@ -162,7 +199,7 @@ const dockerControlAccessible = computed(() => {
                 </template>
                 <Badge
                   :variant="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'success' : 'neutral') : 'neutral'"
-                  size="s"
+                  :size="isMobile ? 's' : undefined"
                 >
                   <Icon
                     :name="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'ph:check' : 'ph:x') : 'ph:question'"
@@ -184,7 +221,7 @@ const dockerControlAccessible = computed(() => {
                     <TimestampDate size="xs" :date="container.reported_at" :tooltip="false" />
                   </Flex>
                 </template>
-                <Badge :variant="container.healthy ? 'success' : 'warning'" size="l">
+                <Badge :variant="container.healthy ? 'success' : 'warning'" :size="isMobile ? 's' : undefined">
                   <Icon :name="container.healthy ? 'ph:check' : 'ph:warning'" />
                   {{ container.healthy ? 'Yes' : 'No' }}
                 </Badge>
@@ -194,20 +231,19 @@ const dockerControlAccessible = computed(() => {
             <!-- Administrator -->
             <div v-if="gameserver.administrator" class="gameserver-header__status-item">
               <span class="gameserver-header__status-label">Admin</span>
-              <Badge size="l">
+              <Badge :size="isMobile ? 's' : undefined">
                 <UserLink :user-id="gameserver.administrator" size="s" show-avatar public />
               </Badge>
             </div>
 
-            <template v-if="!isMobile">
-              <div class="flex-1" />
-              <Button variant="danger" size="s" @click="openComplaintModal">
-                <template #start>
-                  <Icon name="ph:flag" />
-                </template>
-                Report Issue
-              </Button>
-            </template>
+            <!-- Current map (source protocol) -->
+            <div v-if="currentMap" class="gameserver-header__status-item">
+              <span class="gameserver-header__status-label">Current Map</span>
+              <Badge variant="neutral" :size="isMobile ? 's' : undefined">
+                <Icon name="ph:map-pin" />
+                {{ currentMap }}
+              </Badge>
+            </div>
           </Flex>
         </div>
       </Flex>
@@ -230,6 +266,17 @@ const dockerControlAccessible = computed(() => {
 .gameserver-header {
   &__title-container {
     margin-bottom: var(--space-m);
+  }
+
+  &__game-icon-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  &__mobile-report {
+    width: 100%;
   }
 
   &__game-icon-button {
@@ -269,8 +316,6 @@ const dockerControlAccessible = computed(() => {
   }
 
   &__title-row {
-    margin-bottom: var(--space-s);
-
     @media screen and (max-width: $breakpoint-xs) {
     }
   }

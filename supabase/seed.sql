@@ -899,7 +899,8 @@ INSERT INTO public.games(created_at, created_by, name, shorthand, steam_id)
 VALUES
   (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Counter-Strike 2', 'cs2', 730),
   (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Garrys Mod', 'gmod', 4000),
-  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Minecraft', 'minecraft', NULL);
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Minecraft', 'minecraft', NULL),
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Generic Game', 'generic', NULL);
 
 -- Insert a test container for our gameserver
 INSERT INTO public.containers(created_at, healthy, name, reported_at, running, server, started_at)
@@ -908,7 +909,7 @@ INSERT INTO public.containers(created_at, healthy, name, reported_at, running, s
 );
 
 -- Insert a test gameserver for CS2
-INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, container, markdown)
+INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, container, markdown, query_protocol)
   VALUES (ARRAY['cs2.gameserver.hivecom.net', 'cs2.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community CS2 server for casual play', 1, -- References the game ID we just created
     'Hivecom CS2 Community Server', '27015', 'eu', 'gameserver-cs2', '
 # CS 2
@@ -923,15 +924,19 @@ This server is geared towards casual play - if you are looking for a competitive
 2. No cheating or exploiting.
 3. Follow the server admin instructions.
 4. Have fun!
-  ');
+  ', 'source');
 
 -- Insert a test gameserver for Garrys Mod
-INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region)
-  VALUES (ARRAY['gmod.gameserver.hivecom.net', 'gmod.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Garrys Mod server for sandbox fun', 2, 'Hivecom Garrys Mod Sandbox Server', '27015', 'eu');
+INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, query_protocol)
+  VALUES (ARRAY['gmod.gameserver.hivecom.net', 'gmod.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Garrys Mod server for sandbox fun', 2, 'Hivecom Garrys Mod Sandbox Server', '27015', 'eu', 'source');
 
 -- Insert a test gameserver for Minecraft
+INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, query_protocol)
+  VALUES (ARRAY['mc.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Minecraft survival server', 3, 'Hivecom Minecraft Survival', '25565', 'eu', 'minecraft');
+
+-- Insert a test gameserver for Generic Game (no query protocol configured)
 INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region)
-  VALUES (ARRAY['mc.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Minecraft survival server', 3, 'Hivecom Minecraft Survival', '25565', 'eu');
+  VALUES (ARRAY['generic.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'A generic community game server with no query protocol', 4, 'Hivecom Generic Game Server', '7777', 'eu');
 
 -- Insert a test expense
 INSERT INTO public.expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)
@@ -1121,6 +1126,143 @@ SELECT
   'Hey @{018d224c-0e49-4b6d-b57a-87299605c2b1}, love your profile! Really cool setup you have here.'
 FROM public.discussions d
 WHERE d.profile_id = '018d224c-0e49-4b6d-b57a-87299605c2b1'::uuid;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Fake metrics: 90 days of 15-minute snapshots with realistic activity curves.
+--
+-- Activity is shaped by two signals multiplied together:
+--   time-of-day  - low at night (3am trough), peak at 8pm
+--   day-of-week  - weekdays ~60%, weekends peak at 100%
+--
+-- Gameservers use IDs 1 (CS2), 2 (GMod), 3 (Minecraft), 4 (Generic) matching seed inserts.
+-- Members total grows slowly from 280 to 320 over the period.
+-- Discussions/replies grow monotonically.
+-- A few random zero-player slots are left to show the gap-fill rendering.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+INSERT INTO public.metrics (captured_at, data)
+SELECT
+  t AS captured_at,
+  jsonb_build_object(
+    'collectedAt', to_char(t AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+
+    -- Members: total grows slowly, online follows activity curve
+    'members', jsonb_build_object(
+      'total',     280 + FLOOR(40.0 * (EXTRACT(EPOCH FROM (t - (NOW() - INTERVAL '90 days'))) / (90.0 * 86400)))::int,
+      'online',    GREATEST(0, ROUND(activity * 18))::int,
+      'byCountry', jsonb_build_object(
+        'DE', GREATEST(0, ROUND(activity * 6))::int,
+        'US', GREATEST(0, ROUND(activity * 5))::int,
+        'GB', GREATEST(0, ROUND(activity * 3))::int,
+        'NL', GREATEST(0, ROUND(activity * 2))::int,
+        'SE', GREATEST(0, ROUND(activity * 2))::int
+      ),
+      'byGame', jsonb_build_object(
+        'cs2',       GREATEST(0, ROUND(activity * 7))::int,
+        'gmod',      GREATEST(0, ROUND(activity * 4))::int,
+        'minecraft', GREATEST(0, ROUND(activity * 3))::int
+      )
+    ),
+
+    'community', jsonb_build_object(
+      'projects', 4
+    ),
+
+    -- Discussions: monotonically growing totals, small deltas per slot
+    'discussions', jsonb_build_object(
+      'total',      (SELECT COUNT(*) FROM public.discussions)::int + FLOOR(EXTRACT(EPOCH FROM (t - (NOW() - INTERVAL '90 days'))) / (90.0 * 86400) * 60)::int,
+      'replies',    (SELECT COUNT(*) FROM public.discussion_replies)::int + FLOOR(EXTRACT(EPOCH FROM (t - (NOW() - INTERVAL '90 days'))) / (90.0 * 86400) * 200)::int,
+      'newTotal',   (SELECT COUNT(*) FROM public.discussions WHERE created_at >= t AND created_at < t + INTERVAL '15 minutes')::int,
+      'newReplies', (SELECT COUNT(*) FROM public.discussion_replies WHERE created_at >= t AND created_at < t + INTERVAL '15 minutes')::int
+    ),
+
+    -- TeamSpeak: single server, online follows activity
+    'teamspeak', jsonb_build_object(
+      'online', GREATEST(0, ROUND(activity * 8))::int,
+      'byServer', jsonb_build_object(
+        'eu', GREATEST(0, ROUND(activity * 8))::int
+      )
+    ),
+
+    -- Gameservers: CS2 busiest, GMod moderate, Minecraft light
+    -- Leave a handful of zero slots scattered to test gap rendering
+    'gameservers', jsonb_build_object(
+      'total',   4,
+      'players', (
+        GREATEST(0, ROUND(activity * 10))::int +
+        GREATEST(0, ROUND(activity *  5))::int +
+        GREATEST(0, ROUND(activity *  3))::int
+      ),
+      'byServer', jsonb_build_object(
+        '1', jsonb_build_object(
+          'protocol', 'source',
+          'data', jsonb_build_object(
+            'players',    GREATEST(0, ROUND(activity * 10))::int,
+            'maxPlayers', 24,
+            'map',        'cs_office'
+          )
+        ),
+        '2', jsonb_build_object(
+          'protocol', 'source',
+          'data', jsonb_build_object(
+            'players',    GREATEST(0, ROUND(activity * 5))::int,
+            'maxPlayers', 16,
+            'map',        'gm_flatgrass'
+          )
+        ),
+        '3', jsonb_build_object(
+          'protocol', 'minecraft',
+          'data', jsonb_build_object(
+            'players',    GREATEST(0, ROUND(activity * 3))::int,
+            'maxPlayers', 20,
+            'world',      'world',
+            'playerList', CASE
+              WHEN GREATEST(0, ROUND(activity * 3))::int >= 3 THEN '["Player1", "Player2", "Player3"]'::jsonb
+              WHEN GREATEST(0, ROUND(activity * 3))::int = 2 THEN '["Player1", "Player2"]'::jsonb
+              WHEN GREATEST(0, ROUND(activity * 3))::int = 1 THEN '["Player1"]'::jsonb
+              ELSE '[]'::jsonb
+            END,
+            'motd',       'Hivecom Survival',
+            'gameType',   'SMP',
+            'gameId',     'MINECRAFT',
+            'version',    '1.21',
+            'plugins',    null,
+            'hostPort',   25565,
+            'hostIp',     'mc.g.hivecom.net',
+            'extra',      null
+          )
+        ),
+        '4', jsonb_build_object(
+          'protocol', null,
+          'data',     null
+        )
+      )
+    )
+  )
+FROM (
+  SELECT
+    t,
+    -- time-of-day signal: trough at 3am (0.05), peak at 8pm (1.0)
+    -- day-of-week signal: Mon-Thu 0.6, Fri 0.8, Sat-Sun 1.0
+    GREATEST(0.0,
+      -- hour curve: cos shifted so peak at 20h, trough at 3h
+      0.5 + 0.5 * COS(PI() * (EXTRACT(HOUR FROM t AT TIME ZONE 'Europe/Berlin') - 20.0) / 12.0)
+    ) *
+    CASE EXTRACT(DOW FROM t AT TIME ZONE 'Europe/Berlin')
+      WHEN 0 THEN 1.0   -- Sunday
+      WHEN 1 THEN 0.55  -- Monday
+      WHEN 2 THEN 0.60  -- Tuesday
+      WHEN 3 THEN 0.65  -- Wednesday
+      WHEN 4 THEN 0.70  -- Thursday
+      WHEN 5 THEN 0.85  -- Friday
+      WHEN 6 THEN 1.0   -- Saturday
+    END AS activity
+  FROM generate_series(
+    NOW() - INTERVAL '90 days',
+    NOW(),
+    INTERVAL '15 minutes'
+  ) AS t
+) AS series;
 
 -- Insert test projects
 INSERT INTO public.projects(created_at, created_by, title, description, markdown, link, owner, tags, github)

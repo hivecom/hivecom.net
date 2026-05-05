@@ -2339,6 +2339,22 @@ export type Database = {
         Args: { p_exclude?: string }
         Returns: number
       }
+      get_metrics_bucketed: {
+        Args: { p_bucket_interval: string; p_since: string; p_until: string }
+        Returns: {
+          captured_at: string
+          discussions_new_replies: number
+          discussions_new_total: number
+          discussions_replies: number
+          discussions_total: number
+          gameservers_by_server: Json
+          gameservers_players: number
+          members_online: number
+          members_total: number
+          teamspeak_by_server: Json
+          teamspeak_online: number
+        }[]
+      }
       get_past_events_count:
         | { Args: never; Returns: number }
         | {

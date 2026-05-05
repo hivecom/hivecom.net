@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MetricsHistoryEntry, MetricsPeriod } from '@/composables/useDataMetrics'
-import { Button, Calendar, Flex, theme, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Calendar, Dropdown, DropdownItem, Flex, theme, Tooltip } from '@dolanske/vui'
 import { useElementSize } from '@vueuse/core'
 import { computed, onMounted, ref, watch } from 'vue'
 import { METRICS_PERIOD_OPTIONS, PERIOD_CONFIGS, useDataMetrics } from '@/composables/useDataMetrics'
@@ -16,8 +16,10 @@ interface SeriesDef {
 
 const props = withDefaults(defineProps<{
   series?: SeriesKey[]
+  color?: string
 }>(), {
   series: () => ['membersOnline', 'teamspeakOnline', 'gameserversPlayers'] as SeriesKey[],
+  color: () => getCSSVariable('--color-accent'),
 })
 
 const emit = defineEmits<{
@@ -28,7 +30,7 @@ const emit = defineEmits<{
 const ALL_SERIES: SeriesDef[] = [
   { key: 'membersOnline', label: 'Users', paletteIndex: 1 },
   { key: 'teamspeakOnline', label: 'TeamSpeak', paletteIndex: 0 },
-  { key: 'gameserversPlayers', label: 'Servers', paletteIndex: 3 },
+  { key: 'gameserversPlayers', label: 'Servers', paletteIndex: 4 },
 ]
 
 const { metricsOverview, fetchMetricsOverview } = useDataMetrics()
@@ -61,6 +63,11 @@ function formatTimestamp(ms: number): string {
   return `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`
 }
 
+// ── Selection mode ───────────────────────────────────────────────────────────
+
+type SelectionMode = 'period' | 'calendar' | 'brush'
+const selectionMode = ref<SelectionMode>('period')
+
 // ── Period chips ──────────────────────────────────────────────────────────────
 
 const activePeriod = ref<MetricsPeriod>('24h')
@@ -72,6 +79,7 @@ function applyWindow(start: Date, end: Date) {
 }
 
 function applyPeriod(period: MetricsPeriod) {
+  selectionMode.value = 'period'
   activePeriod.value = period
   const config = PERIOD_CONFIGS[period]
   const end = new Date()
@@ -87,9 +95,18 @@ const calendarRange = ref<Date[] | null>(null)
 watch(calendarRange, (val) => {
   if (!val || val.length < 2)
     return
-  const [start, end] = val
-  if (!start || !end)
+  const [rawStart, rawEnd] = val
+  if (!rawStart || !rawEnd)
     return
+  // same day clicked twice - expand to full day
+  let start = rawStart
+  let end = rawEnd
+  if (rawStart.toDateString() === rawEnd.toDateString() && rawStart.getTime() === rawEnd.getTime()) {
+    start = new Date(rawStart)
+    start.setHours(0, 0, 0, 0)
+    end = new Date(rawEnd)
+    end.setHours(23, 59, 59, 999)
+  }
   applyWindow(start, end)
   // check if it matches a preset
   const duration = end.getTime() - start.getTime()
@@ -97,7 +114,13 @@ watch(calendarRange, (val) => {
     const config = PERIOD_CONFIGS[opt.value]
     return Math.abs(duration - config.hours * 60 * 60 * 1000) < 60 * 1000
   })
-  activePeriod.value = matched?.value ?? activePeriod.value
+  if (matched) {
+    selectionMode.value = 'period'
+    activePeriod.value = matched.value
+  }
+  else {
+    selectionMode.value = 'calendar'
+  }
 })
 
 // ── Derived timestamps ────────────────────────────────────────────────────────
@@ -170,12 +193,13 @@ function draw() {
 
   const colorBg = getCSSVariable('--color-bg-lowered')
   const colorGap = getCSSVariable('--color-bg-raised')
-  const colorAccent = getCSSVariable('--color-accent')
+  const colorAccent = props.color ?? getCSSVariable('--color-accent')
   const paletteColors = [
     getCSSVariable('--color-text-blue'),
     getCSSVariable('--color-text-green'),
     getCSSVariable('--color-text-red'),
     getCSSVariable('--color-text-yellow'),
+    getCSSVariable('--color-accent'),
   ]
 
   ctx.clearRect(0, 0, W, H)
@@ -223,7 +247,7 @@ function draw() {
   for (let si = 0; si < active.length; si++) {
     const s = active[si]!
     const sMax = seriesMax[s.key] ?? 1
-    const color = paletteColors[s.paletteIndex] ?? '#888'
+    const color = active.length === 1 ? colorAccent : (paletteColors[s.paletteIndex] ?? '#888')
     ctx.globalAlpha = 0.9
     ctx.fillStyle = color
 
@@ -330,8 +354,13 @@ function finishDrag() {
   const start = new Date(Math.min(bStart, bEnd))
   const end = new Date(Math.max(bStart, bEnd))
   const matched = matchedPeriod.value
-  if (matched)
+  if (matched) {
+    selectionMode.value = 'period'
     activePeriod.value = matched
+  }
+  else {
+    selectionMode.value = 'brush'
+  }
   if (start.getTime() !== end.getTime())
     emit('change', { start, end })
 }
@@ -391,51 +420,70 @@ defineExpose({ setBrush })
       <span class="chart-brush__range">{{ startLabel }}{{ endLabel ? ` - ${endLabel}` : '' }}</span>
 
       <Flex gap="xs" y-center>
-        <Button
-          v-for="opt in METRICS_PERIOD_OPTIONS"
-          :key="opt.value"
-          :variant="matchedPeriod === opt.value ? 'fill' : 'gray'"
-          @click="applyPeriod(opt.value)"
-        >
-          {{ opt.label }}
-        </Button>
-
-        <Tooltip placement="top">
+        <ButtonGroup>
           <Button
-            square
-            :variant="useUtc ? 'fill' : 'gray'"
-            @click="useUtc = !useUtc"
+            :variant="!useUtc ? 'accent' : 'gray'"
+            @click="useUtc = false"
+          >
+            Local
+          </Button>
+          <Button
+            :variant="useUtc ? 'accent' : 'gray'"
+            @click="useUtc = true"
           >
             UTC
           </Button>
-          <template #tooltip>
-            <p>{{ useUtc ? 'Showing UTC times' : 'Showing local times' }}</p>
-          </template>
-        </Tooltip>
+        </ButtonGroup>
 
-        <Calendar
-          v-model="calendarRange"
-          :range="true"
-          :enable-time-picker="true"
-          :max-date="new Date()"
-        >
-          <template #trigger>
-            <Tooltip placement="top">
-              <Button square variant="gray">
-                <Icon name="ph:calendar-dots" />
+        <ButtonGroup>
+          <Dropdown placement="bottom-end">
+            <template #trigger="{ toggle, isOpen: dropdownOpen }">
+              <Button
+                :variant="selectionMode === 'period' ? 'accent' : 'gray'"
+                @click="toggle"
+              >
+                {{ selectionMode === 'calendar' ? 'Custom' : (matchedPeriod ? METRICS_PERIOD_OPTIONS.find(o => o.value === matchedPeriod)?.label : 'Custom') }}
+                <template #end>
+                  <Icon :name="dropdownOpen ? 'ph:caret-up' : 'ph:caret-down'" :size="12" />
+                </template>
               </Button>
-              <template #tooltip>
-                <p>Pick exact range</p>
-              </template>
-            </Tooltip>
-          </template>
-        </Calendar>
+            </template>
+
+            <DropdownItem
+              v-for="opt in METRICS_PERIOD_OPTIONS"
+              :key="opt.value"
+              @click="applyPeriod(opt.value)"
+            >
+              {{ opt.label }}
+            </DropdownItem>
+          </Dropdown>
+
+          <Calendar
+            v-model="calendarRange"
+            :range="true"
+            :enable-time-picker="true"
+            :max-date="new Date()"
+          >
+            <template #trigger>
+              <Tooltip placement="top">
+                <Button square :variant="selectionMode === 'calendar' ? 'accent' : 'gray'">
+                  <Icon name="ph:calendar-dots" />
+                </Button>
+                <template #tooltip>
+                  <p>Pick exact range</p>
+                </template>
+              </Tooltip>
+            </template>
+          </Calendar>
+        </ButtonGroup>
       </Flex>
     </Flex>
   </div>
 </template>
 
 <style scoped lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 .chart-brush {
   width: 100%;
 
@@ -456,6 +504,10 @@ defineExpose({ setBrush })
     color: var(--color-text-lighter);
     font-size: var(--font-size-xs);
     cursor: default;
+
+    @media (max-width: #{$breakpoint-xs}) {
+      display: none;
+    }
   }
 }
 </style>

@@ -18,7 +18,7 @@ import { Bar } from 'vue-chartjs'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { barGapPlugin, getBarChartDefaults, getChartPalette } from '@/lib/charts'
-import { deepMergePlainObjects, getCSSVariable } from '@/lib/utils/common'
+import { deepMergePlainObjects } from '@/lib/utils/common'
 
 interface ServerOption {
   label: string
@@ -29,6 +29,8 @@ const props = defineProps<{
   period: MetricsPeriod
   window: { start: Date, end: Date } | null
   utc?: boolean
+  serverName?: string
+  color?: string
 }>()
 
 ChartJS.register(
@@ -70,10 +72,13 @@ const serverListKey = computed(() => {
   return keys.join(',')
 })
 
-const currentCount = computed(() =>
-  metrics.value?.teamspeak.online
-  ?? [...metricsHistory.value].reverse().find(e => e.teamspeakOnline !== null)?.teamspeakOnline,
-)
+const currentCount = computed(() => {
+  if (props.serverName !== undefined) {
+    return [...metricsHistory.value].reverse().find(e => e.teamspeakByServer?.[props.serverName!] !== undefined)?.teamspeakByServer?.[props.serverName!]
+  }
+  return metrics.value?.teamspeak.online
+    ?? [...metricsHistory.value].reverse().find(e => e.teamspeakOnline !== null)?.teamspeakOnline
+})
 
 const serverOptions = computed<ServerOption[]>(() => {
   const names = new Set<string>()
@@ -104,8 +109,26 @@ const chartData = computed(() => {
   }
 
   const palette = getChartPalette()
-  const blueBase = getCSSVariable('--color-text-blue').trim()
   const alphas = ['ff', 'bf', '8c', '61']
+
+  // Single-server mode
+  if (props.serverName !== undefined) {
+    const hasPerServerData = metricsHistory.value.some(e => e.teamspeakByServer?.[props.serverName!] != null)
+    return {
+      datasets: [{
+        label: props.serverName.toUpperCase(),
+        data: metricsHistory.value.map(e => ({
+          x: new Date(e.capturedAt).getTime(),
+          y: hasPerServerData
+            ? (e.teamspeakByServer?.[props.serverName!] ?? null)
+            : e.teamspeakOnline,
+        })),
+        backgroundColor: `${props.color ?? palette.datasets[0]}cc`,
+        clip: false,
+        stack: 'ts',
+      }] as unknown as ChartDataset<'bar'>[],
+    }
+  }
 
   const isFiltered = selectedServerNames.value !== null
   const names = isFiltered
@@ -117,7 +140,7 @@ const chartData = computed(() => {
       datasets: [{
         label: 'TeamSpeak Online',
         data: metricsHistory.value.map(e => ({ x: new Date(e.capturedAt).getTime(), y: e.teamspeakOnline })),
-        backgroundColor: `${palette.datasets[0]}cc`,
+        backgroundColor: `${props.color ?? palette.datasets[0]}cc`,
         clip: false,
         stack: 'ts',
       }] as unknown as ChartDataset<'bar'>[],
@@ -132,8 +155,8 @@ const chartData = computed(() => {
         y: e.teamspeakByServer?.[name] ?? null,
       })),
       backgroundColor: isFiltered
-        ? `${blueBase}${alphas[i % alphas.length]}`
-        : `${palette.datasets[0]}cc`,
+        ? `${props.color ?? palette.datasets[i % palette.datasets.length]}${alphas[i % alphas.length]}`
+        : `${props.color ?? palette.datasets[0]}cc`,
       clip: false,
       stack: 'ts',
     })) as unknown as ChartDataset<'bar'>[],
@@ -208,6 +231,7 @@ watchEffect(() => {
         <span v-if="currentCount !== undefined" class="text-xs text-color-lightest">({{ currentCount }} online now)</span>
       </Flex>
       <Select
+        v-if="serverName === undefined"
         v-model="selectedServerOptions"
         :options="serverOptions"
         placeholder="All Servers"
@@ -238,7 +262,7 @@ watchEffect(() => {
       <p>No TeamSpeak activity data available</p>
     </div>
 
-    <div v-else ref="chartWrapperRef" :key="`${theme}-${activeTheme?.id}-${props.utc}-${serverListKey}-${selectedServerOptions.length}`" class="chart-wrapper">
+    <div v-else ref="chartWrapperRef" :key="`${theme}-${activeTheme?.id}-${props.utc}-${serverListKey}-${selectedServerOptions.length}-${props.serverName}`" class="chart-wrapper">
       <Bar
         ref="chartRef"
         :data="chartData"

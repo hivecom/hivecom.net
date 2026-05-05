@@ -24,6 +24,7 @@ const props = defineProps<{
   window: { start: Date, end: Date } | null
   utc?: boolean
   fresh?: boolean
+  color?: string
 }>()
 
 ChartJS.register(
@@ -82,7 +83,7 @@ const chartData = computed(() => {
       {
         label: 'Users Online',
         data: rawData,
-        backgroundColor: `${palette.datasets[1]}cc`,
+        backgroundColor: `${props.color ?? palette.datasets[1]}cc`,
         clip: false as const,
       },
     ] as unknown as ChartDataset<'bar'>[],

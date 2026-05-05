@@ -66,7 +66,8 @@ interface DockerQueryResult {
   success: boolean;
   playerCount: number;
   maxPlayers: number;
-  world: string;
+  map: string; // source protocol
+  world?: string; // minecraft protocol
   // Minecraft-specific
   players?: string[];
   motd?: string;
@@ -330,12 +331,7 @@ Deno.serve(async (req: Request) => {
 
     // Initialise all gameservers with null detail so every entry is present
     for (const gs of gameservers) {
-      byServer[String(gs.id)] = gs.query_protocol
-        ? {
-          protocol: gs.query_protocol,
-          data: { players: null, maxPlayers: null, world: null },
-        }
-        : { protocol: null, data: null };
+      byServer[String(gs.id)] = { protocol: null, data: null };
     }
 
     if (queryableGameservers.length > 0) {
@@ -345,7 +341,7 @@ Deno.serve(async (req: Request) => {
             id: gs.id,
             detail: {
               protocol: gs.query_protocol!,
-              data: { players: null, maxPlayers: null, world: null },
+              data: { players: null, maxPlayers: null, map: null },
             } as MetricsServerDetail,
           };
 
@@ -409,7 +405,7 @@ Deno.serve(async (req: Request) => {
                 data: {
                   players: body.playerCount,
                   maxPlayers: body.maxPlayers,
-                  world: body.world,
+                  map: body.map,
                 },
               };
 

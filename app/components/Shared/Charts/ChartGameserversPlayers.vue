@@ -29,6 +29,8 @@ const props = defineProps<{
   period: MetricsPeriod
   window: { start: Date, end: Date } | null
   utc?: boolean
+  serverId?: number
+  color?: string
 }>()
 
 ChartJS.register(
@@ -75,10 +77,15 @@ const chartRef = ref<ChartComponentRef<'bar'> | null>(null)
 const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
 const { activeTheme } = useUserTheme()
 
-const currentCount = computed(() =>
-  metrics.value?.gameservers.players
-  ?? [...metricsHistory.value].reverse().find(e => e.gameserversPlayers !== null)?.gameserversPlayers,
-)
+const currentCount = computed(() => {
+  if (props.serverId !== undefined) {
+    return metrics.value?.gameservers.byServer[String(props.serverId)]?.data?.players
+      ?? [...metricsHistory.value].reverse().find(e => e.gameserversByServer?.[String(props.serverId!)] !== undefined)?.gameserversByServer?.[String(props.serverId!)]
+      ?? undefined
+  }
+  return metrics.value?.gameservers.players
+    ?? [...metricsHistory.value].reverse().find(e => e.gameserversPlayers !== null)?.gameserversPlayers
+})
 
 // Server filter - VUI Select options
 const serverOptions = computed<ServerOption[]>(() => {
@@ -130,8 +137,25 @@ const chartData = computed(() => {
           x: new Date(e.capturedAt).getTime(),
           y: e.gameserversPlayers,
         })),
-        backgroundColor: `${palette.datasets[3]}cc`,
+        backgroundColor: `${props.color ?? palette.datasets[3]}cc`,
         clip: false as const,
+        stack: 'gs',
+      }] as unknown as ChartDataset<'bar'>[],
+    }
+  }
+
+  // Single-server mode: render only that server's data
+  if (props.serverId !== undefined) {
+    const id = String(props.serverId)
+    return {
+      datasets: [{
+        label: serverLabel(id),
+        data: metricsHistory.value.map(e => ({
+          x: new Date(e.capturedAt).getTime(),
+          y: e.gameserversByServer?.[id] ?? null,
+        })),
+        backgroundColor: `${props.color ?? palette.datasets[3]}cc`,
+        clip: false,
         stack: 'gs',
       }] as unknown as ChartDataset<'bar'>[],
     }
@@ -146,7 +170,7 @@ const chartData = computed(() => {
       })),
       backgroundColor: isFiltered
         ? `${palette.datasets[i % palette.datasets.length]}cc`
-        : `${palette.datasets[3]}cc`,
+        : `${props.color ?? palette.datasets[3]}cc`,
       clip: false,
       stack: 'gs',
     })) as unknown as ChartDataset<'bar'>[],
@@ -220,6 +244,7 @@ watchEffect(() => {
         <span v-if="currentCount !== undefined" class="text-xs text-color-lightest">({{ currentCount }} online now)</span>
       </Flex>
       <Select
+        v-if="serverId === undefined"
         v-model="selectedServerOptions"
         :options="serverOptions"
         placeholder="All Servers"
@@ -253,7 +278,7 @@ watchEffect(() => {
     <div
       v-else
       ref="chartWrapperRef"
-      :key="`${theme}-${activeTheme?.id}-${props.utc}-${selectedServerOptions.length}`"
+      :key="`${theme}-${activeTheme?.id}-${props.utc}-${selectedServerOptions.length}-${props.serverId}`"
       class="chart-wrapper"
     >
       <Bar

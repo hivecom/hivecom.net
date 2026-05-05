@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import type { TeamSpeakIdentityRecord, TeamSpeakNormalizedChannel, TeamSpeakServerSnapshot, TeamSpeakSnapshot } from '@/types/teamspeak'
 import { Alert, Badge, Button, Card, Flex, Grid, Select, Skeleton, Switch, Tooltip } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import constants from '~~/constants.json'
+import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
+import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
+import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataTeamSpeakSnapshot } from '@/composables/useDataTeamSpeakSnapshot'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryEmoji } from '@/lib/utils/country'
@@ -20,7 +24,35 @@ const SPACER_STRIP_RE = /^\[l?spacer\d*\]\s*/i
 const PARENS_UNWRAP_RE = /^\((.*)\)$/u
 const SPACER_DETECT_RE = /^\[l?spacer\d*\]/i
 
-const isBelowLarge = useBreakpoint('<l')
+const isMobile = useBreakpoint('<s')
+
+const { fetchMetricsHistory } = useDataMetrics()
+const histogramHistory = shallowRef<{ capturedAt: string, teamspeakOnline: number | null }[]>([])
+const histogramData = computed(() => histogramHistory.value.map(e => e.teamspeakOnline ?? 0))
+
+onMounted(async () => {
+  const entries = await fetchMetricsHistory('14d')
+  histogramHistory.value = entries.map(e => ({ capturedAt: e.capturedAt, teamspeakOnline: e.teamspeakOnline }))
+})
+
+const showActivityModal = ref(false)
+
+function histogramTooltipLabel(index: number, value: number): string {
+  const entry = histogramHistory.value[index]
+  const suffix = `${value} online`
+  if (!entry)
+    return suffix
+
+  const now = Date.now()
+  const then = new Date(entry.capturedAt).getTime()
+  const diffDays = Math.round((now - then) / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0)
+    return `${suffix} - today`
+  if (diffDays === 1)
+    return `${suffix} - yesterday`
+  return `${suffix} - ${diffDays} days ago`
+}
 
 type ClientRole = 'admin' | 'moderator' | 'supporter' | 'registered' | 'music-bot'
 
@@ -77,7 +109,7 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
               channelId: '1',
               channelName: 'Lobby',
               channelPath: ['Lobby'],
-              serverGroups: [],
+              serverGroups: [7],
               away: false,
               muted: false,
               inputMuted: false,
@@ -122,7 +154,7 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
                   channelId: '3',
                   channelName: 'General',
                   channelPath: ['[spacer0]Games', 'General'],
-                  serverGroups: [],
+                  serverGroups: [14],
                   away: true,
                   muted: false,
                   inputMuted: true,
@@ -719,8 +751,69 @@ function openRawSnapshot() {
 <template>
   <Card class="ts-viewer" separators>
     <template #header>
-      <Flex expand x-between y-top gap="s">
-        <Flex expand y-center gap="s" wrap>
+      <!-- Mobile layout -->
+      <Flex v-if="isMobile" expand column gap="s" x-between>
+        <Flex expand x-between y-center gap="s">
+          <Flex y-center gap="s">
+            <Icon name="mdi:teamspeak" size="24" />
+            <div v-if="serversSorted.length <= 1 || props.serverId">
+              <strong class="text-xl">
+                {{ selectedServer ? formatServerLabel(selectedServer) : platformTitle }}
+                <span v-if="selectedServer && regionForServer(selectedServer.id) === 'eu'" class="text-xl">🇪🇺</span>
+                <span v-else-if="selectedServer && regionForServer(selectedServer.id) === 'na'" class="text-xl">🇺🇸</span>
+              </strong>
+            </div>
+            <Select
+              v-else
+              v-model="serverSelectModel"
+              :options="serverOptions"
+              placeholder="Select server"
+              size="s"
+            />
+          </Flex>
+          <Flex y-center>
+            <Icon name="ph:music-notes" size="16" />
+            <Switch
+              v-model="showMusicBots"
+              size="xs"
+            />
+          </Flex>
+        </Flex>
+        <Flex x-between expand>
+          <Badge v-if="selectedServer" variant="success">
+            {{ serverClientCount(selectedServer) }} online
+          </Badge>
+          <ChartActivityHistogram
+            v-if="selectedServer && histogramData.length"
+            :data="histogramData"
+            :height="24"
+            gap="xxs"
+            clickable
+            @click="showActivityModal = true"
+          >
+            <template #tooltip="{ value, index }">
+              <p>{{ histogramTooltipLabel(index, value) }}</p>
+            </template>
+          </ChartActivityHistogram>
+        </Flex>
+        <Button
+          v-if="teamspeakConnectUrl"
+          size="s"
+          variant="accent"
+          expand
+          :href="teamspeakConnectUrl"
+          aria-label="Connect to TeamSpeak"
+        >
+          <template #start>
+            <Icon name="mdi:phone-outgoing" size="16" />
+          </template>
+          Connect
+        </Button>
+      </Flex>
+
+      <!-- Desktop layout -->
+      <Flex v-else expand x-between y-top gap="s">
+        <Flex expand y-center gap="s">
           <Icon name="mdi:teamspeak" size="24" />
           <div v-if="serversSorted.length <= 1 || props.serverId">
             <strong class="text-xl">
@@ -736,10 +829,24 @@ function openRawSnapshot() {
             placeholder="Select server"
             size="s"
           />
-          <Flex v-if="selectedServer" x-start y-center gap="xs" wrap>
+          <Flex v-if="selectedServer" x-start y-center gap="xs">
             <Badge variant="success">
               {{ serverClientCount(selectedServer) }} online
             </Badge>
+            <Flex>
+              <ChartActivityHistogram
+                v-if="histogramData.length"
+                :data="histogramData"
+                :height="24"
+                gap="xxs"
+                clickable
+                @click="showActivityModal = true"
+              >
+                <template #tooltip="{ value, index }">
+                  <p>{{ histogramTooltipLabel(index, value) }}</p>
+                </template>
+              </ChartActivityHistogram>
+            </Flex>
             <Tooltip v-if="selectedServer.serverInfo?.platform || selectedServer.serverInfo?.version || selectedServer.serverInfo?.uptimeSeconds || selectedServer.collectedAt">
               <BadgeCircle variant="neutral">
                 <Icon name="ph:info" size="16" class="ts-viewer__info-icon" />
@@ -770,7 +877,7 @@ function openRawSnapshot() {
             </Flex>
           </Flex>
         </Flex>
-        <Flex gap="xs" y-center wrap x-end expand>
+        <Flex gap="xs" y-center x-end>
           <Tooltip placement="bottom">
             <Icon name="ph:music-notes" size="16" />
             <Switch
@@ -784,7 +891,7 @@ function openRawSnapshot() {
             </template>
           </Tooltip>
 
-          <Tooltip :disabled="isBelowLarge">
+          <Tooltip :disabled="isMobile">
             <Button
               size="s"
               square
@@ -799,7 +906,7 @@ function openRawSnapshot() {
               <p>Refresh</p>
             </template>
           </Tooltip>
-          <Tooltip :disabled="isBelowLarge">
+          <Tooltip :disabled="isMobile">
             <Button
               size="s"
               square
@@ -949,6 +1056,16 @@ function openRawSnapshot() {
       </Flex>
     </Flex>
   </Card>
+
+  <ChartActivityHistogramModal
+    v-model:open="showActivityModal"
+    title="TeamSpeak Online"
+    :series="['teamspeakOnline']"
+  >
+    <template #default="{ period, window, utc, color }">
+      <ChartTeamSpeakOnline :period :window :utc :color :server-name="selectedServer?.id ?? undefined" />
+    </template>
+  </ChartActivityHistogramModal>
 </template>
 
 <style lang="scss">

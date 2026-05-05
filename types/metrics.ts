@@ -4,7 +4,7 @@ export interface MetricsServerDetailSource {
   data: {
     players: number | null
     maxPlayers: number | null
-    world: string | null
+    map: string | null
   }
 }
 
