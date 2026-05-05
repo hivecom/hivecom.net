@@ -12,20 +12,28 @@ import type {
 import type { TeamSpeakIdentityRecord } from "../../../types/teamspeak.ts";
 
 export function normalizeTeamSpeakIdentities(
-  value: Tables<"profiles">["teamspeak_identities"] | TeamSpeakIdentityRecord[] | null | undefined,
+  value:
+    | Tables<"profiles">["teamspeak_identities"]
+    | TeamSpeakIdentityRecord[]
+    | null
+    | undefined,
 ): TeamSpeakIdentityRecord[] {
   if (!Array.isArray(value)) return [];
 
   const normalized: TeamSpeakIdentityRecord[] = [];
 
   value.forEach((entry) => {
-    if (entry === null || entry === undefined || typeof entry !== "object") return;
+    if (entry === null || entry === undefined || typeof entry !== "object") {
+      return;
+    }
 
     const rawServerId = (entry as { serverId?: unknown }).serverId;
     const rawUniqueId = (entry as { uniqueId?: unknown }).uniqueId;
     const linkedAt = (entry as { linkedAt?: unknown }).linkedAt;
 
-    if (typeof rawServerId !== "string" || typeof rawUniqueId !== "string") return;
+    if (typeof rawServerId !== "string" || typeof rawUniqueId !== "string") {
+      return;
+    }
 
     const serverId = rawServerId.trim();
     const uniqueId = rawUniqueId.trim();
@@ -97,7 +105,8 @@ export const TEAMSPEAK_TIMEOUT_MS = 15_000;
 export const BUCKET = "hivecom-content-static";
 export const SNAPSHOT_PATH = "teamspeak/state.json";
 
-const appConstants = (constants as unknown as { default: AppConstants }).default;
+const appConstants =
+  (constants as unknown as { default: AppConstants }).default;
 const teamSpeakPlatform = (appConstants?.PLATFORMS?.TEAMSPEAK ?? {}) as {
   servers?: TeamSpeakServerDefinition[];
 };
@@ -127,7 +136,9 @@ export type SnapshotPayload = {
 export async function fetchSnapshotFromStorage(
   supabase: SupabaseDbClient,
 ): Promise<SnapshotPayload | null> {
-  const { data, error } = await supabase.storage.from(BUCKET).download(SNAPSHOT_PATH);
+  const { data, error } = await supabase.storage.from(BUCKET).download(
+    SNAPSHOT_PATH,
+  );
 
   if (error) {
     if ((error as { statusCode?: number }).statusCode !== 404) {
@@ -155,16 +166,23 @@ export async function storeSnapshot(
     .from(BUCKET)
     .upload(
       SNAPSHOT_PATH,
-      new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
+      new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json",
+      }),
       { upsert: true, cacheControl: "60", contentType: "application/json" },
     );
 
   if (uploadError) {
-    throw new Error(`Failed to upload TeamSpeak snapshot: ${uploadError.message}`);
+    throw new Error(
+      `Failed to upload TeamSpeak snapshot: ${uploadError.message}`,
+    );
   }
 }
 
-export function isSnapshotFresh(payload: SnapshotPayload | null, maxAgeMs: number): boolean {
+export function isSnapshotFresh(
+  payload: SnapshotPayload | null,
+  maxAgeMs: number,
+): boolean {
   if (!payload?.collectedAt) return false;
   const collected = Date.parse(payload.collectedAt);
   if (Number.isNaN(collected)) return false;
@@ -205,15 +223,22 @@ export async function loadTeamSpeakProfileMap(
   while (hasMore) {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, teamspeak_identities, supporter_patreon, supporter_lifetime, banned, rich_presence_enabled")
+      .select(
+        "id, teamspeak_identities, supporter_patreon, supporter_lifetime, banned, rich_presence_enabled",
+      )
       .range(page * pageSize, (page + 1) * pageSize - 1);
 
     if (error) throw error;
 
     for (const row of (data ?? [])) {
-      const identities = normalizeTeamSpeakIdentities((row as Tables<"profiles">).teamspeak_identities);
+      const identities = normalizeTeamSpeakIdentities(
+        (row as Tables<"profiles">).teamspeak_identities,
+      );
       for (const identity of identities) {
-        map.set(`${identity.serverId}:${identity.uniqueId}`, row as Tables<"profiles">);
+        map.set(
+          `${identity.serverId}:${identity.uniqueId}`,
+          row as Tables<"profiles">,
+        );
       }
     }
 
@@ -264,12 +289,15 @@ export async function updatePresenceFromSnapshots(args: {
   profileMap?: Map<string, Tables<"profiles">>;
 }): Promise<void> {
   const { supabase, snapshots, profileMap: providedProfileMap } = args;
-  const profileMap = providedProfileMap ?? (await loadTeamSpeakProfileMap(supabase));
+  const profileMap = providedProfileMap ??
+    (await loadTeamSpeakProfileMap(supabase));
 
   for (const snapshot of snapshots) {
     for (const client of snapshot.clients) {
       const profile = profileMap.get(`${snapshot.id}:${client.uniqueId}`);
-      if (!profile || profile.banned || !profile.rich_presence_enabled) continue;
+      if (!profile || profile.banned || !profile.rich_presence_enabled) {
+        continue;
+      }
 
       const { error } = await supabase
         .from("presences_teamspeak")
@@ -325,7 +353,10 @@ export async function ensureTeamSpeakGroupAssignments(args: {
 
     if (managedGroups.size === 0) continue;
 
-    const client = new TeamSpeakClient(server.queryHost, server.queryPort ?? 10011);
+    const client = new TeamSpeakClient(
+      server.queryHost,
+      server.queryPort ?? 10011,
+    );
 
     try {
       await client.connect();
@@ -345,16 +376,22 @@ export async function ensureTeamSpeakGroupAssignments(args: {
       }
 
       for (const clientSnapshot of snapshot.clients) {
-        const profile = profileMap.get(`${server.id}:${clientSnapshot.uniqueId}`);
+        const profile = profileMap.get(
+          `${server.id}:${clientSnapshot.uniqueId}`,
+        );
         if (!profile || profile.banned) continue;
 
         const role = roleMap.get(profile.id);
         const desired = computeDesiredGroups({ server, profile, role });
         if (desired.size === 0) continue;
 
-        const current = new Set<number>((clientSnapshot.serverGroups ?? []).filter((n) => Number.isFinite(n)));
+        const current = new Set<number>(
+          (clientSnapshot.serverGroups ?? []).filter((n) => Number.isFinite(n)),
+        );
         const toAdd = [...desired].filter((g) => !current.has(g));
-        const toRemove = [...current].filter((g) => managedGroups.has(g) && !desired.has(g));
+        const toRemove = [...current].filter((g) =>
+          managedGroups.has(g) && !desired.has(g)
+        );
 
         if (toAdd.length === 0 && toRemove.length === 0) continue;
 
@@ -370,7 +407,10 @@ export async function ensureTeamSpeakGroupAssignments(args: {
         for (const sgid of toAdd) {
           await sleep(100);
           try {
-            await sendRawCommand(client, "servergroupaddclient", { sgid, cldbid: dbId });
+            await sendRawCommand(client, "servergroupaddclient", {
+              sgid,
+              cldbid: dbId,
+            });
           } catch (error) {
             if (!isAlreadyAssignedError(error)) {
               throw error;
@@ -380,7 +420,10 @@ export async function ensureTeamSpeakGroupAssignments(args: {
 
         for (const sgid of toRemove) {
           await sleep(100);
-          await sendRawCommand(client, "servergroupdelclient", { sgid, cldbid: dbId });
+          await sendRawCommand(client, "servergroupdelclient", {
+            sgid,
+            cldbid: dbId,
+          });
         }
       }
     } catch (error) {
@@ -399,22 +442,31 @@ function computeDesiredGroups(args: {
   const { server, profile, role } = args;
   const desired = new Set<number>();
 
-  if (role !== "admin" && role !== "moderator" && typeof server.roleRegisteredGroupId === "number") {
+  if (
+    role !== "admin" && role !== "moderator" &&
+    typeof server.roleRegisteredGroupId === "number"
+  ) {
     desired.add(server.roleRegisteredGroupId);
   }
 
   if (role === "admin" && typeof server.roleAdminGroupId === "number") {
     desired.add(server.roleAdminGroupId);
-  } else if (role === "moderator" && typeof server.roleModeratorGroupId === "number") {
+  } else if (
+    role === "moderator" && typeof server.roleModeratorGroupId === "number"
+  ) {
     desired.add(server.roleModeratorGroupId);
   }
 
-  const isSupporter = !!(profile.supporter_lifetime || profile.supporter_patreon);
+  const isSupporter =
+    !!(profile.supporter_lifetime || profile.supporter_patreon);
   if (isSupporter && typeof server.roleSupporterGroupId === "number") {
     desired.add(server.roleSupporterGroupId);
   }
 
-  if (profile.supporter_lifetime && typeof server.roleLifetimeSupporterGroupId === "number") {
+  if (
+    profile.supporter_lifetime &&
+    typeof server.roleLifetimeSupporterGroupId === "number"
+  ) {
     desired.add(server.roleLifetimeSupporterGroupId);
   }
 
@@ -433,7 +485,10 @@ async function processServer(args: {
     throw new Error(`Missing TeamSpeak credentials for server "${server.id}"`);
   }
 
-  const client = new TeamSpeakClient(server.queryHost, server.queryPort ?? 10011);
+  const client = new TeamSpeakClient(
+    server.queryHost,
+    server.queryPort ?? 10011,
+  );
   const collectedAt = new Date().toISOString();
 
   try {
@@ -453,8 +508,13 @@ async function processServer(args: {
       throw new Error(`Server "${server.id}" is missing routing information`);
     }
 
-    const serverInfoQuery = (await sendRawCommand(client, "serverinfo")) as QueryResponse<Record<string, unknown>>;
-    const serverInfo = normalizeServerInfo(serverInfoQuery.response?.[0] ?? null);
+    const serverInfoQuery =
+      (await sendRawCommand(client, "serverinfo")) as QueryResponse<
+        Record<string, unknown>
+      >;
+    const serverInfo = normalizeServerInfo(
+      serverInfoQuery.response?.[0] ?? null,
+    );
 
     const channelsQuery = (await sendRawCommand(
       client,
@@ -473,7 +533,8 @@ async function processServer(args: {
     )) as QueryResponse<TeamSpeakClientEntry>;
 
     const onlineClients = (clientListQuery.response ?? []).filter((c) =>
-      String(c.client_type ?? "0") === "0" && (c.client_unique_identifier || c.client_database_id || c.clid)
+      String(c.client_type ?? "0") === "0" &&
+      (c.client_unique_identifier || c.client_database_id || c.clid)
     );
 
     const normalizedClients: TeamSpeakServerSnapshot["clients"] = [];
@@ -488,8 +549,11 @@ async function processServer(args: {
 
       const nickname = entry.client_nickname ?? "Unknown";
       const channelId = entry.cid ? String(entry.cid) : null;
-      const channelMeta = channelId ? channelsNormalized.map.get(channelId) : undefined;
-      const serverGroupsToken = String(entry.client_servergroups ?? "").trim().split(/\s+/)[0] ?? "";
+      const channelMeta = channelId
+        ? channelsNormalized.map.get(channelId)
+        : undefined;
+      const serverGroupsToken =
+        String(entry.client_servergroups ?? "").trim().split(/\s+/)[0] ?? "";
       const serverGroups = serverGroupsToken
         .split(",")
         .map((g: string) => g.trim())
@@ -504,14 +568,18 @@ async function processServer(args: {
       const channelRequiredTalkPower = channelMeta?.requiredTalkPower ?? null;
       const channelModerated = channelMeta?.moderated ?? false;
       const channelMuted = Boolean(
-        (channelRequiredTalkPower !== null && channelRequiredTalkPower > 100)
-        || (channelRequiredTalkPower !== null && (talkPower ?? 0) < channelRequiredTalkPower),
+        (channelRequiredTalkPower !== null && channelRequiredTalkPower > 100) ||
+          (channelRequiredTalkPower !== null &&
+            (talkPower ?? 0) < channelRequiredTalkPower),
       );
-      const country = typeof entry.client_country === "string" ? entry.client_country : null;
+      const country = typeof entry.client_country === "string"
+        ? entry.client_country
+        : null;
       const createdAt = safeNumber(entry.client_created) ?? null;
       const lastConnectedAt = safeNumber(entry.client_lastconnected) ?? null;
 
-      const databaseId = entry.client_database_id !== undefined && entry.client_database_id !== null
+      const databaseId = entry.client_database_id !== undefined &&
+          entry.client_database_id !== null
         ? String(entry.client_database_id)
         : null;
 
@@ -576,10 +644,16 @@ function isAlreadyAssignedError(error: unknown): boolean {
   if (!error) return false;
 
   if (typeof error === "object" && error !== null) {
-    const typed = error as { error?: { id?: number; msg?: string }; message?: string };
+    const typed = error as {
+      error?: { id?: number; msg?: string };
+      message?: string;
+    };
     if (typed.error?.id === 2561) return true;
     if (typed.error?.id === 2568) return true;
-    if (typeof typed.message === "string" && /already\s+in\s+servergroup/i.test(typed.message)) {
+    if (
+      typeof typed.message === "string" &&
+      /already\s+in\s+servergroup/i.test(typed.message)
+    ) {
       return true;
     }
   }
@@ -587,9 +661,12 @@ function isAlreadyAssignedError(error: unknown): boolean {
   const message = typeof error === "string"
     ? error
     : error instanceof Error
-      ? error.message
-      : undefined;
-  return Boolean(message && /already\s+in\s+servergroup|error\s+id=(2561|2568)/i.test(message));
+    ? error.message
+    : undefined;
+  return Boolean(
+    message &&
+      /already\s+in\s+servergroup|error\s+id=(2561|2568)/i.test(message),
+  );
 }
 
 function sendRawCommand(
@@ -603,14 +680,21 @@ function sendRawCommand(
   return client.send(cmd, safeParams, safeOptions);
 }
 
-function normalizeChannels(records: ChannelRecord[]): { tree: TeamSpeakNormalizedChannel[]; map: Map<string, TeamSpeakNormalizedChannel> } {
+function normalizeChannels(
+  records: ChannelRecord[],
+): {
+  tree: TeamSpeakNormalizedChannel[];
+  map: Map<string, TeamSpeakNormalizedChannel>;
+} {
   const map = new Map<string, TeamSpeakNormalizedChannel>();
 
   for (const record of records) {
     const id = String(record.cid ?? "");
     if (!id) continue;
 
-    const parentId = record.pid !== undefined && record.pid !== null ? String(record.pid) : null;
+    const parentId = record.pid !== undefined && record.pid !== null
+      ? String(record.pid)
+      : null;
     const order = Number(record.channel_order ?? 0);
     const requiredTalkPower = safeNumber(record.channel_needed_talk_power);
     const moderated = (requiredTalkPower ?? 0) > 0;
@@ -624,7 +708,8 @@ function normalizeChannels(records: ChannelRecord[]): { tree: TeamSpeakNormalize
       requiredTalkPower,
       moderated,
       muted,
-      subscribePower: safeNumber(record.channel_needed_subscribe_power) ?? undefined,
+      subscribePower: safeNumber(record.channel_needed_subscribe_power) ??
+        undefined,
       depth: 0,
       path: [],
       children: [],
@@ -656,7 +741,11 @@ function normalizeChannels(records: ChannelRecord[]): { tree: TeamSpeakNormalize
     sortChildren(root);
   }
 
-  const buildPaths = (node: TeamSpeakNormalizedChannel, path: string[], depth: number) => {
+  const buildPaths = (
+    node: TeamSpeakNormalizedChannel,
+    path: string[],
+    depth: number,
+  ) => {
     node.depth = depth;
     node.path = [...path, node.name];
     for (const child of node.children) buildPaths(child, node.path, depth + 1);
@@ -669,16 +758,27 @@ function normalizeChannels(records: ChannelRecord[]): { tree: TeamSpeakNormalize
   return { tree: roots, map };
 }
 
-function normalizeServerInfo(raw: Record<string, unknown> | null): TeamSpeakServerInfo | undefined {
+function normalizeServerInfo(
+  raw: Record<string, unknown> | null,
+): TeamSpeakServerInfo | undefined {
   if (!raw) return undefined;
 
   return {
-    name: typeof raw.virtualserver_name === "string" ? raw.virtualserver_name : undefined,
-    platform: typeof raw.virtualserver_platform === "string" ? raw.virtualserver_platform : undefined,
-    version: typeof raw.virtualserver_version === "string" ? raw.virtualserver_version : undefined,
+    name: typeof raw.virtualserver_name === "string"
+      ? raw.virtualserver_name
+      : undefined,
+    platform: typeof raw.virtualserver_platform === "string"
+      ? raw.virtualserver_platform
+      : undefined,
+    version: typeof raw.virtualserver_version === "string"
+      ? raw.virtualserver_version
+      : undefined,
     uptimeSeconds: safeNumber(raw.virtualserver_uptime),
     maxClients: safeNumber(raw.virtualserver_maxclients),
-    totalClients: Math.max(0, (safeNumber(raw.virtualserver_clientsonline) ?? 0) - 1),
+    totalClients: Math.max(
+      0,
+      (safeNumber(raw.virtualserver_clientsonline) ?? 0) - 1,
+    ),
     totalChannels: safeNumber(raw.virtualserver_channelsonline),
   };
 }

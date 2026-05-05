@@ -62,14 +62,20 @@ interface ContainerWithServerRow {
 }
 
 // Docker-control query endpoint response
-interface DockerQueryResult {
+interface DockerSourceQueryResult {
   success: boolean;
-  playerCount: number;
+  players: number;
   maxPlayers: number;
-  map: string | null; // source protocol
-  world: string | null; // minecraft protocol
-  // Minecraft-specific
-  players?: string[];
+  map: string;
+  playerList: { name: string; score: number; duration: number }[] | null;
+}
+
+interface DockerMinecraftQueryResult {
+  success: boolean;
+  numPlayers: number;
+  maxPlayers: number;
+  players: string[];
+  world: string;
   motd?: string;
   gameType?: string;
   gameId?: string;
@@ -341,7 +347,12 @@ Deno.serve(async (req: Request) => {
             id: gs.id,
             detail: {
               protocol: gs.query_protocol!,
-              data: { players: null, maxPlayers: null, map: null },
+              data: {
+                players: null,
+                maxPlayers: null,
+                map: null,
+                playerList: null,
+              },
             } as MetricsServerDetail,
           };
 
@@ -376,20 +387,19 @@ Deno.serve(async (req: Request) => {
               return nullDetail;
             }
 
-            const body = await res.json() as DockerQueryResult;
-            if (!body.success) {
-              return nullDetail;
-            }
-
             const protocol = gs.query_protocol!;
-            const detail: MetricsServerDetail = protocol === "minecraft"
-              ? {
+            let detail: MetricsServerDetail;
+
+            if (protocol === "minecraft") {
+              const body = await res.json() as DockerMinecraftQueryResult;
+              if (!body.success) return nullDetail;
+              detail = {
                 protocol,
                 data: {
-                  players: body.playerCount,
+                  numPlayers: body.numPlayers,
                   maxPlayers: body.maxPlayers,
-                  world: body.world,
-                  playerList: body.players ?? null,
+                  world: body.world ?? null,
+                  players: body.players ?? null,
                   motd: body.motd ?? null,
                   gameType: body.gameType ?? null,
                   gameId: body.gameId ?? null,
@@ -399,15 +409,20 @@ Deno.serve(async (req: Request) => {
                   hostIp: body.hostIp ?? null,
                   extra: body.extra ?? null,
                 },
-              }
-              : {
+              };
+            } else {
+              const body = await res.json() as DockerSourceQueryResult;
+              if (!body.success) return nullDetail;
+              detail = {
                 protocol,
                 data: {
-                  players: body.playerCount,
+                  players: body.players,
                   maxPlayers: body.maxPlayers,
                   map: body.map ?? null,
+                  playerList: body.playerList ?? null,
                 },
               };
+            }
 
             return { id: gs.id, detail };
           } catch (err) {
@@ -429,7 +444,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const totalPlayers = Object.values(byServer).reduce(
-      (sum, d) => sum + (d.data?.players ?? 0),
+      (sum, d) => {
+        if (!d.data) return sum;
+        if (d.protocol === "minecraft") return sum + (d.data.numPlayers ?? 0);
+        return sum + (d.data.players ?? 0);
+      },
       0,
     );
 
@@ -523,7 +542,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: constants.default.API_ERROR,
+        error: constants.API_ERROR,
       }),
       {
         headers: { "Content-Type": "application/json" },

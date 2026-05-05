@@ -1,20 +1,27 @@
 // Protocol-specific server detail shapes
+export interface SourcePlayer {
+  name: string
+  score: number
+  duration: number
+}
+
 export interface MetricsServerDetailSource {
   protocol: 'source'
   data: {
     players: number | null
     maxPlayers: number | null
     map: string | null
+    playerList: SourcePlayer[] | null
   }
 }
 
 export interface MetricsServerDetailMinecraft {
   protocol: 'minecraft'
   data: {
-    players: number | null
+    numPlayers: number | null
     maxPlayers: number | null
     world: string | null
-    playerList: string[] | null
+    players: string[] | null
     motd: string | null
     gameType: string | null
     gameId: string | null

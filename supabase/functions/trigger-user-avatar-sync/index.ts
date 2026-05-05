@@ -6,7 +6,12 @@ import { responseMethodNotAllowed } from "../_shared/response.ts";
 
 type SupabaseClientType = ReturnType<typeof createClient<Database>>;
 
-type ImageContentType = "image/webp" | "image/png" | "image/jpeg" | "image/jpg" | "image/gif";
+type ImageContentType =
+  | "image/webp"
+  | "image/png"
+  | "image/jpeg"
+  | "image/jpg"
+  | "image/gif";
 
 type SyncUserAvatarRequest = {
   userId: string;
@@ -87,9 +92,10 @@ Deno.serve(async (req: Request) => {
     if (isValidHttpsUrl(candidateUrl)) {
       downloaded = await downloadAvatar(candidateUrl);
       if (!downloaded.ok) {
+        const reason = (downloaded as { ok: false; reason: string }).reason;
         console.log(
           "Social avatar download failed; trying gravatar:",
-          downloaded.reason,
+          reason,
         );
       }
     }
@@ -113,12 +119,14 @@ Deno.serve(async (req: Request) => {
 
       const gravatarDownloaded = await downloadAvatar(gravatarUrl);
       if (!gravatarDownloaded.ok) {
+        const reason =
+          (gravatarDownloaded as { ok: false; reason: string }).reason;
         // Gravatar returns 404 when there's no image (with d=404)
         return new Response(
           JSON.stringify({
             success: true,
             message: "No avatar found to sync",
-            reason: gravatarDownloaded.reason,
+            reason,
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },

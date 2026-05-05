@@ -13,6 +13,7 @@
     "preview": "nuxi preview",
     "postinstall": "nuxi prepare",
     "supabase": "npx supabase",
+    "types": "npx supabase gen types typescript --local --schema public,private > types/database.types.ts",
     "lint": "eslint . && nuxi typecheck",
     "lint:fix": "eslint . --fix && nuxi typecheck --fix"
   },

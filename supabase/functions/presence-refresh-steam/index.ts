@@ -114,7 +114,8 @@ Deno.serve(async (req: Request) => {
         return new Response(
           JSON.stringify({
             success: false,
-            message: `Please wait ${waitSeconds} seconds before refreshing again`,
+            message:
+              `Please wait ${waitSeconds} seconds before refreshing again`,
             retry_after: waitSeconds,
           }),
           {

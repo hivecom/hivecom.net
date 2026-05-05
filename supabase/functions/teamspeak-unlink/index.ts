@@ -2,7 +2,10 @@ import { createClient, type User } from "@supabase/supabase-js";
 import type { Tables } from "database-types";
 import type { TeamSpeakIdentityRecord } from "../../../types/teamspeak.ts";
 import { corsHeaders } from "../_shared/cors.ts";
-import { createPublicServiceRoleClient, type PublicServiceClient } from "../_shared/serviceRoleClients.ts";
+import {
+  createPublicServiceRoleClient,
+  type PublicServiceClient,
+} from "../_shared/serviceRoleClients.ts";
 import { normalizeTeamSpeakIdentities } from "../_shared/teamspeak.ts";
 
 interface RequestPayload {
@@ -54,7 +57,10 @@ async function requireAuthenticatedUser(req: Request): Promise<User> {
   return data.user;
 }
 
-async function fetchProfile(client: PublicServiceClient, userId: string): Promise<ProfileRecord | null> {
+async function fetchProfile(
+  client: PublicServiceClient,
+  userId: string,
+): Promise<ProfileRecord | null> {
   const { data, error } = await client
     .from("profiles")
     .select("id, teamspeak_identities")
@@ -75,7 +81,10 @@ function sanitizeUniqueId(value?: string): string {
   }
 
   if (typeof value !== "string" || !value.trim()) {
-    throw new HttpError(400, "uniqueId must be a non-empty string when provided");
+    throw new HttpError(
+      400,
+      "uniqueId must be a non-empty string when provided",
+    );
   }
 
   const trimmed = value.trim();
@@ -86,15 +95,26 @@ function sanitizeUniqueId(value?: string): string {
   return trimmed;
 }
 
-async function updateProfileIdentities(client: PublicServiceClient, userId: string, identities: IdentityRecord[]) {
+async function updateProfileIdentities(
+  client: PublicServiceClient,
+  userId: string,
+  identities: IdentityRecord[],
+) {
   const { error } = await client
     .from("profiles")
-    .update({ teamspeak_identities: identities as unknown as Tables<"profiles">["teamspeak_identities"] })
+    .update({
+      teamspeak_identities: identities as unknown as Tables<
+        "profiles"
+      >["teamspeak_identities"],
+    })
     .eq("id", userId);
 
   if (error) {
     console.error("Failed to update TeamSpeak identities", error);
-    throw new HttpError(500, "Unable to update TeamSpeak identities on profile");
+    throw new HttpError(
+      500,
+      "Unable to update TeamSpeak identities on profile",
+    );
   }
 }
 
@@ -128,7 +148,9 @@ Deno.serve(async (req) => {
   try {
     const user = await requireAuthenticatedUser(req);
     const targetUniqueId = sanitizeUniqueId(payload.uniqueId);
-    const targetServerId = typeof payload.serverId === "string" ? payload.serverId.trim() : "";
+    const targetServerId = typeof payload.serverId === "string"
+      ? payload.serverId.trim()
+      : "";
 
     const supabaseAdmin = createPublicServiceRoleClient();
     const profile = await fetchProfile(supabaseAdmin, user.id);
@@ -137,7 +159,9 @@ Deno.serve(async (req) => {
       throw new HttpError(404, "Profile not found for the authenticated user");
     }
 
-    const existing: IdentityRecord[] = normalizeTeamSpeakIdentities(profile.teamspeak_identities);
+    const existing: IdentityRecord[] = normalizeTeamSpeakIdentities(
+      profile.teamspeak_identities,
+    );
     let removed: IdentityRecord[] = [];
     let updated: IdentityRecord[] = existing;
 
@@ -148,17 +172,24 @@ Deno.serve(async (req) => {
     } else {
       removed = existing.filter((identity: IdentityRecord) => {
         const matchesUniqueId = identity.uniqueId === targetUniqueId;
-        const matchesServer = targetServerId ? identity.serverId === targetServerId : true;
+        const matchesServer = targetServerId
+          ? identity.serverId === targetServerId
+          : true;
         return matchesUniqueId && matchesServer;
       });
 
       if (!removed.length) {
-        throw new HttpError(404, "No matching TeamSpeak identity found to unlink");
+        throw new HttpError(
+          404,
+          "No matching TeamSpeak identity found to unlink",
+        );
       }
 
       updated = existing.filter((identity: IdentityRecord) => {
         const matchesUniqueId = identity.uniqueId === targetUniqueId;
-        const matchesServer = targetServerId ? identity.serverId === targetServerId : true;
+        const matchesServer = targetServerId
+          ? identity.serverId === targetServerId
+          : true;
         return !(matchesUniqueId && matchesServer);
       });
     }
@@ -173,7 +204,10 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     if (error instanceof HttpError) {
-      return jsonResponse(error.status, { error: error.message, details: error.details });
+      return jsonResponse(error.status, {
+        error: error.message,
+        details: error.details,
+      });
     }
 
     console.error("Unhandled TeamSpeak unlink error", error);

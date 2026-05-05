@@ -47,13 +47,15 @@ interface AppConstants {
   PLATFORMS?: { TEAMSPEAK?: TeamSpeakPlatformConfig };
 }
 
-const appConstants = (constants as unknown as { default: AppConstants }).default;
+const appConstants =
+  (constants as unknown as { default: AppConstants }).default;
 
 interface TeamSpeakPlatformConfig {
   servers?: TeamSpeakServerDefinition[];
 }
 
-const teamSpeakPlatform = (appConstants?.PLATFORMS?.TEAMSPEAK ?? {}) as TeamSpeakPlatformConfig;
+const teamSpeakPlatform =
+  (appConstants?.PLATFORMS?.TEAMSPEAK ?? {}) as TeamSpeakPlatformConfig;
 
 const availableServers = Array.isArray(teamSpeakPlatform.servers)
   ? teamSpeakPlatform.servers as TeamSpeakServerDefinition[]
@@ -66,7 +68,12 @@ const credentials: CredentialsMap = {
 
 type ProfileRecord = Pick<
   Tables<"profiles">,
-  "id" | "username" | "banned" | "supporter_patreon" | "supporter_lifetime" | "teamspeak_identities"
+  | "id"
+  | "username"
+  | "banned"
+  | "supporter_patreon"
+  | "supporter_lifetime"
+  | "teamspeak_identities"
 >;
 type IdentityRecord = TeamSpeakIdentityRecord;
 type TokenRecord = Database["private"]["Tables"]["teamspeak_tokens"]["Row"];
@@ -145,10 +152,15 @@ async function requireAuthenticatedUser(req: Request): Promise<User> {
   return data.user;
 }
 
-async function fetchProfile(client: PublicServiceClient, userId: string): Promise<ProfileRecord | null> {
+async function fetchProfile(
+  client: PublicServiceClient,
+  userId: string,
+): Promise<ProfileRecord | null> {
   const { data, error } = await client
     .from("profiles")
-    .select("id, username, banned, supporter_patreon, supporter_lifetime, teamspeak_identities")
+    .select(
+      "id, username, banned, supporter_patreon, supporter_lifetime, teamspeak_identities",
+    )
     .eq("id", userId)
     .maybeSingle();
 
@@ -160,7 +172,10 @@ async function fetchProfile(client: PublicServiceClient, userId: string): Promis
   return data ?? null;
 }
 
-async function fetchUserRole(client: PublicServiceClient, userId: string): Promise<RoleRecord["role"] | null> {
+async function fetchUserRole(
+  client: PublicServiceClient,
+  userId: string,
+): Promise<RoleRecord["role"] | null> {
   const { data, error } = await client
     .from("user_roles")
     .select("role")
@@ -169,7 +184,10 @@ async function fetchUserRole(client: PublicServiceClient, userId: string): Promi
 
   if (error) {
     console.error("Failed to fetch user role", error);
-    throw new HttpError(500, "Unable to determine user role for TeamSpeak provisioning");
+    throw new HttpError(
+      500,
+      "Unable to determine user role for TeamSpeak provisioning",
+    );
   }
 
   return data?.role ?? null;
@@ -185,7 +203,9 @@ async function fetchVerificationToken(args: {
   const tokenHash = await hashToken(args.token);
   const { data, error } = await args.client
     .from("teamspeak_tokens")
-    .select("token_hash, user_id, unique_id, server_id, expires_at, created_at, attempts")
+    .select(
+      "token_hash, user_id, unique_id, server_id, expires_at, created_at, attempts",
+    )
     .eq("token_hash", tokenHash)
     .eq("user_id", args.userId)
     .eq("unique_id", args.uniqueId)
@@ -204,33 +224,54 @@ async function fetchVerificationToken(args: {
   return data as TokenRecord;
 }
 
-async function deleteTokenByHash(client: PrivateServiceClient, tokenHash: string): Promise<void> {
+async function deleteTokenByHash(
+  client: PrivateServiceClient,
+  tokenHash: string,
+): Promise<void> {
   const { error } = await client
     .from("teamspeak_tokens")
     .delete()
     .eq("token_hash", tokenHash);
 
   if (error) {
-    console.warn("Failed to delete consumed TeamSpeak verification token", error);
+    console.warn(
+      "Failed to delete consumed TeamSpeak verification token",
+      error,
+    );
   }
 }
 
-function upsertIdentity(existing: IdentityRecord[], next: IdentityRecord): IdentityRecord[] {
+function upsertIdentity(
+  existing: IdentityRecord[],
+  next: IdentityRecord,
+): IdentityRecord[] {
   const filtered = existing.filter((identity) =>
-    !(identity.serverId === next.serverId && identity.uniqueId === next.uniqueId)
+    !(identity.serverId === next.serverId &&
+      identity.uniqueId === next.uniqueId)
   );
   return [...filtered, next];
 }
 
-async function updateProfileIdentities(client: PublicServiceClient, userId: string, identities: IdentityRecord[]) {
+async function updateProfileIdentities(
+  client: PublicServiceClient,
+  userId: string,
+  identities: IdentityRecord[],
+) {
   const { error } = await client
     .from("profiles")
-    .update({ teamspeak_identities: identities as unknown as Tables<"profiles">["teamspeak_identities"] })
+    .update({
+      teamspeak_identities: identities as unknown as Tables<
+        "profiles"
+      >["teamspeak_identities"],
+    })
     .eq("id", userId);
 
   if (error) {
     console.error("Failed to update TeamSpeak identities", error);
-    throw new HttpError(500, "Unable to update TeamSpeak identities on profile");
+    throw new HttpError(
+      500,
+      "Unable to update TeamSpeak identities on profile",
+    );
   }
 }
 
@@ -244,11 +285,21 @@ async function assignServerGroups(args: {
   const password = credentials.passwords.get(args.server.id);
 
   if (!username || !password) {
-    throw new HttpError(500, `Missing TeamSpeak credentials for server "${args.server.id}"`);
+    throw new HttpError(
+      500,
+      `Missing TeamSpeak credentials for server "${args.server.id}"`,
+    );
   }
 
-  const client = new TeamSpeakClient(args.server.queryHost, args.server.queryPort ?? 10011);
-  const targetGroups = computeTargetGroupIds(args.server, args.profile, args.role);
+  const client = new TeamSpeakClient(
+    args.server.queryHost,
+    args.server.queryPort ?? 10011,
+  );
+  const targetGroups = computeTargetGroupIds(
+    args.server,
+    args.profile,
+    args.role,
+  );
 
   if (!targetGroups.length) {
     return [];
@@ -268,29 +319,44 @@ async function assignServerGroups(args: {
     } else if (typeof args.server.voicePort === "number") {
       await sendRawCommand(client, "use", { port: args.server.voicePort });
     } else {
-      throw new HttpError(500, `Server "${args.server.id}" is missing routing information`);
+      throw new HttpError(
+        500,
+        `Server "${args.server.id}" is missing routing information`,
+      );
     }
 
-    const dbLookup = await sendRawCommand(client, "clientgetdbidfromuid", { cluid: args.uniqueId }) as {
+    const dbLookup = await sendRawCommand(client, "clientgetdbidfromuid", {
+      cluid: args.uniqueId,
+    }) as {
       response?: Array<{ cldbid?: number | string }>;
     };
     const record = dbLookup.response?.[0];
 
     if (!record?.cldbid) {
-      throw new HttpError(404, "Client database record was not found for the supplied uniqueId", {
-        uniqueId: args.uniqueId,
-      });
+      throw new HttpError(
+        404,
+        "Client database record was not found for the supplied uniqueId",
+        {
+          uniqueId: args.uniqueId,
+        },
+      );
     }
 
     const clientDbId = Number(record.cldbid);
     if (!Number.isFinite(clientDbId)) {
-      throw new HttpError(500, "TeamSpeak returned an invalid database identifier");
+      throw new HttpError(
+        500,
+        "TeamSpeak returned an invalid database identifier",
+      );
     }
 
     for (const groupId of targetGroups) {
       await sleep(100);
       try {
-        await sendRawCommand(client, "servergroupaddclient", { sgid: groupId, cldbid: clientDbId });
+        await sendRawCommand(client, "servergroupaddclient", {
+          sgid: groupId,
+          cldbid: clientDbId,
+        });
       } catch (error) {
         if (isAlreadyAssignedError(error)) {
           continue;
@@ -312,7 +378,9 @@ function computeTargetGroupIds(
 ): number[] {
   const groups = new Set<number>();
 
-  if (server.roleRegisteredGroupId && role !== "admin" && role !== "moderator") {
+  if (
+    server.roleRegisteredGroupId && role !== "admin" && role !== "moderator"
+  ) {
     groups.add(server.roleRegisteredGroupId);
   }
 
@@ -322,7 +390,10 @@ function computeTargetGroupIds(
     groups.add(server.roleModeratorGroupId);
   }
 
-  if ((profile.supporter_patreon || profile.supporter_lifetime) && server.roleSupporterGroupId) {
+  if (
+    (profile.supporter_patreon || profile.supporter_lifetime) &&
+    server.roleSupporterGroupId
+  ) {
     groups.add(server.roleSupporterGroupId);
   }
 
@@ -333,15 +404,20 @@ function computeTargetGroupIds(
   return Array.from(groups);
 }
 
-
 function isAlreadyAssignedError(error: unknown): boolean {
   if (!error) return false;
 
   if (typeof error === "object" && error !== null) {
-    const typed = error as { error?: { id?: number; msg?: string }; message?: string };
+    const typed = error as {
+      error?: { id?: number; msg?: string };
+      message?: string;
+    };
     if (typed.error?.id === 2561) return true; // duplicate entry
     if (typed.error?.id === 2568) return true; // already in server group
-    if (typeof typed.message === "string" && /already\s+in\s+servergroup/i.test(typed.message)) {
+    if (
+      typeof typed.message === "string" &&
+      /already\s+in\s+servergroup/i.test(typed.message)
+    ) {
       return true;
     }
   }
@@ -349,9 +425,12 @@ function isAlreadyAssignedError(error: unknown): boolean {
   const message = typeof error === "string"
     ? error
     : error instanceof Error
-      ? error.message
-      : undefined;
-  return Boolean(message && /already\s+in\s+servergroup|error\s+id=(2561|2568)/i.test(message));
+    ? error.message
+    : undefined;
+  return Boolean(
+    message &&
+      /already\s+in\s+servergroup|error\s+id=(2561|2568)/i.test(message),
+  );
 }
 
 async function hashToken(token: string): Promise<string> {
@@ -393,7 +472,10 @@ function sendRawCommand(
   params: Record<string, unknown> = {},
 ): Promise<unknown> {
   const untypedClient = client as unknown as {
-    send: (command: string, commandParams?: Record<string, unknown>) => Promise<unknown>;
+    send: (
+      command: string,
+      commandParams?: Record<string, unknown>,
+    ) => Promise<unknown>;
   };
 
   return untypedClient.send(cmd, params);
@@ -454,7 +536,10 @@ Deno.serve(async (req) => {
     const now = Date.now();
     if (new Date(tokenRecord.expires_at).getTime() < now) {
       await deleteTokenByHash(supabasePrivate, tokenRecord.token_hash);
-      throw new HttpError(400, "Verification token has expired. Please request a new one.");
+      throw new HttpError(
+        400,
+        "Verification token has expired. Please request a new one.",
+      );
     }
 
     await deleteTokenByHash(supabasePrivate, tokenRecord.token_hash);
@@ -465,7 +550,9 @@ Deno.serve(async (req) => {
       linkedAt: new Date().toISOString(),
     };
 
-    const existingIdentities = normalizeTeamSpeakIdentities(profile.teamspeak_identities);
+    const existingIdentities = normalizeTeamSpeakIdentities(
+      profile.teamspeak_identities,
+    );
     const updatedIdentities = upsertIdentity(existingIdentities, identityEntry);
 
     await updateProfileIdentities(supabaseAdmin, user.id, updatedIdentities);
@@ -495,7 +582,10 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     if (error instanceof HttpError) {
-      return jsonResponse(error.status, { error: error.message, details: error.details });
+      return jsonResponse(error.status, {
+        error: error.message,
+        details: error.details,
+      });
     }
 
     console.error("Unhandled TeamSpeak confirmation error", error);

@@ -30,8 +30,12 @@ const serverName = computed(() => {
 })
 
 const currentPlayerCount = computed<number | null>(() => {
-  const count = metrics.value?.gameservers.byServer[String(props.id)]?.data?.players
-  return count ?? null
+  const detail = metrics.value?.gameservers.byServer[String(props.id)]
+  if (!detail?.data)
+    return null
+  if (detail.protocol === 'minecraft')
+    return detail.data.numPlayers ?? null
+  return detail.data.players ?? null
 })
 
 const minecraftDetail = computed<MetricsServerDetailMinecraft | null>(() => {
@@ -41,7 +45,7 @@ const minecraftDetail = computed<MetricsServerDetailMinecraft | null>(() => {
   return null
 })
 
-const playerList = computed<string[]>(() => minecraftDetail.value?.data?.playerList ?? [])
+const playerList = computed<string[]>(() => minecraftDetail.value?.data?.players ?? [])
 const showPlayerList = ref(false)
 
 const badgeVariant = computed(() => currentPlayerCount.value != null && currentPlayerCount.value > 0 ? 'success' : 'neutral')

@@ -13,8 +13,7 @@ import type { Database } from "database-types";
  */
 async function checkBanStatus(userId: string): Promise<Response | undefined> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey =
-    Deno.env.get("SUPABASE_SECRET_KEY") ??
+  const serviceRoleKey = Deno.env.get("SUPABASE_SECRET_KEY") ??
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
     "";
 
@@ -32,8 +31,7 @@ async function checkBanStatus(userId: string): Promise<Response | undefined> {
     return undefined;
   }
 
-  const isActiveBan =
-    profile?.banned === true &&
+  const isActiveBan = profile?.banned === true &&
     (profile.ban_end == null || new Date(profile.ban_end) > new Date());
 
   if (isActiveBan) {
@@ -61,8 +59,8 @@ async function checkBanStatus(userId: string): Promise<Response | undefined> {
 async function checkAssuranceLevel(
   supabaseClient: ReturnType<typeof createClient<Database>>,
 ): Promise<Response | undefined> {
-  const { data, error } =
-    await supabaseClient.auth.mfa.getAuthenticatorAssuranceLevel();
+  const { data, error } = await supabaseClient.auth.mfa
+    .getAuthenticatorAssuranceLevel();
 
   if (error) {
     // Fail open - don't block if we can't determine the level
@@ -70,8 +68,7 @@ async function checkAssuranceLevel(
     return undefined;
   }
 
-  const needsAal2 =
-    data?.nextLevel === "aal2" && data?.currentLevel !== "aal2";
+  const needsAal2 = data?.nextLevel === "aal2" && data?.currentLevel !== "aal2";
 
   if (needsAal2) {
     return new Response(
@@ -556,7 +553,8 @@ export function authorizeSystemTrigger(req: Request): Response | undefined {
     return new Response(
       JSON.stringify({
         success: false,
-        message: "Unauthorized: Missing or invalid System-Trigger-Secret header",
+        message:
+          "Unauthorized: Missing or invalid System-Trigger-Secret header",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

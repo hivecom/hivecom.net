@@ -166,8 +166,9 @@ async function fetchSteamPlayers(
   }
 
   for (const chunk of chunks) {
-    const url = `${STEAM_API_URL}?key=${STEAM_API_KEY}&steamids=${chunk.join(",")
-      }`;
+    const url = `${STEAM_API_URL}?key=${STEAM_API_KEY}&steamids=${
+      chunk.join(",")
+    }`;
 
     try {
       const response = await fetch(url);
@@ -346,9 +347,9 @@ async function updateSteamPresence(
     lastAppId = existingCurrentAppId;
     lastAppName = existingCurrentAppName;
   } else if (
-    currentAppId
-    && existingCurrentAppId
-    && currentAppId !== existingCurrentAppId
+    currentAppId &&
+    existingCurrentAppId &&
+    currentAppId !== existingCurrentAppId
   ) {
     lastAppId = existingCurrentAppId;
     lastAppName = existingCurrentAppName;
@@ -375,7 +376,8 @@ async function updateSteamPresence(
   }
 
   console.log(
-    `Synced Steam presence for ${profileId}: ${player.personaname} (${status})${player.gameextrainfo ? ` playing ${player.gameextrainfo}` : ""
+    `Synced Steam presence for ${profileId}: ${player.personaname} (${status})${
+      player.gameextrainfo ? ` playing ${player.gameextrainfo}` : ""
     }`,
   );
 

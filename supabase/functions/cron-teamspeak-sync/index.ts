@@ -4,13 +4,13 @@ import type { Database } from "database-types";
 import {
   buildTeamSpeakCredentials,
   collectSnapshots,
+  ensureTeamSpeakGroupAssignments,
+  getTeamSpeakServers,
   loadTeamSpeakProfileMap,
   loadTeamSpeakRoleMap,
-  getTeamSpeakServers,
   SNAPSHOT_PATH,
   storeSnapshot,
   updatePresenceFromSnapshots,
-  ensureTeamSpeakGroupAssignments,
 } from "../_shared/teamspeak.ts";
 
 const availableServers = getTeamSpeakServers();
@@ -20,8 +20,7 @@ const credentials = buildTeamSpeakCredentials(
 );
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-const supabaseKey =
-  Deno.env.get("SUPABASE_SECRET_KEY") ??
+const supabaseKey = Deno.env.get("SUPABASE_SECRET_KEY") ??
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
 
@@ -30,7 +29,9 @@ if (!supabaseUrl) {
 }
 
 if (!supabaseKey) {
-  throw new Error("SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY environment variable is not set");
+  throw new Error(
+    "SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY environment variable is not set",
+  );
 }
 
 const supabase = createClient<Database>(supabaseUrl, supabaseKey);
@@ -69,7 +70,10 @@ Deno.serve(async (req) => {
     return jsonResponse(200, { success: true, path: SNAPSHOT_PATH });
   } catch (error) {
     console.error("Error in cron-teamspeak-fetch", error);
-    return jsonResponse(500, { success: false, error: "Failed to fetch TeamSpeak state" });
+    return jsonResponse(500, {
+      success: false,
+      error: "Failed to fetch TeamSpeak state",
+    });
   }
 });
 

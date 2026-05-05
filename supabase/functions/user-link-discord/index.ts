@@ -4,8 +4,9 @@ import { corsHeaders } from "../_shared/cors.ts";
 import type { Database } from "database-types";
 
 function extractDiscordId(identity?: UserIdentity | null): string | null {
-  if (!identity)
+  if (!identity) {
     return null;
+  }
 
   const identityData = identity.identity_data as Record<string, unknown> | null;
   const getField = (key: string) => {
@@ -13,23 +14,27 @@ function extractDiscordId(identity?: UserIdentity | null): string | null {
     return typeof value === "string" ? value : undefined;
   };
 
-  return getField("id")
-    || getField("user_id")
-    || getField("sub")
-    || getField("provider_id")
-    || null;
+  return getField("id") ||
+    getField("user_id") ||
+    getField("sub") ||
+    getField("provider_id") ||
+    null;
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS")
+  if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
 
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
         JSON.stringify({ success: false, error: "No authorization header" }),
-        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
       );
     }
 
@@ -45,39 +50,59 @@ Deno.serve(async (req) => {
       },
     );
 
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    const { data: userData, error: userError } = await supabaseClient.auth
+      .getUser(token);
 
-    if (userError)
+    if (userError) {
       throw userError;
+    }
 
     const user = userData.user;
     if (!user) {
       return new Response(
         JSON.stringify({ success: false, error: "User not found" }),
-        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
       );
     }
 
-    const discordIdentity = user.identities?.find((identity: UserIdentity) => identity.provider === "discord") ?? null;
+    const discordIdentity = user.identities?.find((identity: UserIdentity) =>
+      identity.provider === "discord"
+    ) ?? null;
 
     if (!discordIdentity) {
       return new Response(
-        JSON.stringify({ success: false, error: "Discord identity not linked" }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        JSON.stringify({
+          success: false,
+          error: "Discord identity not linked",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
       );
     }
 
     const discordId = extractDiscordId(discordIdentity);
     if (!discordId) {
       return new Response(
-        JSON.stringify({ success: false, error: "Discord identity missing id" }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        JSON.stringify({
+          success: false,
+          error: "Discord identity missing id",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
       );
     }
 
     const serviceClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      Deno.env.get("SUPABASE_SECRET_KEY") ??
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     const { error: updateError } = await serviceClient
@@ -92,7 +117,10 @@ Deno.serve(async (req) => {
       console.error("Error updating Discord ID:", updateError);
       return new Response(
         JSON.stringify({ success: false, error: "Failed to update profile" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
       );
     }
 
@@ -100,12 +128,14 @@ Deno.serve(async (req) => {
       JSON.stringify({ success: true, discordId }),
       { headers: { "Content-Type": "application/json", ...corsHeaders } },
     );
-  }
-  catch (error) {
+  } catch (error) {
     console.error("Error in user-link-discord function:", error);
     return new Response(
       JSON.stringify({ success: false, error: constants.default.API_ERROR }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      },
     );
   }
 });
