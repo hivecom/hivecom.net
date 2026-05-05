@@ -173,7 +173,7 @@ watchEffect(() => {
   <div class="chart-container">
     <Flex x-between y-center class="text-m text-bold-row">
       <Flex y-center gap="s">
-        <span class="text-m text-bold">Discussions</span>
+        <span class="text-m text-bold">New Discussions</span>
       </Flex>
       <Select
         v-model="selectedSeriesArr"

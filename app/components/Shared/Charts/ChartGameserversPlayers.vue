@@ -53,6 +53,16 @@ const serverNameMap = computed(() => {
   return map
 })
 
+// Set of server IDs that have query capabilities (non-null query_protocol)
+const queryableServerIds = computed(() => {
+  const set = new Set<string>()
+  for (const gs of gameservers.value) {
+    if (gs.query_protocol != null)
+      set.add(String(gs.id))
+  }
+  return set
+})
+
 function serverLabel(id: string): string {
   return serverNameMap.value.get(id) ?? id
 }
@@ -87,7 +97,7 @@ const currentCount = computed(() => {
     ?? [...metricsHistory.value].reverse().find(e => e.gameserversPlayers !== null)?.gameserversPlayers
 })
 
-// Server filter - VUI Select options
+// Server filter - VUI Select options (only servers with query capabilities)
 const serverOptions = computed<ServerOption[]>(() => {
   const ids = new Set<string>()
   for (const e of metricsHistory.value) {
@@ -95,6 +105,7 @@ const serverOptions = computed<ServerOption[]>(() => {
       Object.keys(e.gameserversByServer).forEach(k => ids.add(k))
   }
   return [...ids]
+    .filter(id => queryableServerIds.value.has(id))
     .sort((a, b) => serverLabel(a).localeCompare(serverLabel(b)))
     .map(id => ({ label: serverLabel(id), value: id }))
 })
