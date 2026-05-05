@@ -66,8 +66,8 @@ interface DockerQueryResult {
   success: boolean;
   playerCount: number;
   maxPlayers: number;
-  map: string; // source protocol
-  world?: string; // minecraft protocol
+  map: string | null; // source protocol
+  world: string | null; // minecraft protocol
   // Minecraft-specific
   players?: string[];
   motd?: string;
@@ -405,7 +405,7 @@ Deno.serve(async (req: Request) => {
                 data: {
                   players: body.playerCount,
                   maxPlayers: body.maxPlayers,
-                  map: body.map,
+                  map: body.map ?? null,
                 },
               };
 
