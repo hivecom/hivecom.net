@@ -347,7 +347,7 @@ const isMobile = useBreakpoint('<s')
                 outline
                 :class="{ error: form.date_start == null }"
               >
-                {{ form.date_start ? form.date_start.toLocaleString('en-US', {
+                {{ form.date_start ? form.date_start.toLocaleString(undefined, {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',
@@ -382,7 +382,7 @@ const isMobile = useBreakpoint('<s')
                 outline
                 :class="{ error: form.date_end == null || !validation.dateRange || !validation.startBeforeEnd }"
               >
-                {{ form.date_end ? form.date_end.toLocaleString('en-US', {
+                {{ form.date_end ? form.date_end.toLocaleString(undefined, {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',

@@ -4,16 +4,12 @@ import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivit
 import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import TeamSpeakViewer from '@/components/Shared/TeamSpeakViewer.vue'
-import { useDataMetrics } from '@/composables/useDataMetrics'
 
-const { metrics, fetchMetrics } = useDataMetrics()
+const totalOnline = ref<number | null>(null)
 
-onMounted(() => {
-  if (metrics.value === null)
-    fetchMetrics()
-})
-
-const totalOnline = computed<number | null>(() => metrics.value?.teamspeak.online ?? null)
+function onTotalOnlineUpdate(count: number) {
+  totalOnline.value = count
+}
 const activityModalOpen = ref(false)
 
 useSeoMeta({
@@ -34,12 +30,17 @@ defineOgImage('Default', {
     <section class="page-title">
       <Flex y-center x-between gap="s" expand>
         <h1>Voice Servers</h1>
-        <OnlineBadge :count="totalOnline" label="Online Now" clickable @click="activityModalOpen = true" />
+        <ClientOnly>
+          <OnlineBadge :count="totalOnline" label="Connections" clickable @click="activityModalOpen = true" />
+          <template #fallback>
+            <OnlineBadge :count="null" />
+          </template>
+        </ClientOnly>
       </Flex>
       <p>View live channels and connect with the community on TeamSpeak.</p>
     </section>
 
-    <TeamSpeakViewer />
+    <TeamSpeakViewer @update:total-online="onTotalOnlineUpdate" />
 
     <ChartActivityHistogramModal
       v-model:open="activityModalOpen"

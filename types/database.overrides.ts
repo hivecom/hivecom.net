@@ -93,6 +93,8 @@ interface TableColumnOverrides {
       editor_floating: boolean
       strip_image_metadata: boolean
       allow_custom_css: boolean
+      admin_mini_sidebar: boolean
+      admin_expanded_layout: boolean
     }
   }
 

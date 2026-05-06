@@ -498,7 +498,7 @@ const birthdayButtonLabel = computed(() => {
   if (!birthdayDateModel.value)
     return 'Choose birthday (optional)'
 
-  return birthdayDateModel.value.toLocaleDateString('en-US', {
+  return birthdayDateModel.value.toLocaleDateString(undefined, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

@@ -14,13 +14,16 @@ import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataTeamSpeakSnapshot } from '@/composables/useDataTeamSpeakSnapshot'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryEmoji } from '@/lib/utils/country'
-import BadgeCircle from './BadgeCircle.vue'
+
 import TimestampDate from './TimestampDate.vue'
 
 const props = withDefaults(defineProps<Props>(), {
   refreshInterval: 5 * 60 * 1000,
   servers: null,
 })
+
+const emit = defineEmits<{ 'update:totalOnline': [count: number] }>()
+
 const SPACER_STRIP_RE = /^\[l?spacer\d*\]\s*/i
 const PARENS_UNWRAP_RE = /^\((.*)\)$/u
 const SPACER_DETECT_RE = /^\[l?spacer\d*\]/i
@@ -37,6 +40,29 @@ onMounted(async () => {
 })
 
 const showActivityModal = ref(false)
+const clickedWindow = ref<{ start: Date, end: Date } | null>(null)
+
+function onHistogramClick(index: number) {
+  if (index >= 0) {
+    const entry = histogramHistory.value[index]
+    if (entry) {
+      // capturedAt is UTC midnight. Convert to local date, then use local midnight boundaries
+      // so the chart window aligns with midnight-to-midnight in the user's timezone.
+      const d = new Date(entry.capturedAt)
+      const localDate = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+      const start = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 0, 0, 0, 0)
+      const end = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 1, 0, 0, 0, 0)
+      clickedWindow.value = { start, end }
+    }
+    else {
+      clickedWindow.value = null
+    }
+  }
+  else {
+    clickedWindow.value = null
+  }
+  showActivityModal.value = true
+}
 
 function histogramTooltipLabel(index: number, value: number): string {
   const entry = histogramHistory.value[index]
@@ -44,9 +70,11 @@ function histogramTooltipLabel(index: number, value: number): string {
   if (!entry)
     return suffix
 
-  const now = Date.now()
-  const then = new Date(entry.capturedAt).getTime()
-  const diffDays = Math.round((now - then) / (1000 * 60 * 60 * 24))
+  const entryDate = new Date(entry.capturedAt)
+  const entryDay = Date.UTC(entryDate.getUTCFullYear(), entryDate.getUTCMonth(), entryDate.getUTCDate())
+  const now = new Date()
+  const todayDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const diffDays = Math.round((todayDay - entryDay) / (1000 * 60 * 60 * 24))
 
   if (diffDays === 0)
     return `${suffix} - today`
@@ -675,7 +703,7 @@ function serverClientCount(server: TeamSpeakServerSnapshot): number {
     return 0
   let total = 0
   channelMap.forEach((list) => {
-    total += list.filter(client => !isMusicBot(server.id, client)).length
+    total += showMusicBots.value ? list.length : list.filter(client => !isMusicBot(server.id, client)).length
   })
   return total
 }
@@ -739,6 +767,13 @@ const renderRowsByServer = computed(() => {
   return map
 })
 
+// Emit total non-bot online count whenever selected server or snapshot changes
+watch(
+  () => selectedServer.value ? serverClientCount(selectedServer.value) : 0,
+  count => emit('update:totalOnline', count),
+  { immediate: true },
+)
+
 function _openRawSnapshot() {
   if (!process.client)
     return
@@ -781,14 +816,14 @@ function _openRawSnapshot() {
           </Flex>
         </Flex>
         <Flex x-between expand>
-          <OnlineBadge v-if="selectedServer" :count="serverClientCount(selectedServer)" label="online" clickable @click="showActivityModal = true" />
+          <OnlineBadge v-if="selectedServer" :count="serverClientCount(selectedServer)" label="" clickable @click="clickedWindow = null; showActivityModal = true" />
           <ChartActivityHistogram
             v-if="selectedServer && histogramData.length"
             :data="histogramData"
             :height="24"
             gap="xxs"
             clickable
-            @click="showActivityModal = true"
+            @click="onHistogramClick"
           >
             <template #tooltip="{ value, index }">
               <p>{{ histogramTooltipLabel(index, value) }}</p>
@@ -829,7 +864,7 @@ function _openRawSnapshot() {
             size="s"
           />
           <Flex v-if="selectedServer" x-start y-center gap="xs">
-            <OnlineBadge :count="serverClientCount(selectedServer)" label="online" clickable @click="showActivityModal = true" />
+            <OnlineBadge :count="serverClientCount(selectedServer)" label="" clickable @click="clickedWindow = null; showActivityModal = true" />
             <Flex>
               <ChartActivityHistogram
                 v-if="histogramData.length"
@@ -837,7 +872,7 @@ function _openRawSnapshot() {
                 :height="24"
                 gap="xxs"
                 clickable
-                @click="showActivityModal = true"
+                @click="onHistogramClick"
               >
                 <template #tooltip="{ value, index }">
                   <p>{{ histogramTooltipLabel(index, value) }}</p>
@@ -845,22 +880,28 @@ function _openRawSnapshot() {
               </ChartActivityHistogram>
             </Flex>
             <Tooltip v-if="selectedServer.serverInfo?.platform || selectedServer.serverInfo?.version || selectedServer.serverInfo?.uptimeSeconds || selectedServer.collectedAt">
-              <BadgeCircle variant="neutral">
+              <Badge variant="neutral" circle>
                 <Icon name="ph:info" size="16" class="ts-viewer__info-icon" />
-              </BadgeCircle>
+              </Badge>
               <template #tooltip>
                 <Grid gap="s" columns="96px 1fr" class="ts-viewer__info-tooltip">
                   <template v-if="selectedServer.serverInfo?.platform">
                     <strong>Platform</strong>
-                    <span>{{ selectedServer.serverInfo?.platform }}</span>
+                    <p class="text-s">
+                      {{ selectedServer.serverInfo?.platform }}
+                    </p>
                   </template>
                   <template v-if="selectedServer.serverInfo?.version">
                     <strong>Version</strong>
-                    <span>{{ selectedServer.serverInfo?.version }}</span>
+                    <p class="text-s">
+                      {{ selectedServer.serverInfo?.version }}
+                    </p>
                   </template>
                   <template v-if="selectedServer.serverInfo?.uptimeSeconds">
                     <strong>Uptime</strong>
-                    <span>{{ formatDuration(selectedServer.serverInfo?.uptimeSeconds) }}</span>
+                    <p class="text-s">
+                      {{ formatDuration(selectedServer.serverInfo?.uptimeSeconds) }}
+                    </p>
                   </template>
                 </Grid>
               </template>
@@ -887,7 +928,6 @@ function _openRawSnapshot() {
               </div>
             </template>
           </Tooltip>
-
           <!-- <Tooltip :disabled="isMobile">
             <Button
               size="s"
@@ -1058,6 +1098,7 @@ function _openRawSnapshot() {
     v-model:open="showActivityModal"
     title="TeamSpeak Online"
     :series="['teamspeakOnline']"
+    :initial-window="clickedWindow"
   >
     <template #default="{ period, window, utc, color }">
       <ChartTeamSpeakOnline :period :window :utc :color :server-name="selectedServer?.id ?? undefined" />

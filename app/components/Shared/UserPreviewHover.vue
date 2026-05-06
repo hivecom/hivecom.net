@@ -122,9 +122,10 @@ function handleMobileClick(e: Event) {
 .user-preview-mobile {
   display: inline-flex;
   // Nested slot content links should not work on mobile and open drawer.
-  // Here we select the very first link or the links inside the very first element (slot)
-  & > * > a,
-  & > a {
+  // The slot content can be arbitrarily deep (e.g. UserName wraps Flex > Flex > a),
+  // so use a descendant selector. The Drawer teleports to <body> so it is not
+  // affected by this rule.
+  a {
     pointer-events: none;
     user-select: none;
   }

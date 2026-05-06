@@ -98,6 +98,11 @@ export function useDataDiscussionReplies(
   // them while they remain pinned at the end.
   const _tailBlock = ref<RawComment[]>([])
 
+  // Realtime-appended rows that arrived after a deep-link navigation loaded a
+  // tail block. Tracked so applyPage (loadMore) can insert cursor-fetched
+  // pages before them, preserving chronological order.
+  const _realtimeAppended = ref<RawComment[]>([])
+
   const gap = ref<ReplyGap | null>(null)
   const loadingGapTop = ref(false)
   const loadingGapBottom = ref(false)
@@ -139,6 +144,7 @@ export function useDataDiscussionReplies(
   async function loadFirstPage(discussionId: string): Promise<void> {
     gap.value = null
     _tailBlock.value = []
+    _realtimeAppended.value = []
 
     const page = await repliesCache.fetchPage(discussionId, {
       ascending: ascending.value,
@@ -259,12 +265,34 @@ export function useDataDiscussionReplies(
   function applyPage(page: ReplyPage, reset: boolean): void {
     if (reset) {
       comments.value = page.rows
+      _realtimeAppended.value = []
     }
     else {
       // De-duplicate: realtime may have already added some of these rows
       const existingIds = new Set(comments.value.map(c => c.id))
       const fresh = page.rows.filter(r => !existingIds.has(r.id))
-      comments.value = [...comments.value, ...fresh]
+
+      // If realtime replies were appended after the tail block, insert cursor
+      // pages before them to maintain chronological order. Realtime items are
+      // always newer than anything fetched via the DB cursor, so they must
+      // remain at the very end of the list.
+      if (_realtimeAppended.value.length > 0 && fresh.length > 0) {
+        const firstRealtimeId = _realtimeAppended.value[0]!.id
+        const insertPoint = comments.value.findIndex(c => c.id === firstRealtimeId)
+        if (insertPoint !== -1) {
+          comments.value = [
+            ...comments.value.slice(0, insertPoint),
+            ...fresh,
+            ...comments.value.slice(insertPoint),
+          ]
+        }
+        else {
+          comments.value = [...comments.value, ...fresh]
+        }
+      }
+      else {
+        comments.value = [...comments.value, ...fresh]
+      }
     }
     hasMore.value = page.hasMore
     nextCursor.value = page.nextCursor
@@ -327,6 +355,7 @@ export function useDataDiscussionReplies(
       loading.value = true
     gap.value = null
     _tailBlock.value = []
+    _realtimeAppended.value = []
 
     try {
       const fetchOpts = { ascending: ascending.value, pageSize: pageSize.value, hash: props.hash, rootOnly: false }
@@ -522,6 +551,7 @@ export function useDataDiscussionReplies(
       if (gapClosed) {
         gap.value = null
         _tailBlock.value = []
+        _realtimeAppended.value = []
         if (forwardPage.hasMore && !reachedTail && forwardPage.nextCursor != null) {
           hasMore.value = true
           nextCursor.value = forwardPage.nextCursor
@@ -596,6 +626,7 @@ export function useDataDiscussionReplies(
       if (gapClosed) {
         gap.value = null
         _tailBlock.value = []
+        _realtimeAppended.value = []
       }
       else {
         _tailBlock.value = [...freshBottom, ..._tailBlock.value]
@@ -690,6 +721,7 @@ export function useDataDiscussionReplies(
       fetchedPinnedReply.value = null
       gap.value = null
       _tailBlock.value = []
+      _realtimeAppended.value = []
 
       // ── Synchronous cache fast-path ─────────────────────────────────────────
       // If the discussion meta AND the first reply page are already in
@@ -1023,6 +1055,38 @@ export function useDataDiscussionReplies(
     onDeleted?.(id)
   }
 
+  /**
+   * Append realtime-delivered replies to the comment list.
+   *
+   * For the forum model (ascending), if cursor-based pagination is still in
+   * flight (hasMore or _tailBlock active), we track the realtime items
+   * separately so applyPage (loadMore) can insert cursor pages before them,
+   * keeping the list in chronological order.
+   *
+   * For the comment model (descending), new replies are prepended - they are
+   * always the newest and belong at the top.
+   */
+  function pushRealtimeReplies(newReplies: RawComment[], ascendingOrder: boolean): void {
+    if (newReplies.length === 0)
+      return
+
+    const existingIds = new Set(comments.value.map(c => c.id))
+    const fresh = newReplies.filter(r => !existingIds.has(r.id))
+    if (fresh.length === 0)
+      return
+
+    if (ascendingOrder) {
+      // Track these as realtime-appended so loadMore can insert cursor pages
+      // before them.
+      _realtimeAppended.value = [..._realtimeAppended.value, ...fresh]
+      comments.value = [...comments.value, ...fresh]
+    }
+    else {
+      // Descending (comment model): prepend newest replies at the top.
+      comments.value = [...fresh, ...comments.value]
+    }
+  }
+
   return {
     loading,
     loadingMore,
@@ -1053,5 +1117,6 @@ export function useDataDiscussionReplies(
     deleteComment,
     forceDeleteComment,
     offtopicCount,
+    pushRealtimeReplies,
   }
 }

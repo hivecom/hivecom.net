@@ -33,6 +33,7 @@ export interface UserDisplayData {
   isPublic: boolean
   has_banner: boolean
   banner_extension: string | null
+  last_seen: string | null
 }
 
 interface ProfileCacheEntry {
@@ -49,6 +50,7 @@ interface ProfileCacheEntry {
   has_banner?: boolean
   avatar_extension?: string | null
   banner_extension?: string | null
+  last_seen?: string | null
 }
 
 function hasSupporterMetadata(profile?: ProfileCacheEntry | null): profile is ProfileCacheEntry {
@@ -151,7 +153,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
       inflight = Promise.resolve(
         supabase
           .from('profiles')
-          .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public, has_banner, avatar_extension, banner_extension')
+          .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public, has_banner, avatar_extension, banner_extension, last_seen')
           .eq('id', id)
           .single(),
       ).then(({ data, error: profileError }) => {
@@ -172,6 +174,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
           has_banner: data.has_banner ?? false,
           avatar_extension: data.avatar_extension ?? null,
           banner_extension: data.banner_extension ?? null,
+          last_seen: data.last_seen ?? null,
         }
 
         cache.set(cacheKey, result, userTtl)
@@ -321,6 +324,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
             isPublic: profile.isPublic ?? false,
             has_banner: profile.has_banner ?? false,
             banner_extension: profile.banner_extension ?? null,
+            last_seen: profile.last_seen ?? null,
           }
         : null
     }
@@ -544,6 +548,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
             isPublic: profile.isPublic ?? false,
             has_banner: profile.has_banner ?? false,
             banner_extension: profile.banner_extension ?? null,
+            last_seen: profile.last_seen ?? null,
           })
         }
       }
@@ -560,7 +565,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
         profileIdsToFetch.length > 0
           ? supabase
               .from('profiles')
-              .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public, has_banner, avatar_extension, banner_extension')
+              .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public, has_banner, avatar_extension, banner_extension, last_seen')
               .in('id', profileIdsToFetch)
           : Promise.resolve({ data: [], error: null }),
         includeRole && roleIdsToFetch.length > 0
@@ -597,6 +602,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
           has_banner: profile.has_banner ?? false,
           avatar_extension: profile.avatar_extension ?? null,
           banner_extension: profile.banner_extension ?? null,
+          last_seen: profile.last_seen ?? null,
         }, userTtl)
       })
 
@@ -661,6 +667,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
             isPublic: profile.isPublic ?? false,
             has_banner: profile.has_banner ?? false,
             banner_extension: profile.banner_extension ?? null,
+            last_seen: profile.last_seen ?? null,
           })
         }
       }

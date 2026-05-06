@@ -205,7 +205,6 @@ const currentMap = computed<string | null>(() => {
                   </template>
                   <Badge
                     :variant="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'success' : 'neutral') : 'neutral'"
-                    :size="isMobile ? 's' : undefined"
                   >
                     <Icon
                       :name="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'ph:check' : 'ph:x') : 'ph:question'"

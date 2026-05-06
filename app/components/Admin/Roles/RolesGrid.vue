@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { Alert, Card, Flex, Grid, Input, searchString, Skeleton } from '@dolanske/vui'
+import { Alert, Badge, Card, Flex, Grid, Input, searchString, Skeleton } from '@dolanske/vui'
 import RoleKPIs from '@/components/Admin/Roles/RoleKPIs.vue'
-import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCategoryName, formatPermissionName, getCategoryIcon, getRoleColor, getRoleVariant } from '@/lib/rolePermissions'
 
@@ -195,9 +194,9 @@ onBeforeMount(fetchRolePermissions)
                 {{ role.charAt(0).toUpperCase() + role.slice(1) }}
               </h3>
             </Flex>
-            <BadgeCircle :variant="getRoleVariant(role)">
+            <Badge :variant="getRoleVariant(role)" circle>
               {{ permissionsByRole[role]?.length || 0 }}
-            </BadgeCircle>
+            </Badge>
           </Flex>
         </template>
 
@@ -208,7 +207,9 @@ onBeforeMount(fetchRolePermissions)
               <h4 class="category-title">
                 {{ formatCategoryName(category) }}
               </h4>
-              <span class="text-color-light text-xs">({{ permissions.length }})</span>
+              <Badge variant="neutral" size="s" circle>
+                {{ permissions.length }}
+              </Badge>
             </Flex>
 
             <Flex column gap="xxs" class="permissions-list" expand>

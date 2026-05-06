@@ -59,6 +59,7 @@ export function getLastSeenTextClass(variant: LastSeenVariant): string {
 
 export interface UserActivityStatus {
   isActive: boolean
+  isAway: boolean
   lastSeenText: string
   lastSeenTimestamp: Date
 }
@@ -70,9 +71,11 @@ export interface UserActivityStatus {
 export function getUserActivityStatus(lastSeen: string | Date): UserActivityStatus {
   const lastSeenDate = typeof lastSeen === 'string' ? new Date(lastSeen) : lastSeen
   const now = new Date()
-  const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000) // 15 minutes in milliseconds
+  const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000)
+  const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000)
 
   const isActive = lastSeenDate > fifteenMinutesAgo
+  const isAway = !isActive && lastSeenDate > thirtyMinutesAgo
 
   // Format the "last seen" text
   const timeDiff = now.getTime() - lastSeenDate.getTime()
@@ -83,20 +86,13 @@ export function getUserActivityStatus(lastSeen: string | Date): UserActivityStat
   let lastSeenText: string
 
   if (isActive) {
-    // Always show "Online" for active users (within 15 minutes)
     lastSeenText = 'Online'
   }
   else if (minutes < 60) {
-    // Handle the case where user is inactive but still within the first hour (15-59 minutes)
     lastSeenText = `Last seen ${minutes} minutes ago`
   }
   else if (hours < 24) {
-    if (hours === 1) {
-      lastSeenText = 'Last seen 1 hour ago'
-    }
-    else {
-      lastSeenText = `Last seen ${hours} hours ago`
-    }
+    lastSeenText = hours === 1 ? 'Last seen 1 hour ago' : `Last seen ${hours} hours ago`
   }
   else if (days === 1) {
     lastSeenText = 'Last seen 1 day ago'
@@ -105,12 +101,12 @@ export function getUserActivityStatus(lastSeen: string | Date): UserActivityStat
     lastSeenText = `Last seen ${days} days ago`
   }
   else {
-    // For longer periods, show the actual date
     lastSeenText = `Last seen on ${lastSeenDate.toLocaleDateString()}`
   }
 
   return {
     isActive,
+    isAway,
     lastSeenText,
     lastSeenTimestamp: lastSeenDate,
   }

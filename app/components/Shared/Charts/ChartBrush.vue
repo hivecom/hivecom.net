@@ -17,6 +17,7 @@ interface SeriesDef {
 const props = withDefaults(defineProps<{
   series?: SeriesKey[]
   color?: string
+  initialWindow?: { start: Date, end: Date } | null
 }>(), {
   series: () => ['membersOnline', 'teamspeakOnline', 'gameserversPlayers'] as SeriesKey[],
   color: () => getCSSVariable('--color-accent'),
@@ -321,26 +322,55 @@ watch([wrapperWidth, metricsOverview, brushStart, brushEnd, theme, hoverX], () =
 
 // ── Mouse events ──────────────────────────────────────────────────────────────
 
-function getCanvasX(e: MouseEvent): number {
+function getCanvasX(clientX: number): number {
   const canvas = canvasRef.value
   if (!canvas)
     return 0
   const rect = canvas.getBoundingClientRect()
-  return Math.max(0, Math.min(e.clientX - rect.left, canvas.width))
+  return Math.max(0, Math.min(clientX - rect.left, canvas.width))
 }
 
 function onMouseDown(e: MouseEvent) {
   isDragging.value = true
-  const ts = xToTimestamp(getCanvasX(e), canvasRef.value?.width ?? 1)
+  const ts = xToTimestamp(getCanvasX(e.clientX), canvasRef.value?.width ?? 1)
   brushStart.value = ts
   brushEnd.value = ts
 }
 
 function onMouseMove(e: MouseEvent) {
-  hoverX.value = getCanvasX(e)
+  hoverX.value = getCanvasX(e.clientX)
   if (!isDragging.value)
     return
-  brushEnd.value = xToTimestamp(getCanvasX(e), canvasRef.value?.width ?? 1)
+  brushEnd.value = xToTimestamp(getCanvasX(e.clientX), canvasRef.value?.width ?? 1)
+}
+
+function onTouchStart(e: TouchEvent) {
+  e.preventDefault()
+  const touch = e.touches[0]
+  if (!touch)
+    return
+  isDragging.value = true
+  const x = getCanvasX(touch.clientX)
+  const ts = xToTimestamp(x, canvasRef.value?.width ?? 1)
+  brushStart.value = ts
+  brushEnd.value = ts
+  hoverX.value = x
+}
+
+function onTouchMove(e: TouchEvent) {
+  e.preventDefault()
+  const touch = e.touches[0]
+  if (!touch || !isDragging.value)
+    return
+  const x = getCanvasX(touch.clientX)
+  hoverX.value = x
+  brushEnd.value = xToTimestamp(x, canvasRef.value?.width ?? 1)
+}
+
+function onTouchEnd(e: TouchEvent) {
+  e.preventDefault()
+  hoverX.value = null
+  finishDrag()
 }
 
 function finishDrag() {
@@ -399,7 +429,13 @@ function setBrush(start: Date, end: Date) {
 
 onMounted(() => {
   fetchMetricsOverview()
-  applyPeriod('24h')
+  if (props.initialWindow) {
+    applyWindow(props.initialWindow.start, props.initialWindow.end)
+    selectionMode.value = 'brush'
+  }
+  else {
+    applyPeriod('24h')
+  }
 })
 
 defineExpose({ setBrush })
@@ -415,6 +451,10 @@ defineExpose({ setBrush })
       @mousemove="onMouseMove"
       @mouseup="finishDrag"
       @mouseleave="hoverX = null; finishDrag()"
+      @touchstart="onTouchStart"
+      @touchmove="onTouchMove"
+      @touchend="onTouchEnd"
+      @touchcancel="onTouchEnd"
     />
     <Flex x-between y-center class="chart-brush__footer">
       <span class="chart-brush__range">{{ startLabel }}{{ endLabel ? ` - ${endLabel}` : '' }}</span>
@@ -442,7 +482,7 @@ defineExpose({ setBrush })
                 :variant="selectionMode === 'period' ? 'accent' : 'gray'"
                 @click="toggle"
               >
-                {{ selectionMode === 'calendar' ? 'Custom' : (matchedPeriod ? METRICS_PERIOD_OPTIONS.find(o => o.value === matchedPeriod)?.label : 'Custom') }}
+                {{ selectionMode === 'calendar' || selectionMode === 'brush' ? 'Custom' : (matchedPeriod ? METRICS_PERIOD_OPTIONS.find(o => o.value === matchedPeriod)?.label : 'Custom') }}
                 <template #end>
                   <Icon :name="dropdownOpen ? 'ph:caret-up' : 'ph:caret-down'" :size="12" />
                 </template>

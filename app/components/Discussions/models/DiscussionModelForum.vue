@@ -11,7 +11,7 @@ import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import BannerDisplay from '@/components/Profile/Banner/BannerDisplay.vue'
 import ReactionsList from '@/components/Reactions/ReactionsList.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
-import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
+
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
@@ -334,9 +334,9 @@ const editedAtFormatted = computed(() => {
         <SharedUserAvatar :user-id="data.created_by" size="l" linked />
         <Flex wrap gap="xxs" y-center x-center>
           <UserName :user-id="data.created_by" />
-          <BadgeCircle v-if="data.created_by === discussion?.created_by">
+          <Badge v-if="data.created_by === discussion?.created_by" circle size="s">
             <span class="text-xxs text-color-light">OP</span>
-          </BadgeCircle>
+          </Badge>
           <UserRole :user-id="data.created_by" />
         </Flex>
       </Flex>
@@ -434,9 +434,9 @@ const editedAtFormatted = computed(() => {
               <SharedUserAvatar :user-id="data.created_by" size="s" linked class="discussion-forum__mobile-avatar" />
               <Flex wrap gap="xxs" y-center>
                 <UserName :user-id="data.created_by" size="s" />
-                <BadgeCircle v-if="data.created_by === discussion?.created_by">
+                <Badge v-if="data.created_by === discussion?.created_by" circle>
                   <span class="text-xxs text-color-light">OP</span>
-                </BadgeCircle>
+                </Badge>
                 <Badge v-if="shouldDisplayRole" :variant="roleVariant" size="s">
                   {{ roleDisplay }}
                 </Badge>
@@ -447,9 +447,9 @@ const editedAtFormatted = computed(() => {
             <SharedUserAvatar :user-id="data.created_by" size="s" linked class="discussion-forum__mobile-avatar" />
             <Flex wrap gap="xxs" y-center>
               <UserName :user-id="data.created_by" size="s" show-preview />
-              <BadgeCircle v-if="data.created_by === discussion?.created_by">
+              <Badge v-if="data.created_by === discussion?.created_by" circle>
                 <span class="text-xxs text-color-light">OP</span>
-              </BadgeCircle>
+              </Badge>
               <Badge v-if="shouldDisplayRole" :variant="roleVariant" size="s">
                 {{ roleDisplay }}
               </Badge>
@@ -949,7 +949,7 @@ const editedAtFormatted = computed(() => {
 
   &__actions-anchor {
     position: sticky;
-    top: 154px;
+    top: calc(var(--navbar-offset) + var(--space-m) + 96px);
     min-height: 0;
     max-height: 0;
     overflow: visible;
@@ -960,8 +960,9 @@ const editedAtFormatted = computed(() => {
     display: flex;
     gap: 3px;
     position: absolute;
-    right: 0;
-    top: 0;
+    right: calc(-1 * 17px);
+    top: calc(-1 * var(--space-m));
+    transform: translateY(-50%);
     opacity: 0;
     z-index: -1;
     visibility: hidden;

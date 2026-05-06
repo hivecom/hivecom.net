@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Button, Divider, DropdownItem, Flex, Kbd, KbdGroup, Sheet, Sidebar, Spinner, Tooltip } from '@dolanske/vui'
-import { until, useStorage as useLocalStorage, useMediaQuery } from '@vueuse/core'
+import { until, useMediaQuery } from '@vueuse/core'
 import LogoIcon from '@/components/Shared/LogoIcon.vue'
 import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useDataUser } from '@/composables/useDataUser'
+import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const route = useRoute()
@@ -215,8 +216,15 @@ provide('userRole', readonly(userRole))
 provide('hasPermission', hasPermission)
 provide('hasAnyPermission', hasAnyPermission)
 
-const miniSidebar = useLocalStorage('admin-sidebar-open', false)
-const expandedLayout = useLocalStorage('admin-layout-expanded', false)
+const { settings } = useDataUserSettings()
+const miniSidebar = computed({
+  get: () => settings.value.admin_mini_sidebar,
+  set: (v: boolean) => { settings.value.admin_mini_sidebar = v },
+})
+const expandedLayout = computed({
+  get: () => settings.value.admin_expanded_layout,
+  set: (v: boolean) => { settings.value.admin_expanded_layout = v },
+})
 
 const adminTablePerPage = computed(() => {
   return expandedLayout.value ? 20 : 10

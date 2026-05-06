@@ -145,6 +145,7 @@ export function useRealtimeDiscussion(
   discussion: Ref<{ id: string, slug: string | null } | undefined>,
   model: Ref<'comment' | 'forum'>,
   hash?: string,
+  pushRealtimeReplies?: (newReplies: RawComment[], ascending: boolean) => void,
 ) {
   const supabase = useSupabaseClient()
   const discussionCache = useDiscussionCache()
@@ -227,10 +228,18 @@ export function useRealtimeDiscussion(
       if (newReplies.length === 0)
         return
 
-      if (model.value === 'comment')
+      const ascendingOrder = model.value !== 'comment'
+      if (pushRealtimeReplies) {
+        // Delegate to the data composable which tracks realtime items separately
+        // so cursor-based loadMore pages remain in chronological order.
+        pushRealtimeReplies(newReplies, ascendingOrder)
+      }
+      else if (model.value === 'comment') {
         comments.value = [...newReplies, ...comments.value]
-      else
+      }
+      else {
         comments.value = [...comments.value, ...newReplies]
+      }
 
       pendingReplyCount.value = 0
 

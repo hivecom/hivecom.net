@@ -2,7 +2,7 @@
 import type { Database } from '@/types/database.types'
 import { Alert, Badge, Button, Card, Divider, Flex, Tab, Tabs, theme } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
-import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
+
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
@@ -276,9 +276,9 @@ const isMobile = useBreakpoint('<s')
               <Flex x-between y-center expand class="theme-details__meta-item">
                 <span>Forks</span>
 
-                <BadgeCircle v-if="forks.length > 0">
+                <Badge v-if="forks.length > 0" circle>
                   {{ forks.length }}
-                </BadgeCircle>
+                </Badge>
                 <span v-else>None</span>
               </Flex>
 

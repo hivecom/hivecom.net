@@ -136,6 +136,24 @@ function handleReport() {
 <template>
   <!-- Mobile: three-dots button that opens a Sheet -->
   <template v-if="isMobile">
+    <Flex v-if="currentUserData && canInteract" gap="xs">
+      <Tooltip>
+        <Button size="s" square plain @click="handleReply">
+          <Icon name="ph:arrow-elbow-up-left" :size="14" />
+        </Button>
+        <template #tooltip>
+          <p>Reply</p>
+        </template>
+      </Tooltip>
+      <Tooltip>
+        <Button size="s" square plain @click="handleQuote">
+          <Icon name="ph:quotes" :size="14" />
+        </Button>
+        <template #tooltip>
+          <p>Quote</p>
+        </template>
+      </Tooltip>
+    </Flex>
     <Button size="s" square plain class="discussion-toolbar__trigger" @click="sheetOpen = true">
       <Icon name="ph:dots-three-bold" :size="18" />
     </Button>
@@ -153,22 +171,6 @@ function handleReport() {
       <Divider class="my-m" />
 
       <Flex column gap="xs" class="discussion-toolbar__sheet-actions">
-        <!-- Interaction actions -->
-        <template v-if="currentUserData && canInteract">
-          <DropdownItem @click="handleReply">
-            <template #icon>
-              <Icon name="ph:arrow-elbow-up-left-bold" />
-            </template>
-            Reply
-          </DropdownItem>
-          <DropdownItem @click="handleQuote">
-            <template #icon>
-              <Icon name="ph:quotes-bold" />
-            </template>
-            Quote
-          </DropdownItem>
-        </template>
-
         <DropdownItem @click="handleCopyLink">
           <template #icon>
             <Icon name="ph:link-bold" />

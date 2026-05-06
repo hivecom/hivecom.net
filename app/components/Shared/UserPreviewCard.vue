@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
-import { Avatar, Button, Divider, Flex, Skeleton } from '@dolanske/vui'
+import { Avatar, Button, Divider, Flex, Indicator, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, toRef } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
 import { useCachedFetch } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
+import { getUserActivityStatus } from '@/lib/lastSeen'
 import { getCountryInfo } from '@/lib/utils/country'
 import ActivitySteam from '../Profile/Activity/ActivitySteam.vue'
 import ActivityTeamspeak from '../Profile/Activity/ActivityTeamspeak.vue'
@@ -42,6 +43,12 @@ const {
   includeAvatar: true,
   userTtl: 10 * 60 * 1000,
   avatarTtl: 30 * 60 * 1000,
+})
+
+const activityStatus = computed(() => {
+  if (!user.value?.last_seen)
+    return null
+  return getUserActivityStatus(user.value.last_seen)
 })
 
 const profileLink = computed(() => {
@@ -189,28 +196,40 @@ const {
       <Flex column gap="xs">
         <Flex expand x-between class="user-preview-card__header">
           <Flex>
-            <NuxtLink
-              v-if="profileLink"
-              :to="profileLink"
-              class="user-preview-card__avatar-link"
-              :aria-label="`View profile of ${user.username}`"
-            >
-              <AvatarMedia class="user-preview-card__avatar" :size="props.avatarSize" :url="user.avatarUrl || undefined" :alt="user.username">
+            <div class="user-preview-card__avatar-wrap">
+              <NuxtLink
+                v-if="profileLink"
+                :to="profileLink"
+                class="user-preview-card__avatar-link"
+                :aria-label="`View profile of ${user.username}`"
+              >
+                <AvatarMedia class="user-preview-card__avatar" :size="props.avatarSize" :url="user.avatarUrl || undefined" :alt="user.username">
+                  <template v-if="!user.avatarUrl" #default>
+                    {{ userInitials }}
+                  </template>
+                </AvatarMedia>
+              </NuxtLink>
+              <AvatarMedia
+                v-else
+                :size="props.avatarSize"
+                :url="user.avatarUrl || undefined"
+                :alt="user.username"
+              >
                 <template v-if="!user.avatarUrl" #default>
                   {{ userInitials }}
                 </template>
               </AvatarMedia>
-            </NuxtLink>
-            <AvatarMedia
-              v-else
-              :size="props.avatarSize"
-              :url="user.avatarUrl || undefined"
-              :alt="user.username"
-            >
-              <template v-if="!user.avatarUrl" #default>
-                {{ userInitials }}
-              </template>
-            </AvatarMedia>
+              <Tooltip v-if="activityStatus">
+                <template #tooltip>
+                  <p>{{ activityStatus.lastSeenText }}</p>
+                </template>
+                <Indicator
+                  :variant="activityStatus.isActive ? 'online' : activityStatus.isAway ? 'away' : 'offline'"
+                  class="user-preview-card__online-indicator"
+                  outline
+                />
+              </Tooltip>
+            </div>
           </Flex>
 
           <UserPreviewCardBadges
@@ -343,6 +362,17 @@ const {
 
 .user-preview-card__avatar-link {
   display: inline-flex;
+}
+
+.user-preview-card__avatar-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.user-preview-card__online-indicator {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
 }
 
 .user-preview-card__identity {

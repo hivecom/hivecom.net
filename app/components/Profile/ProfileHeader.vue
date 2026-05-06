@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { ProfileFriendshipStatus } from '@/types/profile.ts'
-import { Badge, Button, Card, CopyClipboard, Flex, Grid, Modal, Skeleton, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, CopyClipboard, Flex, Grid, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import { useDataUser } from '@/composables/useDataUser'
@@ -458,9 +458,10 @@ onUnmounted(() => stopConfetti())
                 <template #tooltip>
                   <p>{{ activityStatus.lastSeenText }}</p>
                 </template>
-                <div
+                <Indicator
+                  :variant="activityStatus.isActive ? 'online' : activityStatus.isAway ? 'away' : 'offline'"
                   class="profile__online-indicator"
-                  :class="{ active: activityStatus.isActive }"
+                  outline
                 />
               </Tooltip>
             </div>
@@ -499,7 +500,6 @@ onUnmounted(() => stopConfetti())
               <Badge
                 v-if="!isOwnProfile && friendshipStatus === 'mutual'"
                 variant="success"
-                size="s"
               >
                 <Icon name="ph:user-check" />
                 Friends
@@ -507,7 +507,6 @@ onUnmounted(() => stopConfetti())
               <Badge
                 v-else-if="!isOwnProfile && friendshipStatus === 'sent_request'"
                 variant="info"
-                size="s"
               >
                 <Icon name="ph:clock" />
                 Request Sent
@@ -515,7 +514,6 @@ onUnmounted(() => stopConfetti())
               <Badge
                 v-else-if="!isOwnProfile && friendshipStatus === 'received_request'"
                 variant="accent"
-                size="s"
               >
                 <Icon name="ph:bell" />
                 Friend Request
@@ -672,29 +670,18 @@ onUnmounted(() => stopConfetti())
   border-radius: var(--border-radius-m);
 }
 
-.profile__online-indicator {
-  position: absolute;
-  bottom: 15px;
-  right: 15px;
-  width: 16px;
-  height: 16px;
-  background-color: var(--color-text-lighter);
-  border: 2px solid var(--color-bg);
-  border-radius: var(--border-radius-pill);
-  box-shadow: 0 0 0 1px var(--color-border);
-  transition: background-color 0.2s ease;
-
-  &.active {
-    background-color: var(--color-text-green);
-  }
-}
-
 .avatar-lightbox {
   display: block;
   max-width: 100%;
   max-height: 100%;
   margin: auto;
   border-radius: var(--border-radius-m);
+}
+
+.profile__online-indicator {
+  position: absolute;
+  bottom: 18px;
+  right: 18px;
 }
 
 .profile-action-buttons {

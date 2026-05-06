@@ -223,7 +223,12 @@ function clearFilters() {
       <div>
         <Flex y-center x-between gap="s" expand>
           <h1>Game Servers</h1>
-          <OnlineBadge :count="totalOnline" clickable @click="activityModalOpen = true" />
+          <ClientOnly>
+            <OnlineBadge :count="totalOnline" label="Players Online" clickable @click="activityModalOpen = true" />
+            <template #fallback>
+              <OnlineBadge :count="null" label="Players Online" />
+            </template>
+          </ClientOnly>
         </Flex>
         <p>
           Hop on. Get in.

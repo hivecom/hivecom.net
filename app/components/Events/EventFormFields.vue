@@ -214,7 +214,7 @@ const mediaContext = computed(() =>
               expand
               :class="{ error: !effectiveValidation.date }"
             >
-              {{ localDate ? localDate.toLocaleString('en-US', {
+              {{ localDate ? localDate.toLocaleString(undefined, {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',

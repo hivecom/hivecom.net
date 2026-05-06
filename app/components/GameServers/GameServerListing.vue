@@ -175,7 +175,7 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
             <h3 class="mb-s">
               <Flex gap="m" y-center>
                 Unassigned Servers
-                <Badge>
+                <Badge variant="neutral" circle>
                   {{ sortedGameserversWithoutGame.length }}
                 </Badge>
               </Flex>

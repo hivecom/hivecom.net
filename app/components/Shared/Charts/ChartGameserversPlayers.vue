@@ -79,7 +79,12 @@ async function loadData() {
     fetchMetrics()
 }
 
-onMounted(() => loadData())
+onMounted(() => {
+  // If a window will be provided via brush, don't pre-fetch with null window
+  // to avoid a race condition where the period fetch overwrites the window fetch.
+  if (props.window !== null)
+    loadData()
+})
 watch(() => [props.period, props.window] as const, () => loadData())
 
 const chartWrapperRef = ref<HTMLElement | null>(null)
@@ -229,13 +234,17 @@ const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlai
 
 function refreshChartOptions() {
   nextTick(() => {
-    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions)
+    const windowScale: ChartOptions<'bar'> = props.window
+      ? { scales: { x: { min: props.window.start.getTime(), max: props.window.end.getTime() } } }
+      : {}
+    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions, windowScale)
   })
 }
 
 onMounted(() => refreshChartOptions())
 watch(theme, () => refreshChartOptions())
 watch(() => props.utc, () => refreshChartOptions())
+watch(() => props.window, () => refreshChartOptions())
 
 watchEffect(() => {
   const width = chartWrapperWidth.value
@@ -291,7 +300,7 @@ watchEffect(() => {
     <div
       v-else
       ref="chartWrapperRef"
-      :key="`${theme}-${activeTheme?.id}-${props.utc}-${selectedServerOptions.length}-${props.serverId}`"
+      :key="`${theme}-${activeTheme?.id}-${props.utc}-${selectedServerOptions.length}-${props.serverId}-${props.window?.start.getTime()}-${props.window?.end.getTime()}`"
       class="chart-wrapper"
     >
       <Bar

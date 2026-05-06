@@ -24,6 +24,8 @@ export function getDefaultUserSettings(): Tables<'settings'>['data'] {
     strip_image_metadata: true,
     show_user_banners: true,
     allow_custom_css: false,
+    admin_mini_sidebar: false,
+    admin_expanded_layout: false,
   }
 }
 

@@ -299,8 +299,8 @@ function onSegmentClick(seg: BucketSegment) {
 function formatLabel(isoDate: string): string {
   const d = new Date(isoDate)
   if (props.bucketIntervalMs <= 60 * 60 * 1000)
-    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 function navigateToStart() {
@@ -315,8 +315,8 @@ function navigateToEnd() {
 
 function formatTooltip(date: Date): string {
   if (props.bucketIntervalMs <= 60 * 60 * 1000)
-    return date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 /** Always true when hovering - any click will find the nearest segment. */
@@ -510,7 +510,7 @@ defineExpose({ openJumpModal })
               <template #start>
                 <Icon name="ph:calendar" />
               </template>
-              {{ jumpDate ? jumpDate.toLocaleDateString('en-US', {
+              {{ jumpDate ? jumpDate.toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',

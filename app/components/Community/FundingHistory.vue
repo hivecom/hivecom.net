@@ -70,8 +70,8 @@ const historicalData = computed(() => {
 
     return {
       ...funding,
-      monthName: month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-      shortMonthName: month.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      monthName: month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+      shortMonthName: month.toLocaleDateString(undefined, { month: 'short', year: 'numeric' }),
       totalMonthly,
       totalLifetime,
       patreonMonthly: funding.patreon_month_amount_cents || 0,

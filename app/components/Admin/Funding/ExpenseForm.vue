@@ -214,7 +214,7 @@ function confirmDelete() {
                   expand
                   :class="{ error: !validation.started_at }"
                 >
-                  {{ expenseForm.started_at ? expenseForm.started_at.toLocaleDateString('en-US', {
+                  {{ expenseForm.started_at ? expenseForm.started_at.toLocaleDateString(undefined, {
                     year: 'numeric',
                     month: '2-digit',
                     day: '2-digit',
@@ -246,7 +246,7 @@ function confirmDelete() {
                     expand
                     :class="{ error: !validation.ended_at }"
                   >
-                    {{ expenseForm.ended_at ? expenseForm.ended_at.toLocaleDateString('en-US', {
+                    {{ expenseForm.ended_at ? expenseForm.ended_at.toLocaleDateString(undefined, {
                       year: 'numeric',
                       month: '2-digit',
                       day: '2-digit',

@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { Button, Card, Flex, Grid } from '@dolanske/vui'
+import { Button, Card, Flex, Grid, Modal } from '@dolanske/vui'
 import CommunityBirthdays from '@/components/Community/CommunityBirthdays.vue'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useCache } from '@/composables/useCache'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataProjects } from '@/composables/useDataProjects'
 import { isBanActive } from '@/lib/banStatus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
@@ -91,7 +94,12 @@ const randomUsers = ref<string[]>(_cachedMembers?.randomUsers ?? [])
 const supporters = ref<string[]>(_cachedMembers?.supporters ?? [])
 const birthdayUserIds = ref<string[]>(_cachedMembers?.birthdayUserIds ?? [])
 const loading = ref(_cachedMembers === null)
+const showOnlineModal = ref(false)
 const error = ref('')
+
+const { latestMetrics, fetchLatestMetrics } = useDataMetrics()
+const onlineCount = computed(() => latestMetrics.value?.members.online ?? null)
+fetchLatestMetrics()
 
 // State for recent projects
 const recentProjects = ref<ReturnType<typeof useDataProjects>['projects']['value']>([])
@@ -276,6 +284,7 @@ watch(user, () => {
             :avatar-size="64"
             :gap="12"
             :supporter-highlight="true"
+            show-online-indicator
             cluster
           />
           <CommunityBirthdays
@@ -283,8 +292,16 @@ watch(user, () => {
             :user-ids="birthdayUserIds"
             :show-divider="randomUsers.length > 0"
           />
+          <OnlineBadge :count="onlineCount" clickable @click="showOnlineModal = true" />
         </Flex>
       </Card>
+
+      <Modal :open="showOnlineModal" centered size="m" @close="showOnlineModal = false">
+        <template #header>
+          <h3>Users Online</h3>
+        </template>
+        <ChartOnlineUsers period="24h" :window="null" fresh />
+      </Modal>
 
       <!-- Sign-in prompt for community features -->
       <section v-if="!user" class="mt-m">

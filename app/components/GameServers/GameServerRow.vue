@@ -87,6 +87,7 @@ const playerCounts = computed(() => {
         gap="s"
         expand
         style="min-width: 0;"
+        class="pr-m"
       >
         <Tooltip placement="top">
           <template #tooltip>

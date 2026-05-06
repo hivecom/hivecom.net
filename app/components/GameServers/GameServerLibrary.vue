@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, Flex, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, BadgeGroup, Button, Flex, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
@@ -39,7 +39,7 @@ function getPlayersForGame(gameId: number): number | null {
   if (!metrics.value || !props.gameservers)
     return null
   const byServer = metrics.value.gameservers.byServer
-  const servers = props.gameservers.filter(gs => gs.game === gameId)
+  const servers = props.gameservers.filter(gs => gs.game === gameId && gs.query_protocol != null)
   if (!servers.length)
     return null
   let total = 0
@@ -200,9 +200,24 @@ function isCoverLoading(gameId: number): boolean {
                 <h3 class="game-title">
                   {{ game.name }}
                 </h3>
-                <div class="counter text-semibold">
-                  {{ getServerCountForGame(game.id) }}
-                </div>
+                <BadgeGroup>
+                  <Tooltip placement="top">
+                    <Badge variant="neutral" size="s" circle>
+                      {{ getServerCountForGame(game.id) }}
+                    </Badge>
+                    <template #tooltip>
+                      <p>Servers</p>
+                    </template>
+                  </Tooltip>
+                  <Tooltip v-if="(getPlayersForGame(game.id) ?? 0) > 0" placement="top">
+                    <Badge variant="accent" size="s" circle>
+                      {{ getPlayersForGame(game.id) }}
+                    </Badge>
+                    <template #tooltip>
+                      <p>Players online</p>
+                    </template>
+                  </Tooltip>
+                </BadgeGroup>
               </div>
             </button>
           </TransitionGroup>
@@ -257,6 +272,7 @@ function isCoverLoading(gameId: number): boolean {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
 .game-library {
   width: 100%;
 }
@@ -266,6 +282,10 @@ function isCoverLoading(gameId: number): boolean {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: var(--space-m);
   width: 100%;
+
+  @media (max-width: $breakpoint-xs) {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
 }
 
 .game-grid-container {
@@ -442,6 +462,10 @@ function isCoverLoading(gameId: number): boolean {
 .game-title {
   margin: 0;
   font-size: var(--font-size-m);
+
+  @media (max-width: $breakpoint-xs) {
+    font-size: var(--font-size-xs);
+  }
   font-weight: 600;
   line-height: 1.2;
   color: var(--color-text);

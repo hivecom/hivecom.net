@@ -140,7 +140,20 @@ useBulkDataUser(replyAuthorIds, {
   avatarTtl: 30 * 60 * 1000,
 })
 
-const realtime = useRealtimeDiscussion(comments, discussion, modelRef, props.hash)
+// Declared here so the realtime composable can reference it before
+// useDataDiscussionReplies is initialized (both need each other).
+// eslint-disable-next-line prefer-const
+let pushRealtimeReplies: (newReplies: RawComment[], ascending: boolean) => void = () => {}
+
+const realtime = useRealtimeDiscussion(
+  comments,
+  discussion,
+  modelRef,
+  props.hash,
+  // Lazily delegate to pushRealtimeReplies once the data composable has
+  // initialised - avoids a circular initialisation dependency.
+  (newReplies, ascending) => pushRealtimeReplies(newReplies, ascending),
+)
 
 // ── Subscription (comment model only) ────────────────────────────────────────
 
@@ -247,6 +260,7 @@ const {
   forceDeleteComment: forceDeleteCommentFromList,
   offtopicCount,
   replyCountMap,
+  pushRealtimeReplies: _pushRealtimeReplies,
 } = useDataDiscussionReplies(
   {
     id: props.id,
@@ -269,6 +283,7 @@ const {
     }
   },
 )
+pushRealtimeReplies = _pushRealtimeReplies
 
 provide(DISCUSSION_KEYS.loadChildren, loadChildren)
 provide(DISCUSSION_KEYS.childrenMap, childrenMap)

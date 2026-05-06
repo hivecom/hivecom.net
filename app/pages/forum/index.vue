@@ -12,9 +12,13 @@ import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import ForumRecentlyVisited from '@/components/Forum/ForumRecentlyVisited.vue'
 import ForumTopicItem from '@/components/Forum/ForumTopicItem.vue'
+import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
+import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useCache } from '@/composables/useCache'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
 import { useDiscoverQueue } from '@/composables/useDiscoverQueue'
 import { useForumActivityFeed } from '@/composables/useForumActivityFeed'
@@ -31,6 +35,11 @@ dayjs.extend(relativeTime)
 
 const FORUM_TOPICS_CACHE_KEY = 'topics-v3'
 const FORUM_TOPICS_TTL = 5 * 60 * 1000 // 5 minutes
+
+const activityModalOpen = ref(false)
+const { latestMetrics, fetchLatestMetrics } = useDataMetrics()
+const onlineCount = computed(() => latestMetrics.value?.members.online ?? null)
+fetchLatestMetrics()
 
 useSeoMeta({
   title: 'Forum',
@@ -1065,6 +1074,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               Bringing back the old school internet experience
             </p>
           </div>
+          <OnlineBadge :count="onlineCount" clickable @click="activityModalOpen = true" />
         </Flex>
       </section>
 
@@ -1444,6 +1454,16 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
           </Button>
         </NuxtLink>
       </Flex>
+
+      <ChartActivityHistogramModal
+        v-model:open="activityModalOpen"
+        title="Users Online"
+        :series="['membersOnline']"
+      >
+        <template #default="{ period, window, utc, color }">
+          <ChartOnlineUsers :period :window :utc :color fresh />
+        </template>
+      </ChartActivityHistogramModal>
     </ClientOnly>
   </div>
 </template>

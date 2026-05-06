@@ -19,7 +19,7 @@ const {
   expand = false,
 } = defineProps<Props>()
 
-const emit = defineEmits<{ click: [] }>()
+const emit = defineEmits<{ click: [index: number] }>()
 
 const slots = defineSlots()
 const highestValue = computed(() => Math.max(...data))
@@ -31,11 +31,11 @@ const highestValue = computed(() => Math.max(...data))
     type="button"
     class="vui-histogram-btn"
     :class="{ 'vui-histogram-btn--expand': expand }"
-    @click="emit('click')"
+    @click="emit('click', -1)"
   >
     <Flex class="vui-histogram vui-histogram--clickable" :class="{ 'vui-histogram--expand': expand }" :gap>
       <Tooltip v-for="(item, index) in data" :key="index" :disabled="!slots.tooltip">
-        <div class="vui-histogram-cell" :style="{ height: `${height}px` }">
+        <div class="vui-histogram-cell" :style="{ height: `${height}px` }" @click.stop="emit('click', index)">
           <div class="vui-histogram-datacell" :style="{ height: `${item / highestValue * 100}%` }" />
         </div>
         <template #tooltip>

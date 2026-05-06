@@ -265,7 +265,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
                 expand
                 :class="{ error: !validation.date_start }"
               >
-                {{ referendumForm.date_start ? referendumForm.date_start.toLocaleString('en-US', {
+                {{ referendumForm.date_start ? referendumForm.date_start.toLocaleString(undefined, {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',
@@ -304,7 +304,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
                 expand
                 :class="{ error: !validation.date_end || !validation.dateRange || !validation.startBeforeEnd }"
               >
-                {{ referendumForm.date_end ? referendumForm.date_end.toLocaleString('en-US', {
+                {{ referendumForm.date_end ? referendumForm.date_end.toLocaleString(undefined, {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',

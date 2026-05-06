@@ -117,14 +117,22 @@ function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
 }
 
 async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>) {
-  const { data, error } = await supabase.storage.from(METRICS_BUCKET).download(METRICS_LATEST_PATH)
+  const { data: { publicUrl } } = supabase.storage.from(METRICS_BUCKET).getPublicUrl(METRICS_LATEST_PATH)
+  const bustUrl = `${publicUrl}?t=${Date.now()}`
 
-  if (error !== null || data === null)
+  let text: string
+  try {
+    const res = await fetch(bustUrl, { cache: 'no-store' })
+    if (!res.ok)
+      return null
+    text = await res.text()
+  }
+  catch {
     return null
+  }
 
   try {
-    const json = await data.text()
-    const parsed = JSON.parse(json) as unknown
+    const parsed = JSON.parse(text) as unknown
     return normalizeMetricsSnapshot(parsed)
   }
   catch {
@@ -182,15 +190,23 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null
 const metricsOverview = ref<MetricsHistoryEntry[]>([])
 const loadingOverview = ref(false)
 
+// Shared snapshot state - hoisted so all callers share the same reactive ref.
+const metrics = shallowRef<MetricsSnapshot | null>(null)
+const loading = shallowRef(false)
+const error = shallowRef<string | null>(null)
+const latestMetrics = shallowRef<MetricsSnapshot | null>(null)
+const loadingLatest = shallowRef(false)
+
 export function useDataMetrics() {
   const supabase = useSupabaseClient<Database>()
   const metricsCache = useCache(CACHE_NAMESPACES.community)
 
   // Pre-populate synchronously so first render has data on warm cache.
-  const _initialCached = metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
-  const metrics = ref<MetricsSnapshot | null>(_initialCached)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+  if (metrics.value === null) {
+    const _initialCached = metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
+    if (_initialCached !== null)
+      metrics.value = _initialCached
+  }
 
   const fetchMetrics = async () => {
     // Serve from cache until next 15-min collection boundary
@@ -384,9 +400,6 @@ export function useDataMetrics() {
     if (refreshTimer !== null)
       clearTimeout(refreshTimer)
   })
-
-  const latestMetrics = ref<MetricsSnapshot | null>(null)
-  const loadingLatest = ref(false)
 
   const fetchLatestMetrics = async () => {
     loadingLatest.value = true

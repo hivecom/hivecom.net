@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge } from '@dolanske/vui'
+import { Badge, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 
 interface Props {
@@ -21,7 +21,11 @@ const variant = computed(() => props.count != null && props.count > 0 ? 'success
 </script>
 
 <template>
-  <Badge v-if="count !== null" :variant :size :style="clickable ? { cursor: 'pointer' } : {}" @click="clickable && emit('click')">
+  <Skeleton v-if="count === null" width="120" height="22" radius="12" />
+  <Badge
+    v-else :variant :size :style="clickable ? { cursor: 'pointer',
+                                                whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }" @click="clickable && emit('click')"
+  >
     <Icon name="ph:circle-fill" />
     {{ count }} {{ label }}
   </Badge>

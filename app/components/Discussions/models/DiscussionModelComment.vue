@@ -695,20 +695,19 @@ watch(
   }
 
   &__actions-anchor {
-    position: sticky;
-    top: var(--space-s);
+    position: absolute;
+    top: var(--space-xxs);
+    right: 0;
     min-height: 0;
     max-height: 0;
     overflow: visible;
     z-index: 10;
+    transform: translateY(-50%);
   }
 
   &__actions {
     display: flex;
     gap: 3px;
-    position: absolute;
-    right: 0;
-    top: 0;
     opacity: 0;
     z-index: -1;
     visibility: hidden;

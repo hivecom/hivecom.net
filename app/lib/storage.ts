@@ -80,8 +80,8 @@ export async function stripImageMetadata(file: File): Promise<File> {
 
     img.onload = () => {
       const canvas = document.createElement('canvas')
-      canvas.width = img.width
-      canvas.height = img.height
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
 
       const ctx = canvas.getContext('2d')
       ctx?.drawImage(img, 0, 0)
@@ -128,8 +128,8 @@ export async function convertImageToWebP(file: File, quality: number = 0.8): Pro
 
     img.onload = () => {
       // Set canvas size to image size
-      canvas.width = img.width
-      canvas.height = img.height
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
 
       // Draw image to canvas
       ctx?.drawImage(img, 0, 0)

@@ -56,7 +56,8 @@ const sizePixels = computed(() => getSizePixels(props.size))
   <Avatar
     v-else
     :key="url ?? undefined"
-    :size="size"
+    :size="typeof size === 'string' ? size : undefined"
+    :style="typeof size === 'number' ? { '--vui-avatar-size': sizePixels } : undefined"
     :url="url ?? undefined"
     :alt="alt"
     v-bind="$attrs"
@@ -64,6 +65,9 @@ const sizePixels = computed(() => getSizePixels(props.size))
   >
     <template v-if="$slots.default && !url" #default>
       <slot />
+    </template>
+    <template v-if="$slots.overlay" #overlay>
+      <slot name="overlay" />
     </template>
   </Avatar>
 </template>

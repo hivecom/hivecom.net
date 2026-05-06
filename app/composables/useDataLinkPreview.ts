@@ -32,6 +32,7 @@ export interface LinkPreviewUnknown {
 
 export interface LinkPreviewGameserver {
   type: 'gameserver'
+  id: number
   href: string
   name: string
   description: string | null
@@ -332,6 +333,7 @@ export function useDataLinkPreview(url: string) {
 
     data.value = {
       type: 'gameserver',
+      id,
       href,
       name: row.name,
       description: row.description ?? null,
