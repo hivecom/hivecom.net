@@ -148,8 +148,7 @@ const filteredEvents = computed(() => {
 })
 
 // Convert events to calendar attributes
-// eslint-disable-next-line ts/no-explicit-any
-const calendarAttributes = computed<any[]>(() => {
+const calendarAttributes = computed(() => {
   const now = dayjs()
 
   return filteredEvents.value.map((event) => {
@@ -359,19 +358,19 @@ function moveToToday() {
 }
 
 const upcomingEvents = computed(() => {
-  // eslint-disable-next-line ts/no-explicit-any
-  return filteredEvents.value.reduce((acc: any, event) => {
+  const initial = createArray(calendarColumns.value, () => []) as Tables<'events'>[][]
+  return filteredEvents.value.reduce((acc, event) => {
     const eventMonth = dayjs(event.date).startOf('month')
     const monthDiff = eventMonth.diff(startMonth.value, 'month')
 
     // TODO: it would be nice to put an event into multiple months if it spans across them
 
     if (monthDiff >= 0 && monthDiff < calendarColumns.value) {
-      acc[monthDiff].push(event)
+      acc[monthDiff]!.push(event)
     }
 
     return acc
-  }, createArray(calendarColumns.value, () => []))
+  }, initial)
 })
 
 // Page title depending on position relative to now
@@ -470,8 +469,8 @@ const pageTitle = computed(() => {
     <ClientOnly v-else>
       <div class="events-calendar__layout" :class="{ 'events-calendar__layout--fetching': fetching }">
         <!-- There are no slots to put content to the footer of a VC calendar column. So we teleport them there instead -->
-        <template v-for="(upcoming, index) in upcomingEvents" :key="upcoming">
-          <Teleport v-if="upcoming.length > 0" :to="`.vc-pane.column-${index as number + 1}`" defer>
+        <template v-for="(upcoming, index) in upcomingEvents" :key="index">
+          <Teleport v-if="upcoming.length > 0" :to="`.vc-pane.column-${index + 1}`" defer>
             <EventCalendarColumnList :data="upcoming" />
           </Teleport>
         </template>

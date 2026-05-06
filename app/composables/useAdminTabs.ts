@@ -56,16 +56,16 @@ export function useAdminTabs<T extends string = string>(
   )
 
   // Push the active tab to the URL ?tab= param whenever it changes.
-  watch(activeTab, (tab) => {
+  watch(activeTab, (rawTab) => {
+    const tab: T | '' = rawTab as T | ''
     if (tab === '')
       return
 
     if (readQueryTab() === tab)
       return
 
-    // eslint-disable-next-line ts/no-unsafe-assignment
-    const query: Record<string, string | null | (string | null)[]> = { ...route.query, tab }
-    void router.push({ query })
+    const safeQuery = route.query as Record<string, string | null | string[]>
+    void router.push({ query: { ...safeQuery, tab } })
   })
 
   return {

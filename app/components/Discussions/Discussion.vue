@@ -142,7 +142,7 @@ useBulkDataUser(replyAuthorIds, {
 
 // Declared here so the realtime composable can reference it before
 // useDataDiscussionReplies is initialized (both need each other).
-// eslint-disable-next-line prefer-const
+
 let pushRealtimeReplies: (newReplies: RawComment[], ascending: boolean) => void = () => {}
 
 const realtime = useRealtimeDiscussion(

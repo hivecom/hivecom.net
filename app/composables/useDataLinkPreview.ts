@@ -1,5 +1,6 @@
 import type { Database } from '@/types/database.types'
 import { useSupabaseUser } from '#imports'
+import { unwrapJoin } from '@/lib/utils/common'
 
 export type LinkPreviewType = 'forum-discussion' | 'profile' | 'gameserver' | 'event' | 'vote' | 'unknown'
 
@@ -226,9 +227,7 @@ export function useDataLinkPreview(url: string) {
     }
 
     interface ProfileJoin { username: string | null }
-    const profileRaw: ProfileJoin | ProfileJoin[] | null = row.profiles
-    // eslint-disable-next-line ts/no-unsafe-assignment
-    const profile: ProfileJoin | null | undefined = Array.isArray(profileRaw) ? profileRaw[0] : profileRaw
+    const profile = unwrapJoin<ProfileJoin>(row.profiles)
 
     let replyContent: string | null = null
     let replyAuthorUsername: string | null = null
@@ -249,10 +248,7 @@ export function useDataLinkPreview(url: string) {
       if (!replyError && replyRow != null && !replyRow.is_deleted) {
         replyContent = replyRow.markdown
 
-        const replyProfileRaw: ReplyProfileJoin | ReplyProfileJoin[] | null = replyRow.profiles
-        const replyProfile: ReplyProfileJoin | null | undefined = Array.isArray(replyProfileRaw)
-          ? replyProfileRaw[0]
-          : replyProfileRaw
+        const replyProfile = unwrapJoin<ReplyProfileJoin>(replyRow.profiles)
         replyAuthorUsername = replyProfile?.username ?? null
       }
     }

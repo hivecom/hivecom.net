@@ -1,5 +1,7 @@
 <script setup lang="ts">
-/* eslint-disable vue/no-mutating-props */
+/* eslint-disable vue/no-mutating-props -- layer is a reactive object reference
+ * from the parent's layers array, not a cloned value. Mutations are intentional
+ * and propagate back to the parent via shared object identity. */
 import type { FillType, SelectOption, TextLayer } from './types'
 import { Button, Color, Divider, Flex, Input, Select, Tooltip } from '@dolanske/vui'
 import BannerGradientStops from './BannerGradientStops.vue'

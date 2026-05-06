@@ -278,6 +278,8 @@ const editor = useEditor({
   content: content.value,
   extensions: [
     StarterKit,
+    // @tiptap/markdown vendors its own copy of marked; the two instances have
+    // incompatible internal types even though their runtime API is identical.
     // eslint-disable-next-line ts/no-explicit-any
     Markdown.configure({ marked: noHtmlMarked as any }),
     LazyImage,

@@ -390,3 +390,14 @@ export function getRouteQueryStringOrNull(
   const result = getRouteQueryString(value)
   return result === '' ? null : result
 }
+
+/**
+ * Supabase join columns can return either a single object or an array when
+ * using foreign-key joins. This helper normalises both shapes to a single
+ * value or null.
+ */
+export function unwrapJoin<T>(value: T | T[] | null | undefined): T | null {
+  if (value == null)
+    return null
+  return Array.isArray(value) ? (value[0] ?? null) : value
+}
