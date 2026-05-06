@@ -215,7 +215,7 @@ const visible = ref(false)
           </div>
           <div v-if="presenceRow?.status" class="rp-row rp-row--inline">
             <span class="rp-label">Status</span>
-            <Badge :variant="statusBadgeVariant" size="s">
+            <Badge :variant="statusBadgeVariant">
               {{ statusLabel }}
             </Badge>
           </div>

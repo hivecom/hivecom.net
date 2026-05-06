@@ -89,7 +89,9 @@ const { activeTheme } = useUserTheme()
 
 const currentCount = computed(() => {
   if (props.serverId !== undefined) {
-    return metrics.value?.gameservers.byServer[String(props.serverId)]?.data?.players
+    const detail = metrics.value?.gameservers.byServer[String(props.serverId)]
+    const liveCount = detail?.protocol === 'minecraft' ? detail.data?.numPlayers : detail?.data?.players
+    return liveCount
       ?? [...metricsHistory.value].reverse().find(e => e.gameserversByServer?.[String(props.serverId!)] !== undefined)?.gameserversByServer?.[String(props.serverId!)]
       ?? undefined
   }

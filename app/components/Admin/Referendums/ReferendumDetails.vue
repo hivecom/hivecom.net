@@ -117,7 +117,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
               <span>
 
                 <Badge
-                  size="xs"
+                  size="s"
                   :variant="getReferendumStatusVariant(getReferendumStatus(props.referendum))"
                 >
                   {{ capitalize(getReferendumStatus(props.referendum)) }}
@@ -129,7 +129,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
               <span class="text-color-light text-bold">Type:</span>
               <span>
                 <Badge
-                  size="xs"
+                  size="s"
                   :variant="props.referendum.multiple_choice ? 'accent' : 'neutral'"
                 >
                   {{ props.referendum.multiple_choice ? 'Multiple Choice' : 'Single Choice' }}
@@ -141,7 +141,7 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
               <span class="text-color-light text-bold">Visibility:</span>
               <span>
                 <Badge
-                  size="xs"
+                  size="s"
                   :variant="props.referendum.is_public ? 'success' : 'neutral'"
                 >
                   <Icon :name="props.referendum.is_public ? 'ph:globe' : 'ph:lock'" />

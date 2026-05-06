@@ -488,11 +488,10 @@ onUnmounted(() => stopConfetti())
               <Badge
                 v-if="userRole && getRoleInfo(userRole)"
                 :variant="getRoleInfo(userRole)?.variant"
-                size="s"
               >
                 {{ getRoleInfo(userRole)?.display }}
               </Badge>
-              <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning" size="s">
+              <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning">
                 <Icon name="ph:heart" class="gold" />
                 Supporter
               </Badge>

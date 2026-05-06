@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Flex, Tooltip } from '@dolanske/vui'
+import { Badge, Flex, Tooltip } from '@dolanske/vui'
 import { capitalize } from 'vue'
 import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 type ContainerWithServer = Tables<'containers'> & {
@@ -48,6 +49,27 @@ const state = computed(() => {
 
 const isCompactLayout = useBreakpoint('<s')
 const addresses = computed(() => props.gameserver.addresses as string[] | null)
+
+const { metrics } = useDataMetrics()
+
+const playerCounts = computed(() => {
+  const detail = metrics.value?.gameservers.byServer[String(props.gameserver.id)]
+  if (!detail?.data)
+    return null
+  if (detail.protocol === 'minecraft') {
+    return {
+      current: detail.data.numPlayers ?? null,
+      max: detail.data.maxPlayers ?? null,
+    }
+  }
+  if (detail.protocol === 'source') {
+    return {
+      current: detail.data.players ?? null,
+      max: detail.data.maxPlayers ?? null,
+    }
+  }
+  return null
+})
 </script>
 
 <template>
@@ -73,12 +95,21 @@ const addresses = computed(() => props.gameserver.addresses as string[] | null)
           <div :class="`gameserver-indicator ${state}`" />
         </Tooltip>
         <Flex expand x-between>
-          <span
-            :class="isCompactLayout ? 'text-xxs' : 'text-m'"
-            style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;"
-          >
-            {{ props.gameserver.name }}
-          </span>
+          <Flex y-center gap="s" style="min-width: 0;">
+            <span
+              :class="isCompactLayout ? 'text-xxs' : 'text-m'"
+              style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;"
+            >
+              {{ props.gameserver.name }}
+            </span>
+            <Badge
+              v-if="playerCounts !== null"
+              size="s"
+              :variant="(playerCounts.current ?? 0) > 0 ? 'success' : 'neutral'"
+            >
+              {{ playerCounts.current ?? 0 }}/{{ playerCounts.max ?? '?' }}
+            </Badge>
+          </Flex>
         </Flex>
       </Flex>
       <Flex y-center row x-end gap="s">

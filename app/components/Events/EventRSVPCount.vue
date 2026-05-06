@@ -68,7 +68,6 @@ defineExpose({
     <Badge
       v-else-if="shouldShow"
       :variant="badgeVariant"
-      :size="size"
     >
       <Icon v-if="showIcon" :class="{ ended: eventEnded }" name="ph:users" />
 

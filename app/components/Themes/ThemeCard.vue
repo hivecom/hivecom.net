@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Alert, Button, ButtonGroup, Card, Dropdown, DropdownItem, Flex, Skeleton, theme, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, ButtonGroup, Card, Dropdown, DropdownItem, Flex, Skeleton, theme, Tooltip } from '@dolanske/vui'
 import { useThemePreview } from '@/composables/useThemePreview'
 import { useUserId } from '@/composables/useUserId'
 import { themeToScopedProperties } from '@/lib/theme'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
-import TinyBadge from '../Shared/TinyBadge.vue'
+
 import UserAvatar from '../Shared/UserAvatar.vue'
 import UserName from '../Shared/UserName.vue'
 import ThemeIcon from './ThemeIcon.vue'
@@ -90,13 +90,13 @@ onClickOutside(self, () => {
                                        unmaintained: props.item.is_unmaintained }"
   >
     <!-- Theme preview UI -->
-    <TinyBadge v-if="isActive" variant="accent" filled>
+    <Badge v-if="isActive" size="s" variant="accent" filled>
       Active
-    </TinyBadge>
+    </Badge>
 
-    <TinyBadge v-else-if="props.item.is_unmaintained" variant="neutral">
+    <Badge v-else-if="props.item.is_unmaintained" size="s" variant="neutral">
       Deprecated
-    </TinyBadge>
+    </Badge>
 
     <ButtonGroup :gap="2" class="theme-menu__card--context" :class="{ persist: persistHover }">
       <Button size="s" :variant="isPreviewing ? 'accent' : 'gray'" @click.prevent.stop="handleApplyClick">
@@ -138,12 +138,12 @@ onClickOutside(self, () => {
         </template>
         <template #header-end>
           <Flex gap="xs">
-            <TinyBadge variant="info">
+            <Badge size="s" variant="info">
               <Skeleton class="badge-skeleton" height="12px" width="24px" style="background-color: var(--color-text-blue)" />
-            </TinyBadge>
-            <TinyBadge variant="warning">
+            </Badge>
+            <Badge size="s" variant="warning">
               <Skeleton class="badge-skeleton" height="12px" width="36px" style="background-color: var(--color-text-yellow)" />
-            </TinyBadge>
+            </Badge>
           </Flex>
         </template>
         <Alert variant="info" filled>

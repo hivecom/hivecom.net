@@ -17,7 +17,6 @@ import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import SharedUserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
@@ -438,9 +437,9 @@ const editedAtFormatted = computed(() => {
                 <BadgeCircle v-if="data.created_by === discussion?.created_by">
                   <span class="text-xxs text-color-light">OP</span>
                 </BadgeCircle>
-                <TinyBadge v-if="shouldDisplayRole" :variant="roleVariant">
+                <Badge v-if="shouldDisplayRole" :variant="roleVariant" size="s">
                   {{ roleDisplay }}
-                </TinyBadge>
+                </Badge>
               </Flex>
             </Flex>
           </UserPreviewHover>
@@ -451,15 +450,15 @@ const editedAtFormatted = computed(() => {
               <BadgeCircle v-if="data.created_by === discussion?.created_by">
                 <span class="text-xxs text-color-light">OP</span>
               </BadgeCircle>
-              <TinyBadge v-if="shouldDisplayRole" :variant="roleVariant">
+              <Badge v-if="shouldDisplayRole" :variant="roleVariant" size="s">
                 {{ roleDisplay }}
-              </TinyBadge>
+              </Badge>
             </Flex>
           </Flex>
 
-          <TinyBadge v-if="isPinned" variant="accent" filled>
+          <Badge v-if="isPinned" variant="accent" size="s" filled>
             <Icon name="ph:push-pin" class="text-color-invert" />
-          </TinyBadge>
+          </Badge>
 
           <div class="flex-1" />
         </template>

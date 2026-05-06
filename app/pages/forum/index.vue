@@ -13,7 +13,6 @@ import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import ForumRecentlyVisited from '@/components/Forum/ForumRecentlyVisited.vue'
 import ForumTopicItem from '@/components/Forum/ForumTopicItem.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
-import SharedTinyBadge from '@/components/Shared/TinyBadge.vue'
 import { useCache } from '@/composables/useCache'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
@@ -1142,9 +1141,9 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               <DropdownItem size="s" @click="requestCreate('discussion')">
                 Discussion
                 <template v-if="draftCount > 0" #hint>
-                  <SharedTinyBadge>
+                  <Badge size="s">
                     {{ draftCount }} Draft{{ draftCount > 1 ? 's' : '' }}
-                  </SharedTinyBadge>
+                  </Badge>
                 </template>
               </DropdownItem>
               <DropdownItem size="s" @click="requestCreate('topic')">

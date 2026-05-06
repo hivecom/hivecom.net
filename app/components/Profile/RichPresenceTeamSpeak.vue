@@ -175,7 +175,7 @@ function formatLastSeen(lastSeenAt: string | null): string {
               <Flex x-between expand y-center gap="s" wrap>
                 <Flex gap="xs" expand x-between y-center wrap>
                   <RegionIndicator :region="entry.region" show-label />
-                  <Badge :variant="entry.online ? 'success' : 'neutral'" size="s">
+                  <Badge :variant="entry.online ? 'success' : 'neutral'">
                     {{ entry.online ? 'Online' : 'Offline' }}
                   </Badge>
                 </Flex>

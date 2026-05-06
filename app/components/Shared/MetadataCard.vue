@@ -26,7 +26,7 @@ defineProps<Props>()
           <Badge
             v-for="tag in tags"
             :key="tag"
-            size="xs"
+            size="s"
             variant="neutral"
           >
             {{ tag }}

@@ -13,7 +13,7 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-  <Badge class="tiny-badge" size="xs" :variant="variant">
+  <Badge class="tiny-badge" :variant="variant">
     <slot />
   </Badge>
 </template>

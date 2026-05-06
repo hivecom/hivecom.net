@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { Button, Tab, Tabs } from '@dolanske/vui'
+import { Button, Flex, Tab, Tabs } from '@dolanske/vui'
 import GameLibrary from '@/components/GameServers/GameServerLibrary.vue'
 import GameListing from '@/components/GameServers/GameServerListing.vue'
+import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
+import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 
 // Tab management
 const activeTab = ref('library')
@@ -48,9 +52,18 @@ onMounted(() => {
 
 // Fetch data
 const supportModalOpen = ref(false)
+const activityModalOpen = ref(false)
 
 const { games, loading: gamesLoading } = useDataGames()
 const { gameservers, loading, error: gameserversError } = useDataGameservers()
+const { metrics, fetchMetrics } = useDataMetrics()
+
+onMounted(() => {
+  if (metrics.value === null)
+    fetchMetrics()
+})
+
+const totalOnline = computed<number | null>(() => metrics.value?.gameservers.players ?? null)
 const errorMessage = computed(() => gameserversError.value ?? '')
 
 useSeoMeta({
@@ -208,7 +221,10 @@ function clearFilters() {
   <div class="page container-l">
     <section class="page-title">
       <div>
-        <h1>Game Servers</h1>
+        <Flex y-center x-between gap="s" expand>
+          <h1>Game Servers</h1>
+          <OnlineBadge :count="totalOnline" clickable @click="activityModalOpen = true" />
+        </Flex>
         <p>
           Hop on. Get in.
         </p>
@@ -276,6 +292,16 @@ function clearFilters() {
         title="Request Game Server"
         message="Got an idea for a game server? Let us know!"
       />
+
+      <ChartActivityHistogramModal
+        v-model:open="activityModalOpen"
+        title="Game Server Activity"
+        :series="['gameserversPlayers']"
+      >
+        <template #default="{ period, window, utc, color }">
+          <ChartGameserversPlayers :period :window :utc :color />
+        </template>
+      </ChartActivityHistogramModal>
     </ClientOnly>
   </div>
 </template>
@@ -283,17 +309,5 @@ function clearFilters() {
 <style scoped lang="scss">
 .page-title {
   margin-bottom: var(--space-m);
-
-  &__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-m);
-    flex-wrap: wrap;
-  }
-
-  &__cta {
-    flex-shrink: 0;
-  }
 }
 </style>

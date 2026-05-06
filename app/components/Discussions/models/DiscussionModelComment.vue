@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Comment, DiscussionSettings, ProvidedDiscussion, RawComment } from '../Discussion.types'
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
@@ -15,7 +15,6 @@ import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
@@ -320,12 +319,12 @@ watch(
           <CountDisplay class="text-xs" :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
         </button>
 
-        <TinyBadge v-if="isPinned" variant="accent" style="margin-right:2px" filled>
+        <Badge v-if="isPinned" variant="accent" size="s" style="margin-right:2px" filled>
           <Icon name="ph:push-pin" class="text-color-invert" />
           <template v-if="!isMobile">
             Pinned
           </template>
-        </TinyBadge>
+        </Badge>
       </Flex>
 
       <!-- Mobile: reaction button (only when no reactions exist) + three-dot trigger -->

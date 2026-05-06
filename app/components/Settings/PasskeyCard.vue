@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { EnrolledPasskey } from '@/lib/passkey'
-import { Alert, Button, Card, Flex, Input, Modal, Skeleton, Spinner } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, Input, Modal, Skeleton, Spinner } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { beginPasskeyRegistration, completePasskeyRegistration, deletePasskey, listPasskeys, PASSKEY_NOT_AVAILABLE } from '@/lib/passkey'
-import TinyBadge from '../Shared/TinyBadge.vue'
 
 const isBelowSmall = useBreakpoint('<s')
 const supabase = useSupabaseClient()
@@ -172,9 +171,9 @@ onMounted(() => {
     <template #header>
       <Flex x-between y-center>
         <h4>Passkeys</h4>
-        <TinyBadge variant="info">
+        <Badge size="s" variant="info">
           Dev preview
-        </TinyBadge>
+        </Badge>
       </Flex>
     </template>
 
@@ -207,13 +206,13 @@ onMounted(() => {
               <Flex column gap="xxs" :y-center="isBelowSmall" :expand="isBelowSmall">
                 <Flex gap="s" y-center wrap>
                   <strong>{{ passkeys.length > 0 ? 'Enrolled' : 'Not enrolled' }}</strong>
-                  <TinyBadge :variant="passkeys.length > 0 ? 'success' : 'neutral'">
+                  <Badge size="s" :variant="passkeys.length > 0 ? 'success' : 'neutral'">
                     <Icon
                       name="ph:fingerprint"
                       :class="passkeys.length > 0 ? 'text-color-accent' : ''"
                     />
                     {{ passkeys.length > 0 ? `${passkeys.length} passkey${passkeys.length === 1 ? '' : 's'}` : 'None' }}
-                  </TinyBadge>
+                  </Badge>
                 </Flex>
                 <p :class="`text-m text-color-lighter${isBelowSmall ? ' text-center' : ''}`">
                   Passwordless sign in with biometrics, a PIN, or a hardware key.

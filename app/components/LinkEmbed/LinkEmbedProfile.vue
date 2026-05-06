@@ -48,7 +48,7 @@ const showRealData = computed(() => props.data.isPublic || !!user.value)
           Sign in to view this profile
         </span>
       </Flex>
-      <UserRole v-if="showRealData" :user-id="props.data.userId" size="xs" :tiny="isMobile" class="link-embed__role" />
+      <UserRole v-if="showRealData" :user-id="props.data.userId" size="s" :tiny="isMobile" class="link-embed__role" />
       <NuxtLink
         v-if="!showRealData"
         to="/auth/sign-in"

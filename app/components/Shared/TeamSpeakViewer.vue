@@ -7,6 +7,7 @@ import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHist
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
 import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
@@ -303,7 +304,7 @@ const isDev = process.env.NODE_ENV === 'development'
 
 const manualRefreshPending = ref(false)
 
-const canRefresh = computed(() => {
+const _canRefresh = computed(() => {
   const raw = lastUpdated.value
   if (!raw)
     return true
@@ -315,7 +316,7 @@ const canRefresh = computed(() => {
   return Date.now() - parsed >= 60_000
 })
 
-async function handleRefresh() {
+async function _handleRefresh() {
   if (manualRefreshPending.value)
     return
 
@@ -738,7 +739,7 @@ const renderRowsByServer = computed(() => {
   return map
 })
 
-function openRawSnapshot() {
+function _openRawSnapshot() {
   if (!process.client)
     return
   if (!rawSnapshotUrl.value)
@@ -780,9 +781,7 @@ function openRawSnapshot() {
           </Flex>
         </Flex>
         <Flex x-between expand>
-          <Badge v-if="selectedServer" variant="success">
-            {{ serverClientCount(selectedServer) }} online
-          </Badge>
+          <OnlineBadge v-if="selectedServer" :count="serverClientCount(selectedServer)" label="online" clickable @click="showActivityModal = true" />
           <ChartActivityHistogram
             v-if="selectedServer && histogramData.length"
             :data="histogramData"
@@ -830,9 +829,7 @@ function openRawSnapshot() {
             size="s"
           />
           <Flex v-if="selectedServer" x-start y-center gap="xs">
-            <Badge variant="success">
-              {{ serverClientCount(selectedServer) }} online
-            </Badge>
+            <OnlineBadge :count="serverClientCount(selectedServer)" label="online" clickable @click="showActivityModal = true" />
             <Flex>
               <ChartActivityHistogram
                 v-if="histogramData.length"
@@ -891,7 +888,7 @@ function openRawSnapshot() {
             </template>
           </Tooltip>
 
-          <Tooltip :disabled="isMobile">
+          <!-- <Tooltip :disabled="isMobile">
             <Button
               size="s"
               square
@@ -905,8 +902,8 @@ function openRawSnapshot() {
             <template #tooltip>
               <p>Refresh</p>
             </template>
-          </Tooltip>
-          <Tooltip :disabled="isMobile">
+          </Tooltip> -->
+          <!-- <Tooltip :disabled="isMobile">
             <Button
               size="s"
               square
@@ -919,7 +916,7 @@ function openRawSnapshot() {
             <template #tooltip>
               <p>Open raw snapshot</p>
             </template>
-          </Tooltip>
+          </Tooltip> -->
           <Button
             v-if="teamspeakConnectUrl"
             size="s"
@@ -1045,7 +1042,7 @@ function openRawSnapshot() {
                   <RoleIndicator
                     v-if="clientRole(selectedServer.id, client)"
                     :role="clientRole(selectedServer.id, client)!"
-                    size="xs"
+                    size="s"
                     shorten
                   />
                 </Flex>

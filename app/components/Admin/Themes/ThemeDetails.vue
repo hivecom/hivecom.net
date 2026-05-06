@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -92,12 +91,12 @@ function handleDelete(theme: Tables<'themes'>) {
           <Grid class="theme-details__item" expand :columns="2">
             <span class="text-color-light text-bold">Flags:</span>
             <Flex gap="xs" wrap>
-              <TinyBadge v-if="props.theme.is_official" variant="accent" filled size="xs">
+              <Badge v-if="props.theme.is_official" variant="accent" filled size="s">
                 Official
-              </TinyBadge>
-              <TinyBadge v-if="props.theme.is_unmaintained" variant="warning" filled size="xs">
+              </Badge>
+              <Badge v-if="props.theme.is_unmaintained" variant="warning" filled size="s">
                 Unmaintained
-              </TinyBadge>
+              </Badge>
               <span v-if="!props.theme.is_official && !props.theme.is_unmaintained" class="text-color-lighter">
                 None
               </span>

@@ -5,7 +5,7 @@ import Discussion from '@/components/Discussions/Discussion.vue'
 import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
+
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import ThemeDetailColors from '@/components/Themes/ThemeDetailColors.vue'
 import ThemeDetailCss from '@/components/Themes/ThemeDetailCss.vue'
@@ -142,9 +142,9 @@ const isMobile = useBreakpoint('<s')
               <div>
                 <h1>
                   {{ data.name }}
-                  <TinyBadge v-if="isThemeActive" variant="accent" style="vertical-align: middle;">
+                  <Badge v-if="isThemeActive" size="s" variant="accent" style="vertical-align: middle;">
                     Active
-                  </TinyBadge>
+                  </Badge>
                 </h1>
                 <p v-if="data.description">
                   {{ data.description }}

@@ -20,7 +20,6 @@ const {
 <style scoped lang="scss">
 .notification-skeleton {
   padding: var(--space-s);
-  width: 100px;
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
 }

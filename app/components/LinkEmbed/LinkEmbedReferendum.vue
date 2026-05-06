@@ -4,7 +4,6 @@ import type { Database } from '@/types/database.types'
 import { Badge, Button, Flex } from '@dolanske/vui'
 import { useIntervalFn } from '@vueuse/core'
 import { resolveComponent } from 'vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDuration } from '@/lib/utils/duration'
 
@@ -326,9 +325,9 @@ async function removeVote() {
       </ul>
 
       <Flex v-if="user" y-center gap="s" class="link-embed__meta">
-        <component :is="isMobile ? TinyBadge : Badge" :variant="voteStatusVariant" size="xs">
+        <Badge size="s" :variant="voteStatusVariant">
           {{ voteStatusLabel }}
-        </component>
+        </Badge>
         <span class="link-embed__meta-sep">&middot;</span>
         <span class="link-embed__meta-item">
           {{ displayVoteCount }} {{ displayVoteCount === 1 ? 'vote' : 'votes' }}

@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, Flex, Modal, Skeleton, Tab, Tabs } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
+
 import { useCache } from '@/composables/useCache'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useRsvpBus } from '@/composables/useRsvpBus'
@@ -226,27 +226,27 @@ function handleClose() {
               <Flex y-center gap="xs">
                 <Icon name="ph:check-circle" class="rsvp-modal__icon" />
                 {{ yesTabLabel }}
-                <TinyBadge v-if="yesCount > 0" variant="success">
+                <Badge v-if="yesCount > 0" size="s" variant="success">
                   {{ yesCount }}
-                </TinyBadge>
+                </Badge>
               </Flex>
             </Tab>
             <Tab value="tentative">
               <Flex y-center gap="xs">
                 <Icon name="ph:question" class="rsvp-modal__icon" />
                 Maybe
-                <TinyBadge v-if="tentativeCount > 0" variant="warning">
+                <Badge v-if="tentativeCount > 0" size="s" variant="warning">
                   {{ tentativeCount }}
-                </TinyBadge>
+                </Badge>
               </Flex>
             </Tab>
             <Tab value="no">
               <Flex y-center gap="xs">
                 <Icon name="ph:x-circle" class="rsvp-modal__icon" />
                 Not Going
-                <TinyBadge v-if="noCount > 0" variant="danger">
+                <Badge v-if="noCount > 0" size="s" variant="danger">
                   {{ noCount }}
-                </TinyBadge>
+                </Badge>
               </Flex>
             </Tab>
           </Tabs>

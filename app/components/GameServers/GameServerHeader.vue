@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Flex, Tooltip } from '@dolanske/vui'
+import { Badge, BadgeGroup, Button, Flex, Tooltip } from '@dolanske/vui'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
@@ -65,7 +65,12 @@ const dockerControlAccessible = computed(() => {
   return _props.container?.server?.accessible === true
 })
 
-const { metrics } = useDataMetrics()
+const { metrics, fetchMetrics } = useDataMetrics()
+
+onMounted(() => {
+  if (metrics.value === null)
+    fetchMetrics()
+})
 
 const currentMap = computed<string | null>(() => {
   const detail = metrics.value?.gameservers.byServer[String(_props.gameserver.id)]
@@ -173,7 +178,7 @@ const currentMap = computed<string | null>(() => {
 
             <div v-if="gameserver.region" class="gameserver-header__status-item">
               <span class="gameserver-header__status-label">Region</span>
-              <Badge v-if="gameserver.region" variant="neutral" :size="isMobile ? 's' : undefined">
+              <Badge v-if="gameserver.region" variant="neutral">
                 <RegionIndicator :region="gameserver.region" show-label />
               </Badge>
             </div>
@@ -181,7 +186,7 @@ const currentMap = computed<string | null>(() => {
             <div v-if="isMobile && addresses && addresses.length > 0" class="gameserver-header__status-item">
               <span class="gameserver-header__status-label">Address{{ addresses.length > 1 ? 'es' : '' }}</span>
               <Flex gap="xs" wrap>
-                <Badge v-for="addr in addresses" :key="addr" variant="neutral" :size="isMobile ? 's' : undefined">
+                <Badge v-for="addr in addresses" :key="addr" variant="neutral">
                   <Icon name="ph:link" />
                   {{ addr }}
                 </Badge>
@@ -189,49 +194,48 @@ const currentMap = computed<string | null>(() => {
             </div>
 
             <div v-if="container" class="gameserver-header__status-item">
-              <span class="gameserver-header__status-label">Running</span>
-              <Tooltip placement="top" :disabled="!dockerControlEnabled || !dockerControlAccessible || !container.reported_at">
-                <template #tooltip>
-                  <Flex column gap="xxs">
-                    <span class="text-xs">Last reported</span>
-                    <TimestampDate size="xs" :date="container.reported_at" :tooltip="false" />
-                  </Flex>
-                </template>
-                <Badge
-                  :variant="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'success' : 'neutral') : 'neutral'"
-                  :size="isMobile ? 's' : undefined"
+              <span class="gameserver-header__status-label">Status</span>
+              <BadgeGroup>
+                <Tooltip placement="top" :disabled="!dockerControlEnabled || !dockerControlAccessible || !container.reported_at">
+                  <template #tooltip>
+                    <Flex column gap="xxs">
+                      <span class="text-xs">Last reported</span>
+                      <TimestampDate size="xs" :date="container.reported_at" :tooltip="false" />
+                    </Flex>
+                  </template>
+                  <Badge
+                    :variant="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'success' : 'neutral') : 'neutral'"
+                    :size="isMobile ? 's' : undefined"
+                  >
+                    <Icon
+                      :name="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'ph:check' : 'ph:x') : 'ph:question'"
+                    />
+                    Running
+                  </Badge>
+                </Tooltip>
+                <Tooltip
+                  v-if="dockerControlEnabled && dockerControlAccessible && container.healthy !== null && container.running"
+                  placement="top"
+                  :disabled="!container.reported_at"
                 >
-                  <Icon
-                    :name="dockerControlEnabled && dockerControlAccessible ? (container.running ? 'ph:check' : 'ph:x') : 'ph:question'"
-                  />
-                  {{ dockerControlEnabled && dockerControlAccessible ? (container.running ? 'Yes' : 'No') : 'Unknown' }}
-                </Badge>
-              </Tooltip>
-            </div>
-
-            <div
-              v-if="container && dockerControlEnabled && dockerControlAccessible && container.healthy !== null && container.running"
-              class="gameserver-header__status-item"
-            >
-              <span class="gameserver-header__status-label">Healthy</span>
-              <Tooltip placement="top" :disabled="!container.reported_at">
-                <template #tooltip>
-                  <Flex column gap="xxs">
-                    <span class="text-xs">Last reported</span>
-                    <TimestampDate size="xs" :date="container.reported_at" :tooltip="false" />
-                  </Flex>
-                </template>
-                <Badge :variant="container.healthy ? 'success' : 'warning'" :size="isMobile ? 's' : undefined">
-                  <Icon :name="container.healthy ? 'ph:check' : 'ph:warning'" />
-                  {{ container.healthy ? 'Yes' : 'No' }}
-                </Badge>
-              </Tooltip>
+                  <template #tooltip>
+                    <Flex column gap="xxs">
+                      <span class="text-xs">Last reported</span>
+                      <TimestampDate size="xs" :date="container.reported_at" :tooltip="false" />
+                    </Flex>
+                  </template>
+                  <Badge :variant="container.healthy ? 'success' : 'warning'" :size="isMobile ? 's' : undefined">
+                    <Icon :name="container.healthy ? 'ph:check' : 'ph:warning'" />
+                    Healthy
+                  </Badge>
+                </Tooltip>
+              </BadgeGroup>
             </div>
 
             <!-- Administrator -->
             <div v-if="gameserver.administrator" class="gameserver-header__status-item">
               <span class="gameserver-header__status-label">Admin</span>
-              <Badge :size="isMobile ? 's' : undefined">
+              <Badge>
                 <UserLink :user-id="gameserver.administrator" size="s" show-avatar public />
               </Badge>
             </div>
@@ -239,7 +243,7 @@ const currentMap = computed<string | null>(() => {
             <!-- Current map (source protocol) -->
             <div v-if="currentMap" class="gameserver-header__status-item">
               <span class="gameserver-header__status-label">Current Map</span>
-              <Badge variant="neutral" :size="isMobile ? 's' : undefined">
+              <Badge variant="neutral">
                 <Icon name="ph:map-pin" />
                 {{ currentMap }}
               </Badge>

@@ -2,13 +2,12 @@
 import type { Ref } from 'vue'
 import type { Tables, TablesUpdate } from '@/types/database.overrides'
 import type { Theme } from '@/types/theme'
-import { Alert, defineTable, Flex, paginate, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, defineTable, Flex, paginate, Pagination, Table } from '@dolanske/vui'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import { useAdminPermissions } from '@/composables/useAdminPermissions'
@@ -320,15 +319,15 @@ onBeforeMount(async () => {
                   </Flex>
                 </Table.Cell>
                 <Table.Cell>
-                  <TinyBadge v-if="theme.is_official" variant="accent" size="xs" filled>
+                  <Badge v-if="theme.is_official" variant="accent" size="s" filled>
                     Official
-                  </TinyBadge>
+                  </Badge>
                   <span v-else class="text-color-lighter">-</span>
                 </Table.Cell>
                 <Table.Cell>
-                  <TinyBadge v-if="theme.is_unmaintained" variant="warning" size="xs" filled>
+                  <Badge v-if="theme.is_unmaintained" variant="warning" size="s" filled>
                     Unmaintained
-                  </TinyBadge>
+                  </Badge>
                   <span v-else class="text-color-lighter">-</span>
                 </Table.Cell>
                 <Table.Cell>

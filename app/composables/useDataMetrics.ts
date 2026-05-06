@@ -206,8 +206,14 @@ export function useDataMetrics() {
     try {
       const snapshot = await fetchMetricsFromStorage(supabase)
       metrics.value = snapshot
-      if (snapshot !== null)
-        metricsCache.set(METRICS_CACHE_KEY, snapshot, msUntilNextCollection())
+      if (snapshot !== null) {
+        // TTL = time remaining until the *next* collection after this snapshot.
+        // Use collectedAt so we don't cache stale data for up to 15 extra minutes
+        // if fetchMetrics is called right after a fresh collection.
+        const collectedAt = new Date(snapshot.collectedAt).getTime()
+        const ttl = Math.max(0, collectedAt + METRICS_COLLECTION_INTERVAL - Date.now())
+        metricsCache.set(METRICS_CACHE_KEY, snapshot, ttl)
+      }
       return snapshot
     }
     catch (err) {
@@ -330,7 +336,9 @@ export function useDataMetrics() {
       }
       else {
         metrics.value = snapshot
-        metricsCache.set(METRICS_CACHE_KEY, snapshot, msUntilNextCollection())
+        const collectedAt = new Date(snapshot.collectedAt).getTime()
+        const ttl = Math.max(0, collectedAt + METRICS_COLLECTION_INTERVAL - Date.now())
+        metricsCache.set(METRICS_CACHE_KEY, snapshot, ttl)
 
         const bucketMs = PERIOD_CONFIGS[period].bucketMs
         const bucketKey = Math.floor(Date.now() / bucketMs) * bucketMs

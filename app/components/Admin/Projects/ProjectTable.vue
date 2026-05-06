@@ -288,7 +288,7 @@ function clearFilters() {
                 <Badge
                   v-for="tag in project.Tags"
                   :key="tag"
-                  size="xs"
+                  size="s"
                   variant="neutral"
                   class="table-tag"
                 >

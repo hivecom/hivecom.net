@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.overrides'
 
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs, Tooltip } from '@dolanske/vui'
+import { Badge, Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { useDataUser } from '@/composables/useDataUser'
@@ -15,7 +15,6 @@ import { flattenTopicsTree } from '@/lib/topics'
 import { normalizeErrors, slugify } from '@/lib/utils/formatting'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
-import TinyBadge from '../Shared/TinyBadge.vue'
 
 const props = defineProps<Props>()
 
@@ -537,9 +536,9 @@ function confirmPublish() {
       <Tab value="drafts" :disabled="drafts.length === 0">
         <Flex y-center gap="xs">
           Drafts
-          <TinyBadge v-if="drafts.length > 0" variant="info">
+          <Badge v-if="drafts.length > 0" size="s" variant="info">
             {{ drafts.length }}
-          </TinyBadge>
+          </Badge>
         </Flex>
       </Tab>
     </Tabs>

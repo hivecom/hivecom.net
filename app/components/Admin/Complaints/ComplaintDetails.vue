@@ -270,7 +270,7 @@ function confirmDeleteComplaint() {
                 :user-id="complaint.created_by"
                 show-role
               />
-              <Badge :variant="statusConfig.variant" size="s">
+              <Badge :variant="statusConfig.variant">
                 <Icon :name="statusConfig.icon" />
                 {{ statusConfig.label }}
               </Badge>

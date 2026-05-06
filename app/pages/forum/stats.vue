@@ -593,7 +593,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
                   </div>
                 </td>
                 <td class="leaderboard__td leaderboard__td--count">
-                  <Badge variant="neutral" size="s">
+                  <Badge variant="neutral">
                     <CountDisplay :value="user.count" :max-chars="4" class="text-s" />
                   </Badge>
                 </td>
@@ -626,7 +626,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
                     </div>
                   </td>
                   <td class="leaderboard__td leaderboard__td--count">
-                    <Badge variant="neutral" size="s">
+                    <Badge variant="neutral">
                       <CountDisplay :value="currentUserOutsideTop.count" :max-chars="4" />
                     </Badge>
                   </td>

@@ -128,7 +128,7 @@ function handleAcknowledge(event: Event) {
               class="text-color-light"
             />
           </Flex>
-          <Badge :variant="statusConfig.variant" size="s">
+          <Badge :variant="statusConfig.variant">
             <Icon :name="statusConfig.icon" />
             {{ statusConfig.label }}
           </Badge>

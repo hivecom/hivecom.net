@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { Card, Flex } from '@dolanske/vui'
+import { Badge, Card, Flex } from '@dolanske/vui'
 import { computed, toRefs } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatTimeAgo } from '@/lib/utils/date'
-import TinyBadge from '../Shared/TinyBadge.vue'
 
 interface Props {
   text?: string
@@ -92,9 +91,9 @@ function handleCardClick() {
         <div v-if="slots.default" class="notification-card__extra">
           <slot />
         </div>
-        <TinyBadge v-if="badge">
+        <Badge v-if="badge" size="s">
           {{ badge }}
-        </TinyBadge>
+        </Badge>
         <slot name="meta" />
       </Flex>
       <span

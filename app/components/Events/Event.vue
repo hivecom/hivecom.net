@@ -91,15 +91,15 @@ updateTime()
             {{ props.data.description }}
           </p>
           <Flex>
-            <Badge v-if="props.data.is_official" variant="accent" size="l">
+            <Badge v-if="props.data.is_official" variant="accent">
               <Icon name="ph:star-fill" />
               Official
             </Badge>
-            <Badge v-if="props.data.recurrence_rule" variant="neutral" size="l">
+            <Badge v-if="props.data.recurrence_rule" variant="neutral">
               <Icon name="ph:arrows-clockwise" />
               {{ humanizeRrule(props.data.recurrence_rule) }}
             </Badge>
-            <Badge v-if="props.data.location" variant="neutral" size="l">
+            <Badge v-if="props.data.location" variant="neutral">
               <Icon name="ph:map-pin-fill" />
               {{ props.data.location }}
             </Badge>
@@ -109,7 +109,7 @@ updateTime()
                   {{ props.data.note }}
                 </div>
               </template>
-              <Badge variant="neutral" size="l" class="event-item__note-badge">
+              <Badge variant="neutral" class="event-item__note-badge">
                 <Icon name="ph:note" />
                 Note
               </Badge>

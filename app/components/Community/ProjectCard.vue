@@ -118,7 +118,7 @@ const bannerSurfaceStyle = computed(() => {
               <GitHubLink :github="project.github" :show-icon="true" :hide-repo="true" small />
             </span>
             <div v-if="project.tags && project.tags.length > 0" class="project-card__tags">
-              <Badge v-for="tag in project.tags" :key="tag" size="xs" variant="accent">
+              <Badge v-for="tag in project.tags" :key="tag" variant="accent">
                 {{ tag }}
               </Badge>
             </div>

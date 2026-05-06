@@ -224,7 +224,7 @@ onBeforeMount(fetchEntries)
                 <span class="text-mono">{{ row.Key }}</span>
               </Table.Cell>
               <Table.Cell>
-                <Badge size="xs" variant="neutral">
+                <Badge variant="neutral">
                   {{ row.Type }}
                 </Badge>
               </Table.Cell>

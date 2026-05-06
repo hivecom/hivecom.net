@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { Badge } from '@dolanske/vui'
 import dayjs from 'dayjs'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import { useDataEvents } from '@/composables/useDataEvents'
 import { formatDurationCompact } from '@/lib/utils/duration'
 
@@ -70,7 +70,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <TinyBadge v-if="badge" :variant="badge === 'NOW' ? 'accent' : 'neutral'">
+  <Badge v-if="badge" size="s" :variant="badge === 'NOW' ? 'accent' : 'neutral'">
     {{ badge }}
-  </TinyBadge>
+  </Badge>
 </template>

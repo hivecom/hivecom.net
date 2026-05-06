@@ -121,7 +121,7 @@ function handleDelete(project: Tables<'projects'>) {
                 <Badge
                   v-for="tag in props.project.tags"
                   :key="tag"
-                  size="xs"
+                  size="s"
                   variant="neutral"
                 >
                   {{ tag }}

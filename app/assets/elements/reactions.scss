@@ -44,6 +44,8 @@
 
     &.reactions__button--active {
       background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 20%, transparent);
+      padding-left: var(--space-xxs);
+      padding-right: var(--space-xxs);
 
       .reactions__counter {
         color: var(--color-accent);

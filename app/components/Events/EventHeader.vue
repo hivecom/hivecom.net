@@ -254,12 +254,12 @@ onMounted(() => {
     <!-- Event meta information -->
     <Flex gap="m" x-between expand :column="isBelowSmall">
       <Flex :gap="isBelowSmall ? 'xxs' : 's'" wrap class="event-header__badges-section" :x-center="isBelowSmall" :expand="isBelowSmall">
-        <Badge v-if="props.event.is_official" variant="accent" size="l">
+        <Badge v-if="props.event.is_official" variant="accent">
           <Icon name="ph:star-fill" />
           Official
         </Badge>
 
-        <Badge v-if="props.event.location" variant="neutral" size="l">
+        <Badge v-if="props.event.location" variant="neutral">
           <Icon name="ph:map-pin-fill" />
           {{ props.event.location }}
         </Badge>
@@ -270,13 +270,13 @@ onMounted(() => {
               {{ props.event.note }}
             </div>
           </template>
-          <Badge variant="neutral" size="l" class="event-header__note-badge">
+          <Badge variant="neutral" class="event-header__note-badge">
             <Icon name="ph:note" />
             Note
           </Badge>
         </Tooltip>
 
-        <Badge v-if="props.event.recurrence_rule" variant="neutral" size="l">
+        <Badge v-if="props.event.recurrence_rule" variant="neutral">
           <Icon name="ph:arrows-clockwise" />
           {{ humanizeRrule(props.event.recurrence_rule) }}
         </Badge>

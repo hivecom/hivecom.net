@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, Flex, pushToast, Switch } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, pushToast, Switch } from '@dolanske/vui'
 import { reactive, ref, watch } from 'vue'
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
+
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
 
@@ -270,10 +270,10 @@ function toggleRichPresence() {
             <Flex column expand gap="xxs">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
                 <strong>Discord</strong>
-                <TinyBadge v-if="props.profile?.discord_id" variant="success">
+                <Badge v-if="props.profile?.discord_id" size="s" variant="success">
                   <Icon class="text-color-accent" name="ph:check" />
                   Connected
-                </TinyBadge>
+                </Badge>
               </Flex>
               <p class="text-s text-color-lighter">
                 Sign-in through Discord
@@ -327,10 +327,10 @@ function toggleRichPresence() {
             <Flex column expand gap="xxs">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
                 <strong>Patreon</strong>
-                <TinyBadge v-if="props.profile?.patreon_id" variant="success">
+                <Badge v-if="props.profile?.patreon_id" size="s" variant="success">
                   <Icon class="text-color-accent" name="ph:check" />
                   Connected
-                </TinyBadge>
+                </Badge>
               </Flex>
               <p class="text-s text-color-lighter">
                 Connect to get your supporter benefits
@@ -384,10 +384,10 @@ function toggleRichPresence() {
             <Flex column expand gap="xxs">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
                 <strong>Steam</strong>
-                <TinyBadge v-if="props.profile?.steam_id" variant="success">
+                <Badge v-if="props.profile?.steam_id" size="s" variant="success">
                   <Icon class="text-color-accent" name="ph:check" />
                   Connected
-                </TinyBadge>
+                </Badge>
               </Flex>
               <p class="text-s text-color-lighter">
                 Connect your gaming profile
@@ -441,10 +441,10 @@ function toggleRichPresence() {
             <Flex column expand gap="xxs">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
                 <strong>TeamSpeak</strong>
-                <TinyBadge v-if="hasTeamSpeakConnected" variant="success">
+                <Badge v-if="hasTeamSpeakConnected" size="s" variant="success">
                   <Icon class="text-color-accent" name="ph:check" />
                   Connected
-                </TinyBadge>
+                </Badge>
               </Flex>
               <p class="text-s text-color-lighter">
                 Link your TeamSpeak identities to receive server access and roles

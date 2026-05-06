@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
+import { Alert, Button, Flex, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<Props>()
@@ -25,6 +26,35 @@ interface Props {
   loading: boolean
   errorMessage: string
   filteredGames: Tables<'games'>[]
+}
+
+const { metrics, fetchMetrics } = useDataMetrics()
+
+onMounted(() => {
+  if (metrics.value === null)
+    fetchMetrics()
+})
+
+function getPlayersForGame(gameId: number): number | null {
+  if (!metrics.value || !props.gameservers)
+    return null
+  const byServer = metrics.value.gameservers.byServer
+  const servers = props.gameservers.filter(gs => gs.game === gameId)
+  if (!servers.length)
+    return null
+  let total = 0
+  for (const gs of servers) {
+    const detail = byServer[String(gs.id)]
+    if (!detail?.data)
+      continue
+    const count = detail.protocol === 'minecraft'
+      ? detail.data.numPlayers
+      : detail.protocol === 'source'
+        ? detail.data.players
+        : null
+    total += count ?? 0
+  }
+  return total
 }
 
 const showModal = ref(false)
@@ -132,7 +162,8 @@ function isCoverLoading(gameId: number): boolean {
         <div class="game-grid">
           <TransitionGroup name="card-fade" tag="div" class="game-grid-container" appear>
             <button
-              v-for="(game, index) in filteredGames" :key="game.id" class="game-card" :class="{
+              v-for="(game, index) in filteredGames" :key="game.id"
+              class="game-card" :class="{
                 'content-loaded': !isCoverLoading(game.id),
               }" :style="{ '--delay': `${index * 50}ms` }" @click="openGameModal(game)"
             >
@@ -152,6 +183,18 @@ function isCoverLoading(gameId: number): boolean {
                     :alt="game.name || 'Game cover'" class="cover-image" @load="handleCoverLoad"
                   >
                 </div>
+                <Tooltip placement="top">
+                  <Indicator
+                    v-if="(getPlayersForGame(game.id) ?? 0) > 0"
+                    variant="online"
+                    class="cover-live-indicator"
+                    outline
+                    ripple
+                  />
+                  <template #tooltip>
+                    <p>{{ getPlayersForGame(game.id) }} online now</p>
+                  </template>
+                </Tooltip>
               </div>
               <div class="game-info">
                 <h3 class="game-title">
@@ -281,6 +324,7 @@ function isCoverLoading(gameId: number): boolean {
 }
 
 .game-card {
+  width: 100%;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -319,7 +363,6 @@ function isCoverLoading(gameId: number): boolean {
   position: relative;
   aspect-ratio: 2 / 2.8;
   height: auto;
-  overflow: hidden;
   border-radius: var(--border-radius-m) var(--border-radius-m) 0 0;
 
   .cover-image-container {
@@ -330,6 +373,8 @@ function isCoverLoading(gameId: number): boolean {
     align-items: center;
     justify-content: center;
     background: var(--color-background-secondary);
+    overflow: hidden;
+    border-radius: var(--border-radius-m) var(--border-radius-m) 0 0;
   }
 
   .cover-fallback {
@@ -376,6 +421,13 @@ function isCoverLoading(gameId: number): boolean {
     &.cover-loaded {
       opacity: 1;
     }
+  }
+
+  .cover-live-indicator {
+    position: absolute;
+    top: var(--space-s);
+    right: var(--space-s);
+    z-index: 4;
   }
 }
 

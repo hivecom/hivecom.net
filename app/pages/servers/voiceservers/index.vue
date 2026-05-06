@@ -1,5 +1,20 @@
 <script setup lang="ts">
+import { Flex } from '@dolanske/vui'
+import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
+import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import TeamSpeakViewer from '@/components/Shared/TeamSpeakViewer.vue'
+import { useDataMetrics } from '@/composables/useDataMetrics'
+
+const { metrics, fetchMetrics } = useDataMetrics()
+
+onMounted(() => {
+  if (metrics.value === null)
+    fetchMetrics()
+})
+
+const totalOnline = computed<number | null>(() => metrics.value?.teamspeak.online ?? null)
+const activityModalOpen = ref(false)
 
 useSeoMeta({
   title: 'Voice Servers',
@@ -17,10 +32,23 @@ defineOgImage('Default', {
 <template>
   <div class="page container-m">
     <section class="page-title">
-      <h1>Voice Servers</h1>
+      <Flex y-center x-between gap="s" expand>
+        <h1>Voice Servers</h1>
+        <OnlineBadge :count="totalOnline" label="Online Now" clickable @click="activityModalOpen = true" />
+      </Flex>
       <p>View live channels and connect with the community on TeamSpeak.</p>
     </section>
 
     <TeamSpeakViewer />
+
+    <ChartActivityHistogramModal
+      v-model:open="activityModalOpen"
+      title="TeamSpeak Activity"
+      :series="['teamspeakOnline']"
+    >
+      <template #default="{ period, window, utc, color }">
+        <ChartTeamSpeakOnline :period :window :utc :color />
+      </template>
+    </ChartActivityHistogramModal>
   </div>
 </template>

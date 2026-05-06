@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Card, Flex } from '@dolanske/vui'
+import { Badge, Card, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { truncate } from '@/lib/utils/formatting'
 import EventRSVPCount from './EventRSVPCount.vue'
@@ -58,10 +57,10 @@ const isBelowSmall = useBreakpoint('<m')
           >
             {{ eventStatus.label }}
           </span>
-          <TinyBadge v-if="props.event.is_official" variant="accent">
+          <Badge v-if="props.event.is_official" variant="accent" size="s">
             <Icon name="ph:star-fill" />
             Official
-          </TinyBadge>
+          </Badge>
         </Flex>
         <strong class="event-card__title">
           {{ props.event.title }}
