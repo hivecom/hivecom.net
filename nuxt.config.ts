@@ -313,6 +313,7 @@ export default defineNuxtConfig({
         // Global search + searches
         'ph:magnifying-glass',
         'ph:list-magnifying-glass',
+        'ph:selection-slash',
       ],
     },
   },
