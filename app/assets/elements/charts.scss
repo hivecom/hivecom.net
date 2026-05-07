@@ -1,10 +1,15 @@
 .chart-container {
   width: 100%;
   min-height: 320px;
-  background-color: var(--color-bg);
+  background-color: var(--color-bg-card);
   border-radius: var(--border-radius-m);
   padding: var(--space-m);
   border: 1px solid var(--color-border);
+
+  &.chart-container--compact {
+    min-height: 0;
+    padding: var(--space-s);
+  }
 
   .text-m text-bold-row {
     margin-bottom: var(--space-s);
@@ -15,11 +20,24 @@
   height: 320px;
   width: 100%;
   position: relative;
+
+  &--compact {
+    height: 100px;
+  }
 }
 
 .chart-wrapper canvas {
   width: 100% !important;
   height: 100% !important;
+}
+
+.chart-compact-title {
+  padding-left: var(--space-xxs);
+  padding-right: var(--space-xxs);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-light);
+  margin-bottom: var(--space-xs);
 }
 
 .chart-loading,
@@ -31,6 +49,10 @@
   width: 100%;
   height: 320px;
   color: var(--color-text-light);
+
+  &--compact {
+    height: 100px;
+  }
 }
 
 .chart-skeleton {
@@ -58,6 +80,10 @@
     .chart-lines-skeleton {
       flex: 1;
       height: 280px;
+
+      &--compact {
+        height: 60px;
+      }
     }
   }
 

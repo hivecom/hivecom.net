@@ -34,7 +34,7 @@ export interface ChartPalette {
  */
 export function getChartPalette(): ChartPalette {
   return {
-    grid: getCSSVariable('--color-border-weak'),
+    grid: getCSSVariable('--color-border'),
     text: getCSSVariable('--color-text'),
     textLight: getCSSVariable('--color-text-light'),
     datasets: [
@@ -181,6 +181,7 @@ export const barGapPlugin: Plugin<'bar'> = {
  */
 export function getBarChartDefaults(useUtc = false): ChartOptions<'bar'> {
   const palette = getChartPalette()
+  const borderRadius = Number.parseInt(getCSSVariable('--border-radius-xs') || '3', 10)
 
   return {
     responsive: true,
@@ -227,6 +228,12 @@ export function getBarChartDefaults(useUtc = false): ChartOptions<'bar'> {
       mode: 'nearest',
       axis: 'x',
       intersect: false,
+    },
+    elements: {
+      bar: {
+        borderRadius,
+        borderSkipped: false,
+      },
     },
   }
 }

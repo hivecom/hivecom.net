@@ -50,6 +50,8 @@ export interface MetricsMembers {
   online: number
   byCountry: Record<string, number>
   byGame: Record<string, number>
+  /** Maps Steam app ID (as string) to player count. Only includes users with rich_presence_enabled. */
+  bySteamGame: Record<string, number>
 }
 
 export interface MetricsCommunity {

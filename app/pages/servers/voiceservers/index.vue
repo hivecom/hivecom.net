@@ -7,7 +7,7 @@ import TeamSpeakViewer from '@/components/Shared/TeamSpeakViewer.vue'
 
 const totalOnline = ref<number | null>(null)
 
-function onTotalOnlineUpdate(count: number) {
+function onTotalOnlineUpdate(count: number | null) {
   totalOnline.value = count
 }
 const activityModalOpen = ref(false)
@@ -30,12 +30,7 @@ defineOgImage('Default', {
     <section class="page-title">
       <Flex y-center x-between gap="s" expand>
         <h1>Voice Servers</h1>
-        <ClientOnly>
-          <OnlineBadge :count="totalOnline" label="Connections" clickable @click="activityModalOpen = true" />
-          <template #fallback>
-            <OnlineBadge :count="null" />
-          </template>
-        </ClientOnly>
+        <OnlineBadge :count="totalOnline" label="Connections" clickable @click="activityModalOpen = true" />
       </Flex>
       <p>View live channels and connect with the community on TeamSpeak.</p>
     </section>

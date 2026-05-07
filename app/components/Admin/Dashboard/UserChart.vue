@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ChartOptions } from 'chart.js'
 import type { ChartComponentRef } from 'vue-chartjs'
-import type { Database } from '@/types/database.types'
 import { Skeleton, theme } from '@dolanske/vui'
 import { useElementSize } from '@vueuse/core'
 import {
@@ -16,9 +15,8 @@ import {
   Tooltip,
 } from 'chart.js'
 import dayjs from 'dayjs'
-import { computed, ref, watchEffect } from 'vue'
+import { computed, onBeforeMount, ref, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
-import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { getChartPalette, getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
@@ -34,20 +32,69 @@ ChartJS.register(
   Legend,
 )
 
-// Monthly funding table type
-type MonthlyFunding = Database['public']['Tables']['monthly_funding']['Row']
+// Types
+interface MonthlyUserData {
+  month: string
+  totalUsers: number
+}
 
-// Setup state
+// Setup client and state
+const supabase = useSupabaseClient()
 const loading = ref(true)
 const errorMessage = ref('')
-const monthlyFundings = ref<MonthlyFunding[]>([])
-
-// monthly_funding served from shared cache
-const { allFunding, loading: fundingLoading, error: fundingError } = useDataMonthlyFunding()
+const monthlyData = ref<MonthlyUserData[]>([])
 const chartWrapperRef = ref<HTMLElement | null>(null)
 const chartRef = ref<ChartComponentRef<'line'> | null>(null)
 const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
 const { activeTheme } = useUserTheme()
+
+// Fetch users data and group by month
+async function fetchUsersData() {
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('created_at')
+    .order('created_at', { ascending: true })
+
+  if (error)
+    throw error
+
+  // Group users by month
+  const usersByMonth: Record<string, { total: number }> = {}
+
+  profiles?.forEach((profile) => {
+    const month = dayjs(profile.created_at).format('YYYY-MM')
+    if (!usersByMonth[month]) {
+      usersByMonth[month] = { total: 0 }
+    }
+    usersByMonth[month].total++
+  })
+
+  return usersByMonth
+}
+
+// Combine and process all data
+async function fetchAllData() {
+  loading.value = true
+  errorMessage.value = ''
+
+  try {
+    const usersByMonth = await fetchUsersData()
+
+    const sortedEntries = Object.entries(usersByMonth).toSorted(([a], [b]) => dayjs(a).valueOf() - dayjs(b).valueOf())
+
+    let cumulativeUsers = 0
+    monthlyData.value = sortedEntries.map(([month, users]) => {
+      cumulativeUsers += users.total
+      return { month: dayjs(month).format('YYYY-MM'), totalUsers: cumulativeUsers }
+    })
+  }
+  catch (error: unknown) {
+    errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading user data'
+  }
+  finally {
+    loading.value = false
+  }
+}
 
 // Chart data
 const chartData = computed(() => {
@@ -57,31 +104,21 @@ const chartData = computed(() => {
   void theme.value
   void activeTheme.value
 
-  if (!monthlyFundings.value.length) {
+  if (!monthlyData.value.length) {
     return {
       labels: [],
       datasets: [],
     }
   }
 
-  // Sort data by month ascending for chronological display
-  const sortedData = monthlyFundings.value.toSorted((a, b) => {
-    return dayjs(a.month).valueOf() - dayjs(b.month).valueOf()
+  // Data is already sorted in fetchAllData, no need to sort again
+  const sortedData = monthlyData.value
+
+  const labels = sortedData.map((data) => {
+    return dayjs(data.month).format('MMM YYYY')
   })
 
-  const labels = sortedData.map((funding) => {
-    return dayjs(funding.month).format('MMM YYYY')
-  })
-
-  // Calculate monthly total income (Patreon + donations)
-  const monthlyIncomeData = sortedData.map((funding) => {
-    const patreonAmount = (funding.patreon_month_amount_cents || 0) / 100
-    const donationAmount = (funding.donation_month_amount_cents || 0) / 100
-    return patreonAmount + donationAmount
-  })
-
-  const patreonSupportersData = sortedData.map(f => f.patreon_count ?? 0)
-  const supportersData = sortedData.map(f => f.donation_count ?? 0)
+  const totalUsersData = sortedData.map(data => data.totalUsers)
 
   const palette = getChartPalette()
 
@@ -89,25 +126,11 @@ const chartData = computed(() => {
     labels,
     datasets: [
       {
-        label: 'Monthly Income (€)',
-        data: monthlyIncomeData,
+        label: 'Total Users',
+        data: totalUsersData,
         borderColor: palette.datasets[0], // blue
         backgroundColor: palette.datasets[0],
-        fill: false,
-      },
-      {
-        label: 'Patreon Supporters',
-        data: patreonSupportersData,
-        borderColor: palette.datasets[2], // red
-        backgroundColor: palette.datasets[2],
-        fill: false,
-      },
-      {
-        label: 'Supporters',
-        data: supportersData,
-        borderColor: palette.datasets[1], // green
-        backgroundColor: palette.datasets[1],
-        fill: false,
+        yAxisID: 'y',
       },
     ],
   }
@@ -117,7 +140,10 @@ const chartData = computed(() => {
 const localChartOptions: ChartOptions<'line'> = {
   plugins: {
     title: {
-      text: 'Monthly Income & Supporters',
+      display: false,
+    },
+    legend: {
+      display: false,
     },
     tooltip: {
       mode: 'index',
@@ -125,46 +151,43 @@ const localChartOptions: ChartOptions<'line'> = {
       callbacks: {
         label: (context) => {
           const label = context.dataset.label || ''
-          const value = context.parsed?.y
-
-          if (typeof value !== 'number') {
-            return label ? `${label}: -` : '-'
-          }
-
-          return `${label}: €${value.toFixed(2)}`
+          return `${label}: ${context.parsed.y}`
         },
       },
+    },
+  },
+  elements: {
+    line: {
+      tension: 0.4,
+    },
+    point: {
+      radius: 0,
     },
   },
   scales: {
     x: {
       title: {
-        display: true,
-        text: 'Month',
+        display: false,
+      },
+      ticks: {
+        maxTicksLimit: 8,
+        maxRotation: 0,
+        callback(val, index) {
+          const label = this.getLabelForValue(index)
+          // label is 'MMM YYYY' e.g. 'Apr 2025' - shorten to 'Apr '25'
+          const parts = label.split(' ')
+          const [month, year] = parts
+          return month && year ? `${month} '${year.slice(2)}` : label
+        },
       },
     },
     y: {
       title: {
-        display: true,
-        text: 'Value',
+        display: false,
       },
     },
   },
 }
-
-// Sync from shared cache - allFunding is ordered descending, chart needs ascending
-watch([allFunding, fundingLoading, fundingError], () => {
-  if (fundingError.value) {
-    errorMessage.value = fundingError.value
-    loading.value = false
-    return
-  }
-
-  if (!fundingLoading.value) {
-    monthlyFundings.value = allFunding.value.toReversed() as MonthlyFunding[]
-    loading.value = false
-  }
-}, { immediate: true })
 
 watchEffect(() => {
   const width = chartWrapperWidth.value
@@ -176,38 +199,52 @@ watchEffect(() => {
   const containerHeight = chartWrapperRef.value?.clientHeight
   chart.resize(Math.floor(width), containerHeight)
 })
+
+// Month-over-month growth %
+const momGrowth = computed(() => {
+  const data = monthlyData.value
+  if (data.length < 2)
+    return null
+  const prev = data[data.length - 2]!.totalUsers
+  const curr = data[data.length - 1]!.totalUsers
+  if (prev === 0)
+    return null
+  return Math.round(((curr - prev) / prev) * 100)
+})
+
+const currentDiff = computed(() => {
+  const data = monthlyData.value
+  if (data.length < 2)
+    return null
+  return data[data.length - 1]!.totalUsers - data[data.length - 2]!.totalUsers
+})
+
+defineExpose({ momGrowth, currentDiff })
+
+// Lifecycle hooks
+onBeforeMount(fetchAllData)
 </script>
 
 <template>
   <div class="chart-container">
     <div v-if="loading" class="chart-loading">
       <div class="chart-skeleton">
-        <!-- Chart title skeleton -->
-        <Skeleton :width="280" :height="20" :radius="4" style="margin-bottom: var(--space-l);" />
-
-        <!-- Legend skeleton -->
-        <div class="legend-skeleton">
-          <Skeleton :width="120" :height="16" :radius="4" />
-          <Skeleton :width="140" :height="16" :radius="4" />
-          <Skeleton :width="80" :height="16" :radius="4" />
-        </div>
-
         <!-- Chart area skeleton -->
         <div class="chart-area-skeleton">
           <!-- Y-axis labels -->
           <div class="y-axis-skeleton">
-            <Skeleton v-for="i in 6" :key="i" :width="40" :height="12" :radius="2" />
+            <Skeleton v-for="i in 5" :key="i" :width="30" :height="10" :radius="2" />
           </div>
 
           <!-- Chart lines simulation -->
           <div class="chart-lines-skeleton">
-            <Skeleton :height="200" :radius="8" style="opacity: 0.3;" />
+            <Skeleton :height="120" :radius="8" style="opacity: 0.3;" />
           </div>
         </div>
 
         <!-- X-axis labels -->
         <div class="x-axis-skeleton">
-          <Skeleton v-for="i in 6" :key="i" :width="60" :height="12" :radius="2" />
+          <Skeleton v-for="i in 6" :key="i" :width="44" :height="10" :radius="2" />
         </div>
       </div>
     </div>
@@ -216,8 +253,8 @@ watchEffect(() => {
       <p>Error loading chart: {{ errorMessage }}</p>
     </div>
 
-    <div v-else-if="!monthlyFundings.length" class="chart-empty">
-      <p>No funding data available for chart</p>
+    <div v-else-if="!monthlyData.length" class="chart-empty">
+      <p>No user data available for chart</p>
     </div>
 
     <div v-else ref="chartWrapperRef" :key="`${theme}-${activeTheme?.id}`" class="chart-wrapper">
@@ -233,15 +270,15 @@ watchEffect(() => {
 <style scoped lang="scss">
 .chart-container {
   width: 100%;
-  min-height: 320px;
-  background-color: var(--color-bg);
+  min-height: 160px;
+  background-color: var(--color-bg-card);
   border-radius: var(--border-radius-m);
   padding: var(--space-m);
   border: 1px solid var(--color-border);
 }
 
 .chart-wrapper {
-  height: 320px;
+  height: 160px;
   width: 100%;
   position: relative;
 }
@@ -257,7 +294,7 @@ watchEffect(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 400px;
+  height: 160px;
   color: var(--color-text-light);
 }
 
@@ -265,37 +302,30 @@ watchEffect(() => {
   width: 100%;
   max-width: 800px;
 
-  .legend-skeleton {
-    display: flex;
-    justify-content: center;
-    gap: var(--space-l);
-    margin-bottom: var(--space-l);
-  }
-
   .chart-area-skeleton {
     display: flex;
     align-items: center;
     gap: var(--space-s);
-    margin-bottom: var(--space-m);
+    margin-bottom: var(--space-xs);
 
     .y-axis-skeleton {
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      height: 200px;
+      height: 120px;
     }
 
     .chart-lines-skeleton {
       flex: 1;
-      height: 200px;
+      height: 120px;
     }
   }
 
   .x-axis-skeleton {
     display: flex;
     justify-content: space-between;
-    margin-left: 48px;
-    margin-right: 48px;
+    margin-left: 38px;
+    margin-right: 0;
   }
 }
 

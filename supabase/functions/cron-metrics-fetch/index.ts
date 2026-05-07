@@ -276,6 +276,15 @@ Deno.serve(async (req: Request) => {
       byGame[key] = (byGame[key] ?? 0) + 1;
     }
 
+    // bySteamGame: all Steam app IDs being played by opt-in users, keyed by steam app ID string
+    const bySteamGame: Record<string, number> = {};
+    for (const row of (presencesRes.data as SteamPresenceRow[] | null) ?? []) {
+      if (!row.profile?.rich_presence_enabled) continue;
+      if (row.current_app_id == null) continue;
+      const key = String(row.current_app_id);
+      bySteamGame[key] = (bySteamGame[key] ?? 0) + 1;
+    }
+
     // ---------------------------------------------------------------------------
     // TeamSpeak
     // ---------------------------------------------------------------------------
@@ -465,6 +474,7 @@ Deno.serve(async (req: Request) => {
         online: onlineMembersRes.count ?? 0,
         byCountry,
         byGame,
+        bySteamGame,
       },
       community: {
         projects: projectsRes.count ?? 0,

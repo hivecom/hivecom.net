@@ -117,6 +117,14 @@ const menuItems = [
     path: '/admin/',
     icon: 'ph:squares-four',
     permissions: [], // Dashboard is always accessible to admin/moderator
+    dividerAfter: false,
+  },
+  {
+    name: 'Metrics',
+    path: '/admin/metrics',
+    icon: 'ph:chart-bar',
+    permissions: [],
+    dividerAfter: true,
   },
   {
     name: 'Assets',
@@ -395,25 +403,29 @@ watch(() => route.path, () => {
           </template>
 
           <!-- Only show menu items the user has permissions for -->
-          <Tooltip
+          <template
             v-for="item in accessibleMenuItems"
             :key="item.path"
-            :disabled="!miniSidebar"
-            placement="right"
           >
-            <DropdownItem
-              :class="{ selected: route.path === item.path }"
-              @click="handleNavigation(item.path)"
+            <Tooltip
+              :disabled="!miniSidebar"
+              placement="right"
             >
-              <template v-if="item.icon" #icon>
-                <Icon :name="item.icon" />
+              <DropdownItem
+                :class="{ selected: route.path === item.path }"
+                @click="handleNavigation(item.path)"
+              >
+                <template v-if="item.icon" #icon>
+                  <Icon :name="item.icon" />
+                </template>
+                {{ item.name }}
+              </DropdownItem>
+              <template #tooltip>
+                <p>{{ item.name }}</p>
               </template>
-              {{ item.name }}
-            </DropdownItem>
-            <template #tooltip>
-              <p>{{ item.name }}</p>
-            </template>
-          </Tooltip>
+            </Tooltip>
+            <Divider v-if="item.dividerAfter" class="my-xs" />
+          </template>
 
           <template v-if="miniSidebar">
             <Divider class="my-m" />

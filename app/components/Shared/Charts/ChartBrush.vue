@@ -192,8 +192,8 @@ function draw() {
   const W = canvas.width
   const H = canvas.height
 
-  const colorBg = getCSSVariable('--color-bg-lowered')
-  const colorGap = getCSSVariable('--color-bg-raised')
+  const colorBg = getCSSVariable('--color-bg-card')
+  const colorGap = getCSSVariable('--color-border')
   const colorAccent = props.color ?? getCSSVariable('--color-accent')
   const paletteColors = [
     getCSSVariable('--color-text-blue'),
@@ -533,7 +533,7 @@ defineExpose({ setBrush })
     height: 56px;
     cursor: crosshair;
     border-radius: var(--border-radius-s);
-    background-color: var(--color-bg-lowered);
+    background-color: var(--color-bg-card);
   }
 
   &__footer {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Card, Flex, Skeleton } from '@dolanske/vui'
+import { Button, Card, Flex, Skeleton } from '@dolanske/vui'
 import { onBeforeMount, ref } from 'vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
@@ -138,12 +138,15 @@ onBeforeMount(() => {
 </script>
 
 <template>
-  <Card class="alerts-card" :padding="false">
-    <Flex class="alerts-header" y-center x-between expand>
-      <Flex y-center gap="s">
-        <h3>{{ loading ? '...' : alerts.length }} {{ alerts.length > 1 ? 'Alerts' : 'Alert' }}</h3>
+  <Card :padding="false" class="alerts-card card-bg" separators>
+    <template #header>
+      <Flex x-between y-center expand class="px-m py-s">
+        <span class="alerts-title">{{ loading ? '...' : alerts.length }} {{ alerts.length === 1 ? 'Alert' : 'Alerts' }}</span>
+        <Button variant="link" size="s" square disabled>
+          <Icon name="ph:arrow-square-out" size="16" />
+        </Button>
       </Flex>
-    </Flex>
+    </template>
 
     <div v-if="loading" class="alerts-table">
       <div class="alerts-table-header">
@@ -231,41 +234,27 @@ onBeforeMount(() => {
 
 <style lang="scss" scoped>
 .alerts-card {
-  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-l);
-  background: var(--color-bg);
 }
 
-.alerts-header {
-  padding: var(--space-l);
-  border-bottom: 1px solid var(--color-border);
-
-  h3 {
-    margin: 0;
-    font-size: var(--font-size-l);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text);
-  }
-}
-
-.alerts-count {
-  min-width: 24px;
-  height: 24px;
-  padding: 0 var(--space-xs);
-  border-radius: var(--border-radius-round);
-  background: var(--color-bg-medium);
-  font-size: var(--font-size-l);
+.alerts-title {
+  font-size: var(--font-size-m);
   font-weight: var(--font-weight-medium);
-
-  &--active {
-    background: var(--color-bg-red);
-  }
+  color: var(--color-text);
 }
 
 .alerts-empty {
-  padding: var(--space-xl);
+  padding: var(--space-xxl);
   color: var(--color-text-light);
   font-size: var(--font-size-s);
+  padding-bottom: 52px;
+}
+
+.alerts-card {
+  :deep(.vui-card-content:not(:first-child)) {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
 }
 
 .alerts-table {
@@ -273,7 +262,7 @@ onBeforeMount(() => {
     display: grid;
     grid-template-columns: 80px 1fr 80px;
     gap: var(--space-m);
-    padding: var(--space-m) var(--space-l);
+    padding: var(--space-s) var(--space-m);
     border-bottom: 1px solid var(--color-border);
     background: var(--color-bg-raised);
 

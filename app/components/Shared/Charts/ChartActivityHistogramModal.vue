@@ -19,7 +19,7 @@ const open = defineModel<boolean>('open', { default: false })
 
 const color = computed(() => props.color ?? getCSSVariable('--color-accent'))
 
-const activePeriod = ref<MetricsPeriod>('7d')
+const activePeriod = ref<MetricsPeriod>('24h')
 const activeWindow = ref<{ start: Date, end: Date } | null>(null)
 const activeUtc = ref(false)
 
@@ -45,7 +45,7 @@ watch(open, (val) => {
   }
   else {
     activeWindow.value = null
-    activePeriod.value = '7d'
+    activePeriod.value = '24h'
   }
 })
 </script>

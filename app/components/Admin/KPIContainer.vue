@@ -1,12 +1,13 @@
 <script setup lang="ts">
+import type { Spaces } from '@dolanske/vui'
 import { Flex } from '@dolanske/vui'
 import { useAttrs } from 'vue'
 
 const props = withDefaults(defineProps<{
-  gap?: number
+  gap?: Spaces
   expand?: boolean
 }>(), {
-  gap: 8,
+  gap: 's',
   expand: true,
 })
 

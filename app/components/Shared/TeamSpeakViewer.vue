@@ -22,7 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
   servers: null,
 })
 
-const emit = defineEmits<{ 'update:totalOnline': [count: number] }>()
+const emit = defineEmits<{ 'update:totalOnline': [count: number | null] }>()
 
 const SPACER_STRIP_RE = /^\[l?spacer\d*\]\s*/i
 const PARENS_UNWRAP_RE = /^\((.*)\)$/u
@@ -769,7 +769,7 @@ const renderRowsByServer = computed(() => {
 
 // Emit total non-bot online count whenever selected server or snapshot changes
 watch(
-  () => selectedServer.value ? serverClientCount(selectedServer.value) : 0,
+  () => snapshotLoading.value ? null : (selectedServer.value ? serverClientCount(selectedServer.value) : 0),
   count => emit('update:totalOnline', count),
   { immediate: true },
 )

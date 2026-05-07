@@ -147,7 +147,7 @@ onClickOutside(self, () => {
           </Flex>
         </template>
         <Alert variant="info" filled>
-          <Skeleton class="text-skeleton" height="16px" width="154px" style="background-color: var(--color-text-lighter)" />
+          <Skeleton class="text-skeleton" height="16px" width="156px" style="background-color: var(--color-text-lighter)" />
         </Alert>
 
         <div style="height:167px" />

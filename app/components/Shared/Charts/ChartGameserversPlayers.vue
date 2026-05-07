@@ -14,6 +14,7 @@ import {
 } from 'chart.js'
 import { computed, nextTick, onMounted, ref, watch, watchEffect } from 'vue'
 import { Bar } from 'vue-chartjs'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useUserTheme } from '@/composables/useUserTheme'
@@ -31,6 +32,8 @@ const props = defineProps<{
   utc?: boolean
   serverId?: number
   color?: string
+  compact?: boolean
+  showYAxis?: boolean
 }>()
 
 ChartJS.register(
@@ -82,7 +85,8 @@ async function loadData() {
 onMounted(() => {
   // If a window will be provided via brush, don't pre-fetch with null window
   // to avoid a race condition where the period fetch overwrites the window fetch.
-  if (props.window !== null)
+  // compact = no brush, so load immediately.
+  if (props.window !== null || props.compact)
     loadData()
 })
 watch(() => [props.period, props.window] as const, () => loadData())
@@ -237,7 +241,10 @@ function refreshChartOptions() {
     const windowScale: ChartOptions<'bar'> = props.window
       ? { scales: { x: { min: props.window.start.getTime(), max: props.window.end.getTime() } } }
       : {}
-    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions, windowScale)
+    const compactOverride: ChartOptions<'bar'> = props.compact
+      ? { scales: { x: { ticks: { display: false } }, y: { ticks: { display: props.showYAxis } } } }
+      : {}
+    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions, windowScale, compactOverride)
   })
 }
 
@@ -259,8 +266,12 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div class="chart-container">
-    <Flex x-between y-center class="text-m text-bold-row">
+  <div class="chart-container" :class="{ 'chart-container--compact': compact }">
+    <Flex v-if="compact" x-between y-center class="chart-compact-title">
+      <span>Game Server Players</span>
+      <OnlineBadge :count="currentCount ?? null" label="players" size="s" color="var(--color-text-yellow)" />
+    </Flex>
+    <Flex v-if="!compact" x-between y-center class="text-m text-bold-row">
       <Flex x-center y-baseline>
         <span class="text-m text-bold">Game Server Players</span>
         <span v-if="currentCount !== undefined" class="text-xs text-color-lightest">({{ currentCount }} online now)</span>
@@ -276,24 +287,24 @@ watchEffect(() => {
       />
     </Flex>
 
-    <div v-if="loadingHistory" class="chart-loading">
+    <div v-if="loadingHistory" class="chart-loading" :class="{ 'chart-loading--compact': compact }">
       <div class="chart-skeleton">
         <div class="chart-area-skeleton">
-          <div class="y-axis-skeleton">
+          <div v-if="!compact" class="y-axis-skeleton">
             <Skeleton v-for="i in 6" :key="i" :width="40" :height="12" :radius="2" />
           </div>
-          <div class="chart-lines-skeleton">
-            <Skeleton :height="280" :radius="8" style="opacity: 0.3;" />
+          <div class="chart-lines-skeleton" :class="{ 'chart-lines-skeleton--compact': compact }">
+            <Skeleton :height="compact ? 60 : 280" :radius="8" style="opacity: 0.3;" />
           </div>
         </div>
 
-        <div class="x-axis-skeleton">
+        <div v-if="!compact" class="x-axis-skeleton">
           <Skeleton v-for="i in 6" :key="i" :width="60" :height="12" :radius="2" />
         </div>
       </div>
     </div>
 
-    <div v-else-if="!metricsHistory.length" class="chart-empty">
+    <div v-else-if="!metricsHistory.length && !compact" class="chart-empty">
       <p>No gameserver activity data available</p>
     </div>
 
@@ -302,6 +313,7 @@ watchEffect(() => {
       ref="chartWrapperRef"
       :key="`${theme}-${activeTheme?.id}-${props.utc}-${selectedServerOptions.length}-${props.serverId}-${props.window?.start.getTime()}-${props.window?.end.getTime()}`"
       class="chart-wrapper"
+      :class="{ 'chart-wrapper--compact': compact }"
     >
       <Bar
         ref="chartRef"

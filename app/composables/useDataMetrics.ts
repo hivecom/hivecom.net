@@ -90,6 +90,9 @@ function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
       byGame: (typeof members.byGame === 'object' && members.byGame !== null)
         ? (members.byGame as Record<string, number>)
         : {},
+      bySteamGame: (typeof members.bySteamGame === 'object' && members.bySteamGame !== null)
+        ? (members.bySteamGame as Record<string, number>)
+        : {},
     },
     community: {
       projects: typeof community?.projects === 'number' ? community.projects : 0,

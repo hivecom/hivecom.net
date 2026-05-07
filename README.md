@@ -180,7 +180,7 @@ npm run reset
 Then regenerate types:
 
 ```bash
-npx supabase gen types typescript --local --schema public,private > types/database.types.ts
+npm run types
 ```
 
 ### Pushing to production

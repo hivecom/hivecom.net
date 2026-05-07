@@ -6,8 +6,6 @@ This ticket is a catalogue of remaining improvement points. Each issue can be so
 |---|------|--------|----------|
 | 4 | `components/Discussions/models/DiscussionModelForum.vue` | Duplicate `gap` declarations on `__bottom-row` (lines 459-460) - genuine bug to fix. Remaining layout CSS is structural to the grid/flex component system with mobile overrides; not a VUI swap candidate. | Low |
 | 8 | `components/Events/EventsListing.vue` | **16 `!important` rules** + layout CSS - same pattern as `Event.vue` / `EventsCalendar.vue` | Medium |
-| 9 | `components/Admin/Funding/IncomeChart.vue` | **~14 layout CSS rules** - legend/header wrappers are pure flex and map 1:1 to `<Flex y-center gap="s">` etc. | Medium |
-| 10 | `components/Admin/Funding/UserChart.vue` | **~14 layout CSS rules** - nearly identical to `IncomeChart.vue`; same legend/header flex pattern | Medium |
 | 11 | `components/Community/ProjectCard.vue` | **15+ layout CSS rules** - card body, tag row, footer row are all pure flex | Medium |
 | 12 | `components/GameServers/GameServerHeader.vue` | **22 layout CSS rules** + 3 `!important` - action/metadata column wrappers are pure flex column; contains `!important` overrides | Medium |
 | 13 | `components/Shared/GameDetailsModal.vue` | **14 layout CSS rules** - modal body sections are nested `flex-direction: column` with gap, directly replaceable | Medium |

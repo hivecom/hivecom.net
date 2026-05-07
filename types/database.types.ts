@@ -1581,6 +1581,24 @@ export type Database = {
         }
         Relationships: []
       }
+      steam_games: {
+        Row: {
+          name: string
+          steam_id: number
+          updated_at: string
+        }
+        Insert: {
+          name: string
+          steam_id: number
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          steam_id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       themes: {
         Row: {
           created_at: string
@@ -2937,4 +2955,3 @@ export const Constants = {
     },
   },
 } as const
-

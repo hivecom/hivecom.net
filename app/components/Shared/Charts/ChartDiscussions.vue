@@ -28,6 +28,8 @@ const props = defineProps<{
   period: MetricsPeriod
   window: { start: Date, end: Date } | null
   utc?: boolean
+  compact?: boolean
+  showYAxis?: boolean
 }>()
 
 ChartJS.register(
@@ -149,7 +151,10 @@ const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlai
 
 function refreshChartOptions() {
   nextTick(() => {
-    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions)
+    const compactOverride: ChartOptions<'bar'> = props.compact
+      ? { scales: { x: { ticks: { display: false } }, y: { ticks: { display: props.showYAxis } } } }
+      : {}
+    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions, compactOverride)
   })
 }
 
@@ -170,8 +175,11 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div class="chart-container">
-    <Flex x-between y-center class="text-m text-bold-row">
+  <div class="chart-container" :class="{ 'chart-container--compact': compact }">
+    <Flex v-if="compact" x-between y-center class="chart-compact-title">
+      <span>New Discussions</span>
+    </Flex>
+    <Flex v-if="!compact" x-between y-center class="text-m text-bold-row">
       <Flex y-center gap="s">
         <span class="text-m text-bold">New Discussions</span>
       </Flex>
@@ -183,24 +191,24 @@ watchEffect(() => {
       />
     </Flex>
 
-    <div v-if="loadingHistory" class="chart-loading">
+    <div v-if="loadingHistory" class="chart-loading" :class="{ 'chart-loading--compact': compact }">
       <div class="chart-skeleton">
         <div class="chart-area-skeleton">
-          <div class="y-axis-skeleton">
+          <div v-if="!compact" class="y-axis-skeleton">
             <Skeleton v-for="i in 6" :key="i" :width="40" :height="12" :radius="2" />
           </div>
-          <div class="chart-lines-skeleton">
-            <Skeleton :height="280" :radius="8" style="opacity: 0.3;" />
+          <div class="chart-lines-skeleton" :class="{ 'chart-lines-skeleton--compact': compact }">
+            <Skeleton :height="compact ? 60 : 280" :radius="8" style="opacity: 0.3;" />
           </div>
         </div>
 
-        <div class="x-axis-skeleton">
+        <div v-if="!compact" class="x-axis-skeleton">
           <Skeleton v-for="i in 6" :key="i" :width="60" :height="12" :radius="2" />
         </div>
       </div>
     </div>
 
-    <div v-else-if="!metricsHistory.length" class="chart-empty">
+    <div v-else-if="!metricsHistory.length && !compact" class="chart-empty">
       <p>No discussion data available</p>
     </div>
 
@@ -209,6 +217,7 @@ watchEffect(() => {
       ref="chartWrapperRef"
       :key="`${theme}-${activeTheme?.id}-${props.utc}-${activeSeries.value}`"
       class="chart-wrapper"
+      :class="{ 'chart-wrapper--compact': compact }"
     >
       <Bar
         ref="chartRef"
