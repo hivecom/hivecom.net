@@ -76,6 +76,23 @@ export interface MetricsGameServers {
   byServer: Record<string, MetricsServerDetail>
 }
 
+export interface MetricsStorageBucket {
+  /** Total number of objects in the bucket */
+  totalFiles: number
+  /** Total size of all objects in bytes */
+  totalSize: number
+  /** Number of image objects */
+  totalImages: number
+  /** Delta in file count since previous snapshot */
+  deltaFiles: number
+  /** Delta in total size (bytes) since previous snapshot */
+  deltaSize: number
+}
+
+export interface MetricsStorage {
+  buckets: Record<string, MetricsStorageBucket>
+}
+
 export interface MetricsSnapshot {
   collectedAt: string
   members: MetricsMembers
@@ -83,4 +100,5 @@ export interface MetricsSnapshot {
   discussions: MetricsDiscussions
   teamspeak: MetricsTeamSpeak
   gameservers: MetricsGameServers
+  storage: MetricsStorage
 }

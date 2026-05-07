@@ -116,6 +116,12 @@ function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
         ? (gameservers.byServer as MetricsSnapshot['gameservers']['byServer'])
         : {},
     },
+    storage: {
+      buckets: (typeof (record.storage as Record<string, unknown>)?.buckets === 'object'
+        && (record.storage as Record<string, unknown>)?.buckets !== null)
+        ? (record.storage as Record<string, unknown>).buckets as MetricsSnapshot['storage']['buckets']
+        : {},
+    },
   }
 }
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
+import { useSupabaseClient, useSupabaseUser } from '#imports'
 import { Alert, Button, Dropdown, DropdownItem, DropdownTitle, Flex, Input, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -179,7 +180,8 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
     assetsError.value[assetType] = null
 
     const supabase = useSupabaseClient()
-    const result = await uploadGameAsset(supabase, gameForm.value.shorthand, assetType, file)
+    const user = useSupabaseUser()
+    const result = await uploadGameAsset(supabase, gameForm.value.shorthand, assetType, file, user.value?.id)
 
     if (result.success && result.url) {
       assetsUrl.value[assetType] = result.url

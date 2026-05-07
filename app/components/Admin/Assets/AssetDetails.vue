@@ -4,7 +4,7 @@ import { Button, Card, CopyClipboard, Flex, Grid, Input, Sheet } from '@dolanske
 
 import { computed } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { formatBytes, isImageAsset } from '@/lib/storageAssets'
+import { formatBytes, isImageAsset, isVideoAsset } from '@/lib/storageAssets'
 
 const props = defineProps<{
   asset: StorageAsset | null
@@ -21,7 +21,8 @@ const canRename = computed(() => canDeleteAssets.value)
 
 const isOpen = defineModel<boolean>('isOpen', { default: false })
 
-const hasPreview = computed(() => props.asset != null && props.asset.type === 'file' && isImageAsset(props.asset))
+const hasPreview = computed(() => props.asset != null && props.asset.type === 'file' && (isImageAsset(props.asset) || isVideoAsset(props.asset)))
+const isVideo = computed(() => props.asset != null && isVideoAsset(props.asset))
 const assetUrl = computed(() => props.asset?.publicUrl ?? '')
 const markdownSnippet = computed(() => assetUrl.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
 
@@ -102,7 +103,8 @@ function requestRename() {
 
     <Flex v-if="props.asset" column gap="l" class="asset-details">
       <div v-if="hasPreview" class="asset-details__preview">
-        <img :src="assetUrl" :alt="props.asset?.name ?? 'Preview'">
+        <video v-if="isVideo" :src="assetUrl" controls class="asset-details__video" />
+        <img v-else :src="assetUrl" :alt="props.asset?.name ?? 'Preview'">
       </div>
 
       <Card class="card-bg">
@@ -190,11 +192,18 @@ function requestRename() {
     border: 1px solid var(--color-border-subtle);
     background: var(--color-bg-raised);
 
-    img {
+    img,
+    video {
       width: 100%;
       height: auto;
       display: block;
     }
+  }
+
+  &__video {
+    max-height: 320px;
+    object-fit: contain;
+    background: #000;
   }
 
   &__code {

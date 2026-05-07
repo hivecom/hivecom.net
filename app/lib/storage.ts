@@ -171,6 +171,7 @@ export async function uploadUserAvatar(
   supabaseClient: SupabaseClient<Database>,
   userId: string,
   file: File,
+  uploadedBy?: string,
 ): Promise<UploadResult> {
   try {
     // Validate the file first
@@ -233,6 +234,7 @@ export async function uploadUserAvatar(
       .upload(filePath, processedFile, {
         upsert: true, // Replace existing file
         contentType: processedFile.type,
+        metadata: { uploadedBy: uploadedBy ?? userId },
       })
 
     if (error) {
@@ -440,6 +442,7 @@ export async function uploadTopicIcon(
   supabaseClient: SupabaseClient<Database>,
   topicId: string,
   file: File,
+  uploadedBy?: string,
 ): Promise<UploadResult> {
   try {
     const validation = validateImageFile(file)
@@ -464,6 +467,7 @@ export async function uploadTopicIcon(
       .upload(filePath, processedFile, {
         upsert: true,
         contentType: processedFile.type,
+        metadata: { uploadedBy: uploadedBy ?? 'unknown' },
       })
 
     if (error) {
@@ -585,6 +589,7 @@ export async function uploadGameAsset(
   gameShorthand: string,
   assetType: 'icon' | 'cover' | 'background',
   file: File,
+  uploadedBy?: string,
 ): Promise<UploadResult> {
   try {
     // Validate the file first
@@ -612,6 +617,7 @@ export async function uploadGameAsset(
       .upload(filePath, processedFile, {
         upsert: true, // Replace existing file
         contentType: processedFile.type,
+        metadata: { uploadedBy: uploadedBy ?? 'unknown' },
       })
 
     if (error) {
@@ -734,6 +740,7 @@ export async function uploadProjectBanner(
   supabaseClient: SupabaseClient<Database>,
   projectId: number,
   file: File,
+  uploadedBy?: string,
 ): Promise<UploadResult> {
   try {
     const validation = validateImageFile(file)
@@ -767,6 +774,7 @@ export async function uploadProjectBanner(
       .upload(filePath, processedFile, {
         upsert: true,
         contentType: processedFile.type,
+        metadata: { uploadedBy: uploadedBy ?? 'unknown' },
       })
 
     if (error) {

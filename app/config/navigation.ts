@@ -36,6 +36,7 @@ export const commandLinks: CommandLink[] = [
   { path: '/profile/settings', label: 'Settings', group: 'Account', icon: 'ph:gear', requiresAuth: true },
   // Admin
   { path: '/admin', label: 'Admin Dashboard', group: 'Admin', icon: 'ph:gauge', requiresRole: ['admin', 'moderator'] },
+  { path: '/admin/metrics', label: 'Admin Metrics', group: 'Admin', icon: 'ph:chart-line', requiresRole: ['admin', 'moderator'] },
   { path: '/admin/users', label: 'Admin Users', group: 'Admin', icon: 'ph:users-three', requiresRole: ['admin', 'moderator'] },
   { path: '/admin/complaints', label: 'Admin Complaints', group: 'Admin', icon: 'ph:warning', requiresRole: ['admin', 'moderator'] },
   { path: '/admin/discussions', label: 'Admin Discussions', group: 'Admin', icon: 'ph:chat-circle', requiresRole: ['admin', 'moderator'] },

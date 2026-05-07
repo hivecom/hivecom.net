@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
-import type { TablesInsert, TablesUpdate } from '@/types/database.overrides'
+import type { MetricsHistoryEntry } from '@/composables/useDataMetrics'
+import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import GameIcon from '@/components/GameServers/GameIcon.vue'
+import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { invalidateGameserversCache } from '@/composables/useDataGameservers'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import GameserverDetails from './GameServerDetails.vue'
@@ -43,7 +47,7 @@ interface TransformedGameserver extends Record<string, unknown> {
   Name: string
   Game: string | null
   Region: string | null
-  Created: string
+  Activity: number | null
   Container: string | null
 }
 
@@ -91,7 +95,7 @@ const {
     Name: gameserver.name,
     Game: gameserver.game?.name ?? 'Unknown',
     Region: gameserver.region ?? 'Unknown',
-    Created: gameserver.created_at,
+    Activity: null,
     Container: gameserver.container,
   }),
   defaultSort: { column: 'Name', direction: 'asc' },
@@ -110,6 +114,42 @@ const gameOptions = computed<SelectOption[]>(() => {
     value: id.toString(),
   }))
 })
+
+const { latestMetrics, fetchLatestMetrics, fetchMetricsHistory } = useDataMetrics()
+
+const localHistoryLoading = ref(false)
+const localHistory = ref<MetricsHistoryEntry[]>([])
+
+onMounted(async () => {
+  fetchLatestMetrics()
+  localHistoryLoading.value = true
+  try {
+    localHistory.value = await fetchMetricsHistory('14d') ?? []
+  }
+  finally {
+    localHistoryLoading.value = false
+  }
+})
+
+function getServerHistogram(gameserverId: number): number[] {
+  const id = String(gameserverId)
+  return localHistory.value
+    .map(e => e.gameserversByServer?.[id] ?? 0)
+}
+
+function getServerPlayers(gameserverId: number): number | null {
+  const byServer = latestMetrics.value?.gameservers?.byServer
+  if (!byServer)
+    return null
+  const detail = byServer[String(gameserverId)]
+  if (!detail || detail.protocol === null)
+    return null
+  if (detail.protocol === 'source')
+    return detail.data.players
+  if (detail.protocol === 'minecraft')
+    return detail.data.numPlayers
+  return null
+}
 
 // Apply secondary filters on top of the composable's search-filtered rows
 const filteredData = computed(() => {
@@ -132,7 +172,10 @@ const filteredData = computed(() => {
     }
 
     return true
-  })
+  }).map(row => ({
+    ...row,
+    Activity: getServerPlayers(row._original.id),
+  }))
 })
 
 const filteredCount = computed(() => filteredData.value.length)
@@ -345,12 +388,35 @@ function clearFilters() {
         <template #body>
           <tr v-for="gameserver in rows" :key="gameserver._original.id" class="clickable-row" @click="viewGameserver(gameserver._original as QueryGameserver)">
             <Table.Cell>{{ gameserver.Name }}</Table.Cell>
-            <Table.Cell>{{ gameserver.Game }}</Table.Cell>
+            <Table.Cell>
+              <Flex v-if="(gameserver._original as QueryGameserver).game" gap="xs" y-center>
+                <GameIcon :game="(gameserver._original as QueryGameserver).game as Tables<'games'>" size="xs" />
+                <span>{{ gameserver.Game }}</span>
+              </Flex>
+              <span v-else>{{ gameserver.Game }}</span>
+            </Table.Cell>
             <Table.Cell>
               <RegionIndicator :region="gameserver._original.region" show-label />
             </Table.Cell>
             <Table.Cell>
-              <TimestampDate :date="gameserver.Created" />
+              <template v-if="(gameserver._original as QueryGameserver).query_protocol != null">
+                <Flex y-center gap="s">
+                  <OnlineBadge
+                    :count="getServerPlayers((gameserver._original as QueryGameserver).id)"
+                    label="Players"
+                    size="s"
+                    style="min-width: 90px"
+                  />
+                  <ChartActivityHistogram
+                    v-if="!localHistoryLoading"
+                    :data="getServerHistogram((gameserver._original as QueryGameserver).id)"
+                    :height="28"
+                    gap="xxs"
+                    expand
+                  />
+                </Flex>
+              </template>
+              <span v-else class="text-color-lighter text-xs">No query</span>
             </Table.Cell>
             <Table.Cell>
               {{ gameserver.Container || '-' }}

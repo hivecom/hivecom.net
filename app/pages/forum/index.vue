@@ -16,10 +16,11 @@ import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivit
 import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useCache } from '@/composables/useCache'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataMetrics } from '@/composables/useDataMetrics'
-import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
+import { patchProfileLastSeen, useBulkDataUser, useDataUser } from '@/composables/useDataUser'
 import { useDiscoverQueue } from '@/composables/useDiscoverQueue'
 import { useForumActivityFeed } from '@/composables/useForumActivityFeed'
 import { useForumDraftCount } from '@/composables/useForumDraftCount'
@@ -92,6 +93,42 @@ const { settings } = useDataUserSettings()
 const loading = ref(false)
 const supabase = useSupabaseClient()
 const forumCache = useCache(CACHE_NAMESPACES.forum)
+
+const ONLINE_THRESHOLD_MS = 15 * 60 * 1000
+const ONLINE_USERS_CACHE_KEY = 'online-users'
+const ONLINE_USERS_TTL = 60 * 1000 // 1 minute
+const onlineUserIds = ref<string[]>([])
+const onlineUsersLoading = ref(false)
+
+async function fetchOnlineUsers() {
+  const cached = forumCache.get<string[]>(ONLINE_USERS_CACHE_KEY)
+  if (cached) {
+    onlineUserIds.value = cached
+    return
+  }
+  onlineUsersLoading.value = true
+  const threshold = new Date(Date.now() - ONLINE_THRESHOLD_MS).toISOString()
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, last_seen')
+    .gt('last_seen', threshold)
+    .order('last_seen', { ascending: false })
+    .limit(100)
+  const rows = data ?? []
+  const ids = rows.map(p => p.id)
+  onlineUserIds.value = ids
+  forumCache.set(ONLINE_USERS_CACHE_KEY, ids, ONLINE_USERS_TTL)
+  for (const row of rows) {
+    if (row.last_seen)
+      patchProfileLastSeen(row.id, row.last_seen)
+  }
+  onlineUsersLoading.value = false
+}
+
+watch(activityModalOpen, (open) => {
+  if (open)
+    void fetchOnlineUsers()
+})
 
 watch(contentRulesGateOpen, (open) => {
   if (!open)
@@ -1460,6 +1497,26 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         title="Users Online"
         :series="['membersOnline']"
       >
+        <template #above-chart>
+          <Flex v-if="onlineUserIds.length > 0 || onlineUsersLoading" column gap="xs" expand>
+            <Flex expand wrap gap="xs" class="forum-online-users__grid" y-center x-center>
+              <template v-if="onlineUsersLoading">
+                <Skeleton v-for="n in Math.min(onlineCount ?? 8, 20)" :key="n" width="40px" height="40px" style="border-radius: var(--border-radius-pill);" />
+              </template>
+              <template v-else>
+                <UserAvatar
+                  v-for="id in onlineUserIds"
+                  :key="id"
+                  :user-id="id"
+                  size="m"
+                  linked
+                  show-preview
+                  show-online-indicator
+                />
+              </template>
+            </Flex>
+          </Flex>
+        </template>
         <template #default="{ period, window, utc, color }">
           <ChartOnlineUsers :period :window :utc :color fresh />
         </template>
@@ -1782,5 +1839,13 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
     font-size: var(--font-size-xs);
     text-align: center;
   }
+}
+
+.forum-online-users__grid {
+  max-height: 148px;
+  overflow-y: auto;
+  padding: var(--space-xs);
+  background: var(--color-bg-card);
+  border-radius: var(--border-radius-m);
 }
 </style>

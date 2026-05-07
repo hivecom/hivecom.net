@@ -186,7 +186,7 @@ async function handleAnimatedFile(e: Event) {
 
     await supabase.storage
       .from(USERS_BUCKET_ID)
-      .upload(filePath, file, { upsert: true, contentType: file.type })
+      .upload(filePath, file, { upsert: true, contentType: file.type, metadata: { uploadedBy: props.profile.id } })
 
     await supabase
       .from('profiles')
@@ -240,7 +240,7 @@ async function handleImportFile(e: Event) {
 
       await supabase.storage
         .from(USERS_BUCKET_ID)
-        .upload(filePath, file, { upsert: true, contentType: 'image/webp' })
+        .upload(filePath, file, { upsert: true, contentType: 'image/webp', metadata: { uploadedBy: props.profile.id } })
 
       await supabase
         .from('profiles')
@@ -272,7 +272,7 @@ async function handleImportFile(e: Event) {
 
       await supabase.storage
         .from(USERS_BUCKET_ID)
-        .upload(filePath, file, { upsert: true, contentType: file.type })
+        .upload(filePath, file, { upsert: true, contentType: file.type, metadata: { uploadedBy: props.profile.id } })
 
       await supabase
         .from('profiles')
@@ -502,7 +502,7 @@ async function handleAvatarUpload(file: File) {
     avatarError.value = null
 
     const supabase = useSupabaseClient()
-    const result = await uploadUserAvatar(supabase, props.profile.id, file)
+    const result = await uploadUserAvatar(supabase, props.profile.id, file, props.profile.id)
 
     if (result.success && result.url) {
       avatarUrl.value = result.url

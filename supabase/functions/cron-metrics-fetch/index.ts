@@ -118,6 +118,14 @@ Deno.serve(async (req: Request) => {
 
     const onlineThreshold = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
+    // Bucket IDs to track storage metrics for
+    const TRACKED_BUCKETS = [
+      "hivecom-cms",
+      "hivecom-content-forums",
+      "hivecom-content-static",
+      "hivecom-content-users",
+    ] as const;
+
     // Round 1: all independent DB + storage queries in parallel
     const [
       totalMembersRes,
@@ -132,6 +140,8 @@ Deno.serve(async (req: Request) => {
       presencesRes,
       gameserversRes,
       tsSnapshot,
+      prevMetricsRes,
+      ...bucketMetricsResults
     ] = await Promise.all([
       supabaseClient.from("profiles").select("id", {
         count: "exact",
@@ -182,6 +192,19 @@ Deno.serve(async (req: Request) => {
         )
         .not("container", "is", null),
       fetchSnapshotFromStorage(supabaseClient),
+      // Fetch previous snapshot for delta computation
+      supabaseClient
+        .from("metrics")
+        .select("data")
+        .order("captured_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      // Per-bucket storage metrics via RPC
+      ...TRACKED_BUCKETS.map((bucketId) =>
+        supabaseClient.rpc("get_storage_bucket_metrics", {
+          p_bucket_id: bucketId,
+        })
+      ),
     ]);
 
     // Validate required query results
@@ -462,6 +485,48 @@ Deno.serve(async (req: Request) => {
     );
 
     // ---------------------------------------------------------------------------
+    // Storage metrics
+    // ---------------------------------------------------------------------------
+
+    const prevSnapshot =
+      prevMetricsRes.data?.data as unknown as MetricsSnapshot | null ?? null;
+
+    const storageBuckets: MetricsSnapshot["storage"]["buckets"] = {};
+
+    for (let i = 0; i < TRACKED_BUCKETS.length; i++) {
+      const bucketId = TRACKED_BUCKETS[i];
+      const res = bucketMetricsResults[i];
+
+      if (res.error) {
+        console.warn(
+          `Failed to fetch metrics for bucket ${bucketId}:`,
+          res.error.message,
+        );
+        continue;
+      }
+
+      // RPC returns an array with a single row
+      const row = Array.isArray(res.data) ? res.data[0] : res.data;
+      if (!row) continue;
+
+      const totalFiles = Number(row.total_files ?? 0);
+      const totalSize = Number(row.total_size ?? 0);
+      const totalImages = Number(row.total_images ?? 0);
+
+      const prev = prevSnapshot?.storage?.buckets?.[bucketId];
+      const deltaFiles = prev ? totalFiles - prev.totalFiles : 0;
+      const deltaSize = prev ? totalSize - prev.totalSize : 0;
+
+      storageBuckets[bucketId] = {
+        totalFiles,
+        totalSize,
+        totalImages,
+        deltaFiles,
+        deltaSize,
+      };
+    }
+
+    // ---------------------------------------------------------------------------
     // Build payload
     // ---------------------------------------------------------------------------
 
@@ -493,6 +558,9 @@ Deno.serve(async (req: Request) => {
         total: totalGameservers,
         players: totalPlayers,
         byServer,
+      },
+      storage: {
+        buckets: storageBuckets,
       },
     };
 

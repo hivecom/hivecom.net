@@ -454,6 +454,21 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
 }
 
 /**
+ * Patches the `last_seen` field of a cached profile entry without evicting
+ * other fields. Call this after a fresh fetch that returns up-to-date
+ * last_seen values (e.g. online users list) so that UserAvatar and similar
+ * components pick up accurate presence data immediately.
+ */
+export function patchProfileLastSeen(userId: string, lastSeen: string): void {
+  const cache = useCache()
+  const key = getCacheKeys(userId).profile
+  const existing = cache.get<ProfileCacheEntry>(key)
+  if (existing) {
+    cache.set(key, { ...existing, last_seen: lastSeen }, 10 * 60 * 1000)
+  }
+}
+
+/**
  * Bulk user data loader for efficiency when loading multiple users.
  * Uses the same global cache and inflight maps, so individual useDataUser
  * calls that race with a bulk load will attach to the same promises.

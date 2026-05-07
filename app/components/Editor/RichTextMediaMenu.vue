@@ -3,7 +3,7 @@ import type { Editor } from '@tiptap/vue-3'
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
 import type { ShouldShowMenuProps } from '@/types/rich-text-editor'
-import { useSupabaseClient } from '#imports'
+import { useSupabaseClient, useSupabaseUser } from '#imports'
 import { Button, Flex, Modal, pushToast, Textarea } from '@dolanske/vui'
 import { NodeSelection } from '@tiptap/pm/state'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
@@ -19,6 +19,7 @@ const props = defineProps<{
 }>()
 
 const supabase = useSupabaseClient<Database>()
+const user = useSupabaseUser()
 
 // ---------------------------------------------------------------------------
 // Modal state
@@ -206,7 +207,7 @@ async function updateMedia() {
 
   const { error: uploadError } = await supabase.storage
     .from(props.bucketId)
-    .upload(newPath, fetchData, { contentType: fetchData.type })
+    .upload(newPath, fetchData, { contentType: fetchData.type, metadata: { uploadedBy: user.value?.id ?? 'unknown' } })
 
   if (uploadError) {
     pushToast('Error updating media', { description: uploadError.message })

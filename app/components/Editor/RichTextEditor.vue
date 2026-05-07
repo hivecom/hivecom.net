@@ -2,7 +2,7 @@
 import type { JSONContent } from '@tiptap/core'
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
-import { useSupabaseClient } from '#imports'
+import { useSupabaseClient, useSupabaseUser } from '#imports'
 import { Button, ButtonGroup, Dropdown, DropdownItem, Modal, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import { Extension } from '@tiptap/core'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
@@ -164,6 +164,7 @@ const isNsfw = defineModel<boolean>('nsfw', { default: false })
 const resolvedMediaBucketId = computed(() => props.mediaBucketId ?? FORUMS_BUCKET_ID)
 
 const supabase = useSupabaseClient<Database>()
+const user = useSupabaseUser()
 
 const { agreed: fetchedContentRulesAgreement, markAgreed } = useContentRulesAgreement()
 
@@ -790,7 +791,7 @@ function handleFileUpload(files: File[] | null, pos?: number) {
 
     const { error } = await supabase.storage
       .from(resolvedMediaBucketId.value)
-      .upload(fileUrl, file, { contentType: file.type })
+      .upload(fileUrl, file, { contentType: file.type, metadata: { uploadedBy: user.value?.id ?? 'anonymous' } })
 
     // Revoke the object URL now that we're done with it either way.
     URL.revokeObjectURL(blobUrl)
@@ -871,7 +872,7 @@ async function handleDataFileUpload(file: File) {
 
   const { error } = await supabase.storage
     .from(resolvedMediaBucketId.value)
-    .upload(fileUrl, file, { contentType: file.type })
+    .upload(fileUrl, file, { contentType: file.type, metadata: { uploadedBy: user.value?.id ?? 'anonymous' } })
 
   if (error) {
     pushToast('Error uploading file', { description: error.message })

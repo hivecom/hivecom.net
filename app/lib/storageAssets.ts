@@ -29,6 +29,7 @@ export interface FlatListOptions {
   prefix?: string
   limit?: number
   offset?: number
+  search?: string
   sortBy?: {
     column: FlatSortColumn
     order: SortOrder
@@ -53,6 +54,8 @@ export async function listStorageObjectsFlat(
   const sortOrder = options.sortBy?.order ?? 'desc'
   const prefix = normalizePrefix(options.prefix)
 
+  const search = options.search?.trim() ?? ''
+
   const { data, error } = await client.rpc('list_storage_objects', {
     p_bucket_id: bucketId,
     p_prefix: prefix,
@@ -60,6 +63,7 @@ export async function listStorageObjectsFlat(
     p_offset: offset,
     p_sort_col: sortCol,
     p_sort_order: sortOrder,
+    p_search: search,
   })
 
   if (error)
@@ -258,6 +262,16 @@ export function isImageAsset(asset: StorageAsset): boolean {
 
   const knownImageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'ico']
   return knownImageExtensions.includes(extension)
+}
+
+export function isVideoAsset(asset: StorageAsset): boolean {
+  const mime = asset.mimeType ?? ''
+  const extension = asset.extension ?? ''
+  if (mime.startsWith('video/'))
+    return true
+
+  const knownVideoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v']
+  return knownVideoExtensions.includes(extension)
 }
 
 export function getPublicAssetUrl(

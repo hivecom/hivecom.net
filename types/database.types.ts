@@ -2574,27 +2574,50 @@ export type Database = {
       is_not_banned: { Args: never; Returns: boolean }
       is_owner: { Args: { record_user_id: string }; Returns: boolean }
       is_profile_owner: { Args: { profile_id: string }; Returns: boolean }
-      list_storage_objects: {
-        Args: {
-          p_bucket_id: string
-          p_limit?: number
-          p_offset?: number
-          p_prefix?: string
-          p_sort_col?: string
-          p_sort_order?: string
-        }
-        Returns: {
-          bucket_id: string
-          created_at: string
-          id: string
-          last_accessed_at: string
-          mimetype: string
-          name: string
-          size: number
-          total_count: number
-          updated_at: string
-        }[]
-      }
+      list_storage_objects:
+        | {
+            Args: {
+              p_bucket_id: string
+              p_limit?: number
+              p_offset?: number
+              p_prefix?: string
+              p_sort_col?: string
+              p_sort_order?: string
+            }
+            Returns: {
+              bucket_id: string
+              created_at: string
+              id: string
+              last_accessed_at: string
+              mimetype: string
+              name: string
+              size: number
+              total_count: number
+              updated_at: string
+            }[]
+          }
+        | {
+            Args: {
+              p_bucket_id: string
+              p_limit?: number
+              p_offset?: number
+              p_prefix?: string
+              p_search?: string
+              p_sort_col?: string
+              p_sort_order?: string
+            }
+            Returns: {
+              bucket_id: string
+              created_at: string
+              id: string
+              last_accessed_at: string
+              mimetype: string
+              name: string
+              size: number
+              total_count: number
+              updated_at: string
+            }[]
+          }
       normalize_mentions: { Args: { input_text: string }; Returns: string }
       pgmq_delete: {
         Args: { msg_id: number; queue_name: string }

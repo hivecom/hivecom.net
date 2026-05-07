@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TablesInsert, TablesUpdate } from '@/types/database.overrides'
+import { useSupabaseClient, useSupabaseUser } from '#imports'
 import { Badge, Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
@@ -50,6 +51,7 @@ interface SelectOption {
 
 const isOpen = defineModel<boolean>('open', { default: false })
 const supabase = useSupabaseClient()
+const user = useSupabaseUser()
 // Form state
 const projectForm = ref({
   title: '',
@@ -189,7 +191,7 @@ async function handleBannerUpload(file: File) {
   try {
     bannerUploading.value = true
     bannerError.value = null
-    await uploadProjectBanner(supabase, props.project.id, file)
+    await uploadProjectBanner(supabase, props.project.id, file, user.value?.id)
     await refreshBannerPreview(props.project.id)
   }
   catch (error) {

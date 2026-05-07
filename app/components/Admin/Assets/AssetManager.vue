@@ -2,17 +2,19 @@
 import type { Ref } from 'vue'
 
 import type { StorageAsset as CmsAsset, FlatSortColumn, StorageBucketId } from '@/lib/storageAssets'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, Card, CopyClipboard, defineTable, Flex, Grid, Input, paginate, Pagination, pushToast, Select, Skeleton, Table, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, CopyClipboard, defineTable, Flex, Grid, Input, paginate, Pagination, pushToast, Select, Skeleton, Table, Tooltip } from '@dolanske/vui'
 
+import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
+import AssetGrid from '@/components/Admin/Assets/AssetGrid.vue'
 import AssetRenameModal from '@/components/Admin/Assets/AssetRenameModal.vue'
 import AssetUpload from '@/components/Admin/Assets/AssetUpload.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { CMS_BUCKET_ID, formatBytes, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, listStorageObjectsFlat, normalizePrefix } from '@/lib/storageAssets'
+import { CMS_BUCKET_ID, formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, listStorageObjectsFlat, normalizePrefix } from '@/lib/storageAssets'
 
 interface Props {
   bucketId?: StorageBucketId
@@ -174,17 +176,7 @@ const breadcrumbs = computed(() => {
 const documentExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'md']
 
 const filteredAssets = computed(() => {
-  const normalizedSearch = searchQuery.value.trim().toLowerCase()
-
   const entries = assets.value.filter((asset) => {
-    const matchesSearch = normalizedSearch
-      ? asset.name.toLowerCase().includes(normalizedSearch)
-      || asset.path.toLowerCase().includes(normalizedSearch)
-      : true
-
-    if (!matchesSearch)
-      return false
-
     if (asset.type === 'folder')
       return true
 
@@ -204,9 +196,11 @@ const filteredAssets = computed(() => {
     .filter(asset => asset.type === 'folder')
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  const files = entries
-    .filter(asset => asset.type === 'file')
-    .sort((a, b) => sortFiles(a, b))
+  const files = entries.filter(asset => asset.type === 'file')
+
+  // In flat mode the server already sorted; don't clobber with client-side sort.
+  if (!flatView.value)
+    files.sort((a, b) => sortFiles(a, b))
 
   return [...directories, ...files]
 })
@@ -221,6 +215,8 @@ const tableData = computed(() => filteredAssets.value.map(asset => ({
 
 const filteredCount = computed(() => filteredAssets.value.length)
 const isFiltered = computed(() => filteredCount.value !== assets.value.length)
+
+const isForumsBucket = computed(() => resolvedBucketId.value === FORUMS_BUCKET_ID)
 
 const { headers, rows: tableRows, setSort } = defineTable(tableData, {
   pagination: {
@@ -247,6 +243,11 @@ function sortNameFolderFirst(a: (typeof tableRows.value)[number], b: (typeof tab
 }
 
 const tableRowsFolderFirst = computed(() => {
+  // In flat mode the server already returned rows in the requested sort order;
+  // skip any client-side re-sort so we don't clobber the server ordering.
+  if (flatView.value)
+    return tableRows.value
+
   if (!nameSortDirection.value)
     return tableRows.value
 
@@ -262,11 +263,11 @@ function sortFiles(a: CmsAsset, b: CmsAsset) {
     case 'size-asc':
       return a.size - b.size
     case 'newest':
-      return new Date(b.created_at ?? b.updated_at ?? 0).getTime()
-        - new Date(a.created_at ?? a.updated_at ?? 0).getTime()
+      return new Date(b.updated_at ?? b.created_at ?? 0).getTime()
+        - new Date(a.updated_at ?? a.created_at ?? 0).getTime()
     case 'oldest':
-      return new Date(a.created_at ?? a.updated_at ?? 0).getTime()
-        - new Date(b.created_at ?? b.updated_at ?? 0).getTime()
+      return new Date(a.updated_at ?? a.created_at ?? 0).getTime()
+        - new Date(b.updated_at ?? b.created_at ?? 0).getTime()
     case 'name-asc':
     default:
       return a.name.localeCompare(b.name)
@@ -289,37 +290,35 @@ async function fetchAssets(silent = false) {
         prefix: currentPrefix.value,
         limit: PAGE_SIZE.value,
         offset: (page.value - 1) * PAGE_SIZE.value,
+        search: searchQuery.value.trim() || undefined,
         sortBy: flatSortParams(),
       })
       assets.value = batch
       totalCount.value = count
     }
     else {
-      // Folders fetched via Storage API (synthesises virtual folder rows).
-      // Files paginated via RPC at the current prefix level.
-      const [folders, { assets: files, totalCount: fileCount }] = await Promise.all([
-        listCmsDirectory(supabase, resolvedBucketId.value, { prefix: currentPrefix.value })
-          .then(entries => entries.filter(e => e.type === 'folder')),
-        listStorageObjectsFlat(supabase, resolvedBucketId.value, {
-          prefix: currentPrefix.value
-            ? `${currentPrefix.value}/`
-            : '',
+      const activeSearch = searchQuery.value.trim()
+      if (activeSearch) {
+        // Search uses the RPC to scan across all pages server-side.
+        const { assets: batch, totalCount: count } = await listStorageObjectsFlat(supabase, resolvedBucketId.value, {
+          prefix: currentPrefix.value,
           limit: PAGE_SIZE.value,
           offset: (page.value - 1) * PAGE_SIZE.value,
-          sortBy: flatSortParams(),
-        }),
-      ])
-      // Exclude files that live in sub-folders (name contains another slash after the prefix)
-      const prefixSlash = currentPrefix.value ? `${currentPrefix.value}/` : ''
-      const directFiles = files.filter((f) => {
-        const relative = f.path.slice(prefixSlash.length)
-        return !relative.includes('/')
-      })
-      const combined = page.value === 1
-        ? [...folders, ...directFiles]
-        : directFiles
-      assets.value = combined.slice(0, PAGE_SIZE.value)
-      totalCount.value = fileCount + folders.length
+          search: activeSearch,
+          sortBy: { column: 'name', order: 'asc' },
+        })
+        assets.value = batch
+        totalCount.value = count
+      }
+      else {
+        // Fetch all direct children at this prefix level via the Storage API.
+        // listCmsDirectory already handles internal pagination (loops until done).
+        // Paginate the result client-side so counts and offsets are always accurate.
+        const allEntries = await listCmsDirectory(supabase, resolvedBucketId.value, { prefix: currentPrefix.value })
+        totalCount.value = allEntries.length
+        const start = (page.value - 1) * PAGE_SIZE.value
+        assets.value = allEntries.slice(start, start + PAGE_SIZE.value)
+      }
     }
   }
   catch (error) {
@@ -535,8 +534,15 @@ function getAssetTypeLabel(asset: CmsAsset): string {
 }
 
 watch(flatView, (val) => {
-  if (val)
+  if (val) {
     currentPrefix.value = ''
+    // Clear defineTable's client-side sort so server ordering is preserved in flat mode.
+    setSort('', 'asc')
+  }
+  else {
+    // Restore default name-asc sort for non-flat table view.
+    setSort('Name', 'asc')
+  }
   page.value = 1
   fetchAssets()
 })
@@ -561,6 +567,11 @@ watch(currentPrefix, () => {
   page.value = 1
   fetchAssets()
 })
+
+watchDebounced(searchQuery, () => {
+  page.value = 1
+  void fetchAssets(true)
+}, { debounce: 300 })
 
 watch(() => refreshSignal.value, (newValue, oldValue) => {
   if (skipNextRefresh.value) {
@@ -753,7 +764,7 @@ onBeforeMount(fetchAssets)
               <Table.Head
                 v-for="header in headers.filter((header: { label: string }) => header.label !== '_original')"
                 :key="header.label"
-                sort
+                :sort="!flatView"
                 :header="header"
               />
               <Table.Head
@@ -854,40 +865,15 @@ onBeforeMount(fetchAssets)
         </TableContainer>
 
         <Flex v-else expand>
-          <Grid
+          <AssetGrid
             v-if="filteredAssets.length"
-            class="asset-manager__grid"
-            expand
+            :assets="filteredAssets"
             :columns="assetGridColumns"
-          >
-            <Card
-              v-for="asset in filteredAssets"
-              :key="asset.path"
-              class="asset-manager__grid-card"
-              @click="handleRowClick(asset)"
-            >
-              <div class="asset-manager__grid-preview" :class="{ 'is-folder': asset.type === 'folder' }">
-                <template v-if="asset.type === 'folder'">
-                  <Icon name="ph:folder-simple" size="32" />
-                </template>
-                <template v-else-if="isImageAsset(asset) && asset.publicUrl">
-                  <img :src="asset.publicUrl" :alt="asset.name" loading="lazy">
-                </template>
-                <template v-else>
-                  <Icon name="ph:file" size="32" />
-                </template>
-                <div v-if="canDelete && asset.type !== 'folder'" class="asset-manager__grid-actions" @click.stop>
-                  <Button variant="danger" size="s" square @click="promptDeleteAsset(asset)">
-                    <Icon name="ph:trash" size="16" />
-                  </Button>
-                </div>
-              </div>
-              <Flex column gap="xxs">
-                <strong class="text-s asset-manager__grid-name">{{ asset.name }}</strong>
-                <span class="text-xxs text-color-light">{{ asset.type === 'folder' ? 'Folder' : formatBytes(asset.size) }}</span>
-              </Flex>
-            </Card>
-          </Grid>
+            :can-delete="canDelete"
+            :is-forums-bucket="isForumsBucket"
+            @click-asset="handleRowClick"
+            @delete-asset="promptDeleteAsset"
+          />
           <Flex v-else expand>
             <Alert variant="info">
               No assets found in this folder.
@@ -955,71 +941,6 @@ onBeforeMount(fetchAssets)
 
     &:hover td {
       background-color: var(--color-bg-raised);
-    }
-  }
-
-  &__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: var(--space-m);
-
-    @media (max-width: 640px) {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-
-  &__grid-name {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    word-break: break-all;
-  }
-
-  &__grid-card {
-    cursor: pointer;
-    transition: border-color 0.2s ease;
-    min-width: 0;
-    overflow: hidden;
-
-    &:hover {
-      border-color: var(--color-accent);
-    }
-  }
-
-  &__grid-preview {
-    position: relative;
-    width: 100%;
-    height: 140px;
-    border-radius: var(--border-radius-m);
-    margin-bottom: var(--space-s);
-    background: var(--color-bg-raised);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-
-    &.is-folder {
-      color: var(--color-text-light);
-    }
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-  }
-
-  &__grid-actions {
-    position: absolute;
-    top: var(--space-xs);
-    right: var(--space-xs);
-    opacity: 0;
-    transition: opacity var(--transition);
-
-    .asset-manager__grid-card:hover & {
-      opacity: 1;
     }
   }
 }

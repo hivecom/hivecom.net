@@ -1406,7 +1406,7 @@ async function saveBanner() {
 
     const { error: uploadError } = await supabase.storage
       .from(USERS_BUCKET_ID)
-      .upload(filePath, file, { upsert: true, contentType: 'image/webp' })
+      .upload(filePath, file, { upsert: true, contentType: 'image/webp', metadata: { uploadedBy: props.userId } })
 
     if (uploadError) {
       saveError.value = uploadError.message

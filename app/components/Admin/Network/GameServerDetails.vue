@@ -3,6 +3,9 @@ import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 
 import { computed, ref, watch } from 'vue'
+import GameIcon from '@/components/GameServers/GameIcon.vue'
+import ChartActivityHistogramContent from '@/components/Shared/Charts/ChartActivityHistogramContent.vue'
+import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
@@ -14,6 +17,7 @@ type GameServerWithJoins = Omit<Tables<'gameservers'>, 'game'> & {
   game?: {
     id?: number | null
     name?: string | null
+    shorthand?: string | null
   } | null
 }
 
@@ -136,7 +140,15 @@ function confirmDelete() {
                 :to="`/admin/games?game=${props.gameserver.game.id}`"
                 class="text-m text-color-accent"
               >
-                {{ props.gameserver.game_name || props.gameserver.game?.name || 'Unknown' }}
+                <Flex gap="xs" y-center>
+                  <GameIcon
+                    v-if="props.gameserver.game"
+                    :game="props.gameserver.game as Tables<'games'>"
+                    size="xs"
+                    :show-fallback="false"
+                  />
+                  <span>{{ props.gameserver.game_name || props.gameserver.game?.name || 'Unknown' }}</span>
+                </Flex>
               </NuxtLink>
               <span v-else>{{ props.gameserver.game_name || props.gameserver.game?.name || 'Unknown' }}</span>
             </Grid>
@@ -148,7 +160,7 @@ function confirmDelete() {
                   v-if="props.gameserver.container"
                   :to="`/admin/network?tab=Containers&container=${encodeURIComponent(props.gameserver.container)}`"
                 >
-                  <Badge>
+                  <Badge variant="accent" outline>
                     {{ props.gameserver.container }}
                   </Badge>
                 </NuxtLink>
@@ -212,7 +224,18 @@ function confirmDelete() {
           </Flex>
         </Card>
 
-        <!-- Description -->
+        <!-- Activity (only for servers with query support) -->
+        <Card v-if="props.gameserver.query_protocol != null" separators>
+          <template #header>
+            <h6>Activity</h6>
+          </template>
+
+          <ChartActivityHistogramContent :series="['gameserversPlayers']">
+            <template #default="{ period, window, utc, color }">
+              <ChartGameserversPlayers :period :window :utc :color :server-id="props.gameserver.id" compact />
+            </template>
+          </ChartActivityHistogramContent>
+        </Card>
         <Card v-if="props.gameserver.description" separators>
           <template #header>
             <h6>Description</h6>

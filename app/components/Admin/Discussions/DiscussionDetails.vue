@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { StorageAsset } from '@/lib/storageAssets'
+import type { FlatSortColumn, StorageAsset } from '@/lib/storageAssets'
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, Card, CopyClipboard, Dropdown, DropdownTitle, Flex, Grid, pushToast, searchString, Sheet, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Dropdown, DropdownTitle, Flex, Grid, paginate, Pagination, pushToast, searchString, Select, Sheet } from '@dolanske/vui'
+import AssetGrid from '@/components/Admin/Assets/AssetGrid.vue'
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
 import DiscussionEditSheet from '@/components/Admin/Discussions/DiscussionEditSheet.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
@@ -11,7 +12,7 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
-import { formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
+import { FORUMS_BUCKET_ID, listStorageObjectsFlat, normalizePrefix } from '@/lib/storageAssets'
 
 type DiscussionRecord = Tables<'discussions'>
 
@@ -47,59 +48,100 @@ const lastUpdatedAt = computed<string | null>(() => props.discussion?.modified_a
 const fetchedMarkdown = ref<string | null>(null)
 const contentLoading = ref(false)
 
+const assetsPrefix = computed(() => {
+  const id = props.discussion?.id
+  return id ? `${normalizePrefix(id)}/` : ''
+})
+
+// ── Assets fetch / sort / pagination ─────────────────────────────────────────
+
+const PAGE_SIZE = 10
+
 const assets = ref<StorageAsset[]>([])
 const assetsLoading = ref(false)
+const assetsReloading = ref(false)
 const assetsError = ref('')
+const assetsTotalCount = ref(0)
+const assetsPage = ref(1)
 
+const assetsPaginationState = computed(() => paginate(assetsTotalCount.value, assetsPage.value, PAGE_SIZE))
+const assetsShouldPaginate = computed(() => assetsTotalCount.value > PAGE_SIZE)
 const assetsSummary = computed(() => {
-  const count = assets.value.length
+  const count = assetsTotalCount.value
   return `${count} asset${count === 1 ? '' : 's'}`
 })
 
-const assetsPrefix = computed(() => normalizePrefix(props.discussion?.id ?? ''))
+type AssetSortOption = 'newest' | 'oldest' | 'name-asc' | 'name-desc' | 'size-desc' | 'size-asc'
+
+const assetSortOptions = [
+  { label: 'Newest first', value: 'newest' as AssetSortOption },
+  { label: 'Oldest first', value: 'oldest' as AssetSortOption },
+  { label: 'Name (A → Z)', value: 'name-asc' as AssetSortOption },
+  { label: 'Name (Z → A)', value: 'name-desc' as AssetSortOption },
+  { label: 'Size (largest)', value: 'size-desc' as AssetSortOption },
+  { label: 'Size (smallest)', value: 'size-asc' as AssetSortOption },
+]
+
+const assetSortOption = ref<AssetSortOption>('newest')
+
+const assetSortModel = computed<{ label: string, value: AssetSortOption }[] | undefined>({
+  get() {
+    const match = assetSortOptions.find(o => o.value === assetSortOption.value)
+    return match ? [match] : undefined
+  },
+  set(selection) {
+    assetSortOption.value = selection?.[0]?.value ?? 'newest'
+    assetsPage.value = 1
+    void fetchDiscussionAssets()
+  },
+})
+
+function assetSortParams(): { column: FlatSortColumn, order: 'asc' | 'desc' } {
+  switch (assetSortOption.value) {
+    case 'oldest': return { column: 'updated_at', order: 'asc' }
+    case 'name-asc': return { column: 'name', order: 'asc' }
+    case 'name-desc': return { column: 'name', order: 'desc' }
+    case 'size-desc': return { column: 'size', order: 'desc' }
+    case 'size-asc': return { column: 'size', order: 'asc' }
+    case 'newest':
+    default: return { column: 'updated_at', order: 'desc' }
+  }
+}
 
 async function fetchDiscussionAssets() {
-  assets.value = []
+  if (!assetsPrefix.value)
+    return
+
   assetsError.value = ''
-
-  if (!props.discussion?.id)
-    return
-
-  const prefix = assetsPrefix.value
-  if (!prefix)
-    return
-
-  assetsLoading.value = true
+  if (assets.value.length) {
+    assetsReloading.value = true
+  }
+  else {
+    assetsLoading.value = true
+  }
 
   try {
-    assets.value = await listStorageFilesRecursive(supabase, FORUMS_BUCKET_ID, prefix)
+    const { assets: files, totalCount } = await listStorageObjectsFlat(supabase, FORUMS_BUCKET_ID, {
+      prefix: assetsPrefix.value,
+      limit: PAGE_SIZE,
+      offset: (assetsPage.value - 1) * PAGE_SIZE,
+      sortBy: assetSortParams(),
+    })
+    assets.value = files
+    assetsTotalCount.value = totalCount
   }
-  catch (error: unknown) {
-    assetsError.value = error instanceof Error ? error.message : 'Unable to load assets'
+  catch (e: unknown) {
+    assetsError.value = e instanceof Error ? e.message : 'Unable to load assets'
   }
   finally {
     assetsLoading.value = false
+    assetsReloading.value = false
   }
 }
 
-function openAssetUrl(asset: StorageAsset) {
-  if (!asset.publicUrl)
-    return
-
-  window.open(asset.publicUrl, '_blank', 'noopener')
-}
-
-function getAssetUploaderId(asset: StorageAsset): string | null {
-  if (!props.discussion?.id)
-    return null
-
-  const segments = normalizePrefix(asset.path).split('/').filter(Boolean)
-  if (segments.length < 2)
-    return null
-  if (segments[0] !== props.discussion.id)
-    return null
-
-  return segments[1] || null
+function setAssetsPage(n: number) {
+  assetsPage.value = n
+  void fetchDiscussionAssets()
 }
 
 const discussionMarkdown = computed(() => {
@@ -279,6 +321,7 @@ watch(
   () => {
     void fetchLastReply()
     void fetchDiscussionContent()
+    assetsPage.value = 1
     void fetchDiscussionAssets()
   },
   { immediate: true },
@@ -558,13 +601,23 @@ async function reassignToTopic(topicId: string) {
 
       <Card class="card-bg">
         <Flex column gap="s">
-          <Flex x-between y-center>
-            <h5 class="text-bold">
-              Assets
-            </h5>
-            <span class="text-xxs text-color-light">
-              Forums bucket · {{ assetsSummary }}
-            </span>
+          <Flex x-between y-center expand>
+            <Flex y-center gap="xs">
+              <h5 class="text-bold">
+                Assets
+              </h5>
+              <span class="text-xxs text-color-light">Forums bucket - {{ assetsSummary }}</span>
+            </Flex>
+            <Flex y-center gap="s">
+              <Select
+                v-model="assetSortModel"
+                :options="assetSortOptions"
+                placeholder="Sort"
+                single
+                size="s"
+                style="width: 160px;"
+              />
+            </Flex>
           </Flex>
 
           <Alert v-if="assetsError" variant="danger">
@@ -575,71 +628,18 @@ async function reassignToTopic(topicId: string) {
             Loading assets...
           </p>
 
-          <Grid
-            v-else-if="assets.length"
-            expand
-            columns="repeat(auto-fill, minmax(200px, 1fr))"
-            gap="s"
-          >
-            <Card v-for="asset in assets" :key="asset.path" class="card-bg">
-              <Flex column gap="xs">
-                <Flex
-                  y-center
-                  x-center
-                  class="card-bg"
-                  style="height: 120px; border-radius: var(--border-radius-s); overflow: hidden;"
-                >
-                  <template v-if="isImageAsset(asset) && asset.publicUrl">
-                    <img :src="asset.publicUrl" :alt="asset.name" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
-                  </template>
-                  <template v-else>
-                    <Icon name="ph:file" size="24" />
-                  </template>
-                </Flex>
-
-                <Flex column gap="xxs">
-                  <strong class="text-xs">{{ asset.name }}</strong>
-                  <span class="text-xxs text-color-light">{{ formatBytes(asset.size) }}</span>
-                  <Flex y-center gap="xxs">
-                    <span class="text-xxs text-color-light">Uploaded by</span>
-                    <UserLink :user-id="getAssetUploaderId(asset)" placeholder="Unknown" class="text-xxs" />
-                  </Flex>
-                </Flex>
-
-                <Flex gap="xs" y-center>
-                  <CopyClipboard :text="asset.publicUrl || ''" confirm>
-                    <Tooltip>
-                      <Button
-                        size="s"
-                        variant="gray"
-                        square
-                        :disabled="!asset.publicUrl"
-                      >
-                        <Icon name="ph:link-simple" />
-                      </Button>
-                      <template #tooltip>
-                        <p>Copy URL</p>
-                      </template>
-                    </Tooltip>
-                  </CopyClipboard>
-                  <Tooltip>
-                    <Button
-                      size="s"
-                      variant="gray"
-                      square
-                      :disabled="!asset.publicUrl"
-                      @click="openAssetUrl(asset)"
-                    >
-                      <Icon name="ph:arrow-square-out" />
-                    </Button>
-                    <template #tooltip>
-                      <p>Open</p>
-                    </template>
-                  </Tooltip>
-                </Flex>
+          <template v-else-if="assets.length">
+            <Flex expand column gap="s" class="assets-content" :class="{ 'is-reloading': assetsReloading }">
+              <AssetGrid
+                :assets="assets"
+                :is-forums-bucket="true"
+                :forum-context-id="props.discussion?.id"
+              />
+              <Flex v-if="assetsShouldPaginate" x-center y-center expand>
+                <Pagination :pagination="assetsPaginationState" @change="setAssetsPage" />
               </Flex>
-            </Card>
-          </Grid>
+            </Flex>
+          </template>
 
           <p v-else class="text-color-lighter text-xs">
             No assets found for this discussion.
@@ -668,6 +668,15 @@ async function reassignToTopic(topicId: string) {
 </template>
 
 <style scoped lang="scss">
+.assets-content {
+  transition: opacity var(--transition-slow);
+
+  &.is-reloading {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+}
+
 .discussion-code {
   font-family: monospace;
   font-size: var(--font-size-s);

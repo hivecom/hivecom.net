@@ -131,7 +131,7 @@ async function handleIconUpload(file: File) {
   iconError.value = null
 
   try {
-    const result = await uploadTopicIcon(supabase, props.editedItem.id, file)
+    const result = await uploadTopicIcon(supabase, props.editedItem.id, file, userId.value ?? undefined)
 
     if (result.success && result.url) {
       iconUrl.value = result.url
