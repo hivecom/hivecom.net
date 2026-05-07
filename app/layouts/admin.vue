@@ -368,7 +368,7 @@ watch(() => route.path, () => {
                 </h5> -->
               </Flex>
               <Flex gap="xxs">
-                <Tooltip placement="right">
+                <Tooltip placement="bottom">
                   <Button square plain aria-label="Search" @click="openCommand()">
                     <Icon name="ph:magnifying-glass" />
                   </Button>
@@ -381,7 +381,7 @@ watch(() => route.path, () => {
                     </p>
                   </template>
                 </Tooltip>
-                <Tooltip placement="right">
+                <Tooltip placement="bottom">
                   <Button v-if="!isBelowExtraLarge" square plain :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
                     <Icon :name="expandToggleIcon" />
                   </Button>
@@ -389,7 +389,7 @@ watch(() => route.path, () => {
                     <p>Expand admin container</p>
                   </template>
                 </Tooltip>
-                <Tooltip v-if="!miniSidebar" placement="right">
+                <Tooltip v-if="!miniSidebar" placement="bottom">
                   <Button square plain @click="miniSidebar = !miniSidebar">
                     <Icon name="tabler:layout-sidebar-left-collapse" />
                   </Button>

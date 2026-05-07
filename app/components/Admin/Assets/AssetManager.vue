@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
 
-import type { StorageAsset as CmsAsset, StorageBucketId } from '@/lib/storageAssets'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table, Tooltip } from '@dolanske/vui'
+import type { StorageAsset as CmsAsset, FlatSortColumn, StorageBucketId } from '@/lib/storageAssets'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, Card, CopyClipboard, defineTable, Flex, Grid, Input, paginate, Pagination, pushToast, Select, Skeleton, Table, Tooltip } from '@dolanske/vui'
 
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
@@ -12,7 +12,7 @@ import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { CMS_BUCKET_ID, formatBytes, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
+import { CMS_BUCKET_ID, formatBytes, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, listStorageObjectsFlat, normalizePrefix } from '@/lib/storageAssets'
 
 interface Props {
   bucketId?: StorageBucketId
@@ -45,17 +45,62 @@ const storageConsoleUrl = computed(() => {
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 const loading = ref(true)
+const reloading = ref(false)
 const errorMessage = ref('')
 const assets = ref<CmsAsset[]>([])
 const currentPrefix = ref('')
 const searchQuery = ref('')
 const typeFilter = ref<TypeFilterValue>('all')
 const sortOption = ref<SortOptionValue>('name-asc')
-const viewMode = ref<'table' | 'grid'>('table')
+const viewMode = defineModel<'table' | 'grid'>('viewMode', { default: 'table' })
+const flatView = defineModel<boolean>('flatView', { default: false })
+
 const isBelowMedium = useBreakpoint('<m')
 type AssetActionKey = 'delete' | 'rename'
 
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
+
+// ─── Flat view pagination & sort ──────────────────────────────────────────────
+const PAGE_SIZE = computed(() => adminTablePerPage.value > 10 ? 50 : 25)
+const page = ref(1)
+const totalCount = ref(0)
+
+type FlatSortOptionValue = 'newest' | 'oldest' | 'name-asc' | 'name-desc' | 'size-desc' | 'size-asc'
+const flatSortOption = ref<FlatSortOptionValue>('newest')
+
+const flatSortSelectOptions: SelectOption<FlatSortOptionValue>[] = [
+  { label: 'Newest first', value: 'newest' },
+  { label: 'Oldest first', value: 'oldest' },
+  { label: 'Name (A → Z)', value: 'name-asc' },
+  { label: 'Name (Z → A)', value: 'name-desc' },
+  { label: 'Size (largest)', value: 'size-desc' },
+  { label: 'Size (smallest)', value: 'size-asc' },
+]
+
+const flatSortOptionModel = computed<SelectOption<FlatSortOptionValue>[] | undefined>({
+  get() {
+    const match = flatSortSelectOptions.find(o => o.value === flatSortOption.value)
+    return match ? [match] : undefined
+  },
+  set(selection) {
+    flatSortOption.value = selection?.[0]?.value ?? 'newest'
+    fetchAssets()
+  },
+})
+
+function flatSortParams(): { column: FlatSortColumn, order: 'asc' | 'desc' } {
+  switch (flatSortOption.value) {
+    case 'oldest': return { column: 'updated_at', order: 'asc' }
+    case 'name-asc': return { column: 'name', order: 'asc' }
+    case 'name-desc': return { column: 'name', order: 'desc' }
+    case 'size-desc': return { column: 'size', order: 'desc' }
+    case 'size-asc': return { column: 'size', order: 'asc' }
+    case 'newest': default: return { column: 'updated_at', order: 'desc' }
+  }
+}
+
+const paginationState = computed(() => paginate(totalCount.value, page.value, PAGE_SIZE.value))
+const shouldShowPagination = computed(() => totalCount.value > PAGE_SIZE.value)
 
 const assetGridColumns = computed(() => {
   if (isBelowMedium.value)
@@ -167,16 +212,15 @@ const filteredAssets = computed(() => {
 })
 
 const tableData = computed(() => filteredAssets.value.map(asset => ({
-  'Name': asset.name,
+  [flatView.value ? 'Path' : 'Name']: flatView.value ? asset.path : asset.name,
   'Type': getAssetTypeLabel(asset),
   'Size': asset.type === 'folder' ? 0 : asset.size,
   'Last Modified': asset.updated_at ?? asset.created_at ?? '',
   '_original': asset,
 })))
 
-const totalCount = computed(() => assets.value.length)
 const filteredCount = computed(() => filteredAssets.value.length)
-const isFiltered = computed(() => filteredCount.value !== totalCount.value)
+const isFiltered = computed(() => filteredCount.value !== assets.value.length)
 
 const { headers, rows: tableRows, setSort } = defineTable(tableData, {
   pagination: {
@@ -229,12 +273,54 @@ function sortFiles(a: CmsAsset, b: CmsAsset) {
   }
 }
 
-async function fetchAssets() {
-  loading.value = true
-  errorMessage.value = ''
+async function fetchAssets(silent = false) {
+  if (silent) {
+    reloading.value = true
+  }
+  else {
+    loading.value = true
+    errorMessage.value = ''
+    assets.value = []
+    totalCount.value = 0
+  }
   try {
-    const entries = await listCmsDirectory(supabase, resolvedBucketId.value, { prefix: currentPrefix.value })
-    assets.value = entries
+    if (flatView.value) {
+      const { assets: batch, totalCount: count } = await listStorageObjectsFlat(supabase, resolvedBucketId.value, {
+        prefix: currentPrefix.value,
+        limit: PAGE_SIZE.value,
+        offset: (page.value - 1) * PAGE_SIZE.value,
+        sortBy: flatSortParams(),
+      })
+      assets.value = batch
+      totalCount.value = count
+    }
+    else {
+      // Folders fetched via Storage API (synthesises virtual folder rows).
+      // Files paginated via RPC at the current prefix level.
+      const [folders, { assets: files, totalCount: fileCount }] = await Promise.all([
+        listCmsDirectory(supabase, resolvedBucketId.value, { prefix: currentPrefix.value })
+          .then(entries => entries.filter(e => e.type === 'folder')),
+        listStorageObjectsFlat(supabase, resolvedBucketId.value, {
+          prefix: currentPrefix.value
+            ? `${currentPrefix.value}/`
+            : '',
+          limit: PAGE_SIZE.value,
+          offset: (page.value - 1) * PAGE_SIZE.value,
+          sortBy: flatSortParams(),
+        }),
+      ])
+      // Exclude files that live in sub-folders (name contains another slash after the prefix)
+      const prefixSlash = currentPrefix.value ? `${currentPrefix.value}/` : ''
+      const directFiles = files.filter((f) => {
+        const relative = f.path.slice(prefixSlash.length)
+        return !relative.includes('/')
+      })
+      const combined = page.value === 1
+        ? [...folders, ...directFiles]
+        : directFiles
+      assets.value = combined.slice(0, PAGE_SIZE.value)
+      totalCount.value = fileCount + folders.length
+    }
   }
   catch (error) {
     console.error('Failed to load assets', error)
@@ -242,7 +328,13 @@ async function fetchAssets() {
   }
   finally {
     loading.value = false
+    reloading.value = false
   }
+}
+
+function setPage(n: number) {
+  page.value = n
+  void fetchAssets(true)
 }
 
 function changePrefix(path: string) {
@@ -286,7 +378,7 @@ async function deleteAsset(asset: CmsAsset) {
     }
 
     pushToast(`${asset.type === 'folder' ? 'Folder' : 'File'} deleted`)
-    await fetchAssets()
+    await fetchAssets(true)
     notifyPeers()
   }
   catch (error) {
@@ -372,7 +464,7 @@ async function renameFileAsset(asset: CmsAsset, newPathInput: string): Promise<s
       throw error
 
     pushToast('File renamed')
-    await fetchAssets()
+    await fetchAssets(true)
     notifyPeers()
     return targetPath
   }
@@ -442,12 +534,31 @@ function getAssetTypeLabel(asset: CmsAsset): string {
   return 'File'
 }
 
-watch(resolvedBucketId, () => {
-  currentPrefix.value = ''
+watch(flatView, (val) => {
+  if (val)
+    currentPrefix.value = ''
+  page.value = 1
   fetchAssets()
 })
 
+watch(resolvedBucketId, () => {
+  currentPrefix.value = ''
+  page.value = 1
+  fetchAssets()
+})
+
+watch(adminTablePerPage, () => {
+  if (page.value !== 1) {
+    page.value = 1
+    // page watch will trigger fetch
+  }
+  else {
+    void fetchAssets()
+  }
+})
+
 watch(currentPrefix, () => {
+  page.value = 1
   fetchAssets()
 })
 
@@ -476,7 +587,7 @@ onBeforeMount(fetchAssets)
 <template>
   <Flex column gap="l" expand>
     <Flex column gap="s" expand>
-      <Breadcrumbs>
+      <Breadcrumbs v-if="!flatView">
         <BreadcrumbItem
           v-for="(crumb, index) in breadcrumbs"
           :key="crumb.path || `crumb-${index}`"
@@ -514,10 +625,19 @@ onBeforeMount(fetchAssets)
           />
 
           <Select
-            v-if="viewMode === 'grid'"
+            v-if="viewMode === 'grid' && !flatView"
             v-model="sortOptionModel"
             :options="sortSelectOptions"
             placeholder="Sort files"
+            single
+            :expand="isBelowMedium"
+          />
+
+          <Select
+            v-if="flatView"
+            v-model="flatSortOptionModel"
+            :options="flatSortSelectOptions"
+            placeholder="Sort by"
             single
             :expand="isBelowMedium"
           />
@@ -533,16 +653,15 @@ onBeforeMount(fetchAssets)
           :column-reverse="isBelowMedium"
         >
           <span class="text-s text-color-lighter">
-            {{ filteredCount }}{{ isFiltered ? ` of ${totalCount}` : '' }} items
+            {{ filteredCount }}{{ isFiltered ? ` of ${assets.length}` : '' }} items{{ totalCount > assets.length ? ` (${totalCount} total)` : '' }}
           </span>
 
-          <Flex :gap="isBelowMedium ? 's' : 'xs'" :expand="isBelowMedium" :column="isBelowMedium">
-            <!-- <Flex gap="xs" class="asset-manager__view-toggle" :x-center="isBelowMedium" :expand="isBelowMedium"> -->
-            <ButtonGroup>
+          <Flex gap="xs" :expand="isBelowMedium" :x-between="isBelowMedium">
+            <ButtonGroup :expand="isBelowMedium">
               <Button
                 :variant="viewMode === 'table' ? 'accent' : 'gray'"
                 :square="!isBelowMedium"
-                expand
+                :expand="isBelowMedium"
                 @click="viewMode = 'table'"
               >
                 <Icon name="ph:list" size="18" />
@@ -550,55 +669,65 @@ onBeforeMount(fetchAssets)
               <Button
                 :variant="viewMode === 'grid' ? 'accent' : 'gray'"
                 :square="!isBelowMedium"
-                expand
+                :expand="isBelowMedium"
                 @click="viewMode = 'grid'"
               >
                 <Icon name="ph:squares-four" size="18" />
               </Button>
             </ButtonGroup>
 
-            <!-- </Flex> -->
-
-            <Flex
-              :gap="isBelowMedium ? 's' : 'xs'"
-              class="asset-manager__toolbar-actions"
-              wrap
-              :x-end="!isBelowMedium"
-              :x-center="isBelowMedium"
-              :expand="isBelowMedium"
-            >
-              <Flex :expand="isBelowMedium" :gap="isBelowMedium ? 's' : 'xs'">
-                <Button variant="gray" :expand="isBelowMedium" @click="fetchAssets">
-                  <template #start>
-                    <Icon name="ph:arrow-clockwise" />
-                  </template>
-                  Refresh
-                </Button>
-                <Button
-                  v-if="true"
-                  variant="gray"
-                  :disabled="!storageConsoleUrl"
-                  :expand="isBelowMedium"
-                  @click="openStorageConsole"
-                >
-                  <template #start>
-                    <Icon name="ph:folder-open" />
-                  </template>
-                  Supabase Files
-                </Button>
-              </Flex>
+            <Tooltip>
               <Button
-                v-if="canUpload"
-                variant="accent"
+                :variant="flatView ? 'accent' : 'gray'"
+                :square="!isBelowMedium"
                 :expand="isBelowMedium"
-                @click="showUploadDrawer = true"
+                @click="flatView = !flatView"
+              >
+                <Icon name="ph:rows" size="18" />
+              </Button>
+              <template #tooltip>
+                <p>{{ flatView ? 'Flat view - all files' : 'Switch to flat view' }}</p>
+              </template>
+            </Tooltip>
+          </Flex>
+
+          <Flex
+            gap="xs"
+            class="asset-manager__toolbar-actions"
+            wrap
+            :x-end="!isBelowMedium"
+            :expand="isBelowMedium"
+          >
+            <Flex :expand="isBelowMedium" gap="xs">
+              <Button variant="gray" :expand="isBelowMedium" @click="fetchAssets">
+                <template #start>
+                  <Icon name="ph:arrow-clockwise" />
+                </template>
+                Refresh
+              </Button>
+              <Button
+                variant="gray"
+                :disabled="!storageConsoleUrl"
+                :expand="isBelowMedium"
+                @click="openStorageConsole"
               >
                 <template #start>
-                  <Icon name="ph:upload" />
+                  <Icon name="ph:folder-open" />
                 </template>
-                Upload
+                Supabase Files
               </Button>
             </Flex>
+            <Button
+              v-if="canUpload"
+              variant="accent"
+              :expand="isBelowMedium"
+              @click="showUploadDrawer = true"
+            >
+              <template #start>
+                <Icon name="ph:upload" />
+              </template>
+              Upload
+            </Button>
           </Flex>
         </Flex>
       </Flex>
@@ -607,9 +736,17 @@ onBeforeMount(fetchAssets)
         {{ errorMessage }}
       </Alert>
 
-      <TableSkeleton v-if="loading" :columns="4" :rows="6" />
+      <TableSkeleton v-if="loading && viewMode === 'table'" :columns="4" :rows="6" />
+      <Grid
+        v-else-if="loading && viewMode === 'grid'"
+        class="asset-manager__grid"
+        expand
+        :columns="assetGridColumns"
+      >
+        <Skeleton v-for="i in PAGE_SIZE" :key="i" :height="220" :radius="8" />
+      </Grid>
 
-      <template v-else>
+      <Flex v-else expand class="asset-manager__content" :class="{ 'is-reloading': reloading }">
         <TableContainer v-if="viewMode === 'table'">
           <Table.Root v-if="tableRows.length" separate-cells>
             <template #header>
@@ -636,7 +773,13 @@ onBeforeMount(fetchAssets)
                 <Table.Cell>
                   <Flex gap="xs" y-center>
                     <Icon :name="row._original.type === 'folder' ? 'ph:folder-simple' : 'ph:file'" />
-                    <span>{{ row._original.name }}</span>
+                    <Tooltip v-if="flatView" :disabled="!row._original.path">
+                      <span>{{ row._original.name }}</span>
+                      <template #tooltip>
+                        <p>{{ row._original.path }}</p>
+                      </template>
+                    </Tooltip>
+                    <span v-else>{{ row._original.name }}</span>
                   </Flex>
                 </Table.Cell>
                 <Table.Cell>
@@ -733,9 +876,14 @@ onBeforeMount(fetchAssets)
                 <template v-else>
                   <Icon name="ph:file" size="32" />
                 </template>
+                <div v-if="canDelete && asset.type !== 'folder'" class="asset-manager__grid-actions" @click.stop>
+                  <Button variant="danger" size="s" square @click="promptDeleteAsset(asset)">
+                    <Icon name="ph:trash" size="16" />
+                  </Button>
+                </div>
               </div>
               <Flex column gap="xxs">
-                <strong class="text-s">{{ asset.name }}</strong>
+                <strong class="text-s asset-manager__grid-name">{{ asset.name }}</strong>
                 <span class="text-xxs text-color-light">{{ asset.type === 'folder' ? 'Folder' : formatBytes(asset.size) }}</span>
               </Flex>
             </Card>
@@ -746,7 +894,11 @@ onBeforeMount(fetchAssets)
             </Alert>
           </Flex>
         </Flex>
-      </template>
+      </Flex>
+
+      <Flex v-if="shouldShowPagination" x-center expand>
+        <Pagination :pagination="paginationState" @change="setPage" />
+      </Flex>
     </Flex>
 
     <AssetUpload
@@ -785,6 +937,15 @@ onBeforeMount(fetchAssets)
 
 <style scoped lang="scss">
 .asset-manager {
+  &__content {
+    transition: opacity var(--transition-slow);
+
+    &.is-reloading {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+  }
+
   &__toolbar-actions {
     gap: var(--space-xxs);
   }
@@ -799,13 +960,28 @@ onBeforeMount(fetchAssets)
 
   &__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: var(--space-m);
+
+    @media (max-width: 640px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  &__grid-name {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-all;
   }
 
   &__grid-card {
     cursor: pointer;
     transition: border-color 0.2s ease;
+    min-width: 0;
+    overflow: hidden;
 
     &:hover {
       border-color: var(--color-accent);
@@ -813,6 +989,7 @@ onBeforeMount(fetchAssets)
   }
 
   &__grid-preview {
+    position: relative;
     width: 100%;
     height: 140px;
     border-radius: var(--border-radius-m);
@@ -831,6 +1008,18 @@ onBeforeMount(fetchAssets)
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+  }
+
+  &__grid-actions {
+    position: absolute;
+    top: var(--space-xs);
+    right: var(--space-xs);
+    opacity: 0;
+    transition: opacity var(--transition);
+
+    .asset-manager__grid-card:hover & {
+      opacity: 1;
     }
   }
 }

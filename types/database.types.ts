@@ -2541,6 +2541,14 @@ export type Database = {
           title: string
         }[]
       }
+      get_storage_bucket_metrics: {
+        Args: { p_bucket_id: string }
+        Returns: {
+          total_files: number
+          total_images: number
+          total_size: number
+        }[]
+      }
       get_user_emails: {
         Args: never
         Returns: {
@@ -2566,6 +2574,27 @@ export type Database = {
       is_not_banned: { Args: never; Returns: boolean }
       is_owner: { Args: { record_user_id: string }; Returns: boolean }
       is_profile_owner: { Args: { profile_id: string }; Returns: boolean }
+      list_storage_objects: {
+        Args: {
+          p_bucket_id: string
+          p_limit?: number
+          p_offset?: number
+          p_prefix?: string
+          p_sort_col?: string
+          p_sort_order?: string
+        }
+        Returns: {
+          bucket_id: string
+          created_at: string
+          id: string
+          last_accessed_at: string
+          mimetype: string
+          name: string
+          size: number
+          total_count: number
+          updated_at: string
+        }[]
+      }
       normalize_mentions: { Args: { input_text: string }; Returns: string }
       pgmq_delete: {
         Args: { msg_id: number; queue_name: string }
@@ -2955,3 +2984,4 @@ export const Constants = {
     },
   },
 } as const
+

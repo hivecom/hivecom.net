@@ -5,7 +5,7 @@ import { Alert } from '@dolanske/vui'
 import { computed, onBeforeMount, ref, useSlots, watch } from 'vue'
 import KPICard from '@/components/Admin/KPICard.vue'
 import KPIContainer from '@/components/Admin/KPIContainer.vue'
-import { CMS_BUCKET_ID, formatBytes, getBucketLabel, isImageAsset, listStorageFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
+import { CMS_BUCKET_ID, formatBytes, getBucketLabel } from '@/lib/storageAssets'
 
 const props = withDefaults(defineProps<{
   bucketId?: StorageBucketId
@@ -23,7 +23,6 @@ const metrics = ref({
   total: 0,
   storage: 0,
   images: 0,
-  folders: 0,
 })
 
 async function fetchMetrics() {
@@ -31,19 +30,18 @@ async function fetchMetrics() {
   errorMessage.value = ''
 
   try {
-    const files = await listStorageFilesRecursive(supabase, props.bucketId)
-    const folderSet = new Set<string>()
-
-    files.forEach((file) => {
-      const folder = extractFolder(file.path)
-      folderSet.add(folder)
+    const { data, error } = await supabase.rpc('get_storage_bucket_metrics', {
+      p_bucket_id: props.bucketId,
     })
 
+    if (error)
+      throw error
+
+    const row = data?.[0]
     metrics.value = {
-      total: files.length,
-      storage: files.reduce((sum, file) => sum + file.size, 0),
-      images: files.filter(isImageAsset).length,
-      folders: folderSet.size,
+      total: row?.total_files ?? 0,
+      storage: row?.total_size ?? 0,
+      images: row?.total_images ?? 0,
     }
   }
   catch (error: unknown) {
@@ -53,15 +51,6 @@ async function fetchMetrics() {
   finally {
     loading.value = false
   }
-}
-
-function extractFolder(path: string): string {
-  const normalized = normalizePrefix(path)
-  if (!normalized)
-    return '/'
-  const segments = normalized.split('/')
-  segments.pop()
-  return segments.length ? segments.join('/') : '/'
 }
 
 watch(() => refreshSignal.value, () => {

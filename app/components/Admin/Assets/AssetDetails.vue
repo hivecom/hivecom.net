@@ -109,7 +109,7 @@ function requestRename() {
         <Flex column gap="l" expand>
           <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Path:</span>
-            <span>{{ props.asset?.path }}</span>
+            <span style="word-break: break-all">{{ props.asset?.path }}</span>
           </Grid>
 
           <Grid class="asset-details__item" expand columns="1fr 2fr">

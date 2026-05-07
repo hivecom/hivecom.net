@@ -17,6 +17,8 @@ if (!canViewAssets.value) {
 }
 
 const refreshSignal = ref(0)
+const viewMode = ref<'table' | 'grid'>('table')
+const flatView = ref(false)
 
 const bucketOptions = getBucketOptions()
 const activeTab = ref<StorageBucketId>(CMS_BUCKET_ID)
@@ -46,6 +48,8 @@ const bucketDescription = computed(() => getBucketDescription(activeTab.value))
 
     <AssetManager
       v-model:refresh-signal="refreshSignal"
+      v-model:view-mode="viewMode"
+      v-model:flat-view="flatView"
       :bucket-id="activeTab"
     />
   </Flex>
