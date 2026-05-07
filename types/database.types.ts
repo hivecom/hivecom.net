@@ -243,6 +243,24 @@ export type Database = {
           },
         ]
       }
+      data_steam_games: {
+        Row: {
+          name: string
+          steam_id: number
+          updated_at: string
+        }
+        Insert: {
+          name: string
+          steam_id: number
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          steam_id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       discussion_replies: {
         Row: {
           created_at: string
@@ -1578,24 +1596,6 @@ export type Database = {
           data?: Json
           id?: string
           modified_at?: string | null
-        }
-        Relationships: []
-      }
-      steam_games: {
-        Row: {
-          name: string
-          steam_id: number
-          updated_at: string
-        }
-        Insert: {
-          name: string
-          steam_id: number
-          updated_at?: string
-        }
-        Update: {
-          name?: string
-          steam_id?: number
-          updated_at?: string
         }
         Relationships: []
       }
