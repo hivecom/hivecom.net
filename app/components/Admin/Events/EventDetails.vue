@@ -11,7 +11,7 @@ import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
-import { humanizeRrule } from '@/lib/utils/rrule'
+import { humanizeRrule, nextOccurrenceDate } from '@/lib/utils/rrule'
 
 const props = defineProps<{
   event: Tables<'events'> | null
@@ -55,20 +55,31 @@ function handleDelete(event: Tables<'events'>) {
 // Helper function to get event status
 function getEventStatus(event: Tables<'events'>): { label: string, variant: 'accent' | 'success' | 'neutral' } {
   const now = new Date()
+
+  if (event.recurrence_rule) {
+    const next = nextOccurrenceDate(event)
+    if (next) {
+      const nextEnd = event.duration_minutes
+        ? new Date(next.getTime() + event.duration_minutes * 60 * 1000)
+        : next
+      if (now >= next && now <= nextEnd)
+        return { label: 'Ongoing', variant: 'success' }
+      return { label: 'Recurring', variant: 'accent' }
+    }
+    return { label: 'Past', variant: 'neutral' }
+  }
+
   const eventStart = new Date(event.date)
   const eventEnd = event.duration_minutes
     ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
     : eventStart
 
-  if (now < eventStart) {
+  if (now < eventStart)
     return { label: 'Upcoming', variant: 'accent' }
-  }
-  else if (now >= eventStart && now <= eventEnd) {
+  else if (now >= eventStart && now <= eventEnd)
     return { label: 'Ongoing', variant: 'success' }
-  }
-  else {
+  else
     return { label: 'Past', variant: 'neutral' }
-  }
 }
 </script>
 

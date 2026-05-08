@@ -34,6 +34,10 @@ export interface MetricsHistoryEntry {
   gameserversPlayers: number | null
   teamspeakByServer: Record<string, number> | null
   gameserversByServer: Record<string, number> | null
+  membersByGame: Record<string, number> | null
+  membersBySteamGame: Record<string, number> | null
+  membersGameActivity: number | null
+  membersSteamGameActivity: number | null
   discussionsTotal: number | null
   discussionsReplies: number | null
   discussionsNewTotal: number | null
@@ -160,6 +164,14 @@ function normalizeRpcRow(row: Record<string, unknown>): MetricsHistoryEntry {
     gameserversPlayers: row.gameservers_players as number | null,
     teamspeakByServer: row.teamspeak_by_server as Record<string, number> | null,
     gameserversByServer: row.gameservers_by_server as Record<string, number> | null,
+    membersByGame: row.members_by_game as Record<string, number> | null,
+    membersBySteamGame: row.members_by_steam_game as Record<string, number> | null,
+    membersGameActivity: row.members_by_game !== null && row.members_by_game !== undefined
+      ? Object.values(row.members_by_game as Record<string, number>).reduce((a, b) => a + b, 0)
+      : null,
+    membersSteamGameActivity: row.members_by_steam_game !== null && row.members_by_steam_game !== undefined
+      ? Object.values(row.members_by_steam_game as Record<string, number>).reduce((a, b) => a + b, 0)
+      : null,
     discussionsTotal: row.discussions_total as number | null,
     discussionsReplies: row.discussions_replies as number | null,
     discussionsNewTotal: row.discussions_new_total as number | null,
@@ -352,6 +364,10 @@ export function useDataMetrics() {
             gameserversPlayers: null,
             teamspeakByServer: null,
             gameserversByServer: null,
+            membersByGame: null,
+            membersBySteamGame: null,
+            membersGameActivity: null,
+            membersSteamGameActivity: null,
             discussionsTotal: null,
             discussionsReplies: null,
             discussionsNewTotal: null,
@@ -377,6 +393,14 @@ export function useDataMetrics() {
           gameserversByServer: Object.fromEntries(
             Object.entries(snapshot.gameservers.byServer).map(([k, v]) => [k, v.protocol === 'minecraft' ? (v.data?.numPlayers ?? 0) : (v.data?.players ?? 0)]),
           ),
+          membersByGame: snapshot.members.byGame,
+          membersBySteamGame: snapshot.members.bySteamGame,
+          membersGameActivity: snapshot.members.byGame !== null && snapshot.members.byGame !== undefined
+            ? Object.values(snapshot.members.byGame).reduce((a, b) => a + b, 0)
+            : null,
+          membersSteamGameActivity: snapshot.members.bySteamGame !== null && snapshot.members.bySteamGame !== undefined
+            ? Object.values(snapshot.members.bySteamGame).reduce((a, b) => a + b, 0)
+            : null,
           discussionsTotal: snapshot.discussions.total,
           discussionsReplies: snapshot.discussions.replies,
           discussionsNewTotal: snapshot.discussions.newTotal,

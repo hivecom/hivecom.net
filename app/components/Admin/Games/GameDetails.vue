@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
+import { ref, watchEffect } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import ChartActivityHistogramContent from '@/components/Shared/Charts/ChartActivityHistogramContent.vue'
+import ChartMembersGameActivity from '@/components/Shared/Charts/ChartMembersGameActivity.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 
@@ -177,27 +180,31 @@ watchEffect(async () => {
         <!-- Basic info -->
         <Card class="card-bg">
           <Flex column gap="l" expand>
-            <Grid class="game-details__item" expand :columns="2">
+            <Grid expand :columns="2">
               <span class="game-details__label">ID:</span>
               <span>{{ props.game.id }}</span>
             </Grid>
 
-            <Grid class="game-details__item" expand :columns="2">
+            <Grid expand :columns="2">
               <span class="game-details__label">Name:</span>
               <span>{{ props.game.name }}</span>
             </Grid>
 
-            <Grid v-if="props.game.shorthand" class="game-details__item" expand :columns="2">
+            <Grid v-if="props.game.shorthand" expand :columns="2">
               <span class="game-details__label">Shorthand:</span>
-              <span>{{ props.game.shorthand }}</span>
+              <span>
+                <Code>
+                  {{ props.game.shorthand }}
+                </Code>
+              </span>
             </Grid>
 
-            <Grid v-if="props.game.steam_id" class="game-details__item" expand :columns="2" y-center>
+            <Grid v-if="props.game.steam_id" expand :columns="2" y-center>
               <span class="game-details__label">Steam ID:</span>
               <SteamLink :steam-id="props.game.steam_id" show-icon />
             </Grid>
 
-            <Grid v-if="props.game.website" class="game-details__item" expand :columns="2">
+            <Grid v-if="props.game.website" expand :columns="2">
               <span class="game-details__label">Website:</span>
               <NuxtLink
                 :to="props.game.website"
@@ -260,6 +267,18 @@ watchEffect(async () => {
               </Flex>
             </Flex>
           </Flex>
+        </Card>
+
+        <!-- Activity -->
+        <Card separators class="card-bg">
+          <template #header>
+            <h6>Activity</h6>
+          </template>
+          <ChartActivityHistogramContent :series="['membersGameActivity']" :game-id="props.game.id">
+            <template #default="{ period, window, utc, color }">
+              <ChartMembersGameActivity :period :window :utc :color :game-id="props.game.id" compact />
+            </template>
+          </ChartActivityHistogramContent>
         </Card>
 
         <!-- Game Assets -->
@@ -362,8 +381,9 @@ watchEffect(async () => {
   }
 
   &__link {
-    color: var(--color-text-blue);
+    color: var(--color-accent);
     word-break: break-all;
+    font-size: var(--font-size-s);
   }
 
   &__metadata-by {
@@ -372,8 +392,8 @@ watchEffect(async () => {
   }
 
   &__placeholder-text {
-    color: var(--color-text-light);
-    font-style: italic;
+    color: var(--color-text-lighter);
+    font-size: var(--font-size-s);
 
     &--error {
       color: var(--color-text-red);

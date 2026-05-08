@@ -230,7 +230,7 @@ function confirmDelete() {
             <h6>Activity</h6>
           </template>
 
-          <ChartActivityHistogramContent :series="['gameserversPlayers']">
+          <ChartActivityHistogramContent :series="['gameserversPlayers']" :server-id="props.gameserver.id">
             <template #default="{ period, window, utc, color }">
               <ChartGameserversPlayers :period :window :utc :color :server-id="props.gameserver.id" compact />
             </template>

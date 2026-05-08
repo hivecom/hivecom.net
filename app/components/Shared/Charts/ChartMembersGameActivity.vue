@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ChartDataset, ChartOptions } from 'chart.js'
 import type { ChartComponentRef } from 'vue-chartjs'
-import type { MetricsPeriod } from '@/composables/useDataMetrics'
+import type { MetricsHistoryEntry, MetricsPeriod } from '@/composables/useDataMetrics'
 import { Flex, Select, Skeleton, theme } from '@dolanske/vui'
 import { useElementSize } from '@vueuse/core'
 import {
@@ -15,13 +15,13 @@ import {
 import { computed, nextTick, onMounted, ref, watch, watchEffect } from 'vue'
 import { Bar } from 'vue-chartjs'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
-import { useDataGameservers } from '@/composables/useDataGameservers'
+import { useDataGames } from '@/composables/useDataGames'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useUserTheme } from '@/composables/useUserTheme'
-import { barGapPlugin, getBarChartDefaults, getChartPalette } from '@/lib/charts'
+import { getBarChartDefaults, getChartPalette, getColorizedPalette } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
-interface ServerOption {
+interface GameOption {
   label: string
   value: string
 }
@@ -30,12 +30,13 @@ const props = defineProps<{
   period: MetricsPeriod
   window: { start: Date, end: Date } | null
   utc?: boolean
-  serverId?: number
+  gameId?: number
+  steamGameId?: number
   color?: string
   compact?: boolean
   hideTitle?: boolean
   showYAxis?: boolean
-  showXAxis?: boolean
+  colorize?: boolean
 }>()
 
 ChartJS.register(
@@ -44,32 +45,21 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  barGapPlugin,
 )
 
 const { metrics, fetchMetrics, metricsHistory, loadingHistory, fetchMetricsHistory, fetchMetricsWindow, scheduleRefresh } = useDataMetrics()
-const { gameservers } = useDataGameservers()
+const { games } = useDataGames()
 
 // Map numeric string ID -> display name
-const serverNameMap = computed(() => {
+const gameNameMap = computed(() => {
   const map = new Map<string, string>()
-  for (const gs of gameservers.value)
-    map.set(String(gs.id), gs.name)
+  for (const game of games.value)
+    map.set(String(game.id), game.name ?? String(game.id))
   return map
 })
 
-// Set of server IDs that have query capabilities (non-null query_protocol)
-const queryableServerIds = computed(() => {
-  const set = new Set<string>()
-  for (const gs of gameservers.value) {
-    if (gs.query_protocol != null)
-      set.add(String(gs.id))
-  }
-  return set
-})
-
-function serverLabel(id: string): string {
-  return serverNameMap.value.get(id) ?? id
+function gameLabel(id: string): string {
+  return gameNameMap.value.get(id) ?? id
 }
 
 async function loadData() {
@@ -85,11 +75,7 @@ async function loadData() {
 }
 
 onMounted(() => {
-  // If a window will be provided via brush, don't pre-fetch with null window
-  // to avoid a race condition where the period fetch overwrites the window fetch.
-  // compact = no brush, so load immediately.
-  if (props.window !== null || props.compact)
-    loadData()
+  loadData()
 })
 watch(() => [props.period, props.window] as const, () => loadData())
 
@@ -99,39 +85,49 @@ const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0,
 const { activeTheme } = useUserTheme()
 
 const currentCount = computed(() => {
-  if (props.serverId !== undefined) {
-    const detail = metrics.value?.gameservers.byServer[String(props.serverId)]
-    const liveCount = detail?.protocol === 'minecraft' ? detail.data?.numPlayers : detail?.data?.players
-    return liveCount
-      ?? [...metricsHistory.value].reverse().find(e => e.gameserversByServer?.[String(props.serverId!)] !== undefined)?.gameserversByServer?.[String(props.serverId!)]
+  if (props.steamGameId !== undefined) {
+    const bySteam = metrics.value?.members.bySteamGame
+    if (bySteam !== undefined)
+      return bySteam[String(props.steamGameId)] ?? 0
+    return [...metricsHistory.value].reverse().find(e => e.membersBySteamGame?.[String(props.steamGameId!)] !== undefined)?.membersBySteamGame?.[String(props.steamGameId!)]
       ?? undefined
   }
-  return metrics.value?.gameservers.players
-    ?? [...metricsHistory.value].reverse().find(e => e.gameserversPlayers !== null)?.gameserversPlayers
+  if (props.gameId !== undefined) {
+    const byGame = metrics.value?.members.byGame
+    if (byGame !== undefined)
+      return byGame[String(props.gameId)] ?? 0
+    return [...metricsHistory.value].reverse().find(e => e.membersByGame?.[String(props.gameId!)] !== undefined)?.membersByGame?.[String(props.gameId!)]
+      ?? undefined
+  }
+  // Sum across all tracked game IDs
+  const byGame = metrics.value?.members.byGame
+  if (byGame) {
+    return Object.values(byGame).reduce((acc: number, n: number) => acc + n, 0)
+  }
+  return undefined
 })
 
-// Server filter - VUI Select options (only servers with query capabilities)
-const serverOptions = computed<ServerOption[]>(() => {
+// Game filter - VUI Select options
+const gameOptions = computed<GameOption[]>(() => {
   const ids = new Set<string>()
   for (const e of metricsHistory.value) {
-    if (e.gameserversByServer)
-      Object.keys(e.gameserversByServer).forEach(k => ids.add(k))
+    if (e.membersByGame)
+      Object.keys(e.membersByGame).forEach(k => ids.add(k))
   }
   return [...ids]
-    .filter(id => queryableServerIds.value.has(id))
-    .sort((a, b) => serverLabel(a).localeCompare(serverLabel(b)))
-    .map(id => ({ label: serverLabel(id), value: id }))
+    .sort((a, b) => gameLabel(a).localeCompare(gameLabel(b)))
+    .map(id => ({ label: gameLabel(id), value: id }))
 })
 
-// null = show all servers stacked; non-empty = filter to selection
-const _selectedServerOptions = ref<ServerOption[] | undefined>([])
-const selectedServerOptions = computed({
-  get: () => _selectedServerOptions.value ?? [],
-  set: (v) => { _selectedServerOptions.value = v ?? [] },
+// null = show all games stacked; non-empty = filter to selection
+const _selectedGameOptions = ref<GameOption[] | undefined>([])
+const selectedGameOptions = computed({
+  get: () => _selectedGameOptions.value ?? [],
+  set: (v) => { _selectedGameOptions.value = v ?? [] },
 })
-const selectedServerIds = computed(() =>
-  selectedServerOptions.value.length > 0
-    ? new Set(selectedServerOptions.value.map(o => o.value))
+const selectedGameIds = computed(() =>
+  selectedGameOptions.value.length > 0
+    ? new Set(selectedGameOptions.value.map(o => o.value))
     : null,
 )
 
@@ -145,81 +141,96 @@ const chartData = computed(() => {
 
   const palette = getChartPalette()
 
-  // Determine which server IDs to show
-  const ids = selectedServerIds.value
-    ? [...selectedServerIds.value]
-    : serverOptions.value.map(o => o.value)
+  const ids = selectedGameIds.value
+    ? [...selectedGameIds.value]
+    : gameOptions.value.map(o => o.value)
 
-  const isFiltered = selectedServerIds.value !== null
+  const isFiltered = selectedGameIds.value !== null
+  const colorized = props.colorize && !isFiltered ? getColorizedPalette(ids.length) : null
 
-  // Fall back to total if no per-server data available yet
-  if (ids.length === 0) {
+  // Steam game mode: filter by Steam app ID using membersBySteamGame
+  if (props.steamGameId !== undefined) {
+    const id = String(props.steamGameId)
     return {
       datasets: [{
-        label: 'Players Online',
-        data: metricsHistory.value.map(e => ({
+        label: id,
+        data: metricsHistory.value.map((e: MetricsHistoryEntry) => ({
           x: new Date(e.capturedAt).getTime(),
-          y: e.gameserversPlayers,
+          y: e.membersBySteamGame?.[id] ?? null,
         })),
-        backgroundColor: `${props.color ?? palette.datasets[3]}cc`,
-        clip: false as const,
-        stack: 'gs',
+        backgroundColor: `${props.color ?? palette.datasets[1]}cc`,
+        clip: false,
+        stack: 'mg',
       }] as unknown as ChartDataset<'bar'>[],
     }
   }
 
-  // Single-server mode: render only that server's data
-  if (props.serverId !== undefined) {
-    const id = String(props.serverId)
+  // Single-game mode: always render only that game's data, never fall back to totals
+  if (props.gameId !== undefined) {
+    const id = String(props.gameId)
     return {
       datasets: [{
-        label: serverLabel(id),
-        data: metricsHistory.value.map(e => ({
+        label: gameLabel(id),
+        data: metricsHistory.value.map((e: MetricsHistoryEntry) => ({
           x: new Date(e.capturedAt).getTime(),
-          y: e.gameserversByServer?.[id] ?? null,
+          y: e.membersByGame?.[id] ?? null,
         })),
-        backgroundColor: `${props.color ?? palette.datasets[3]}cc`,
+        backgroundColor: `${props.color ?? palette.datasets[1]}cc`,
         clip: false,
-        stack: 'gs',
+        stack: 'mg',
+      }] as unknown as ChartDataset<'bar'>[],
+    }
+  }
+
+  if (ids.length === 0) {
+    return {
+      datasets: [{
+        label: 'Played Games',
+        data: metricsHistory.value.map((e: MetricsHistoryEntry) => ({
+          x: new Date(e.capturedAt).getTime(),
+          y: e.membersOnline,
+        })),
+        backgroundColor: `${props.color ?? palette.datasets[1]}cc`,
+        clip: false as const,
+        stack: 'mg',
       }] as unknown as ChartDataset<'bar'>[],
     }
   }
 
   return {
     datasets: ids.map((id, i) => ({
-      label: serverLabel(id),
-      data: metricsHistory.value.map(e => ({
+      label: gameLabel(id),
+      data: metricsHistory.value.map((e: MetricsHistoryEntry) => ({
         x: new Date(e.capturedAt).getTime(),
-        y: e.gameserversByServer?.[id] ?? null,
+        y: e.membersByGame?.[id] ?? null,
       })),
-      backgroundColor: isFiltered
-        ? `${palette.datasets[i % palette.datasets.length]}cc`
-        : `${props.color ?? palette.datasets[3]}cc`,
+      backgroundColor: colorized
+        ? colorized[i % colorized.length]
+        : isFiltered
+          ? `${palette.datasets[i % palette.datasets.length]}cc`
+          : `${props.color ?? palette.datasets[1]}cc`,
       clip: false,
-      stack: 'gs',
+      stack: 'mg',
     })) as unknown as ChartDataset<'bar'>[],
   }
 })
 
-const localChartOptions: ChartOptions<'bar'> = {
+const localChartOptions = {
   plugins: {
     legend: { display: false },
+    barGapPlugin: { enabled: false },
     tooltip: {
-      mode: 'index',
+      mode: 'index' as const,
       intersect: false,
       callbacks: {
-        label: (item) => {
+        label: (item: import('chart.js').TooltipItem<'bar'>) => {
           const raw = item.raw as { y: number | null } | null | undefined
           if (raw === null || raw === undefined || raw.y === null || raw.y === 0)
             return ''
           return `${item.dataset.label}: ${item.parsed.y}`
         },
-        afterBody(items: import('chart.js').TooltipItem<'bar'>[]) {
-          const allNull = items.every((i) => {
-            const raw = i.raw as { y: number | null } | null | undefined
-            return raw === null || raw === undefined || raw.y === null
-          })
-          return allNull ? 'No data was collected for this period - collection may not have started yet or encountered an error.' : ''
+        afterBody() {
+          return ''
         },
       },
     },
@@ -236,7 +247,7 @@ const localChartOptions: ChartOptions<'bar'> = {
   },
 }
 
-const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions) : {})
+const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions as ChartOptions<'bar'>) : {})
 
 function refreshChartOptions() {
   nextTick(() => {
@@ -244,9 +255,9 @@ function refreshChartOptions() {
       ? { scales: { x: { min: props.window.start.getTime(), max: props.window.end.getTime() } } }
       : {}
     const compactOverride: ChartOptions<'bar'> = props.compact
-      ? { scales: { x: { ticks: { display: props.showXAxis ?? false } }, y: { ticks: { display: props.showYAxis } } } }
+      ? { scales: { x: { ticks: { display: false } }, y: { ticks: { display: props.showYAxis } } } }
       : {}
-    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions, windowScale, compactOverride)
+    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions as ChartOptions<'bar'>, windowScale, compactOverride)
   })
 }
 
@@ -270,19 +281,19 @@ watchEffect(() => {
 <template>
   <div class="chart-container" :class="{ 'chart-container--compact': compact }">
     <Flex v-if="compact" x-between y-center class="chart-compact-title">
-      <span>Game Server Players</span>
-      <OnlineBadge :count="currentCount ?? null" label="players" singular="player" size="s" color="var(--color-text-yellow)" />
+      <span>Game Activity</span>
+      <OnlineBadge :count="currentCount ?? 0" label="playing" size="s" :color="(currentCount ?? 0) > 0 ? 'var(--color-text-green)' : undefined" />
     </Flex>
     <Flex v-if="!compact && !hideTitle" x-between y-center class="text-m text-bold-row">
       <Flex gap="s" y-center>
-        <span class="text-m text-bold">Game Server Players</span>
-        <OnlineBadge :count="currentCount ?? null" label="players" singular="player" size="s" :color="props.color ?? 'var(--color-text-yellow)'" />
+        <span class="text-m text-bold">Played Games</span>
+        <OnlineBadge :count="currentCount ?? 0" label="playing" size="s" :color="(currentCount ?? 0) > 0 ? 'var(--color-text-green)' : undefined" />
       </Flex>
       <Select
-        v-if="serverId === undefined"
-        v-model="selectedServerOptions"
-        :options="serverOptions"
-        placeholder="All Servers"
+        v-if="gameId === undefined && steamGameId === undefined"
+        v-model="selectedGameOptions"
+        :options="gameOptions"
+        placeholder="All Games"
         show-clear
         search
         :single="false"
@@ -306,14 +317,10 @@ watchEffect(() => {
       </div>
     </div>
 
-    <div v-else-if="!metricsHistory.length && !compact" class="chart-empty">
-      <p>No gameserver activity data available</p>
-    </div>
-
     <div
-      v-else
+      v-if="!loadingHistory"
       ref="chartWrapperRef"
-      :key="`${theme}-${activeTheme?.id}-${props.utc}-${selectedServerOptions.length}-${props.serverId}-${props.window?.start.getTime()}-${props.window?.end.getTime()}`"
+      :key="`${theme}-${activeTheme?.id}-${props.utc}-${selectedGameOptions.length}-${props.gameId}-${props.steamGameId}-${props.window?.start.getTime()}-${props.window?.end.getTime()}`"
       class="chart-wrapper"
       :class="{ 'chart-wrapper--compact': compact }"
     >

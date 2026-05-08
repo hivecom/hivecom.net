@@ -33,7 +33,9 @@ const props = defineProps<{
   serverName?: string
   color?: string
   compact?: boolean
+  hideTitle?: boolean
   showYAxis?: boolean
+  showXAxis?: boolean
 }>()
 
 ChartJS.register(
@@ -216,7 +218,7 @@ function refreshChartOptions() {
       ? { scales: { x: { min: props.window.start.getTime(), max: props.window.end.getTime() } } }
       : {}
     const compactOverride: ChartOptions<'bar'> = props.compact
-      ? { scales: { x: { ticks: { display: false } }, y: { ticks: { display: props.showYAxis } } } }
+      ? { scales: { x: { ticks: { display: props.showXAxis ?? false } }, y: { ticks: { display: props.showYAxis } } } }
       : {}
     chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions, windowScale, compactOverride)
   })
@@ -243,12 +245,12 @@ watchEffect(() => {
   <div class="chart-container" :class="{ 'chart-container--compact': compact }">
     <Flex v-if="compact" x-between y-center class="chart-compact-title">
       <span>TeamSpeak Online</span>
-      <OnlineBadge :count="currentCount ?? null" label="connections" size="s" color="var(--color-text-blue)" />
+      <OnlineBadge :count="currentCount ?? null" label="connections" singular="connection" size="s" color="var(--color-text-blue)" />
     </Flex>
-    <Flex v-if="!compact" x-between y-center class="text-m text-bold-row">
-      <Flex x-between y-center>
+    <Flex v-if="!compact && !hideTitle" x-between y-center class="text-m text-bold-row">
+      <Flex gap="s" y-center>
         <span class="text-m text-bold">TeamSpeak Online</span>
-        <span v-if="currentCount !== undefined" class="text-xs text-color-lightest">({{ currentCount }} online now)</span>
+        <OnlineBadge :count="currentCount ?? null" label="connections" singular="connection" size="s" :color="props.color ?? 'var(--color-text-blue)'" />
       </Flex>
       <Select
         v-if="serverName === undefined"

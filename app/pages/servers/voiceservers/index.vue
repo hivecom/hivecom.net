@@ -30,7 +30,7 @@ defineOgImage('Default', {
     <section class="page-title">
       <Flex y-center x-between gap="s" expand>
         <h1>Voice Servers</h1>
-        <OnlineBadge :count="totalOnline" label="Connections" clickable @click="activityModalOpen = true" />
+        <OnlineBadge :count="totalOnline" label="Connections" singular="Connection" clickable @click="activityModalOpen = true" />
       </Flex>
       <p>View live channels and connect with the community on TeamSpeak.</p>
     </section>
@@ -40,10 +40,14 @@ defineOgImage('Default', {
     <ChartActivityHistogramModal
       v-model:open="activityModalOpen"
       title="TeamSpeak Activity"
+      :count="totalOnline"
+      count-label="connections"
+      count-singular="connection"
       :series="['teamspeakOnline']"
+      :initial-period="totalOnline ? '24h' : '14d'"
     >
       <template #default="{ period, window, utc, color }">
-        <ChartTeamSpeakOnline :period :window :utc :color />
+        <ChartTeamSpeakOnline :period :window :utc :color hide-title />
       </template>
     </ChartActivityHistogramModal>
   </div>

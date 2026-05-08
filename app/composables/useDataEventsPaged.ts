@@ -43,6 +43,7 @@ export function useDataEventsPaged(
   pageSize: Ref<number>,
   search?: Ref<string>,
   officialFilter?: Ref<boolean | null>,
+  recurringFilter?: Ref<boolean | null>,
 ) {
   const supabase = useSupabaseClient<Database>()
 
@@ -55,13 +56,15 @@ export function useDataEventsPaged(
   function pastKey(page: number): string {
     const s = (search?.value ?? '').trim()
     const f = String(officialFilter?.value ?? '')
-    return `events:past:p${page}:n${pageSize.value}:f${f}:s${s}`
+    const r = String(recurringFilter?.value ?? '')
+    return `events:past:p${page}:n${pageSize.value}:f${f}:r${r}:s${s}`
   }
 
   function countKey(): string {
     const s = (search?.value ?? '').trim()
     const f = String(officialFilter?.value ?? '')
-    return `events:past-count:f${f}:s${s}`
+    const r = String(recurringFilter?.value ?? '')
+    return `events:past-count:f${f}:r${r}:s${s}`
   }
 
   // ── Active events (ongoing + upcoming) ───────────────────────────────────
@@ -99,6 +102,8 @@ export function useDataEventsPaged(
         return false
     }
     if (officialFilter?.value != null && event.is_official !== officialFilter.value)
+      return false
+    if (recurringFilter?.value === true && event.recurrence_rule != null)
       return false
     return true
   }
@@ -183,6 +188,7 @@ export function useDataEventsPaged(
     const { data, error } = await rpc<number>(supabase, 'get_past_events_count', {
       p_search: search?.value.trim() !== '' ? search?.value.trim() : null,
       p_is_official: officialFilter?.value ?? null,
+      p_hide_recurring: recurringFilter?.value === true,
     })
 
     if (!error && data != null) {
@@ -210,6 +216,7 @@ export function useDataEventsPaged(
         p_offset: from,
         p_search: search?.value.trim() !== '' ? search?.value.trim() : null,
         p_is_official: officialFilter?.value ?? null,
+        p_hide_recurring: recurringFilter?.value === true,
       })
 
       if (error)
@@ -254,6 +261,14 @@ export function useDataEventsPaged(
 
   if (officialFilter) {
     watch(officialFilter, () => {
+      pastPage.value = 1
+      void fetchPastCount()
+      void fetchPast(1)
+    })
+  }
+
+  if (recurringFilter) {
+    watch(recurringFilter, () => {
       pastPage.value = 1
       void fetchPastCount()
       void fetchPast(1)

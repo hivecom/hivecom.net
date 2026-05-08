@@ -7,15 +7,18 @@ import EventPast from './EventPast.vue'
 interface Props {
   search?: string
   officialFilter?: boolean | null
+  recurringFilter?: boolean | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   search: '',
   officialFilter: null,
+  recurringFilter: null,
 })
 
 const searchRef = computed(() => props.search)
 const officialFilterRef = computed(() => props.officialFilter)
+const recurringFilterRef = computed(() => props.recurringFilter)
 
 const isMobile = useBreakpoint('<s')
 const isTablet = useBreakpoint('<m')
@@ -30,7 +33,7 @@ const columns = computed(() => {
 
 const pageSize = computed(() => isMobile.value ? 4 : 6)
 
-const { pastEvents, pastTotalCount, pastPage, loadingPast, setPage } = useDataEventsPaged(pageSize, searchRef, officialFilterRef)
+const { pastEvents, pastTotalCount, pastPage, loadingPast, setPage } = useDataEventsPaged(pageSize, searchRef, officialFilterRef, recurringFilterRef)
 
 const pastPagination = computed(() => paginate(pastTotalCount.value, pastPage.value, pageSize.value))
 </script>

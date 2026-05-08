@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Select, Tab, Tabs } from '@dolanske/vui'
+import { Button, Flex, Input, Select, Switch, Tab, Tabs } from '@dolanske/vui'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import CreateEventModal from '@/components/Events/CreateEventModal.vue'
 import EventsCalendar from '@/components/Events/EventsCalendar.vue'
@@ -30,6 +30,9 @@ const officialFilterOptions: SelectOption[] = [
   { label: 'Official', value: 'official' },
   { label: 'Community', value: 'unofficial' },
 ]
+
+const hideRecurring = ref(false)
+const recurringFilter = computed<boolean | null>(() => hideRecurring.value ? true : null)
 
 // Tab management
 const activeTab = ref('list')
@@ -155,7 +158,7 @@ defineOgImage('Default', {
 
       <section>
         <!-- Filters (list view only) -->
-        <Flex v-if="activeTab === 'list'" gap="s" wrap class="mb-l">
+        <Flex v-if="activeTab === 'list'" gap="s" wrap class="mb-l" y-center>
           <Input v-model="search" placeholder="Search events..." style="min-width: 200px">
             <template #start>
               <Icon name="ph:magnifying-glass" />
@@ -169,6 +172,10 @@ defineOgImage('Default', {
             single
             show-clear
           />
+          <Flex v-if="user" :gap="0" y-center>
+            <Switch v-model="hideRecurring" />
+            <span class="text-s text-color-lighter">Hide recurring</span>
+          </Flex>
         </Flex>
 
         <!-- Listing View -->
@@ -179,6 +186,7 @@ defineOgImage('Default', {
           :error-message="errorMessage"
           :search="search"
           :official-filter="officialFilter"
+          :recurring-filter="recurringFilter"
         />
 
         <!-- Calendar View -->

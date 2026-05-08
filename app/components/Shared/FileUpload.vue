@@ -21,6 +21,8 @@ interface Props {
   iconSize?: number // Size of the icon square in pixels (icon variant only, default 64)
   multiple?: boolean
   persistentDropzone?: boolean
+  backgroundPreviewUrl?: string | null
+  backgroundLoading?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -91,10 +93,9 @@ const aspectRatioStyle = computed(() => {
     style.maxWidth = `${maxWidth}px`
   }
 
-  // Only apply minHeight when there's no aspectRatio - with aspectRatio set,
-  // width:100% + aspect-ratio drives the height naturally. Forcing a minHeight
-  // alongside aspect-ratio causes the box to not respect its container width.
-  if (!props.aspectRatio && props.minHeight && (!props.maxHeight || props.minHeight <= props.maxHeight)) {
+  // Apply minHeight when explicitly provided. When aspectRatio is also set,
+  // the caller is responsible for ensuring the values are compatible.
+  if (props.minHeight && (!props.maxHeight || props.minHeight <= props.maxHeight)) {
     style.minHeight = `${props.minHeight}px`
   }
 
@@ -462,6 +463,15 @@ onUnmounted(() => {
         @dragleave="handleDragLeave"
       >
         <Flex column gap="m" y-center x-center class="file-upload__content">
+          <img
+            v-if="backgroundPreviewUrl"
+            :src="backgroundPreviewUrl"
+            aria-hidden="true"
+            class="file-upload__bg-preview"
+          >
+          <div v-if="backgroundLoading && !backgroundPreviewUrl" class="file-upload__bg-spinner">
+            <Icon name="ph:spinner" spin />
+          </div>
           <div class="file-upload__std-icon">
             <Icon :name="loading ? 'ph:spinner' : 'ph:upload'" :spin="loading" />
           </div>
@@ -604,6 +614,7 @@ onUnmounted(() => {
   }
 
   &__drop-zone {
+    position: relative;
     width: 100%;
     border: 2px dashed var(--color-border);
     border-radius: var(--border-radius-m);
@@ -654,6 +665,29 @@ onUnmounted(() => {
     width: 100%;
     min-width: 0;
     overflow: hidden;
+  }
+
+  &__bg-preview {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.18;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  &__bg-spinner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.35;
+    pointer-events: none;
+    font-size: 1.5rem;
+    color: var(--color-text-light);
   }
 
   &__std-icon {

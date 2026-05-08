@@ -224,9 +224,9 @@ function clearFilters() {
         <Flex y-center x-between gap="s" expand>
           <h1>Game Servers</h1>
           <ClientOnly>
-            <OnlineBadge :count="totalOnline" label="Players Online" clickable @click="activityModalOpen = true" />
+            <OnlineBadge :count="totalOnline" label="Players Online" singular="Player Online" clickable @click="activityModalOpen = true" />
             <template #fallback>
-              <OnlineBadge :count="null" label="Players Online" />
+              <OnlineBadge :count="null" label="Players Online" singular="Player Online" />
             </template>
           </ClientOnly>
         </Flex>
@@ -301,10 +301,14 @@ function clearFilters() {
       <ChartActivityHistogramModal
         v-model:open="activityModalOpen"
         title="Game Server Activity"
+        :count="totalOnline"
+        count-label="players"
+        count-singular="player"
         :series="['gameserversPlayers']"
+        :initial-period="totalOnline ? '24h' : '14d'"
       >
         <template #default="{ period, window, utc, color }">
-          <ChartGameserversPlayers :period :window :utc :color />
+          <ChartGameserversPlayers :period :window :utc :color hide-title />
         </template>
       </ChartActivityHistogramModal>
     </ClientOnly>

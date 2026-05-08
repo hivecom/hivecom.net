@@ -5,6 +5,7 @@ import { computed } from 'vue'
 
 interface Props {
   data: number[]
+  timestamps?: string[]
   height?: number
   gap?: keyof typeof SpaceSize
   clickable?: boolean
@@ -15,6 +16,7 @@ const {
   height = 32,
   gap = 'xs',
   data,
+  timestamps,
   clickable = false,
   expand = false,
 } = defineProps<Props>()
@@ -22,6 +24,25 @@ const {
 const emit = defineEmits<{ click: [index: number] }>()
 
 const slots = defineSlots()
+
+function getDaysAgo(index: number): string | null {
+  if (!timestamps)
+    return null
+  const iso = timestamps[index]
+  if (!iso)
+    return null
+  const entryDate = new Date(iso)
+  const entryDay = Date.UTC(entryDate.getUTCFullYear(), entryDate.getUTCMonth(), entryDate.getUTCDate())
+  const now = new Date()
+  const todayDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const diffDays = Math.round((todayDay - entryDay) / (1000 * 60 * 60 * 24))
+  if (diffDays === 0)
+    return 'today'
+  if (diffDays === 1)
+    return 'yesterday'
+  return `${diffDays} days ago`
+}
+
 const highestValue = computed(() => Math.max(...data))
 </script>
 
@@ -39,7 +60,7 @@ const highestValue = computed(() => Math.max(...data))
           <div class="vui-histogram-datacell" :style="{ height: `${item / highestValue * 100}%` }" />
         </div>
         <template #tooltip>
-          <slot name="tooltip" :value="item" :index :highest-value />
+          <slot name="tooltip" :value="item" :index :highest-value :days-ago="getDaysAgo(index)" />
         </template>
       </Tooltip>
     </Flex>
@@ -50,7 +71,7 @@ const highestValue = computed(() => Math.max(...data))
         <div class="vui-histogram-datacell" :style="{ height: `${item / highestValue * 100}%` }" />
       </div>
       <template #tooltip>
-        <slot name="tooltip" :value="item" :index :highest-value />
+        <slot name="tooltip" :value="item" :index :highest-value :days-ago="getDaysAgo(index)" />
       </template>
     </Tooltip>
   </Flex>

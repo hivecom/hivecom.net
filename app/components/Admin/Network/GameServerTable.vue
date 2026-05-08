@@ -137,6 +137,10 @@ function getServerHistogram(gameserverId: number): number[] {
     .map(e => e.gameserversByServer?.[id] ?? 0)
 }
 
+function getServerTimestamps(): string[] {
+  return localHistory.value.map(e => e.capturedAt)
+}
+
 function getServerPlayers(gameserverId: number): number | null {
   const byServer = latestMetrics.value?.gameservers?.byServer
   if (!byServer)
@@ -400,20 +404,28 @@ function clearFilters() {
             </Table.Cell>
             <Table.Cell>
               <template v-if="(gameserver._original as QueryGameserver).query_protocol != null">
-                <Flex y-center gap="s">
+                <Flex y-center gap="s" style="max-width: 260px">
                   <OnlineBadge
                     :count="getServerPlayers((gameserver._original as QueryGameserver).id)"
                     label="Players"
+                    singular="Player"
                     size="s"
                     style="min-width: 90px"
                   />
                   <ChartActivityHistogram
                     v-if="!localHistoryLoading"
                     :data="getServerHistogram((gameserver._original as QueryGameserver).id)"
+                    :timestamps="getServerTimestamps()"
                     :height="28"
                     gap="xxs"
                     expand
-                  />
+                  >
+                    <template #tooltip="{ value, daysAgo }">
+                      {{ value }} players<template v-if="daysAgo">
+                        - {{ daysAgo }}
+                      </template>
+                    </template>
+                  </ChartActivityHistogram>
                 </Flex>
               </template>
               <span v-else class="text-color-lighter text-xs">No query</span>

@@ -6,18 +6,23 @@ import ChartBrush from '@/components/Shared/Charts/ChartBrush.vue'
 import { METRICS_PERIOD_OPTIONS, PERIOD_CONFIGS } from '@/composables/useDataMetrics'
 import { getCSSVariable } from '@/lib/utils/common'
 
-type SeriesKey = 'membersOnline' | 'teamspeakOnline' | 'gameserversPlayers'
+type SeriesKey = 'membersOnline' | 'teamspeakOnline' | 'gameserversPlayers' | 'membersGameActivity' | 'membersSteamGameActivity'
 
 const props = defineProps<{
   series?: SeriesKey[]
   color?: string
+  initialPeriod?: MetricsPeriod
   initialWindow?: { start: Date, end: Date } | null
   brushKey?: number
+  gameId?: number
+  steamGameId?: number
+  serverId?: number
+  serverName?: string
 }>()
 
 const color = computed(() => props.color ?? getCSSVariable('--color-accent'))
 
-const activePeriod = ref<MetricsPeriod>('24h')
+const activePeriod = ref<MetricsPeriod>(props.initialPeriod ?? '14d')
 const activeWindow = ref<{ start: Date, end: Date } | null>(null)
 const activeUtc = ref(false)
 
@@ -42,7 +47,12 @@ function onBrushChange(window: { start: Date, end: Date }) {
       :key="brushKey"
       :series="series"
       :color="color"
+      :initial-period="props.initialPeriod ?? '14d'"
       :initial-window="props.initialWindow"
+      :game-id="props.gameId"
+      :steam-game-id="props.steamGameId"
+      :server-id="props.serverId"
+      :server-name="props.serverName"
       @change="onBrushChange"
       @update:utc="activeUtc = $event"
     />

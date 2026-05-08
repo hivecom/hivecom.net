@@ -13,6 +13,7 @@ import { invalidateEventsCache } from '@/composables/useDataEvents'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useTableActions } from '@/composables/useTableActions'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { nextOccurrenceDate } from '@/lib/utils/rrule'
 import EventDetails from './EventDetails.vue'
 import EventFilters from './EventFilters.vue'
 import EventForm from './EventForm.vue'
@@ -148,6 +149,7 @@ function sortIcon(label: string): string {
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
 const isOfficialFilter = ref<boolean | null>(null)
+const isRecurringFilter = ref<boolean | null>(null)
 
 async function fetchEvents() {
   loading.value = true
@@ -161,6 +163,7 @@ async function fetchEvents() {
       p_limit: adminTablePerPage.value,
       p_offset: (page.value - 1) * adminTablePerPage.value,
       ...(isOfficialFilter.value !== null ? { p_is_official: isOfficialFilter.value } : {}),
+      ...(isRecurringFilter.value === true ? { p_hide_recurring: true } : {}),
     })
 
     if (error)
@@ -189,6 +192,21 @@ function setPage(n: number) {
 
 function getEventStatus(event: RpcEvent): { label: string, variant: 'accent' | 'success' | 'neutral' } {
   const now = new Date()
+
+  if (event.recurrence_rule) {
+    const next = nextOccurrenceDate(event as unknown as Parameters<typeof nextOccurrenceDate>[0])
+    if (next) {
+      const nextEnd = event.duration_minutes
+        ? new Date(next.getTime() + event.duration_minutes * 60 * 1000)
+        : next
+      if (now >= next && now <= nextEnd)
+        return { label: 'Ongoing', variant: 'success' }
+      return { label: 'Recurring', variant: 'accent' }
+    }
+    // No future occurrences - series ended
+    return { label: 'Past', variant: 'neutral' }
+  }
+
   const eventStart = new Date(event.date)
   const eventEnd = event.duration_minutes
     ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
@@ -324,6 +342,11 @@ watch(isOfficialFilter, () => {
   void fetchEvents()
 })
 
+watch(isRecurringFilter, () => {
+  page.value = 1
+  void fetchEvents()
+})
+
 watch([sortCol, sortDir], () => {
   page.value = 1
   void fetchEvents()
@@ -371,7 +394,7 @@ onBeforeMount(async () => {
     <Flex v-else-if="initialLoad" gap="s" column expand>
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
-          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" />
+          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" v-model:is-recurring="isRecurringFilter" />
         </Flex>
 
         <Flex
@@ -405,7 +428,7 @@ onBeforeMount(async () => {
     <Flex v-else gap="s" column expand>
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
-          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" />
+          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" v-model:is-recurring="isRecurringFilter" />
         </Flex>
 
         <Flex

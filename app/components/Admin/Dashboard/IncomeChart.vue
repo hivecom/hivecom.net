@@ -16,7 +16,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import dayjs from 'dayjs'
-import { computed, ref, watchEffect } from 'vue'
+import { computed, nextTick, onMounted, ref, watch, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
 import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useUserTheme } from '@/composables/useUserTheme'
@@ -89,7 +89,7 @@ const chartData = computed(() => {
     labels,
     datasets: [
       {
-        label: 'Monthly Income (€)',
+        label: 'Monthly Donations (€)',
         data: monthlyIncomeData,
         borderColor: palette.datasets[0], // blue
         backgroundColor: palette.datasets[0],
@@ -172,6 +172,17 @@ const localChartOptions: ChartOptions<'line'> = {
     },
   },
 }
+
+const chartOptions = ref<ChartOptions<'line'>>(import.meta.client ? deepMergePlainObjects(getLineChartDefaults(), localChartOptions) : {})
+
+function refreshChartOptions() {
+  nextTick(() => {
+    chartOptions.value = deepMergePlainObjects(getLineChartDefaults(), localChartOptions)
+  })
+}
+
+onMounted(() => refreshChartOptions())
+watch(theme, () => refreshChartOptions())
 
 // Sync from shared cache - allFunding is ordered descending, chart needs ascending
 watch([allFunding, fundingLoading, fundingError], () => {
@@ -258,7 +269,7 @@ watchEffect(() => {
       <Line
         ref="chartRef"
         :data="chartData"
-        :options="deepMergePlainObjects(getLineChartDefaults(), localChartOptions)"
+        :options="chartOptions"
       />
     </div>
   </div>
@@ -267,7 +278,7 @@ watchEffect(() => {
 <style scoped lang="scss">
 .chart-container {
   width: 100%;
-  min-height: 160px;
+  min-height: 178px;
   background-color: var(--color-bg-card);
   border-radius: var(--border-radius-m);
   padding: var(--space-m);
@@ -275,7 +286,7 @@ watchEffect(() => {
 }
 
 .chart-wrapper {
-  height: 160px;
+  height: 178px;
   width: 100%;
   position: relative;
 }
@@ -291,7 +302,7 @@ watchEffect(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 160px;
+  height: 178px;
   color: var(--color-text-light);
 }
 

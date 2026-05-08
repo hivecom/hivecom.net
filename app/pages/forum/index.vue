@@ -12,11 +12,9 @@ import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import ForumRecentlyVisited from '@/components/Forum/ForumRecentlyVisited.vue'
 import ForumTopicItem from '@/components/Forum/ForumTopicItem.vue'
-import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
-import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
+import ChartOnlineUsersModal from '@/components/Shared/Charts/ChartOnlineUsersModal.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
-import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useCache } from '@/composables/useCache'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataMetrics } from '@/composables/useDataMetrics'
@@ -39,7 +37,6 @@ const FORUM_TOPICS_TTL = 5 * 60 * 1000 // 5 minutes
 
 const activityModalOpen = ref(false)
 const { latestMetrics, fetchLatestMetrics } = useDataMetrics()
-const onlineCount = computed(() => latestMetrics.value?.members.online ?? null)
 fetchLatestMetrics()
 
 useSeoMeta({
@@ -99,6 +96,7 @@ const ONLINE_USERS_CACHE_KEY = 'online-users'
 const ONLINE_USERS_TTL = 60 * 1000 // 1 minute
 const onlineUserIds = ref<string[]>([])
 const onlineUsersLoading = ref(false)
+const onlineCount = computed(() => onlineUserIds.value.length > 0 ? onlineUserIds.value.length : (latestMetrics.value?.members.online ?? null))
 
 async function fetchOnlineUsers() {
   const cached = forumCache.get<string[]>(ONLINE_USERS_CACHE_KEY)
@@ -129,6 +127,8 @@ watch(activityModalOpen, (open) => {
   if (open)
     void fetchOnlineUsers()
 })
+
+void fetchOnlineUsers()
 
 watch(contentRulesGateOpen, (open) => {
   if (!open)
@@ -1492,35 +1492,12 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         </NuxtLink>
       </Flex>
 
-      <ChartActivityHistogramModal
+      <ChartOnlineUsersModal
         v-model:open="activityModalOpen"
-        title="Users Online"
-        :series="['membersOnline']"
-      >
-        <template #above-chart>
-          <Flex v-if="onlineUserIds.length > 0 || onlineUsersLoading" column gap="xs" expand>
-            <Flex expand wrap gap="xs" class="forum-online-users__grid" y-center x-center>
-              <template v-if="onlineUsersLoading">
-                <Skeleton v-for="n in Math.min(onlineCount ?? 8, 20)" :key="n" width="40px" height="40px" style="border-radius: var(--border-radius-pill);" />
-              </template>
-              <template v-else>
-                <UserAvatar
-                  v-for="id in onlineUserIds"
-                  :key="id"
-                  :user-id="id"
-                  size="m"
-                  linked
-                  show-preview
-                  show-online-indicator
-                />
-              </template>
-            </Flex>
-          </Flex>
-        </template>
-        <template #default="{ period, window, utc, color }">
-          <ChartOnlineUsers :period :window :utc :color fresh />
-        </template>
-      </ChartActivityHistogramModal>
+        :online-user-ids="onlineUserIds"
+        :online-users-loading="onlineUsersLoading"
+        :online-count="onlineCount"
+      />
     </ClientOnly>
   </div>
 </template>
@@ -1839,13 +1816,5 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
     font-size: var(--font-size-xs);
     text-align: center;
   }
-}
-
-.forum-online-users__grid {
-  max-height: 148px;
-  overflow-y: auto;
-  padding: var(--space-xs);
-  background: var(--color-bg-card);
-  border-radius: var(--border-radius-m);
 }
 </style>

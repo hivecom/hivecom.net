@@ -1097,11 +1097,16 @@ function _openRawSnapshot() {
   <ChartActivityHistogramModal
     v-model:open="showActivityModal"
     title="TeamSpeak Online"
+    :count="selectedServer ? serverClientCount(selectedServer) : null"
+    count-label="connections"
+    count-singular="connection"
     :series="['teamspeakOnline']"
+    :initial-period="selectedServer && serverClientCount(selectedServer) > 0 ? '24h' : '14d'"
     :initial-window="clickedWindow"
+    :server-name="selectedServer?.id ?? undefined"
   >
     <template #default="{ period, window, utc, color }">
-      <ChartTeamSpeakOnline :period :window :utc :color :server-name="selectedServer?.id ?? undefined" />
+      <ChartTeamSpeakOnline :period :window :utc :color :server-name="selectedServer?.id ?? undefined" hide-title />
     </template>
   </ChartActivityHistogramModal>
 </template>

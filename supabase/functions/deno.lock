@@ -1,5 +1,5 @@
 {
-  "version": "4",
+  "version": "5",
   "specifiers": {
     "jsr:@supabase/functions-js@^0.0.0-automated": "0.0.0-jsr-test.1",
     "jsr:@supabase/supabase-js@2": "2.87.1",
@@ -421,6 +421,11 @@
         ]
       },
       "admin-docker-control-container-stop": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "admin-steam-icon-fetch": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
         ]

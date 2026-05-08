@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { useSupabaseClient, useSupabaseUser } from '#imports'
-import { Alert, Button, Dropdown, DropdownItem, DropdownTitle, Flex, Input, Sheet, Tooltip } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Dropdown, DropdownItem, DropdownTitle, Flex, Input, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
@@ -10,6 +10,7 @@ import { deleteGameAsset, uploadGameAsset } from '@/lib/storage'
 const props = defineProps<{
   game: Tables<'games'> | null
   isEditMode: boolean
+  prefill?: { name?: string, steam_id?: number }
 }>()
 
 // Define emits
@@ -20,6 +21,28 @@ const isOpen = defineModel<boolean>('isOpen')
 
 // Game assets composable
 const { getGameIconUrl, getGameCoverUrl, getGameBackgroundUrl, clearGameAssets } = useDataGameAssets()
+const supabase = useSupabaseClient()
+
+// Resolved Steam client icon URL (fetched from edge function)
+const steamClientIconUrl = ref<string | null>(null)
+const steamClientIconLoading = ref(false)
+
+async function fetchSteamClientIcon(appId: string) {
+  steamClientIconUrl.value = null
+  if (!appId)
+    return
+  steamClientIconLoading.value = true
+  try {
+    const { data, error } = await supabase.functions.invoke(`admin-steam-icon-fetch?app_id=${encodeURIComponent(appId)}`, {
+      method: 'GET',
+    })
+    if (!error && data?.icon_url)
+      steamClientIconUrl.value = data.icon_url
+  }
+  finally {
+    steamClientIconLoading.value = false
+  }
+}
 
 // Form state
 const gameForm = ref({
@@ -48,6 +71,35 @@ const assetsUrl = ref({
   cover: null as string | null,
   background: null as string | null,
 })
+
+// Derive a shorthand suggestion from the game name.
+// Single word: full word lowercase. Multi-word: first char of each word.
+// Numbers are kept as part of their word (e.g. "Spire 2" -> last token "2" contributes "2").
+function suggestShorthand(name: string): string {
+  const words = name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(w => w.length > 0)
+  if (words.length === 0)
+    return ''
+  if (words.length === 1)
+    return words[0]!
+  return words.map(w => w[0]!).join('')
+}
+
+// Track whether shorthand was manually edited
+const shorthandManuallySet = ref(false)
+
+function onShorthandInput() {
+  shorthandManuallySet.value = gameForm.value.shorthand.length > 0
+}
+
+function onNameInput() {
+  if (!shorthandManuallySet.value)
+    gameForm.value.shorthand = suggestShorthand(gameForm.value.name)
+}
 
 // Form validation
 const validation = computed(() => ({
@@ -88,12 +140,78 @@ const steamAssetLinks = computed(() => {
   return {
     steamGridDb: `https://www.steamgriddb.com/game/${id}`,
     steamStore: `https://store.steampowered.com/app/${id}`,
+    icon: `${baseStore}/capsule_sm_120.jpg`,
     logo: `${baseStore}/logo_2x.png`,
     capsule: `${baseStore}/library_600x900_2x.jpg`,
     hero: `${baseStore}/library_hero.jpg`,
     header: `${baseStore}/header.jpg`,
   }
 })
+
+// Steam asset previews - shown transparently under upload zones when no asset uploaded
+const steamAssetPreviews = computed(() => {
+  if (!steamAssetLinks.value)
+    return null
+  return {
+    // Use fetched client icon if available, fall back to logo once loading is done
+    icon: steamClientIconUrl.value ?? (!steamClientIconLoading.value ? steamAssetLinks.value.logo : null),
+    cover: steamAssetLinks.value.capsule,
+    background: steamAssetLinks.value.hero,
+  }
+})
+
+// Fetch a remote image URL and upload it as a game asset.
+// For the icon, media.steampowered.com blocks cross-origin fetch, so we proxy through the edge function.
+async function importSteamAsset(assetType: 'icon' | 'cover' | 'background', url: string) {
+  let blob: Blob
+  if (assetType === 'icon' && steamId.value) {
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    const supabaseUrl = useRuntimeConfig().public.supabase.url as string
+    const resp = await fetch(
+      `${supabaseUrl}/functions/v1/admin-steam-icon-fetch?app_id=${encodeURIComponent(steamId.value)}&download=1`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    )
+    if (!resp.ok)
+      return
+    blob = await resp.blob()
+  }
+  else {
+    const resp = await fetch(url)
+    if (!resp.ok)
+      return
+    blob = await resp.blob()
+  }
+  const ext = url.split('.').pop()?.split('?')[0] ?? 'jpg'
+  const file = new File([blob], `${assetType}.${ext}`, { type: blob.type })
+  await handleAssetUpload(assetType, file)
+}
+
+const importingAllAssets = ref(false)
+async function importAllSteamAssets() {
+  if (!steamAssetLinks.value)
+    return
+  importingAllAssets.value = true
+  try {
+    await Promise.all([
+      !assetsUrl.value.icon ? importSteamAsset('icon', steamClientIconUrl.value ?? steamAssetLinks.value.icon) : Promise.resolve(),
+      !assetsUrl.value.cover ? importSteamAsset('cover', steamAssetLinks.value.capsule) : Promise.resolve(),
+      !assetsUrl.value.background ? importSteamAsset('background', steamAssetLinks.value.hero) : Promise.resolve(),
+    ])
+  }
+  finally {
+    importingAllAssets.value = false
+  }
+}
+
+// Fetch Steam client icon whenever steam_id changes
+watch(
+  steamId,
+  (id) => {
+    fetchSteamClientIcon(id)
+  },
+  { immediate: true },
+)
 
 // Update form data when game prop changes
 watch(
@@ -106,6 +224,8 @@ watch(
         steam_id: newGame.steam_id ? String(newGame.steam_id) : '',
         website: newGame.website || '',
       }
+      // Existing game - shorthand is already set, treat as manual
+      shorthandManuallySet.value = !!newGame.shorthand
 
       // Initialize asset URLs if shorthand exists
       if (newGame.shorthand) {
@@ -115,11 +235,13 @@ watch(
       }
     }
     else {
-      // Reset form for new game
+      // Reset form for new game (apply prefill if provided)
+      const prefillName = props.prefill?.name ?? ''
+      shorthandManuallySet.value = false
       gameForm.value = {
-        name: '',
-        shorthand: '',
-        steam_id: '',
+        name: prefillName,
+        shorthand: prefillName ? suggestShorthand(prefillName) : '',
+        steam_id: props.prefill?.steam_id != null ? String(props.prefill.steam_id) : '',
         website: '',
       }
 
@@ -131,6 +253,23 @@ watch(
     }
   },
   { immediate: true },
+)
+
+// Re-apply prefill when it changes (e.g. opening form for a different Steam game)
+watch(
+  () => props.prefill,
+  (newPrefill) => {
+    if (props.game)
+      return
+    const prefillName = newPrefill?.name ?? ''
+    shorthandManuallySet.value = false
+    gameForm.value = {
+      name: prefillName,
+      shorthand: prefillName ? suggestShorthand(prefillName) : '',
+      steam_id: newPrefill?.steam_id != null ? String(newPrefill.steam_id) : '',
+      website: '',
+    }
+  },
 )
 
 // Handle closing the sheet
@@ -260,6 +399,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
           :valid="validation.name"
           error="Game name is required"
           placeholder="Enter game name"
+          @input="onNameInput"
         />
 
         <Input
@@ -268,6 +408,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
           name="shorthand"
           label="Shorthand"
           placeholder="Enter game shorthand (optional)"
+          @input="onShorthandInput"
         />
 
         <Input
@@ -299,43 +440,61 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
                 square
                 @click="openExternalLink(steamGridUrl)"
               >
-                <Icon name="ph:squares-four" />
+                <Icon name="simple-icons:steamdb" />
               </Button>
               <template #tooltip>
                 <p>Open on SteamGridDB</p>
               </template>
             </Tooltip>
 
-            <Dropdown v-if="steamAssetLinks" placement="bottom-end">
-              <template #trigger="{ toggle }">
+            <ButtonGroup>
+              <Tooltip v-if="steamAssetLinks">
                 <Button
                   square
-                  @click="toggle()"
+                  :loading="importingAllAssets"
+                  @click="importAllSteamAssets"
                 >
-                  <Icon name="ph:steam-logo" />
-                  <Icon name="ph:caret-down" size="12" />
+                  <Icon name="ph:download-simple" />
                 </Button>
-              </template>
+                <template #tooltip>
+                  <p>Import all assets from Steam</p>
+                </template>
+              </Tooltip>
 
-              <DropdownTitle>
-                Steam Assets
-              </DropdownTitle>
-              <DropdownItem icon="ph:storefront" @click="openExternalLink(steamAssetLinks.steamStore)">
-                Store page
-              </DropdownItem>
-              <DropdownItem icon="ph:image-square" @click="openExternalLink(steamAssetLinks.logo)">
-                Logo (2x)
-              </DropdownItem>
-              <DropdownItem icon="ph:portrait" @click="openExternalLink(steamAssetLinks.capsule)">
-                Capsule (library 600x900)
-              </DropdownItem>
-              <DropdownItem icon="ph:panorama" @click="openExternalLink(steamAssetLinks.hero)">
-                Hero (library hero)
-              </DropdownItem>
-              <DropdownItem icon="ph:image" @click="openExternalLink(steamAssetLinks.header)">
-                Header (store)
-              </DropdownItem>
-            </Dropdown>
+              <Dropdown v-if="steamAssetLinks" placement="bottom-end">
+                <template #trigger="{ toggle }">
+                  <Button
+                    square
+                    @click="toggle()"
+                  >
+                    <Icon name="ph:steam-logo" />
+                    <Icon name="ph:caret-down" size="12" />
+                  </Button>
+                </template>
+
+                <DropdownTitle>
+                  Steam Assets
+                </DropdownTitle>
+                <DropdownItem icon="ph:storefront" @click="openExternalLink(steamAssetLinks.steamStore)">
+                  Store page
+                </DropdownItem>
+                <DropdownItem icon="ph:app-window" @click="openExternalLink(steamAssetLinks.icon)">
+                  Icon (capsule small 120px)
+                </DropdownItem>
+                <DropdownItem icon="ph:image-square" @click="openExternalLink(steamAssetLinks.logo)">
+                  Logo (2x)
+                </DropdownItem>
+                <DropdownItem icon="ph:portrait" @click="openExternalLink(steamAssetLinks.capsule)">
+                  Capsule (library 600x900)
+                </DropdownItem>
+                <DropdownItem icon="ph:panorama" @click="openExternalLink(steamAssetLinks.hero)">
+                  Hero (library hero)
+                </DropdownItem>
+                <DropdownItem icon="ph:image" @click="openExternalLink(steamAssetLinks.header)">
+                  Header (store)
+                </DropdownItem>
+              </Dropdown>
+            </ButtonGroup>
           </Flex>
         </Flex>
         <p class="text-s text-color-light">
@@ -356,10 +515,13 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
                 <FileUpload
                   expand
                   :preview-url="assetsUrl.icon"
+                  :background-preview-url="!assetsUrl.icon ? steamAssetPreviews?.icon : null"
+                  :background-loading="!assetsUrl.icon && steamClientIconLoading"
                   label="Upload Icon"
                   :loading="assetsUploading.icon"
                   :error="assetsError.icon"
                   :aspect-ratio="1"
+                  :min-height="150"
                   :max-height="300"
                   @upload="(file) => handleAssetUpload('icon', file)"
                   @remove="() => handleAssetRemove('icon')"
@@ -373,6 +535,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
                 <FileUpload
                   expand
                   :preview-url="assetsUrl.cover"
+                  :background-preview-url="!assetsUrl.cover ? steamAssetPreviews?.cover : null"
                   label="Upload Cover"
                   :loading="assetsUploading.cover"
                   :error="assetsError.cover"
@@ -390,6 +553,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
               <FileUpload
                 expand
                 :preview-url="assetsUrl.background"
+                :background-preview-url="!assetsUrl.background ? steamAssetPreviews?.background : null"
                 label="Upload Background"
                 :loading="assetsUploading.background"
                 :error="assetsError.background"

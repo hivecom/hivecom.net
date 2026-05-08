@@ -30,6 +30,7 @@ const props = defineProps<{
   utc?: boolean
   compact?: boolean
   showYAxis?: boolean
+  showXAxis?: boolean
 }>()
 
 ChartJS.register(
@@ -152,7 +153,7 @@ const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlai
 function refreshChartOptions() {
   nextTick(() => {
     const compactOverride: ChartOptions<'bar'> = props.compact
-      ? { scales: { x: { ticks: { display: false } }, y: { ticks: { display: props.showYAxis } } } }
+      ? { scales: { x: { ticks: { display: props.showXAxis ?? false } }, y: { ticks: { display: props.showYAxis } } } }
       : {}
     chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions, compactOverride)
   })
@@ -217,7 +218,10 @@ watchEffect(() => {
       ref="chartWrapperRef"
       :key="`${theme}-${activeTheme?.id}-${props.utc}-${activeSeries.value}`"
       class="chart-wrapper"
-      :class="{ 'chart-wrapper--compact': compact }"
+      :class="{
+        'chart-wrapper--compact': compact && !showXAxis,
+        'chart-wrapper--compact-xaxis': compact && showXAxis,
+      }"
     >
       <Bar
         ref="chartRef"

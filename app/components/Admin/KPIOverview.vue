@@ -62,7 +62,7 @@ onBeforeMount(() => {
     />
 
     <KPICard
-      label="Upcoming Events"
+      label="Upcoming Official One-off Events"
       :value="upcomingEventsCount"
       :is-loading="loading"
       icon="ph:calendar-plus"

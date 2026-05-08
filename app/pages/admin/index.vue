@@ -125,7 +125,7 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
               <Flex x-between y-center expand class="px-m py-s">
                 <span class="dashboard__charts-title">Metrics</span>
                 <Flex y-center gap="s">
-                  <span class="dashboard__charts-period">Last 24 hours</span>
+                  <span class="dashboard__charts-period">Last 7 days</span>
                   <Button variant="link" size="s" square @click.prevent="navigateTo('/admin/metrics')">
                     <Icon name="ph:arrow-square-out" size="16" />
                   </Button>
@@ -133,13 +133,13 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
               </Flex>
             </template>
             <div class="dashboard__charts-body">
-              <ChartOnlineUsers period="24h" :window="null" :utc="false" fresh compact show-y-axis />
+              <ChartOnlineUsers period="7d" :window="null" :utc="false" fresh compact show-y-axis />
               <Divider />
-              <ChartTeamSpeakOnline period="24h" :window="null" :utc="false" compact show-y-axis />
+              <ChartTeamSpeakOnline period="7d" :window="null" :utc="false" compact show-y-axis />
               <Divider />
-              <ChartGameserversPlayers period="24h" :window="null" :utc="false" compact show-y-axis />
+              <ChartGameserversPlayers period="7d" :window="null" :utc="false" compact show-y-axis />
               <Divider />
-              <ChartDiscussions period="24h" :window="null" :utc="false" compact show-y-axis />
+              <ChartDiscussions period="7d" :window="null" :utc="false" compact show-y-axis show-x-axis />
             </div>
           </Card>
         </NuxtLink>

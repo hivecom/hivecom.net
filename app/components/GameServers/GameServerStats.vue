@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MetricsServerDetailMinecraft, MetricsServerDetailSource, SourcePlayer } from '@/types/metrics'
-import { Button, Card, Flex, Grid, Modal } from '@dolanske/vui'
+import { Button, Card, Flex, Grid } from '@dolanske/vui'
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
@@ -108,8 +108,6 @@ const playerList = computed<PlayerEntry[]>(() => {
 })
 
 const hasPlayerList = computed(() => playerList.value.length > 0)
-const showPlayerList = ref(false)
-
 const isMobile = useBreakpoint('<xs')
 const accentColor = computed(() => getCSSVariable('--color-accent'))
 
@@ -121,81 +119,59 @@ onMounted(async () => {
   history.value = serverHistory
   data.value = serverHistory.map(e => e.players ?? 0)
 })
-
-function tooltipLabel(index: number, value: number): string {
-  const entry = history.value[index]
-  const suffix = `${value} player${value === 1 ? '' : 's'}`
-  if (!entry)
-    return suffix
-
-  const entryDate = new Date(entry.capturedAt)
-  const entryDay = Date.UTC(entryDate.getUTCFullYear(), entryDate.getUTCMonth(), entryDate.getUTCDate())
-  const now = new Date()
-  const todayDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-  const diffDays = Math.round((todayDay - entryDay) / (1000 * 60 * 60 * 24))
-
-  if (diffDays === 0)
-    return `${suffix} - today`
-  if (diffDays === 1)
-    return `${suffix} - yesterday`
-  return `${suffix} - ${diffDays} days ago`
-}
 </script>
 
 <template>
   <Card>
     <Flex :x-between="!isMobile" y-center :gap="isMobile ? 's' : undefined">
       <Flex :gap="0" y-center>
-        <OnlineBadge v-if="isMobile" :count="currentPlayerCount" size="s" label="" :clickable="hasPlayerList" @click="showPlayerList = true" />
-        <OnlineBadge v-else :count="currentPlayerCount" label="Players Online" clickable @click="clickedWindow = null; showModal = true" />
+        <OnlineBadge v-if="isMobile" :count="currentPlayerCount" size="s" label="" :clickable="hasPlayerList" @click="clickedWindow = null; showModal = true" />
+        <OnlineBadge v-else :count="currentPlayerCount" label="Players Online" singular="Player Online" clickable @click="clickedWindow = null; showModal = true" />
         <template v-if="!isMobile && hasPlayerList">
-          <Button variant="link" @click="showPlayerList = true">
+          <Button variant="link" @click="clickedWindow = null; showModal = true">
             <Icon name="ph:users" class="text-color-accent" />
           </Button>
         </template>
       </Flex>
 
-      <ChartActivityHistogram :data :height="32" :expand="isMobile" clickable @click="onHistogramClick">
-        <template #tooltip="{ value, index }">
-          <p>{{ tooltipLabel(index, value) }}</p>
+      <ChartActivityHistogram :data :timestamps="history.map(e => e.capturedAt)" :height="32" :expand="isMobile" clickable @click="onHistogramClick">
+        <template #tooltip="{ value, daysAgo }">
+          <p>
+            {{ value }} player{{ value === 1 ? '' : 's' }}<template v-if="daysAgo">
+              - {{ daysAgo }}
+            </template>
+          </p>
         </template>
       </ChartActivityHistogram>
     </Flex>
   </Card>
 
-  <Modal :open="showPlayerList" size="s" centered :card="{ separators: true }" @close="showPlayerList = false">
-    <template #header>
-      <h4>Online Players</h4>
-    </template>
-    <Grid :columns="2" gap="s">
-      <Card v-for="player in playerList" :key="player.name" class="player-card">
-        <Flex y-center gap="s">
-          <Icon name="ph:user" />
-          <Flex column gap="xs">
-            <span>{{ player.name }}</span>
-            <span v-if="player.detail" class="text-xs" style="color: var(--color-text-lighter);">{{ player.detail }}</span>
-          </Flex>
-        </Flex>
-      </Card>
-    </Grid>
-    <template #footer="{ close }">
-      <Flex x-end expand>
-        <Button variant="gray" @click="close">
-          Close
-        </Button>
-      </Flex>
-    </template>
-  </Modal>
-
   <ChartActivityHistogramModal
     v-model:open="showModal"
-    :title="serverName"
+    :title="serverName ? `${serverName} Players` : undefined"
+    :count="currentPlayerCount"
+    count-label="players"
+    count-singular="player"
     :series="['gameserversPlayers']"
     :color="accentColor"
+    :initial-period="currentPlayerCount ? '24h' : '14d'"
     :initial-window="clickedWindow"
   >
+    <template v-if="hasPlayerList" #above-chart>
+      <Grid :columns="isMobile ? 2 : 3" gap="s" expand>
+        <Card v-for="player in playerList" :key="player.name" class="player-card" expand>
+          <Flex y-center gap="s">
+            <Icon name="ph:user" />
+            <Flex column gap="xs">
+              <span>{{ player.name }}</span>
+              <span v-if="player.detail" class="text-xs" style="color: var(--color-text-lighter);">{{ player.detail }}</span>
+            </Flex>
+          </Flex>
+        </Card>
+      </Grid>
+    </template>
     <template #default="{ period, window, utc, color }">
-      <ChartGameserversPlayers :period :window :utc :server-id="props.id" :color />
+      <ChartGameserversPlayers :period :window :utc :server-id="props.id" :color hide-title />
     </template>
   </ChartActivityHistogramModal>
 </template>

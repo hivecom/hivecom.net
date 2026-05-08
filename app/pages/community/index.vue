@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { Button, Card, Flex, Grid, Modal } from '@dolanske/vui'
+import { Button, Card, Flex, Grid } from '@dolanske/vui'
 import CommunityBirthdays from '@/components/Community/CommunityBirthdays.vue'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
-import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
+import ChartOnlineUsersModal from '@/components/Shared/Charts/ChartOnlineUsersModal.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useCache } from '@/composables/useCache'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataProjects } from '@/composables/useDataProjects'
+import { patchProfileLastSeen } from '@/composables/useDataUser'
 import { isBanActive } from '@/lib/banStatus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -97,9 +98,46 @@ const loading = ref(_cachedMembers === null)
 const showOnlineModal = ref(false)
 const error = ref('')
 
+const ONLINE_THRESHOLD_MS = 15 * 60 * 1000
+const ONLINE_USERS_CACHE_KEY = 'community-page:online-users'
+const ONLINE_USERS_TTL = 60 * 1000 // 1 minute
+const onlineUserIds = ref<string[]>([])
+const onlineUsersLoading = ref(false)
+
+async function fetchOnlineUsers() {
+  const cached = communityCache.get<string[]>(ONLINE_USERS_CACHE_KEY)
+  if (cached) {
+    onlineUserIds.value = cached
+    return
+  }
+  onlineUsersLoading.value = true
+  const threshold = new Date(Date.now() - ONLINE_THRESHOLD_MS).toISOString()
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, last_seen')
+    .gt('last_seen', threshold)
+    .order('last_seen', { ascending: false })
+    .limit(100)
+  const rows = data ?? []
+  const ids = rows.map(p => p.id)
+  onlineUserIds.value = ids
+  communityCache.set(ONLINE_USERS_CACHE_KEY, ids, ONLINE_USERS_TTL)
+  for (const row of rows) {
+    if (row.last_seen)
+      patchProfileLastSeen(row.id, row.last_seen)
+  }
+  onlineUsersLoading.value = false
+}
+
+watch(showOnlineModal, (open) => {
+  if (open)
+    void fetchOnlineUsers()
+})
+
 const { latestMetrics, fetchLatestMetrics } = useDataMetrics()
-const onlineCount = computed(() => latestMetrics.value?.members.online ?? null)
+const onlineCount = computed(() => onlineUserIds.value.length > 0 ? onlineUserIds.value.length : (latestMetrics.value?.members.online ?? null))
 fetchLatestMetrics()
+void fetchOnlineUsers()
 
 // State for recent projects
 const recentProjects = ref<ReturnType<typeof useDataProjects>['projects']['value']>([])
@@ -296,12 +334,12 @@ watch(user, () => {
         </Flex>
       </Card>
 
-      <Modal :open="showOnlineModal" centered size="m" @close="showOnlineModal = false">
-        <template #header>
-          <h3>Users Online</h3>
-        </template>
-        <ChartOnlineUsers period="24h" :window="null" fresh />
-      </Modal>
+      <ChartOnlineUsersModal
+        v-model:open="showOnlineModal"
+        :online-user-ids="onlineUserIds"
+        :online-users-loading="onlineUsersLoading"
+        :online-count="onlineCount"
+      />
 
       <!-- Sign-in prompt for community features -->
       <section v-if="!user" class="mt-m">

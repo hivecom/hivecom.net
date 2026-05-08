@@ -6,7 +6,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { METRICS_PERIOD_OPTIONS, PERIOD_CONFIGS, useDataMetrics } from '@/composables/useDataMetrics'
 import { getCSSVariable } from '@/lib/utils/common'
 
-type SeriesKey = 'membersOnline' | 'teamspeakOnline' | 'gameserversPlayers'
+type SeriesKey = 'membersOnline' | 'teamspeakOnline' | 'gameserversPlayers' | 'membersGameActivity' | 'membersSteamGameActivity'
 
 interface SeriesDef {
   key: SeriesKey
@@ -17,7 +17,12 @@ interface SeriesDef {
 const props = withDefaults(defineProps<{
   series?: SeriesKey[]
   color?: string
+  initialPeriod?: MetricsPeriod
   initialWindow?: { start: Date, end: Date } | null
+  gameId?: number
+  steamGameId?: number
+  serverId?: number
+  serverName?: string
 }>(), {
   series: () => ['membersOnline', 'teamspeakOnline', 'gameserversPlayers'] as SeriesKey[],
   color: () => getCSSVariable('--color-accent'),
@@ -32,6 +37,8 @@ const ALL_SERIES: SeriesDef[] = [
   { key: 'membersOnline', label: 'Users', paletteIndex: 1 },
   { key: 'teamspeakOnline', label: 'TeamSpeak', paletteIndex: 0 },
   { key: 'gameserversPlayers', label: 'Servers', paletteIndex: 4 },
+  { key: 'membersGameActivity', label: 'Games', paletteIndex: 3 },
+  { key: 'membersSteamGameActivity', label: 'Steam Games', paletteIndex: 2 },
 ]
 
 const { metricsOverview, fetchMetricsOverview } = useDataMetrics()
@@ -71,7 +78,7 @@ const selectionMode = ref<SelectionMode>('period')
 
 // ── Period chips ──────────────────────────────────────────────────────────────
 
-const activePeriod = ref<MetricsPeriod>('24h')
+const activePeriod = ref<MetricsPeriod>(props.initialPeriod ?? '7d')
 
 function applyWindow(start: Date, end: Date) {
   brushStart.value = start.getTime()
@@ -212,11 +219,24 @@ function draw() {
 
   const active = activeSeries.value
 
+  // When scoped to a specific game, override the entry value lookup
+  function getEntryValue(entry: MetricsHistoryEntry, key: SeriesKey): number | null {
+    if (props.gameId !== undefined && (key === 'membersGameActivity'))
+      return entry.membersByGame?.[String(props.gameId)] ?? null
+    if (props.steamGameId !== undefined && (key === 'membersSteamGameActivity'))
+      return entry.membersBySteamGame?.[String(props.steamGameId)] ?? null
+    if (props.serverId !== undefined && key === 'gameserversPlayers')
+      return entry.gameserversByServer?.[String(props.serverId)] ?? null
+    if (props.serverName !== undefined && key === 'teamspeakOnline')
+      return entry.teamspeakByServer?.[props.serverName] ?? null
+    return entry[key] as number | null
+  }
+
   // Per-series max for independent normalization
   const seriesMax = Object.fromEntries(
     active.map(s => [
       s.key,
-      entries.reduce((m, e) => Math.max(m, e[s.key] ?? 0), 1),
+      entries.reduce((m, e) => Math.max(m, getEntryValue(e, s.key) ?? 0), 1),
     ]),
   )
 
@@ -238,7 +258,7 @@ function draw() {
       continue
     const ts = new Date(entry.capturedAt).getTime()
     const x = ((ts - min) / (max - min)) * W
-    if (active.every(s => entry[s.key] === null)) {
+    if (active.every(s => getEntryValue(entry, s.key) === null)) {
       ctx.globalAlpha = 1
       ctx.fillStyle = colorGap
       ctx.fillRect(x, 0, totalBw, H)
@@ -254,9 +274,9 @@ function draw() {
 
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i]
-      if (!entry || entry[s.key] === null)
+      if (!entry || getEntryValue(entry, s.key) === null)
         continue
-      const v = entry[s.key] ?? 0
+      const v = getEntryValue(entry, s.key) ?? 0
       if (v <= 0)
         continue
       const ts = new Date(entry.capturedAt).getTime()
@@ -434,7 +454,7 @@ onMounted(() => {
     selectionMode.value = 'brush'
   }
   else {
-    applyPeriod('24h')
+    applyPeriod(props.initialPeriod ?? activePeriod.value)
   }
 })
 

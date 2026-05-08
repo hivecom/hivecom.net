@@ -68,8 +68,8 @@ async function fetchAlerts() {
       newAlerts.push({
         id: 'no-events',
         severity: 'warning',
-        title: 'No Upcoming Events',
-        message: 'No events scheduled - consider planning community activities',
+        title: 'No Upcoming Official One-off Events',
+        message: 'Have you thought of organizing something?',
         icon: 'ph:calendar-x',
         timestamp: referenceTime,
       })
@@ -150,13 +150,13 @@ onBeforeMount(() => {
 
     <div v-if="loading" class="alerts-table">
       <div class="alerts-table-header">
-        <div class="col-severity">
+        <div>
           Severity
         </div>
-        <div class="col-title">
+        <div>
           Alert
         </div>
-        <div class="col-date text-right">
+        <div class="text-right">
           Date
         </div>
       </div>
@@ -184,13 +184,13 @@ onBeforeMount(() => {
 
     <div v-else class="alerts-table">
       <div class="alerts-table-header">
-        <div class="col-severity">
+        <div>
           Severity
         </div>
-        <div class="col-title">
+        <div>
           Alert
         </div>
-        <div class="col-date text-right">
+        <div class="text-right">
           Date
         </div>
       </div>
@@ -285,7 +285,7 @@ onBeforeMount(() => {
   display: grid;
   grid-template-columns: 80px 1fr 80px;
   gap: var(--space-m);
-  padding: var(--space-l);
+  padding: var(--space-m);
   border-bottom: 1px solid var(--color-border);
   transition: background-color 0.2s ease;
 
@@ -316,6 +316,7 @@ onBeforeMount(() => {
 
 .alert-title {
   font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-s);
   color: var(--color-text);
   margin-bottom: var(--space-xs);
   white-space: nowrap;
@@ -324,7 +325,7 @@ onBeforeMount(() => {
 }
 
 .alert-message {
-  font-size: var(--font-size-s);
+  font-size: var(--font-size-xs);
   color: var(--color-text-light);
   line-height: 1.4;
   white-space: nowrap;

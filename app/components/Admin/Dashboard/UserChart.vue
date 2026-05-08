@@ -15,7 +15,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import dayjs from 'dayjs'
-import { computed, onBeforeMount, ref, watchEffect } from 'vue'
+import { computed, nextTick, onBeforeMount, onMounted, ref, watch, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { getChartPalette, getLineChartDefaults } from '@/lib/charts'
@@ -189,6 +189,17 @@ const localChartOptions: ChartOptions<'line'> = {
   },
 }
 
+const chartOptions = ref<ChartOptions<'line'>>(import.meta.client ? deepMergePlainObjects(getLineChartDefaults(), localChartOptions) : {})
+
+function refreshChartOptions() {
+  nextTick(() => {
+    chartOptions.value = deepMergePlainObjects(getLineChartDefaults(), localChartOptions)
+  })
+}
+
+onMounted(() => refreshChartOptions())
+watch(theme, () => refreshChartOptions())
+
 watchEffect(() => {
   const width = chartWrapperWidth.value
   const chart = chartRef.value?.chart
@@ -261,7 +272,7 @@ onBeforeMount(fetchAllData)
       <Line
         ref="chartRef"
         :data="chartData"
-        :options="deepMergePlainObjects(getLineChartDefaults(), localChartOptions)"
+        :options="chartOptions"
       />
     </div>
   </div>
@@ -270,7 +281,7 @@ onBeforeMount(fetchAllData)
 <style scoped lang="scss">
 .chart-container {
   width: 100%;
-  min-height: 160px;
+  min-height: 178px;
   background-color: var(--color-bg-card);
   border-radius: var(--border-radius-m);
   padding: var(--space-m);
@@ -278,7 +289,7 @@ onBeforeMount(fetchAllData)
 }
 
 .chart-wrapper {
-  height: 160px;
+  height: 178px;
   width: 100%;
   position: relative;
 }
@@ -294,7 +305,7 @@ onBeforeMount(fetchAllData)
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 160px;
+  height: 178px;
   color: var(--color-text-light);
 }
 

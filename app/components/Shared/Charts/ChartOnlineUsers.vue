@@ -27,7 +27,9 @@ const props = defineProps<{
   fresh?: boolean
   color?: string
   compact?: boolean
+  hideTitle?: boolean
   showYAxis?: boolean
+  showXAxis?: boolean
 }>()
 
 ChartJS.register(
@@ -128,7 +130,7 @@ const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlai
 function refreshChartOptions() {
   nextTick(() => {
     const compactOverride: ChartOptions<'bar'> = props.compact
-      ? { scales: { x: { ticks: { display: false } }, y: { ticks: { display: props.showYAxis } } } }
+      ? { scales: { x: { ticks: { display: props.showXAxis ?? false } }, y: { ticks: { display: props.showYAxis } } } }
       : {}
     chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions, compactOverride)
   })
@@ -156,10 +158,10 @@ watchEffect(() => {
       <span>Users Online</span>
       <OnlineBadge :count="currentCount ?? null" label="online" size="s" color="var(--color-text-green)" />
     </Flex>
-    <Flex v-if="!compact" x-between y-center class="text-m text-bold-row">
-      <Flex x-between y-center>
+    <Flex v-if="!compact && !hideTitle" x-between y-center class="text-m text-bold-row">
+      <Flex gap="s" y-center>
         <span class="text-m text-bold">Users Online</span>
-        <span v-if="currentCount !== undefined" class="text-xs text-color-lightest">({{ currentCount }} online now)</span>
+        <OnlineBadge :count="currentCount ?? null" label="online now" size="s" :color="props.color" />
       </Flex>
     </Flex>
 

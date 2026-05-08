@@ -245,16 +245,22 @@ export type Database = {
       }
       data_steam_games: {
         Row: {
+          created_at: string
+          icon_hash: string | null
           name: string
           steam_id: number
           updated_at: string
         }
         Insert: {
+          created_at?: string
+          icon_hash?: string | null
           name: string
           steam_id: number
           updated_at?: string
         }
         Update: {
+          created_at?: string
+          icon_hash?: string | null
           name?: string
           steam_id?: number
           updated_at?: string
@@ -995,16 +1001,19 @@ export type Database = {
           captured_at: string
           data: Json
           id: number
+          is_aggregated: boolean
         }
         Insert: {
           captured_at?: string
           data: Json
           id?: number
+          is_aggregated?: boolean
         }
         Update: {
           captured_at?: string
           data?: Json
           id?: number
+          is_aggregated?: boolean
         }
         Relationships: []
       }
@@ -2125,6 +2134,7 @@ export type Database = {
           }
       get_admin_events_paginated: {
         Args: {
+          p_hide_recurring?: boolean
           p_is_official?: boolean
           p_limit?: number
           p_offset?: number
@@ -2444,6 +2454,8 @@ export type Database = {
           discussions_total: number
           gameservers_by_server: Json
           gameservers_players: number
+          members_by_game: Json
+          members_by_steam_game: Json
           members_online: number
           members_total: number
           teamspeak_by_server: Json
@@ -2454,6 +2466,14 @@ export type Database = {
         | { Args: never; Returns: number }
         | {
             Args: { p_is_official?: boolean; p_search?: string }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_hide_recurring?: boolean
+              p_is_official?: boolean
+              p_search?: string
+            }
             Returns: number
           }
       get_past_events_paginated:
@@ -2494,6 +2514,47 @@ export type Database = {
           }
         | {
             Args: {
+              p_is_official?: boolean
+              p_limit?: number
+              p_offset?: number
+              p_search?: string
+            }
+            Returns: {
+              created_at: string
+              created_by: string | null
+              date: string
+              description: string
+              discord_event_id: string | null
+              discord_last_synced_at: string | null
+              duration_minutes: number | null
+              games: number[] | null
+              google_community_event_id: string | null
+              google_community_last_synced_at: string | null
+              google_event_id: string | null
+              google_last_synced_at: string | null
+              id: number
+              is_official: boolean
+              link: string | null
+              location: string | null
+              markdown: string | null
+              modified_at: string | null
+              modified_by: string | null
+              note: string | null
+              recurrence_exception: boolean
+              recurrence_parent_id: number | null
+              recurrence_rule: string | null
+              title: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "events"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_hide_recurring?: boolean
               p_is_official?: boolean
               p_limit?: number
               p_offset?: number
@@ -2618,6 +2679,7 @@ export type Database = {
               updated_at: string
             }[]
           }
+      metrics_daily_rollup: { Args: never; Returns: undefined }
       normalize_mentions: { Args: { input_text: string }; Returns: string }
       pgmq_delete: {
         Args: { msg_id: number; queue_name: string }
