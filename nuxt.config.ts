@@ -314,6 +314,7 @@ export default defineNuxtConfig({
         'ph:magnifying-glass',
         'ph:list-magnifying-glass',
         'ph:selection-slash',
+        'ph:arrow-square-out',
       ],
     },
   },

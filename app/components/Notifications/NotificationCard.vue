@@ -234,6 +234,10 @@ function handleCardClick() {
     @include line-clamp(1);
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-semibold);
+
+    &:not(:only-child) {
+      margin-bottom: var(--space-xxs);
+    }
   }
 
   &__description {

@@ -161,7 +161,7 @@ watchEffect(() => {
     <Flex v-if="!compact && !hideTitle" x-between y-center class="text-m text-bold-row">
       <Flex gap="s" y-center>
         <span class="text-m text-bold">Users Online</span>
-        <OnlineBadge :count="currentCount ?? null" label="online now" size="s" :color="props.color" />
+        <OnlineBadge :count="currentCount ?? null" label="online" size="s" :color="props.color" />
       </Flex>
     </Flex>
 

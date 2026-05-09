@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Card, Flex, removeToast } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Flex, removeToast } from '@dolanske/vui'
 import { useRouter } from 'vue-router'
 
 interface Props {
@@ -35,14 +35,14 @@ onUnmounted(() => unregister())
         <span class="toast-discover__label">Random discussion</span>
         <span class="toast-discover__title">{{ data.title }}</span>
       </Flex>
-      <Flex gap="xs" y-center>
+      <ButtonGroup :gap="2">
         <Button size="s" variant="accent" @click="() => data.onNext(toastId)">
           Next
         </Button>
         <Button size="s" variant="gray" square @click="() => removeToast(toastId)">
           <Icon name="ph:x" :size="14" />
         </Button>
-      </Flex>
+      </ButtonGroup>
     </Flex>
   </Card>
 </template>

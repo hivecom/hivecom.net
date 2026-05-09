@@ -131,8 +131,15 @@
 }
 
 .vui-badge {
-  --vui-badge-padding-inline: 10px;
-  --vui-badge-padding-block: 6px;
+  // --vui-badge-padding-block: 6px;
+
+  &.vui-badge-size-s {
+    --vui-badge-padding-inline: var(--space-xxs) !important;
+  }
+
+  &.vui-badge-size-m {
+    --vui-badge-padding-inline: var(--space-xs) !important;
+  }
 
   width: fit-content;
 

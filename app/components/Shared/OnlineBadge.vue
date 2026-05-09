@@ -12,7 +12,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  label: 'Online Now',
+  label: 'Online',
   size: 'm',
   clickable: false,
 })

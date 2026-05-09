@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Tooltip } from '@dolanske/vui'
 import { toRefs } from 'vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserName from '@/components/Shared/UserName.vue'
@@ -33,42 +33,44 @@ function handleIgnore() {
     <NotificationCard icon="ph:user-plus" text="Friend Request">
       <template #below>
         <div class="notification-card-invite__user">
-          <UserAvatar :user-id="requestId" :size="18" linked class="notification-avatar" />
+          <UserAvatar :user-id="requestId" :size="18" linked />
           <UserName :user-id="requestId" size="s" />
         </div>
       </template>
 
       <template #actions>
-        <Tooltip placement="top">
-          <Button
-            square
-            size="s"
-            variant="gray"
-            :loading="loading"
-            aria-label="Ignore invite"
-            @click="handleIgnore"
-          >
-            <Icon name="ph:x" />
-          </Button>
-          <template #tooltip>
-            <p>Ignore invite</p>
-          </template>
-        </Tooltip>
-        <Tooltip placement="top">
-          <Button
-            square
-            size="s"
-            variant="accent"
-            :loading="loading"
-            aria-label="Accept invite"
-            @click="handleAccept"
-          >
-            <Icon name="ph:check" />
-          </Button>
-          <template #tooltip>
-            <p>Accept invite</p>
-          </template>
-        </Tooltip>
+        <ButtonGroup :gap="2">
+          <Tooltip placement="top">
+            <Button
+              square
+              size="s"
+              variant="gray"
+              :loading="loading"
+              aria-label="Ignore invite"
+              @click="handleIgnore"
+            >
+              <Icon name="ph:x" />
+            </Button>
+            <template #tooltip>
+              <p>Ignore invite</p>
+            </template>
+          </Tooltip>
+          <Tooltip placement="top">
+            <Button
+              square
+              size="s"
+              variant="accent"
+              :loading="loading"
+              aria-label="Accept invite"
+              @click="handleAccept"
+            >
+              <Icon name="ph:check" />
+            </Button>
+            <template #tooltip>
+              <p>Accept invite</p>
+            </template>
+          </Tooltip>
+        </ButtonGroup>
       </template>
     </NotificationCard>
   </UserPreviewHover>

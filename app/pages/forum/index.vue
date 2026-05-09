@@ -1273,7 +1273,10 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
                 <span class="text-m mb-xs text-color-light">Display options</span>
                 <NuxtLink to="/profile/settings">
                   <Button size="s">
-                    All settings
+                    Settings
+                    <template #end>
+                      <Icon name="ph:arrow-square-out" />
+                    </template>
                   </Button>
                 </NuxtLink>
               </Flex>

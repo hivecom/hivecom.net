@@ -192,7 +192,7 @@ function isCoverLoading(gameId: number): boolean {
                     ripple
                   />
                   <template #tooltip>
-                    <p>{{ getPlayersForGame(game.id) }} online now</p>
+                    <p>{{ getPlayersForGame(game.id) }} online</p>
                   </template>
                 </Tooltip>
               </div>
