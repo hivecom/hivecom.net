@@ -45,7 +45,7 @@ watch(open, (val) => {
     <template #header>
       <Flex y-center gap="s" x-between>
         <h4>{{ title ?? 'Activity' }}</h4>
-        <OnlineBadge v-if="count !== undefined" :count="count ?? null" :label="countLabel ?? 'online'" :singular="countSingular" size="s" :color="props.color" />
+        <OnlineBadge v-if="count !== undefined" :count="count ?? null" :label="countLabel ?? 'online'" :singular="countSingular" :color="props.color" />
       </Flex>
     </template>
 

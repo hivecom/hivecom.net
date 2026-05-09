@@ -261,7 +261,6 @@ const COUNTRY_DATA = [
 
 const COUNTRY_CODE_RE = /^[A-Z]{2}$/
 const COUNTRY_MAP = new Map<string, CountryDefinition>(COUNTRY_DATA.map(country => [country.code, country]))
-const DEFAULT_FLAG = String.fromCodePoint(0x1F310)
 
 function normalizeCountryCode(code: string | null | undefined): string | null {
   if (code == null)
@@ -293,7 +292,7 @@ export function getCountryName(code: string | null | undefined): string | null {
 export function getCountryEmoji(code: string | null | undefined): string {
   const normalized = normalizeCountryCode(code)
   if (normalized == null)
-    return DEFAULT_FLAG
+    return ''
 
   return computeFlagEmoji(normalized)
 }

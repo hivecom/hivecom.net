@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Dropdown, DropdownItem, Flex, paginate, Pagination, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, Dropdown, DropdownItem, Flex, paginate, Pagination, Popout, PopoutHover, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
@@ -15,6 +15,7 @@ import ForumTopicItem from '@/components/Forum/ForumTopicItem.vue'
 import ChartOnlineUsersModal from '@/components/Shared/Charts/ChartOnlineUsersModal.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCache } from '@/composables/useCache'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataMetrics } from '@/composables/useDataMetrics'
@@ -1111,7 +1112,22 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               Bringing back the old school internet experience
             </p>
           </div>
-          <OnlineBadge :count="onlineCount" clickable @click="activityModalOpen = true" />
+          <PopoutHover :disabled="!onlineCount || onlineCount <= 0" placement="bottom-end">
+            <template #trigger>
+              <OnlineBadge :count="onlineCount" clickable @click="activityModalOpen = true" />
+            </template>
+            <Flex column gap="xs" class="px-m py-s">
+              <UserDisplay
+                v-for="id in onlineUserIds"
+                :key="id"
+                :user-id="id"
+                size="s"
+                linked
+                show-preview
+                show-online-indicator
+              />
+            </Flex>
+          </PopoutHover>
         </Flex>
       </section>
 

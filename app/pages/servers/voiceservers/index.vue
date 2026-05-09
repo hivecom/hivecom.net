@@ -30,7 +30,7 @@ defineOgImage('Default', {
     <section class="page-title">
       <Flex y-center x-between gap="s" expand>
         <h1>Voice Servers</h1>
-        <OnlineBadge :count="totalOnline" label="Connections" singular="Connection" clickable @click="activityModalOpen = true" />
+        <OnlineBadge :count="totalOnline" label="Online" singular="online" clickable @click="activityModalOpen = true" />
       </Flex>
       <p>View live channels and connect with the community on TeamSpeak.</p>
     </section>
@@ -41,8 +41,8 @@ defineOgImage('Default', {
       v-model:open="activityModalOpen"
       title="TeamSpeak Activity"
       :count="totalOnline"
-      count-label="connections"
-      count-singular="connection"
+      count-label="online"
+      count-singular="online"
       :series="['teamspeakOnline']"
       :initial-period="totalOnline ? '24h' : '14d'"
     >

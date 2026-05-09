@@ -133,11 +133,11 @@
 .vui-badge {
   // --vui-badge-padding-block: 6px;
 
-  &.vui-badge-size-s {
+  &.vui-badge-size-s:not(.circle) {
     --vui-badge-padding-inline: var(--space-xxs) !important;
   }
 
-  &.vui-badge-size-m {
+  &.vui-badge-size-m:not(.circle) {
     --vui-badge-padding-inline: var(--space-xs) !important;
   }
 

@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { TeamSpeakIdentityRecord, TeamSpeakNormalizedChannel, TeamSpeakServerSnapshot, TeamSpeakSnapshot } from '@/types/teamspeak'
-import { Alert, Badge, Button, Card, Flex, Grid, Select, Skeleton, Switch, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, Grid, PopoutHover, Select, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import constants from '~~/constants.json'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
 import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
-import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
@@ -358,7 +357,7 @@ async function _handleRefresh() {
 }
 
 const selectedServerId = ref<string | null>(props.serverId ?? null)
-const showMusicBots = ref(false)
+const showMusicBots = ref(true)
 
 // Fetch users with TeamSpeak identities to enable UserLink
 const supabase = useSupabaseClient()
@@ -788,10 +787,9 @@ function _openRawSnapshot() {
   <Card class="ts-viewer" separators>
     <template #header>
       <!-- Mobile layout -->
-      <Flex v-if="isMobile" expand column gap="s" x-between>
-        <Flex expand x-between y-center gap="s">
+      <template v-if="isMobile">
+        <Flex expand gap="s" x-between y-center class="mb-s">
           <Flex y-center gap="s">
-            <Icon name="mdi:teamspeak" size="24" />
             <div v-if="serversSorted.length <= 1 || props.serverId">
               <strong class="text-xl">
                 {{ selectedServer ? formatServerLabel(selectedServer) : platformTitle }}
@@ -807,16 +805,19 @@ function _openRawSnapshot() {
               size="s"
             />
           </Flex>
-          <Flex y-center>
-            <Icon name="ph:music-notes" size="16" />
-            <Switch
-              v-model="showMusicBots"
-              size="xs"
-            />
-          </Flex>
+          <Button
+            v-if="teamspeakConnectUrl"
+            size="s"
+            variant="accent"
+            :href="teamspeakConnectUrl"
+            aria-label="Connect to TeamSpeak"
+          >
+            Connect
+          </Button>
+        <!-- </Flex> -->
         </Flex>
-        <Flex x-between expand>
-          <OnlineBadge v-if="selectedServer" :count="serverClientCount(selectedServer)" label="" clickable @click="clickedWindow = null; showActivityModal = true" />
+
+        <Flex x-end>
           <ChartActivityHistogram
             v-if="selectedServer && histogramData.length"
             :data="histogramData"
@@ -830,25 +831,11 @@ function _openRawSnapshot() {
             </template>
           </ChartActivityHistogram>
         </Flex>
-        <Button
-          v-if="teamspeakConnectUrl"
-          size="s"
-          variant="accent"
-          expand
-          :href="teamspeakConnectUrl"
-          aria-label="Connect to TeamSpeak"
-        >
-          <template #start>
-            <Icon name="mdi:phone-outgoing" size="16" />
-          </template>
-          Connect
-        </Button>
-      </Flex>
+      </template>
 
       <!-- Desktop layout -->
-      <Flex v-else expand x-between y-top gap="s">
+      <Flex v-else expand x-between y-center gap="s">
         <Flex expand y-center gap="s">
-          <Icon name="mdi:teamspeak" size="24" />
           <div v-if="serversSorted.length <= 1 || props.serverId">
             <strong class="text-xl">
               {{ selectedServer ? formatServerLabel(selectedServer) : platformTitle }}
@@ -863,100 +850,58 @@ function _openRawSnapshot() {
             placeholder="Select server"
             size="s"
           />
-          <Flex v-if="selectedServer" x-start y-center gap="xs">
-            <OnlineBadge :count="serverClientCount(selectedServer)" label="" clickable @click="clickedWindow = null; showActivityModal = true" />
-            <Flex>
-              <ChartActivityHistogram
-                v-if="histogramData.length"
-                :data="histogramData"
-                :height="24"
-                gap="xxs"
-                clickable
-                @click="onHistogramClick"
-              >
-                <template #tooltip="{ value, index }">
-                  <p>{{ histogramTooltipLabel(index, value) }}</p>
-                </template>
-              </ChartActivityHistogram>
-            </Flex>
-            <Tooltip v-if="selectedServer.serverInfo?.platform || selectedServer.serverInfo?.version || selectedServer.serverInfo?.uptimeSeconds || selectedServer.collectedAt">
-              <Badge variant="neutral" circle>
-                <Icon name="ph:info" size="16" class="ts-viewer__info-icon" />
-              </Badge>
-              <template #tooltip>
-                <Grid gap="s" columns="96px 1fr" class="ts-viewer__info-tooltip">
-                  <template v-if="selectedServer.serverInfo?.platform">
-                    <strong>Platform</strong>
-                    <p class="text-s">
-                      {{ selectedServer.serverInfo?.platform }}
-                    </p>
-                  </template>
-                  <template v-if="selectedServer.serverInfo?.version">
-                    <strong>Version</strong>
-                    <p class="text-s">
-                      {{ selectedServer.serverInfo?.version }}
-                    </p>
-                  </template>
-                  <template v-if="selectedServer.serverInfo?.uptimeSeconds">
-                    <strong>Uptime</strong>
-                    <p class="text-s">
-                      {{ formatDuration(selectedServer.serverInfo?.uptimeSeconds) }}
-                    </p>
-                  </template>
-                </Grid>
-              </template>
-            </Tooltip>
-            <Flex class="text-color-lightest">
-              <TimestampDate
-                :date="lastUpdated"
-                size="xxs"
-                :tooltip="true"
-              />
-            </Flex>
-          </Flex>
         </Flex>
         <Flex gap="xs" y-center x-end>
-          <Tooltip placement="bottom">
-            <Icon name="ph:music-notes" size="16" />
-            <Switch
-              v-model="showMusicBots"
-              size="xs"
-            />
-            <template #tooltip>
-              <div class="text-xs">
-                Toggle visibility of music bot clients in the channel lists.
-              </div>
+          <PopoutHover v-if="selectedServer && (selectedServer.serverInfo?.platform || selectedServer.serverInfo?.version || selectedServer.serverInfo?.uptimeSeconds || selectedServer.collectedAt)">
+            <template #trigger>
+              <Badge variant="neutral" circle>
+                <Icon name="ph:info" :size="16" />
+              </Badge>
             </template>
-          </Tooltip>
-          <!-- <Tooltip :disabled="isMobile">
-            <Button
-              size="s"
-              square
-              :loading="snapshotLoading || manualRefreshPending"
-              :disabled="snapshotLoading || manualRefreshPending || !canRefresh"
-              aria-label="Refresh TeamSpeak snapshot"
-              @click="handleRefresh"
-            >
-              <Icon name="ph:arrow-clockwise" size="16" />
-            </Button>
-            <template #tooltip>
-              <p>Refresh</p>
+            <Grid gap="xs" columns="96px 1fr" class="ts-viewer__info-tooltip">
+              <template v-if="selectedServer.serverInfo?.platform">
+                <strong>Platform</strong>
+                <p>
+                  {{ selectedServer.serverInfo?.platform }}
+                </p>
+              </template>
+              <template v-if="selectedServer.serverInfo?.version">
+                <strong>Version</strong>
+                <p>
+                  {{ selectedServer.serverInfo?.version }}
+                </p>
+              </template>
+              <template v-if="selectedServer.serverInfo?.uptimeSeconds">
+                <strong>Uptime</strong>
+                <p>
+                  {{ formatDuration(selectedServer.serverInfo?.uptimeSeconds) }}
+                </p>
+              </template>
+              <template v-if="selectedServer.serverInfo?.uptimeSeconds">
+                <strong>Last update</strong>
+                <p>
+                  <TimestampDate
+                    :date="lastUpdated"
+                    size="xxs"
+                    :tooltip="true"
+                  />
+                </p>
+              </template>
+            </Grid>
+          </PopoutHover>
+          <ChartActivityHistogram
+            v-if="histogramData.length"
+            :data="histogramData"
+            :height="24"
+            gap="xxs"
+            clickable
+            @click="onHistogramClick"
+          >
+            <template #tooltip="{ value, index }">
+              <p>{{ histogramTooltipLabel(index, value) }}</p>
             </template>
-          </Tooltip> -->
-          <!-- <Tooltip :disabled="isMobile">
-            <Button
-              size="s"
-              square
-              :disabled="!rawSnapshotUrl"
-              aria-label="Open raw TeamSpeak snapshot"
-              @click="openRawSnapshot"
-            >
-              <Icon name="ph:code" size="16" />
-            </Button>
-            <template #tooltip>
-              <p>Open raw snapshot</p>
-            </template>
-          </Tooltip> -->
+          </ChartActivityHistogram>
+
           <Button
             v-if="teamspeakConnectUrl"
             size="s"
@@ -1055,14 +1000,14 @@ function _openRawSnapshot() {
                 v-if="row.visibleClients.length"
                 expand
                 wrap
-                gap="xs"
+                gap="xxs"
                 class="ts-viewer__client-list"
                 :style="{ paddingLeft: '16px' }"
               >
                 <Flex
                   v-for="client in row.visibleClients"
                   :key="`${row.channel.id}-${client.uniqueId}`"
-                  gap="xs"
+                  :gap="6"
                   y-center
                   class="ts-viewer__client-bubble"
                   :class="{ 'full-mute': client.inputMuted && client.outputMuted }"
@@ -1071,6 +1016,7 @@ function _openRawSnapshot() {
                     v-if="client.muted || client.inputMuted || client.outputMuted || client.channelMuted"
                     name="ph:microphone-slash-duotone"
                     size="14"
+                    class="mr-xxs"
                   />
                   <span v-if="getCountryEmoji(client.country)" class="ts-viewer__client-flag">{{ getCountryEmoji(client.country) }}</span>
                   <UserLink
@@ -1098,8 +1044,8 @@ function _openRawSnapshot() {
     v-model:open="showActivityModal"
     title="TeamSpeak Online"
     :count="selectedServer ? serverClientCount(selectedServer) : null"
-    count-label="connections"
-    count-singular="connection"
+    count-label="online"
+    count-singular="online"
     :series="['teamspeakOnline']"
     :initial-period="selectedServer && serverClientCount(selectedServer) > 0 ? '24h' : '14d'"
     :initial-window="clickedWindow"
@@ -1179,12 +1125,11 @@ function _openRawSnapshot() {
 }
 
 .ts-viewer__client-bubble {
-  border: 1px solid var(--color-border-weak);
   border-radius: 32px;
-  padding: 6px 8px 6px 16px;
+  padding-inline: var(--space-s);
+  padding-block: var(--space-xs);
   background: var(--color-bg);
   color: var(--color-text-light);
-  font-size: 13px;
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease;
@@ -1198,15 +1143,17 @@ function _openRawSnapshot() {
 }
 
 .ts-viewer__client-flag {
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .ts-viewer__info-tooltip {
   max-width: 292px;
+  padding: var(--space-m);
 
   span,
+  p,
   strong {
-    font-size: var(--n-font-size-s);
+    font-size: var(--font-size-s) !important;
   }
 
   strong {
