@@ -316,13 +316,35 @@ Deno.serve(async (req: Request) => {
       ? (tsSnapshot?.servers ?? [])
       : [];
 
+    type TsServerCfg = { id: string; roleMusicBotGroupId?: number };
+    type AppConstants = {
+      PLATFORMS?: { TEAMSPEAK?: { servers?: TsServerCfg[] } };
+    };
+    const appConstants =
+      (constants as unknown as { default: AppConstants }).default;
+    const tsServerCfgMap = new Map(
+      (appConstants?.PLATFORMS?.TEAMSPEAK?.servers ?? []).map(
+        (srv) => [srv.id, srv] as [string, TsServerCfg],
+      ),
+    );
+
+    function countNonBotClients(s: (typeof tsServers)[number]): number {
+      const cfg = tsServerCfgMap.get(s.id);
+      const musicBotGroupId = cfg?.roleMusicBotGroupId;
+      return s.clients.filter(
+        (c) =>
+          c.uniqueId !== "serveradmin" &&
+          (!musicBotGroupId || !c.serverGroups.includes(musicBotGroupId)),
+      ).length;
+    }
+
     const tsByServer: Record<string, number> = {};
     for (const s of tsServers) {
-      tsByServer[s.id] = s.serverInfo?.totalClients ?? 0;
+      tsByServer[s.id] = countNonBotClients(s);
     }
 
     const tsOnline = tsServers.reduce(
-      (sum, s) => sum + (s.serverInfo?.totalClients ?? 0),
+      (sum, s) => sum + countNonBotClients(s),
       0,
     );
 

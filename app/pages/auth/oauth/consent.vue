@@ -76,7 +76,6 @@ async function loadAuthorizationDetails() {
     const isAuthed = await ensureAuthenticatedOrRedirect()
     if (!isAuthed)
       return
-
     const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId.value)
 
     if (error)
@@ -91,7 +90,8 @@ async function loadAuthorizationDetails() {
     details.value = data as AuthorizationDetails
   }
   catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Unable to load authorization details.'
+    const msg = error instanceof Error ? error.message : (typeof error === 'object' && error !== null && 'message' in error ? String((error as Record<string, unknown>).message) : '')
+    errorMessage.value = msg || 'Unable to load authorization details.'
     details.value = null
   }
   finally {

@@ -10,6 +10,7 @@ interface Props {
   gap?: keyof typeof SpaceSize
   clickable?: boolean
   expand?: boolean
+  compact?: boolean
 }
 
 const {
@@ -19,6 +20,7 @@ const {
   timestamps,
   clickable = false,
   expand = false,
+  compact = false,
 } = defineProps<Props>()
 
 const emit = defineEmits<{ click: [index: number] }>()
@@ -56,7 +58,7 @@ const highestValue = computed(() => Math.max(...data))
   >
     <Flex class="vui-histogram vui-histogram--clickable" :class="{ 'vui-histogram--expand': expand }" :gap>
       <Tooltip v-for="(item, index) in data" :key="index" :disabled="!slots.tooltip">
-        <div class="vui-histogram-cell" :style="{ height: `${height}px` }" @click.stop="emit('click', index)">
+        <div class="vui-histogram-cell" :class="{ 'vui-histogram-cell--compact': compact }" :style="{ height: `${height}px` }" @click.stop="emit('click', index)">
           <div class="vui-histogram-datacell" :style="{ height: `${item / highestValue * 100}%` }" />
         </div>
         <template #tooltip>
@@ -67,7 +69,7 @@ const highestValue = computed(() => Math.max(...data))
   </button>
   <Flex v-else class="vui-histogram" :class="{ 'vui-histogram--expand': expand }" :gap>
     <Tooltip v-for="(item, index) in data" :key="index" :disabled="!slots.tooltip">
-      <div class="vui-histogram-cell" :style="{ height: `${height}px` }">
+      <div class="vui-histogram-cell" :class="{ 'vui-histogram-cell--compact': compact }" :style="{ height: `${height}px` }">
         <div class="vui-histogram-datacell" :style="{ height: `${item / highestValue * 100}%` }" />
       </div>
       <template #tooltip>
@@ -101,6 +103,10 @@ const highestValue = computed(() => Math.max(...data))
 
   .vui-histogram-cell {
     width: 8px;
+
+    &--compact {
+      width: 4px;
+    }
     border-radius: var(--border-radius-pill);
     background-color: var(--color-bg-raised);
     overflow: hidden;

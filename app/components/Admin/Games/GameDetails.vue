@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
 import { ref, watchEffect } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
-import ChartActivityHistogramContent from '@/components/Shared/Charts/ChartActivityHistogramContent.vue'
+import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
 import ChartMembersGameActivity from '@/components/Shared/Charts/ChartMembersGameActivity.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
@@ -274,11 +274,11 @@ watchEffect(async () => {
           <template #header>
             <h6>Activity</h6>
           </template>
-          <ChartActivityHistogramContent :series="['membersGameActivity']" :game-id="props.game.id">
+          <ChartActivityHistogramControls :series="['membersGameActivity']" :game-id="props.game.id">
             <template #default="{ period, window, utc, color }">
               <ChartMembersGameActivity :period :window :utc :color :game-id="props.game.id" compact />
             </template>
-          </ChartActivityHistogramContent>
+          </ChartActivityHistogramControls>
         </Card>
 
         <!-- Game Assets -->

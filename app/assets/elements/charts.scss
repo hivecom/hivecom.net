@@ -36,6 +36,7 @@
 }
 
 .chartjs-vui-tooltip {
+  overflow: hidden;
   position: absolute;
   pointer-events: none;
   z-index: var(--z-popout);

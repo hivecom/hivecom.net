@@ -385,7 +385,7 @@ const NAV_GROUP_ICONS: Record<string, string> = Object.fromEntries(
 function dbResultToCommand(result: import('@/composables/useDataSearch').SearchResult): Command {
   const archivedPrefix = result.is_archived ? '[Archived] ' : ''
   const topicName = result.topic_id != null ? topicById.value.get(result.topic_id) : null
-  const body = [topicName, result.subtitle].filter(s => s != null && s !== '').join(' · ')
+  const body = [topicName, result.subtitle].filter(s => s != null && s !== '').join(' - ')
   return {
     title: result.title,
     description: archivedPrefix + body || undefined,

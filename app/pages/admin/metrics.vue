@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
 import type { Database } from '@/types/database.types'
-import { Button, Flex } from '@dolanske/vui'
+import { Button, Flex, Tooltip } from '@dolanske/vui'
 import { onMounted, ref } from 'vue'
 import ChartBrush from '@/components/Shared/Charts/ChartBrush.vue'
 import ChartDiscussions from '@/components/Shared/Charts/ChartDiscussions.vue'
@@ -9,6 +9,7 @@ import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameservers
 import ChartMembersGameActivity from '@/components/Shared/Charts/ChartMembersGameActivity.vue'
 import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
 import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
+import MetricsRefreshCountdown from '@/components/Shared/Charts/MetricsRefreshCountdown.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 
 const { fetchMetrics } = useDataMetrics()
@@ -36,12 +37,22 @@ function onBrushChange(window: { start: Date, end: Date }) {
       <Flex column :gap="0" expand>
         <h1>Metrics</h1>
         <Flex expand x-between y-center>
-          <p class="text-color-light">
-            Live and historical platform data
-          </p>
-          <Button variant="link" square @click="openRawSnapshot">
-            <Icon name="mdi:database-eye-outline" />
-          </Button>
+          <Flex y-center gap="s">
+            <p class="text-color-light">
+              Live and historical platform data
+            </p>
+          </Flex>
+          <Flex y-center gap="xs">
+            <MetricsRefreshCountdown />
+            <Tooltip>
+              <Button variant="link" square @click="openRawSnapshot">
+                <Icon name="mdi:database-eye-outline" />
+              </Button>
+              <template #tooltip>
+                <p>View raw snapshot data</p>
+              </template>
+            </Tooltip>
+          </Flex>
         </Flex>
       </Flex>
     </Flex>
@@ -65,11 +76,6 @@ function onBrushChange(window: { start: Date, end: Date }) {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-
-  @media (max-width: $breakpoint-m) {
-    // Offset below the admin mobile bar
-    top: 56px;
-  }
 }
 
 .section-divider {

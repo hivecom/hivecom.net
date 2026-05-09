@@ -2,7 +2,8 @@
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
 import { Flex, Modal } from '@dolanske/vui'
 import { ref, watch } from 'vue'
-import ChartActivityHistogramContent from '@/components/Shared/Charts/ChartActivityHistogramContent.vue'
+import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
+import MetricsRefreshCountdown from '@/components/Shared/Charts/MetricsRefreshCountdown.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 
 type SeriesKey = 'membersOnline' | 'teamspeakOnline' | 'gameserversPlayers' | 'membersGameActivity' | 'membersSteamGameActivity'
@@ -24,7 +25,7 @@ const props = defineProps<{
 
 const open = defineModel<boolean>('open', { default: false })
 
-// Re-key ChartActivityHistogramContent each time the modal opens so it re-mounts with the new initialWindow.
+// Re-key ChartActivityHistogramControls each time the modal opens so it re-mounts with the new initialWindow.
 // Reset state on close so the chart doesn't render stale data on reopen.
 const brushKey = ref(0)
 watch(open, (val) => {
@@ -48,7 +49,7 @@ watch(open, (val) => {
       </Flex>
     </template>
 
-    <ChartActivityHistogramContent
+    <ChartActivityHistogramControls
       :brush-key="brushKey"
       :series="props.series"
       :color="props.color"
@@ -65,6 +66,11 @@ watch(open, (val) => {
       <template #default="slotProps">
         <slot v-bind="slotProps" />
       </template>
-    </ChartActivityHistogramContent>
+    </ChartActivityHistogramControls>
+    <template #footer>
+      <Flex x-end>
+        <MetricsRefreshCountdown />
+      </Flex>
+    </template>
   </Modal>
 </template>

@@ -36,8 +36,8 @@ const emit = defineEmits<{
 const ALL_SERIES: SeriesDef[] = [
   { key: 'membersOnline', label: 'Users', paletteIndex: 1 },
   { key: 'teamspeakOnline', label: 'TeamSpeak', paletteIndex: 0 },
-  { key: 'gameserversPlayers', label: 'Servers', paletteIndex: 4 },
-  { key: 'membersGameActivity', label: 'Games', paletteIndex: 3 },
+  { key: 'gameserversPlayers', label: 'Servers', paletteIndex: 3 },
+  { key: 'membersGameActivity', label: 'Games', paletteIndex: 4 },
   { key: 'membersSteamGameActivity', label: 'Steam Games', paletteIndex: 2 },
 ]
 
@@ -57,6 +57,7 @@ const brushStart = ref<number | null>(null)
 const brushEnd = ref<number | null>(null)
 const isDragging = ref(false)
 const hoverX = ref<number | null>(null)
+const hoverTimestamp = ref<number | null>(null)
 
 // ── UTC toggle ────────────────────────────────────────────────────────────────
 
@@ -203,11 +204,11 @@ function draw() {
   const colorGap = getCSSVariable('--color-border')
   const colorAccent = props.color ?? getCSSVariable('--color-accent')
   const paletteColors = [
-    getCSSVariable('--color-text-blue'),
-    getCSSVariable('--color-text-green'),
-    getCSSVariable('--color-text-red'),
-    getCSSVariable('--color-text-yellow'),
-    getCSSVariable('--color-accent'),
+    getCSSVariable('--color-text-blue') || '#5b9bd5',
+    getCSSVariable('--color-text-green') || '#6bbf74',
+    getCSSVariable('--color-text-red') || '#d95f5f',
+    getCSSVariable('--color-text-yellow') || '#d4a72c',
+    getCSSVariable('--color-accent') || '#6bbf74',
   ]
 
   ctx.clearRect(0, 0, W, H)
@@ -358,10 +359,12 @@ function onMouseDown(e: MouseEvent) {
 }
 
 function onMouseMove(e: MouseEvent) {
-  hoverX.value = getCanvasX(e.clientX)
+  const x = getCanvasX(e.clientX)
+  hoverX.value = x
+  hoverTimestamp.value = xToTimestamp(x, canvasRef.value?.width ?? 1)
   if (!isDragging.value)
     return
-  brushEnd.value = xToTimestamp(getCanvasX(e.clientX), canvasRef.value?.width ?? 1)
+  brushEnd.value = hoverTimestamp.value
 }
 
 function onTouchStart(e: TouchEvent) {
@@ -463,19 +466,28 @@ defineExpose({ setBrush })
 
 <template>
   <div ref="wrapperRef" class="chart-brush">
-    <canvas
-      ref="canvasRef"
-      class="chart-brush__canvas"
-      :height="CANVAS_HEIGHT"
-      @mousedown="onMouseDown"
-      @mousemove="onMouseMove"
-      @mouseup="finishDrag"
-      @mouseleave="hoverX = null; finishDrag()"
-      @touchstart="onTouchStart"
-      @touchmove="onTouchMove"
-      @touchend="onTouchEnd"
-      @touchcancel="onTouchEnd"
-    />
+    <div class="chart-brush__canvas-wrapper">
+      <canvas
+        ref="canvasRef"
+        class="chart-brush__canvas"
+        :height="CANVAS_HEIGHT"
+        @mousedown="onMouseDown"
+        @mousemove="onMouseMove"
+        @mouseup="finishDrag"
+        @mouseleave="hoverX = null; hoverTimestamp = null; finishDrag()"
+        @touchstart="onTouchStart"
+        @touchmove="onTouchMove"
+        @touchend="onTouchEnd"
+        @touchcancel="onTouchEnd"
+      />
+      <div
+        v-if="hoverTimestamp !== null && !isDragging"
+        class="chart-brush__hover-tooltip"
+        :style="{ left: `${hoverX}px` }"
+      >
+        {{ formatTimestamp(hoverTimestamp) }}
+      </div>
+    </div>
     <Flex x-between y-center class="chart-brush__footer">
       <span class="chart-brush__range">{{ startLabel }}{{ endLabel ? ` - ${endLabel}` : '' }}</span>
 
@@ -546,6 +558,26 @@ defineExpose({ setBrush })
 
 .chart-brush {
   width: 100%;
+
+  &__canvas-wrapper {
+    position: relative;
+    width: 100%;
+  }
+
+  &__hover-tooltip {
+    position: absolute;
+    top: 4px;
+    transform: translateX(-50%);
+    pointer-events: none;
+    background: var(--color-bg-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-s);
+    padding: 2px var(--space-xs);
+    font-size: var(--font-size-xxs);
+    color: var(--color-text-light);
+    white-space: nowrap;
+    z-index: var(--z-popout);
+  }
 
   &__canvas {
     display: block;

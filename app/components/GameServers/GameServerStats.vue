@@ -24,9 +24,10 @@ const data = shallowRef<number[]>([])
 const history = shallowRef<{ capturedAt: string, players: number | null }[]>([])
 const showModal = ref(false)
 const clickedWindow = ref<{ start: Date, end: Date } | null>(null)
+const isMobile = useBreakpoint('<xs')
 
 function onHistogramClick(index: number) {
-  if (index >= 0) {
+  if (!isMobile.value && index >= 0) {
     const entry = history.value[index]
     if (entry) {
       // capturedAt is UTC midnight. Convert to local date, then use local midnight boundaries
@@ -57,8 +58,8 @@ const currentPlayerCount = computed<number | null>(() => {
   if (!detail?.data)
     return null
   if (detail.protocol === 'minecraft')
-    return detail.data.numPlayers ?? null
-  return detail.data.players ?? null
+    return detail.data.numPlayers ?? 0
+  return detail.data.players ?? 0
 })
 
 const minecraftDetail = computed<MetricsServerDetailMinecraft | null>(() => {
@@ -108,7 +109,6 @@ const playerList = computed<PlayerEntry[]>(() => {
 })
 
 const hasPlayerList = computed(() => playerList.value.length > 0)
-const isMobile = useBreakpoint('<xs')
 const accentColor = computed(() => getCSSVariable('--color-accent'))
 
 onMounted(async () => {
@@ -125,8 +125,7 @@ onMounted(async () => {
   <Card>
     <Flex :x-between="!isMobile" y-center :gap="isMobile ? 's' : undefined">
       <Flex :gap="0" y-center>
-        <OnlineBadge v-if="isMobile" :count="currentPlayerCount" size="s" label="" :clickable="hasPlayerList" @click="clickedWindow = null; showModal = true" />
-        <OnlineBadge v-else :count="currentPlayerCount" label="Players Online" singular="Player Online" clickable @click="clickedWindow = null; showModal = true" />
+        <OnlineBadge :count="currentPlayerCount" label="Players Online" singular="Player Online" clickable @click="clickedWindow = null; showModal = true" />
         <template v-if="!isMobile && hasPlayerList">
           <Button variant="link" @click="clickedWindow = null; showModal = true">
             <Icon name="ph:users" class="text-color-accent" />
@@ -134,7 +133,7 @@ onMounted(async () => {
         </template>
       </Flex>
 
-      <ChartActivityHistogram :data :timestamps="history.map(e => e.capturedAt)" :height="32" :expand="isMobile" clickable @click="onHistogramClick">
+      <ChartActivityHistogram :compact="isMobile" :data :timestamps="history.map(e => e.capturedAt)" :height="32" :expand="isMobile" clickable @click="onHistogramClick">
         <template #tooltip="{ value, daysAgo }">
           <p>
             {{ value }} player{{ value === 1 ? '' : 's' }}<template v-if="daysAgo">
@@ -158,7 +157,7 @@ onMounted(async () => {
     :initial-window="clickedWindow"
   >
     <template v-if="hasPlayerList" #above-chart>
-      <Grid :columns="isMobile ? 2 : 3" gap="s" expand>
+      <Grid :columns="isMobile ? 2 : 3" gap="s" expand class="player-grid">
         <Card v-for="player in playerList" :key="player.name" class="player-card" expand>
           <Flex y-center gap="s">
             <Icon name="ph:user" />
@@ -177,4 +176,11 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" scoped>
+.player-grid {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: var(--space-xs);
+  background: var(--color-bg-card);
+  border-radius: var(--border-radius-m);
+}
 </style>

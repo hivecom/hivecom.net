@@ -19,10 +19,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{ click: [] }>()
 
+const isActive = computed(() => props.count != null && props.count > 0)
+
 const variant = computed(() => {
-  if (props.color)
+  if (props.color && isActive.value)
     return 'neutral'
-  return props.count != null && props.count > 0 ? 'success' : 'neutral'
+  return isActive.value ? 'success' : 'neutral'
 })
 
 const iconSize = computed(() => props.size === 's' ? '8' : '12')
@@ -37,12 +39,13 @@ const displayLabel = computed(() => props.singular && props.count === 1 ? props.
     :size
     :style="{
       whiteSpace: 'nowrap',
-      ...(color ? { color } : {}),
+      ...(color && isActive ? { color } : {}),
+      ...(!isActive ? { color: 'var(--color-text-lighter)' } : {}),
       ...(clickable ? { cursor: 'pointer' } : {}),
     }"
     @click="clickable && emit('click')"
   >
-    <Icon name="ph:circle-fill" :size="iconSize" :style="color ? { color } : {}" />
+    <Icon name="ph:circle-fill" :size="iconSize" :style="color && isActive ? { color } : (!isActive ? { color: 'var(--color-text-lighter)' } : {})" />
     {{ count }} {{ displayLabel }}
   </Badge>
 </template>

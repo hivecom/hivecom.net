@@ -119,7 +119,7 @@ const birthdayTooltipText = computed(() => {
 
   const ageText = `${birthdayInfo.value.age} year${birthdayInfo.value.age === 1 ? '' : 's'} old`
   if (birthdayInfo.value.age < 6) {
-    return `${ageText} · Suspiciously young`
+    return `${ageText} - Suspiciously young`
   }
 
   return ageText

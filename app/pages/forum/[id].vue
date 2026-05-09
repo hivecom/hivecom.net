@@ -739,7 +739,7 @@ function revealNsfw() {
                 </template>
               </Tooltip>
               <template v-if="post.modified_at !== post.created_at">
-                <span aria-hidden="true">·</span>
+                <span aria-hidden="true">-</span>
                 <Tooltip :delay="500">
                   <span>Edited {{ dayjs(post.modified_at).fromNow() }}</span>
                   <template #tooltip>

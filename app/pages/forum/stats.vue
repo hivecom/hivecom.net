@@ -603,7 +603,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
               <template v-if="currentUserOutsideTop">
                 <tr class="leaderboard__row leaderboard__row--gap">
                   <td :colspan="isMobile ? 2 : 4" class="leaderboard__gap-cell">
-                    <span class="leaderboard__gap-dots">···</span>
+                    <span class="leaderboard__gap-dots">---</span>
                   </td>
                 </tr>
                 <tr class="leaderboard__row leaderboard__row--clickable leaderboard__row--me" @click="navigateToProfile(currentUserOutsideTop.user_id)">

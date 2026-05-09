@@ -188,7 +188,7 @@ const contextLinks = computed<ContextLink[]>(() => {
 
   if (props.discussion.discussion_topic_id) {
     links.push({
-      label: `Forum topic · ${props.discussion.discussion_topic_id}`,
+      label: `Forum topic - ${props.discussion.discussion_topic_id}`,
       href: `/forum?activeTopicId=${encodeURIComponent(props.discussion.discussion_topic_id)}`,
       icon: 'ph:chats',
     })
@@ -196,7 +196,7 @@ const contextLinks = computed<ContextLink[]>(() => {
 
   if (props.discussion.profile_id) {
     links.push({
-      label: `Profile discussion · ${props.discussion.profile_id}`,
+      label: `Profile discussion - ${props.discussion.profile_id}`,
       href: `/profile/${props.discussion.profile_id}`,
       icon: 'ph:user-circle',
     })
@@ -204,7 +204,7 @@ const contextLinks = computed<ContextLink[]>(() => {
 
   if (props.discussion.project_id) {
     links.push({
-      label: `Project thread · ${props.discussion.project_id}`,
+      label: `Project thread - ${props.discussion.project_id}`,
       href: `/community/projects/${props.discussion.project_id}`,
       icon: 'ph:folder',
     })
@@ -212,7 +212,7 @@ const contextLinks = computed<ContextLink[]>(() => {
 
   if (props.discussion.event_id) {
     links.push({
-      label: `Event thread · ${props.discussion.event_id}`,
+      label: `Event thread - ${props.discussion.event_id}`,
       href: `/events/${props.discussion.event_id}`,
       icon: 'ph:calendar',
     })
@@ -220,7 +220,7 @@ const contextLinks = computed<ContextLink[]>(() => {
 
   if (props.discussion.gameserver_id) {
     links.push({
-      label: `Gameserver thread · ${props.discussion.gameserver_id}`,
+      label: `Gameserver thread - ${props.discussion.gameserver_id}`,
       href: `/servers/gameservers/${props.discussion.gameserver_id}`,
       icon: 'ph:computer-tower',
     })
@@ -228,7 +228,7 @@ const contextLinks = computed<ContextLink[]>(() => {
 
   if (props.discussion.referendum_id) {
     links.push({
-      label: `Referendum thread · ${props.discussion.referendum_id}`,
+      label: `Referendum thread - ${props.discussion.referendum_id}`,
       href: `/votes/${props.discussion.referendum_id}`,
       icon: 'ph:user-sound',
     })
@@ -236,7 +236,7 @@ const contextLinks = computed<ContextLink[]>(() => {
 
   if (props.discussion.theme_id) {
     links.push({
-      label: `Theme · ${props.discussion.theme_id}`,
+      label: `Theme - ${props.discussion.theme_id}`,
       href: `/themes/${props.discussion.theme_id}`,
       icon: 'ph:paint-brush',
     })
@@ -245,7 +245,7 @@ const contextLinks = computed<ContextLink[]>(() => {
   if (props.discussion.discussion_topic_id) {
     const discussionSlug = props.discussion.slug ?? props.discussion.id
     links.push({
-      label: `Forum thread · ${discussionSlug}`,
+      label: `Forum thread - ${discussionSlug}`,
       href: `/forum/${discussionSlug}`,
       icon: 'ph:chat-circle',
     })

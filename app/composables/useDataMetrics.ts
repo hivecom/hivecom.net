@@ -6,7 +6,7 @@ import { onUnmounted, ref } from 'vue'
 import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
-export type MetricsPeriod = '24h' | '7d' | '14d' | '30d' | '90d'
+export type MetricsPeriod = '6h' | '24h' | '7d' | '14d' | '30d' | '90d'
 
 interface PeriodConfig {
   label: string
@@ -15,6 +15,7 @@ interface PeriodConfig {
 }
 
 export const PERIOD_CONFIGS: Record<MetricsPeriod, PeriodConfig> = {
+  '6h': { label: 'Last 6 Hours', hours: 6, bucketMs: 5 * 60 * 1000 },
   '24h': { label: 'Last 24 Hours', hours: 24, bucketMs: 15 * 60 * 1000 },
   '7d': { label: 'Last 7 Days', hours: 168, bucketMs: 60 * 60 * 1000 },
   '14d': { label: 'Last 14 Days', hours: 336, bucketMs: 24 * 60 * 60 * 1000 },
@@ -45,11 +46,12 @@ export interface MetricsHistoryEntry {
 }
 
 const METRICS_CACHE_KEY = 'metrics:latest'
-const METRICS_COLLECTION_INTERVAL = 15 * 60 * 1000 // 15 minutes
+export const METRICS_COLLECTION_INTERVAL = 5 * 60 * 1000 // 5 minutes
+export const METRICS_REFRESH_BUFFER_MS = 30 * 1000 // buffer after collection boundary
 
 /**
- * Returns ms until the next 15-min collection boundary.
- * e.g. at 12:07 -> 8 min; at 12:00 -> 15 min (fresh boundary).
+ * Returns ms until the next 5-min collection boundary.
+ * e.g. at 12:07 -> 3 min; at 12:00 -> 5 min (fresh boundary).
  */
 function msUntilNextCollection(): number {
   const now = Date.now()
@@ -206,6 +208,10 @@ const loadingHistory = ref(false)
 export const metricsWindow = ref<{ start: Date, end: Date } | null>(null)
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
+// Global snapshot auto-refresh - runs as long as any component uses the composable.
+let snapshotRefreshTimer: ReturnType<typeof setTimeout> | null = null
+let activeConsumers = 0
+
 // Separate 90d overview dataset exclusively for the brush - never overwritten
 // by period fetches so the brush always shows the full context.
 const metricsOverview = ref<MetricsHistoryEntry[]>([])
@@ -217,23 +223,56 @@ const loading = shallowRef(false)
 const error = shallowRef<string | null>(null)
 const latestMetrics = shallowRef<MetricsSnapshot | null>(null)
 const loadingLatest = shallowRef(false)
+const lastFetchedAt = shallowRef<Date | null>(null)
 
 export function useDataMetrics() {
   const supabase = useSupabaseClient<Database>()
   const metricsCache = useCache(CACHE_NAMESPACES.community)
 
   // Pre-populate synchronously so first render has data on warm cache.
-  if (metrics.value === null) {
-    const _initialCached = metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
-    if (_initialCached !== null)
-      metrics.value = _initialCached
+  const _initialCached = metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
+  if (_initialCached !== null) {
+    metrics.value ??= _initialCached
+  }
+  // Set lastFetchedAt from whatever snapshot is available - cache or already-loaded module ref.
+  if (lastFetchedAt.value === null) {
+    const source = _initialCached ?? metrics.value
+    if (source !== null)
+      lastFetchedAt.value = new Date(source.collectedAt)
   }
 
+  // Ref-counted snapshot refresh - starts on first consumer, stops on last unmount.
+  const scheduleSnapshotRefresh = () => {
+    if (snapshotRefreshTimer !== null)
+      clearTimeout(snapshotRefreshTimer)
+
+    const delay = msUntilNextCollection() + METRICS_REFRESH_BUFFER_MS
+    snapshotRefreshTimer = setTimeout(() => {
+      void (async () => {
+        const snapshot = await fetchMetricsFromStorage(supabase)
+        if (snapshot !== null) {
+          metrics.value = snapshot
+          const collectedAt = new Date(snapshot.collectedAt).getTime()
+          const ttl = Math.max(0, collectedAt + METRICS_COLLECTION_INTERVAL - Date.now())
+          metricsCache.set(METRICS_CACHE_KEY, snapshot, ttl)
+          lastFetchedAt.value = new Date()
+        }
+        if (activeConsumers > 0)
+          scheduleSnapshotRefresh()
+      })()
+    }, delay)
+  }
+
+  activeConsumers++
+  if (activeConsumers === 1)
+    scheduleSnapshotRefresh()
+
   const fetchMetrics = async () => {
-    // Serve from cache until next 15-min collection boundary
+    // Serve from cache until next collection boundary
     const cached = metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
     if (cached !== null) {
       metrics.value = cached
+      lastFetchedAt.value ??= new Date(cached.collectedAt)
       return cached
     }
 
@@ -245,11 +284,12 @@ export function useDataMetrics() {
       metrics.value = snapshot
       if (snapshot !== null) {
         // TTL = time remaining until the *next* collection after this snapshot.
-        // Use collectedAt so we don't cache stale data for up to 15 extra minutes
+        // Use collectedAt so we don't cache stale data for up to 5 extra minutes
         // if fetchMetrics is called right after a fresh collection.
         const collectedAt = new Date(snapshot.collectedAt).getTime()
         const ttl = Math.max(0, collectedAt + METRICS_COLLECTION_INTERVAL - Date.now())
         metricsCache.set(METRICS_CACHE_KEY, snapshot, ttl)
+        lastFetchedAt.value = new Date()
       }
       return snapshot
     }
@@ -277,7 +317,9 @@ export function useDataMetrics() {
     try {
       const durationMs = end.getTime() - start.getTime()
       let bucketMs: number
-      if (durationMs <= 24 * 60 * 60 * 1000)
+      if (durationMs <= 6 * 60 * 60 * 1000)
+        bucketMs = 5 * 60 * 1000
+      else if (durationMs <= 24 * 60 * 60 * 1000)
         bucketMs = 15 * 60 * 1000
       else if (durationMs <= 7 * 24 * 60 * 60 * 1000)
         bucketMs = 60 * 60 * 1000
@@ -339,15 +381,14 @@ export function useDataMetrics() {
     }
   }
 
-  // Auto-refresh: after each 15-min boundary + 1 min buffer, fetch latest.json
+  // Auto-refresh: after each 5-min boundary + 1 min buffer, fetch latest.json
   // and append the new data point to the history without hitting the DB.
-  const REFRESH_BUFFER_MS = 60 * 1000
 
   const scheduleRefresh = (period: MetricsPeriod) => {
     if (refreshTimer !== null)
       clearTimeout(refreshTimer)
 
-    const delay = msUntilNextCollection() + REFRESH_BUFFER_MS
+    const delay = msUntilNextCollection() + METRICS_REFRESH_BUFFER_MS
     const doRefresh = async () => {
       const snapshot = await fetchMetricsFromStorage(supabase)
       if (snapshot === null) {
@@ -432,6 +473,12 @@ export function useDataMetrics() {
   onUnmounted(() => {
     if (refreshTimer !== null)
       clearTimeout(refreshTimer)
+
+    activeConsumers--
+    if (activeConsumers === 0 && snapshotRefreshTimer !== null) {
+      clearTimeout(snapshotRefreshTimer)
+      snapshotRefreshTimer = null
+    }
   })
 
   const fetchLatestMetrics = async () => {
@@ -525,5 +572,6 @@ export function useDataMetrics() {
     fetchMetricsOverview,
     scheduleRefresh,
     fetchMetricsForServer,
+    lastFetchedAt,
   }
 }

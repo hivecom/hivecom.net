@@ -107,7 +107,7 @@ export const LinkEmbed = Node.create({
 
     const isLinkedReply = parsed?.type === 'forum-discussion' && parsed.commentId !== null
     const eyebrow = parsed?.type === 'forum-discussion'
-      ? isLinkedReply ? 'Forum discussion · Linked reply' : 'Forum discussion'
+      ? isLinkedReply ? 'Forum discussion - Linked reply' : 'Forum discussion'
       : parsed?.type === 'profile'
         ? 'Profile'
         : parsed?.type === 'gameserver'

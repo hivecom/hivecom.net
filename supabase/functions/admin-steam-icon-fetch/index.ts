@@ -117,7 +117,10 @@ Deno.serve(async (req: Request) => {
       const imgRes = await fetch(iconUrl);
       if (!imgRes.ok) {
         return new Response(
-          JSON.stringify({ success: false, error: "Failed to fetch icon image" }),
+          JSON.stringify({
+            success: false,
+            error: "Failed to fetch icon image",
+          }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 502,

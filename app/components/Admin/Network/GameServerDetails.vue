@@ -4,7 +4,7 @@ import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 
 import { computed, ref, watch } from 'vue'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
-import ChartActivityHistogramContent from '@/components/Shared/Charts/ChartActivityHistogramContent.vue'
+import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
 import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
@@ -230,11 +230,11 @@ function confirmDelete() {
             <h6>Activity</h6>
           </template>
 
-          <ChartActivityHistogramContent :series="['gameserversPlayers']" :server-id="props.gameserver.id">
+          <ChartActivityHistogramControls :series="['gameserversPlayers']" :server-id="props.gameserver.id">
             <template #default="{ period, window, utc, color }">
               <ChartGameserversPlayers :period :window :utc :color :server-id="props.gameserver.id" compact />
             </template>
-          </ChartActivityHistogramContent>
+          </ChartActivityHistogramControls>
         </Card>
         <Card v-if="props.gameserver.description" separators>
           <template #header>
