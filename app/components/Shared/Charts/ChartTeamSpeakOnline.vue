@@ -245,12 +245,12 @@ watchEffect(() => {
   <div class="chart-container" :class="{ 'chart-container--compact': compact }">
     <Flex v-if="compact" x-between y-center class="chart-compact-title">
       <span>TeamSpeak Online</span>
-      <OnlineBadge :count="currentCount ?? null" label="connections" singular="connection" size="s" color="var(--color-text-blue)" />
+      <OnlineBadge :count="currentCount ?? null" label="online" singular="online" size="s" color="var(--color-text-blue)" />
     </Flex>
     <Flex v-if="!compact && !hideTitle" x-between y-center class="text-m text-bold-row">
       <Flex gap="s" y-center>
         <span class="text-m text-bold">TeamSpeak Online</span>
-        <OnlineBadge :count="currentCount ?? null" label="connections" singular="connection" size="s" :color="props.color ?? 'var(--color-text-blue)'" />
+        <OnlineBadge :count="currentCount ?? null" label="online" singular="online" size="s" :color="props.color ?? 'var(--color-text-blue)'" />
       </Flex>
       <Select
         v-if="serverName === undefined"

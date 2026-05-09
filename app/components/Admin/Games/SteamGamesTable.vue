@@ -287,7 +287,7 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
                       :count="getSteamGamePlayers(game.steam_id)"
                       label="Playing"
                       size="s"
-                      style="min-width: 90px"
+                      style="min-width: 78px"
                     />
                     <ChartActivityHistogram
                       v-if="!localHistoryLoading"

@@ -2,7 +2,7 @@
 import type { JSONContent } from '@tiptap/core'
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
-import { useSupabaseClient, useSupabaseUser } from '#imports'
+import { onBeforeRouteLeave, useSupabaseClient, useSupabaseUser } from '#imports'
 import { Button, ButtonGroup, Dropdown, DropdownItem, Modal, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import { Extension } from '@tiptap/core'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
@@ -204,6 +204,13 @@ const youtubeModalOpen = ref(false)
 
 // Video modal state (insert by URL)
 const videoModalOpen = ref(false)
+
+// Pending blobs: blobUrl -> File. Plain Map (not ref) - only mutated imperatively.
+const pendingBlobs = new Map<string, File>()
+// Per-blob upload progress 0-100. ref so template can react.
+const uploadProgress = ref(new Map<string, number>())
+// True only while flushPendingUploads is running - drives shimmer animation.
+const isUploading = ref(false)
 
 // A custom marked instance that intercepts inline HTML tokens so that raw tags
 // typed or pasted into the editor are treated as literal text rather than being
@@ -650,6 +657,14 @@ const editor = useEditor({
       if (nextSrcs.has(src))
         continue
 
+      if (src.startsWith('blob:')) {
+        URL.revokeObjectURL(src)
+        pendingBlobs.delete(src)
+        uploadProgress.value.delete(src)
+        uploadProgress.value = new Map(uploadProgress.value)
+        continue
+      }
+
       const storagePath = extractStoragePath(src, resolvedMediaBucketId.value)
       if (!storagePath)
         continue
@@ -706,6 +721,14 @@ function getEditorMarkdown(): string {
 
   return stripped.trim() === '' ? '' : stripped
 }
+
+const hasPendingUploads = computed(() => pendingBlobs.size > 0)
+const avgUploadProgress = computed(() => {
+  const vals = [...uploadProgress.value.values()]
+  if (vals.length === 0)
+    return 0
+  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
+})
 
 // Upload file into the bucket and set the editor node URL.
 //
@@ -786,52 +809,54 @@ function handleFileUpload(files: File[] | null, pos?: number) {
       .focus()
       .run()
 
-    const format = file.type.split('/')[1]
-    const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${format}`
+    // Register as pending - upload deferred to flushPendingUploads on submit.
+    pendingBlobs.set(blobUrl, file)
+    uploadProgress.value.set(blobUrl, 0)
+    uploadProgress.value = new Map(uploadProgress.value)
+  })
+}
 
-    const { error } = await supabase.storage
-      .from(resolvedMediaBucketId.value)
-      .upload(fileUrl, file, { contentType: file.type, metadata: { uploadedBy: user.value?.id ?? 'anonymous' } })
+// Converts the FileList from @input event into a File[]
 
-    // Revoke the object URL now that we're done with it either way.
-    URL.revokeObjectURL(blobUrl)
+async function flushPendingUploads(): Promise<boolean> {
+  if (pendingBlobs.size === 0)
+    return true
 
-    if (error) {
-      // Remove the placeholder node - find it by its blob src.
-      const editorRef = editor.value
-      if (editorRef) {
-        editorRef.state.doc.descendants((node, nodePos) => {
-          if (node.type.name === nodeType && node.attrs.src === blobUrl) {
-            editorRef
-              .chain()
-              .deleteRange({ from: nodePos, to: nodePos + node.nodeSize })
-              .run()
-            return false
-          }
-        })
-      }
-      const limit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
-      const sizeInfo = `file is ${formatBytes(file.size)}, limit is ${formatBytes(limit)}`
-      pushToast('Error uploading media', {
-        description: `${error.message} (${sizeInfo})`,
-      })
-    }
-    else {
-      const { data } = supabase.storage
+  isUploading.value = true
+  const entries = [...pendingBlobs.entries()]
+  const results = await Promise.all(
+    entries.map(async ([blobUrl, file]) => {
+      const format = file.type.split('/')[1]
+      const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${format}`
+
+      const { error } = await supabase.storage
         .from(resolvedMediaBucketId.value)
-        .getPublicUrl(fileUrl)
+        .upload(fileUrl, file, { contentType: file.type, metadata: { uploadedBy: user.value?.id ?? 'anonymous' } })
 
-      // Swap the blob placeholder src for the real public URL in-place.
-      // Walk the doc to find the node by its current blob src since the
-      // position may have shifted due to other edits during the upload.
+      if (error) {
+        const limit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
+        pushToast('Error uploading media', {
+          description: `${error.message} (file is ${formatBytes(file.size)}, limit is ${formatBytes(limit)})`,
+        })
+        return false
+      }
+
+      // Set progress to 100 on success (no onUploadProgress in this storage-js version)
+      uploadProgress.value.set(blobUrl, 100)
+      uploadProgress.value = new Map(uploadProgress.value)
+
+      const { data } = supabase.storage.from(resolvedMediaBucketId.value).getPublicUrl(fileUrl)
+
+      // Swap blob -> public URL in doc
       const editorRef = editor.value
       if (editorRef) {
         editorRef.state.doc.descendants((node, nodePos) => {
-          if (node.type.name === nodeType && node.attrs.src === blobUrl) {
+          const isMedia = node.type.name === 'image' || node.type.name === 'video'
+          if (isMedia && node.attrs.src === blobUrl) {
             editorRef
               .chain()
               .setNodeSelection(nodePos)
-              .updateAttributes(nodeType, { src: data.publicUrl })
+              .updateAttributes(node.type.name, { src: data.publicUrl })
               .setTextSelection(nodePos + node.nodeSize)
               .focus()
               .run()
@@ -839,11 +864,43 @@ function handleFileUpload(files: File[] | null, pos?: number) {
           }
         })
       }
-    }
-  })
+
+      URL.revokeObjectURL(blobUrl)
+      pendingBlobs.delete(blobUrl)
+      uploadProgress.value.delete(blobUrl)
+      uploadProgress.value = new Map(uploadProgress.value)
+      return true
+    }),
+  )
+
+  isUploading.value = false
+  return results.every(Boolean)
 }
 
-// Converts the FileList from @input event into a File[]
+function handleReplacePendingBlob(oldBlobUrl: string, newFile: File) {
+  if (!editor.value)
+    return
+  const newBlobUrl = URL.createObjectURL(newFile)
+
+  editor.value.state.doc.descendants((node, nodePos) => {
+    if (node.type.name === 'image' && node.attrs.src === oldBlobUrl) {
+      editor.value!
+        .chain()
+        .setNodeSelection(nodePos)
+        .updateAttributes('image', { src: newBlobUrl })
+        .focus()
+        .run()
+      return false
+    }
+  })
+
+  pendingBlobs.set(newBlobUrl, newFile)
+  pendingBlobs.delete(oldBlobUrl)
+  uploadProgress.value.set(newBlobUrl, 0)
+  uploadProgress.value.delete(oldBlobUrl)
+  uploadProgress.value = new Map(uploadProgress.value)
+  URL.revokeObjectURL(oldBlobUrl)
+}
 
 const fileInput = useTemplateRef('file-input')
 const plainTextarea = useTemplateRef<HTMLTextAreaElement>('plain-textarea')
@@ -1146,6 +1203,8 @@ function handleExpandedSubmit() {
   expandedOpen.value = false
 }
 
+let submitted = false
+
 async function handleSubmit() {
   if (!content.value || content.value.trim().length === 0)
     return
@@ -1153,6 +1212,12 @@ async function handleSubmit() {
   isSubmitting.value = true
 
   try {
+    if (pendingBlobs.size > 0) {
+      const ok = await flushPendingUploads()
+      if (!ok)
+        return
+    }
+
     if (editorMode.value === 'plain') {
       // Ensure the final value in the model is properly escaped - the textarea
       // binds to plainTextContent (decoded) so we must re-encode before submit.
@@ -1163,12 +1228,19 @@ async function handleSubmit() {
       content.value = await resolvePlainTextMentions(content.value, supabase)
     }
 
+    submitted = true
     emit('submit')
   }
   finally {
     isSubmitting.value = false
   }
 }
+
+onBeforeRouteLeave(() => {
+  if (!editorIsEmpty.value && !submitted)
+    // eslint-disable-next-line no-alert
+    return window.confirm('You have unsent content. Leave anyway?')
+})
 </script>
 
 <template>
@@ -1179,13 +1251,18 @@ async function handleSubmit() {
     </p>
 
     <!-- Media context menu (image + video) -->
-    <RichTextMediaMenu v-if="editor && props.mediaContext" :editor :bucket-id="resolvedMediaBucketId" :media-context="props.mediaContext" />
+    <RichTextMediaMenu v-if="editor && props.mediaContext" :editor :bucket-id="resolvedMediaBucketId" :media-context="props.mediaContext" @replace-pending-blob="handleReplacePendingBlob" />
 
     <!-- Table context menu (add/remove rows & columns) -->
     <EditorTableMenu v-if="editor && editorMode === 'rich'" :editor />
 
     <!-- Main editor instance -->
-    <div class="relative editor-host" :inert="expandedOpen || isSubmitting || props.loading">
+    <div
+      class="relative editor-host"
+      :class="{ 'is-uploading': isUploading,
+                'is-submitting': isSubmitting || props.loading }"
+      :inert="expandedOpen || isSubmitting || props.loading"
+    >
       <!-- Content agreement -->
       <div v-if="shouldShowContentRulesOverlay" class="editor-overlay">
         <p>{{ props.contentRulesOverlayText || 'Before being able to add content, you must agree our content rules' }}</p>
@@ -1224,6 +1301,9 @@ async function handleSubmit() {
       <!-- Editor content & controls -->
       <div class="editor-container" :class="{ 'is-plain': editorMode === 'plain' }">
         <!-- Toolbar: floating bubble in rich mode, static bar in plain mode -->
+        <div v-if="hasPendingUploads" class="upload-progress-bar">
+          <div class="upload-progress-bar__fill" :style="{ width: `${avgUploadProgress}%` }" />
+        </div>
         <RichTextSelectionMenu v-if="editor" :editor :plain-text="editorMode === 'plain'" :textarea-el="editorMode === 'plain' ? plainTextarea ?? null : null" />
 
         <div v-show="editorMode === 'rich'" class="editor-rich-wrapper">
@@ -1278,7 +1358,7 @@ async function handleSubmit() {
                 <template #icon>
                   <Icon :size="18" name="ph:video" />
                 </template>
-                Insert video
+                Embed video
               </DropdownItem>
               <DropdownItem @click="mathModalEditPos = null; mathModalType = 'inline'; mathModalLatex = ''; mathModalOpen = true">
                 <template #icon>
@@ -1438,6 +1518,12 @@ async function handleSubmit() {
     // Textarea always removes a bit of its min-height so that floating menu does not cause layout shift
     min-height: v-bind(minHeightPlain) !important;
     height: unset;
+  }
+
+  .is-submitting {
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity var(--transition-slow);
   }
 
   .editor-overlay {
@@ -1630,6 +1716,24 @@ async function handleSubmit() {
       justify-content: flex-end;
       gap: var(--space-xs);
     }
+
+    .upload-progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--color-bg-raised);
+      border-radius: 0 0 var(--border-radius-s) var(--border-radius-s);
+      overflow: hidden;
+      z-index: var(--z-active);
+
+      &__fill {
+        height: 100%;
+        background: var(--color-accent);
+        transition: width 0.2s ease;
+      }
+    }
   }
 
   // Vue-rendered placeholder (replaces the ProseMirror decoration approach
@@ -1682,12 +1786,12 @@ async function handleSubmit() {
     }
   }
 
-  .ProseMirror img[src^='blob:'] {
+  .is-uploading .ProseMirror img[src^='blob:'] {
     animation: upload-shimmer 1.4s ease-in-out infinite;
     border-radius: var(--border-radius-s);
   }
 
-  .ProseMirror div[data-video-embed]:has(video[src^='blob:']) {
+  .is-uploading .ProseMirror div[data-video-embed]:has(video[src^='blob:']) {
     position: relative;
 
     &::after {

@@ -310,6 +310,7 @@ async function updateSteamPresence(
     current_app_name?: string | null;
     last_app_id?: number | null;
     last_app_name?: string | null;
+    last_app_ended_at?: string | null;
     details: { [key: string]: Json | undefined };
   } = {
     profile_id: profileId,
@@ -343,22 +344,31 @@ async function updateSteamPresence(
   let lastAppId = existingPresence?.last_app_id ?? null;
   let lastAppName = existingPresence?.last_app_name ?? null;
 
+  let lastAppEndedAt: string | null = null;
+
   if (!currentAppId && existingCurrentAppId) {
+    // Session ended - user stopped playing
     lastAppId = existingCurrentAppId;
     lastAppName = existingCurrentAppName;
+    lastAppEndedAt = now;
   } else if (
     currentAppId &&
     existingCurrentAppId &&
     currentAppId !== existingCurrentAppId
   ) {
+    // Switched games - old session ended
     lastAppId = existingCurrentAppId;
     lastAppName = existingCurrentAppName;
+    lastAppEndedAt = now;
   }
 
   presenceData.current_app_id = currentAppId;
   presenceData.current_app_name = currentAppName;
   presenceData.last_app_id = currentAppId ?? lastAppId;
   presenceData.last_app_name = currentAppName ?? lastAppName;
+  if (lastAppEndedAt !== null) {
+    presenceData.last_app_ended_at = lastAppEndedAt;
+  }
 
   // Upsert into presences_steam
   const { error } = await supabase

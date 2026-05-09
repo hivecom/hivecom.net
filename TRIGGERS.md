@@ -72,7 +72,25 @@ This eliminates the need for application-level audit field management and ensure
 - referendum_votes
 - servers
 
-## Event Sync Automation
+## Discussion Media Cleanup
+
+When a discussion or reply is deleted, any media files referenced in its markdown are removed from the `hivecom-content-forums` bucket via an async edge function call. This covers all deletion paths - user soft-deletes, admin force-deletes, and CASCADE deletes from parent rows (profile, event, project, gameserver, etc.).
+
+### Reply Soft Delete: `cleanup_reply_media_on_soft_delete_trigger`
+
+Fires `BEFORE UPDATE OF is_deleted` on `public.discussion_replies`. Reads `OLD.markdown` while it still contains content (before the `scrub_discussion_reply_on_soft_delete_trigger` wipes it) and fires the edge function asynchronously. Alphabetical trigger ordering guarantees this runs before the scrub trigger.
+
+### Reply Hard Delete: `cleanup_reply_media_on_hard_delete_trigger`
+
+Fires `AFTER DELETE` on `public.discussion_replies`. Reads `OLD.markdown`. Skips rows already soft-deleted (markdown already wiped). Covers admin force-deletes and CASCADE deletes from parent tables.
+
+### Discussion Hard Delete: `cleanup_discussion_media_on_hard_delete_trigger`
+
+Fires `AFTER DELETE` on `public.discussions`. Reads `OLD.markdown`. Covers admin deletes and CASCADE deletes from profile/event/project/gameserver rows. Discussions have no soft-delete mechanism.
+
+All triggers call `/functions/v1/trigger-cleanup-discussion-media` via `net.http_post` and are non-blocking.
+
+**Required Vault secrets:** `project_url`, `anon_key`, `system_trigger_secret`
 
 Community events are mirrored to external services via trigger-backed edge function calls:
 

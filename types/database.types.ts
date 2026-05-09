@@ -246,21 +246,18 @@ export type Database = {
       data_steam_games: {
         Row: {
           created_at: string
-          icon_hash: string | null
           name: string
           steam_id: number
           updated_at: string
         }
         Insert: {
           created_at?: string
-          icon_hash?: string | null
           name: string
           steam_id: number
           updated_at?: string
         }
         Update: {
           created_at?: string
-          icon_hash?: string | null
           name?: string
           steam_id?: number
           updated_at?: string
@@ -1179,6 +1176,7 @@ export type Database = {
           details: Json | null
           fetched_at: string | null
           id: string
+          last_app_ended_at: string | null
           last_app_id: number | null
           last_app_name: string | null
           last_online_at: string | null
@@ -1194,6 +1192,7 @@ export type Database = {
           details?: Json | null
           fetched_at?: string | null
           id?: string
+          last_app_ended_at?: string | null
           last_app_id?: number | null
           last_app_name?: string | null
           last_online_at?: string | null
@@ -1209,6 +1208,7 @@ export type Database = {
           details?: Json | null
           fetched_at?: string | null
           id?: string
+          last_app_ended_at?: string | null
           last_app_id?: number | null
           last_app_name?: string | null
           last_online_at?: string | null
@@ -2170,6 +2170,27 @@ export type Database = {
           total_count: number
         }[]
       }
+      get_admin_games_paginated: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_sort_col?: string
+          p_sort_dir?: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          id: number
+          modified_at: string
+          modified_by: string
+          name: string
+          shorthand: string
+          steam_id: number
+          total_count: number
+          website: string
+        }[]
+      }
       get_admin_referendums_paginated: {
         Args: {
           p_limit?: number
@@ -2196,6 +2217,22 @@ export type Database = {
           title: string
           total_count: number
           vote_count: number
+        }[]
+      }
+      get_admin_steam_games_paginated: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_sort_col?: string
+          p_sort_dir?: string
+        }
+        Returns: {
+          created_at: string
+          name: string
+          steam_id: number
+          total_count: number
+          updated_at: string
         }[]
       }
       get_admin_themes_paginated: {

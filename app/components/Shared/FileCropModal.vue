@@ -31,6 +31,21 @@ const applying = ref(false)
 
 const stencilComponent = computed(() => props.circular ? CircleStencil : RectangleStencil)
 
+// When no ratio is locked, default the stencil to the full image so there
+// is no initial offset/crop inset.
+function defaultSize({ imageSize, visibleArea }: { imageSize: { width: number, height: number }, visibleArea: { width: number, height: number } | null }) {
+  const area = visibleArea ?? imageSize
+  // For circular/fixed-ratio stencils use the smallest dimension to stay square
+  if (props.circular || props.aspectRatio) {
+    const min = Math.min(area.width, area.height)
+    return { width: min, height: min }
+  }
+  return {
+    width: area.width,
+    height: area.height,
+  }
+}
+
 const stencilProps = computed(() => {
   if (props.circular)
     return { aspectRatio: 1 }
@@ -111,6 +126,7 @@ function handleCancel() {
         :src="imageSrc"
         :stencil-component="stencilComponent"
         :stencil-props="stencilProps"
+        :default-size="defaultSize"
         background-class="crop-modal__bg"
         image-restriction="fit-area"
       />

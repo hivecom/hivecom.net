@@ -2,10 +2,10 @@
 import type { StorageBucketId } from '@/lib/storageAssets'
 import { Flex, Tab, Tabs } from '@dolanske/vui'
 
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AssetKPIs from '@/components/Admin/Assets/AssetKPIs.vue'
 import AssetManager from '@/components/Admin/Assets/AssetManager.vue'
-import { CMS_BUCKET_ID, getBucketDescription, getBucketLabel, getBucketOptions } from '@/lib/storageAssets'
+import { CMS_BUCKET_ID, getBucketDescription, getBucketLabel, getBucketOptions, STORAGE_BUCKET_IDS } from '@/lib/storageAssets'
 
 const { canViewAssets } = useAdminPermissions()
 
@@ -16,14 +16,46 @@ if (!canViewAssets.value) {
   })
 }
 
+const route = useRoute()
+const router = useRouter()
+
+function parseTab(val: unknown): StorageBucketId {
+  if (typeof val === 'string' && (STORAGE_BUCKET_IDS as readonly string[]).includes(val))
+    return val as StorageBucketId
+  return CMS_BUCKET_ID
+}
+
+function parseView(val: unknown): 'table' | 'grid' {
+  return val === 'grid' ? 'grid' : 'table'
+}
+
+function parsePage(val: unknown): number {
+  const n = Number(val)
+  return Number.isInteger(n) && n > 0 ? n : 1
+}
+
 const refreshSignal = ref(0)
-const viewMode = ref<'table' | 'grid'>('table')
-const flatView = ref(false)
+const activeTab = ref<StorageBucketId>(parseTab(route.query.tab))
+const viewMode = ref<'table' | 'grid'>(parseView(route.query.view))
+const flatView = ref(route.query.flat === '1')
+const currentPrefix = ref(typeof route.query.path === 'string' ? route.query.path : '')
+const page = ref(parsePage(route.query.page))
 
 const bucketOptions = getBucketOptions()
-const activeTab = ref<StorageBucketId>(CMS_BUCKET_ID)
 const bucketLabel = computed(() => getBucketLabel(activeTab.value))
 const bucketDescription = computed(() => getBucketDescription(activeTab.value))
+
+watch([activeTab, viewMode, flatView, currentPrefix, page], ([tab, view, flat, path, pg]) => {
+  void router.replace({
+    query: {
+      tab,
+      view,
+      flat: flat ? '1' : undefined,
+      path: path || undefined,
+      page: pg > 1 ? String(pg) : undefined,
+    },
+  })
+})
 </script>
 
 <template>
@@ -50,6 +82,8 @@ const bucketDescription = computed(() => getBucketDescription(activeTab.value))
       v-model:refresh-signal="refreshSignal"
       v-model:view-mode="viewMode"
       v-model:flat-view="flatView"
+      v-model:current-prefix="currentPrefix"
+      v-model:page="page"
       :bucket-id="activeTab"
     />
   </Flex>

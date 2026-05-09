@@ -273,8 +273,17 @@ watch(
 )
 
 // Handle closing the sheet
+function resetForm() {
+  gameForm.value = { name: '', shorthand: '', steam_id: '', website: '' }
+  assetsUrl.value = { icon: null, cover: null, background: null }
+  assetsError.value = { icon: null, cover: null, background: null }
+  steamClientIconUrl.value = null
+  shorthandManuallySet.value = false
+}
+
 function handleClose() {
   isOpen.value = false
+  resetForm()
 }
 
 // Handle form submission
@@ -291,6 +300,7 @@ function handleSubmit() {
   }
 
   emit('save', gameData)
+  resetForm()
 }
 
 // Open confirmation modal for deletion

@@ -50,7 +50,7 @@ const loading = ref(true)
 const reloading = ref(false)
 const errorMessage = ref('')
 const assets = ref<CmsAsset[]>([])
-const currentPrefix = ref('')
+const currentPrefix = defineModel<string>('currentPrefix', { default: '' })
 const searchQuery = ref('')
 const typeFilter = ref<TypeFilterValue>('all')
 const sortOption = ref<SortOptionValue>('name-asc')
@@ -64,7 +64,7 @@ const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() =
 
 // ─── Flat view pagination & sort ──────────────────────────────────────────────
 const PAGE_SIZE = computed(() => adminTablePerPage.value > 10 ? 50 : 25)
-const page = ref(1)
+const page = defineModel<number>('page', { default: 1 })
 const totalCount = ref(0)
 
 type FlatSortOptionValue = 'newest' | 'oldest' | 'name-asc' | 'name-desc' | 'size-desc' | 'size-asc'

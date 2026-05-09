@@ -410,7 +410,7 @@ function clearFilters() {
                     label="Players"
                     singular="Player"
                     size="s"
-                    style="min-width: 90px"
+                    style="min-width: 78px"
                   />
                   <ChartActivityHistogram
                     v-if="!localHistoryLoading"

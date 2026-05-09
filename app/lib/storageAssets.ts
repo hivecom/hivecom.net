@@ -7,6 +7,8 @@ export const FORUMS_BUCKET_ID = 'hivecom-content-forums' as const
 export const STATIC_BUCKET_ID = 'hivecom-content-static' as const
 export const USERS_BUCKET_ID = 'hivecom-content-users' as const
 
+export const STORAGE_BUCKET_IDS = [CMS_BUCKET_ID, FORUMS_BUCKET_ID, STATIC_BUCKET_ID, USERS_BUCKET_ID] as const
+
 export type StorageBucketId
   = | typeof CMS_BUCKET_ID
     | typeof FORUMS_BUCKET_ID

@@ -643,9 +643,6 @@ const editedAtFormatted = computed(() => {
     <Modal :open="editing" centered scrollable size="l" :can-dismiss="false" @close="editing = false" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit">
       <template #header>
         <h3>Edit post</h3>
-        <p class="text-color-light">
-          Avoid writing offensive things.
-        </p>
       </template>
 
       <RichTextEditor

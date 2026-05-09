@@ -51,6 +51,8 @@ type GameserverRow = Pick<
 // presences_steam row with embedded profile
 interface SteamPresenceRow {
   current_app_id: number | null;
+  last_app_id: number | null;
+  last_app_ended_at: string | null;
   status: string | null;
   profile: { rich_presence_enabled: boolean } | null;
 }
@@ -181,10 +183,11 @@ Deno.serve(async (req: Request) => {
       supabaseClient
         .from("presences_steam")
         .select(
-          "current_app_id, profile:profiles!presences_steam_profile_id_fkey(rich_presence_enabled)",
+          "current_app_id, last_app_id, last_app_ended_at, profile:profiles!presences_steam_profile_id_fkey(rich_presence_enabled)",
         )
-        .neq("status", "offline")
-        .not("current_app_id", "is", null),
+        .or(
+          `current_app_id.not.is.null,last_app_ended_at.gte.${onlineThreshold}`,
+        ),
       supabaseClient
         .from("gameservers")
         .select(
@@ -292,8 +295,15 @@ Deno.serve(async (req: Request) => {
     const byGame: Record<string, number> = {};
     for (const row of (presencesRes.data as SteamPresenceRow[] | null) ?? []) {
       if (!row.profile?.rich_presence_enabled) continue;
-      if (row.current_app_id == null) continue;
-      const gameId = steamIdToGameId.get(row.current_app_id);
+      // Use current_app_id if actively playing, else fall back to last_app_id
+      // if the session ended within the metrics window (avoids counting stale sessions).
+      const appId = row.current_app_id ??
+        (row.last_app_ended_at != null &&
+            row.last_app_ended_at >= onlineThreshold
+          ? row.last_app_id
+          : null);
+      if (appId == null) continue;
+      const gameId = steamIdToGameId.get(appId);
       if (gameId == null) continue; // not a tracked game
       const key = String(gameId);
       byGame[key] = (byGame[key] ?? 0) + 1;
@@ -303,8 +313,13 @@ Deno.serve(async (req: Request) => {
     const bySteamGame: Record<string, number> = {};
     for (const row of (presencesRes.data as SteamPresenceRow[] | null) ?? []) {
       if (!row.profile?.rich_presence_enabled) continue;
-      if (row.current_app_id == null) continue;
-      const key = String(row.current_app_id);
+      const appId = row.current_app_id ??
+        (row.last_app_ended_at != null &&
+            row.last_app_ended_at >= onlineThreshold
+          ? row.last_app_id
+          : null);
+      if (appId == null) continue;
+      const key = String(appId);
       bySteamGame[key] = (bySteamGame[key] ?? 0) + 1;
     }
 
