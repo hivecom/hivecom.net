@@ -5,7 +5,7 @@ import { Badge, Button, Card, CopyClipboard, Flex, Grid, Indicator, Modal, Skele
 import { computed } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import { useDataUser } from '@/composables/useDataUser'
-import { getUserActivityStatus } from '@/lib/lastSeen'
+import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
 import { isBirthdayDateToday } from '@/lib/utils/date'
@@ -620,6 +620,21 @@ onUnmounted(() => stopConfetti())
                     </span>
                   </Flex>
                 </Tooltip>
+
+                <!-- Last seen - only shown on mobile where the activity indicator is not tappable -->
+                <Flex v-if="isTablet && activityStatus && !activityStatus.isActive" gap="xs" y-center class="text-color-lighter">
+                  <Icon
+                    class="text-color-lighter"
+                    name="ph:clock"
+                    size="16"
+                  />
+                  <span
+                    class="text-s text-color-lighter"
+                    :class="getLastSeenTextClass(getLastSeenVariant(activityStatus))"
+                  >
+                    {{ activityStatus.lastSeenText }}
+                  </span>
+                </Flex>
               </Flex>
             </Flex>
           </Flex>

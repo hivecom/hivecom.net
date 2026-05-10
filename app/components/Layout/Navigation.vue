@@ -110,7 +110,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
             <Icon name="ph:list" size="2rem" />
           </Button>
           <Button square plain aria-label="Search" class="navigation__mobile-search pl-4 vui-button-accent-weak vui-button-rounded" @click="openCommand()">
-            <Icon name="ph:magnifying-glass" size="16" />
+            <Icon name="ph:magnifying-glass" size="20" />
           </Button>
         </div>
 
@@ -480,6 +480,10 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
   }
 
   &__mobile-sheet {
+    .vui-card-header {
+      min-height: 64px !important;
+    }
+
     :deep(.vui-card-header > button) {
       display: none !important;
     }

@@ -90,19 +90,19 @@ export function getUserActivityStatus(lastSeen: string | Date): UserActivityStat
     lastSeenText = 'Online'
   }
   else if (minutes < 60) {
-    lastSeenText = `Last seen ${minutes} minutes ago`
+    lastSeenText = `Last online ${minutes} minutes ago`
   }
   else if (hours < 24) {
-    lastSeenText = hours === 1 ? 'Last seen 1 hour ago' : `Last seen ${hours} hours ago`
+    lastSeenText = hours === 1 ? 'Last online 1 hour ago' : `Last online ${hours} hours ago`
   }
   else if (days === 1) {
-    lastSeenText = 'Last seen 1 day ago'
+    lastSeenText = 'Last online 1 day ago'
   }
   else if (days < 7) {
-    lastSeenText = `Last seen ${days} days ago`
+    lastSeenText = `Last online ${days} days ago`
   }
   else {
-    lastSeenText = `Last seen on ${lastSeenDate.toLocaleDateString()}`
+    lastSeenText = `Last online on ${lastSeenDate.toLocaleDateString()}`
   }
 
   return {

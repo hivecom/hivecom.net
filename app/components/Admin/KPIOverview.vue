@@ -26,6 +26,7 @@ onBeforeMount(() => {
 <template>
   <KPIContainer>
     <KPICard
+      to="/admin/users"
       label="New Users"
       :value="newUsersCount"
       :is-loading="loading"
@@ -35,6 +36,7 @@ onBeforeMount(() => {
     />
 
     <KPICard
+      to="/admin/complaints"
       label="Pending Complaints"
       :value="pendingComplaintsCount"
       :is-loading="loading"
@@ -44,6 +46,7 @@ onBeforeMount(() => {
     />
 
     <KPICard
+      to="/admin/funding"
       label="Active Expenses"
       :value="formatCurrency(monthlyExpenses)"
       :is-loading="loading"
@@ -53,6 +56,7 @@ onBeforeMount(() => {
     />
 
     <KPICard
+      to="/admin/funding"
       label="Monthly Donations"
       :value="formatCurrency(monthlyDonations)"
       :is-loading="loading"
@@ -62,6 +66,7 @@ onBeforeMount(() => {
     />
 
     <KPICard
+      to="/admin/events"
       label="Upcoming Official One-off Events"
       :value="upcomingEventsCount"
       :is-loading="loading"

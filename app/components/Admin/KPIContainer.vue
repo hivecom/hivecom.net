@@ -31,6 +31,7 @@ const attrs = useAttrs()
 .kpi-container {
   width: 100%;
   flex-wrap: nowrap !important;
+  align-items: stretch;
 
   @media (max-width: $breakpoint-m) {
     flex-wrap: wrap !important;

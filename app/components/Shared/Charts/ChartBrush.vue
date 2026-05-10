@@ -558,6 +558,7 @@ defineExpose({ setBrush })
 
 .chart-brush {
   width: 100%;
+  isolation: isolate;
 
   &__canvas-wrapper {
     position: relative;

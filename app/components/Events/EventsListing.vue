@@ -251,14 +251,6 @@ const hasActiveEvents = computed(() =>
 
 // Mobile responsiveness
 @media (max-width: $breakpoint-s) {
-  .events-section {
-    text-align: center !important;
-  }
-
-  .events-section__title {
-    text-align: center !important;
-  }
-
   // Hide the header row on mobile since individual events are centered
   .events-section > .vui-flex:has(.events-section__countdown-header),
   .events-section > .vui-flex:has(.time-ago-header),
@@ -286,17 +278,14 @@ const hasActiveEvents = computed(() =>
 @media (max-width: $breakpoint-xs) {
   .events-section {
     margin-bottom: 2rem;
-    text-align: center !important;
   }
 
   .events-section__title {
     margin-bottom: 1rem;
-    text-align: center !important;
   }
 
   .time-ago-header,
   .ongoing-header {
-    text-align: center !important;
     justify-content: center !important;
   }
 

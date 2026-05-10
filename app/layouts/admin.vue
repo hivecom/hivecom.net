@@ -290,7 +290,7 @@ watch(() => route.path, () => {
             <Icon name="ph:list" size="2rem" />
           </Button>
           <Button square plain aria-label="Search" class="pl-4 vui-button-accent-weak vui-button-rounded" @click="openCommand()">
-            <Icon name="ph:magnifying-glass" size="16" />
+            <Icon name="ph:magnifying-glass" size="20" />
           </Button>
         </div>
 
@@ -514,7 +514,13 @@ watch(() => route.path, () => {
     color: inherit;
     text-decoration: none;
   }
+}
 
+:global(.admin-layout__mobile-sheet .vui-card-header) {
+  min-height: 64px;
+}
+
+.admin-layout {
   &__mobile-menu {
     width: 100%;
     display: flex;

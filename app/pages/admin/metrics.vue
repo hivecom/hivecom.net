@@ -2,7 +2,7 @@
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
 import type { Database } from '@/types/database.types'
 import { Button, Flex, Tooltip } from '@dolanske/vui'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import ChartBrush from '@/components/Shared/Charts/ChartBrush.vue'
 import ChartDiscussions from '@/components/Shared/Charts/ChartDiscussions.vue'
 import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
@@ -10,9 +10,10 @@ import ChartMembersGameActivity from '@/components/Shared/Charts/ChartMembersGam
 import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
 import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
 import MetricsRefreshCountdown from '@/components/Shared/Charts/MetricsRefreshCountdown.vue'
-import { useDataMetrics } from '@/composables/useDataMetrics'
+import { METRICS_COLLECTION_INTERVAL, METRICS_REFRESH_BUFFER_MS, useDataMetrics } from '@/composables/useDataMetrics'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
-const { fetchMetrics } = useDataMetrics()
+const { fetchMetrics, lastFetchedAt } = useDataMetrics()
 onMounted(() => fetchMetrics())
 
 const supabase = useSupabaseClient<Database>()
@@ -29,6 +30,30 @@ const activeUtc = ref(false)
 function onBrushChange(window: { start: Date, end: Date }) {
   activeWindow.value = window
 }
+
+const isMobile = useBreakpoint('<xs')
+
+const now = ref(Date.now())
+let ticker: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  ticker = setInterval(() => {
+    now.value = Date.now()
+  }, 1000)
+})
+onUnmounted(() => {
+  if (ticker)
+    clearInterval(ticker)
+})
+
+const mobileCountdownLabel = computed(() => {
+  if (lastFetchedAt.value === null)
+    return null
+  const msLeft = Math.max(0, lastFetchedAt.value.getTime() + METRICS_COLLECTION_INTERVAL + METRICS_REFRESH_BUFFER_MS - now.value)
+  const totalSec = Math.ceil(msLeft / 1000)
+  const m = Math.floor(totalSec / 60)
+  const s = totalSec % 60
+  return m > 0 ? `${m}m ${s}s` : `${s}s`
+})
 </script>
 
 <template>
@@ -42,7 +67,11 @@ function onBrushChange(window: { start: Date, end: Date }) {
               Live and historical platform data
             </p>
           </Flex>
-          <Flex y-center gap="xs">
+          <Flex v-if="isMobile" y-start :gap="4">
+            <Icon name="mdi:refresh" :size="12" class="mobile-countdown" />
+            <span v-if="mobileCountdownLabel" class="mobile-countdown">{{ mobileCountdownLabel }}</span>
+          </Flex>
+          <Flex v-else y-center gap="xs">
             <MetricsRefreshCountdown />
             <Tooltip>
               <Button variant="link" square @click="openRawSnapshot">
@@ -82,5 +111,10 @@ function onBrushChange(window: { start: Date, end: Date }) {
   border: none;
   border-top: 1px solid var(--color-border);
   margin: 0;
+}
+
+.mobile-countdown {
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-lightest);
 }
 </style>

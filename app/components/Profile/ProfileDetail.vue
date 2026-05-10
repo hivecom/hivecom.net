@@ -40,7 +40,6 @@ type ProfileRecordInput = ProfileRecord | (Omit<ProfileRecord, 'badges'> & {
 })
 
 const profile = ref<ProfileRecord>()
-const loading = ref(true)
 const errorMessage = ref('')
 const isEditSheetOpen = ref(false)
 const showComplaintModal = ref(false)
@@ -165,6 +164,9 @@ const {
 
 const hydratedProfileData = computed<ProfileRecord | null>(() => profileData.value as ProfileRecord | null)
 
+const fetchSettled = ref(false)
+const loading = computed(() => profileLoading.value || !fetchSettled.value)
+
 // Set profile from cached data
 watch(hydratedProfileData, (newData) => {
   if (newData) {
@@ -234,7 +236,7 @@ watch(profileError, (error) => {
 watch(() => [props.userId, props.username, user.value?.id], ([userId, username, currentUserId]) => {
   if (!userId && !username && !currentUserId) {
     errorMessage.value = 'No user ID or username provided'
-    loading.value = false
+    fetchSettled.value = true
   }
   else {
     // Clear message when we have enough info to load
@@ -244,8 +246,16 @@ watch(() => [props.userId, props.username, user.value?.id], ([userId, username, 
 }, { immediate: true })
 
 // Set loading state
-watch(profileLoading, (isLoading) => {
-  loading.value = isLoading
+// profileLoading starts as false before the first fetch fires. When data comes
+// from cache, loading never goes true at all. loading is computed so it stays
+// true until fetchSettled flips, which happens when data or error is non-null.
+watch(profileData, (data) => {
+  if (data !== null)
+    fetchSettled.value = true
+}, { immediate: true })
+watch(profileError, (err) => {
+  if (err !== null)
+    fetchSettled.value = true
 }, { immediate: true })
 
 // Typed avatar bus - replaces the raw window.addEventListener('avatar-updated') +
