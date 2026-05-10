@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useSupabaseUser } from '#imports'
 import { Indicator, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
+import { useSupabaseUser } from '#imports'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useDataUser } from '@/composables/useDataUser'

@@ -5,6 +5,7 @@
 import type { User } from '@supabase/supabase-js'
 import type { WatchStopHandle } from 'vue'
 import { isRef, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useCache } from '@/composables/useCache'
 
 export type LastSeenVariant = 'online' | 'fresh' | 'light' | 'lighter' | 'lightest'
 
@@ -124,6 +125,11 @@ export async function updateCurrentUserLastSeen() {
 
     if (error) {
       console.warn('Failed to update last seen:', error.message)
+    }
+    else {
+      // Invalidate cached profile data so the online indicator updates immediately
+      const { invalidateTable } = useCache()
+      invalidateTable('profiles')
     }
   }
   catch (err) {

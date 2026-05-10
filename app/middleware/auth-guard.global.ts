@@ -1,8 +1,8 @@
 import type { User } from '@supabase/supabase-js'
 import type { Ref } from 'vue'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
-import { useSupabaseClient } from '#imports'
 import { defineNuxtRouteMiddleware, navigateTo } from 'nuxt/app'
+import { useSupabaseClient } from '#imports'
 
 const getSupabaseUser = useSupabaseUser as () => Ref<User | null>
 

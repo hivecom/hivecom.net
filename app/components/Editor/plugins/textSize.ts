@@ -41,7 +41,7 @@ function isValidSizeName(value: string): value is TextSizeName {
 // ---------------------------------------------------------------------------
 
 declare module '@tiptap/core' {
-  // eslint-disable-next-line unused-imports/no-unused-vars
+
   interface Commands<ReturnType> {
     textSize: {
       /** Apply a named size step to the selected text, e.g. "xl". */

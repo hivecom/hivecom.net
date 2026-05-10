@@ -8,8 +8,8 @@
     "teamspeak-types": "../../types/teamspeak.ts",
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
     "node-ts": "npm:node-ts@8",
-    "googleapis": "npm:googleapis@144",
-    "google-auth-library": "npm:google-auth-library@9"
+    "googleapis": "npm:googleapis@171",
+    "google-auth-library": "npm:google-auth-library@10"
   },
   "workspace": [
     "./_shared",

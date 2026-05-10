@@ -52,7 +52,7 @@ function isValidColorName(value: string): value is TextColorName {
 // ---------------------------------------------------------------------------
 
 declare module '@tiptap/core' {
-  // eslint-disable-next-line unused-imports/no-unused-vars
+
   interface Commands<ReturnType> {
     textColor: {
       /** Apply a named palette color to the selected text, e.g. "red". */

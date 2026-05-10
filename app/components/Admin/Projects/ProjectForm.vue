@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { useSupabaseClient, useSupabaseUser } from '#imports'
 import { Badge, Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useSupabaseClient, useSupabaseUser } from '#imports'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'

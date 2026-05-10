@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { useDataLinkPreview } from '@/composables/useDataLinkPreview'
-import { useSupabaseUser } from '#imports'
 import { Button, Flex } from '@dolanske/vui'
 import { resolveComponent } from 'vue'
+import { useSupabaseUser } from '#imports'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 
 import UserRole from '@/components/Shared/UserRole.vue'

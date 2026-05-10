@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { useSupabaseClient, useSupabaseUser } from '#imports'
 import { Alert, Button, ButtonGroup, Dropdown, DropdownItem, DropdownTitle, Flex, Input, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import { useSupabaseClient, useSupabaseUser } from '#imports'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import { deleteGameAsset, uploadGameAsset } from '@/lib/storage'

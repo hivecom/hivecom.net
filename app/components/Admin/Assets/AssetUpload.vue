@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { StorageBucketId } from '@/lib/storageAssets'
-import { useSupabaseClient, useSupabaseUser } from '#imports'
 import { Alert, Button, Card, Flex, Input, Progress, Sheet, Switch } from '@dolanske/vui'
-
 import { computed, ref, watch } from 'vue'
+
+import { useSupabaseClient, useSupabaseUser } from '#imports'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import { CMS_BUCKET_ID, formatBytes, getBucketDescription, getBucketLabel, joinAssetPath, normalizePrefix } from '@/lib/storageAssets'
 
