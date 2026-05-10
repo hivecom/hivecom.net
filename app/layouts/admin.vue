@@ -248,11 +248,11 @@ const expandedContentStyle = {
 } as const
 
 const expandToggleLabel = computed(() => {
-  return expandedLayout.value ? 'Constrain admin content width' : 'Expand admin content width'
+  return expandedLayout.value ? 'Narrow View' : 'Widen View'
 })
 
 const expandToggleIcon = computed(() => {
-  return expandedLayout.value ? 'ph:arrows-in' : 'ph:arrows-out'
+  return expandedLayout.value ? 'ph:arrows-in-line-horizontal' : 'ph:arrows-out-line-horizontal'
 })
 
 const open = ref(true)
@@ -374,7 +374,7 @@ watch(() => route.path, () => {
                     <Icon :name="expandToggleIcon" />
                   </Button>
                   <template #tooltip>
-                    <p>Expand admin container</p>
+                    <p>{{ expandToggleLabel }}</p>
                   </template>
                 </Tooltip>
                 <Tooltip v-if="!miniSidebar" placement="bottom">
@@ -445,7 +445,7 @@ watch(() => route.path, () => {
                 </template>
               </DropdownItem>
               <template #tooltip>
-                Expand admin container
+                {{ expandToggleLabel }}
               </template>
             </Tooltip>
           </template>

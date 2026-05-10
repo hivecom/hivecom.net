@@ -57,6 +57,7 @@ onMounted(() => {
   <section class="hero-overlay">
     <LandingHeroShader class="hero-overlay__shader" />
     <div class="hero-overlay__body">
+      <div class="hero-overlay__splash-base" aria-hidden="true" />
       <div class="hero-overlay__splash" aria-hidden="true" />
       <ClientOnly>
         <LandingHeroGlobe />
@@ -97,6 +98,10 @@ onMounted(() => {
 
   .hero-overlay__body:before {
     background: linear-gradient(rgba(255, 255, 255, 0), #eeeeee 100%);
+  }
+
+  .hero-overlay__splash-base {
+    background-image: url('/landing/splash-light.jpg');
   }
 
   .hero-overlay__splash {
@@ -144,6 +149,19 @@ onMounted(() => {
   }
 }
 
+.hero-overlay__splash-base {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background-image: url('/landing/splash-dark.jpg');
+  background-size: cover;
+  background-position: center;
+  opacity: 1;
+  animation: hero-splash-fade 3000ms ease 3000ms forwards;
+  will-change: opacity;
+  pointer-events: none;
+}
+
 .hero-overlay__splash {
   position: absolute;
   inset: 0;
@@ -169,6 +187,11 @@ onMounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .hero-overlay__splash-base {
+    animation: none;
+    opacity: 0;
+  }
+
   .hero-overlay__splash {
     animation: none;
     opacity: 0;

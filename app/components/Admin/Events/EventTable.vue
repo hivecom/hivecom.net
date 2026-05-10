@@ -518,7 +518,7 @@ onBeforeMount(async () => {
                   </Badge>
                   <span v-else>-</span>
                 </Table.Cell>
-                <Table.Cell @click.stop>
+                <Table.Cell>
                   <Badge :variant="getEventStatus(event).variant">
                     {{ getEventStatus(event).label }}
                   </Badge>

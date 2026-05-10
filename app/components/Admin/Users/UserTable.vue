@@ -463,7 +463,7 @@ defineExpose({ refresh: fetchUsers })
             <template #body>
               <tr v-for="user in rows" :key="user.id" class="clickable-row" @click="handleUserClick(user as unknown as AdminUserRecord)">
                 <!-- Confirmed -->
-                <Table.Cell class="confirmed-cell" @click.stop>
+                <Table.Cell class="confirmed-cell">
                   <Tooltip placement="top">
                     <template #tooltip>
                       <div>{{ user.is_confirmed ? 'User confirmed (via social auth or email)' : 'Not confirmed' }}</div>
@@ -486,30 +486,34 @@ defineExpose({ refresh: fetchUsers })
                 </Table.Cell>
 
                 <!-- Email -->
-                <Table.Cell v-if="props.canViewUserEmails" class="email-cell" @click.stop>
+                <Table.Cell v-if="props.canViewUserEmails" class="email-cell">
                   <template v-if="user.email != null && user.email !== ''">
-                    <CopyClipboard :text="user.email" confirm>
-                      <Button variant="gray" plain size="s" class="email-button">
-                        <template #start>
-                          <Icon name="ph:copy" />
-                        </template>
-                        <span class="text-xxs">{{ user.email }}</span>
-                      </Button>
-                    </CopyClipboard>
+                    <div @click.stop>
+                      <CopyClipboard :text="user.email" confirm>
+                        <Button variant="gray" plain size="s" class="email-button">
+                          <template #start>
+                            <Icon name="ph:copy" />
+                          </template>
+                          <span class="text-xxs">{{ user.email }}</span>
+                        </Button>
+                      </CopyClipboard>
+                    </div>
                   </template>
                   <span v-else class="text-color-light text-xxs">No email on file</span>
                 </Table.Cell>
 
                 <!-- UUID -->
-                <Table.Cell class="uuid-cell" @click.stop>
-                  <CopyClipboard :text="user.id" confirm>
-                    <Button variant="gray" plain size="s" class="uuid-button">
-                      <template #start>
-                        <Icon name="ph:copy" />
-                      </template>
-                      <span class="text-xxs">{{ user.id }}</span>
-                    </Button>
-                  </CopyClipboard>
+                <Table.Cell class="uuid-cell">
+                  <div @click.stop>
+                    <CopyClipboard :text="user.id" confirm>
+                      <Button variant="gray" plain size="s" class="uuid-button">
+                        <template #start>
+                          <Icon name="ph:copy" />
+                        </template>
+                        <span class="text-xxs">{{ user.id }}</span>
+                      </Button>
+                    </CopyClipboard>
+                  </div>
                 </Table.Cell>
 
                 <!-- Role -->

@@ -612,7 +612,7 @@ onBeforeMount(async () => {
                 </Table.Cell>
 
                 <!-- Status badges -->
-                <Table.Cell @click.stop>
+                <Table.Cell>
                   <Flex gap="xs" wrap>
                     <Badge :variant="discussion.is_locked ? 'danger' : 'success'">
                       {{ discussion.is_locked ? 'Locked' : 'Open' }}

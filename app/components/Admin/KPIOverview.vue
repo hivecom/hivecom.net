@@ -72,7 +72,7 @@ onBeforeMount(() => {
       :is-loading="loading"
       icon="ph:calendar-plus"
       :variant="upcomingEventsCount === 0 ? 'warning' : 'success'"
-      description="Events scheduled for the future"
+      description="Number of Hivecom official events that are not reoccurring and in the future"
     />
   </KPIContainer>
 </template>
