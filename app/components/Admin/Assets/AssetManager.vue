@@ -511,12 +511,6 @@ function notifyPeers() {
   refreshSignal.value = (refreshSignal.value || 0) + 1
 }
 
-function openStorageConsole() {
-  if (!storageConsoleUrl.value)
-    return
-  window.open(storageConsoleUrl.value, '_blank', 'noopener')
-}
-
 function getAssetBadgeVariant(asset: CmsAsset): BadgeVariant {
   if (asset.type === 'folder')
     return 'info'
@@ -717,15 +711,18 @@ onBeforeMount(fetchAssets)
                 Refresh
               </Button>
               <Button
+                v-if="storageConsoleUrl"
                 variant="gray"
                 :disabled="!storageConsoleUrl"
                 :expand="isBelowMedium"
-                @click="openStorageConsole"
+                :href="storageConsoleUrl"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <template #start>
-                  <Icon name="ph:folder-open" />
+                Supabase
+                <template #end>
+                  <Icon name="ph:arrow-square-out" />
                 </template>
-                Supabase Files
               </Button>
             </Flex>
             <Button
@@ -754,7 +751,7 @@ onBeforeMount(fetchAssets)
         expand
         :columns="assetGridColumns"
       >
-        <Skeleton v-for="i in PAGE_SIZE" :key="i" :height="220" :radius="8" />
+        <Skeleton v-for="i in PAGE_SIZE" :key="i" :height="207" :radius="8" />
       </Grid>
 
       <Flex v-else expand class="asset-manager__content" :class="{ 'is-reloading': reloading }">

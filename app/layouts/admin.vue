@@ -468,8 +468,8 @@ watch(() => route.path, () => {
                 </Tooltip>
               </Flex>
               <Flex v-else x-between y-center gap="xs">
-                <NuxtLink to="/">
-                  <Button expand size="m" outline>
+                <NuxtLink to="/" class="w-100">
+                  <Button size="m" outline expand>
                     <template #start>
                       <Icon name="ph:caret-left" />
                     </template>

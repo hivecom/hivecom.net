@@ -77,7 +77,7 @@ function getUploaderId(asset: StorageAsset): string | null {
       v-for="asset in assets"
       :key="asset.path"
       class="asset-grid-card"
-      @click="handleCardClick(asset)"
+      :padding="false"
     >
       <div class="asset-grid-preview" :class="{ 'is-folder': asset.type === 'folder' }">
         <template v-if="asset.type === 'folder'">
@@ -94,6 +94,16 @@ function getUploaderId(asset: StorageAsset): string | null {
         </template>
 
         <div v-if="asset.type !== 'folder'" class="asset-grid-actions" @click.stop>
+          <CopyClipboard :text="asset.path" confirm>
+            <Tooltip>
+              <Button size="s" square>
+                <Icon name="ph:copy" />
+              </Button>
+              <template #tooltip>
+                <p>Copy asset ID</p>
+              </template>
+            </Tooltip>
+          </CopyClipboard>
           <CopyClipboard :text="asset.publicUrl || ''" confirm>
             <Tooltip>
               <Button size="s" variant="gray" square :disabled="!asset.publicUrl">
@@ -124,11 +134,11 @@ function getUploaderId(asset: StorageAsset): string | null {
         </div>
       </div>
 
-      <Flex column gap="xxs">
-        <strong class="text-s asset-grid-name">{{ asset.name }}</strong>
-        <span class="text-xxs text-color-light">{{ asset.type === 'folder' ? 'Folder' : formatBytes(asset.size) }}</span>
-        <Flex v-if="isForumsBucket && asset.type !== 'folder'" y-center gap="xxs">
-          <span class="text-xxs text-color-light">Uploaded by</span>
+      <Flex column gap="xxs" class="asset-grid-details">
+        <strong class="text-s w-90 mb-xs text-overflow-1">{{ asset.name }}</strong>
+        <Flex y-center gap="s" x-start expand>
+          <span v-if="asset.type !== 'folder' && asset.extension" class="text-xxs text-color-light">{{ asset.extension.toUpperCase() }}</span>
+          <span class="text-xxs text-color-light">{{ asset.type === 'folder' ? 'Folder' : formatBytes(asset.size) }}</span>
           <UserLink :user-id="getUploaderId(asset)" placeholder="Unknown" class="text-xxs" />
         </Flex>
       </Flex>
@@ -138,14 +148,18 @@ function getUploaderId(asset: StorageAsset): string | null {
 
 <style scoped lang="scss">
 .asset-grid-card {
-  cursor: pointer;
+  // cursor: pointer;
   min-width: 0;
   overflow: hidden;
   transition: border-color var(--transition);
 
   &:hover {
-    border-color: var(--color-accent);
+    background-color: var(--color-bg-raised);
   }
+}
+
+.asset-grid-details {
+  padding: var(--space-m);
 }
 
 .asset-grid-preview {
@@ -153,7 +167,8 @@ function getUploaderId(asset: StorageAsset): string | null {
   width: 100%;
   height: 140px;
   border-radius: var(--border-radius-m);
-  margin-bottom: var(--space-s);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
   background: var(--color-bg-raised);
   display: flex;
   align-items: center;
@@ -168,6 +183,10 @@ function getUploaderId(asset: StorageAsset): string | null {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-s);
   }
 }
 
@@ -186,17 +205,12 @@ function getUploaderId(asset: StorageAsset): string | null {
   opacity: 0;
   transition: opacity var(--transition);
 
+  .vui-button:not(.vui-button-variant-danger) {
+    border: 1px solid var(--color-border-strong);
+  }
+
   .asset-grid-card:hover & {
     opacity: 1;
   }
-}
-
-.asset-grid-name {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-all;
 }
 </style>
