@@ -428,12 +428,14 @@ export default defineNuxtConfig({
     },
   },
   hooks: {
-    // Force-exit after build so the CI process doesn't hang on open handles
-    // (native addons, Nitro internal server, etc.) in static/github-pages builds.
-    'build:done': () => {
-      if (isBuildCommand) {
-        process.exit(0)
-      }
+    'nitro:build:before': (nitro) => {
+      // Force-exit after Nitro fully closes (post-prerender) so the CI process
+      // doesn't hang on open handles (native addons, etc.) in static builds.
+      nitro.hooks.hook('close', () => {
+        if (isBuildCommand) {
+          process.exit(0)
+        }
+      })
     },
     'nitro:config': async (nitroConfig) => {
       if (!isBuildCommand) {

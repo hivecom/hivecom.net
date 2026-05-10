@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Button, Divider, DropdownItem, Flex, Kbd, KbdGroup, Sheet, Sidebar, Spinner, Tooltip } from '@dolanske/vui'
 import { until, useMediaQuery } from '@vueuse/core'
+import SharedLogo from '@/components/Shared/Logo.vue'
 import LogoIcon from '@/components/Shared/LogoIcon.vue'
-import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
+import ThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -283,62 +284,52 @@ watch(() => route.path, () => {
   <!-- Show admin layout only if authorized -->
   <div v-else-if="isAuthorized" class="admin-layout vui-sidebar-layout">
     <div v-if="isMobile" class="admin-layout__mobile-bar">
-      <Flex x-between y-center expand>
-        <Button square aria-label="Open admin navigation" @click="mobileNavOpen = true">
-          <Icon name="ph:list" />
-        </Button>
-
-        <LogoIcon style="margin-left: -24px" />
-
-        <!-- <Tooltip>
-          <Button square plain aria-label="Search" class="vui-button-accent-weak vui-button-rounded" @click="openCommand()">
-            <Icon name="ph:magnifying-glass" size="20" />
+      <div class="admin-layout__mobile-bar-items">
+        <div class="admin-layout__mobile-left-group">
+          <Button square aria-label="Open admin navigation" @click="mobileNavOpen = true">
+            <Icon name="ph:list" size="2rem" />
           </Button>
-          <template #tooltip>
-            <p>
-              Search <KbdGroup>
-                <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
-                <Kbd keys="K" />
-              </KbdGroup>
-            </p>
-          </template>
-        </Tooltip> -->
+          <Button square plain aria-label="Search" class="pl-4 vui-button-accent-weak vui-button-rounded" @click="openCommand()">
+            <Icon name="ph:magnifying-glass" size="16" />
+          </Button>
+        </div>
 
-        <span />
-      </Flex>
+        <SharedLogo class="admin-layout__mobile-logo" />
+
+        <div class="admin-layout__mobile-right-group" />
+      </div>
 
       <Sheet
         class="admin-layout__mobile-sheet"
         :open="mobileNavOpen"
         position="left"
-        separator
+        :card="{ separators: true }"
         @close="mobileNavOpen = false"
       >
         <template #header>
-          <Flex y-center gap="xs">
-            <LogoIcon style="margin-left: 2px" />
-            <!-- <h5 class="admin-layout__mobile-title">
-              Admin
-            </h5> -->
+          <Flex x-between style="padding-top:3px">
+            <SharedLogo class="admin-layout__sheet-logo" />
           </Flex>
         </template>
-        <template #header-end>
-          <Button square plain aria-label="Close navigation" @click="mobileNavOpen = false">
-            <Icon name="ph:x" />
-          </Button>
-        </template>
+        <template #header-end />
 
-        <DropdownItem
-          v-for="item in accessibleMenuItems"
-          :key="item.path"
-          :class="{ selected: route.path === item.path }"
-          @click="handleNavigation(item.path)"
-        >
-          <template v-if="item.icon" #icon>
-            <Icon :name="item.icon" />
+        <div class="admin-layout__mobile-menu">
+          <template
+            v-for="item in accessibleMenuItems"
+            :key="item.path"
+          >
+            <NuxtLink
+              :to="item.path"
+              class="admin-layout__mobile-menu-item"
+              :class="{ 'router-link-active': route.path === item.path }"
+              @click.prevent="handleNavigation(item.path)"
+            >
+              <Icon v-if="item.icon" :name="item.icon" />
+              {{ item.name }}
+            </NuxtLink>
+            <Divider v-if="item.dividerAfter" class="my-xs" />
           </template>
-          {{ item.name }}
-        </DropdownItem>
+        </div>
 
         <template #footer>
           <Flex x-between y-center>
@@ -350,7 +341,7 @@ watch(() => route.path, () => {
                 Return to home
               </Button>
             </NuxtLink>
-            <SharedThemeToggle no-text small button />
+            <ThemeToggle no-text small button />
           </Flex>
         </template>
       </Sheet>
@@ -360,12 +351,9 @@ watch(() => route.path, () => {
       <ClientOnly>
         <Sidebar v-model="open" :mini="miniSidebar" class="admin-layout__sidebar">
           <template #header>
-            <Flex y-center class="mb-s">
+            <Flex y-center class="sidebar-header">
               <Flex y-center gap="s" expand>
-                <LogoIcon style="margin-left: 2px" />
-                <!-- <h5 v-if="!miniSidebar" class="flex-1">
-                  Admin
-                </h5> -->
+                <LogoIcon />
               </Flex>
               <Flex gap="xxs">
                 <Tooltip placement="bottom">
@@ -411,15 +399,16 @@ watch(() => route.path, () => {
               :disabled="!miniSidebar"
               placement="right"
             >
-              <DropdownItem
-                :class="{ selected: route.path === item.path }"
-                @click="handleNavigation(item.path)"
-              >
-                <template v-if="item.icon" #icon>
-                  <Icon :name="item.icon" />
-                </template>
-                {{ item.name }}
-              </DropdownItem>
+              <NuxtLink :to="item.path" class="admin-layout__mobile-nav-link" @click.prevent="handleNavigation(item.path)">
+                <DropdownItem
+                  :class="{ selected: route.path === item.path }"
+                >
+                  <template v-if="item.icon" #icon>
+                    <Icon :name="item.icon" />
+                  </template>
+                  {{ item.name }}
+                </DropdownItem>
+              </NuxtLink>
               <template #tooltip>
                 <p>{{ item.name }}</p>
               </template>
@@ -462,35 +451,34 @@ watch(() => route.path, () => {
           </template>
 
           <template #footer>
-            <Flex v-if="miniSidebar" column x-center y-center gap="m">
-              <Tooltip placement="right">
-                <SharedThemeToggle no-text small button />
-                <template #tooltip>
-                  <p>Toogle theme</p>
-                </template>
-              </Tooltip>
-              <Tooltip placement="right">
-                <DropdownItem square aria-label="Close admin console" @click="navigateTo('/')">
-                  <template #icon>
-                    <Icon name="ph:caret-left" />
+            <Divider />
+            <div class="sidebar-footer">
+              <Flex v-if="miniSidebar" column x-center y-center gap="m">
+                <ThemeToggle no-text button />
+
+                <Tooltip placement="right">
+                  <DropdownItem square aria-label="Close admin console" @click="navigateTo('/')">
+                    <template #icon>
+                      <Icon name="ph:caret-left" />
+                    </template>
+                  </DropdownItem>
+                  <template #tooltip>
+                    <p>Close admin console</p>
                   </template>
-                </DropdownItem>
-                <template #tooltip>
-                  <p>Close admin console</p>
-                </template>
-              </Tooltip>
-            </Flex>
-            <Flex v-else x-between y-center gap="xs">
-              <NuxtLink to="/">
-                <Button expand size="m" outline>
-                  <template #start>
-                    <Icon name="ph:caret-left" />
-                  </template>
-                  Return to home
-                </Button>
-              </NuxtLink>
-              <SharedThemeToggle no-text small button />
-            </Flex>
+                </Tooltip>
+              </Flex>
+              <Flex v-else x-between y-center gap="xs">
+                <NuxtLink to="/">
+                  <Button expand size="m" outline>
+                    <template #start>
+                      <Icon name="ph:caret-left" />
+                    </template>
+                    Return to home
+                  </Button>
+                </NuxtLink>
+                <ThemeToggle no-text button />
+              </Flex>
+            </div>
           </template>
         </Sidebar>
       </ClientOnly>
@@ -521,21 +509,91 @@ watch(() => route.path, () => {
   display: flex;
   position: relative;
 
+  &__mobile-nav-link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  &__mobile-menu {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+  }
+
+  &__mobile-menu-item {
+    padding: var(--space-s) var(--space-m);
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    width: 100%;
+    gap: var(--space-xs);
+    border-radius: var(--border-radius-s);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    font-size: var(--font-size-m);
+    color: var(--color-text);
+    text-decoration: none;
+
+    &:hover,
+    &.router-link-active {
+      background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+      color: var(--color-accent);
+    }
+
+    .iconify {
+      font-size: 18px;
+      margin-right: var(--space-xs);
+    }
+  }
+
   &__mobile-bar {
     display: none;
     width: 100%;
-    padding: var(--space-m) var(--space-m) 0;
     position: sticky;
     top: 0;
     z-index: var(--z-nav);
-    background-color: color-mix(in srgb, var(--color-bg-lowered) 90%, transparent);
-    backdrop-filter: blur(12px);
+    background-color: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
   }
 
-  &__mobile-sheet {
-    :deep(.vui-card-header) {
-      padding-left: var(--space-m);
-      padding-right: var(--space-m);
+  &__mobile-bar-items {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 64px;
+    padding: 0 var(--space-m);
+    position: relative;
+  }
+
+  &__mobile-left-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    z-index: 1;
+  }
+
+  &__mobile-logo {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  &__mobile-right-group {
+    // placeholder to balance left group for centering
+    display: flex;
+  }
+
+  &__sheet-logo {
+    :deep(.logo--full) {
+      display: block !important;
+    }
+
+    :deep(.logo--compact) {
+      display: none !important;
     }
   }
 
@@ -567,6 +625,27 @@ watch(() => route.path, () => {
     :deep(.vui-sidebar) {
       background-color: var(--color-bg-medium);
     }
+
+    :deep(.vui-sidebar-header) {
+      padding: 0;
+
+      .sidebar-header {
+        padding: var(--space-m);
+      }
+    }
+
+    :deep(.vui-sidebar-footer) {
+      padding: 0;
+
+      .sidebar-footer {
+        padding: var(--space-m);
+      }
+    }
+
+    :deep(.vui-card-header) {
+      padding-left: var(--space-m);
+      padding-right: var(--space-m);
+    }
   }
 
   &__content {
@@ -596,7 +675,6 @@ watch(() => route.path, () => {
 
   .admin-layout__mobile-bar {
     display: block;
-    padding: var(--space-s);
   }
 }
 </style>

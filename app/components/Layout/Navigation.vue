@@ -169,7 +169,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
         >
           <template #header>
             <Flex x-between style="padding-top:3px">
-              <SharedLogo />
+              <SharedLogo class="navigation__sheet-logo" />
             </Flex>
           </template>
           <template #header-end />
@@ -469,6 +469,16 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
     opacity: 0.5;
   }
 
+  &__sheet-logo {
+    .logo--full {
+      display: block !important;
+    }
+
+    .logo--compact {
+      display: none !important;
+    }
+  }
+
   &__mobile-sheet {
     :deep(.vui-card-header > button) {
       display: none !important;
@@ -670,7 +680,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
   }
 }
 
-@container navigation (max-width: #{$breakpoint-vui-mobile}) {
+@media (max-width: #{$breakpoint-vui-mobile}) {
   .navigation {
     &__mobile-menu {
       gap: var(--space-xs);
