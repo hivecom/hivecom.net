@@ -64,7 +64,7 @@ onMounted(() => {
 
           <div class="error-actions">
             <NuxtLink to="/">
-              <Button class="error-button" size="l" variant="accent">
+              <Button class="error-button" size="m" variant="accent">
                 <template #end>
                   <Icon name="ph:arrow-u-up-left" />
                 </template>

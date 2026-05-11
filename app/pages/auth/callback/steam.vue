@@ -5,7 +5,6 @@ import { useSessionReady } from '@/composables/useSessionReady'
 const { waitForSessionReady } = useSessionReady()
 
 const supabase = useSupabaseClient()
-const route = useRoute()
 
 const status = ref<'loading' | 'success' | 'error'>('loading')
 const errorMessage = ref('')
@@ -23,8 +22,11 @@ async function handleCallback() {
   if (typeof window === 'undefined')
     return
 
+  // Parse params directly from window.location.search (route.query unreliable on fresh SPA load)
+  const searchParams = new URLSearchParams(window.location.search)
+
   // Parse state from query params (contains mode and redirect)
-  const stateParam = route.query.state as string
+  const stateParam = searchParams.get('state') ?? ''
   let mode = 'link'
   let redirect = '/profile/settings'
 
@@ -41,14 +43,14 @@ async function handleCallback() {
   }
 
   // Check if user cancelled (openid.mode will be 'cancel')
-  if (route.query['openid.mode'] === 'cancel') {
+  if (searchParams.get('openid.mode') === 'cancel') {
     status.value = 'error'
     errorMessage.value = 'Steam authentication was cancelled.'
     return
   }
 
   // Check if we have OpenID params from Steam
-  const claimedId = route.query['openid.claimed_id'] as string
+  const claimedId = searchParams.get('openid.claimed_id')
   if (!claimedId) {
     status.value = 'error'
     errorMessage.value = 'Missing Steam authentication response.'
@@ -57,8 +59,8 @@ async function handleCallback() {
 
   // Collect all OpenID params
   const openIdParams: Record<string, string> = {}
-  for (const [key, value] of Object.entries(route.query)) {
-    if (key.startsWith('openid.') && typeof value === 'string') {
+  for (const [key, value] of searchParams.entries()) {
+    if (key.startsWith('openid.')) {
       openIdParams[key] = value
     }
   }

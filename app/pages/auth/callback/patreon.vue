@@ -4,17 +4,17 @@ import { Button, Card, Flex, Spinner } from '@dolanske/vui'
 import { useSessionReady } from '@/composables/useSessionReady'
 import '@/assets/elements/auth.scss'
 
-const route = useRoute()
 const supabase = useSupabaseClient()
 const { waitForSessionReady } = useSessionReady()
 
 const status = ref<'loading' | 'success' | 'error'>('loading')
 const errorMessage = ref('')
 
-const code = typeof route.query.code === 'string' ? route.query.code.trim() : ''
-const stateStr = typeof route.query.state === 'string' ? route.query.state : ''
+const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
+const code = (searchParams.get('code') ?? '').trim()
+const stateStr = searchParams.get('state') ?? ''
 
-let redirectTarget = '/profile'
+let redirectTarget = '/profile/settings'
 
 function fail(message: string) {
   errorMessage.value = message

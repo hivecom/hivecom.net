@@ -99,6 +99,21 @@ Community events are mirrored to external services via trigger-backed edge funct
 
 Both trigger groups rely on the vault-stored `project_url`, `anon_key`, and `system_trigger_secret` values so the database never needs to store service role keys in plain text while still allowing asynchronous syncs through `net.http_post`.
 
+## Steam Presence Cleanup on Unlink
+
+When a user unlinks their Steam account (`steam_id` set to `null` on `profiles`), the trigger automatically deletes their `presences_steam` row to prevent stale game activity from being counted in metrics.
+
+### Trigger: `on_steam_id_unlink`
+
+```sql
+CREATE TRIGGER on_steam_id_unlink
+  AFTER UPDATE OF steam_id ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.delete_steam_presence_on_unlink();
+```
+
+The `delete_steam_presence_on_unlink()` function checks if `steam_id` transitioned from non-null to null and deletes the corresponding `presences_steam` row.
+
 ## Steam Identity Sync (Background Queue System)
 
 A scalable background job system syncs Steam identities using a queue-based architecture:
@@ -107,12 +122,12 @@ A scalable background job system syncs Steam identities using a queue-based arch
 
 ### Producer Job: `queue_enqueue_sync_steam`
 
-Runs every 15 minutes to enqueue all profiles with `steam_id` into the queue:
+Runs every 5 minutes to enqueue all profiles with `steam_id` and `rich_presence_enabled` into the queue:
 
 ```sql
 SELECT cron.schedule(
   'queue_enqueue_sync_steam',
-  '*/15 * * * *',
+  '*/5 * * * *',
   $$SELECT private.queue_enqueue_worker_sync_steam();$$
 );
 ```
@@ -143,14 +158,14 @@ The system is tunable at runtime via the `worker_sync_steam` key:
 ```json
 {
   "max_wall_clock_ms": 140000,
-  "batch_size": 50,
+  "batch_size": 100,
   "visibility_timeout_sec": 60,
   "max_concurrency": 20
 }
 ```
 
 - `max_wall_clock_ms`: Maximum runtime per worker (140s buffer for 150s Free Plan limit)
-- `batch_size`: Messages to process per pop operation
+- `batch_size`: Messages per worker pop - set to 100 to match the `GetPlayerSummaries` API limit (1 API call per batch)
 - `visibility_timeout_sec`: Time before unprocessed messages become visible again
 - `max_concurrency`: Maximum number of concurrent workers
 
