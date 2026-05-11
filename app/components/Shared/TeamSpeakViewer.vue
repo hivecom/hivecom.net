@@ -30,12 +30,25 @@ const SPACER_DETECT_RE = /^\[l?spacer\d*\]/i
 const isMobile = useBreakpoint('<s')
 
 const { fetchMetricsHistory } = useDataMetrics()
-const histogramHistory = shallowRef<{ capturedAt: string, teamspeakOnline: number | null }[]>([])
-const histogramData = computed(() => histogramHistory.value.map(e => e.teamspeakOnline ?? 0))
+const histogramHistory = shallowRef<{ capturedAt: string, teamspeakOnline: number }[]>([])
+const histogramData = computed(() => histogramHistory.value.map(e => e.teamspeakOnline))
 
 onMounted(async () => {
   const entries = await fetchMetricsHistory('14d')
-  histogramHistory.value = entries.map(e => ({ capturedAt: e.capturedAt, teamspeakOnline: e.teamspeakOnline }))
+  // Group into daily buckets (average per day), keep last 14 days
+  const byDay = new Map<string, { capturedAt: string, values: number[] }>()
+  for (const e of entries) {
+    const d = new Date(e.capturedAt)
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+    if (!byDay.has(key))
+      byDay.set(key, { capturedAt: e.capturedAt, values: [] })
+    byDay.get(key)!.values.push(e.teamspeakOnline ?? 0)
+  }
+  const days = Array.from(byDay.values()).slice(-14)
+  histogramHistory.value = days.map(({ capturedAt, values }) => ({
+    capturedAt,
+    teamspeakOnline: Math.round(values.reduce((a, b) => a + b, 0) / values.length),
+  }))
 })
 
 const showActivityModal = ref(false)

@@ -38,6 +38,7 @@ const props = defineProps<{
     badges?: ProfileBadge[]
     website?: string | null
     public?: boolean
+    rich_presence_enabled?: boolean
   } | null
   isEditMode: boolean
 }>()
@@ -79,6 +80,7 @@ function createDefaultUserFormState(): UserFormState {
     country: '',
     birthday: '',
     public: true,
+    rich_presence_enabled: false,
     supporter_patreon: false,
     supporter_lifetime: false,
     patreon_id: '',
@@ -320,6 +322,7 @@ watch(
         country: hasValidCountry ? normalizedCountry : '',
         birthday: newUser.birthday || '',
         public: newUser.public ?? true,
+        rich_presence_enabled: newUser.rich_presence_enabled ?? false,
         supporter_patreon: newUser.supporter_patreon,
         supporter_lifetime: newUser.supporter_lifetime,
         patreon_id: newUser.patreon_id || '',
@@ -392,6 +395,7 @@ function handleSubmit() {
     country: userForm.value.country.trim() ? userForm.value.country.trim().toUpperCase() : null,
     birthday: userForm.value.birthday.trim() ? userForm.value.birthday.trim() : null,
     public: userForm.value.public,
+    rich_presence_enabled: userForm.value.rich_presence_enabled,
     supporter_patreon: userForm.value.supporter_patreon,
     supporter_lifetime: userForm.value.supporter_lifetime,
     patreon_id: userForm.value.patreon_id.trim() || null,
@@ -445,9 +449,6 @@ async function handleAvatarDelete() {
     avatarDeleting.value = false
   }
 }
-
-// Character counts for text areas
-const markdownCharCount = computed(() => userForm.value.markdown.length)
 
 type CountrySelectOption = (typeof COUNTRY_SELECT_OPTIONS)[number]
 
@@ -560,6 +561,12 @@ function clearBirthday() {
             description="Allow anyone to view this user's profile page"
             :disabled="!canEditForm"
           />
+          <Switch
+            v-model="userForm.rich_presence_enabled"
+            label="Rich Presence"
+            description="Fetch and display activity from connected services"
+            :disabled="!canEditForm"
+          />
         </Flex>
 
         <Input
@@ -653,8 +660,10 @@ function clearBirthday() {
         >
           <template #after>
             <div class="help-text">
-              <Icon name="ph:info" />
-              Personal website or portfolio URL
+              <Flex :gap="4">
+                <Icon name="ph:info" class="text-color-lightest" />
+                Personal website or portfolio URL
+              </Flex>
             </div>
           </template>
         </Input>
@@ -726,18 +735,8 @@ function clearBirthday() {
           :media-context="props.user?.id ? `${props.user.id}/markdown/media` : undefined"
           :media-bucket-id="USERS_BUCKET_ID"
           :show-attachment-button="!!props.user?.id"
+          :limit="MARKDOWN_LIMIT"
         />
-        <Flex x-between class="help-text">
-          <div>
-            <Icon name="ph:info" />
-            You can use Markdown formatting. HTML tags are not allowed.
-          </div>
-          <div class="character-count">
-            <span :class="{ 'over-limit': markdownCharCount > MARKDOWN_LIMIT }">
-              {{ markdownCharCount }}/{{ MARKDOWN_LIMIT }}
-            </span>
-          </div>
-        </Flex>
       </Flex>
 
       <!-- External IDs Section -->
@@ -896,19 +895,6 @@ function clearBirthday() {
 
   .flex-1 {
     flex: 1;
-  }
-}
-
-.character-count {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: var(--space-xs);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-light);
-
-  .over-limit {
-    color: var(--color-text-red);
-    font-weight: var(--font-weight-semibold);
   }
 }
 

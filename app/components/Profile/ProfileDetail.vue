@@ -14,6 +14,7 @@ import { useAvatarBus } from '@/composables/useAvatarBus'
 import { useCachedFetch } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
 import { useFriendship } from '@/composables/useFriendship'
+import { useSessionReady } from '@/composables/useSessionReady'
 import Discussion from '../Discussions/Discussion.vue'
 import ProfileActivity from './ProfileActivity.vue'
 import ProfileDiscussions from './ProfileDiscussions.vue'
@@ -28,6 +29,7 @@ const props = defineProps<Props>()
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const { waitForSessionReady } = useSessionReady()
 const isLoggedIn = computed(() => !!user.value)
 const authReady = ref(false)
 const sessionUser = ref<{ id: string } | null>(null)
@@ -182,6 +184,7 @@ watch(hydratedProfileData, (newData) => {
 // reload causes useSupabaseUser() to be null while the session is still being
 // restored, triggering a false redirect to sign-in.
 onMounted(async () => {
+  await waitForSessionReady()
   const result = await supabase.auth.getSession().catch(() => null)
   sessionUser.value = result?.data?.session?.user ?? null
   authReady.value = true

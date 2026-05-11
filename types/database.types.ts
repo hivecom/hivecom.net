@@ -2318,6 +2318,7 @@ export type Database = {
           patreon_id: string
           platform_count: number
           public: boolean
+          rich_presence_enabled: boolean
           role: string
           role_sort: number
           steam_id: string

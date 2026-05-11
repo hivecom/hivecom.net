@@ -107,11 +107,12 @@ const {
 } = useCachedFetch<{
   steam_id: string | null
   teamspeak_identities: Tables<'profiles'>['teamspeak_identities'] | TeamSpeakIdentityRecord[] | null
+  rich_presence_enabled: boolean | null
 }>(
   () => props.userId
     ? {
         table: 'profiles',
-        select: 'steam_id,teamspeak_identities',
+        select: 'steam_id,teamspeak_identities,rich_presence_enabled',
         filters: { id: props.userId },
         single: true,
       }
@@ -289,6 +290,7 @@ const {
           :profile-id="user.id"
           :teamspeak-identities="activity.teamspeak_identities"
           :is-own-profile="false"
+          :rich-presence-enabled="activity.rich_presence_enabled ?? false"
         />
       </Flex>
     </template>

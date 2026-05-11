@@ -33,7 +33,8 @@ async function startSteamLink() {
   isLinking.value = true
 
   try {
-    const redirect = props.redirectTo.startsWith('/') ? props.redirectTo : '/profile/settings'
+    const baseRedirect = props.redirectTo.startsWith('/') ? props.redirectTo : '/profile/settings'
+    const redirect = `${baseRedirect}${baseRedirect.includes('?') ? '&' : '?'}connected=steam`
     const baseUrl = window.location.origin
 
     const { data, error } = await supabase.functions.invoke('openid-steam-start', {

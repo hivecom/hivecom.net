@@ -2,16 +2,23 @@
 import { Spinner } from '@dolanske/vui'
 import ProfileDetail from '@/components/Profile/ProfileDetail.vue'
 
+import { useSessionReady } from '@/composables/useSessionReady'
+
 const user = useSupabaseUser()
 const userId = useUserId()
 const client = useSupabaseClient()
 const { navigateToSignIn } = useAuthRedirect()
+const { waitForSessionReady } = useSessionReady()
 
 const loading = ref(true)
 
 onMounted(async () => {
-  // First, wait for the initial session to be determined
-  const { data: { session } } = await client.auth.getSession()
+  await waitForSessionReady()
+
+  if (!user.value) {
+    navigateToSignIn()
+    return
+  }
 
   // Set up auth state change listener
   const authListener = client.auth.onAuthStateChange((event, session) => {
@@ -20,16 +27,9 @@ onMounted(async () => {
     }
   })
 
-  // Cleanup listener on component unmount
   onUnmounted(() => {
     authListener.data.subscription.unsubscribe()
   })
-
-  // Check initial auth state
-  if (!session) {
-    navigateToSignIn()
-    return
-  }
 
   loading.value = false
 })

@@ -55,6 +55,7 @@ const props = defineProps<{
     birthday?: string | null
     badges?: ProfileBadge[]
     public?: boolean
+    rich_presence_enabled?: boolean
     confirmed?: boolean
     website?: string | null
   } | null
@@ -340,6 +341,16 @@ function getUserInitials(username: string): string {
                 <Icon :name="user.public ? 'ph:eye' : 'ph:eye-slash'" />
                 <span class="text-s">
                   {{ user.public ? 'Yes' : 'No' }}
+                </span>
+              </Flex>
+            </Grid>
+
+            <Grid class="detail-item" columns="1fr 2fr" expand>
+              <span class="text-color-light text-bold">Rich Presence:</span>
+              <Flex gap="xs" y-center>
+                <Icon name="ph:activity" :class="user.rich_presence_enabled ? 'text-color-green' : 'text-color-lighter'" />
+                <span class="text-s">
+                  {{ user.rich_presence_enabled ? 'Enabled' : 'Disabled' }}
                 </span>
               </Flex>
             </Grid>

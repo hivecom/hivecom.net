@@ -610,7 +610,7 @@ defineExpose({ refresh: fetchUsers })
 
                     <span
                       v-if="(user.steam_id == null || user.steam_id === '') && (user.discord_id == null || user.discord_id === '') && (user.patreon_id == null || user.patreon_id === '')"
-                      class="text-color-light text-s"
+                      class="text-color-lightest text-s"
                     >
                       No connections
                     </span>
@@ -619,7 +619,12 @@ defineExpose({ refresh: fetchUsers })
 
                 <!-- Supporter -->
                 <Table.Cell class="supporter-cell">
-                  <span class="text-s">{{ user.is_supporter ? 'Yes' : 'No' }}</span>
+                  <span
+                    :class="{ 'text-color-lightest text-s': !user.is_supporter,
+                              'text-color-accent text-s': user.is_supporter }"
+                  >
+                    {{ user.is_supporter ? 'Yes' : 'No' }}
+                  </span>
                 </Table.Cell>
 
                 <!-- Joined -->

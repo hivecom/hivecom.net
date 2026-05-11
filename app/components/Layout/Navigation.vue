@@ -4,6 +4,7 @@ import SharedLogo from '@/components/Shared/Logo.vue'
 import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useCommand } from '@/composables/useCommand'
 import { useMfaStatus } from '@/composables/useMfaStatus'
+import { useSessionReady } from '@/composables/useSessionReady'
 import { navigationLinks } from '@/config/navigation'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import NavEventBadge from './NavEventBadge.vue'
@@ -20,7 +21,7 @@ const { signInPath } = useAuthRedirect()
 
 // Listen for auth events
 const user = useSupabaseUser()
-const supabase = useSupabaseClient()
+const { waitForSessionReady } = useSessionReady()
 const authReady = ref(false)
 
 const route = useRoute()
@@ -49,7 +50,7 @@ watch(
 
 // Whether to show status badges in navbar or not
 onBeforeMount(async () => {
-  await supabase.auth.getSession().catch(() => null)
+  await waitForSessionReady()
   authReady.value = true
 })
 

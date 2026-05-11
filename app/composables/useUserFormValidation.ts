@@ -19,6 +19,7 @@ export interface ProfileFormState {
 
 // Full admin user form state - superset of ProfileFormState
 export interface UserFormState extends ProfileFormState {
+  rich_presence_enabled: boolean
   supporter_patreon: boolean
   supporter_lifetime: boolean
   patreon_id: string

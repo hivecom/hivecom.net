@@ -8,7 +8,10 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import { normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
 
 const props = defineProps<{ profile: Tables<'profiles'> | null }>()
-const emit = defineEmits<{ (e: 'updated'): void }>()
+const emit = defineEmits<{
+  (e: 'updated'): void
+  (e: 'connected', service: 'steam' | 'teamspeak'): void
+}>()
 
 const supabase = useSupabaseClient()
 
@@ -465,7 +468,7 @@ function toggleRichPresence() {
               Loading
             </Button>
             <ClientOnly v-else>
-              <ConnectTeamspeak :profile="props.profile" @linked="emit('updated')" />
+              <ConnectTeamspeak :profile="props.profile" @linked="emit('updated'); emit('connected', 'teamspeak')" />
             </ClientOnly>
           </div>
         </Flex>
