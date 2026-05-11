@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
+import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 
 type ProfileBadge = Database['public']['Enums']['profile_badge']
 
@@ -109,8 +110,19 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
   const statusFilter = ref('')
   const providerFilter = ref('')
   const platformFilter = ref('')
+  const supporterFilter = ref('')
+  const countryFilter = ref('')
+  const availableCountries = ref<Array<{ label: string, value: string }>>([])
 
   // ─── Fetch ───────────────────────────────────────────────────────────────
+
+  async function fetchCountries(): Promise<void> {
+    const { data } = await supabase.rpc('get_admin_user_countries' as never)
+    if (data != null) {
+      const codes = new Set((data as unknown as Array<{ country: string }>).map(r => r.country))
+      availableCountries.value = COUNTRY_SELECT_OPTIONS.filter(o => codes.has(o.value))
+    }
+  }
 
   async function fetchUsers(): Promise<void> {
     if (inflight.value)
@@ -126,6 +138,8 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
         p_status: statusFilter.value,
         p_provider: providerFilter.value,
         p_platform: platformFilter.value,
+        p_supporter: supporterFilter.value,
+        p_country: countryFilter.value,
         p_sort_col: sortCol.value,
         p_sort_dir: sortDir.value,
         p_limit: perPage.value,
@@ -248,6 +262,10 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
     statusFilter,
     providerFilter,
     platformFilter,
+    supporterFilter,
+    countryFilter,
+    availableCountries,
+    fetchCountries,
     fetchUsers,
     setPage,
     setSort,

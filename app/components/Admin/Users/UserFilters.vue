@@ -13,6 +13,7 @@ const props = defineProps<{
   statusOptions: SelectOption[]
   providerOptions: SelectOption[]
   platformOptions: SelectOption[]
+  countryOptions: SelectOption[]
 }>()
 
 const emit = defineEmits<{
@@ -27,6 +28,9 @@ const roleFilter = defineModel<string>('roleFilter', { default: '' })
 const statusFilter = defineModel<string>('statusFilter', { default: '' })
 const providerFilter = defineModel<string>('providerFilter', { default: '' })
 const platformFilter = defineModel<string>('platformFilter', { default: '' })
+
+const supporterFilter = defineModel<string>('supporterFilter', { default: '' })
+const countryFilter = defineModel<string>('countryFilter', { default: '' })
 
 // VUI Select speaks SelectOption[] - bridge to/from plain string models
 
@@ -58,6 +62,25 @@ const platformSelectModel = computed({
   },
 })
 
+const supporterOptions: SelectOption[] = [
+  { label: 'Supporter', value: 'true' },
+  { label: 'Non-supporter', value: 'false' },
+]
+
+const supporterSelectModel = computed({
+  get: () => supporterFilter.value !== '' ? supporterOptions.filter(o => o.value === supporterFilter.value) : [],
+  set: (val: SelectOption[] | undefined) => {
+    supporterFilter.value = val && val.length > 0 ? (val[0]?.value ?? '') : ''
+  },
+})
+
+const countrySelectModel = computed({
+  get: () => countryFilter.value !== '' ? props.countryOptions.filter(o => o.value === countryFilter.value) : [],
+  set: (val: Array<{ label: string, value: string }> | undefined) => {
+    countryFilter.value = val && val.length > 0 ? (val[0]?.value ?? '') : ''
+  },
+})
+
 function clearFilters() {
   emit('clearFilters')
 }
@@ -74,7 +97,9 @@ function clearFilters() {
     <Select v-model="statusSelectModel" :options="props.statusOptions" placeholder="Status" :expand="isBelowMedium" show-clear />
     <Select v-model="providerSelectModel" :options="props.providerOptions" placeholder="Auth provider" :expand="isBelowMedium" show-clear />
     <Select v-model="platformSelectModel" :options="props.platformOptions" placeholder="Platform" :expand="isBelowMedium" show-clear />
-    <Button v-if="search || roleFilter || statusFilter || providerFilter || platformFilter" plain outline :expand="isBelowMedium" :disabled="!search && !roleFilter && !statusFilter && !providerFilter && !platformFilter" @click="clearFilters">
+    <Select v-model="supporterSelectModel" :options="supporterOptions" placeholder="Supporter" :expand="isBelowMedium" show-clear />
+    <Select v-model="countrySelectModel" :options="props.countryOptions" placeholder="Country" :expand="isBelowMedium" show-clear searchable />
+    <Button v-if="search || roleFilter || statusFilter || providerFilter || platformFilter || supporterFilter || countryFilter" plain outline :expand="isBelowMedium" :disabled="!search && !roleFilter && !statusFilter && !providerFilter && !platformFilter && !supporterFilter && !countryFilter" @click="clearFilters">
       Clear Filters
     </Button>
   </Flex>

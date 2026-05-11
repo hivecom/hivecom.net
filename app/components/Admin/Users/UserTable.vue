@@ -14,6 +14,7 @@ import UserLink from '@/components/Shared/UserLink.vue'
 import { useAdminUserTableData } from '@/composables/useAdminUserTableData'
 import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { getCountryInfo } from '@/lib/utils/country'
 import UserActions from './UserActions.vue'
 import UserFilters from './UserFilters.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
@@ -93,6 +94,10 @@ const {
   statusFilter,
   providerFilter,
   platformFilter,
+  supporterFilter,
+  countryFilter,
+  availableCountries,
+  fetchCountries,
   fetchUsers,
   setPage,
   setSort,
@@ -142,7 +147,7 @@ const shouldShowPagination = computed(() => totalCount.value > adminTablePerPage
 
 // ─── Filters ─────────────────────────────────────────────────────────────────
 
-const isFiltered = computed(() => search.value !== '' || roleFilter.value !== '' || statusFilter.value !== '' || providerFilter.value !== '' || platformFilter.value !== '')
+const isFiltered = computed(() => search.value !== '' || roleFilter.value !== '' || statusFilter.value !== '' || providerFilter.value !== '' || platformFilter.value !== '' || supporterFilter.value !== '' || countryFilter.value !== '')
 
 function clearFilters() {
   search.value = ''
@@ -150,6 +155,8 @@ function clearFilters() {
   statusFilter.value = ''
   providerFilter.value = ''
   platformFilter.value = ''
+  supporterFilter.value = ''
+  countryFilter.value = ''
 }
 
 function handleSearchEnter() {
@@ -160,7 +167,7 @@ function handleSearchEnter() {
 // ─── Sorting ─────────────────────────────────────────────────────────────────
 
 // Columns that default to 'asc' when first clicked; everything else defaults to 'desc'
-const ascDefaultCols = new Set<AdminUserSortCol>(['username', 'role'])
+const ascDefaultCols = new Set<AdminUserSortCol>(['username'])
 
 function handleSort(col: AdminUserSortCol) {
   if (sortCol.value === col) {
@@ -259,7 +266,7 @@ watchDebounced(search, () => {
 }, { debounce: 300 })
 
 // Filters: immediate re-fetch on change
-watch([roleFilter, statusFilter, providerFilter, platformFilter], () => {
+watch([roleFilter, statusFilter, providerFilter, platformFilter, supporterFilter, countryFilter], () => {
   page.value = 1
   void fetchUsers()
 })
@@ -336,7 +343,10 @@ watch(
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
-onBeforeMount(() => void fetchUsers())
+onBeforeMount(() => {
+  void fetchUsers()
+  void fetchCountries()
+})
 
 defineExpose({ refresh: fetchUsers })
 </script>
@@ -356,10 +366,13 @@ defineExpose({ refresh: fetchUsers })
         v-model:status-filter="statusFilter"
         v-model:provider-filter="providerFilter"
         v-model:platform-filter="platformFilter"
+        v-model:supporter-filter="supporterFilter"
+        v-model:country-filter="countryFilter"
         :role-options="roleOptions"
         :status-options="statusOptions"
         :provider-options="providerOptions"
         :platform-options="platformOptions"
+        :country-options="availableCountries"
         @clear-filters="clearFilters"
         @search-enter="handleSearchEnter"
       />
@@ -380,10 +393,13 @@ defineExpose({ refresh: fetchUsers })
           v-model:status-filter="statusFilter"
           v-model:provider-filter="providerFilter"
           v-model:platform-filter="platformFilter"
+          v-model:supporter-filter="supporterFilter"
+          v-model:country-filter="countryFilter"
           :role-options="roleOptions"
           :status-options="statusOptions"
           :provider-options="providerOptions"
           :platform-options="platformOptions"
+          :country-options="availableCountries"
           @clear-filters="clearFilters"
           @search-enter="handleSearchEnter"
         />
@@ -403,7 +419,7 @@ defineExpose({ refresh: fetchUsers })
         </Flex>
       </Flex>
 
-      <div class="table-loading-wrapper" :class="{ 'table-loading': loading && !initialLoad }">
+      <Flex class="table-loading-wrapper" :class="{ 'table-loading': loading && !initialLoad }">
         <TableContainer>
           <Table.Root v-if="rows.length > 0" separate-cells>
             <template #header>
@@ -505,10 +521,16 @@ defineExpose({ refresh: fetchUsers })
 
                 <!-- Username -->
                 <Table.Cell class="username-cell">
-                  <div class="username-content">
+                  <Flex expand y-center gap="xs">
                     <UserAvatar :user-id="user.id" :size="20" show-preview />
                     <UserLink :user-id="user.id" />
-                  </div>
+                    <Tooltip v-if="getCountryInfo(user.country)" placement="top">
+                      <template #tooltip>
+                        <div>{{ getCountryInfo(user.country)?.name }}</div>
+                      </template>
+                      <span class="country-flag">{{ getCountryInfo(user.country)?.emoji }}</span>
+                    </Tooltip>
+                  </Flex>
                 </Table.Cell>
 
                 <!-- Email -->
@@ -697,9 +719,9 @@ defineExpose({ refresh: fetchUsers })
             No users found
           </Alert>
         </TableContainer>
-      </div>
+      </Flex>
     </Flex>
-  </Flex>
+  </flex>
 </template>
 
 <style lang="scss">
@@ -819,10 +841,10 @@ defineExpose({ refresh: fetchUsers })
   color: var(--color-text-light);
 }
 
-.username-content {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
+.country-flag {
+  font-size: var(--font-size-s);
+  line-height: 1;
+  cursor: default;
 }
 
 .username {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Enums } from '@/types/database.types'
-import { Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
 
 import { computed, ref, watch } from 'vue'
 import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
@@ -92,6 +92,7 @@ const allFriendships = ref<Array<{ id: number, friender: string, friend: string 
 // Fetch all friendships for this user
 const {
   data: friendshipsData,
+  loading: friendshipsLoading,
   refetch: refetchFriendships,
 } = useCachedFetch<Array<{ id: number, friender: string, friend: string }>>(
   () => ({
@@ -386,23 +387,26 @@ function getUserInitials(username: string): string {
             <Grid class="detail-item" columns="1fr 2fr" expand wrap>
               <span class="text-color-light text-bold">Friends:</span>
               <Flex gap="xs" y-center wrap>
-                <span class="text-s">
-                  {{ friends.length }} {{ friends.length === 1 ? 'friend' : 'friends' }}
-                </span>
-                <span v-if="sentRequests.length > 0" class="text-s text-color-light">
-                  • {{ sentRequests.length }} sent
-                </span>
-                <span v-if="incomingRequests.length > 0" class="text-s text-color-light">
-                  • {{ incomingRequests.length }} incoming
-                </span>
-                <Button
-                  v-if="friends.length > 0 || sentRequests.length > 0 || incomingRequests.length > 0"
-                  variant="gray"
-                  size="s"
-                  @click="showFriendsModal = true"
-                >
-                  View Details
-                </Button>
+                <Skeleton v-if="friendshipsLoading" :height="16" :width="80" :radius="4" />
+                <template v-else>
+                  <span class="text-s">
+                    {{ friends.length }} {{ friends.length === 1 ? 'friend' : 'friends' }}
+                  </span>
+                  <span v-if="sentRequests.length > 0" class="text-s text-color-light">
+                    - {{ sentRequests.length }} sent
+                  </span>
+                  <span v-if="incomingRequests.length > 0" class="text-s text-color-light">
+                    - {{ incomingRequests.length }} incoming
+                  </span>
+                  <Button
+                    v-if="friends.length > 0 || sentRequests.length > 0 || incomingRequests.length > 0"
+                    variant="gray"
+                    size="s"
+                    @click="showFriendsModal = true"
+                  >
+                    View Details
+                  </Button>
+                </template>
               </Flex>
             </Grid>
 
