@@ -47,13 +47,13 @@ const nextUpdateLabel = computed(() => {
             <span>Online Users</span><span>5 min</span>
           </Flex>
           <Flex x-between expand gap="s">
+            <span>Played Games (Steam)</span><span>5 min</span>
+          </Flex>
+          <Flex x-between expand gap="s">
             <span>Game Servers</span><span>5 min</span>
           </Flex>
           <Flex x-between expand gap="s">
             <span>Voice Servers</span><span>15 min</span>
-          </Flex>
-          <Flex x-between expand gap="s">
-            <span>Played Games</span><span>15 min</span>
           </Flex>
         </Flex>
       </template>

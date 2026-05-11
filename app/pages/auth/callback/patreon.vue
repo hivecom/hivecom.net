@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { Button, Card, Flex, Spinner } from '@dolanske/vui'
 
+import { useSessionReady } from '@/composables/useSessionReady'
 import '@/assets/elements/auth.scss'
 
 const route = useRoute()
 const supabase = useSupabaseClient()
+const { waitForSessionReady } = useSessionReady()
 
 const status = ref<'loading' | 'success' | 'error'>('loading')
 const errorMessage = ref('')
@@ -41,6 +43,7 @@ onMounted(async () => {
   }
 
   try {
+    await waitForSessionReady()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user)

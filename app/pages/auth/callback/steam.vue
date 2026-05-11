@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { Button, Card, Flex, Spinner } from '@dolanske/vui'
+import { useSessionReady } from '@/composables/useSessionReady'
+
+const { waitForSessionReady } = useSessionReady()
 
 const supabase = useSupabaseClient()
 const route = useRoute()
@@ -59,6 +62,9 @@ async function handleCallback() {
       openIdParams[key] = value
     }
   }
+
+  // Ensure session is loaded before invoking (waits for Loading.vue to complete getSession)
+  await waitForSessionReady()
 
   // Verify with Edge Function
   try {
@@ -149,11 +155,6 @@ onMounted(() => {
             </p>
           </div>
           <Flex gap="s" wrap>
-            <NuxtLink to="/auth/sign-in">
-              <Button variant="gray">
-                Sign In
-              </Button>
-            </NuxtLink>
             <NuxtLink to="/profile/settings">
               <Button variant="fill">
                 Go to Settings

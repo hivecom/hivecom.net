@@ -49,13 +49,9 @@ type GameserverRow = Pick<
 >;
 
 // presences_steam row with embedded profile
-interface SteamPresenceRow {
-  current_app_id: number | null;
-  last_app_id: number | null;
-  last_app_ended_at: string | null;
-  status: string | null;
-  profile: { rich_presence_enabled: boolean } | null;
-}
+type SteamPresenceRow = Pick<Tables<"presences_steam">, "current_app_id"> & {
+  profile: Pick<Tables<"profiles">, "rich_presence_enabled"> | null;
+};
 
 // Container row with embedded server
 interface ContainerWithServerRow {
@@ -118,7 +114,7 @@ Deno.serve(async (req: Request) => {
 
     const supabaseClient = createClient<Database>(supabaseUrl, supabaseKey);
 
-    const onlineThreshold = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const onlineThreshold = new Date(Date.now() - 6 * 60 * 1000).toISOString();
 
     // Bucket IDs to track storage metrics for
     const TRACKED_BUCKETS = [
@@ -183,11 +179,9 @@ Deno.serve(async (req: Request) => {
       supabaseClient
         .from("presences_steam")
         .select(
-          "current_app_id, last_app_id, last_app_ended_at, profile:profiles!presences_steam_profile_id_fkey(rich_presence_enabled)",
+          "current_app_id, profile:profiles!presences_steam_profile_id_fkey(rich_presence_enabled)",
         )
-        .or(
-          `current_app_id.not.is.null,last_app_ended_at.gte.${onlineThreshold}`,
-        ),
+        .not("current_app_id", "is", null),
       supabaseClient
         .from("gameservers")
         .select(
@@ -295,13 +289,7 @@ Deno.serve(async (req: Request) => {
     const byGame: Record<string, number> = {};
     for (const row of (presencesRes.data as SteamPresenceRow[] | null) ?? []) {
       if (!row.profile?.rich_presence_enabled) continue;
-      // Use current_app_id if actively playing, else fall back to last_app_id
-      // if the session ended within the metrics window (avoids counting stale sessions).
-      const appId = row.current_app_id ??
-        (row.last_app_ended_at != null &&
-            row.last_app_ended_at >= onlineThreshold
-          ? row.last_app_id
-          : null);
+      const appId = row.current_app_id;
       if (appId == null) continue;
       const gameId = steamIdToGameId.get(appId);
       if (gameId == null) continue; // not a tracked game
@@ -313,11 +301,7 @@ Deno.serve(async (req: Request) => {
     const bySteamGame: Record<string, number> = {};
     for (const row of (presencesRes.data as SteamPresenceRow[] | null) ?? []) {
       if (!row.profile?.rich_presence_enabled) continue;
-      const appId = row.current_app_id ??
-        (row.last_app_ended_at != null &&
-            row.last_app_ended_at >= onlineThreshold
-          ? row.last_app_id
-          : null);
+      const appId = row.current_app_id;
       if (appId == null) continue;
       const key = String(appId);
       bySteamGame[key] = (bySteamGame[key] ?? 0) + 1;

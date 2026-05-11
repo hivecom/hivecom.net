@@ -48,33 +48,6 @@ async function fetchAlerts() {
       })
     }
 
-    // Check for no upcoming events
-    const { data: events } = await supabase
-      .from('events')
-      .select('id, date')
-      .gte('date', now.toISOString())
-
-    if (!events || events.length === 0) {
-      // Get the most recent past event to use as timestamp reference
-      const { data: lastEvent } = await supabase
-        .from('events')
-        .select('date')
-        .lt('date', now.toISOString())
-        .order('date', { ascending: false })
-        .limit(1)
-        .single()
-
-      const referenceTime = lastEvent ? new Date(lastEvent.date) : now
-      newAlerts.push({
-        id: 'no-events',
-        severity: 'warning',
-        title: 'No Upcoming Official One-off Events',
-        message: 'Have you thought of organizing something?',
-        icon: 'ph:calendar-x',
-        timestamp: referenceTime,
-      })
-    }
-
     // Check for inaccessible Docker Control servers
     const { data: inaccessibleServers, error: inaccessibleServersError } = await supabase
       .from('servers')
@@ -247,7 +220,7 @@ onBeforeMount(() => {
   padding: var(--space-xxl);
   color: var(--color-text-light);
   font-size: var(--font-size-s);
-  padding-bottom: 52px;
+  padding-bottom: 44px;
 }
 
 .alerts-card {

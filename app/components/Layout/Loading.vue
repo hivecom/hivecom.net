@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import SharedLogo from '@/components/Shared/Logo.vue'
 import { useInitialUserPreferences } from '@/composables/useInitialUserPreferences'
+import { useSessionReady } from '@/composables/useSessionReady'
 
 // Add loading state to prevent FOUC (Flash of Unstyled Content)
 const isLoading = ref(true)
@@ -8,6 +9,7 @@ const isFadingOut = ref(false)
 const isContentReady = ref(false)
 
 const { applyUserPreferences } = useInitialUserPreferences()
+const { resolveSessionReady } = useSessionReady()
 
 // Load content and then fade out loading screen
 onMounted(async () => {
@@ -16,6 +18,7 @@ onMounted(async () => {
     // already applied before the loading screen lifts. This is a no-op for
     // guests - the composable guards against a null user internally.
     await applyUserPreferences()
+    resolveSessionReady()
 
     // Mark content as ready first (render behind loading screen)
     setTimeout(() => {

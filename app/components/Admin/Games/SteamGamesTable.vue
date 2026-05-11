@@ -6,6 +6,7 @@ import { Alert, Badge, Button, defineTable, Flex, Input, paginate, Pagination, T
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 
 import GameForm from '@/components/Admin/Games/GameForm.vue'
+
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
@@ -17,6 +18,7 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { invalidateGamesCache } from '@/composables/useDataGames'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useUserId } from '@/composables/useUserId'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const WHITESPACE_RE = /\s+/g
 
@@ -39,6 +41,7 @@ const errorMessage = ref('')
 const steamGames = ref<RpcSteamGame[]>([])
 const trackedSteamIds = ref<Set<number>>(new Set())
 const search = ref('')
+const isBelowMedium = useBreakpoint('<m')
 
 // Required to satisfy VUI's TableSelectionProvideSymbol context for Table.Root
 defineTable(steamGames, { pagination: { enabled: false }, select: false })
@@ -48,6 +51,7 @@ defineTable(steamGames, { pagination: { enabled: false }, select: false })
 const page = ref(1)
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 const totalCount = ref(0)
+const steamRichPresenceCount = ref<number | null>(null)
 
 const sortCol = ref<'name' | 'created_at'>('name')
 const sortDir = ref<'asc' | 'desc'>('asc')
@@ -99,6 +103,15 @@ function sortIcon(col: 'name' | 'created_at'): string {
 }
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
+
+async function fetchSteamRichPresenceCount() {
+  const { count } = await supabase
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .not('steam_id', 'is', null)
+    .eq('rich_presence_enabled', true)
+  steamRichPresenceCount.value = count ?? 0
+}
 
 async function fetchTrackedIds() {
   const { data } = await supabase.from('games').select('steam_id').not('steam_id', 'is', null)
@@ -161,7 +174,7 @@ watch(adminTablePerPage, () => {
 // ─── Initial load ─────────────────────────────────────────────────────────────
 
 onBeforeMount(async () => {
-  await Promise.all([fetchSteamGames(), fetchTrackedIds()])
+  await Promise.all([fetchSteamGames(), fetchTrackedIds(), fetchSteamRichPresenceCount()])
 
   if (metrics.value === null)
     fetchMetrics()
@@ -234,17 +247,38 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
     </Alert>
 
     <Flex v-else-if="initialLoad" gap="s" column expand>
-      <Flex x-between y-center gap="s" expand>
-        <Input v-model="search" placeholder="Search Steam games..." size="s" />
+      <Flex x-between y-center gap="s" wrap expand>
+        <Input v-model="search" placeholder="Search Steam games..." size="s" :expand="isBelowMedium">
+          <template #start>
+            <Icon name="ph:magnifying-glass" />
+          </template>
+        </Input>
         <span class="text-color-lighter text-s">Total -</span>
+        <Badge v-if="steamRichPresenceCount !== null" variant="info" filled>
+          {{ steamRichPresenceCount }} with Steam linked & rich presence
+        </Badge>
       </Flex>
       <TableSkeleton :columns="5" :rows="10" :show-actions="false" />
     </Flex>
 
     <Flex v-else gap="s" column expand>
-      <Flex x-between y-center gap="s" expand>
-        <Input v-model="search" placeholder="Search Steam games..." size="s" />
-        <span class="text-color-lighter text-s">Total {{ totalCount }}</span>
+      <Flex x-between y-center gap="s" wrap expand>
+        <Input v-model="search" placeholder="Search Steam games..." size="s" :expand="isBelowMedium">
+          <template #start>
+            <Icon name="ph:magnifying-glass" />
+          </template>
+        </Input>
+        <Flex y-center x-between :expand="isBelowMedium" :style="isBelowMedium ? { flexDirection: 'row-reverse' } : {}">
+          <Tooltip v-if="steamRichPresenceCount !== null">
+            <Badge size="s" variant="neutral" filled>
+              {{ steamRichPresenceCount }} Users Providing Data
+            </Badge>
+            <template #tooltip>
+              <p>Users with a Steam account linked and rich presence enabled</p>
+            </template>
+          </Tooltip>
+          <span class="text-color-lighter text-s">Total {{ totalCount }}</span>
+        </Flex>
       </Flex>
 
       <div class="table-loading-wrapper" :class="{ 'table-loading': loading && !initialLoad }">

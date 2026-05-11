@@ -447,6 +447,12 @@ onUnmounted(() => {
   margin-bottom: var(--space-xl);
 }
 
+:deep(.overflow.is-horizontal .overflow-content > *) {
+  min-width: 320px;
+  width: 320px;
+  max-width: 320px;
+}
+
 .forum__latest-skeleton {
   display: inline-flex;
   flex-direction: column;
