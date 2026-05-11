@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     }
 
     // Build the return URL for Steam callback (goes back to frontend)
-    const returnUrl = `${baseUrl}/auth/callback/steam`;
+    const returnUrl = `${baseUrl}/auth/callback/steam/`;
 
     // Create state parameter with mode and redirect info
     const state = btoa(JSON.stringify({ mode, redirect }));

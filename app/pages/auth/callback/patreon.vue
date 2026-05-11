@@ -6,13 +6,13 @@ import '@/assets/elements/auth.scss'
 
 const supabase = useSupabaseClient()
 const { waitForSessionReady } = useSessionReady()
+const route = useRoute()
 
 const status = ref<'loading' | 'success' | 'error'>('loading')
 const errorMessage = ref('')
 
-const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
-const code = (searchParams.get('code') ?? '').trim()
-const stateStr = searchParams.get('state') ?? ''
+const code = typeof route.query.code === 'string' ? route.query.code.trim() : ''
+const stateStr = typeof route.query.state === 'string' ? route.query.state : ''
 
 let redirectTarget = '/profile/settings'
 
