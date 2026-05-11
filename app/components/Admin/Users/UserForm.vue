@@ -28,6 +28,7 @@ const props = defineProps<{
     patreon_id: string | null
     discord_id: string | null
     steam_id: string | null
+    teamspeak_identity_count?: number | null
     introduction: string | null
     markdown: string | null
     banned: boolean
@@ -39,6 +40,7 @@ const props = defineProps<{
     website?: string | null
     public?: boolean
     rich_presence_enabled?: boolean
+    has_teamspeak?: boolean
   } | null
   isEditMode: boolean
 }>()
@@ -772,6 +774,11 @@ function clearBirthday() {
           :errors="steamIdValidation.error ? [steamIdValidation.error] : undefined"
           :disabled="!canEditForm"
         />
+
+        <div class="help-text">
+          <Icon name="mdi:teamspeak" />
+          <span>TeamSpeak: {{ props.user?.has_teamspeak ? 'Identities linked' : 'No identities linked' }}</span>
+        </div>
       </Flex>
 
       <!-- Supporter Status Section -->

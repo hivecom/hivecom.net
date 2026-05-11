@@ -56,6 +56,7 @@ const props = defineProps<{
     badges?: ProfileBadge[]
     public?: boolean
     rich_presence_enabled?: boolean
+    has_teamspeak?: boolean
     confirmed?: boolean
     website?: string | null
   } | null
@@ -462,7 +463,7 @@ function getUserInitials(username: string): string {
 
         <!-- Platform Connections -->
         <Flex
-          v-if="user.patreon_id || user.discord_id || user.steam_id"
+          v-if="user.patreon_id || user.discord_id || user.steam_id || user.has_teamspeak"
           gap="s"
           :column="isBelowSmall"
           :wrap="!isBelowSmall"
@@ -516,6 +517,25 @@ function getUserInitials(username: string): string {
                     <span class="platform-id">{{ user.patreon_id }}</span>
                   </Flex>
                 </CopyClipboard>
+              </Grid>
+            </Flex>
+          </Card>
+
+          <Card v-if="user.has_teamspeak" separators class="card-bg connection-card" expand>
+            <template #header>
+              <Flex x-between y-center>
+                <Flex gap="xs" y-center>
+                  <Icon name="mdi:teamspeak" />
+                  <h6>TeamSpeak</h6>
+                </Flex>
+                <Icon class="text-color-light" name="ph:link" />
+              </Flex>
+            </template>
+
+            <Flex column gap="s" expand>
+              <Grid class="detail-item" :columns="2" expand>
+                <span class="text-color-light text-bold">Status:</span>
+                <span class="text-s">Identities linked</span>
               </Grid>
             </Flex>
           </Card>

@@ -32,6 +32,7 @@ export interface AdminUserRecord {
   website: string | null
   public: boolean
   rich_presence_enabled: boolean
+  has_teamspeak: boolean
   // joined fields
   role: string | null
   email: string | null
@@ -73,6 +74,7 @@ export interface AdminUserProfile {
   website: string | null
   public: boolean
   rich_presence_enabled: boolean
+  has_teamspeak: boolean
   email: string | null
   role?: string | null
   confirmed?: boolean
@@ -105,6 +107,8 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
   const search = ref('')
   const roleFilter = ref('')
   const statusFilter = ref('')
+  const providerFilter = ref('')
+  const platformFilter = ref('')
 
   // ─── Fetch ───────────────────────────────────────────────────────────────
 
@@ -120,6 +124,8 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
         p_search: search.value,
         p_role: roleFilter.value,
         p_status: statusFilter.value,
+        p_provider: providerFilter.value,
+        p_platform: platformFilter.value,
         p_sort_col: sortCol.value,
         p_sort_dir: sortDir.value,
         p_limit: perPage.value,
@@ -129,45 +135,43 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
       if (error != null)
         throw error
 
-      users.value = (data ?? []).map((row): AdminUserRecord => {
-        const r = row as typeof row & { rich_presence_enabled?: boolean | null }
-        return {
-          id: row.user_id,
-          username: row.username,
-          country: row.country,
-          birthday: row.birthday,
-          created_at: row.created_at,
-          modified_at: row.modified_at,
-          modified_by: row.modified_by,
-          supporter_lifetime: row.supporter_lifetime ?? false,
-          supporter_patreon: row.supporter_patreon ?? false,
-          badges: row.badges ?? [],
-          patreon_id: row.patreon_id,
-          steam_id: row.steam_id,
-          discord_id: row.discord_id,
-          introduction: row.introduction,
-          markdown: row.markdown,
-          banned: row.banned ?? false,
-          ban_reason: row.ban_reason,
-          ban_start: row.ban_start,
-          ban_end: row.ban_end,
-          last_seen: row.last_seen,
-          website: row.website,
-          public: row.public ?? false,
-          rich_presence_enabled: r.rich_presence_enabled ?? false,
-          role: r.role,
-          email: r.email,
-          is_confirmed: r.is_confirmed ?? false,
-          discord_display_name: r.discord_display_name,
-          auth_provider: r.auth_provider,
-          auth_providers: row.auth_providers ?? [],
-          platform_count: row.platform_count ?? 0,
-          is_supporter: row.is_supporter ?? false,
-          is_banned: row.is_banned ?? false,
-          role_sort: row.role_sort ?? 0,
-          total_count: Number(row.total_count ?? 0),
-        }
-      })
+      users.value = (data ?? []).map((row): AdminUserRecord => ({
+        id: row.user_id,
+        username: row.username,
+        country: row.country,
+        birthday: row.birthday,
+        created_at: row.created_at,
+        modified_at: row.modified_at,
+        modified_by: row.modified_by,
+        supporter_lifetime: row.supporter_lifetime ?? false,
+        supporter_patreon: row.supporter_patreon ?? false,
+        badges: row.badges ?? [],
+        patreon_id: row.patreon_id,
+        steam_id: row.steam_id,
+        discord_id: row.discord_id,
+        introduction: row.introduction,
+        markdown: row.markdown,
+        banned: row.banned ?? false,
+        ban_reason: row.ban_reason,
+        ban_start: row.ban_start,
+        ban_end: row.ban_end,
+        last_seen: row.last_seen,
+        website: row.website,
+        public: row.public ?? false,
+        rich_presence_enabled: row.rich_presence_enabled ?? false,
+        has_teamspeak: row.has_teamspeak ?? false,
+        role: row.role,
+        email: row.email,
+        is_confirmed: row.is_confirmed ?? false,
+        discord_display_name: row.discord_display_name,
+        auth_provider: row.auth_provider,
+        auth_providers: row.auth_providers ?? [],
+        platform_count: row.platform_count ?? 0,
+        is_supporter: row.is_supporter ?? false,
+        is_banned: row.is_banned ?? false,
+        role_sort: row.role_sort ?? 0,
+        total_count: Number(row.total_count ?? 0),
+      }))
 
       totalCount.value = users.value[0]?.total_count ?? 0
     }
@@ -220,6 +224,7 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
       website: user.website,
       public: user.public,
       rich_presence_enabled: user.rich_presence_enabled,
+      has_teamspeak: user.has_teamspeak,
       email: user.email,
       role: user.role,
       confirmed: user.is_confirmed,
@@ -241,6 +246,8 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
     search,
     roleFilter,
     statusFilter,
+    providerFilter,
+    platformFilter,
     fetchUsers,
     setPage,
     setSort,

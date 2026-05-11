@@ -91,6 +91,8 @@ const {
   search,
   roleFilter,
   statusFilter,
+  providerFilter,
+  platformFilter,
   fetchUsers,
   setPage,
   setSort,
@@ -114,6 +116,19 @@ const statusOptions: SelectOption[] = [
   { label: 'Banned', value: 'banned' },
 ]
 
+const providerOptions: SelectOption[] = [
+  { label: 'Email', value: 'email' },
+  { label: 'Discord', value: 'discord' },
+  { label: 'Google', value: 'google' },
+]
+
+const platformOptions: SelectOption[] = [
+  { label: 'Steam', value: 'steam' },
+  { label: 'Discord', value: 'discord' },
+  { label: 'Patreon', value: 'patreon' },
+  { label: 'TeamSpeak', value: 'teamspeak' },
+]
+
 // ─── Action state ─────────────────────────────────────────────────────────────
 
 const userAction = ref<UserActionInternal | null>(null)
@@ -127,12 +142,14 @@ const shouldShowPagination = computed(() => totalCount.value > adminTablePerPage
 
 // ─── Filters ─────────────────────────────────────────────────────────────────
 
-const isFiltered = computed(() => search.value !== '' || roleFilter.value !== '' || statusFilter.value !== '')
+const isFiltered = computed(() => search.value !== '' || roleFilter.value !== '' || statusFilter.value !== '' || providerFilter.value !== '' || platformFilter.value !== '')
 
 function clearFilters() {
   search.value = ''
   roleFilter.value = ''
   statusFilter.value = ''
+  providerFilter.value = ''
+  platformFilter.value = ''
 }
 
 function handleSearchEnter() {
@@ -203,6 +220,7 @@ function getPlatformInfo(platform: string) {
     steam: { icon: 'ph:steam-logo', label: 'Steam', color: 'var(--color-text-blue)' },
     discord: { icon: 'ph:discord-logo', label: 'Discord', color: 'var(--color-text-purple)' },
     patreon: { icon: 'ph:patreon-logo', label: 'Patreon', color: 'var(--color-accent)' },
+    teamspeak: { icon: 'mdi:teamspeak', label: 'TeamSpeak', color: 'var(--color-text-blue)' },
   }
   return map[platform] ?? { icon: 'ph:question', label: 'Unknown', color: 'var(--color-text-light)' }
 }
@@ -241,7 +259,7 @@ watchDebounced(search, () => {
 }, { debounce: 300 })
 
 // Filters: immediate re-fetch on change
-watch([roleFilter, statusFilter], () => {
+watch([roleFilter, statusFilter, providerFilter, platformFilter], () => {
   page.value = 1
   void fetchUsers()
 })
@@ -336,8 +354,12 @@ defineExpose({ refresh: fetchUsers })
         v-model:search="search"
         v-model:role-filter="roleFilter"
         v-model:status-filter="statusFilter"
+        v-model:provider-filter="providerFilter"
+        v-model:platform-filter="platformFilter"
         :role-options="roleOptions"
         :status-options="statusOptions"
+        :provider-options="providerOptions"
+        :platform-options="platformOptions"
         @clear-filters="clearFilters"
         @search-enter="handleSearchEnter"
       />
@@ -356,8 +378,12 @@ defineExpose({ refresh: fetchUsers })
           v-model:search="search"
           v-model:role-filter="roleFilter"
           v-model:status-filter="statusFilter"
+          v-model:provider-filter="providerFilter"
+          v-model:platform-filter="platformFilter"
           :role-options="roleOptions"
           :status-options="statusOptions"
+          :provider-options="providerOptions"
+          :platform-options="platformOptions"
           @clear-filters="clearFilters"
           @search-enter="handleSearchEnter"
         />
@@ -608,8 +634,17 @@ defineExpose({ refresh: fetchUsers })
                       </CopyClipboard>
                     </Tooltip>
 
+                    <Tooltip v-if="user.has_teamspeak" placement="top">
+                      <template #tooltip>
+                        <div>TeamSpeak identities linked</div>
+                      </template>
+                      <Button variant="gray" size="s" square class="platform-button teamspeak">
+                        <Icon :name="getPlatformInfo('teamspeak').icon" size="16" />
+                      </Button>
+                    </Tooltip>
+
                     <span
-                      v-if="(user.steam_id == null || user.steam_id === '') && (user.discord_id == null || user.discord_id === '') && (user.patreon_id == null || user.patreon_id === '')"
+                      v-if="(user.steam_id == null || user.steam_id === '') && (user.discord_id == null || user.discord_id === '') && (user.patreon_id == null || user.patreon_id === '') && !user.has_teamspeak"
                       class="text-color-lightest text-s"
                     >
                       No connections
@@ -711,6 +746,13 @@ defineExpose({ refresh: fetchUsers })
     &:hover {
       background-color: var(--color-bg-accent-lowered);
       color: var(--color-accent);
+    }
+  }
+
+  &.teamspeak {
+    &:hover {
+      background-color: var(--color-bg-blue-lowered);
+      color: var(--color-text-blue);
     }
   }
 }

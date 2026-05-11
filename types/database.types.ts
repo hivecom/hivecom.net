@@ -2287,6 +2287,8 @@ export type Database = {
         Args: {
           p_limit?: number
           p_offset?: number
+          p_platform?: string
+          p_provider?: string
           p_role?: string
           p_search?: string
           p_sort_col?: string
@@ -2307,6 +2309,7 @@ export type Database = {
           discord_display_name: string
           discord_id: string
           email: string
+          has_teamspeak: boolean
           introduction: string
           is_banned: boolean
           is_confirmed: boolean

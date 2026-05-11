@@ -13,17 +13,44 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  standalone: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const isMobile = useBreakpoint('<s')
 </script>
 
 <template>
-  <!-- Mobile: custom centered card, no VUI Alert icon fighting layout -->
-  <div v-if="isMobile" class="error-alert-mobile">
-    <Flex column gap="xs" style="align-items: center; text-align: center;">
-      <Icon name="ph:warning-diamond" size="32" class="error-alert-mobile__icon" />
-      <p class="error-alert-mobile__message">
+  <!-- Standalone: centered layout for use inside cards/page sections -->
+  <div v-if="props.standalone" class="error-alert-standalone">
+    <Alert variant="danger" filled>
+      <Flex column gap="s" x-center y-center>
+        <Icon name="ph:warning-diamond" size="48" class="standalone-icon" />
+        <p class="standalone-message">
+          {{ props.message }}
+        </p>
+        <p v-if="props.error" class="text-s text-color-red py-m">
+          {{ props.error }}
+        </p>
+        <NuxtLink :to="`mailto:${constants.SUPPORT.EMAIL}`">
+          <Button variant="link" size="s">
+            <template #start>
+              <Icon name="ph:envelope-simple" />
+            </template>
+            Contact Support
+          </Button>
+        </NuxtLink>
+      </Flex>
+    </Alert>
+  </div>
+
+  <!-- Mobile: stacked centered layout -->
+  <Alert v-else-if="isMobile" variant="danger" filled>
+    <Flex column gap="xs" x-center>
+      <Icon name="ph:warning-diamond" size="32" class="standalone-icon" />
+      <p class="standalone-message">
         {{ props.message }}
       </p>
       <NuxtLink :to="`mailto:${constants.SUPPORT.EMAIL}`">
@@ -38,9 +65,9 @@ const isMobile = useBreakpoint('<s')
         {{ props.error }}
       </p>
     </Flex>
-  </div>
+  </Alert>
 
-  <!-- Desktop: original VUI Alert, side-by-side -->
+  <!-- Desktop: side-by-side -->
   <Alert v-else variant="danger" filled>
     <Flex y-center x-between gap="s">
       <p>{{ props.message }}</p>
@@ -60,19 +87,19 @@ const isMobile = useBreakpoint('<s')
 </template>
 
 <style scoped>
-.error-alert-mobile {
-  background-color: color-mix(in srgb, var(--color-text-red) 15%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-text-red) 35%, transparent);
-  border-radius: var(--border-radius-m);
-  padding: var(--space-m) var(--space-l);
+.error-alert-standalone {
   width: 100%;
+  :deep(.vui-alert-icon) {
+    display: none;
+  }
 }
 
-.error-alert-mobile__icon {
+.standalone-icon {
   color: var(--color-text-red);
 }
 
-.error-alert-mobile__message {
+.standalone-message {
   font-weight: 600;
+  text-align: center;
 }
 </style>
