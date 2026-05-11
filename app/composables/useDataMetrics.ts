@@ -18,7 +18,7 @@ export const PERIOD_CONFIGS: Record<MetricsPeriod, PeriodConfig> = {
   '6h': { label: 'Last 6 Hours', hours: 6, bucketMs: 5 * 60 * 1000 },
   '24h': { label: 'Last 24 Hours', hours: 24, bucketMs: 15 * 60 * 1000 },
   '7d': { label: 'Last 7 Days', hours: 168, bucketMs: 60 * 60 * 1000 },
-  '14d': { label: 'Last 14 Days', hours: 336, bucketMs: 24 * 60 * 60 * 1000 },
+  '14d': { label: 'Last 14 Days', hours: 336, bucketMs: 2 * 60 * 60 * 1000 },
   '30d': { label: 'Last 30 Days', hours: 720, bucketMs: 3 * 60 * 60 * 1000 },
   '90d': { label: 'Last 90 Days', hours: 2160, bucketMs: 24 * 60 * 60 * 1000 },
 }
@@ -390,10 +390,24 @@ export function useDataMetrics() {
 
     const delay = msUntilNextCollection() + METRICS_REFRESH_BUFFER_MS
     const doRefresh = async () => {
+      // Only the 6h view buckets at 5-min intervals matching the snapshot cadence.
+      // For all other periods the bucket size is larger than the collection interval,
+      // so appending a raw snapshot would create a spurious bar at the wrong
+      // granularity. Instead, evict the cache and re-fetch from the DB.
+      if (period !== '6h') {
+        const cacheKey = `metrics:history:${period}`
+        metricsCache.delete(cacheKey)
+        await fetchMetricsHistoryFromDB(supabase, period).then((entries) => {
+          metricsHistory.value = entries
+        })
+        scheduleRefresh(period)
+        return
+      }
+
       const snapshot = await fetchMetricsFromStorage(supabase)
       if (snapshot === null) {
         // Fetch failed - append a null entry for this bucket so the gap shows
-        const bucketMs = PERIOD_CONFIGS[period].bucketMs
+        const bucketMs = PERIOD_CONFIGS['6h'].bucketMs
         const bucketKey = Math.floor(Date.now() / bucketMs) * bucketMs
         metricsHistory.value = [
           ...metricsHistory.value,
@@ -422,7 +436,7 @@ export function useDataMetrics() {
         const ttl = Math.max(0, collectedAt + METRICS_COLLECTION_INTERVAL - Date.now())
         metricsCache.set(METRICS_CACHE_KEY, snapshot, ttl)
 
-        const bucketMs = PERIOD_CONFIGS[period].bucketMs
+        const bucketMs = PERIOD_CONFIGS['6h'].bucketMs
         const bucketKey = Math.floor(Date.now() / bucketMs) * bucketMs
         const newEntry: MetricsHistoryEntry = {
           capturedAt: new Date(bucketKey).toISOString(),
@@ -448,7 +462,7 @@ export function useDataMetrics() {
           discussionsNewReplies: snapshot.discussions.newReplies,
         }
 
-        // Replace the last bucket if it matches (null placeholder), otherwise append
+        // Replace the last bucket if it matches, otherwise append
         const last = metricsHistory.value.at(-1)
         const lastBucket = last ? Math.floor(new Date(last.capturedAt).getTime() / bucketMs) * bucketMs : null
         if (lastBucket === bucketKey) {
@@ -458,9 +472,8 @@ export function useDataMetrics() {
           metricsHistory.value = [...metricsHistory.value, newEntry]
         }
 
-        // Evict the history cache so next full load re-fetches from DB
-        const cacheKey = `metrics:history:${period}`
-        metricsCache.delete(cacheKey)
+        // Evict the 6h history cache so next full load re-fetches from DB
+        metricsCache.delete('metrics:history:6h')
       }
 
       scheduleRefresh(period)
