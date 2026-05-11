@@ -463,7 +463,7 @@ export default defineNuxtConfig({
       failOnError: false,
       crawlLinks: true,
       routes: ['/', '/robots.txt', '/sitemap.xml', '/llms.txt'],
-      ignore: ['/auth/callback'],
+      ignore: ['/auth/callback', '/auth/oauth', '/auth/confirm', '/auth/confirm-password'],
     },
   },
   supabase: {
