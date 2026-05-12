@@ -66,7 +66,6 @@ const HIGHLIGHT_START_MS = 1200
 export function useGlobeRenderer() {
   // Internal mutable state - none of this needs to be reactive.
   let globeInstance: GlobeInstance | null = null
-  let globeMaterial: import('three').MeshStandardMaterial | null = null
 
   const base = useGlobeBase()
 
@@ -448,7 +447,6 @@ export function useGlobeRenderer() {
       onResize: (w, h) => updateScanlinePassResolution(w, h),
     })
     globeInstance = baseResult.globeInstance
-    globeMaterial = baseResult.globeMaterial
 
     const { spawnArc, refreshHexes } = buildArcScheduler(
       allCentroids,
@@ -552,7 +550,6 @@ export function useGlobeRenderer() {
     base.destroy()
 
     globeInstance = null
-    globeMaterial = null
     scanlinePass = null
     bloomPass = null
     afterimagePass = null
