@@ -177,7 +177,7 @@ onBeforeMount(fetchRolePermissions)
   <template v-else>
     <Input
       v-model="search"
-      placeholder="Seach for a role"
+      placeholder="Search for a role"
       :expand="isBelowMedium"
     >
       <template #start>

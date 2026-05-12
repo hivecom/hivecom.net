@@ -68,6 +68,7 @@ const emit = defineEmits<{
 }>()
 
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+const externalCountryFilter = defineModel<string>('countryFilter', { default: '' })
 
 // ─── Session user ─────────────────────────────────────────────────────────────
 
@@ -107,6 +108,12 @@ const {
 // defineTable is used solely to provide the VUI table injection context
 // (TableSelectionProvideSymbol). All pagination/sorting is server-driven.
 const { rows } = defineTable(users, { pagination: { enabled: false }, select: false })
+
+// Sync external countryFilter into internal state
+watch(externalCountryFilter, (val) => {
+  if (val !== countryFilter.value)
+    countryFilter.value = val
+})
 
 // ─── Filter options ───────────────────────────────────────────────────────────
 

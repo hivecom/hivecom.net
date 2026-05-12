@@ -2,6 +2,7 @@
 import type { AdminUserProfile } from '@/composables/useAdminUserTableData'
 import { Alert, Flex, Tab, Tabs } from '@dolanske/vui'
 import RolesGrid from '@/components/Admin/Roles/RolesGrid.vue'
+import AdminGlobe from '@/components/Admin/Users/AdminGlobe.vue'
 
 import UserDetails from '@/components/Admin/Users/UserDetails.vue'
 import UserForm from '@/components/Admin/Users/UserForm.vue'
@@ -49,11 +50,13 @@ if (!canViewUsers.value && !canViewRoles.value) {
 
 // Tab management (pattern aligned with admin/network)
 const availableTabs = computed(() => {
-  const tabs: { label: string, value: 'Users' | 'Roles' }[] = []
+  const tabs: { label: string, value: 'Users' | 'Roles' | 'Globe' }[] = []
   if (canViewUsers.value)
     tabs.push({ label: 'Users', value: 'Users' })
   if (canViewRoles.value)
     tabs.push({ label: 'Roles', value: 'Roles' })
+  if (canViewUsers.value)
+    tabs.push({ label: 'Globe', value: 'Globe' })
   return tabs
 })
 
@@ -77,6 +80,7 @@ const selectedUser = ref<AdminUserProfile | null>(null)
 const showUserDetails = ref(false)
 const userAction = ref<UserAction | null>(null)
 const refreshSignal = ref(0)
+const countryFilter = ref('')
 const userRefreshTrigger = ref(false)
 const detailActionLoading = ref<Partial<Record<ActionType, boolean>>>({})
 
@@ -84,6 +88,11 @@ const detailActionLoading = ref<Partial<Record<ActionType, boolean>>>({})
 const showUserForm = ref(false)
 const isEditMode = ref(false)
 const userToEdit = ref<AdminUserProfile | null>(null)
+
+function handleCountryClick(iso: string) {
+  activeTab.value = 'Users'
+  countryFilter.value = iso
+}
 
 // Close the details panel when leaving the Users tab.
 watch(activeTab, (tab) => {
@@ -396,6 +405,7 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
 
         <UserTable
           v-model:refresh-signal="refreshSignal"
+          v-model:country-filter="countryFilter"
           :can-view-user-emails="canViewUserEmails"
           :focus-user-id="focusedUserId"
           @user-selected="handleUserSelected"
@@ -405,10 +415,12 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
       </Flex>
 
       <!-- Roles Tab -->
-      <Flex v-if="canViewRoles" v-show="activeTab === 'Roles'" column gap="l" expand>
+      <Flex v-if="canViewRoles" v-show="activeTab === 'Roles'" column gap="m" expand>
         <RolesGrid />
       </Flex>
     </Flex>
+    <!-- Globe Tab -->
+    <AdminGlobe v-show="activeTab === 'Globe'" @country-click="handleCountryClick" />
 
     <!-- User Details Side Panel -->
     <UserDetails
@@ -435,5 +447,4 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
 </template>
 
 <style lang="scss" scoped>
-
 </style>

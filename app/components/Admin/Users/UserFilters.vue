@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Select } from '@dolanske/vui'
+import { Button, Flex, Grid, Input, Select } from '@dolanske/vui'
 import { computed } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -93,12 +93,22 @@ function clearFilters() {
         <Icon name="ph:magnifying-glass" />
       </template>
     </Input>
-    <Select v-model="roleSelectModel" :options="props.roleOptions" placeholder="Role" :expand="isBelowMedium" show-clear />
-    <Select v-model="statusSelectModel" :options="props.statusOptions" placeholder="Status" :expand="isBelowMedium" show-clear />
-    <Select v-model="providerSelectModel" :options="props.providerOptions" placeholder="Auth provider" :expand="isBelowMedium" show-clear />
-    <Select v-model="platformSelectModel" :options="props.platformOptions" placeholder="Platform" :expand="isBelowMedium" show-clear />
-    <Select v-model="supporterSelectModel" :options="supporterOptions" placeholder="Supporter" :expand="isBelowMedium" show-clear />
-    <Select v-model="countrySelectModel" :options="props.countryOptions" placeholder="Country" :expand="isBelowMedium" show-clear searchable />
+    <Grid v-if="isBelowMedium" :columns="2" gap="s" expand>
+      <Select v-model="roleSelectModel" :options="props.roleOptions" placeholder="Role" expand show-clear />
+      <Select v-model="statusSelectModel" :options="props.statusOptions" placeholder="Status" expand show-clear />
+      <Select v-model="providerSelectModel" :options="props.providerOptions" placeholder="Auth provider" expand show-clear />
+      <Select v-model="platformSelectModel" :options="props.platformOptions" placeholder="Platform" expand show-clear />
+      <Select v-model="supporterSelectModel" :options="supporterOptions" placeholder="Supporter" expand show-clear />
+      <Select v-model="countrySelectModel" :options="props.countryOptions" placeholder="Country" expand show-clear searchable />
+    </Grid>
+    <template v-else>
+      <Select v-model="roleSelectModel" :options="props.roleOptions" placeholder="Role" show-clear />
+      <Select v-model="statusSelectModel" :options="props.statusOptions" placeholder="Status" show-clear />
+      <Select v-model="providerSelectModel" :options="props.providerOptions" placeholder="Auth provider" show-clear />
+      <Select v-model="platformSelectModel" :options="props.platformOptions" placeholder="Platform" show-clear />
+      <Select v-model="supporterSelectModel" :options="supporterOptions" placeholder="Supporter" show-clear />
+      <Select v-model="countrySelectModel" :options="props.countryOptions" placeholder="Country" show-clear searchable />
+    </template>
     <Button v-if="search || roleFilter || statusFilter || providerFilter || platformFilter || supporterFilter || countryFilter" plain outline :expand="isBelowMedium" :disabled="!search && !roleFilter && !statusFilter && !providerFilter && !platformFilter && !supporterFilter && !countryFilter" @click="clearFilters">
       Clear Filters
     </Button>
