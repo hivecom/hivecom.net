@@ -11,6 +11,7 @@ import { useGlobePerf } from '@/composables/useGlobePerf'
 import {
   getHexBaseColor,
   getHighlightColor,
+  getTextColor,
 } from '@/lib/globe/GlobeTheme'
 import { getCountryEmoji } from '@/lib/utils/country'
 
@@ -19,7 +20,7 @@ const emit = defineEmits<{ countryClick: [iso: string] }>()
 const globeWrapEl = ref<HTMLDivElement | null>(null)
 
 const { onlineCountsByCountry, loading, fetchOnlineUsers, fetchCountryUsers, fetchCountryAllUsers } = useAdminGlobeData()
-const { latestMetrics, fetchLatestMetrics } = useDataMetrics()
+const { latestMetrics, loadingLatest, fetchLatestMetrics } = useDataMetrics()
 const { params: perfParams } = useGlobePerf()
 
 // Map of country ISO -> online count
@@ -98,6 +99,11 @@ const hoveredHasUsers = computed(() => {
   return count > 0
 })
 
+// True once the globe has finished its initial mount sequence
+const globeReady = ref(false)
+// Dim the globe while data is loading after initial render (mirrors UserTable's table-loading pattern)
+const isGlobeLoading = computed(() => globeReady.value && (loading.value || loadingLatest.value))
+
 let globeInstance: import('globe.gl').GlobeInstance | null = null
 let globeBaseDestroy: (() => void) | null = null
 
@@ -157,8 +163,15 @@ onMounted(async () => {
         const baseHex = getHexBaseColor()
         if (!iso)
           return baseHex
-        if (hoveredIso.value && iso.toUpperCase() === hoveredIso.value)
-          return getHighlightColor()
+        if (hoveredIso.value && iso.toUpperCase() === hoveredIso.value) {
+          const isoUpper = iso.toUpperCase()
+          const hasUsers = mode.value === 'all'
+            ? (allMap.value.get(isoUpper) ?? 0) > 0
+            : (onlineMap.value.get(isoUpper) ?? 0) > 0
+          const [tr, tg, tb] = parseHex(getTextColor())
+          const alpha = hasUsers ? 1.0 : 0.15
+          return `rgba(${tr},${tg},${tb},${alpha})`
+        }
         if (mode.value === 'all') {
           const count = allMap.value.get(iso.toUpperCase()) ?? 0
           if (count > 0) {
@@ -290,6 +303,7 @@ onMounted(async () => {
     globeInstance.controls().addEventListener('start', onInteract)
 
     refreshHexColors()
+    globeReady.value = true
   }
   catch (error) {
     console.error('Error initializing admin globe:', error)
@@ -335,12 +349,22 @@ onBeforeUnmount(() => {
       </ButtonGroup>
     </div>
     <div class="admin-globe-badge">
-      <Badge variant="neutral">
-        {{ mode === 'online' ? `${totalOnlineCount} Online` : `${totalAllCount} Users` }}
-      </Badge>
+      <Tooltip placement="bottom">
+        <Badge :variant="mode === 'online' ? 'accent' : 'neutral'">
+          <template v-if="(mode === 'online' && loading) || (mode === 'all' && loadingLatest)">
+            <Skeleton width="60px" height="10px" />
+          </template>
+          <template v-else>
+            {{ mode === 'online' ? `${totalOnlineCount} Online` : `${totalAllCount} Users` }}
+          </template>
+        </Badge>
+        <template #tooltip>
+          Only users with a country set
+        </template>
+      </Tooltip>
     </div>
 
-    <div ref="globeWrapEl" class="admin-globe-wrap" :style="{ cursor: hoveredHasUsers ? 'pointer' : 'default' }">
+    <div ref="globeWrapEl" class="admin-globe-wrap" :class="{ 'admin-globe-wrap--loading': isGlobeLoading }" :style="{ cursor: hoveredHasUsers ? 'pointer' : 'default' }">
       <Flex v-if="loading" class="admin-globe-loading" x-center y-center>
         <Spinner size="l" />
       </Flex>
@@ -416,6 +440,12 @@ onBeforeUnmount(() => {
   border-radius: var(--border-radius-m);
   overflow: hidden;
   background: var(--color-bg-lowered);
+  transition: opacity var(--transition-slow);
+
+  &--loading {
+    opacity: 0.4;
+    pointer-events: none;
+  }
 }
 
 .admin-globe-loading {
@@ -426,10 +456,9 @@ onBeforeUnmount(() => {
 
 .admin-globe-badge {
   position: absolute;
-  z-index: 100;
+  z-index: 10;
   top: 10px;
   right: 10px;
-  pointer-events: none;
 }
 </style>
 

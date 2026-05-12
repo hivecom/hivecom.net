@@ -24,6 +24,7 @@ onMounted(async () => {
       sourceCentroids,
       featureCollection,
       scaledArcCount,
+      countryUserCounts,
     } = await loadGlobeData()
 
     const maxArcs = scaledArcCount(perfParams.value.maxArcs)
@@ -35,6 +36,7 @@ onMounted(async () => {
       sourceCentroids,
       maxArcs,
       perfParams.value,
+      countryUserCounts,
     )
 
     // Start the frame-time probe after the globe is visible so we're sampling

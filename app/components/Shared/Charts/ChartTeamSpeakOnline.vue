@@ -197,6 +197,12 @@ const localChartOptions: ChartOptions<'bar'> = {
       },
     },
   },
+  datasets: {
+    bar: {
+      barPercentage: 1.0,
+      categoryPercentage: 0.7,
+    },
+  },
   scales: {
     y: {
       beginAtZero: true,

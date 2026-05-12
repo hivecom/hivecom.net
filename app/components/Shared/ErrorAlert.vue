@@ -92,6 +92,12 @@ const isMobile = useBreakpoint('<s')
   :deep(.vui-alert-icon) {
     display: none;
   }
+
+  .vui-alert {
+    min-height: 256px;
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-bg-red-lowered) !important;
+  }
 }
 
 .standalone-icon {

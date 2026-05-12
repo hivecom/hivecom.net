@@ -6,13 +6,14 @@ import { Alert, Button, CopyClipboard, defineTable, Flex, paginate, Pagination, 
 import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ElapsedTimeIndicator from '@/components/Shared/ElapsedTimeIndicator.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
+
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useAdminUserTableData } from '@/composables/useAdminUserTableData'
-import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
+
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
 import UserActions from './UserActions.vue'
@@ -189,22 +190,6 @@ function sortIcon(col: AdminUserSortCol): string {
   if (sortCol.value !== col)
     return 'ph:arrows-down-up'
   return sortDir.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'
-}
-
-// ─── Last-seen helpers (inline, per-row) ─────────────────────────────────────
-
-function getLastSeenVariantFor(lastSeen: string) {
-  const status = lastSeen ? getUserActivityStatus(lastSeen) : null
-  return getLastSeenVariant(status)
-}
-
-function getLastSeenTextFor(lastSeen: string): string {
-  if (!lastSeen)
-    return 'Never'
-  const status = getUserActivityStatus(lastSeen)
-  if (!status || Number.isNaN(status.lastSeenTimestamp.getTime()))
-    return 'Never'
-  return status.lastSeenText || 'Never'
 }
 
 // ─── Auth provider helpers ────────────────────────────────────────────────────
@@ -608,15 +593,7 @@ defineExpose({ refresh: fetchUsers })
 
                 <!-- Last Seen -->
                 <Table.Cell class="last-seen-cell">
-                  <Flex gap="xs" y-center>
-                    <span v-if="getLastSeenVariantFor(user.last_seen) === 'online'" class="online-dot" />
-                    <span
-                      class="text-s"
-                      :class="getLastSeenTextClass(getLastSeenVariantFor(user.last_seen))"
-                    >
-                      {{ getLastSeenTextFor(user.last_seen) }}
-                    </span>
-                  </Flex>
+                  <ElapsedTimeIndicator :date="user.last_seen" />
                 </Table.Cell>
 
                 <!-- Platform connections -->
@@ -693,7 +670,7 @@ defineExpose({ refresh: fetchUsers })
 
                 <!-- Joined -->
                 <Table.Cell class="joined-cell">
-                  <TimestampDate :date="user.created_at" />
+                  <ElapsedTimeIndicator :date="user.created_at" :active-label="null" />
                 </Table.Cell>
 
                 <!-- Actions -->

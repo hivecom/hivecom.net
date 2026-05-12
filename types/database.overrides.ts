@@ -95,6 +95,8 @@ interface TableColumnOverrides {
       allow_custom_css: boolean
       admin_mini_sidebar: boolean
       admin_expanded_layout: boolean
+      admin_asset_view_mode: 'table' | 'grid'
+      admin_asset_flat_view: boolean
     }
   }
 

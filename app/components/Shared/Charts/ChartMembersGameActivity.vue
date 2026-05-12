@@ -245,6 +245,12 @@ const localChartOptions = {
       stacked: true,
     },
   },
+  datasets: {
+    bar: {
+      barPercentage: 1.0,
+      categoryPercentage: 0.7,
+    },
+  },
 }
 
 const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions as ChartOptions<'bar'>) : {})

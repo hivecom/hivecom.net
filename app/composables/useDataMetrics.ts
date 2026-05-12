@@ -495,6 +495,8 @@ export function useDataMetrics() {
   })
 
   const fetchLatestMetrics = async () => {
+    if (latestMetrics.value != null)
+      return latestMetrics.value
     loadingLatest.value = true
     try {
       const { data, error: dbError } = await supabase

@@ -7,6 +7,7 @@ import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, inject, ref, watch } from 'vue'
 
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ElapsedTimeIndicator from '@/components/Shared/ElapsedTimeIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { getContainerStatus } from '@/lib/containerStatus'
@@ -659,10 +660,10 @@ onBeforeMount(fetchContainers)
               </Table.Cell>
               <Table.Cell>
                 <TimestampDate v-if="container.Started" :date="container.Started" />
-                <span v-else>Not started</span>
+                <span v-else class="text-color-lighter text-xs">Not started</span>
               </Table.Cell>
               <Table.Cell>
-                <TimestampDate :date="container['Last Report']" />
+                <ElapsedTimeIndicator :date="container['Last Report']" :active-label="null" />
               </Table.Cell>
               <Table.Cell v-if="canManageResource" @click.stop>
                 <ContainerActions

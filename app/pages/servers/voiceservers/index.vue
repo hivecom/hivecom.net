@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Flex } from '@dolanske/vui'
+import { Flex, Tooltip } from '@dolanske/vui'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
 import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
@@ -30,7 +30,11 @@ defineOgImage('Default', {
     <section class="page-title">
       <Flex y-center x-between gap="s" expand>
         <h1>Voice Servers</h1>
-        <OnlineBadge :count="totalOnline" label="Online" singular="online" clickable @click="activityModalOpen = true" />
+        <Tooltip placement="bottom" text="Excludes music bots">
+          <span>
+            <OnlineBadge :count="totalOnline" label="Online" singular="online" clickable @click="activityModalOpen = true" />
+          </span>
+        </Tooltip>
       </Flex>
       <p>View live channels and connect with the community on TeamSpeak.</p>
     </section>

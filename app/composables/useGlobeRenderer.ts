@@ -25,7 +25,9 @@ import {
   getHexBaseColor,
   getHighlightColor,
   getRingRgb,
+  getTextColor,
   isLightTheme,
+  parseColor,
 } from '@/lib/globe/GlobeTheme'
 
 // ---------------------------------------------------------------------------
@@ -339,11 +341,18 @@ export function useGlobeRenderer() {
       if (src == null || dst == null)
         return
 
+      const srcPt = src.points && src.points.length > 0
+        ? src.points[Math.floor(Math.random() * src.points.length)]!
+        : src
+      const dstPt = dst.points && dst.points.length > 0
+        ? dst.points[Math.floor(Math.random() * dst.points.length)]!
+        : dst
+
       const arc: ArcDatum = {
-        startLat: src.lat,
-        startLng: src.lng,
-        endLat: dst.lat,
-        endLng: dst.lng,
+        startLat: srcPt.lat,
+        startLng: srcPt.lng,
+        endLat: dstPt.lat,
+        endLng: dstPt.lng,
       }
       const srcRing: RingDatum = { lat: src.lat, lng: src.lng }
       const dstRing: RingDatum = { lat: dst.lat, lng: dst.lng }
@@ -433,6 +442,7 @@ export function useGlobeRenderer() {
     sourceCentroids: CountryPoint[],
     maxConcurrentArcs: number,
     perfParams: GlobePerfParams,
+    countryUserCounts: Map<string, number> = new Map(),
   ): Promise<GlobeInstance> {
     const startLng = Math.random() * 360 - 180
     const startLat = 10 + Math.random() * 50
@@ -454,6 +464,8 @@ export function useGlobeRenderer() {
       maxConcurrentArcs,
     )
 
+    const maxUserCount = countryUserCounts.size > 0 ? Math.max(1, ...countryUserCounts.values()) : 1
+
     globeInstance
       .enablePointerInteraction(false)
       .hexPolygonColor((d: unknown) => {
@@ -467,14 +479,23 @@ export function useGlobeRenderer() {
         if (iso == null || iso === '')
           return baseHex
         const entry = highlighted.get(iso)
-        if (entry == null)
-          return baseHex
-        const elapsed = performance.now() - entry.started
-        if (elapsed >= entry.duration) {
-          highlighted.delete(iso)
-          return baseHex
+        if (entry != null) {
+          const elapsed = performance.now() - entry.started
+          if (elapsed >= entry.duration) {
+            highlighted.delete(iso)
+          }
+          else {
+            return blendHex(getHighlightColor(), baseHex, elapsed / entry.duration)
+          }
         }
-        return blendHex(getHighlightColor(), baseHex, elapsed / entry.duration)
+        // Dim ambient highlight for countries with users (max 25% alpha)
+        const userCount = countryUserCounts.get(iso.toUpperCase())
+        if (userCount != null && userCount > 0) {
+          const alpha = (userCount / maxUserCount) * 0.05
+          const [r, g, b] = parseColor(getTextColor())
+          return `rgba(${r},${g},${b},${alpha})`
+        }
+        return baseHex
       })
       .showAtmosphere(false)
       .atmosphereColor(ATMOSPHERE_COLOR)

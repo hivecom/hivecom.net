@@ -2,7 +2,7 @@
 import type { QueryData } from '@supabase/supabase-js'
 import type { MetricsHistoryEntry } from '@/composables/useDataMetrics'
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onMounted, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
@@ -431,7 +431,10 @@ function clearFilters() {
               <span v-else class="text-color-lighter text-xs">No query</span>
             </Table.Cell>
             <Table.Cell>
-              {{ gameserver.Container || '-' }}
+              <Badge v-if="gameserver.Container" variant="neutral" outline size="s">
+                {{ gameserver.Container }}
+              </Badge>
+              <span v-else>-</span>
             </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions

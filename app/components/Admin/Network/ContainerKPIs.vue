@@ -78,11 +78,9 @@ async function fetchContainerMetrics() {
           break
         case 'stopped':
           newMetrics.stopped++
-          newMetrics.unhealthy++
           break
         case 'stale':
           newMetrics.stale++
-          newMetrics.unhealthy++
           break
         case 'unhealthy':
         case 'restarting':

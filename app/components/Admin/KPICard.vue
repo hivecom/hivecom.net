@@ -9,7 +9,7 @@ const props = defineProps<{
   value: string | number
   isLoading?: boolean
   icon?: string
-  variant?: 'primary' | 'success' | 'warning' | 'danger' | 'gray'
+  variant?: 'primary' | 'success' | 'warning' | 'danger' | 'gray' | 'info'
   prefix?: string
   suffix?: string
   description?: string
@@ -163,6 +163,11 @@ const linkAttrs = computed(() => {
       background-color: var(--color-bg-medium);
       color: var(--color-text-light);
     }
+
+    &--info {
+      background-color: var(--color-bg-blue-lowered);
+      color: var(--color-text-blue);
+    }
   }
 
   &__label {
@@ -192,6 +197,10 @@ const linkAttrs = computed(() => {
 
     &--gray {
       color: var(--color-text);
+    }
+
+    &--info {
+      color: var(--color-text-blue);
     }
   }
 

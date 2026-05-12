@@ -58,7 +58,7 @@ export interface GlobePerfParams {
 
 const PERF_PARAMS: Record<GlobeQualityTier, GlobePerfParams> = {
   high: {
-    maxArcs: 8,
+    maxArcs: 5,
     hexResolution: 3,
     hexCurvatureResolution: 5,
     hexDotResolution: 12,
@@ -70,7 +70,7 @@ const PERF_PARAMS: Record<GlobeQualityTier, GlobePerfParams> = {
     bgResScale: 0.2,
   },
   medium: {
-    maxArcs: 5,
+    maxArcs: 3,
     hexResolution: 3,
     hexCurvatureResolution: 8,
     hexDotResolution: 8,
@@ -82,7 +82,7 @@ const PERF_PARAMS: Record<GlobeQualityTier, GlobePerfParams> = {
     bgResScale: 0.1,
   },
   low: {
-    maxArcs: 3,
+    maxArcs: 2,
     hexResolution: 2,
     hexCurvatureResolution: 12,
     hexDotResolution: 6,

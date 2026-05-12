@@ -254,7 +254,7 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
           </template>
         </Input>
         <span class="text-color-lighter text-s">Total -</span>
-        <Badge v-if="steamRichPresenceCount !== null" variant="info" filled>
+        <Badge v-if="steamRichPresenceCount !== null" size="s" variant="neutral" filled>
           {{ steamRichPresenceCount }} with Steam linked & rich presence
         </Badge>
       </Flex>

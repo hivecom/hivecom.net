@@ -242,9 +242,7 @@ defineExpose({
                 :alt="entry.profile.username"
                 class="bulk-avatar-display__avatar-item"
               >
-                <template v-if="!entry.profile?.avatarUrl" #default>
-                  {{ getUserInitials(entry.profile.username) }}
-                </template>
+                {{ getUserInitials(entry.profile.username) }}
               </AvatarMedia>
             </NuxtLink>
 
@@ -256,9 +254,7 @@ defineExpose({
               :alt="entry.profile?.username || 'User'"
               class="bulk-avatar-display__avatar-item"
             >
-              <template v-if="!entry.profile?.avatarUrl" #default>
-                {{ entry.profile ? getUserInitials(entry.profile.username || 'User') : '?' }}
-              </template>
+              {{ entry.profile ? getUserInitials(entry.profile.username || 'User') : '?' }}
             </AvatarMedia>
 
             <Tooltip v-if="showOnlineIndicator && (getActivityStatus(entry.profile)?.isActive || getActivityStatus(entry.profile)?.isAway)">
@@ -360,18 +356,21 @@ defineExpose({
 
   &__avatar--supporter {
     .bulk-avatar-display__avatar-item {
-      border: 2px solid transparent;
-      background:
-        linear-gradient(var(--color-bg), var(--color-bg)) padding-box,
-        linear-gradient(120deg, #fdf4d4 0%, #f2c15a 45%, #c88a2a 100%) border-box;
-      background-size:
-        100% 100%,
-        220% 220%;
-      background-origin: border-box;
-      box-shadow:
-        0 0 16px rgba(253, 244, 212, 0.45),
-        0 0 20px rgba(0, 0, 0, 0.25);
-      animation: goldShimmer 14s ease-in-out infinite;
+      :deep(.avatar-media__image),
+      :deep(.vui-avatar) {
+        border: 2px solid transparent;
+        background:
+          linear-gradient(var(--color-bg), var(--color-bg)) padding-box,
+          linear-gradient(120deg, #fdf4d4 0%, #f2c15a 45%, #c88a2a 100%) border-box;
+        background-size:
+          100% 100%,
+          220% 220%;
+        background-origin: border-box;
+        box-shadow:
+          0 0 16px rgba(253, 244, 212, 0.45),
+          0 0 20px rgba(0, 0, 0, 0.25);
+        animation: goldShimmer 14s ease-in-out infinite;
+      }
     }
   }
 

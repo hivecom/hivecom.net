@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TeamSpeakIdentityRecord, TeamSpeakNormalizedChannel, TeamSpeakServerSnapshot, TeamSpeakSnapshot } from '@/types/teamspeak'
 import { Alert, Badge, Button, Card, Flex, Grid, PopoutHover, Select, Skeleton, Tooltip } from '@dolanske/vui'
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import constants from '~~/constants.json'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
@@ -30,25 +30,22 @@ const SPACER_DETECT_RE = /^\[l?spacer\d*\]/i
 const isMobile = useBreakpoint('<s')
 
 const { fetchMetricsHistory } = useDataMetrics()
-const histogramHistory = shallowRef<{ capturedAt: string, teamspeakOnline: number }[]>([])
-const histogramData = computed(() => histogramHistory.value.map(e => e.teamspeakOnline))
 
-onMounted(async () => {
-  const entries = await fetchMetricsHistory('14d')
-  // Group into daily buckets (average per day), keep last 14 days
-  const byDay = new Map<string, { capturedAt: string, values: number[] }>()
+const histogramHistory = shallowRef<{ capturedAt: string, max: number }[]>([])
+const histogramData = computed(() => histogramHistory.value.map(e => e.max))
+
+fetchMetricsHistory('14d').then((entries) => {
+  const byDay = new Map<string, { capturedAt: string, max: number }>()
   for (const e of entries) {
     const d = new Date(e.capturedAt)
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+    const val = e.teamspeakOnline ?? 0
     if (!byDay.has(key))
-      byDay.set(key, { capturedAt: e.capturedAt, values: [] })
-    byDay.get(key)!.values.push(e.teamspeakOnline ?? 0)
+      byDay.set(key, { capturedAt: e.capturedAt, max: val })
+    else
+      byDay.get(key)!.max = Math.max(byDay.get(key)!.max, val)
   }
-  const days = Array.from(byDay.values()).slice(-14)
-  histogramHistory.value = days.map(({ capturedAt, values }) => ({
-    capturedAt,
-    teamspeakOnline: Math.round(values.reduce((a, b) => a + b, 0) / values.length),
-  }))
+  histogramHistory.value = Array.from(byDay.values()).slice(-14)
 })
 
 const showActivityModal = ref(false)
@@ -779,9 +776,20 @@ const renderRowsByServer = computed(() => {
   return map
 })
 
+function serverClientCountNoBots(server: TeamSpeakServerSnapshot): number {
+  const channelMap = clientsByServerChannel.value[server.id]
+  if (!channelMap)
+    return 0
+  let total = 0
+  channelMap.forEach((list) => {
+    total += list.filter(client => !isMusicBot(server.id, client)).length
+  })
+  return total
+}
+
 // Emit total non-bot online count whenever selected server or snapshot changes
 watch(
-  () => snapshotLoading.value ? null : (selectedServer.value ? serverClientCount(selectedServer.value) : 0),
+  () => snapshotLoading.value ? null : (selectedServer.value ? serverClientCountNoBots(selectedServer.value) : 0),
   count => emit('update:totalOnline', count),
   { immediate: true },
 )

@@ -17,8 +17,14 @@ export function useAdminGlobeData() {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  // Cache: skip re-fetch if data is fresh (5 min TTL)
+  let cachedAt: number | null = null
+  const CACHE_TTL_MS = 5 * 60 * 1000
+
   // Fetches count of online users per country (last 15 min).
-  async function fetchOnlineUsers() {
+  async function fetchOnlineUsers(force = false) {
+    if (!force && cachedAt != null && Date.now() - cachedAt < CACHE_TTL_MS && onlineCountsByCountry.value.length > 0)
+      return
     loading.value = true
     error.value = null
 
@@ -45,6 +51,7 @@ export function useAdminGlobeData() {
       onlineCountsByCountry.value = Array.from(grouped.entries())
         .map(([country, count]) => ({ country, count }))
         .sort((a, b) => b.count - a.count)
+      cachedAt = Date.now()
     }
     catch (err: unknown) {
       error.value = (err as Error).message

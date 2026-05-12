@@ -38,6 +38,8 @@ export interface CountryPoint {
   lat: number
   lng: number
   iso?: string
+  /** Pre-sampled random points within the country polygon for arc spawn variety. */
+  points?: Array<{ lat: number, lng: number }>
 }
 
 // ---------------------------------------------------------------------------
@@ -49,6 +51,96 @@ const ISO3_RE = /^[A-Z]{3}$/
 
 /** Lowest meaningful country count before we fall back to the full globe. */
 const MIN_METRIC_COUNTRIES = 25
+
+/** Ray-cast point-in-polygon test for a single ring ([lng, lat][] GeoJSON order). */
+function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
+  let inside = false
+  let j = ring.length - 1
+  for (let i = 0; i < ring.length; i++) {
+    const pi = ring[i] ?? [0, 0]
+    const pj = ring[j] ?? [0, 0]
+    if (((pi[1] ?? 0) > lat) !== ((pj[1] ?? 0) > lat) && lng < (((pj[0] ?? 0) - (pi[0] ?? 0)) * (lat - (pi[1] ?? 0))) / ((pj[1] ?? 0) - (pi[1] ?? 0)) + (pi[0] ?? 0))
+      inside = !inside
+    j = i
+  }
+  return inside
+}
+
+/**
+ * Sample up to `n` random points that fall within a GeoJSON polygon geometry.
+ * Uses bbox rejection sampling with a fixed attempt cap.
+ * Points are snapped to H3 cell centers at `hexResolution` so they align with rendered hexes.
+ */
+async function samplePointsInPolygon(
+  geometry: CountryFeature['geometry'],
+  n: number,
+  hexResolution: number = 3,
+): Promise<Array<{ lat: number, lng: number }>> {
+  if (geometry == null)
+    return []
+
+  // Collect all outer rings (first ring of each polygon)
+  const rings: number[][][] = []
+  if (geometry.type === 'Polygon') {
+    if (geometry.coordinates[0])
+      rings.push(geometry.coordinates[0])
+  }
+  else if (geometry.type === 'MultiPolygon') {
+    // Pick the largest polygon by ring length for sampling
+    let best: number[][] | null = null
+    for (const poly of geometry.coordinates) {
+      const ring = poly[0]
+      if (ring && (best == null || ring.length > best.length))
+        best = ring
+    }
+    if (best)
+      rings.push(best)
+  }
+
+  if (rings.length === 0)
+    return []
+
+  const ring = rings[0]
+  if (ring == null)
+    return []
+
+  // Compute bbox
+  let minLng = Infinity
+  let maxLng = -Infinity
+  let minLat = Infinity
+  let maxLat = -Infinity
+  for (const pt of ring) {
+    const lng = pt[0] ?? 0
+    const lat = pt[1] ?? 0
+    if (lng < minLng)
+      minLng = lng
+    if (lng > maxLng)
+      maxLng = lng
+    if (lat < minLat)
+      minLat = lat
+    if (lat > maxLat)
+      maxLat = lat
+  }
+
+  const results: Array<{ lat: number, lng: number }> = []
+  const maxAttempts = n * 20
+  let attempts = 0
+  while (results.length < n && attempts < maxAttempts) {
+    attempts++
+    const lng = minLng + Math.random() * (maxLng - minLng)
+    const lat = minLat + Math.random() * (maxLat - minLat)
+    if (pointInRing(lng, lat, ring))
+      results.push({ lat, lng })
+  }
+
+  // Snap each point to its H3 cell center so arc origins align with rendered hexes
+  const { latLngToCell, cellToLatLng } = await import('h3-js')
+  return results.map(({ lat, lng }) => {
+    const cell = latLngToCell(lat, lng, hexResolution)
+    const [cellLat, cellLng] = cellToLatLng(cell)
+    return { lat: cellLat, lng: cellLng }
+  })
+}
 
 function polygonCentroid(
   coords: PolygonCoords | MultiPolygonCoords | undefined,
@@ -143,6 +235,8 @@ export interface GlobeDataResult {
    * relative to MIN_METRIC_COUNTRIES. Always between 1 and `maxArcs`.
    */
   scaledArcCount: (maxArcs: number) => number
+  /** ISO-2 -> user count map from the metrics snapshot. Empty if metrics unavailable. */
+  countryUserCounts: Map<string, number>
 }
 
 // ---------------------------------------------------------------------------
@@ -179,7 +273,7 @@ export function useGlobeData() {
       if (iso2 != null && iso2 !== '' && iso3 != null && iso3 !== '')
         iso3ToIso2.set(iso3, iso2)
 
-      allCentroids.push({ ...point, iso: iso2 })
+      allCentroids.push({ ...point, iso: iso2, points: await samplePointsInPolygon(feat.geometry, 5) })
     }
 
     if (allCentroids.length < 2)
@@ -188,16 +282,19 @@ export function useGlobeData() {
     // Attempt to narrow to countries that have platform users.
     let sourceCentroids = allCentroids
     let usingGlobalFallback = true
+    const countryUserCounts = new Map<string, number>()
 
     try {
       const metricsSnapshot = await fetchMetrics()
       const userCountries = metricsSnapshot?.members?.byCountry ?? {}
       const allowedIso = new Set<string>()
 
-      for (const code of Object.keys(userCountries)) {
+      for (const [code, count] of Object.entries(userCountries)) {
         const normalized = normalizeMetricCountryCode(code, iso3ToIso2)
-        if (normalized != null && normalized !== '')
+        if (normalized != null && normalized !== '') {
           allowedIso.add(normalized)
+          countryUserCounts.set(normalized, count)
+        }
       }
 
       const filtered = allCentroids.filter(
@@ -227,6 +324,7 @@ export function useGlobeData() {
       featureCollection,
       usingGlobalFallback,
       scaledArcCount,
+      countryUserCounts,
     }
   }
 

@@ -26,6 +26,8 @@ export function getDefaultUserSettings(): Tables<'settings'>['data'] {
     allow_custom_css: false,
     admin_mini_sidebar: false,
     admin_expanded_layout: false,
+    admin_asset_view_mode: 'table',
+    admin_asset_flat_view: false,
   }
 }
 

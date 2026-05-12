@@ -226,6 +226,10 @@ watch(profileError, (error) => {
         ? `User "${props.username}" was not found`
         : 'User not found'
     }
+    else if (!isLoggedIn.value) {
+      // RLS blocks unauthenticated reads on private profiles - surface a friendly hint
+      errorMessage.value = 'This profile could not be loaded. It may be private - sign in to view it.'
+    }
     else {
       errorMessage.value = error
     }
@@ -410,7 +414,7 @@ function openFriendsModal() {
   <div class="profile-view">
     <!-- Error State -->
     <template v-if="errorMessage">
-      <ErrorAlert :message="errorMessage" />
+      <ErrorAlert standalone :message="errorMessage" />
     </template>
 
     <!-- No Profile Found -->

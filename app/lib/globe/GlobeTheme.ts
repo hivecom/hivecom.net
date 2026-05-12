@@ -116,6 +116,10 @@ export function getHighlightColor(): string {
   return cssVar('--color-bg-accent-raised') || (isLightTheme() ? '#7ea34a' : '#69b103')
 }
 
+export function getTextColor(): string {
+  return cssVar('--color-text') || (isLightTheme() ? '#111111' : '#eeeeee')
+}
+
 export function getHexBaseColor(): string {
   return cssVar('--color-border') || (isLightTheme() ? '#dddddd' : '#333333')
 }

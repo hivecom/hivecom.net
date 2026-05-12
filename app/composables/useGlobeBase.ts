@@ -60,6 +60,7 @@ export function useGlobeBase() {
   let windowResizeHandler: (() => void) | null = null
   let themeObserver: MutationObserver | null = null
   let themeMedia: MediaQueryList | null = null
+  let wheelCleanup: (() => void) | null = null
 
   // ---------------------------------------------------------------------------
   // Theme
@@ -175,10 +176,58 @@ export function useGlobeBase() {
 
     globeInstance.controls().autoRotate = true
     globeInstance.controls().autoRotateSpeed = autoRotateSpeed
-    globeInstance.controls().enableZoom = enableZoom
+    // Disable built-in zoom - OrbitControls dolly is instant with no easing path.
+    // We drive zoom ourselves via a smooth rAF lerp on pointOfView altitude.
+    globeInstance.controls().enableZoom = false
 
     if (pointOfView) {
       globeInstance.pointOfView(pointOfView, 0)
+    }
+
+    // -------------------------------------------------------------------------
+    // Smooth zoom via wheel interception
+    // -------------------------------------------------------------------------
+
+    if (enableZoom) {
+      const MIN_ALT = 0.15
+      const MAX_ALT = 8.0
+      const ZOOM_SENSITIVITY = 0.0018
+      const LERP_FACTOR = 0.1
+
+      let targetAlt = globeInstance.pointOfView().altitude
+      let rafId: number | null = null
+
+      const animateZoom = () => {
+        if (!globeInstance)
+          return
+        const current = globeInstance.pointOfView().altitude
+        const delta = targetAlt - current
+        if (Math.abs(delta) < 0.0001) {
+          rafId = null
+          return
+        }
+        const next = current + delta * LERP_FACTOR
+        const pov = globeInstance.pointOfView()
+        globeInstance.pointOfView({ lat: pov.lat, lng: pov.lng, altitude: next }, 0)
+        rafId = requestAnimationFrame(animateZoom)
+      }
+
+      const onWheel = (e: WheelEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const current = globeInstance?.pointOfView().altitude ?? targetAlt
+        // normalise deltaY across deltaMode (DOM_DELTA_LINE, DOM_DELTA_PAGE)
+        let dy = e.deltaY
+        if (e.deltaMode === 1)
+          dy *= 24
+        else if (e.deltaMode === 2)
+          dy *= 400
+        targetAlt = Math.min(MAX_ALT, Math.max(MIN_ALT, current + dy * ZOOM_SENSITIVITY * current))
+        rafId ??= requestAnimationFrame(animateZoom)
+      }
+
+      container.addEventListener('wheel', onWheel, { passive: false, capture: true })
+      wheelCleanup = () => container.removeEventListener('wheel', onWheel, { capture: true })
     }
 
     // -------------------------------------------------------------------------
@@ -198,6 +247,9 @@ export function useGlobeBase() {
       themeMedia = null
       themeObserver?.disconnect()
       themeObserver = null
+
+      wheelCleanup?.()
+      wheelCleanup = null
 
       globeInstance?.pauseAnimation?.()
       globeInstance = null
