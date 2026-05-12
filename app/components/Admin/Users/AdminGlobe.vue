@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { GlobeInstance } from 'globe.gl'
 import type { CountryFeature, FeatureCollection } from '@/composables/useGlobeData'
 
 import { Badge, Button, ButtonGroup, Flex, Skeleton, Spinner, Tooltip } from '@dolanske/vui'
@@ -7,10 +6,9 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useAdminGlobeData } from '@/composables/useAdminGlobeData'
 import { useDataMetrics } from '@/composables/useDataMetrics'
+import { useGlobeBase } from '@/composables/useGlobeBase'
 import { useGlobePerf } from '@/composables/useGlobePerf'
 import {
-  BACKGROUND_COLOR,
-  getGlobeColor,
   getHexBaseColor,
   getHighlightColor,
 } from '@/lib/globe/GlobeTheme'
@@ -100,28 +98,10 @@ const hoveredHasUsers = computed(() => {
   return count > 0
 })
 
-let globeInstance: GlobeInstance | null = null
-let globeMaterial: import('three').MeshStandardMaterial | null = null
-let resizeObserver: ResizeObserver | null = null
-let themeObserver: MutationObserver | null = null
-let themeMedia: MediaQueryList | null = null
-let windowResizeHandler: (() => void) | null = null
+let globeInstance: import('globe.gl').GlobeInstance | null = null
+let globeBaseDestroy: (() => void) | null = null
 
-function applyGlobeColor() {
-  if (!globeMaterial)
-    return
-  globeMaterial.color.set(getGlobeColor())
-}
-
-function setupThemeWatcher() {
-  themeMedia = window.matchMedia?.('(prefers-color-scheme: light)') ?? null
-  themeMedia?.addEventListener('change', applyGlobeColor)
-  themeObserver = new MutationObserver(applyGlobeColor)
-  themeObserver.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['class', 'data-theme'],
-  })
-}
+const { init: initGlobeBase } = useGlobeBase()
 
 onMounted(async () => {
   if (!import.meta.client)
@@ -139,51 +119,23 @@ onMounted(async () => {
   })
 
   try {
-    if (typeof window !== 'undefined' && window.GPUShaderStage == null) {
-      window.GPUShaderStage = { VERTEX: 1, FRAGMENT: 2, COMPUTE: 4 }
-    }
-
     const res = await fetch('/geojson/countries.geojson')
     if (!res.ok)
       throw new Error(`Failed to load countries GeoJSON: ${res.status}`)
 
     const featureCollection = await res.json() as FeatureCollection
+    const { MeshBasicMaterial } = await import('three')
 
-    const Globe = (await import('globe.gl')).default
-    const { MeshStandardMaterial, MeshBasicMaterial } = await import('three')
-
-    globeInstance = new Globe(wrap)
-    globeMaterial = new MeshStandardMaterial({
-      color: getGlobeColor(),
-      roughness: 1,
-      metalness: 0,
+    const baseResult = await initGlobeBase({
+      container: wrap,
+      featureCollection,
+      perfParams: perfParams.value,
+      autoRotateSpeed: 0.5,
+      enableZoom: true,
+      pointOfView: { lat: 30, lng: 10, altitude: 2.2 },
     })
-
-    const setSize = () => {
-      const { width, height } = wrap.getBoundingClientRect()
-      if (width === 0 || height === 0)
-        return
-      globeInstance?.width(width).height(height)
-    }
-    setSize()
-
-    let resizeDebounce: ReturnType<typeof setTimeout> | null = null
-    const scheduleResize = () => {
-      if (resizeDebounce != null)
-        clearTimeout(resizeDebounce)
-      resizeDebounce = setTimeout(() => {
-        setSize()
-        resizeDebounce = null
-      }, 150)
-    }
-    // window resize handles browser window changes
-    windowResizeHandler = scheduleResize
-    window.addEventListener('resize', scheduleResize)
-    // ResizeObserver handles sidebar collapse / other layout shifts
-    resizeObserver = new ResizeObserver(scheduleResize)
-    resizeObserver.observe(wrap)
-
-    // Hovered country ISO - lifted to module scope
+    globeInstance = baseResult.globeInstance
+    globeBaseDestroy = baseResult.destroy
 
     const parseHex = (color: string): [number, number, number] => {
       const hex = color.replace(/^#/, '')
@@ -233,16 +185,6 @@ onMounted(async () => {
 
     globeInstance
       .enablePointerInteraction(true)
-      .globeMaterial(globeMaterial)
-      .hexPolygonsData(featureCollection.features)
-      .hexPolygonResolution(perfParams.value.hexResolution)
-      .hexPolygonCurvatureResolution(perfParams.value.hexCurvatureResolution)
-      .hexPolygonMargin(0.3)
-      .hexPolygonUseDots(true)
-      .hexPolygonDotResolution(perfParams.value.hexDotResolution)
-      .hexPolygonColor(() => getHexBaseColor())
-      .backgroundColor(BACKGROUND_COLOR)
-      .showAtmosphere(false)
       // Invisible polygon layer for whole-country hover detection
       // Filter out Bermuda (id: BMU) - its GeoJSON polygon covers most of the Atlantic
       .polygonsData(featureCollection.features.filter((f) => {
@@ -332,13 +274,6 @@ onMounted(async () => {
         }, 200)
       })
 
-    setupThemeWatcher()
-    applyGlobeColor()
-
-    globeInstance.controls().autoRotate = true
-    globeInstance.controls().autoRotateSpeed = 0.5
-    globeInstance.controls().enableZoom = true
-
     // Pause spin on drag, resume after 15s idle
     let idleTimer: ReturnType<typeof setTimeout> | null = null
     const resumeRotation = () => {
@@ -353,8 +288,6 @@ onMounted(async () => {
       idleTimer = setTimeout(resumeRotation, 15000)
     }
     globeInstance.controls().addEventListener('start', onInteract)
-
-    globeInstance.pointOfView({ lat: 30, lng: 10, altitude: 2.2 }, 0)
 
     refreshHexColors()
   }
@@ -372,13 +305,7 @@ onBeforeUnmount(() => {
     clearTimeout(tooltipClearTimer)
     tooltipClearTimer = null
   }
-  resizeObserver?.disconnect()
-  if (windowResizeHandler) {
-    window.removeEventListener('resize', windowResizeHandler)
-    windowResizeHandler = null
-  }
-  themeMedia?.removeEventListener('change', applyGlobeColor)
-  themeObserver?.disconnect()
+  globeBaseDestroy?.()
   globeInstance?._destructor?.()
   if (globeWrapEl.value)
     globeWrapEl.value.replaceChildren()

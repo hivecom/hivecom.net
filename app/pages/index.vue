@@ -14,7 +14,7 @@ definePageMeta({
 // Fetch data from database
 const user = useSupabaseUser()
 const { fetchMetrics, metrics: cachedMetrics } = useDataMetrics()
-const loading = ref(cachedMetrics.value === null)
+const loading = ref(true)
 const errorMessage = ref('')
 
 // Events via shared cache - no dedicated fetch needed here

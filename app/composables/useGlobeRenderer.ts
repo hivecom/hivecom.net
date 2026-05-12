@@ -15,14 +15,13 @@ import type { GlobePerfParams } from '@/composables/useGlobePerf'
 import { onBeforeUnmount } from 'vue'
 import scanPassFragSrc from '@/components/Landing/LandingHeroGlobeScanPass.frag.glsl?raw'
 import scanPassVertSrc from '@/components/Landing/LandingHeroGlobeScanPass.vert.glsl?raw'
+import { useGlobeBase } from '@/composables/useGlobeBase'
 
 import { SCAN_PASS_DEFAULTS, SCAN_PASS_LOW_PERF } from '@/lib/globe/GlobeShaders'
 import {
   ATMOSPHERE_COLOR,
-  BACKGROUND_COLOR,
   blendHex,
   getArcColor,
-  getGlobeColor,
   getHexBaseColor,
   getHighlightColor,
   getRingRgb,
@@ -69,6 +68,8 @@ export function useGlobeRenderer() {
   let globeInstance: GlobeInstance | null = null
   let globeMaterial: import('three').MeshStandardMaterial | null = null
 
+  const base = useGlobeBase()
+
   let scanlinePass:
     | import('three/examples/jsm/postprocessing/ShaderPass.js').ShaderPass
     | null = null
@@ -83,9 +84,8 @@ export function useGlobeRenderer() {
   let arcInterval: ReturnType<typeof setInterval> | null = null
   let timeouts: ReturnType<typeof setTimeout>[] = []
   let animationFrame: number | null = null
-  let resizeObserver: ResizeObserver | null = null
-  let themeObserver: MutationObserver | null = null
-  let themeMedia: MediaQueryList | null = null
+  let bloomThemeMedia: MediaQueryList | null = null
+  let bloomThemeObserver: MutationObserver | null = null
 
   const highlighted = new Map<string, { started: number, duration: number }>()
 
@@ -275,11 +275,8 @@ export function useGlobeRenderer() {
   // Theme helpers
   // ---------------------------------------------------------------------------
 
-  function applyGlobeColor() {
-    if (!globeMaterial)
-      return
-    globeMaterial.color.set(getGlobeColor())
-
+  // applyGlobeColor is called after base init to toggle bloom/afterimage
+  function applyPostProcessingTheme() {
     const light = isLightTheme()
 
     const maybeBloom = bloomPass as unknown as { enabled?: boolean } | null
@@ -291,17 +288,6 @@ export function useGlobeRenderer() {
     } | null
     if (maybeAfterimage != null)
       maybeAfterimage.enabled = !light
-  }
-
-  function setupThemeWatcher() {
-    themeMedia = window.matchMedia?.('(prefers-color-scheme: light)') ?? null
-    themeMedia?.addEventListener('change', applyGlobeColor)
-
-    themeObserver = new MutationObserver(applyGlobeColor)
-    themeObserver.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class', 'data-theme'],
-    })
   }
 
   // ---------------------------------------------------------------------------
@@ -449,30 +435,20 @@ export function useGlobeRenderer() {
     maxConcurrentArcs: number,
     perfParams: GlobePerfParams,
   ): Promise<GlobeInstance> {
-    // Polyfill for Linux/Firefox where GPUShaderStage might be missing.
-    if (typeof window !== 'undefined' && window.GPUShaderStage == null) {
-      window.GPUShaderStage = { VERTEX: 1, FRAGMENT: 2, COMPUTE: 4 }
-    }
+    const startLng = Math.random() * 360 - 180
+    const startLat = 10 + Math.random() * 50
 
-    const Globe = (await import('globe.gl')).default
-    const { MeshStandardMaterial } = await import('three')
-
-    globeInstance = new Globe(container)
-    globeMaterial = new MeshStandardMaterial({
-      color: getGlobeColor(),
-      roughness: 1,
-      metalness: 0,
+    const baseResult = await base.init({
+      container,
+      featureCollection,
+      perfParams,
+      autoRotateSpeed: -0.4,
+      enableZoom: false,
+      pointOfView: { lat: startLat, lng: startLng, altitude: 1.9 },
+      onResize: (w, h) => updateScanlinePassResolution(w, h),
     })
-
-    const setSize = () => {
-      const { width, height } = container.getBoundingClientRect()
-      globeInstance?.width(width).height(height)
-      updateScanlinePassResolution(width, height)
-    }
-    setSize()
-
-    resizeObserver = new ResizeObserver(setSize)
-    resizeObserver.observe(container)
+    globeInstance = baseResult.globeInstance
+    globeMaterial = baseResult.globeMaterial
 
     const { spawnArc, refreshHexes } = buildArcScheduler(
       allCentroids,
@@ -482,13 +458,6 @@ export function useGlobeRenderer() {
 
     globeInstance
       .enablePointerInteraction(false)
-      .globeMaterial(globeMaterial)
-      .hexPolygonsData(featureCollection.features)
-      .hexPolygonResolution(perfParams.hexResolution)
-      .hexPolygonCurvatureResolution(perfParams.hexCurvatureResolution)
-      .hexPolygonMargin(0.3)
-      .hexPolygonUseDots(true)
-      .hexPolygonDotResolution(perfParams.hexDotResolution)
       .hexPolygonColor((d: unknown) => {
         const feat = d as CountryFeature
         const iso
@@ -509,7 +478,6 @@ export function useGlobeRenderer() {
         }
         return blendHex(getHighlightColor(), baseHex, elapsed / entry.duration)
       })
-      .backgroundColor(BACKGROUND_COLOR)
       .showAtmosphere(false)
       .atmosphereColor(ATMOSPHERE_COLOR)
       .arcsData([])
@@ -529,18 +497,25 @@ export function useGlobeRenderer() {
       .ringRepeatPeriod(RING_REPEAT_PERIOD)
 
     await setupPostProcessing(perfParams)
-    setSize()
+    applyPostProcessingTheme()
 
-    setupThemeWatcher()
-    applyGlobeColor()
+    // Re-sync size after post-processing so passes and the globe renderer are
+    // initialised at the correct resolution. Without this, the scanline pass
+    // uses pre-init dimensions and bleeds until the next resize event.
+    const { width, height } = container.getBoundingClientRect()
+    if (width > 0 && height > 0) {
+      globeInstance.width(width).height(height)
+      updateScanlinePassResolution(width, height)
+    }
 
-    globeInstance.controls().autoRotate = true
-    globeInstance.controls().autoRotateSpeed = -0.4
-    globeInstance.controls().enableZoom = false
-
-    const startLng = Math.random() * 360 - 180
-    const startLat = 10 + Math.random() * 50
-    globeInstance.pointOfView({ lat: startLat, lng: startLng, altitude: 1.9 }, 0)
+    // Also re-apply bloom/afterimage toggling when theme changes
+    bloomThemeMedia = window.matchMedia?.('(prefers-color-scheme: light)') ?? null
+    bloomThemeMedia?.addEventListener('change', applyPostProcessingTheme)
+    bloomThemeObserver = new MutationObserver(applyPostProcessingTheme)
+    bloomThemeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme'],
+    })
 
     startTick(refreshHexes)
 
@@ -570,18 +545,13 @@ export function useGlobeRenderer() {
 
   function destroy() {
     clearTimers()
+    bloomThemeMedia?.removeEventListener('change', applyPostProcessingTheme)
+    bloomThemeMedia = null
+    bloomThemeObserver?.disconnect()
+    bloomThemeObserver = null
+    base.destroy()
 
-    themeObserver?.disconnect()
-    themeObserver = null
-    themeMedia?.removeEventListener('change', applyGlobeColor)
-    themeMedia = null
-
-    resizeObserver?.disconnect()
-    resizeObserver = null
-
-    globeInstance?.pauseAnimation?.()
     globeInstance = null
-
     globeMaterial = null
     scanlinePass = null
     bloomPass = null
