@@ -115,13 +115,16 @@ watch(processedMarkdown, (val) => {
   margin: var(--space-xs) 0;
 
   > p,
-  > img {
+  > img,
+  > .prose-img-skeleton {
     min-width: 0;
     margin: 0;
   }
 
   > p > img,
-  > img {
+  > p > .prose-img-skeleton,
+  > img,
+  > .prose-img-skeleton {
     width: 100%;
     max-height: 240px;
     max-width: none;
@@ -152,7 +155,8 @@ watch(processedMarkdown, (val) => {
     grid-template-columns: repeat(6, 1fr);
 
     > p,
-    > img {
+    > img,
+    > .prose-img-skeleton {
       grid-column: span 2;
     }
 
@@ -173,7 +177,8 @@ watch(processedMarkdown, (val) => {
       grid-template-columns: repeat(2, 1fr);
 
       > p,
-      > img {
+      > img,
+      > .prose-img-skeleton {
         grid-column: unset;
       }
 
@@ -183,7 +188,9 @@ watch(processedMarkdown, (val) => {
     }
 
     > p > img,
-    > img {
+    > p > .prose-img-skeleton,
+    > img,
+    > .prose-img-skeleton {
       max-height: 40vh;
       aspect-ratio: 4 / 3;
     }

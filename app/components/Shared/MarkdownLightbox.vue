@@ -7,7 +7,8 @@ const IMAGE_URL_SOURCE = String.raw`!\[.*?\]\((.*?\.(?:jpe?g|png|webp|gif)(?:\?[
 
 interface Props {
   markdown: string
-  container: HTMLElement | null
+  // May be a raw HTMLElement or a Vue component instance (e.g. when ref is on a VUI wrapper)
+  container: HTMLElement | { $el: HTMLElement } | null
 }
 
 // Extract image URLs from the markdown content
@@ -56,7 +57,8 @@ function next() {
 useEventListener('click', (event) => {
   const target = event.target as HTMLElement
 
-  if (!props.container?.contains(target))
+  const el = props.container && '$el' in props.container ? props.container.$el : props.container
+  if (!el?.contains(target))
     return
 
   if (target.tagName === 'IMG' && !target.classList.contains('ignored')) {

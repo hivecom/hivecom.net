@@ -86,11 +86,6 @@ function handleDelete(expense: Tables<'expenses'>) {
               <span>{{ props.expense.id }}</span>
             </Grid>
 
-            <Grid class="expense-details__item" expand :columns="2">
-              <span class="expense-details__label">Name:</span>
-              <span>{{ props.expense.name || 'Unnamed Expense' }}</span>
-            </Grid>
-
             <Grid v-if="props.expense.description" class="expense-details__item" expand :columns="2">
               <span class="expense-details__label">Description:</span>
               <span>{{ props.expense.description }}</span>

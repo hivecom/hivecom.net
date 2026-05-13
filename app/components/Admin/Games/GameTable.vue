@@ -261,7 +261,7 @@ async function handleGameDelete(gameId: number) {
 
 // ─── Activity (client-side) ───────────────────────────────────────────────────
 
-const { metrics, fetchMetrics, fetchMetricsHistory } = useDataMetrics()
+const { metrics, fetchMetrics, fetchDailyHistory } = useDataMetrics()
 
 const localHistoryLoading = ref(false)
 const localHistory = ref<MetricsHistoryEntry[]>([])
@@ -271,16 +271,41 @@ onMounted(async () => {
     fetchMetrics()
   localHistoryLoading.value = true
   try {
-    localHistory.value = await fetchMetricsHistory('14d') ?? []
+    localHistory.value = await fetchDailyHistory() ?? []
   }
   finally {
     localHistoryLoading.value = false
   }
 })
 
+const gameShorthandMap = computed(() => {
+  const map = new Map<number, string>()
+  for (const g of games.value) {
+    if (g.shorthand)
+      map.set(g.id, g.shorthand)
+  }
+  return map
+})
+
+const gameSteamIdMap = computed(() => {
+  const map = new Map<number, number>()
+  for (const g of games.value) {
+    if (g.steam_id != null)
+      map.set(g.id, g.steam_id)
+  }
+  return map
+})
+
 function getGameHistogram(gameId: number): number[] {
-  const id = String(gameId)
-  return localHistory.value.map(e => e.membersByGame?.[id] ?? 0)
+  const steamId = gameSteamIdMap.value.get(gameId)
+  if (steamId != null) {
+    const key = String(steamId)
+    return localHistory.value.map(e => e.membersBySteamGame?.[key] ?? 0)
+  }
+  const key = gameShorthandMap.value.get(gameId)
+  if (!key)
+    return localHistory.value.map(() => 0)
+  return localHistory.value.map(e => e.membersByGame?.[key] ?? 0)
 }
 
 function getGameTimestamps(): string[] {
@@ -288,10 +313,18 @@ function getGameTimestamps(): string[] {
 }
 
 function getGamePlayers(gameId: number): number {
+  const steamId = gameSteamIdMap.value.get(gameId)
+  if (steamId != null) {
+    const bySteam = metrics.value?.members.bySteamGame
+    return bySteam?.[String(steamId)] ?? 0
+  }
   const byGame = metrics.value?.members.byGame
   if (!byGame)
     return 0
-  return byGame[String(gameId)] ?? 0
+  const key = gameShorthandMap.value.get(gameId)
+  if (!key)
+    return 0
+  return byGame[key] ?? 0
 }
 
 // ─── Watchers ─────────────────────────────────────────────────────────────────
@@ -440,7 +473,7 @@ onBeforeMount(async () => {
                   </Flex>
                 </Table.Cell>
                 <Table.Cell>
-                  <Code v-if="game.shorthand">{{ game.shorthand }}</Code>
+                  <code v-if="game.shorthand">{{ game.shorthand }}</code>
                   <span v-else class="text-color-lighter">-</span>
                 </Table.Cell>
                 <Table.Cell @click.stop>

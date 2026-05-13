@@ -309,6 +309,6 @@ onBeforeMount(() => {
 .alert-timestamp {
   font-size: var(--font-size-xs);
   color: var(--color-text-light);
-  font-family: var(--font-family-mono);
+  font-family: var(--font-mono);
 }
 </style>

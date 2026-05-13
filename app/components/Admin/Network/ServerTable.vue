@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Button, CopyClipboard, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
+import ElapsedTimeIndicator from '@/components/Shared/ElapsedTimeIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
@@ -255,7 +257,9 @@ function clearFilters() {
 
         <template #body>
           <tr v-for="server in rows" :key="server._original.id" class="clickable-row" @click="viewServer(server._original)">
-            <Table.Cell>{{ server.Address }}</Table.Cell>
+            <Table.Cell>
+              <CopyValue :text="server.Address" />
+            </Table.Cell>
             <Table.Cell>
               <ServerStatusIndicator :status="server.Status" show-label />
             </Table.Cell>
@@ -267,8 +271,7 @@ function clearFilters() {
               />
             </Table.Cell>
             <Table.Cell>
-              <TimestampDate v-if="server['Last Accessed']" :date="server['Last Accessed']" />
-              <span v-else>Never</span>
+              <ElapsedTimeIndicator :date="server['Last Accessed']" :active-label="null" />
             </Table.Cell>
             <Table.Cell>
               <TimestampDate :date="server.Created" />

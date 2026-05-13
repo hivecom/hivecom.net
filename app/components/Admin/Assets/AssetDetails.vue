@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { StorageAsset } from '@/lib/storageAssets'
-import { Button, Card, CopyClipboard, Flex, Grid, Input, Sheet } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Flex, Grid, Input, Sheet, Spinner } from '@dolanske/vui'
 
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
+import MarkdownLightbox from '@/components/Shared/MarkdownLightbox.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { formatBytes, isImageAsset, isVideoAsset } from '@/lib/storageAssets'
+import { formatBytes, isImageAsset, isTextAsset, isVideoAsset } from '@/lib/storageAssets'
 
 const props = defineProps<{
   asset: StorageAsset | null
@@ -21,9 +24,33 @@ const canRename = computed(() => canDeleteAssets.value)
 
 const isOpen = defineModel<boolean>('isOpen', { default: false })
 
-const hasPreview = computed(() => props.asset != null && props.asset.type === 'file' && (isImageAsset(props.asset) || isVideoAsset(props.asset)))
+const isText = computed(() => props.asset != null && isTextAsset(props.asset))
+const hasPreview = computed(() => props.asset != null && props.asset.type === 'file' && (isImageAsset(props.asset) || isVideoAsset(props.asset) || isText.value))
+
+const textContent = ref<string | null>(null)
+const textLoading = ref(false)
+
+watch(() => props.asset, async (asset) => {
+  textContent.value = null
+  if (!asset || !isText.value || !asset.publicUrl)
+    return
+  textLoading.value = true
+  try {
+    const res = await fetch(asset.publicUrl)
+    textContent.value = await res.text()
+  }
+  catch {
+    textContent.value = null
+  }
+  finally {
+    textLoading.value = false
+  }
+}, { immediate: true })
+
+const previewContainer = ref<HTMLElement | null>(null)
 const isVideo = computed(() => props.asset != null && isVideoAsset(props.asset))
 const assetUrl = computed(() => props.asset?.publicUrl ?? '')
+const lightboxMarkdown = computed(() => assetUrl.value && !isVideo.value && !isText.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
 const markdownSnippet = computed(() => assetUrl.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
 
 const isMobile = useBreakpoint('<xs')
@@ -62,9 +89,14 @@ function requestRename() {
   >
     <template #header>
       <Flex x-between y-center class="pr-s">
-        <Flex column :gap="0">
+        <Flex column :gap="0" class="asset-details-header">
           <h4>Asset Details</h4>
-          <p class="text-xs text-color-light">
+          <p v-if="props.asset?.publicUrl" class="text-xs text-color-light">
+            <NuxtLink :to="props.asset.publicUrl" target="_blank" rel="noopener">
+              {{ props.asset.name }}
+            </NuxtLink>
+          </p>
+          <p v-else class="text-xs text-color-light">
             {{ props.asset?.name }}
           </p>
         </Flex>
@@ -102,40 +134,48 @@ function requestRename() {
     </template>
 
     <Flex v-if="props.asset" column gap="l" class="asset-details">
-      <div v-if="hasPreview" class="asset-details__preview">
+      <Flex v-if="hasPreview" ref="previewContainer" expand class="asset-details__preview">
         <video v-if="isVideo" :src="assetUrl" controls class="asset-details__video" />
-        <img v-else :src="assetUrl" :alt="props.asset?.name ?? 'Preview'">
-      </div>
+        <template v-else-if="isText">
+          <Flex expand>
+            <div v-if="textLoading" class="asset-details__text-preview asset-details__text-preview--loading">
+              <Spinner />
+            </div>
+            <pre v-else-if="textContent !== null" class="asset-details__text-preview"><code>{{ textContent }}</code></pre>
+            <div v-else class="asset-details__text-preview asset-details__text-preview--error">
+              <span class="text-color-light">Could not load preview.</span>
+            </div>
+          </Flex>
+        </template>
+        <img v-else :src="assetUrl" :alt="props.asset?.name ?? 'Preview'" class="asset-details__img">
+        <MarkdownLightbox v-if="lightboxMarkdown" :markdown="lightboxMarkdown" :container="previewContainer" />
+      </Flex>
 
       <Card class="card-bg">
         <Flex column gap="l" expand>
           <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Path:</span>
-            <span style="word-break: break-all">{{ props.asset?.path }}</span>
+            <CopyValue :text="props.asset.path" />
           </Grid>
 
           <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Size:</span>
-            <span>{{ formatBytes(props.asset.size) }}</span>
+            <span><code>{{ formatBytes(props.asset.size) }}</code></span>
           </Grid>
 
           <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Content Type:</span>
-            <span>{{ props.asset.mimeType ?? 'Unknown' }}</span>
+            <span><code>{{ props.asset.mimeType ?? 'Unknown' }}</code></span>
           </Grid>
 
           <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Created:</span>
-            <span>
-              {{ props.asset.created_at ? new Date(props.asset.created_at).toLocaleString() : '-' }}
-            </span>
+            <TimestampDate :date="props.asset.created_at ?? null" />
           </Grid>
 
           <Grid class="asset-details__item" expand columns="1fr 2fr">
             <span class="text-color-light text-bold">Updated:</span>
-            <span>
-              {{ props.asset.updated_at ? new Date(props.asset.updated_at).toLocaleString() : '-' }}
-            </span>
+            <TimestampDate :date="props.asset.updated_at ?? null" />
           </Grid>
         </Flex>
       </Card>
@@ -185,6 +225,17 @@ function requestRename() {
 </template>
 
 <style scoped lang="scss">
+@use '@/assets/mixins' as *;
+
+:global(.asset-details-header p) {
+  @include line-clamp(1);
+  max-width: 200px;
+
+  a {
+    text-decoration: underline;
+  }
+}
+
 .asset-details {
   &__preview {
     border-radius: var(--border-radius-l);
@@ -200,6 +251,36 @@ function requestRename() {
     }
   }
 
+  &__text-preview {
+    max-height: 640px;
+    width: 100%;
+    overflow-y: auto;
+    padding: var(--space-s);
+    margin: 0;
+    font-family: var(--font-mono, monospace);
+    font-size: var(--font-size-xs);
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: var(--color-bg-lowered);
+
+    code {
+      font-family: inherit;
+      font-size: inherit;
+    }
+
+    &--loading,
+    &--error {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 80px;
+    }
+  }
+
+  &__img {
+    cursor: pointer;
+  }
+
   &__video {
     max-height: 320px;
     object-fit: contain;
@@ -207,7 +288,7 @@ function requestRename() {
   }
 
   &__code {
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     font-size: var(--font-size-xs);
     background: var(--color-bg-raised);
     border-radius: var(--border-radius-m);

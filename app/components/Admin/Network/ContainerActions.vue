@@ -17,7 +17,10 @@ const props = defineProps<{
   status: 'running' | 'healthy' | 'unhealthy' | 'stopped' | 'stale' | 'unknown' | 'restarting' | 'control_offline'
   isLoading: (action: string) => Record<string, boolean> | boolean
   showLabels?: boolean
+  size?: 's' | 'm' | 'l'
 }>()
+
+const buttonSize = computed(() => props.size ?? (props.showLabels ? 'm' : 's'))
 
 // Define a model value for actions with proper type
 interface ContainerWithServer {
@@ -68,7 +71,7 @@ function isActionLoading(actionType: string): boolean {
   <Flex :gap="props.showLabels ? 's' : 'xs'">
     <Tooltip v-if="['stopped'].includes(props.status)" :disabled="props.showLabels">
       <Button
-        :size="props.showLabels ? 'm' : 's'"
+        :size="buttonSize"
         :square="!props.showLabels"
         variant="success"
         :loading="isActionLoading('start')"
@@ -88,7 +91,7 @@ function isActionLoading(actionType: string): boolean {
     </Tooltip>
     <Tooltip v-if="['running', 'healthy', 'unhealthy', 'restarting'].includes(props.status)" :disabled="props.showLabels">
       <Button
-        :size="props.showLabels ? 'm' : 's'"
+        :size="buttonSize"
         variant="danger"
         :square="!props.showLabels"
         :loading="isActionLoading('restart')"
@@ -109,7 +112,7 @@ function isActionLoading(actionType: string): boolean {
     </Tooltip>
     <Tooltip v-if="['running', 'healthy', 'unhealthy'].includes(props.status)" :disabled="props.showLabels">
       <Button
-        :size="props.showLabels ? 'm' : 's'"
+        :size="buttonSize"
         :square="!props.showLabels"
         variant="danger"
         :loading="isActionLoading('stop')"
@@ -131,7 +134,7 @@ function isActionLoading(actionType: string): boolean {
 
     <Tooltip v-if="['stale'].includes(props.status)" :disabled="props.showLabels">
       <Button
-        :size="props.showLabels ? 'm' : 's'"
+        :size="buttonSize"
         variant="danger"
         :loading="isActionLoading('prune')"
         :square="!props.showLabels"

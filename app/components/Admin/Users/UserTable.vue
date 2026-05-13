@@ -6,6 +6,7 @@ import { Alert, Button, CopyClipboard, defineTable, Flex, paginate, Pagination, 
 import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
 import ElapsedTimeIndicator from '@/components/Shared/ElapsedTimeIndicator.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
@@ -528,32 +529,14 @@ defineExpose({ refresh: fetchUsers })
                 <!-- Email -->
                 <Table.Cell v-if="props.canViewUserEmails" class="email-cell">
                   <template v-if="user.email != null && user.email !== ''">
-                    <div @click.stop>
-                      <CopyClipboard :text="user.email" confirm>
-                        <Button variant="gray" plain size="s" class="email-button">
-                          <template #start>
-                            <Icon name="ph:copy" />
-                          </template>
-                          <span class="text-xxs">{{ user.email }}</span>
-                        </Button>
-                      </CopyClipboard>
-                    </div>
+                    <CopyValue :text="user.email" />
                   </template>
                   <span v-else class="text-color-light text-xxs">No email on file</span>
                 </Table.Cell>
 
                 <!-- UUID -->
                 <Table.Cell class="uuid-cell">
-                  <div @click.stop>
-                    <CopyClipboard :text="user.id" confirm>
-                      <Button variant="gray" plain size="s" class="uuid-button">
-                        <template #start>
-                          <Icon name="ph:copy" />
-                        </template>
-                        <span class="text-xxs">{{ user.id }}</span>
-                      </Button>
-                    </CopyClipboard>
-                  </div>
+                  <CopyValue :text="user.id" />
                 </Table.Cell>
 
                 <!-- Role -->

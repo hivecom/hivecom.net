@@ -115,7 +115,7 @@ const gameOptions = computed<SelectOption[]>(() => {
   }))
 })
 
-const { latestMetrics, fetchLatestMetrics, fetchMetricsHistory } = useDataMetrics()
+const { latestMetrics, fetchLatestMetrics, fetchDailyHistory } = useDataMetrics()
 
 const localHistoryLoading = ref(false)
 const localHistory = ref<MetricsHistoryEntry[]>([])
@@ -124,7 +124,7 @@ onMounted(async () => {
   fetchLatestMetrics()
   localHistoryLoading.value = true
   try {
-    localHistory.value = await fetchMetricsHistory('14d') ?? []
+    localHistory.value = await fetchDailyHistory() ?? []
   }
   finally {
     localHistoryLoading.value = false

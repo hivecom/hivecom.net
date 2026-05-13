@@ -96,7 +96,9 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
         <Flex column :gap="0">
           <h4>Event Details</h4>
           <p v-if="props.event" class="text-color-light text-xs">
-            {{ props.event.title }}
+            <NuxtLink :to="`/events/${props.event.id}`" target="_blank">
+              {{ props.event.title }}
+            </NuxtLink>
           </p>
         </Flex>
         <Flex y-center gap="s">
@@ -120,11 +122,6 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
             <Grid class="detail-item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">ID:</span>
               <span>{{ props.event.id }}</span>
-            </Grid>
-
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Title:</span>
-              <span>{{ props.event.title }}</span>
             </Grid>
 
             <Grid class="detail-item" expand columns="1fr 2fr">

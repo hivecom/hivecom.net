@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
@@ -41,7 +42,9 @@ function handleDelete(theme: Tables<'themes'>) {
         <Flex column :gap="0">
           <h4>Theme Details</h4>
           <p v-if="props.theme" class="text-color-light text-xs">
-            {{ props.theme.name }}
+            <NuxtLink :to="`/themes/${props.theme.id}`" target="_blank">
+              {{ props.theme.name }}
+            </NuxtLink>
           </p>
         </Flex>
         <Flex y-center gap="s">
@@ -63,12 +66,7 @@ function handleDelete(theme: Tables<'themes'>) {
         <Flex column gap="l" expand>
           <Grid class="theme-details__item" expand :columns="2">
             <span class="text-color-light text-bold">ID:</span>
-            <span class="text-xs text-color-light">{{ props.theme.id }}</span>
-          </Grid>
-
-          <Grid class="theme-details__item" expand :columns="2">
-            <span class="text-color-light text-bold">Name:</span>
-            <span>{{ props.theme.name }}</span>
+            <CopyValue :text="props.theme.id" />
           </Grid>
 
           <Grid class="theme-details__item" expand :columns="2">
@@ -79,7 +77,7 @@ function handleDelete(theme: Tables<'themes'>) {
 
           <Grid class="theme-details__item" expand :columns="2">
             <span class="text-color-light text-bold">Created by:</span>
-            <UserLink v-if="props.theme.created_by" :user-id="props.theme.created_by" />
+            <UserLink v-if="props.theme.created_by" :user-id="props.theme.created_by" class="text-m" show-avatar />
             <span v-else class="text-color-lighter">Unknown</span>
           </Grid>
 

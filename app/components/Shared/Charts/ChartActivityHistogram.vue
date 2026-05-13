@@ -45,7 +45,7 @@ function getDaysAgo(index: number): string | null {
   return `${diffDays} days ago`
 }
 
-const highestValue = computed(() => Math.max(...data))
+const highestValue = computed(() => Math.max(...data) || 1)
 </script>
 
 <template>

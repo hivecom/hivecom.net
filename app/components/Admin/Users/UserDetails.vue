@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import type { Enums } from '@/types/database.types'
-import { Button, Card, CopyClipboard, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
+import { Button, Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
 
 import { computed, ref, watch } from 'vue'
 import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
-
 import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
+
 import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
 import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import UserLink from '@/components/Shared/UserLink.vue'
 import { useCachedFetch } from '@/composables/useCache'
 import { isBanActive } from '@/lib/banStatus'
 import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
@@ -279,7 +279,9 @@ function getUserInitials(username: string): string {
         <Flex column :gap="0">
           <h4>User Details</h4>
           <p v-if="user" class="text-color-light text-xs">
-            <UserLink :user-id="user.id" />
+            <NuxtLink :to="`/profile/${user.username}`" target="_blank">
+              {{ user.username }}
+            </NuxtLink>
           </p>
         </Flex>
 
@@ -302,25 +304,13 @@ function getUserInitials(username: string): string {
           <Flex column gap="l" expand>
             <Grid class="detail-item" columns="1fr 2fr" expand>
               <span class="text-color-light text-bold">UUID:</span>
-              <CopyClipboard :text="user.id">
-                <code class="user-id">{{ user.id }}</code>
-              </CopyClipboard>
-            </Grid>
-
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Username:</span>
-              <UserLink :user-id="user.id" class="text-m" show-avatar />
+              <CopyValue :text="user.id" />
             </Grid>
 
             <Grid v-if="canViewUserEmails" class="detail-item" expand columns="1fr 2fr">
               <span class="text-color-light text-bold">Email:</span>
               <template v-if="user.email">
-                <CopyClipboard :text="user.email" confirm>
-                  <Flex y-center>
-                    <Icon name="ph:copy" />
-                    <span class="user-email">{{ user.email }}</span>
-                  </Flex>
-                </CopyClipboard>
+                <CopyValue :text="user.email" />
               </template>
               <span v-else class="text-color-light text-s">No email on file</span>
             </Grid>
@@ -494,9 +484,7 @@ function getUserInitials(username: string): string {
 
               <Grid class="detail-item" :columns="2" expand>
                 <span class="text-color-light text-bold">Discord ID:</span>
-                <CopyClipboard :text="user.discord_id" confirm>
-                  <span class="platform-id">{{ user.discord_id }}</span>
-                </CopyClipboard>
+                <CopyValue :text="user.discord_id" />
               </Grid>
             </Flex>
           </Card>
@@ -515,12 +503,7 @@ function getUserInitials(username: string): string {
             <Flex column gap="s" expand>
               <Grid class="detail-item" :columns="2" expand>
                 <span class="text-color-light text-bold">Patreon ID:</span>
-                <CopyClipboard :text="user.patreon_id" confirm>
-                  <Flex y-center>
-                    <Icon name="ph:copy" />
-                    <span class="platform-id">{{ user.patreon_id }}</span>
-                  </Flex>
-                </CopyClipboard>
+                <CopyValue :text="user.patreon_id" />
               </Grid>
             </Flex>
           </Card>
@@ -558,12 +541,7 @@ function getUserInitials(username: string): string {
             <Flex column gap="s" expand>
               <Grid class="detail-item" :columns="2" expand>
                 <span class="text-color-light text-bold">Steam ID:</span>
-                <CopyClipboard :text="user.steam_id" confirm>
-                  <Flex y-center>
-                    <Icon name="ph:copy" />
-                    <span class="platform-id">{{ user.steam_id }}</span>
-                  </Flex>
-                </CopyClipboard>
+                <CopyValue :text="user.steam_id" />
               </Grid>
             </Flex>
           </Card>

@@ -11,6 +11,7 @@ import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 type GameServerWithJoins = Omit<Tables<'gameservers'>, 'game'> & {
   game_name?: string
@@ -37,6 +38,7 @@ const canUpdateGameservers = computed(() => hasPermission('gameservers.update'))
 const canDeleteGameservers = computed(() => hasPermission('gameservers.delete'))
 const showDeleteConfirm = ref(false)
 const route = useRoute()
+const isMobile = useBreakpoint('<s')
 
 watch(
   () => [route.path, route.query.tab] as const,
@@ -90,13 +92,23 @@ function confirmDelete() {
       <Flex x-between y-center>
         <Flex column :gap="0">
           <h4>Game Server Details</h4>
-          <span v-if="props.gameserver" class="text-color-light text-xxs">
-            {{ props.gameserver.name }}
-          </span>
+          <p v-if="props.gameserver" class="text-color-light text-xs">
+            <NuxtLink :to="`/servers/gameservers/${props.gameserver.id}`" target="_blank">
+              {{ props.gameserver.name }}
+            </NuxtLink>
+          </p>
         </Flex>
         <Flex y-center gap="s">
           <Button
-            v-if="props.gameserver && canDeleteGameservers"
+            v-if="props.gameserver && canDeleteGameservers && isMobile"
+            variant="danger"
+            square
+            @click="handleDelete"
+          >
+            <Icon name="ph:trash" />
+          </Button>
+          <Button
+            v-else-if="props.gameserver && canDeleteGameservers"
             variant="danger"
             @click="handleDelete"
           >
@@ -106,7 +118,14 @@ function confirmDelete() {
             Delete
           </Button>
           <Button
-            v-if="props.gameserver && canUpdateGameservers"
+            v-if="props.gameserver && canUpdateGameservers && isMobile"
+            square
+            @click="handleEdit"
+          >
+            <Icon name="ph:pencil" />
+          </Button>
+          <Button
+            v-else-if="props.gameserver && canUpdateGameservers"
             @click="handleEdit"
           >
             <template #start>
@@ -126,11 +145,6 @@ function confirmDelete() {
             <Grid expand :columns="2">
               <span class="text-color-light text-bold">ID:</span>
               <span>{{ props.gameserver.id }}</span>
-            </Grid>
-
-            <Grid expand :columns="2">
-              <span class="text-color-light text-bold">Name:</span>
-              <span>{{ props.gameserver.name }}</span>
             </Grid>
 
             <Grid expand :columns="2">

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { StorageAsset } from '@/lib/storageAssets'
-import { Button, Card, CopyClipboard, Flex, Grid, Tooltip } from '@dolanske/vui'
-import { computed } from 'vue'
+import { Button, Card, CopyClipboard, Flex, Grid, Modal, Tooltip } from '@dolanske/vui'
+import { useEventListener, useSwipe } from '@vueuse/core'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { formatBytes, FORUMS_BUCKET_ID, isImageAsset, isVideoAsset } from '@/lib/storageAssets'
 
@@ -25,6 +26,11 @@ const props = defineProps<{
    * whose path starts with this context ID (e.g. a discussion ID).
    */
   forumContextId?: string
+  /**
+   * When true, clicking the card opens the lightbox preview instead of emitting clickAsset.
+   * Also hides the explicit preview button.
+   */
+  clickToPreview?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -36,11 +42,92 @@ const gridColumns = computed(() =>
   props.columns ? `repeat(${props.columns}, 1fr)` : 'repeat(auto-fill, minmax(200px, 1fr))',
 )
 
+// Track which image URLs have been preloaded so they fade in rather than pop
+const loadedUrls = ref(new Set<string>())
+
+function preloadImage(url: string) {
+  if (!import.meta.client || loadedUrls.value.has(url))
+    return
+  const img = new Image()
+  img.onload = () => {
+    loadedUrls.value = new Set(loadedUrls.value).add(url)
+  }
+  img.src = url
+}
+
+watch(() => props.assets, (assets) => {
+  for (const asset of assets) {
+    if (isImageAsset(asset) && asset.publicUrl)
+      preloadImage(asset.publicUrl)
+  }
+}, { immediate: true })
+
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+const imageAssets = computed(() => props.assets.filter(a => isImageAsset(a) && a.publicUrl))
+const lightboxIndex = ref(-1)
+const lightboxUrl = computed(() => imageAssets.value[lightboxIndex.value]?.publicUrl ?? null)
+const lightboxIsOpen = computed(() => lightboxIndex.value !== -1)
+const lightboxHasPrev = computed(() => lightboxIndex.value > 0)
+const lightboxHasNext = computed(() => lightboxIndex.value < imageAssets.value.length - 1)
+
+type SlideDir = 'left' | 'right'
+const slideDir = ref<SlideDir>('left')
+
+function openLightbox(asset: StorageAsset) {
+  const idx = imageAssets.value.findIndex(a => a.path === asset.path)
+  if (idx !== -1)
+    lightboxIndex.value = idx
+}
+
+function closeLightbox() {
+  lightboxIndex.value = -1
+}
+
+function lightboxPrev() {
+  if (lightboxHasPrev.value) {
+    slideDir.value = 'right'
+    lightboxIndex.value--
+  }
+}
+
+function lightboxNext() {
+  if (lightboxHasNext.value) {
+    slideDir.value = 'left'
+    lightboxIndex.value++
+  }
+}
+
+const lightboxWrap = useTemplateRef('lightboxWrap')
+useSwipe(lightboxWrap, {
+  onSwipeEnd(_e, direction) {
+    if (direction === 'left')
+      lightboxNext()
+    else if (direction === 'right')
+      lightboxPrev()
+  },
+})
+
+useEventListener('keydown', (event) => {
+  if (!lightboxIsOpen.value)
+    return
+  if (event.key === 'Escape')
+    closeLightbox()
+  else if (event.key === 'ArrowLeft')
+    lightboxPrev()
+  else if (event.key === 'ArrowRight')
+    lightboxNext()
+})
+// ──────────────────────────────────────────────────────────────────────────────
+
 function handleCardClick(asset: StorageAsset) {
-  if (asset.type === 'folder') {
-    emit('clickAsset', asset)
+  if (props.clickToPreview && isImageAsset(asset) && asset.publicUrl) {
+    openLightbox(asset)
     return
   }
+  emit('clickAsset', asset)
+}
+
+function handleOpenClick(asset: StorageAsset) {
   if (asset.publicUrl)
     window.open(asset.publicUrl, '_blank', 'noopener')
 }
@@ -78,13 +165,19 @@ function getUploaderId(asset: StorageAsset): string | null {
       :key="asset.path"
       class="asset-grid-card"
       :padding="false"
+      @click="handleCardClick(asset)"
     >
       <div class="asset-grid-preview" :class="{ 'is-folder': asset.type === 'folder' }">
         <template v-if="asset.type === 'folder'">
           <Icon name="ph:folder-simple" size="32" />
         </template>
         <template v-else-if="isImageAsset(asset) && asset.publicUrl">
-          <img :src="asset.publicUrl" :alt="asset.name" loading="lazy">
+          <img
+            :src="asset.publicUrl"
+            :alt="loadedUrls.has(asset.publicUrl!) ? asset.name : ''"
+            loading="lazy"
+            :class="{ 'is-loaded': loadedUrls.has(asset.publicUrl!) }"
+          >
         </template>
         <template v-else-if="isVideoAsset(asset) && asset.publicUrl">
           <video :src="asset.publicUrl" autoplay loop muted playsinline preload="auto" class="asset-grid-video" />
@@ -94,6 +187,14 @@ function getUploaderId(asset: StorageAsset): string | null {
         </template>
 
         <div v-if="asset.type !== 'folder'" class="asset-grid-actions" @click.stop>
+          <Tooltip v-if="!props.clickToPreview && isImageAsset(asset) && asset.publicUrl">
+            <Button size="s" variant="gray" square @click="openLightbox(asset)">
+              <Icon name="ph:eye" size="16" />
+            </Button>
+            <template #tooltip>
+              <p>Preview</p>
+            </template>
+          </Tooltip>
           <CopyClipboard :text="asset.path" confirm>
             <Tooltip>
               <Button size="s" square>
@@ -115,7 +216,7 @@ function getUploaderId(asset: StorageAsset): string | null {
             </Tooltip>
           </CopyClipboard>
           <Tooltip v-if="asset.publicUrl">
-            <Button size="s" variant="gray" square @click="asset.publicUrl && handleCardClick(asset)">
+            <Button size="s" variant="gray" square @click="handleOpenClick(asset)">
               <Icon name="ph:arrow-square-out" size="16" />
             </Button>
             <template #tooltip>
@@ -144,11 +245,30 @@ function getUploaderId(asset: StorageAsset): string | null {
       </Flex>
     </Card>
   </Grid>
+
+  <Modal class="md-lightbox" size="screen" :open="lightboxIsOpen" centered @close="closeLightbox">
+    <div ref="lightboxWrap" class="md-lightbox__img-wrap">
+      <Transition :name="`md-lightbox-slide-${slideDir}`">
+        <div v-if="lightboxUrl" :key="lightboxUrl" class="md-lightbox__slide" @click.self="closeLightbox">
+          <img class="ignored" :src="lightboxUrl" :alt="imageAssets[lightboxIndex]?.name ?? ''">
+        </div>
+      </Transition>
+    </div>
+    <Flex v-if="imageAssets.length > 1" x-center gap="l" class="md-lightbox-nav" y-center>
+      <Button size="s" square :disabled="!lightboxHasPrev" :variant="lightboxHasPrev ? 'fill' : 'gray'" @click="lightboxPrev">
+        <Icon name="ph:arrow-left" />
+      </Button>
+      <span>{{ lightboxIndex + 1 }} / {{ imageAssets.length }}</span>
+      <Button size="s" square :disabled="!lightboxHasNext" :variant="lightboxHasNext ? 'fill' : 'gray'" @click="lightboxNext">
+        <Icon name="ph:arrow-right" />
+      </Button>
+    </Flex>
+  </Modal>
 </template>
 
 <style scoped lang="scss">
 .asset-grid-card {
-  // cursor: pointer;
+  cursor: pointer;
   min-width: 0;
   overflow: hidden;
   transition: border-color var(--transition);
@@ -187,6 +307,12 @@ function getUploaderId(asset: StorageAsset): string | null {
     align-items: center;
     justify-content: center;
     font-size: var(--font-size-s);
+    opacity: 0;
+    transition: var(--transition-slow);
+
+    &.is-loaded {
+      opacity: 1;
+    }
   }
 }
 

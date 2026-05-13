@@ -55,7 +55,9 @@ function handleDelete(project: Tables<'projects'>) {
         <Flex column :gap="0">
           <h4>Project Details</h4>
           <p v-if="props.project" class="text-color-light text-xs">
-            {{ props.project.title }}
+            <NuxtLink :to="`/community/projects/${props.project.id}`" target="_blank">
+              {{ props.project.title }}
+            </NuxtLink>
           </p>
         </Flex>
         <Flex y-center gap="s">
@@ -79,11 +81,6 @@ function handleDelete(project: Tables<'projects'>) {
             <Grid class="project-details__item" expand :columns="2">
               <span class="text-color-light text-bold">ID:</span>
               <span>{{ props.project.id }}</span>
-            </Grid>
-
-            <Grid class="project-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Title:</span>
-              <span>{{ props.project.title }}</span>
             </Grid>
 
             <Grid class="project-details__item" expand :columns="2">

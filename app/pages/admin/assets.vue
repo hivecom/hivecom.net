@@ -39,7 +39,7 @@ const refreshSignal = ref(0)
 const activeTab = ref<StorageBucketId>(parseTab(route.query.tab))
 
 const { settings } = useDataUserSettings()
-const viewMode = ref<'table' | 'grid'>(parseView(route.query.view) ?? settings.value.admin_asset_view_mode)
+const viewMode = ref<'table' | 'grid'>(route.query.view !== undefined ? parseView(route.query.view) : (settings.value.admin_asset_view_mode ?? 'table'))
 const flatView = ref(route.query.flat !== undefined ? route.query.flat === '1' : settings.value.admin_asset_flat_view)
 const currentPrefix = ref(typeof route.query.path === 'string' ? route.query.path : '')
 const page = ref(parsePage(route.query.page))

@@ -772,7 +772,7 @@ onBeforeMount(() => {
     display: inline;
     font-size: var(--font-size-m);
     letter-spacing: 0.05em;
-    font-family: var(--font-family-mono, 'Courier New', Courier, monospace);
+    font-family: var(--font-mono, 'Courier New', Courier, monospace);
   }
 }
 /*

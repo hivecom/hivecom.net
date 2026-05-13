@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Spinner } from '@dolanske/vui'
+import { Button, Spinner } from '@dolanske/vui'
 
 const props = defineProps<{
   loading: boolean

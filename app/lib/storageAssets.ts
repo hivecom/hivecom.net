@@ -276,6 +276,16 @@ export function isVideoAsset(asset: StorageAsset): boolean {
   return knownVideoExtensions.includes(extension)
 }
 
+export function isTextAsset(asset: StorageAsset): boolean {
+  const mime = asset.mimeType ?? ''
+  const extension = asset.extension ?? ''
+  if (mime.startsWith('text/') || mime === 'application/json' || mime === 'application/xml')
+    return true
+
+  const knownTextExtensions = ['txt', 'md', 'csv', 'json', 'xml', 'yaml', 'yml', 'toml', 'ini', 'log', 'sh', 'ts', 'js', 'css', 'html', 'htm', 'svg']
+  return knownTextExtensions.includes(extension)
+}
+
 export function getPublicAssetUrl(
   client: SupabaseClient<Database>,
   bucketId: StorageBucketId,

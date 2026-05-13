@@ -81,7 +81,9 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
         <Flex column :gap="0">
           <h4>Referendum Details</h4>
           <p v-if="props.referendum" class="text-color-light text-xs">
-            {{ props.referendum.title }}
+            <NuxtLink :to="`/votes/${props.referendum.id}`" target="_blank">
+              {{ props.referendum.title }}
+            </NuxtLink>
           </p>
         </Flex>
         <Flex y-center gap="s">
@@ -105,11 +107,6 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
             <Grid class="referendum-details__item" expand :columns="2">
               <span class="text-color-light text-bold">ID:</span>
               <span>{{ props.referendum.id }}</span>
-            </Grid>
-
-            <Grid class="referendum-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Title:</span>
-              <span>{{ props.referendum.title }}</span>
             </Grid>
 
             <Grid class="referendum-details__item" expand :columns="2">

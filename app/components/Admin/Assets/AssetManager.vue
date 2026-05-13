@@ -333,7 +333,7 @@ async function fetchAssets(silent = false) {
 
 function setPage(n: number) {
   page.value = n
-  void fetchAssets(true)
+  // fetch is driven by watch(page) below
 }
 
 function changePrefix(path: string) {
@@ -537,14 +537,24 @@ watch(flatView, (val) => {
     // Restore default name-asc sort for non-flat table view.
     setSort('Name', 'asc')
   }
-  page.value = 1
-  fetchAssets()
+  if (page.value !== 1) {
+    page.value = 1
+    // page watch triggers fetch
+  }
+  else {
+    fetchAssets()
+  }
 })
 
 watch(resolvedBucketId, () => {
   currentPrefix.value = ''
-  page.value = 1
-  fetchAssets()
+  if (page.value !== 1) {
+    page.value = 1
+    // page watch triggers fetch
+  }
+  else {
+    fetchAssets()
+  }
 })
 
 watch(adminTablePerPage, () => {
@@ -558,14 +568,29 @@ watch(adminTablePerPage, () => {
 })
 
 watch(currentPrefix, () => {
-  page.value = 1
-  fetchAssets()
+  if (page.value !== 1) {
+    page.value = 1
+    // page watch triggers fetch
+  }
+  else {
+    fetchAssets()
+  }
 })
 
 watchDebounced(searchQuery, () => {
-  page.value = 1
-  void fetchAssets(true)
+  if (page.value !== 1) {
+    page.value = 1
+    // page watch triggers fetch
+  }
+  else {
+    void fetchAssets(true)
+  }
 }, { debounce: 300 })
+
+// Page change drives silent re-fetch
+watch(page, () => {
+  void fetchAssets(true)
+})
 
 watch(() => refreshSignal.value, (newValue, oldValue) => {
   if (skipNextRefresh.value) {
@@ -704,12 +729,12 @@ onBeforeMount(fetchAssets)
             :expand="isBelowMedium"
           >
             <Flex :expand="isBelowMedium" gap="xs">
-              <Button variant="gray" :expand="isBelowMedium" @click="fetchAssets">
+              <!-- <Button variant="gray" :expand="isBelowMedium" @click="fetchAssets">
                 <template #start>
                   <Icon name="ph:arrow-clockwise" />
                 </template>
                 Refresh
-              </Button>
+              </Button> -->
               <Button
                 v-if="storageConsoleUrl"
                 variant="gray"

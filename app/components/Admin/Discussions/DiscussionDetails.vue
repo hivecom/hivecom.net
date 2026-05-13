@@ -12,6 +12,7 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID, listStorageObjectsFlat, normalizePrefix } from '@/lib/storageAssets'
 
 type DiscussionRecord = Tables<'discussions'>
@@ -36,6 +37,8 @@ const isOpen = defineModel<boolean>('isOpen')
 const supabase = useSupabaseClient()
 const { hasPermission } = useAdminPermissions()
 const discussionCache = useDiscussionCache()
+
+const isMobile = useBreakpoint('<s')
 
 const canUpdate = computed(() =>
   hasPermission('discussions.update'),
@@ -398,7 +401,9 @@ async function reassignToTopic(topicId: string) {
         <Flex column :gap="0">
           <h4>Discussion Details</h4>
           <p v-if="props.discussion" class="text-color-light text-xs">
-            {{ props.discussion.title || 'Untitled discussion' }}
+            <NuxtLink :to="`/forum/${props.discussion.slug ?? props.discussion.id}`" target="_blank">
+              {{ props.discussion.title || 'Untitled discussion' }}
+            </NuxtLink>
           </p>
         </Flex>
 
@@ -407,12 +412,21 @@ async function reassignToTopic(topicId: string) {
             v-if="props.discussion && canUpdate"
             :discussion="props.discussion"
             hide-pin-button
-            show-labels
+            :show-labels="!isMobile"
+            :size="isMobile ? 'm' : undefined"
             @updated="emit('updated', $event as DiscussionRecord)"
           />
 
           <Button
-            v-if="canUpdate"
+            v-if="canUpdate && isMobile"
+            variant="gray"
+            square
+            @click="editSheetOpen = true"
+          >
+            <Icon name="ph:pencil-simple" />
+          </Button>
+          <Button
+            v-else-if="canUpdate"
             variant="gray"
             @click="editSheetOpen = true"
           >
@@ -634,6 +648,7 @@ async function reassignToTopic(topicId: string) {
                 :assets="assets"
                 :is-forums-bucket="true"
                 :forum-context-id="props.discussion?.id"
+                click-to-preview
               />
               <Flex v-if="assetsShouldPaginate" x-center y-center expand>
                 <Pagination :pagination="assetsPaginationState" @change="setAssetsPage" />

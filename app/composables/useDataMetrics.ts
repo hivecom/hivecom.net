@@ -381,6 +381,29 @@ export function useDataMetrics() {
     }
   }
 
+  // Fetch 14-day history with 24h buckets - used by admin table mini-histograms.
+  // Intentionally separate from fetchMetricsHistory so it always uses daily granularity
+  // regardless of what PERIOD_CONFIGS['14d'].bucketMs is set to.
+  const fetchDailyHistory = async (): Promise<MetricsHistoryEntry[]> => {
+    const cacheKey = 'metrics:history:14d-daily'
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null)
+      return cached
+
+    const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+    const until = new Date().toISOString()
+    const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
+      p_since: since,
+      p_until: until,
+      p_bucket_interval: '24 hours',
+    })
+    if (dbError !== null || data === null)
+      return []
+    const entries = (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
+    metricsCache.set(cacheKey, entries, msUntilNextCollection())
+    return entries
+  }
+
   // Auto-refresh: after each 5-min boundary + 1 min buffer, fetch latest.json
   // and append the new data point to the history without hitting the DB.
 
@@ -587,6 +610,7 @@ export function useDataMetrics() {
     fetchMetricsOverview,
     scheduleRefresh,
     fetchMetricsForServer,
+    fetchDailyHistory,
     lastFetchedAt,
   }
 }

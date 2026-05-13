@@ -61,7 +61,7 @@ const shouldShowPagination = computed(() => totalCount.value > adminTablePerPage
 
 // ─── Activity metrics ─────────────────────────────────────────────────────────
 
-const { metrics, fetchMetrics, fetchMetricsHistory } = useDataMetrics()
+const { metrics, fetchMetrics, fetchDailyHistory } = useDataMetrics()
 
 const localHistoryLoading = ref(false)
 const localHistory = ref<MetricsHistoryEntry[]>([])
@@ -181,7 +181,7 @@ onBeforeMount(async () => {
 
   localHistoryLoading.value = true
   try {
-    localHistory.value = await fetchMetricsHistory('14d') ?? []
+    localHistory.value = await fetchDailyHistory() ?? []
   }
   finally {
     localHistoryLoading.value = false
@@ -385,6 +385,7 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
     count-label="playing"
     count-singular="playing"
     :series="['membersSteamGameActivity']"
+    :steam-game-id="selectedGame?.steam_id"
   >
     <template #default="{ period, window, utc, color }">
       <ChartMembersGameActivity

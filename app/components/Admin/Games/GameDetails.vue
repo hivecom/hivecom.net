@@ -193,9 +193,7 @@ watchEffect(async () => {
             <Grid v-if="props.game.shorthand" expand :columns="2">
               <span class="game-details__label">Shorthand:</span>
               <span>
-                <Code>
-                  {{ props.game.shorthand }}
-                </Code>
+                <code>{{ props.game.shorthand }}</code>
               </span>
             </Grid>
 
@@ -221,7 +219,7 @@ watchEffect(async () => {
         <!-- Related Game Servers -->
         <Card separators class="card-bg">
           <template #header>
-            <h6>Related Game Servers</h6>
+            <h6>Game Servers</h6>
           </template>
 
           <!-- Loading state -->
@@ -241,7 +239,7 @@ watchEffect(async () => {
 
           <!-- No gameservers -->
           <div v-else-if="gameservers.length === 0" class="game-details__placeholder-text">
-            No gameservers are currently using this game.
+            No gameservers associated with this game.
           </div>
 
           <!-- Gameservers list -->

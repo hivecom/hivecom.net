@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
 
 const props = defineProps<{
@@ -13,6 +15,7 @@ const emit = defineEmits(['edit'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+const isMobile = useBreakpoint('<s')
 
 // Handle closing the sheet
 function handleClose() {
@@ -44,7 +47,14 @@ function handleEdit() {
         </Flex>
         <Flex y-center gap="s">
           <Button
-            v-if="props.server"
+            v-if="props.server && isMobile"
+            square
+            @click="handleEdit"
+          >
+            <Icon name="ph:pencil" />
+          </Button>
+          <Button
+            v-else-if="props.server"
             @click="handleEdit"
           >
             <template #start>
@@ -68,7 +78,7 @@ function handleEdit() {
 
             <Grid class="detail-item" expand :columns="2">
               <span class="text-color-light text-bold">Address:</span>
-              <span>{{ props.server.address }}</span>
+              <CopyValue :text="props.server.address" />
             </Grid>
 
             <Grid class="detail-item" expand :columns="2">

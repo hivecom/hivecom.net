@@ -6,6 +6,7 @@ import constants from '~~/constants.json'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
 import { getContainerStatus } from '@/lib/containerStatus'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import ContainerActions from './ContainerActions.vue'
 import ContainerLogViewer from './ContainerLogViewer.vue'
 
@@ -58,6 +59,8 @@ interface ContainerAction {
 const containerAction = defineModel<ContainerAction | null>('containerAction', { default: null })
 
 const refreshContainer = defineModel<boolean>('refreshContainer', { default: false })
+
+const isMobile = useBreakpoint('<s')
 
 // Computed property for container status
 const containerStatus = computed(() => {
@@ -119,7 +122,8 @@ const logsVisible = computed(() =>
           v-model="containerAction"
           :container="container"
           :status="containerStatus"
-          :show-labels="true"
+          :show-labels="!isMobile"
+          :size="isMobile ? 'm' : undefined"
           :is-loading="(action) => {
             if (!container) return false
             return !!props.actionLoading[container.name]?.[action]
@@ -138,11 +142,6 @@ const logsVisible = computed(() =>
         <!-- Basic info -->
         <Card class="container-info" separators>
           <Flex column gap="l" expand>
-            <Grid class="detail-item" expand :columns="2">
-              <span class="text-color-light text-bold">Name:</span>
-              <span class="container-name">{{ container.name }}</span>
-            </Grid>
-
             <Grid class="detail-item" expand :columns="2">
               <span class="text-color-light text-bold">Status:</span>
               <ContainerStatusIndicator :status="containerStatus" :show-label="true" />
