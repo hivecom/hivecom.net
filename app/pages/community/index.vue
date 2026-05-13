@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Card, Flex, Grid } from '@dolanske/vui'
+import { Button, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
 import CommunityBirthdays from '@/components/Community/CommunityBirthdays.vue'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
@@ -303,7 +303,16 @@ watch(user, () => {
 
     <!-- Community Members (includes birthday sub-section when applicable) -->
     <ClientOnly>
-      <Card v-if="user && (randomUsers.length > 0 || birthdayUserIds.length > 0)" class="pb-l mt-l community-card">
+      <ChartOnlineUsersModal
+        v-model:open="showOnlineModal"
+        :online-user-ids="onlineUserIds"
+        :online-users-loading="onlineUsersLoading"
+        :online-count="onlineCount"
+      />
+
+      <Skeleton v-if="loading" :height="376" :radius="8" class="mt-l" style="display: block;" />
+
+      <Card v-else-if="user && !loading && (randomUsers.length > 0 || birthdayUserIds.length > 0)" class="pb-l mt-l community-card">
         <Flex column gap="l" x-center y-center>
           <Flex y-center gap="m" x-center expand>
             <Flex column :gap="0" x-center class="text-center" y-center>
@@ -334,21 +343,14 @@ watch(user, () => {
         </Flex>
       </Card>
 
-      <ChartOnlineUsersModal
-        v-model:open="showOnlineModal"
-        :online-user-ids="onlineUserIds"
-        :online-users-loading="onlineUsersLoading"
-        :online-count="onlineCount"
-      />
-
       <!-- Sign-in prompt for community features -->
-      <section v-if="!user" class="mt-m">
+      <section v-else class="mt-m">
         <Card class="signin-prompt">
-          <Flex column gap="m" y-center class="signin-prompt__content">
+          <Flex column gap="l" y-center class="signin-prompt__content">
             <div class="signin-prompt__icon">
-              <Icon name="ph:users-three" size="2.5rem" />
+              <Icon name="ph:users-three" size="5rem" />
             </div>
-            <h3 class="text-bold text-xl">
+            <h3 class="text-bold text-xxl">
               Discover Our Community
             </h3>
             <p class="text-color-light text-center">
@@ -666,6 +668,7 @@ watch(user, () => {
 
 // Sign-in Prompt
 .signin-prompt {
+  min-height: 376px;
   border: 2px dashed var(--color-border);
   text-align: center;
 

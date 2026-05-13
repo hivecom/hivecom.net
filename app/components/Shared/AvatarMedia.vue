@@ -37,17 +37,33 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
 
 const sizePixels = computed(() => getSizePixels(props.size))
 
-const imageLoaded = ref(false)
+// Only set after JS preload completes - guarantees image is in cache before
+// the visible <img> mounts, so Transition fades in a fully decoded image.
+const visibleSrc = ref<string | null>(null)
 
-watch(() => props.url, () => {
-  imageLoaded.value = false
-})
-
-function onLoad() {
-  imageLoaded.value = true
+function preload(url: string) {
+  visibleSrc.value = null
+  if (!import.meta.client)
+    return
+  const img = new Image()
+  img.onload = () => {
+    visibleSrc.value = url
+  }
+  img.src = url
 }
 
-const showFallback = computed(() => !props.url || !imageLoaded.value)
+watch(
+  () => props.url,
+  (url) => {
+    if (url)
+      preload(url)
+    else
+      visibleSrc.value = null
+  },
+  { immediate: true },
+)
+
+const showFallback = computed(() => !visibleSrc.value)
 </script>
 
 <template>
@@ -72,7 +88,7 @@ const showFallback = computed(() => !props.url || !imageLoaded.value)
               height: sizePixels }"
     @click="emit('click', $event)"
   >
-    <!-- Fallback: VUI Avatar with slot content (initials/spinner), shown until image loads -->
+    <!-- Fallback: shown while url is absent or preloading -->
     <Transition name="avatar-fade">
       <Avatar
         v-if="showFallback"
@@ -91,24 +107,15 @@ const showFallback = computed(() => !props.url || !imageLoaded.value)
       </Avatar>
     </Transition>
 
-    <!-- Image layer: we own the <img> so we control exactly when it appears -->
+    <!-- Image: only mounts once preload confirms it's cached -->
     <Transition name="avatar-fade">
       <img
-        v-if="url && imageLoaded"
-        :src="url"
+        v-if="visibleSrc"
+        :src="visibleSrc"
         :alt="alt"
         class="avatar-media__layer avatar-media__image"
       >
     </Transition>
-
-    <!-- Off-screen preloader: fires load before we show anything -->
-    <img
-      v-if="url && !imageLoaded"
-      :src="url"
-      aria-hidden="true"
-      class="avatar-media__preload"
-      @load="onLoad"
-    >
   </div>
 </template>
 
@@ -145,19 +152,13 @@ const showFallback = computed(() => !props.url || !imageLoaded.value)
     border-radius: var(--border-radius-pill);
     object-fit: cover;
   }
-
-  &__preload {
-    position: absolute;
-    width: 0;
-    height: 0;
-    opacity: 0;
-    pointer-events: none;
-  }
 }
+</style>
 
+<style lang="scss">
 .avatar-fade-enter-active,
 .avatar-fade-leave-active {
-  transition: opacity var(--transition);
+  transition: var(--transition-slow);
 }
 
 .avatar-fade-enter-from,
