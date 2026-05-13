@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import CopyValue from '@/components/Shared/CopyValue.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
 

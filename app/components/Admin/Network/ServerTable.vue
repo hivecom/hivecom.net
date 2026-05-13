@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Alert, Button, CopyClipboard, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
