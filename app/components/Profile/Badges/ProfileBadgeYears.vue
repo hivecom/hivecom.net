@@ -39,8 +39,8 @@ const formattedSince = computed(() => {
 
 const description = computed(() => {
   if (!formattedSince.value)
-    return `Member for ${subtitle.value}`
-  return `Member for ${subtitle.value} (since ${formattedSince.value})`
+    return `User for ${subtitle.value}`
+  return `User for ${subtitle.value} (since ${formattedSince.value})`
 })
 </script>
 

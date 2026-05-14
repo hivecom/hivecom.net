@@ -49,7 +49,7 @@ const hasProfile = computed(() => Boolean(props.profile))
 
 const profileUsername = computed(() => userData.value?.username ?? props.profile?.username ?? null)
 const profileLink = computed(() => profileUsername.value ? `/profile/${profileUsername.value}` : null)
-const displayName = computed(() => profileUsername.value ?? 'Member')
+const displayName = computed(() => profileUsername.value ?? 'User')
 const avatarUrl = computed(() => userData.value?.avatarUrl ?? null)
 const role = computed(() => userData.value?.role ?? null)
 const initials = computed(() => userInitials.value || displayName.value.charAt(0).toUpperCase())
@@ -117,7 +117,7 @@ const lastSeen = computed(() => formatDate(props.profile?.last_seen))
             <h3>
               {{ displayName }}
             </h3>
-            <RoleIndicator :role="role || 'member'" size="s" />
+            <RoleIndicator :role="role || 'user'" size="s" />
           </Flex>
           <p class="profile-summary-card__meta-line">
             Joined {{ joinedDate }} - Last active {{ lastSeen }}

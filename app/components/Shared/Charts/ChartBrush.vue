@@ -6,7 +6,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { METRICS_PERIOD_OPTIONS, PERIOD_CONFIGS, useDataMetrics } from '@/composables/useDataMetrics'
 import { getCSSVariable } from '@/lib/utils/common'
 
-type SeriesKey = 'membersOnline' | 'teamspeakOnline' | 'gameserversPlayers' | 'membersGameActivity' | 'membersSteamGameActivity'
+type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
 
 interface SeriesDef {
   key: SeriesKey
@@ -24,7 +24,7 @@ const props = withDefaults(defineProps<{
   serverId?: number
   serverName?: string
 }>(), {
-  series: () => ['membersOnline', 'teamspeakOnline', 'gameserversPlayers'] as SeriesKey[],
+  series: () => ['usersOnline', 'teamspeakOnline', 'gameserversPlayers'] as SeriesKey[],
   color: () => getCSSVariable('--color-accent'),
 })
 
@@ -34,11 +34,11 @@ const emit = defineEmits<{
 }>()
 
 const ALL_SERIES: SeriesDef[] = [
-  { key: 'membersOnline', label: 'Users', paletteIndex: 1 },
+  { key: 'usersOnline', label: 'Users', paletteIndex: 1 },
   { key: 'teamspeakOnline', label: 'TeamSpeak', paletteIndex: 0 },
   { key: 'gameserversPlayers', label: 'Servers', paletteIndex: 3 },
-  { key: 'membersGameActivity', label: 'Games', paletteIndex: 4 },
-  { key: 'membersSteamGameActivity', label: 'Steam Games', paletteIndex: 2 },
+  { key: 'usersGameActivity', label: 'Games', paletteIndex: 4 },
+  { key: 'usersSteamGameActivity', label: 'Steam Games', paletteIndex: 2 },
 ]
 
 const { metricsOverview, fetchMetricsOverview } = useDataMetrics()
@@ -222,10 +222,10 @@ function draw() {
 
   // When scoped to a specific game, override the entry value lookup
   function getEntryValue(entry: MetricsHistoryEntry, key: SeriesKey): number | null {
-    if (props.gameId !== undefined && (key === 'membersGameActivity'))
-      return entry.membersByGame?.[String(props.gameId)] ?? null
-    if (props.steamGameId !== undefined && (key === 'membersSteamGameActivity'))
-      return entry.membersBySteamGame?.[String(props.steamGameId)] ?? null
+    if (props.gameId !== undefined && (key === 'usersGameActivity'))
+      return entry.usersByGame?.[String(props.gameId)] ?? null
+    if (props.steamGameId !== undefined && (key === 'usersSteamGameActivity'))
+      return entry.usersBySteamGame?.[String(props.steamGameId)] ?? null
     if (props.serverId !== undefined && key === 'gameserversPlayers')
       return entry.gameserversByServer?.[String(props.serverId)] ?? null
     if (props.serverName !== undefined && key === 'teamspeakOnline')

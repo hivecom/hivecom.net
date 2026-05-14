@@ -67,7 +67,7 @@ const localHistoryLoading = ref(false)
 const localHistory = ref<MetricsHistoryEntry[]>([])
 
 function getSteamGamePlayers(steamId: number): number {
-  const bySteam = metrics.value?.members.bySteamGame
+  const bySteam = metrics.value?.users.bySteamGame
   if (!bySteam)
     return 0
   return bySteam[String(steamId)] ?? 0
@@ -75,7 +75,7 @@ function getSteamGamePlayers(steamId: number): number {
 
 function getSteamGameHistogram(steamId: number): number[] {
   const id = String(steamId)
-  return localHistory.value.map(e => e.membersBySteamGame?.[id] ?? 0)
+  return localHistory.value.map(e => e.usersBySteamGame?.[id] ?? 0)
 }
 
 function getSteamGameTimestamps(): string[] {
@@ -384,7 +384,7 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
     :count="selectedGame ? getSteamGamePlayers(selectedGame.steam_id) : null"
     count-label="playing"
     count-singular="playing"
-    :series="['membersSteamGameActivity']"
+    :series="['usersSteamGameActivity']"
     :steam-game-id="selectedGame?.steam_id"
   >
     <template #default="{ period, window, utc, color }">

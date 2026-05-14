@@ -74,7 +74,7 @@ watch(search, (val) => {
 const TYPE_META: Record<SearchType, { label: string, icon: string, group: string }> = {
   discussion_topic: { label: 'Topics', icon: 'ph:folder', group: 'Forum' },
   discussion: { label: 'Discussions', icon: 'ph:chat-circle', group: 'Forum' },
-  profile: { label: 'Members', icon: 'ph:user', group: 'Members' },
+  profile: { label: 'Users', icon: 'ph:user', group: 'Users' },
   event: { label: 'Events', icon: 'ph:calendar', group: 'Events' },
   gameserver: { label: 'Game Servers', icon: 'ph:game-controller', group: 'Servers' },
   project: { label: 'Projects', icon: 'ph:code', group: 'Projects' },
@@ -83,7 +83,7 @@ const TYPE_META: Record<SearchType, { label: string, icon: string, group: string
 // Maps a VUI group name back to the SearchType[] used for the DB query
 const GROUP_TO_TYPES: Record<string, SearchType[]> = {
   Forum: ['discussion', 'discussion_topic'],
-  Members: ['profile'],
+  Users: ['profile'],
   Events: ['event'],
   Servers: ['gameserver'],
   Projects: ['project'],
@@ -437,7 +437,7 @@ function iconForCommand(command: Command): string {
   return NAV_GROUP_ICONS[command.title] ?? 'ph:arrow-right'
 }
 
-// Maps username -> profile UUID for Members results so the #icon slot can
+// Maps username -> profile UUID for Users results so the #icon slot can
 // render UserAvatar without adding non-standard fields to Command objects.
 const profileIdByUsername = computed(() => {
   const map = new Map<string, string>()
@@ -491,7 +491,7 @@ useEventListener('keydown', (e: KeyboardEvent) => {
   >
     <template #icon="{ command }">
       <UserAvatar
-        v-if="command.group === 'Members' && profileIdByUsername.get(command.title) != null"
+        v-if="command.group === 'Users' && profileIdByUsername.get(command.title) != null"
         :user-id="profileIdByUsername.get(command.title)"
         :size="22"
       />

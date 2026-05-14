@@ -264,7 +264,7 @@ onMounted(() => {
           {{ props.event.location }}
         </Badge>
 
-        <Tooltip v-if="props.event.note" placement="bottom">
+        <Tooltip v-if="props.event.note && !isBelowSmall" placement="bottom">
           <template #tooltip>
             <div class="event-header__tooltip-content">
               {{ props.event.note }}
@@ -275,6 +275,10 @@ onMounted(() => {
             Note
           </Badge>
         </Tooltip>
+        <Badge v-else-if="props.event.note" variant="neutral">
+          <Icon name="ph:note" />
+          {{ props.event.note }}
+        </Badge>
 
         <Badge v-if="props.event.recurrence_rule" variant="neutral">
           <Icon name="ph:arrows-clockwise" />

@@ -35,7 +35,7 @@ const onlineMap = computed<Map<string, number>>(() => {
 // Map of country ISO -> total count from metrics snapshot
 const allMap = computed<Map<string, number>>(() => {
   const m = new Map<string, number>()
-  for (const [country, count] of Object.entries(latestMetrics.value?.members.byCountry ?? {})) {
+  for (const [country, count] of Object.entries(latestMetrics.value?.users.byCountry ?? {})) {
     const iso = country.toUpperCase()
     if (/^[A-Z]{2}$/.test(iso))
       m.set(iso, count)

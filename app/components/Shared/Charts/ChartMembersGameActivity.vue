@@ -86,21 +86,21 @@ const { activeTheme } = useUserTheme()
 
 const currentCount = computed(() => {
   if (props.steamGameId !== undefined) {
-    const bySteam = metrics.value?.members.bySteamGame
+    const bySteam = metrics.value?.users.bySteamGame
     if (bySteam !== undefined)
       return bySteam[String(props.steamGameId)] ?? 0
-    return [...metricsHistory.value].reverse().find(e => e.membersBySteamGame?.[String(props.steamGameId!)] !== undefined)?.membersBySteamGame?.[String(props.steamGameId!)]
+    return [...metricsHistory.value].reverse().find(e => e.usersBySteamGame?.[String(props.steamGameId!)] !== undefined)?.usersBySteamGame?.[String(props.steamGameId!)]
       ?? undefined
   }
   if (props.gameId !== undefined) {
-    const byGame = metrics.value?.members.byGame
+    const byGame = metrics.value?.users.byGame
     if (byGame !== undefined)
       return byGame[String(props.gameId)] ?? 0
-    return [...metricsHistory.value].reverse().find(e => e.membersByGame?.[String(props.gameId!)] !== undefined)?.membersByGame?.[String(props.gameId!)]
+    return [...metricsHistory.value].reverse().find(e => e.usersByGame?.[String(props.gameId!)] !== undefined)?.usersByGame?.[String(props.gameId!)]
       ?? undefined
   }
   // Sum across all tracked game IDs
-  const byGame = metrics.value?.members.byGame
+  const byGame = metrics.value?.users.byGame
   if (byGame) {
     return Object.values(byGame).reduce((acc: number, n: number) => acc + n, 0)
   }
@@ -111,8 +111,8 @@ const currentCount = computed(() => {
 const gameOptions = computed<GameOption[]>(() => {
   const ids = new Set<string>()
   for (const e of metricsHistory.value) {
-    if (e.membersByGame)
-      Object.keys(e.membersByGame).forEach(k => ids.add(k))
+    if (e.usersByGame)
+      Object.keys(e.usersByGame).forEach(k => ids.add(k))
   }
   return [...ids]
     .sort((a, b) => gameLabel(a).localeCompare(gameLabel(b)))
@@ -148,7 +148,7 @@ const chartData = computed(() => {
   const isFiltered = selectedGameIds.value !== null
   const colorized = props.colorize && !isFiltered ? getColorizedPalette(ids.length) : null
 
-  // Steam game mode: filter by Steam app ID using membersBySteamGame
+  // Steam game mode: filter by Steam app ID using usersBySteamGame
   if (props.steamGameId !== undefined) {
     const id = String(props.steamGameId)
     return {
@@ -156,7 +156,7 @@ const chartData = computed(() => {
         label: id,
         data: metricsHistory.value.map((e: MetricsHistoryEntry) => ({
           x: new Date(e.capturedAt).getTime(),
-          y: e.membersBySteamGame?.[id] ?? null,
+          y: e.usersBySteamGame?.[id] ?? null,
         })),
         backgroundColor: `${props.color ?? palette.datasets[1]}cc`,
         clip: false,
@@ -173,7 +173,7 @@ const chartData = computed(() => {
         label: gameLabel(id),
         data: metricsHistory.value.map((e: MetricsHistoryEntry) => ({
           x: new Date(e.capturedAt).getTime(),
-          y: e.membersByGame?.[id] ?? null,
+          y: e.usersByGame?.[id] ?? null,
         })),
         backgroundColor: `${props.color ?? palette.datasets[1]}cc`,
         clip: false,
@@ -188,7 +188,7 @@ const chartData = computed(() => {
         label: 'Played Games',
         data: metricsHistory.value.map((e: MetricsHistoryEntry) => ({
           x: new Date(e.capturedAt).getTime(),
-          y: e.membersOnline,
+          y: e.usersOnline,
         })),
         backgroundColor: `${props.color ?? palette.datasets[1]}cc`,
         clip: false as const,
@@ -202,7 +202,7 @@ const chartData = computed(() => {
       label: gameLabel(id),
       data: metricsHistory.value.map((e: MetricsHistoryEntry) => ({
         x: new Date(e.capturedAt).getTime(),
-        y: e.membersByGame?.[id] ?? null,
+        y: e.usersByGame?.[id] ?? null,
       })),
       backgroundColor: colorized
         ? colorized[i % colorized.length]

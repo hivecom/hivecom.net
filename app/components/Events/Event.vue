@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Card, Flex, Tooltip } from '@dolanske/vui'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { humanizeRrule } from '@/lib/utils/rrule'
-// import { useBreakpoint } from '@/lib/mediaQuery'
 import CountdownTimer from './CountdownTimer.vue'
 import EventRSVPCount from './EventRSVPCount.vue'
 
@@ -54,7 +54,7 @@ function updateTime() {
   }
 }
 
-// const isBelowSmall = useBreakpoint('<s')
+const isBelowSmall = useBreakpoint('<s')
 
 useIntervalFn(updateTime, 1000, { immediate: true })
 updateTime()
@@ -103,7 +103,7 @@ updateTime()
               <Icon name="ph:map-pin-fill" />
               {{ props.data.location }}
             </Badge>
-            <Tooltip v-if="props.data.note" placement="right">
+            <Tooltip v-if="props.data.note && !isBelowSmall" placement="right">
               <template #tooltip>
                 <div class="event-item__tooltip-content">
                   {{ props.data.note }}
@@ -114,6 +114,10 @@ updateTime()
                 Note
               </Badge>
             </Tooltip>
+            <Badge v-else-if="props.data.note" variant="neutral">
+              <Icon name="ph:note" />
+              {{ props.data.note }}
+            </Badge>
             <EventRSVPCount
               :event="props.data"
               size="s"

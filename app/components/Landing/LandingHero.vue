@@ -8,8 +8,8 @@ import LandingHeroStats from '@/components/Landing/LandingHeroStats.vue'
 import LandingMotd from '@/components/Landing/LandingMotd.vue'
 
 interface CommunityStats {
-  members: number
-  membersAccurate: boolean
+  users: number
+  usersAccurate: boolean
   gameservers: number
   age: number
   projects: number

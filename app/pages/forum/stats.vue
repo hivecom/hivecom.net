@@ -28,7 +28,7 @@ import { useBulkDataUser } from '@/composables/useDataUser'
 import { useForumStats } from '@/composables/useForumStats'
 import { useUserId } from '@/composables/useUserId'
 import { useUserTheme } from '@/composables/useUserTheme'
-import { getChartPalette, getLineChartDefaults } from '@/lib/charts'
+import { createVuiTooltipHandler, getChartPalette, getLineChartDefaults } from '@/lib/charts'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
@@ -110,13 +110,11 @@ const activityChartData = computed(() => {
     return { labels: [], datasets: [] }
 
   const points = stats.value.activityOverTime
-  const labels = points.map(p => p.date)
   return {
-    labels,
     datasets: [
       {
         label: 'Discussions',
-        data: points.map(p => p.discussions),
+        data: points.map(p => ({ x: new Date(p.date).getTime(), y: p.discussions })),
         borderColor: '#8b5cf6',
         backgroundColor: '#8b5cf61a',
         fill: true,
@@ -124,7 +122,7 @@ const activityChartData = computed(() => {
       },
       {
         label: 'Replies',
-        data: points.map(p => p.replies),
+        data: points.map(p => ({ x: new Date(p.date).getTime(), y: p.replies })),
         borderColor: '#22c55e',
         backgroundColor: '#22c55e1a',
         fill: true,
@@ -134,34 +132,31 @@ const activityChartData = computed(() => {
   }
 })
 
-const activityChartOptions: ChartOptions<'line'> = {
-  plugins: {
-    title: {
-      text: 'Weekly Forum Activity',
-    },
-    tooltip: {
-      mode: 'index',
-      intersect: false,
-    },
-  },
-  scales: {
-    x: {
+const activityChartOptions = computed<ChartOptions<'line'>>(() => {
+  return {
+    plugins: {
       title: {
-        display: true,
-        text: 'Week of',
+        text: 'Weekly Forum Activity',
       },
-      ticks: {
-        maxTicksLimit: 16,
+      legend: {
+        display: !isMobile.value,
       },
-    },
-    y: {
-      title: {
-        display: true,
-        text: 'Count',
+      tooltip: {
+        enabled: false,
+        external: createVuiTooltipHandler(),
       },
     },
-  },
-}
+    scales: {
+      x: {
+        type: 'timestack' as 'linear',
+        ticks: {
+          maxTicksLimit: isMobile.value ? 6 : 16,
+        },
+      },
+      y: {},
+    },
+  }
+})
 
 watchEffect(() => {
   const width = activityChartWidth.value
@@ -199,6 +194,7 @@ const topicChartData = computed(() => {
         borderColor: '#8b5cf6',
         borderWidth: 1,
         borderRadius: 4,
+        stack: 'topics',
       },
       {
         label: 'Replies',
@@ -207,6 +203,7 @@ const topicChartData = computed(() => {
         borderColor: '#22c55e',
         borderWidth: 1,
         borderRadius: 4,
+        stack: 'topics',
       },
     ],
   }
@@ -271,31 +268,35 @@ function getBarChartDefaults(): ChartOptions<'bar'> {
   }
 }
 
-const topicChartOptions: ChartOptions<'bar'> = {
-  plugins: {
-    title: {
-      text: 'Activity by Topic',
-    },
-    tooltip: {
-      mode: 'index',
-      intersect: false,
-    },
-  },
-  scales: {
-    x: {
-      ticks: {
-        maxRotation: 45,
-        minRotation: 0,
-      },
-    },
-    y: {
+const topicChartOptions = computed<ChartOptions<'bar'>>(() => {
+  return {
+    plugins: {
       title: {
-        display: true,
-        text: 'Count',
+        text: 'Activity by Topic',
+      },
+      legend: {
+        display: !isMobile.value,
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
       },
     },
-  },
-}
+    scales: {
+      x: {
+        stacked: true,
+        ticks: {
+          maxRotation: isMobile.value ? 90 : 45,
+          minRotation: isMobile.value ? 90 : 0,
+          maxTicksLimit: isMobile.value ? 8 : undefined,
+        },
+      },
+      y: {
+        stacked: true,
+      },
+    },
+  }
+})
 
 watchEffect(() => {
   const width = topicChartWidth.value
@@ -343,7 +344,7 @@ const leaderboardLabel = computed(() => {
   switch (leaderboardMode.value) {
     case 'discussions': return { header: 'Top Discussion Starters', unit: 'discussions', icon: 'ph:scroll', barClass: 'leaderboard__bar--discussions' }
     case 'replies': return { header: 'Top Repliers', unit: 'replies', icon: 'ph:chats-circle', barClass: 'leaderboard__bar--replies' }
-    default: return { header: 'Most Active Members', unit: 'posts', icon: 'ph:users', barClass: 'leaderboard__bar--combined' }
+    default: return { header: 'Most Active Users', unit: 'posts', icon: 'ph:users', barClass: 'leaderboard__bar--combined' }
   }
 })
 
@@ -472,7 +473,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
           </Card>
 
           <!-- Counter grid skeleton -->
-          <Grid :columns="isBelowSmall ? 2 : isBelowMedium ? 3 : 5" gap="m" y-stretch expand>
+          <Grid :columns="isBelowSmall ? 1 : isBelowMedium ? 3 : 5" gap="m" y-stretch expand>
             <Card v-for="i in 5" :key="i" class="stats-counter-card">
               <div class="stats-counter">
                 <Skeleton :width="24" :height="24" :radius="4" />
@@ -483,11 +484,9 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
           </Grid>
 
           <!-- Chart card skeletons -->
-          <Card v-for="i in 2" :key="i">
-            <div class="chart-container">
-              <Skeleton :height="320" :radius="8" style="opacity: 0.3;" />
-            </div>
-          </Card>
+          <div v-for="i in 2" :key="i" class="chart-container">
+            <Skeleton :height="320" :radius="8" style="opacity: 0.3;" />
+          </div>
         </Flex>
       </template>
 
@@ -670,36 +669,32 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
             <div class="stats-counter">
               <Icon name="ph:calendar-check" size="24" class="stats-counter__icon stats-counter__icon--daily" />
               <span class="stats-counter__value">{{ stats.avgPostsPerDay }}</span>
-              <span class="stats-counter__label">Avg posts / day</span>
+              <span class="stats-counter__label">Avg discussions +replies / day</span>
             </div>
           </Card>
         </div>
 
         <!-- Activity over time chart -->
-        <Card class="mb-xl">
-          <div class="chart-container">
-            <div ref="activityChartWrapperRef" :key="`${theme}-${activeTheme?.id}`" class="chart-wrapper">
-              <Line
-                ref="activityChartRef"
-                :data="activityChartData"
-                :options="deepMergePlainObjects(getLineChartDefaults(), activityChartOptions)"
-              />
-            </div>
+        <div class="chart-container mb-xl">
+          <div ref="activityChartWrapperRef" :key="`${theme}-${activeTheme?.id}-${isMobile}`" class="chart-wrapper">
+            <Line
+              ref="activityChartRef"
+              :data="activityChartData"
+              :options="deepMergePlainObjects(getLineChartDefaults(), activityChartOptions)"
+            />
           </div>
-        </Card>
+        </div>
 
         <!-- Topic breakdown chart -->
-        <Card class="mb-xl">
-          <div class="chart-container">
-            <div ref="topicChartWrapperRef" :key="`topic-${theme}-${activeTheme?.id}`" class="chart-wrapper">
-              <Bar
-                ref="topicChartRef"
-                :data="topicChartData"
-                :options="deepMergePlainObjects(getBarChartDefaults(), topicChartOptions)"
-              />
-            </div>
+        <div class="chart-container mb-xl">
+          <div ref="topicChartWrapperRef" :key="`topic-${theme}-${activeTheme?.id}-${isMobile}`" class="chart-wrapper">
+            <Bar
+              ref="topicChartRef"
+              :data="topicChartData"
+              :options="deepMergePlainObjects(getBarChartDefaults(), topicChartOptions)"
+            />
           </div>
-        </Card>
+        </div>
       </template>
     </ClientOnly>
   </div>
@@ -719,11 +714,12 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
   }
 
   @media screen and (max-width: $breakpoint-s) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 }
 
 .stats-counter-card {
+  background-color: var(--color-bg-card);
   min-width: 0;
   height: 100%;
 
@@ -781,6 +777,11 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
 // ── Podium ───────────────────────────────────────────────────────────────────
 .stats-podium-card {
   overflow: hidden;
+  background-color: var(--color-bg-card);
+
+  :deep(.vui-card-header) {
+    background-color: var(--color-bg-card);
+  }
 }
 
 .podium {

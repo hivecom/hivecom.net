@@ -3,8 +3,8 @@ import { Flex, Skeleton } from '@dolanske/vui'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
 
 interface CommunityStats {
-  members: number
-  membersAccurate: boolean
+  users: number
+  usersAccurate: boolean
   gameservers: number
   age: number
   projects: number
@@ -27,10 +27,10 @@ defineProps<{
             <Skeleton height="2.5rem" width="4rem" />
           </template>
           <template v-else>
-            <CountDisplay :value="communityStats.members" :approx="!communityStats.membersAccurate" class="text-xxl" />
+            <CountDisplay :value="communityStats.users" :approx="!communityStats.usersAccurate" class="text-xxl" />
           </template>
         </Flex>
-        <span class="text-xs">Members</span>
+        <span class="text-xs">Users</span>
       </NuxtLink>
 
       <NuxtLink to="/forum" class="hero-section__stats-card hero-section__stats-card--clickable">

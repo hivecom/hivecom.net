@@ -203,7 +203,7 @@ const hasBadges = computed(() => profileBadgesToRender.value.length > 0)
 const emptyStateText = computed(() => {
   if (props.isOwnProfile)
     return 'Earn badges by participating in the community!'
-  return 'This member has not earned any badges yet.'
+  return 'This user has not earned any badges yet.'
 })
 
 const goToBadgeDirectory = () => navigateTo('/community/badges')

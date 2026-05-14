@@ -125,7 +125,7 @@ async function fetchUserMetrics() {
   }
 }
 
-// Compute total staff members (admins + moderators)
+// Compute total staff users (admins + moderators)
 const staffMembers = computed(() => {
   return metrics.value.admins + metrics.value.moderators
 })
@@ -166,7 +166,7 @@ onBeforeMount(fetchUserMetrics)
     />
 
     <KPICard
-      label="Staff Members"
+      label="Staff Users"
       :value="staffMembers"
       icon="ph:shield-check"
       variant="warning"

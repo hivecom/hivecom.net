@@ -272,7 +272,7 @@ watchEffect(async () => {
           <template #header>
             <h6>Activity</h6>
           </template>
-          <ChartActivityHistogramControls :series="['membersGameActivity']" :game-id="props.game.id">
+          <ChartActivityHistogramControls :series="['usersGameActivity']" :game-id="props.game.id">
             <template #default="{ period, window, utc, color }">
               <ChartMembersGameActivity :period :window :utc :color :game-id="props.game.id" compact />
             </template>

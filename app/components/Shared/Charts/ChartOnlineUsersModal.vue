@@ -21,7 +21,7 @@ const open = defineModel<boolean>('open', { default: false })
     count-label="online"
     count-singular="online"
     :initial-period="onlineCount ? '24h' : '14d'"
-    :series="['membersOnline']"
+    :series="['usersOnline']"
   >
     <template #above-chart>
       <Flex v-if="onlineUserIds.length > 0 || onlineUsersLoading" column gap="xs" expand>

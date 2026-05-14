@@ -677,6 +677,7 @@ watch(() => route.path, () => {
   .admin-layout__content {
     height: auto;
     min-height: 100vh;
+    overflow-y: visible;
   }
 
   .admin-layout__mobile-bar {

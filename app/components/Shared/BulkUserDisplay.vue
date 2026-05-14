@@ -114,13 +114,14 @@ defineExpose({
       >
         <UserPreviewHover :user-id="user.profile?.id || user.id" class="bulk-user-display__hover">
           <Card :class="itemClass" class="bulk-user-display__card">
-            <Flex x-start expand>
+            <Flex x-start x-between expand>
               <UserDisplay
                 :user-id="user.id"
                 :show-role="showRole"
                 :size="userSize"
                 :show-profile-preview="false"
               />
+              <slot name="user-extra" :user="user" />
             </Flex>
           </Card>
         </UserPreviewHover>

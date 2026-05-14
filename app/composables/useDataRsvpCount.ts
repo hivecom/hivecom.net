@@ -4,7 +4,7 @@ import { onMounted, ref, watch } from 'vue'
 import { useCache } from '@/composables/useCache'
 import { useRsvpBus } from '@/composables/useRsvpBus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
-import { isSeriesActive } from '@/lib/utils/rrule'
+import { isSeriesActive, nextOccurrenceDate } from '@/lib/utils/rrule'
 
 // Module-level singleton so all instances for the same event share one cache entry
 // and don't issue duplicate network requests on the same page load.
@@ -58,8 +58,12 @@ export function useDataRsvpCount(eventSource: MaybeRefOrGetter<Tables<'events'> 
       let result = 0
 
       if (event != null && isSeriesActive(event)) {
+        const nextDate = nextOccurrenceDate(event)
         const { data, error: fetchError } = await supabase
-          .rpc('get_effective_rsvps_for_occurrence', { p_event_id: id })
+          .rpc('get_effective_rsvps_for_occurrence', {
+            p_event_id: id,
+            ...(nextDate != null ? { p_occurrence_date: nextDate.toISOString() } : {}),
+          })
 
         if (fetchError)
           throw fetchError

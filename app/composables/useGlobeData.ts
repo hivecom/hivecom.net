@@ -286,7 +286,7 @@ export function useGlobeData() {
 
     try {
       const metricsSnapshot = await fetchMetrics()
-      const userCountries = metricsSnapshot?.members?.byCountry ?? {}
+      const userCountries = metricsSnapshot?.users?.byCountry ?? {}
       const allowedIso = new Set<string>()
 
       for (const [code, count] of Object.entries(userCountries)) {

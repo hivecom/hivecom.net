@@ -210,7 +210,7 @@ export function useForumStats() {
         ? Math.round((totalReplies / totalDiscussions) * 10) / 10
         : 0
 
-      // Avg posts (discussions + replies) per day across the full date range
+      // Avg replies + discussions (discussions + replies) per day across the full date range
       const allDates = [
         ...discussions.map(d => d.created_at),
         ...replies.map(r => r.created_at),

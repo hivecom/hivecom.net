@@ -29,16 +29,16 @@ export const METRICS_PERIOD_OPTIONS = (Object.entries(PERIOD_CONFIGS) as [Metric
 
 export interface MetricsHistoryEntry {
   capturedAt: string
-  membersOnline: number | null
-  membersTotal: number | null
+  usersOnline: number | null
+  usersTotal: number | null
   teamspeakOnline: number | null
   gameserversPlayers: number | null
   teamspeakByServer: Record<string, number> | null
   gameserversByServer: Record<string, number> | null
-  membersByGame: Record<string, number> | null
-  membersBySteamGame: Record<string, number> | null
-  membersGameActivity: number | null
-  membersSteamGameActivity: number | null
+  usersByGame: Record<string, number> | null
+  usersBySteamGame: Record<string, number> | null
+  usersGameActivity: number | null
+  usersSteamGameActivity: number | null
   discussionsTotal: number | null
   discussionsReplies: number | null
   discussionsNewTotal: number | null
@@ -77,27 +77,27 @@ function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
 
   const record = snapshot as Record<string, unknown>
   const collectedAt = record.collectedAt
-  const members = record.members as Record<string, unknown> | undefined
+  const users = record.users as Record<string, unknown> | undefined
   const community = record.community as Record<string, unknown> | undefined
   const teamspeak = record.teamspeak as Record<string, unknown> | undefined
   const gameservers = record.gameservers as Record<string, unknown> | undefined
 
-  if (typeof collectedAt !== 'string' || members === undefined)
+  if (typeof collectedAt !== 'string' || users === undefined)
     return null
 
   return {
     collectedAt,
-    members: {
-      total: typeof members.total === 'number' ? members.total : 0,
-      online: typeof members.online === 'number' ? members.online : 0,
-      byCountry: (typeof members.byCountry === 'object' && members.byCountry !== null)
-        ? (members.byCountry as Record<string, number>)
+    users: {
+      total: typeof users.total === 'number' ? users.total : 0,
+      online: typeof users.online === 'number' ? users.online : 0,
+      byCountry: (typeof users.byCountry === 'object' && users.byCountry !== null)
+        ? (users.byCountry as Record<string, number>)
         : {},
-      byGame: (typeof members.byGame === 'object' && members.byGame !== null)
-        ? (members.byGame as Record<string, number>)
+      byGame: (typeof users.byGame === 'object' && users.byGame !== null)
+        ? (users.byGame as Record<string, number>)
         : {},
-      bySteamGame: (typeof members.bySteamGame === 'object' && members.bySteamGame !== null)
-        ? (members.bySteamGame as Record<string, number>)
+      bySteamGame: (typeof users.bySteamGame === 'object' && users.bySteamGame !== null)
+        ? (users.bySteamGame as Record<string, number>)
         : {},
     },
     community: {
@@ -160,19 +160,19 @@ async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>) {
 function normalizeRpcRow(row: Record<string, unknown>): MetricsHistoryEntry {
   return {
     capturedAt: row.captured_at as string,
-    membersOnline: row.members_online as number | null,
-    membersTotal: row.members_total as number | null,
+    usersOnline: row.users_online as number | null,
+    usersTotal: row.users_total as number | null,
     teamspeakOnline: row.teamspeak_online as number | null,
     gameserversPlayers: row.gameservers_players as number | null,
     teamspeakByServer: row.teamspeak_by_server as Record<string, number> | null,
     gameserversByServer: row.gameservers_by_server as Record<string, number> | null,
-    membersByGame: row.members_by_game as Record<string, number> | null,
-    membersBySteamGame: row.members_by_steam_game as Record<string, number> | null,
-    membersGameActivity: row.members_by_game !== null && row.members_by_game !== undefined
-      ? Object.values(row.members_by_game as Record<string, number>).reduce((a, b) => a + b, 0)
+    usersByGame: row.users_by_game as Record<string, number> | null,
+    usersBySteamGame: row.users_by_steam_game as Record<string, number> | null,
+    usersGameActivity: row.users_by_game !== null && row.users_by_game !== undefined
+      ? Object.values(row.users_by_game as Record<string, number>).reduce((a, b) => a + b, 0)
       : null,
-    membersSteamGameActivity: row.members_by_steam_game !== null && row.members_by_steam_game !== undefined
-      ? Object.values(row.members_by_steam_game as Record<string, number>).reduce((a, b) => a + b, 0)
+    usersSteamGameActivity: row.users_by_steam_game !== null && row.users_by_steam_game !== undefined
+      ? Object.values(row.users_by_steam_game as Record<string, number>).reduce((a, b) => a + b, 0)
       : null,
     discussionsTotal: row.discussions_total as number | null,
     discussionsReplies: row.discussions_replies as number | null,
@@ -436,16 +436,16 @@ export function useDataMetrics() {
           ...metricsHistory.value,
           {
             capturedAt: new Date(bucketKey).toISOString(),
-            membersOnline: null,
-            membersTotal: null,
+            usersOnline: null,
+            usersTotal: null,
             teamspeakOnline: null,
             gameserversPlayers: null,
             teamspeakByServer: null,
             gameserversByServer: null,
-            membersByGame: null,
-            membersBySteamGame: null,
-            membersGameActivity: null,
-            membersSteamGameActivity: null,
+            usersByGame: null,
+            usersBySteamGame: null,
+            usersGameActivity: null,
+            usersSteamGameActivity: null,
             discussionsTotal: null,
             discussionsReplies: null,
             discussionsNewTotal: null,
@@ -463,21 +463,21 @@ export function useDataMetrics() {
         const bucketKey = Math.floor(Date.now() / bucketMs) * bucketMs
         const newEntry: MetricsHistoryEntry = {
           capturedAt: new Date(bucketKey).toISOString(),
-          membersOnline: snapshot.members.online,
-          membersTotal: snapshot.members.total,
+          usersOnline: snapshot.users.online,
+          usersTotal: snapshot.users.total,
           teamspeakOnline: snapshot.teamspeak.online,
           gameserversPlayers: snapshot.gameservers.players,
           teamspeakByServer: snapshot.teamspeak.byServer,
           gameserversByServer: Object.fromEntries(
             Object.entries(snapshot.gameservers.byServer).map(([k, v]) => [k, v.protocol === 'minecraft' ? (v.data?.numPlayers ?? 0) : (v.data?.players ?? 0)]),
           ),
-          membersByGame: snapshot.members.byGame,
-          membersBySteamGame: snapshot.members.bySteamGame,
-          membersGameActivity: snapshot.members.byGame !== null && snapshot.members.byGame !== undefined
-            ? Object.values(snapshot.members.byGame).reduce((a, b) => a + b, 0)
+          usersByGame: snapshot.users.byGame,
+          usersBySteamGame: snapshot.users.bySteamGame,
+          usersGameActivity: snapshot.users.byGame !== null && snapshot.users.byGame !== undefined
+            ? Object.values(snapshot.users.byGame).reduce((a, b) => a + b, 0)
             : null,
-          membersSteamGameActivity: snapshot.members.bySteamGame !== null && snapshot.members.bySteamGame !== undefined
-            ? Object.values(snapshot.members.bySteamGame).reduce((a, b) => a + b, 0)
+          usersSteamGameActivity: snapshot.users.bySteamGame !== null && snapshot.users.bySteamGame !== undefined
+            ? Object.values(snapshot.users.bySteamGame).reduce((a, b) => a + b, 0)
             : null,
           discussionsTotal: snapshot.discussions.total,
           discussionsReplies: snapshot.discussions.replies,

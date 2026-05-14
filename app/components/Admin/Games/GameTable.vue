@@ -300,12 +300,12 @@ function getGameHistogram(gameId: number): number[] {
   const steamId = gameSteamIdMap.value.get(gameId)
   if (steamId != null) {
     const key = String(steamId)
-    return localHistory.value.map(e => e.membersBySteamGame?.[key] ?? 0)
+    return localHistory.value.map(e => e.usersBySteamGame?.[key] ?? 0)
   }
   const key = gameShorthandMap.value.get(gameId)
   if (!key)
     return localHistory.value.map(() => 0)
-  return localHistory.value.map(e => e.membersByGame?.[key] ?? 0)
+  return localHistory.value.map(e => e.usersByGame?.[key] ?? 0)
 }
 
 function getGameTimestamps(): string[] {
@@ -315,10 +315,10 @@ function getGameTimestamps(): string[] {
 function getGamePlayers(gameId: number): number {
   const steamId = gameSteamIdMap.value.get(gameId)
   if (steamId != null) {
-    const bySteam = metrics.value?.members.bySteamGame
+    const bySteam = metrics.value?.users.bySteamGame
     return bySteam?.[String(steamId)] ?? 0
   }
-  const byGame = metrics.value?.members.byGame
+  const byGame = metrics.value?.users.byGame
   if (!byGame)
     return 0
   const key = gameShorthandMap.value.get(gameId)

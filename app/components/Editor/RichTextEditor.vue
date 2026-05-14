@@ -141,9 +141,6 @@ const minHeightPlain = computed(() => {
   return `${cssValue - 28}px`
 })
 
-// When switching to plain mode, the textarea starts at 2x the rich editor height.
-const plainTextStartHeight = ref<string | null>(null)
-
 function encodeHtmlEntities(str: string): string {
   return str.replace(ENCODE_AMP_RE, '&amp;').replace(ENCODE_LT_RE, '&lt;').replace(ENCODE_GT_RE, '&gt;')
 }
@@ -154,10 +151,20 @@ function decodeHtmlEntities(str: string): string {
 
 // Decoded version of `content` used exclusively by the plain-text textarea.
 const plainTextContent = ref('')
+const plainTextarea = useTemplateRef<HTMLTextAreaElement>('plain-textarea')
+
+function resizePlainTextarea() {
+  const el = plainTextarea.value
+  if (!el)
+    return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}
 
 function handlePlainTextInput(value: string) {
   plainTextContent.value = value
   content.value = encodeHtmlEntities(value)
+  nextTick(resizePlainTextarea)
 }
 const isNsfw = defineModel<boolean>('nsfw', { default: false })
 
@@ -903,7 +910,6 @@ function handleReplacePendingBlob(oldBlobUrl: string, newFile: File) {
 }
 
 const fileInput = useTemplateRef('file-input')
-const plainTextarea = useTemplateRef<HTMLTextAreaElement>('plain-textarea')
 
 const DATA_FILE_EXT_RE = /\.(?:csv|json)$/i
 
@@ -1144,13 +1150,9 @@ async function handleEditorModeSwitch() {
     // Decode stored entities so the textarea shows readable "<foo>" rather than
     // the "&lt;foo&gt;" that the content model carries internally.
     plainTextContent.value = decodeHtmlEntities(content.value ?? '')
-    // Start the textarea at 2x the configured minHeight so the mode switch
-    // feels intentional rather than claustrophobic.
-    const cssValue = Number(minHeight.slice(0, -2))
-    plainTextStartHeight.value = `${cssValue * 2}px`
+    nextTick(resizePlainTextarea)
   }
   else if (newMode === 'rich') {
-    plainTextStartHeight.value = null
     // The model always stores the escaped form (&lt;/&gt;) for the DB/renderer.
     // Tiptap receives the decoded form (raw angle brackets) - the noHtmlMarked
     // inline interceptor converts them to plain text tokens so they are never
@@ -1314,7 +1316,6 @@ onBeforeRouteLeave(() => {
           v-show="editorMode === 'plain'"
           ref="plain-textarea"
           class="plain-textarea"
-          :rows="1"
           :value="plainTextContent"
           :placeholder="placeholder"
           @input="handlePlainTextInput(($event.target as HTMLTextAreaElement).value)"
@@ -1511,7 +1512,7 @@ onBeforeRouteLeave(() => {
   .plain-textarea {
     display: block;
     width: 100%;
-    resize: vertical;
+    resize: none;
     font-family: inherit;
     font-size: var(--font-size-m);
     color: var(--color-text);

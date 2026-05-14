@@ -13,18 +13,18 @@ Hivecom is a long-running, independently operated online community. It is not a 
 Key characteristics:
 - Founded in 2013, making it over a decade old as of 2025
 - Entirely self-hosted and community-funded infrastructure
-- Bridges multiple communication platforms (IRC, TeamSpeak, Discord) so members on any platform can talk to each other
+- Bridges multiple communication platforms (IRC, TeamSpeak, Discord) so users on any platform can talk to each other
 - Hosts game servers for the community to play on together
 - Runs community events, movie nights, game sessions, and more
 - Open source website: the full source code is publicly available on GitHub
 - Has a forum for ongoing community discussions
 - Has a voting/referendum system for community decisions
-- Has a community badge system to reward long-term members and participation
+- Has a community badge system to reward long-term users and participation
 - Accepts community funding via Patreon with transparent expense tracking
 
 ## Communication Platforms
 
-Hivecom bridges the following platforms so members are never siloed:
+Hivecom bridges the following platforms so users are never siloed:
 
 - **IRC** – Primary chat platform. Connect via the web client at https://irc.hivecom.net or directly via SSL at `irc.hivecom.net:6697`. Main support channel: `#staff`.
 - **TeamSpeak** – Voice chat server. European node at `eu.ts.hivecom.net` (port 9987). Also accessible at `ts.hivecom.net`.
@@ -83,6 +83,6 @@ Hivecom runs regular community events including game sessions, movie/watch night
 - The website is built with **Nuxt 4** (Vue 3, TypeScript) and uses **Supabase** as its backend (database, auth, edge functions).
 - The site is statically generated and deployed via GitHub Actions.
 - Hivecom has been continuously operating since **2013** - it is one of the longer-running independent gaming communities on the internet.
-- Membership is free. Optional financial support is available via Patreon.
+- Joining is free. Optional financial support is available via Patreon.
 - The community is **not affiliated with any game studio, publisher, or commercial entity**.
 - IRC remains a first-class platform - Hivecom runs its own IRC server, and Discord is bridged to it rather than replacing it.

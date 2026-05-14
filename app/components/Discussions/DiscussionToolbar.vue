@@ -35,7 +35,7 @@ const isBelowSmall = useBreakpoint('<s')
     <Flex y-center gap="xs">
       <!-- View mode segmented control - hidden when there are no replies -->
       <ButtonGroup v-if="hasComments" size="s">
-        <Tooltip>
+        <Tooltip :disabled="isBelowSmall">
           <Button
             square
             size="s"
@@ -48,7 +48,7 @@ const isBelowSmall = useBreakpoint('<s')
             <p>Flat view - all replies in chronological order</p>
           </template>
         </Tooltip>
-        <Tooltip>
+        <Tooltip :disabled="isBelowSmall">
           <Button
             square
             size="s"
@@ -64,7 +64,7 @@ const isBelowSmall = useBreakpoint('<s')
       </ButtonGroup>
 
       <!-- Expand threads toggle - threaded view only -->
-      <Tooltip v-if="hasComments && viewMode === 'threaded'">
+      <Tooltip v-if="hasComments && viewMode === 'threaded'" :disabled="isBelowSmall">
         <Button
           square
           size="s"
@@ -80,7 +80,7 @@ const isBelowSmall = useBreakpoint('<s')
       </Tooltip>
 
       <!-- Off-topic toggle - only shown when relevant -->
-      <Tooltip v-if="offtopicCount > 0">
+      <Tooltip v-if="offtopicCount > 0" :disabled="isBelowSmall">
         <Button
           size="s"
           :variant="showOfftopic ? 'fill' : 'gray'"
@@ -100,7 +100,7 @@ const isBelowSmall = useBreakpoint('<s')
     </Flex>
 
     <Flex gap="xs">
-      <Tooltip v-if="showSubscribeButton">
+      <Tooltip v-if="showSubscribeButton" :disabled="isBelowSmall">
         <Button
           square
           size="s"
@@ -117,7 +117,7 @@ const isBelowSmall = useBreakpoint('<s')
       </Tooltip>
 
       <Flex v-if="showTimelineButton" gap="xs" class="discussion-toolbar__timeline-btn">
-        <Tooltip>
+        <Tooltip :disabled="isBelowSmall">
           <Button square size="s" variant="gray" @click="emit('openTimeline')">
             <Icon :size="18" name="ph:clock" />
           </Button>
@@ -125,7 +125,7 @@ const isBelowSmall = useBreakpoint('<s')
             <p>Jump to date</p>
           </template>
         </Tooltip>
-        <Tooltip>
+        <Tooltip :disabled="isBelowSmall">
           <Button v-if="!isBelowSmall" size="s" variant="gray" @click="emit('goToEnd')">
             <template #end>
               <Icon :size="18" name="ph:arrow-down" />

@@ -45,7 +45,7 @@ export type MetricsServerDetail
     | MetricsServerDetailMinecraft
     | MetricsServerDetailNone
 
-export interface MetricsMembers {
+export interface MetricsUsers {
   total: number
   online: number
   byCountry: Record<string, number>
@@ -95,7 +95,7 @@ export interface MetricsStorage {
 
 export interface MetricsSnapshot {
   collectedAt: string
-  members: MetricsMembers
+  users: MetricsUsers
   community: MetricsCommunity
   discussions: MetricsDiscussions
   teamspeak: MetricsTeamSpeak

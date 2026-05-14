@@ -6,7 +6,7 @@ import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActi
 import MetricsRefreshCountdown from '@/components/Shared/Charts/MetricsRefreshCountdown.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 
-type SeriesKey = 'membersOnline' | 'teamspeakOnline' | 'gameserversPlayers' | 'membersGameActivity' | 'membersSteamGameActivity'
+type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
 
 const props = defineProps<{
   title?: string

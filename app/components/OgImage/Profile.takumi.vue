@@ -62,7 +62,7 @@ function capitalize(s: string): string {
 
     <!-- Section label -->
     <p class="text-2xl text-[#a7fc2f] m-0 font-semibold tracking-widest uppercase">
-      Member
+      User
     </p>
 
     <!-- Username -->
@@ -125,7 +125,7 @@ function capitalize(s: string): string {
         {{ data.country }}
       </div>
 
-      <!-- Member since -->
+      <!-- User since -->
       <div
         v-if="memberYear != null"
         class="flex flex-row items-center gap-3 text-[28px] text-[#aeaeae]"

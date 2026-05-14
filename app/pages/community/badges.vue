@@ -113,8 +113,8 @@ defineOgImage('Default', {
 
     <section class="playground-section">
       <Flex class="section-heading" column gap="xxs">
-        <h2>Membership Years</h2>
-        <p>These badges represent the length of time a member has been part of the community.</p>
+        <h2>Community Years</h2>
+        <p>These badges represent the length of time a user has been part of the community.</p>
       </Flex>
       <Card class="playground-card">
         <div class="badge-grid">

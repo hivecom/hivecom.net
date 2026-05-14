@@ -51,8 +51,8 @@ const events = computed<Tables<'events'>[]>(() => {
 })
 
 const communityStats = ref({
-  members: 100,
-  membersAccurate: false,
+  users: 100,
+  usersAccurate: false,
   gameservers: 5,
   age: new Date().getFullYear() - 2013,
   projects: 10,
@@ -60,9 +60,9 @@ const communityStats = ref({
 })
 
 function applyMetrics(snapshot: MetricsSnapshot): void {
-  const users = snapshot.members.total
-  communityStats.value.membersAccurate = users > 0
-  communityStats.value.members = users > 0 ? users : 100
+  const users = snapshot.users.total
+  communityStats.value.usersAccurate = users > 0
+  communityStats.value.users = users > 0 ? users : 100
   communityStats.value.gameservers = snapshot.gameservers.total
   communityStats.value.projects = snapshot.community.projects
   communityStats.value.forumPosts = snapshot.discussions.total

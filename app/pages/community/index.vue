@@ -66,14 +66,14 @@ const communityLinks = [
 
 useSeoMeta({
   title: 'Community',
-  description: 'Learn about Hivecom, explore community projects, and connect with members.',
+  description: 'Learn about Hivecom, explore community projects, and connect with users.',
   ogTitle: 'Community',
-  ogDescription: 'Learn about Hivecom, explore community projects, and connect with members.',
+  ogDescription: 'Learn about Hivecom, explore community projects, and connect with users.',
 })
 
 defineOgImage('Default', {
   title: 'Community',
-  description: 'Learn about Hivecom, explore community projects, and connect with members.',
+  description: 'Learn about Hivecom, explore community projects, and connect with users.',
 })
 
 // State for community members - hoist cache check before loading so it initializes correctly
@@ -135,7 +135,7 @@ watch(showOnlineModal, (open) => {
 })
 
 const { latestMetrics, fetchLatestMetrics } = useDataMetrics()
-const onlineCount = computed(() => onlineUserIds.value.length > 0 ? onlineUserIds.value.length : (latestMetrics.value?.members.online ?? null))
+const onlineCount = computed(() => onlineUserIds.value.length > 0 ? onlineUserIds.value.length : (latestMetrics.value?.users.online ?? null))
 fetchLatestMetrics()
 void fetchOnlineUsers()
 
@@ -301,7 +301,7 @@ watch(user, () => {
       <p>Friends building things together</p>
     </section>
 
-    <!-- Community Members (includes birthday sub-section when applicable) -->
+    <!-- Community Users (includes birthday sub-section when applicable) -->
     <ClientOnly>
       <ChartOnlineUsersModal
         v-model:open="showOnlineModal"
@@ -354,7 +354,7 @@ watch(user, () => {
               Discover Our Community
             </h3>
             <p class="text-color-light text-center">
-              Sign in to see our supporters and meet community members from around the world
+              Sign in to see our supporters and meet our community from around the world
             </p>
             <NuxtLink to="/auth/sign-in">
               <Button variant="accent">
@@ -659,7 +659,7 @@ watch(user, () => {
   border-radius: var(--border-radius-l);
   flex-shrink: 0;
 
-  &--members {
+  &--users {
     background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
     color: white;
     box-shadow: 0 4px 15px -4px var(--color-accent-alpha);

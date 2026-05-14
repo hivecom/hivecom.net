@@ -534,7 +534,7 @@ Deno.serve(async (req: Request) => {
 
     const payload: MetricsSnapshot = {
       collectedAt: now.toISOString(),
-      members: {
+      users: {
         total: totalMembersRes.count ?? 0,
         online: onlineMembersRes.count ?? 0,
         byCountry,

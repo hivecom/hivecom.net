@@ -8,6 +8,7 @@ import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { extractMentionIds } from '@/lib/markdownProcessors'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { normalizeErrors } from '@/lib/utils/formatting'
 import { DISCUSSION_KEYS } from './Discussion.keys'
@@ -42,6 +43,8 @@ const emit = defineEmits<{
   'update:isNsfw': [value: boolean]
   'submit': []
 }>()
+
+const isBelowSmall = useBreakpoint('<s')
 
 const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
 
@@ -80,7 +83,7 @@ defineExpose({
           </span>
           <MarkdownPreview :markdown="replyingTo.markdown" :mention-lookup="replyMentionLookup" :max-length="240" />
         </div>
-        <Tooltip>
+        <Tooltip :disabled="isBelowSmall">
           <Button square size="s" plain @click="emit('update:replyingTo', undefined)">
             <Icon name="ph:x" />
           </Button>
@@ -147,7 +150,7 @@ defineExpose({
                 </span>
                 <MarkdownPreview :markdown="replyingTo.markdown" :mention-lookup="replyMentionLookup" :max-length="240" />
               </div>
-              <Tooltip>
+              <Tooltip :disabled="isBelowSmall">
                 <Button square size="s" plain @click="emit('update:replyingTo', undefined)">
                   <Icon name="ph:x" />
                 </Button>

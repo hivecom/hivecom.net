@@ -61,7 +61,7 @@ onMounted(() => {
 watch(() => [props.period, props.window] as const, () => loadData())
 
 const currentCount = computed(() =>
-  props.fresh ? latestMetrics.value?.members.online : metrics.value?.members.online,
+  props.fresh ? latestMetrics.value?.users.online : metrics.value?.users.online,
 )
 
 const chartWrapperRef = ref<HTMLElement | null>(null)
@@ -80,7 +80,7 @@ const chartData = computed(() => {
   const palette = getChartPalette()
   const rawData = metricsHistory.value.map(e => ({
     x: new Date(e.capturedAt).getTime(),
-    y: e.membersOnline,
+    y: e.usersOnline,
   }))
 
   return {
@@ -183,7 +183,7 @@ watchEffect(() => {
     </div>
 
     <div v-else-if="!metricsHistory.length && !compact" class="chart-empty">
-      <p>No member activity data available</p>
+      <p>No user activity data available</p>
     </div>
 
     <div v-else ref="chartWrapperRef" :key="`${theme}-${activeTheme?.id}-${props.utc}`" class="chart-wrapper" :class="{ 'chart-wrapper--compact': compact }">

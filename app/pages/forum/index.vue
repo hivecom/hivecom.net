@@ -97,7 +97,7 @@ const ONLINE_USERS_CACHE_KEY = 'online-users'
 const ONLINE_USERS_TTL = 60 * 1000 // 1 minute
 const onlineUserIds = ref<string[]>([])
 const onlineUsersLoading = ref(false)
-const onlineCount = computed(() => onlineUserIds.value.length > 0 ? onlineUserIds.value.length : (latestMetrics.value?.members.online ?? null))
+const onlineCount = computed(() => onlineUserIds.value.length > 0 ? onlineUserIds.value.length : (latestMetrics.value?.users.online ?? null))
 
 async function fetchOnlineUsers() {
   const cached = forumCache.get<string[]>(ONLINE_USERS_CACHE_KEY)
