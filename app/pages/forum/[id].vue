@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, Card, Flex, pushToast, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, pushToast, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { DISCUSSION_KEYS } from '@/components/Discussions/Discussion.keys'
@@ -12,6 +12,7 @@ import Reactions from '@/components/Reactions/Reactions.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
@@ -34,7 +35,7 @@ type DiscussionWithContext = Tables<'discussions'> & {
   profile?: Pick<Tables<'profiles'>, 'id' | 'username'> | null
   project?: Pick<Tables<'projects'>, 'id' | 'title'> | null
   event?: Pick<Tables<'events'>, 'id' | 'title'> | null
-  gameserver?: Pick<Tables<'gameservers'>, 'id' | 'name'> | null
+  gameserver?: Pick<Tables<'network_gameservers'>, 'id' | 'name'> | null
   referendum?: Pick<Tables<'referendums'>, 'id' | 'title'> | null
 }
 
@@ -331,7 +332,7 @@ onBeforeMount(async () => {
       profile:profiles!discussions_profile_id_fkey(id, username),
       project:projects(id, title),
       event:events(id, title),
-      gameserver:gameservers(id, name),
+      gameserver:network_gameservers(id, name),
       referendum:referendums(id, title)
     `)
 
@@ -826,9 +827,7 @@ function revealNsfw() {
       </template>
 
       <!-- Nothing found or an error -->
-      <Alert v-else variant="danger" filled>
-        {{ errorMessage ?? 'There was a problem loading the article' }}
-      </Alert>
+      <ErrorAlert v-else message="Failed to load this post" :error="errorMessage ?? undefined" standalone />
     </ClientOnly>
   </div>
 </template>

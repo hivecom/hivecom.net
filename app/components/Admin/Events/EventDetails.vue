@@ -276,7 +276,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
               </Flex>
               <Flex column :gap="0">
                 <CopyClipboard v-if="props.event.discord_event_id" :text="props.event.discord_event_id">
-                  <span class="text-xs text-mono text-color-light">{{ props.event.discord_event_id }}</span>
+                  <code class="text-xs text-color-light">{{ props.event.discord_event_id }}</code>
                 </CopyClipboard>
                 <span v-else class="text-color-lighter text-xs">Not synced</span>
                 <span v-if="props.event.discord_last_synced_at" class="text-xs text-color-lighter">
@@ -293,7 +293,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
               </Flex>
               <Flex column :gap="0">
                 <CopyClipboard v-if="props.event.google_event_id" :text="props.event.google_event_id">
-                  <span class="text-xs text-mono text-color-light">{{ props.event.google_event_id }}</span>
+                  <code class="text-xs text-color-light">{{ props.event.google_event_id }}</code>
                 </CopyClipboard>
                 <span v-else class="text-color-lighter text-xs">Not synced</span>
                 <span v-if="props.event.google_last_synced_at" class="text-xs text-color-lighter">
@@ -310,7 +310,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
               </Flex>
               <Flex column :gap="0">
                 <CopyClipboard v-if="props.event.google_community_event_id" :text="props.event.google_community_event_id">
-                  <span class="text-xs text-mono text-color-light">{{ props.event.google_community_event_id }}</span>
+                  <code class="text-xs text-color-light">{{ props.event.google_community_event_id }}</code>
                 </CopyClipboard>
                 <span v-else class="text-color-lighter text-xs">Not synced</span>
                 <span v-if="props.event.google_community_last_synced_at" class="text-xs text-color-lighter">

@@ -53,7 +53,7 @@ async function fetchContextUser(userId: string) {
 
 async function fetchContextGameserver(gameserverId: number) {
   const { data } = await supabase
-    .from('gameservers')
+    .from('network_gameservers')
     .select('name')
     .eq('id', gameserverId)
     .maybeSingle()

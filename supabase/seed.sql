@@ -242,10 +242,10 @@ VALUES
 ('admin', 'complaints.delete'),
 ('admin', 'complaints.read'),
 ('admin', 'complaints.update'),
-('admin', 'containers.create'),
-('admin', 'containers.delete'),
-('admin', 'containers.read'),
-('admin', 'containers.update'),
+('admin', 'network.create'),
+('admin', 'network.delete'),
+('admin', 'network.read'),
+('admin', 'network.update'),
 ('admin', 'discussion_topics.create'),
 ('admin', 'discussion_topics.delete'),
 ('admin', 'discussion_topics.read'),
@@ -258,10 +258,6 @@ VALUES
 ('admin', 'events.delete'),
 ('admin', 'events.read'),
 ('admin', 'events.update'),
-('admin', 'expenses.create'),
-('admin', 'expenses.delete'),
-('admin', 'expenses.read'),
-('admin', 'expenses.update'),
 ('admin', 'funding.create'),
 ('admin', 'funding.delete'),
 ('admin', 'funding.read'),
@@ -270,10 +266,6 @@ VALUES
 ('admin', 'games.delete'),
 ('admin', 'games.read'),
 ('admin', 'games.update'),
-('admin', 'gameservers.create'),
-('admin', 'gameservers.delete'),
-('admin', 'gameservers.read'),
-('admin', 'gameservers.update'),
 ('admin', 'kvstore.create'),
 ('admin', 'kvstore.delete'),
 ('admin', 'kvstore.read'),
@@ -297,10 +289,6 @@ VALUES
 ('admin', 'roles.delete'),
 ('admin', 'roles.read'),
 ('admin', 'roles.update'),
-('admin', 'servers.create'),
-('admin', 'servers.delete'),
-('admin', 'servers.read'),
-('admin', 'servers.update'),
 ('admin', 'users.create'),
 ('admin', 'users.delete'),
 ('admin', 'users.read'),
@@ -325,16 +313,10 @@ VALUES
 ('moderator', 'events.delete'),
 ('moderator', 'events.read'),
 ('moderator', 'events.update'),
-('moderator', 'expenses.read'),
-('moderator', 'funding.read'),
 ('moderator', 'games.create'),
 ('moderator', 'games.delete'),
 ('moderator', 'games.read'),
 ('moderator', 'games.update'),
-('moderator', 'gameservers.create'),
-('moderator', 'gameservers.delete'),
-('moderator', 'gameservers.read'),
-('moderator', 'gameservers.update'),
 ('moderator', 'motds.create'),
 ('moderator', 'motds.delete'),
 ('moderator', 'motds.read'),
@@ -348,6 +330,7 @@ VALUES
 ('moderator', 'referendums.delete'),
 ('moderator', 'referendums.read'),
 ('moderator', 'referendums.update'),
+('moderator', 'funding.read'),
 ('moderator', 'roles.read'),
 ('moderator', 'users.create'),
 ('moderator', 'users.read'),
@@ -403,6 +386,15 @@ Hey there! I''m @{018d224c-0e49-4b6d-b57a-87299605c2b1}, the developer test acco
 2. Second item
    1. Nested item 2.1
    2. Nested item 2.2
+3. Third item
+
+### Mixed List
+1. First item
+  - Nested unordered item
+  - Another nested unordered item
+2. Second item
+  1. Nested ordered item
+  2. Another nested ordered item
 3. Third item
 
 ## Links
@@ -891,7 +883,7 @@ ORDER BY
 LIMIT 1;
 
 -- Insert a test server
-INSERT INTO public.servers(active, address, created_at, docker_control, docker_control_secure, docker_control_port, accessible, last_accessed)
+INSERT INTO public.network_servers(active, address, created_at, docker_control, docker_control_secure, docker_control_port, accessible, last_accessed)
   VALUES (TRUE, 'host.docker.internal', NOW(), TRUE, FALSE, 54320, TRUE, NOW());
 
 -- Insert test games
@@ -903,13 +895,13 @@ VALUES
   (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Generic Game', 'generic', NULL);
 
 -- Insert a test container for our gameserver
-INSERT INTO public.containers(created_at, healthy, name, reported_at, running, server, started_at)
+INSERT INTO public.network_containers(created_at, healthy, name, reported_at, running, server, started_at)
   VALUES (NOW(), TRUE, 'gameserver-cs2', NOW(), TRUE, 1, -- References the server ID we just created
     NOW() - INTERVAL '1 hour' -- Set started_at to 1 hour ago
 );
 
 -- Insert a test gameserver for CS2
-INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, container, markdown, query_protocol)
+INSERT INTO public.network_gameservers(addresses, created_at, created_by, description, game, name, port, region, container, markdown, query_protocol)
   VALUES (ARRAY['cs2.gameserver.hivecom.net', 'cs2.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community CS2 server for casual play', 1, -- References the game ID we just created
     'Hivecom CS2 Community Server', '27015', 'eu', 'gameserver-cs2', '
 # CS 2
@@ -927,19 +919,19 @@ This server is geared towards casual play - if you are looking for a competitive
   ', 'source');
 
 -- Insert a test gameserver for Garrys Mod
-INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, query_protocol)
+INSERT INTO public.network_gameservers(addresses, created_at, created_by, description, game, name, port, region, query_protocol)
   VALUES (ARRAY['gmod.gameserver.hivecom.net', 'gmod.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Garrys Mod server for sandbox fun', 2, 'Hivecom Garrys Mod Sandbox Server', '27015', 'eu', 'source');
 
 -- Insert a test gameserver for Minecraft
-INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, query_protocol)
+INSERT INTO public.network_gameservers(addresses, created_at, created_by, description, game, name, port, region, query_protocol)
   VALUES (ARRAY['mc.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Minecraft survival server', 3, 'Hivecom Minecraft Survival', '25565', 'eu', 'minecraft');
 
 -- Insert a test gameserver for Generic Game (no query protocol configured)
-INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region)
+INSERT INTO public.network_gameservers(addresses, created_at, created_by, description, game, name, port, region)
   VALUES (ARRAY['generic.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'A generic community game server with no query protocol', 4, 'Hivecom Generic Game Server', '7777', 'eu');
 
 -- Insert a test expense
-INSERT INTO public.expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)
+INSERT INTO public.funding_expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)
 VALUES
   (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Domain Fees', 'Domain registration fees', NULL, 100, NOW() - INTERVAL '1 month', NULL),
 (NOW() - INTERVAL '1 month', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Game Server Hosting', 'Monthly server hosting fees', NULL, 5000, NOW() - INTERVAL '6 months', NULL),
@@ -947,7 +939,7 @@ VALUES
 (NOW() - INTERVAL '12 months', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'VPS Web Hosting', 'VPS hosting fees for Hivecom website', NULL, 3000, NOW() - INTERVAL '12 months', NOW() - INTERVAL '3 months');
 
 -- Insert monthly funding records
-INSERT INTO public.monthly_funding(month, patreon_month_amount_cents, patreon_lifetime_amount_cents, patreon_count, donation_month_amount_cents, donation_lifetime_amount_cents, donation_count)
+INSERT INTO public.funding_history(month, patreon_month_amount_cents, patreon_lifetime_amount_cents, patreon_count, donation_month_amount_cents, donation_lifetime_amount_cents, donation_count)
 VALUES
   (DATE_TRUNC('month', NOW()), 3000, 9000, 3, 5000, 20000, 1),
 (DATE_TRUNC('month', NOW()) - INTERVAL '1 month', 2000, 6000, 2, 5000, 15000, 1),
@@ -1288,12 +1280,15 @@ Give @dolanske a shout since we couldn''t have built this project without his ha
 --   euro cents into points (0.1 = 100 points per €1).
 -- points_per_month_loyalty: points awarded to active users each month by
 --   cron_monthly_points_loyalty_award (0 = disabled until explicitly set).
+-- points_per_birthday: points awarded to a user on their birthday by
+--   cron_points_birthday_award (default 1000).
 -- ─────────────────────────────────────────────────────────────────────────────
 
 INSERT INTO public.kvstore (key, type, value)
 VALUES
-  ('points_per_cent',    'NUMBER', '1'::jsonb),
-  ('points_per_month_loyalty', 'NUMBER', '0'::jsonb)
+  ('points_per_cent',         'NUMBER', '1'::jsonb),
+  ('points_per_month_loyalty','NUMBER', '50'::jsonb),
+  ('points_per_birthday',     'NUMBER', '1000'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 
 -- ─────────────────────────────────────────────────────────────────────────────

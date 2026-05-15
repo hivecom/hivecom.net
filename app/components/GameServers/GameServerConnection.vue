@@ -4,7 +4,7 @@ import { Card, CopyClipboard, Flex } from '@dolanske/vui'
 import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 
 interface Props {
-  gameserver: Tables<'gameservers'>
+  gameserver: Tables<'network_gameservers'>
   gameShorthand?: string | null
 }
 

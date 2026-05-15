@@ -17,7 +17,7 @@ const addresses = computed(() => _props.gameserver.addresses as string[] | null)
 
 const { navigateToSignIn } = useAuthRedirect()
 
-type ContainerWithServer = Tables<'containers'> & {
+type ContainerWithServer = Tables<'network_containers'> & {
   server?: {
     docker_control?: boolean | null
     accessible?: boolean | null
@@ -25,7 +25,7 @@ type ContainerWithServer = Tables<'containers'> & {
 }
 
 interface Props {
-  gameserver: Tables<'gameservers'>
+  gameserver: Tables<'network_gameservers'>
   game?: Tables<'games'> | null
   container?: ContainerWithServer | null
   // FIxme: these props are passed in, but unused

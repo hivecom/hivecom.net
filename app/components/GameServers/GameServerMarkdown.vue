@@ -5,7 +5,7 @@ import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import MetadataCard from '../Shared/MetadataCard.vue'
 
 interface Props {
-  gameserver: Tables<'gameservers'>
+  gameserver: Tables<'network_gameservers'>
 }
 
 defineProps<Props>()

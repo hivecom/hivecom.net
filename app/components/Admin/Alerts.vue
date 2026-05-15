@@ -50,7 +50,7 @@ async function fetchAlerts() {
 
     // Check for inaccessible Docker Control servers
     const { data: inaccessibleServers, error: inaccessibleServersError } = await supabase
-      .from('servers')
+      .from('network_servers')
       .select('id, last_accessed')
       .eq('docker_control', true)
       .eq('accessible', false)

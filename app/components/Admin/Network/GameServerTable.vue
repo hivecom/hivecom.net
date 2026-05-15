@@ -27,7 +27,7 @@ const route = useRoute()
 const router = useRouter()
 const isBelowMedium = useBreakpoint('<m')
 
-const gameserversQuery = supabase.from('gameservers').select(`
+const gameserversQuery = supabase.from('network_gameservers').select(`
   *,
   game (
     id,
@@ -82,7 +82,7 @@ const {
   handleEditFromDetails,
   refresh: fetchGameservers,
 } = useAdminCrudTable<QueryGameserver, TransformedGameserver>({
-  resourceType: 'gameservers',
+  resourceType: 'network_gameservers',
   // URL param sync handled manually below (also needs to set tab= param)
   queryParamKey: false,
   fetch: async () => {
@@ -233,11 +233,11 @@ watch(
   { immediate: true },
 )
 
-async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> | TablesUpdate<'gameservers'>) {
+async function handleGameserverSave(gameserverData: TablesInsert<'network_gameservers'> | TablesUpdate<'network_gameservers'>) {
   try {
     if (isEditMode.value && selectedGameserver.value) {
       const { error } = await supabase
-        .from('gameservers')
+        .from('network_gameservers')
         .update({
           ...gameserverData,
           modified_at: new Date().toISOString(),
@@ -249,13 +249,13 @@ async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> 
     }
     else {
       const { error } = await supabase
-        .from('gameservers')
+        .from('network_gameservers')
         .insert({
           ...gameserverData,
           created_by: userId.value ?? null,
           modified_by: userId.value ?? null,
           modified_at: new Date().toISOString(),
-        } as TablesInsert<'gameservers'>)
+        } as TablesInsert<'network_gameservers'>)
       if (error)
         throw error
 
@@ -275,7 +275,7 @@ async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> 
 async function handleGameserverDelete(gameserverId: number) {
   try {
     const { error } = await supabase
-      .from('gameservers')
+      .from('network_gameservers')
       .delete()
       .eq('id', gameserverId)
     if (error)
@@ -438,7 +438,7 @@ function clearFilters() {
             </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
-                resource-type="gameservers"
+                resource-type="network_gameservers"
                 :item="gameserver._original"
                 button-size="s"
                 :custom-actions="[

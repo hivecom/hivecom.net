@@ -15,7 +15,7 @@ import ServerFilters from './ServerFilters.vue'
 import ServerForm from './ServerForm.vue'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
 
-type Server = Tables<'servers'>
+type Server = Tables<'network_servers'>
 
 interface SelectOption {
   label: string
@@ -73,11 +73,11 @@ const {
   handleEditFromDetails,
   refresh: fetchServers,
 } = useAdminCrudTable<Server, TransformedServer>({
-  resourceType: 'servers',
+  resourceType: 'network_servers',
   queryParamKey: 'server',
   refreshSignal,
   fetch: async () => {
-    const { data, error } = await supabase.from('servers').select('*')
+    const { data, error } = await supabase.from('network_servers').select('*')
     if (error)
       throw error
     return data ?? []
@@ -120,11 +120,11 @@ watch(adminTablePerPage, (perPage) => {
 
 setSort('Address', 'asc')
 
-async function handleServerSave(serverData: TablesInsert<'servers'> | TablesUpdate<'servers'>) {
+async function handleServerSave(serverData: TablesInsert<'network_servers'> | TablesUpdate<'network_servers'>) {
   try {
     if (isEditMode.value && selectedServer.value) {
       const { error } = await supabase
-        .from('servers')
+        .from('network_servers')
         .update({
           ...serverData,
           modified_at: new Date().toISOString(),
@@ -135,7 +135,7 @@ async function handleServerSave(serverData: TablesInsert<'servers'> | TablesUpda
         throw error
     }
     else {
-      const createData: TablesInsert<'servers'> = {
+      const createData: TablesInsert<'network_servers'> = {
         address: serverData.address ?? '',
         active: serverData.active ?? true,
         docker_control: serverData.docker_control ?? false,
@@ -146,7 +146,7 @@ async function handleServerSave(serverData: TablesInsert<'servers'> | TablesUpda
         modified_by: userId.value ?? null,
         modified_at: new Date().toISOString(),
       }
-      const { error } = await supabase.from('servers').insert([createData])
+      const { error } = await supabase.from('network_servers').insert([createData])
       if (error)
         throw error
     }
@@ -160,7 +160,7 @@ async function handleServerSave(serverData: TablesInsert<'servers'> | TablesUpda
 
 async function handleServerDelete(serverId: number) {
   try {
-    const { error } = await supabase.from('servers').delete().eq('id', serverId)
+    const { error } = await supabase.from('network_servers').delete().eq('id', serverId)
     if (error)
       throw error
     showServerForm.value = false
@@ -278,7 +278,7 @@ function clearFilters() {
             </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
-                resource-type="servers"
+                resource-type="network_servers"
                 :item="server._original"
                 button-size="s"
                 @edit="(item) => openEditServerForm(item as Server)"

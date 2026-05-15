@@ -7,7 +7,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
 
 const props = defineProps<{
-  server: Tables<'servers'> | null
+  server: Tables<'network_servers'> | null
 }>()
 
 // Declare emits for edit event

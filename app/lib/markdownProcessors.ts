@@ -3,8 +3,7 @@ import { truncate } from './utils/formatting'
 
 // ---------------------------------------------------------------------------
 // Module-scope regex constants
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const TIPTAP_ATTR_RE = /(\w+)="([^"]*)"/g
 const YOUTUBE_SHORT_RE = /youtu\.be\/([^?&\s]+)/
 const YOUTUBE_ID_RE = /(?:[?&]v=|\/shorts\/)([\w-]+)/
@@ -56,8 +55,7 @@ const DETECT_DETAILS_RE = /:::details\b/
 
 // ---------------------------------------------------------------------------
 // YouTube directive pre-processor
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 /**
  * Parses a TipTap attribute string like `src="..." width="640"` into a plain
  * object. Only double-quoted string values are supported (which is all TipTap
@@ -316,8 +314,7 @@ export function extractMentionIds(markdown: string): string[] {
  */
 // ---------------------------------------------------------------------------
 // Color tag pre-processor
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // The canonical palette names must match those exported by the textColor plugin
 // and the CSS custom properties defined in app/assets/index.scss.
 const TEXT_COLOR_NAMES = new Set([
@@ -367,8 +364,7 @@ export function processColorTags(markdown: string): string {
 
 // ---------------------------------------------------------------------------
 // Font tag pre-processor
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const TEXT_FONT_NAMES = new Set([
   'sans',
   'serif',
@@ -398,8 +394,7 @@ export function processFontTags(markdown: string): string {
 
 // ---------------------------------------------------------------------------
 // Size tag pre-processor
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const TEXT_SIZE_NAMES = new Set([
   'xs',
   's',
@@ -470,6 +465,18 @@ function normalizeListIndentation(markdown: string): string {
       if (currentIndent < requiredIndent) {
         // Pad to required indent
         result.push(' '.repeat(requiredIndent) + unorderedMatch[2]! + line.slice(unorderedMatch[0].length))
+        continue
+      }
+    }
+
+    // Nested ordered item (has leading whitespace + digits + ". ")
+    // e.g. Tiptap emits "  1. Nested" (2 spaces) under a "1. Parent" (needs 3)
+    const nestedOrderedMatch = /^(\s+)(\d+\.\s)/.exec(line)
+    if (nestedOrderedMatch && indentStack.length > 0) {
+      const currentIndent = nestedOrderedMatch[1]!.length
+      const requiredIndent = indentStack[indentStack.length - 1]!
+      if (currentIndent < requiredIndent) {
+        result.push(' '.repeat(requiredIndent) + nestedOrderedMatch[2]! + line.slice(nestedOrderedMatch[0].length))
         continue
       }
     }

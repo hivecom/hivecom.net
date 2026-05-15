@@ -2,7 +2,7 @@
 import { Alert, Badge, Card, Flex, Grid, Input, searchString, Skeleton } from '@dolanske/vui'
 import RoleKPIs from '@/components/Admin/Roles/RoleKPIs.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { formatCategoryName, formatPermissionName, getCategoryIcon, getRoleColor, getRoleVariant } from '@/lib/rolePermissions'
+import { DEFAULT_USER_PERMISSIONS, formatCategoryName, formatPermissionName, getCategoryIcon, getRoleColor, getRoleVariant } from '@/lib/rolePermissions'
 
 const isBelowMedium = useBreakpoint('<m')
 
@@ -15,31 +15,7 @@ const refreshSignal = ref(0)
 
 const search = ref('')
 
-const defaultUserPermissions = [
-  'containers.read',
-  'discussion_topics.read',
-  'discussions.read',
-  'discussions.create',
-  'discussions.update.own',
-  'discussions.delete.own',
-  'discussion_replies.read',
-  'discussion_replies.create',
-  'discussion_replies.update.own',
-  'discussion_replies.delete.own',
-  'events.read',
-  'games.read',
-  'gameservers.read',
-  'profiles.read',
-  'referendums.create',
-  'referendums.read',
-  'roles.read',
-  'profiles.update.own',
-  'complaints.create.own',
-  'complaints.read.own',
-  'referendum_votes.create',
-  'referendum_votes.update.own',
-  'referendum_votes.delete.own',
-]
+const defaultUserPermissions = DEFAULT_USER_PERMISSIONS
 
 const permissionsByRole = computed(() => {
   const grouped: Record<string, string[]> = {}

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Alert, Badge, Button, Card, Divider, Flex, Tab, Tabs, theme } from '@dolanske/vui'
+import { Badge, Button, Card, Divider, Flex, Tab, Tabs, theme } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
-
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
@@ -110,9 +111,7 @@ const isMobile = useBreakpoint('<s')
   <div class="page">
     <div class="container-m">
       <template v-if="dataError">
-        <Alert variant="danger">
-          {{ dataError }}
-        </Alert>
+        <ErrorAlert message="Failed to load theme" :error="dataError" standalone />
       </template>
       <template v-else-if="data">
         <section>

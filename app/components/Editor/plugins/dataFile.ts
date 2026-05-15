@@ -9,8 +9,7 @@ import { createAtomBlockMarkdownSpec, mergeAttributes, Node } from '@tiptap/core
 //
 // Directive format:
 //   :::datafile {src="https://..." name="data.csv" type="csv"} :::
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 declare module '@tiptap/core' {
 
   interface Commands<ReturnType> {

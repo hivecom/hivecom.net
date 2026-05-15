@@ -5,7 +5,7 @@ import { Button, Flex, Modal, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import EventFormFields from '@/components/Events/EventFormFields.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { useDataUser } from '@/composables/useDataUser'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { expandRecurringEvent } from '@/lib/utils/rrule'
 
 const props = defineProps<{
@@ -131,11 +131,7 @@ watch(() => props.event, (event) => {
 // Auth
 const supabase = useSupabaseClient()
 const userId = useUserId()
-const { user: currentUserData } = useDataUser(userId, { includeRole: true, includeAvatar: false })
-const isPrivileged = computed(() => {
-  const role = currentUserData.value?.role
-  return role === 'admin' || role === 'moderator'
-})
+const { isAdminOrMod: isPrivileged } = useEffectiveRole()
 
 const canDelete = computed(() => {
   if (!props.event || !userId.value)

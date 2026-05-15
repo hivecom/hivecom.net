@@ -96,7 +96,7 @@ const {
   refetch: refetchFriendships,
 } = useCachedFetch<Array<{ id: number, friender: string, friend: string }>>(
   () => ({
-    table: 'friends',
+    table: 'profile_friends',
     select: 'id, friender, friend',
     filters: {},
   }),

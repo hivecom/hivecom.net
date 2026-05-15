@@ -7,7 +7,7 @@ import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-type ContainerWithServer = Tables<'containers'> & {
+type ContainerWithServer = Tables<'network_containers'> & {
   server?: {
     docker_control?: boolean | null
     accessible?: boolean | null
@@ -16,7 +16,7 @@ type ContainerWithServer = Tables<'containers'> & {
 
 const props = defineProps<{
   game?: Tables<'games'> | null
-  gameserver: Tables<'gameservers'>
+  gameserver: Tables<'network_gameservers'>
   container: ContainerWithServer | null
   compact?: boolean
 }>()

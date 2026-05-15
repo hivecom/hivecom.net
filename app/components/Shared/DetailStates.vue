@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { RouteLocationRaw } from 'vue-router'
 import { Button, Card, Flex, Skeleton } from '@dolanske/vui'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 
 interface Props {
   loading: boolean
   error: string | null
   backTo: RouteLocationRaw | (() => void)
   backLabel: string
+  errorMessage?: string
 }
 
 defineProps<Props>()
@@ -27,48 +29,35 @@ defineProps<Props>()
 
   <!-- Error State -->
   <div v-else-if="error" class="detail-states__error">
-    <Button
-      variant="accent"
-      plain
-      :aria-label="backLabel"
-      @click="typeof backTo === 'function' ? backTo() : navigateTo(backTo)"
-    >
-      <template #start>
-        <Icon name="ph:arrow-left" />
-      </template>
-      {{ backLabel }}
-    </Button>
-    <Card>
-      <Flex column gap="m" x-center>
-        <Icon name="ph:warning-circle" size="48" class="detail-states__error-icon" />
-        <h3>{{ error }}</h3>
-        <p class="detail-states__error-message">
-          <slot name="error-message">
-            The resource you're looking for might have been removed or doesn't exist.
-          </slot>
-        </p>
-      </Flex>
-    </Card>
+    <Flex>
+      <Button
+        variant="accent"
+        plain
+        :aria-label="backLabel"
+        @click="typeof backTo === 'function' ? backTo() : navigateTo(backTo)"
+      >
+        <template #start>
+          <Icon name="ph:arrow-left" />
+        </template>
+        {{ backLabel }}
+      </Button>
+    </Flex>
+    <ErrorAlert standalone :message="error" :error="errorMessage" />
   </div>
 </template>
 
 <style lang="scss" scoped>
 .detail-states {
-  &__loading,
-  &__error {
+  &__loading {
     .card {
       padding: var(--space-xl);
     }
   }
 
-  &__error-icon {
-    color: var(--color-text-red);
-  }
-
-  &__error-message {
-    color: var(--color-text-lightest);
-    text-align: center;
-    margin: 0;
+  &__error {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-m);
   }
 }
 </style>

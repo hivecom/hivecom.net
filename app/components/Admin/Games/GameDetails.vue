@@ -114,7 +114,7 @@ watchEffect(async () => {
   try {
     // Create a fresh query each time to avoid caching issues
     const { data, error } = await supabase
-      .from('gameservers')
+      .from('network_gameservers')
       .select(`
         id,
         name,

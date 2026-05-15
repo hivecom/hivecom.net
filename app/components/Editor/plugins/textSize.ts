@@ -7,8 +7,7 @@ const OPENING_DIRECTIVE_RE = /^[a-z]+\[/i
 
 // ---------------------------------------------------------------------------
 // Named size palette
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // Each name maps to a CSS custom property defined in app/assets/index.scss.
 // Named steps are used instead of raw values so the scale can be adjusted
 // globally per theme without touching stored content.
@@ -38,8 +37,7 @@ function isValidSizeName(value: string): value is TextSizeName {
 
 // ---------------------------------------------------------------------------
 // TipTap Mark extension
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 declare module '@tiptap/core' {
 
   interface Commands<ReturnType> {
@@ -64,8 +62,7 @@ export const TextSize = Mark.create({
 
   // ---------------------------------------------------------------------------
   // Attributes
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   addAttributes() {
     return {
       size: {
@@ -99,8 +96,7 @@ export const TextSize = Mark.create({
 
   // ---------------------------------------------------------------------------
   // HTML parsing & rendering
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   parseHTML() {
     return [
       {
@@ -135,8 +131,7 @@ export const TextSize = Mark.create({
 
   // ---------------------------------------------------------------------------
   // Commands
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   addCommands() {
     return {
       setTextSize:
@@ -156,8 +151,7 @@ export const TextSize = Mark.create({
 
   // ---------------------------------------------------------------------------
   // Markdown serialization  :::size[name]text:::
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   renderMarkdown(node: JSONContent, h: MarkdownRendererHelpers, _ctx: RenderContext): string {
     // eslint-disable-next-line ts/no-unsafe-assignment
     const size = (node.attrs)?.size

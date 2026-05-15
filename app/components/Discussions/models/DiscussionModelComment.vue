@@ -19,6 +19,7 @@ import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
@@ -52,6 +53,11 @@ const supabase = useSupabaseClient()
 const discussionCache = useDiscussionCache()
 
 const { user: currentUserData } = useDataUser(userId, { includeRole: true })
+const { isAdmin, role: effectiveRole } = useEffectiveRole()
+
+const effectiveUserData = computed(() =>
+  currentUserData.value ? { ...currentUserData.value, role: effectiveRole.value } : null,
+)
 
 const modifierId = computed(() => {
   const { modified_at, created_at, modified_by, created_by } = data.value
@@ -122,8 +128,6 @@ const loadingDeletion = ref(false)
 const showDeleteModal = ref(false)
 const showForceDeleteModal = ref(false)
 const loadingForceDeletion = ref(false)
-
-const isAdmin = computed(() => currentUserData.value?.role === 'admin')
 
 function handleDeletion() {
   loadingDeletion.value = true
@@ -272,7 +276,7 @@ watch(
         <DiscussionActionsToolbar
           :data="data"
           :user-id="userId"
-          :current-user-data="currentUserData"
+          :current-user-data="effectiveUserData"
           :can-bypass-lock="canBypassLock"
           :can-mark-offtopic="canMarkOfftopic"
           :offtopic-loading="offtopicLoading"
@@ -339,7 +343,7 @@ watch(
         <DiscussionActionsToolbar
           :data="data"
           :user-id="userId"
-          :current-user-data="currentUserData"
+          :current-user-data="effectiveUserData"
           :can-bypass-lock="canBypassLock"
           :can-mark-offtopic="canMarkOfftopic"
           :offtopic-loading="offtopicLoading"

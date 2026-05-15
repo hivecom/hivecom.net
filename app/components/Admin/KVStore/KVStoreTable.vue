@@ -221,7 +221,7 @@ onBeforeMount(fetchEntries)
           <template #body>
             <tr v-for="row in rows" :key="row._original.key">
               <Table.Cell>
-                <span class="text-mono">{{ row.Key }}</span>
+                <code>{{ row.Key }}</code>
               </Table.Cell>
               <Table.Cell>
                 <Badge variant="neutral">

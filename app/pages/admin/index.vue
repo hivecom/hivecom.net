@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge, BadgeGroup, Button, Card, Divider, Flex, Grid } from '@dolanske/vui'
+import { Button, Card, Divider, Flex, Grid } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import Alerts from '@/components/Admin/Alerts.vue'
 import IncomeChart from '@/components/Admin/Dashboard/IncomeChart.vue'
@@ -9,10 +9,15 @@ import ChartDiscussions from '@/components/Shared/Charts/ChartDiscussions.vue'
 import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
 import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
 import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
+import GrowthBadge from '@/components/Shared/GrowthBadge.vue'
+import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { useDataAdminKPIs } from '@/composables/useDataAdminKPIs'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 useDataAdminKPIs()
+
+const { canViewFunding, canViewUsers, hasPermission } = useAdminPermissions()
+const canViewAlerts = computed(() => hasPermission('alerts.read'))
 
 const userChartRef = ref<InstanceType<typeof UserChart> | null>(null)
 const userMomGrowth = computed(() => userChartRef.value?.momGrowth ?? null)
@@ -42,32 +47,15 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
     <Grid :columns="gridColumns" gap="s" align="start" expand>
       <!-- Left col: alerts + metric cards -->
       <Flex column gap="s" expand>
-        <Alerts />
+        <Alerts v-if="canViewAlerts" />
 
-        <NuxtLink to="/admin/users" class="dashboard__metric-link">
+        <NuxtLink v-if="canViewUsers" to="/admin/users" class="dashboard__metric-link">
           <Card separators class="card-bg">
             <template #header>
               <Flex x-between y-center expand>
                 <span class="dashboard__charts-title">Users</span>
                 <Flex y-center gap="xs">
-                  <BadgeGroup>
-                    <Badge
-                      v-if="userTotal !== null"
-                      :variant="userTotal > 0 ? 'success' : userTotal < 0 ? 'danger' : 'neutral'"
-                      size="s"
-                      circle
-                      filled
-                    >
-                      {{ userTotal > 0 ? '+' : '' }}{{ userTotal }}
-                    </Badge>
-                    <Badge
-                      v-if="userMomGrowth !== null"
-                      :variant="userMomGrowth > 0 ? 'success' : userMomGrowth < 0 ? 'danger' : 'neutral'"
-                      size="s"
-                    >
-                      {{ userMomGrowth > 0 ? '+' : '' }}{{ userMomGrowth }}%
-                    </Badge>
-                  </BadgeGroup>
+                  <GrowthBadge :growth="userMomGrowth" :value="userTotal" size="s" />
                   <Button variant="link" size="s" square @click.prevent="navigateTo('/admin/users')">
                     <Icon name="ph:arrow-square-out" size="16" />
                   </Button>
@@ -80,30 +68,13 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
           </Card>
         </NuxtLink>
 
-        <NuxtLink to="/admin/funding" class="dashboard__metric-link">
+        <NuxtLink v-if="canViewFunding" to="/admin/funding" class="dashboard__metric-link">
           <Card separators class="card-bg">
             <template #header>
               <Flex x-between y-center expand>
                 <span class="dashboard__charts-title">Funding</span>
                 <Flex y-center gap="xs">
-                  <BadgeGroup>
-                    <Badge
-                      v-if="incomeTotal !== null"
-                      :variant="incomeTotal > 0 ? 'success' : incomeTotal < 0 ? 'danger' : 'neutral'"
-                      size="s"
-                      circle
-                      filled
-                    >
-                      {{ incomeTotal > 0 ? '+' : '' }}€{{ incomeTotal }}
-                    </Badge>
-                    <Badge
-                      v-if="incomeMomGrowth !== null"
-                      :variant="incomeMomGrowth > 0 ? 'success' : incomeMomGrowth < 0 ? 'danger' : 'neutral'"
-                      size="s"
-                    >
-                      {{ incomeMomGrowth > 0 ? '+' : '' }}{{ incomeMomGrowth }}%
-                    </Badge>
-                  </BadgeGroup>
+                  <GrowthBadge :growth="incomeMomGrowth" :value="incomeTotal" prefix="€" size="s" />
                   <Button variant="link" size="s" square @click.prevent="navigateTo('/admin/funding')">
                     <Icon name="ph:arrow-square-out" size="16" />
                   </Button>

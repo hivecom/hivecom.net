@@ -25,6 +25,7 @@ import { useBadgeDiscussionReplyCount } from '@/composables/useBadgeDiscussionRe
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useDataUserDiscussionCount } from '@/composables/useDataUserDiscussionCount'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { extractMentionIds } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
@@ -55,6 +56,11 @@ const discussionCache = useDiscussionCache()
 const currentUser = useSupabaseUser()
 
 const { user: currentUserData } = useDataUser(userId, { includeRole: true })
+const { isAdmin, role: effectiveRole } = useEffectiveRole()
+
+const effectiveUserData = computed(() =>
+  currentUserData.value ? { ...currentUserData.value, role: effectiveRole.value } : null,
+)
 
 const isMobile = useBreakpoint('<s')
 
@@ -190,8 +196,6 @@ const loadingDeletion = ref(false)
 const showDeleteModal = ref(false)
 const showForceDeleteModal = ref(false)
 const loadingForceDeletion = ref(false)
-
-const isAdmin = computed(() => currentUserData.value?.role === 'admin')
 
 function handleDeletion() {
   loadingDeletion.value = true
@@ -397,7 +401,7 @@ const editedAtFormatted = computed(() => {
           <DiscussionActionsToolbar
             :data="data"
             :user-id="userId"
-            :current-user-data="currentUserData"
+            :current-user-data="effectiveUserData"
             :can-bypass-lock="canBypassLock"
             :can-mark-offtopic="canMarkOfftopic"
             :offtopic-loading="offtopicLoading"
@@ -467,7 +471,7 @@ const editedAtFormatted = computed(() => {
           v-if="!data.is_deleted"
           :data="data"
           :user-id="userId"
-          :current-user-data="currentUserData"
+          :current-user-data="effectiveUserData"
           :can-bypass-lock="canBypassLock"
           :can-mark-offtopic="canMarkOfftopic"
           :offtopic-loading="offtopicLoading"

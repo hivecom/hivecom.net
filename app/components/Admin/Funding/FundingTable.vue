@@ -16,7 +16,7 @@ import FundingDetails from './FundingDetails.vue'
 import FundingFilters from './FundingFilters.vue'
 
 // Monthly funding table type
-interface MonthlyFunding extends Tables<'monthly_funding'> {}
+interface MonthlyFunding extends Tables<'funding_history'> {}
 
 // Define transformed funding data interface
 interface TransformedFunding {

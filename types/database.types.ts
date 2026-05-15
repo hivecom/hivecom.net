@@ -200,45 +200,7 @@ export type Database = {
             foreignKeyName: "complaints_context_gameserver_fkey"
             columns: ["context_gameserver"]
             isOneToOne: false
-            referencedRelation: "gameservers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      containers: {
-        Row: {
-          created_at: string
-          healthy: boolean | null
-          name: string
-          reported_at: string
-          running: boolean
-          server: number | null
-          started_at: string | null
-        }
-        Insert: {
-          created_at?: string
-          healthy?: boolean | null
-          name: string
-          reported_at: string
-          running: boolean
-          server?: number | null
-          started_at?: string | null
-        }
-        Update: {
-          created_at?: string
-          healthy?: boolean | null
-          name?: string
-          reported_at?: string
-          running?: boolean
-          server?: number | null
-          started_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gameserver_containers_server_fkey"
-            columns: ["server"]
-            isOneToOne: false
-            referencedRelation: "servers"
+            referencedRelation: "network_gameservers"
             referencedColumns: ["id"]
           },
         ]
@@ -596,7 +558,7 @@ export type Database = {
             foreignKeyName: "discussions_gameserver_id_fkey"
             columns: ["gameserver_id"]
             isOneToOne: false
-            referencedRelation: "gameservers"
+            referencedRelation: "network_gameservers"
             referencedColumns: ["id"]
           },
           {
@@ -786,7 +748,7 @@ export type Database = {
           },
         ]
       }
-      expenses: {
+      funding_expenses: {
         Row: {
           amount_cents: number
           created_at: string
@@ -828,24 +790,33 @@ export type Database = {
         }
         Relationships: []
       }
-      friends: {
+      funding_history: {
         Row: {
-          created_at: string
-          friend: string
-          friender: string
-          id: number
+          donation_count: number
+          donation_lifetime_amount_cents: number
+          donation_month_amount_cents: number
+          month: string
+          patreon_count: number
+          patreon_lifetime_amount_cents: number
+          patreon_month_amount_cents: number
         }
         Insert: {
-          created_at?: string
-          friend: string
-          friender: string
-          id?: number
+          donation_count?: number
+          donation_lifetime_amount_cents?: number
+          donation_month_amount_cents?: number
+          month?: string
+          patreon_count?: number
+          patreon_lifetime_amount_cents?: number
+          patreon_month_amount_cents?: number
         }
         Update: {
-          created_at?: string
-          friend?: string
-          friender?: string
-          id?: number
+          donation_count?: number
+          donation_lifetime_amount_cents?: number
+          donation_month_amount_cents?: number
+          month?: string
+          patreon_count?: number
+          patreon_lifetime_amount_cents?: number
+          patreon_month_amount_cents?: number
         }
         Relationships: []
       }
@@ -885,7 +856,120 @@ export type Database = {
         }
         Relationships: []
       }
-      gameservers: {
+      kvstore: {
+        Row: {
+          created_at: string
+          key: string
+          modified_at: string | null
+          modified_by: string | null
+          type: Database["public"]["Enums"]["kvstore_type"]
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database["public"]["Enums"]["kvstore_type"]
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database["public"]["Enums"]["kvstore_type"]
+          value?: Json
+        }
+        Relationships: []
+      }
+      metrics: {
+        Row: {
+          captured_at: string
+          data: Json
+          id: number
+          is_aggregated: boolean
+        }
+        Insert: {
+          captured_at?: string
+          data: Json
+          id?: number
+          is_aggregated?: boolean
+        }
+        Update: {
+          captured_at?: string
+          data?: Json
+          id?: number
+          is_aggregated?: boolean
+        }
+        Relationships: []
+      }
+      motds: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: number
+          message: string
+          modified_at: string | null
+          modified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: number
+          message: string
+          modified_at?: string | null
+          modified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: number
+          message?: string
+          modified_at?: string | null
+          modified_by?: string | null
+        }
+        Relationships: []
+      }
+      network_containers: {
+        Row: {
+          created_at: string
+          healthy: boolean | null
+          name: string
+          reported_at: string
+          running: boolean
+          server: number | null
+          started_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          healthy?: boolean | null
+          name: string
+          reported_at: string
+          running: boolean
+          server?: number | null
+          started_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          healthy?: boolean | null
+          name?: string
+          reported_at?: string
+          running?: boolean
+          server?: number | null
+          started_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gameserver_containers_server_fkey"
+            columns: ["server"]
+            isOneToOne: false
+            referencedRelation: "network_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_gameservers: {
         Row: {
           addresses: string[] | null
           administrator: string | null
@@ -951,7 +1035,7 @@ export type Database = {
             foreignKeyName: "gameservers_container_fkey"
             columns: ["container"]
             isOneToOne: false
-            referencedRelation: "containers"
+            referencedRelation: "network_containers"
             referencedColumns: ["name"]
           },
           {
@@ -963,153 +1047,51 @@ export type Database = {
           },
         ]
       }
-      kvstore: {
+      network_servers: {
         Row: {
-          created_at: string
-          key: string
-          modified_at: string | null
-          modified_by: string | null
-          type: Database["public"]["Enums"]["kvstore_type"]
-          value: Json
-        }
-        Insert: {
-          created_at?: string
-          key: string
-          modified_at?: string | null
-          modified_by?: string | null
-          type?: Database["public"]["Enums"]["kvstore_type"]
-          value: Json
-        }
-        Update: {
-          created_at?: string
-          key?: string
-          modified_at?: string | null
-          modified_by?: string | null
-          type?: Database["public"]["Enums"]["kvstore_type"]
-          value?: Json
-        }
-        Relationships: []
-      }
-      metrics: {
-        Row: {
-          captured_at: string
-          data: Json
-          id: number
-          is_aggregated: boolean
-        }
-        Insert: {
-          captured_at?: string
-          data: Json
-          id?: number
-          is_aggregated?: boolean
-        }
-        Update: {
-          captured_at?: string
-          data?: Json
-          id?: number
-          is_aggregated?: boolean
-        }
-        Relationships: []
-      }
-      monthly_funding: {
-        Row: {
-          donation_count: number
-          donation_lifetime_amount_cents: number
-          donation_month_amount_cents: number
-          month: string
-          patreon_count: number
-          patreon_lifetime_amount_cents: number
-          patreon_month_amount_cents: number
-        }
-        Insert: {
-          donation_count?: number
-          donation_lifetime_amount_cents?: number
-          donation_month_amount_cents?: number
-          month?: string
-          patreon_count?: number
-          patreon_lifetime_amount_cents?: number
-          patreon_month_amount_cents?: number
-        }
-        Update: {
-          donation_count?: number
-          donation_lifetime_amount_cents?: number
-          donation_month_amount_cents?: number
-          month?: string
-          patreon_count?: number
-          patreon_lifetime_amount_cents?: number
-          patreon_month_amount_cents?: number
-        }
-        Relationships: []
-      }
-      motds: {
-        Row: {
-          created_at: string
-          created_by: string
-          id: number
-          message: string
-          modified_at: string | null
-          modified_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string
-          id?: number
-          message: string
-          modified_at?: string | null
-          modified_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          id?: number
-          message?: string
-          modified_at?: string | null
-          modified_by?: string | null
-        }
-        Relationships: []
-      }
-      notifications: {
-        Row: {
-          body: string | null
+          accessible: boolean
+          active: boolean
+          address: string
           created_at: string
           created_by: string | null
-          href: string | null
-          id: string
-          is_read: boolean
-          modified_at: string
+          docker_control: boolean
+          docker_control_port: number | null
+          docker_control_secure: boolean
+          docker_control_subdomain: string | null
+          id: number
+          last_accessed: string | null
+          modified_at: string | null
           modified_by: string | null
-          source: string | null
-          source_id: string | null
-          title: string
-          user_id: string
         }
         Insert: {
-          body?: string | null
+          accessible?: boolean
+          active: boolean
+          address: string
           created_at?: string
           created_by?: string | null
-          href?: string | null
-          id?: string
-          is_read?: boolean
-          modified_at?: string
+          docker_control?: boolean
+          docker_control_port?: number | null
+          docker_control_secure?: boolean
+          docker_control_subdomain?: string | null
+          id?: number
+          last_accessed?: string | null
+          modified_at?: string | null
           modified_by?: string | null
-          source?: string | null
-          source_id?: string | null
-          title: string
-          user_id: string
         }
         Update: {
-          body?: string | null
+          accessible?: boolean
+          active?: boolean
+          address?: string
           created_at?: string
           created_by?: string | null
-          href?: string | null
-          id?: string
-          is_read?: boolean
-          modified_at?: string
+          docker_control?: boolean
+          docker_control_port?: number | null
+          docker_control_secure?: boolean
+          docker_control_subdomain?: string | null
+          id?: number
+          last_accessed?: string | null
+          modified_at?: string | null
           modified_by?: string | null
-          source?: string | null
-          source_id?: string | null
-          title?: string
-          user_id?: string
         }
         Relationships: []
       }
@@ -1271,6 +1253,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profile_friends: {
+        Row: {
+          created_at: string
+          friend: string
+          friender: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          friend: string
+          friender: string
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          friend?: string
+          friender?: string
+          id?: number
+        }
+        Relationships: []
       }
       profile_point_claims: {
         Row: {
@@ -1660,75 +1663,6 @@ export type Database = {
         }
         Relationships: []
       }
-      servers: {
-        Row: {
-          accessible: boolean
-          active: boolean
-          address: string
-          created_at: string
-          created_by: string | null
-          docker_control: boolean
-          docker_control_port: number | null
-          docker_control_secure: boolean
-          docker_control_subdomain: string | null
-          id: number
-          last_accessed: string | null
-          modified_at: string | null
-          modified_by: string | null
-        }
-        Insert: {
-          accessible?: boolean
-          active: boolean
-          address: string
-          created_at?: string
-          created_by?: string | null
-          docker_control?: boolean
-          docker_control_port?: number | null
-          docker_control_secure?: boolean
-          docker_control_subdomain?: string | null
-          id?: number
-          last_accessed?: string | null
-          modified_at?: string | null
-          modified_by?: string | null
-        }
-        Update: {
-          accessible?: boolean
-          active?: boolean
-          address?: string
-          created_at?: string
-          created_by?: string | null
-          docker_control?: boolean
-          docker_control_port?: number | null
-          docker_control_secure?: boolean
-          docker_control_subdomain?: string | null
-          id?: number
-          last_accessed?: string | null
-          modified_at?: string | null
-          modified_by?: string | null
-        }
-        Relationships: []
-      }
-      settings: {
-        Row: {
-          created_at: string
-          data: Json
-          id: string
-          modified_at: string | null
-        }
-        Insert: {
-          created_at?: string
-          data?: Json
-          id?: string
-          modified_at?: string | null
-        }
-        Update: {
-          created_at?: string
-          data?: Json
-          id?: string
-          modified_at?: string | null
-        }
-        Relationships: []
-      }
       themes: {
         Row: {
           created_at: string
@@ -1977,6 +1911,51 @@ export type Database = {
           },
         ]
       }
+      user_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          created_by: string | null
+          href: string | null
+          id: string
+          is_read: boolean
+          modified_at: string
+          modified_by: string | null
+          source: string | null
+          source_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          href?: string | null
+          id?: string
+          is_read?: boolean
+          modified_at?: string
+          modified_by?: string | null
+          source?: string | null
+          source_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          href?: string | null
+          id?: string
+          is_read?: boolean
+          modified_at?: string
+          modified_by?: string | null
+          source?: string | null
+          source_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: number
@@ -1992,6 +1971,27 @@ export type Database = {
           id?: number
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          modified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          modified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          modified_at?: string | null
         }
         Relationships: []
       }
@@ -3008,6 +3008,7 @@ export type Database = {
         | "themes.read"
         | "themes.update"
         | "themes.delete"
+        | "profile_points.read"
       app_role: "admin" | "moderator"
       events_rsvp_scope: "occurrence" | "series"
       events_rsvp_status: "yes" | "no" | "tentative"
@@ -3231,6 +3232,7 @@ export const Constants = {
         "themes.read",
         "themes.update",
         "themes.delete",
+        "profile_points.read",
       ],
       app_role: ["admin", "moderator"],
       events_rsvp_scope: ["occurrence", "series"],

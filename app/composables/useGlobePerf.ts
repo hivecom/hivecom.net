@@ -97,8 +97,7 @@ const PERF_PARAMS: Record<GlobeQualityTier, GlobePerfParams> = {
 
 // ---------------------------------------------------------------------------
 // Frame-time probe config
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // Frame-time thresholds (ms). If the median frame time during the probe
 // window exceeds these values, we drop to the next tier.
 const THRESHOLD_HIGH_MS = 20 // ~50 fps
@@ -113,8 +112,7 @@ const LOW_CPU_CORE_THRESHOLD = 4
 
 // ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const VALID_TIERS = new Set<GlobeQualityTier>(['high', 'medium', 'low'])
 
 function readTierOverride(): GlobeQualityTier | null {
@@ -156,8 +154,7 @@ function detectInitialTier(): GlobeQualityTier {
 // Module-level singleton state
 // Shared across all callers so the probe only runs once and all consumers
 // react to the same tier changes (e.g. globe + background shader).
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const _tier = ref<GlobeQualityTier>('high') // initialised lazily on first client call
 const _params = ref<GlobePerfParams>({ ...PERF_PARAMS.high })
 let _initialised = false
@@ -178,8 +175,7 @@ function _ensureInitialised() {
 
 // ---------------------------------------------------------------------------
 // Composable
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function useGlobePerf() {
   // Lazily detect on first call so SSR never touches window/navigator.
   if (import.meta.client)

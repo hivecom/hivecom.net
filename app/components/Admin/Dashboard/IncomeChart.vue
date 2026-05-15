@@ -35,7 +35,7 @@ ChartJS.register(
 )
 
 // Monthly funding table type
-type MonthlyFunding = Database['public']['Tables']['monthly_funding']['Row']
+type MonthlyFunding = Database['public']['Tables']['funding_history']['Row']
 
 // Setup state
 const loading = ref(true)

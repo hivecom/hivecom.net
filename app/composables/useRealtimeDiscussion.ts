@@ -24,8 +24,7 @@ const BACKGROUND_POLL_INTERVAL_MS = 5 * 60 * 1000
 
 // ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // eslint-disable-next-line ts/no-explicit-any
 type AnySupabase = SupabaseClient<any, any, any>
 
@@ -51,8 +50,7 @@ interface SharedDiscussionChannel {
 // ---------------------------------------------------------------------------
 // Module-level registry - one channel per discussion ID, shared across all
 // composable instances that subscribe to the same discussion.
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const replyChannels = new Map<string, SharedReplyChannel>()
 const discussionChannels = new Map<string, SharedDiscussionChannel>()
 
@@ -138,8 +136,7 @@ function releaseDiscussionChannel(supabase: AnySupabase, discussionId: string) {
 
 // ---------------------------------------------------------------------------
 // Composable
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function useRealtimeDiscussion(
   comments: Ref<RawComment[]>,
   discussion: Ref<{ id: string, slug: string | null } | undefined>,

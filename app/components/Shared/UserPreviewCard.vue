@@ -20,6 +20,8 @@ interface Props {
   showDescription?: boolean
   maxBadges?: number
   avatarSize?: 's' | 'm' | 'l' | number
+  roleOverride?: string | null
+  impersonating?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -28,6 +30,8 @@ const props = withDefaults(defineProps<Props>(), {
   showDescription: true,
   maxBadges: 4,
   avatarSize: 88,
+  roleOverride: undefined,
+  impersonating: false,
 })
 
 const userIdRef = toRef(props, 'userId')
@@ -253,7 +257,9 @@ const {
             <span v-else class="user-preview-card__name">
               {{ user.username }}
             </span>
-            <RoleIndicator v-if="user.role" :role="user.role" size="s" />
+            <RoleIndicator v-if="props.roleOverride !== undefined ? props.roleOverride : user.role" :role="props.roleOverride !== undefined ? props.roleOverride : user.role" size="s">
+              {{ props.impersonating ? ' *' : '' }}
+            </RoleIndicator>
           </Flex>
 
           <Flex expand x-between>

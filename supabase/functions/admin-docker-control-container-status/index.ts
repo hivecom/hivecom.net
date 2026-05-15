@@ -115,7 +115,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // Update container state in database
-      const updateData: Partial<Tables<"containers">> = {
+      const updateData: Partial<Tables<"network_containers">> = {
         running: isRunning,
         healthy: isHealthy,
       };

@@ -24,8 +24,7 @@
  * supabase-js directly for passkeys - swap implementations here only.
  */
 
-// ---- Types ----------------------------------------------------------------
-
+// ---- Types -------------------------------------------------------------
 /** A passkey enrolled by the user, as returned by the GoTrue API. */
 export interface EnrolledPasskey {
   id: string
@@ -62,8 +61,7 @@ export interface PasskeySession {
   expires_in: number
 }
 
-// ---- Sentinel error -------------------------------------------------------
-
+// ---- Sentinel error ----------------------------------------------------
 /**
  * Thrown by all functions in this module until the backend is confirmed live.
  *
@@ -77,8 +75,7 @@ export const PASSKEY_NOT_AVAILABLE: Error = new Error(
   'Passkey API not yet available - Supabase Auth v2.188.0+ required on hosted project.',
 )
 
-// ---- Helpers --------------------------------------------------------------
-
+// ---- Helpers -----------------------------------------------------------
 function _authHeaders(accessToken: string): HeadersInit {
   return {
     'Authorization': `Bearer ${accessToken}`,
@@ -86,8 +83,7 @@ function _authHeaders(accessToken: string): HeadersInit {
   }
 }
 
-// ---- Registration ---------------------------------------------------------
-
+// ---- Registration ------------------------------------------------------
 /**
  * Step 1 of passkey enrollment.
  *
@@ -140,8 +136,7 @@ export async function completePasskeyRegistration(
   throw PASSKEY_NOT_AVAILABLE
 }
 
-// ---- Authentication -------------------------------------------------------
-
+// ---- Authentication ----------------------------------------------------
 /**
  * Step 1 of passkey sign-in.
  *
@@ -190,8 +185,7 @@ export async function completePasskeyAuthentication(
   throw PASSKEY_NOT_AVAILABLE
 }
 
-// ---- Management -----------------------------------------------------------
-
+// ---- Management --------------------------------------------------------
 /**
  * List all passkeys enrolled by the current user.
  */

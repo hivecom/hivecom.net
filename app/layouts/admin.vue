@@ -6,6 +6,8 @@ import LogoIcon from '@/components/Shared/LogoIcon.vue'
 import ThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
+import { useRoleImpersonation } from '@/composables/useRoleImpersonation'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const route = useRoute()
@@ -20,12 +22,26 @@ const resolvedUserId = userId
 
 // Initialize user role and permissions from database
 const userPermissions = ref<string[]>([])
+const realPermissions = ref<string[]>([])
+
+const { impersonatedRole, isImpersonating, resolvePermissions, stop: stopImpersonation } = useRoleImpersonation()
+
+// When impersonation changes, swap the injected permissions
+watch(impersonatedRole, async (role) => {
+  if (role) {
+    userPermissions.value = await resolvePermissions(role)
+  }
+  else {
+    userPermissions.value = [...realPermissions.value]
+  }
+})
 const isLoading = ref(true)
 const isAuthorized = ref(false)
 
 // Use cached user data to avoid a raw user_roles query on every admin page mount
 const { user: cachedUserData } = useDataUser(resolvedUserId, { includeRole: true, includeAvatar: false })
 const userRole = computed(() => cachedUserData.value?.role ?? null)
+const { role: effectiveUserRole } = useEffectiveRole()
 
 defineOgImage('Default', {
   title: 'Hivecom',
@@ -78,7 +94,15 @@ onMounted(async () => {
       console.error('Error fetching role permissions:', permissionsError)
     }
     else {
-      userPermissions.value = permissionsData?.map(p => p.permission) ?? []
+      realPermissions.value = permissionsData?.map(p => p.permission) ?? []
+      // If already impersonating when the layout mounts, apply the impersonated
+      // permissions immediately - the watch won't fire for a pre-existing value.
+      if (impersonatedRole.value) {
+        userPermissions.value = await resolvePermissions(impersonatedRole.value)
+      }
+      else {
+        userPermissions.value = [...realPermissions.value]
+      }
     }
 
     isAuthorized.value = true
@@ -155,7 +179,7 @@ const menuItems = [
     name: 'Funding',
     path: '/admin/funding',
     icon: 'ph:coins',
-    permissions: ['funding.read', 'funding.create', 'funding.update', 'funding.delete', 'expenses.read', 'expenses.create', 'expenses.update', 'expenses.delete'],
+    permissions: ['funding.read'],
   },
   {
     name: 'Games',
@@ -179,7 +203,7 @@ const menuItems = [
     name: 'Network',
     path: '/admin/network',
     icon: 'ph:computer-tower',
-    permissions: ['gameservers.read', 'gameservers.create', 'gameservers.update', 'gameservers.delete', 'servers.read', 'servers.create', 'servers.update', 'servers.delete', 'containers.read', 'containers.create', 'containers.update', 'containers.delete'],
+    permissions: ['network.read', 'network.create', 'network.update', 'network.delete'],
   },
   {
     name: 'Projects',
@@ -221,9 +245,12 @@ const accessibleMenuItems = computed(() => {
 
 // Provide permissions to child components
 provide('userPermissions', readonly(userPermissions))
-provide('userRole', readonly(userRole))
+provide('userRole', readonly(effectiveUserRole))
 provide('hasPermission', hasPermission)
 provide('hasAnyPermission', hasAnyPermission)
+provide('impersonatedRole', readonly(impersonatedRole))
+provide('isImpersonating', readonly(isImpersonating))
+provide('stopImpersonation', stopImpersonation)
 
 const { settings } = useDataUserSettings()
 const miniSidebar = computed({

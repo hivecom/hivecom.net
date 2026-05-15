@@ -186,7 +186,7 @@ export function useDataNotifications() {
     try {
       const [friendsResponse, profileResponse, notificationsResponse] = await Promise.all([
         supabase
-          .from('friends')
+          .from('profile_friends')
           .select('id, friender, friend')
           .or(`friender.eq.${userId.value},friend.eq.${userId.value}`),
         supabase
@@ -194,7 +194,7 @@ export function useDataNotifications() {
           .select('id, username, birthday')
           .eq('id', userId.value)
           .single(),
-        supabase.from('notifications')
+        supabase.from('user_notifications')
           .select('*')
           .eq('user_id', userId.value)
           .eq('is_read', false)
@@ -258,7 +258,7 @@ export function useDataNotifications() {
       return
     }
 
-    await supabase.from('notifications').update({ is_read: true }).in('id', ids)
+    await supabase.from('user_notifications').update({ is_read: true }).in('id', ids)
 
     unreadNotifications.value = []
   }
@@ -275,10 +275,10 @@ export function useDataNotifications() {
 
     try {
       if (action === 'accept') {
-        await supabase.from('friends').insert({ friender: userId.value, friend: requestUserId })
+        await supabase.from('profile_friends').insert({ friender: userId.value, friend: requestUserId })
       }
       else {
-        await supabase.from('friends').delete().match({ friender: requestUserId, friend: userId.value })
+        await supabase.from('profile_friends').delete().match({ friender: requestUserId, friend: userId.value })
       }
       await fetch()
     }
@@ -295,7 +295,7 @@ export function useDataNotifications() {
     markRead(notification.id)
 
     if (!notification.id.startsWith('dev-')) {
-      await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id)
+      await supabase.from('user_notifications').update({ is_read: true }).eq('id', notification.id)
     }
   }
 
@@ -312,7 +312,7 @@ export function useDataNotifications() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'notifications',
+          table: 'user_notifications',
           filter: `user_id=eq.${uid}`,
         },
         (payload: RealtimePostgresInsertPayload<NotificationRow>) => {
@@ -337,7 +337,7 @@ export function useDataNotifications() {
               notificationId: incoming.id,
               onNavigate: (notificationId: string) => {
                 markRead(notificationId)
-                void supabase.from('notifications').update({ is_read: true }).eq('id', notificationId)
+                void supabase.from('user_notifications').update({ is_read: true }).eq('id', notificationId)
               },
             },
           })
@@ -352,7 +352,7 @@ export function useDataNotifications() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'friends',
+          table: 'profile_friends',
           filter: `friend=eq.${uid}`,
         },
         (payload: RealtimePostgresInsertPayload<{ id: number, friender: string, friend: string }>) => {

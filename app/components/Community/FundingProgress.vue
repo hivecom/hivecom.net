@@ -1,19 +1,28 @@
 <script setup lang="ts">
 import { Button, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
 
+import GrowthBadge from '@/components/Shared/GrowthBadge.vue'
 import { useDataExpenses } from '@/composables/useDataExpenses'
 import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCurrency } from '@/lib/utils/currency'
 
+interface Props {
+  onFundingPage?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  onFundingPage: false,
+})
+
 // Check if we're on the funding page
 const route = useRoute()
-const isOnFundingPage = computed(() => route.path === '/community/funding')
+const isOnFundingPage = computed(() => props.onFundingPage || route.path === '/community/funding')
 
 const isBelowSmall = useBreakpoint('<s')
 
 // Funding data via shared cache
-const { latestFunding: currentFunding, loading: fundingLoading, error } = useDataMonthlyFunding()
+const { latestFunding: currentFunding, allFunding, loading: fundingLoading, error } = useDataMonthlyFunding()
 const errorMessage = computed(() => error.value)
 
 // Active expenses via shared cache
@@ -54,6 +63,21 @@ const currentMonthLabel = computed(() => {
     month: 'long',
     year: 'numeric',
   })
+})
+
+// Growth vs previous month as percentage (null if not enough data)
+const growthPct = computed(() => {
+  if (allFunding.value.length < 2)
+    return null
+  const curr = allFunding.value[0]
+  const prev = allFunding.value[1]
+  if (!curr || !prev)
+    return null
+  const current = (curr.patreon_month_amount_cents ?? 0) + (curr.donation_month_amount_cents ?? 0)
+  const previous = (prev.patreon_month_amount_cents ?? 0) + (prev.donation_month_amount_cents ?? 0)
+  if (previous === 0)
+    return null
+  return ((current - previous) / previous) * 100
 })
 
 // Reusable template to not have to copy-paste component code
@@ -97,13 +121,14 @@ function scrollToSupport() {
 
       <!-- Main content -->
       <Flex v-else column expand>
-        <Flex y-center x-between class="mb-s funding-header" expand>
+        <Flex y-center x-between class="mb-s" expand>
           <Flex y-center gap="s" wrap>
             <h2 class="text-bold text-xxxl">
               {{ currentMonthLabel }}
             </h2>
+            <GrowthBadge :growth="growthPct" :size="isBelowSmall ? 'm' : 'l'" />
           </Flex>
-          <Flex y-center gap="s" class="funding-amounts">
+          <Flex y-center gap="s">
             <strong class="text-bold text-xxxl">{{ formatCurrency(fundingProgress.current) }}</strong>
             <span class="text-color-light text-xxxl">/</span>
             <strong class="text-color-light text-xxxl">{{ formatCurrency(fundingProgress.goal) }}</strong>
@@ -162,16 +187,6 @@ function scrollToSupport() {
 @media screen and (max-width: $breakpoint-s) {
   .text-xxxl {
     font-size: var(--font-size-xl) !important;
-  }
-
-  .funding-header {
-    flex-direction: column;
-    align-items: flex-start !important;
-    gap: var(--space-s) !important;
-  }
-
-  .funding-amounts {
-    align-self: flex-end;
   }
 }
 

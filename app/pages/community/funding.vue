@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Alert, Card, Checkbox, Flex, Grid, Skeleton } from '@dolanske/vui'
+import { Card, Checkbox, Flex, Grid, Skeleton } from '@dolanske/vui'
 import ExpenseCard from '@/components/Community/ExpenseCard.vue'
 import FundingHistory from '@/components/Community/FundingHistory.vue'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useDataExpenses } from '@/composables/useDataExpenses'
 import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useDataSupporters } from '@/composables/useDataSupporters'
@@ -57,26 +58,32 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
 
     <!-- Loading state -->
     <section v-if="isLoading" class="mt-xl">
-      <Flex column gap="l">
+      <Flex column gap="xxs">
         <!-- Supporters card -->
         <Skeleton :height="180" :radius="8" />
 
-        <!-- Funding progress + 2-col stats -->
-        <Skeleton :height="64" :radius="8" />
-        <Grid :columns="isBelowSmall ? 1 : 2" gap="s">
-          <Skeleton :height="100" :radius="8" />
-          <Skeleton :height="100" :radius="8" />
+        <!-- Funding progress -->
+        <Skeleton :height="160" :radius="8" class="mt-s" />
+
+        <!-- Patreon + donations cards -->
+        <Grid expand :columns="isBelowSmall ? 1 : 2" gap="s" class="mt-s">
+          <Skeleton :height="128" :radius="8" />
+          <Skeleton :height="128" :radius="8" />
         </Grid>
 
-        <!-- Historical funding chart -->
-        <Skeleton :height="200" :radius="8" class="mt-xl" />
-
-        <!-- Monthly expenses -->
-        <Flex x-between y-center class="mt-xl">
-          <Skeleton :width="200" :height="32" :radius="8" />
-          <Skeleton :width="160" :height="24" :radius="8" />
+        <!-- Historical funding: header + table -->
+        <Flex x-between y-center expand class="mt-xl">
+          <Skeleton :width="180" :height="48" :radius="8" />
+          <Skeleton :width="80" :height="34" :radius="8" />
         </Flex>
-        <Grid :columns="isBelowSmall ? 1 : 2" gap="s">
+        <Skeleton :height="220" :radius="8" class="mt-s" />
+
+        <!-- Monthly expenses: header + grid -->
+        <Flex x-between y-center expand class="mt-xl">
+          <Skeleton :width="200" :height="48" :radius="8" />
+          <Skeleton :width="160" :height="32" :radius="8" />
+        </Flex>
+        <Grid expand :columns="isBelowSmall ? 1 : 2" gap="s" class="mt-xl">
           <Skeleton :height="150" :radius="8" />
           <Skeleton :height="150" :radius="8" />
           <Skeleton :height="150" :radius="8" />
@@ -90,9 +97,7 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
 
     <!-- Error state -->
     <section v-else-if="combinedError" class="mt-xl">
-      <Alert variant="danger">
-        {{ combinedError }}
-      </Alert>
+      <ErrorAlert message="Failed to load funding data" :error="combinedError" standalone />
     </section>
 
     <!-- Main content -->
@@ -124,7 +129,7 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
 
       <!-- Current Funding Progress -->
       <Flex expand column>
-        <FundingProgress />
+        <FundingProgress :on-funding-page="true" />
 
         <Grid :columns="isBelowSmall ? 1 : 2" gap="s" expand>
           <Card class="p-m funding-card">

@@ -73,8 +73,7 @@ export type LinkPreviewData = LinkPreviewDiscussion | LinkPreviewProfile | LinkP
 
 // ---------------------------------------------------------------------------
 // URL parsing
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const FORUM_PATH_RE = /^\/forum\/([^/?#]+)/
 const PROFILE_PATH_RE = /^\/profile\/([^/?#]+)/
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -189,8 +188,7 @@ export function parseInternalUrl(raw: string): ParsedInternalUrl | null {
 
 // ---------------------------------------------------------------------------
 // Composable
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 /**
  * Fetches a rich preview for a single internal hivecom URL.
  *
@@ -268,7 +266,7 @@ export function useDataLinkPreview(url: string) {
 
   async function fetchGameserver(id: number, href: string) {
     const { data: row, error: fetchError } = await supabase
-      .from('gameservers')
+      .from('network_gameservers')
       .select(`
         id, name, description, region, game, addresses, port,
         container (

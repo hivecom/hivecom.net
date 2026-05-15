@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
+import { Button, Flex, Modal, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import GameIcon from '@/components/GameServers/GameIcon.vue'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
 import { useDataGames } from '@/composables/useDataGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -157,9 +158,7 @@ watch(
       </div>
 
       <!-- Error State -->
-      <Alert v-else-if="error" variant="danger">
-        {{ error }}
-      </Alert>
+      <ErrorAlert v-else-if="error" :message="error" />
 
       <!-- Content -->
       <div v-else-if="currentDetails" class="game-details-modal__content">

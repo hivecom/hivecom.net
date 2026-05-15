@@ -31,8 +31,7 @@ import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 // ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
 
 export const PAGE_SIZE_FORUM = 10
@@ -40,8 +39,7 @@ export const PAGE_SIZE_COMMENT = 10
 
 // ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export interface PageCursor {
   cursorTime: string // ISO timestamptz - created_at of the last row on the preceding page
   cursorId: string // uuid - id of the last row on the preceding page
@@ -82,8 +80,7 @@ type TailRow = Database['public']['Functions']['get_discussion_replies_tail']['R
 
 // ---------------------------------------------------------------------------
 // Cache key helpers
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function tailKey(
   discussionId: string,
   rootOnly: boolean = false,
@@ -116,8 +113,7 @@ function legacyKey(discussionId: string, ascending: boolean): string {
 
 // ---------------------------------------------------------------------------
 // Composable
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function useDiscussionRepliesCache() {
   const { cache } = useCacheModule(CACHE_NAMESPACES.replies)
 

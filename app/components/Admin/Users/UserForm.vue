@@ -68,6 +68,11 @@ const { canModifyUsers, canDeleteUsers, canUpdateRoles } = useAdminPermissions()
 // Supabase client for role operations
 const supabase = useSupabaseClient()
 
+// permissionVerified mirrors canUpdateRoles so canEditRoles stays reactive to impersonation.
+// The old approach queried the DB directly (bypassing the injected effective permissions).
+const permissionVerified = computed(() => canUpdateRoles.value)
+const permissionVerifying = ref(false)
+
 // Avatar state
 const avatarUrl = ref<string | null>(null)
 const avatarDeleting = ref(false)
@@ -154,9 +159,7 @@ const originalRole = ref<string>('user')
 const rolesLoading = ref(false)
 const rolesError = ref('')
 
-// Permission verification state
-const permissionVerified = ref(false)
-const permissionVerifying = ref(false)
+// Permission verification state - now derived from canUpdateRoles (see above)
 
 // Computed property to handle VUI Select format (expects array of selected options)
 const selectedRoleComputed = computed({
@@ -257,56 +260,6 @@ async function fetchUserRoles() {
   }
 }
 
-// Verify that the current user has the required permissions to modify roles
-async function verifyRolePermissions() {
-  if (!currentUser.value) {
-    permissionVerified.value = false
-    return
-  }
-
-  permissionVerifying.value = true
-
-  try {
-    // Get the current user's role
-    const { data: userRoleData, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', currentUserId.value)
-      .single()
-
-    if (roleError && roleError.code !== 'PGRST116') { // PGRST116 = no rows returned
-      throw roleError
-    }
-
-    const userRole = userRoleData?.role
-
-    if (!userRole) {
-      permissionVerified.value = false
-      return
-    }
-
-    // Check if the user's role has the required permissions
-    const { data: permissionData, error: permissionError } = await supabase
-      .from('role_permissions')
-      .select('permission')
-      .eq('role', userRole)
-      .in('permission', ['roles.update', 'roles.create'])
-
-    if (permissionError) {
-      throw permissionError
-    }
-
-    permissionVerified.value = permissionData && permissionData.length > 0
-  }
-  catch (error) {
-    console.error('Error verifying role permissions:', error)
-    permissionVerified.value = false
-  }
-  finally {
-    permissionVerifying.value = false
-  }
-}
-
 // Update form data when user prop changes
 watch(
   () => props.user,
@@ -341,8 +294,7 @@ watch(
       if (props.isEditMode && newUser.id) {
         avatarUrl.value = await getUserAvatarUrl(supabase, newUser.id)
       }
-      // Verify role permissions when user changes
-      verifyRolePermissions()
+      // Verify role permissions when user changes - now handled reactively via canUpdateRoles
     }
     else {
       // Reset form for new user
@@ -352,18 +304,7 @@ watch(
       originalRole.value = 'user'
       // Reset avatar for new user
       avatarUrl.value = null
-      // Verify permissions for new user creation
-      verifyRolePermissions()
     }
-  },
-  { immediate: true },
-)
-
-// Watch for authentication state changes to re-verify permissions
-watch(
-  () => currentUser.value,
-  () => {
-    verifyRolePermissions()
   },
   { immediate: true },
 )

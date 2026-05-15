@@ -70,7 +70,7 @@ const variant = computed(() => {
       :size="props.size"
       circle
     >
-      {{ shortDisplay }}
+      {{ shortDisplay }}<slot />
     </Badge>
     <template #tooltip>
       <span class="text-xs">{{ roleDisplay }}</span>
@@ -81,13 +81,13 @@ const variant = computed(() => {
     size="s"
     :variant="variant"
   >
-    {{ roleDisplay }}
+    {{ roleDisplay }}<slot />
   </Badge>
   <Badge
     v-else
     :variant="variant"
     :size="props.size"
   >
-    {{ roleDisplay }}
+    {{ roleDisplay }}<slot />
   </Badge>
 </template>

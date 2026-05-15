@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Card, defineTable, Flex, Select, Table } from '@dolanske/vui'
+import { Alert, Card, defineTable, Flex, Select, Table } from '@dolanske/vui'
+import GrowthBadge from '@/components/Shared/GrowthBadge.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 
 interface SelectOption { value: number, label: string }
 
 interface Props {
-  monthlyFunding: Tables<'monthly_funding'>[]
+  monthlyFunding: Tables<'funding_history'>[]
   formatCurrency: (cents: number) => string
 }
 
@@ -20,7 +21,8 @@ interface TransformedFunding {
   'Monthly Total': number
   'Lifetime Total': number
   'Growth': number | null
-  '_original': Tables<'monthly_funding'>
+  'Growth Value': number | null
+  '_original': Tables<'funding_history'>
 }
 
 // Year filter
@@ -93,6 +95,8 @@ const transformedTableData = computed<TransformedFunding[]>(() => {
 
   return historicalData.value.slice(startIndex, startIndex + 24).map((funding, index) => {
     const growth = getGrowthFromPrevious(funding.totalMonthly, index + startIndex)
+    const previousTotal = historicalData.value[index + startIndex + 1]?.totalMonthly ?? null
+    const growthValue = previousTotal !== null ? normalizeToDisplayedEuros(funding.totalMonthly) - normalizeToDisplayedEuros(previousTotal) : null
 
     return {
       'Month': funding.shortMonthName,
@@ -100,6 +104,7 @@ const transformedTableData = computed<TransformedFunding[]>(() => {
       'Donations': funding.donationMonthly,
       'Monthly Total': funding.totalMonthly,
       'Growth': growth,
+      'Growth Value': growthValue,
       'Lifetime Total': funding.totalLifetime,
       '_original': funding,
     }
@@ -129,17 +134,6 @@ function getGrowthFromPrevious(currentAmount: number, index: number) {
   const growth = ((currentDisplay - previousDisplay) / previousDisplay) * 100
   return growth
 }
-
-// Get growth indicator
-function getGrowthIndicator(growth: number | null) {
-  if (growth === null)
-    return { variant: 'neutral' as const, icon: 'ph:minus', text: 'No data' }
-  if (growth > 0)
-    return { variant: 'success' as const, icon: 'ph:trend-up', text: `+${growth.toFixed(1)}%` }
-  if (growth < 0)
-    return { variant: 'danger' as const, icon: 'ph:trend-down', text: `${growth.toFixed(1)}%` }
-  return { variant: 'neutral' as const, icon: 'ph:minus', text: '0%' }
-}
 </script>
 
 <template>
@@ -163,7 +157,7 @@ function getGrowthIndicator(growth: number | null) {
         <TableContainer e>
           <Table.Root v-if="rows.length > 0" separate-cells class="table-container">
             <template #header>
-              <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" :header />
+              <Table.Head v-for="header in headers.filter(header => header.label !== '_original' && header.label !== 'Growth Value')" :key="header.label" :header />
             </template>
 
             <template #body>
@@ -189,18 +183,8 @@ function getGrowthIndicator(growth: number | null) {
                   <span class="text-s text-bold">{{ formatCurrency(funding['Monthly Total']) }}</span>
                 </Table.Cell>
                 <Table.Cell>
-                  <Badge
-                    v-if="funding.Growth !== null"
-                    :variant="getGrowthIndicator(funding.Growth).variant"
-                    size="s"
-                  >
-                    <Icon
-                      :name="getGrowthIndicator(funding.Growth).icon"
-                      size="0.8rem"
-                    />
-                    {{ getGrowthIndicator(funding.Growth).text }}
-                  </Badge>
-                  <span v-else class="text-xs text-color-light">-</span>
+                  <GrowthBadge :growth="funding.Growth" :value="funding['Growth Value']" prefix="€" />
+                  <span v-if="funding.Growth === null" class="text-xs text-color-light">-</span>
                 </Table.Cell>
                 <Table.Cell>
                   <span class="text-s text-bold">{{ formatCurrency(funding['Lifetime Total']) }}</span>

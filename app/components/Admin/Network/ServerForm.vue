@@ -5,7 +5,7 @@ import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 
 const props = defineProps<{
-  server: Tables<'servers'> | null
+  server: Tables<'network_servers'> | null
   isEditMode: boolean
 }>()
 
@@ -14,7 +14,7 @@ const isOpen = defineModel<boolean>('isOpen')
 
 // Form state
 
-const serverForm = ref<TablesInsert<'servers'>>({
+const serverForm = ref<TablesInsert<'network_servers'>>({
   address: '',
   active: true,
   docker_control: false,

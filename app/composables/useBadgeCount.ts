@@ -32,8 +32,7 @@ import { useCacheModule } from './useCacheModule'
 
 // ---------------------------------------------------------------------------
 // Public types
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export interface BadgeCountConfig extends Omit<CacheConfig, 'ttl'> {
   /**
    * Async function that performs the Supabase query and returns the raw integer
@@ -75,8 +74,7 @@ export interface BadgeCountResult {
 
 // ---------------------------------------------------------------------------
 // Factory
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const DEFAULT_CACHE_TTL = 10 * 60 * 1000 // 10 minutes
 
 export function useBadgeCount(
@@ -104,8 +102,7 @@ export function useBadgeCount(
 
   // ---------------------------------------------------------------------------
   // Helpers
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   function getCacheKey(profileId: string): string {
     return `${cacheKeyPrefix}:${profileId}`
   }
@@ -116,8 +113,7 @@ export function useBadgeCount(
 
   // ---------------------------------------------------------------------------
   // Core fetch
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   async function loadCount(profileId: string, force = false): Promise<void> {
     const normalizedId = profileId.trim()
     if (normalizedId === '') {
@@ -130,8 +126,7 @@ export function useBadgeCount(
 
   // ---------------------------------------------------------------------------
   // Public API
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   function invalidate(profileId: string | null | undefined): void {
     if (!hasValidProfileId(profileId))
       return
@@ -150,8 +145,7 @@ export function useBadgeCount(
 
   // ---------------------------------------------------------------------------
   // Reactivity
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   watch(
     [() => unref(userId), normalizedEnabled],
     ([profileId, isEnabled]) => {

@@ -32,8 +32,7 @@ import {
 
 // ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 type GlobeInstance = import('globe.gl').GlobeInstance
 
 interface ArcDatum {
@@ -50,8 +49,7 @@ interface RingDatum {
 
 // ---------------------------------------------------------------------------
 // Timing constants
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const FLIGHT_TIME = 3200
 const ARC_REL_LEN = 0.35
 const RING_MAX_R = 24
@@ -63,8 +61,7 @@ const HIGHLIGHT_START_MS = 1200
 
 // ---------------------------------------------------------------------------
 // Composable
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function useGlobeRenderer() {
   // Internal mutable state - none of this needs to be reactive.
   let globeInstance: GlobeInstance | null = null
@@ -92,8 +89,7 @@ export function useGlobeRenderer() {
 
   // ---------------------------------------------------------------------------
   // Timer teardown
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   function clearTimers() {
     if (arcInterval != null)
       clearInterval(arcInterval)
@@ -107,8 +103,7 @@ export function useGlobeRenderer() {
 
   // ---------------------------------------------------------------------------
   // Post-processing resolution sync
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   function updateScanlinePassResolution(width: number, height: number) {
     const w = Math.max(1, width)
     const h = Math.max(1, height)
@@ -134,8 +129,7 @@ export function useGlobeRenderer() {
 
   // ---------------------------------------------------------------------------
   // Post-processing setup
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   async function setupPostProcessing(perfParams: GlobePerfParams) {
     if (!import.meta.client || !globeInstance)
       return
@@ -274,8 +268,7 @@ export function useGlobeRenderer() {
 
   // ---------------------------------------------------------------------------
   // Theme helpers
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   // applyGlobeColor is called after base init to toggle bloom/afterimage
   function applyPostProcessingTheme() {
     const light = isLightTheme()
@@ -293,8 +286,7 @@ export function useGlobeRenderer() {
 
   // ---------------------------------------------------------------------------
   // Arc + ring logic
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   function buildArcScheduler(
     allCentroids: CountryPoint[],
     sourceCentroids: CountryPoint[],
@@ -410,8 +402,7 @@ export function useGlobeRenderer() {
 
   // ---------------------------------------------------------------------------
   // Animation tick
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   function startTick(refreshHexes: () => void) {
     const tick = () => {
       refreshHexes()
@@ -433,8 +424,7 @@ export function useGlobeRenderer() {
 
   // ---------------------------------------------------------------------------
   // Main initialisation
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   async function init(
     container: HTMLDivElement,
     featureCollection: FeatureCollection,
@@ -491,6 +481,10 @@ export function useGlobeRenderer() {
         // Dim ambient highlight for countries with users (max 25% alpha)
         const userCount = countryUserCounts.get(iso.toUpperCase())
         if (userCount != null && userCount > 0) {
+          if (isLightTheme()) {
+            const t = (userCount / maxUserCount) * 0.25
+            return blendHex(baseHex, getTextColor(), t)
+          }
           const alpha = (userCount / maxUserCount) * 0.05
           const [r, g, b] = parseColor(getTextColor())
           return `rgba(${r},${g},${b},${alpha})`
@@ -560,8 +554,7 @@ export function useGlobeRenderer() {
 
   // ---------------------------------------------------------------------------
   // Teardown
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   function destroy() {
     clearTimers()
     bloomThemeMedia?.removeEventListener('change', applyPostProcessingTheme)

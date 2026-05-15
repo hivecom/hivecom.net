@@ -79,11 +79,11 @@ const route = useRoute()
 const router = useRouter()
 
 // Check if user can read containers
-const canReadContainers = computed(() => hasPermission('containers.read'))
+const canReadContainers = computed(() => hasPermission('network.read'))
 
 // Define query
 const supabase = useSupabaseClient()
-const containersQuery = supabase.from('containers').select(`
+const containersQuery = supabase.from('network_containers').select(`
   name,
   running,
   healthy,
@@ -443,7 +443,7 @@ async function handlePrune(container: ContainerWithServer) {
     // Use count: 'exact' so we can detect a silent RLS block - PostgREST
     // returns 204 with no error even when 0 rows are deleted.
     const { error, count } = await supabase
-      .from('containers')
+      .from('network_containers')
       .delete({ count: 'exact' })
       .eq('name', container.name)
 

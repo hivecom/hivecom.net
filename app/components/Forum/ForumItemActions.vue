@@ -4,6 +4,8 @@ import { Alert, Button, Divider, Dropdown, DropdownItem, pushToast, Tooltip } fr
 import { invalidateForumTopicsCache } from '@/composables/useDataForumTopics'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
+import { useUserId } from '@/composables/useUserId'
 import { slugify } from '@/lib/utils/formatting'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
 import ForumModalAddDiscussion from './ForumModalAddDiscussion.vue'
@@ -37,6 +39,7 @@ const supabase = useSupabaseClient()
 const userId = useUserId()
 
 const { user } = useDataUser(userId, { includeRole: true })
+const { isAdminOrMod: isEffectiveAdminOrMod } = useEffectiveRole()
 const discussionCache = useDiscussionCache()
 
 // Locking
@@ -50,7 +53,7 @@ const lockTitle = computed(() => lockMode.value === 'lock'
   : `Unlock ${lockTarget.value}`)
 const lockDescription = computed(() => {
   if (lockMode.value === 'lock') {
-    return props.table === 'discussions' && user.value?.role !== 'admin' && user.value?.role !== 'moderator'
+    return props.table === 'discussions' && !isEffectiveAdminOrMod.value
       ? `Are you sure you want to lock this ${lockTarget.value}? Only admins and moderators will be able to unlock it.`
       : `Are you sure you want to lock this ${lockTarget.value}?`
   }
@@ -364,7 +367,7 @@ function handleDelete() {
 </script>
 
 <template>
-  <div v-if="user && (user.id === data.created_by || user.role === 'admin' || user.role === 'moderator')" class="forum__item-actions">
+  <div v-if="user && (user.id === data.created_by || isEffectiveAdminOrMod)" class="forum__item-actions">
     <Dropdown ref="dropdownRef">
       <template #trigger="{ toggle, isOpen }">
         <slot :toggle>
@@ -376,7 +379,7 @@ function handleDelete() {
       <!-- Locking - topic & discussion  -->
       <!-- Unlock is restricted to admins/moderators; authors can only lock -->
       <DropdownItem
-        v-if="props.data.is_locked && (user?.role === 'admin' || user?.role === 'moderator')"
+        v-if="props.data.is_locked && isEffectiveAdminOrMod"
         @click="lockMode = 'unlock'; lockConfirm = true"
       >
         Unlock
@@ -413,7 +416,7 @@ function handleDelete() {
         Edit
       </DropdownItem>
       <!-- Re-create - discussions only, admin/mod only, blocked for entity-linked discussions -->
-      <template v-if="props.table === 'discussions' && (user?.role === 'admin' || user?.role === 'moderator')">
+      <template v-if="props.table === 'discussions' && isEffectiveAdminOrMod">
         <template v-if="linkedDiscussionReason">
           <Tooltip placement="left">
             <template #tooltip>
@@ -432,13 +435,13 @@ function handleDelete() {
       <template v-if="props.table === 'discussion_topics'">
         <Divider class="my-xxs" />
         <DropdownItem
-          v-if="!props.data.is_locked || user?.role === 'admin' || user?.role === 'moderator'"
+          v-if="!props.data.is_locked || isEffectiveAdminOrMod"
           @click="showCreateSubTopicModal = true; dropdownRef?.close()"
         >
           Create sub-topic
         </DropdownItem>
         <DropdownItem
-          v-if="!props.data.is_locked || user?.role === 'admin' || user?.role === 'moderator'"
+          v-if="!props.data.is_locked || isEffectiveAdminOrMod"
           @click="showCreateDiscussionModal = true; dropdownRef?.close()"
         >
           Create discussion

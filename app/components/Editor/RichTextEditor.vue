@@ -133,8 +133,7 @@ const content = defineModel<string>()
 // switches to the plain-text textarea we decode those entities so they see
 // "<foo>" instead of "&lt;foo&gt;".  Any edits they make are re-escaped before
 // being written back into the content model, preserving the invariant.
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const minHeightPlain = computed(() => {
   const cssValue = Number(minHeight.slice(0, -2))
   //                vv The height & margin of the now static menu

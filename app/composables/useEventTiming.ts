@@ -57,8 +57,7 @@ export interface EventTimingResult {
 
 // ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function msToCountdown(ms: number): EventCountdown {
   const total = Math.max(0, ms)
   const days = Math.floor(total / (1000 * 60 * 60 * 24))
@@ -72,8 +71,7 @@ const ZERO_COUNTDOWN: EventCountdown = { days: 0, hours: 0, minutes: 0, seconds:
 
 // ---------------------------------------------------------------------------
 // Composable
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function useEventTiming(
   event: MaybeRefOrGetter<Tables<'events'> | null | undefined>,
 ): EventTimingResult {
@@ -86,8 +84,7 @@ export function useEventTiming(
 
   // ---------------------------------------------------------------------------
   // Derived dates
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   const eventStart = computed<Date | null>(() => {
     const ev = toValue(event)
     return ev ? new Date(ev.date) : null
@@ -105,8 +102,7 @@ export function useEventTiming(
 
   // ---------------------------------------------------------------------------
   // Status flags
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   const hasEventEnded = computed<boolean>(() => {
     if (!eventEnd.value)
       return false
@@ -127,8 +123,7 @@ export function useEventTiming(
 
   // ---------------------------------------------------------------------------
   // Display helpers
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   const timeAgo = computed<string>(() => {
     if (!eventEnd.value || isUpcoming.value || isOngoing.value)
       return ''

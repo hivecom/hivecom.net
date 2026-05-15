@@ -9,8 +9,7 @@ import { createAtomBlockMarkdownSpec, mergeAttributes, Node } from '@tiptap/core
 //
 // Directive format (mirrors the YouTube extension pattern):
 //   :::video {src="https://..."} :::
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 declare module '@tiptap/core' {
 
   interface Commands<ReturnType> {

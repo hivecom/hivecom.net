@@ -9,8 +9,7 @@ export const ATMOSPHERE_COLOR = '#ddffcc'
 
 // ---------------------------------------------------------------------------
 // CSS variable helpers
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function cssVar(name: string): string {
   if (typeof window === 'undefined')
     return ''
@@ -21,8 +20,7 @@ function cssVar(name: string): string {
 // Canvas-based CSS color parser
 // Handles any format the browser resolves: hex, rgb(), oklch(), hsl(), etc.
 // Returns [r, g, b] in 0-255 range, or null if unparseable.
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 let _canvas: HTMLCanvasElement | null = null
 let _ctx: CanvasRenderingContext2D | null = null
 
@@ -85,8 +83,7 @@ function colorToRgbString(color: string): string {
 
 // ---------------------------------------------------------------------------
 // Theme detection
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function isLightTheme(): boolean {
   if (typeof window === 'undefined')
     return false
@@ -106,8 +103,7 @@ export function isLightTheme(): boolean {
 
 // ---------------------------------------------------------------------------
 // Color getters - read live from CSS variables
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function getArcColor(): string {
   return cssVar('--color-accent') || (isLightTheme() ? '#69883e' : '#a7fc2f')
 }
@@ -136,8 +132,7 @@ export function getGlobeColor(): string {
 // ---------------------------------------------------------------------------
 // Utility - blend two CSS colors (any format) by t in [0, 1]
 // Returns a hex string safe for Three.js and globe.gl color callbacks.
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function blendHex(from: string, to: string, t: number): string {
   const clamp = Math.max(0, Math.min(1, t))
   const [r1, g1, b1] = parseColor(from)

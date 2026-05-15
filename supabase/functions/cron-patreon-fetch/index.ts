@@ -1,6 +1,7 @@
 import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
+import { sendDiscordNotification } from "../_shared/discord.ts";
 import type { Database, Tables } from "database-types";
 
 // Define interfaces for Patreon API response types
@@ -217,13 +218,13 @@ Deno.serve(async (req: Request) => {
     // Upsert the monthly funding record for this month based on the Patreon data
     // Using the new column structure as per the DB schema changes
     const { error: upsertError } = await supabaseClient
-      .from("monthly_funding")
+      .from("funding_history")
       .upsert({
         month: currentMonthDate,
         patreon_month_amount_cents: monthlyPatreonTotal, // Monthly amount in cents
         patreon_count: activePatronIds.length, // Number of active patrons
         patreon_lifetime_amount_cents: lifetimePatreonTotal, // Lifetime total in cents
-      } as Tables<"monthly_funding">, {
+      } as Tables<"funding_history">, {
         onConflict: "month",
       });
 
@@ -408,6 +409,27 @@ Deno.serve(async (req: Request) => {
       }
 
       supporterUpdateResult = updatedProfiles;
+    }
+
+    // Notify Discord for each newly-awarded supporter
+    if (supporterUpdateResult && supporterUpdateResult.length > 0) {
+      for (const profile of supporterUpdateResult) {
+        await sendDiscordNotification({
+          embeds: [{
+            title: "New Patreon Supporter",
+            color: 0xFF424D,
+            fields: [
+              {
+                name: "Username",
+                value: profile.username ?? "Unknown",
+                inline: true,
+              },
+              { name: "User ID", value: profile.id, inline: true },
+            ],
+            timestamp: new Date().toISOString(),
+          }],
+        });
+      }
     }
 
     const results = {

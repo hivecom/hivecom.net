@@ -2,7 +2,8 @@
 import type { ThemeScaleKey } from '@/lib/theme'
 import type { Theme } from '@/types/theme'
 import { maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Alert, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Input, Modal, pushToast, setColorTheme, Switch, Tab, Tabs, Textarea, theme, Tooltip } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Input, Modal, pushToast, setColorTheme, Switch, Tab, Tabs, Textarea, theme, Tooltip } from '@dolanske/vui'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import { invalidateThemesCache } from '@/composables/useDataThemes'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
@@ -608,9 +609,7 @@ const iconTheme = computed<Theme>(() => {
       </template>
 
       <Flex column gap="m">
-        <Alert v-if="submitError" variant="danger">
-          {{ submitError }}
-        </Alert>
+        <ErrorAlert v-if="submitError" :message="submitError" />
 
         <Alert v-if="form.forked_from" variant="info" filled icon-align="start">
           <p>

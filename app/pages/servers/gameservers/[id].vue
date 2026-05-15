@@ -23,7 +23,7 @@ function goBack() {
 const gameserverId = Number.parseInt(route.params.id as string)
 
 // Reactive data
-const gameserver = ref<Tables<'gameservers'> | null>(null)
+const gameserver = ref<Tables<'network_gameservers'> | null>(null)
 const game = ref<Tables<'games'> | null>(null)
 const error = ref<string | null>(null)
 const gameBackground = ref<string | null>(null)
@@ -40,9 +40,9 @@ const container = computed((): GameserverWithContainer['container'] => {
   return cached?.container ?? null
 })
 
-// Typed as Tables<'containers'> for GameServerHeader prop - the joined shape is compatible
-const containerForHeader = computed((): Tables<'containers'> | null =>
-  container.value as Tables<'containers'> | null,
+// Typed as Tables<'network_containers'> for GameServerHeader prop - the joined shape is compatible
+const containerForHeader = computed((): Tables<'network_containers'> | null =>
+  container.value as Tables<'network_containers'> | null,
 )
 
 // Computed server state
@@ -165,11 +165,8 @@ useHead({
       :error="error"
       :back-to="goBack"
       back-label="Game Servers"
-    >
-      <template #error-message>
-        The game server you're looking for might have been removed or doesn't exist.
-      </template>
-    </DetailStates>
+      error-message="The game server you're looking for might have been removed or doesn't exist."
+    />
 
     <!-- Gameserver Content -->
     <div v-if="gameserver && !loading && !error" class="page-content">

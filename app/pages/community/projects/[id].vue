@@ -87,11 +87,8 @@ defineOgImage('Project', {
         :error="error"
         back-to="/community/projects"
         back-label="Projects"
-      >
-        <template #error-message>
-          The project you're looking for might have been removed or doesn't exist.
-        </template>
-      </DetailStates>
+        error-message="The project you're looking for might have been removed or doesn't exist."
+      />
 
       <!-- Project Content -->
       <div v-if="project && !loading && !error" class="page-content">

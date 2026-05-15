@@ -1,7 +1,6 @@
 // ---------------------------------------------------------------------------
 // AST-level grouping (used by MarkdownRendererInner before MDCRenderer sees it)
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 interface ASTNode {
   type: string
   tag?: string
@@ -94,8 +93,7 @@ export function groupImagesAST(body: ASTNode): ASTNode {
 
 // ---------------------------------------------------------------------------
 // DOM-level grouping (used by the ProseMirror editor)
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // If a <p> contains only <img> elements (no other non-whitespace content),
 // split it into individual solo-image <p> nodes in the DOM.
 function splitMultiImageNode(node: HTMLElement, container: HTMLElement): void {

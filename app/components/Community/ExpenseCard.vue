@@ -6,7 +6,7 @@ import { formatDateLong } from '@/lib/utils/date'
 import { isPlannedExpense } from '@/lib/utils/expenses'
 
 interface Props {
-  expense: Tables<'expenses'>
+  expense: Tables<'funding_expenses'>
 }
 
 const props = defineProps<Props>()

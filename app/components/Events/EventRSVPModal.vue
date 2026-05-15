@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
-import { Alert, Badge, Button, Flex, Modal, Skeleton, Tab, Tabs } from '@dolanske/vui'
+import { Badge, Button, Flex, Modal, Skeleton, Tab, Tabs } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 
 import { useCache } from '@/composables/useCache'
 import { useEventTiming } from '@/composables/useEventTiming'
@@ -235,9 +236,7 @@ function handleClose() {
       </div>
 
       <!-- Error State -->
-      <Alert v-else-if="error" variant="danger">
-        {{ error }}
-      </Alert>
+      <ErrorAlert v-else-if="error" :message="error" />
 
       <!-- Content -->
       <div v-else>

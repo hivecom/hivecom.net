@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
 import { Alert, Badge, Button, ButtonGroup, Card, Dropdown, DropdownItem, Flex, Skeleton, theme, Tooltip } from '@dolanske/vui'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useThemePreview } from '@/composables/useThemePreview'
 import { useUserId } from '@/composables/useUserId'
 import { themeToScopedProperties } from '@/lib/theme'
@@ -49,9 +50,7 @@ function handleApplyClick(e: MouseEvent) {
   }
 }
 const userId = useUserId()
-const { user: userData } = useDataUser(userId, { includeRole: true })
-
-const isAdmin = computed(() => userData.value?.role === 'admin')
+const { isAdmin } = useEffectiveRole()
 const isOwner = computed(() => userId.value != null && props.item.created_by === userId.value)
 const canSeeDropdown = computed(() => isOwner.value || isAdmin.value)
 

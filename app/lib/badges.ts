@@ -3,8 +3,7 @@ export type BadgeVariant = 'shiny' | 'gold' | 'silver' | 'bronze'
 type DiscussionBadgeVariant = Extract<BadgeVariant, 'gold' | 'silver' | 'bronze'>
 type PartyAnimalVariant = Extract<BadgeVariant, 'gold' | 'silver' | 'bronze'>
 
-// --- Forum Regular (discussions started) ---
-
+// --- Forum Regular (discussions started)
 export const DISCUSSION_STARTER_THRESHOLDS: Record<DiscussionBadgeVariant, number> = {
   gold: 1000,
   silver: 100,
@@ -26,8 +25,7 @@ export function getDiscussionStarterVariant(count: number | null | undefined): D
   return undefined
 }
 
-// --- Chatterbox (discussion replies) ---
-
+// --- Chatterbox (discussion replies)
 export const DISCUSSION_REPLY_THRESHOLDS: Record<DiscussionBadgeVariant, number> = {
   gold: 10000,
   silver: 1000,
@@ -49,8 +47,7 @@ export function getDiscussionReplyVariant(count: number | null | undefined): Dis
   return undefined
 }
 
-// --- Life of the Party (event RSVPs) ---
-
+// --- Life of the Party (event RSVPs)
 export const PARTY_ANIMAL_BADGE_THRESHOLDS: Record<PartyAnimalVariant, number> = {
   gold: 50,
   silver: 10,

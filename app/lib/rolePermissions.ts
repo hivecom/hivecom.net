@@ -6,6 +6,35 @@
 export type RoleVariant = 'danger' | 'info' | 'success' | 'neutral'
 
 /**
+ * Permissions implicitly granted to all authenticated users (the 'user' role).
+ * These are not stored in role_permissions - they are the hardcoded baseline.
+ * Shared between RolesGrid display and role impersonation.
+ */
+export const DEFAULT_USER_PERMISSIONS: string[] = [
+  'discussion_topics.read',
+  'discussions.read',
+  'discussions.create',
+  'discussions.update.own',
+  'discussions.delete.own',
+  'discussion_replies.read',
+  'discussion_replies.create',
+  'discussion_replies.update.own',
+  'discussion_replies.delete.own',
+  'events.read',
+  'games.read',
+  'profiles.read',
+  'referendums.create',
+  'referendums.read',
+  'roles.read',
+  'profiles.update.own',
+  'complaints.create.own',
+  'complaints.read.own',
+  'referendum_votes.create',
+  'referendum_votes.update.own',
+  'referendum_votes.delete.own',
+]
+
+/**
  * Formats a raw permission string (e.g. "complaints.create.own") into a
  * human-readable label.
  */
@@ -59,23 +88,20 @@ export function formatCategoryName(category: string): string {
     alerts: 'Alerts',
     assets: 'Assets',
     complaints: 'Complaints',
-    containers: 'Containers',
     discussion_replies: 'Discussion Replies',
     discussion_topics: 'Discussion Topics',
     discussions: 'Discussions',
     events: 'Events',
-    expenses: 'Expenses',
     funding: 'Funding',
     games: 'Games',
-    gameservers: 'Game Servers',
     kvstore: 'KV Store',
     motds: 'MOTDs',
+    network: 'Network',
     profiles: 'Profiles',
     projects: 'Projects',
     referendums: 'Referendums',
     referendum_votes: 'Referendum Votes',
     roles: 'Roles',
-    servers: 'Servers',
     users: 'Users',
   }
 
@@ -123,23 +149,22 @@ export function getCategoryIcon(category: string): string {
     alerts: 'ph:warning-octagon',
     assets: 'ph:images-square',
     complaints: 'ph:flag',
-    containers: 'ph:cube',
     discussion_replies: 'ph:chat-dots',
     discussion_topics: 'ph:folders',
     discussions: 'ph:chat-circle-dots',
     events: 'ph:calendar-blank',
-    expenses: 'ph:receipt',
     funding: 'ph:coins',
     games: 'ph:game-controller',
-    gameservers: 'ph:computer-tower',
     kvstore: 'ph:database',
     motds: 'ph:speaker-simple-high',
+    network: 'ph:computer-tower',
     profiles: 'ph:user-circle',
     projects: 'ph:folder-open',
     referendums: 'ph:scales',
     referendum_votes: 'ph:check-square',
     roles: 'ph:shield-check',
-    servers: 'ph:hard-drives',
+    profile_points: 'ph:star',
+    themes: 'ph:paint-brush',
     users: 'ph:users',
   }
 

@@ -8,7 +8,7 @@ import { isNil } from '@/lib/utils/common'
 let _autoSaveWatcherRegistered = false
 
 // Single source of truth for user settings
-export function getDefaultUserSettings(): Tables<'settings'>['data'] {
+export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
   return {
     theme: 'dark',
     show_nsfw_content: true,
@@ -32,7 +32,7 @@ export function getDefaultUserSettings(): Tables<'settings'>['data'] {
 }
 
 export function useDataUserSettings() {
-  const settings = useState<Tables<'settings'>['data']>('user-settings', getDefaultUserSettings)
+  const settings = useState<Tables<'user_settings'>['data']>('user-settings', getDefaultUserSettings)
   const hasFetched = useState<boolean>('user-settings-fetched', () => false)
   const isFetching = useState<boolean>('user-settings-fetching', () => false)
   const settingsLoading = ref(false)
@@ -48,7 +48,7 @@ export function useDataUserSettings() {
     isFetching.value = true
 
     const { data, error } = await supabase
-      .from('settings')
+      .from('user_settings')
       .select('*')
       .maybeSingle()
 
@@ -61,9 +61,11 @@ export function useDataUserSettings() {
     }
 
     if (data) {
-      const fetched = data.data as Tables<'settings'>['data']
-      const nonNillSettingValues = Object.fromEntries(Object.entries(fetched).filter(([, v]) => !isNil(v)))
-      Object.assign(settings.value, nonNillSettingValues)
+      const fetched = data.data as Tables<'user_settings'>['data'] | null
+      if (fetched) {
+        const nonNillSettingValues = Object.fromEntries(Object.entries(fetched).filter(([, v]) => !isNil(v)))
+        Object.assign(settings.value, nonNillSettingValues)
+      }
     }
 
     hasFetched.value = true
@@ -71,14 +73,14 @@ export function useDataUserSettings() {
     return null
   }
 
-  const updateSettings = async (newSettings: Tables<'settings'>['data']) => {
+  const updateSettings = async (newSettings: Tables<'user_settings'>['data']) => {
     if (isNil(user.value)) {
       return
     }
 
     try {
       await supabase
-        .from('settings')
+        .from('user_settings')
         .upsert({ id: user.value, data: newSettings })
         .throwOnError()
     }

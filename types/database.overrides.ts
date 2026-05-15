@@ -77,7 +77,7 @@ interface TableColumnOverrides {
     reactions: ReactionData
   }
 
-  settings: {
+  user_settings: {
     data: {
       theme: 'dark' | 'light'
       show_nsfw_warning: boolean

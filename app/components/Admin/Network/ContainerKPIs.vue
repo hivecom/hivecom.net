@@ -34,7 +34,7 @@ async function fetchContainerMetrics() {
   try {
     // Query for all containers
     const { data, error } = await supabase
-      .from('containers')
+      .from('network_containers')
       .select(`
         name,
         running,

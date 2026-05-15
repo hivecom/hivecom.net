@@ -6,12 +6,14 @@ import type { TimelineBucket } from './DiscussionTimeline.vue'
 import type { SubscriptionRow } from '@/composables/useDiscussionSubscriptionsCache'
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Alert, paginate, Pagination, Skeleton } from '@dolanske/vui'
+import { paginate, Pagination, Skeleton } from '@dolanske/vui'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useDataDiscussionReplies } from '@/composables/useDataDiscussionReplies'
-import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
+import { useBulkDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { PAGE_SIZE_COMMENT, PAGE_SIZE_FORUM, useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCache'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useRealtimeDiscussion } from '@/composables/useRealtimeDiscussion'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
 import { scrollToId, scrollToIdWhenStable, waitForLayoutStability } from '@/lib/utils/common'
@@ -83,11 +85,7 @@ const MAX_COMMENT_CHARS = 8192
 
 const userId = useUserId()
 
-const { user: currentUserData } = useDataUser(userId, { includeRole: true })
-const canBypassLock = computed(() => {
-  const role = currentUserData.value?.role
-  return role === 'admin' || role === 'moderator'
-})
+const { isAdminOrMod: canBypassLock } = useEffectiveRole()
 
 // Re-export from Discussion.types.ts for backward compatibility with consumers
 // that import these types from Discussion.vue directly.
@@ -1077,12 +1075,7 @@ function isNodeVisible(node: ThreadNode): boolean {
     </template>
 
     <template v-else-if="error">
-      <Alert variant="danger" filled>
-        <p>Failed to load discussion</p>
-        <p class="text-color-lighter text-size-s">
-          {{ error }}
-        </p>
-      </Alert>
+      <ErrorAlert message="Failed to load discussion" :error="error" />
     </template>
 
     <!-- Listing view -->

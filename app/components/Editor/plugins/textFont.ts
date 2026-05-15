@@ -7,8 +7,7 @@ const OPENING_DIRECTIVE_RE = /^[a-z]+\[/i
 
 // ---------------------------------------------------------------------------
 // Named font palette
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // Each name maps to a CSS custom property defined in app/assets/index.scss.
 // Only system-safe stacks are included so no web fonts need to be loaded.
 export const TEXT_FONT_NAMES = [
@@ -37,8 +36,7 @@ function isValidFontName(value: string): value is TextFontName {
 
 // ---------------------------------------------------------------------------
 // TipTap Mark extension
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 declare module '@tiptap/core' {
 
   interface Commands<ReturnType> {
@@ -63,8 +61,7 @@ export const TextFont = Mark.create({
 
   // ---------------------------------------------------------------------------
   // Attributes
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   addAttributes() {
     return {
       font: {
@@ -98,8 +95,7 @@ export const TextFont = Mark.create({
 
   // ---------------------------------------------------------------------------
   // HTML parsing & rendering
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   parseHTML() {
     return [
       {
@@ -134,8 +130,7 @@ export const TextFont = Mark.create({
 
   // ---------------------------------------------------------------------------
   // Commands
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   addCommands() {
     return {
       setTextFont:
@@ -155,8 +150,7 @@ export const TextFont = Mark.create({
 
   // ---------------------------------------------------------------------------
   // Markdown serialization  :::font[name]text:::
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   renderMarkdown(node: JSONContent, h: MarkdownRendererHelpers, _ctx: RenderContext): string {
     // eslint-disable-next-line ts/no-unsafe-assignment
     const font = (node.attrs)?.font

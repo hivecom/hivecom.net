@@ -5,10 +5,11 @@ import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '
 import { Badge, Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
-import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
+import { useUserId } from '@/composables/useUserId'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { flattenTopicsTree } from '@/lib/topics'
@@ -43,12 +44,7 @@ const subscriptionsCache = useDiscussionSubscriptionsCache()
 
 // Use the cached user data composable - role is already fetched and shared
 // with ForumItemActions and the parent page. No extra DB queries needed.
-const { user: cachedUser } = useDataUser(userId, { includeRole: true })
-
-// discussions.update is granted to admin and moderator only.
-const canUpdateDiscussions = computed(() =>
-  cachedUser.value?.role === 'admin' || cachedUser.value?.role === 'moderator',
-)
+const { isAdminOrMod: canUpdateDiscussions } = useEffectiveRole()
 
 const { settings } = useDataUserSettings()
 

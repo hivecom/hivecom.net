@@ -1,9 +1,10 @@
 import * as constants from "constants" with { type: "json" };
 import { corsHeaders } from "../_shared/cors.ts";
 import { createPublicServiceRoleClient } from "../_shared/serviceRoleClients.ts";
+import { sendDiscordNotification } from "../_shared/discord.ts";
 import type { Database, Tables } from "database-types";
 
-type MonthlyFunding = Database["public"]["Tables"]["monthly_funding"]["Row"];
+type MonthlyFunding = Database["public"]["Tables"]["funding_history"]["Row"];
 type ProfilePoints = Database["public"]["Tables"]["profile_points"]["Row"];
 
 const supabase = createPublicServiceRoleClient();
@@ -92,9 +93,9 @@ Deno.serve(async (req: Request) => {
       String(now.getMonth() + 1).padStart(2, "0")
     }-01`;
 
-    // Fetch existing monthly_funding row
+    // Fetch existing funding_history row
     const { data: existingMonth, error: monthFetchError } = await supabase
-      .from("monthly_funding")
+      .from("funding_history")
       .select("*")
       .eq("month", monthDate)
       .maybeSingle();
@@ -114,7 +115,7 @@ Deno.serve(async (req: Request) => {
       };
 
       const { error: updateError } = await supabase
-        .from("monthly_funding")
+        .from("funding_history")
         .update(updated)
         .eq("month", monthDate);
 
@@ -124,7 +125,7 @@ Deno.serve(async (req: Request) => {
       }
     } else {
       const { error: insertError } = await supabase
-        .from("monthly_funding")
+        .from("funding_history")
         .insert({
           month: monthDate,
           donation_month_amount_cents: amountCents,
@@ -241,11 +242,33 @@ Deno.serve(async (req: Request) => {
         .insert({ email, points, source: "donation" });
 
       if (claimInsertError) {
-        console.error("Failed to insert profile_point_claims", claimInsertError);
+        console.error(
+          "Failed to insert profile_point_claims",
+          claimInsertError,
+        );
       } else {
         console.log("Pending claim created", { email, points });
       }
     }
+
+    // Best-effort: notify Discord
+    const amountFormatted = `€${(amountCents / 100).toFixed(2)}`;
+    await sendDiscordNotification({
+      embeds: [{
+        title: "Ko-fi Donation Received",
+        color: 0x29ABE0,
+        fields: [
+          { name: "Amount", value: amountFormatted, inline: true },
+          {
+            name: "Points Awarded",
+            value: userMatched ? `${points}` : "Pending (no matched user)",
+            inline: true,
+          },
+          ...(userId ? [{ name: "User ID", value: userId, inline: true }] : []),
+        ],
+        timestamp: new Date().toISOString(),
+      }],
+    });
 
     return jsonResponse({
       ok: true,

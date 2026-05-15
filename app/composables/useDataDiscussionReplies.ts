@@ -843,7 +843,7 @@ export function useDataDiscussionReplies(
     if (pendingNotification != null) {
       ops.push(
         supabase
-          .from('notifications')
+          .from('user_notifications')
           .update({ is_read: true })
           .eq('user_id', userId.value)
           .eq('source', 'discussion_reply')

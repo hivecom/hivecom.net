@@ -21,6 +21,7 @@ import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { patchProfileLastSeen, useBulkDataUser, useDataUser } from '@/composables/useDataUser'
 import { useDiscoverQueue } from '@/composables/useDiscoverQueue'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useForumActivityFeed } from '@/composables/useForumActivityFeed'
 import { useForumDraftCount } from '@/composables/useForumDraftCount'
 import { useForumUserActivity } from '@/composables/useForumUserActivity'
@@ -74,6 +75,7 @@ const userId = useUserId()
 const isMobile = useBreakpoint('<s')
 
 const { user } = useDataUser(userId, { includeRole: true })
+const { isAdminOrMod } = useEffectiveRole()
 
 // Track which topics/discussions have new content since last visit
 const forumUnread = useDataForumUnread()
@@ -1189,7 +1191,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               {{ isMobile ? draftCount : `${draftCount} Draft${draftCount > 1 ? 's' : ''}` }}
             </Button>
 
-            <Dropdown v-if="user.role === 'admin' || user.role === 'moderator'">
+            <Dropdown v-if="isAdminOrMod">
               <template #trigger="{ toggle }">
                 <Button size="s" variant="accent" :square="isMobile" @click="toggle">
                   <template v-if="!isMobile" #start>

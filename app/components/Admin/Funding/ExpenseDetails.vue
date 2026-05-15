@@ -35,13 +35,13 @@ function handleClose() {
 }
 
 // Handle edit action from AdminActions
-function handleEdit(expense: Tables<'expenses'>) {
+function handleEdit(expense: Tables<'funding_expenses'>) {
   emit('edit', expense)
   isOpen.value = false
 }
 
 // Handle delete action from AdminActions
-function handleDelete(expense: Tables<'expenses'>) {
+function handleDelete(expense: Tables<'funding_expenses'>) {
   emit('delete', expense)
   isOpen.value = false
 }
@@ -66,11 +66,11 @@ function handleDelete(expense: Tables<'expenses'>) {
         <Flex y-center gap="s">
           <AdminActions
             v-if="props.expense"
-            resource-type="expenses"
+            resource-type="funding_expenses"
             :item="props.expense"
             :show-labels="true"
-            @edit="(expenseItem) => handleEdit(expenseItem as Tables<'expenses'>)"
-            @delete="(expenseItem) => handleDelete(expenseItem as Tables<'expenses'>)"
+            @edit="(expenseItem) => handleEdit(expenseItem as Tables<'funding_expenses'>)"
+            @delete="(expenseItem) => handleDelete(expenseItem as Tables<'funding_expenses'>)"
           />
         </Flex>
       </Flex>

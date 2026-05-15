@@ -26,9 +26,9 @@ const { hasPermission } = useAdminPermissions()
 const route = useRoute()
 
 // Check permissions for each resource type
-const canReadServers = computed(() => hasPermission('servers.read'))
-const canReadGameservers = computed(() => hasPermission('gameservers.read'))
-const canReadContainers = computed(() => hasPermission('containers.read'))
+const canReadServers = computed(() => hasPermission('network.read'))
+const canReadGameservers = computed(() => hasPermission('network.read'))
+const canReadContainers = computed(() => hasPermission('network.read'))
 
 // Tab management
 const availableTabs = computed(() => {

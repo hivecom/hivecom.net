@@ -22,8 +22,7 @@ import {
 
 // ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 type GlobeInstance = import('globe.gl').GlobeInstance
 
 export interface GlobeBaseOptions {
@@ -50,8 +49,7 @@ export interface GlobeBaseResult {
 
 // ---------------------------------------------------------------------------
 // Composable
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function useGlobeBase() {
   let globeInstance: GlobeInstance | null = null
   let globeMaterial: import('three').MeshStandardMaterial | null = null
@@ -64,8 +62,7 @@ export function useGlobeBase() {
 
   // ---------------------------------------------------------------------------
   // Theme
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   function applyGlobeColor() {
     if (!globeMaterial)
       return
@@ -85,8 +82,7 @@ export function useGlobeBase() {
 
   // ---------------------------------------------------------------------------
   // Main initialisation
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   async function init(options: GlobeBaseOptions): Promise<GlobeBaseResult> {
     const {
       container,
@@ -115,8 +111,7 @@ export function useGlobeBase() {
 
     // -------------------------------------------------------------------------
     // Resize handling
-    // -------------------------------------------------------------------------
-
+    // ----------------------------------------------------------------------
     const setSize = () => {
       const { width, height } = container.getBoundingClientRect()
       if (width === 0 || height === 0)
@@ -144,8 +139,7 @@ export function useGlobeBase() {
 
     // -------------------------------------------------------------------------
     // hex refresh helper
-    // -------------------------------------------------------------------------
-
+    // ----------------------------------------------------------------------
     const refreshHexColors = (colorFn?: (feat: CountryFeature) => string) => {
       if (colorFn) {
         globeInstance?.hexPolygonColor((d: unknown) => colorFn(d as CountryFeature))
@@ -157,8 +151,7 @@ export function useGlobeBase() {
 
     // -------------------------------------------------------------------------
     // Base globe configuration
-    // -------------------------------------------------------------------------
-
+    // ----------------------------------------------------------------------
     globeInstance
       .globeMaterial(globeMaterial)
       .hexPolygonsData(featureCollection.features)
@@ -186,8 +179,7 @@ export function useGlobeBase() {
 
     // -------------------------------------------------------------------------
     // Smooth zoom via wheel interception
-    // -------------------------------------------------------------------------
-
+    // ----------------------------------------------------------------------
     if (enableZoom) {
       const MIN_ALT = 0.15
       const MAX_ALT = 8.0
@@ -232,8 +224,7 @@ export function useGlobeBase() {
 
     // -------------------------------------------------------------------------
     // Teardown
-    // -------------------------------------------------------------------------
-
+    // ----------------------------------------------------------------------
     const destroy = () => {
       resizeObserver?.disconnect()
       resizeObserver = null

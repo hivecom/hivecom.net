@@ -19,7 +19,7 @@ const contextGameserverName = ref<string | null>(null)
 onMounted(() => {
   if (props.complaint.context_gameserver) {
     supabase
-      .from('gameservers')
+      .from('network_gameservers')
       .select('name')
       .eq('id', props.complaint.context_gameserver)
       .maybeSingle()

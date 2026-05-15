@@ -39,8 +39,7 @@ import { useCacheModule } from './useCacheModule'
 
 // ---------------------------------------------------------------------------
 // Shared type
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 /**
  * A single subscription row with its nested discussion join.
  *
@@ -64,8 +63,7 @@ export interface SubscriptionRow {
   } | null
 }
 
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const CACHE_TTL = 10 * 60 * 1000 // 10 minutes
 
 function listKey(userId: string): string {
@@ -81,8 +79,7 @@ export function useDiscussionSubscriptionsCache() {
 
   // ---------------------------------------------------------------------------
   // List cache
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   /**
    * Read the cached subscription list for a user.
    * Returns null if cold or expired.
@@ -112,8 +109,7 @@ export function useDiscussionSubscriptionsCache() {
 
   // ---------------------------------------------------------------------------
   // Status cache
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   /**
    * Read the cached subscription status for a user + discussion pair.
    * Returns null if cold or expired (caller should fetch).
@@ -138,8 +134,7 @@ export function useDiscussionSubscriptionsCache() {
 
   // ---------------------------------------------------------------------------
   // Bulk invalidation
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   /**
    * Remove all cached subscription data for a user (list + all status entries).
    * Call on logout or after admin operations that affect the user's subscriptions.
@@ -160,8 +155,7 @@ export function useDiscussionSubscriptionsCache() {
   // Mutation helpers
   // Update caches in-place so callers don't need a re-fetch after a mutation.
   // These are cache-only - they do not touch Supabase. Callers own the DB write.
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   /**
    * Record a new subscription in both caches.
    *
@@ -260,8 +254,7 @@ export function useDiscussionSubscriptionsCache() {
     cache.set(listKey(userId), updated, CACHE_TTL)
   }
 
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   return {
     // State
     loading,

@@ -5,7 +5,7 @@ import { formatCurrency } from '@/lib/utils/currency'
 import { formatMonth } from '@/lib/utils/date'
 
 const props = defineProps<{
-  funding: Tables<'monthly_funding'> | null
+  funding: Tables<'funding_history'> | null
 }>()
 
 // Define model for sheet visibility

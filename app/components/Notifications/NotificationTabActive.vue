@@ -204,7 +204,7 @@ async function onMarkRead(notification: NotificationRow) {
 
   markReadLoading.value = { ...markReadLoading.value, [notification.id]: true }
 
-  const { error: updateError } = await supabase.from('notifications')
+  const { error: updateError } = await supabase.from('user_notifications')
     .update({ is_read: true })
     .eq('id', notification.id)
 

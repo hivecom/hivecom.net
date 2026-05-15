@@ -93,7 +93,7 @@ async function load() {
   error.value = null
 
   try {
-    const { data, error: fetchError } = await supabase.from('notifications')
+    const { data, error: fetchError } = await supabase.from('user_notifications')
       .select('*')
       .eq('user_id', userId.value as string)
       .eq('is_read', true)
@@ -126,7 +126,7 @@ async function deleteNotification(notification: NotificationRow) {
 
   deleteLoading.value = { ...deleteLoading.value, [notification.id]: true }
 
-  const { error: deleteError } = await supabase.from('notifications')
+  const { error: deleteError } = await supabase.from('user_notifications')
     .delete()
     .eq('id', notification.id)
 
@@ -142,7 +142,7 @@ async function clearAll() {
 
   clearAllLoading.value = true
 
-  const { error: deleteError } = await supabase.from('notifications')
+  const { error: deleteError } = await supabase.from('user_notifications')
     .delete()
     .eq('user_id', userId.value as string)
     .eq('is_read', true)

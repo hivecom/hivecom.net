@@ -81,7 +81,7 @@ export function useFriendship(
 
     try {
       const { data: friendships, error } = await supabase
-        .from('friends')
+        .from('profile_friends')
         .select('id, friender, friend')
         .or(`and(friender.eq.${uid},friend.eq.${pid}),and(friender.eq.${pid},friend.eq.${uid})`)
 
@@ -139,7 +139,7 @@ export function useFriendship(
 
     try {
       const { data: friendships, error } = await supabase
-        .from('friends')
+        .from('profile_friends')
         .select('id, friender, friend')
         .or(`friender.eq.${pid},friend.eq.${pid}`)
 
@@ -168,7 +168,7 @@ export function useFriendship(
 
     try {
       const { error } = await supabase
-        .from('friends')
+        .from('profile_friends')
         .insert({ friender: uid, friend: pid })
 
       if (error != null) {
@@ -195,7 +195,7 @@ export function useFriendship(
 
     try {
       const { error } = await supabase
-        .from('friends')
+        .from('profile_friends')
         .insert({ friender: uid, friend: pid })
 
       if (error != null) {
@@ -221,7 +221,7 @@ export function useFriendship(
 
     try {
       const { error } = await supabase
-        .from('friends')
+        .from('profile_friends')
         .delete()
         .eq('id', sentFriendshipId.value)
 
@@ -249,7 +249,7 @@ export function useFriendship(
     try {
       if (sentFriendshipId.value != null) {
         const { error } = await supabase
-          .from('friends')
+          .from('profile_friends')
           .delete()
           .eq('id', sentFriendshipId.value)
 
@@ -262,7 +262,7 @@ export function useFriendship(
 
       if (receivedFriendshipId.value != null) {
         const { error } = await supabase
-          .from('friends')
+          .from('profile_friends')
           .delete()
           .eq('id', receivedFriendshipId.value)
 
@@ -292,7 +292,7 @@ export function useFriendship(
 
     try {
       const { error } = await supabase
-        .from('friends')
+        .from('profile_friends')
         .delete()
         .eq('id', receivedFriendshipId.value)
 

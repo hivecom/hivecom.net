@@ -9,8 +9,8 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<Props>()
 
-type GameserverWithContainer = Tables<'gameservers'> & {
-  container?: (Tables<'containers'> & {
+type GameserverWithContainer = Tables<'network_gameservers'> & {
+  container?: (Tables<'network_containers'> & {
     server?: {
       docker_control?: boolean | null
       accessible?: boolean | null

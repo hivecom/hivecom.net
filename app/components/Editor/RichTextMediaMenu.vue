@@ -28,8 +28,7 @@ const user = useSupabaseUser()
 
 // ---------------------------------------------------------------------------
 // Modal state
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const modalOpen = ref(false)
 const slug = ref('')
 const saving = ref(false)
@@ -44,8 +43,7 @@ const capturedSrc = ref<string | null>(null)
 
 // ---------------------------------------------------------------------------
 // Node selection helpers
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function getSelectedNodeType(): MediaNodeType | null {
   const { selection } = props.editor.state
   if (!(selection instanceof NodeSelection))
@@ -78,8 +76,7 @@ const isBlobImage = computed(() => {
 
 // ---------------------------------------------------------------------------
 // Virtual anchor - positions the bubble trigger just below the selected node
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function getReferencedVirtualElement() {
   const { state, view } = props.editor
   const { selection } = state
@@ -105,8 +102,7 @@ function getReferencedVirtualElement() {
 
 // ---------------------------------------------------------------------------
 // Modal open / close
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function openModal() {
   const nodeType = getSelectedNodeType()
   if (!nodeType)
@@ -148,8 +144,7 @@ const slugPlaceholder = computed(() =>
 
 // ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function getStoragePath(src: string): string | null {
   const filename = decodeURIComponent(src.slice(src.lastIndexOf('/') + 1))
   if (!filename)
@@ -159,8 +154,7 @@ function getStoragePath(src: string): string | null {
 
 // ---------------------------------------------------------------------------
 // Actions
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function openCropModal() {
   const { selection } = props.editor.state
   if (!(selection instanceof NodeSelection))

@@ -38,8 +38,8 @@ export function invalidateGameserversCache(): void {
  * - `refresh()` forces a cache-busting re-fetch
  */
 
-export type GameserverWithContainer = Tables<'gameservers'> & {
-  container?: (Tables<'containers'> & {
+export type GameserverWithContainer = Tables<'network_gameservers'> & {
+  container?: (Tables<'network_containers'> & {
     server?: {
       docker_control?: boolean | null
       accessible?: boolean | null
@@ -61,7 +61,7 @@ export function useDataGameservers() {
   async function fetch(force = false): Promise<void> {
     const result = await withCache<GameserverWithContainer[]>(CACHE_KEY, async () => {
       const { data, error: fetchError } = await supabase
-        .from('gameservers')
+        .from('network_gameservers')
         .select(`
           *,
           container (

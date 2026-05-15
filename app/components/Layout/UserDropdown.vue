@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import type { ImpersonatableRole } from '@/composables/useRoleImpersonation'
 import { Button, Divider, Dropdown, DropdownItem, DropdownTitle, Flex, Spinner, Tooltip } from '@dolanske/vui'
+import { ref } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useDataUser } from '@/composables/useDataUser'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
+import { useRoleImpersonation } from '@/composables/useRoleImpersonation'
 
 const user = useSupabaseUser()
 const userId = useUserId()
@@ -34,15 +38,28 @@ function navigateToWrap(path: string) {
 // Complaint modal state
 const showComplaintModal = ref(false)
 
-// Check if user is admin or moderator
-const isAdminOrMod = computed(() => {
-  return userData.value?.role === 'admin' || userData.value?.role === 'moderator'
-})
+// Effective role respects impersonation
+const { isAdminOrMod, role, isImpersonating, realRole } = useEffectiveRole()
+
+// Impersonation controls
+const { start: startImpersonation, stop: stopImpersonationFn } = useRoleImpersonation()
+
+const injectedStopImpersonation = inject<() => void>('stopImpersonation', () => {})
+
+function impersonate(role: ImpersonatableRole) {
+  startImpersonation(role)
+  dropdown.value?.close()
+}
+
+function stopImpersonating() {
+  stopImpersonationFn()
+  injectedStopImpersonation()
+  dropdown.value?.close()
+}
 
 // Handle complaint submission
 function handleComplaintSubmit(_complaintData: { message: string }) {
   // Could show a success toast here in the future
-  // For now, just handle the successful submission
 }
 
 function openComplaintModal() {
@@ -94,7 +111,55 @@ async function signOut() {
           >
             {{ userData?.username || user?.email }}
           </NuxtLink>
-          <RoleIndicator v-if="isAdminOrMod && userData?.role" :role="userData.role" size="s" />
+          <Flex gap="xxs" y-center>
+            <RoleIndicator
+              v-if="isAdminOrMod && userData?.role"
+              :role="role"
+              size="s"
+            >
+              {{ isImpersonating ? ' *' : '' }}
+            </RoleIndicator>
+            <Dropdown v-if="realRole === 'admin' && !isImpersonating" placement="bottom-end" min-width="160px">
+              <template #trigger="{ toggle }">
+                <Button square plain size="s" aria-label="Impersonate role" @click.stop="toggle">
+                  <Icon name="ph:user-circle-dashed" />
+                </Button>
+              </template>
+              <DropdownTitle>
+                <Flex expand x-between y-center>
+                  <span class="text-xs">Impersonate</span>
+                  <Tooltip>
+                    <template #tooltip>
+                      <p class="text-xs">
+                        Temporarily assume the <b>visual</b> permissions of another role for testing purposes. Your current session will be unaffected and you can switch back at any time.
+                      </p>
+                      <p class="text-xs mt-s">
+                        <i>
+                          Note: This is purely a client-side visual change and not an effective way to test RLS policies, as API responses will not be altered. Use with caution and always verify with real accounts when testing permissions.
+                        </i>
+                      </p>
+                    </template>
+                    <Icon name="ph:question" class="ml-xxs" />
+                  </Tooltip>
+                </Flex>
+              </DropdownTitle>
+              <DropdownItem @click="impersonate('moderator')">
+                <RoleIndicator role="moderator" tiny />
+              </DropdownItem>
+              <DropdownItem @click="impersonate('user')">
+                <RoleIndicator role="user" tiny />
+              </DropdownItem>
+              <template v-if="isImpersonating">
+                <Divider class="my-xxs" />
+                <DropdownItem @click="stopImpersonating">
+                  <template #icon>
+                    <Icon name="ph:arrow-counter-clockwise" />
+                  </template>
+                  Reset
+                </DropdownItem>
+              </template>
+            </Dropdown>
+          </Flex>
         </Flex>
       </DropdownTitle>
 
@@ -134,6 +199,7 @@ async function signOut() {
 
       <template v-if="isAdminOrMod">
         <Divider class="my-xxs" />
+
         <NuxtLink to="/admin">
           <DropdownItem>
             <template #icon>
@@ -190,6 +256,32 @@ async function signOut() {
 
     &:hover {
       text-decoration: underline;
+    }
+  }
+
+  &__impersonate-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: var(--color-text-lighter);
+    line-height: 0;
+    border-radius: var(--border-radius-s);
+    transition: color var(--transition);
+
+    svg {
+      transition: transform var(--transition);
+    }
+
+    &.is-open svg {
+      transform: rotate(180deg);
+    }
+
+    &:hover {
+      color: var(--color-text);
     }
   }
 

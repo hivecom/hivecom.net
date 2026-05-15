@@ -10,7 +10,7 @@ import DetailStates from '@/components/Shared/DetailStates.vue'
 import { useCachedFetch } from '@/composables/useCache'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
 import { useDataGames } from '@/composables/useDataGames'
-import { useDataUser } from '@/composables/useDataUser'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { expandRecurringEvent, nextOccurrenceDate } from '@/lib/utils/rrule'
@@ -80,14 +80,13 @@ function handleReplySubmitted(newReplyCount: number, discussionId: string) {
 
 // Edit permissions
 const userId = useUserId()
-const { user: currentUserData } = useDataUser(userId, { includeRole: true, includeAvatar: false })
+const { isAdminOrMod: isPrivileged } = useEffectiveRole()
 
 const canEdit = computed(() => {
   if (!event.value || !userId.value)
     return false
   const isOwner = event.value.created_by === userId.value && !event.value.is_official
-  const isPrivileged = currentUserData.value?.role === 'admin' || currentUserData.value?.role === 'moderator'
-  return isOwner || isPrivileged
+  return isOwner || isPrivileged.value
 })
 
 const showEditModal = ref(false)
@@ -143,11 +142,8 @@ useHead({
           :error="error"
           back-to="/events"
           back-label="Events"
-        >
-          <template #error-message>
-            We are unable to load event details at this time. Please try again later.
-          </template>
-        </DetailStates>
+          error-message="We are unable to load event details at this time. Please try again later."
+        />
 
         <!-- Event Content -->
         <div v-if="event && !loading && !error" class="event-detail">

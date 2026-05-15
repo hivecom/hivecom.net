@@ -15,7 +15,7 @@ import ExpenseDetails from './ExpenseDetails.vue'
 import ExpenseFilters from './ExpenseFilters.vue'
 import ExpenseForm from './ExpenseForm.vue'
 
-type Expense = Tables<'expenses'>
+type Expense = Tables<'funding_expenses'>
 
 type ExpenseStatus = 'Planned' | 'Active' | 'Ended'
 
@@ -55,12 +55,12 @@ const {
   handleEditFromDetails,
   refresh: fetchExpenses,
 } = useAdminCrudTable<Expense, TransformedExpense>({
-  resourceType: 'expenses',
+  resourceType: 'funding_expenses',
   queryParamKey: 'expense',
   refreshSignal,
   fetch: async () => {
     const { data, error } = await supabase
-      .from('expenses')
+      .from('funding_expenses')
       .select('*')
       .order('started_at', { ascending: false })
     if (error)
@@ -93,7 +93,7 @@ async function handleExpenseSave(expenseData: Partial<Expense>) {
   try {
     if (isEditMode.value && selectedExpense.value) {
       const { error } = await supabase
-        .from('expenses')
+        .from('funding_expenses')
         .update({
           ...expenseData,
           modified_at: new Date().toISOString(),
@@ -105,7 +105,7 @@ async function handleExpenseSave(expenseData: Partial<Expense>) {
     }
     else {
       const { error } = await supabase
-        .from('expenses')
+        .from('funding_expenses')
         .insert({
           ...expenseData,
           created_by: userId.value ?? null,
@@ -127,7 +127,7 @@ async function handleExpenseSave(expenseData: Partial<Expense>) {
 async function handleExpenseDelete(expenseId: number) {
   try {
     const { error } = await supabase
-      .from('expenses')
+      .from('funding_expenses')
       .delete()
       .eq('id', expenseId)
     if (error)
@@ -239,7 +239,7 @@ async function handleExpenseDelete(expenseId: number) {
             <Table.Cell>{{ expense.Duration }}</Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
-                resource-type="expenses"
+                resource-type="funding_expenses"
                 :item="expense._original"
                 button-size="s"
                 @edit="(item) => openEditExpenseForm(item as Expense)"

@@ -13,7 +13,7 @@ import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-type GameServerWithJoins = Omit<Tables<'gameservers'>, 'game'> & {
+type GameServerWithJoins = Omit<Tables<'network_gameservers'>, 'game'> & {
   game_name?: string
   game?: {
     id?: number | null
@@ -34,8 +34,8 @@ const isOpen = defineModel<boolean>('isOpen')
 
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
-const canUpdateGameservers = computed(() => hasPermission('gameservers.update'))
-const canDeleteGameservers = computed(() => hasPermission('gameservers.delete'))
+const canUpdateGameservers = computed(() => hasPermission('network.update'))
+const canDeleteGameservers = computed(() => hasPermission('network.delete'))
 const showDeleteConfirm = ref(false)
 const route = useRoute()
 const isMobile = useBreakpoint('<s')

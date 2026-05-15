@@ -58,7 +58,7 @@ const gameserverForm = ref({
   name: '',
   description: '',
   markdown: '',
-  region: null as Tables<'gameservers'>['region'],
+  region: null as Tables<'network_gameservers'>['region'],
   addresses: [] as string[],
   port: '',
   query_protocol: null as string | null,
@@ -82,7 +82,7 @@ const loadingProfiles = ref(true)
 const { games, loading: loadingGames } = useDataGames()
 
 // Options for dropdowns
-const containers = ref<Tables<'containers'>[]>([])
+const containers = ref<Tables<'network_containers'>[]>([])
 const profiles = ref<ProfileSelect[]>([])
 
 // Query protocol options
@@ -129,7 +129,7 @@ const selectedRegionComputed = computed({
     return option ? [option] : []
   },
   set: (value: SelectOption[] | null | undefined) => {
-    gameserverForm.value.region = (value && value.length > 0) ? value[0]!.value as Tables<'gameservers'>['region'] : null
+    gameserverForm.value.region = (value && value.length > 0) ? value[0]!.value as Tables<'network_gameservers'>['region'] : null
   },
 })
 
@@ -196,7 +196,7 @@ async function fetchDropdownData() {
   try {
     // Fetch containers
     const { data: containersData, error: containersError } = await supabase
-      .from('containers')
+      .from('network_containers')
       .select('*')
       .order('name')
 
@@ -285,14 +285,14 @@ function handleSubmit() {
     return
 
   // Prepare the data to save
-  const gameserverData: TablesInsert<'gameservers'> | TablesUpdate<'gameservers'> = {
+  const gameserverData: TablesInsert<'network_gameservers'> | TablesUpdate<'network_gameservers'> = {
     name: gameserverForm.value.name,
     description: gameserverForm.value.description || null,
     markdown: gameserverForm.value.markdown || null,
     region: gameserverForm.value.region,
     addresses: gameserverForm.value.addresses.length > 0 ? gameserverForm.value.addresses : null,
     port: gameserverForm.value.port || null,
-    query_protocol: gameserverForm.value.query_protocol as TablesInsert<'gameservers'>['query_protocol'],
+    query_protocol: gameserverForm.value.query_protocol as TablesInsert<'network_gameservers'>['query_protocol'],
     query_port: gameserverForm.value.query_port ? Number(gameserverForm.value.query_port) : null,
     game: gameserverForm.value.game,
     container: gameserverForm.value.container,

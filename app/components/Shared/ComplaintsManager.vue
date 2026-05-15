@@ -11,7 +11,8 @@ const props = defineProps<{
   contextGameserverName?: string
   contextDiscussionId?: string
   contextDiscussionReplyId?: string
-  startWithSubmit?: boolean // New prop to control initial view
+  startWithSubmit?: boolean
+  initialMessage?: string
 }>()
 
 const emit = defineEmits<{
@@ -102,6 +103,7 @@ function handleClose() {
     :context-gameserver-name="contextGameserverName"
     :context-discussion-id="contextDiscussionId"
     :context-discussion-reply-id="contextDiscussionReplyId"
+    :initial-message="initialMessage"
     @submit="handleComplaintSubmit"
     @close="handleCloseNewComplaint"
   />

@@ -37,7 +37,7 @@ export function useDataAdminKPIs() {
       pendingComplaintsCount.value = complaints?.length ?? 0
 
       const { data: expenses } = await supabase
-        .from('expenses')
+        .from('funding_expenses')
         .select('amount_cents')
         .is('ended_at', null)
         .lte('started_at', now.toISOString())
@@ -56,7 +56,7 @@ export function useDataAdminKPIs() {
       upcomingEventsCount.value = events?.length ?? 0
 
       const { data: inaccessibleServers } = await supabase
-        .from('servers')
+        .from('network_servers')
         .select('id')
         .eq('docker_control', true)
         .eq('accessible', false)
