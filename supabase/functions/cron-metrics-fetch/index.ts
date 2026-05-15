@@ -15,7 +15,8 @@ import type { MetricsServerDetail, MetricsSnapshot } from "metrics-types";
 
 // ---------------------------------------------------------------------------
 // Country normalization (unchanged from previous implementation)
-// ------------------------------------------------------------------------interface CountryRow {
+// ------------------------------------------------------------------------
+interface CountryRow {
   country: Tables<"profiles">["country"];
 }
 
@@ -31,7 +32,8 @@ function normalizeCountryCode(value: string | null | undefined): string | null {
 
 // ---------------------------------------------------------------------------
 // Local row shapes
-// ------------------------------------------------------------------------type GameRow = Pick<Tables<"games">, "id" | "steam_id">;
+// ------------------------------------------------------------------------
+type GameRow = Pick<Tables<"games">, "id" | "steam_id">;
 
 type GameserverRow = Pick<
   Tables<"network_gameservers">,
@@ -82,7 +84,8 @@ interface DockerMinecraftQueryResult {
 
 // ---------------------------------------------------------------------------
 // Main handler
-// ------------------------------------------------------------------------Deno.serve(async (req: Request) => {
+// ------------------------------------------------------------------------
+Deno.serve(async (req: Request) => {
   try {
     const authorizeResponse = authorizeSystemCron(req);
     if (authorizeResponse) {
@@ -234,7 +237,8 @@ interface DockerMinecraftQueryResult {
 
     // ---------------------------------------------------------------------------
     // Members - byCountry
-    // ------------------------------------------------------------------------    const countryCounts = (countryRes.data as CountryRow[] | null)?.reduce(
+    // ------------------------------------------------------------------------
+    const countryCounts = (countryRes.data as CountryRow[] | null)?.reduce(
       (acc, row) => {
         const code = normalizeCountryCode(row.country) ?? UNKNOWN_COUNTRY_KEY;
         acc[code] = (acc[code] ?? 0) + 1;
@@ -249,7 +253,8 @@ interface DockerMinecraftQueryResult {
 
     // ---------------------------------------------------------------------------
     // Members - byGame
-    // ------------------------------------------------------------------------    // Build steam_id -> game.id map (only for games with a known steam_id)
+    // ------------------------------------------------------------------------
+    // Build steam_id -> game.id map (only for games with a known steam_id)
     const steamIdToGameId = new Map<number, number>();
     for (const g of (gamesRes.data as GameRow[] | null) ?? []) {
       if (g.steam_id != null) steamIdToGameId.set(g.steam_id, g.id);
@@ -278,7 +283,8 @@ interface DockerMinecraftQueryResult {
 
     // ---------------------------------------------------------------------------
     // TeamSpeak
-    // ------------------------------------------------------------------------    const tsServers = isSnapshotFresh(tsSnapshot, 20 * 60 * 1000)
+    // ------------------------------------------------------------------------
+    const tsServers = isSnapshotFresh(tsSnapshot, 20 * 60 * 1000)
       ? (tsSnapshot?.servers ?? [])
       : [];
 
@@ -316,7 +322,8 @@ interface DockerMinecraftQueryResult {
 
     // ---------------------------------------------------------------------------
     // Gameservers - docker-control queries
-    // ------------------------------------------------------------------------    const gameservers = (gameserversRes.data ?? []) as GameserverRow[];
+    // ------------------------------------------------------------------------
+    const gameservers = (gameserversRes.data ?? []) as GameserverRow[];
     const totalGameservers = gameservers.length;
 
     // Find gameservers that support querying
@@ -472,7 +479,8 @@ interface DockerMinecraftQueryResult {
 
     // ---------------------------------------------------------------------------
     // Storage metrics
-    // ------------------------------------------------------------------------    const prevSnapshot =
+    // ------------------------------------------------------------------------
+    const prevSnapshot =
       prevMetricsRes.data?.data as unknown as MetricsSnapshot | null ?? null;
 
     const storageBuckets: MetricsSnapshot["storage"]["buckets"] = {};
@@ -512,7 +520,8 @@ interface DockerMinecraftQueryResult {
 
     // ---------------------------------------------------------------------------
     // Build payload
-    // ------------------------------------------------------------------------    const now = new Date();
+    // ------------------------------------------------------------------------
+    const now = new Date();
 
     const payload: MetricsSnapshot = {
       collectedAt: now.toISOString(),
@@ -558,7 +567,8 @@ interface DockerMinecraftQueryResult {
 
     // ---------------------------------------------------------------------------
     // Persist: INSERT into metrics table
-    // ------------------------------------------------------------------------    const { error: insertError } = await supabaseClient
+    // ------------------------------------------------------------------------
+    const { error: insertError } = await supabaseClient
       .from("metrics")
       .insert({
         captured_at: now.toISOString(),
@@ -571,7 +581,8 @@ interface DockerMinecraftQueryResult {
 
     // ---------------------------------------------------------------------------
     // Persist: upload latest snapshot to storage
-    // ------------------------------------------------------------------------    const { error: uploadError } = await supabaseClient.storage
+    // ------------------------------------------------------------------------
+    const { error: uploadError } = await supabaseClient.storage
       .from("hivecom-content-static")
       .upload(
         "metrics/latest.json",

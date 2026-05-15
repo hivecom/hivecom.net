@@ -4,7 +4,8 @@ import type { Database } from "database-types";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
-// ------------------------------------------------------------------------/**
+// ------------------------------------------------------------------------
+/**
  * Checks whether the authenticated user currently has an active ban in their
  * profile. Uses the service role client so RLS never interferes with the
  * lookup. Returns a 403 Response when banned, undefined when clear.
@@ -372,7 +373,8 @@ export async function authorizeAuthenticatedHasPermission(
 
 // ---------------------------------------------------------------------------
 // Admin-level guard: permission check + ban check + aal2 assurance
-// ------------------------------------------------------------------------/**
+// ------------------------------------------------------------------------
+/**
  * Like authorizeAuthenticatedHasPermission, but also enforces that the caller
  * has reached assurance level 2 when their account has MFA enrolled. Use this
  * for any admin action that should require completed 2FA.
