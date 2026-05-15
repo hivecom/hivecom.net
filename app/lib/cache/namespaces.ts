@@ -102,4 +102,10 @@ export const CACHE_NAMESPACES = {
     ttl: 2 * 60 * 1000,
     maxEntries: 300,
   },
+  /** Steam games catalogue observed via rich presence (data_steam_games). */
+  steamGames: {
+    storagePrefix: 'hivecom:cache:sg:',
+    ttl: 60 * 60 * 1000,
+    maxEntries: 500,
+  },
 } satisfies Record<string, CacheConfig>

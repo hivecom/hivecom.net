@@ -74,6 +74,14 @@ const currentTabScopeMap = computed(() => {
   return map
 })
 
+const scopeBadgeVariant = computed(() => {
+  if (activeTab.value === 'yes')
+    return 'success'
+  if (activeTab.value === 'tentative')
+    return 'warning'
+  return 'danger'
+})
+
 const { hasEventEnded } = useEventTiming(() => props.event)
 
 const isRecurringSeries = computed(() => isSeriesActive(props.event))
@@ -309,7 +317,7 @@ function handleClose() {
                 <Badge
                   v-if="currentTabScopeMap.get(user.id) === 'occurrence'"
                   size="s"
-                  variant="accent"
+                  :variant="scopeBadgeVariant"
                   class="rsvp-modal__scope-badge"
                 >
                   This occurrence
@@ -317,10 +325,11 @@ function handleClose() {
                 <Badge
                   v-else
                   size="s"
-                  variant="neutral"
+                  :variant="scopeBadgeVariant"
+                  outline
                   class="rsvp-modal__scope-badge"
                 >
-                  Series
+                  Entire series
                 </Badge>
               </template>
             </BulkUserDisplay>

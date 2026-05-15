@@ -278,15 +278,6 @@ onMounted(async () => {
   }
 })
 
-const gameShorthandMap = computed(() => {
-  const map = new Map<number, string>()
-  for (const g of games.value) {
-    if (g.shorthand)
-      map.set(g.id, g.shorthand)
-  }
-  return map
-})
-
 const gameSteamIdMap = computed(() => {
   const map = new Map<number, number>()
   for (const g of games.value) {
@@ -302,9 +293,7 @@ function getGameHistogram(gameId: number): number[] {
     const key = String(steamId)
     return localHistory.value.map(e => e.usersBySteamGame?.[key] ?? 0)
   }
-  const key = gameShorthandMap.value.get(gameId)
-  if (!key)
-    return localHistory.value.map(() => 0)
+  const key = String(gameId)
   return localHistory.value.map(e => e.usersByGame?.[key] ?? 0)
 }
 
@@ -321,10 +310,7 @@ function getGamePlayers(gameId: number): number {
   const byGame = metrics.value?.users.byGame
   if (!byGame)
     return 0
-  const key = gameShorthandMap.value.get(gameId)
-  if (!key)
-    return 0
-  return byGame[key] ?? 0
+  return byGame[String(gameId)] ?? 0
 }
 
 // ─── Watchers ─────────────────────────────────────────────────────────────────

@@ -245,6 +245,21 @@ watchEffect(() => {
   const containerHeight = chartWrapperRef.value?.clientHeight
   chart.resize(Math.floor(width), containerHeight)
 })
+
+// Force resize after data loads - computeMinSampleSize (bar width) is calculated
+// during the first render and may use stale scale dimensions if data arrives
+// after the initial layout pass. Resizing in the next tick after data changes
+// ensures bars are sized correctly.
+watch(chartData, () => {
+  nextTick(() => {
+    const width = chartWrapperRef.value?.clientWidth
+    const chart = chartRef.value?.chart
+    if (!width || !chart)
+      return
+    const containerHeight = chartWrapperRef.value?.clientHeight
+    chart.resize(Math.floor(width), containerHeight)
+  })
+})
 </script>
 
 <template>

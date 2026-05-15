@@ -5,8 +5,8 @@ import { Button, Flex, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import ChartBrush from '@/components/Shared/Charts/ChartBrush.vue'
 import ChartDiscussions from '@/components/Shared/Charts/ChartDiscussions.vue'
+import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
 import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
-import ChartMembersGameActivity from '@/components/Shared/Charts/ChartMembersGameActivity.vue'
 import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
 import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
 import MetricsRefreshCountdown from '@/components/Shared/Charts/MetricsRefreshCountdown.vue'
@@ -90,7 +90,7 @@ const mobileCountdownLabel = computed(() => {
     <ChartOnlineUsers :period="activePeriod" :window="activeWindow" :utc="activeUtc" fresh />
     <ChartTeamSpeakOnline :period="activePeriod" :window="activeWindow" :utc="activeUtc" />
     <ChartGameserversPlayers :period="activePeriod" :window="activeWindow" :utc="activeUtc" />
-    <ChartMembersGameActivity :period="activePeriod" :window="activeWindow" :utc="activeUtc" colorize />
+    <ChartGameActivity :period="activePeriod" :window="activeWindow" :utc="activeUtc" colorize />
     <ChartDiscussions :period="activePeriod" :window="activeWindow" :utc="activeUtc" />
   </Flex>
 </template>

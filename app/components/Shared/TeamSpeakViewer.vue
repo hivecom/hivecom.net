@@ -8,6 +8,7 @@ import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivit
 import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataTeamSpeakSnapshot } from '@/composables/useDataTeamSpeakSnapshot'
@@ -1040,11 +1041,16 @@ function _openRawSnapshot() {
                     class="mr-xxs"
                   />
                   <span v-if="getCountryEmoji(client.country)" class="ts-viewer__client-flag">{{ getCountryEmoji(client.country) }}</span>
-                  <UserLink
-                    v-if="getUserIdForClient(selectedServer.id, client.uniqueId)"
-                    :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
-                    class="ts-viewer__client-name"
-                  />
+                  <template v-if="getUserIdForClient(selectedServer.id, client.uniqueId)">
+                    <UserAvatar
+                      :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
+                      :size="16"
+                    />
+                    <UserLink
+                      :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
+                      class="ts-viewer__client-name"
+                    />
+                  </template>
                   <span v-else class="ts-viewer__client-name"> {{ client.nickname }}</span>
                   <RoleIndicator
                     v-if="clientRole(selectedServer.id, client)"

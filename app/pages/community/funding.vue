@@ -8,14 +8,17 @@ import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import { useDataExpenses } from '@/composables/useDataExpenses'
 import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useDataSupporters } from '@/composables/useDataSupporters'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCurrency } from '@/lib/utils/currency'
 
 const user = useSupabaseUser()
 
 // All data via shared cached composables - no manual onMounted fetch needed.
-const { allFunding: monthlyFunding, loading: fundingLoading, error: fundingError } = useDataMonthlyFunding()
+const { allFunding: monthlyFunding, latestFunding, loading: fundingLoading, error: fundingError } = useDataMonthlyFunding()
 const { supporterIds: supporters, loading: supportersLoading, error: supportersError } = useDataSupporters()
 const { expenses, loading: expensesLoading, error: expensesError } = useDataExpenses()
+
+const isBelowSmall = useBreakpoint('<s')
 
 // UI state
 const showPastExpenses = ref(false)
@@ -55,20 +58,33 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
     <!-- Loading state -->
     <section v-if="isLoading" class="mt-xl">
       <Flex column gap="l">
-        <Skeleton :width="300" :height="32" :radius="8" />
-        <Skeleton :height="120" :radius="8" />
-        <Skeleton :width="250" :height="32" :radius="8" class="mt-l" />
-        <Grid :columns="2" gap="l">
+        <!-- Supporters card -->
+        <Skeleton :height="180" :radius="8" />
+
+        <!-- Funding progress + 2-col stats -->
+        <Skeleton :height="64" :radius="8" />
+        <Grid :columns="isBelowSmall ? 1 : 2" gap="s">
           <Skeleton :height="100" :radius="8" />
           <Skeleton :height="100" :radius="8" />
         </Grid>
-        <Skeleton :width="200" :height="32" :radius="8" class="mt-l" />
-        <Grid :columns="2" gap="l">
+
+        <!-- Historical funding chart -->
+        <Skeleton :height="200" :radius="8" class="mt-xl" />
+
+        <!-- Monthly expenses -->
+        <Flex x-between y-center class="mt-xl">
+          <Skeleton :width="200" :height="32" :radius="8" />
+          <Skeleton :width="160" :height="24" :radius="8" />
+        </Flex>
+        <Grid :columns="isBelowSmall ? 1 : 2" gap="s">
           <Skeleton :height="150" :radius="8" />
           <Skeleton :height="150" :radius="8" />
           <Skeleton :height="150" :radius="8" />
           <Skeleton :height="150" :radius="8" />
         </Grid>
+
+        <!-- SupportCTA -->
+        <Skeleton :height="320" :radius="8" class="mt-xl" />
       </Flex>
     </section>
 
@@ -80,10 +96,11 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
     </section>
 
     <!-- Main content -->
-    <template v-else>
+    <Flex v-else column expand>
       <!-- Our Supporters -->
-      <Card v-if="user && supporters.length > 0" class="pb-l mt-l">
-        <Flex column gap="m" x-center y-center>
+      <Card v-if="user && supporters.length > 0" class="supporters-card pb-l mt-l" expand>
+        <div class="supporters-card__sheen gold-surface" aria-hidden="true" />
+        <Flex column gap="m" x-center y-center class="supporters-card__content">
           <Flex y-center gap="m" x-center expand>
             <Flex column :gap="0" x-center class="text-center" y-center>
               <h2 class="text-bold text-xxl">
@@ -106,13 +123,42 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
       </Card>
 
       <!-- Current Funding Progress -->
-      <section class="mt-xl">
-        <h2 class="mb-l text-xxxl text-bold">
-          Current Funding
-        </h2>
-
+      <Flex expand column>
         <FundingProgress />
-      </section>
+
+        <Grid :columns="isBelowSmall ? 1 : 2" gap="s" expand>
+          <Card class="p-m funding-card">
+            <Flex column gap="xs">
+              <Flex x-between y-center>
+                <span class="text-s text-bold text-color-light">Patreon</span>
+                <Icon name="ph:patreon-logo" size="2rem" class="color-accent" />
+              </Flex>
+              <span class="text-l text-bold">{{ formatCurrency(latestFunding?.patreon_month_amount_cents ?? 0) }}</span>
+              <span class="text-xs text-color-light">
+                {{ latestFunding?.patreon_count ?? 0 }} {{ latestFunding?.patreon_count === 1 ? 'patron' : 'patrons' }}
+              </span>
+            </Flex>
+          </Card>
+
+          <Card class="p-m funding-card">
+            <Flex column gap="xs">
+              <Flex x-between y-center>
+                <span class="text-s text-bold text-color-light">Single Donations</span>
+                <Icon name="ph:coin-fill" size="2rem" class="color-accent" />
+              </Flex>
+              <span class="text-l text-bold">{{ formatCurrency(latestFunding?.donation_month_amount_cents ?? 0) }}</span>
+              <span class="text-xs text-color-light">
+                {{ latestFunding?.donation_count ?? 0 }} {{ latestFunding?.donation_count === 1 ? 'donation' : 'donations' }}
+              </span>
+            </Flex>
+          </Card>
+        </Grid>
+      </Flex>
+
+      <!-- Historical Funding -->
+      <Flex expand column class="mt-xl">
+        <FundingHistory :monthly-funding="monthlyFunding" :format-currency="formatCurrency" />
+      </Flex>
 
       <!-- Expenses Breakdown -->
       <section class="mt-xl">
@@ -124,7 +170,7 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
         </Flex>
 
         <div v-if="expenses.length > 0">
-          <Grid :columns="2" gap="l" class="expenses-grid">
+          <Grid :columns="2" gap="s" class="expenses-grid">
             <ExpenseCard
               v-for="expense in filteredExpenses.slice(0, 6)"
               :key="expense.id"
@@ -138,24 +184,74 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
         </Alert>
       </section>
 
-      <!-- Historical Funding -->
-      <section class="mt-xl">
-        <FundingHistory :monthly-funding="monthlyFunding" :format-currency="formatCurrency" />
-      </section>
-
       <!-- Support Information -->
-      <section class="mt-xl">
+      <Flex expand class="mt-xl">
         <SupportCTA :supporter-ids="supporters" />
-      </section>
-    </template>
+      </Flex>
+    </Flex>
   </div>
 </template>
 
 <style lang="scss" scoped>
 @use '@/assets/breakpoints.scss' as *;
 
+.supporters-card {
+  background: linear-gradient(135deg, var(--color-bg-raised) 0%, var(--color-bg-medium) 100%);
+  border: 1px solid var(--color-border);
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ddce97 0%, #f2c15a 45%, #c57f17 100%);
+  }
+}
+
+.supporters-card__sheen {
+  position: absolute;
+  inset: 12% 8%;
+  border-radius: var(--border-radius-pill);
+  opacity: 0.2;
+  filter: blur(36px);
+  transform: scale(1.1);
+}
+
+.supporters-card__content {
+  position: relative;
+  z-index: 1;
+}
+
+:root:not(.dark) {
+  .supporters-card {
+    background: radial-gradient(
+      circle at 20% 0%,
+      rgba(255, 255, 255, 0.95),
+      rgba(253, 244, 212, 0.85) 55%,
+      var(--color-bg-raised) 100%
+    );
+    border-color: rgba(12, 11, 9, 0.15);
+    box-shadow:
+      0 18px 45px rgba(12, 11, 9, 0.08),
+      0 6px 18px rgba(12, 11, 9, 0.04);
+  }
+
+  .supporters-card__sheen {
+    opacity: 0.32;
+  }
+}
+
 .funding-progress__complete {
   border: 1px solid var(--color-accent);
+}
+
+.funding-card {
+  background-color: var(--color-bg-card);
 }
 
 // Responsive grid for expenses

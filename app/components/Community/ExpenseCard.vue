@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex } from '@dolanske/vui'
 import { formatCurrency } from '@/lib/utils/currency'
-import { formatDateShort } from '@/lib/utils/date'
+import { formatDateLong } from '@/lib/utils/date'
 import { isPlannedExpense } from '@/lib/utils/expenses'
 
 interface Props {
@@ -34,10 +34,10 @@ const expenseStatus = computed(() => {
 </script>
 
 <template>
-  <Card>
+  <Card class="expense-card">
     <Flex column gap="s">
       <!-- Header with name and amount -->
-      <Flex x-between y-center>
+      <Flex x-between y-center expand>
         <h4 class="text-bold">
           {{ expense.name || 'Unnamed Expense' }}
         </h4>
@@ -58,10 +58,10 @@ const expenseStatus = computed(() => {
       </p>
 
       <!-- Date range -->
-      <Flex x-between y-center class="text-xs text-color-light">
-        <span v-if="planned">Starts {{ formatDateShort(expense.started_at) }}</span>
-        <span v-else>Since {{ formatDateShort(expense.started_at) }}</span>
-        <span v-if="expense.ended_at">Ended {{ formatDateShort(expense.ended_at) }}</span>
+      <Flex x-between y-center>
+        <span v-if="planned" class="text-xs text-color-lightest">Starts {{ formatDateLong(expense.started_at) }}</span>
+        <span v-else class="text-xs text-color-lightest">Since {{ formatDateLong(expense.started_at) }}</span>
+        <span v-if="expense.ended_at" class="text-xs text-color-lightest">Ended {{ formatDateLong(expense.ended_at) }}</span>
       </Flex>
 
       <!-- External link if available -->
@@ -81,3 +81,9 @@ const expenseStatus = computed(() => {
     </Flex>
   </Card>
 </template>
+
+<style lang="scss" scoped>
+.expense-card {
+  background-color: var(--color-bg-card);
+}
+</style>

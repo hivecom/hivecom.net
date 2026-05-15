@@ -25,7 +25,6 @@
     }
   },
   "CURRENCY": {
-    "SYMBOL": "€",
     "NAME": "Euro",
     "CODE": "EUR"
   },

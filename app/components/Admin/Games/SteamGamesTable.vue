@@ -10,7 +10,7 @@ import GameForm from '@/components/Admin/Games/GameForm.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
-import ChartMembersGameActivity from '@/components/Shared/Charts/ChartMembersGameActivity.vue'
+import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
@@ -388,7 +388,7 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
     :steam-game-id="selectedGame?.steam_id"
   >
     <template #default="{ period, window, utc, color }">
-      <ChartMembersGameActivity
+      <ChartGameActivity
         :period="period"
         :window="window"
         :utc="utc"

@@ -23,6 +23,9 @@ const DATAFILE_DIRECTIVE_RE = /:::dataFile(?:\s+\{([^}]*)\})?\s*:::/g
 // These must be escaped before remark-math sees them so they are not treated
 // as inline math delimiters.
 const CURRENCY_DOLLAR_RE = /\$(?=\d)/g
+const ORDERED_LIST_ITEM_RE = /^(\d+)\.\s/
+const UNORDERED_SUB_ITEM_RE = /^(\s+)([-*+]\s)/
+const FENCED_CODE_RE = /^```/
 const STRIP_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_DATAFILE_RE = /:::dataFile(?:\s+\{[^}]*\})?\s*:::/g
@@ -424,12 +427,74 @@ export function processSizeTags(markdown: string): string {
   )
 }
 
+/**
+ * CommonMark requires sub-list items to be indented by at least as many
+ * characters as the parent list item's content start column.
+ * e.g. `1. ` prefix is 3 chars, so nested bullets need >= 3 spaces of indent.
+ * Many editors (including our own) emit 2-space indented sub-items, which
+ * remark treats as a new top-level list instead of nesting.
+ * This function bumps those under-indented sub-items to the correct depth.
+ */
+function normalizeListIndentation(markdown: string): string {
+  const lines = markdown.split('\n')
+  const result: string[] = []
+  // Stack of required indent widths per nesting level
+  const indentStack: number[] = []
+  let inFencedCode = false
+
+  for (const line of lines) {
+    // Don't touch fenced code blocks
+    if (FENCED_CODE_RE.test(line)) {
+      inFencedCode = !inFencedCode
+      result.push(line)
+      continue
+    }
+    if (inFencedCode) {
+      result.push(line)
+      continue
+    }
+
+    const orderedMatch = ORDERED_LIST_ITEM_RE.exec(line)
+    if (orderedMatch) {
+      // Content starts after "N. " - that many chars is required indent for children
+      const requiredChildIndent = orderedMatch[1]!.length + 2 // digits + ". "
+      indentStack.push(requiredChildIndent)
+      result.push(line)
+      continue
+    }
+
+    const unorderedMatch = UNORDERED_SUB_ITEM_RE.exec(line)
+    if (unorderedMatch && indentStack.length > 0) {
+      const currentIndent = unorderedMatch[1]!.length
+      const requiredIndent = indentStack[indentStack.length - 1]!
+      if (currentIndent < requiredIndent) {
+        // Pad to required indent
+        result.push(' '.repeat(requiredIndent) + unorderedMatch[2]! + line.slice(unorderedMatch[0].length))
+        continue
+      }
+    }
+
+    // Non-list line: if it's not blank and not indented, clear the stack
+    if (line.trim().length > 0 && !/^\s/.test(line)) {
+      indentStack.length = 0
+    }
+
+    result.push(line)
+  }
+
+  return result.join('\n')
+}
+
 export function processMarkdown(markdown: string): string {
   if (!markdown)
     return ''
 
   // Escape bare currency dollar signs (e.g. $3, $10) before any remark/MDC
   // processing so that remark-math does not treat them as inline math delimiters.
+  // Normalize list indentation so nested bullet items under ordered list items
+  // are indented enough for remark (CommonMark) to treat them as children.
+  markdown = normalizeListIndentation(markdown)
+
   markdown = markdown.replace(CURRENCY_DOLLAR_RE, '\\$')
 
   // Convert TipTap details/spoiler directives to native <details> HTML first

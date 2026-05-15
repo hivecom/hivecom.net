@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge, Button, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
+import { Button, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import { useDataExpenses } from '@/composables/useDataExpenses'
 import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
@@ -47,15 +47,24 @@ const statusMessage = computed(() => {
   }
 })
 
+const currentMonthLabel = computed(() => {
+  if (!currentFunding.value)
+    return 'Monthly Funding'
+  return new Date(`${currentFunding.value.month}T00:00:00`).toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  })
+})
+
 // Reusable template to not have to copy-paste component code
 const [DefineTemplate, ProgressTemplate] = createReusableTemplate()
 </script>
 
 <template>
   <DefineTemplate>
-    <Card :class="{ 'funding-progress__complete': fundingProgress.percentage >= 100 }" class="card-bg">
+    <Card :class="{ 'funding-progress__complete': fundingProgress.percentage >= 100 }" class="card-bg" expand>
       <!-- Loading state -->
-      <template v-if="loading">
+      <Flex v-if="loading" column expand>
         <Flex column gap="m">
           <Skeleton :width="300" :height="32" :radius="4" />
           <Skeleton :height="8" :radius="4" />
@@ -64,23 +73,23 @@ const [DefineTemplate, ProgressTemplate] = createReusableTemplate()
             <Skeleton :width="120" :height="20" :radius="4" />
           </Flex>
         </Flex>
-      </template>
+      </Flex>
 
       <!-- Error state -->
-      <template v-else-if="errorMessage">
+      <Flex v-else-if="errorMessage" expand column>
         <Flex y-center gap="s" class="color-error">
           <Icon name="ph:warning" size="1.2rem" />
           <span class="text-s">Unable to load funding data</span>
         </Flex>
-      </template>
+      </Flex>
 
       <!-- Main content -->
-      <template v-else>
-        <Flex y-center x-between class="mb-s funding-header">
+      <Flex v-else column expand>
+        <Flex y-center x-between class="mb-s funding-header" expand>
           <Flex y-center gap="s" wrap>
-            <h3 class="text-bold text-xl">
-              Monthly Funding
-            </h3>
+            <h2 class="text-bold text-xxxl">
+              {{ currentMonthLabel }}
+            </h2>
           </Flex>
           <Flex y-center gap="s" class="funding-amounts">
             <strong class="text-bold text-xxxl">{{ formatCurrency(fundingProgress.current) }}</strong>
@@ -96,29 +105,28 @@ const [DefineTemplate, ProgressTemplate] = createReusableTemplate()
         />
 
         <!-- Funding vs Expenses Summary -->
-        <Flex x-between y-center>
+        <Flex x-between y-start expand>
           <p class="text-s text-color-lighter">
             {{ statusMessage }}
           </p>
 
           <div v-if="!isBelowSmall">
-            <Badge v-if="isOnFundingPage" variant="accent">
-              <Icon name="ph:heart" size="1.4rem" />
-              Support Us
-            </Badge>
-            <Button plain size="s">
-              More details
+            <Button :plain="!isOnFundingPage" size="s" variant="accent">
+              <Flex y-center :gap="4">
+                <Icon :name="isOnFundingPage ? 'ph:heart-straight' : 'ph:info'" />
+                {{ isOnFundingPage ? "Support Us" : "Learn More" }}
+              </Flex>
               <template #end>
                 <Icon name="ph:caret-right" />
               </template>
             </Button>
           </div>
         </Flex>
-      </template>
+      </Flex>
     </Card>
   </DefineTemplate>
 
-  <div>
+  <Flex column expand>
     <!-- Conditional wrapper: NuxtLink to funding page OR external link to Patreon -->
     <NuxtLink v-if="!isOnFundingPage" to="/community/funding" class="funding-card-link" aria-label="View detailed funding information">
       <ProgressTemplate />
@@ -128,7 +136,7 @@ const [DefineTemplate, ProgressTemplate] = createReusableTemplate()
     <a v-else :href="constants.PATREON.URL" target="_blank" rel="noopener noreferrer" class="funding-card-link" aria-label="Support us on Patreon">
       <ProgressTemplate />
     </a>
-  </div>
+  </Flex>
 </template>
 
 <style lang="scss" scoped>
@@ -156,6 +164,7 @@ const [DefineTemplate, ProgressTemplate] = createReusableTemplate()
 }
 
 .funding-card-link {
+  width: 100%;
   text-decoration: none;
   display: block;
   transition: var(--transition-fast);

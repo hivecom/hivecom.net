@@ -4,7 +4,7 @@ import { Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
 import { ref, watchEffect } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
-import ChartMembersGameActivity from '@/components/Shared/Charts/ChartMembersGameActivity.vue'
+import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 
@@ -274,7 +274,7 @@ watchEffect(async () => {
           </template>
           <ChartActivityHistogramControls :series="['usersGameActivity']" :game-id="props.game.id">
             <template #default="{ period, window, utc, color }">
-              <ChartMembersGameActivity :period :window :utc :color :game-id="props.game.id" compact />
+              <ChartGameActivity :period :window :utc :color :game-id="props.game.id" compact />
             </template>
           </ChartActivityHistogramControls>
         </Card>

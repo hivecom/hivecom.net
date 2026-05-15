@@ -2,7 +2,7 @@
 import type { ChartDataset, ChartOptions } from 'chart.js'
 import type { ChartComponentRef } from 'vue-chartjs'
 import type { MetricsHistoryEntry, MetricsPeriod } from '@/composables/useDataMetrics'
-import { Flex, Select, Skeleton, theme } from '@dolanske/vui'
+import { Flex, Select, Skeleton, Switch, theme } from '@dolanske/vui'
 import { useElementSize } from '@vueuse/core'
 import {
   BarElement,
@@ -17,8 +17,10 @@ import { Bar } from 'vue-chartjs'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataMetrics } from '@/composables/useDataMetrics'
+import { useDataSteamGames } from '@/composables/useDataSteamGames'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { getBarChartDefaults, getChartPalette, getColorizedPalette } from '@/lib/charts'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
 interface GameOption {
@@ -49,8 +51,11 @@ ChartJS.register(
 
 const { metrics, fetchMetrics, metricsHistory, loadingHistory, fetchMetricsHistory, fetchMetricsWindow, scheduleRefresh } = useDataMetrics()
 const { games } = useDataGames()
+const { steamGameNameMapStr } = useDataSteamGames()
+const isMobile = useBreakpoint('<s')
+const isMobileSmallest = useBreakpoint('<xs')
 
-// Map numeric string ID -> display name
+// Map community game numeric string ID -> display name
 const gameNameMap = computed(() => {
   const map = new Map<string, string>()
   for (const game of games.value)
@@ -58,7 +63,25 @@ const gameNameMap = computed(() => {
   return map
 })
 
+// Map community game ID -> its Steam app ID string (for dedup)
+const gameToSteamIdMap = computed(() => {
+  const map = new Map<string, string>()
+  for (const game of games.value) {
+    if (game.steam_id != null)
+      map.set(String(game.id), String(game.steam_id))
+  }
+  return map
+})
+
+// Set of Steam IDs already covered by a community game entry
+const coveredSteamIds = computed(() => new Set(gameToSteamIdMap.value.values()))
+
 function gameLabel(id: string): string {
+  // id is either a community game ID or a steam:<appId> prefixed key
+  if (id.startsWith('steam:')) {
+    const steamId = id.slice(6)
+    return steamGameNameMapStr.value.get(steamId) ?? `Steam App ${steamId}`
+  }
   return gameNameMap.value.get(id) ?? id
 }
 
@@ -107,13 +130,31 @@ const currentCount = computed(() => {
   return undefined
 })
 
+const includeSteamGames = ref(true)
+
 // Game filter - VUI Select options
+// Merges community games (usersByGame, keyed by game ID) and Steam games
+// (usersBySteamGame, keyed by Steam app ID) that aren't already covered by a
+// community game entry. Steam-only entries use a "steam:<appId>" virtual key.
 const gameOptions = computed<GameOption[]>(() => {
   const ids = new Set<string>()
   for (const e of metricsHistory.value) {
     if (e.usersByGame)
       Object.keys(e.usersByGame).forEach(k => ids.add(k))
   }
+
+  if (includeSteamGames.value) {
+    // Add Steam-only games not already represented by a community game
+    for (const e of metricsHistory.value) {
+      if (e.usersBySteamGame) {
+        for (const steamId of Object.keys(e.usersBySteamGame)) {
+          if (!coveredSteamIds.value.has(steamId))
+            ids.add(`steam:${steamId}`)
+        }
+      }
+    }
+  }
+
   return [...ids]
     .sort((a, b) => gameLabel(a).localeCompare(gameLabel(b)))
     .map(id => ({ label: gameLabel(id), value: id }))
@@ -168,12 +209,15 @@ const chartData = computed(() => {
   // Single-game mode: always render only that game's data, never fall back to totals
   if (props.gameId !== undefined) {
     const id = String(props.gameId)
+    const steamId = gameToSteamIdMap.value.get(id) ?? null
     return {
       datasets: [{
         label: gameLabel(id),
         data: metricsHistory.value.map((e: MetricsHistoryEntry) => ({
           x: new Date(e.capturedAt).getTime(),
-          y: e.usersByGame?.[id] ?? null,
+          // Prefer community game ID entry; fall back to Steam app ID entry for
+          // historical data collected before the game was officially tracked.
+          y: e.usersByGame?.[id] ?? (steamId !== null ? (e.usersBySteamGame?.[steamId] ?? null) : null),
         })),
         backgroundColor: `${props.color ?? palette.datasets[1]}cc`,
         clip: false,
@@ -198,20 +242,28 @@ const chartData = computed(() => {
   }
 
   return {
-    datasets: ids.map((id, i) => ({
-      label: gameLabel(id),
-      data: metricsHistory.value.map((e: MetricsHistoryEntry) => ({
-        x: new Date(e.capturedAt).getTime(),
-        y: e.usersByGame?.[id] ?? null,
-      })),
-      backgroundColor: colorized
-        ? colorized[i % colorized.length]
-        : isFiltered
-          ? `${palette.datasets[i % palette.datasets.length]}cc`
-          : `${props.color ?? palette.datasets[1]}cc`,
-      clip: false,
-      stack: 'mg',
-    })) as unknown as ChartDataset<'bar'>[],
+    datasets: ids.map((id, i) => {
+      const isSteamOnly = id.startsWith('steam:')
+      const steamId = isSteamOnly ? id.slice(6) : (gameToSteamIdMap.value.get(id) ?? null)
+      return {
+        label: gameLabel(id),
+        data: metricsHistory.value.map((e: MetricsHistoryEntry) => ({
+          x: new Date(e.capturedAt).getTime(),
+          // Community game: check usersByGame by game ID
+          // Steam-only game: check usersBySteamGame by Steam app ID
+          y: isSteamOnly
+            ? (e.usersBySteamGame?.[steamId!] ?? null)
+            : (e.usersByGame?.[id] ?? null),
+        })),
+        backgroundColor: colorized
+          ? colorized[i % colorized.length]
+          : isFiltered
+            ? `${palette.datasets[i % palette.datasets.length]}cc`
+            : `${props.color ?? palette.datasets[1]}cc`,
+        clip: false,
+        stack: 'mg',
+      }
+    }) as unknown as ChartDataset<'bar'>[],
   }
 })
 
@@ -282,6 +334,21 @@ watchEffect(() => {
   const containerHeight = chartWrapperRef.value?.clientHeight
   chart.resize(Math.floor(width), containerHeight)
 })
+
+// Force resize after data loads - computeMinSampleSize (bar width) is calculated
+// during the first render and may use stale scale dimensions if data arrives
+// after the initial layout pass. Resizing in the next tick after data changes
+// ensures bars are sized correctly.
+watch(chartData, () => {
+  nextTick(() => {
+    const width = chartWrapperRef.value?.clientWidth
+    const chart = chartRef.value?.chart
+    if (!width || !chart)
+      return
+    const containerHeight = chartWrapperRef.value?.clientHeight
+    chart.resize(Math.floor(width), containerHeight)
+  })
+})
 </script>
 
 <template>
@@ -295,15 +362,22 @@ watchEffect(() => {
         <span class="text-m text-bold">Played Games</span>
         <OnlineBadge :count="currentCount ?? 0" label="playing" size="s" :color="(currentCount ?? 0) > 0 ? 'var(--color-text-green)' : undefined" />
       </Flex>
-      <Select
-        v-if="gameId === undefined && steamGameId === undefined"
-        v-model="selectedGameOptions"
-        :options="gameOptions"
-        placeholder="All Games"
-        show-clear
-        search
-        :single="false"
-      />
+      <Flex gap="xxs" y-center>
+        <Flex v-if="!isMobileSmallest && gameId === undefined && steamGameId === undefined" gap="s" y-center>
+          <Icon v-if="isMobile" name="ph:steam-logo" size="20" :class="includeSteamGames ? 'text-color-accent' : 'text-color-lightest'" />
+          <span v-else class="text-s text-color-lighter">Include Untracked</span>
+          <Switch v-model="includeSteamGames" />
+        </Flex>
+        <Select
+          v-if="gameId === undefined && steamGameId === undefined"
+          v-model="selectedGameOptions"
+          :options="gameOptions"
+          placeholder="All Games"
+          show-clear
+          search
+          :single="false"
+        />
+      </Flex>
     </Flex>
 
     <div v-if="loadingHistory" class="chart-loading" :class="{ 'chart-loading--compact': compact }">
@@ -326,7 +400,7 @@ watchEffect(() => {
     <div
       v-if="!loadingHistory"
       ref="chartWrapperRef"
-      :key="`${theme}-${activeTheme?.id}-${props.utc}-${selectedGameOptions.length}-${props.gameId}-${props.steamGameId}-${props.window?.start.getTime()}-${props.window?.end.getTime()}`"
+      :key="`${theme}-${activeTheme?.id}-${props.utc}-${selectedGameOptions.length}-${includeSteamGames}-${props.gameId}-${props.steamGameId}-${props.window?.start.getTime()}-${props.window?.end.getTime()}`"
       class="chart-wrapper"
       :class="{ 'chart-wrapper--compact': compact }"
     >

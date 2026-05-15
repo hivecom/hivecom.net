@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Card, defineTable, Flex, Grid, Select, Table } from '@dolanske/vui'
+import { Alert, Badge, Card, defineTable, Flex, Select, Table } from '@dolanske/vui'
 import TableContainer from '@/components/Shared/TableContainer.vue'
-import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface SelectOption { value: number, label: string }
 
@@ -12,9 +11,6 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-
-const isBelowExtraSmall = useBreakpoint('<xs')
-const isBelowSmall = useBreakpoint('<s')
 
 // Define transformed funding data interface for table
 interface TransformedFunding {
@@ -91,11 +87,12 @@ function normalizeToDisplayedEuros(amountCents: number) {
 
 // Transform data for table (previous months only)
 const transformedTableData = computed<TransformedFunding[]>(() => {
-  if (historicalData.value.length <= 1)
+  const startIndex = isCurrentYear.value ? 1 : 0
+  if (historicalData.value.length <= startIndex)
     return []
 
-  return historicalData.value.slice(1, 25).map((funding, index) => {
-    const growth = getGrowthFromPrevious(funding.totalMonthly, index + 1)
+  return historicalData.value.slice(startIndex, startIndex + 24).map((funding, index) => {
+    const growth = getGrowthFromPrevious(funding.totalMonthly, index + startIndex)
 
     return {
       'Month': funding.shortMonthName,
@@ -146,81 +143,24 @@ function getGrowthIndicator(growth: number | null) {
 </script>
 
 <template>
-  <div v-if="historicalData.length > 0 || props.monthlyFunding.length > 0">
-    <!-- Year Filter -->
-    <Flex x-between y-center expand class="funding-history__header">
-      <h2>Funding History</h2>
-      <Select
-        v-if="availableYears.length > 1"
-        v-model="selectedYearOption"
-        :options="yearOptions"
-        single
-        class="funding-history__year-select"
-      />
-    </Flex>
-
+  <Flex v-if="historicalData.length > 0 || props.monthlyFunding.length > 0" expand>
     <!-- Funding History -->
-    <Flex v-if="historicalData.length > 0" column gap="l">
-      <!-- Latest Month - Full Card (current year only) -->
-      <Card v-if="historicalData[0] && isCurrentYear" class="p-l">
-        <!-- Header with month -->
-        <Flex column gap="l" expand>
-          <Flex x-between y-center wrap gap="s">
-            <Flex y-center gap="s">
-              <h3 class="text-bold text-xxxl">
-                {{ historicalData[0].monthName }}
-              </h3>
-              <Badge v-if="!isBelowExtraSmall" variant="accent">
-                Latest
-              </Badge>
-            </Flex>
-
-            <!-- Total monthly funding highlight -->
-            <Flex column x-end class="text-right">
-              <span class="text-xs text-color-light">Month-to-date</span>
-              <span class="text-bold text-xxxl">{{ formatCurrency(historicalData[0].totalMonthly) }}</span>
-            </Flex>
-          </Flex>
-
-          <!-- Funding source cards -->
-          <Grid :columns="isBelowSmall ? 1 : 2" gap="m" expand>
-            <!-- Patreon Card -->
-            <Card class="p-m">
-              <Flex column gap="xs">
-                <Flex x-between y-center>
-                  <span class="text-s text-bold text-color-light">Patreon</span>
-                  <Icon name="ph:patreon-logo" size="2rem" class="color-accent" />
-                </Flex>
-                <span class="text-l text-bold">{{ formatCurrency(historicalData[0].patreonMonthly) }}</span>
-                <span class="text-xs text-color-light">
-                  {{ historicalData[0].supporterCount || 0 }} {{ historicalData[0].supporterCount === 1 ? 'patron' : 'patrons' }}
-                </span>
-              </Flex>
-            </Card>
-
-            <!-- Single Donations Card -->
-            <Card class="p-m">
-              <Flex column gap="xs">
-                <Flex x-between y-center>
-                  <span class="text-s text-bold text-color-light">Single Donations</span>
-                  <Icon name="ph:coin-fill" size="2rem" class="color-accent" />
-                </Flex>
-                <span class="text-l text-bold">{{ formatCurrency(historicalData[0].donationMonthly) }}</span>
-                <span class="text-xs text-color-light">
-                  {{ historicalData[0].donationCount || 0 }} {{ historicalData[0].donationCount === 1 ? 'donation' : 'donations' }}
-                </span>
-              </Flex>
-            </Card>
-          </Grid>
-        </Flex>
-      </Card>
-
+    <Flex v-if="historicalData.length > 0" column gap="l" expand>
       <!-- Previous Months - Table -->
       <Flex v-if="isCurrentYear ? historicalData.length > 1 : historicalData.length > 0" column expand>
-        <h3 v-if="isCurrentYear" class="text-bold text-semibold">
-          Previous Months
-        </h3>
-        <TableContainer>
+        <Flex x-between y-center class="mb-s" expand>
+          <h3 class="text-bold text-semibold">
+            Previous Months
+          </h3>
+          <Select
+            v-if="availableYears.length > 1"
+            v-model="selectedYearOption"
+            :options="yearOptions"
+            single
+            class="funding-history__year-select"
+          />
+        </Flex>
+        <TableContainer e>
           <Table.Root v-if="rows.length > 0" separate-cells class="table-container">
             <template #header>
               <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" :header />
@@ -285,7 +225,7 @@ function getGrowthIndicator(growth: number | null) {
     <Alert v-if="historicalData.length === 0" variant="info">
       No funding data available for {{ selectedYear }}
     </Alert>
-  </div>
+  </Flex>
 
   <Alert v-else variant="info">
     No historical funding data available
