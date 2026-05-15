@@ -966,7 +966,6 @@ export type Database = {
       kvstore: {
         Row: {
           created_at: string
-          created_by: string
           key: string
           modified_at: string | null
           modified_by: string | null
@@ -975,7 +974,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          created_by?: string
           key: string
           modified_at?: string | null
           modified_by?: string | null
@@ -984,7 +982,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          created_by?: string
           key?: string
           modified_at?: string | null
           modified_by?: string | null
@@ -1270,6 +1267,130 @@ export type Database = {
             foreignKeyName: "presences_teamspeak_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_point_claims: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          email: string
+          id: number
+          points: number
+          source: Database["public"]["Enums"]["point_source"]
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          email: string
+          id?: never
+          points: number
+          source: Database["public"]["Enums"]["point_source"]
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          email?: string
+          id?: never
+          points?: number
+          source?: Database["public"]["Enums"]["point_source"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_point_claims_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_point_history: {
+        Row: {
+          amount: number
+          created_at: string
+          id: number
+          profile_id: string
+          profile_trade: string | null
+          source: Database["public"]["Enums"]["point_source"]
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: number
+          profile_id: string
+          profile_trade?: string | null
+          source: Database["public"]["Enums"]["point_source"]
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: number
+          profile_id?: string
+          profile_trade?: string | null
+          source?: Database["public"]["Enums"]["point_source"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_point_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_point_history_profile_trade_fkey"
+            columns: ["profile_trade"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_points: {
+        Row: {
+          created_at: string
+          modified_at: string | null
+          points_donations: number
+          points_loyalty: number
+          points_patreon: number
+          points_spent: number
+          points_total: number | null
+          profile_id: string
+          public: boolean
+        }
+        Insert: {
+          created_at?: string
+          modified_at?: string | null
+          points_donations?: number
+          points_loyalty?: number
+          points_patreon?: number
+          points_spent?: number
+          points_total?: number | null
+          profile_id: string
+          public?: boolean
+        }
+        Update: {
+          created_at?: string
+          modified_at?: string | null
+          points_donations?: number
+          points_loyalty?: number
+          points_patreon?: number
+          points_spent?: number
+          points_total?: number | null
+          profile_id?: string
+          public?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_points_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1994,7 +2115,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      claim_profile_points: { Args: never; Returns: number }
       contains_html_tags: { Args: { input_text: string }; Returns: boolean }
+      cron_metrics_daily_rollup: { Args: never; Returns: undefined }
+      cron_monthly_points_loyalty_award: { Args: never; Returns: undefined }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2272,6 +2396,12 @@ export type Database = {
           widening: number
         }[]
       }
+      get_admin_user_countries: {
+        Args: never
+        Returns: {
+          country: string
+        }[]
+      }
       get_admin_user_overview: {
         Args: never
         Returns: {
@@ -2285,6 +2415,7 @@ export type Database = {
       }
       get_admin_users_paginated: {
         Args: {
+          p_country?: string
           p_limit?: number
           p_offset?: number
           p_platform?: string
@@ -2294,6 +2425,7 @@ export type Database = {
           p_sort_col?: string
           p_sort_dir?: string
           p_status?: string
+          p_supporter?: string
         }
         Returns: {
           auth_provider: string
@@ -2455,13 +2587,22 @@ export type Database = {
         Args: { p_occurrence_id: number; p_user_id: string }
         Returns: Database["public"]["Enums"]["events_rsvp_status"]
       }
-      get_effective_rsvps_for_occurrence: {
-        Args: { p_event_id: number }
-        Returns: {
-          rsvp: Database["public"]["Enums"]["events_rsvp_status"]
-          user_id: string
-        }[]
-      }
+      get_effective_rsvps_for_occurrence:
+        | {
+            Args: { p_event_id: number }
+            Returns: {
+              rsvp: Database["public"]["Enums"]["events_rsvp_status"]
+              user_id: string
+            }[]
+          }
+        | {
+            Args: { p_event_id: number; p_occurrence_date?: string }
+            Returns: {
+              rsvp: Database["public"]["Enums"]["events_rsvp_status"]
+              scope: Database["public"]["Enums"]["events_rsvp_scope"]
+              user_id: string
+            }[]
+          }
       get_forum_activity_feed: {
         Args: {
           p_created_by?: string
@@ -2495,12 +2636,12 @@ export type Database = {
           discussions_total: number
           gameservers_by_server: Json
           gameservers_players: number
-          members_by_game: Json
-          members_by_steam_game: Json
-          members_online: number
-          members_total: number
           teamspeak_by_server: Json
           teamspeak_online: number
+          users_by_game: Json
+          users_by_steam_game: Json
+          users_online: number
+          users_total: number
         }[]
       }
       get_past_events_count:
@@ -2720,7 +2861,6 @@ export type Database = {
               updated_at: string
             }[]
           }
-      metrics_daily_rollup: { Args: never; Returns: undefined }
       normalize_mentions: { Args: { input_text: string }; Returns: string }
       pgmq_delete: {
         Args: { msg_id: number; queue_name: string }
@@ -2873,6 +3013,7 @@ export type Database = {
       events_rsvp_status: "yes" | "no" | "tentative"
       game_query_protocol: "source" | "minecraft"
       kvstore_type: "NUMBER" | "BOOLEAN" | "STRING" | "JSON"
+      point_source: "donation" | "patreon" | "loyalty" | "spent" | "trade"
       presence_steam_status:
         | "offline"
         | "online"
@@ -3096,6 +3237,7 @@ export const Constants = {
       events_rsvp_status: ["yes", "no", "tentative"],
       game_query_protocol: ["source", "minecraft"],
       kvstore_type: ["NUMBER", "BOOLEAN", "STRING", "JSON"],
+      point_source: ["donation", "patreon", "loyalty", "spent", "trade"],
       presence_steam_status: [
         "offline",
         "online",

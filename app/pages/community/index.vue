@@ -334,12 +334,12 @@ watch(user, () => {
             show-online-indicator
             cluster
           />
+          <OnlineBadge :count="onlineCount" clickable @click="showOnlineModal = true" />
           <CommunityBirthdays
             v-if="birthdayUserIds.length > 0"
             :user-ids="birthdayUserIds"
             :show-divider="randomUsers.length > 0"
           />
-          <OnlineBadge :count="onlineCount" clickable @click="showOnlineModal = true" />
         </Flex>
       </Card>
 

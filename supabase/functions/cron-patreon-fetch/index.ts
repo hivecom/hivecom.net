@@ -139,6 +139,8 @@ Deno.serve(async (req: Request) => {
     // Track patrons by ID for profile updates
     const activePatronIds: string[] = [];
     const supporterPatronIds: string[] = [];
+    // Map patreon user ID -> monthly cents for points awarding
+    const activePatronMonthlyCents = new Map<string, number>();
 
     // Process each member to calculate total and identify supporters
     for (const member of members) {
@@ -161,6 +163,7 @@ Deno.serve(async (req: Request) => {
         // Get the actual Patreon user ID from the user relationship (not the member ID)
         const patreonUserId = member.relationships.user.data.id;
         activePatronIds.push(patreonUserId);
+        activePatronMonthlyCents.set(patreonUserId, patronAmountCents);
 
         console.log(
           `Patron ${patreonUserId}: €${
@@ -230,6 +233,105 @@ Deno.serve(async (req: Request) => {
         `Failed to update monthly funding record: ${upsertError.message}`,
       );
     }
+
+    // Read points_per_cent rate from kvstore
+    let pointsPerEuroCent = 0.1;
+    const { data: kvRow } = await supabaseClient
+      .from("kvstore")
+      .select("value")
+      .eq("key", "points_per_cent")
+      .maybeSingle();
+
+    if (kvRow?.value !== undefined && kvRow.value !== null) {
+      const parsed = Number(kvRow.value);
+      if (!isNaN(parsed) && parsed > 0) {
+        pointsPerEuroCent = parsed;
+      }
+    }
+
+    console.log(`Points per euro cent rate: ${pointsPerEuroCent}`);
+
+    // Award Patreon points to linked profiles
+    let linkedProfileCount = 0;
+    let totalPointsAwarded = 0;
+
+    for (const [patreonUserId, monthlyCents] of activePatronMonthlyCents) {
+      const { data: profile } = await supabaseClient
+        .from("profiles")
+        .select("id")
+        .eq("patreon_id", patreonUserId)
+        .maybeSingle();
+
+      if (!profile) {
+        continue;
+      }
+
+      linkedProfileCount++;
+      const points = Math.round(monthlyCents * pointsPerEuroCent);
+
+      const { data: existingPoints } = await supabaseClient
+        .from("profile_points")
+        .select("points_patreon")
+        .eq("profile_id", profile.id)
+        .maybeSingle();
+
+      if (existingPoints) {
+        const { error: pointsUpdateError } = await supabaseClient
+          .from("profile_points")
+          .update({ points_patreon: (existingPoints.points_patreon ?? 0) + points })
+          .eq("profile_id", profile.id);
+
+        if (pointsUpdateError) {
+          console.error(
+            `Error updating points for profile ${profile.id}:`,
+            pointsUpdateError,
+          );
+        } else {
+          console.log(
+            `Awarded ${points} points to profile ${profile.id} (patreon: ${patreonUserId}), new total: ${
+              existingPoints.points_patreon + points
+            }`,
+          );
+          totalPointsAwarded += points;
+
+          const { error: historyError } = await supabaseClient
+            .from("profile_point_history")
+            .insert({ profile_id: profile.id, amount: points, source: "patreon" });
+
+          if (historyError) {
+            console.error(`Error inserting point history for profile ${profile.id}:`, historyError);
+          }
+        }
+      } else {
+        const { error: pointsInsertError } = await supabaseClient
+          .from("profile_points")
+          .insert({ profile_id: profile.id, points_patreon: points });
+
+        if (pointsInsertError) {
+          console.error(
+            `Error inserting points for profile ${profile.id}:`,
+            pointsInsertError,
+          );
+        } else {
+          console.log(
+            `Awarded ${points} points (new row) to profile ${profile.id} (patreon: ${patreonUserId})`,
+          );
+          totalPointsAwarded += points;
+
+          const { error: historyError } = await supabaseClient
+            .from("profile_point_history")
+            .insert({ profile_id: profile.id, amount: points, source: "patreon" });
+
+          if (historyError) {
+            console.error(`Error inserting point history for profile ${profile.id}:`, historyError);
+          }
+        }
+      }
+    }
+
+    console.log(
+      `Points summary: ${linkedProfileCount} linked profiles, ${totalPointsAwarded} total points awarded`,
+    );
 
     // Update supporter status for all profiles with patreon_id
     // IMPORTANT:

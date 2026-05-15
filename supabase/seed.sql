@@ -1280,3 +1280,29 @@ The library''s consistent design language helps create a cohesive user experienc
 
 Give @dolanske a shout since we couldn''t have built this project without his hard work and dedication!
   ', 'https://dolanske.github.io/vui/', '018d224c-0e49-4b6d-b57a-87299605c2b1', ARRAY['vue', 'typescript', 'ui-library', 'components', 'frontend', 'open-source'], 'dolanske/vui');
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Points KV configuration
+--
+-- points_per_cent: rate used by Ko-fi webhook and Patreon cron to convert
+--   euro cents into points (0.1 = 100 points per €1).
+-- points_per_month_loyalty: points awarded to active users each month by
+--   cron_monthly_points_loyalty_award (0 = disabled until explicitly set).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+INSERT INTO public.kvstore (key, type, value)
+VALUES
+  ('points_per_cent',    'NUMBER', '0.1'::jsonb),
+  ('points_per_month_loyalty', 'NUMBER', '0'::jsonb)
+ON CONFLICT (key) DO NOTHING;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Seed profile points
+-- ─────────────────────────────────────────────────────────────────────────────
+
+INSERT INTO public.profile_points (profile_id, points_loyalty)
+VALUES
+  ('018d224c-0e49-4b6d-b57a-87299605c2b1', 10000), -- Hivecom
+  ('018d224c-0e49-4b6d-b57a-87299605c2b3',  1000), -- TestUser
+  ('018d224c-0e49-4b6d-b57a-87299605c2b4',  2000)  -- BirthdayUser
+ON CONFLICT (profile_id) DO NOTHING;

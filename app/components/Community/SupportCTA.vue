@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Card, Flex } from '@dolanske/vui'
+import { Card, Flex, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import { useDataSupporters } from '@/composables/useDataSupporters'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
   // When provided by a parent that already fetched supporters (e.g. funding.vue),
@@ -26,6 +27,8 @@ const resolvedSupporterIds = computed(() =>
 
 // Supporter count derived directly from the resolved list.
 const actualSupporterCount = computed(() => resolvedSupporterIds.value.length)
+
+const isBelowSmall = useBreakpoint('<s')
 </script>
 
 <template>
@@ -46,19 +49,22 @@ const actualSupporterCount = computed(() => resolvedSupporterIds.value.length)
         </p>
       </Flex>
 
-      <Flex column y-center expand>
-        <NuxtLink
-          :to="constants.PATREON.URL" external target="_blank"
-          class="support-button support-button--gold gold-surface"
-          aria-label="Become a Patron on Patreon to support our community"
-        >
-          <Flex y-center x-center gap="s" class="support-button-content">
-            <Icon name="ph:heart-fill" size="1.6rem" class="gold-icon" />
-            <span class="text-l text-bold">Become a Patron</span>
-          </Flex>
-        </NuxtLink>
-        <p class="mt-s text-s text-color-light">
-          Join <span class="gold-text">{{ actualSupporterCount }}</span> supporters helping fund our community
+      <Flex column y-center expand x-center>
+        <Flex v-if="!isBelowSmall && currentUser" y-center gap="xs" class="mt-s">
+          <p class="text-m text-color-light">
+            Join <span class="gold-text text-m">{{ actualSupporterCount }}</span> supporters helping fund our community
+          </p>
+          <Tooltip>
+            <Icon name="ph:info" class="text-color-light mt-xxs" />
+            <template #tooltip>
+              <p class="text-s">
+                These users have linked their accounts to Patreon or are lifetime supporters
+              </p>
+            </template>
+          </Tooltip>
+        </Flex>
+        <p v-else-if="isBelowSmall && currentUser" class="mt-s text-m text-color-light">
+          Join <span class="gold-text text-m">{{ actualSupporterCount }}</span> supporters helping fund our community
         </p>
         <BulkAvatarDisplay
           v-if="currentUser"
@@ -68,18 +74,41 @@ const actualSupporterCount = computed(() => resolvedSupporterIds.value.length)
           :random="true"
           :gap="4"
           :supporter-highlight="true"
-          class="pt-m"
         />
-        <p class="mt-s text-xxs text-color-lighter">
+        <NuxtLink
+          :to="constants.PATREON.URL" external target="_blank"
+          class="support-button support-button--gold gold-surface"
+          aria-label="Become a Support on Patreon for our community"
+        >
+          <Flex y-center x-center gap="s" class="support-button-content">
+            <Icon name="ph:heart-fill" size="1.6rem" class="gold-icon" />
+            <span class="text-l text-bold">Become a Supporter</span>
+          </Flex>
+        </NuxtLink>
+        <p v-if="isBelowSmall" class="text-xxs text-color-lighter">
           (These users have linked their accounts to Patreon or are lifetime supporters)
         </p>
+
+        <p class="mt-xs text-xs text-color-light mt-xxl">
+          Alternatively, make a one-time donation - every bit helps and we appreciate all support!
+        </p>
+        <NuxtLink
+          :to="constants.KOFI.URL" external target="_blank"
+          class="support-button support-button--kofi mt-s"
+          aria-label="Make a one-time donation on Ko-fi"
+        >
+          <Flex y-center x-center gap="s" class="support-button-content">
+            <Icon name="ph:coffee" size="1.6rem" />
+            <span class="text-s">One-time Donation</span>
+          </Flex>
+        </NuxtLink>
       </Flex>
 
       <Flex column y-center class="support-benefits" expand>
         <h4 class="text-bold mb-s text-color-light text-s">
           Your support helps with
         </h4>
-        <Flex x-center gap="l" class="benefits-list" expand>
+        <Flex x-center y-center gap="l" class="benefits-list" expand>
           <Flex column y-center gap="xs">
             <Icon name="ph:database" size="1.8rem" class="gold-icon" />
             <span class="text-xs text-color-light">Server Costs</span>
@@ -99,6 +128,8 @@ const actualSupporterCount = computed(() => resolvedSupporterIds.value.length)
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .support-card {
   background: linear-gradient(135deg, var(--color-bg-raised) 0%, var(--color-bg-medium) 100%);
   border: 1px solid var(--color-border);
@@ -175,6 +206,29 @@ const actualSupporterCount = computed(() => resolvedSupporterIds.value.length)
 
   &:active {
     transform: translateY(0);
+  }
+}
+
+.support-button--kofi {
+  padding: var(--space-s);
+  background-color: #29abe0;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow:
+    inset 0 1px 3px rgba(255, 255, 255, 0.2),
+    0 6px 18px rgba(41, 171, 224, 0.35);
+
+  &:hover {
+    background-color: #29abe0;
+    box-shadow:
+      inset 0 1px 4px rgba(255, 255, 255, 0.3),
+      0 8px 22px rgba(41, 171, 224, 0.45);
+  }
+
+  &:active {
+    box-shadow:
+      inset 0 1px 4px rgba(255, 255, 255, 0.2),
+      0 3px 10px rgba(41, 171, 224, 0.3);
   }
 }
 
@@ -259,12 +313,5 @@ const actualSupporterCount = computed(() => resolvedSupporterIds.value.length)
   border-radius: var(--border-radius-s);
   border: 1px solid var(--color-border-weak);
   width: 100%;
-}
-
-.benefits-list {
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: var(--space-m);
-  }
 }
 </style>

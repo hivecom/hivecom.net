@@ -823,6 +823,11 @@
           "jsr:@supabase/supabase-js@2"
         ]
       },
+      "webhook-kofi-donation": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
       "worker-sync-steam": {
         "dependencies": [
           "npm:@supabase/supabase-js@2"

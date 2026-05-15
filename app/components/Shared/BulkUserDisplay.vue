@@ -91,13 +91,13 @@ defineExpose({
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="userIds.length === 0" class="bulk-user-display__empty">
+    <Flex v-else-if="userIds.length === 0" expand x-center y-center class="bulk-user-display__empty">
       <slot name="empty">
         <p class="text-color-light">
           No users to display
         </p>
       </slot>
-    </div>
+    </Flex>
 
     <!-- Users Grid -->
     <Grid

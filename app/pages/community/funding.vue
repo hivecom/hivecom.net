@@ -161,31 +161,31 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
       </Flex>
 
       <!-- Expenses Breakdown -->
-      <section class="mt-xl">
-        <Flex x-between y-center class="mb-l" wrap>
+      <Flex column expand class="mt-xl">
+        <Flex x-between y-center class="mb-l" wrap expand>
           <h2>
             Monthly Expenses
           </h2>
           <Checkbox v-model="showPastExpenses" label="Show past expenses" />
         </Flex>
 
-        <div v-if="expenses.length > 0">
-          <Grid :columns="2" gap="s" class="expenses-grid">
+        <Flex v-if="expenses.length > 0" expand>
+          <Grid expand :columns="2" gap="s" class="expenses-grid">
             <ExpenseCard
               v-for="expense in filteredExpenses.slice(0, 6)"
               :key="expense.id"
               :expense="expense"
             />
           </Grid>
-        </div>
+        </Flex>
 
         <Alert v-else variant="info">
           No expense data available
         </Alert>
-      </section>
+      </Flex>
 
       <!-- Support Information -->
-      <Flex expand class="mt-xl">
+      <Flex id="support-cta" expand class="mt-xl">
         <SupportCTA :supporter-ids="supporters" />
       </Flex>
     </Flex>

@@ -42,6 +42,7 @@
     "./user-info",
     "./user-link-discord",
     "./webhook-aws-ses-notifications",
+    "./webhook-kofi-donation",
     "./worker-sync-steam"
   ]
 }

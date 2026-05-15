@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
-import constants from '~~/constants.json'
+
 import { useDataExpenses } from '@/composables/useDataExpenses'
 import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -58,6 +58,18 @@ const currentMonthLabel = computed(() => {
 
 // Reusable template to not have to copy-paste component code
 const [DefineTemplate, ProgressTemplate] = createReusableTemplate()
+
+function onSupportButtonClick(e: Event) {
+  if (!isOnFundingPage.value)
+    return
+  e.preventDefault()
+  e.stopPropagation()
+  scrollToSupport()
+}
+
+function scrollToSupport() {
+  document.getElementById('support-cta')?.scrollIntoView({ behavior: 'smooth' })
+}
 </script>
 
 <template>
@@ -111,7 +123,7 @@ const [DefineTemplate, ProgressTemplate] = createReusableTemplate()
           </p>
 
           <div v-if="!isBelowSmall">
-            <Button :plain="!isOnFundingPage" size="s" variant="accent">
+            <Button :plain="!isOnFundingPage" size="s" variant="accent" @click="onSupportButtonClick">
               <Flex y-center :gap="4">
                 <Icon :name="isOnFundingPage ? 'ph:heart-straight' : 'ph:info'" />
                 {{ isOnFundingPage ? "Support Us" : "Learn More" }}
@@ -132,10 +144,10 @@ const [DefineTemplate, ProgressTemplate] = createReusableTemplate()
       <ProgressTemplate />
     </NuxtLink>
 
-    <!-- When on funding page, link to Patreon instead -->
-    <a v-else :href="constants.PATREON.URL" target="_blank" rel="noopener noreferrer" class="funding-card-link" aria-label="Support us on Patreon">
+    <!-- When on funding page, scroll to support CTA instead -->
+    <div v-else role="link" tabindex="0" class="funding-card-link" aria-label="Go to support section" @click="scrollToSupport" @keydown.enter="scrollToSupport">
       <ProgressTemplate />
-    </a>
+    </div>
   </Flex>
 </template>
 
@@ -167,6 +179,7 @@ const [DefineTemplate, ProgressTemplate] = createReusableTemplate()
   width: 100%;
   text-decoration: none;
   display: block;
+  cursor: pointer;
   transition: var(--transition-fast);
 
   &:hover {
