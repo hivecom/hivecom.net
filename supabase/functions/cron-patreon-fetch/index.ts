@@ -235,7 +235,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Read points_per_cent rate from kvstore
-    let pointsPerEuroCent = 0.1;
+    let pointsPerEuroCent = 1;
     const { data: kvRow } = await supabaseClient
       .from("kvstore")
       .select("value")
@@ -278,7 +278,9 @@ Deno.serve(async (req: Request) => {
       if (existingPoints) {
         const { error: pointsUpdateError } = await supabaseClient
           .from("profile_points")
-          .update({ points_patreon: (existingPoints.points_patreon ?? 0) + points })
+          .update({
+            points_patreon: (existingPoints.points_patreon ?? 0) + points,
+          })
           .eq("profile_id", profile.id);
 
         if (pointsUpdateError) {
@@ -296,10 +298,17 @@ Deno.serve(async (req: Request) => {
 
           const { error: historyError } = await supabaseClient
             .from("profile_point_history")
-            .insert({ profile_id: profile.id, amount: points, source: "patreon" });
+            .insert({
+              profile_id: profile.id,
+              amount: points,
+              source: "patreon",
+            });
 
           if (historyError) {
-            console.error(`Error inserting point history for profile ${profile.id}:`, historyError);
+            console.error(
+              `Error inserting point history for profile ${profile.id}:`,
+              historyError,
+            );
           }
         }
       } else {
@@ -320,10 +329,17 @@ Deno.serve(async (req: Request) => {
 
           const { error: historyError } = await supabaseClient
             .from("profile_point_history")
-            .insert({ profile_id: profile.id, amount: points, source: "patreon" });
+            .insert({
+              profile_id: profile.id,
+              amount: points,
+              source: "patreon",
+            });
 
           if (historyError) {
-            console.error(`Error inserting point history for profile ${profile.id}:`, historyError);
+            console.error(
+              `Error inserting point history for profile ${profile.id}:`,
+              historyError,
+            );
           }
         }
       }

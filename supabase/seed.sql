@@ -1292,7 +1292,7 @@ Give @dolanske a shout since we couldn''t have built this project without his ha
 
 INSERT INTO public.kvstore (key, type, value)
 VALUES
-  ('points_per_cent',    'NUMBER', '0.1'::jsonb),
+  ('points_per_cent',    'NUMBER', '1'::jsonb),
   ('points_per_month_loyalty', 'NUMBER', '0'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 

@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
     const rate: number =
       kvRow?.value != null && typeof kvRow.value === "number" && kvRow.value > 0
         ? kvRow.value
-        : 0.1;
+        : 1;
 
     const points = Math.round(amountCents * rate);
     console.log("Points computed", { rate, points });
