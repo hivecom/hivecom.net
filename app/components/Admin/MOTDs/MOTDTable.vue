@@ -159,11 +159,14 @@ function handleBulkDelete() {
       <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
         <Input
           v-model="search"
-          size="s"
           placeholder="Search messages"
           clearable
           :expand="isBelowMedium"
-        />
+        >
+          <template #start>
+            <Icon name="ph:magnifying-glass" />
+          </template>
+        </Input>
       </Flex>
       <Flex
         gap="s"

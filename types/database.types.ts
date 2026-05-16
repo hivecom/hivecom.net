@@ -1359,6 +1359,7 @@ export type Database = {
         Row: {
           created_at: string
           modified_at: string | null
+          points_birthday: number
           points_donations: number
           points_loyalty: number
           points_patreon: number
@@ -1370,6 +1371,7 @@ export type Database = {
         Insert: {
           created_at?: string
           modified_at?: string | null
+          points_birthday?: number
           points_donations?: number
           points_loyalty?: number
           points_patreon?: number
@@ -1381,6 +1383,7 @@ export type Database = {
         Update: {
           created_at?: string
           modified_at?: string | null
+          points_birthday?: number
           points_donations?: number
           points_loyalty?: number
           points_patreon?: number
@@ -2118,7 +2121,8 @@ export type Database = {
       claim_profile_points: { Args: never; Returns: number }
       contains_html_tags: { Args: { input_text: string }; Returns: boolean }
       cron_metrics_daily_rollup: { Args: never; Returns: undefined }
-      cron_monthly_points_loyalty_award: { Args: never; Returns: undefined }
+      cron_points_birthday_award: { Args: never; Returns: undefined }
+      cron_points_loyalty_award: { Args: never; Returns: undefined }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2940,10 +2944,6 @@ export type Database = {
         | "complaints.delete"
         | "complaints.read"
         | "complaints.update"
-        | "containers.create"
-        | "containers.delete"
-        | "containers.read"
-        | "containers.update"
         | "discussion_topics.create"
         | "discussion_topics.read"
         | "discussion_topics.update"
@@ -2956,10 +2956,6 @@ export type Database = {
         | "events.delete"
         | "events.read"
         | "events.update"
-        | "expenses.create"
-        | "expenses.delete"
-        | "expenses.read"
-        | "expenses.update"
         | "funding.create"
         | "funding.delete"
         | "funding.read"
@@ -2968,10 +2964,6 @@ export type Database = {
         | "games.delete"
         | "games.read"
         | "games.update"
-        | "gameservers.create"
-        | "gameservers.delete"
-        | "gameservers.read"
-        | "gameservers.update"
         | "kvstore.create"
         | "kvstore.read"
         | "kvstore.update"
@@ -2995,10 +2987,6 @@ export type Database = {
         | "roles.delete"
         | "roles.read"
         | "roles.update"
-        | "servers.create"
-        | "servers.delete"
-        | "servers.read"
-        | "servers.update"
         | "users.create"
         | "users.delete"
         | "users.read"
@@ -3009,12 +2997,22 @@ export type Database = {
         | "themes.update"
         | "themes.delete"
         | "profile_points.read"
+        | "network.create"
+        | "network.read"
+        | "network.update"
+        | "network.delete"
       app_role: "admin" | "moderator"
       events_rsvp_scope: "occurrence" | "series"
       events_rsvp_status: "yes" | "no" | "tentative"
       game_query_protocol: "source" | "minecraft"
       kvstore_type: "NUMBER" | "BOOLEAN" | "STRING" | "JSON"
-      point_source: "donation" | "patreon" | "loyalty" | "spent" | "trade"
+      point_source:
+        | "donation"
+        | "patreon"
+        | "loyalty"
+        | "spent"
+        | "trade"
+        | "birthday"
       presence_steam_status:
         | "offline"
         | "online"
@@ -3164,10 +3162,6 @@ export const Constants = {
         "complaints.delete",
         "complaints.read",
         "complaints.update",
-        "containers.create",
-        "containers.delete",
-        "containers.read",
-        "containers.update",
         "discussion_topics.create",
         "discussion_topics.read",
         "discussion_topics.update",
@@ -3180,10 +3174,6 @@ export const Constants = {
         "events.delete",
         "events.read",
         "events.update",
-        "expenses.create",
-        "expenses.delete",
-        "expenses.read",
-        "expenses.update",
         "funding.create",
         "funding.delete",
         "funding.read",
@@ -3192,10 +3182,6 @@ export const Constants = {
         "games.delete",
         "games.read",
         "games.update",
-        "gameservers.create",
-        "gameservers.delete",
-        "gameservers.read",
-        "gameservers.update",
         "kvstore.create",
         "kvstore.read",
         "kvstore.update",
@@ -3219,10 +3205,6 @@ export const Constants = {
         "roles.delete",
         "roles.read",
         "roles.update",
-        "servers.create",
-        "servers.delete",
-        "servers.read",
-        "servers.update",
         "users.create",
         "users.delete",
         "users.read",
@@ -3233,13 +3215,24 @@ export const Constants = {
         "themes.update",
         "themes.delete",
         "profile_points.read",
+        "network.create",
+        "network.read",
+        "network.update",
+        "network.delete",
       ],
       app_role: ["admin", "moderator"],
       events_rsvp_scope: ["occurrence", "series"],
       events_rsvp_status: ["yes", "no", "tentative"],
       game_query_protocol: ["source", "minecraft"],
       kvstore_type: ["NUMBER", "BOOLEAN", "STRING", "JSON"],
-      point_source: ["donation", "patreon", "loyalty", "spent", "trade"],
+      point_source: [
+        "donation",
+        "patreon",
+        "loyalty",
+        "spent",
+        "trade",
+        "birthday",
+      ],
       presence_steam_status: [
         "offline",
         "online",

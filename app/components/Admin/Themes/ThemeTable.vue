@@ -156,6 +156,7 @@ function setPage(p: number) {
 // ─── Detail open/close ────────────────────────────────────────────────────────
 
 async function openThemeDetails(theme: RpcTheme) {
+  selectedTheme.value = null
   showThemeDetails.value = true
   void router.replace({ query: { ...route.query, theme: theme.id } })
 
@@ -315,17 +316,17 @@ onBeforeMount(async () => {
                 <Table.Cell>
                   <Flex gap="xs" y-center>
                     <ThemeIcon :theme="theme as unknown as Theme" size="s" />
-                    <span>{{ theme.name }}</span>
+                    <span class="text-s">{{ theme.name }}</span>
                   </Flex>
                 </Table.Cell>
                 <Table.Cell>
-                  <Badge v-if="theme.is_official" variant="accent" size="s" filled>
+                  <Badge v-if="theme.is_official" variant="accent" size="m" filled>
                     Official
                   </Badge>
                   <span v-else class="text-color-lighter">-</span>
                 </Table.Cell>
                 <Table.Cell>
-                  <Badge v-if="theme.is_unmaintained" variant="warning" size="s" filled>
+                  <Badge v-if="theme.is_unmaintained" variant="warning" size="m" filled>
                     Unmaintained
                   </Badge>
                   <span v-else class="text-color-lighter">-</span>

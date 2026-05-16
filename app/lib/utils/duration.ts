@@ -77,23 +77,22 @@ export function calculateDurationBetweenDates(startDate: string, endDate?: strin
   const end = endDate != null && endDate.length > 0 ? new Date(endDate) : new Date()
 
   const diffTime = Math.abs(end.getTime() - start.getTime())
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
 
-  if (diffDays < 30) {
-    return `${diffDays} days`
-  }
-  else if (diffDays < 365) {
-    const months = Math.floor(diffDays / 30)
-    return `${months} month${months > 1 ? 's' : ''}`
-  }
-  else {
-    const years = Math.floor(diffDays / 365)
-    const remainingMonths = Math.floor((diffDays % 365) / 30)
-    if (remainingMonths > 0) {
-      return `${years}y ${remainingMonths}m`
-    }
-    return `${years} year${years > 1 ? 's' : ''}`
-  }
+  const years = Math.floor(diffDays / 365)
+  const remainingAfterYears = diffDays % 365
+  const months = Math.floor(remainingAfterYears / 30)
+  const days = remainingAfterYears % 30
+
+  const parts: string[] = []
+  if (years > 0)
+    parts.push(`${years} year${years > 1 ? 's' : ''}`)
+  if (months > 0)
+    parts.push(`${months} month${months > 1 ? 's' : ''}`)
+  if (days > 0 || parts.length === 0)
+    parts.push(`${days} day${days !== 1 ? 's' : ''}`)
+
+  return parts.join(', ')
 }
 
 /**

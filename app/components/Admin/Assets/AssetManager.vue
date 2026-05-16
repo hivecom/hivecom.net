@@ -807,12 +807,12 @@ onBeforeMount(fetchAssets)
                   <Flex gap="xs" y-center>
                     <Icon :name="row._original.type === 'folder' ? 'ph:folder-simple' : 'ph:file'" />
                     <Tooltip v-if="flatView" :disabled="!row._original.path">
-                      <span>{{ row._original.name }}</span>
+                      <span class="text-s">{{ row._original.name }}</span>
                       <template #tooltip>
                         <p>{{ row._original.path }}</p>
                       </template>
                     </Tooltip>
-                    <span v-else>{{ row._original.name }}</span>
+                    <span v-else class="text-s">{{ row._original.name }}</span>
                   </Flex>
                 </Table.Cell>
                 <Table.Cell>

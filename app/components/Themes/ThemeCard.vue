@@ -89,11 +89,11 @@ onClickOutside(self, () => {
                                        unmaintained: props.item.is_unmaintained }"
   >
     <!-- Theme preview UI -->
-    <Badge v-if="isActive" size="s" variant="accent" filled>
+    <Badge v-if="isActive" size="s" variant="accent" filled class="theme-card-badge">
       Active
     </Badge>
 
-    <Badge v-else-if="props.item.is_unmaintained" size="s" variant="neutral">
+    <Badge v-else-if="props.item.is_unmaintained" size="s" variant="neutral" class="theme-card-badge">
       Deprecated
     </Badge>
 
@@ -242,7 +242,7 @@ onClickOutside(self, () => {
   flex-grow: 1;
   height: 100%;
 
-  & > .tiny-badge {
+  & > .theme-card-badge {
     position: absolute;
     top: 8px;
     left: 8px;

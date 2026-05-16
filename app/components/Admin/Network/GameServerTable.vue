@@ -395,9 +395,9 @@ function clearFilters() {
             <Table.Cell>
               <Flex v-if="(gameserver._original as QueryGameserver).game" gap="xs" y-center>
                 <GameIcon :game="(gameserver._original as QueryGameserver).game as Tables<'games'>" size="xs" />
-                <span>{{ gameserver.Game }}</span>
+                <span class="text-s">{{ gameserver.Game }}</span>
               </Flex>
-              <span v-else>{{ gameserver.Game }}</span>
+              <span v-else class="text-s">{{ gameserver.Game }}</span>
             </Table.Cell>
             <Table.Cell>
               <RegionIndicator :region="gameserver._original.region" show-label />

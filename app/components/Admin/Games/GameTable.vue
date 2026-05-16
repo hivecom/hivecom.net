@@ -455,7 +455,7 @@ onBeforeMount(async () => {
                 <Table.Cell>
                   <Flex gap="xs" y-center>
                     <GameIcon :game="game as unknown as Tables<'games'>" size="xs" />
-                    <span>{{ game.name }}</span>
+                    <span class="text-s">{{ game.name }}</span>
                   </Flex>
                 </Table.Cell>
                 <Table.Cell>

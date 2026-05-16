@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Card, Flex, Grid, Sheet, Skeleton } from '@dolanske/vui'
+import { Card, Flex, Sheet, Skeleton } from '@dolanske/vui'
 import { ref, watchEffect } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
 import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 
@@ -176,195 +179,199 @@ watchEffect(async () => {
     </template>
 
     <Flex v-if="props.game" column gap="m" expand class="game-details">
-      <Flex column gap="l" expand>
-        <!-- Basic info -->
-        <Card class="card-bg">
-          <Flex column gap="l" expand>
-            <Grid expand :columns="2">
-              <span class="game-details__label">ID:</span>
-              <span>{{ props.game.id }}</span>
-            </Grid>
+      <!-- Basic info -->
+      <DetailTable>
+        <template #header>
+          <Icon name="ph:game-controller" />
+          <h6>Overview</h6>
+        </template>
 
-            <Grid expand :columns="2">
-              <span class="game-details__label">Name:</span>
-              <span>{{ props.game.name }}</span>
-            </Grid>
+        <DetailRow label="ID">
+          <CopyValue :text="String(props.game.id)" link />
+        </DetailRow>
 
-            <Grid v-if="props.game.shorthand" expand :columns="2">
-              <span class="game-details__label">Shorthand:</span>
-              <span>
-                <code>{{ props.game.shorthand }}</code>
-              </span>
-            </Grid>
+        <DetailRow label="Name">
+          <span class="text-s">{{ props.game.name }}</span>
+        </DetailRow>
 
-            <Grid v-if="props.game.steam_id" expand :columns="2" y-center>
-              <span class="game-details__label">Steam ID:</span>
-              <SteamLink :steam-id="props.game.steam_id" show-icon />
-            </Grid>
+        <DetailRow label="Shorthand" :hidden="!props.game.shorthand">
+          <code>{{ props.game.shorthand }}</code>
+        </DetailRow>
 
-            <Grid v-if="props.game.website" expand :columns="2">
-              <span class="game-details__label">Website:</span>
-              <NuxtLink
-                :to="props.game.website"
-                class="game-details__link"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {{ props.game.website }}
-              </NuxtLink>
-            </Grid>
-          </Flex>
-        </Card>
+        <DetailRow label="Steam ID" :hidden="!props.game.steam_id">
+          <SteamLink v-if="props.game.steam_id" :steam-id="props.game.steam_id" show-icon />
+        </DetailRow>
 
-        <!-- Related Game Servers -->
-        <Card separators class="card-bg">
-          <template #header>
+        <DetailRow label="Website" :hidden="!props.game.website">
+          <NuxtLink
+            v-if="props.game.website"
+            :to="props.game.website"
+            class="game-details__link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {{ props.game.website }}
+          </NuxtLink>
+        </DetailRow>
+      </DetailTable>
+
+      <!-- Related Game Servers -->
+      <Card separators class="card-bg" expand>
+        <template #header>
+          <Flex y-center gap="xs">
+            <Icon name="ph:hard-drives" />
             <h6>Game Servers</h6>
-          </template>
+          </Flex>
+        </template>
 
-          <!-- Loading state -->
-          <Flex v-if="gameserversLoading" column gap="s" expand>
-            <Flex v-for="i in 3" :key="i" class="game-details__gameserver-item" expand>
-              <Flex y-center x-between gap="m" expand>
-                <Skeleton :width="120" :height="16" :radius="4" />
-                <Skeleton :width="80" :height="20" :radius="8" />
+        <!-- Loading state -->
+        <Flex v-if="gameserversLoading" column gap="s" expand>
+          <Flex v-for="i in 3" :key="i" class="game-details__gameserver-item" expand>
+            <Flex y-center x-between gap="m" expand>
+              <Skeleton :width="120" :height="16" :radius="4" />
+              <Skeleton :width="80" :height="20" :radius="8" />
+            </Flex>
+          </Flex>
+        </Flex>
+
+        <!-- Error state -->
+        <div v-else-if="gameserversError" class="game-details__placeholder-text game-details__placeholder-text--error">
+          Error: {{ gameserversError }}
+        </div>
+
+        <!-- No gameservers -->
+        <div v-else-if="gameservers.length === 0" class="game-details__placeholder-text">
+          No gameservers associated with this game.
+        </div>
+
+        <!-- Gameservers list -->
+        <Flex v-else column gap="s" expand>
+          <Flex v-for="gameserver in gameservers" :key="gameserver.id" class="game-details__gameserver-item" expand>
+            <Flex y-center x-between gap="m" expand>
+              <NuxtLink
+                :to="`/admin/network?tab=Gameservers&gameserver=${gameserver.id}`"
+                class="game-details__gameserver-name"
+              >
+                {{ gameserver.name }}
+              </NuxtLink>
+
+              <!-- Addresses -->
+              <Flex v-if="gameserver.addresses && gameserver.addresses.length > 0" y-center gap="xs">
+                <span v-for="address in gameserver.addresses.slice(0, 1)" :key="address" class="game-details__gameserver-address">
+                  {{ address }}{{ gameserver.port ? `:${gameserver.port}` : '' }}
+                </span>
+                <span v-if="gameserver.addresses.length > 1" class="game-details__address-count">
+                  +{{ gameserver.addresses.length - 1 }} more
+                </span>
               </Flex>
             </Flex>
           </Flex>
+        </Flex>
+      </Card>
 
-          <!-- Error state -->
-          <div v-else-if="gameserversError" class="game-details__placeholder-text game-details__placeholder-text--error">
-            Error: {{ gameserversError }}
-          </div>
-
-          <!-- No gameservers -->
-          <div v-else-if="gameservers.length === 0" class="game-details__placeholder-text">
-            No gameservers associated with this game.
-          </div>
-
-          <!-- Gameservers list -->
-          <Flex v-else column gap="s" expand>
-            <Flex v-for="gameserver in gameservers" :key="gameserver.id" class="game-details__gameserver-item" expand>
-              <Flex y-center x-between gap="m" expand>
-                <NuxtLink
-                  :to="`/admin/network?tab=Gameservers&gameserver=${gameserver.id}`"
-                  class="game-details__gameserver-name"
-                >
-                  {{ gameserver.name }}
-                </NuxtLink>
-
-                <!-- Addresses -->
-                <Flex v-if="gameserver.addresses && gameserver.addresses.length > 0" y-center gap="xs">
-                  <span v-for="address in gameserver.addresses.slice(0, 1)" :key="address" class="game-details__gameserver-address">
-                    {{ address }}{{ gameserver.port ? `:${gameserver.port}` : '' }}
-                  </span>
-                  <span v-if="gameserver.addresses.length > 1" class="game-details__address-count">
-                    +{{ gameserver.addresses.length - 1 }} more
-                  </span>
-                </Flex>
-              </Flex>
-            </Flex>
-          </Flex>
-        </Card>
-
-        <!-- Activity -->
-        <Card separators class="card-bg">
-          <template #header>
+      <!-- Activity -->
+      <Card separators class="card-bg" expand>
+        <template #header>
+          <Flex y-center gap="xs">
+            <Icon name="ph:chart-bar" />
             <h6>Activity</h6>
+          </Flex>
+        </template>
+        <ChartActivityHistogramControls :series="['usersGameActivity']" :game-id="props.game.id">
+          <template #default="{ period, window, utc, color }">
+            <ChartGameActivity :period :window :utc :color :game-id="props.game.id" compact />
           </template>
-          <ChartActivityHistogramControls :series="['usersGameActivity']" :game-id="props.game.id">
-            <template #default="{ period, window, utc, color }">
-              <ChartGameActivity :period :window :utc :color :game-id="props.game.id" compact />
-            </template>
-          </ChartActivityHistogramControls>
-        </Card>
+        </ChartActivityHistogramControls>
+      </Card>
 
-        <!-- Game Assets -->
-        <Card v-if="props.game.shorthand" separators class="card-bg">
-          <template #header>
+      <!-- Game Assets -->
+      <Card v-if="props.game.shorthand" separators class="card-bg">
+        <template #header>
+          <Flex y-center gap="xs">
+            <Icon name="ph:image" />
             <h6>Game Assets</h6>
-          </template>
+          </Flex>
+        </template>
 
-          <!-- Loading state -->
-          <Flex v-if="assetsLoading" column gap="m" expand>
-            <!-- Game Icon Skeleton -->
-            <Flex column gap="s" expand>
-              <Skeleton :width="32" :height="14" :radius="4" />
-              <Skeleton :width="64" :height="64" :radius="8" />
-            </Flex>
-
-            <!-- Game Cover Skeleton -->
-            <Flex column gap="s" expand>
-              <Skeleton :width="40" :height="14" :radius="4" />
-              <Skeleton :width="133" :height="200" :radius="8" />
-            </Flex>
-
-            <!-- Game Background Skeleton -->
-            <Flex column gap="s" expand>
-              <Skeleton :width="70" :height="14" :radius="4" />
-              <Skeleton :height="108" :radius="8" />
-            </Flex>
+        <!-- Loading state -->
+        <Flex v-if="assetsLoading" column gap="m" expand>
+          <!-- Game Icon Skeleton -->
+          <Flex column gap="s" expand>
+            <Skeleton :width="32" :height="14" :radius="4" />
+            <Skeleton :width="64" :height="64" :radius="8" />
           </Flex>
 
-          <!-- Assets display -->
-          <Flex v-else column gap="m" expand>
-            <!-- Game Icon -->
-            <Flex column gap="s" expand>
-              <span class="game-details__asset-label">Icon</span>
-              <Flex v-if="assetsUrl.icon" y-center>
-                <img
-                  :src="assetsUrl.icon"
-                  alt="Game Icon"
-                  class="game-details__asset-image game-details__asset-image--icon"
-                >
-              </Flex>
-              <span v-else class="game-details__asset-missing">No icon uploaded</span>
-            </Flex>
-
-            <!-- Game Cover -->
-            <Flex column gap="s" expand>
-              <span class="game-details__asset-label">Cover</span>
-              <Flex v-if="assetsUrl.cover" y-center expand>
-                <img
-                  :src="assetsUrl.cover"
-                  alt="Game Cover"
-                  class="game-details__asset-image game-details__asset-image--cover"
-                >
-              </Flex>
-              <span v-else class="game-details__asset-missing">No cover uploaded</span>
-            </Flex>
-
-            <!-- Game Background -->
-            <Flex column gap="s" expand>
-              <span class="game-details__asset-label">Background</span>
-              <Flex v-if="assetsUrl.background" y-center>
-                <img
-                  :src="assetsUrl.background"
-                  alt="Game Background"
-                  class="game-details__asset-image game-details__asset-image--background"
-                >
-              </Flex>
-              <span v-else class="game-details__asset-missing">No background uploaded</span>
-            </Flex>
+          <!-- Game Cover Skeleton -->
+          <Flex column gap="s" expand>
+            <Skeleton :width="40" :height="14" :radius="4" />
+            <Skeleton :width="133" :height="200" :radius="8" />
           </Flex>
-        </Card>
 
-        <!-- No shorthand notice -->
-        <Card v-else-if="props.game" class="card-bg">
-          <Flex y-center gap="s" class="game-details__placeholder-text">
-            <Icon name="ph:info" />
-            <span>Game assets are not available because this game has no shorthand assigned.</span>
+          <!-- Game Background Skeleton -->
+          <Flex column gap="s" expand>
+            <Skeleton :width="70" :height="14" :radius="4" />
+            <Skeleton :height="108" :radius="8" />
           </Flex>
-        </Card>
+        </Flex>
 
-        <!-- Metadata -->
-        <Metadata
-          :created-at="props.game.created_at"
-          :created-by="props.game.created_by"
-          :modified-at="props.game.modified_at"
-          :modified-by="props.game.modified_by"
-        />
-      </Flex>
+        <!-- Assets display -->
+        <Flex v-else column gap="m" expand>
+          <!-- Game Icon -->
+          <Flex column gap="s" expand>
+            <span class="game-details__asset-label">Icon</span>
+            <Flex v-if="assetsUrl.icon" y-center>
+              <img
+                :src="assetsUrl.icon"
+                alt="Game Icon"
+                class="game-details__asset-image game-details__asset-image--icon"
+              >
+            </Flex>
+            <span v-else class="game-details__asset-missing">No icon uploaded</span>
+          </Flex>
+
+          <!-- Game Cover -->
+          <Flex column gap="s" expand>
+            <span class="game-details__asset-label">Cover</span>
+            <Flex v-if="assetsUrl.cover" y-center expand>
+              <img
+                :src="assetsUrl.cover"
+                alt="Game Cover"
+                class="game-details__asset-image game-details__asset-image--cover"
+              >
+            </Flex>
+            <span v-else class="game-details__asset-missing">No cover uploaded</span>
+          </Flex>
+
+          <!-- Game Background -->
+          <Flex column gap="s" expand>
+            <span class="game-details__asset-label">Background</span>
+            <Flex v-if="assetsUrl.background" y-center>
+              <img
+                :src="assetsUrl.background"
+                alt="Game Background"
+                class="game-details__asset-image game-details__asset-image--background"
+              >
+            </Flex>
+            <span v-else class="game-details__asset-missing">No background uploaded</span>
+          </Flex>
+        </Flex>
+      </Card>
+
+      <!-- No shorthand notice -->
+      <Card v-else-if="props.game" class="card-bg">
+        <Flex y-center gap="s" class="game-details__placeholder-text">
+          <Icon name="ph:info" />
+          <span>Game assets are not available because this game has no shorthand assigned.</span>
+        </Flex>
+      </Card>
+
+      <!-- Metadata -->
+      <Metadata
+        :created-at="props.game.created_at"
+        :created-by="props.game.created_by"
+        :modified-at="props.game.modified_at"
+        :modified-by="props.game.modified_by"
+      />
     </Flex>
   </Sheet>
 </template>
@@ -372,11 +379,6 @@ watchEffect(async () => {
 <style lang="scss" scoped>
 .game-details {
   padding-bottom: var(--space);
-
-  &__label {
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text-light);
-  }
 
   &__link {
     color: var(--color-accent);

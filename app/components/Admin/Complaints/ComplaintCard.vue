@@ -109,7 +109,7 @@ function handleAcknowledge(event: Event) {
 
 <template>
   <Card
-    class="complaint-card"
+    class="complaint-card card-bg"
     :class="`complaint-card--${status}`"
     expand
     separators

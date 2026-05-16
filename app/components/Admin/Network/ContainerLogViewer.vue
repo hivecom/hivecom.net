@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Alert, Button, ButtonGroup, Flex, Input, Select, Skeleton, Tooltip } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import Convert from 'ansi-to-html'
+import ContainerLogViewerControls from './ContainerLogViewerControls.vue'
 
 interface SelectOption {
   label: string
@@ -51,11 +52,13 @@ const ansiConverter = new Convert({
   escapeXML: true,
 })
 
+const fullscreen = ref(false)
+
 const logsContainerRef = ref<HTMLElement | null>(null)
+const logsContainerModalRef = ref<HTMLElement | null>(null)
 const autoScrollEnabled = ref(true)
 
-function handleLogsScroll() {
-  const el = logsContainerRef.value
+function handleLogsScroll(el: HTMLElement | null) {
   if (el == null)
     return
 
@@ -77,7 +80,8 @@ async function scrollLogsToBottom() {
   await nextTick()
   await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
 
-  const el = logsContainerRef.value
+  const activeRef = fullscreen.value ? logsContainerModalRef : logsContainerRef
+  const el = activeRef.value
   if (el == null)
     return
 
@@ -155,11 +159,11 @@ watch(
   { immediate: true, flush: 'post' },
 )
 
-// Scroll to bottom when the log container element mounts
+// Scroll to bottom when the log container element mounts (card or modal)
 watch(
-  () => logsContainerRef.value,
-  (el) => {
-    if (el != null)
+  [() => logsContainerRef.value, () => logsContainerModalRef.value],
+  ([el, modalEl]) => {
+    if (el != null || modalEl != null)
       void scrollLogsToBottom()
   },
   { flush: 'post' },
@@ -182,116 +186,134 @@ watch(
 </script>
 
 <template>
-  <Flex column gap="s" expand>
-    <Flex x-between y-center class="logs-header" expand>
-      <h4>Logs</h4>
-      <ButtonGroup :gap="1">
-        <Tooltip>
-          <Button
-            square
-            size="s"
-            :variant="useCustomDateRange ? 'accent' : 'gray'"
-            :disabled="!props.logs || props.logsLoading"
-            aria-label="Toggle custom date range"
-            @click="useCustomDateRange = !useCustomDateRange"
-          >
-            <Icon name="ph:calendar-dots" />
-          </Button>
-          <template #tooltip>
-            <p>Custom date range</p>
-          </template>
-        </Tooltip>
+  <Card separators class="card-bg" expand>
+    <template #header>
+      <Flex x-between y-center expand>
+        <Flex y-center gap="xs">
+          <Icon name="ph:terminal-window" />
+          <h6>Logs</h6>
+        </Flex>
         <Tooltip>
           <Button
             square
             size="s"
             variant="gray"
-            :disabled="!props.logs || props.logsLoading"
-            aria-label="Copy logs to clipboard"
-            @click="copyLogsToClipboard"
+            aria-label="Open logs in fullscreen"
+            @click="fullscreen = true"
           >
-            <Icon name="ph:copy" />
+            <Icon name="ph:arrows-out" />
           </Button>
           <template #tooltip>
-            <p>Copy logs</p>
+            <p>Fullscreen</p>
           </template>
         </Tooltip>
-        <Tooltip>
-          <Button
-            square
-            size="s"
-            variant="gray"
-            :disabled="!props.logs || props.logsLoading"
-            aria-label="Refresh logs"
-            @click="handleRefreshLogs"
-          >
-            <Icon name="ph:arrow-clockwise" />
-          </Button>
-          <template #tooltip>
-            <p>Refresh logs</p>
-          </template>
-        </Tooltip>
-      </ButtonGroup>
-    </Flex>
+      </Flex>
+    </template>
 
-    <!-- Time / date filter row -->
-    <Flex gap="s" y-center wrap>
-      <template v-if="!useCustomDateRange">
-        <Select
-          v-model="logTimePeriod"
-          label="Log time period"
-          :options="logTimePeriods"
-          size="s"
-          class="time-filter"
-        />
-      </template>
-      <template v-else>
-        <Input v-model="fromDate" type="date" size="s" label="From date" />
-        <Input v-model="toDate" type="date" size="s" label="To date (optional)" />
-      </template>
-      <Input
-        v-model="logTail"
-        label="Tail lines"
-        type="number"
-        :min="1"
-        :max="10000"
-        size="s"
-        class="tail-filter"
-        placeholder="Tail lines"
+    <Flex column gap="s" expand>
+      <ContainerLogViewerControls
+        v-model:use-custom-date-range="useCustomDateRange"
+        v-model:log-time-period="logTimePeriod"
+        v-model:log-tail="logTail"
+        v-model:from-date="fromDate"
+        v-model:to-date="toDate"
+        :log-time-periods="logTimePeriods"
+        :logs="props.logs"
+        :logs-loading="props.logsLoading"
+        @refresh="handleRefreshLogs"
+        @copy="copyLogsToClipboard"
+      />
+
+      <Alert v-if="logsError" variant="danger">
+        {{ logsError }}
+      </Alert>
+
+      <Alert v-else-if="!containerRunning" variant="info" class="w-100">
+        Container is not running. Logs are unavailable.
+      </Alert>
+
+      <Skeleton v-else-if="logsLoading" :height="200" />
+
+      <div
+        v-if="!logsLoading && !logsError && containerRunning"
+        ref="logsContainerRef"
+        class="container-logs"
+        @scroll="(e) => handleLogsScroll(e.currentTarget as HTMLElement)"
+        v-html="formattedLogs"
       />
     </Flex>
+  </Card>
 
-    <Alert v-if="logsError" variant="danger">
-      {{ logsError }}
-    </Alert>
+  <Modal
+    :open="fullscreen"
+    size="screen"
+    :card="{ headerSeparator: true }"
+    @close="fullscreen = false"
+  >
+    <template #header>
+      <Flex x-between y-center expand>
+        <Flex y-center gap="xs">
+          <Icon name="ph:terminal-window" />
+          <h6>Logs</h6>
+        </Flex>
+      </Flex>
+    </template>
 
-    <Alert v-else-if="!containerRunning" variant="info" class="w-100">
-      Container is not running. Logs are unavailable.
-    </Alert>
+    <Flex column gap="s" expand class="modal-logs-body">
+      <div class="modal-logs-controls">
+        <ContainerLogViewerControls
+          v-model:use-custom-date-range="useCustomDateRange"
+          v-model:log-time-period="logTimePeriod"
+          v-model:log-tail="logTail"
+          v-model:from-date="fromDate"
+          v-model:to-date="toDate"
+          :log-time-periods="logTimePeriods"
+          :logs="props.logs"
+          :logs-loading="props.logsLoading"
+          @refresh="handleRefreshLogs"
+          @copy="copyLogsToClipboard"
+        />
+      </div>
 
-    <Skeleton v-else-if="logsLoading" :height="200" />
+      <Alert v-if="logsError" variant="danger">
+        {{ logsError }}
+      </Alert>
 
-    <div
-      v-if="!logsLoading && !logsError && containerRunning"
-      ref="logsContainerRef"
-      class="container-logs"
-      @scroll="handleLogsScroll"
-      v-html="formattedLogs"
-    />
-  </Flex>
+      <Alert v-else-if="!containerRunning" variant="info" class="w-100">
+        Container is not running. Logs are unavailable.
+      </Alert>
+
+      <Skeleton v-else-if="logsLoading" :height="200" />
+
+      <div
+        v-if="!logsLoading && !logsError && containerRunning"
+        ref="logsContainerModalRef"
+        class="container-logs container-logs--fullscreen"
+        @scroll="(e) => handleLogsScroll(e.currentTarget as HTMLElement)"
+        v-html="formattedLogs"
+      />
+    </Flex>
+  </Modal>
 </template>
 
 <style scoped lang="scss">
-.logs-header {
-  margin-bottom: var(--space-s);
+:deep(.vui-modal .vui-card-content) {
+  overflow: hidden;
 }
 
-.time-filter {
-  width: 192px;
-}
+.modal-logs-body {
+  height: 100%;
+  overflow: initial;
 
-.tail-filter {
-  width: 90px;
+  .modal-logs-controls {
+    flex-shrink: 0;
+    position: sticky;
+    top: -16px;
+    left: 0;
+    width: 100%;
+    background-color: var(--color-bg);
+    padding: var(--space-s) 0;
+  }
 }
 
 .container-logs {
@@ -301,11 +323,20 @@ watch(
   white-space: pre;
   color: #fff;
   font-family: monospace;
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-xs);
   line-height: 1.4;
   max-height: 64vh;
   overflow-y: auto;
   overflow-x: scroll;
+
+  :deep(span) {
+    font-size: inherit;
+  }
+
+  &--fullscreen {
+    max-height: unset;
+    flex: 1;
+  }
   background-color: black;
   padding: var(--space-s);
   margin: 0;

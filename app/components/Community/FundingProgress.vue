@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Card, Flex, Progress, Skeleton } from '@dolanske/vui'
+import { Button, Card, Flex, Progress, Skeleton, Tooltip } from '@dolanske/vui'
 
 import GrowthBadge from '@/components/Shared/GrowthBadge.vue'
 import { useDataExpenses } from '@/composables/useDataExpenses'
@@ -65,6 +65,19 @@ const currentMonthLabel = computed(() => {
   })
 })
 
+// Absolute funding change vs previous month in whole euros (null if not enough data)
+const growthValue = computed(() => {
+  if (allFunding.value.length < 2)
+    return null
+  const curr = allFunding.value[0]
+  const prev = allFunding.value[1]
+  if (!curr || !prev)
+    return null
+  const current = (curr.patreon_month_amount_cents ?? 0) + (curr.donation_month_amount_cents ?? 0)
+  const previous = (prev.patreon_month_amount_cents ?? 0) + (prev.donation_month_amount_cents ?? 0)
+  return Math.round((current - previous) / 100)
+})
+
 // Growth vs previous month as percentage (null if not enough data)
 const growthPct = computed(() => {
   if (allFunding.value.length < 2)
@@ -122,11 +135,13 @@ function scrollToSupport() {
       <!-- Main content -->
       <Flex v-else column expand>
         <Flex y-center x-between class="mb-s" expand>
-          <Flex y-center gap="s" wrap>
+          <Flex gap="s" wrap>
             <h2 class="text-bold text-xxxl">
               {{ currentMonthLabel }}
             </h2>
-            <GrowthBadge :growth="growthPct" :size="isBelowSmall ? 'm' : 'l'" />
+            <Tooltip text="Month-over-month change">
+              <GrowthBadge :growth="growthPct" :value="growthValue" prefix="€" :size="isBelowSmall ? 'm' : 'l'" show-icon />
+            </Tooltip>
           </Flex>
           <Flex y-center gap="s">
             <strong class="text-bold text-xxxl">{{ formatCurrency(fundingProgress.current) }}</strong>

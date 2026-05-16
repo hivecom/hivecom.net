@@ -2,6 +2,8 @@
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -31,6 +33,7 @@ function handleDelete(theme: Tables<'themes'>) {
 
 <template>
   <Sheet
+    :key="props.theme?.id"
     :open="!!props.theme && isOpen"
     position="right"
     :card="{ separators: true }"
@@ -62,52 +65,55 @@ function handleDelete(theme: Tables<'themes'>) {
 
     <Flex v-if="props.theme" column gap="m" class="theme-details">
       <!-- Basic info -->
-      <Card class="card-bg">
-        <Flex column gap="l" expand>
-          <Grid class="theme-details__item" expand :columns="2">
-            <span class="text-color-light text-bold">ID:</span>
-            <CopyValue :text="props.theme.id" />
-          </Grid>
+      <DetailTable>
+        <template #header>
+          <Icon name="ph:paint-brush" />
+          <h6>Overview</h6>
+        </template>
 
-          <Grid class="theme-details__item" expand :columns="2">
-            <span class="text-color-light text-bold">Description:</span>
-            <span v-if="props.theme.description">{{ props.theme.description }}</span>
-            <span v-else class="text-color-lighter">No description</span>
-          </Grid>
+        <DetailRow label="ID">
+          <CopyValue :text="props.theme.id" link />
+        </DetailRow>
 
-          <Grid class="theme-details__item" expand :columns="2">
-            <span class="text-color-light text-bold">Created by:</span>
-            <UserLink v-if="props.theme.created_by" :user-id="props.theme.created_by" class="text-m" show-avatar />
-            <span v-else class="text-color-lighter">Unknown</span>
-          </Grid>
+        <DetailRow label="Created by">
+          <UserLink v-if="props.theme.created_by" :user-id="props.theme.created_by" class="text-s" show-avatar />
+          <span v-else class="text-color-lighter">Unknown</span>
+        </DetailRow>
 
-          <Grid class="theme-details__item" expand :columns="2">
-            <span class="text-color-light text-bold">Created:</span>
-            <TimestampDate :date="props.theme.created_at" size="s" class="text-color" />
-          </Grid>
+        <DetailRow label="Created">
+          <TimestampDate :date="props.theme.created_at" size="s" class="text-color" />
+        </DetailRow>
 
-          <Grid class="theme-details__item" expand :columns="2">
-            <span class="text-color-light text-bold">Flags:</span>
-            <Flex gap="xs" wrap>
-              <Badge v-if="props.theme.is_official" variant="accent" filled size="s">
-                Official
-              </Badge>
-              <Badge v-if="props.theme.is_unmaintained" variant="warning" filled size="s">
-                Unmaintained
-              </Badge>
-              <span v-if="!props.theme.is_official && !props.theme.is_unmaintained" class="text-color-lighter">
-                None
-              </span>
-            </Flex>
-          </Grid>
+        <DetailRow label="Flags" wrap>
+          <Badge v-if="props.theme.is_official" variant="accent" filled size="s">
+            Official
+          </Badge>
+          <Badge v-if="props.theme.is_unmaintained" variant="warning" filled size="s">
+            Unmaintained
+          </Badge>
+          <span v-if="!props.theme.is_official && !props.theme.is_unmaintained" class="text-s text-color-lighter">
+            None
+          </span>
+        </DetailRow>
 
-          <Grid class="theme-details__item" expand :columns="2">
-            <span class="text-color-light text-bold">Forked from:</span>
-            <span v-if="props.theme.forked_from" class="text-xs text-color-light">{{ props.theme.forked_from }}</span>
-            <span v-else class="text-color-lighter">Original</span>
-          </Grid>
-        </Flex>
-      </Card>
+        <DetailRow label="Forked from">
+          <span v-if="props.theme.forked_from" class="text-s text-color-light">{{ props.theme.forked_from }}</span>
+          <span v-else class="text-color-lighter text-s">Original</span>
+        </DetailRow>
+      </DetailTable>
+
+      <!-- Description -->
+      <DetailTable v-if="props.theme.description">
+        <template #header>
+          <Icon name="ph:text-align-left" />
+          <h6>Description</h6>
+        </template>
+        <div class="theme-details__description">
+          <p class="text-s">
+            {{ props.theme.description }}
+          </p>
+        </div>
+      </DetailTable>
 
       <!-- Scale settings -->
       <Card separators class="card-bg">
@@ -115,24 +121,20 @@ function handleDelete(theme: Tables<'themes'>) {
           <h6>Scale Settings</h6>
         </template>
 
-        <Flex column gap="m" expand>
-          <Grid class="theme-details__item" expand :columns="2">
-            <span class="text-color-light text-bold">Spacing:</span>
-            <span>{{ props.theme.spacing }}%</span>
-          </Grid>
-          <Grid class="theme-details__item" expand :columns="2">
-            <span class="text-color-light text-bold">Rounding:</span>
-            <span>{{ props.theme.rounding }}%</span>
-          </Grid>
-          <Grid class="theme-details__item" expand :columns="2">
-            <span class="text-color-light text-bold">Transitions:</span>
-            <span>{{ props.theme.transitions }}%</span>
-          </Grid>
-          <Grid class="theme-details__item" expand :columns="2">
-            <span class="text-color-light text-bold">Widening:</span>
-            <span>{{ props.theme.widening }}%</span>
-          </Grid>
-        </Flex>
+        <DetailTable bare>
+          <DetailRow label="Spacing">
+            <span class="text-s">{{ props.theme.spacing }}%</span>
+          </DetailRow>
+          <DetailRow label="Rounding">
+            <span class="text-s">{{ props.theme.rounding }}%</span>
+          </DetailRow>
+          <DetailRow label="Transitions">
+            <span class="text-s">{{ props.theme.transitions }}%</span>
+          </DetailRow>
+          <DetailRow label="Widening">
+            <span class="text-s">{{ props.theme.widening }}%</span>
+          </DetailRow>
+        </DetailTable>
       </Card>
 
       <!-- Color swatches - dark palette -->
@@ -258,8 +260,8 @@ function handleDelete(theme: Tables<'themes'>) {
 .theme-details {
   padding-bottom: var(--space);
 
-  &__item {
-    align-items: start;
+  &__description {
+    padding: var(--space-m);
   }
 }
 

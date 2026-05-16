@@ -541,7 +541,7 @@ defineExpose({ refresh: fetchUsers })
 
                 <!-- Role -->
                 <Table.Cell class="role-cell">
-                  <RoleIndicator :role="user.role" size="s" />
+                  <RoleIndicator :role="user.role" size="m" />
                 </Table.Cell>
 
                 <!-- Status -->

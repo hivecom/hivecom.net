@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Flex, pushToast, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { DISCUSSION_KEYS } from '@/components/Discussions/Discussion.keys'
@@ -507,6 +507,15 @@ watch(isPageTitleVisible, () => {
 }, { once: true })
 
 const page = useTemplateRef('page')
+const discussionRef = useTemplateRef<InstanceType<typeof Discussion>>('discussion')
+const scrollingToReply = ref(false)
+
+watch(
+  () => discussionRef.value?.navigatingToComment,
+  (val) => {
+    scrollingToReply.value = val ?? false
+  },
+)
 
 // If post is NSFW and user has disabled NSFW content, go back to the previous
 // page. This is to prevent users from accidentally seeing NSFW content if they
@@ -806,12 +815,19 @@ function revealNsfw() {
 
         <Discussion
           :id="String(post.id)"
+          ref="discussion"
           :key="String(post.id)"
           type="discussion"
           model="forum"
           placeholder="Write your reply to this thread..."
           @reply-submitted="handleReplySubmitted"
         />
+
+        <Transition name="fade">
+          <div v-if="scrollingToReply" class="forum-post__scroll-overlay">
+            <Spinner />
+          </div>
+        </Transition>
       <!-- Removing this in place of the new timeline.
       <div v-show="contentHeight > 1600" class="forum-post__fast-travel">
         <Tooltip>
@@ -1016,5 +1032,18 @@ function revealNsfw() {
       font-size: var(--font-size-s);
     }
   }
+}
+
+.forum-post__scroll-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: color-mix(in srgb, var(--color-bg) 75%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: all;
 }
 </style>

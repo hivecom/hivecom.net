@@ -41,6 +41,10 @@ const statusDescriptions = {
 .user-status__text {
   color: var(--color-text-lighter);
 
+  &.active {
+    color: var(--color-text);
+  }
+
   &.banned {
     color: var(--color-text-red);
   }

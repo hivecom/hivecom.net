@@ -572,24 +572,24 @@ onBeforeMount(async () => {
                   <NuxtLink
                     v-if="getContextLink(discussion)"
                     :to="getContextLink(discussion)!"
-                    class="text-m text-color-accent"
+                    class="text-s text-color-accent"
                     @click.stop
                   >
                     {{ getContextLabel(discussion) }}
                   </NuxtLink>
-                  <span v-else :class="{ 'text-color-red': getContextType(discussion) === 'other' }">
+                  <span v-else class="text-s" :class="{ 'text-color-red': getContextType(discussion) === 'other' }">
                     {{ getContextLabel(discussion) }}
                   </span>
                 </Table.Cell>
 
                 <!-- Replies -->
                 <Table.Cell>
-                  <CountDisplay :value="discussion.reply_count ?? 0" />
+                  <CountDisplay :value="discussion.reply_count ?? 0" class="text-s" />
                 </Table.Cell>
 
                 <!-- Views -->
                 <Table.Cell>
-                  <CountDisplay :value="discussion.view_count ?? 0" />
+                  <CountDisplay :value="discussion.view_count ?? 0" class="text-s" />
                 </Table.Cell>
 
                 <!-- Last Active -->

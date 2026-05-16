@@ -30,10 +30,15 @@ defineOgImage('Default', {
     <section class="page-title">
       <Flex y-center x-between gap="s" expand>
         <h1>Voice Servers</h1>
-        <Tooltip placement="bottom" text="Excludes music bots">
-          <span>
+        <Tooltip placement="bottom">
+          <Flex>
             <OnlineBadge :count="totalOnline" label="Online" singular="online" clickable @click="activityModalOpen = true" />
-          </span>
+          </Flex>
+          <template #tooltip>
+            <p class="text-s">
+              Excludes music bots
+            </p>
+          </template>
         </Tooltip>
       </Flex>
       <p>View live channels and connect with the community on TeamSpeak.</p>

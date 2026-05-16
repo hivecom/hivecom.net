@@ -6,13 +6,21 @@ defineProps<{
   hideIcon?: boolean
   wrap?: boolean
   danger?: boolean
+  link?: boolean
 }>()
 </script>
 
 <template>
   <div class="copy-value" :class="{ 'copy-value--wrap': wrap }" @click.stop>
     <CopyClipboard :text="text" confirm>
-      <Button variant="gray" plain size="s" class="copy-value-button" :class="{ 'copy-value-button--danger': danger }">
+      <Button
+        :variant="link ? 'link' : 'gray'"
+        :plain="!link"
+        size="s"
+        class="copy-value-button"
+        :class="{ 'copy-value-button--danger': danger,
+                  'copy-value-button--link': link }"
+      >
         <template v-if="!hideIcon" #start>
           <Icon name="ph:copy" />
         </template>
@@ -56,6 +64,10 @@ defineProps<{
 
   &--danger span {
     color: var(--color-text-red);
+  }
+
+  &--link {
+    padding-inline: 0;
   }
 }
 </style>

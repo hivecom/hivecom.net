@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { StorageAsset } from '@/lib/storageAssets'
-import { Button, Card, CopyClipboard, Flex, Grid, Input, Sheet, Spinner } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Flex, Input, Sheet, Spinner } from '@dolanske/vui'
 
 import { computed, ref, watch } from 'vue'
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
 import MarkdownLightbox from '@/components/Shared/MarkdownLightbox.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -151,34 +153,27 @@ function requestRename() {
         <MarkdownLightbox v-if="lightboxMarkdown" :markdown="lightboxMarkdown" :container="previewContainer" />
       </Flex>
 
-      <Card class="card-bg">
-        <Flex column gap="l" expand>
-          <Grid class="asset-details__item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Path:</span>
-            <CopyValue :text="props.asset.path" />
-          </Grid>
-
-          <Grid class="asset-details__item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Size:</span>
-            <span><code>{{ formatBytes(props.asset.size) }}</code></span>
-          </Grid>
-
-          <Grid class="asset-details__item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Content Type:</span>
-            <span><code>{{ props.asset.mimeType ?? 'Unknown' }}</code></span>
-          </Grid>
-
-          <Grid class="asset-details__item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Created:</span>
-            <TimestampDate :date="props.asset.created_at ?? null" />
-          </Grid>
-
-          <Grid class="asset-details__item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Updated:</span>
-            <TimestampDate :date="props.asset.updated_at ?? null" />
-          </Grid>
-        </Flex>
-      </Card>
+      <DetailTable>
+        <template #header>
+          <Icon name="ph:info" />
+          <h6>Overview</h6>
+        </template>
+        <DetailRow label="Path">
+          <CopyValue :text="props.asset.path" link />
+        </DetailRow>
+        <DetailRow label="Size">
+          <code>{{ formatBytes(props.asset.size) }}</code>
+        </DetailRow>
+        <DetailRow label="Content Type">
+          <code>{{ props.asset.mimeType ?? 'Unknown' }}</code>
+        </DetailRow>
+        <DetailRow label="Created">
+          <TimestampDate :date="props.asset.created_at ?? null" />
+        </DetailRow>
+        <DetailRow label="Updated">
+          <TimestampDate :date="props.asset.updated_at ?? null" />
+        </DetailRow>
+      </DetailTable>
 
       <Card v-if="assetUrl" class="asset-details__clipboard card-bg">
         <Flex column gap="l" expand>

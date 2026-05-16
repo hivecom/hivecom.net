@@ -167,11 +167,14 @@ onBeforeMount(fetchEntries)
       <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
         <Input
           v-model="search"
-          size="s"
           placeholder="Search key or value"
           clearable
           :expand="isBelowMedium"
-        />
+        >
+          <template #start>
+            <Icon name="ph:magnifying-glass" />
+          </template>
+        </Input>
       </Flex>
       <Flex
         gap="s"
@@ -230,7 +233,7 @@ onBeforeMount(fetchEntries)
               </Table.Cell>
               <Table.Cell>
                 <Flex gap="xs" y-center>
-                  <span class="text-color-light">{{ row.Value }}</span>
+                  <span class="text-color-light text-s">{{ row.Value }}</span>
                 </Flex>
               </Table.Cell>
               <Table.Cell v-if="canManageResource" @click.stop>

@@ -183,7 +183,7 @@ function getGrowthFromPrevious(currentAmount: number, index: number) {
                   <span class="text-s text-bold">{{ formatCurrency(funding['Monthly Total']) }}</span>
                 </Table.Cell>
                 <Table.Cell>
-                  <GrowthBadge :growth="funding.Growth" :value="funding['Growth Value']" prefix="€" />
+                  <GrowthBadge :growth="funding.Growth" :value="funding['Growth Value']" prefix="€" show-icon />
                   <span v-if="funding.Growth === null" class="text-xs text-color-light">-</span>
                 </Table.Cell>
                 <Table.Cell>

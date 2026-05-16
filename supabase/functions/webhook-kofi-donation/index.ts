@@ -89,9 +89,8 @@ Deno.serve(async (req: Request) => {
 
     // Current month date YYYY-MM-01
     const now = new Date();
-    const monthDate = `${now.getFullYear()}-${
-      String(now.getMonth() + 1).padStart(2, "0")
-    }-01`;
+    const monthDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")
+      }-01`;
 
     // Fetch existing funding_history row
     const { data: existingMonth, error: monthFetchError } = await supabase
@@ -253,18 +252,35 @@ Deno.serve(async (req: Request) => {
 
     // Best-effort: notify Discord
     const amountFormatted = `€${(amountCents / 100).toFixed(2)}`;
+
+    // Fetch updated month total for the notification
+    const { data: updatedMonth } = await supabase
+      .from("funding_history")
+      .select("donation_month_amount_cents")
+      .eq("month", monthDate)
+      .maybeSingle();
+
+    const monthTotal = updatedMonth?.donation_month_amount_cents ?? amountCents;
+    const monthTotalFormatted = `€${(monthTotal / 100).toFixed(2)}`;
+    const monthLabel = new Date(monthDate).toLocaleString("en-GB", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+
+    const emailField = payload.email
+      ? (userMatched ? payload.email : `${payload.email} (no user matched)`)
+      : "No email provided";
+
     await sendDiscordNotification({
+      content: "💛 **Ko-fi Donation Received**",
       embeds: [{
         title: "Ko-fi Donation Received",
         color: 0x29ABE0,
         fields: [
           { name: "Amount", value: amountFormatted, inline: true },
-          {
-            name: "Points Awarded",
-            value: userMatched ? `${points}` : "Pending (no matched user)",
-            inline: true,
-          },
-          ...(userId ? [{ name: "User ID", value: userId, inline: true }] : []),
+          { name: `Month-to-Date Total (${monthLabel})`, value: monthTotalFormatted, inline: true },
+          { name: "Email", value: emailField, inline: true },
         ],
         timestamp: new Date().toISOString(),
       }],

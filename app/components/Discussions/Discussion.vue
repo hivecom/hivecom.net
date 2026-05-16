@@ -330,7 +330,10 @@ function handleShowThreadRepliesUpdate(val: boolean) {
 // We also watch route.query.comment reactively so that notification clicks
 // while already on this page (which only change the query param) still
 // trigger the deep-link navigation.
+const navigatingToComment = ref(false)
+
 async function navigateToLinkedComment(commentId: string) {
+  navigatingToComment.value = true
   // If discussion isn't loaded yet, wait for it first.
   if (discussion.value == null) {
     await new Promise<void>((resolve) => {
@@ -352,6 +355,10 @@ async function navigateToLinkedComment(commentId: string) {
     showOfftopic.value = true
     hasManuallySwitched.value = true
   }
+  // Wait for the scroll to actually land before clearing the loading state.
+  await nextTick()
+  await waitForLayoutStability()
+  navigatingToComment.value = false
 }
 
 watch(
@@ -1054,6 +1061,8 @@ function isCommentVisible(comment: Comment): boolean {
 function isNodeVisible(node: ThreadNode): boolean {
   return isCommentVisible(node.comment)
 }
+
+defineExpose({ navigatingToComment })
 </script>
 
 <template>

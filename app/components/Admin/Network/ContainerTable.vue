@@ -660,7 +660,7 @@ onBeforeMount(fetchContainers)
               </Table.Cell>
               <Table.Cell>
                 <TimestampDate v-if="container.Started" :date="container.Started" />
-                <span v-else class="text-color-lighter text-xs">Not started</span>
+                <span v-else class="text-color-lighter text-s">Not started</span>
               </Table.Cell>
               <Table.Cell>
                 <ElapsedTimeIndicator :date="container['Last Report']" :active-label="null" />

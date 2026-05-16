@@ -53,8 +53,8 @@ const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() =
 const totalCount = ref(0)
 const steamRichPresenceCount = ref<number | null>(null)
 
-const sortCol = ref<'name' | 'created_at'>('name')
-const sortDir = ref<'asc' | 'desc'>('asc')
+const sortCol = ref<'name' | 'created_at'>('created_at')
+const sortDir = ref<'asc' | 'desc'>('desc')
 
 const paginationState = computed(() => paginate(totalCount.value, page.value, adminTablePerPage.value))
 const shouldShowPagination = computed(() => totalCount.value > adminTablePerPage.value)
@@ -310,7 +310,7 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
                 @click="openModal(game)"
               >
                 <Table.Cell>
-                  <span>{{ game.name }}</span>
+                  <span class="text-s">{{ game.name }}</span>
                 </Table.Cell>
                 <Table.Cell @click.stop>
                   <SteamLink :steam-id="game.steam_id" size="small" />

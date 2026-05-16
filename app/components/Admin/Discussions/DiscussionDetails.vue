@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { FlatSortColumn, StorageAsset } from '@/lib/storageAssets'
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, Card, Dropdown, DropdownTitle, Flex, Grid, paginate, Pagination, pushToast, searchString, Select, Sheet } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Dropdown, DropdownTitle, Flex, Input, paginate, Pagination, pushToast, searchString, Select, Sheet } from '@dolanske/vui'
 import AssetGrid from '@/components/Admin/Assets/AssetGrid.vue'
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
 import DiscussionEditSheet from '@/components/Admin/Discussions/DiscussionEditSheet.vue'
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
@@ -440,77 +443,52 @@ async function reassignToTopic(topicId: string) {
     </template>
 
     <Flex v-if="props.discussion" column gap="m" class="discussion-detail">
-      <Card class="card-bg">
-        <Flex column gap="l">
-          <Grid class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">UUID:</span>
-            <CopyClipboard :text="props.discussion.id">
-              <code class="discussion-code">{{ props.discussion.id }}</code>
-            </CopyClipboard>
-          </Grid>
-
-          <Grid class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Title:</span>
-            <span>{{ props.discussion.title || 'Untitled discussion' }}</span>
-          </Grid>
-
-          <Grid v-if="props.discussion.description" class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Description:</span>
-            <span>{{ props.discussion.description }}</span>
-          </Grid>
-
-          <Grid class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Status:</span>
-            <Flex gap="xs" y-center wrap>
-              <Badge :variant="props.discussion.is_locked ? 'danger' : 'success'">
-                {{ props.discussion.is_locked ? 'Locked' : 'Open' }}
-              </Badge>
-              <Badge v-if="props.discussion.is_sticky && props.discussion.discussion_topic_id" variant="accent">
-                Pinned
-              </Badge>
-              <Badge v-if="props.discussion.is_archived" variant="warning">
-                Archived
-              </Badge>
-            </Flex>
-          </Grid>
-
-          <Grid class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Replies:</span>
-            <CountDisplay :value="props.discussion.reply_count" />
-          </Grid>
-
-          <Grid class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Views:</span>
-            <CountDisplay :value="props.discussion.view_count" />
-          </Grid>
-
-          <Grid class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Slug:</span>
-            <CopyClipboard v-if="props.discussion.slug" :text="props.discussion.slug">
-              <code class="discussion-code">{{ props.discussion.slug }}</code>
-            </CopyClipboard>
-            <span v-else class="text-color-lighter">-</span>
-          </Grid>
-
-          <Grid class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Created:</span>
-            <TimestampDate size="s" :date="props.discussion.created_at" />
-          </Grid>
-
-          <Grid class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Last Updated:</span>
-            <TimestampDate size="s" :date="lastUpdatedAt" />
-          </Grid>
-
-          <Grid v-if="lastActivityUserId" class="detail-item" expand columns="1fr 2fr">
-            <span class="text-color-light text-bold">Last activity:</span>
-            <Flex y-center gap="xs">
-              <TimestampDate size="s" :date="lastActivityAt" />
-              <UserLink :user-id="lastActivityUserId" placeholder="Unknown" class="text-m" show-avatar />
-            </Flex>
-          </Grid>
-        </Flex>
-      </Card>
+      <DetailTable>
+        <template #header>
+          <Icon name="ph:info" />
+          <h6>Overview</h6>
+        </template>
+        <DetailRow label="UUID">
+          <CopyValue :text="props.discussion.id" link />
+        </DetailRow>
+        <DetailRow label="Title">
+          <span class="text-s">{{ props.discussion.title || 'Untitled discussion' }}</span>
+        </DetailRow>
+        <DetailRow label="Description" :hidden="!props.discussion.description">
+          <span class="text-s">{{ props.discussion.description }}</span>
+        </DetailRow>
+        <DetailRow label="Status">
+          <Badge :variant="props.discussion.is_locked ? 'danger' : 'success'">
+            {{ props.discussion.is_locked ? 'Locked' : 'Open' }}
+          </Badge>
+          <Badge v-if="props.discussion.is_sticky && props.discussion.discussion_topic_id" variant="accent">
+            Pinned
+          </Badge>
+          <Badge v-if="props.discussion.is_archived" variant="warning">
+            Archived
+          </Badge>
+        </DetailRow>
+        <DetailRow label="Replies">
+          <CountDisplay :value="props.discussion.reply_count" class="text-s" />
+        </DetailRow>
+        <DetailRow label="Views">
+          <CountDisplay :value="props.discussion.view_count" class="text-s" />
+        </DetailRow>
+        <DetailRow label="Slug">
+          <CopyValue v-if="props.discussion.slug" :text="props.discussion.slug" link />
+          <span v-else class="text-color-lighter text-s">-</span>
+        </DetailRow>
+        <DetailRow label="Created">
+          <TimestampDate size="s" :date="props.discussion.created_at" />
+        </DetailRow>
+        <DetailRow label="Last Updated">
+          <TimestampDate size="s" :date="lastUpdatedAt" />
+        </DetailRow>
+        <DetailRow label="Last activity" :hidden="!lastActivityUserId">
+          <TimestampDate size="s" :date="lastActivityAt" />
+          <UserLink :user-id="lastActivityUserId" placeholder="Unknown" class="text-s" show-avatar />
+        </DetailRow>
+      </DetailTable>
 
       <Card class="card-bg">
         <Flex column gap="s">
@@ -690,15 +668,6 @@ async function reassignToTopic(topicId: string) {
     opacity: 0.4;
     pointer-events: none;
   }
-}
-
-.discussion-code {
-  font-family: monospace;
-  font-size: var(--font-size-s);
-  background-color: var(--color-bg-lowered);
-  padding: 2px 6px;
-  border-radius: var(--border-radius-xs);
-  word-break: break-all;
 }
 
 .reassign-topic-button {

@@ -14,7 +14,7 @@ import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataTeamSpeakSnapshot } from '@/composables/useDataTeamSpeakSnapshot'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryEmoji } from '@/lib/utils/country'
-
+import { formatDuration as formatDurationMs } from '@/lib/utils/duration'
 import TimestampDate from './TimestampDate.vue'
 
 const props = withDefaults(defineProps<Props>(), {
@@ -591,20 +591,7 @@ const errorMessage = computed(() => {
   return 'Unable to load TeamSpeak status.'
 })
 
-function formatDuration(seconds?: number): string {
-  if (seconds === undefined || !Number.isFinite(seconds))
-    return '-'
-
-  const days = Math.floor(seconds / 86_400)
-  const hours = Math.floor((seconds % 86_400) / 3_600)
-  const minutes = Math.floor((seconds % 3_600) / 60)
-
-  if (days > 0)
-    return `${days}d ${hours}h`
-  if (hours > 0)
-    return `${hours}h ${minutes}m`
-  return `${minutes}m`
-}
+// Local formatDuration removed - use formatDurationMs from utility
 
 function flattenChannels(tree: TeamSpeakNormalizedChannel[]): TeamSpeakNormalizedChannel[] {
   const rows: TeamSpeakNormalizedChannel[] = []
@@ -810,7 +797,7 @@ function _openRawSnapshot() {
     <template #header>
       <!-- Mobile layout -->
       <template v-if="isMobile">
-        <Flex expand gap="s" x-between y-center class="mb-s">
+        <Flex expand gap="s" x-between y-center>
           <Flex y-center gap="s">
             <div v-if="serversSorted.length <= 1 || props.serverId">
               <strong class="text-xl">
@@ -827,31 +814,30 @@ function _openRawSnapshot() {
               size="s"
             />
           </Flex>
-          <Button
-            v-if="teamspeakConnectUrl"
-            size="s"
-            variant="accent"
-            :href="teamspeakConnectUrl"
-            aria-label="Connect to TeamSpeak"
-          >
-            Connect
-          </Button>
-        <!-- </Flex> -->
-        </Flex>
-
-        <Flex x-end>
-          <ChartActivityHistogram
-            v-if="selectedServer && histogramData.length"
-            :data="histogramData"
-            :height="24"
-            gap="xxs"
-            clickable
-            @click="onHistogramClick"
-          >
-            <template #tooltip="{ value, index }">
-              <p>{{ histogramTooltipLabel(index, value) }}</p>
-            </template>
-          </ChartActivityHistogram>
+          <Flex gap="xs" y-center x-end>
+            <ChartActivityHistogram
+              v-if="selectedServer && histogramData.length"
+              :data="histogramData"
+              :height="24"
+              gap="xxs"
+              clickable
+              @click="onHistogramClick"
+            >
+              <template #tooltip="{ value, index }">
+                <p>{{ histogramTooltipLabel(index, value) }}</p>
+              </template>
+            </ChartActivityHistogram>
+            <Button
+              v-if="teamspeakConnectUrl"
+              size="s"
+              variant="accent"
+              square
+              :href="teamspeakConnectUrl"
+              aria-label="Connect to TeamSpeak"
+            >
+              <Icon name="mdi:phone-outgoing" size="16" />
+            </Button>
+          </Flex>
         </Flex>
       </template>
 
@@ -880,34 +866,25 @@ function _openRawSnapshot() {
                 <Icon name="ph:info" :size="16" />
               </Badge>
             </template>
-            <Grid gap="xs" columns="96px 1fr" class="ts-viewer__info-tooltip">
+            <Grid gap="xs" columns="auto 1fr" class="ts-viewer__info-tooltip">
               <template v-if="selectedServer.serverInfo?.platform">
-                <strong>Platform</strong>
-                <p>
-                  {{ selectedServer.serverInfo?.platform }}
-                </p>
+                <span class="text-xs text-color-light">Platform</span>
+                <Flex gap="xxs" y-center>
+                  <Icon name="ph:desktop" size="12" />
+                  <span class="text-xs">{{ selectedServer.serverInfo?.platform }}</span>
+                </Flex>
               </template>
               <template v-if="selectedServer.serverInfo?.version">
-                <strong>Version</strong>
-                <p>
-                  {{ selectedServer.serverInfo?.version }}
-                </p>
+                <span class="text-xs text-color-light">Version</span>
+                <span class="text-xs">{{ selectedServer.serverInfo?.version }}</span>
               </template>
               <template v-if="selectedServer.serverInfo?.uptimeSeconds">
-                <strong>Uptime</strong>
-                <p>
-                  {{ formatDuration(selectedServer.serverInfo?.uptimeSeconds) }}
-                </p>
+                <span class="text-xs text-color-light">Uptime</span>
+                <span class="text-xs">{{ formatDurationMs((selectedServer.serverInfo?.uptimeSeconds ?? 0) * 1000) || '-' }}</span>
               </template>
               <template v-if="selectedServer.serverInfo?.uptimeSeconds">
-                <strong>Last update</strong>
-                <p>
-                  <TimestampDate
-                    :date="lastUpdated"
-                    size="xxs"
-                    :tooltip="true"
-                  />
-                </p>
+                <span class="text-xs text-color-light">Last update</span>
+                <TimestampDate :date="lastUpdated" size="xxs" :tooltip="true" />
               </template>
             </Grid>
           </PopoutHover>
@@ -1174,17 +1151,7 @@ function _openRawSnapshot() {
 }
 
 .ts-viewer__info-tooltip {
-  max-width: 292px;
-  padding: var(--space-m);
-
-  span,
-  p,
-  strong {
-    font-size: var(--font-size-s) !important;
-  }
-
-  strong {
-    color: var(--color-text-lighter);
-  }
+  padding: var(--space-s);
+  min-width: 180px;
 }
 </style>

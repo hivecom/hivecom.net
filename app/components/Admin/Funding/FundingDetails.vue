@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Flex, Sheet } from '@dolanske/vui'
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import { formatCurrency } from '@/lib/utils/currency'
 import { formatMonth } from '@/lib/utils/date'
 
@@ -15,8 +17,6 @@ const isOpen = defineModel<boolean>('isOpen')
 function handleClose() {
   isOpen.value = false
 }
-
-// Format month helper
 </script>
 
 <template>
@@ -34,85 +34,56 @@ function handleClose() {
     </template>
 
     <Flex v-if="props.funding" column gap="m" class="funding-details">
-      <Flex column gap="l" expand>
-        <!-- Basic info -->
-        <Card class="card-bg">
-          <Flex column gap="l" expand>
-            <Grid class="funding-details__item" expand :columns="2">
-              <span class="funding-details__label">Month:</span>
-              <span class="text-bold">{{ formatMonth(props.funding.month) }}</span>
-            </Grid>
+      <!-- Overview -->
+      <DetailTable>
+        <template #header>
+          <Icon name="ph:currency-dollar" />
+          <h6>Overview</h6>
+        </template>
+        <DetailRow label="Month">
+          <span class="text-s text-bold">{{ formatMonth(props.funding.month) }}</span>
+        </DetailRow>
+        <DetailRow label="Total Monthly">
+          <span class="text-s text-bold">{{ formatCurrency((props.funding.patreon_month_amount_cents || 0) + (props.funding.donation_month_amount_cents || 0)) }}</span>
+        </DetailRow>
+        <DetailRow label="Total Lifetime">
+          <span class="text-s text-bold">{{ formatCurrency((props.funding.patreon_lifetime_amount_cents || 0) + (props.funding.donation_lifetime_amount_cents || 0)) }}</span>
+        </DetailRow>
+      </DetailTable>
 
-            <Grid class="funding-details__item" expand :columns="2">
-              <span class="funding-details__label">Total Monthly:</span>
-              <span class="text-bold">{{ formatCurrency((props.funding.patreon_month_amount_cents || 0) + (props.funding.donation_month_amount_cents || 0)) }}</span>
-            </Grid>
+      <!-- Patreon Funding -->
+      <DetailTable>
+        <template #header>
+          <Icon name="ph:patreon-logo" size="1.6rem" class="color-accent" />
+          <h6>Patreon Funding</h6>
+        </template>
+        <DetailRow label="Monthly Amount">
+          <span class="text-s text-bold">{{ formatCurrency(props.funding.patreon_month_amount_cents || 0) }}</span>
+        </DetailRow>
+        <DetailRow label="Lifetime Total">
+          <span class="text-s text-bold">{{ formatCurrency(props.funding.patreon_lifetime_amount_cents || 0) }}</span>
+        </DetailRow>
+        <DetailRow label="Patron Count">
+          <span class="text-s">{{ props.funding.patreon_count || 0 }}</span>
+        </DetailRow>
+      </DetailTable>
 
-            <Grid class="funding-details__item" expand :columns="2">
-              <span class="funding-details__label">Total Lifetime:</span>
-              <span class="text-bold">{{ formatCurrency((props.funding.patreon_lifetime_amount_cents || 0) + (props.funding.donation_lifetime_amount_cents || 0)) }}</span>
-            </Grid>
-          </Flex>
-        </Card>
-
-        <!-- Patreon Funding -->
-        <Card separators class="card-bg">
-          <template #header>
-            <Flex y-center gap="s">
-              <Icon name="ph:patreon-logo" size="1.6rem" class="color-accent" />
-              <h6>Patreon Funding</h6>
-            </Flex>
-          </template>
-
-          <Flex column gap="l" expand>
-            <Grid class="funding-details__item" expand :columns="2">
-              <span class="funding-details__label">Monthly Amount:</span>
-              <span class="text-bold">{{ formatCurrency(props.funding.patreon_month_amount_cents || 0) }}</span>
-            </Grid>
-
-            <Grid class="funding-details__item" expand :columns="2">
-              <span class="funding-details__label">Lifetime Total:</span>
-              <span class="text-bold">{{ formatCurrency(props.funding.patreon_lifetime_amount_cents || 0) }}</span>
-            </Grid>
-
-            <Grid class="funding-details__item" expand :columns="2">
-              <span class="funding-details__label">Patron Count:</span>
-              <Flex y-center gap="s">
-                <span>{{ props.funding.patreon_count || 0 }}</span>
-              </Flex>
-            </Grid>
-          </Flex>
-        </Card>
-
-        <!-- Single Donations -->
-        <Card separators class="card-bg">
-          <template #header>
-            <Flex y-center gap="s">
-              <Icon name="ph:coin-fill" size="1.6rem" class="color-accent" />
-              <h6>Single Donations</h6>
-            </Flex>
-          </template>
-
-          <Flex column gap="l" expand>
-            <Grid class="funding-details__item" expand :columns="2">
-              <span class="funding-details__label">Monthly Amount:</span>
-              <span class="text-bold">{{ formatCurrency(props.funding.donation_month_amount_cents || 0) }}</span>
-            </Grid>
-
-            <Grid class="funding-details__item" expand :columns="2">
-              <span class="funding-details__label">Lifetime Total:</span>
-              <span class="text-bold">{{ formatCurrency(props.funding.donation_lifetime_amount_cents || 0) }}</span>
-            </Grid>
-
-            <Grid class="funding-details__item" expand :columns="2">
-              <span class="funding-details__label">Donation Count:</span>
-              <Flex y-center gap="s">
-                <span>{{ props.funding.donation_count || 0 }}</span>
-              </Flex>
-            </Grid>
-          </Flex>
-        </Card>
-      </Flex>
+      <!-- Single Donations -->
+      <DetailTable>
+        <template #header>
+          <Icon name="ph:coin-fill" size="1.6rem" class="color-accent" />
+          <h6>Single Donations</h6>
+        </template>
+        <DetailRow label="Monthly Amount">
+          <span class="text-s text-bold">{{ formatCurrency(props.funding.donation_month_amount_cents || 0) }}</span>
+        </DetailRow>
+        <DetailRow label="Lifetime Total">
+          <span class="text-s text-bold">{{ formatCurrency(props.funding.donation_lifetime_amount_cents || 0) }}</span>
+        </DetailRow>
+        <DetailRow label="Donation Count">
+          <span class="text-s">{{ props.funding.donation_count || 0 }}</span>
+        </DetailRow>
+      </DetailTable>
     </Flex>
   </Sheet>
 </template>
@@ -120,15 +91,5 @@ function handleClose() {
 <style lang="scss" scoped>
 .funding-details {
   padding-bottom: var(--space);
-
-  &__label {
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text-light);
-  }
-
-  &__metadata-by {
-    font-size: var(--font-size-l);
-    color: var(--color-text-light);
-  }
 }
 </style>

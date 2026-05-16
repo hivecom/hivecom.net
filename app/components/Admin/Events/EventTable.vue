@@ -513,9 +513,7 @@ onBeforeMount(async () => {
                   <span v-else>-</span>
                 </Table.Cell>
                 <Table.Cell>
-                  <Badge v-if="event.recurrence_rule" variant="neutral">
-                    {{ event.recurrence_rule }}
-                  </Badge>
+                  <code v-if="event.recurrence_rule" class="text-s">{{ event.recurrence_rule }}</code>
                   <span v-else>-</span>
                 </Table.Cell>
                 <Table.Cell>
