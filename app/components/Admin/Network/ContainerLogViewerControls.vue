@@ -28,7 +28,7 @@ let tailDebounceTimer: number | null = null
 watch(logTail, () => {
   if (tailDebounceTimer)
     clearTimeout(tailDebounceTimer)
-  tailDebounceTimer = setTimeout(emit, 600, 'refresh')
+  tailDebounceTimer = setTimeout(emit, 600, 'refresh') as unknown as number
 })
 const fromDate = defineModel<string>('fromDate', { default: '' })
 const toDate = defineModel<string>('toDate', { default: '' })
