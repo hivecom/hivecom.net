@@ -64,7 +64,7 @@
     "luxon": "^3.7.2",
     "marked": "^18.0.3",
     "monaco-editor": "^0.55.1",
-    "nuxt": "^4.4.4",
+    "nuxt": "^4.4.5",
     "nuxt-og-image": "^6.5.0",
     "nuxt-toc": "^2.7.2",
     "pinia": "^3.0.4",
