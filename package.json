@@ -80,7 +80,7 @@
     "vue-router": "^5.0.6"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^8.2.0",
+    "@antfu/eslint-config": "^9.0.0",
     "@olrtg/emmet-language-server": "^2.8.0",
     "@types/three": "^0.184.1",
     "@webgpu/types": "^0.1.69",
