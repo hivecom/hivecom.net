@@ -867,7 +867,7 @@ Drop in whenever, leave whenever. See you there!
   ', 180, true, 'FREQ=MONTHLY');
 
 -- Mark the test user as having RSVP'd to the past event
-INSERT INTO public.events_rsvps(user_id, event_id, rsvp, created_at, created_by)
+INSERT INTO public.event_rsvps(user_id, event_id, rsvp, created_at, created_by)
 SELECT
   '018d224c-0e49-4b6d-b57a-87299605c2b3',
   id,

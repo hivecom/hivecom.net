@@ -136,7 +136,7 @@ async function fetchRSVPs(force = false) {
     }
     else {
       const { data, error: fetchError } = await supabase
-        .from('events_rsvps')
+        .from('event_rsvps')
         .select('user_id, rsvp')
         .eq('event_id', eventId)
         .order('created_at', { ascending: true })

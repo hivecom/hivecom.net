@@ -30,7 +30,7 @@ export function useBadgePartyAnimalCount(
     ...rest,
     fetchCount: async (supabase, profileId) => {
       const { count, error } = await supabase
-        .from('events_rsvps')
+        .from('event_rsvps')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', profileId)
         .eq('rsvp', 'yes')

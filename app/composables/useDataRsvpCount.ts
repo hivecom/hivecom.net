@@ -72,7 +72,7 @@ export function useDataRsvpCount(eventSource: MaybeRefOrGetter<Tables<'events'> 
       }
       else {
         const { count, error: fetchError } = await supabase
-          .from('events_rsvps')
+          .from('event_rsvps')
           .select('*', { count: 'exact', head: true })
           .eq('event_id', id)
           .eq('rsvp', 'yes')

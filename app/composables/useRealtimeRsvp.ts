@@ -5,7 +5,7 @@ import { useRsvpBus } from '@/composables/useRsvpBus'
 type RSVPStatus = Database['public']['Enums']['events_rsvp_status']
 
 /**
- * Subscribes to Supabase realtime changes on `events_rsvps` for a specific event.
+ * Subscribes to Supabase realtime changes on `event_rsvps` for a specific event.
  *
  * Bridges cross-browser RSVP changes into the existing `useRsvpBus` so all
  * components that already listen to that bus (EventRSVPCount, EventRSVPModal,
@@ -34,13 +34,13 @@ export function useRealtimeRsvp(eventId: MaybeRef<number | null | undefined>) {
     }
 
     channel = supabase
-      .channel(`events_rsvps:event_id=eq.${id}`)
+      .channel(`event_rsvps:event_id=eq.${id}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'events_rsvps',
+          table: 'event_rsvps',
           filter: `event_id=eq.${id}`,
         },
         (payload) => {
@@ -53,7 +53,7 @@ export function useRealtimeRsvp(eventId: MaybeRef<number | null | undefined>) {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'events_rsvps',
+          table: 'event_rsvps',
           filter: `event_id=eq.${id}`,
         },
         (payload) => {
@@ -66,7 +66,7 @@ export function useRealtimeRsvp(eventId: MaybeRef<number | null | undefined>) {
         {
           event: 'DELETE',
           schema: 'public',
-          table: 'events_rsvps',
+          table: 'event_rsvps',
           filter: `event_id=eq.${id}`,
         },
         (payload) => {

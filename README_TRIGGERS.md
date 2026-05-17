@@ -115,7 +115,7 @@ Most tables use the shared `update_audit_fields()` function. The discussion tabl
 | `discussion_topics`        | `update_discussion_topics_audit_fields`        |
 | `discussions`              | `update_discussions_audit_fields`              |
 | `events`                   | `update_events_audit_fields`                   |
-| `events_rsvps`             | `update_events_rsvps_audit_fields`             |
+| `event_rsvps`              | `update_event_rsvps_audit_fields`              |
 | `funding_expenses`         | `update_expenses_audit_fields`                 |
 | `games`                    | `update_games_audit_fields`                    |
 | `kvstore`                  | `update_kvstore_audit_fields`                  |

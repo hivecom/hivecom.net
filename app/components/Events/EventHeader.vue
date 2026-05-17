@@ -108,9 +108,9 @@ async function fetchRSVPCounts(force = false) {
 
   try {
     const [yesResult, tentativeResult, noResult] = await Promise.all([
-      supabase.from('events_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'yes'),
-      supabase.from('events_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'tentative'),
-      supabase.from('events_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'no'),
+      supabase.from('event_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'yes'),
+      supabase.from('event_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'tentative'),
+      supabase.from('event_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'no'),
     ])
 
     if (yesResult.error)
