@@ -333,12 +333,32 @@ function handleShowThreadRepliesUpdate(val: boolean) {
 const navigatingToComment = ref(false)
 
 async function navigateToLinkedComment(commentId: string) {
-  navigatingToComment.value = true
+  // If the target element is already in the DOM, the scroll will be instant -
+  // no need to dim the page.
+  const alreadyInDom = document.querySelector(`#comment-${commentId}`) != null
+  if (!alreadyInDom)
+    navigatingToComment.value = true
   // If discussion isn't loaded yet, wait for it first.
   if (discussion.value == null) {
     await new Promise<void>((resolve) => {
       const unwatch = watch(discussion, (disc) => {
         if (disc == null)
+          return
+        unwatch()
+        resolve()
+      })
+    })
+  }
+
+  // Wait for the initial page load to finish before navigating. Without this,
+  // navigateToComment races with loadFirstPage: discussion.value is set before
+  // loadFirstPage completes, so navigateToComment may fetch and populate
+  // comments.value, then loadFirstPage's applyPage(reset: true) overwrites it,
+  // leaving the target comment absent from the DOM and the scroll never firing.
+  if (loading.value) {
+    await new Promise<void>((resolve) => {
+      const unwatch = watch(loading, (isLoading) => {
+        if (isLoading)
           return
         unwatch()
         resolve()

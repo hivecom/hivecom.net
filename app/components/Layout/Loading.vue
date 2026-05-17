@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Flex } from '@dolanske/vui'
 import SharedLogo from '@/components/Shared/Logo.vue'
 import { useInitialUserPreferences } from '@/composables/useInitialUserPreferences'
 import { useSessionReady } from '@/composables/useSessionReady'
@@ -40,9 +41,10 @@ onMounted(async () => {
 
 <template>
   <!-- Loading overlay that fades out -->
-  <div v-if="isLoading" class="initial-loading" :class="{ 'fade-out': isFadingOut }">
+  <Flex v-if="isLoading" class="initial-loading" :class="{ 'fade-out': isFadingOut }">
     <SharedLogo class="logo-animation" />
-  </div>
+    <div class="pulse-bar" />
+  </Flex>
 </template>
 
 <style lang="scss">
@@ -72,6 +74,23 @@ onMounted(async () => {
   .logo-animation {
     animation: fadeUp 0.4s ease-out;
   }
+
+  .pulse-bar {
+    position: fixed;
+    top: 0px;
+    width: 100%;
+    height: 4px;
+    border-radius: var(--border-radius-l);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--color-accent) 40%,
+      var(--color-text-lighter) 60%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: gradientPulse 3s ease-in-out infinite;
+  }
 }
 
 // Force the full logo (icon + text) on the loading screen even on mobile.
@@ -91,6 +110,21 @@ onMounted(async () => {
   }
   100% {
     opacity: 1;
+  }
+}
+
+@keyframes gradientPulse {
+  0% {
+    background-position: 200% 0;
+    opacity: 0.4;
+  }
+  50% {
+    background-position: 0% 0;
+    opacity: 1;
+  }
+  100% {
+    background-position: -200% 0;
+    opacity: 0.4;
   }
 }
 </style>

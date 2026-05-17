@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { DISCUSSION_KEYS } from '@/components/Discussions/Discussion.keys'
@@ -508,14 +508,63 @@ watch(isPageTitleVisible, () => {
 
 const page = useTemplateRef('page')
 const discussionRef = useTemplateRef<InstanceType<typeof Discussion>>('discussion')
-const scrollingToReply = ref(false)
+
+// Start dimmed immediately if there's a comment deep-link in the URL so the
+// overlay is up before the page content even renders, preventing the flash of
+// unloaded content before Discussion.vue picks up the navigation.
+const scrollingToReply = ref(
+  import.meta.client
+    && typeof route.query.comment === 'string'
+    && route.query.comment.length > 0,
+)
+
+function preventScroll(e: Event) {
+  e.preventDefault()
+  e.stopImmediatePropagation()
+}
+
+// If we started dimmed, lock scroll right away.
+if (scrollingToReply.value) {
+  window.addEventListener('wheel', preventScroll, { passive: false })
+  window.addEventListener('touchmove', preventScroll, { passive: false })
+}
 
 watch(
   () => discussionRef.value?.navigatingToComment,
   (val) => {
     scrollingToReply.value = val ?? false
+    // Lock scroll immediately when navigation starts. It stays locked until
+    // the overlay's fade-out transition fully completes (handled by @after-leave)
+    // so programmatic scrollToIdWhenStable isn't aborted by a stray event.
+    if (!import.meta.client)
+      return
+    if (val) {
+      window.addEventListener('wheel', preventScroll, { passive: false })
+      window.addEventListener('touchmove', preventScroll, { passive: false })
+    }
   },
 )
+
+// Safety net: if Discussion mounted with navigatingToComment already false
+// (e.g. target was already in the DOM so the dim was never needed), clear
+// the pre-set overlay immediately.
+watch(discussionRef, (ref) => {
+  if (ref && !ref.navigatingToComment)
+    scrollingToReply.value = false
+})
+
+function handleScrollOverlayLeave() {
+  // intentional - called from template @after-leave
+  window.removeEventListener('wheel', preventScroll)
+  window.removeEventListener('touchmove', preventScroll)
+}
+
+onUnmounted(() => {
+  if (import.meta.client) {
+    window.removeEventListener('wheel', preventScroll)
+    window.removeEventListener('touchmove', preventScroll)
+  }
+})
 
 // If post is NSFW and user has disabled NSFW content, go back to the previous
 // page. This is to prevent users from accidentally seeing NSFW content if they
@@ -823,7 +872,7 @@ function revealNsfw() {
           @reply-submitted="handleReplySubmitted"
         />
 
-        <Transition name="fade">
+        <Transition name="fade" @after-leave="handleScrollOverlayLeave">
           <div v-if="scrollingToReply" class="forum-post__scroll-overlay">
             <Spinner />
           </div>
@@ -1036,8 +1085,11 @@ function revealNsfw() {
 
 .forum-post__scroll-overlay {
   position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
+  top: 64px; // matches navbar height used elsewhere on this page
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
