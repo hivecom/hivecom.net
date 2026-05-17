@@ -458,7 +458,7 @@ watch(user, () => {
       </section>
 
       <!-- Recent Projects -->
-      <section v-if="recentProjects.length > 0" class="mt-xl">
+      <section v-if="recentProjects.length > 0 || loading" class="mt-xl">
         <Flex column gap="l">
           <Flex :y-end="!isMobile" :x-between="!isMobile" :column="isMobile" expand>
             <Flex gap="xxs" column>
@@ -480,12 +480,17 @@ watch(user, () => {
           </Flex>
 
           <Grid :columns="3" gap="m" class="projects-grid" expand>
-            <ProjectCard
-              v-for="project in recentProjects"
-              :key="project.id"
-              :project="project"
-              compact
-            />
+            <template v-if="loading">
+              <Skeleton v-for="i in 3" :key="i" :height="260" :radius="8" />
+            </template>
+            <template v-else>
+              <ProjectCard
+                v-for="project in recentProjects"
+                :key="project.id"
+                :project="project"
+                compact
+              />
+            </template>
           </Grid>
         </Flex>
       </section>

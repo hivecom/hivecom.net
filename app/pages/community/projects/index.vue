@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Database } from '@/types/database.types'
 import { Alert, Button, Flex, Grid, Input, Select, Skeleton } from '@dolanske/vui'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
@@ -14,12 +15,32 @@ interface SelectOption {
 const isBelowExtraSmall = useBreakpoint('<xs')
 
 // Reactive data
-const { projects, loading, error } = useDataProjects()
-const isBelowM = useBreakpoint('<m')
+const { projects, error } = useDataProjects()
+const supabase = useSupabaseClient<Database>()
+const { data: ssrProjects, status } = await useAsyncData('projects:all', async () => {
+  const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
+  return data ?? []
+})
+if (ssrProjects.value && ssrProjects.value.length > 0 && projects.value.length === 0) {
+  projects.value = ssrProjects.value
+}
+
+const isLoading = computed(() => status.value === 'pending' || (status.value === 'success' && projects.value.length === 0 && (ssrProjects.value?.length ?? 0) > 0))
+const isAtLeastM = useBreakpoint('>=m')
 
 // Filters
 const search = ref('')
 const tagFilter = ref<SelectOption[]>([])
+
+type SortOption = 'title-asc' | 'title-desc' | 'date-asc' | 'date-desc'
+const sortOptions: SelectOption[] = [
+  { label: 'Name (A-Z)', value: 'title-asc' },
+  { label: 'Name (Z-A)', value: 'title-desc' },
+  { label: 'Newest first', value: 'date-desc' },
+  { label: 'Oldest first', value: 'date-asc' },
+]
+const sortSelection = ref<SelectOption[]>([sortOptions[0]!])
+const currentSort = computed<SortOption>(() => (sortSelection.value[0]?.value as SortOption) ?? 'title-asc')
 
 // Compute unique tag options from all projects
 const tagOptions = computed<SelectOption[]>(() => {
@@ -58,13 +79,22 @@ const filteredProjects = computed(() => {
       : true
 
     return matchesSearch && matchesTags
-  }).sort((a, b) => a.title.localeCompare(b.title))
+  }).sort((a, b) => {
+    switch (currentSort.value) {
+      case 'title-desc': return b.title.localeCompare(a.title)
+      case 'date-desc': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      case 'date-asc': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      case 'title-asc':
+      default: return a.title.localeCompare(b.title)
+    }
+  })
 })
 
 // Clear filters
 function clearFilters() {
   search.value = ''
   tagFilter.value = []
+  sortSelection.value = [sortOptions[0]!]
 }
 
 // SEO and page metadata
@@ -97,12 +127,12 @@ defineOgImage('Default', {
       </template>
 
       <!-- Loading skeletons -->
-      <Flex v-if="loading" column gap="l" class="projects__loading" expand>
+      <Flex v-if="isLoading" column gap="l" class="projects__loading" expand>
         <Flex gap="s" x-start class="projects__filters" y-center wrap expand>
           <Skeleton width="100%" :height="36" :radius="8" />
           <Skeleton width="100%" :height="36" :radius="8" />
         </Flex>
-        <Grid :columns="isBelowM ? 1 : 2" column gap="m" class="projects__grid--loading" expand>
+        <Grid :columns="isAtLeastM ? 2 : 1" column gap="m" class="projects__grid--loading" expand>
           <template v-for="i in 6" :key="i">
             <Flex column gap="s" class="project-card-skeleton" expand>
               <Skeleton :height="260" :radius="8" />
@@ -111,7 +141,7 @@ defineOgImage('Default', {
         </Grid>
       </Flex>
 
-      <template v-if="!loading && !error">
+      <template v-if="!isLoading && !error">
         <!-- Filters -->
         <Flex gap="s" x-start class="projects__filters" y-center wrap expand>
           <Input v-model="search" placeholder="Search projects" :expand="isBelowExtraSmall">
@@ -128,8 +158,14 @@ defineOgImage('Default', {
             :single="false"
             :expand="isBelowExtraSmall"
           />
+          <Select
+            v-model="sortSelection"
+            :options="sortOptions"
+            :single="true"
+            :expand="isBelowExtraSmall"
+          />
           <Button
-            v-if="search || (tagFilter && tagFilter.length > 0)"
+            v-if="search || (tagFilter && tagFilter.length > 0) || currentSort !== 'title-asc'"
             plain
             outline
             :expand="isBelowExtraSmall"
@@ -142,7 +178,7 @@ defineOgImage('Default', {
         <!-- Content -->
         <template v-if="filteredProjects.length > 0">
           <!-- All projects at full width -->
-          <Grid :columns="isBelowM ? 1 : 2" column gap="m" class="projects__section" expand>
+          <Grid :columns="isAtLeastM ? 2 : 1" column gap="m" class="projects__section" expand>
             <ProjectCard
               v-for="(project) in filteredProjects"
               :key="project.id"

@@ -25,20 +25,22 @@ function handleClick() {
   navigateTo(`/community/projects/${props.project.id}`)
 }
 
-const { bannerUrl: projectBannerUrl } = useDataProjectBanner(computed(() => props.project.id))
+const { bannerUrl: projectBannerUrl, loading: bannerLoading } = useDataProjectBanner(computed(() => props.project.id))
 
 const placeholderBanner = computed(() => getPlaceholderBannerProject(props.project.id))
 
 const hasBannerImage = computed(() => !!projectBannerUrl.value)
 
+// Don't apply placeholder transform until we know no real image exists (fetch settled)
+const usePlaceholder = computed(() => !projectBannerUrl.value && !bannerLoading.value)
+
 const bannerSurfaceStyle = computed(() => {
   const placeholder = placeholderBanner.value
-  const usingPlaceholder = !projectBannerUrl.value
   const style: Record<string, string> = {
     backgroundImage: `url(${projectBannerUrl.value ?? placeholder.url})`,
   }
 
-  if (usingPlaceholder && placeholder.transform)
+  if (usePlaceholder.value && placeholder.transform)
     style['--banner-placeholder-transform'] = placeholder.transform
 
   return style
@@ -87,29 +89,31 @@ const bannerSurfaceStyle = computed(() => {
       </div>
 
       <div class="project-card__body">
-        <!-- Project header -->
-        <Flex expand x-between y-center>
-          <h3 v-if="compact" class="project-card__title project-card__title--compact">
-            {{ project.title }}
-          </h3>
-          <h3 v-else class="project-card__title">
-            {{ project.title }}
-          </h3>
+        <div class="project-card__body-top">
+          <!-- Project header -->
+          <Flex expand x-between y-center>
+            <h3 v-if="compact" class="project-card__title project-card__title--compact">
+              {{ project.title }}
+            </h3>
+            <h3 v-else class="project-card__title">
+              {{ project.title }}
+            </h3>
 
-          <Flex v-if="!compact" x-end>
-            <TimestampDate
-              :date="project.created_at"
-              format="MMM D, YYYY"
-              class="project-card__date"
-            />
-            <Icon name="ph:folder-fill" />
+            <Flex v-if="!compact" x-end>
+              <TimestampDate
+                :date="project.created_at"
+                format="MMM D, YYYY"
+                class="project-card__date"
+              />
+              <Icon name="ph:folder-fill" />
+            </Flex>
           </Flex>
-        </Flex>
 
-        <!-- Project description -->
-        <p v-if="project.description" class="project-card__description">
-          {{ project.description }}
-        </p>
+          <!-- Project description -->
+          <p v-if="project.description" class="project-card__description">
+            {{ project.description }}
+          </p>
+        </div>
 
         <!-- Project tags and metadata row -->
         <Flex v-if="((project.tags && project.tags.length > 0) || project.github) && !compact" gap="s" x-between y-center class="project-card__tags-row">
@@ -118,7 +122,7 @@ const bannerSurfaceStyle = computed(() => {
               <GitHubLink :github="project.github" :show-icon="true" :hide-repo="true" small />
             </span>
             <div v-if="project.tags && project.tags.length > 0" class="project-card__tags">
-              <Badge v-for="tag in project.tags" :key="tag" variant="accent">
+              <Badge v-for="tag in project.tags" :key="tag" size="s">
                 {{ tag }}
               </Badge>
             </div>
@@ -142,6 +146,12 @@ const bannerSurfaceStyle = computed(() => {
   display: flex;
   flex-direction: column;
   background-color: var(--color-bg-card);
+
+  :deep(.vui-card-content) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
 
   &::before {
     content: '';
@@ -237,6 +247,13 @@ const bannerSurfaceStyle = computed(() => {
   flex-direction: column;
   gap: var(--space-xxs);
   flex: 1;
+  justify-content: space-between;
+}
+
+.project-card__body-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
 }
 
 .project-card__icon {
@@ -278,11 +295,15 @@ const bannerSurfaceStyle = computed(() => {
   background-position: center;
   transform: var(--banner-placeholder-transform, scale(1));
   transition: none;
+
+  &--image {
+    transform: scale(1);
+  }
 }
 
 .project-card:hover .project-card__banner-surface--image {
   transition: var(--transition-fast);
-  transform: var(--banner-placeholder-transform, scale(1)) scale(1.05);
+  transform: scale(1.05);
 }
 
 .project-card__banner-badge {

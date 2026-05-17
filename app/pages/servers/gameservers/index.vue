@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import type { GameserverWithContainer } from '@/composables/useDataGameservers'
+import type { Tables } from '@/types/database.overrides'
+import type { Database } from '@/types/database.types'
 import { Button, Flex, Tab, Tabs } from '@dolanske/vui'
 import GameLibrary from '@/components/GameServers/GameServerLibrary.vue'
 import GameListing from '@/components/GameServers/GameServerListing.vue'
@@ -9,6 +12,8 @@ import SupportModal from '@/components/Shared/SupportModal.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
+
+const supabase = useSupabaseClient<Database>()
 
 // Tab management
 const activeTab = ref('library')
@@ -54,9 +59,32 @@ onMounted(() => {
 const supportModalOpen = ref(false)
 const activityModalOpen = ref(false)
 
-const { games, loading: gamesLoading } = useDataGames()
-const { gameservers, loading, error: gameserversError } = useDataGameservers()
+const { games } = useDataGames()
+const { gameservers, error: gameserversError } = useDataGameservers()
 const { metrics, fetchMetrics } = useDataMetrics()
+
+const [{ data: ssrGames, status: gamesStatus }, { data: ssrGameservers, status: gameserversStatus }] = await Promise.all([
+  useAsyncData('games:all', async () => {
+    const { data } = await supabase.from('games').select('*').order('name', { ascending: true })
+    return (data ?? []) as Tables<'games'>[]
+  }),
+  useAsyncData('gameservers:all', async () => {
+    const { data } = await supabase
+      .from('network_gameservers')
+      .select(`*, container (name, running, healthy, reported_at, server (docker_control, accessible)), administrator`)
+      .order('name', { ascending: true })
+    return (data ?? []) as unknown as GameserverWithContainer[]
+  }),
+])
+
+if (ssrGames.value && ssrGames.value.length > 0 && games.value.length === 0)
+  games.value = ssrGames.value
+if (ssrGameservers.value && ssrGameservers.value.length > 0 && gameservers.value.length === 0)
+  gameservers.value = ssrGameservers.value
+
+const isLoading = computed(() =>
+  gamesStatus.value === 'pending' || gameserversStatus.value === 'pending',
+)
 
 onMounted(() => {
   if (metrics.value === null)
@@ -236,82 +264,80 @@ function clearFilters() {
       </div>
     </section>
 
-    <ClientOnly>
-      <!-- Tabs Navigation -->
-      <Tabs v-model="activeTab" class="my-m">
-        <Tab value="library">
-          Library
-        </Tab>
-        <Tab value="list">
-          List
-        </Tab>
-        <template #end>
-          <Button
-            class="page-title__cta"
-            size="s"
-            @click="supportModalOpen = true"
-          >
-            <template #start>
-              <Icon name="ph:lifebuoy" />
-            </template>
-            Request Game Server
-          </Button>
-        </template>
-      </Tabs>
+    <!-- Tabs Navigation -->
+    <Tabs v-model="activeTab" class="my-m">
+      <Tab value="library">
+        Library
+      </Tab>
+      <Tab value="list">
+        List
+      </Tab>
+      <template #end>
+        <Button
+          class="page-title__cta"
+          size="s"
+          @click="supportModalOpen = true"
+        >
+          <template #start>
+            <Icon name="ph:lifebuoy" />
+          </template>
+          Request Game Server
+        </Button>
+      </template>
+    </Tabs>
 
-      <div class="game-servers">
-        <!-- List View -->
-        <GameListing
-          v-if="activeTab === 'list'"
-          :games="games"
-          :gameservers="gameservers"
-          :loading="loading || gamesLoading"
-          :error-message="errorMessage"
-          :filtered-games="filteredGames"
-          :filtered-gameservers="filteredGameservers"
-          :gameservers-without-game="gameserversWithoutGame"
-          :search="search"
-          :selected-games="selectedGames"
-          :selected-regions="selectedRegions"
-          :game-options="gameOptions"
-          :region-options="regionOptions"
-          @update:search="search = $event"
-          @update:selected-games="selectedGames = $event"
-          @update:selected-regions="selectedRegions = $event"
-          @clear-filters="clearFilters"
-        />
-
-        <!-- Library View -->
-        <GameLibrary
-          v-else-if="activeTab === 'library'"
-          :games="games"
-          :gameservers="gameservers"
-          :loading="loading || gamesLoading"
-          :error-message="errorMessage"
-          :filtered-games="filteredGames"
-        />
-      </div>
-
-      <SupportModal
-        v-model:open="supportModalOpen"
-        title="Request Game Server"
-        message="Got an idea for a game server? Let us know!"
+    <div class="game-servers">
+      <!-- List View -->
+      <GameListing
+        v-if="activeTab === 'list'"
+        :games="games"
+        :gameservers="gameservers"
+        :loading="isLoading"
+        :error-message="errorMessage"
+        :filtered-games="filteredGames"
+        :filtered-gameservers="filteredGameservers"
+        :gameservers-without-game="gameserversWithoutGame"
+        :search="search"
+        :selected-games="selectedGames"
+        :selected-regions="selectedRegions"
+        :game-options="gameOptions"
+        :region-options="regionOptions"
+        @update:search="search = $event"
+        @update:selected-games="selectedGames = $event"
+        @update:selected-regions="selectedRegions = $event"
+        @clear-filters="clearFilters"
       />
 
-      <ChartActivityHistogramModal
-        v-model:open="activityModalOpen"
-        title="Game Server Activity"
-        :count="totalOnline"
-        count-label="players"
-        count-singular="player"
-        :series="['gameserversPlayers']"
-        :initial-period="totalOnline ? '24h' : '14d'"
-      >
-        <template #default="{ period, window, utc, color }">
-          <ChartGameserversPlayers :period :window :utc :color hide-title />
-        </template>
-      </ChartActivityHistogramModal>
-    </ClientOnly>
+      <!-- Library View -->
+      <GameLibrary
+        v-else-if="activeTab === 'library'"
+        :games="games"
+        :gameservers="gameservers"
+        :loading="isLoading"
+        :error-message="errorMessage"
+        :filtered-games="filteredGames"
+      />
+    </div>
+
+    <SupportModal
+      v-model:open="supportModalOpen"
+      title="Request Game Server"
+      message="Got an idea for a game server? Let us know!"
+    />
+
+    <ChartActivityHistogramModal
+      v-model:open="activityModalOpen"
+      title="Game Server Activity"
+      :count="totalOnline"
+      count-label="players"
+      count-singular="player"
+      :series="['gameserversPlayers']"
+      :initial-period="totalOnline ? '24h' : '14d'"
+    >
+      <template #default="{ period, window, utc, color }">
+        <ChartGameserversPlayers :period :window :utc :color hide-title />
+      </template>
+    </ChartActivityHistogramModal>
   </div>
 </template>
 
