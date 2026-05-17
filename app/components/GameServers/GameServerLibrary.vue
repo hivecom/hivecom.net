@@ -4,6 +4,8 @@ import { Alert, Badge, BadgeGroup, Button, Flex, Indicator, Modal, Skeleton, Too
 import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import GlowCard from '@/components/Shared/GlowCard.vue'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -160,67 +162,77 @@ function isCoverLoading(gameId: number): boolean {
       <!-- Content -->
       <template v-if="games && gameservers && filteredGames.length > 0">
         <div class="game-grid">
-          <TransitionGroup name="card-fade" tag="div" class="game-grid-container" appear>
-            <button
-              v-for="(game, index) in filteredGames" :key="game.id"
-              class="game-card" :class="{
-                'content-loaded': !isCoverLoading(game.id),
-              }" :style="{ '--delay': `${index * 50}ms` }" @click="openGameModal(game)"
-            >
-              <div class="game-cover">
-                <div class="cover-image-container">
-                  <!-- Base fallback: Hivecom logo -->
-                  <div class="cover-fallback">
-                    <img src="/icon.svg" alt="Hivecom logo" class="fallback-logo">
+          <GlowGroup>
+            <TransitionGroup name="card-fade" tag="div" class="game-grid-container" appear>
+              <GlowCard
+                v-for="(game, index) in filteredGames" :key="game.id"
+                no-glow
+                halo
+                lift
+              >
+                <button
+                  class="game-card"
+                  :class="{ 'content-loaded': !isCoverLoading(game.id) }"
+                  :style="{ '--delay': `${index * 50}ms` }"
+                  @click="openGameModal(game)"
+                >
+                  <div class="game-cover">
+                    <div class="cover-image-container">
+                      <!-- Base fallback: Hivecom logo -->
+                      <div class="cover-fallback">
+                        <img src="/icon.svg" alt="Hivecom logo" class="fallback-logo">
+                      </div>
+                      <!-- Loading skeleton -->
+                      <Skeleton v-if="isCoverLoading(game.id)" :height="280" :radius="0" class="cover-skeleton" />
+                      <!-- Actual cover image (custom or Steam) -->
+                      <img
+                        v-else-if="getCachedGameCover(game.id)"
+                        :src="getCachedGameCover(game.id)"
+                        :alt="game.name || 'Game cover'"
+                        class="cover-image"
+                        @load="handleCoverLoad"
+                      >
+                    </div>
+                    <Tooltip placement="top">
+                      <Indicator
+                        v-if="(getPlayersForGame(game.id) ?? 0) > 0"
+                        variant="online"
+                        class="cover-live-indicator"
+                        outline
+                        ripple
+                      />
+                      <template #tooltip>
+                        <p>{{ getPlayersForGame(game.id) }} online</p>
+                      </template>
+                    </Tooltip>
                   </div>
-
-                  <!-- Loading skeleton -->
-                  <Skeleton v-if="isCoverLoading(game.id)" :height="280" :radius="0" class="cover-skeleton" />
-
-                  <!-- Actual cover image (custom or Steam) -->
-                  <img
-                    v-else-if="getCachedGameCover(game.id)" :src="getCachedGameCover(game.id)"
-                    :alt="game.name || 'Game cover'" class="cover-image" @load="handleCoverLoad"
-                  >
-                </div>
-                <Tooltip placement="top">
-                  <Indicator
-                    v-if="(getPlayersForGame(game.id) ?? 0) > 0"
-                    variant="online"
-                    class="cover-live-indicator"
-                    outline
-                    ripple
-                  />
-                  <template #tooltip>
-                    <p>{{ getPlayersForGame(game.id) }} online</p>
-                  </template>
-                </Tooltip>
-              </div>
-              <div class="game-info">
-                <h3 class="game-title">
-                  {{ game.name }}
-                </h3>
-                <BadgeGroup>
-                  <Tooltip placement="top">
-                    <Badge variant="neutral" size="s" circle>
-                      {{ getServerCountForGame(game.id) }}
-                    </Badge>
-                    <template #tooltip>
-                      <p>Servers</p>
-                    </template>
-                  </Tooltip>
-                  <Tooltip v-if="(getPlayersForGame(game.id) ?? 0) > 0" placement="top">
-                    <Badge variant="accent" size="s" circle>
-                      {{ getPlayersForGame(game.id) }}
-                    </Badge>
-                    <template #tooltip>
-                      <p>Players online</p>
-                    </template>
-                  </Tooltip>
-                </BadgeGroup>
-              </div>
-            </button>
-          </TransitionGroup>
+                  <div class="game-info">
+                    <h3 class="game-title">
+                      {{ game.name }}
+                    </h3>
+                    <BadgeGroup>
+                      <Tooltip placement="top">
+                        <Badge variant="neutral" size="s" circle>
+                          {{ getServerCountForGame(game.id) }}
+                        </Badge>
+                        <template #tooltip>
+                          <p>Servers</p>
+                        </template>
+                      </Tooltip>
+                      <Tooltip v-if="(getPlayersForGame(game.id) ?? 0) > 0" placement="top">
+                        <Badge variant="accent" size="s" circle>
+                          {{ getPlayersForGame(game.id) }}
+                        </Badge>
+                        <template #tooltip>
+                          <p>Players online</p>
+                        </template>
+                      </Tooltip>
+                    </BadgeGroup>
+                  </div>
+                </button>
+              </GlowCard>
+            </TransitionGroup>
+          </GlowGroup>
         </div>
       </template>
 
@@ -293,6 +305,11 @@ function isCoverLoading(gameId: number): boolean {
   /* Make the transition group container not affect grid layout */
 }
 
+:deep(.glow-card) {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-m);
+}
+
 /* Card fade-in animations */
 .card-fade-enter-active {
   transition: all 0.6s ease;
@@ -349,13 +366,11 @@ function isCoverLoading(gameId: number): boolean {
   display: flex;
   flex-direction: column;
   background: var(--color-bg-medium);
-  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
   overflow: hidden;
   text-align: left;
   cursor: pointer;
   transition:
-    transform 0.2s ease,
     box-shadow 0.2s ease,
     border-color 0.2s ease,
     opacity 0.3s ease;
@@ -368,7 +383,6 @@ function isCoverLoading(gameId: number): boolean {
   }
 
   &:hover {
-    transform: translateY(-4px);
     box-shadow: var(--shadow-l);
     border-color: var(--color-border-hover);
   }

@@ -55,7 +55,7 @@ async function checkBanStatus(userId: string): Promise<Response | undefined> {
  * enrolled. If the user has no MFA factors this is a no-op. Returns a 403
  * Response when MFA is required but not satisfied, undefined when clear.
  */
-async function checkAssuranceLevel(
+export async function checkAssuranceLevel(
   supabaseClient: ReturnType<typeof createClient<Database>>,
 ): Promise<Response | undefined> {
   const { data, error } = await supabaseClient.auth.mfa

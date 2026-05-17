@@ -3,6 +3,20 @@
 
 @import url(@dolanske/vui/style);
 
+// Register glow-card mouse position properties as typed <length> values so the
+// browser can interpolate them between frames, giving smooth cursor tracking.
+@property --mouse-x {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: -9999px;
+}
+
+@property --mouse-y {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: -9999px;
+}
+
 // Place global styles which should be available on all pages here
 :root {
   // Transition duration tokens - mirrors the duration component of VUI's transition shorthand

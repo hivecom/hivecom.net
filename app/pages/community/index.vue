@@ -6,6 +6,7 @@ import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import ChartOnlineUsersModal from '@/components/Shared/Charts/ChartOnlineUsersModal.vue'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useCache } from '@/composables/useCache'
 import { useDataMetrics } from '@/composables/useDataMetrics'
@@ -479,19 +480,21 @@ watch(user, () => {
             </NuxtLink>
           </Flex>
 
-          <Grid :columns="3" gap="m" class="projects-grid" expand>
-            <template v-if="loading">
-              <Skeleton v-for="i in 3" :key="i" :height="260" :radius="8" />
-            </template>
-            <template v-else>
-              <ProjectCard
-                v-for="project in recentProjects"
-                :key="project.id"
-                :project="project"
-                compact
-              />
-            </template>
-          </Grid>
+          <GlowGroup>
+            <Grid :columns="3" gap="m" class="projects-grid" expand>
+              <template v-if="loading">
+                <Skeleton v-for="i in 3" :key="i" :height="260" :radius="8" />
+              </template>
+              <template v-else>
+                <ProjectCard
+                  v-for="project in recentProjects"
+                  :key="project.id"
+                  :project="project"
+                  compact
+                />
+              </template>
+            </Grid>
+          </GlowGroup>
         </Flex>
       </section>
 

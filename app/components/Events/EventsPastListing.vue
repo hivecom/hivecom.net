@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Flex, Grid, paginate, Pagination, Skeleton } from '@dolanske/vui'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataEventsPaged } from '@/composables/useDataEventsPaged'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import EventPast from './EventPast.vue'
@@ -56,13 +57,15 @@ const pastPagination = computed(() => paginate(pastTotalCount.value, pastPage.va
     </div>
 
     <template v-else>
-      <Grid class="events-section__past-grid" :columns="columns" gap="m">
-        <EventPast
-          v-for="event in pastEvents"
-          :key="event.id"
-          :data="event"
-        />
-      </Grid>
+      <GlowGroup>
+        <Grid class="events-section__past-grid" :columns="columns" gap="m">
+          <EventPast
+            v-for="event in pastEvents"
+            :key="event.id"
+            :data="event"
+          />
+        </Grid>
+      </GlowGroup>
 
       <Flex v-if="pastPagination.totalPages > 1" x-center class="mt-l">
         <Pagination :pagination="pastPagination" @change="setPage($event)" />

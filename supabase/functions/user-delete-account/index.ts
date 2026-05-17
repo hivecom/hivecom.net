@@ -1,6 +1,7 @@
 import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
+import { checkAssuranceLevel } from "../_shared/auth.ts";
 import type { Database } from "database-types";
 
 interface DeleteAccountRequest {
@@ -80,6 +81,9 @@ Deno.serve(async (req) => {
         },
       );
     }
+
+    const aalResponse = await checkAssuranceLevel(supabaseClient);
+    if (aalResponse) return aalResponse;
 
     let body: DeleteAccountRequest | null = null;
     try {

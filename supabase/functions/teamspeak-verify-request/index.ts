@@ -4,6 +4,7 @@ import type { Tables } from "database-types";
 import type { TeamSpeakIdentityRecord } from "../../../types/teamspeak.ts";
 import { TeamSpeakClient } from "node-ts/lib/node-ts.js";
 import { corsHeaders } from "../_shared/cors.ts";
+import { checkAssuranceLevel } from "../_shared/auth.ts";
 import {
   createPrivateServiceRoleClient,
   createPublicServiceRoleClient,
@@ -239,6 +240,14 @@ async function requireAuthenticatedUser(req: Request): Promise<User> {
   if (error || !data?.user) {
     console.warn("TeamSpeak verify auth failed", error);
     throw new HttpError(401, "Authentication required");
+  }
+
+  const aalResponse = await checkAssuranceLevel(supabaseClient);
+  if (aalResponse) {
+    throw new HttpError(
+      403,
+      "Multi-factor authentication is required for this action",
+    );
   }
 
   return data.user;

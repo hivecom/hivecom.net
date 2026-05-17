@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Card, Flex, Progress, Skeleton, Tooltip } from '@dolanske/vui'
 
+import GlowCard from '@/components/Shared/GlowCard.vue'
 import GrowthBadge from '@/components/Shared/GrowthBadge.vue'
 import { useDataExpenses } from '@/composables/useDataExpenses'
 import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
@@ -111,71 +112,76 @@ function scrollToSupport() {
 
 <template>
   <DefineTemplate>
-    <Card :class="{ 'funding-progress__complete': fundingProgress.percentage >= 100 }" class="card-bg" expand>
-      <!-- Loading state -->
-      <Flex v-if="loading" column expand>
-        <Flex column gap="m">
-          <Skeleton :width="300" :height="32" :radius="4" />
-          <Skeleton :height="8" :radius="4" />
-          <Flex x-between y-center>
-            <Skeleton :width="200" :height="20" :radius="4" />
-            <Skeleton :width="120" :height="20" :radius="4" />
-          </Flex>
-        </Flex>
-      </Flex>
-
-      <!-- Error state -->
-      <Flex v-else-if="errorMessage" expand column>
-        <Flex y-center gap="s" class="color-error">
-          <Icon name="ph:warning" size="1.2rem" />
-          <span class="text-s">Unable to load funding data</span>
-        </Flex>
-      </Flex>
-
-      <!-- Main content -->
-      <Flex v-else column expand>
-        <Flex y-center x-between class="mb-s" expand>
-          <Flex gap="s" wrap>
-            <h2 class="text-bold text-xxxl">
-              {{ currentMonthLabel }}
-            </h2>
-            <Tooltip text="Month-over-month change">
-              <GrowthBadge :growth="growthPct" :value="growthValue" prefix="€" :size="isBelowSmall ? 'm' : 'l'" show-icon />
-            </Tooltip>
-          </Flex>
-          <Flex y-center gap="s">
-            <strong class="text-bold text-xxxl">{{ formatCurrency(fundingProgress.current) }}</strong>
-            <span class="text-color-light text-xxxl">/</span>
-            <strong class="text-color-light text-xxxl">{{ formatCurrency(fundingProgress.goal) }}</strong>
+    <GlowCard no-glow>
+      <Card :class="{ 'funding-progress__complete': fundingProgress.percentage >= 100 }" class="card-bg" expand>
+        <!-- Loading state -->
+        <Flex v-if="loading" column expand>
+          <Flex column gap="m">
+            <Skeleton :width="300" :height="32" :radius="4" />
+            <Skeleton :height="8" :radius="4" />
+            <Flex x-between y-center>
+              <Skeleton :width="200" :height="20" :radius="4" />
+              <Skeleton :width="120" :height="20" :radius="4" />
+            </Flex>
           </Flex>
         </Flex>
 
-        <Progress
-          class="mb-s"
-          :height="8"
-          :model-value="fundingProgress.percentage"
-        />
-
-        <!-- Funding vs Expenses Summary -->
-        <Flex x-between y-start expand>
-          <p class="text-s text-color-lighter">
-            {{ statusMessage }}
-          </p>
-
-          <div v-if="!isBelowSmall">
-            <Button :plain="!isOnFundingPage" size="s" variant="accent" @click="onSupportButtonClick">
-              <Flex y-center :gap="4">
-                <Icon :name="isOnFundingPage ? 'ph:heart-straight' : 'ph:info'" />
-                {{ isOnFundingPage ? "Support Us" : "Learn More" }}
-              </Flex>
-              <template #end>
-                <Icon name="ph:caret-right" />
-              </template>
-            </Button>
-          </div>
+        <!-- Error state -->
+        <Flex v-else-if="errorMessage" expand column>
+          <Flex y-center gap="s" class="color-error">
+            <Icon name="ph:warning" size="1.2rem" />
+            <span class="text-s">Unable to load funding data</span>
+          </Flex>
         </Flex>
-      </Flex>
-    </Card>
+
+        <!-- Main content -->
+        <Flex v-else column expand>
+          <Flex y-center x-between class="mb-s" expand>
+            <Flex gap="s" wrap y-center>
+              <h2 class="text-bold text-xxxl">
+                {{ currentMonthLabel }}
+              </h2>
+              <Tooltip>
+                <GrowthBadge class="mt-xxs" :growth="growthPct" :value="growthValue" prefix="€" :size="isBelowSmall ? 's' : 'm'" show-icon />
+                <template #tooltip>
+                  <p>Month-over-month change</p>
+                </template>
+              </Tooltip>
+            </Flex>
+            <Flex y-center gap="s">
+              <strong class="text-bold text-xxxl">{{ formatCurrency(fundingProgress.current) }}</strong>
+              <span class="text-color-light text-xxxl">/</span>
+              <strong class="text-color-light text-xxxl">{{ formatCurrency(fundingProgress.goal) }}</strong>
+            </Flex>
+          </Flex>
+
+          <Progress
+            class="mb-s"
+            :height="8"
+            :model-value="fundingProgress.percentage"
+          />
+
+          <!-- Funding vs Expenses Summary -->
+          <Flex x-between y-start expand>
+            <p class="text-s text-color-lighter">
+              {{ statusMessage }}
+            </p>
+
+            <div v-if="!isBelowSmall">
+              <Button :plain="!isOnFundingPage" size="s" variant="accent" @click="onSupportButtonClick">
+                <Flex y-center :gap="4">
+                  <Icon :name="isOnFundingPage ? 'ph:heart-straight' : 'ph:info'" />
+                  {{ isOnFundingPage ? "Support Us" : "Learn More" }}
+                </Flex>
+                <template #end>
+                  <Icon name="ph:caret-right" />
+                </template>
+              </Button>
+            </div>
+          </Flex>
+        </Flex>
+      </Card>
+    </GlowCard>
   </DefineTemplate>
 
   <Flex column expand>
@@ -211,9 +217,5 @@ function scrollToSupport() {
   display: block;
   cursor: pointer;
   transition: var(--transition-fast);
-
-  &:hover {
-    background-color: var(--color-bg-raised);
-  }
 }
 </style>

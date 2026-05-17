@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Flex, Skeleton } from '@dolanske/vui'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { nextOccurrenceDate } from '@/lib/utils/rrule'
 import Event from './Event.vue'
 import EventsPastListing from './EventsPastListing.vue'
@@ -116,15 +117,17 @@ const hasActiveEvents = computed(() =>
         Happening Now
       </h2>
 
-      <div class="events-section__list">
-        <Event
-          v-for="event in ongoingEvents"
-          :key="event.id"
-          :data="event"
-          :is-ongoing="true"
-          :is-highlight="true"
-        />
-      </div>
+      <GlowGroup>
+        <div class="events-section__list">
+          <Event
+            v-for="event in ongoingEvents"
+            :key="event.id"
+            :data="event"
+            :is-ongoing="true"
+            :is-highlight="true"
+          />
+        </div>
+      </GlowGroup>
     </div>
 
     <!-- Upcoming Events Section -->
@@ -133,14 +136,16 @@ const hasActiveEvents = computed(() =>
         Upcoming Events
       </h2>
 
-      <div class="events-section__list">
-        <Event
-          v-for="(event, index) in upcomingEvents"
-          :key="event.id"
-          :data="event"
-          :is-highlight="index === 0 && ongoingEvents.length === 0"
-        />
-      </div>
+      <GlowGroup>
+        <div class="events-section__list">
+          <Event
+            v-for="(event, index) in upcomingEvents"
+            :key="event.id"
+            :data="event"
+            :is-highlight="index === 0 && ongoingEvents.length === 0"
+          />
+        </div>
+      </GlowGroup>
     </div>
 
     <!-- No active events message - past listing handles its own empty state -->

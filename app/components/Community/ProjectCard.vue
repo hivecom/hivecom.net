@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex } from '@dolanske/vui'
 import { computed } from 'vue'
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
+import GlowCard from '@/components/Shared/GlowCard.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataProjectBanner } from '@/composables/useDataProjectBanner'
 import { getPlaceholderBannerProject } from '@/lib/projectBannerPlaceholders'
@@ -48,97 +49,106 @@ const bannerSurfaceStyle = computed(() => {
 </script>
 
 <template>
-  <Card
-    expand
-    class="project-card"
+  <GlowCard
+
     :class="{
-      'project-card--compact': compact,
-      'project-card--ultra-compact': ultraCompact,
+      'project-card-wrapper--compact': compact,
+      'project-card-wrapper--ultra-compact': ultraCompact,
     }"
-    @click="handleClick"
   >
-    <!-- Ultra compact layout (single line) -->
-    <template v-if="ultraCompact">
-      <Flex gap="xs" y-center x-between class="project-card__ultra-compact-content">
-        <Flex gap="xs" y-center class="project-card__ultra-compact-main">
-          <Icon name="ph:folder-fill" class="project-card__ultra-compact-icon" />
-          <span class="project-card__ultra-compact-title">{{ project.title }}</span>
-          <span v-if="isLatest" class="project-card__ultra-compact-latest">Latest</span>
-        </Flex>
-        <TimestampDate
-          :date="project.created_at"
-          format="MMM D"
-          size="xs"
-          class="project-card__ultra-compact-date"
-        />
-      </Flex>
-    </template>
-
-    <!-- Regular layout -->
-    <div v-else class="project-card__content">
-      <!-- Banner -->
-      <div class="project-card__banner">
-        <div
-          class="project-card__banner-surface"
-          :class="{
-            'project-card__banner-surface--image': hasBannerImage,
-          }"
-          :style="bannerSurfaceStyle"
-        />
-        <span v-if="isLatest" class="project-card__banner-badge">Latest</span>
-      </div>
-
-      <div class="project-card__body">
-        <div class="project-card__body-top">
-          <!-- Project header -->
-          <Flex expand x-between y-center>
-            <h3 v-if="compact" class="project-card__title project-card__title--compact">
-              {{ project.title }}
-            </h3>
-            <h3 v-else class="project-card__title">
-              {{ project.title }}
-            </h3>
-
-            <Flex v-if="!compact" x-end>
-              <TimestampDate
-                :date="project.created_at"
-                format="MMM D, YYYY"
-                class="project-card__date"
-              />
-              <Icon name="ph:folder-fill" />
-            </Flex>
+    <Card
+      expand
+      class="project-card"
+      :class="{
+        'project-card--compact': compact,
+        'project-card--ultra-compact': ultraCompact,
+      }"
+      @click="handleClick"
+    >
+      <!-- Ultra compact layout (single line) -->
+      <template v-if="ultraCompact">
+        <Flex gap="xs" y-center x-between class="project-card__ultra-compact-content">
+          <Flex gap="xs" y-center class="project-card__ultra-compact-main">
+            <Icon name="ph:folder-fill" class="project-card__ultra-compact-icon" />
+            <span class="project-card__ultra-compact-title">{{ project.title }}</span>
+            <span v-if="isLatest" class="project-card__ultra-compact-latest">Latest</span>
           </Flex>
+          <TimestampDate
+            :date="project.created_at"
+            format="MMM D"
+            size="xs"
+            class="project-card__ultra-compact-date"
+          />
+        </Flex>
+      </template>
 
-          <!-- Project description -->
-          <p v-if="project.description" class="project-card__description">
-            {{ project.description }}
-          </p>
+      <!-- Regular layout -->
+      <div v-else class="project-card__content">
+        <!-- Banner -->
+        <div class="project-card__banner">
+          <div
+            class="project-card__banner-surface"
+            :class="{
+              'project-card__banner-surface--image': hasBannerImage,
+            }"
+            :style="bannerSurfaceStyle"
+          />
+          <span v-if="isLatest" class="project-card__banner-badge">Latest</span>
         </div>
 
-        <!-- Project tags and metadata row -->
-        <Flex v-if="((project.tags && project.tags.length > 0) || project.github) && !compact" gap="s" x-between y-center class="project-card__tags-row">
-          <Flex gap="s" y-center class="project-card__tags-left">
-            <span v-if="project.github" class="project-card__github-indicator">
-              <GitHubLink :github="project.github" :show-icon="true" :hide-repo="true" small />
-            </span>
-            <div v-if="project.tags && project.tags.length > 0" class="project-card__tags">
-              <Badge v-for="tag in project.tags" :key="tag" size="s">
-                {{ tag }}
-              </Badge>
-            </div>
+        <div class="project-card__body">
+          <div class="project-card__body-top">
+            <!-- Project header -->
+            <Flex expand x-between y-center>
+              <h3 v-if="compact" class="project-card__title project-card__title--compact">
+                {{ project.title }}
+              </h3>
+              <h3 v-else class="project-card__title">
+                {{ project.title }}
+              </h3>
+
+              <Flex v-if="!compact" x-end>
+                <TimestampDate
+                  :date="project.created_at"
+                  format="MMM D, YYYY"
+                  class="project-card__date"
+                />
+                <Icon name="ph:folder-fill" />
+              </Flex>
+            </Flex>
+
+            <!-- Project description -->
+            <p v-if="project.description" class="project-card__description">
+              {{ project.description }}
+            </p>
+          </div>
+
+          <!-- Project tags and metadata row -->
+          <Flex v-if="((project.tags && project.tags.length > 0) || project.github) && !compact" gap="s" x-between y-center class="project-card__tags-row">
+            <Flex gap="s" y-center class="project-card__tags-left">
+              <span v-if="project.github" class="project-card__github-indicator">
+                <GitHubLink :github="project.github" :show-icon="true" :hide-repo="true" small />
+              </span>
+              <div v-if="project.tags && project.tags.length > 0" class="project-card__tags">
+                <Badge v-for="tag in project.tags" :key="tag" size="s">
+                  {{ tag }}
+                </Badge>
+              </div>
+            </Flex>
           </Flex>
-        </Flex>
+        </div>
       </div>
-    </div>
-  </Card>
+    </Card>
+  </GlowCard>
 </template>
 
 <style lang="scss" scoped>
 @use '@/assets/mixins.scss' as *;
+
 .project-card {
   position: relative;
   cursor: pointer;
-  transition: var(--transition-fast);
+  transition: var(--transition-slow);
   border: 1px solid var(--color-border);
   overflow: hidden;
   width: 100%; // Ensure the card is full width
@@ -153,24 +163,8 @@ const bannerSurfaceStyle = computed(() => {
     flex-direction: column;
   }
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--color-accent), var(--color-accent-light));
-    opacity: 0;
-    transition: var(--transition-fast);
-  }
-
   &:hover {
     background-color: var(--color-bg-raised);
-
-    &::before {
-      opacity: 1;
-    }
 
     .project-card__icon {
       transform: scale(1.1);
@@ -303,7 +297,6 @@ const bannerSurfaceStyle = computed(() => {
 
 .project-card:hover .project-card__banner-surface--image {
   transition: var(--transition-fast);
-  transform: scale(1.05);
 }
 
 .project-card__banner-badge {

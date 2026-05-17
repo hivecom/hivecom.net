@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
     // Verify user has permission to manage containers
     const authResponse = await authorizeAuthenticatedHasPermissionAal2(
       req,
-      ["network.read"]
+      ["network.read"],
     );
 
     if (authResponse) {
@@ -54,7 +54,7 @@ Deno.serve(async (req: Request) => {
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SECRET_KEY") ??
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     // Get container details including the server it's hosted on

@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Card, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import GlowCard from '@/components/Shared/GlowCard.vue'
 import { truncate } from '@/lib/utils/formatting'
 import EventRSVPCount from './EventRSVPCount.vue'
 
@@ -18,28 +19,30 @@ const count = computed(() => countEl.value?.count ?? 0)
 
 <template>
   <NuxtLink :to="`/events/${props.data.id}`" :draggable="false">
-    <Card class="event-past">
-      <Flex column gap="xs" expand class="event-past__wrapper">
-        <strong class="event-past__title">
-          {{ props.data.title }}
-        </strong>
-        <p class="event-past__description">
-          {{ truncate(props.data.description, 108) }}
-        </p>
+    <GlowCard no-glow>
+      <Card class="event-past">
+        <Flex column gap="xs" expand class="event-past__wrapper">
+          <strong class="event-past__title">
+            {{ props.data.title }}
+          </strong>
+          <p class="event-past__description">
+            {{ truncate(props.data.description, 108) }}
+          </p>
 
-        <Flex gap="l" y-center>
-          <Flex y-center gap="xs" class="event-past__details">
-            <Icon name="ph:calendar" size="18" />
-            {{ dayjs(props.data.date).fromNow() }}
-          </Flex>
+          <Flex gap="l" y-center>
+            <Flex y-center gap="xs" class="event-past__details">
+              <Icon name="ph:calendar" size="18" />
+              {{ dayjs(props.data.date).fromNow() }}
+            </Flex>
 
-          <Flex v-if="count" y-center gap="xs" class="event-past__details">
-            <Icon name="ph:user" size="18" />
-            {{ count }} attendee{{ count === 1 ? '' : 's' }}
+            <Flex v-if="count" y-center gap="xs" class="event-past__details">
+              <Icon name="ph:user" size="18" />
+              {{ count }} attendee{{ count === 1 ? '' : 's' }}
+            </Flex>
           </Flex>
         </Flex>
-      </Flex>
-    </Card>
+      </Card>
+    </GlowCard>
   </NuxtLink>
 
   <EventRSVPCount

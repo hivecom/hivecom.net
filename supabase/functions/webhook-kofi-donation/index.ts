@@ -89,8 +89,9 @@ Deno.serve(async (req: Request) => {
 
     // Current month date YYYY-MM-01
     const now = new Date();
-    const monthDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")
-      }-01`;
+    const monthDate = `${now.getFullYear()}-${
+      String(now.getMonth() + 1).padStart(2, "0")
+    }-01`;
 
     // Fetch existing funding_history row
     const { data: existingMonth, error: monthFetchError } = await supabase
@@ -279,7 +280,11 @@ Deno.serve(async (req: Request) => {
         color: 0x29ABE0,
         fields: [
           { name: "Amount", value: amountFormatted, inline: true },
-          { name: `Month-to-Date Total (${monthLabel})`, value: monthTotalFormatted, inline: true },
+          {
+            name: `Month-to-Date Total (${monthLabel})`,
+            value: monthTotalFormatted,
+            inline: true,
+          },
           { name: "Email", value: emailField, inline: true },
         ],
         timestamp: new Date().toISOString(),

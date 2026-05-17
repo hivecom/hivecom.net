@@ -3,6 +3,7 @@ import type { Database } from '@/types/database.types'
 import { Alert, Button, Flex, Grid, Input, Select, Skeleton } from '@dolanske/vui'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataProjects } from '@/composables/useDataProjects'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -178,13 +179,15 @@ defineOgImage('Default', {
         <!-- Content -->
         <template v-if="filteredProjects.length > 0">
           <!-- All projects at full width -->
-          <Grid :columns="isAtLeastM ? 2 : 1" column gap="m" class="projects__section" expand>
-            <ProjectCard
-              v-for="(project) in filteredProjects"
-              :key="project.id"
-              :project="project"
-            />
-          </Grid>
+          <GlowGroup>
+            <Grid :columns="isAtLeastM ? 2 : 1" column gap="m" class="projects__section" expand>
+              <ProjectCard
+                v-for="(project) in filteredProjects"
+                :key="project.id"
+                :project="project"
+              />
+            </Grid>
+          </GlowGroup>
         </template>
 
         <!-- No content -->

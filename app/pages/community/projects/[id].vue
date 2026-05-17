@@ -121,7 +121,7 @@ defineOgImage('Project', {
             />
           </div>
 
-          <div class="project-header__body">
+          <div class="mt-s">
             <Flex column gap="m" expand :y-center="isMobile">
               <h1 class="project-header__title">
                 {{ project.title }}
@@ -233,12 +233,9 @@ defineOgImage('Project', {
   transform: var(--banner-placeholder-transform, scale(1)) scale(1.05);
 }
 
-.project-header__body {
-  padding: var(--space-l);
-}
-
 .project-header__title {
-  font-size: var(--font-size-xxxl);
+  text-align: center;
+  font-size: var(--font-size-xxxxl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
   margin: 0;
@@ -265,10 +262,6 @@ defineOgImage('Project', {
 @media (max-width: 768px) {
   .project-header__banner {
     height: 180px;
-  }
-
-  .project-header__body {
-    padding: var(--space-m);
   }
 
   .project-header__title {

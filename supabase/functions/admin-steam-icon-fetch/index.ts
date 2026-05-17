@@ -1,5 +1,5 @@
 import { corsHeaders } from "../_shared/cors.ts";
-import { authorizeAuthenticatedHasPermission } from "../_shared/auth.ts";
+import { authorizeAuthenticatedHasPermissionAal2 } from "../_shared/auth.ts";
 import { responseMethodNotAllowed } from "../_shared/response.ts";
 
 const STEAM_API_KEY = Deno.env.get("STEAM_API_KEY") ?? "";
@@ -19,7 +19,7 @@ Deno.serve(async (req: Request) => {
     return responseMethodNotAllowed(req.method);
   }
 
-  const authResponse = await authorizeAuthenticatedHasPermission(req, [
+  const authResponse = await authorizeAuthenticatedHasPermissionAal2(req, [
     "games.read",
   ]);
   if (authResponse) return authResponse;
