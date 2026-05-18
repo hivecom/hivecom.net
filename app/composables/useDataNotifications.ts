@@ -299,11 +299,11 @@ export function useDataNotifications() {
     }
   }
 
-  function subscribeRealtime(uid: string) {
+  async function subscribeRealtime(uid: string) {
     if (notificationChannel != null && subscribedUserId === uid)
       return
 
-    void unsubscribeRealtime()
+    await unsubscribeRealtime()
 
     notificationChannel = supabase
       .channel(`notifications:${uid}`)
@@ -412,7 +412,7 @@ export function useDataNotifications() {
     userId,
     (uid) => {
       if (uid != null)
-        subscribeRealtime(uid)
+        void subscribeRealtime(uid)
       else
         void unsubscribeRealtime()
     },
@@ -444,7 +444,7 @@ export function useDataNotifications() {
           const uid = pausedUserId
           pausedUserId = null
           // Re-subscribe then catch up on any missed notifications.
-          subscribeRealtime(uid)
+          void subscribeRealtime(uid)
           void fetch()
         }
       }

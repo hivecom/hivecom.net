@@ -74,8 +74,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_count_badge_tier: {
+        Args: {
+          p_count: number
+          p_threshold_bronze: number
+          p_threshold_gold: number
+          p_threshold_shiny: number
+          p_threshold_silver: number
+        }
+        Returns: Database["public"]["Enums"]["badge_tier"]
+      }
       queue_dispatch_worker_sync_steam: { Args: never; Returns: undefined }
       queue_enqueue_worker_sync_steam: { Args: never; Returns: undefined }
+      remove_profile_badge: {
+        Args: { p_profile_id: string; p_slug: string }
+        Returns: undefined
+      }
+      upsert_profile_badge: {
+        Args: {
+          p_metadata?: Json
+          p_profile_id: string
+          p_progress?: number
+          p_slug: string
+          p_source: Database["public"]["Enums"]["badge_source"]
+          p_tier: Database["public"]["Enums"]["badge_tier"]
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1254,6 +1279,78 @@ export type Database = {
           },
         ]
       }
+      profile_badge_definitions: {
+        Row: {
+          created_at: string
+          is_active: boolean
+          kind: Database["public"]["Enums"]["badge_source"]
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          is_active?: boolean
+          kind: Database["public"]["Enums"]["badge_source"]
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["badge_source"]
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      profile_badges: {
+        Row: {
+          earned_at: string
+          metadata: Json
+          profile_id: string
+          progress: number | null
+          slug: string
+          source: Database["public"]["Enums"]["badge_source"]
+          tier: Database["public"]["Enums"]["badge_tier"]
+          updated_at: string
+        }
+        Insert: {
+          earned_at?: string
+          metadata?: Json
+          profile_id: string
+          progress?: number | null
+          slug: string
+          source: Database["public"]["Enums"]["badge_source"]
+          tier?: Database["public"]["Enums"]["badge_tier"]
+          updated_at?: string
+        }
+        Update: {
+          earned_at?: string
+          metadata?: Json
+          profile_id?: string
+          progress?: number | null
+          slug?: string
+          source?: Database["public"]["Enums"]["badge_source"]
+          tier?: Database["public"]["Enums"]["badge_tier"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_badges_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_badges_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "profile_badge_definitions"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       profile_friends: {
         Row: {
           created_at: string
@@ -2108,6 +2205,18 @@ export type Database = {
         Args: { target_user: string }
         Returns: undefined
       }
+      admin_remove_profile_badge: {
+        Args: { p_profile_id: string; p_slug: string }
+        Returns: undefined
+      }
+      admin_set_profile_badge: {
+        Args: {
+          p_profile_id: string
+          p_slug: string
+          p_tier?: Database["public"]["Enums"]["badge_tier"]
+        }
+        Returns: undefined
+      }
       audit_fields_unchanged: {
         Args: { created_at: string; created_by: string }
         Returns: boolean
@@ -2818,6 +2927,7 @@ export type Database = {
         Args: { target_discussion_id: string }
         Returns: undefined
       }
+      is_aal2_if_mfa: { Args: never; Returns: boolean }
       is_not_banned: { Args: never; Returns: boolean }
       is_owner: { Args: { record_user_id: string }; Returns: boolean }
       is_profile_owner: { Args: { profile_id: string }; Returns: boolean }
@@ -2881,6 +2991,26 @@ export type Database = {
         }
       }
       pgmq_send: { Args: { msg: Json; queue_name: string }; Returns: number }
+      recompute_all_profile_badges: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
+      recompute_chatterbox_badge: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
+      recompute_forum_regular_badge: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
+      recompute_one_of_us_badge: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
+      recompute_party_animal_badge: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
       search_global:
         | {
             Args: { p_limit?: number; p_query: string; p_types?: string[] }
@@ -3002,6 +3132,8 @@ export type Database = {
         | "network.update"
         | "network.delete"
       app_role: "admin" | "moderator"
+      badge_source: "manual" | "flag" | "computed"
+      badge_tier: "bronze" | "silver" | "gold" | "shiny"
       events_rsvp_scope: "occurrence" | "series"
       events_rsvp_status: "yes" | "no" | "tentative"
       game_query_protocol: "source" | "minecraft"
@@ -3221,6 +3353,8 @@ export const Constants = {
         "network.delete",
       ],
       app_role: ["admin", "moderator"],
+      badge_source: ["manual", "flag", "computed"],
+      badge_tier: ["bronze", "silver", "gold", "shiny"],
       events_rsvp_scope: ["occurrence", "series"],
       events_rsvp_status: ["yes", "no", "tentative"],
       game_query_protocol: ["source", "minecraft"],

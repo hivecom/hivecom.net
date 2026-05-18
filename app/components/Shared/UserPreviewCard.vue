@@ -108,6 +108,7 @@ const isUnauthenticatedHidden = computed(() =>
 // Activity data
 const {
   data: activity,
+  loading: activityLoading,
 } = useCachedFetch<{
   steam_id: string | null
   teamspeak_identities: Tables<'profiles'>['teamspeak_identities'] | TeamSpeakIdentityRecord[] | null
@@ -283,7 +284,11 @@ const {
         </template>
       </Flex>
 
-      <Flex v-if="activity && props.showActivity && props.showDescription && user" column gap="xxs" expand class="user-preview-card__activity">
+      <Flex v-if="activityLoading && props.showActivity && props.showDescription" column gap="xxs" expand class="user-preview-card__activity">
+        <Skeleton :height="44" width="100%" :radius="8" />
+      </Flex>
+
+      <Flex v-else-if="activity && props.showActivity && props.showDescription && user" column gap="xxs" expand class="user-preview-card__activity">
         <ActivitySteam
           v-if="activity.steam_id"
           :profile-id="user.id"

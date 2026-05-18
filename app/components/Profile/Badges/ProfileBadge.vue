@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BadgeVariant } from '@/lib/badges'
+import type { BadgeVariant } from '@/lib/badges/catalog'
 import { Tooltip } from '@dolanske/vui'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
@@ -205,6 +205,11 @@ function setTargetsFromPointer(event: PointerEvent) {
   el.style.setProperty('--pointer-from-center', dist.toFixed(4))
   el.style.setProperty('--background-x', `${(tilt.targetX * 18).toFixed(2)}%`)
   el.style.setProperty('--background-y', `${(tilt.targetY * 18).toFixed(2)}%`)
+
+  if (props.variant === 'shiny') {
+    const hue = ((x * 360 + y * 120) % 360).toFixed(1)
+    el.style.setProperty('--edge-hue', hue)
+  }
 }
 
 function onPointerEnter(event: PointerEvent) {
@@ -324,6 +329,7 @@ onBeforeUnmount(() => {
       @pointerup="onPointerUp"
       @pointercancel="onPointerUp"
     >
+      <div class="profile-badge__edge-glow" aria-hidden="true" />
       <div class="profile-badge__hex-wrapper" aria-hidden="true">
         <div ref="hexStackEl" class="profile-badge__hex-stack">
           <img
@@ -747,11 +753,20 @@ onBeforeUnmount(() => {
   --badge-border: rgba(186, 143, 255, 0.65);
   --badge-glow: rgba(186, 143, 255, 0.35);
   --badge-icon-color: #f6edff;
+  --badge-edge-color: #ba8fff;
   border: 1px solid transparent;
   background-image: var(--badge-surface), var(--shiny-gradient);
   background-origin: border-box;
   background-clip: padding-box, border-box;
   background-repeat: no-repeat;
+
+  .profile-badge__edge-glow {
+    background: radial-gradient(
+      180px circle at var(--pointer-x) var(--pointer-y),
+      hsl(var(--edge-hue, 280), 90%, 75%),
+      transparent 70%
+    );
+  }
 }
 
 .profile-badge--gold {
@@ -759,6 +774,7 @@ onBeforeUnmount(() => {
   --badge-border: rgba(255, 196, 94, 0.65);
   --badge-glow: rgba(255, 196, 94, 0.35);
   --badge-icon-color: #ffe9b6;
+  --badge-edge-color: #ffc45e;
   border: 1px solid transparent;
   background-image:
     var(--badge-surface),
@@ -773,6 +789,7 @@ onBeforeUnmount(() => {
   --badge-border: rgba(196, 220, 255, 0.55);
   --badge-glow: rgba(196, 220, 255, 0.25);
   --badge-icon-color: #f0f4ff;
+  --badge-edge-color: #c4dcff;
 }
 
 .profile-badge--bronze {
@@ -780,6 +797,37 @@ onBeforeUnmount(() => {
   --badge-border: rgba(255, 181, 138, 0.45);
   --badge-glow: rgba(255, 181, 138, 0.2);
   --badge-icon-color: #ffdec8;
+  --badge-edge-color: #ffb58a;
+}
+
+// Edge glow element - sits above background, behind content
+// Uses same mask trick as GlowCard but with per-variant color
+.profile-badge__edge-glow {
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    180px circle at var(--pointer-x) var(--pointer-y),
+    var(--badge-edge-color, rgba(255, 255, 255, 0.5)),
+    transparent 70%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--transition-slow);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.profile-badge[data-tilt-active='true'] .profile-badge__edge-glow {
+  opacity: 1;
 }
 
 .profile-badge.profile-badge--compact {

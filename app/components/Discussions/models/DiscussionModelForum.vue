@@ -21,9 +21,9 @@ import SharedUserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import UserRole from '@/components/Shared/UserRole.vue'
-import { useBadgeDiscussionReplyCount } from '@/composables/useBadgeDiscussionReplyCount'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useDataUserDiscussionCount } from '@/composables/useDataUserDiscussionCount'
+import { useDataUserReplyCount } from '@/composables/useDataUserReplyCount'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { extractMentionIds } from '@/lib/markdownProcessors'
@@ -70,7 +70,7 @@ const canBypassLock = inject(DISCUSSION_KEYS.canBypassLock, ref(false))
 
 const authorId = computed(() => data.value.created_by ?? null)
 const { count: discussionCount } = useDataUserDiscussionCount(authorId)
-const { count: replyCount } = useBadgeDiscussionReplyCount(authorId)
+const { count: replyCount } = useDataUserReplyCount(authorId)
 
 const { user } = useDataUser(data.value.created_by!, {
   includeRole: true,

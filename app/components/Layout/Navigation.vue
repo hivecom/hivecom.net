@@ -21,8 +21,8 @@ const { signInPath } = useAuthRedirect()
 
 // Listen for auth events
 const user = useSupabaseUser()
-const { waitForSessionReady } = useSessionReady()
-const authReady = ref(false)
+const { waitForSessionReady, isSessionReady } = useSessionReady()
+const authReady = ref(isSessionReady())
 
 const route = useRoute()
 

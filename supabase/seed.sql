@@ -357,8 +357,8 @@ INSERT INTO public.user_roles(role, user_id)
   VALUES ('admin', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Create or update a profile for our admin user
-INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, supporter_lifetime, badges, markdown, public, avatar_extension)
-  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', '76561198000000001', '2013-01-01 00:00:00+00', 'Hivecom', 'Local develop and test user', 'true', ARRAY['founder']::public.profile_badge[], '# whoami
+INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, supporter_lifetime, markdown, public, avatar_extension)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', '76561198000000001', '2013-01-01 00:00:00+00', 'Hivecom', 'Local develop and test user', 'true', '# whoami
 
 ```javascript
 console.log("Hello, Hivecom!");
@@ -552,7 +552,6 @@ ON CONFLICT (id)
     steam_id = EXCLUDED.steam_id,
     username = EXCLUDED.username,
     introduction = EXCLUDED.introduction,
-    badges = EXCLUDED.badges,
     markdown = EXCLUDED.markdown,
     public = EXCLUDED.public,
     avatar_extension = EXCLUDED.avatar_extension;
@@ -563,6 +562,11 @@ ON CONFLICT (id)
 ALTER TABLE public.profiles DISABLE TRIGGER update_profiles_audit_fields;
 UPDATE public.profiles SET created_at = '2013-01-01 00:00:00+00' WHERE id = '018d224c-0e49-4b6d-b57a-87299605c2b1';
 ALTER TABLE public.profiles ENABLE TRIGGER update_profiles_audit_fields;
+
+-- Seed the founder badge for the dev account (previously stored in profiles.badges)
+INSERT INTO public.profile_badges (profile_id, slug, tier, source, earned_at, updated_at)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', 'founder', 'shiny', 'manual', '2013-01-01 00:00:00+00', now())
+  ON CONFLICT (profile_id, slug) DO NOTHING;
 
 -- Seed a Steam presence entry for Hivecom (current game + last app)
 INSERT INTO public.presences_steam(

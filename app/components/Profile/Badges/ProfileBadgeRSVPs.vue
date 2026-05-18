@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ProfileBadge from '@/components/Profile/Badges/ProfileBadge.vue'
-import { getPartyAnimalVariant, PARTY_ANIMAL_MIN_RSVPS } from '@/lib/partyAnimalBadge'
+import { getVariantPartyAnimal, PARTY_ANIMAL_MIN_RSVPS } from '@/lib/badges/catalog'
 
 const props = defineProps<{
   rsvps: number
@@ -9,7 +9,7 @@ const props = defineProps<{
 }>()
 
 const rsvpCount = computed(() => Math.max(0, Math.floor(props.rsvps ?? 0)))
-const variant = computed(() => getPartyAnimalVariant(rsvpCount.value))
+const variant = computed(() => getVariantPartyAnimal(rsvpCount.value))
 const description = computed(() => `RSVP'd "Yes" to ${rsvpCount.value} event${rsvpCount.value === 1 ? '' : 's'}.`)
 const shouldRender = computed(() => (variant.value !== undefined) && rsvpCount.value >= PARTY_ANIMAL_MIN_RSVPS)
 </script>

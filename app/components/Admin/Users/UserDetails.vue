@@ -1,15 +1,10 @@
 <script setup lang="ts">
-import type { Enums } from '@/types/database.types'
 import { Button, Card, Flex, Sheet, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
 
 import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
-import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
-import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
-
-import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
-import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
+import ProfileBadgeFromSlug from '@/components/Profile/Badges/ProfileBadgeFromSlug.vue'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
@@ -18,6 +13,8 @@ import Metadata from '@/components/Shared/Metadata.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useCachedFetch } from '@/composables/useCache'
+import { useDataProfileBadges } from '@/composables/useDataProfileBadges'
+import { BADGE_CATALOG } from '@/lib/badges/catalog'
 import { isBanActive } from '@/lib/banStatus'
 import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -27,7 +24,6 @@ import UserActions from './UserActions.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
 
 type UserActionType = 'ban' | 'unban' | 'edit' | 'delete'
-type ProfileBadge = Enums<'profile_badge'>
 
 const props = defineProps<{
   user: {
@@ -55,7 +51,7 @@ const props = defineProps<{
     role?: string | null
     country?: string | null
     birthday?: string | null
-    badges?: ProfileBadge[]
+    badges?: string[]
     public?: boolean
     rich_presence_enabled?: boolean
     has_teamspeak?: boolean
@@ -69,14 +65,22 @@ const props = defineProps<{
 // Define emits
 const emit = defineEmits(['edit'])
 
-const BADGE_COMPONENTS: Record<ProfileBadge, unknown> = {
-  builder: ProfileBadgeBuilder,
-  earlybird: ProfileBadgeEarlybird,
-  founder: ProfileBadgeFounder,
-  host: ProfileBadgeHost,
-}
-
 const isBelowSmall = useBreakpoint('<s')
+
+const profileId = computed(() => props.user?.id ?? null)
+const { badges, refresh: refreshBadges } = useDataProfileBadges(profileId)
+
+const TIER_RANK: Record<string, number> = { shiny: 0, gold: 1, silver: 2, bronze: 3 }
+const sortedBadges = computed(() => {
+  return [...badges.value].sort((a, b) => {
+    const tierDiff = (TIER_RANK[a.tier] ?? 99) - (TIER_RANK[b.tier] ?? 99)
+    if (tierDiff !== 0)
+      return tierDiff
+    const aOrder = BADGE_CATALOG[a.slug as keyof typeof BADGE_CATALOG]?.sortOrder ?? 99
+    const bOrder = BADGE_CATALOG[b.slug as keyof typeof BADGE_CATALOG]?.sortOrder ?? 99
+    return aOrder - bOrder
+  })
+})
 
 // Get current user
 const currentUser = useSupabaseUser()
@@ -267,6 +271,8 @@ function getUserInitials(username: string): string {
     .substring(0, 2)
     .toUpperCase()
 }
+
+defineExpose({ refreshBadges })
 </script>
 
 <template>
@@ -530,17 +536,23 @@ function getUserInitials(username: string): string {
         </Card>
 
         <!-- Fixed Badges -->
-        <Card v-if="user.badges?.length" separators class="card-bg">
+        <Card v-if="sortedBadges.length" separators class="card-bg">
           <template #header>
             <h6>Badges</h6>
           </template>
           <div class="badges-grid">
             <div
-              v-for="badge in user.badges"
-              :key="badge"
+              v-for="badge in sortedBadges"
+              :key="badge.slug"
               class="badge-cell"
             >
-              <component :is="BADGE_COMPONENTS[badge]" compact />
+              <ProfileBadgeFromSlug
+                :slug="badge.slug"
+                :tier="badge.tier"
+                :progress="badge.progress ?? undefined"
+                :earned-at="badge.earned_at"
+                compact
+              />
             </div>
           </div>
         </Card>

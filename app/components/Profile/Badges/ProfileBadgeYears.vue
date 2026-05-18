@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BadgeVariant } from '@/lib/badges'
+import type { BadgeVariant } from '@/lib/badges/catalog'
 import { computed } from 'vue'
 import ProfileBadge from '@/components/Profile/Badges/ProfileBadge.vue'
 

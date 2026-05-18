@@ -263,7 +263,7 @@ defineExpose({
               </template>
               <Indicator
                 :variant="getActivityStatus(entry.profile)!.isActive ? 'online' : 'away'"
-                class="bulk-avatar-display__online-indicator"
+                class="bulk-avatar-display__online-indicator z-active"
                 outline
                 size="s"
               />

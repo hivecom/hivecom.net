@@ -1,44 +1,13 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-import type { BadgeVariant } from '@/lib/badges'
-import type { Enums } from '@/types/database.overrides'
 import { Button, Card, Flex, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
-import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
-import ProfileBadgeDiscussionReplies from '@/components/Profile/Badges/ProfileBadgeDiscussionReplies.vue'
-import ProfileBadgeDiscussionStarter from '@/components/Profile/Badges/ProfileBadgeDiscussionStarter.vue'
-import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
-import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
-import ProfileBadgeRSVPs from '@/components/Profile/Badges/ProfileBadgeRSVPs.vue'
-import ProfileBadgeSupporter from '@/components/Profile/Badges/ProfileBadgeSupporter.vue'
-import ProfileBadgeSupporterLifetime from '@/components/Profile/Badges/ProfileBadgeSupporterLifetime.vue'
-import ProfileBadgeYears from '@/components/Profile/Badges/ProfileBadgeYears.vue'
-import { useBadgeDiscussionReplyCount } from '@/composables/useBadgeDiscussionReplyCount'
-import { useBadgeDiscussionStartedCount } from '@/composables/useBadgeDiscussionStartedCount'
-import { useBadgePartyAnimalCount } from '@/composables/useBadgePartyAnimalCount'
-import { useDataUser } from '@/composables/useDataUser'
-import { DISCUSSION_REPLY_MIN_COUNT, DISCUSSION_STARTER_MIN_COUNT, getDiscussionReplyVariant, getDiscussionStarterVariant } from '@/lib/discussionBadge'
-import { getPartyAnimalVariant, PARTY_ANIMAL_MIN_RSVPS } from '@/lib/partyAnimalBadge'
-import ProfileBadgeHost from './Badges/ProfileBadgeHost.vue'
+import ProfileBadgeFromSlug from '@/components/Profile/Badges/ProfileBadgeFromSlug.vue'
+import { useDataProfileBadges } from '@/composables/useDataProfileBadges'
+import { BADGE_CATALOG } from '@/lib/badges/catalog'
 
 interface Props {
   profileId: string
   isOwnProfile?: boolean
-}
-
-type ProfileBadgeSlug = Enums<'profile_badge'>
-
-interface BadgeDefinition {
-  id: string
-  component: Component
-  slug?: ProfileBadgeSlug
-  isVisible?: () => boolean
-}
-
-interface RenderableBadgeEntry {
-  id: string
-  component: Component
-  componentProps?: Record<string, unknown>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -46,159 +15,23 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const profileIdRef = computed(() => props.profileId)
-const { user: profileData, loading } = useDataUser(profileIdRef, {
-  includeRole: false,
-  includeAvatar: false,
-  userTtl: 10 * 60 * 1000,
-})
+const { badges, loading } = useDataProfileBadges(profileIdRef)
 
-const badgeVariantOrder: BadgeVariant[] = ['shiny', 'gold', 'silver', 'bronze']
+// Sort: tier rank first (shiny > gold > silver > bronze), then catalog sortOrder within same tier
+const TIER_RANK: Record<string, number> = { shiny: 0, gold: 1, silver: 2, bronze: 3 }
 
-type BadgeDefinitionsByVariant = Record<BadgeVariant, BadgeDefinition[]>
-
-// Reorder or extend these lists to control badge ordering (years badge handled separately below).
-const badgeDefinitionsByVariant: BadgeDefinitionsByVariant = {
-  shiny: [
-    { id: 'founder', slug: 'founder', component: ProfileBadgeFounder },
-  ],
-  gold: [
-    { id: 'supporter_lifetime', component: ProfileBadgeSupporterLifetime, isVisible: () => profileData.value?.supporter_lifetime ?? false },
-    { id: 'supporter', component: ProfileBadgeSupporter, isVisible: () => profileData.value?.supporter_patreon ?? false },
-    { id: 'earlybird', slug: 'earlybird', component: ProfileBadgeEarlybird },
-  ],
-  silver: [
-    { id: 'host', slug: 'host', component: ProfileBadgeHost },
-    { id: 'builder', slug: 'builder', component: ProfileBadgeBuilder },
-  ],
-  bronze: [],
-}
-
-const uniqueProfileBadges = computed<ProfileBadgeSlug[]>(() => {
-  const rawBadges = profileData.value?.badges ?? []
-  return [...new Set(rawBadges)] as ProfileBadgeSlug[]
-})
-
-const YEARS_BADGE_THRESHOLD_DAYS = 365
-
-function getDaysSince(dateString: string): number {
-  const created = new Date(dateString)
-  if (Number.isNaN(created.getTime()))
-    return 0
-
-  const now = new Date()
-  const diffTime = now.getTime() - created.getTime()
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24))
-}
-
-const memberDays = computed(() => getDaysSince(profileData.value?.created_at ?? ''))
-const memberYears = computed(() => Math.floor(memberDays.value / 365))
-const hasYearsBadge = computed(() => memberYears.value >= 1 && memberDays.value >= YEARS_BADGE_THRESHOLD_DAYS)
-const yearsBadgeVariant = computed<BadgeVariant | null>(() => {
-  if (!hasYearsBadge.value)
-    return null
-
-  if (memberYears.value >= 20)
-    return 'shiny'
-  if (memberYears.value >= 10)
-    return 'gold'
-  if (memberYears.value >= 5)
-    return 'silver'
-  return 'bronze'
-})
-
-const { count: PartyAnimalCount } = useBadgePartyAnimalCount(profileIdRef)
-const partyAnimalVariant = computed<BadgeVariant | null>(() => {
-  const variant = getPartyAnimalVariant(PartyAnimalCount.value)
-  return variant ?? null
-})
-const hasPartyAnimalBadge = computed(() => (partyAnimalVariant.value !== null) && PartyAnimalCount.value >= PARTY_ANIMAL_MIN_RSVPS)
-
-const { count: DiscussionStartedCount } = useBadgeDiscussionStartedCount(profileIdRef)
-const discussionStarterVariant = computed<BadgeVariant | null>(() => {
-  const variant = getDiscussionStarterVariant(DiscussionStartedCount.value)
-  return variant ?? null
-})
-const hasDiscussionStarterBadge = computed(() => (discussionStarterVariant.value !== null) && DiscussionStartedCount.value >= DISCUSSION_STARTER_MIN_COUNT)
-
-const { count: DiscussionReplyCount } = useBadgeDiscussionReplyCount(profileIdRef)
-const discussionReplyVariant = computed<BadgeVariant | null>(() => {
-  const variant = getDiscussionReplyVariant(DiscussionReplyCount.value)
-  return variant ?? null
-})
-const hasDiscussionReplyBadge = computed(() => (discussionReplyVariant.value !== null) && DiscussionReplyCount.value >= DISCUSSION_REPLY_MIN_COUNT)
-
-const profileBadgesToRender = computed<RenderableBadgeEntry[]>(() => {
-  const memberBadges = new Set(uniqueProfileBadges.value)
-  const entries: RenderableBadgeEntry[] = []
-  const currentYearsVariant = yearsBadgeVariant.value
-  const currentPartyAnimalVariant = partyAnimalVariant.value
-  const currentDiscussionStarterVariant = discussionStarterVariant.value
-  const currentDiscussionReplyVariant = discussionReplyVariant.value
-
-  badgeVariantOrder.forEach((variant) => {
-    badgeDefinitionsByVariant[variant].forEach((definition) => {
-      if (definition.slug && !memberBadges.has(definition.slug))
-        return
-      if (definition.isVisible && !definition.isVisible())
-        return
-
-      entries.push({
-        id: definition.id,
-        component: definition.component,
-        componentProps: { compact: true },
-      })
-    })
-
-    if (hasYearsBadge.value && currentYearsVariant === variant) {
-      entries.push({
-        id: 'years',
-        component: ProfileBadgeYears,
-        componentProps: {
-          compact: true,
-          years: memberYears.value,
-          memberSince: profileData.value?.created_at ?? '',
-        },
-      })
-    }
-
-    if (hasPartyAnimalBadge.value && currentPartyAnimalVariant === variant) {
-      entries.push({
-        id: 'life_of_the_party',
-        component: ProfileBadgeRSVPs,
-        componentProps: {
-          compact: true,
-          rsvps: PartyAnimalCount.value,
-        },
-      })
-    }
-
-    if (hasDiscussionStarterBadge.value && currentDiscussionStarterVariant === variant) {
-      entries.push({
-        id: 'forum_regular',
-        component: ProfileBadgeDiscussionStarter,
-        componentProps: {
-          compact: true,
-          discussions: DiscussionStartedCount.value,
-        },
-      })
-    }
-
-    if (hasDiscussionReplyBadge.value && currentDiscussionReplyVariant === variant) {
-      entries.push({
-        id: 'chatterbox',
-        component: ProfileBadgeDiscussionReplies,
-        componentProps: {
-          compact: true,
-          replies: DiscussionReplyCount.value,
-        },
-      })
-    }
+const sortedBadges = computed(() => {
+  return [...badges.value].sort((a, b) => {
+    const tierDiff = (TIER_RANK[a.tier] ?? 99) - (TIER_RANK[b.tier] ?? 99)
+    if (tierDiff !== 0)
+      return tierDiff
+    const aOrder = BADGE_CATALOG[a.slug as keyof typeof BADGE_CATALOG]?.sortOrder ?? 99
+    const bOrder = BADGE_CATALOG[b.slug as keyof typeof BADGE_CATALOG]?.sortOrder ?? 99
+    return aOrder - bOrder
   })
-
-  return entries
 })
 
-const hasBadges = computed(() => profileBadgesToRender.value.length > 0)
+const hasBadges = computed(() => sortedBadges.value.length > 0)
 
 const emptyStateText = computed(() => {
   if (props.isOwnProfile)
@@ -215,7 +48,7 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
       <Flex x-between y-center>
         <Flex y-center gap="xs">
           <h4>Badges</h4>
-          <span v-if="!loading" class="counter">{{ profileBadgesToRender.length }}</span>
+          <span v-if="!loading" class="counter">{{ sortedBadges.length }}</span>
         </Flex>
 
         <Button size="s" variant="gray" aria-label="See all community badges" plain @click="goToBadgeDirectory">
@@ -234,11 +67,17 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
 
     <div v-else-if="hasBadges" class="badges-stack">
       <Flex
-        v-for="badge in profileBadgesToRender"
-        :key="`profile-badge-${badge.id}`"
+        v-for="badge in sortedBadges"
+        :key="`profile-badge-${badge.slug}`"
         x-center
       >
-        <component :is="badge.component" v-bind="badge.componentProps ?? {}" />
+        <ProfileBadgeFromSlug
+          :slug="badge.slug"
+          :tier="badge.tier"
+          :progress="badge.progress ?? undefined"
+          :earned-at="badge.earned_at"
+          compact
+        />
       </Flex>
     </div>
 

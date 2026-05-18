@@ -8,12 +8,13 @@ const props = defineProps<{
 
 const supabase = useSupabaseClient()
 
-let data: Pick<Tables<'profiles'>, 'username' | 'introduction' | 'country' | 'badges' | 'supporter_patreon' | 'supporter_lifetime' | 'created_at'> | null = null
+let data: Pick<Tables<'profiles'>, 'username' | 'introduction' | 'country' | 'supporter_patreon' | 'supporter_lifetime' | 'created_at'> | null = null
+let visibleBadges: string[] = []
 
 if (props.userId != null || props.username != null) {
   let query = supabase
     .from('profiles')
-    .select('username, introduction, country, badges, supporter_patreon, supporter_lifetime, created_at')
+    .select('username, introduction, country, supporter_patreon, supporter_lifetime, created_at')
 
   if (props.userId != null) {
     query = query.eq('id', props.userId)
@@ -24,11 +25,21 @@ if (props.userId != null || props.username != null) {
 
   const result = await query.maybeSingle()
   data = result.data
+
+  if (data != null) {
+    const profileId = props.userId ?? (result.data as { id?: string } | null)?.id
+    if (profileId != null) {
+      const { data: badgeRows } = await supabase
+        .from('profile_badges')
+        .select('slug')
+        .eq('profile_id', profileId)
+        .limit(4)
+      visibleBadges = (badgeRows ?? []).map(r => r.slug)
+    }
+  }
 }
 
 const memberYear = data?.created_at != null ? new Date(data.created_at).getFullYear() : null
-
-const visibleBadges = data?.badges != null ? data.badges.slice(0, 4) : []
 
 const supporterLabel = data?.supporter_lifetime === true
   ? 'Lifetime Supporter'

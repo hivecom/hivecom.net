@@ -8,6 +8,7 @@
  */
 
 let _resolve: (() => void) | null = null
+let _resolved = false
 
 const _promise: Promise<void> = new Promise<void>((resolve) => {
   _resolve = resolve
@@ -15,12 +16,19 @@ const _promise: Promise<void> = new Promise<void>((resolve) => {
 
 export function useSessionReady() {
   function resolveSessionReady() {
-    _resolve?.()
+    if (!_resolved) {
+      _resolved = true
+      _resolve?.()
+    }
   }
 
   async function waitForSessionReady(): Promise<void> {
     return _promise
   }
 
-  return { resolveSessionReady, waitForSessionReady }
+  function isSessionReady(): boolean {
+    return _resolved
+  }
+
+  return { resolveSessionReady, waitForSessionReady, isSessionReady }
 }

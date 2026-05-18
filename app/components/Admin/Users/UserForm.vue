@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import type { UserFormState } from '@/composables/useUserFormValidation'
-import type { Enums } from '@/types/database.types'
 import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
-import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
-import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
-import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
-import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
+import ProfileBadgeFromSlug from '@/components/Profile/Badges/ProfileBadgeFromSlug.vue'
 import AvatarDelete from '@/components/Shared/AvatarDelete.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { useDataProfileBadges } from '@/composables/useDataProfileBadges'
 import { INTRODUCTION_LIMIT, MARKDOWN_LIMIT, normalizeWebsiteUrl, USERNAME_LIMIT, useUserFormValidation } from '@/composables/useUserFormValidation'
 import { deleteUserAvatar, getUserAvatarUrl } from '@/lib/storage'
 import { USERS_BUCKET_ID } from '@/lib/storageAssets'
@@ -36,7 +33,7 @@ const props = defineProps<{
     roles?: string[]
     country?: string | null
     birthday?: string | null
-    badges?: ProfileBadge[]
+    badges?: ManualBadgeSlug[]
     website?: string | null
     public?: boolean
     rich_presence_enabled?: boolean
@@ -45,7 +42,10 @@ const props = defineProps<{
   isEditMode: boolean
 }>()
 // Define emits
-const emit = defineEmits(['save', 'delete'])
+const emit = defineEmits<{
+  save: [userData: Record<string, unknown>, badges: string[], currentBadges: string[]]
+  delete: [userId: string]
+}>()
 // Interface for Select options
 interface SelectOption {
   label: string
@@ -53,9 +53,9 @@ interface SelectOption {
   description?: string
 }
 
-type ProfileBadge = Enums<'profile_badge'>
-
-const BADGE_VALUES = ['builder', 'earlybird', 'founder', 'host'] as const satisfies ReadonlyArray<ProfileBadge>
+const BADGE_VALUES = ['builder', 'earlybird', 'founder', 'host'] as const
+type ManualBadgeSlug = typeof BADGE_VALUES[number]
+type AdminUserFormState = UserFormState & { badges: ManualBadgeSlug[] }
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -77,8 +77,18 @@ const permissionVerifying = ref(false)
 const avatarUrl = ref<string | null>(null)
 const avatarDeleting = ref(false)
 
+// Badge state from DB - source of truth for current manual badges
+const editingUserId = computed(() => props.user?.id ?? null)
+const { badges: dbBadges } = useDataProfileBadges(editingUserId)
+const currentDbManualSlugs = computed(() =>
+  dbBadges.value
+    .filter(b => b.source === 'manual')
+    .map(b => b.slug)
+    .filter((s): s is typeof BADGE_VALUES[number] => (BADGE_VALUES as readonly string[]).includes(s)),
+)
+
 // Form state
-function createDefaultUserFormState(): UserFormState {
+function createDefaultUserFormState(): AdminUserFormState {
   return {
     username: '',
     introduction: '',
@@ -97,7 +107,7 @@ function createDefaultUserFormState(): UserFormState {
   }
 }
 
-const userForm = ref<UserFormState>(createDefaultUserFormState())
+const userForm = ref<AdminUserFormState>(createDefaultUserFormState())
 
 const {
   usernameValidation,
@@ -119,31 +129,24 @@ const availableRoles = [
   { value: 'moderator', label: 'Moderator', description: 'Content moderation privileges' },
 ] as const
 
-const BADGE_DESCRIPTIONS: Record<ProfileBadge, string> = {
+const BADGE_DESCRIPTIONS: Record<ManualBadgeSlug, string> = {
   builder: 'Contributed to open-source projects and infrastructure',
   earlybird: 'Joined in the early days of the community',
   founder: 'One of the original founders',
   host: 'Hosted or organized multiple events for the community',
 }
 
-function formatBadgeLabel(badge: ProfileBadge) {
+function formatBadgeLabel(badge: ManualBadgeSlug) {
   return badge
     .split('_')
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
 }
 
-const badgeLabelMap = BADGE_VALUES.reduce<Record<ProfileBadge, string>>((acc, badge) => {
+const badgeLabelMap = BADGE_VALUES.reduce<Record<ManualBadgeSlug, string>>((acc, badge) => {
   acc[badge] = formatBadgeLabel(badge)
   return acc
-}, {} as Record<ProfileBadge, string>)
-
-const BADGE_COMPONENTS: Record<ProfileBadge, unknown> = {
-  builder: ProfileBadgeBuilder,
-  earlybird: ProfileBadgeEarlybird,
-  founder: ProfileBadgeFounder,
-  host: ProfileBadgeHost,
-}
+}, {} as Record<ManualBadgeSlug, string>)
 
 // Convert roles to Select component options format
 const roleSelectOptions = computed(() =>
@@ -176,15 +179,15 @@ const selectedRoleComputed = computed({
 const showDeleteConfirm = ref(false)
 const deleteLoading = ref(false)
 
-function dedupeBadges(badges?: readonly ProfileBadge[]) {
-  return [...new Set(badges ?? [])] as ProfileBadge[]
+function dedupeBadges(badges?: readonly ManualBadgeSlug[]) {
+  return [...new Set(badges ?? [])] as ManualBadgeSlug[]
 }
 
-function isBadgeActive(badge: ProfileBadge): boolean {
+function isBadgeActive(badge: ManualBadgeSlug): boolean {
   return userForm.value.badges.includes(badge)
 }
 
-function toggleBadge(badge: ProfileBadge) {
+function toggleBadge(badge: ManualBadgeSlug) {
   if (isBadgeActive(badge))
     userForm.value.badges = userForm.value.badges.filter(b => b !== badge)
   else
@@ -267,7 +270,7 @@ watch(
     if (newUser) {
       const normalizedCountry = newUser.country?.toUpperCase() ?? ''
       const hasValidCountry = COUNTRY_SELECT_OPTIONS.some(option => option.value === normalizedCountry)
-      const sanitizedBadges = dedupeBadges(newUser.badges)
+      const sanitizedBadges = dedupeBadges(currentDbManualSlugs.value)
 
       userForm.value = {
         username: newUser.username,
@@ -344,12 +347,11 @@ function handleSubmit() {
     patreon_id: userForm.value.patreon_id.trim() || null,
     discord_id: userForm.value.discord_id.trim() || null,
     steam_id: userForm.value.steam_id.trim() || null,
-    badges: dedupeBadges(userForm.value.badges),
     // Only include role if user has permission to modify roles
     ...(canEditRoles.value && { role: selectedRole.value }),
   }
 
-  emit('save', userData)
+  emit('save', userData, dedupeBadges(userForm.value.badges), currentDbManualSlugs.value)
 }
 
 // Open confirmation modal for deletion
@@ -756,7 +758,7 @@ function clearBirthday() {
                 :aria-pressed="isBadgeActive(badge)"
                 @click="canEditForm && toggleBadge(badge)"
               >
-                <component :is="BADGE_COMPONENTS[badge]" compact />
+                <ProfileBadgeFromSlug :slug="badge" compact />
               </div>
               <template #tooltip>
                 <p>{{ BADGE_DESCRIPTIONS[badge] }}</p>

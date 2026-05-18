@@ -16,8 +16,6 @@ import { getUserAvatarUrl } from '@/lib/storage'
 import { useAvatarBus } from './useAvatarBus'
 import { useCache } from './useCache'
 
-type ProfileBadgeSlug = Database['public']['Enums']['profile_badge']
-
 export interface UserDisplayData {
   id: string
   username: string
@@ -26,7 +24,6 @@ export interface UserDisplayData {
   avatarUrl: string | null
   supporter_lifetime: boolean
   supporter_patreon: boolean
-  badges: readonly ProfileBadgeSlug[]
   introduction: string | null
   country: string | null
   created_at: string | null
@@ -42,7 +39,6 @@ interface ProfileCacheEntry {
   username_set?: boolean
   supporter_lifetime?: boolean
   supporter_patreon?: boolean
-  badges?: ProfileBadgeSlug[]
   introduction?: string | null
   country?: string | null
   created_at?: string | null
@@ -58,7 +54,6 @@ function hasSupporterMetadata(profile?: ProfileCacheEntry | null): profile is Pr
     typeof profile?.username_set === 'boolean'
     && typeof profile?.supporter_lifetime === 'boolean'
     && typeof profile?.supporter_patreon === 'boolean'
-    && Array.isArray(profile?.badges)
   )
 }
 
@@ -131,6 +126,43 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
   const error = ref<string | null>(null)
 
   /**
+   * Synchronously seed user.value from cache if all required entries are
+   * present. Called during composable setup so that on re-mount (e.g. page
+   * navigation) the avatar is available immediately without waiting for the
+   * async fetch, preventing the avatar flash.
+   */
+  function seedFromCache(id: string): void {
+    const keys = getCacheKeys(id)
+    const profile = cache.get<ProfileCacheEntry>(keys.profile)
+    if (!profile || !hasSupporterMetadata(profile))
+      return
+    if (includeRole && !cache.has(keys.role))
+      return
+    if (includeAvatar && !cache.has(keys.avatar))
+      return
+
+    const role = includeRole ? cache.get<string | null>(keys.role) : null
+    const avatarUrl = includeAvatar ? cache.get<string | null>(keys.avatar) : null
+
+    user.value = {
+      id: profile.id,
+      username: profile.username,
+      username_set: profile.username_set ?? false,
+      role: role ?? null,
+      avatarUrl: avatarUrl ?? null,
+      supporter_lifetime: profile.supporter_lifetime ?? false,
+      supporter_patreon: profile.supporter_patreon ?? false,
+      introduction: profile.introduction ?? null,
+      country: profile.country ?? null,
+      created_at: profile.created_at ?? null,
+      isPublic: profile.isPublic ?? false,
+      has_banner: profile.has_banner ?? false,
+      banner_extension: profile.banner_extension ?? null,
+      last_seen: profile.last_seen ?? null,
+    }
+  }
+
+  /**
    * Fetch user profile data with global inflight dedup
    */
   async function fetchProfile(id: string): Promise<ProfileCacheEntry | null> {
@@ -153,7 +185,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
       inflight = Promise.resolve(
         supabase
           .from('profiles')
-          .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public, has_banner, avatar_extension, banner_extension, last_seen')
+          .select('id, username, username_set, supporter_lifetime, supporter_patreon, introduction, country, created_at, public, has_banner, avatar_extension, banner_extension, last_seen')
           .eq('id', id)
           .single(),
       ).then(({ data, error: profileError }) => {
@@ -166,7 +198,6 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
           username_set: data.username_set ?? false,
           supporter_lifetime: data.supporter_lifetime ?? false,
           supporter_patreon: data.supporter_patreon ?? false,
-          badges: Array.isArray(data.badges) ? [...data.badges] : [],
           introduction: data.introduction ?? null,
           country: data.country ?? null,
           created_at: data.created_at ?? null,
@@ -317,7 +348,6 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
             avatarUrl,
             supporter_lifetime: profile.supporter_lifetime ?? false,
             supporter_patreon: profile.supporter_patreon ?? false,
-            badges: profile.badges ? [...profile.badges] : [],
             introduction: profile.introduction ?? null,
             country: profile.country ?? null,
             created_at: profile.created_at ?? null,
@@ -381,6 +411,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
       if (!_activeInstances.has(newId))
         _activeInstances.set(newId, new Set())
       _activeInstances.get(newId)!.add(refetch)
+      seedFromCache(newId)
     }
     void fetchUserData()
   }, { immediate: true })
@@ -556,7 +587,6 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
             avatarUrl: avatarUrl ?? null,
             supporter_lifetime: profile.supporter_lifetime ?? false,
             supporter_patreon: profile.supporter_patreon ?? false,
-            badges: profile.badges ? [...profile.badges] : [],
             introduction: profile.introduction ?? null,
             country: profile.country ?? null,
             created_at: profile.created_at ?? null,
@@ -580,7 +610,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
         profileIdsToFetch.length > 0
           ? supabase
               .from('profiles')
-              .select('id, username, username_set, supporter_lifetime, supporter_patreon, badges, introduction, country, created_at, public, has_banner, avatar_extension, banner_extension, last_seen')
+              .select('id, username, username_set, supporter_lifetime, supporter_patreon, introduction, country, created_at, public, has_banner, avatar_extension, banner_extension, last_seen')
               .in('id', profileIdsToFetch)
           : Promise.resolve({ data: [], error: null }),
         includeRole && roleIdsToFetch.length > 0
@@ -609,7 +639,6 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
           username_set: profile.username_set ?? false,
           supporter_lifetime: profile.supporter_lifetime ?? false,
           supporter_patreon: profile.supporter_patreon ?? false,
-          badges: Array.isArray(profile.badges) ? [...profile.badges] : [],
           introduction: profile.introduction ?? null,
           country: profile.country ?? null,
           created_at: profile.created_at ?? null,
@@ -675,7 +704,6 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
             avatarUrl: avatarUrl ?? null,
             supporter_lifetime: profile.supporter_lifetime ?? false,
             supporter_patreon: profile.supporter_patreon ?? false,
-            badges: profile.badges ? [...profile.badges] : [],
             introduction: profile.introduction ?? null,
             country: profile.country ?? null,
             created_at: profile.created_at ?? null,

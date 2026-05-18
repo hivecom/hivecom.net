@@ -37,10 +37,6 @@ const userId = useUserId() // Use helper to get ID from JWT claims
 const { navigateToSignIn } = useAuthRedirect()
 type ProfileRecord = Tables<'profiles'>
 
-type ProfileRecordInput = ProfileRecord | (Omit<ProfileRecord, 'badges'> & {
-  badges: ReadonlyArray<ProfileRecord['badges'][number]>
-})
-
 const profile = ref<ProfileRecord>()
 const errorMessage = ref('')
 const isEditSheetOpen = ref(false)
@@ -51,11 +47,8 @@ const profileSubmissionError = ref<string | null>(null)
 // Add refresh functionality for avatar updates
 const refreshTrigger = ref(0)
 
-function cloneProfileRecord(record: ProfileRecordInput): ProfileRecord {
-  return {
-    ...record,
-    badges: [...record.badges],
-  }
+function cloneProfileRecord(record: ProfileRecord): ProfileRecord {
+  return { ...record }
 }
 
 // Computed property to check if this is the user's own profile
@@ -172,7 +165,7 @@ const loading = computed(() => profileLoading.value || !fetchSettled.value)
 // Set profile from cached data
 watch(hydratedProfileData, (newData) => {
   if (newData) {
-    const hydratedProfile = cloneProfileRecord(newData as ProfileRecordInput)
+    const hydratedProfile = cloneProfileRecord(newData as ProfileRecord)
     profile.value = hydratedProfile
     // Check friendship status after profile is loaded
     checkFriendshipStatus()

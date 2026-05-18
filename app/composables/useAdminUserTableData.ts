@@ -3,8 +3,6 @@ import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 
-type ProfileBadge = Database['public']['Enums']['profile_badge']
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -19,7 +17,6 @@ export interface AdminUserRecord {
   modified_by: string | null
   supporter_lifetime: boolean
   supporter_patreon: boolean
-  badges: ProfileBadge[]
   patreon_id: string | null
   steam_id: string | null
   discord_id: string | null
@@ -61,7 +58,6 @@ export interface AdminUserProfile {
   modified_by: string | null
   supporter_lifetime: boolean
   supporter_patreon: boolean
-  badges: ProfileBadge[]
   patreon_id: string | null
   steam_id: string | null
   discord_id: string | null
@@ -159,7 +155,6 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
         modified_by: row.modified_by,
         supporter_lifetime: row.supporter_lifetime ?? false,
         supporter_patreon: row.supporter_patreon ?? false,
-        badges: row.badges ?? [],
         patreon_id: row.patreon_id,
         steam_id: row.steam_id,
         discord_id: row.discord_id,
@@ -224,7 +219,6 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
       modified_by: user.modified_by,
       supporter_lifetime: user.supporter_lifetime,
       supporter_patreon: user.supporter_patreon,
-      badges: user.badges,
       patreon_id: user.patreon_id,
       steam_id: user.steam_id,
       discord_id: user.discord_id,
