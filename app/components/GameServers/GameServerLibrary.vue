@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, BadgeGroup, Button, Flex, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
-import GameIcon from '@/components/GameServers/GameIcon.vue'
-import GameServerRow from '@/components/GameServers/GameServerRow.vue'
+import { Alert, Badge, BadgeGroup, Indicator, Skeleton, Tooltip } from '@dolanske/vui'
+import GameServerModal from '@/components/GameServers/GameServerModal.vue'
+
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
-import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<Props>()
 
@@ -64,7 +63,6 @@ const selectedGame = ref<Tables<'games'> | null>(null)
 const selectedGameServers = ref<GameserversType>([])
 const gameCovers = ref<Map<number, string>>(new Map())
 const coverLoadingStates = ref<Set<number>>(new Set())
-const isBelowSmall = useBreakpoint('<xs')
 
 function compareGameServerName(a: GameserversType[0], b: GameserversType[0]) {
   const nameA = a.name ?? ''
@@ -245,41 +243,7 @@ function isCoverLoading(gameId: number): boolean {
     </template>
 
     <!-- Game Servers Modal -->
-    <Modal
-      v-if="showModal" :open="showModal" :size="isBelowSmall ? 'screen' : undefined" :card="{ separators: true }"
-      @close="closeModal"
-    >
-      <template v-if="selectedGame" #header>
-        <Flex gap="s" y-center expand>
-          <GameIcon :game="selectedGame" size="m" />
-          <Flex y-center gap="s" expand x-between>
-            <h3>{{ selectedGame.name }}</h3>
-          </Flex>
-        </Flex>
-      </template>
-      <div class="modal-content">
-        <div v-if="selectedGameServers.length > 0" class="servers-list">
-          <GameServerRow
-            v-for="gameserver in selectedGameServers" :key="gameserver.id"
-            :gameserver="gameserver"
-            :container="gameserver.container ?? null" :game="selectedGame"
-            compact
-          />
-        </div>
-
-        <Alert v-else variant="info">
-          No servers available for this game.
-        </Alert>
-      </div>
-
-      <template #footer>
-        <Flex x-end gap="s" expand>
-          <Button :expand="isBelowSmall" @click="closeModal">
-            Close
-          </Button>
-        </Flex>
-      </template>
-    </Modal>
+    <GameServerModal :open="showModal" :game="selectedGame" :gameservers="selectedGameServers" @close="closeModal" />
   </div>
 </template>
 

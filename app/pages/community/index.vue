@@ -57,9 +57,16 @@ const communityLinks = [
     subtitle: 'See how we\'re funded and where contributions go',
   },
   {
+    to: '/community/games',
+    ariaLabel: 'See games played in the Hivecom community',
+    icon: 'ph:game-controller',
+    title: 'Community Games',
+    subtitle: 'Games played in the community and activity over time',
+  },
+  {
     to: '/servers/gameservers',
     ariaLabel: 'Explore our game servers and gaming community',
-    icon: 'ph:game-controller',
+    icon: 'ph:devices',
     title: 'Game Servers',
     subtitle: 'Connect to our hosted game servers',
   },

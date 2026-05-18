@@ -37,6 +37,7 @@ const props = defineProps<{
   color?: string
   compact?: boolean
   hideTitle?: boolean
+  hideUntracked?: boolean
   showYAxis?: boolean
   colorize?: boolean
 }>()
@@ -363,7 +364,7 @@ watch(chartData, () => {
         <OnlineBadge :count="currentCount ?? 0" label="playing" size="s" :color="(currentCount ?? 0) > 0 ? 'var(--color-text-green)' : undefined" />
       </Flex>
       <Flex gap="xxs" y-center>
-        <Flex v-if="!isMobileSmallest && gameId === undefined && steamGameId === undefined" gap="s" y-center>
+        <Flex v-if="!hideUntracked && !isMobileSmallest && gameId === undefined && steamGameId === undefined" gap="s" y-center>
           <Icon v-if="isMobile" name="ph:steam-logo" size="20" :class="includeSteamGames ? 'text-color-accent' : 'text-color-lightest'" />
           <span v-else class="text-s text-color-lighter">Include Untracked</span>
           <Switch v-model="includeSteamGames" />
