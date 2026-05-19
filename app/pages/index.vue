@@ -5,6 +5,7 @@ import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skele
 import constants from '~~/constants.json'
 import EventCardLanding from '@/components/Events/EventCardLanding.vue'
 import LandingHero from '@/components/Landing/LandingHero.vue'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataEvents } from '@/composables/useDataEvents'
 
 definePageMeta({
@@ -222,7 +223,6 @@ onMounted(async () => {
               <Skeleton height="1rem" width="60%" />
             </Card>
           </Grid>
-
           <div v-else-if="errorMessage" class="events-section__error">
             <Card>
               <p class="events-section__error-text">
@@ -230,21 +230,23 @@ onMounted(async () => {
               </p>
             </Card>
           </div>
-
           <div v-else-if="events.length === 0" class="events-section__empty">
             <Card>
               <p>No events scheduled.</p>
             </Card>
           </div>
-
-          <Grid v-else :columns="3" gap="m" expand y-stretch class="events-list">
-            <EventCardLanding
-              v-for="event in events"
-              :key="event.id"
-              :event="event"
-              compact
-            />
-          </Grid>
+          <div v-else>
+            <GlowGroup>
+              <Grid :columns="3" gap="m" expand y-stretch class="events-list">
+                <EventCardLanding
+                  v-for="event in events"
+                  :key="event.id"
+                  :event="event"
+                  compact
+                />
+              </Grid>
+            </GlowGroup>
+          </div>
 
           <div class="events-section__view-all mb-m">
             <NuxtLink to="/events">

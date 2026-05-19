@@ -847,39 +847,68 @@ export type Database = {
       }
       games: {
         Row: {
+          color: string | null
           created_at: string
           created_by: string | null
+          description: string | null
+          discussion_topic_id: string | null
+          genre_tags: string[] | null
           id: number
+          markdown: string | null
           modified_at: string | null
           modified_by: string | null
+          multiplayer_modes: string[] | null
           name: string | null
+          release_date: string | null
           shorthand: string | null
           steam_id: number | null
           website: string | null
         }
         Insert: {
+          color?: string | null
           created_at?: string
           created_by?: string | null
+          description?: string | null
+          discussion_topic_id?: string | null
+          genre_tags?: string[] | null
           id?: number
+          markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
+          multiplayer_modes?: string[] | null
           name?: string | null
+          release_date?: string | null
           shorthand?: string | null
           steam_id?: number | null
           website?: string | null
         }
         Update: {
+          color?: string | null
           created_at?: string
           created_by?: string | null
+          description?: string | null
+          discussion_topic_id?: string | null
+          genre_tags?: string[] | null
           id?: number
+          markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
+          multiplayer_modes?: string[] | null
           name?: string | null
+          release_date?: string | null
           shorthand?: string | null
           steam_id?: number | null
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "games_discussion_topic_id_fkey"
+            columns: ["discussion_topic_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_topics"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       kvstore: {
         Row: {
@@ -1503,7 +1532,6 @@ export type Database = {
         Row: {
           agreed_content_rules: boolean
           avatar_extension: string | null
-          badges: Database["public"]["Enums"]["profile_badge"][]
           ban_end: string | null
           ban_reason: string | null
           ban_start: string | null
@@ -1537,7 +1565,6 @@ export type Database = {
         Insert: {
           agreed_content_rules?: boolean
           avatar_extension?: string | null
-          badges?: Database["public"]["Enums"]["profile_badge"][]
           ban_end?: string | null
           ban_reason?: string | null
           ban_start?: string | null
@@ -1571,7 +1598,6 @@ export type Database = {
         Update: {
           agreed_content_rules?: boolean
           avatar_extension?: string | null
-          badges?: Database["public"]["Enums"]["profile_badge"][]
           ban_end?: string | null
           ban_reason?: string | null
           ban_start?: string | null
@@ -2543,7 +2569,6 @@ export type Database = {
         Returns: {
           auth_provider: string
           auth_providers: string[]
-          badges: Database["public"]["Enums"]["profile_badge"][]
           ban_end: string
           ban_reason: string
           ban_start: string
@@ -3153,7 +3178,6 @@ export type Database = {
         | "snooze"
         | "looking_to_trade"
         | "looking_to_play"
-      profile_badge: "founder" | "earlybird" | "builder" | "host"
       region: "eu" | "na" | "all"
     }
     CompositeTypes: {
@@ -3376,7 +3400,6 @@ export const Constants = {
         "looking_to_trade",
         "looking_to_play",
       ],
-      profile_badge: ["founder", "earlybird", "builder", "host"],
       region: ["eu", "na", "all"],
     },
   },

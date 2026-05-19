@@ -246,8 +246,13 @@ function confirmDelete() {
         <!-- Markdown Content -->
         <DetailTable v-if="props.gameserver.markdown">
           <template #header>
-            <Icon name="ph:article" />
-            <h6>Markdown</h6>
+            <Flex x-between y-center expand>
+              <Flex y-center gap="xs">
+                <Icon name="ph:article" />
+                <h6>Content</h6>
+              </Flex>
+              <span class="text-color-lightest text-xs">Markdown</span>
+            </Flex>
           </template>
           <MarkdownRenderer :md="props.gameserver.markdown" class="gameserver-details__markdown-content" />
         </DetailTable>

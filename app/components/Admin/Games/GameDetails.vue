@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Card, Flex, Sheet, Skeleton } from '@dolanske/vui'
+import { Badge, Card, Flex, Sheet, Skeleton } from '@dolanske/vui'
 import { ref, watchEffect } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
@@ -8,6 +8,7 @@ import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
 import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
+import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 
@@ -213,7 +214,65 @@ watchEffect(async () => {
             {{ props.game.website }}
           </NuxtLink>
         </DetailRow>
+
+        <DetailRow label="Release Date" :hidden="!props.game.release_date">
+          <span class="text-s">{{ props.game.release_date ? new Date(props.game.release_date).getFullYear() : '' }}</span>
+        </DetailRow>
+
+        <DetailRow label="Description / Tagline" :hidden="!props.game.description">
+          <span class="text-s">{{ props.game.description }}</span>
+        </DetailRow>
+
+        <DetailRow label="Genres" :hidden="!props.game.genre_tags || props.game.genre_tags.length === 0">
+          <Flex gap="xs" wrap>
+            <Badge v-for="tag in props.game.genre_tags" :key="tag" variant="neutral" size="s">
+              {{ tag }}
+            </Badge>
+          </Flex>
+        </DetailRow>
+
+        <DetailRow label="Multiplayer" :hidden="!props.game.multiplayer_modes || props.game.multiplayer_modes.length === 0">
+          <Flex gap="xs" wrap>
+            <Badge v-for="mode in props.game.multiplayer_modes" :key="mode" variant="neutral" size="s">
+              {{ mode }}
+            </Badge>
+          </Flex>
+        </DetailRow>
+
+        <DetailRow label="Accent Color" :hidden="!props.game.color">
+          <Flex y-center gap="s">
+            <div
+              class="game-details__color-swatch"
+              :style="{ backgroundColor: props.game.color ?? undefined }"
+            />
+            <span class="text-s">{{ props.game.color }}</span>
+          </Flex>
+        </DetailRow>
+
+        <DetailRow label="Forum Topic" :hidden="!props.game.discussion_topic_id">
+          <NuxtLink
+            v-if="props.game.discussion_topic_id"
+            :to="`/forum?activeTopicId=${encodeURIComponent(props.game.discussion_topic_id)}`"
+            class="game-details__link"
+          >
+            {{ props.game.discussion_topic_id }}
+          </NuxtLink>
+        </DetailRow>
       </DetailTable>
+
+      <!-- Content (Markdown) -->
+      <Card v-if="props.game.markdown" separators class="card-bg" expand>
+        <template #header>
+          <Flex x-between y-center expand>
+            <Flex y-center gap="xs">
+              <Icon name="ph:article" />
+              <h6>Content</h6>
+            </Flex>
+            <span class="text-color-lightest text-xs">Markdown</span>
+          </Flex>
+        </template>
+        <MarkdownRenderer :md="props.game.markdown" />
+      </Card>
 
       <!-- Related Game Servers -->
       <Card separators class="card-bg" expand>
@@ -384,6 +443,14 @@ watchEffect(async () => {
     color: var(--color-accent);
     word-break: break-all;
     font-size: var(--font-size-s);
+  }
+
+  &__color-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: var(--border-radius-s);
+    border: 1px solid var(--color-border);
+    flex-shrink: 0;
   }
 
   &__metadata-by {

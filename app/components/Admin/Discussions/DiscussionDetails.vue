@@ -490,11 +490,17 @@ async function reassignToTopic(topicId: string) {
         </DetailRow>
       </DetailTable>
 
-      <Card class="card-bg">
+      <Card separators class="card-bg">
+        <template #header>
+          <Flex x-between y-center expand>
+            <Flex y-center gap="xs">
+              <Icon name="ph:article" />
+              <h6>Content</h6>
+            </Flex>
+            <span class="text-color-lightest text-xs">Markdown</span>
+          </Flex>
+        </template>
         <Flex column gap="s">
-          <h5 class="text-bold">
-            Content
-          </h5>
           <MarkdownRenderer v-if="discussionMarkdown" :md="discussionMarkdown" />
           <p v-else-if="contentLoading" class="text-color-lighter text-s">
             Loading content...

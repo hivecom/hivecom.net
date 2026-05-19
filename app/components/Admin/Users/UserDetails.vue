@@ -528,7 +528,13 @@ defineExpose({ refreshBadges })
         <!-- User Profile Markdown -->
         <Card v-if="user.markdown" separators class="card-bg">
           <template #header>
-            <h6>Content</h6>
+            <Flex x-between y-center expand>
+              <Flex y-center gap="xs">
+                <Icon name="ph:article" />
+                <h6>Content</h6>
+              </Flex>
+              <span class="text-color-lightest text-xs">Markdown</span>
+            </Flex>
           </template>
           <div class="profile-markdown">
             <MarkdownRenderer :md="user.markdown" />

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Card, Flex } from '@dolanske/vui'
+import { Badge, Card, Flex, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { computed, useTemplateRef } from 'vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
+import GlowCard from '@/components/Shared/GlowCard.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { truncate } from '@/lib/utils/formatting'
 import EventRSVPCount from './EventRSVPCount.vue'
@@ -15,6 +17,9 @@ dayjs.extend(relativeTime)
 interface Props {
   event: Tables<'events'>
   compact?: boolean
+  hideDescription?: boolean
+  // Pass the full games list so we can look up icons by id
+  games?: Tables<'games'>[]
 }
 
 // Determine event status
@@ -39,59 +44,78 @@ const eventStatus = computed(() => {
 const countEl = useTemplateRef('countRef')
 const count = computed(() => countEl.value?.count ?? 0)
 
+const linkedGames = computed(() => {
+  if (!props.games || !props.event.games?.length)
+    return []
+  return props.event.games
+    .map(id => props.games!.find(g => g.id === id))
+    .filter((g): g is Tables<'games'> => g != null)
+})
+
 const isBelowSmall = useBreakpoint('<m')
 </script>
 
 <template>
-  <NuxtLink :to="`/events/${props.event.id}`">
-    <Card
-      class="event-card" :class="{
-        past: eventStatus.type === 'past',
-        ongoing: eventStatus.type === 'ongoing',
-      }"
-    >
-      <Flex column gap="xs" expand class="h-100">
-        <Flex x-between y-center expand class="mb-xs">
-          <span
-            class="event-card__status"
-            :class="[eventStatus.type]"
-          >
-            {{ eventStatus.label }}
-          </span>
-          <Badge v-if="props.event.is_official" variant="accent" size="s">
-            <Icon name="ph:star-fill" />
-            Official
-          </Badge>
-        </Flex>
-        <strong class="event-card__title">
-          {{ props.event.title }}
-        </strong>
-        <p class="event-card__description flex-1">
-          {{ truncate(props.event.description, 108) }}
-        </p>
-
-        <Flex :gap="isBelowSmall ? 's' : 'l'" y-center wrap>
-          <Flex y-center gap="xs" class="event-card__details">
-            <Icon name="ph:calendar" size="18" />
-            {{ dayjs(props.event.date).fromNow() }}
+  <GlowCard>
+    <NuxtLink :to="`/events/${props.event.id}`" class="event-card__link">
+      <Card
+        class="event-card" :class="{
+          past: eventStatus.type === 'past',
+          ongoing: eventStatus.type === 'ongoing',
+        }"
+      >
+        <Flex column gap="xs" expand class="h-100">
+          <Flex x-between y-center expand class="mb-xs">
+            <span
+              class="event-card__status"
+              :class="[eventStatus.type]"
+            >
+              {{ eventStatus.label }}
+            </span>
+            <!-- Game icons replace the Official badge when games are provided -->
+            <Flex v-if="linkedGames.length > 0" y-center gap="xxs">
+              <Tooltip v-for="g in linkedGames" :key="g.id" placement="top">
+                <GameIcon :game="g" size="xs" />
+                <template #tooltip>
+                  <p>{{ g.name }}</p>
+                </template>
+              </Tooltip>
+            </Flex>
+            <Badge v-else-if="props.event.is_official" variant="accent" size="s">
+              <Icon name="ph:star-fill" />
+              Official
+            </Badge>
           </Flex>
+          <strong class="event-card__title">
+            {{ props.event.title }}
+          </strong>
+          <p v-if="!hideDescription" class="event-card__description flex-1">
+            {{ truncate(props.event.description, 108) }}
+          </p>
 
-          <Flex v-if="count" y-center gap="xs" class="event-card__details">
-            <Icon name="ph:user" size="18" />
-            {{ count }} attendee{{ count === 1 ? '' : 's' }}
+          <Flex :gap="isBelowSmall ? 's' : 'l'" y-center wrap>
+            <Flex y-center gap="xs" class="event-card__details">
+              <Icon name="ph:calendar" size="18" />
+              {{ dayjs(props.event.date).fromNow() }}
+            </Flex>
+
+            <Flex v-if="count" y-center gap="xs" class="event-card__details">
+              <Icon name="ph:user" size="18" />
+              {{ count }} attendee{{ count === 1 ? '' : 's' }}
+            </Flex>
           </Flex>
         </Flex>
-      </Flex>
-    </Card>
-  </NuxtLink>
+      </Card>
+    </NuxtLink>
 
-  <EventRSVPCount
-    ref="countRef"
-    style="display:none"
-    :event="props.event"
-    size="s"
-    show-when-zero
-  />
+    <EventRSVPCount
+      ref="countRef"
+      style="display:none"
+      :event="props.event"
+      size="s"
+      show-when-zero
+    />
+  </GlowCard>
 </template>
 
 <style lang="scss" scoped>
@@ -102,6 +126,12 @@ const isBelowSmall = useBreakpoint('<m')
 
   :deep(.vui-card-content) {
     height: 100% !important;
+  }
+
+  &__link {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
   }
 
   &:not(&.past) {

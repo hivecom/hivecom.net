@@ -147,10 +147,10 @@ useHead({
 
         <!-- Event Content -->
         <Flex
-          v-if="event && !loading && !error" column gap="l"
+          v-if="event && !loading && !error" column gap="l" expand
         >
           <!-- Back Button -->
-          <Flex x-between y-center>
+          <Flex x-between y-center expand>
             <NuxtLink to="/events">
               <Button
                 variant="gray"
@@ -193,7 +193,7 @@ useHead({
             />
           </div>
 
-          <Flex column>
+          <Flex column expand>
             <!-- Markdown -->
             <EventMarkdown :event="mutableEvent!" />
 

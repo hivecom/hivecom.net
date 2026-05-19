@@ -234,7 +234,13 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
         <!-- Markdown Content -->
         <Card v-if="props.event.markdown" separators class="card-bg">
           <template #header>
-            <h6>Markdown</h6>
+            <Flex x-between y-center expand>
+              <Flex y-center gap="xs">
+                <Icon name="ph:article" />
+                <h6>Content</h6>
+              </Flex>
+              <span class="text-color-lightest text-xs">Markdown</span>
+            </Flex>
           </template>
 
           <MarkdownRenderer :md="props.event.markdown" class="event-markdown-content" />

@@ -1,0 +1,80 @@
+<script setup lang="ts">
+import type { Tables } from '@/types/database.overrides'
+import { Marquee } from '@dolanske/vui'
+import { ref } from 'vue'
+import GameCover from '@/components/Shared/GameCover.vue'
+import GlowCard from '@/components/Shared/GlowCard.vue'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
+
+defineProps<{
+  games: Tables<'games'>[]
+  speed?: number
+}>()
+
+const paused = ref(false)
+</script>
+
+<template>
+  <section
+    class="marquee-section"
+    :class="{ 'marquee-section--paused': paused }"
+    @mouseenter="paused = true"
+    @mouseleave="paused = false"
+  >
+    <Marquee direction="left" :speed="speed ?? 30">
+      <GlowGroup>
+        <div
+          v-for="game in games"
+          :key="game.id"
+          class="marquee-item"
+        >
+          <GlowCard>
+            <GameCover :game="game" size="xl" aspect-ratio="card" :show-fallback="false" />
+          </GlowCard>
+        </div>
+      </GlowGroup>
+    </Marquee>
+  </section>
+</template>
+
+<style lang="scss" scoped>
+.marquee-section {
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  height: 20rem;
+  overflow: hidden;
+
+  &--paused {
+    :deep(.marquee-track) {
+      animation-play-state: paused;
+    }
+  }
+}
+
+.marquee-item {
+  height: 18rem;
+  margin-top: var(--space-xs);
+  margin-bottom: var(--space-xs);
+  flex-shrink: 0;
+
+  :deep(.game-cover-container) {
+    height: 100%;
+    width: auto;
+    aspect-ratio: 2 / 2.8;
+  }
+
+  :deep(.game-cover) {
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--border-radius-s);
+    filter: saturate(0);
+    opacity: 0.5;
+    transition: var(--transition-slow);
+  }
+
+  :deep(.glow-card:hover .game-cover),
+  &:hover :deep(.game-cover) {
+    filter: saturate(1);
+    opacity: 1;
+  }
+}
+</style>
