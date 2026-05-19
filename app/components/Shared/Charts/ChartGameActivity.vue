@@ -50,11 +50,14 @@ ChartJS.register(
   Legend,
 )
 
-const { metrics, fetchMetrics, metricsHistory, loadingHistory, fetchMetricsHistory, fetchMetricsWindow, scheduleRefresh } = useDataMetrics()
+const { metrics, fetchMetrics, fetchMetricsHistoryIsolated, fetchMetricsWindowIsolated, scheduleRefresh } = useDataMetrics()
 const { games } = useDataGames()
 const { steamGameNameMapStr } = useDataSteamGames()
 const isMobile = useBreakpoint('<s')
 const isMobileSmallest = useBreakpoint('<xs')
+
+const metricsHistory = ref<MetricsHistoryEntry[]>([])
+const loadingHistory = ref(false)
 
 // Map community game numeric string ID -> display name
 const gameNameMap = computed(() => {
@@ -88,10 +91,22 @@ function gameLabel(id: string): string {
 
 async function loadData() {
   if (props.window !== null) {
-    await fetchMetricsWindow(props.window.start, props.window.end)
+    loadingHistory.value = true
+    try {
+      metricsHistory.value = await fetchMetricsWindowIsolated(props.window.start, props.window.end)
+    }
+    finally {
+      loadingHistory.value = false
+    }
   }
   else {
-    await fetchMetricsHistory(props.period)
+    loadingHistory.value = true
+    try {
+      metricsHistory.value = await fetchMetricsHistoryIsolated(props.period)
+    }
+    finally {
+      loadingHistory.value = false
+    }
     scheduleRefresh(props.period)
   }
   if (metrics.value === null)

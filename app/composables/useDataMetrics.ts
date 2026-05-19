@@ -354,6 +354,41 @@ export function useDataMetrics() {
     }
   }
 
+  // Like fetchMetricsWindow but does not write to shared refs.
+  const fetchMetricsWindowIsolated = async (start: Date, end: Date): Promise<MetricsHistoryEntry[]> => {
+    const cacheKey = `metrics:history:window:${start.getTime()}:${end.getTime()}`
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null)
+      return cached
+    try {
+      const durationMs = end.getTime() - start.getTime()
+      let bucketMs: number
+      if (durationMs <= 6 * 60 * 60 * 1000)
+        bucketMs = 5 * 60 * 1000
+      else if (durationMs <= 24 * 60 * 60 * 1000)
+        bucketMs = 15 * 60 * 1000
+      else if (durationMs <= 7 * 24 * 60 * 60 * 1000)
+        bucketMs = 60 * 60 * 1000
+      else if (durationMs <= 30 * 24 * 60 * 60 * 1000)
+        bucketMs = 3 * 60 * 60 * 1000
+      else
+        bucketMs = 24 * 60 * 60 * 1000
+      const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
+        p_since: start.toISOString(),
+        p_until: end.toISOString(),
+        p_bucket_interval: msToPgInterval(bucketMs),
+      })
+      if (dbError !== null || data === null)
+        return []
+      const result = (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
+      metricsCache.set(cacheKey, result, msUntilNextCollection())
+      return result
+    }
+    catch {
+      return []
+    }
+  }
+
   const fetchMetricsHistory = async (period: MetricsPeriod = '24h') => {
     const cacheKey = `metrics:history:${period}`
     const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
@@ -378,6 +413,24 @@ export function useDataMetrics() {
     }
     finally {
       loadingHistory.value = false
+    }
+  }
+
+  // Like fetchMetricsHistory but returns data without writing to the shared ref.
+  // Use this when you need history data in an isolated context (e.g. a modal)
+  // that should not affect other consumers of metricsHistory.
+  const fetchMetricsHistoryIsolated = async (period: MetricsPeriod = '24h'): Promise<MetricsHistoryEntry[]> => {
+    const cacheKey = `metrics:history:${period}`
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null)
+      return cached
+    try {
+      const entries = await fetchMetricsHistoryFromDB(supabase, period)
+      metricsCache.set(cacheKey, entries, msUntilNextCollection())
+      return entries
+    }
+    catch {
+      return []
     }
   }
 
@@ -603,7 +656,9 @@ export function useDataMetrics() {
     metricsHistory,
     loadingHistory,
     fetchMetricsHistory,
+    fetchMetricsHistoryIsolated,
     fetchMetricsWindow,
+    fetchMetricsWindowIsolated,
     metricsWindow,
     metricsOverview,
     loadingOverview,

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Badge, BadgeGroup, Button, Flex, Tooltip } from '@dolanske/vui'
-import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'

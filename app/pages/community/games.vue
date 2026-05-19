@@ -4,12 +4,15 @@ import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { Badge, Button, Card, Flex, Grid, Indicator, Marquee, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
-import GameCover from '@/components/GameServers/GameCover.vue'
-import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerModal from '@/components/GameServers/GameServerModal.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
 import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
+import GameCover from '@/components/Shared/GameCover.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
@@ -119,6 +122,9 @@ function recentPlayersForGame(gameId: number): number {
 }
 
 // ── Marquee: up to 100 random games ──────────────────────────────────────────
+const marqueeSpeed = ref(30)
+const marqueePaused = ref(false)
+
 const marqueeGames = computed(() => {
   const shuffled = [...games.value].sort(() => Math.random() - 0.5)
   return shuffled.slice(0, 100)
@@ -160,6 +166,7 @@ function gameserverPlayersForGame(gameId: number): number {
 }
 
 // Gameserver modal
+const activityModalOpen = ref(false)
 const showServerModal = ref(false)
 const serverModalGame = ref<typeof games.value[0] | null>(null)
 
@@ -203,24 +210,35 @@ watch(top3Games, list => list.length > 0 && loadAssetsForGames(list), { immediat
 // Convenience ref - TS can't narrow top3Games[0] through v-if in template
 const topGame = computed(() => top3Games.value[0] ?? null)
 const runnerUpGames = computed(() => top3Games.value.slice(1))
+
+const totalCurrentPlayers = computed<number | null>(() => {
+  if (currentPlayersBySteamId.value.size === 0)
+    return 0
+  let total = 0
+  for (const players of currentPlayersBySteamId.value.values())
+    total += players.length
+  return total
+})
 </script>
 
 <template>
   <div class="page container-l">
     <section class="page-title">
-      <h1>Games</h1>
+      <Flex y-center x-between expand>
+        <h1>Games</h1>
+        <ClientOnly>
+          <OnlineBadge :count="totalCurrentPlayers" label="Playing" clickable @click="activityModalOpen = true" />
+          <template #fallback>
+            <OnlineBadge :count="null" label="Playing" />
+          </template>
+        </ClientOnly>
+      </Flex>
       <p>Something new something old - join the crowd!</p>
     </section>
 
     <ClientOnly>
       <!-- Top 3 games this week -->
       <section>
-        <Flex column :gap="0" class="mb-s">
-          <p class="text-color-lighter text-xxs">
-            Most played games over the last 2 weeks by duration
-          </p>
-        </Flex>
-
         <!-- Loading -->
         <template v-if="loadingHistory || gamesLoading">
           <Skeleton :height="isMobile ? 160 : 220" :radius="8" class="mb-m" />
@@ -230,40 +248,119 @@ const runnerUpGames = computed(() => top3Games.value.slice(1))
         </template>
 
         <template v-else-if="topGame">
-          <!-- #1 - hero card: background fill, cover to the right -->
-          <GlowCard halo lift class="mb-m">
-            <Card class="top-game-hero" :padding="false">
-              <div
-                class="top-game-hero__bg"
-                :style="getCachedBackground(topGame.id)
-                  ? { backgroundImage: `url(${getCachedBackground(topGame.id)})` }
-                  : getCachedCover(topGame.id)
-                    ? { backgroundImage: `url(${getCachedCover(topGame.id)})` }
-                    : {}"
-              />
-              <div class="top-game-hero__inner">
-                <Flex expand x-between gap="l" :column="isMobile">
-                  <!-- Left: info -->
-                  <Flex column gap="s" class="top-game-hero__text">
-                    <span class="top-game-hero__rank">#1</span>
-                    <Flex y-center gap="s">
-                      <GameIcon :game="topGame" size="m" />
-                      <h2 class="text-bold text-xxxl">
-                        {{ topGame.name }}
-                      </h2>
+          <GlowGroup>
+            <!-- #1 - hero card: background fill, cover to the right -->
+            <GlowCard halo>
+              <Card class="top-game-hero" :padding="false">
+                <div class="top-game-hero__info">
+                  <Tooltip placement="top">
+                    <Badge variant="neutral" size="s" circle>
+                      <Icon name="ph:info" size="10" />
+                    </Badge>
+                    <template #tooltip>
+                      <p>Most played games over the last 2 weeks by play duration</p>
+                    </template>
+                  </Tooltip>
+                </div>
+                <div
+                  class="top-game-hero__bg"
+                  :style="getCachedBackground(topGame.id)
+                    ? { backgroundImage: `url(${getCachedBackground(topGame.id)})` }
+                    : getCachedCover(topGame.id)
+                      ? { backgroundImage: `url(${getCachedCover(topGame.id)})` }
+                      : {}"
+                />
+                <div class="top-game-hero__inner">
+                  <Flex expand x-between gap="l" :column="isMobile">
+                    <!-- Left: info -->
+                    <Flex column gap="s" class="top-game-hero__text">
+                      <span class="text-xs text-bold text-color-lighter top-game-hero__rank">#1</span>
+                      <Flex y-center gap="s">
+                        <GameIcon :game="topGame" size="l" />
+                        <h2 class="text-bold text-xxxxl">
+                          {{ topGame.name }}
+                        </h2>
+                      </Flex>
+                      <span class="text-s text-color-lighter">Played by {{ recentPlayersForGame(topGame.id) === 1 ? '1 person' : `${recentPlayersForGame(topGame.id)} people` }} recently</span>
+                      <Flex class="top-game-hero__bottom" y-center gap="s">
+                        <Flex v-if="user && currentPlayersForGame(topGame).length > 0" y-center gap="xs">
+                          <Tooltip placement="top">
+                            <Indicator variant="online" outline ripple />
+                            <template #tooltip>
+                              <p>Playing</p>
+                            </template>
+                          </Tooltip>
+                          <BulkAvatarDisplay
+                            :user-ids="currentPlayersForGame(topGame)"
+                            :max-users="8"
+                            :avatar-size="22"
+                            :gap="-6"
+                            :show-names="false"
+                            cluster
+                            no-empty-state
+                          />
+                        </Flex>
+                        <Tooltip v-if="serverCountForGame(topGame.id) > 0" placement="top">
+                          <Badge
+                            variant="neutral"
+                            size="m"
+                            class="server-badge"
+                            @click="openServerModal(topGame)"
+                          >
+                            <Icon name="ph:hard-drives" size="14" />
+                            {{ serverCountForGame(topGame.id) }}
+                          </Badge>
+                          <template #tooltip>
+                            <p>
+                              {{ gameserverPlayersForGame(topGame.id) > 0 ? `${gameserverPlayersForGame(topGame.id)} playing on servers` : 'View servers' }}
+                            </p>
+                          </template>
+                        </Tooltip>
+                      </Flex>
                     </Flex>
-                    <span class="text-s text-color-lighter">Played by {{ recentPlayersForGame(topGame.id) === 1 ? '1 person' : `${recentPlayersForGame(topGame.id)} people` }} recently</span>
-                    <Flex class="top-game-hero__bottom" y-center gap="s">
-                      <Flex v-if="user && currentPlayersForGame(topGame).length > 0" y-center gap="xs">
+                    <!-- Right: cover art -->
+                    <Flex v-if="!isMobile" y-center class="top-game-hero__cover">
+                      <GameCover :game="topGame" size="xl" aspect-ratio="card" :show-fallback="false" />
+                    </Flex>
+                  </Flex>
+                </div>
+              </Card>
+            </GlowCard>
+
+            <!-- #2 and #3 - smaller cards with background wash -->
+            <Grid v-if="runnerUpGames.length > 0" :columns="isMobile ? 1 : 2" gap="m" align="stretch" class="mt-m">
+              <GlowCard
+                v-for="(game, i) in runnerUpGames"
+                :key="game.id"
+                halo
+              >
+                <Card class="top-game-card" :padding="false">
+                  <div
+                    class="top-game-card__bg"
+                    :style="getCachedBackground(game.id)
+                      ? { backgroundImage: `url(${getCachedBackground(game.id)})` }
+                      : getCachedCover(game.id)
+                        ? { backgroundImage: `url(${getCachedCover(game.id)})` }
+                        : {}"
+                  />
+                  <div class="top-game-card__content">
+                    <span class="text-xs text-bold text-color-lighter top-game-card__rank">#{{ i + 2 }}</span>
+                    <Flex y-center gap="s">
+                      <GameIcon :game="game" size="m" />
+                      <span class="text-xxl text-bold">{{ game.name }}</span>
+                    </Flex>
+                    <span class="text-s text-color-lighter">Played by {{ recentPlayersForGame(game.id) === 1 ? '1 person' : `${recentPlayersForGame(game.id)} people` }} recently</span>
+                    <Flex class="top-game-card__bottom" y-center gap="s">
+                      <Flex v-if="user && currentPlayersForGame(game).length > 0" y-center gap="xs">
                         <Tooltip placement="top">
                           <Indicator variant="online" outline ripple />
                           <template #tooltip>
-                            <p>Playing now</p>
+                            <p>Playing</p>
                           </template>
                         </Tooltip>
                         <BulkAvatarDisplay
-                          :user-ids="currentPlayersForGame(topGame)"
-                          :max-users="8"
+                          :user-ids="currentPlayersForGame(game)"
+                          :max-users="6"
                           :avatar-size="22"
                           :gap="-6"
                           :show-names="false"
@@ -271,102 +368,34 @@ const runnerUpGames = computed(() => top3Games.value.slice(1))
                           no-empty-state
                         />
                       </Flex>
-                      <Tooltip v-if="serverCountForGame(topGame.id) > 0" placement="top">
+                      <Tooltip v-if="serverCountForGame(game.id) > 0" placement="top">
                         <Badge
                           variant="neutral"
                           size="m"
+                          circle
                           class="server-badge"
-                          @click="openServerModal(topGame)"
+                          @click="openServerModal(game)"
                         >
                           <Icon name="ph:hard-drives" size="14" />
-                          {{ serverCountForGame(topGame.id) }}
+                          {{ serverCountForGame(game.id) }}
                         </Badge>
                         <template #tooltip>
                           <p>
-                            {{ gameserverPlayersForGame(topGame.id) > 0 ? `${gameserverPlayersForGame(topGame.id)} playing on servers` : 'View servers' }}
+                            {{ gameserverPlayersForGame(game.id) > 0 ? `${gameserverPlayersForGame(game.id)} playing on servers` : 'View servers' }}
                           </p>
                         </template>
                       </Tooltip>
                     </Flex>
-                  </Flex>
-                  <!-- Right: cover art -->
-                  <Flex v-if="!isMobile" y-center class="top-game-hero__cover">
-                    <GameCover :game="topGame" size="xl" aspect-ratio="card" :show-fallback="false" />
-                  </Flex>
-                </Flex>
-              </div>
-            </Card>
-          </GlowCard>
-
-          <!-- #2 and #3 - smaller cards with background wash -->
-          <Grid v-if="runnerUpGames.length > 0" :columns="isMobile ? 1 : 2" gap="m" align="stretch">
-            <GlowCard
-              v-for="(game, i) in runnerUpGames"
-              :key="game.id"
-              halo
-              lift
-            >
-              <Card class="top-game-card" :padding="false">
-                <div
-                  class="top-game-card__bg"
-                  :style="getCachedBackground(game.id)
-                    ? { backgroundImage: `url(${getCachedBackground(game.id)})` }
-                    : getCachedCover(game.id)
-                      ? { backgroundImage: `url(${getCachedCover(game.id)})` }
-                      : {}"
-                />
-                <div class="top-game-card__content">
-                  <span class="top-game-card__rank">#{{ i + 2 }}</span>
-                  <Flex y-center gap="s">
-                    <GameIcon :game="game" size="m" />
-                    <span class="text-xxl text-bold">{{ game.name }}</span>
-                  </Flex>
-                  <span class="text-s text-color-lighter">Played by {{ recentPlayersForGame(game.id) === 1 ? '1 person' : `${recentPlayersForGame(game.id)} people` }} recently</span>
-                  <Flex class="top-game-card__bottom" y-center gap="s">
-                    <Flex v-if="user && currentPlayersForGame(game).length > 0" y-center gap="xs">
-                      <Tooltip placement="top">
-                        <Indicator variant="online" outline ripple />
-                        <template #tooltip>
-                          <p>Playing now</p>
-                        </template>
-                      </Tooltip>
-                      <BulkAvatarDisplay
-                        :user-ids="currentPlayersForGame(game)"
-                        :max-users="6"
-                        :avatar-size="22"
-                        :gap="-6"
-                        :show-names="false"
-                        cluster
-                        no-empty-state
-                      />
-                    </Flex>
-                    <Tooltip v-if="serverCountForGame(game.id) > 0" placement="top">
-                      <Badge
-                        variant="neutral"
-                        size="m"
-                        circle
-                        class="server-badge"
-                        @click="openServerModal(game)"
-                      >
-                        <Icon name="ph:hard-drives" size="14" />
-                        {{ serverCountForGame(game.id) }}
-                      </Badge>
-                      <template #tooltip>
-                        <p>
-                          {{ gameserverPlayersForGame(game.id) > 0 ? `${gameserverPlayersForGame(game.id)} playing on servers` : 'View servers' }}
-                        </p>
-                      </template>
-                    </Tooltip>
-                  </Flex>
-                </div>
-              </Card>
-            </GlowCard>
-          </Grid>
+                  </div>
+                </Card>
+              </GlowCard>
+            </Grid>
+          </GlowGroup>
         </template>
       </section>
 
       <!-- Game activity chart (no controls, always 14d) -->
-      <section class="mt-m">
+      <section class="mt-m chart-section">
         <ChartGameActivity
           :period="HISTORY_PERIOD"
           :window="null"
@@ -375,18 +404,25 @@ const runnerUpGames = computed(() => top3Games.value.slice(1))
           hide-title
           hide-untracked
         />
+        <p class="chart-section__subtitle text-color-lighter text-xxs">
+          Last 14 days of game activity
+        </p>
       </section>
 
       <!-- Marquee: game icons + names -->
-      <section v-if="marqueeGames.length > 0" class="mt-m marquee-section">
-        <Marquee direction="left" :speed="30">
-          <div
-            v-for="game in marqueeGames"
-            :key="game.id"
-            class="marquee-item"
-          >
-            <GameCover :game="game" size="xl" aspect-ratio="card" :show-fallback="false" />
-          </div>
+      <section v-if="marqueeGames.length > 0" class="mt-m marquee-section" :class="{ 'marquee-section--paused': marqueePaused }" @mouseenter="marqueePaused = true" @mouseleave="marqueePaused = false">
+        <Marquee direction="left" :speed="marqueeSpeed">
+          <GlowGroup>
+            <div
+              v-for="game in marqueeGames"
+              :key="game.id"
+              class="marquee-item"
+            >
+              <GlowCard>
+                <GameCover :game="game" size="xl" aspect-ratio="card" :show-fallback="false" />
+              </GlowCard>
+            </div>
+          </GlowGroup>
         </Marquee>
       </section>
 
@@ -413,6 +449,19 @@ const runnerUpGames = computed(() => top3Games.value.slice(1))
           </Flex>
         </Card>
       </section>
+      <ChartActivityHistogramModal
+        v-model:open="activityModalOpen"
+        title="Game Activity"
+        :count="totalCurrentPlayers"
+        count-label="Playing"
+        count-singular="Playing"
+        :series="['usersGameActivity']"
+        :initial-period="HISTORY_PERIOD"
+      >
+        <template #default="{ period, window, utc, color }">
+          <ChartGameActivity :period :window :utc :color hide-title />
+        </template>
+      </ChartActivityHistogramModal>
       <GameServerModal
         :open="showServerModal"
         :game="serverModalGame"
@@ -435,6 +484,7 @@ const runnerUpGames = computed(() => top3Games.value.slice(1))
   :deep(.vui-card-content) {
     position: relative;
     overflow: hidden;
+    height: 100%;
   }
 
   &__bg {
@@ -454,6 +504,8 @@ const runnerUpGames = computed(() => top3Games.value.slice(1))
     z-index: 1;
     isolation: isolate;
     padding: var(--space-xl);
+    display: flex;
+    min-height: 100%;
   }
 
   &__text {
@@ -467,14 +519,18 @@ const runnerUpGames = computed(() => top3Games.value.slice(1))
     }
   }
 
+  &__info {
+    position: absolute;
+    top: var(--space-s);
+    right: var(--space-s);
+    z-index: 2;
+  }
+
   &__bottom {
     margin-top: auto;
   }
 
   &__rank {
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    color: var(--color-text-lighter);
     text-transform: uppercase;
     letter-spacing: 0.1em;
   }
@@ -523,9 +579,6 @@ const runnerUpGames = computed(() => top3Games.value.slice(1))
   }
 
   &__rank {
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    color: var(--color-text-lighter);
     text-transform: uppercase;
     letter-spacing: 0.1em;
   }
@@ -538,13 +591,20 @@ const runnerUpGames = computed(() => top3Games.value.slice(1))
 // ── Marquee ───────────────────────────────────────────────────────────────────
 .marquee-section {
   mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
-  height: 180px;
+  height: 20rem;
   overflow: hidden;
+
+  &--paused {
+    :deep(.marquee-track) {
+      animation-play-state: paused;
+    }
+  }
 }
 
 .marquee-item {
-  padding: 0 var(--space-xs);
-  height: 180px;
+  height: 18rem;
+  margin-top: var(--space-xs);
+  margin-bottom: var(--space-xs);
   flex-shrink: 0;
 
   :deep(.game-cover-container) {
@@ -554,20 +614,51 @@ const runnerUpGames = computed(() => top3Games.value.slice(1))
   }
 
   :deep(.game-cover) {
-    width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: var(--border-radius-s);
     filter: saturate(0);
     opacity: 0.5;
-    transition:
-      filter var(--transition),
-      opacity var(--transition);
+    transition: var(--transition-slow);
   }
 
+  :deep(.glow-card:hover .game-cover),
   &:hover :deep(.game-cover) {
     filter: saturate(1);
     opacity: 1;
+  }
+}
+
+// ── Chart section ────────────────────────────────────────────────────────────
+.chart-section {
+  position: relative;
+
+  :deep(.chart-container) {
+    min-height: 0;
+  }
+
+  :deep(.chart-wrapper) {
+    height: 160px;
+  }
+
+  :deep(.chart-loading),
+  :deep(.chart-error),
+  :deep(.chart-empty) {
+    height: 160px;
+  }
+
+  :deep(.chart-lines-skeleton) {
+    height: 130px !important;
+  }
+
+  :deep(.y-axis-skeleton) {
+    height: 130px !important;
+  }
+
+  &__subtitle {
+    position: absolute;
+    bottom: var(--space-s);
+    right: var(--space-m);
   }
 }
 

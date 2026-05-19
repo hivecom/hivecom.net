@@ -19,19 +19,6 @@ const iconUrl = ref<string>('/icon.svg')
 const isLoading = ref(true)
 const hasError = ref(false)
 
-// Size configurations
-const sizeClasses = computed(() => {
-  const sizes = {
-    xs: 'w-4 h-4', // 16px
-    s: 'w-6 h-6', // 24px
-    m: 'w-8 h-8', // 32px
-    l: 'w-12 h-12', // 48px
-    xl: 'w-18 h-18', // 72px
-  }
-  return sizes[props.size]
-})
-
-// Get game icon URL with caching
 async function loadGameIcon() {
   try {
     isLoading.value = true
@@ -50,7 +37,6 @@ async function loadGameIcon() {
   }
 }
 
-// Handle image load error by falling back to default
 function handleImageError() {
   if (iconUrl.value !== '/icon.svg') {
     iconUrl.value = '/icon.svg'
@@ -58,7 +44,6 @@ function handleImageError() {
   }
 }
 
-// Load icon when component mounts or game changes
 onMounted(() => {
   loadGameIcon()
 })
@@ -69,20 +54,14 @@ watch(() => props.game, () => {
 </script>
 
 <template>
-  <div class="game-icon-container" :class="sizeClasses">
-    <!-- Loading skeleton -->
-    <div v-if="isLoading" class="game-icon-skeleton" :class="sizeClasses" />
-
-    <!-- Icon image -->
+  <div class="game-icon-container" :data-size="size">
+    <div v-if="isLoading" class="game-icon-skeleton" />
     <img
       v-else
       :src="iconUrl"
       :alt="`${game.name} icon`"
       class="game-icon"
-      :class="{
-        'fallback-icon': iconUrl === '/icon.svg' && showFallback,
-        [sizeClasses]: true,
-      }"
+      :class="{ 'game-icon--fallback': iconUrl === '/icon.svg' && showFallback }"
       @error="handleImageError"
     >
   </div>
@@ -90,25 +69,53 @@ watch(() => props.game, () => {
 
 <style lang="scss" scoped>
 .game-icon-container {
+  --icon-size: 32px;
+
+  &[data-size='xs'] {
+    --icon-size: 16px;
+  }
+
+  &[data-size='s'] {
+    --icon-size: 24px;
+  }
+
+  &[data-size='m'] {
+    --icon-size: 32px;
+  }
+
+  &[data-size='l'] {
+    --icon-size: 48px;
+  }
+
+  &[data-size='xl'] {
+    --icon-size: 72px;
+  }
+
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  width: var(--icon-size);
+  height: var(--icon-size);
 }
 
 .game-icon-skeleton {
-  background: var(--color-background-secondary);
+  width: var(--icon-size);
+  height: var(--icon-size);
+  background: var(--color-bg-raised);
   border-radius: var(--border-radius-m);
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .game-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
   border-radius: var(--border-radius-m);
-  background: var(--color-background-secondary);
+  background: var(--color-bg-raised);
   object-fit: cover;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--transition);
 
-  &.fallback-icon {
+  &--fallback {
     opacity: 0.3;
     filter: grayscale(1);
   }
@@ -119,40 +126,9 @@ watch(() => props.game, () => {
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
-}
-
-/* Utility classes for sizes */
-.w-6 {
-  width: 24px;
-}
-.h-6 {
-  height: 24px;
-}
-.w-4 {
-  width: 16px;
-}
-.h-4 {
-  height: 16px;
-}
-.w-8 {
-  width: 32px;
-}
-.h-8 {
-  height: 32px;
-}
-.w-12 {
-  width: 48px;
-}
-.h-12 {
-  height: 48px;
-}
-.w-18 {
-  width: 72px;
-}
-.h-18 {
-  height: 72px;
 }
 </style>

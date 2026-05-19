@@ -74,6 +74,8 @@ const newAddress = ref('')
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 
+const saveLoading = ref(false)
+
 // Loading states for dropdowns
 const loadingContainers = ref(true)
 const loadingProfiles = ref(true)
@@ -279,6 +281,11 @@ function handleClose() {
   isOpen.value = false
 }
 
+watch(isOpen, (open) => {
+  if (!open)
+    saveLoading.value = false
+})
+
 // Handle form submission
 function handleSubmit() {
   if (!isValid.value)
@@ -299,6 +306,7 @@ function handleSubmit() {
     administrator: gameserverForm.value.administrator,
   }
 
+  saveLoading.value = true
   emit('save', gameserverData)
 }
 
@@ -519,7 +527,8 @@ onMounted(fetchDropdownData)
         <Button
           type="submit"
           variant="accent"
-          :disabled="!isValid"
+          :loading="saveLoading"
+          :disabled="!isValid || saveLoading"
           @click.prevent="handleSubmit"
         >
           <template #start>

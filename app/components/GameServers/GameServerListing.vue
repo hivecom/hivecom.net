@@ -2,10 +2,10 @@
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, Card, Flex, Input, Select, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
-import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<Props>()

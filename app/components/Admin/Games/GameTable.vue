@@ -7,11 +7,12 @@ import { computed, inject, onBeforeMount, onMounted, ref, watch } from 'vue'
 
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
-import GameIcon from '@/components/GameServers/GameIcon.vue'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { invalidateGamesCache } from '@/composables/useDataGames'
 import { useDataMetrics } from '@/composables/useDataMetrics'
@@ -90,6 +91,7 @@ const focusedGameId = computed(() => {
 const sortColMap: Record<string, string> = {
   Name: 'name',
   Shorthand: 'shorthand',
+  Captured: 'created_at',
 }
 
 function handleSort(label: string) {
@@ -442,6 +444,12 @@ onBeforeMount(async () => {
               </Table.Head>
               <Table.Head>Steam</Table.Head>
               <Table.Head>Activity</Table.Head>
+              <Table.Head class="sortable-head" @click="handleSort('Captured')">
+                <Flex gap="xs" y-center>
+                  Captured
+                  <Icon :name="sortIcon('Captured')" size="14" class="sort-icon" />
+                </Flex>
+              </Table.Head>
               <Table.Head v-if="canManageResource" />
             </template>
 
@@ -489,6 +497,9 @@ onBeforeMount(async () => {
                       </template>
                     </ChartActivityHistogram>
                   </Flex>
+                </Table.Cell>
+                <Table.Cell>
+                  <TimestampDate :date="game.created_at" relative size="s" />
                 </Table.Cell>
                 <Table.Cell v-if="canManageResource" @click.stop>
                   <AdminActions

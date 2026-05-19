@@ -38,6 +38,7 @@ const expenseForm = ref({
 
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
+const saveLoading = ref(false)
 
 // Form validation
 const validation = computed(() => {
@@ -115,8 +116,14 @@ function handleSubmit() {
     url: expenseForm.value.url || null,
   }
 
+  saveLoading.value = true
   emit('save', expenseData)
 }
+
+watch(isOpen, (open) => {
+  if (!open)
+    saveLoading.value = false
+})
 
 // Open confirmation modal for deletion
 function handleDelete() {
@@ -293,7 +300,8 @@ function confirmDelete() {
         <Button
           type="submit"
           variant="accent"
-          :disabled="!isValid"
+          :disabled="!isValid || saveLoading"
+          :loading="saveLoading"
           @click.prevent="handleSubmit"
         >
           <template #start>

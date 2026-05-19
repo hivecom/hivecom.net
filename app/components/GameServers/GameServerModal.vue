@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, Flex, Modal } from '@dolanske/vui'
-import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 type GameserverWithContainer = Tables<'network_gameservers'> & {

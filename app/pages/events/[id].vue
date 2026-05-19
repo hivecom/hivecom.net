@@ -146,7 +146,9 @@ useHead({
         />
 
         <!-- Event Content -->
-        <div v-if="event && !loading && !error" class="event-detail">
+        <Flex
+          v-if="event && !loading && !error" column gap="l"
+        >
           <!-- Back Button -->
           <Flex x-between y-center>
             <NuxtLink to="/events">
@@ -191,7 +193,7 @@ useHead({
             />
           </div>
 
-          <div class="event-detail__content">
+          <Flex column>
             <!-- Markdown -->
             <EventMarkdown :event="mutableEvent!" />
 
@@ -202,8 +204,8 @@ useHead({
               type="event"
               @reply-submitted="handleReplySubmitted"
             />
-          </div>
-        </div>
+          </Flex>
+        </Flex>
 
         <CreateEventModal v-model:open="showEditModal" :event="mutableEvent" @saved="refetchEvent" />
 
@@ -223,22 +225,6 @@ useHead({
 </template>
 
 <style lang="scss" scoped>
-.event-detail {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-l);
-
-  &__back-link {
-    text-decoration: none;
-  }
-
-  &__content {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-l);
-  }
-}
-
 /* .event-discussion {
   max-width: 728px;
 } */

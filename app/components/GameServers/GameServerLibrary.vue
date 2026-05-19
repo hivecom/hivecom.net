@@ -166,7 +166,6 @@ function isCoverLoading(gameId: number): boolean {
                 v-for="(game, index) in filteredGames" :key="game.id"
                 no-glow
                 halo
-                lift
               >
                 <button
                   class="game-card"

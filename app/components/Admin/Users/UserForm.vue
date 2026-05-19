@@ -60,6 +60,14 @@ type AdminUserFormState = UserFormState & { badges: ManualBadgeSlug[] }
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
+// Declare saveLoading early - used in isOpen watcher below
+const saveLoading = ref(false)
+
+watch(isOpen, (open) => {
+  if (!open)
+    saveLoading.value = false
+})
+
 // Get current user and admin permissions
 const currentUser = useSupabaseUser()
 const currentUserId = useUserId()
@@ -351,6 +359,7 @@ function handleSubmit() {
     ...(canEditRoles.value && { role: selectedRole.value }),
   }
 
+  saveLoading.value = true
   emit('save', userData, dedupeBadges(userForm.value.badges), currentDbManualSlugs.value)
 }
 
@@ -777,7 +786,8 @@ function clearBirthday() {
       <Flex gap="xs" class="form-actions">
         <Button
           variant="accent"
-          :disabled="!isValid || !canEditForm"
+          :loading="saveLoading"
+          :disabled="!isValid || !canEditForm || saveLoading"
           @click="handleSubmit"
         >
           <template #start>

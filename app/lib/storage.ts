@@ -42,7 +42,7 @@ function isStorageNotFoundError(error: unknown): boolean {
 /**
  * Validates if a file is a valid image
  */
-export function validateImageFile(file: File): { valid: boolean, error?: string } {
+export function validateImageFile(file: File, maxSizeMB: number = 1): { valid: boolean, error?: string } {
   // Check file type
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'video/webm']
   if (!allowedTypes.includes(file.type)) {
@@ -52,12 +52,11 @@ export function validateImageFile(file: File): { valid: boolean, error?: string 
     }
   }
 
-  // Check file size (max 1MB - matches hivecom-content-users bucket limit)
-  const maxSize = 1 * 1024 * 1024 // 1MB in bytes
+  const maxSize = maxSizeMB * 1024 * 1024
   if (file.size > maxSize) {
     return {
       valid: false,
-      error: 'File size must be less than 1MB',
+      error: `File size must be less than ${maxSizeMB}MB`,
     }
   }
 
@@ -592,8 +591,8 @@ export async function uploadGameAsset(
   uploadedBy?: string,
 ): Promise<UploadResult> {
   try {
-    // Validate the file first
-    const validation = validateImageFile(file)
+    // Validate the file first (game assets go to the static bucket, 5MB limit)
+    const validation = validateImageFile(file, 5)
     if (!validation.valid) {
       return { success: false, error: validation.error }
     }

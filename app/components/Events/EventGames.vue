@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Flex, Tooltip } from '@dolanske/vui'
-import GameIcon from '@/components/GameServers/GameIcon.vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
 
 interface Props {
   games: Tables<'games'>[]

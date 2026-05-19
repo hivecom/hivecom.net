@@ -74,6 +74,7 @@ const newTagInput = ref('')
 
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
+const saveLoading = ref(false)
 
 // Loading states for dropdowns
 const loadingProfiles = ref(true)
@@ -247,8 +248,14 @@ function handleSubmit() {
     github: projectForm.value.github.trim() || null,
   }
 
+  saveLoading.value = true
   emit('save', projectData)
 }
+
+watch(isOpen, (open) => {
+  if (!open)
+    saveLoading.value = false
+})
 
 // Handle delete
 function handleDelete() {
@@ -457,7 +464,8 @@ function handleTagInputEnter() {
         <Button
           type="submit"
           variant="accent"
-          :disabled="!isValid"
+          :disabled="!isValid || saveLoading"
+          :loading="saveLoading"
           @click.prevent="handleSubmit"
         >
           <template #start>

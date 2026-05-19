@@ -54,6 +54,7 @@ const gameForm = ref({
 
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
+const saving = ref(false)
 
 // Asset upload state
 const assetsUploading = ref({
@@ -255,6 +256,14 @@ watch(
   { immediate: true },
 )
 
+// Reset form and saving state when sheet closes
+watch(isOpen, (open) => {
+  if (!open) {
+    resetForm()
+    saving.value = false
+  }
+})
+
 // Re-apply prefill when it changes (e.g. opening form for a different Steam game)
 watch(
   () => props.prefill,
@@ -283,13 +292,14 @@ function resetForm() {
 
 function handleClose() {
   isOpen.value = false
-  resetForm()
 }
 
 // Handle form submission
 function handleSubmit() {
   if (!isValid.value)
     return
+
+  saving.value = true
 
   // Prepare the data to save
   const gameData = {
@@ -300,7 +310,6 @@ function handleSubmit() {
   }
 
   emit('save', gameData)
-  resetForm()
 }
 
 // Open confirmation modal for deletion
@@ -589,7 +598,8 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
         <Button
           type="submit"
           variant="accent"
-          :disabled="!isValid"
+          :disabled="!isValid || saving"
+          :loading="saving"
           @click.prevent="handleSubmit"
         >
           <template #start>
