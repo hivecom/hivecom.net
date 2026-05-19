@@ -162,6 +162,120 @@ export async function convertImageToWebP(file: File, quality: number = 0.8): Pro
   })
 }
 
+async function loadImageElement(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src)
+      reject(new Error('Failed to load image'))
+    }
+    img.src = URL.createObjectURL(file)
+  })
+}
+
+async function encodeCanvasBlob(
+  img: HTMLImageElement,
+  width: number,
+  height: number,
+  type: string,
+  quality: number,
+): Promise<Blob | null> {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  ctx?.drawImage(img, 0, 0, width, height)
+  return new Promise((resolve) => {
+    canvas.toBlob(b => resolve(b), type, quality)
+  })
+}
+
+export interface CompressImageOptions {
+  /** Starting WebP quality (0..1). Default 0.95. */
+  initialQuality?: number
+  /** Lowest quality to try before stepping down resolution. Default 0.5. */
+  minQuality?: number
+  /** Smallest resolution scale (relative to original) to try. Default 0.2. */
+  minScale?: number
+  /** Quality decrement per attempt. Default 0.1. */
+  qualityStep?: number
+  /** Multiplicative scale reduction per resolution pass. Default 0.8. */
+  scaleStep?: number
+}
+
+/**
+ * Iteratively re-encodes an image as WebP, dropping quality first and then
+ * resolution, until the output fits within `maxBytes` (or the configured floor
+ * is reached). Returns a WebP File; falls back to the smallest attempt or the
+ * original file if encoding fails entirely.
+ *
+ * GIFs and non-raster inputs are passed through unchanged - re-encoding a GIF
+ * via canvas drops animation, so callers must handle oversize GIFs separately.
+ */
+export async function compressImageToFit(
+  file: File,
+  maxBytes: number,
+  options: CompressImageOptions = {},
+): Promise<File> {
+  if (file.type === 'image/gif')
+    return file
+  if (!file.type.startsWith('image/'))
+    return file
+
+  const initialQuality = options.initialQuality ?? 0.95
+  const minQuality = options.minQuality ?? 0.5
+  const minScale = options.minScale ?? 0.2
+  const qualityStep = options.qualityStep ?? 0.1
+  const scaleStep = options.scaleStep ?? 0.8
+
+  let img: HTMLImageElement
+  try {
+    img = await loadImageElement(file)
+  }
+  catch {
+    return file
+  }
+
+  const outName = file.name.replace(FILE_EXTENSION_RE, '.webp')
+  let best: File | null = null
+  let scale = 1
+
+  try {
+    while (scale >= minScale) {
+      const width = Math.max(1, Math.round(img.naturalWidth * scale))
+      const height = Math.max(1, Math.round(img.naturalHeight * scale))
+
+      let quality = initialQuality
+      while (quality >= minQuality - 1e-6) {
+        const blob = await encodeCanvasBlob(img, width, height, 'image/webp', quality)
+        if (!blob)
+          break
+
+        const candidate = new File([blob], outName, {
+          type: 'image/webp',
+          lastModified: Date.now(),
+        })
+
+        if (candidate.size <= maxBytes)
+          return candidate
+
+        if (!best || candidate.size < best.size)
+          best = candidate
+
+        quality = Math.round((quality - qualityStep) * 100) / 100
+      }
+
+      scale = Math.round(scale * scaleStep * 100) / 100
+    }
+  }
+  finally {
+    URL.revokeObjectURL(img.src)
+  }
+
+  return best ?? file
+}
+
 /**
  * Uploads a user's avatar to the storage bucket
  * Automatically converts images to WebP format for consistency and optimization

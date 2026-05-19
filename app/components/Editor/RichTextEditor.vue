@@ -26,7 +26,7 @@ import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, convertImageToWebP, stripImageMetadata } from '@/lib/storage'
+import { allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, compressImageToFit, convertImageToWebP, stripImageMetadata } from '@/lib/storage'
 import { BUCKET_SIZE_LIMITS, formatBytes, FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import EditorMathModal from './EditorMathModal.vue'
 import EditorTableMenu from './EditorTableMenu.vue'
@@ -798,6 +798,30 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     }
     else {
       file = originalFile
+    }
+
+    // If the (already converted/stripped) file still exceeds the bucket limit,
+    // iteratively re-encode at lower quality and resolution until it fits.
+    // GIFs are skipped inside compressImageToFit (animation would be lost) and
+    // videos never reach this branch.
+    const sizeLimit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
+    if (!isVideo && file.type !== 'image/gif' && file.size > sizeLimit) {
+      try {
+        const compressed = await compressImageToFit(file, sizeLimit)
+        if (compressed.size < file.size)
+          file = compressed
+
+        if (file.size > sizeLimit) {
+          pushToast('Image still exceeds upload limit', {
+            description: `Compressed to ${formatBytes(file.size)}, limit is ${formatBytes(sizeLimit)}. Upload may fail.`,
+          })
+        }
+      }
+      catch {
+        pushToast('Image compression failed', {
+          description: 'Uploading original - it may exceed the size limit.',
+        })
+      }
     }
 
     // Create a local object URL so we can insert a placeholder immediately.
