@@ -1,0 +1,2 @@
+ALTER TABLE public.games
+  ADD COLUMN automated BOOLEAN NOT NULL DEFAULT FALSE;

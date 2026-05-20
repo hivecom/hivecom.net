@@ -11,6 +11,10 @@ defineProps<{
   speed?: number
 }>()
 
+const emit = defineEmits<{
+  select: [gameId: number]
+}>()
+
 const paused = ref(false)
 </script>
 
@@ -26,7 +30,8 @@ const paused = ref(false)
         <div
           v-for="game in games"
           :key="game.id"
-          class="marquee-item"
+          class="marquee-item marquee-item--clickable"
+          @click="emit('select', game.id)"
         >
           <GlowCard>
             <GameCover :game="game" size="xl" aspect-ratio="card" :show-fallback="false" />
@@ -69,6 +74,10 @@ const paused = ref(false)
     filter: saturate(0);
     opacity: 0.5;
     transition: var(--transition-slow);
+  }
+
+  &--clickable {
+    cursor: pointer;
   }
 
   :deep(.glow-card:hover .game-cover),

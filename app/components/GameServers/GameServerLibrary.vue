@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, BadgeGroup, Indicator, Skeleton, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, BadgeGroup, Indicator, Popout, Skeleton, Tooltip } from '@dolanske/vui'
+import EventPopoverList from '@/components/Events/EventPopoverList.vue'
 import GameServerModal from '@/components/GameServers/GameServerModal.vue'
-
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
+import { useOngoingEvents } from '@/composables/useOngoingEvents'
 
 const props = defineProps<Props>()
 
@@ -30,6 +32,27 @@ interface Props {
 }
 
 const { metrics, fetchMetrics } = useDataMetrics()
+const { getOngoingEventsForGame, hasOngoingEventForGame } = useOngoingEvents()
+
+const livePopoutOpen = ref<Map<number, boolean>>(new Map())
+function toggleLivePopout(gameId: number, event: Event) {
+  event.stopPropagation()
+  livePopoutOpen.value = new Map(livePopoutOpen.value)
+  livePopoutOpen.value.set(gameId, !(livePopoutOpen.value.get(gameId) ?? false))
+}
+function closeLivePopout(gameId: number) {
+  if (livePopoutOpen.value.get(gameId)) {
+    livePopoutOpen.value = new Map(livePopoutOpen.value)
+    livePopoutOpen.value.set(gameId, false)
+  }
+}
+
+const liveIndicatorRefs = ref<Map<number, HTMLElement>>(new Map())
+function setLiveIndicatorRef(gameId: number, el: HTMLElement | null) {
+  if (el)
+    liveIndicatorRefs.value.set(gameId, el)
+  else liveIndicatorRefs.value.delete(gameId)
+}
 
 onMounted(() => {
   if (metrics.value === null)
@@ -190,18 +213,42 @@ function isCoverLoading(gameId: number): boolean {
                         @load="handleCoverLoad"
                       >
                     </div>
-                    <Tooltip placement="top">
-                      <Indicator
-                        v-if="(getPlayersForGame(game.id) ?? 0) > 0"
-                        variant="online"
-                        class="cover-live-indicator"
-                        outline
-                        ripple
-                      />
-                      <template #tooltip>
-                        <p>{{ getPlayersForGame(game.id) }} online</p>
+                    <ClientOnly>
+                      <template v-if="hasOngoingEventForGame(game.id)">
+                        <span
+                          :ref="(el) => setLiveIndicatorRef(game.id, el as HTMLElement | null)"
+                          class="cover-live-indicator-anchor"
+                        >
+                          <Indicator
+                            variant="alert"
+                            class="cover-live-indicator"
+                            outline
+                            ripple
+                            @click.stop="toggleLivePopout(game.id, $event)"
+                          />
+                        </span>
+                        <Popout
+                          :anchor="liveIndicatorRefs.get(game.id) ?? null"
+                          :visible="livePopoutOpen.get(game.id) ?? false"
+                          placement="bottom-end"
+                          :offset="8"
+                          @click-outside="closeLivePopout(game.id)"
+                        >
+                          <EventPopoverList :events="getOngoingEventsForGame(game.id)" />
+                        </Popout>
                       </template>
-                    </Tooltip>
+                      <Tooltip v-else-if="(getPlayersForGame(game.id) ?? 0) > 0" placement="top">
+                        <Indicator
+                          variant="online"
+                          class="cover-live-indicator"
+                          outline
+                          ripple
+                        />
+                        <template #tooltip>
+                          <p>{{ getPlayersForGame(game.id) }} online</p>
+                        </template>
+                      </Tooltip>
+                    </ClientOnly>
                   </div>
                   <div class="game-info">
                     <h3 class="game-title">
@@ -420,11 +467,16 @@ function isCoverLoading(gameId: number): boolean {
     }
   }
 
-  .cover-live-indicator {
+  .cover-live-indicator-anchor {
     position: absolute;
     top: var(--space-s);
     right: var(--space-s);
     z-index: 4;
+    display: flex;
+  }
+
+  .cover-live-indicator {
+    cursor: pointer;
   }
 }
 

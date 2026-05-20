@@ -80,7 +80,7 @@ async function deleteAccount() {
         <h4 class="danger-text">
           Delete Account
         </h4>
-        <p class="text-m danger-text">
+        <p class="text-s danger-text">
           Your profile, connected accounts, and access to Hivecom services will be removed. This action cannot be undone.
         </p>
       </Flex>

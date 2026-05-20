@@ -188,7 +188,7 @@ async function handleDelete() {
           expand
         />
 
-        <Flex column gap="xs">
+        <Flex column gap="xs" expand>
           <Flex x-between y-center>
             <span class="text-s" style="font-weight: var(--font-weight-medium);">Slug</span>
             <button class="slugify-btn text-xs text-color-accent" type="button" @click="applySlugFromTitle">

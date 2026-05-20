@@ -27,7 +27,10 @@ const props = defineProps<{
 }>()
 
 // Define emits
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits<{
+  edit: [expense: Tables<'funding_expenses'>]
+  delete: [expense: Tables<'funding_expenses'>]
+}>()
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')

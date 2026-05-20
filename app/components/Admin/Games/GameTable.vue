@@ -529,8 +529,8 @@ onBeforeMount(async () => {
   <GameDetails
     v-model:is-open="showGameDetails"
     :game="selectedGame"
-    @edit="(item) => handleEditFromDetails(item as unknown as Tables<'games'>)"
-    @delete="(item) => handleGameDelete((item as unknown as Tables<'games'>).id)"
+    @edit="(item) => handleEditFromDetails(item)"
+    @delete="(item) => handleGameDelete(item.id)"
   />
 
   <GameForm

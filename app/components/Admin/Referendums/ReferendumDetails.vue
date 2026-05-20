@@ -16,7 +16,10 @@ const props = defineProps<{
 }>()
 
 // Define emits
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits<{
+  edit: [referendum: Tables<'referendums'>]
+  delete: [referendum: Tables<'referendums'>]
+}>()
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')

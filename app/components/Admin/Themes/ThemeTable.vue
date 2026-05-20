@@ -366,7 +366,7 @@ onBeforeMount(async () => {
   <ThemeDetails
     v-model:is-open="showThemeDetails"
     :theme="selectedTheme"
-    @delete="(item) => handleThemeDelete((item as unknown as { id: string }).id)"
+    @delete="(item) => handleThemeDelete(item.id)"
     @update="(id: string, data: TablesUpdate<'themes'>) => handleThemeUpdate(id, data)"
   />
 </template>

@@ -16,7 +16,6 @@ import { useDataMetrics } from '@/composables/useDataMetrics'
 const supabase = useSupabaseClient<Database>()
 
 // Tab management
-const activeTab = ref('library')
 const route = useRoute()
 const router = useRouter()
 
@@ -25,10 +24,7 @@ const queryTab = computed(() => {
   return Array.isArray(tab) ? tab[0] : tab
 })
 
-watch(queryTab, (tab) => {
-  if (tab === 'library' || tab === 'list')
-    activeTab.value = tab
-}, { immediate: true })
+const activeTab = ref(queryTab.value === 'list' ? 'list' : 'library')
 
 watch(activeTab, (tab) => {
   if (tab !== 'library' && tab !== 'list')
@@ -109,6 +105,27 @@ defineOgImage('Default', {
 const search = ref('')
 const selectedGames = ref<{ label: string, value: number }[]>()
 const selectedRegions = ref<{ label: string, value: string }[]>()
+
+onMounted(() => {
+  const raw = route.query.game
+  const id = raw ? Number(Array.isArray(raw) ? raw[0] : raw) : null
+  if (id && !Number.isNaN(id)) {
+    const applyFilter = () => {
+      const game = games.value.find(g => g.id === id)
+      if (game)
+        selectedGames.value = [{ label: game.name ?? game.shorthand ?? String(game.id), value: game.id }]
+    }
+    if (games.value.length > 0) {
+      applyFilter()
+    }
+    else {
+      const stop = watch(games, () => {
+        applyFilter()
+        stop()
+      })
+    }
+  }
+})
 const gameOptions = computed(() => {
   return games.value
     .filter(game => game.name !== null)

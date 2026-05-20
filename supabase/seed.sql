@@ -33,6 +33,7 @@ INSERT INTO public.themes (
   dark_text_green,  dark_bg_green_lowered,  dark_bg_green_raised,
   dark_text_yellow, dark_bg_yellow_lowered, dark_bg_yellow_raised,
   dark_text_blue,   dark_bg_blue_lowered,   dark_bg_blue_raised,
+  dark_text_purple, dark_bg_purple_lowered, dark_bg_purple_raised,
   dark_border, dark_border_strong, dark_border_weak,
   dark_accent, dark_bg_accent_lowered, dark_bg_accent_raised,
   -- light palette
@@ -43,6 +44,7 @@ INSERT INTO public.themes (
   light_text_green,  light_bg_green_lowered,  light_bg_green_raised,
   light_text_yellow, light_bg_yellow_lowered, light_bg_yellow_raised,
   light_text_blue,   light_bg_blue_lowered,   light_bg_blue_raised,
+  light_text_purple, light_bg_purple_lowered, light_bg_purple_raised,
   light_border, light_border_strong, light_border_weak,
   light_accent, light_bg_accent_lowered, light_bg_accent_raised
 )
@@ -71,6 +73,8 @@ VALUES
   '#ffc107', '#4e3400', '#986800',
   -- dark semantic: blue (unchanged)
   '#558df5', '#0d204a', '#1a3b77',
+  -- dark semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- dark borders / accent: brand green
   '#282828', '#363636', '#242424',
   '#a7fc2f', '#4e8502', '#69b103',
@@ -86,6 +90,8 @@ VALUES
   '#b0810f', '#e6cd89', '#fdc856',
   -- light semantic: blue (unchanged)
   '#558df5', '#c4d6ff', '#88b2ff',
+  -- light semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- light borders / accent: brand green
   '#c8c8c8', '#989898', '#e0e0e0',
   '#69883e', '#93be57', '#7ea34a'
@@ -114,6 +120,8 @@ VALUES
   '#f0429e', '#5e0a38', '#870f50',
   -- dark semantic: blue -> cyan-teal
   '#22d4c8', '#0a3d3a', '#0d5e59',
+  -- dark semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- dark borders / accent: brand green
   '#282828', '#363636', '#242424',
   '#a7fc2f', '#4e8502', '#69b103',
@@ -129,6 +137,8 @@ VALUES
   '#c4186e', '#e8b4ce', '#f07ab8',
   -- light semantic: blue -> cyan-teal
   '#0e9e96', '#b0e4e2', '#7dd4d0',
+  -- light semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- light borders / accent: brand green
   '#c8c8c8', '#989898', '#e0e0e0',
   '#69883e', '#93be57', '#7ea34a'
@@ -161,6 +171,8 @@ VALUES
   '#737373', '#2a2a2a', '#333333',
   -- dark semantic: blue -> medium-dark gray (~80)
   '#505050', '#1e1e1e', '#272727',
+  -- dark semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- dark borders / accent: high-luminance gray - green can't be used here since
   -- it would be indistinguishable from the semantic green slot in grayscale
   '#282828', '#363636', '#242424',
@@ -177,6 +189,8 @@ VALUES
   '#6e6e6e', '#aaaaaa', '#909090',
   -- light semantic: blue -> medium-light gray (~145)
   '#919191', '#c8c8c8', '#b4b4b4',
+  -- light semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- light borders / accent: near-black gray - same reasoning as dark palette
   '#c8c8c8', '#989898', '#e0e0e0',
   '#1e1e1e', '#9a9a9a', '#b0b0b0'
@@ -207,6 +221,8 @@ VALUES
   '#ffe000', '#4a3d00', '#6e5a00',
   -- dark semantic: blue - bright saturated blue
   '#3399ff', '#002b66', '#003d99',
+  -- dark semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- dark borders: high contrast borders visible against black
   '#444444', '#666666', '#333333',
   -- dark accent: brand green pushed to full brightness for maximum contrast
@@ -223,6 +239,8 @@ VALUES
   '#8a6000', '#d4b87a', '#c49a20',
   -- light semantic: blue - deep saturated blue
   '#0055cc', '#aac4f0', '#5599ee',
+  -- light semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- light borders: strong visible borders
   '#888888', '#444444', '#bbbbbb',
   -- light accent: brand green darkened for white bg contrast

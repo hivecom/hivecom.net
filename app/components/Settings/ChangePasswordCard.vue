@@ -49,7 +49,7 @@ async function sendPasswordReset() {
     <template #header>
       <Flex gap="xxs" column>
         <h4>Change Password</h4>
-        <p class="text-m text-color-lighter">
+        <p class="text-s text-color-lighter">
           Setting a password also lets you sign in directly without email links.
         </p>
       </Flex>

@@ -3,6 +3,7 @@ import type { ThemeScaleKey } from '@/lib/theme'
 import type { Theme } from '@/types/theme'
 import { maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Button, ButtonGroup, Card, Checkbox, Divider, Drawer, Flex, Input, Modal, pushToast, setColorTheme, Switch, Tab, Tabs, Textarea, theme, Tooltip } from '@dolanske/vui'
+import ColorPicker from '@/components/Shared/ColorPicker.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import { invalidateThemesCache } from '@/composables/useDataThemes'
@@ -70,8 +71,12 @@ watch(activeType, (prefix) => {
   })
 })
 
+const HEX_COLOR_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
+
 // Immediately update CSS on the document to reflect the color change
 function onColorChange(key: string, value: string) {
+  if (!HEX_COLOR_RE.test(value))
+    return
   themeForm.value[activeType.value][key] = value
   document.documentElement.style.setProperty(`--${activeType.value}-color-${key}`, value)
 }
@@ -518,24 +523,16 @@ const iconTheme = computed<Theme>(() => {
             class="theme-editor__group"
           >
             <span class="theme-editor__group-label">{{ groupName }}</span>
-            <Flex column gap="xxs">
-              <label
+            <Flex column expand gap="xxs">
+              <ColorPicker
                 v-for="colorKey in colors"
                 :key="colorKey"
-                class="theme-editor__input"
-              >
-                <input
-                  type="color"
-                  :value="themeForm[activeType][colorKey]"
-                  @input="onColorChange(colorKey, ($event.target as HTMLInputElement).value)"
-                >
-                <span>{{ colorKey }}</span>
-
-                <div class="flex-1" />
-                <Button square size="s" plain @click="resetColor(colorKey)">
-                  <Icon name="ph:arrow-clockwise" />
-                </Button>
-              </label>
+                :model-value="themeForm[activeType][colorKey]"
+                :label="colorKey"
+                clearable
+                @update:model-value="(val) => onColorChange(colorKey, val)"
+                @reset="resetColor(colorKey)"
+              />
             </Flex>
           </div>
         </div>
@@ -710,62 +707,6 @@ const iconTheme = computed<Theme>(() => {
     min-width: 42px;
     text-align: right;
     flex-shrink: 0;
-  }
-
-  &__input {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    width: 100%;
-    cursor: pointer;
-    position: relative;
-    padding: var(--space-xxs);
-
-    &:hover {
-      background-color: var(--color-bg-raised);
-
-      .vui-button {
-        display: block;
-      }
-    }
-
-    span {
-      font-size: var(--font-size-m);
-    }
-
-    // Hide button by default, show on hover
-    .vui-button {
-      display: none;
-      position: absolute;
-      right: 2px;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-
-    input {
-      width: 24px;
-      height: 24px;
-      flex-shrink: 0;
-      cursor: pointer;
-      background: transparent;
-      overflow: hidden;
-      border: none;
-      padding: 0;
-
-      &::-webkit-color-swatch-wrapper {
-        padding: 0;
-      }
-
-      &::-webkit-color-swatch {
-        border: none;
-        padding: 0;
-      }
-
-      &::-moz-color-swatch {
-        border: none;
-        padding: 0;
-      }
-    }
   }
 
   &__footer {

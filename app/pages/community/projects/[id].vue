@@ -170,11 +170,13 @@ defineOgImage('Project', {
           </div>
         </Card>
 
-        <!-- Project Content (Markdown) -->
-        <Card class="project-content card-bg">
-          <div class="project-content__markdown">
-            <MarkdownRenderer :md="project.markdown" />
-          </div>
+        <Flex column>
+          <!-- Project Content (Markdown) -->
+          <Card class="project-content card-bg">
+            <div class="project-content__markdown">
+              <MarkdownRenderer :md="project.markdown" />
+            </div>
+          </Card>
 
           <!-- Project Metadata -->
           <MetadataCard
@@ -184,7 +186,7 @@ defineOgImage('Project', {
             :modified-at="project.modified_at"
             :modified-by="project.modified_by"
           />
-        </Card>
+        </Flex>
 
         <!-- Related discussion -->
         <Discussion
@@ -255,7 +257,7 @@ defineOgImage('Project', {
 
 .project-content {
   &__markdown {
-    padding-bottom: var(--space-l);
+    padding-bottom: var(--space-m);
   }
 }
 

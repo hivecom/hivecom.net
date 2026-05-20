@@ -9,17 +9,20 @@ interface Props {
   search?: string
   officialFilter?: boolean | null
   recurringFilter?: boolean | null
+  gameFilter?: number | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   search: '',
   officialFilter: null,
   recurringFilter: null,
+  gameFilter: null,
 })
 
 const searchRef = computed(() => props.search)
 const officialFilterRef = computed(() => props.officialFilter)
 const recurringFilterRef = computed(() => props.recurringFilter)
+const gameFilterRef = computed(() => props.gameFilter)
 
 const isMobile = useBreakpoint('<s')
 const isTablet = useBreakpoint('<m')
@@ -34,7 +37,7 @@ const columns = computed(() => {
 
 const pageSize = computed(() => isMobile.value ? 4 : 6)
 
-const { pastEvents, pastTotalCount, pastPage, loadingPast, setPage } = useDataEventsPaged(pageSize, searchRef, officialFilterRef, recurringFilterRef)
+const { pastEvents, pastTotalCount, pastPage, loadingPast, setPage } = useDataEventsPaged(pageSize, searchRef, officialFilterRef, recurringFilterRef, gameFilterRef)
 
 const pastPagination = computed(() => paginate(pastTotalCount.value, pastPage.value, pageSize.value))
 </script>

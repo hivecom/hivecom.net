@@ -549,7 +549,7 @@ onBeforeMount(async () => {
         v-model:is-open="showEventDetails"
         :event="selectedEvent"
         @edit="handleEditFromDetails"
-        @delete="(item) => handleEventDelete((item as Event).id)"
+        @delete="(item) => handleEventDelete(item.id)"
       />
 
       <EventForm

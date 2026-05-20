@@ -16,6 +16,7 @@ export const commandLinks: CommandLink[] = [
   // Community
   { path: '/community', label: 'Community', group: 'Community', icon: 'ph:users' },
   { path: '/community/funding', label: 'Funding', group: 'Community', icon: 'ph:coins' },
+  { path: '/community/games', label: 'Games', group: 'Community', icon: 'ph:game-controller' },
   { path: '/community/badges', label: 'Badges', group: 'Community', icon: 'ph:medal' },
   { path: '/community/projects', label: 'Projects', group: 'Community', icon: 'ph:code' },
   // Forum
@@ -71,6 +72,10 @@ export const navigationLinks = [
       {
         path: '/community/funding',
         label: 'Funding',
+      },
+      {
+        path: '/community/games',
+        label: 'Games',
       },
       {
         path: '/community/projects',

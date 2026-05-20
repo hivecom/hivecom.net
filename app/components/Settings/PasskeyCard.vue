@@ -214,7 +214,7 @@ onMounted(() => {
                     {{ passkeys.length > 0 ? `${passkeys.length} passkey${passkeys.length === 1 ? '' : 's'}` : 'None' }}
                   </Badge>
                 </Flex>
-                <p :class="`text-m text-color-lighter${isBelowSmall ? ' text-center' : ''}`">
+                <p :class="`text-s text-color-lighter${isBelowSmall ? ' text-center' : ''}`">
                   Passwordless sign in with biometrics, a PIN, or a hardware key.
                 </p>
               </Flex>

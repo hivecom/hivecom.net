@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import type { IgdbGameDetails } from '@/composables/useIgdb'
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, ButtonGroup, Calendar, Dropdown, DropdownItem, DropdownTitle, Flex, Input, searchString, Select, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import { useSupabaseClient, useSupabaseUser } from '#imports'
+import IGDBLookupModal from '@/components/Admin/Games/IGDBLookupModal.vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import ColorPicker from '@/components/Shared/ColorPicker.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
@@ -80,7 +83,7 @@ const gameForm = ref({
   description: '',
   markdown: '',
   genre_tags: [] as string[],
-  multiplayer_modes: [] as string[],
+  multiplayer_modes: [] as SelectOption[],
   color: '',
   release_date: '',
   discussion_topic_id: '',
@@ -137,8 +140,11 @@ function onNameInput() {
 }
 
 // Form validation
+const HEX_COLOR_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
+
 const validation = computed(() => ({
   name: !!gameForm.value.name.trim(),
+  color: !gameForm.value.color || HEX_COLOR_RE.test(gameForm.value.color),
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -262,6 +268,87 @@ async function importSteamAsset(assetType: 'icon' | 'cover' | 'background', url:
   await handleAssetUpload(assetType, file)
 }
 
+// --- IGDB metadata autofill ---
+const igdbLookupOpen = ref(false)
+
+function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) {
+  const overwrite = payload._overwrite ?? false
+
+  // name - only fill when empty
+  if (!gameForm.value.name.trim())
+    gameForm.value.name = payload.name
+
+  // shorthand - suggest only if not manually set and name was just filled
+  if (!shorthandManuallySet.value && !gameForm.value.shorthand.trim())
+    gameForm.value.shorthand = suggestShorthand(payload.name)
+
+  // description (tagline) - clip to DESCRIPTION_MAX
+  if (overwrite || !gameForm.value.description.trim())
+    gameForm.value.description = (payload.summary ?? '').slice(0, DESCRIPTION_MAX)
+
+  // markdown body - summary + storyline
+  if (overwrite || !gameForm.value.markdown.trim()) {
+    const parts = [payload.summary, payload.storyline].filter(Boolean)
+    gameForm.value.markdown = parts.join('\n\n')
+  }
+
+  // release_date
+  if (overwrite || !gameForm.value.release_date.trim())
+    gameForm.value.release_date = payload.release_date ?? ''
+
+  // website
+  if (overwrite || !gameForm.value.website.trim())
+    gameForm.value.website = payload.website ?? ''
+
+  // genre_tags - always merge (dedupe case-insensitively); overwrite replaces entirely
+  const incomingTags = payload.genre_tags.map(t => t.toLowerCase())
+  if (overwrite) {
+    gameForm.value.genre_tags = incomingTags
+  }
+  else {
+    const existing = new Set(gameForm.value.genre_tags.map(t => t.toLowerCase()))
+    const merged = [...gameForm.value.genre_tags]
+    for (const tag of incomingTags) {
+      if (!existing.has(tag))
+        merged.push(tag)
+    }
+    gameForm.value.genre_tags = merged
+  }
+
+  // multiplayer_modes - same merge logic
+  const incomingModes = multiplayerModeOptions.filter(o => payload.multiplayer_modes.includes(o.value))
+  if (overwrite) {
+    gameForm.value.multiplayer_modes = incomingModes
+  }
+  else {
+    const existing = new Set((gameForm.value.multiplayer_modes ?? []).map(o => o.value))
+    const merged = [...(gameForm.value.multiplayer_modes ?? [])]
+    for (const mode of incomingModes) {
+      if (!existing.has(mode.value))
+        merged.push(mode)
+    }
+    gameForm.value.multiplayer_modes = merged
+  }
+
+  // Import cover and background if not already set
+  if (payload.cover_url && !assetsUrl.value.cover && gameForm.value.shorthand)
+    importRemoteAsset('cover', payload.cover_url)
+
+  if (payload.background_url && !assetsUrl.value.background && gameForm.value.shorthand)
+    importRemoteAsset('background', payload.background_url)
+}
+
+// Generic remote URL -> game asset importer (shared by Steam and IGDB flows)
+async function importRemoteAsset(assetType: 'icon' | 'cover' | 'background', url: string) {
+  const resp = await fetch(url)
+  if (!resp.ok)
+    return
+  const blob = await resp.blob()
+  const ext = url.split('.').pop()?.split('?')[0] ?? 'jpg'
+  const file = new File([blob], `${assetType}.${ext}`, { type: blob.type })
+  await handleAssetUpload(assetType, file)
+}
+
 const importingAllAssets = ref(false)
 async function importAllSteamAssets() {
   if (!steamAssetLinks.value)
@@ -301,7 +388,7 @@ watch(
         description: newGame.description ?? '',
         markdown: newGame.markdown ?? '',
         genre_tags: newGame.genre_tags ?? [],
-        multiplayer_modes: newGame.multiplayer_modes ?? [],
+        multiplayer_modes: multiplayerModeOptions.filter(o => (newGame.multiplayer_modes ?? []).includes(o.value)),
         color: newGame.color ?? '',
         release_date: newGame.release_date ?? '',
         discussion_topic_id: newGame.discussion_topic_id ?? '',
@@ -376,14 +463,10 @@ watch(
   },
 )
 
-// Computed for multiplayer modes as SelectOption[] for the VUI Select component
+// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
 const multiplayerModesModel = computed<SelectOption[]>({
-  get() {
-    return multiplayerModeOptions.filter(o => gameForm.value.multiplayer_modes.includes(o.value))
-  },
-  set(selection) {
-    gameForm.value.multiplayer_modes = Array.isArray(selection) ? selection.map(o => o.value) : []
-  },
+  get: () => gameForm.value.multiplayer_modes ?? [],
+  set: (val) => { gameForm.value.multiplayer_modes = val ?? [] },
 })
 
 // Handle closing the sheet
@@ -427,7 +510,7 @@ function handleSubmit() {
     description: gameForm.value.description.trim() || null,
     markdown: gameForm.value.markdown.trim() || null,
     genre_tags: gameForm.value.genre_tags.length > 0 ? gameForm.value.genre_tags : null,
-    multiplayer_modes: gameForm.value.multiplayer_modes.length > 0 ? gameForm.value.multiplayer_modes : null,
+    multiplayer_modes: gameForm.value.multiplayer_modes?.length ? gameForm.value.multiplayer_modes.map(o => o.value) : null,
     color: gameForm.value.color.trim() || null,
     release_date: gameForm.value.release_date || null,
     discussion_topic_id: gameForm.value.discussion_topic_id.trim() || null,
@@ -520,11 +603,25 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
     @close="handleClose"
   >
     <template #header>
-      <Flex column :gap="0">
-        <h4>{{ props.isEditMode ? 'Edit Game' : 'Add Game' }}</h4>
-        <p v-if="props.isEditMode && props.game" class="text-color-light text-xs">
-          {{ props.game.name }}
-        </p>
+      <Flex x-between y-center expand>
+        <Flex column :gap="0">
+          <h4>{{ props.isEditMode ? 'Edit Game' : 'Add Game' }}</h4>
+          <p v-if="props.isEditMode && props.game" class="text-color-light text-xs">
+            {{ props.game.name }}
+          </p>
+        </Flex>
+        <Tooltip>
+          <Button
+            square
+            :disabled="!gameForm.name.trim()"
+            @click="igdbLookupOpen = true"
+          >
+            <Icon name="ph:magnifying-glass" />
+          </Button>
+          <template #tooltip>
+            <p>Lookup on IGDB</p>
+          </template>
+        </Tooltip>
       </Flex>
     </template>
 
@@ -634,38 +731,25 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
         </Flex>
 
         <!-- Multiplayer modes -->
-        <Select
-          v-model="multiplayerModesModel"
-          :options="multiplayerModeOptions"
-          label="Multiplayer Modes"
-          placeholder="Select multiplayer modes (optional)"
-          expand
-          multiple
-          show-clear
-        />
+        <Flex expand>
+          <Select
+            v-model="multiplayerModesModel"
+            :options="multiplayerModeOptions"
+            label="Multiplayer Modes"
+            placeholder="Select multiplayer modes (optional)"
+            show-clear
+            :single="false"
+          />
+        </Flex>
 
         <!-- Accent color -->
-        <Flex column gap="xs" expand>
-          <label class="asset-label">Accent Color</label>
-          <label class="game-form__color-input">
-            <input
-              type="color"
-              :value="gameForm.color || '#000000'"
-              @input="gameForm.color = ($event.target as HTMLInputElement).value"
-            >
-            <span class="text-s">{{ gameForm.color || 'No color set' }}</span>
-            <div class="flex-1" />
-            <Button
-              v-if="gameForm.color"
-              square
-              size="s"
-              plain
-              @click="gameForm.color = ''"
-            >
-              <Icon name="ph:x" />
-            </Button>
-          </label>
-        </Flex>
+        <ColorPicker
+          v-model="gameForm.color"
+          label="Accent Color"
+          stacked
+          clearable
+          :error="validation.color ? undefined : 'Must be a valid hex color (e.g. #ff0000)'"
+        />
 
         <!-- Release year -->
         <Flex column gap="xs" expand>
@@ -691,9 +775,9 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
         <!-- Forum topic picker -->
         <Flex column gap="xs" expand>
           <label class="asset-label">Forum Topic</label>
-          <Dropdown class="w-100">
+          <Dropdown expand>
             <template #trigger="{ toggle, isOpen: dropdownOpen }">
-              <Button expand class="w-100 vui-button-select" outline @click="toggle">
+              <Button expand outline @click="toggle">
                 <template #start>
                   <span class="text-size-m">
                     {{ selectedTopicLabel ?? 'No topic linked' }}
@@ -935,6 +1019,14 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
       cancel-text="Cancel"
       :destructive="true"
     />
+
+    <!-- IGDB Metadata Lookup Modal -->
+    <IGDBLookupModal
+      v-model:open="igdbLookupOpen"
+      :initial-name="gameForm.name"
+      :steam-id="steamId || undefined"
+      @apply="applyIgdbMetadata"
+    />
   </Sheet>
 </template>
 
@@ -967,49 +1059,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
 
   .iconify {
     color: var(--color-text-blue);
-  }
-}
-
-.game-form__color-input {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  width: 100%;
-  cursor: pointer;
-  padding: var(--space-xs) var(--space-s);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-s);
-  background: var(--color-bg);
-  height: var(--interactive-el-height);
-
-  &:hover {
-    border-color: var(--color-border-strong);
-  }
-
-  .flex-1 {
-    flex: 1;
-  }
-
-  input[type='color'] {
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-    cursor: pointer;
-    background: transparent;
-    border: none;
-    padding: 0;
-
-    &::-webkit-color-swatch-wrapper {
-      padding: 0;
-    }
-    &::-webkit-color-swatch {
-      border: none;
-      border-radius: var(--border-radius-xs);
-    }
-    &::-moz-color-swatch {
-      border: none;
-      border-radius: var(--border-radius-xs);
-    }
   }
 }
 

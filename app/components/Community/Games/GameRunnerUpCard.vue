@@ -19,11 +19,12 @@ defineProps<{
 
 const emit = defineEmits<{
   openServerModal: [game: Tables<'games'>]
+  openDetails: [game: Tables<'games'>]
 }>()
 </script>
 
 <template>
-  <GlowCard halo>
+  <GlowCard halo style="cursor: pointer" @click="emit('openDetails', game)">
     <Card class="top-game-card" :padding="false">
       <div
         class="top-game-card__bg"
@@ -35,7 +36,7 @@ const emit = defineEmits<{
       />
       <div class="top-game-card__content">
         <span class="text-xs text-bold text-color-lighter top-game-card__rank">#{{ rank }}</span>
-        <Flex y-center gap="s">
+        <Flex y-center gap="s" class="top-game-card__name-row">
           <GameIcon :game="game" size="m" />
           <span class="text-xxl text-bold">{{ game.name }}</span>
         </Flex>
@@ -64,7 +65,7 @@ const emit = defineEmits<{
               size="m"
               circle
               class="server-badge"
-              @click="emit('openServerModal', game)"
+              @click.stop="emit('openServerModal', game)"
             >
               <Icon name="ph:hard-drives" size="14" />
               {{ serverCount }}
@@ -121,6 +122,13 @@ const emit = defineEmits<{
   &__rank {
     text-transform: uppercase;
     letter-spacing: 0.1em;
+  }
+
+  &__name-row {
+    &:hover span {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
   }
 
   &__bottom {

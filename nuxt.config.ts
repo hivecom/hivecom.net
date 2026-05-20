@@ -73,6 +73,8 @@ export default defineNuxtConfig({
       'bg_green_lowered','bg_green_raised',
       'bg_yellow_lowered','bg_yellow_raised',
       'bg_blue_lowered','bg_blue_raised',
+      'text_purple',
+      'bg_purple_lowered','bg_purple_raised',
       'border','border_strong','border_weak',
       'button_gray','button_gray_hover','button_fill','button_fill_hover',
       'accent','bg_accent_lowered','bg_accent_raised'

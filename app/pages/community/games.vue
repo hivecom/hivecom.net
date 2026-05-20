@@ -13,6 +13,7 @@ import RecentGameEventsSection from '@/components/Community/Games/RecentGameEven
 import GameServerModal from '@/components/GameServers/GameServerModal.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
 import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
+import GameDetailsModal from '@/components/Shared/GameDetailsModal.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useDataEvents } from '@/composables/useDataEvents'
@@ -193,6 +194,32 @@ function closeServerModal() {
   serverModalGame.value = null
 }
 
+// Game details modal
+const showDetailsModal = ref(false)
+const selectedDetailsGameId = ref<number | null>(null)
+
+function openDetailsModal(game: Tables<'games'>) {
+  selectedDetailsGameId.value = game.id
+  showDetailsModal.value = true
+}
+
+function openDetailsModalById(gameId: number) {
+  selectedDetailsGameId.value = gameId
+  showDetailsModal.value = true
+}
+
+function closeDetailsModal() {
+  showDetailsModal.value = false
+  selectedDetailsGameId.value = null
+}
+
+function handleDetailsOpenServers(gameId: number) {
+  closeDetailsModal()
+  const game = games.value.find(g => g.id === gameId)
+  if (game)
+    openServerModal(game)
+}
+
 // ── Background loading for top 3 cards ───────────────────────────────────────
 const gameBackgrounds = ref<Map<number, string>>(new Map())
 const gameCovers = ref<Map<number, string>>(new Map())
@@ -303,6 +330,7 @@ const totalCurrentPlayers = computed<number | null>(() => {
               :cover-url="getCachedCover(topGame.id)"
               :show-current-players="!!user"
               @open-server-modal="openServerModal"
+              @open-details="openDetailsModal"
             />
 
             <!-- #2 and #3 - smaller cards -->
@@ -320,6 +348,7 @@ const totalCurrentPlayers = computed<number | null>(() => {
                 :cover-url="getCachedCover(game.id)"
                 :show-current-players="!!user"
                 @open-server-modal="openServerModal"
+                @open-details="openDetailsModal"
               />
             </Grid>
           </GlowGroup>
@@ -331,6 +360,7 @@ const totalCurrentPlayers = computed<number | null>(() => {
         <ChartGameActivity
           :period="HISTORY_PERIOD"
           :window="null"
+          :skeleton-height="130"
           colorize
           :show-y-axis="true"
           hide-title
@@ -348,6 +378,24 @@ const totalCurrentPlayers = computed<number | null>(() => {
           :games="games"
           :is-logged-in="!!user"
           :loading="presencesLoading"
+          :metrics-history="metricsHistory"
+        />
+      </section>
+
+      <!-- Marquee: game covers -->
+      <GameMarquee v-if="marqueeGames.length > 0" :games="marqueeGames" :speed="marqueeSpeed" class="mt-m" @select="openDetailsModalById" />
+
+      <!-- Recent game events -->
+      <section class="mt-m">
+        <Flex y-center x-between class="mb-s">
+          <h3 class="section-title">
+            Recent Game Events
+          </h3>
+        </Flex>
+        <RecentGameEventsSection
+          :events="events"
+          :loading="eventsLoading"
+          :games="games"
         />
       </section>
 
@@ -362,18 +410,6 @@ const totalCurrentPlayers = computed<number | null>(() => {
           :cover-url="poppedOffGameId !== null ? getCachedCover(poppedOffGameId) : ''"
         />
       </section>
-
-      <!-- Recent game events -->
-      <section class="mt-m">
-        <RecentGameEventsSection
-          :events="events"
-          :loading="eventsLoading"
-          :games="games"
-        />
-      </section>
-
-      <!-- Marquee: game covers -->
-      <GameMarquee v-if="marqueeGames.length > 0" :games="marqueeGames" :speed="marqueeSpeed" class="mt-m" />
 
       <!-- CTA -->
       <section class="mt-m">
@@ -416,6 +452,12 @@ const totalCurrentPlayers = computed<number | null>(() => {
         :game="serverModalGame"
         :gameservers="serverModalGame ? gameserversForGame(serverModalGame.id) : []"
         @close="closeServerModal"
+      />
+      <GameDetailsModal
+        v-model:open="showDetailsModal"
+        :game-id="selectedDetailsGameId"
+        @close="closeDetailsModal"
+        @open-servers="handleDetailsOpenServers"
       />
     </ClientOnly>
   </div>
@@ -462,6 +504,15 @@ const totalCurrentPlayers = computed<number | null>(() => {
   padding: var(--space-xl);
   background: linear-gradient(135deg, var(--color-bg-raised) 0%, var(--color-bg-medium) 100%);
   border: 1px solid var(--color-border);
+}
+
+// ── Section headings ─────────────────────────────────────────────────────────
+.section-title {
+  margin: 0;
+  font-size: var(--font-size-s);
+  color: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 // ── Page title row ────────────────────────────────────────────────────────────

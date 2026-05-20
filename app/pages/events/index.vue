@@ -7,11 +7,12 @@ import EventsListing from '@/components/Events/EventsListing.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataEvents } from '@/composables/useDataEvents'
+import { useDataGames } from '@/composables/useDataGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface SelectOption {
   label: string
-  value: string
+  value: string | number
 }
 
 // Filters
@@ -38,6 +39,56 @@ const recurringFilter = computed<boolean | null>(() => hideRecurring.value ? tru
 const activeTab = ref('list')
 const route = useRoute()
 const router = useRouter()
+
+const gameFilter = computed<number | null>(() => {
+  const raw = route.query.game
+  const str = Array.isArray(raw) ? raw[0] : raw
+  const id = str ? Number(str) : null
+  return id && !Number.isNaN(id) ? id : null
+})
+
+const { games } = useDataGames()
+
+const gameOptions = computed<SelectOption[]>(() =>
+  games.value.map(game => ({ label: game.name ?? 'Unknown Game', value: game.id })),
+)
+
+// Bidirectional sync between the Select and ?game= query param
+const gameFilterOption = ref<SelectOption[] | undefined>(undefined)
+
+// When the URL query changes (e.g. deep-link from another page), sync the select
+watch(
+  gameFilter,
+  (id) => {
+    if (id === null) {
+      gameFilterOption.value = undefined
+      return
+    }
+    const match = gameOptions.value.find(o => o.value === id)
+    if (match)
+      gameFilterOption.value = [match]
+  },
+  { immediate: true },
+)
+
+// When gameOptions load after the URL already has a game param, re-sync
+watch(gameOptions, () => {
+  if (gameFilter.value === null || (gameFilterOption.value && gameFilterOption.value.length > 0))
+    return
+  const match = gameOptions.value.find(o => o.value === gameFilter.value)
+  if (match)
+    gameFilterOption.value = [match]
+})
+
+// When the user changes the select, update the URL
+watch(gameFilterOption, (opts) => {
+  const id = opts?.[0]?.value ?? null
+  const current = route.query.game ? Number(route.query.game) : null
+  if (id === current)
+    return
+  const { game: _game, ...rest } = route.query
+  void router.replace({ query: id !== null ? { ...rest, game: String(id) } : rest })
+})
 
 const queryTab = computed(() => {
   const tab = route.query.tab
@@ -159,7 +210,7 @@ defineOgImage('Default', {
       <section>
         <!-- Filters (list view only) -->
         <Flex v-if="activeTab === 'list'" gap="s" wrap class="mb-l" y-center>
-          <Input v-model="search" placeholder="Search events..." style="min-width: 200px">
+          <Input v-model="search" placeholder="Search events..." style="min-width: 200px" :expand="false">
             <template #start>
               <Icon name="ph:magnifying-glass" />
             </template>
@@ -169,6 +220,13 @@ defineOgImage('Default', {
             v-model="officialFilterOption"
             :options="officialFilterOptions"
             placeholder="Official"
+            single
+            show-clear
+          />
+          <Select
+            v-model="gameFilterOption"
+            :options="gameOptions"
+            placeholder="Game"
             single
             show-clear
           />
@@ -187,6 +245,7 @@ defineOgImage('Default', {
           :search="search"
           :official-filter="officialFilter"
           :recurring-filter="recurringFilter"
+          :game-filter="gameFilter"
         />
 
         <!-- Calendar View -->

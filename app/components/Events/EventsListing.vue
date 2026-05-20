@@ -13,12 +13,14 @@ interface Props {
   search?: string
   officialFilter?: boolean | null
   recurringFilter?: boolean | null
+  gameFilter?: number | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   search: '',
   officialFilter: null,
   recurringFilter: null,
+  gameFilter: null,
 })
 
 function matchesFilters(event: Tables<'events'>): boolean {
@@ -32,6 +34,8 @@ function matchesFilters(event: Tables<'events'>): boolean {
   if (props.officialFilter != null && event.is_official !== props.officialFilter)
     return false
   if (props.recurringFilter === true && event.recurrence_rule != null)
+    return false
+  if (props.gameFilter != null && !event.games?.includes(props.gameFilter))
     return false
   return true
 }
@@ -156,7 +160,7 @@ const hasActiveEvents = computed(() =>
     </div>
 
     <!-- Past Events Section - self-contained, manages its own data fetching -->
-    <EventsPastListing :search="search" :official-filter="officialFilter" :recurring-filter="recurringFilter" />
+    <EventsPastListing :search="search" :official-filter="officialFilter" :recurring-filter="recurringFilter" :game-filter="gameFilter" />
   </template>
 </template>
 

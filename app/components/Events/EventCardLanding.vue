@@ -4,6 +4,7 @@ import { Badge, Card, Flex, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { computed, useTemplateRef } from 'vue'
+import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -74,12 +75,21 @@ const isBelowSmall = useBreakpoint('<m')
             </span>
             <!-- Game icons replace the Official badge when games are provided -->
             <Flex v-if="linkedGames.length > 0" y-center gap="xxs">
-              <Tooltip v-for="g in linkedGames" :key="g.id" placement="top">
-                <GameIcon :game="g" size="xs" />
-                <template #tooltip>
-                  <p>{{ g.name }}</p>
-                </template>
-              </Tooltip>
+              <GameDetailsModalTrigger
+                v-for="g in linkedGames"
+                :key="g.id"
+                v-slot="{ open }"
+                :game-id="g.id"
+              >
+                <Tooltip placement="top">
+                  <span style="cursor: pointer" @click.prevent.stop="open">
+                    <GameIcon :game="g" size="xs" />
+                  </span>
+                  <template #tooltip>
+                    <p>{{ g.name }}</p>
+                  </template>
+                </Tooltip>
+              </GameDetailsModalTrigger>
             </Flex>
             <Badge v-else-if="props.event.is_official" variant="accent" size="s">
               <Icon name="ph:star-fill" />

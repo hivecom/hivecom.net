@@ -44,6 +44,7 @@ export function useDataEventsPaged(
   search?: Ref<string>,
   officialFilter?: Ref<boolean | null>,
   recurringFilter?: Ref<boolean | null>,
+  gameFilter?: Ref<number | null>,
 ) {
   const supabase = useSupabaseClient<Database>()
 
@@ -57,14 +58,16 @@ export function useDataEventsPaged(
     const s = (search?.value ?? '').trim()
     const f = String(officialFilter?.value ?? '')
     const r = String(recurringFilter?.value ?? '')
-    return `events:past:p${page}:n${pageSize.value}:f${f}:r${r}:s${s}`
+    const g = String(gameFilter?.value ?? '')
+    return `events:past:p${page}:n${pageSize.value}:f${f}:r${r}:g${g}:s${s}`
   }
 
   function countKey(): string {
     const s = (search?.value ?? '').trim()
     const f = String(officialFilter?.value ?? '')
     const r = String(recurringFilter?.value ?? '')
-    return `events:past-count:f${f}:r${r}:s${s}`
+    const g = String(gameFilter?.value ?? '')
+    return `events:past-count:f${f}:r${r}:g${g}:s${s}`
   }
 
   // ── Active events (ongoing + upcoming) ───────────────────────────────────
@@ -104,6 +107,8 @@ export function useDataEventsPaged(
     if (officialFilter?.value != null && event.is_official !== officialFilter.value)
       return false
     if (recurringFilter?.value === true && event.recurrence_rule != null)
+      return false
+    if (gameFilter?.value != null && !event.games?.includes(gameFilter.value))
       return false
     return true
   }
@@ -189,6 +194,7 @@ export function useDataEventsPaged(
       p_search: search?.value.trim() !== '' ? search?.value.trim() : null,
       p_is_official: officialFilter?.value ?? null,
       p_hide_recurring: recurringFilter?.value === true,
+      p_game_id: gameFilter?.value ?? null,
     })
 
     if (!error && data != null) {
@@ -217,6 +223,7 @@ export function useDataEventsPaged(
         p_search: search?.value.trim() !== '' ? search?.value.trim() : null,
         p_is_official: officialFilter?.value ?? null,
         p_hide_recurring: recurringFilter?.value === true,
+        p_game_id: gameFilter?.value ?? null,
       })
 
       if (error)
@@ -269,6 +276,14 @@ export function useDataEventsPaged(
 
   if (recurringFilter) {
     watch(recurringFilter, () => {
+      pastPage.value = 1
+      void fetchPastCount()
+      void fetchPast(1)
+    })
+  }
+
+  if (gameFilter) {
+    watch(gameFilter, () => {
       pastPage.value = 1
       void fetchPastCount()
       void fetchPast(1)

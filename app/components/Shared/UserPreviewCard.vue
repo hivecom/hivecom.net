@@ -10,6 +10,7 @@ import { useCachedFetch } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { getCountryInfo } from '@/lib/utils/country'
+import ActivityLastfm from '../Profile/Activity/ActivityLastfm.vue'
 import ActivitySteam from '../Profile/Activity/ActivitySteam.vue'
 import ActivityTeamspeak from '../Profile/Activity/ActivityTeamspeak.vue'
 
@@ -113,11 +114,12 @@ const {
   steam_id: string | null
   teamspeak_identities: Tables<'profiles'>['teamspeak_identities'] | TeamSpeakIdentityRecord[] | null
   rich_presence_enabled: boolean | null
+  lastfm_username: string | null
 }>(
   () => props.userId
     ? {
         table: 'profiles',
-        select: 'steam_id,teamspeak_identities,rich_presence_enabled',
+        select: 'steam_id,teamspeak_identities,rich_presence_enabled,lastfm_username',
         filters: { id: props.userId },
         single: true,
       }
@@ -273,7 +275,7 @@ const {
           </Flex>
         </Flex>
 
-        <Divider v-if="(props.showDescription && hasCustomIntroduction) || (activity && props.showActivity && (activity.steam_id || (activity.teamspeak_identities && activity.teamspeak_identities.length > 0)))" class="my-xs" />
+        <Divider v-if="(props.showDescription && hasCustomIntroduction) || (activity && props.showActivity && (activity.steam_id || (activity.teamspeak_identities && activity.teamspeak_identities.length > 0) || activity.lastfm_username))" class="my-xs" />
 
         <template v-if="props.showDescription && hasCustomIntroduction">
           <Flex v-if="hasCustomIntroduction" column expand :gap="0">
@@ -302,6 +304,14 @@ const {
           :teamspeak-identities="activity.teamspeak_identities"
           :is-own-profile="false"
           :rich-presence-enabled="activity.rich_presence_enabled ?? false"
+        />
+
+        <ActivityLastfm
+          v-if="activity.lastfm_username"
+          :profile-id="user.id"
+          :lastfm-username="activity.lastfm_username"
+          :rich-presence-enabled="activity.rich_presence_enabled ?? false"
+          :is-own-profile="false"
         />
       </Flex>
     </template>

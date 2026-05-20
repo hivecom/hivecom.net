@@ -21,13 +21,14 @@ defineProps<{
 
 const emit = defineEmits<{
   openServerModal: [game: Tables<'games'>]
+  openDetails: [game: Tables<'games'>]
 }>()
 
 const isMobile = useBreakpoint('<s')
 </script>
 
 <template>
-  <GlowCard halo>
+  <GlowCard halo style="cursor: pointer" @click="emit('openDetails', game)">
     <Card class="top-game-hero" :padding="false">
       <div class="top-game-hero__info">
         <Tooltip placement="top">
@@ -52,7 +53,7 @@ const isMobile = useBreakpoint('<s')
         <Flex expand x-between gap="l" :column="isMobile">
           <Flex column gap="s" class="top-game-hero__text">
             <span class="text-xs text-bold text-color-lighter top-game-hero__rank">#{{ rank }}</span>
-            <Flex y-center gap="s">
+            <Flex y-center gap="s" class="top-game-hero__name-row">
               <GameIcon :game="game" size="l" />
               <h2 class="text-bold" :class="isMobile ? 'text-xxl' : 'text-xxxxl'">
                 {{ game.name }}
@@ -82,7 +83,7 @@ const isMobile = useBreakpoint('<s')
                   variant="neutral"
                   size="m"
                   class="server-badge"
-                  @click="emit('openServerModal', game)"
+                  @click.stop="emit('openServerModal', game)"
                 >
                   <Icon name="ph:hard-drives" size="14" />
                   {{ serverCount }}
@@ -169,6 +170,13 @@ const isMobile = useBreakpoint('<s')
   &__rank {
     text-transform: uppercase;
     letter-spacing: 0.1em;
+  }
+
+  &__name-row {
+    &:hover h2 {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
   }
 
   &__cover {

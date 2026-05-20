@@ -40,6 +40,8 @@ const props = defineProps<{
   hideUntracked?: boolean
   showYAxis?: boolean
   colorize?: boolean
+  skeletonHeight?: number
+  compactSkeletonHeight?: number
 }>()
 
 ChartJS.register(
@@ -283,6 +285,12 @@ const chartData = computed(() => {
   }
 })
 
+const resolvedSkeletonHeight = computed(() =>
+  props.compact
+    ? (props.compactSkeletonHeight ?? 60)
+    : (props.skeletonHeight ?? 280),
+)
+
 const localChartOptions = {
   plugins: {
     legend: { display: false },
@@ -399,11 +407,15 @@ watch(chartData, () => {
     <div v-if="loadingHistory" class="chart-loading" :class="{ 'chart-loading--compact': compact }">
       <div class="chart-skeleton">
         <div class="chart-area-skeleton">
-          <div v-if="!compact" class="y-axis-skeleton">
+          <div v-if="!compact" class="y-axis-skeleton" :style="{ height: `${resolvedSkeletonHeight}px` }">
             <Skeleton v-for="i in 6" :key="i" :width="40" :height="12" :radius="2" />
           </div>
-          <div class="chart-lines-skeleton" :class="{ 'chart-lines-skeleton--compact': compact }">
-            <Skeleton :height="compact ? 60 : 280" :radius="8" style="opacity: 0.3;" />
+          <div
+            class="chart-lines-skeleton"
+            :class="{ 'chart-lines-skeleton--compact': compact }"
+            :style="{ height: `${resolvedSkeletonHeight}px` }"
+          >
+            <Skeleton :height="resolvedSkeletonHeight" :radius="8" style="opacity: 0.3;" />
           </div>
         </div>
 

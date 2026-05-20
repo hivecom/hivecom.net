@@ -14,7 +14,9 @@ const props = defineProps<{
   theme: Tables<'themes'> | null
 }>()
 
-const emit = defineEmits(['delete'])
+const emit = defineEmits<{
+  delete: [theme: Tables<'themes'>]
+}>()
 
 const isOpen = defineModel<boolean>('isOpen')
 

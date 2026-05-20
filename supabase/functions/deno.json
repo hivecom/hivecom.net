@@ -18,6 +18,7 @@
     "./admin-docker-control-container-start",
     "./admin-docker-control-container-status",
     "./admin-docker-control-container-stop",
+    "./admin-igdb-search",
     "./admin-steam-icon-fetch",
     "./admin-user-ban",
     "./admin-user-delete",
@@ -25,10 +26,13 @@
     "./cron-metrics-fetch",
     "./cron-patreon-fetch",
     "./cron-teamspeak-sync",
+    "./lastfm-verify-confirm",
+    "./lastfm-verify-request",
     "./oauth-patreon",
     "./openid-steam-start",
     "./openid-steam-verify",
     "./ping",
+    "./presence-refresh-lastfm",
     "./presence-refresh-steam",
     "./teamspeak-unlink",
     "./teamspeak-verify-confirm",
@@ -43,6 +47,7 @@
     "./user-link-discord",
     "./webhook-aws-ses-notifications",
     "./webhook-kofi-donation",
+    "./worker-sync-lastfm",
     "./worker-sync-steam"
   ]
 }

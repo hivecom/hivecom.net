@@ -1,0 +1,8 @@
+{
+  "name": "worker-sync-lastfm",
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
+    "database-types": "../../../types/database.types.ts"
+  },
+  "exports": {}
+}

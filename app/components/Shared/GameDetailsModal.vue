@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Flex, Modal, Skeleton } from '@dolanske/vui'
+import type { Database } from '@/types/database.types'
+import { Badge, Button, Card, Flex, Grid, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
+import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
 import { useDataGames } from '@/composables/useDataGames'
+import { useDataGameservers } from '@/composables/useDataGameservers'
+import { useDataMetrics } from '@/composables/useDataMetrics'
+import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
@@ -19,14 +27,23 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   (e: 'close'): void
+  (e: 'openServers', gameId: number): void
 }>()
 
-// Controlled modal visibility
 const isOpen = defineModel<boolean>('open', { default: false })
 
 const { games, getById: getGameById } = useDataGames()
 const { getGameCoverUrl, getGameBackgroundUrl } = useDataGameAssets()
+const { gameservers } = useDataGameservers()
+const { metrics, metricsHistory, fetchMetricsHistory } = useDataMetrics()
+const { currentPlayersForSteamId } = useDataSteamPresences()
+const supabase = useSupabaseClient<Database>()
+const user = useSupabaseUser()
 
+const isBelowSmall = useBreakpoint('<xs')
+const isMobile = useBreakpoint('<s')
+
+// ── Core details cache ────────────────────────────────────────────────────────
 interface GameDetailsEntry {
   game: Tables<'games'>
   coverUrl: string | null
@@ -39,6 +56,25 @@ const error = ref('')
 const detailsCache = new Map<number, GameDetailsEntry>()
 let fetchToken = 0
 
+// ── Recent events cache ───────────────────────────────────────────────────────
+interface EventRow {
+  id: number
+  title: string
+  date: string
+  duration_minutes: number | null
+  is_official: boolean | null
+}
+
+const eventsCache = new Map<number, EventRow[]>()
+const recentEvents = ref<EventRow[]>([])
+const eventsLoading = ref(false)
+
+// ── Playtime cache ────────────────────────────────────────────────────────────
+const playtimeCache = new Map<number, number>()
+const minutesPlayed = ref(0)
+const playtimeLoading = ref(false)
+
+// ── Computed ──────────────────────────────────────────────────────────────────
 const isModalVisible = computed(() => Boolean(props.gameId) && isOpen.value)
 const gameName = computed(() => currentDetails.value?.game.name ?? 'Game Details')
 const heroImageUrl = computed(() => currentDetails.value?.backgroundUrl ?? currentDetails.value?.coverUrl ?? null)
@@ -46,17 +82,184 @@ const steamUrl = computed(() => {
   const steamId = currentDetails.value?.game.steam_id
   return steamId ? `https://store.steampowered.com/app/${steamId}` : null
 })
-
-const isBelowSmall = useBreakpoint('<xs')
 const websiteUrl = computed(() => {
   const raw = currentDetails.value?.game.website?.trim()
-  return raw || null
+  return raw ?? null
 })
 
+const gameServersForGame = computed(() => {
+  if (!props.gameId)
+    return []
+  return gameservers.value.filter(gs => gs.game === props.gameId)
+})
+
+const currentPlayerIds = computed(() => {
+  const steamId = currentDetails.value?.game.steam_id
+  return currentPlayersForSteamId(steamId)
+})
+
+const serverPlayerCount = computed(() => {
+  if (!metrics.value || !props.gameId)
+    return 0
+  const byServer = metrics.value.gameservers.byServer
+  let total = 0
+  for (const gs of gameServersForGame.value) {
+    if (!gs.query_protocol)
+      continue
+    const detail = byServer[String(gs.id)]
+    if (!detail?.data)
+      continue
+    const count = detail.protocol === 'minecraft'
+      ? (detail.data as { numPlayers?: number }).numPlayers
+      : detail.protocol === 'source'
+        ? (detail.data as { players?: number }).players
+        : null
+    total += count ?? 0
+  }
+  return total
+})
+
+// Peak players over last 14 days (from bucketed history - MAX per bucket is fine for peak)
+const peakPlayers = computed(() => {
+  if (!props.gameId)
+    return 0
+  let peak = 0
+  for (const entry of metricsHistory.value) {
+    const count = entry.usersByGame?.[String(props.gameId)] ?? 0
+    if (count > peak)
+      peak = count
+  }
+  return peak
+})
+
+function formatMinutesPlayed(minutes: number): string {
+  if (minutes === 0)
+    return '0m'
+  if (minutes < 60)
+    return `${minutes}m`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24)
+    return `${hours}h`
+  const days = Math.floor(hours / 24)
+  const remainingHours = hours % 24
+  return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function formatDate(dateStr: string): string {
+  try {
+    return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+  catch {
+    return dateStr
+  }
+}
+
+function formatTrackedSince(createdAt: string | null): string {
+  if (!createdAt)
+    return ''
+  try {
+    return new Date(createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+  }
+  catch {
+    return ''
+  }
+}
+
+type ServerState = 'healthy' | 'running' | 'unhealthy' | 'offline' | 'unknown'
+
+function getServerState(gs: typeof gameServersForGame.value[0]): ServerState {
+  const container = gs.container
+  if (!container)
+    return 'unknown'
+  if (container.server?.docker_control !== true)
+    return 'unknown'
+  if (container.server?.accessible === false)
+    return 'unknown'
+  if (container.running && container.healthy === null)
+    return 'running'
+  if (container.running && container.healthy)
+    return 'healthy'
+  if (container.running && !container.healthy)
+    return 'unhealthy'
+  return 'offline'
+}
+
+function isServerOnline(gs: typeof gameServersForGame.value[0]): boolean {
+  const state = getServerState(gs)
+  return state === 'healthy' || state === 'running'
+}
+
+function getServerPlayerCounts(gs: typeof gameServersForGame.value[0]): { current: number, max: number | null } | null {
+  if (!metrics.value)
+    return null
+  const detail = metrics.value.gameservers.byServer[String(gs.id)]
+  if (!detail?.data)
+    return null
+  if (detail.protocol === 'minecraft') {
+    return {
+      current: (detail.data as { numPlayers?: number }).numPlayers ?? 0,
+      max: (detail.data as { maxPlayers?: number }).maxPlayers ?? null,
+    }
+  }
+  if (detail.protocol === 'source') {
+    return {
+      current: (detail.data as { players?: number }).players ?? 0,
+      max: (detail.data as { maxPlayers?: number }).maxPlayers ?? null,
+    }
+  }
+  return null
+}
+
+// ── Data loading ──────────────────────────────────────────────────────────────
+async function loadPlaytime(gameId: number) {
+  if (playtimeCache.has(gameId)) {
+    minutesPlayed.value = playtimeCache.get(gameId) ?? 0
+    return
+  }
+  playtimeLoading.value = true
+  try {
+    const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+    const until = new Date().toISOString()
+    const { data } = await supabase.rpc('get_game_playtime_minutes', {
+      p_game_id: gameId,
+      p_since: since,
+      p_until: until,
+    })
+    const result = Math.round(data ?? 0)
+    playtimeCache.set(gameId, result)
+    minutesPlayed.value = result
+  }
+  finally {
+    playtimeLoading.value = false
+  }
+}
+
+async function loadRecentEvents(gameId: number) {
+  if (eventsCache.has(gameId)) {
+    recentEvents.value = eventsCache.get(gameId) ?? []
+    return
+  }
+  eventsLoading.value = true
+  try {
+    const { data } = await supabase
+      .from('events')
+      .select('id, title, date, duration_minutes, is_official')
+      .contains('games', [gameId])
+      .order('date', { ascending: false })
+      .limit(5)
+    const rows = (data ?? []) as EventRow[]
+    eventsCache.set(gameId, rows)
+    recentEvents.value = rows
+  }
+  finally {
+    eventsLoading.value = false
+  }
+}
+
 async function loadGameDetails(gameId: number) {
-  // Serve from cache if available
   if (detailsCache.has(gameId)) {
-    currentDetails.value = detailsCache.get(gameId) || null
+    currentDetails.value = detailsCache.get(gameId) ?? null
     loading.value = false
     error.value = ''
     return
@@ -67,7 +270,6 @@ async function loadGameDetails(gameId: number) {
   const currentFetchToken = ++fetchToken
 
   try {
-    // Derive from the shared games cache; fall back to null if not yet populated
     const data = getGameById(gameId)
 
     if (currentFetchToken !== fetchToken)
@@ -84,17 +286,11 @@ async function loadGameDetails(gameId: number) {
       getGameBackgroundUrl(data),
     ])
 
-    const entry: GameDetailsEntry = {
-      game: data,
-      coverUrl,
-      backgroundUrl,
-    }
-
+    const entry: GameDetailsEntry = { game: data, coverUrl, backgroundUrl }
     detailsCache.set(gameId, entry)
     currentDetails.value = entry
   }
   catch (err) {
-    console.error('Failed to load game details:', err)
     if (currentFetchToken === fetchToken) {
       error.value = err instanceof Error ? err.message : 'Unable to load game details.'
       currentDetails.value = null
@@ -110,49 +306,58 @@ function handleClose() {
   isOpen.value = false
   emit('close')
 }
-
-// Re-attempt lookup when the games list populates (useDataGames fetches async on mount)
+// Re-attempt lookup when games list populates
 watch(games, () => {
   if (props.gameId && isOpen.value && !currentDetails.value)
     void loadGameDetails(props.gameId)
 })
 
-// Prime cache data when props change and lazily fetch when modal opens
 watch(
   [() => props.gameId, () => isOpen.value],
   ([gameId, open]) => {
     if (!gameId) {
       currentDetails.value = null
+      recentEvents.value = []
+      minutesPlayed.value = 0
       error.value = ''
       loading.value = false
       return
     }
 
     if (detailsCache.has(gameId))
-      currentDetails.value = detailsCache.get(gameId) || null
+      currentDetails.value = detailsCache.get(gameId) ?? null
 
-    if (open)
+    if (open) {
       void loadGameDetails(gameId)
+      void loadRecentEvents(gameId)
+      void loadPlaytime(gameId)
+      void fetchMetricsHistory('14d')
+    }
   },
   { immediate: true },
 )
 </script>
 
 <template>
-  <Modal :open="isModalVisible" centered :size="isBelowSmall ? 'screen' : undefined" @close="handleClose">
+  <Modal :open="isModalVisible" centered :size="isBelowSmall ? 'screen' : 'l'" :card="{ separators: true }" @close="handleClose">
     <template #header>
       <Flex gap="m" y-center>
         <GameIcon v-if="currentDetails?.game" :game="currentDetails.game" size="m" />
         <h3 class="game-details-modal__title">
           {{ gameName }}
         </h3>
+        <Tooltip v-if="currentDetails?.game.created_at" placement="top">
+          <template #tooltip>
+            <p>Tracked since {{ formatTrackedSince(currentDetails.game.created_at) }}</p>
+          </template>
+        </Tooltip>
       </Flex>
     </template>
 
     <div class="game-details-modal">
       <!-- Loading State -->
       <div v-if="loading" class="game-details-modal__loading">
-        <Skeleton height="160px" width="100%" />
+        <Skeleton height="180px" width="100%" />
         <Skeleton height="20px" width="60%" />
         <Skeleton height="16px" width="40%" />
       </div>
@@ -162,6 +367,7 @@ watch(
 
       <!-- Content -->
       <div v-else-if="currentDetails" class="game-details-modal__content">
+        <!-- Hero image -->
         <div class="game-details-modal__media" :class="{ 'game-details-modal__media--empty': !heroImageUrl }">
           <img
             v-if="heroImageUrl"
@@ -171,8 +377,161 @@ watch(
           >
           <div v-else class="game-details-modal__media-placeholder">
             <Icon name="ph:image" size="32" />
-            <span>No artwork available (yet)</span>
+            <span>No artwork available</span>
           </div>
+        </div>
+
+        <!-- Live activity row (logged in only) -->
+        <Flex v-if="user && (currentPlayerIds.length > 0 || serverPlayerCount > 0)" gap="m" y-center wrap>
+          <Flex v-if="currentPlayerIds.length > 0" gap="s" y-center class="game-details-modal__live-row">
+            <OnlineBadge
+              :count="currentPlayerIds.length"
+              label="playing now"
+              singular="playing now"
+              size="m"
+            />
+            <BulkAvatarDisplay
+              :user-ids="currentPlayerIds"
+              :max-users="8"
+              :avatar-size="36"
+              :gap="-8"
+              :show-names="false"
+              cluster
+              no-empty-state
+            />
+          </Flex>
+          <Badge v-if="serverPlayerCount > 0" variant="neutral" size="m">
+            <Icon name="ph:hard-drives" size="12" />
+            {{ serverPlayerCount }} on servers
+          </Badge>
+        </Flex>
+
+        <!-- Stats grid -->
+        <div class="game-details-modal__stats-grid">
+          <Card v-if="currentDetails.game.steam_id" class="stat-card">
+            <Flex column gap="xs">
+              <span class="stat-card__label">Peak players (14d)</span>
+              <span class="stat-card__value">{{ peakPlayers }}</span>
+            </Flex>
+          </Card>
+          <Card v-if="currentDetails.game.steam_id" class="stat-card">
+            <Flex column gap="xs">
+              <span class="stat-card__label">Time played (14d)</span>
+              <span class="stat-card__value">
+                <Skeleton v-if="playtimeLoading" height="20px" width="40px" />
+                <template v-else>{{ formatMinutesPlayed(minutesPlayed) }}</template>
+              </span>
+            </Flex>
+          </Card>
+          <Card v-if="gameServersForGame.length > 0" class="stat-card">
+            <Flex column gap="xs">
+              <span class="stat-card__label">Servers</span>
+              <span class="stat-card__value">{{ gameServersForGame.length }}</span>
+            </Flex>
+          </Card>
+          <Card class="stat-card">
+            <Flex column gap="xs">
+              <span class="stat-card__label">Recent events</span>
+              <span class="stat-card__value">
+                <Skeleton v-if="eventsLoading" height="20px" width="30px" />
+                <template v-else>{{ recentEvents.length }}</template>
+              </span>
+            </Flex>
+          </Card>
+        </div>
+        <div v-if="peakPlayers > 0" class="game-details-modal__chart">
+          <ChartGameActivity
+            period="14d"
+            :window="null"
+            :game-id="gameId ?? undefined"
+            hide-title
+            hide-untracked
+          />
+        </div>
+
+        <!-- Servers list -->
+        <div v-if="gameServersForGame.length > 0" class="game-details-modal__section">
+          <Flex y-center x-between>
+            <h4 class="game-details-modal__section-title">
+              Community Servers
+            </h4>
+            <NuxtLink
+              v-if="gameServersForGame.length > 4"
+              :to="`/servers/gameservers?tab=list&game=${props.gameId}`"
+              class="game-details-modal__link"
+              @click="handleClose"
+            >
+              <Button variant="link" size="s">
+                See all {{ gameServersForGame.length }}
+                <template #end>
+                  <Icon name="ph:arrow-right" />
+                </template>
+              </Button>
+            </NuxtLink>
+          </Flex>
+          <Flex column gap="s">
+            <NuxtLink
+              v-for="gs in gameServersForGame.slice(0, 4)"
+              :key="gs.id"
+              :to="`/servers/gameservers/${gs.id}`"
+              class="game-details-modal__server-card"
+              @click="handleClose"
+            >
+              <Flex y-center gap="s" expand x-between>
+                <Flex y-center gap="s" class="game-details-modal__server-card-name">
+                  <Tooltip placement="top">
+                    <Indicator :variant="isServerOnline(gs) ? 'online' : 'offline'" outline />
+                    <template #tooltip>
+                      <p>{{ isServerOnline(gs) ? 'Online' : getServerState(gs) === 'unhealthy' ? 'Unhealthy' : getServerState(gs) === 'unknown' ? 'Unknown' : 'Offline' }}</p>
+                    </template>
+                  </Tooltip>
+                  <span class="text-s game-details-modal__server-name">{{ gs.name }}</span>
+                  <Badge
+                    v-if="getServerPlayerCounts(gs) !== null"
+                    size="s"
+                    :variant="(getServerPlayerCounts(gs)?.current ?? 0) > 0 ? 'success' : 'neutral'"
+                  >
+                    {{ getServerPlayerCounts(gs)?.current ?? 0 }}/{{ getServerPlayerCounts(gs)?.max ?? '?' }}
+                  </Badge>
+                </Flex>
+                <RegionIndicator v-if="gs.region" :region="(gs.region as 'eu' | 'na' | 'all')" show-label />
+              </Flex>
+            </NuxtLink>
+          </Flex>
+        </div>
+
+        <!-- Recent events list -->
+        <div v-if="eventsLoading || recentEvents.length > 0" class="game-details-modal__section">
+          <Flex y-center x-between>
+            <h4 class="game-details-modal__section-title">
+              Recent Events
+            </h4>
+            <NuxtLink v-if="!eventsLoading && recentEvents.length > 0" :to="`/events?game=${props.gameId}`" class="game-details-modal__link" @click="handleClose">
+              <Button variant="link" size="s">
+                See all
+                <template #end>
+                  <Icon name="ph:arrow-right" />
+                </template>
+              </Button>
+            </NuxtLink>
+          </Flex>
+          <Grid v-if="eventsLoading" :columns="isMobile ? 1 : 2" gap="s">
+            <Skeleton v-for="i in 4" :key="i" height="52px" width="100%" radius="5" />
+          </Grid>
+          <Grid v-else :columns="isMobile ? 1 : 2" gap="s">
+            <NuxtLink
+              v-for="(ev, index) in recentEvents"
+              :key="ev.id"
+              :to="`/events/${ev.id}`"
+              class="game-details-modal__event-card" :class="[{ 'game-details-modal__event-card--full': recentEvents.length % 2 !== 0 && index === recentEvents.length - 1 }]"
+              @click="handleClose"
+            >
+              <Flex column gap="xxs">
+                <span class="text-s text-bold game-details-modal__event-title">{{ ev.title }}</span>
+                <span class="text-xs text-color-lighter">{{ formatDate(ev.date) }}</span>
+              </Flex>
+            </NuxtLink>
+          </Grid>
         </div>
       </div>
 
@@ -185,7 +544,20 @@ watch(
     </div>
 
     <template #footer>
-      <Flex gap="s" x-end expand>
+      <Flex gap="s" x-end expand wrap>
+        <NuxtLink
+          v-if="currentDetails?.game.discussion_topic_id"
+          :to="`/forum?activeTopicId=${encodeURIComponent(currentDetails.game.discussion_topic_id ?? '')}`"
+          class="game-details-modal__link"
+          @click="handleClose"
+        >
+          <Button :expand="isBelowSmall">
+            <template #start>
+              <Icon name="ph:chats" />
+            </template>
+            Forum Topic
+          </Button>
+        </NuxtLink>
         <NuxtLink
           v-if="websiteUrl"
           :to="websiteUrl"
@@ -245,11 +617,11 @@ watch(
     border-radius: var(--border-radius-l);
     overflow: hidden;
     border: 1px solid var(--color-border);
-    background: var(--color-bg-muted);
+    background: var(--color-bg-medium);
 
     img {
       width: 100%;
-      height: 200px;
+      height: 180px;
       object-fit: cover;
       display: block;
     }
@@ -265,15 +637,116 @@ watch(
     gap: var(--space-xs);
     align-items: center;
     justify-content: center;
-    height: 200px;
+    height: 180px;
     color: var(--color-text-light);
     font-size: var(--font-size-s);
   }
 
-  &__subtitle {
+  &__chart {
+    :deep(.chart-container) {
+      min-height: 0;
+      padding: 0;
+      background: none;
+      border: none;
+      border-radius: 0;
+    }
+
+    :deep(.chart-wrapper) {
+      height: 180px;
+    }
+
+    :deep(.chart-loading),
+    :deep(.chart-error),
+    :deep(.chart-empty) {
+      height: 180px;
+    }
+
+    :deep(.chart-lines-skeleton) {
+      height: 150px !important;
+    }
+
+    :deep(.y-axis-skeleton) {
+      height: 150px !important;
+    }
+  }
+
+  &__live-row {
+    flex-wrap: nowrap;
+  }
+
+  &__stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--space-s);
+  }
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-s);
+  }
+
+  &__section-title {
     margin: 0;
     font-size: var(--font-size-s);
     color: var(--color-text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  &__server-card {
+    display: block;
+    width: 100%;
+    padding: var(--space-s) var(--space-s);
+    border-radius: var(--border-radius-s);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-raised);
+    text-decoration: none;
+    color: var(--color-text);
+    transition: var(--transition);
+
+    &:hover {
+      background: var(--color-bg-medium);
+      border-color: var(--color-border-strong);
+    }
+  }
+
+  &__server-card-name {
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__server-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  &__event-card {
+    display: block;
+    padding: var(--space-s);
+    border-radius: var(--border-radius-s);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-raised);
+    text-decoration: none;
+    color: var(--color-text);
+    transition: var(--transition);
+
+    &:hover {
+      background: var(--color-bg-medium);
+      border-color: var(--color-border-strong);
+    }
+
+    &--full {
+      grid-column: 1 / -1;
+    }
+  }
+
+  &__event-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &__title {
@@ -291,5 +764,23 @@ watch(
 
 .game-details-modal__link {
   display: contents;
+}
+
+.stat-card {
+  :deep(.vui-card-content) {
+    padding: var(--space-s);
+  }
+
+  &__label {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    white-space: nowrap;
+  }
+
+  &__value {
+    font-size: var(--font-size-xl);
+    font-weight: bold;
+    color: var(--color-text);
+  }
 }
 </style>

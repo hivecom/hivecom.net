@@ -84,7 +84,9 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["badge_tier"]
       }
+      queue_dispatch_worker_sync_lastfm: { Args: never; Returns: undefined }
       queue_dispatch_worker_sync_steam: { Args: never; Returns: undefined }
+      queue_enqueue_worker_sync_lastfm: { Args: never; Returns: undefined }
       queue_enqueue_worker_sync_steam: { Args: never; Returns: undefined }
       remove_profile_badge: {
         Args: { p_profile_id: string; p_slug: string }
@@ -847,6 +849,7 @@ export type Database = {
       }
       games: {
         Row: {
+          automated: boolean
           color: string | null
           created_at: string
           created_by: string | null
@@ -865,6 +868,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          automated?: boolean
           color?: string | null
           created_at?: string
           created_by?: string | null
@@ -883,6 +887,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          automated?: boolean
           color?: string | null
           created_at?: string
           created_by?: string | null
@@ -1195,6 +1200,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "presences_discord_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      presences_lastfm: {
+        Row: {
+          album_art_url: string | null
+          album_name: string | null
+          artist_name: string | null
+          lastfm_username: string
+          now_playing: boolean
+          played_at: string | null
+          profile_id: string
+          track_name: string | null
+          track_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          album_art_url?: string | null
+          album_name?: string | null
+          artist_name?: string | null
+          lastfm_username: string
+          now_playing?: boolean
+          played_at?: string | null
+          profile_id: string
+          track_name?: string | null
+          track_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          album_art_url?: string | null
+          album_name?: string | null
+          artist_name?: string | null
+          lastfm_username?: string
+          now_playing?: boolean
+          played_at?: string | null
+          profile_id?: string
+          track_name?: string | null
+          track_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presences_lastfm_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: true
             referencedRelation: "profiles"
@@ -1547,6 +1599,7 @@ export type Database = {
           id: string
           introduction: string | null
           last_seen: string
+          lastfm_username: string | null
           markdown: string | null
           modified_at: string | null
           modified_by: string | null
@@ -1580,6 +1633,7 @@ export type Database = {
           id: string
           introduction?: string | null
           last_seen?: string
+          lastfm_username?: string | null
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
@@ -1613,6 +1667,7 @@ export type Database = {
           id?: string
           introduction?: string | null
           last_seen?: string
+          lastfm_username?: string | null
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
@@ -1804,6 +1859,8 @@ export type Database = {
           dark_bg_green_raised: string
           dark_bg_lowered: string
           dark_bg_medium: string
+          dark_bg_purple_lowered: string
+          dark_bg_purple_raised: string
           dark_bg_raised: string
           dark_bg_red_lowered: string
           dark_bg_red_raised: string
@@ -1823,6 +1880,7 @@ export type Database = {
           dark_text_light: string
           dark_text_lighter: string
           dark_text_lightest: string
+          dark_text_purple: string
           dark_text_red: string
           dark_text_yellow: string
           description: string
@@ -1840,6 +1898,8 @@ export type Database = {
           light_bg_green_raised: string
           light_bg_lowered: string
           light_bg_medium: string
+          light_bg_purple_lowered: string
+          light_bg_purple_raised: string
           light_bg_raised: string
           light_bg_red_lowered: string
           light_bg_red_raised: string
@@ -1859,6 +1919,7 @@ export type Database = {
           light_text_light: string
           light_text_lighter: string
           light_text_lightest: string
+          light_text_purple: string
           light_text_red: string
           light_text_yellow: string
           modified_at: string | null
@@ -1883,6 +1944,8 @@ export type Database = {
           dark_bg_green_raised: string
           dark_bg_lowered: string
           dark_bg_medium: string
+          dark_bg_purple_lowered?: string
+          dark_bg_purple_raised?: string
           dark_bg_raised: string
           dark_bg_red_lowered: string
           dark_bg_red_raised: string
@@ -1902,6 +1965,7 @@ export type Database = {
           dark_text_light: string
           dark_text_lighter: string
           dark_text_lightest: string
+          dark_text_purple?: string
           dark_text_red: string
           dark_text_yellow: string
           description?: string
@@ -1919,6 +1983,8 @@ export type Database = {
           light_bg_green_raised: string
           light_bg_lowered: string
           light_bg_medium: string
+          light_bg_purple_lowered?: string
+          light_bg_purple_raised?: string
           light_bg_raised: string
           light_bg_red_lowered: string
           light_bg_red_raised: string
@@ -1938,6 +2004,7 @@ export type Database = {
           light_text_light: string
           light_text_lighter: string
           light_text_lightest: string
+          light_text_purple?: string
           light_text_red: string
           light_text_yellow: string
           modified_at?: string | null
@@ -1962,6 +2029,8 @@ export type Database = {
           dark_bg_green_raised?: string
           dark_bg_lowered?: string
           dark_bg_medium?: string
+          dark_bg_purple_lowered?: string
+          dark_bg_purple_raised?: string
           dark_bg_raised?: string
           dark_bg_red_lowered?: string
           dark_bg_red_raised?: string
@@ -1981,6 +2050,7 @@ export type Database = {
           dark_text_light?: string
           dark_text_lighter?: string
           dark_text_lightest?: string
+          dark_text_purple?: string
           dark_text_red?: string
           dark_text_yellow?: string
           description?: string
@@ -1998,6 +2068,8 @@ export type Database = {
           light_bg_green_raised?: string
           light_bg_lowered?: string
           light_bg_medium?: string
+          light_bg_purple_lowered?: string
+          light_bg_purple_raised?: string
           light_bg_raised?: string
           light_bg_red_lowered?: string
           light_bg_red_raised?: string
@@ -2017,6 +2089,7 @@ export type Database = {
           light_text_light?: string
           light_text_lighter?: string
           light_text_lightest?: string
+          light_text_purple?: string
           light_text_red?: string
           light_text_yellow?: string
           modified_at?: string | null
@@ -2512,7 +2585,10 @@ export type Database = {
           custom_css: string
           dark_accent: string
           dark_bg_lowered: string
+          dark_bg_purple_lowered: string
+          dark_bg_purple_raised: string
           dark_text_blue: string
+          dark_text_purple: string
           dark_text_red: string
           dark_text_yellow: string
           description: string
@@ -2522,7 +2598,10 @@ export type Database = {
           is_unmaintained: boolean
           light_accent: string
           light_bg_lowered: string
+          light_bg_purple_lowered: string
+          light_bg_purple_raised: string
           light_text_blue: string
+          light_text_purple: string
           light_text_red: string
           light_text_yellow: string
           modified_at: string
@@ -2764,6 +2843,15 @@ export type Database = {
         Args: { p_exclude?: string }
         Returns: number
       }
+      get_game_playtime_minutes: {
+        Args: {
+          p_game_id: number
+          p_interval_mins?: number
+          p_since: string
+          p_until: string
+        }
+        Returns: number
+      }
       get_metrics_bucketed: {
         Args: { p_bucket_interval: string; p_since: string; p_until: string }
         Returns: {
@@ -2790,6 +2878,15 @@ export type Database = {
           }
         | {
             Args: {
+              p_hide_recurring?: boolean
+              p_is_official?: boolean
+              p_search?: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_game_id?: number
               p_hide_recurring?: boolean
               p_is_official?: boolean
               p_search?: string
@@ -2913,6 +3010,48 @@ export type Database = {
               isSetofReturn: true
             }
           }
+        | {
+            Args: {
+              p_game_id?: number
+              p_hide_recurring?: boolean
+              p_is_official?: boolean
+              p_limit?: number
+              p_offset?: number
+              p_search?: string
+            }
+            Returns: {
+              created_at: string
+              created_by: string | null
+              date: string
+              description: string
+              discord_event_id: string | null
+              discord_last_synced_at: string | null
+              duration_minutes: number | null
+              games: number[] | null
+              google_community_event_id: string | null
+              google_community_last_synced_at: string | null
+              google_event_id: string | null
+              google_last_synced_at: string | null
+              id: number
+              is_official: boolean
+              link: string | null
+              location: string | null
+              markdown: string | null
+              modified_at: string | null
+              modified_by: string | null
+              note: string | null
+              recurrence_exception: boolean
+              recurrence_parent_id: number | null
+              recurrence_rule: string | null
+              title: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "events"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
       get_private_config: { Args: { config_key: string }; Returns: Json }
       get_random_forum_discussion: {
         Args: never
@@ -2956,6 +3095,7 @@ export type Database = {
       is_not_banned: { Args: never; Returns: boolean }
       is_owner: { Args: { record_user_id: string }; Returns: boolean }
       is_profile_owner: { Args: { profile_id: string }; Returns: boolean }
+      is_valid_hex_color: { Args: { value: string }; Returns: boolean }
       list_storage_objects:
         | {
             Args: {

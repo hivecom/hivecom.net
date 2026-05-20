@@ -1,0 +1,26 @@
+- Modify CTA on community games page
+- Game dropdowns
+  - Games should show icons
+  - Gameserver list dropdown should only show games for which we have servers
+  - Event list dropdown should only show games for which we have events
+- Now that we've done an a pass of the detail sheets in admin, we should do one for admin as well since those have random misalignments and could have more consistent UX
+  - DiscussionEditSheet is a good example
+- GameDetailModal
+  - Should find a way to nicely integrate more metadata about a game?
+- Need to support color-text-purple vs color-purple in VUI
+- Uploading multiple images on mobile glitches things out
+- Should have easier navigation in the forum header on mobile where currently the user icon is when scrolling
+- Should improve loading state of game asset images
+- Add automatic fetching mechanism for games that people play and display the "automated" field appropriately
+  - Automated flag should be removable in game edit form
+- Need game forms across the app to be normalized and not load all games
+  - Event game selection dropdown is another good example
+- Modals when scrolled have a scrolling background
+- Somehow content rules sometimes show up when creating an event then clicking away (?)
+- Show all on recently played of community games page
+- Infinite loading when reloading on gameserver list
+- Add escape hatch to loading screen when there for more than 10 seconds with support button
+- Better display for past events in top right to match countdown design/positioning/layout
+- Add funding header to funding section in community page
+- Add better community descriptor section below user list on community page
+- Some times posting in a discussion will give you the realtime indicator of a new reply that is your own
