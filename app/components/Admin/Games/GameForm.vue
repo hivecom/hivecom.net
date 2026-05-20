@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { IgdbGameDetails } from '@/composables/useIgdb'
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, ButtonGroup, Calendar, Dropdown, DropdownItem, DropdownTitle, Flex, Input, searchString, Select, Sheet, Tooltip } from '@dolanske/vui'
+import { Alert, Button, ButtonGroup, Calendar, Dropdown, DropdownItem, DropdownTitle, Flex, Input, searchString, Select, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import { useSupabaseClient, useSupabaseUser } from '#imports'
 import IGDBLookupModal from '@/components/Admin/Games/IGDBLookupModal.vue'
@@ -9,9 +9,11 @@ import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ColorPicker from '@/components/Shared/ColorPicker.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
+import TagInput from '@/components/Shared/TagInput.vue'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { deleteGameAsset, uploadGameAsset } from '@/lib/storage'
 import { flattenTopicsTree } from '@/lib/topics'
+import { sanitizeTag } from '@/lib/utils/sanitize'
 
 const props = defineProps<{
   game: Tables<'games'> | null
@@ -70,9 +72,6 @@ const RELEASE_DATE_MAX = new Date(new Date().getFullYear() + 2, 11, 31)
 // Forum topic picker
 const { topics: forumTopics } = useDataForumTopics()
 const topicSearch = ref('')
-
-// Genre tag input
-const newGenreTagInput = ref('')
 
 // Form state
 const gameForm = ref({
@@ -163,20 +162,6 @@ const selectedTopicLabel = computed(() => {
 })
 
 // Genre tag helpers (depend on gameForm)
-function addGenreTags() {
-  const raw = newGenreTagInput.value
-  if (!raw.trim())
-    return
-  const newTags = raw
-    .split(',')
-    .map(t => t.trim().toLowerCase().replace(/\s+/g, '-'))
-    .filter(t => t.length > 0 && !gameForm.value.genre_tags.includes(t))
-  gameForm.value.genre_tags.push(...newTags)
-  newGenreTagInput.value = ''
-}
-function removeGenreTag(tag: string) {
-  gameForm.value.genre_tags = gameForm.value.genre_tags.filter(t => t !== tag)
-}
 
 // Release date <-> Date bridge for the Calendar year-picker
 const releaseDateModel = computed<Date | null>({
@@ -301,7 +286,7 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
     gameForm.value.website = payload.website ?? ''
 
   // genre_tags - always merge (dedupe case-insensitively); overwrite replaces entirely
-  const incomingTags = payload.genre_tags.map(t => t.toLowerCase())
+  const incomingTags = payload.genre_tags.map(t => sanitizeTag(t))
   if (overwrite) {
     gameForm.value.genre_tags = incomingTags
   }
@@ -700,35 +685,11 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
         />
 
         <!-- Genre tags -->
-        <Flex column gap="xs" expand>
-          <label class="asset-label">Genre Tags</label>
-          <Flex gap="xs" y-center>
-            <Input
-              v-model="newGenreTagInput"
-              expand
-              name="new-genre-tag"
-              placeholder="e.g. FPS, Survival, Co-op"
-              @keydown.enter.prevent="addGenreTags"
-            />
-            <Button variant="accent" square :disabled="!newGenreTagInput.trim()" @click="addGenreTags">
-              <Icon name="ph:plus" />
-            </Button>
-          </Flex>
-          <Flex v-if="gameForm.genre_tags.length > 0" gap="xs" wrap class="mt-xxs">
-            <Badge
-              v-for="tag in gameForm.genre_tags"
-              :key="tag"
-              size="s"
-              variant="neutral"
-              class="game-form__tag-badge"
-            >
-              {{ tag }}
-              <Button size="s" square class="game-form__tag-remove" @click="removeGenreTag(tag)">
-                <Icon name="ph:x" />
-              </Button>
-            </Badge>
-          </Flex>
-        </Flex>
+        <TagInput
+          v-model="gameForm.genre_tags"
+          label="Genre Tags"
+          placeholder="e.g. FPS, Survival, Co-op"
+        />
 
         <!-- Multiplayer modes -->
         <Flex expand>
@@ -775,57 +736,56 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
         <!-- Forum topic picker -->
         <Flex column gap="xs" expand>
           <label class="asset-label">Forum Topic</label>
-          <Dropdown expand>
-            <template #trigger="{ toggle, isOpen: dropdownOpen }">
-              <Button expand outline @click="toggle">
-                <template #start>
-                  <span class="text-size-m">
-                    {{ selectedTopicLabel ?? 'No topic linked' }}
-                  </span>
-                </template>
-                <template #end>
-                  <Icon :name="dropdownOpen ? 'ph:caret-up' : 'ph:caret-down'" :size="16" />
-                </template>
-              </Button>
-            </template>
-            <template #default="{ close }">
-              <DropdownTitle>
-                <Input v-model="topicSearch" placeholder="Search topics..." expand focus />
-              </DropdownTitle>
-              <Flex column :gap="0">
-                <button
-                  class="game-form__topic-option"
-                  @click="gameForm.discussion_topic_id = '', close()"
-                >
-                  <span>None</span>
-                </button>
-                <button
-                  v-for="option in topicOptions"
-                  :key="option.id"
-                  class="game-form__topic-option"
-                  :style="option.depth > 0 ? { paddingLeft: `calc(var(--space-xs) + ${option.depth * 16}px)` } : undefined"
-                  @click="gameForm.discussion_topic_id = option.id, close()"
-                >
-                  <span>{{ option.label }}</span>
-                  <p v-if="option.path" class="text-xs text-color-lighter">
-                    {{ option.path }}
-                  </p>
-                </button>
-              </Flex>
-            </template>
-          </Dropdown>
-          <Button
-            v-if="gameForm.discussion_topic_id"
-            plain
-            size="s"
-            class="game-form__topic-clear"
-            @click="gameForm.discussion_topic_id = ''"
-          >
-            <template #start>
+          <Flex gap="xs" y-center>
+            <Dropdown expand>
+              <template #trigger="{ toggle, isOpen: dropdownOpen }">
+                <Button expand outline @click="toggle">
+                  <template #start>
+                    <span class="text-size-m">
+                      {{ selectedTopicLabel ?? 'No topic linked' }}
+                    </span>
+                  </template>
+                  <template #end>
+                    <Icon :name="dropdownOpen ? 'ph:caret-up' : 'ph:caret-down'" :size="16" />
+                  </template>
+                </Button>
+              </template>
+              <template #default="{ close }">
+                <DropdownTitle>
+                  <Input v-model="topicSearch" placeholder="Search topics..." expand focus />
+                </DropdownTitle>
+                <Flex column :gap="0">
+                  <button
+                    class="game-form__topic-option"
+                    @click="gameForm.discussion_topic_id = '', close()"
+                  >
+                    <span>None</span>
+                  </button>
+                  <button
+                    v-for="option in topicOptions"
+                    :key="option.id"
+                    class="game-form__topic-option"
+                    :style="option.depth > 0 ? { paddingLeft: `calc(var(--space-xs) + ${option.depth * 16}px)` } : undefined"
+                    @click="gameForm.discussion_topic_id = option.id, close()"
+                  >
+                    <span>{{ option.label }}</span>
+                    <p v-if="option.path" class="text-xs text-color-lighter">
+                      {{ option.path }}
+                    </p>
+                  </button>
+                </Flex>
+              </template>
+            </Dropdown>
+            <Button
+              v-if="gameForm.discussion_topic_id"
+              plain
+              square
+              class="game-form__topic-clear"
+              @click="gameForm.discussion_topic_id = ''"
+            >
               <Icon name="ph:x" />
-            </template>
-            Clear
-          </Button>
+            </Button>
+          </Flex>
         </Flex>
       </Flex>
 
@@ -1059,28 +1019,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
 
   .iconify {
     color: var(--color-text-blue);
-  }
-}
-
-.game-form__tag-badge {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-
-  .game-form__tag-remove {
-    margin-left: 2px;
-    width: 16px;
-    height: 16px;
-    min-width: unset;
-    min-height: unset;
-    padding: 2px;
-    border-radius: var(--border-radius-pill);
-    background: rgba(0, 0, 0, 0.15);
-    color: currentColor;
-
-    &:hover {
-      background: rgba(0, 0, 0, 0.35);
-    }
   }
 }
 

@@ -6,10 +6,13 @@ import GameCover from '@/components/Shared/GameCover.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 
-defineProps<{
+const props = withDefaults(defineProps<{
   games: Tables<'games'>[]
   speed?: number
-}>()
+  interactive?: boolean
+}>(), {
+  interactive: true,
+})
 
 const emit = defineEmits<{
   select: [gameId: number]
@@ -21,8 +24,11 @@ const paused = ref(false)
 <template>
   <section
     class="marquee-section"
-    :class="{ 'marquee-section--paused': paused }"
-    @mouseenter="paused = true"
+    :class="{
+      'marquee-section--paused': paused,
+      'marquee-section--non-interactive': !props.interactive,
+    }"
+    @mouseenter="props.interactive ? (paused = true) : null"
     @mouseleave="paused = false"
   >
     <Marquee direction="left" :speed="speed ?? 30">
@@ -30,10 +36,11 @@ const paused = ref(false)
         <div
           v-for="game in games"
           :key="game.id"
-          class="marquee-item marquee-item--clickable"
-          @click="emit('select', game.id)"
+          class="marquee-item"
+          :class="{ 'marquee-item--clickable': props.interactive }"
+          @click="props.interactive && emit('select', game.id)"
         >
-          <GlowCard>
+          <GlowCard :no-glow="!props.interactive">
             <GameCover :game="game" size="xl" aspect-ratio="card" :show-fallback="false" />
           </GlowCard>
         </div>
@@ -51,6 +58,13 @@ const paused = ref(false)
   &--paused {
     :deep(.marquee-track) {
       animation-play-state: paused;
+    }
+  }
+
+  &--non-interactive:hover {
+    .marquee-item :deep(.game-cover) {
+      filter: saturate(1);
+      opacity: 1;
     }
   }
 }
@@ -78,12 +92,12 @@ const paused = ref(false)
 
   &--clickable {
     cursor: pointer;
-  }
 
-  :deep(.glow-card:hover .game-cover),
-  &:hover :deep(.game-cover) {
-    filter: saturate(1);
-    opacity: 1;
+    :deep(.glow-card:hover .game-cover),
+    &:hover :deep(.game-cover) {
+      filter: saturate(1);
+      opacity: 1;
+    }
   }
 }
 </style>

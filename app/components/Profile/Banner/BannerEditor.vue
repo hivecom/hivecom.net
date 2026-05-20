@@ -1938,7 +1938,7 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
         </div>
         <div class="banner-editor__zoom-bar">
           <p class="banner-editor__canvas-hint">
-            Click to select &middot; Drag to move &middot; Delete removes &middot; Esc deselects
+            Click to select - Drag to move - Delete removes - Esc deselects
           </p>
 
           <Flex y-center inline>

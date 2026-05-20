@@ -5,6 +5,8 @@ import { ref } from 'vue'
 import GameTable from '@/components/Admin/Games/GameTable.vue'
 import SteamGamesTable from '@/components/Admin/Games/SteamGamesTable.vue'
 
+definePageMeta({ layout: 'admin' })
+
 type GameTab = 'Games' | 'Steam Games'
 
 const activeTab = ref<GameTab>('Games')

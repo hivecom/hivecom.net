@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex, Indicator, Tooltip } from '@dolanske/vui'
+import { computed, ref, watchEffect } from 'vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import GameCover from '@/components/Shared/GameCover.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-defineProps<{
+const props = defineProps<{
   game: Tables<'games'>
   rank: number
   recentPlayers: number
@@ -25,6 +26,25 @@ const emit = defineEmits<{
 }>()
 
 const isMobile = useBreakpoint('<s')
+
+const bgLoaded = ref(false)
+const bgUrl = computed(() => props.backgroundUrl || props.coverUrl)
+
+function onBgLoaded() {
+  bgLoaded.value = true
+}
+
+function preloadBg(url: string) {
+  bgLoaded.value = false
+  const img = new Image()
+  img.onload = onBgLoaded
+  img.src = url
+}
+
+watchEffect(() => {
+  if (bgUrl.value)
+    preloadBg(bgUrl.value)
+})
 </script>
 
 <template>
@@ -43,6 +63,7 @@ const isMobile = useBreakpoint('<s')
       </div>
       <div
         class="top-game-hero__bg"
+        :class="{ 'top-game-hero__bg--loaded': bgLoaded }"
         :style="backgroundUrl
           ? { backgroundImage: `url(${backgroundUrl})` }
           : coverUrl
@@ -76,6 +97,7 @@ const isMobile = useBreakpoint('<s')
                   :show-names="false"
                   cluster
                   no-empty-state
+                  @click.stop
                 />
               </Flex>
               <Tooltip v-if="serverCount > 0" placement="top">
@@ -125,10 +147,15 @@ const isMobile = useBreakpoint('<s')
     z-index: 0;
     background-size: cover;
     background-position: center;
-    opacity: 0.18;
+    opacity: 0;
     filter: blur(4px);
     scale: 1.08;
     pointer-events: none;
+    transition: opacity var(--transition-slow);
+
+    &--loaded {
+      opacity: 0.18;
+    }
   }
 
   &__inner {

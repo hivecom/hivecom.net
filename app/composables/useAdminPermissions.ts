@@ -13,18 +13,18 @@ const _noop = () => false
 const _noopAny = (_: string[]) => false
 
 export function useAdminPermissions() {
-  // Inject the permissions provided by the admin layout
-  const userPermissions = inject<Readonly<Ref<string[]>>>('userPermissions')
-  const userRole = inject<Readonly<Ref<string | null>>>('userRole')
-  const hasPermission = inject<(permission: string) => boolean>('hasPermission')
-  const hasAnyPermission = inject<(permissions: string[]) => boolean>('hasAnyPermission')
+  // Inject the permissions provided by the admin layout. Pass defaults so Vue
+  // does not emit injection-not-found warnings when this composable is used
+  // outside the admin layout (e.g. during a layout transition).
+  const userPermissions = inject<Readonly<Ref<string[]>>>('userPermissions', _falsePermissions)
+  const userRole = inject<Readonly<Ref<string | null>>>('userRole', _nullRole)
+  const hasPermission = inject<(permission: string) => boolean>('hasPermission', _noop)
+  const hasAnyPermission = inject<(permissions: string[]) => boolean>('hasAnyPermission', _noopAny)
 
-  const inContext = Boolean(userPermissions && userRole && hasPermission && hasAnyPermission)
-
-  const resolvedPermissions = inContext ? userPermissions! : _falsePermissions
-  const resolvedRole = inContext ? userRole! : _nullRole
-  const resolvedHasPermission = inContext ? hasPermission! : _noop
-  const resolvedHasAnyPermission = inContext ? hasAnyPermission! : _noopAny
+  const resolvedPermissions = userPermissions
+  const resolvedRole = userRole
+  const resolvedHasPermission = hasPermission
+  const resolvedHasAnyPermission = hasAnyPermission
 
   return {
     userPermissions: resolvedPermissions,

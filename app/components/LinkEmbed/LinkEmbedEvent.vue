@@ -76,7 +76,7 @@ function formatDate(date: string | null): string {
         <Flex y-center gap="s" class="link-embed__meta">
           <span class="link-embed__meta-item">{{ formatDate(data.date) }}</span>
           <template v-if="data.location">
-            <span class="link-embed__meta-sep">&middot;</span>
+            <span class="link-embed__meta-sep">-</span>
             <span class="link-embed__meta-item">{{ data.location }}</span>
           </template>
         </Flex>

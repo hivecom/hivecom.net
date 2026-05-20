@@ -139,3 +139,19 @@
 .flex-1 {
   flex: 1;
 }
+
+// Compact uppercase section heading used across community pages.
+.section-title {
+  margin: 0;
+  font-size: var(--font-size-s);
+  color: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+// Subtitle paired with .section-title for short section descriptions.
+.section-subtitle {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-lighter);
+}

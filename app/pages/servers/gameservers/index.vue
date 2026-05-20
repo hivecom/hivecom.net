@@ -103,7 +103,7 @@ defineOgImage('Default', {
 })
 
 const search = ref('')
-const selectedGames = ref<{ label: string, value: number }[]>()
+const selectedGameIds = ref<number[]>([])
 const selectedRegions = ref<{ label: string, value: string }[]>()
 
 onMounted(() => {
@@ -111,9 +111,8 @@ onMounted(() => {
   const id = raw ? Number(Array.isArray(raw) ? raw[0] : raw) : null
   if (id && !Number.isNaN(id)) {
     const applyFilter = () => {
-      const game = games.value.find(g => g.id === id)
-      if (game)
-        selectedGames.value = [{ label: game.name ?? game.shorthand ?? String(game.id), value: game.id }]
+      if (games.value.some(g => g.id === id))
+        selectedGameIds.value = [id]
     }
     if (games.value.length > 0) {
       applyFilter()
@@ -126,15 +125,10 @@ onMounted(() => {
     }
   }
 })
-const gameOptions = computed(() => {
-  return games.value
-    .filter(game => game.name !== null)
-    .map(game => ({
-      label: game.name ?? 'Unassigned',
-      value: game.id,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label))
-})
+
+const gamesWithServers = computed(() =>
+  games.value.filter(g => gameservers.value.some(gs => gs.game === g.id)),
+)
 
 const regionOptions = [
   { label: 'Europe', value: 'eu' },
@@ -160,8 +154,8 @@ const filteredGameservers = computed(() => {
         )
       : true
 
-    const matchesSelectedGame = selectedGames.value
-      ? selectedGames.value.some(selectedGame => selectedGame.value === gameserver.game)
+    const matchesSelectedGame = selectedGameIds.value.length > 0
+      ? selectedGameIds.value.includes(gameserver.game ?? -1)
       : true
 
     const matchesSelectedRegion = selectedRegions.value
@@ -208,8 +202,8 @@ const filteredGames = computed(() => {
         )
       : true
 
-    const matchesSelectedGame = selectedGames.value
-      ? selectedGames.value.some(selectedGame => selectedGame.value === game.id)
+    const matchesSelectedGame = selectedGameIds.value.length > 0
+      ? selectedGameIds.value.includes(game.id)
       : true
 
     return hasGameServers && matchesSearch && matchesSelectedGame
@@ -249,14 +243,14 @@ const gameserversWithoutGame = computed(() => {
       : true
 
     // If games are selected in filter, don't show gameservers without games
-    const matchesSelectedGame = !selectedGames.value
+    const matchesSelectedGame = selectedGameIds.value.length === 0
 
     return matchesSearch && matchesSelectedGame && matchesSelectedRegion
   })
 })
 
 function clearFilters() {
-  selectedGames.value = undefined
+  selectedGameIds.value = []
   selectedRegions.value = undefined
   search.value = ''
 }
@@ -315,12 +309,12 @@ function clearFilters() {
         :filtered-gameservers="filteredGameservers"
         :gameservers-without-game="gameserversWithoutGame"
         :search="search"
-        :selected-games="selectedGames"
+        :selected-game-ids="selectedGameIds"
+        :games-with-servers="gamesWithServers"
         :selected-regions="selectedRegions"
-        :game-options="gameOptions"
         :region-options="regionOptions"
         @update:search="search = $event"
-        @update:selected-games="selectedGames = $event"
+        @update:selected-game-ids="selectedGameIds = $event"
         @update:selected-regions="selectedRegions = $event"
         @clear-filters="clearFilters"
       />

@@ -168,6 +168,10 @@ function handleMouseLeave() {
   }
 
   &--no-glow {
+    &::after {
+      display: none;
+    }
+
     & > :deep(*::before) {
       display: none;
     }

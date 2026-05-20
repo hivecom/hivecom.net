@@ -14,12 +14,34 @@ const props = defineProps<{
 
 const isMobile = useBreakpoint('<s')
 
-const recentGameEvents = computed(() => {
-  const now = new Date()
-  return props.events
-    .filter(e => (e.games?.length ?? 0) > 0 && new Date(e.date) < now)
+const gameEvents = computed(() => {
+  const nowMs = Date.now()
+
+  const withGames = props.events.filter(e => (e.games?.length ?? 0) > 0)
+
+  const getStatus = (e: Tables<'events'>) => {
+    const start = new Date(e.date).getTime()
+    const end = e.duration_minutes ? start + e.duration_minutes * 60 * 1000 : start
+    if (nowMs >= start && nowMs <= end)
+      return 'ongoing'
+    if (start > nowMs)
+      return 'upcoming'
+    return 'past'
+  }
+
+  const ongoing = withGames
+    .filter(e => getStatus(e) === 'ongoing')
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+  const upcoming = withGames
+    .filter(e => getStatus(e) === 'upcoming')
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+  const past = withGames
+    .filter(e => getStatus(e) === 'past')
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 3)
+
+  return [...ongoing, ...upcoming, ...past].slice(0, 3)
 })
 </script>
 
@@ -32,14 +54,14 @@ const recentGameEvents = computed(() => {
   </template>
 
   <!-- No events: render nothing -->
-  <template v-else-if="recentGameEvents.length === 0" />
+  <template v-else-if="gameEvents.length === 0" />
 
   <!-- Events grid -->
   <template v-else>
     <GlowGroup>
       <Grid :columns="isMobile ? 1 : 3" gap="m" align="stretch" class="game-events-grid">
         <EventCardLanding
-          v-for="event in recentGameEvents"
+          v-for="event in gameEvents"
           :key="event.id"
           :event="event"
           :games="games"

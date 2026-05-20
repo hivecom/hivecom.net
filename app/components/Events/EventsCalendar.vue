@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
-import { Button, Flex, Select, theme } from '@dolanske/vui'
+import { Button, Flex, Select, Switch, theme } from '@dolanske/vui'
 import { useDebounceFn } from '@vueuse/core'
 import dayjs from 'dayjs'
 import { useCache } from '@/composables/useCache'
@@ -140,11 +140,16 @@ const date = ref(dayjs().startOf('day'))
 // Theme detection
 const isDark = computed(() => theme.value === 'dark')
 
+const hideRecurring = ref(false)
+
 const filteredEvents = computed(() => {
+  let events = windowedEvents.value
   const filter = resolvedOfficialFilter.value
-  if (filter === null)
-    return windowedEvents.value
-  return windowedEvents.value.filter(e => e.is_official === filter)
+  if (filter !== null)
+    events = events.filter(e => e.is_official === filter)
+  if (hideRecurring.value)
+    events = events.filter(e => !e.recurrence_rule)
+  return events
 })
 
 // Convert events to calendar attributes
@@ -426,15 +431,21 @@ const pageTitle = computed(() => {
         Today
       </Button>
     </Flex>
-    <Select
-      v-if="useSupabaseUser().value"
-      v-model="officialFilterOption"
-      :options="officialFilterOptions"
-      placeholder="Official"
-      single
-      show-clear
-      size="s"
-    />
+    <Flex gap="xs" y-center>
+      <Flex :gap="0" y-center>
+        <Switch v-model="hideRecurring" />
+        <span class="text-s text-color-lighter">Hide recurring</span>
+      </Flex>
+      <Select
+        v-if="useSupabaseUser().value"
+        v-model="officialFilterOption"
+        :options="officialFilterOptions"
+        placeholder="Official"
+        single
+        show-clear
+        size="s"
+      />
+    </Flex>
 
     <!-- <Dropdown ref="dropdownRef">
       <template #trigger="{ toggle }">

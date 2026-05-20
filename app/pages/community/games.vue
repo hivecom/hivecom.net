@@ -1,26 +1,28 @@
 <script setup lang="ts">
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
 import type { Tables } from '@/types/database.overrides'
-import type { Database } from '@/types/database.types'
-import { Button, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
-import { computed, onMounted, ref, watch } from 'vue'
+import { Button, Card, Flex, Grid, PopoutHover, Skeleton } from '@dolanske/vui'
+import { computed, onMounted, ref } from 'vue'
+import GameEventsSection from '@/components/Community/Games/GameEventsSection.vue'
 import GameMarquee from '@/components/Community/Games/GameMarquee.vue'
 import GamePoppedOffCard from '@/components/Community/Games/GamePoppedOffCard.vue'
 import GameRunnerUpCard from '@/components/Community/Games/GameRunnerUpCard.vue'
-import GamesPlayingNowSection from '@/components/Community/Games/GamesPlayingNowSection.vue'
 import GameTopCard from '@/components/Community/Games/GameTopCard.vue'
-import RecentGameEventsSection from '@/components/Community/Games/RecentGameEventsSection.vue'
+import RecentGameActivitySection from '@/components/Community/Games/RecentGameActivitySection.vue'
 import GameServerModal from '@/components/GameServers/GameServerModal.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
 import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
 import GameDetailsModal from '@/components/Shared/GameDetailsModal.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useDataEvents } from '@/composables/useDataEvents'
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
+import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const { games, loading: gamesLoading } = useDataGames()
@@ -28,7 +30,6 @@ const { gameservers } = useDataGameservers()
 const { metrics, fetchMetrics, metricsHistory, loadingHistory, fetchMetricsHistory, scheduleRefresh, fetchMetricsHistoryIsolated } = useDataMetrics()
 const { events, loading: eventsLoading } = useDataEvents()
 const { getGameCoverUrl, getGameBackgroundUrl } = useDataGameAssets()
-const supabase = useSupabaseClient<Database>()
 const user = useSupabaseUser()
 
 const isMobile = useBreakpoint('<s')
@@ -49,6 +50,12 @@ defineOgImage('Default', {
   description: 'Discover the games played in the Hivecom community.',
 })
 
+const { currentPlayersBySteamId, presencesLoading, currentPlayersForSteamId } = useDataSteamPresences()
+
+function currentPlayersForGame(game: Tables<'games'>): string[] {
+  return currentPlayersForSteamId(game.steam_id)
+}
+
 onMounted(() => {
   fetchMetrics()
   fetchMetricsHistory(HISTORY_PERIOD)
@@ -57,45 +64,7 @@ onMounted(() => {
     .then((entries) => { metricsHistory30d.value = entries })
     .finally(() => { loadingHistory30d.value = false })
   scheduleRefresh(HISTORY_PERIOD)
-  if (user.value)
-    fetchCurrentPlayers()
 })
-
-watch(user, (u) => {
-  if (u)
-    fetchCurrentPlayers()
-})
-
-// ── Current players (authenticated only) ─────────────────────────────────────────────
-// Map of steam_id (number) -> profile_ids of members playing right now
-const currentPlayersBySteamId = ref<Map<number, string[]>>(new Map())
-const presencesLoading = ref(false)
-
-async function fetchCurrentPlayers() {
-  presencesLoading.value = true
-  const { data } = await supabase
-    .from('presences_steam')
-    .select('profile_id, current_app_id')
-    .not('current_app_id', 'is', null)
-  if (!data)
-    return
-  const map = new Map<number, string[]>()
-  for (const row of data) {
-    if (row.current_app_id == null)
-      continue
-    const existing = map.get(row.current_app_id) ?? []
-    existing.push(row.profile_id)
-    map.set(row.current_app_id, existing)
-  }
-  currentPlayersBySteamId.value = map
-  presencesLoading.value = false
-}
-
-function currentPlayersForGame(game: Tables<'games'>): string[] {
-  if (game.steam_id == null)
-    return []
-  return currentPlayersBySteamId.value.get(game.steam_id) ?? []
-}
 
 // ── Top 3 games this week ─────────────────────────────────────────────────────
 // Sum across history for ranking; peak for display
@@ -134,6 +103,31 @@ const top3Games = computed(() => {
 
 function recentPlayersForGame(gameId: number): number {
   return gamePlayTotals.value.get(String(gameId)) ?? 0
+}
+
+// ── Background loading for top 3 cards ───────────────────────────────────────
+const gameBackgrounds = ref<Map<number, string>>(new Map())
+const gameCovers = ref<Map<number, string>>(new Map())
+
+function getCachedBackground(gameId: number): string {
+  return gameBackgrounds.value.get(gameId) ?? ''
+}
+
+function getCachedCover(gameId: number): string {
+  return gameCovers.value.get(gameId) ?? ''
+}
+
+async function loadAssetsForGames(list: Tables<'games'>[]) {
+  await Promise.all(list.map(async (game) => {
+    if (!gameBackgrounds.value.has(game.id)) {
+      const url = await getGameBackgroundUrl(game).catch(() => null)
+      gameBackgrounds.value.set(game.id, url ?? '')
+    }
+    if (!gameCovers.value.has(game.id)) {
+      const url = await getGameCoverUrl(game).catch(() => null)
+      gameCovers.value.set(game.id, url ?? '')
+    }
+  }))
 }
 
 // ── Marquee: up to 100 random games ──────────────────────────────────────────
@@ -220,31 +214,6 @@ function handleDetailsOpenServers(gameId: number) {
     openServerModal(game)
 }
 
-// ── Background loading for top 3 cards ───────────────────────────────────────
-const gameBackgrounds = ref<Map<number, string>>(new Map())
-const gameCovers = ref<Map<number, string>>(new Map())
-
-function getCachedBackground(gameId: number): string {
-  return gameBackgrounds.value.get(gameId) ?? ''
-}
-
-function getCachedCover(gameId: number): string {
-  return gameCovers.value.get(gameId) ?? ''
-}
-
-async function loadAssetsForGames(list: Tables<'games'>[]) {
-  await Promise.all(list.map(async (game) => {
-    if (!gameBackgrounds.value.has(game.id)) {
-      const url = await getGameBackgroundUrl(game).catch(() => null)
-      gameBackgrounds.value.set(game.id, url ?? '')
-    }
-    if (!gameCovers.value.has(game.id)) {
-      const url = await getGameCoverUrl(game).catch(() => null)
-      gameCovers.value.set(game.id, url ?? '')
-    }
-  }))
-}
-
 watch(top3Games, list => list.length > 0 && loadAssetsForGames(list), { immediate: true })
 
 // ── Popped-off game asset loading ─────────────────────────────────────────────
@@ -276,9 +245,33 @@ watch(poppedOffGameId, async (id) => {
     await loadAssetsForGames([game])
 }, { immediate: true })
 
+// Popped-off game is "live" when there's an ongoing event featuring it
+const isPoppedOffLive = computed(() => {
+  const gameId = poppedOffGameId.value
+  if (gameId == null)
+    return false
+  const now = Date.now()
+  return events.value.some((e) => {
+    if (!e.games?.includes(gameId))
+      return false
+    const start = new Date(e.date).getTime()
+    const end = start + (e.duration_minutes ?? 120) * 60 * 1000
+    return now >= start && now <= end
+  })
+})
+
 // Convenience ref - TS can't narrow top3Games[0] through v-if in template
 const topGame = computed(() => top3Games.value[0] ?? null)
 const runnerUpGames = computed(() => top3Games.value.slice(1))
+
+const allCurrentPlayerIds = computed<string[]>(() => {
+  const seen = new Set<string>()
+  for (const ids of currentPlayersBySteamId.value.values()) {
+    for (const id of ids)
+      seen.add(id)
+  }
+  return [...seen]
+})
 
 const totalCurrentPlayers = computed<number | null>(() => {
   if (currentPlayersBySteamId.value.size === 0)
@@ -295,12 +288,25 @@ const totalCurrentPlayers = computed<number | null>(() => {
     <section class="page-title">
       <Flex y-center x-between expand>
         <h1>Games</h1>
-        <OnlineBadge
-          :count="totalCurrentPlayers"
-          label="Playing"
-          :clickable="totalCurrentPlayers !== null"
-          @click="totalCurrentPlayers !== null && (activityModalOpen = true)"
-        />
+        <PopoutHover :disabled="!totalCurrentPlayers || totalCurrentPlayers <= 0" placement="bottom-end">
+          <template #trigger>
+            <OnlineBadge
+              :count="totalCurrentPlayers"
+              label="Playing"
+              :clickable="totalCurrentPlayers !== null"
+              @click="totalCurrentPlayers !== null && (activityModalOpen = true)"
+            />
+          </template>
+          <Flex column gap="xs" class="px-m py-s">
+            <UserDisplay
+              v-for="id in allCurrentPlayerIds"
+              :key="id"
+              :user-id="id"
+              size="s"
+              show-profile-preview
+            />
+          </Flex>
+        </PopoutHover>
       </Flex>
       <p>Something new something old - join the crowd!</p>
     </section>
@@ -371,9 +377,9 @@ const totalCurrentPlayers = computed<number | null>(() => {
         </p>
       </section>
 
-      <!-- Playing right now -->
+      <!-- Recent games -->
       <section class="mt-m">
-        <GamesPlayingNowSection
+        <RecentGameActivitySection
           :current-players-by-steam-id="currentPlayersBySteamId"
           :games="games"
           :is-logged-in="!!user"
@@ -385,22 +391,35 @@ const totalCurrentPlayers = computed<number | null>(() => {
       <!-- Marquee: game covers -->
       <GameMarquee v-if="marqueeGames.length > 0" :games="marqueeGames" :speed="marqueeSpeed" class="mt-m" @select="openDetailsModalById" />
 
-      <!-- Recent game events -->
+      <!-- Popped off (live) - rendered above events when an ongoing event features the game -->
+      <section v-if="isPoppedOffLive && (poppedOffGameId !== null || loadingHistory30d)" class="mt-m">
+        <GamePoppedOffCard
+          :metrics-history30d="metricsHistory30d"
+          :loading="loadingHistory30d"
+          :games="games"
+          :events="events"
+          :background-url="poppedOffGameId !== null ? getCachedBackground(poppedOffGameId) : ''"
+          :cover-url="poppedOffGameId !== null ? getCachedCover(poppedOffGameId) : ''"
+          live
+        />
+      </section>
+
+      <!-- Game events -->
       <section class="mt-m">
         <Flex y-center x-between class="mb-s">
           <h3 class="section-title">
-            Recent Game Events
+            Game Events
           </h3>
         </Flex>
-        <RecentGameEventsSection
+        <GameEventsSection
           :events="events"
           :loading="eventsLoading"
           :games="games"
         />
       </section>
 
-      <!-- This popped off -->
-      <section v-if="poppedOffGameId !== null || loadingHistory30d" class="mt-m">
+      <!-- Popped off (historical) -->
+      <section v-if="!isPoppedOffLive && (poppedOffGameId !== null || loadingHistory30d)" class="mt-m">
         <GamePoppedOffCard
           :metrics-history30d="metricsHistory30d"
           :loading="loadingHistory30d"
@@ -411,8 +430,8 @@ const totalCurrentPlayers = computed<number | null>(() => {
         />
       </section>
 
-      <!-- CTA -->
-      <section class="mt-m">
+      <!-- CTA hidden for now -->
+      <section v-if="false" class="mt-m">
         <Card class="cta-card">
           <Flex :column="isMobile" gap="l" y-center x-between expand>
             <Flex column gap="xs">
@@ -443,6 +462,29 @@ const totalCurrentPlayers = computed<number | null>(() => {
         :series="['usersGameActivity']"
         :initial-period="HISTORY_PERIOD"
       >
+        <template v-if="allCurrentPlayerIds.length > 0 || presencesLoading" #above-chart>
+          <Flex expand wrap gap="xs" class="playing-users-modal__grid" y-center x-center>
+            <template v-if="presencesLoading">
+              <Skeleton
+                v-for="n in Math.min(totalCurrentPlayers ?? 8, 20)"
+                :key="n"
+                width="40px"
+                height="40px"
+                style="border-radius: var(--border-radius-pill);"
+              />
+            </template>
+            <template v-else>
+              <UserAvatar
+                v-for="id in allCurrentPlayerIds"
+                :key="id"
+                :user-id="id"
+                size="m"
+                linked
+                show-preview
+              />
+            </template>
+          </Flex>
+        </template>
         <template #default="{ period, window, utc, color }">
           <ChartGameActivity :period :window :utc :color hide-title />
         </template>
@@ -506,13 +548,13 @@ const totalCurrentPlayers = computed<number | null>(() => {
   border: 1px solid var(--color-border);
 }
 
-// ── Section headings ─────────────────────────────────────────────────────────
-.section-title {
-  margin: 0;
-  font-size: var(--font-size-s);
-  color: var(--color-text-light);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+// ── Playing users modal grid ──────────────────────────────────────────────────
+.playing-users-modal__grid {
+  max-height: 148px;
+  overflow-y: auto;
+  padding: var(--space-xs);
+  background: var(--color-bg-card);
+  border-radius: var(--border-radius-m);
 }
 
 // ── Page title row ────────────────────────────────────────────────────────────

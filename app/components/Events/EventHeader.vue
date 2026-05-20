@@ -153,7 +153,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="event-header">
+  <Flex column expand gap="l" class="event-header">
     <!-- Title and actions row -->
     <Flex
       :x-between="!isBelowSmall"
@@ -162,6 +162,7 @@ onMounted(() => {
       :column-reverse="isBelowSmall"
       :y-start="!isBelowSmall"
       :y-center="isBelowSmall"
+      expand
       gap="l"
       class="event-header__title-row"
     >
@@ -328,17 +329,13 @@ onMounted(() => {
       :event="event"
       @close="showRSVPModal = false"
     />
-  </div>
+  </Flex>
 </template>
 
 <style lang="scss">
 @use '@/assets/breakpoints.scss' as *;
 
 .event-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-l);
-
   &--ongoing {
     background: linear-gradient(135deg, var(--color-accent-muted), transparent);
   }

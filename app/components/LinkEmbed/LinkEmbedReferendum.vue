@@ -328,18 +328,18 @@ async function removeVote() {
         <Badge size="s" :variant="voteStatusVariant">
           {{ voteStatusLabel }}
         </Badge>
-        <span class="link-embed__meta-sep">&middot;</span>
+        <span class="link-embed__meta-sep">-</span>
         <span class="link-embed__meta-item">
           {{ displayVoteCount }} {{ displayVoteCount === 1 ? 'vote' : 'votes' }}
         </span>
         <template v-if="data.multipleChoice">
-          <span class="link-embed__meta-sep">&middot;</span>
+          <span class="link-embed__meta-sep">-</span>
           <span class="link-embed__meta-item">Multiple choice</span>
         </template>
         <!-- Desktop: inline action buttons in meta row -->
         <template v-if="voteStatus === 'active' && user && !isMobile">
           <template v-if="hasVoted">
-            <span class="link-embed__meta-sep">&middot;</span>
+            <span class="link-embed__meta-sep">-</span>
             <Button
               variant="danger"
               size="s"
@@ -355,7 +355,7 @@ async function removeVote() {
             </Button>
           </template>
           <template v-if="data.multipleChoice && selectedChoices.length > 0">
-            <span class="link-embed__meta-sep">&middot;</span>
+            <span class="link-embed__meta-sep">-</span>
             <Button
               variant="accent"
               size="s"

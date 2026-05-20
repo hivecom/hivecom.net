@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Flex } from '@dolanske/vui'
+import { Button, Flex } from '@dolanske/vui'
 import SharedLogo from '@/components/Shared/Logo.vue'
+import SharedSupportModal from '@/components/Shared/SupportModal.vue'
 import { useInitialUserPreferences } from '@/composables/useInitialUserPreferences'
 import { useSessionReady } from '@/composables/useSessionReady'
 
@@ -8,9 +9,26 @@ import { useSessionReady } from '@/composables/useSessionReady'
 const isLoading = ref(true)
 const isFadingOut = ref(false)
 const isContentReady = ref(false)
+const showEscapeHatch = ref(false)
+const supportOpen = ref(false)
+let escapeHatchTimer: ReturnType<typeof setTimeout> | null = null
 
 const { applyUserPreferences } = useInitialUserPreferences()
 const { resolveSessionReady } = useSessionReady()
+
+// Show escape hatch after 10 seconds
+onMounted(() => {
+  escapeHatchTimer = setTimeout(() => {
+    if (isLoading.value) {
+      showEscapeHatch.value = true
+    }
+  }, 10000)
+})
+
+onUnmounted(() => {
+  if (escapeHatchTimer)
+    clearTimeout(escapeHatchTimer)
+})
 
 // Load content and then fade out loading screen
 onMounted(async () => {
@@ -32,6 +50,7 @@ onMounted(async () => {
         // Remove the loading screen after animation completes
         setTimeout(() => {
           isLoading.value = false
+          showEscapeHatch.value = false
         }, 500) // Match this to the transition duration in CSS
       }, 100) // Short delay to ensure content is rendered
     }, 100)
@@ -44,6 +63,26 @@ onMounted(async () => {
   <Flex v-if="isLoading" class="initial-loading" :class="{ 'fade-out': isFadingOut }">
     <SharedLogo class="logo-animation" />
     <div class="pulse-bar" />
+    <Transition name="escape-hatch">
+      <Flex v-if="showEscapeHatch" column gap="s" x-center class="escape-hatch">
+        <p class="escape-hatch__text">
+          Taking longer than expected...
+        </p>
+        <Flex gap="xs" x-center>
+          <Button variant="gray" size="s" @click="() => { isLoading = false }">
+            Dismiss
+          </Button>
+          <Button variant="link" size="s" @click="supportOpen = true">
+            Contact Support
+          </Button>
+        </Flex>
+      </Flex>
+    </Transition>
+    <SharedSupportModal
+      v-model:open="supportOpen"
+      title="Loading issue?"
+      message="If the app is stuck loading, there may be a temporary issue. Reach out and we'll help."
+    />
   </Flex>
 </template>
 
@@ -126,5 +165,29 @@ onMounted(async () => {
     background-position: -200% 0;
     opacity: 0.4;
   }
+}
+
+.escape-hatch {
+  position: fixed;
+  bottom: var(--space-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+
+  &__text {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+  }
+}
+
+.escape-hatch-enter-active {
+  transition:
+    opacity var(--transition-slow),
+    transform var(--transition-slow);
+}
+
+.escape-hatch-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
 }
 </style>

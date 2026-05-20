@@ -14,6 +14,8 @@ import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { useDataAdminKPIs } from '@/composables/useDataAdminKPIs'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
+definePageMeta({ layout: 'admin' })
+
 useDataAdminKPIs()
 
 const { canViewFunding, canViewUsers, hasPermission } = useAdminPermissions()

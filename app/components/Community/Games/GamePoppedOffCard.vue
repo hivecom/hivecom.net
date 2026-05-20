@@ -4,7 +4,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Card, Flex, Skeleton } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { computed } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
@@ -22,6 +22,8 @@ const props = defineProps<{
   backgroundUrl: string
   // Pre-resolved cover URL for the popped-off game (empty string if none)
   coverUrl: string
+  // True when the linked event is currently ongoing (popping off right now)
+  live?: boolean
 }>()
 
 dayjs.extend(relativeTime)
@@ -79,17 +81,37 @@ const peakDateLabel = computed(() => {
     return ''
   return dayjs(poppedOff.value.peakEntry.capturedAt).fromNow()
 })
+
+const bgLoaded = ref(false)
+const bgUrl = computed(() => props.backgroundUrl || props.coverUrl)
+
+function onBgLoaded() {
+  bgLoaded.value = true
+}
+
+function preloadBg(url: string) {
+  bgLoaded.value = false
+  const img = new Image()
+  img.onload = onBgLoaded
+  img.src = url
+}
+
+watchEffect(() => {
+  if (bgUrl.value)
+    preloadBg(bgUrl.value)
+})
 </script>
 
 <template>
   <Skeleton v-if="loading" :height="120" :radius="8" />
 
-  <GlowCard v-if="poppedOff && linkedEvent" halo>
+  <GlowCard v-if="poppedOff && linkedEvent" :halo="true" :class="{ 'popped-off-card--live': props.live }">
     <NuxtLink :to="`/events/${linkedEvent.id}`" class="popped-off-card__link">
       <Card class="popped-off-card" :padding="false">
         <!-- Background art -->
         <div
           class="popped-off-card__bg"
+          :class="{ 'popped-off-card__bg--loaded': bgLoaded }"
           :style="backgroundUrl
             ? { backgroundImage: `url(${backgroundUrl})` }
             : coverUrl
@@ -100,8 +122,14 @@ const peakDateLabel = computed(() => {
         <div class="popped-off-card__content">
           <Flex column gap="xs" class="popped-off-card__left">
             <!-- Label -->
-            <span class="text-xs text-bold text-color-lighter popped-off-card__label">
-              This recently popped off during an event
+            <span class="text-xs text-bold popped-off-card__label" :class="{ 'popped-off-card__label--live': props.live }">
+              <template v-if="props.live">
+                <span class="popped-off-card__live-dot" />
+                This is popping off right now
+              </template>
+              <template v-else>
+                This recently popped off during an event
+              </template>
             </span>
             <!-- Game identity -->
             <Flex y-center gap="s">
@@ -152,10 +180,15 @@ const peakDateLabel = computed(() => {
     z-index: 0;
     background-size: cover;
     background-position: center;
-    opacity: 0.12;
+    opacity: 0;
     filter: blur(3px);
     scale: 1.05;
     pointer-events: none;
+    transition: opacity var(--transition-slow);
+
+    &--loaded {
+      opacity: 0.12;
+    }
   }
 
   &__content {
@@ -181,6 +214,23 @@ const peakDateLabel = computed(() => {
   &__label {
     text-transform: uppercase;
     letter-spacing: 0.1em;
+    color: var(--color-text-lighter);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+
+    &--live {
+      color: var(--color-accent);
+    }
+  }
+
+  &__live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background-color: var(--color-text-red);
+    border-radius: var(--border-radius-pill);
+    animation: shimmer 2s linear infinite;
   }
 
   &__event-cta {

@@ -5,6 +5,7 @@ import CreateEventModal from '@/components/Events/CreateEventModal.vue'
 import EventsCalendar from '@/components/Events/EventsCalendar.vue'
 import EventsListing from '@/components/Events/EventsListing.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
+import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataEvents } from '@/composables/useDataEvents'
 import { useDataGames } from '@/composables/useDataGames'
@@ -40,54 +41,53 @@ const activeTab = ref('list')
 const route = useRoute()
 const router = useRouter()
 
-const gameFilter = computed<number | null>(() => {
-  const raw = route.query.game
-  const str = Array.isArray(raw) ? raw[0] : raw
-  const id = str ? Number(str) : null
-  return id && !Number.isNaN(id) ? id : null
-})
-
 const { games } = useDataGames()
 
-const gameOptions = computed<SelectOption[]>(() =>
-  games.value.map(game => ({ label: game.name ?? 'Unknown Game', value: game.id })),
+// Fetch data for the listing view only - the calendar self-fetches its own windowed data
+const { events, loading, error, refresh } = useDataEvents()
+const errorMessage = computed(() => error.value ?? '')
+
+const gameFilterIds = ref<number[]>([])
+
+const gameFilter = computed<number[]>(() => gameFilterIds.value)
+
+const eventGameIds = computed(() => {
+  const ids = new Set(events.value.flatMap(e => e.games ?? []))
+  return Array.from(ids)
+})
+
+const eventGames = computed(() =>
+  eventGameIds.value
+    .map(id => games.value.find(g => g.id === id))
+    .filter((g): g is NonNullable<typeof g> => g !== undefined)
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')),
 )
 
-// Bidirectional sync between the Select and ?game= query param
-const gameFilterOption = ref<SelectOption[] | undefined>(undefined)
-
-// When the URL query changes (e.g. deep-link from another page), sync the select
+// Sync URL -> gameFilterIds
 watch(
-  gameFilter,
-  (id) => {
-    if (id === null) {
-      gameFilterOption.value = undefined
+  () => route.query.game,
+  (raw) => {
+    const raws = Array.isArray(raw) ? raw : (raw ? [raw] : [])
+    const ids = raws.map(Number).filter(id => !Number.isNaN(id) && id > 0)
+    const current = gameFilterIds.value
+    if (ids.length === current.length && ids.every((id, i) => id === current[i]))
       return
-    }
-    const match = gameOptions.value.find(o => o.value === id)
-    if (match)
-      gameFilterOption.value = [match]
+    gameFilterIds.value = ids
   },
   { immediate: true },
 )
 
-// When gameOptions load after the URL already has a game param, re-sync
-watch(gameOptions, () => {
-  if (gameFilter.value === null || (gameFilterOption.value && gameFilterOption.value.length > 0))
-    return
-  const match = gameOptions.value.find(o => o.value === gameFilter.value)
-  if (match)
-    gameFilterOption.value = [match]
-})
-
-// When the user changes the select, update the URL
-watch(gameFilterOption, (opts) => {
-  const id = opts?.[0]?.value ?? null
-  const current = route.query.game ? Number(route.query.game) : null
-  if (id === current)
+// Sync gameFilterIds -> URL
+watch(gameFilterIds, (ids) => {
+  const currentRaw = route.query.game
+  const rawList = Array.isArray(currentRaw) ? currentRaw : (currentRaw ? [currentRaw] : [])
+  const current = rawList
+    .map(Number)
+    .filter(id => !Number.isNaN(id) && id > 0)
+  if (ids.length === current.length && ids.every((id, i) => id === current[i]))
     return
   const { game: _game, ...rest } = route.query
-  void router.replace({ query: id !== null ? { ...rest, game: String(id) } : rest })
+  void router.replace({ query: ids.length > 0 ? { ...rest, game: ids.map(String) } : rest })
 })
 
 const queryTab = computed(() => {
@@ -149,10 +149,6 @@ function handleContentRulesConfirmed() {
   markAgreed()
   showCreateEventModal.value = true
 }
-
-// Fetch data for the listing view only - the calendar self-fetches its own windowed data
-const { events, loading, error, refresh } = useDataEvents()
-const errorMessage = computed(() => error.value ?? '')
 
 useSeoMeta({
   title: 'Events',
@@ -223,12 +219,11 @@ defineOgImage('Default', {
             single
             show-clear
           />
-          <Select
-            v-model="gameFilterOption"
-            :options="gameOptions"
+          <GameSelect
+            v-model="gameFilterIds"
+            :games="eventGames"
             placeholder="Game"
-            single
-            show-clear
+            expand
           />
           <Flex v-if="user" :gap="0" y-center>
             <Switch v-model="hideRecurring" />

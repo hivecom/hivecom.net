@@ -109,7 +109,6 @@ const isUnauthenticatedHidden = computed(() =>
 // Activity data
 const {
   data: activity,
-  loading: activityLoading,
 } = useCachedFetch<{
   steam_id: string | null
   teamspeak_identities: Tables<'profiles'>['teamspeak_identities'] | TeamSpeakIdentityRecord[] | null
@@ -286,11 +285,15 @@ const {
         </template>
       </Flex>
 
-      <Flex v-if="activityLoading && props.showActivity && props.showDescription" column gap="xxs" expand class="user-preview-card__activity">
-        <Skeleton :height="44" width="100%" :radius="8" />
-      </Flex>
+      <Flex v-if="activity && props.showActivity && props.showDescription && user" column gap="xxs" expand class="user-preview-card__activity">
+        <ActivityLastfm
+          v-if="activity.lastfm_username"
+          :profile-id="user.id"
+          :lastfm-username="activity.lastfm_username"
+          :rich-presence-enabled="activity.rich_presence_enabled ?? false"
+          :is-own-profile="false"
+        />
 
-      <Flex v-else-if="activity && props.showActivity && props.showDescription && user" column gap="xxs" expand class="user-preview-card__activity">
         <ActivitySteam
           v-if="activity.steam_id"
           :profile-id="user.id"
@@ -304,14 +307,6 @@ const {
           :teamspeak-identities="activity.teamspeak_identities"
           :is-own-profile="false"
           :rich-presence-enabled="activity.rich_presence_enabled ?? false"
-        />
-
-        <ActivityLastfm
-          v-if="activity.lastfm_username"
-          :profile-id="user.id"
-          :lastfm-username="activity.lastfm_username"
-          :rich-presence-enabled="activity.rich_presence_enabled ?? false"
-          :is-own-profile="false"
         />
       </Flex>
     </template>

@@ -182,7 +182,7 @@ useHead({
           </Flex>
 
           <!-- Header -->
-          <div :class="{ 'event-ongoing': isOngoing }">
+          <Flex expand column :class="{ 'event-ongoing': isOngoing }">
             <EventHeader
               :event="effectiveEventForTiming!"
               :games="games"
@@ -191,7 +191,7 @@ useHead({
               :countdown="countdown"
               :time-ago="timeAgo"
             />
-          </div>
+          </Flex>
 
           <Flex column expand>
             <!-- Markdown -->

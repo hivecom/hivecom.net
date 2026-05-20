@@ -139,16 +139,19 @@ function getGrowthFromPrevious(currentAmount: number, index: number) {
 <template>
   <Flex v-if="historicalData.length > 0 || props.monthlyFunding.length > 0" expand>
     <!-- Funding History -->
-    <Flex v-if="historicalData.length > 0" column gap="l" expand>
+    <Flex v-if="historicalData.length > 0" column gap="s" expand>
       <!-- Previous Months - Table -->
-      <Flex v-if="isCurrentYear ? historicalData.length > 1 : historicalData.length > 0" column expand>
-        <Flex x-between y-center class="mb-s" expand>
-          <h3 class="text-bold text-semibold">
+      <Flex
+        v-if="isCurrentYear ? historicalData.length > 1 : historicalData.length > 0" column expand gap="s"
+      >
+        <Flex x-between y-center expand>
+          <h3 class="section-title">
             Previous Months
           </h3>
           <Select
             v-if="availableYears.length > 1"
             v-model="selectedYearOption"
+            size="s"
             :options="yearOptions"
             single
             class="funding-history__year-select"

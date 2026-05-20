@@ -1,12 +1,15 @@
 <script setup lang="ts">
+import type { MetricsHistoryEntry, MetricsPeriod } from '@/composables/useDataMetrics'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { Badge, Button, Card, Flex, Grid, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
 import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
+import GlowCard from '@/components/Shared/GlowCard.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
@@ -35,7 +38,7 @@ const isOpen = defineModel<boolean>('open', { default: false })
 const { games, getById: getGameById } = useDataGames()
 const { getGameCoverUrl, getGameBackgroundUrl } = useDataGameAssets()
 const { gameservers } = useDataGameservers()
-const { metrics, metricsHistory, fetchMetricsHistory } = useDataMetrics()
+const { metrics, fetchMetricsHistoryIsolated, fetchMetricsWindowIsolated } = useDataMetrics()
 const { currentPlayersForSteamId } = useDataSteamPresences()
 const supabase = useSupabaseClient<Database>()
 const user = useSupabaseUser()
@@ -74,10 +77,21 @@ const playtimeCache = new Map<number, number>()
 const minutesPlayed = ref(0)
 const playtimeLoading = ref(false)
 
+// ── Active chart window (driven by brush) ────────────────────────────────────
+const activePeriod = ref<MetricsPeriod>('14d')
+const activeWindow = ref<{ start: Date, end: Date } | null>(null)
+const isolatedHistory = ref<MetricsHistoryEntry[]>([])
+const hadActivity = ref(false)
+
 // ── Computed ──────────────────────────────────────────────────────────────────
 const isModalVisible = computed(() => Boolean(props.gameId) && isOpen.value)
 const gameName = computed(() => currentDetails.value?.game.name ?? 'Game Details')
 const heroImageUrl = computed(() => currentDetails.value?.backgroundUrl ?? currentDetails.value?.coverUrl ?? null)
+
+const heroImageReady = ref(false)
+watch(heroImageUrl, () => {
+  heroImageReady.value = false
+})
 const steamUrl = computed(() => {
   const steamId = currentDetails.value?.game.steam_id
   return steamId ? `https://store.steampowered.com/app/${steamId}` : null
@@ -119,12 +133,12 @@ const serverPlayerCount = computed(() => {
   return total
 })
 
-// Peak players over last 14 days (from bucketed history - MAX per bucket is fine for peak)
+// Peak players over active window (from isolated bucketed history)
 const peakPlayers = computed(() => {
   if (!props.gameId)
     return 0
   let peak = 0
-  for (const entry of metricsHistory.value) {
+  for (const entry of isolatedHistory.value) {
     const count = entry.usersByGame?.[String(props.gameId)] ?? 0
     if (count > peak)
       peak = count
@@ -212,22 +226,24 @@ function getServerPlayerCounts(gs: typeof gameServersForGame.value[0]): { curren
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
-async function loadPlaytime(gameId: number) {
-  if (playtimeCache.has(gameId)) {
-    minutesPlayed.value = playtimeCache.get(gameId) ?? 0
+async function loadPlaytime(gameId: number, window?: { start: Date, end: Date }) {
+  const cacheKey = window ? null : gameId // only cache period-based (non-custom) fetches
+  if (cacheKey !== null && playtimeCache.has(cacheKey)) {
+    minutesPlayed.value = playtimeCache.get(cacheKey) ?? 0
     return
   }
   playtimeLoading.value = true
   try {
-    const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
-    const until = new Date().toISOString()
+    const since = window ? window.start.toISOString() : new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+    const until = window ? window.end.toISOString() : new Date().toISOString()
     const { data } = await supabase.rpc('get_game_playtime_minutes', {
       p_game_id: gameId,
       p_since: since,
       p_until: until,
     })
     const result = Math.round(data ?? 0)
-    playtimeCache.set(gameId, result)
+    if (cacheKey !== null)
+      playtimeCache.set(cacheKey, result)
     minutesPlayed.value = result
   }
   finally {
@@ -306,6 +322,18 @@ function handleClose() {
   isOpen.value = false
   emit('close')
 }
+
+async function handleChartChange(period: MetricsPeriod, window: { start: Date, end: Date }) {
+  if (!props.gameId)
+    return
+  activePeriod.value = period
+  activeWindow.value = window
+  const [history] = await Promise.all([
+    fetchMetricsWindowIsolated(window.start, window.end),
+    loadPlaytime(props.gameId, window),
+  ])
+  isolatedHistory.value = history
+}
 // Re-attempt lookup when games list populates
 watch(games, () => {
   if (props.gameId && isOpen.value && !currentDetails.value)
@@ -330,8 +358,17 @@ watch(
     if (open) {
       void loadGameDetails(gameId)
       void loadRecentEvents(gameId)
+      activePeriod.value = '14d'
+      activeWindow.value = null
+      hadActivity.value = false
+      void fetchMetricsHistoryIsolated('14d').then((h) => {
+        isolatedHistory.value = h
+      })
+      void fetchMetricsHistoryIsolated('90d').then((h) => {
+        if (!hadActivity.value)
+          hadActivity.value = h.some(e => (e.usersByGame?.[String(gameId)] ?? 0) > 0)
+      })
       void loadPlaytime(gameId)
-      void fetchMetricsHistory('14d')
     }
   },
   { immediate: true },
@@ -369,11 +406,14 @@ watch(
       <div v-else-if="currentDetails" class="game-details-modal__content">
         <!-- Hero image -->
         <div class="game-details-modal__media" :class="{ 'game-details-modal__media--empty': !heroImageUrl }">
+          <div v-if="heroImageUrl && !heroImageReady" class="game-details-modal__media-skeleton" />
           <img
             v-if="heroImageUrl"
             :src="heroImageUrl"
             :alt="`${gameName} artwork`"
             loading="lazy"
+            :class="{ 'game-details-modal__media-img--ready': heroImageReady }"
+            @load="heroImageReady = true"
           >
           <div v-else class="game-details-modal__media-placeholder">
             <Icon name="ph:image" size="32" />
@@ -410,43 +450,45 @@ watch(
         <div class="game-details-modal__stats-grid">
           <Card v-if="currentDetails.game.steam_id" class="stat-card">
             <Flex column gap="xs">
-              <span class="stat-card__label">Peak players (14d)</span>
-              <span class="stat-card__value">{{ peakPlayers }}</span>
+              <span class="stat-card__label">Peak players ({{ activePeriod }})</span>
+              <Skeleton v-if="playtimeLoading" height="20px" width="40px" :radius="3" />
+              <span v-else class="stat-card__value">{{ peakPlayers }}</span>
             </Flex>
           </Card>
           <Card v-if="currentDetails.game.steam_id" class="stat-card">
             <Flex column gap="xs">
-              <span class="stat-card__label">Time played (14d)</span>
-              <span class="stat-card__value">
-                <Skeleton v-if="playtimeLoading" height="20px" width="40px" />
-                <template v-else>{{ formatMinutesPlayed(minutesPlayed) }}</template>
-              </span>
+              <span class="stat-card__label">Time played ({{ activePeriod }})</span>
+              <Skeleton v-if="playtimeLoading" height="20px" width="40px" :radius="3" />
+              <span v-else class="stat-card__value">{{ formatMinutesPlayed(minutesPlayed) }}</span>
             </Flex>
           </Card>
-          <Card v-if="gameServersForGame.length > 0" class="stat-card">
-            <Flex column gap="xs">
-              <span class="stat-card__label">Servers</span>
-              <span class="stat-card__value">{{ gameServersForGame.length }}</span>
-            </Flex>
-          </Card>
-          <Card class="stat-card">
-            <Flex column gap="xs">
-              <span class="stat-card__label">Recent events</span>
-              <span class="stat-card__value">
-                <Skeleton v-if="eventsLoading" height="20px" width="30px" />
-                <template v-else>{{ recentEvents.length }}</template>
-              </span>
-            </Flex>
-          </Card>
+          <NuxtLink v-if="gameServersForGame.length > 0" :to="`/servers/gameservers?tab=list&game=${props.gameId}`" class="stat-card-link" @click="handleClose">
+            <GlowCard>
+              <Card class="stat-card stat-card--link">
+                <Flex column gap="xs">
+                  <span class="stat-card__label">Servers</span>
+                  <span class="stat-card__value">{{ gameServersForGame.length }}</span>
+                </Flex>
+              </Card>
+            </GlowCard>
+          </NuxtLink>
+          <NuxtLink v-if="recentEvents.length > 0" :to="`/events?game=${props.gameId}`" class="stat-card-link" @click="handleClose">
+            <GlowCard>
+              <Card class="stat-card stat-card--link">
+                <Flex column gap="xs">
+                  <span class="stat-card__label">Recent events</span>
+                  <span class="stat-card__value">{{ recentEvents.length }}</span>
+                </Flex>
+              </Card>
+            </GlowCard>
+          </NuxtLink>
         </div>
-        <div v-if="peakPlayers > 0" class="game-details-modal__chart">
-          <ChartGameActivity
-            period="14d"
-            :window="null"
-            :game-id="gameId ?? undefined"
-            hide-title
-            hide-untracked
-          />
+        <div v-if="hadActivity" class="game-details-modal__chart">
+          <ChartActivityHistogramControls :series="['usersGameActivity']" :game-id="gameId ?? undefined" @change="handleChartChange">
+            <template #default="{ period, window, utc, color }">
+              <ChartGameActivity :period :window :utc :color :game-id="gameId ?? undefined" hide-title :skeleton-height="180" />
+            </template>
+          </ChartActivityHistogramControls>
         </div>
 
         <!-- Servers list -->
@@ -501,12 +543,12 @@ watch(
         </div>
 
         <!-- Recent events list -->
-        <div v-if="eventsLoading || recentEvents.length > 0" class="game-details-modal__section">
+        <div v-if="recentEvents.length > 0" class="game-details-modal__section">
           <Flex y-center x-between>
             <h4 class="game-details-modal__section-title">
               Recent Events
             </h4>
-            <NuxtLink v-if="!eventsLoading && recentEvents.length > 0" :to="`/events?game=${props.gameId}`" class="game-details-modal__link" @click="handleClose">
+            <NuxtLink :to="`/events?game=${props.gameId}`" class="game-details-modal__link" @click="handleClose">
               <Button variant="link" size="s">
                 See all
                 <template #end>
@@ -515,10 +557,7 @@ watch(
               </Button>
             </NuxtLink>
           </Flex>
-          <Grid v-if="eventsLoading" :columns="isMobile ? 1 : 2" gap="s">
-            <Skeleton v-for="i in 4" :key="i" height="52px" width="100%" radius="5" />
-          </Grid>
-          <Grid v-else :columns="isMobile ? 1 : 2" gap="s">
+          <Grid :columns="isMobile ? 1 : 2" gap="s">
             <NuxtLink
               v-for="(ev, index) in recentEvents"
               :key="ev.id"
@@ -624,11 +663,24 @@ watch(
       height: 180px;
       object-fit: cover;
       display: block;
+      opacity: 0;
+      transition: opacity var(--transition-slow);
     }
 
     &--empty {
       border-style: dashed;
     }
+  }
+
+  &__media-img--ready {
+    opacity: 1 !important;
+  }
+
+  &__media-skeleton {
+    position: absolute;
+    inset: 0;
+    background: var(--color-bg-raised);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   &__media-placeholder {
@@ -766,6 +818,21 @@ watch(
   display: contents;
 }
 
+.stat-card-link {
+  text-decoration: none;
+}
+
+.stat-card {
+  transition: var(--transition);
+
+  &--link:hover {
+    :deep(.vui-card) {
+      background: var(--color-bg-medium);
+      border-color: var(--color-border-strong);
+    }
+  }
+}
+
 .stat-card {
   :deep(.vui-card-content) {
     padding: var(--space-s);
@@ -781,6 +848,17 @@ watch(
     font-size: var(--font-size-xl);
     font-weight: bold;
     color: var(--color-text);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
   }
 }
 </style>

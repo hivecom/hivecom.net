@@ -151,6 +151,7 @@ const realtime = useRealtimeDiscussion(
   // Lazily delegate to pushRealtimeReplies once the data composable has
   // initialised - avoids a circular initialisation dependency.
   (newReplies, ascending) => pushRealtimeReplies(newReplies, ascending),
+  userId,
 )
 
 // ── Subscription (comment model only) ────────────────────────────────────────
@@ -1052,9 +1053,10 @@ async function submitReply() {
           // instead of serving the stale pages that predate this new reply.
           useDiscussionRepliesCache().invalidate(discussion.value.id)
         }
-        // The realtime subscription will fire for our own post too - pre-emptively
-        // bump latestCommentTime by ensuring the new reply is in the list before
-        // the INSERT event arrives, which is guaranteed since we already pushed it.
+        // The realtime INSERT event for our own post may arrive before or after
+        // the optimistic push. Reset pendingReplyCount so our own reply never
+        // shows up as a "new reply" indicator.
+        realtime.pendingReplyCount.value = 0
         // Notify parent so the forum unread state can be updated, preventing
         // a spurious activity indicator when the user was the last poster.
         emit('replySubmitted', comments.value.length, discussion.value.id)
@@ -1082,7 +1084,15 @@ function isNodeVisible(node: ThreadNode): boolean {
   return isCommentVisible(node.comment)
 }
 
-defineExpose({ navigatingToComment })
+function openTimeline() {
+  timelineRef.value?.openJumpModal()
+}
+
+function goToEnd() {
+  void handleTimelineNavigateToEnd()
+}
+
+defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
 </script>
 
 <template>

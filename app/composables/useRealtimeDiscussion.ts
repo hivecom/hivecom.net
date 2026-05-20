@@ -143,6 +143,7 @@ export function useRealtimeDiscussion(
   model: Ref<'comment' | 'forum'>,
   hash?: string,
   pushRealtimeReplies?: (newReplies: RawComment[], ascending: boolean) => void,
+  currentUserId?: Ref<string | null | undefined>,
 ) {
   const supabase = useSupabaseClient()
   const discussionCache = useDiscussionCache()
@@ -262,6 +263,13 @@ export function useRealtimeDiscussion(
       const newReply = payload.new
       // Skip replies already present - covers optimistic inserts from this tab.
       if (comments.value.some(c => c.id === newReply.id))
+        return
+
+      // Skip own replies - never show the user a "new reply" indicator for
+      // something they just posted, regardless of timing.
+      const ownUserId = currentUserId?.value
+      const replyAuthor = newReply.created_by
+      if (ownUserId != null && replyAuthor != null && replyAuthor === ownUserId)
         return
 
       // When a hash filter is active only count replies for this section.

@@ -44,7 +44,7 @@ export function useDataEventsPaged(
   search?: Ref<string>,
   officialFilter?: Ref<boolean | null>,
   recurringFilter?: Ref<boolean | null>,
-  gameFilter?: Ref<number | null>,
+  gameFilter?: Ref<number[]>,
 ) {
   const supabase = useSupabaseClient<Database>()
 
@@ -58,7 +58,7 @@ export function useDataEventsPaged(
     const s = (search?.value ?? '').trim()
     const f = String(officialFilter?.value ?? '')
     const r = String(recurringFilter?.value ?? '')
-    const g = String(gameFilter?.value ?? '')
+    const g = (gameFilter?.value ?? []).join(',')
     return `events:past:p${page}:n${pageSize.value}:f${f}:r${r}:g${g}:s${s}`
   }
 
@@ -66,7 +66,7 @@ export function useDataEventsPaged(
     const s = (search?.value ?? '').trim()
     const f = String(officialFilter?.value ?? '')
     const r = String(recurringFilter?.value ?? '')
-    const g = String(gameFilter?.value ?? '')
+    const g = (gameFilter?.value ?? []).join(',')
     return `events:past-count:f${f}:r${r}:g${g}:s${s}`
   }
 
@@ -108,7 +108,8 @@ export function useDataEventsPaged(
       return false
     if (recurringFilter?.value === true && event.recurrence_rule != null)
       return false
-    if (gameFilter?.value != null && !event.games?.includes(gameFilter.value))
+    const ids = gameFilter?.value ?? []
+    if (ids.length > 0 && !(event.games ?? []).some(id => ids.includes(id)))
       return false
     return true
   }
@@ -190,11 +191,13 @@ export function useDataEventsPaged(
       return
     }
 
+    const ids = gameFilter?.value ?? []
+
     const { data, error } = await rpc<number>(supabase, 'get_past_events_count', {
       p_search: search?.value.trim() !== '' ? search?.value.trim() : null,
       p_is_official: officialFilter?.value ?? null,
       p_hide_recurring: recurringFilter?.value === true,
-      p_game_id: gameFilter?.value ?? null,
+      p_game_ids: ids.length > 0 ? ids : null,
     })
 
     if (!error && data != null) {
@@ -215,6 +218,7 @@ export function useDataEventsPaged(
     errorPast.value = null
 
     try {
+      const ids = gameFilter?.value ?? []
       const from = (page - 1) * pageSize.value
 
       const { data, error } = await rpc<Tables<'events'>[]>(supabase, 'get_past_events_paginated', {
@@ -223,13 +227,13 @@ export function useDataEventsPaged(
         p_search: search?.value.trim() !== '' ? search?.value.trim() : null,
         p_is_official: officialFilter?.value ?? null,
         p_hide_recurring: recurringFilter?.value === true,
-        p_game_id: gameFilter?.value ?? null,
+        p_game_ids: ids.length > 0 ? ids : null,
       })
 
       if (error)
         throw error
 
-      const rows = data ?? []
+      const rows: Tables<'events'>[] = data ?? []
       pastEvents.value = rows
       _pagedEventsCache.set(key, rows)
     }

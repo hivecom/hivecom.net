@@ -318,6 +318,7 @@ function isCoverLoading(gameId: number): boolean {
 :deep(.glow-card) {
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
+  height: 100%;
 }
 
 /* Card fade-in animations */
@@ -379,6 +380,7 @@ function isCoverLoading(gameId: number): boolean {
   border-radius: var(--border-radius-m);
   overflow: hidden;
   text-align: left;
+  height: 100%;
   cursor: pointer;
   transition:
     box-shadow 0.2s ease,

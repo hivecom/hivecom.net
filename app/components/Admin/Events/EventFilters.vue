@@ -1,10 +1,17 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.overrides'
 import { Flex, Input, Select, Switch } from '@dolanske/vui'
+import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+
+const props = defineProps<{
+  games: Tables<'games'>[]
+}>()
 
 const search = defineModel<string>('search', { default: '' })
 const isOfficial = defineModel<boolean | null>('isOfficial', { default: null })
 const isRecurring = defineModel<boolean | null>('isRecurring', { default: null })
+const gameFilter = defineModel<number[]>('gameFilter', { default: () => [] })
 
 const isBelowMedium = useBreakpoint('<m')
 
@@ -73,6 +80,13 @@ const hideRecurring = computed<boolean>({
       :expand="isBelowMedium"
       show-clear
       :single="true"
+    />
+
+    <GameSelect
+      v-model="gameFilter"
+      :games="props.games"
+      placeholder="Game"
+      :expand="isBelowMedium"
     />
 
     <Flex gap="xs" y-center>

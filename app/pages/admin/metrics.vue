@@ -13,6 +13,8 @@ import MetricsRefreshCountdown from '@/components/Shared/Charts/MetricsRefreshCo
 import { METRICS_COLLECTION_INTERVAL, METRICS_REFRESH_BUFFER_MS, useDataMetrics } from '@/composables/useDataMetrics'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
+definePageMeta({ layout: 'admin' })
+
 const { fetchMetrics, lastFetchedAt } = useDataMetrics()
 onMounted(() => fetchMetrics())
 

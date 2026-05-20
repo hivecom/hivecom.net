@@ -9,20 +9,20 @@ interface Props {
   search?: string
   officialFilter?: boolean | null
   recurringFilter?: boolean | null
-  gameFilter?: number | null
+  gameFilter?: number[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   search: '',
   officialFilter: null,
   recurringFilter: null,
-  gameFilter: null,
+  gameFilter: () => [],
 })
 
 const searchRef = computed(() => props.search)
 const officialFilterRef = computed(() => props.officialFilter)
 const recurringFilterRef = computed(() => props.recurringFilter)
-const gameFilterRef = computed(() => props.gameFilter)
+const gameFilterRef = computed(() => props.gameFilter ?? [])
 
 const isMobile = useBreakpoint('<s')
 const isTablet = useBreakpoint('<m')

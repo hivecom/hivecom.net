@@ -103,13 +103,15 @@ const playerCounts = computed(() => {
             >
               {{ props.gameserver.name }}
             </span>
-            <Badge
-              v-if="playerCounts !== null"
-              size="s"
-              :variant="(playerCounts.current ?? 0) > 0 ? 'success' : 'neutral'"
-            >
-              {{ playerCounts.current ?? 0 }}/{{ playerCounts.max ?? '?' }}
-            </Badge>
+            <ClientOnly>
+              <Badge
+                v-if="playerCounts !== null"
+                size="s"
+                :variant="(playerCounts.current ?? 0) > 0 ? 'success' : 'neutral'"
+              >
+                {{ playerCounts.current ?? 0 }}/{{ playerCounts.max ?? '?' }}
+              </Badge>
+            </ClientOnly>
           </Flex>
         </Flex>
       </Flex>
@@ -120,15 +122,17 @@ const playerCounts = computed(() => {
         <div class="region-badge">
           <RegionIndicator :region="props.gameserver.region" :show-label="!isCompactLayout" />
         </div>
-        <GameServerConnectButton
-          v-if="!isCompactLayout"
-          :addresses="addresses"
-          :port="props.gameserver.port"
-          :game-shorthand="props.game?.shorthand ?? null"
-          variant="gray"
-          size="s"
-          stop-propagation
-        />
+        <ClientOnly>
+          <GameServerConnectButton
+            v-if="!isCompactLayout"
+            :addresses="addresses"
+            :port="props.gameserver.port"
+            :game-shorthand="props.game?.shorthand ?? null"
+            variant="gray"
+            size="s"
+            stop-propagation
+          />
+        </ClientOnly>
       </Flex>
     </Flex>
   </button>

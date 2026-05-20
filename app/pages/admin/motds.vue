@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
 import MOTDTable from '@/components/Admin/MOTDs/MOTDTable.vue'
+
+definePageMeta({ layout: 'admin' })
 </script>
 
 <template>

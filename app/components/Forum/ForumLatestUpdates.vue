@@ -396,12 +396,8 @@ onUnmounted(() => {
           </template>
 
           <div ref="sentinel" class="forum__latest-sentinel">
-            <Flex v-if="sheetLoadingMore" expand x-center>
-              <Spinner />
-            </Flex>
-            <span v-else-if="sheetExhausted" class="forum__latest-exhausted">
-              All caught up
-            </span>
+            <Spinner v-if="sheetLoadingMore" />
+            <span v-else-if="sheetExhausted" class="text-xs text-color-lighter">All caught up</span>
           </div>
         </template>
       </Flex>
@@ -429,12 +425,8 @@ onUnmounted(() => {
           />
 
           <div ref="mineSentinel" class="forum__latest-sentinel">
-            <Flex v-if="mineLoadingMore" expand x-center>
-              <Spinner />
-            </Flex>
-            <span v-else-if="mineExhausted" class="forum__latest-exhausted">
-              That's everything
-            </span>
+            <Spinner v-if="mineLoadingMore" />
+            <span v-else-if="mineExhausted" class="text-xs text-color-lighter">That's everything</span>
           </div>
         </template>
       </Flex>
@@ -445,6 +437,15 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .forum__latest {
   margin-bottom: var(--space-xl);
+}
+
+.forum__latest-sentinel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-m) 0;
+  min-height: 48px;
 }
 
 :deep(.overflow.is-horizontal .overflow-content > *) {
@@ -520,20 +521,6 @@ onUnmounted(() => {
       width: 34px;
     }
   }
-}
-
-.forum__latest-sentinel {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: var(--space-m) 0;
-  min-height: 48px;
-}
-
-.forum__latest-exhausted {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-lighter);
 }
 
 .forum__latest-empty {

@@ -5,8 +5,11 @@ import { Flex, Tab, Tabs } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import AssetKPIs from '@/components/Admin/Assets/AssetKPIs.vue'
 import AssetManager from '@/components/Admin/Assets/AssetManager.vue'
+import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { CMS_BUCKET_ID, getBucketDescription, getBucketLabel, getBucketOptions, STORAGE_BUCKET_IDS } from '@/lib/storageAssets'
+
+definePageMeta({ layout: 'admin' })
 
 const { canViewAssets } = useAdminPermissions()
 

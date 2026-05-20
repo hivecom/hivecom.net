@@ -604,7 +604,13 @@ function revealNsfw() {
         <Transition name="fade">
           <section v-if="scrollHeaderReady && !isPageTitleVisible" class="forum-post__scroll">
             <div class="container-m">
-              <div>
+              <UserDisplay
+                v-if="isMobile"
+                :user-id="post.created_by"
+                :hide-username="true"
+                size="m"
+              />
+              <div class="forum-post__scroll-text">
                 <strong class="forum-post__scroll-title">
                   <Button
                     class="back-button"
@@ -624,7 +630,30 @@ function revealNsfw() {
                 </p>
               </div>
 
-              <UserDisplay :user-id="post.created_by" :show-role="!isMobile" :hide-username="isMobile" />
+              <UserDisplay
+                v-if="!isMobile"
+                :user-id="post.created_by"
+                :show-role="true"
+              />
+
+              <Flex v-if="isMobile && discussionRef?.showTimeline" gap="xs" class="forum-post__scroll-actions">
+                <Tooltip :disabled="isMobile">
+                  <Button square size="s" variant="gray" aria-label="Jump to date" @click="discussionRef?.openTimeline()">
+                    <Icon :size="18" name="ph:clock" />
+                  </Button>
+                  <template #tooltip>
+                    <p>Jump to date</p>
+                  </template>
+                </Tooltip>
+                <Tooltip :disabled="isMobile">
+                  <Button square size="s" variant="gray" aria-label="Go to last reply" @click="discussionRef?.goToEnd()">
+                    <Icon :size="18" name="ph:arrow-down" />
+                  </Button>
+                  <template #tooltip>
+                    <p>Go to last reply</p>
+                  </template>
+                </Tooltip>
+              </Flex>
             </div>
           </section>
         </Transition>
@@ -999,7 +1028,16 @@ function revealNsfw() {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: var(--space-xs);
+    gap: var(--space-s);
+  }
+
+  &-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &-actions {
+    flex-shrink: 0;
   }
 
   // I couldn't get flex-shrink working without issues, so in this instance I'll
@@ -1072,6 +1110,10 @@ function revealNsfw() {
 
   .forum-post__scroll-title {
     font-size: var(--font-size-l);
+
+    .back-button {
+      display: none;
+    }
 
     &-text {
       @include line-clamp(1);

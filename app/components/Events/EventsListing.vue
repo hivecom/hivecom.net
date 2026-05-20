@@ -13,14 +13,14 @@ interface Props {
   search?: string
   officialFilter?: boolean | null
   recurringFilter?: boolean | null
-  gameFilter?: number | null
+  gameFilter?: number[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   search: '',
   officialFilter: null,
   recurringFilter: null,
-  gameFilter: null,
+  gameFilter: () => [],
 })
 
 function matchesFilters(event: Tables<'events'>): boolean {
@@ -35,7 +35,7 @@ function matchesFilters(event: Tables<'events'>): boolean {
     return false
   if (props.recurringFilter === true && event.recurrence_rule != null)
     return false
-  if (props.gameFilter != null && !event.games?.includes(props.gameFilter))
+  if (props.gameFilter.length > 0 && !event.games?.some(id => props.gameFilter.includes(id)))
     return false
   return true
 }

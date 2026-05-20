@@ -18,6 +18,8 @@ const { getGameIconUrl } = useDataGameAssets()
 const iconUrl = ref<string>('/icon.svg')
 const isLoading = ref(true)
 const hasError = ref(false)
+const isImageReady = ref(false)
+const imgRef = ref<HTMLImageElement | null>(null)
 
 async function loadGameIcon() {
   try {
@@ -34,7 +36,19 @@ async function loadGameIcon() {
   }
   finally {
     isLoading.value = false
+    isImageReady.value = false
+    // Handle cached images: if the browser already has the asset, the @load
+    // event may fire before Vue attaches the listener. Check `complete` after
+    // the DOM updates and flip ready manually in that case.
+    await nextTick()
+    const el = imgRef.value
+    if (el && el.complete && el.naturalWidth > 0)
+      isImageReady.value = true
   }
+}
+
+function handleImageLoad() {
+  isImageReady.value = true
 }
 
 function handleImageError() {
@@ -58,10 +72,15 @@ watch(() => props.game, () => {
     <div v-if="isLoading" class="game-icon-skeleton" />
     <img
       v-else
+      ref="imgRef"
       :src="iconUrl"
       :alt="`${game.name} icon`"
       class="game-icon"
-      :class="{ 'game-icon--fallback': iconUrl === '/icon.svg' && showFallback }"
+      :class="{
+        'game-icon--fallback': iconUrl === '/icon.svg' && showFallback,
+        'game-icon--ready': isImageReady,
+      }"
+      @load="handleImageLoad"
       @error="handleImageError"
     >
   </div>
@@ -113,7 +132,12 @@ watch(() => props.game, () => {
   border-radius: var(--border-radius-m);
   background: var(--color-bg-raised);
   object-fit: cover;
-  transition: opacity var(--transition);
+  opacity: 0;
+  transition: opacity var(--transition-slow);
+
+  &--ready {
+    opacity: 1;
+  }
 
   &--fallback {
     opacity: 0.3;

@@ -7,9 +7,11 @@ import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { invalidateEventsCache } from '@/composables/useDataEvents'
+import { useDataGames } from '@/composables/useDataGames'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useTableActions } from '@/composables/useTableActions'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -67,6 +69,10 @@ const { canManageResource, canCreate } = useTableActions('events')
 
 const isBelowMedium = useBreakpoint('<m')
 
+// ─── Games ─────────────────────────────────────────────────────────────────────
+
+const { games, getByIds: getGamesByIds } = useDataGames()
+
 // ─── State ────────────────────────────────────────────────────────────────────
 
 const loading = ref(false)
@@ -112,10 +118,6 @@ function setActionLoading(id: number, action: string, value: boolean): void {
 
 const { rows } = defineTable(items, { pagination: { enabled: false }, select: false })
 
-// ─── Derived counts ───────────────────────────────────────────────────────────
-
-const isFiltered = computed(() => search.value.trim() !== '')
-
 // ─── Sorting ─────────────────────────────────────────────────────────────────
 
 const sortColMap: Record<string, string> = {
@@ -150,6 +152,18 @@ function sortIcon(label: string): string {
 
 const isOfficialFilter = ref<boolean | null>(null)
 const isRecurringFilter = ref<boolean | null>(null)
+const gameFilter = ref<number[]>([])
+
+// ─── Derived counts ───────────────────────────────────────────────────────────
+
+const isFiltered = computed(() => search.value.trim() !== '' || isOfficialFilter.value !== null || isRecurringFilter.value !== null || gameFilter.value.length > 0)
+
+const eventGames = computed(() => {
+  const ids = new Set(items.value.flatMap(e => e.games ?? []))
+  return games.value
+    .filter(g => ids.has(g.id))
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+})
 
 async function fetchEvents() {
   loading.value = true
@@ -164,7 +178,8 @@ async function fetchEvents() {
       p_offset: (page.value - 1) * adminTablePerPage.value,
       ...(isOfficialFilter.value !== null ? { p_is_official: isOfficialFilter.value } : {}),
       ...(isRecurringFilter.value === true ? { p_hide_recurring: true } : {}),
-    })
+      ...(gameFilter.value.length > 0 ? { p_game_ids: gameFilter.value } : {}),
+    } as Record<string, unknown>)
 
     if (error)
       throw error
@@ -347,6 +362,11 @@ watch(isRecurringFilter, () => {
   void fetchEvents()
 })
 
+watch(gameFilter, () => {
+  page.value = 1
+  void fetchEvents()
+})
+
 watch([sortCol, sortDir], () => {
   page.value = 1
   void fetchEvents()
@@ -394,7 +414,7 @@ onBeforeMount(async () => {
     <Flex v-else-if="initialLoad" gap="s" column expand>
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
-          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" v-model:is-recurring="isRecurringFilter" />
+          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" v-model:is-recurring="isRecurringFilter" v-model:game-filter="gameFilter" :games="eventGames" />
         </Flex>
 
         <Flex
@@ -428,7 +448,7 @@ onBeforeMount(async () => {
     <Flex v-else gap="s" column expand>
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
-          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" v-model:is-recurring="isRecurringFilter" />
+          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" v-model:is-recurring="isRecurringFilter" v-model:game-filter="gameFilter" :games="eventGames" />
         </Flex>
 
         <Flex
@@ -475,6 +495,7 @@ onBeforeMount(async () => {
                 </Flex>
               </Table.Head>
               <Table.Head>Location</Table.Head>
+              <Table.Head>Games</Table.Head>
               <Table.Head class="sortable-head" @click="handleSort('Official')">
                 <Flex gap="xs" y-center>
                   Official
@@ -503,6 +524,17 @@ onBeforeMount(async () => {
                   <Badge v-if="event.location" variant="neutral">
                     {{ event.location }}
                   </Badge>
+                  <span v-else>-</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <Flex v-if="event.games && event.games.length > 0" gap="xs" y-center wrap>
+                    <GameIcon
+                      v-for="game in getGamesByIds(event.games)"
+                      :key="game.id"
+                      :game="game"
+                      size="xs"
+                    />
+                  </Flex>
                   <span v-else>-</span>
                 </Table.Cell>
                 <Table.Cell>

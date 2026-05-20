@@ -44,6 +44,13 @@ const hasTeamspeak = computed(() => {
 
     <template v-else>
       <!-- <ActivitySpotify /> -->
+      <ActivityLastfm
+        v-if="hasLastfm"
+        :profile-id="props.profile.id"
+        :lastfm-username="profileLastfmUsername"
+        :rich-presence-enabled="props.profile.rich_presence_enabled"
+        :is-own-profile="props.isOwnProfile"
+      />
       <ActivitySteam
         v-if="hasSteam"
         :profile-id="props.profile.id"
@@ -56,13 +63,6 @@ const hasTeamspeak = computed(() => {
         :teamspeak-identities="props.profile.teamspeak_identities"
         :is-own-profile="props.isOwnProfile"
         :rich-presence-enabled="props.profile.rich_presence_enabled"
-      />
-      <ActivityLastfm
-        v-if="hasLastfm"
-        :profile-id="props.profile.id"
-        :lastfm-username="profileLastfmUsername"
-        :rich-presence-enabled="props.profile.rich_presence_enabled"
-        :is-own-profile="props.isOwnProfile"
       />
     </template>
   </div>

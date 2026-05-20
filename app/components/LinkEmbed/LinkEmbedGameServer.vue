@@ -83,7 +83,7 @@ const playerCount = computed((): number | null => {
         <Icon name="ph:game-controller" class="link-embed__icon" />
         <span class="link-embed__eyebrow">Game server</span>
         <template v-if="containerStateConfig">
-          <span class="link-embed__eyebrow link-embed__eyebrow--sep">&middot;</span>
+          <span class="link-embed__eyebrow link-embed__eyebrow--sep">-</span>
           <Flex y-center gap="xs">
             <span
               class="link-embed__status-dot"
@@ -104,11 +104,11 @@ const playerCount = computed((): number | null => {
         <Flex y-center gap="s">
           <span v-if="data.gameName" class="link-embed__meta-item">{{ data.gameName }}</span>
           <template v-if="data.gameName && data.region">
-            <span class="link-embed__meta-sep">&middot;</span>
+            <span class="link-embed__meta-sep">-</span>
           </template>
           <span v-if="data.region" class="link-embed__meta-item">{{ data.region.toUpperCase() }}</span>
           <template v-if="playerCount !== null">
-            <span class="link-embed__meta-sep">&middot;</span>
+            <span class="link-embed__meta-sep">-</span>
             <Flex y-center gap="xs">
               <Icon name="ph:users" class="link-embed__meta-icon" />
               <span class="link-embed__meta-item">{{ playerCount }} online</span>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Card, Checkbox, Flex, Grid, Skeleton } from '@dolanske/vui'
+import { Alert, Card, Checkbox, Flex, Grid, Skeleton } from '@dolanske/vui'
 import ExpenseCard from '@/components/Community/ExpenseCard.vue'
 import FundingHistory from '@/components/Community/FundingHistory.vue'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
@@ -56,144 +56,146 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
       <p>Discover how we are funded, how you can support us and where your contributions go.</p>
     </section>
 
-    <!-- Loading state -->
-    <section v-if="isLoading" class="mt-xl">
-      <Flex column gap="xxs">
-        <!-- Supporters card -->
-        <Skeleton :height="180" :radius="8" />
+    <ClientOnly>
+      <!-- Loading state -->
+      <section v-if="isLoading" class="mt-xl">
+        <Flex column gap="xxs">
+          <!-- Supporters card -->
+          <Skeleton :height="180" :radius="8" />
 
-        <!-- Funding progress -->
-        <Skeleton :height="160" :radius="8" class="mt-s" />
+          <!-- Funding progress -->
+          <Skeleton :height="160" :radius="8" class="mt-s" />
 
-        <!-- Patreon + donations cards -->
-        <Grid expand :columns="isBelowSmall ? 1 : 2" gap="s" class="mt-s">
-          <Skeleton :height="128" :radius="8" />
-          <Skeleton :height="128" :radius="8" />
-        </Grid>
+          <!-- Patreon + donations cards -->
+          <Grid expand :columns="isBelowSmall ? 1 : 2" gap="s" class="mt-s">
+            <Skeleton :height="128" :radius="8" />
+            <Skeleton :height="128" :radius="8" />
+          </Grid>
 
-        <!-- Historical funding: header + table -->
-        <Flex x-between y-center expand class="mt-xl">
-          <Skeleton :width="180" :height="48" :radius="8" />
-          <Skeleton :width="80" :height="34" :radius="8" />
-        </Flex>
-        <Skeleton :height="220" :radius="8" class="mt-s" />
-
-        <!-- Monthly expenses: header + grid -->
-        <Flex x-between y-center expand class="mt-xl">
-          <Skeleton :width="200" :height="48" :radius="8" />
-          <Skeleton :width="160" :height="32" :radius="8" />
-        </Flex>
-        <Grid expand :columns="isBelowSmall ? 1 : 2" gap="s" class="mt-xl">
-          <Skeleton :height="150" :radius="8" />
-          <Skeleton :height="150" :radius="8" />
-          <Skeleton :height="150" :radius="8" />
-          <Skeleton :height="150" :radius="8" />
-        </Grid>
-
-        <!-- SupportCTA -->
-        <Skeleton :height="320" :radius="8" class="mt-xl" />
-      </Flex>
-    </section>
-
-    <!-- Error state -->
-    <section v-else-if="combinedError" class="mt-xl">
-      <ErrorAlert message="Failed to load funding data" :error="combinedError" standalone />
-    </section>
-
-    <!-- Main content -->
-    <Flex v-else column expand>
-      <!-- Our Supporters -->
-      <Card v-if="user && supporters.length > 0" class="supporters-card pb-l mt-l" expand>
-        <div class="supporters-card__sheen gold-surface" aria-hidden="true" />
-        <Flex column gap="m" x-center y-center class="supporters-card__content">
-          <Flex y-center gap="m" x-center expand>
-            <Flex column :gap="0" x-center class="text-center" y-center>
-              <h2 class="text-bold text-xxl">
-                Our Supporters
-              </h2>
-              <p class="text-color-light">
-                Thank you to our amazing supporters who help keep Hivecom running!
-              </p>
-            </Flex>
+          <!-- Historical funding: header + table -->
+          <Flex x-between y-center expand class="mt-xl">
+            <Skeleton :width="180" :height="48" :radius="8" />
+            <Skeleton :width="80" :height="34" :radius="8" />
           </Flex>
-          <BulkAvatarDisplay
-            :user-ids="supporters"
-            :max-users="24"
-            :avatar-size="64"
-            :random="true"
-            :gap="4"
-            :supporter-highlight="true"
-          />
+          <Skeleton :height="220" :radius="8" class="mt-s" />
+
+          <!-- Monthly expenses: header + grid -->
+          <Flex x-between y-center expand class="mt-xl">
+            <Skeleton :width="200" :height="48" :radius="8" />
+            <Skeleton :width="160" :height="32" :radius="8" />
+          </Flex>
+          <Grid expand :columns="isBelowSmall ? 1 : 2" gap="s" class="mt-xl">
+            <Skeleton :height="150" :radius="8" />
+            <Skeleton :height="150" :radius="8" />
+            <Skeleton :height="150" :radius="8" />
+            <Skeleton :height="150" :radius="8" />
+          </Grid>
+
+          <!-- SupportCTA -->
+          <Skeleton :height="320" :radius="8" class="mt-xl" />
         </Flex>
-      </Card>
+      </section>
 
-      <!-- Current Funding Progress -->
-      <Flex expand column>
-        <FundingProgress :on-funding-page="true" />
+      <!-- Error state -->
+      <section v-else-if="combinedError" class="mt-xl">
+        <ErrorAlert message="Failed to load funding data" :error="combinedError" standalone />
+      </section>
 
-        <Grid :columns="isBelowSmall ? 1 : 2" gap="s" expand>
-          <Card class="p-m funding-card">
-            <Flex column gap="xs">
-              <Flex x-between y-center>
-                <span class="text-s text-bold text-color-light">Patreon</span>
-                <Icon name="ph:patreon-logo" size="2rem" class="color-accent" />
+      <!-- Main content -->
+      <Flex v-else column expand>
+        <!-- Our Supporters -->
+        <Card v-if="user && supporters.length > 0" class="supporters-card pb-l mt-l" expand>
+          <div class="supporters-card__sheen gold-surface" aria-hidden="true" />
+          <Flex column gap="m" x-center y-center class="supporters-card__content">
+            <Flex y-center gap="m" x-center expand>
+              <Flex column :gap="0" x-center class="text-center" y-center>
+                <h2 class="text-bold text-xxl">
+                  Our Supporters
+                </h2>
+                <p class="text-color-light">
+                  Thank you to our amazing supporters who help keep Hivecom running!
+                </p>
               </Flex>
-              <span class="text-l text-bold">{{ formatCurrency(latestFunding?.patreon_month_amount_cents ?? 0) }}</span>
-              <span class="text-xs text-color-light">
-                {{ latestFunding?.patreon_count ?? 0 }} {{ latestFunding?.patreon_count === 1 ? 'patron' : 'patrons' }}
-              </span>
             </Flex>
-          </Card>
-
-          <Card class="p-m funding-card">
-            <Flex column gap="xs">
-              <Flex x-between y-center>
-                <span class="text-s text-bold text-color-light">Single Donations</span>
-                <Icon name="ph:coin-fill" size="2rem" class="color-accent" />
-              </Flex>
-              <span class="text-l text-bold">{{ formatCurrency(latestFunding?.donation_month_amount_cents ?? 0) }}</span>
-              <span class="text-xs text-color-light">
-                {{ latestFunding?.donation_count ?? 0 }} {{ latestFunding?.donation_count === 1 ? 'donation' : 'donations' }}
-              </span>
-            </Flex>
-          </Card>
-        </Grid>
-      </Flex>
-
-      <!-- Historical Funding -->
-      <Flex expand column class="mt-xl">
-        <FundingHistory :monthly-funding="monthlyFunding" :format-currency="formatCurrency" />
-      </Flex>
-
-      <!-- Expenses Breakdown -->
-      <Flex column expand class="mt-xl">
-        <Flex x-between y-center class="mb-l" wrap expand>
-          <h2>
-            Monthly Expenses
-          </h2>
-          <Checkbox v-model="showPastExpenses" label="Show past expenses" />
-        </Flex>
-
-        <Flex v-if="expenses.length > 0" expand>
-          <Grid expand :columns="2" gap="s" class="expenses-grid">
-            <ExpenseCard
-              v-for="expense in filteredExpenses.slice(0, 6)"
-              :key="expense.id"
-              :expense="expense"
+            <BulkAvatarDisplay
+              :user-ids="supporters"
+              :max-users="24"
+              :avatar-size="64"
+              :random="true"
+              :gap="4"
+              :supporter-highlight="true"
             />
+          </Flex>
+        </Card>
+
+        <!-- Current Funding Progress -->
+        <Flex expand column>
+          <FundingProgress :on-funding-page="true" />
+
+          <Grid :columns="isBelowSmall ? 1 : 2" gap="s" expand>
+            <Card class="p-m funding-card">
+              <Flex column gap="xs">
+                <Flex x-between y-center>
+                  <span class="text-s text-bold text-color-light">Patreon</span>
+                  <Icon name="ph:patreon-logo" size="2rem" class="color-accent" />
+                </Flex>
+                <span class="text-l text-bold">{{ formatCurrency(latestFunding?.patreon_month_amount_cents ?? 0) }}</span>
+                <span class="text-xs text-color-light">
+                  {{ latestFunding?.patreon_count ?? 0 }} {{ latestFunding?.patreon_count === 1 ? 'patron' : 'patrons' }}
+                </span>
+              </Flex>
+            </Card>
+
+            <Card class="p-m funding-card">
+              <Flex column gap="xs">
+                <Flex x-between y-center>
+                  <span class="text-s text-bold text-color-light">Single Donations</span>
+                  <Icon name="ph:coin-fill" size="2rem" class="color-accent" />
+                </Flex>
+                <span class="text-l text-bold">{{ formatCurrency(latestFunding?.donation_month_amount_cents ?? 0) }}</span>
+                <span class="text-xs text-color-light">
+                  {{ latestFunding?.donation_count ?? 0 }} {{ latestFunding?.donation_count === 1 ? 'donation' : 'donations' }}
+                </span>
+              </Flex>
+            </Card>
           </Grid>
         </Flex>
 
-        <Alert v-else variant="info">
-          No expense data available
-        </Alert>
-      </Flex>
+        <!-- Historical Funding -->
+        <Flex expand column class="mt-xl">
+          <FundingHistory :monthly-funding="monthlyFunding" :format-currency="formatCurrency" />
+        </Flex>
 
-      <!-- Support Information -->
-      <Flex id="support-cta" expand class="mt-xl">
-        <SupportCTA :supporter-ids="supporters" />
+        <!-- Expenses Breakdown -->
+        <Flex column expand class="mt-xl">
+          <Flex x-between y-center wrap expand>
+            <h3 class="section-title">
+              Monthly Expenses
+            </h3>
+            <Checkbox v-model="showPastExpenses" label="Show past expenses" />
+          </Flex>
+
+          <Flex v-if="expenses.length > 0" expand>
+            <Grid expand :columns="2" gap="s" class="expenses-grid">
+              <ExpenseCard
+                v-for="expense in filteredExpenses.slice(0, 6)"
+                :key="expense.id"
+                :expense="expense"
+              />
+            </Grid>
+          </Flex>
+
+          <Alert v-else variant="info">
+            No expense data available
+          </Alert>
+        </Flex>
+
+        <!-- Support Information -->
+        <Flex id="support-cta" expand class="mt-xl">
+          <SupportCTA :supporter-ids="supporters" />
+        </Flex>
       </Flex>
-    </Flex>
+    </ClientOnly>
   </div>
 </template>
 

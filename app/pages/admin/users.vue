@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import type { AdminUserProfile } from '@/composables/useAdminUserTableData'
 import { Alert, Flex, Tab, Tabs } from '@dolanske/vui'
+import { computed, ref } from 'vue'
 import RolesGrid from '@/components/Admin/Roles/RolesGrid.vue'
-import AdminGlobe from '@/components/Admin/Users/AdminGlobe.vue'
 
+import AdminGlobe from '@/components/Admin/Users/AdminGlobe.vue'
 import UserDetails from '@/components/Admin/Users/UserDetails.vue'
 import UserForm from '@/components/Admin/Users/UserForm.vue'
 import UserKPIs from '@/components/Admin/Users/UserKPIs.vue'
 import UserTable from '@/components/Admin/Users/UserTable.vue'
+import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { useDataProfileBadges } from '@/composables/useDataProfileBadges'
 import { BADGE_CATALOG } from '@/lib/badges/catalog'
 import { getRouteQueryString } from '@/lib/utils/common'
+
+definePageMeta({ layout: 'admin' })
 
 interface UserAction {
   user: AdminUserProfile

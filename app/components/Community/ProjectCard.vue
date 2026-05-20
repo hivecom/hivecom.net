@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex } from '@dolanske/vui'
-import { computed } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -31,6 +31,21 @@ const { bannerUrl: projectBannerUrl, loading: bannerLoading } = useDataProjectBa
 const placeholderBanner = computed(() => getPlaceholderBannerProject(props.project.id))
 
 const hasBannerImage = computed(() => !!projectBannerUrl.value)
+
+const bannerBgLoaded = ref(false)
+
+function onBannerLoaded() {
+  bannerBgLoaded.value = true
+}
+
+watchEffect(() => {
+  if (!projectBannerUrl.value)
+    return
+  bannerBgLoaded.value = false
+  const img = new Image()
+  img.onload = onBannerLoaded
+  img.src = projectBannerUrl.value
+})
 
 // Don't apply placeholder transform until we know no real image exists (fetch settled)
 const usePlaceholder = computed(() => !projectBannerUrl.value && !bannerLoading.value)
@@ -90,9 +105,11 @@ const bannerSurfaceStyle = computed(() => {
             class="project-card__banner-surface"
             :class="{
               'project-card__banner-surface--image': hasBannerImage,
+              'project-card__banner-surface--loaded': !hasBannerImage || bannerBgLoaded,
             }"
             :style="bannerSurfaceStyle"
           />
+          <div v-if="hasBannerImage && !bannerBgLoaded" class="project-card__banner-skeleton" />
           <span v-if="isLatest" class="project-card__banner-badge">Latest</span>
         </div>
 
@@ -289,10 +306,25 @@ const bannerSurfaceStyle = computed(() => {
   background-position: center;
   transform: var(--banner-placeholder-transform, scale(1));
   transition: none;
+  opacity: 0;
 
   &--image {
     transform: scale(1);
   }
+
+  &--loaded {
+    opacity: 1;
+    transition: opacity var(--transition-slow);
+  }
+}
+
+.project-card__banner-skeleton {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-raised);
+  border-radius: inherit;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  pointer-events: none;
 }
 
 .project-card:hover .project-card__banner-surface--image {
@@ -419,5 +451,16 @@ const bannerSurfaceStyle = computed(() => {
   font-size: var(--font-size-xs); // Use CSS variable
   flex-shrink: 0;
   line-height: 1;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 </style>

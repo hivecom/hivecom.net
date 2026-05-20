@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Badge, Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
+import { Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useSupabaseClient, useSupabaseUser } from '#imports'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
+import TagInput from '@/components/Shared/TagInput.vue'
 import { deleteProjectBanner, getProjectBannerUrl, uploadProjectBanner } from '@/lib/storage'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
 
@@ -18,8 +19,6 @@ const emit = defineEmits<{
   (e: 'save', project: TablesInsert<'projects'> | TablesUpdate<'projects'>): void
   (e: 'delete', projectId: number): void
 }>()
-
-const TAG_SPACES_RE = /\s+/g
 
 // Interface for project query result
 interface QueryProject {
@@ -68,9 +67,6 @@ const bannerUploading = ref(false)
 const bannerDeleting = ref(false)
 const bannerError = ref<string | null>(null)
 const canManageBanner = computed(() => !!props.project)
-
-// New tag input for adding individual tags
-const newTagInput = ref('')
 
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
@@ -273,29 +269,6 @@ function confirmDelete() {
 
 // Fetch dropdown data when component mounts
 onMounted(fetchDropdownData)
-
-// Add a new tag
-function addTag() {
-  const rawTag = newTagInput.value.trim()
-  if (rawTag) {
-    // Normalize tag: lowercase and replace spaces with hyphens
-    const normalizedTag = rawTag.toLowerCase().replace(TAG_SPACES_RE, '-')
-    if (!projectForm.value.tags.includes(normalizedTag)) {
-      projectForm.value.tags.push(normalizedTag)
-      newTagInput.value = ''
-    }
-  }
-}
-
-// Remove a tag
-function removeTag(tagToRemove: string) {
-  projectForm.value.tags = projectForm.value.tags.filter(tag => tag !== tagToRemove)
-}
-
-// Handle enter key in new tag input
-function handleTagInputEnter() {
-  addTag()
-}
 </script>
 
 <template>
@@ -383,49 +356,11 @@ function handleTagInputEnter() {
           show-clear
         />
 
-        <div class="tags-section">
-          <label class="input-label">Tags</label>
-
-          <!-- Add new tag -->
-          <Flex gap="xs" y-center>
-            <Input
-              v-model="newTagInput"
-              expand
-              name="new-tag"
-              placeholder="Enter a tag"
-              @keydown.enter.prevent="handleTagInputEnter"
-            />
-            <Button
-              variant="accent"
-              square
-              :disabled="!newTagInput.trim()"
-              @click="addTag"
-            >
-              <Icon name="ph:plus" />
-            </Button>
-          </Flex>
-
-          <!-- Display existing tags -->
-          <div v-if="projectForm.tags.length > 0" class="tags-display">
-            <Badge
-              v-for="tag in projectForm.tags"
-              :key="tag"
-              size="s"
-              variant="neutral"
-              class="tag-badge"
-            >
-              {{ tag }}
-              <Button
-                size="s"
-                square
-                class="tag-remove-btn"
-                @click="removeTag(tag)"
-              >
-                <Icon name="ph:x" />
-              </Button>
-            </Badge>
-          </div>
-        </div>
+        <TagInput
+          v-model="projectForm.tags"
+          label="Tags"
+          placeholder="Enter a tag"
+        />
 
         <!-- GitHub Repository -->
         <Input
@@ -542,45 +477,5 @@ function handleTagInputEnter() {
   font-size: var(--font-size-xs);
   color: var(--color-text-subtle);
   margin-top: var(--space-xs);
-}
-
-.tags-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-
-  .tags-display {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-xs);
-    margin-top: var(--space-xs);
-  }
-
-  .tag-badge {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    position: relative;
-
-    .tag-remove-btn {
-      margin-left: var(--space-xs);
-      padding: 2px;
-      min-width: auto;
-      min-height: auto;
-      width: 16px;
-      height: 16px;
-      border-radius: var(--border-radius-pill);
-      background: rgba(0, 0, 0, 0.2);
-      color: currentColor;
-
-      &:hover {
-        background: rgba(0, 0, 0, 0.4);
-      }
-
-      svg {
-        font-size: 10px;
-      }
-    }
-  }
 }
 </style>

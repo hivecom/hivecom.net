@@ -1,40 +1,30 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.overrides'
 import { Button, Flex, Input, Select } from '@dolanske/vui'
+import { computed } from 'vue'
+import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-interface SelectOption {
-  label: string
-  value: string
-}
-
 const props = defineProps<{
-  regionOptions: SelectOption[]
-  gameOptions: SelectOption[]
+  regionOptions: { label: string, value: string }[]
+  gameEntries: Tables<'games'>[]
 }>()
 
-// Emit is still needed for the clearFilters action
 const emit = defineEmits<{
   (e: 'clearFilters'): void
 }>()
 
 const isBelowMedium = useBreakpoint('<m')
 
-// Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
-const _regionFilter = defineModel<SelectOption[] | undefined>('regionFilter')
-const _gameFilter = defineModel<SelectOption[] | undefined>('gameFilter')
+const _regionFilter = defineModel<{ label: string, value: string }[] | undefined>('regionFilter')
+const gameFilter = defineModel<number[]>('gameFilter', { default: () => [] })
 
-// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
 const regionFilter = computed({
   get: () => _regionFilter.value ?? [],
   set: (v) => { _regionFilter.value = v ?? [] },
 })
-const gameFilter = computed({
-  get: () => _gameFilter.value ?? [],
-  set: (v) => { _gameFilter.value = v ?? [] },
-})
 
-// Clear filters handler
 function clearFilters() {
   emit('clearFilters')
 }
@@ -54,13 +44,11 @@ function clearFilters() {
     </Input>
 
     <!-- Game filter -->
-    <Select
+    <GameSelect
       v-model="gameFilter"
-      :options="props.gameOptions"
+      :games="props.gameEntries"
       placeholder="Filter by game"
       :expand="isBelowMedium"
-      search
-      show-clear
     />
 
     <!-- Region filter -->

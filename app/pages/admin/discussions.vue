@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import DiscussionKPIs from '@/components/Admin/Discussions/DiscussionKPIs.vue'
 import DiscussionTable from '@/components/Admin/Discussions/DiscussionTable.vue'
+import { useAdminPermissions } from '@/composables/useAdminPermissions'
+
+definePageMeta({ layout: 'admin' })
 
 const { hasPermission } = useAdminPermissions()
 

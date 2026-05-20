@@ -3,6 +3,8 @@ import { Flex } from '@dolanske/vui'
 import { ref } from 'vue'
 import ProjectTable from '@/components/Admin/Projects/ProjectTable.vue'
 
+definePageMeta({ layout: 'admin' })
+
 // State for refresh coordination between components
 const refreshSignal = ref(0)
 </script>

@@ -40,7 +40,7 @@ defineProps<{
             by {{ data.replyAuthorUsername }}
           </span>
           <template v-if="data.replyAuthorUsername && data.authorUsername">
-            <span class="link-embed__meta-sep">&middot;</span>
+            <span class="link-embed__meta-sep">-</span>
           </template>
           <span v-if="data.authorUsername" class="link-embed__meta-item link-embed__meta-item--muted">
             in thread by {{ data.authorUsername }}
@@ -57,7 +57,7 @@ defineProps<{
           <span v-if="data.authorUsername" class="link-embed__meta-item">
             by {{ data.authorUsername }}
           </span>
-          <span class="link-embed__meta-sep">&middot;</span>
+          <span class="link-embed__meta-sep">-</span>
           <span class="link-embed__meta-item">
             {{ data.replyCount }} {{ data.replyCount === 1 ? 'reply' : 'replies' }}
           </span>

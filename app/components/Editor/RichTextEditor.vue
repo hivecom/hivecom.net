@@ -745,105 +745,175 @@ const avgUploadProgress = computed(() => {
 //
 // The blob URL is intentionally NOT a Supabase storage URL, so extractStoragePath
 // returns null for it and the onTransaction cleanup handler leaves it alone.
-function handleFileUpload(files: File[] | null, pos?: number) {
-  if (!files)
+// Background conversion/compression for a single file. Runs AFTER the
+// placeholder has been inserted so the user sees an immediate preview, then
+// swaps the placeholder's blob src to the optimised bytes when ready.
+async function processPendingFile(originalFile: File, currentBlobUrl: string, isVideo: boolean) {
+  // Always convert raster images to WebP - it's a format/size optimisation
+  // that benefits every upload regardless of the metadata-stripping preference.
+  // Exceptions: GIF (canvas round-trip drops animation), WebP (already optimal),
+  // and video (handled separately).
+  const shouldConvert = !isVideo
+    && originalFile.type !== 'image/gif'
+    && originalFile.type !== 'image/webp'
+
+  const shouldStrip = !isVideo
+    && !shouldConvert
+    && originalFile.type !== 'image/webp'
+    && props.stripImageMetadata !== false
+    && settings.value.strip_image_metadata !== false
+
+  let file: File
+  if (shouldConvert) {
+    try {
+      file = await convertImageToWebP(originalFile, 0.85)
+    }
+    catch {
+      pushToast('Image conversion failed', {
+        description: 'Could not convert to WebP - uploading original format.',
+      })
+      file = originalFile
+    }
+  }
+  else if (shouldStrip) {
+    file = await stripImageMetadata(originalFile)
+  }
+  else {
+    file = originalFile
+  }
+
+  const sizeLimit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
+  if (!isVideo && file.type !== 'image/gif' && file.size > sizeLimit) {
+    try {
+      const compressed = await compressImageToFit(file, sizeLimit)
+      if (compressed.size < file.size)
+        file = compressed
+
+      if (file.size > sizeLimit) {
+        pushToast('Image still exceeds upload limit', {
+          description: `Compressed to ${formatBytes(file.size)}, limit is ${formatBytes(sizeLimit)}. Upload may fail.`,
+        })
+      }
+    }
+    catch {
+      pushToast('Image compression failed', {
+        description: 'Uploading original - it may exceed the size limit.',
+      })
+    }
+  }
+
+  // No transformation - placeholder already points at the right bytes.
+  if (file === originalFile)
     return
 
-  files.forEach(async (originalFile) => {
+  // Find the placeholder node (it may have been deleted while we were
+  // converting). If found, swap its src to the optimised blob URL.
+  const newBlobUrl = URL.createObjectURL(file)
+  let swapped = false
+  if (editor.value) {
+    editor.value.state.doc.descendants((node, nodePos) => {
+      if (swapped)
+        return false
+      const isMedia = node.type.name === 'image' || node.type.name === 'video'
+      if (isMedia && node.attrs.src === currentBlobUrl) {
+        editor.value!
+          .chain()
+          .command(({ tr }) => {
+            tr.setNodeAttribute(nodePos, 'src', newBlobUrl)
+            return true
+          })
+          .run()
+        swapped = true
+        return false
+      }
+    })
+  }
+
+  if (swapped) {
+    pendingBlobs.set(newBlobUrl, file)
+    pendingBlobs.delete(currentBlobUrl)
+    const progress = uploadProgress.value.get(currentBlobUrl) ?? 0
+    uploadProgress.value.set(newBlobUrl, progress)
+    uploadProgress.value.delete(currentBlobUrl)
+  }
+  else {
+    // Placeholder gone (user deleted it) - drop the converted blob too.
+    URL.revokeObjectURL(newBlobUrl)
+    pendingBlobs.delete(currentBlobUrl)
+    uploadProgress.value.delete(currentBlobUrl)
+  }
+  uploadProgress.value = new Map(uploadProgress.value)
+  URL.revokeObjectURL(currentBlobUrl)
+}
+
+function handleFileUpload(files: File[] | null, pos?: number) {
+  if (!files || files.length === 0)
+    return
+
+  // Two-phase upload to keep the UI responsive on slow devices:
+  //
+  // Phase 1 (sync): insert a placeholder for every file using a blob URL from
+  // the ORIGINAL file so the user sees a preview immediately, even when image
+  // conversion takes seconds on mobile. Inserting all placeholders synchronously
+  // also fixes a multi-image "glitching" bug where parallel async conversion
+  // would scramble insertion order and stack placeholders at the same position.
+  //
+  // Phase 2 (async, fire-and-forget): run conversion/compression for each file
+  // in the background and swap the placeholder's blob src to the optimised
+  // bytes when ready. flushPendingUploads (on submit) reads from pendingBlobs,
+  // which processPendingFile keeps up to date.
+  let nextPos = pos ?? editor.value?.state.selection.anchor ?? 0
+  const queue: Array<{ originalFile: File, blobUrl: string, isVideo: boolean }> = []
+
+  for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+    const originalFile = files[fileIndex]!
+    const isLast = fileIndex === files.length - 1
+
     if (!editor.value)
       return
 
     const isVideo = allowedVideoTypes.includes(originalFile.type)
     const nodeType = isVideo ? 'video' : 'image'
 
-    // Capture the insert position synchronously before any awaits so that
-    // concurrent uploads (e.g. a data file upload that calls .focus()) cannot
-    // shift the cursor between now and when we actually insert the placeholder.
-    const insertPos = pos ?? editor.value.state.selection.anchor
-
-    // Always convert raster images to WebP - it's a format/size optimisation
-    // that benefits every upload regardless of the metadata-stripping preference.
-    // Exceptions:
-    //   GIFs  - canvas round-trip drops animation; keep as-is (or strip metadata below)
-    //   WebP  - already optimal, no re-encode needed
-    //   Video - never processed here
-    const shouldConvert = !isVideo
-      && originalFile.type !== 'image/gif'
-      && originalFile.type !== 'image/webp'
-
-    // Strip EXIF from formats we can't convert (currently only GIF), but only
-    // when the user has the metadata-stripping preference enabled.
-    const shouldStrip = !isVideo
-      && !shouldConvert
-      && originalFile.type !== 'image/webp'
-      && props.stripImageMetadata !== false
-      && settings.value.strip_image_metadata !== false
-
-    let file: File
-    if (shouldConvert) {
-      try {
-        file = await convertImageToWebP(originalFile, 0.85)
-      }
-      catch {
-        // Conversion failed - upload the original so the user isn't silently
-        // stuck. A toast lets them know something went wrong.
-        pushToast('Image conversion failed', {
-          description: 'Could not convert to WebP - uploading original format.',
-        })
-        file = originalFile
-      }
-    }
-    else if (shouldStrip) {
-      file = await stripImageMetadata(originalFile)
-    }
-    else {
-      file = originalFile
-    }
-
-    // If the (already converted/stripped) file still exceeds the bucket limit,
-    // iteratively re-encode at lower quality and resolution until it fits.
-    // GIFs are skipped inside compressImageToFit (animation would be lost) and
-    // videos never reach this branch.
-    const sizeLimit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
-    if (!isVideo && file.type !== 'image/gif' && file.size > sizeLimit) {
-      try {
-        const compressed = await compressImageToFit(file, sizeLimit)
-        if (compressed.size < file.size)
-          file = compressed
-
-        if (file.size > sizeLimit) {
-          pushToast('Image still exceeds upload limit', {
-            description: `Compressed to ${formatBytes(file.size)}, limit is ${formatBytes(sizeLimit)}. Upload may fail.`,
-          })
-        }
-      }
-      catch {
-        pushToast('Image compression failed', {
-          description: 'Uploading original - it may exceed the size limit.',
-        })
-      }
-    }
-
-    // Create a local object URL so we can insert a placeholder immediately.
-    const blobUrl = URL.createObjectURL(file)
+    // Use the original file's blob URL as the immediate placeholder so we don't
+    // block on conversion. processPendingFile swaps this for the optimised blob.
+    const blobUrl = URL.createObjectURL(originalFile)
 
     // Insert the placeholder without selecting it - we don't want the bubble
-    // menu popping up mid-upload, and we don't want the node highlighted.
-    // CSS targets img[src^="blob:"] / video[src^="blob:"] to show a spinner.
-    editor.value
+    // menu popping up mid-upload. CSS targets img[src^="blob:"] / video[src^="blob:"]
+    // to show a shimmer during the actual storage upload. Only focus on the
+    // final insertion to avoid soft-keyboard flicker on mobile.
+    const chain = editor.value
       .chain()
-      .insertContentAt(insertPos, {
+      .insertContentAt(nextPos, {
         type: nodeType,
         attrs: { src: blobUrl },
       }, { updateSelection: false })
-      .focus()
-      .run()
 
-    // Register as pending - upload deferred to flushPendingUploads on submit.
-    pendingBlobs.set(blobUrl, file)
+    if (isLast)
+      chain.focus().run()
+    else
+      chain.run()
+
+    // image / video nodes have nodeSize 1; advance so the next iteration
+    // inserts after this placeholder rather than on top of it.
+    nextPos += 1
+
+    // Register as pending immediately - this gates the submit button via
+    // hasPendingUploads. processPendingFile will replace the file ref with
+    // the optimised bytes when ready.
+    pendingBlobs.set(blobUrl, originalFile)
     uploadProgress.value.set(blobUrl, 0)
-    uploadProgress.value = new Map(uploadProgress.value)
-  })
+
+    queue.push({ originalFile, blobUrl, isVideo })
+  }
+
+  uploadProgress.value = new Map(uploadProgress.value)
+
+  // Fire-and-forget conversion. Each call independently updates pendingBlobs
+  // and the editor node when its optimised bytes are ready.
+  for (const item of queue)
+    void processPendingFile(item.originalFile, item.blobUrl, item.isVideo)
 }
 
 // Converts the FileList from @input event into a File[]

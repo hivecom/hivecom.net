@@ -20,6 +20,8 @@ import GameserverDetails from './GameServerDetails.vue'
 import GameserverFilters from './GameServerFilters.vue'
 import GameserverForm from './GameServerForm.vue'
 
+const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+
 const supabase = useSupabaseClient()
 const userId = useUserId()
 const subscriptionsCache = useDiscussionSubscriptionsCache()
@@ -52,8 +54,8 @@ interface TransformedGameserver extends Record<string, unknown> {
 }
 
 // Filter states kept local - region/game filters go beyond simple search
-const regionFilter = ref<SelectOption[]>()
-const gameFilter = ref<SelectOption[]>()
+const regionFilter = ref<{ label: string, value: string }[]>()
+const gameFilter = ref<number[]>([])
 
 const regionOptions: SelectOption[] = [
   { label: 'Europe', value: 'eu' },
@@ -85,6 +87,7 @@ const {
   resourceType: 'network_gameservers',
   // URL param sync handled manually below (also needs to set tab= param)
   queryParamKey: false,
+  refreshSignal,
   fetch: async () => {
     const { data, error } = await gameserversQuery
     if (error)
@@ -101,18 +104,15 @@ const {
   defaultSort: { column: 'Name', direction: 'asc' },
 })
 
-// Compute game options from loaded data
-const gameOptions = computed<SelectOption[]>(() => {
-  const uniqueGames = new Map<number, string>()
+// Compute game entries from loaded data
+const gameEntries = computed<Tables<'games'>[]>(() => {
+  const uniqueGames = new Map<number, Tables<'games'>>()
   gameservers.value.forEach((gs) => {
-    if (gs.game?.name) {
-      uniqueGames.set(gs.game.id, gs.game.name)
+    if (gs.game?.id) {
+      uniqueGames.set(gs.game.id, gs.game as unknown as Tables<'games'>)
     }
   })
-  return Array.from(uniqueGames.entries(), ([id, name]) => ({
-    label: name,
-    value: id.toString(),
-  }))
+  return Array.from(uniqueGames.values())
 })
 
 const { latestMetrics, fetchLatestMetrics, fetchDailyHistory } = useDataMetrics()
@@ -170,8 +170,7 @@ const filteredData = computed(() => {
     }
 
     if (gameFilter.value != null && gameFilter.value.length > 0 && row._original.game) {
-      const gameFilterVal = Number.parseInt(gameFilter.value[0]?.value ?? '0')
-      if (row._original.game.id !== gameFilterVal)
+      if (!gameFilter.value.includes(row._original.game.id))
         return false
     }
 
@@ -293,7 +292,7 @@ async function handleGameserverDelete(gameserverId: number) {
 function clearFilters() {
   search.value = ''
   regionFilter.value = undefined
-  gameFilter.value = undefined
+  gameFilter.value = []
 }
 </script>
 
@@ -310,7 +309,7 @@ function clearFilters() {
           v-model:region-filter="regionFilter"
           v-model:game-filter="gameFilter"
           :region-options="regionOptions"
-          :game-options="gameOptions"
+          :game-entries="gameEntries"
           :expand="isBelowMedium"
           @clear-filters="clearFilters"
         />
@@ -348,7 +347,7 @@ function clearFilters() {
         v-model:region-filter="regionFilter"
         v-model:game-filter="gameFilter"
         :region-options="regionOptions"
-        :game-options="gameOptions"
+        :game-entries="gameEntries"
         :expand="isBelowMedium"
         @clear-filters="clearFilters"
       />

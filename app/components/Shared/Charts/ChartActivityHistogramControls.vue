@@ -20,6 +20,10 @@ const props = defineProps<{
   serverName?: string
 }>()
 
+const emit = defineEmits<{
+  change: [period: MetricsPeriod, window: { start: Date, end: Date }]
+}>()
+
 const color = computed(() => props.color ?? getCSSVariable('--color-accent'))
 
 const activePeriod = ref<MetricsPeriod>(props.initialPeriod ?? '14d')
@@ -37,6 +41,7 @@ function onBrushChange(window: { start: Date, end: Date }) {
   })
   if (matched)
     activePeriod.value = matched.value
+  emit('change', activePeriod.value, window)
 }
 </script>
 

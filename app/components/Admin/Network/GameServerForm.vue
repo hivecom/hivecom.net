@@ -4,6 +4,7 @@ import { Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske
 import { computed, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
 
@@ -81,7 +82,7 @@ const loadingContainers = ref(true)
 const loadingProfiles = ref(true)
 
 // Games via shared composable
-const { games, loading: loadingGames } = useDataGames()
+const { games } = useDataGames()
 
 // Options for dropdowns
 const containers = ref<Tables<'network_containers'>[]>([])
@@ -101,13 +102,6 @@ const regionOptions = [
 ]
 
 // Computed options for selects
-const gameOptions = computed(() =>
-  games.value.map(game => ({
-    label: game.name || 'Unknown Game',
-    value: game.id,
-  })),
-)
-
 const containerOptions = computed(() =>
   containers.value.map(container => ({
     label: container.name,
@@ -122,6 +116,13 @@ const profileOptions = computed(() =>
   })),
 )
 
+// Bridge GameSelect (multi) to single-game form field: pick newly added id, or null when cleared
+const selectedGameIds = computed(() => gameserverForm.value.game ? [gameserverForm.value.game] : [])
+function onGameSelect(ids: number[]) {
+  const next = ids.find(id => id !== gameserverForm.value.game)
+  gameserverForm.value.game = next ?? null
+}
+
 // Computed properties to handle conversion between form values and select options
 const selectedRegionComputed = computed({
   get: () => {
@@ -132,18 +133,6 @@ const selectedRegionComputed = computed({
   },
   set: (value: SelectOption[] | null | undefined) => {
     gameserverForm.value.region = (value && value.length > 0) ? value[0]!.value as Tables<'network_gameservers'>['region'] : null
-  },
-})
-
-const selectedGameComputed = computed({
-  get: () => {
-    if (!gameserverForm.value.game)
-      return []
-    const option = gameOptions.value.find(opt => opt.value === gameserverForm.value.game)
-    return option ? [option] : []
-  },
-  set: (value: SelectOption[] | null | undefined) => {
-    gameserverForm.value.game = (value && value.length > 0) ? Number(value[0]!.value) : null
   },
 })
 
@@ -379,18 +368,18 @@ onMounted(fetchDropdownData)
 
         <!-- First row: Game and Container -->
         <Flex gap="m" wrap expand>
-          <Select
-            v-model="selectedGameComputed"
-            search
-            expand
-            name="game"
-            label="Game"
-            placeholder="Select game"
-            :options="gameOptions"
-            :loading="loadingGames"
-            searchable
-            show-clear
-          />
+          <Flex column gap="s" expand>
+            <div class="gameserver-form__label">
+              Game
+            </div>
+            <GameSelect
+              :model-value="selectedGameIds"
+              :games="games"
+              placeholder="Select game"
+              expand
+              @update:model-value="onGameSelect"
+            />
+          </Flex>
 
           <Select
             v-model="selectedContainerComputed"
@@ -574,6 +563,12 @@ onMounted(fetchDropdownData)
 <style scoped lang="scss">
 .gameserver-form {
   padding-bottom: var(--space);
+
+  &__label {
+    font-size: var(--font-size-s);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+  }
 }
 
 .form-actions {

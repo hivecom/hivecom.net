@@ -20,6 +20,7 @@ const { getGameCoverUrl } = useDataGameAssets()
 const coverUrl = ref<string | null>(null)
 const isLoading = ref(true)
 const hasError = ref(false)
+const isImageReady = ref(false)
 
 async function loadGameCover() {
   try {
@@ -36,7 +37,12 @@ async function loadGameCover() {
   }
   finally {
     isLoading.value = false
+    isImageReady.value = false
   }
+}
+
+function handleImageLoad() {
+  isImageReady.value = true
 }
 
 function handleImageError() {
@@ -66,6 +72,8 @@ defineExpose({
       :src="coverUrl"
       :alt="`${game.name} cover`"
       class="game-cover"
+      :class="{ 'game-cover--ready': isImageReady }"
+      @load="handleImageLoad"
       @error="handleImageError"
     >
 
@@ -138,7 +146,12 @@ defineExpose({
   background: var(--color-bg-raised);
   object-fit: cover;
   border: 1px solid var(--color-border);
-  transition: opacity var(--transition);
+  opacity: 0;
+  transition: opacity var(--transition-slow);
+
+  &--ready {
+    opacity: 1;
+  }
 }
 
 .game-cover-fallback {

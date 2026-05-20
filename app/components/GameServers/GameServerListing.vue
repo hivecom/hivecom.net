@@ -7,6 +7,7 @@ import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
+import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useOngoingEvents } from '@/composables/useOngoingEvents'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -33,15 +34,15 @@ interface Props {
   filteredGameservers: GameserversType
   gameserversWithoutGame: GameserversType
   search: string
-  selectedGames?: { label: string, value: number }[]
+  selectedGameIds?: number[]
   selectedRegions?: { label: string, value: string }[]
-  gameOptions: { label: string, value: number }[]
+  gamesWithServers: Tables<'games'>[]
   regionOptions: { label: string, value: string }[]
 }
 
 interface Emits {
   (e: 'update:search', value: string): void
-  (e: 'update:selectedGames', value: { label: string, value: number }[] | undefined): void
+  (e: 'update:selectedGameIds', value: number[]): void
   (e: 'update:selectedRegions', value: { label: string, value: string }[] | undefined): void
   (e: 'clearFilters'): void
 }
@@ -70,8 +71,8 @@ function updateSearch(value: string | number) {
   emit('update:search', String(value))
 }
 
-function updateSelectedGames(value: { label: string, value: number }[] | undefined) {
-  emit('update:selectedGames', value)
+function updateSelectedGames(value: number[]) {
+  emit('update:selectedGameIds', value)
 }
 
 function updateSelectedRegions(value: { label: string, value: string }[] | undefined) {
@@ -133,13 +134,20 @@ function setLiveIndicatorRef(gameId: number, el: HTMLElement | null) {
               <Icon name="ph:magnifying-glass" />
             </template>
           </Input>
-          <Select
-            :model-value="selectedGames"
-            :options="gameOptions"
-            placeholder="Select game"
-            :expand="isCompactLayout"
-            @update:model-value="updateSelectedGames"
-          />
+          <ClientOnly>
+            <GameSelect
+              :model-value="selectedGameIds ?? []"
+              :games="gamesWithServers"
+              placeholder="Select game"
+              :expand="isCompactLayout"
+              @update:model-value="updateSelectedGames"
+            />
+            <template #fallback>
+              <Button outline size="m" :expand="isCompactLayout" disabled>
+                Select game
+              </Button>
+            </template>
+          </ClientOnly>
           <Select
             :model-value="selectedRegions"
             :options="regionOptions"
@@ -148,7 +156,7 @@ function setLiveIndicatorRef(gameId: number, el: HTMLElement | null) {
             @update:model-value="updateSelectedRegions"
           />
           <Button
-            v-if="selectedGames || selectedRegions || search"
+            v-if="selectedGameIds?.length || selectedRegions || search"
             plain
             outline
             :expand="isCompactLayout"

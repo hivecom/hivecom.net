@@ -154,7 +154,7 @@ function handleReport() {
       <p v-if="postedAt" class="text-xs text-color-light">
         Posted {{ postedAt }}
         <template v-if="editedAt">
-          &middot; Edited {{ editedAt }}
+          - Edited {{ editedAt }}
         </template>
       </p>
 
