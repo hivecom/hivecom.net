@@ -291,10 +291,10 @@ watch(user, () => {
           <Flex y-center gap="m" x-center expand>
             <Flex column :gap="0" x-center class="text-center" y-center>
               <h1 class="text-bold text-xxxxl">
-                One of Many
+                Community
               </h1>
               <p class="text-color-light">
-                A slice of our community from around the world
+                One of many and many of one
               </p>
             </Flex>
           </Flex>
