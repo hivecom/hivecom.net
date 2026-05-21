@@ -352,8 +352,11 @@ const {
   latestPostMentionIds,
   latestPostAuthorIds,
   postSinceYesterday,
+  postsSinceLastVisit,
   fetchLatestReplies,
   fetchTodayCount,
+  fetchSinceLastVisitCount,
+  bumpSinceLastVisitCount,
   prependReplyItem,
   prependDiscussionItem,
 } = useForumActivityFeed({
@@ -375,7 +378,11 @@ function onVisibilityChange() {
   }
   else if (document.visibilityState === 'visible') {
     if (hiddenAt != null && Date.now() - hiddenAt >= FEED_STALE_MS) {
-      void Promise.all([fetchLatestReplies(), fetchTodayCount()])
+      void Promise.all([
+        fetchLatestReplies(),
+        fetchTodayCount(),
+        fetchSinceLastVisitCount(lastFeedVisitedAt.value),
+      ])
     }
     hiddenAt = null
   }
@@ -383,6 +390,9 @@ function onVisibilityChange() {
 
 onMounted(() => {
   lastFeedVisitedAt.value = forumUnread.recordFeedVisit()
+  // Server-side count for the "since last visit" badge so it isn't capped by
+  // the carousel slice (16) or the latest-replies fetch (30).
+  void fetchSinceLastVisitCount(lastFeedVisitedAt.value)
   document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
@@ -404,8 +414,24 @@ function handleTopicActivity(topicId: string, lastActivityAt: string) {
 }
 
 const { subscribe: subscribeForumFeed } = useRealtimeForumFeed({
-  onReply: prependReplyItem,
-  onDiscussion: prependDiscussionItem,
+  onReply: (item) => {
+    prependReplyItem(item)
+    // Bump the "since last visit" badge if the item is newer than the
+    // watermark and not authored by the current user.
+    if (lastFeedVisitedAt.value != null
+      && new Date(item.timestampRaw).getTime() > new Date(lastFeedVisitedAt.value).getTime()
+      && item.user !== userId.value) {
+      bumpSinceLastVisitCount(1)
+    }
+  },
+  onDiscussion: (item) => {
+    prependDiscussionItem(item)
+    if (lastFeedVisitedAt.value != null
+      && new Date(item.timestampRaw).getTime() > new Date(lastFeedVisitedAt.value).getTime()
+      && item.user !== userId.value) {
+      bumpSinceLastVisitCount(1)
+    }
+  },
   onPendingSheet: (delta) => { feedPendingCount.value += delta },
   onTopicActivity: handleTopicActivity,
   discussionLookup,
@@ -1145,6 +1171,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         :loading="loading"
         :latest-posts="latestPosts"
         :post-since-yesterday="postSinceYesterday"
+        :posts-since-last-visit="postsSinceLastVisit"
         :last-visited-at="lastFeedVisitedAt"
         :mention-lookup="mentionLookup"
         :feed-options="feedOptions"

@@ -8,7 +8,7 @@ interface AdminActionsProps {
   /**
    * Type of resource (used for permission checking)
    */
-  resourceType: 'games' | 'events' | 'network_gameservers' | 'profiles' | 'funding_expenses' | 'referendums' | 'network_servers' | 'assets' | 'projects' | 'discussions' | 'kvstore' | 'motds' | 'themes'
+  resourceType: 'games' | 'events' | 'network_gameservers' | 'profiles' | 'funding' | 'referendums' | 'network_servers' | 'assets' | 'projects' | 'discussions' | 'kvstore' | 'motds' | 'themes'
 
   /**
    * The item being acted upon
@@ -141,7 +141,7 @@ function getResourceDisplayName(): string {
     events: 'Event',
     network_gameservers: 'Game Server',
     profiles: 'Profile',
-    funding_expenses: 'Expense',
+    funding: 'Expense',
     referendums: 'Referendum',
     network_servers: 'Server',
     assets: 'Asset',

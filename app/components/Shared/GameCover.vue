@@ -71,6 +71,7 @@ defineExpose({
       v-else-if="coverUrl && !hasError"
       :src="coverUrl"
       :alt="`${game.name} cover`"
+      draggable="false"
       class="game-cover"
       :class="{ 'game-cover--ready': isImageReady }"
       @load="handleImageLoad"

@@ -31,9 +31,11 @@ interface ContainerWithServer {
     docker_control?: boolean | null
     accessible?: boolean | null
   } | null
+  gameserver: readonly {
+    id: number
+    name: string
+  }[] | null
 }
-
-// Define interface for transformed container data
 interface TransformedContainer {
   'Name': string
   'Server': string
@@ -53,9 +55,12 @@ interface TransformedContainer {
       docker_control?: boolean | null
       accessible?: boolean | null
     } | null
+    gameserver: readonly {
+      id: number
+      name: string
+    }[] | null
   }
 }
-
 // Define interface for Select options
 interface SelectOption {
   label: string
@@ -95,6 +100,10 @@ const containersQuery = supabase.from('network_containers').select(`
     address,
     docker_control,
     accessible
+  ),
+  gameserver:network_gameservers!gameservers_container_fkey (
+    id,
+    name
   )
 `)
 

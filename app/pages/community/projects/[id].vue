@@ -141,7 +141,7 @@ defineOgImage('Project', {
                   <Button
                     v-if="project.link"
                     class="project-header__action"
-                    :size="isMobile ? 'l' : 's'"
+                    :size="isMobile ? 'm' : 's'"
                     :href="project.link"
                     target="_blank"
                     expand
@@ -154,7 +154,7 @@ defineOgImage('Project', {
                   <Button
                     v-if="project.github"
                     class="project-header__action"
-                    :size="isMobile ? 'l' : 's'"
+                    :size="isMobile ? 'm' : 's'"
                     :href="`https://github.com/${project.github}`"
                     target="_blank"
                     expand

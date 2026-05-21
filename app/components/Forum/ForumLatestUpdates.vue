@@ -12,6 +12,13 @@ const props = defineProps<{
   loading: boolean
   latestPosts: ActivityItem[]
   postSinceYesterday: number
+  /**
+   * Authoritative server-side count of new forum activity since the user's
+   * last visit, excluding their own posts. Drives the "since last visit"
+   * badge. Computed locally as a fallback when the prop isn't supplied so
+   * older callers keep working.
+   */
+  postsSinceLastVisit?: number
   lastVisitedAt: string | null
   mentionLookup: Record<string, string>
   // Pass-through options for the paginated sheet feed
@@ -74,12 +81,16 @@ const splitIndex = computed<number | null>(() => {
   return idx
 })
 
-// New-since-last-visit count scoped to the rendered slice - already excludes
-// own posts via carouselPosts. Computed independently so it works even when
-// every visible post is newer than the visit boundary (splitIndex is null then).
+// New-since-last-visit count. Prefers the server-side count passed in via
+// `postsSinceLastVisit` (accurate across the entire feed) and falls back to
+// counting against the rendered carousel slice. The fallback is naturally
+// bounded by `CAROUSEL_LIMIT` so it can undercount on busy forums - the
+// server-side count exists specifically to avoid that.
 const newSinceLastVisit = computed<number>(() => {
   if (visitedAt.value == null || user.value == null || props.loading)
     return 0
+  if (props.postsSinceLastVisit != null)
+    return props.postsSinceLastVisit
   return carouselSlice.value.filter(
     post => new Date(post.timestampRaw).getTime() > visitedAt.value!,
   ).length
@@ -128,6 +139,21 @@ const sheetSplitIndex = computed<number | null>(() => {
   if (idx <= 0 || idx >= sheetItems.value.length)
     return null
   return idx
+})
+
+// True when all loaded sheet items are newer than the visit boundary -
+// meaning the divider belongs after the last visible item, not inline.
+// Only show this trailing divider when there are actually new items to indicate.
+const sheetTrailingDivider = computed<boolean>(() => {
+  if (visitedAt.value == null || sheetLoading.value || sheetSplitIndex.value !== null)
+    return false
+  if (sheetItems.value.length === 0)
+    return false
+  // All items are newer than the visit boundary
+  const allNewer = sheetItems.value.every(
+    item => new Date(item.timestampRaw).getTime() > visitedAt.value!,
+  )
+  return allNewer && newSinceLastVisit.value > 0
 })
 
 // ── Mention / author cache ─────────────────────────────────────────────────
@@ -394,6 +420,15 @@ onUnmounted(() => {
               expand
             />
           </template>
+
+          <Tooltip v-if="sheetTrailingDivider" :disabled="isMobile">
+            <div class="forum__latest-divider forum__latest-divider--sheet">
+              <Icon name="ph:clock" :size="16" />
+            </div>
+            <template #tooltip>
+              <p>Older posts start here</p>
+            </template>
+          </Tooltip>
 
           <div ref="sentinel" class="forum__latest-sentinel">
             <Spinner v-if="sheetLoadingMore" />

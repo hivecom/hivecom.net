@@ -40,7 +40,7 @@ const paused = ref(false)
           :class="{ 'marquee-item--clickable': props.interactive }"
           @click="props.interactive && emit('select', game.id)"
         >
-          <GlowCard :no-glow="!props.interactive">
+          <GlowCard :no-borders="!props.interactive">
             <GameCover :game="game" size="xl" aspect-ratio="card" :show-fallback="false" />
           </GlowCard>
         </div>

@@ -228,10 +228,30 @@ export function useDataForumUnread() {
    * Records the current time as the feed visit timestamp and returns the
    * previous value. Call this once on mount (client-side only) so the
    * "last visited" divider in the activity feed reflects the prior session.
+   *
+   * To avoid intra-session navigation (e.g. forum index -> discussion -> back
+   * to forum index) collapsing the "since last visit" window down to seconds,
+   * the stored watermark is only advanced when the previous visit was more
+   * than `SESSION_GAP_MS` ago. Within that window the existing watermark is
+   * preserved and returned, so the badge keeps reflecting the real prior
+   * session rather than the most recent re-mount.
    */
+  const SESSION_GAP_MS = 30 * 60 * 1000 // 30 minutes
+
   function recordFeedVisit(): string | null {
     const previous = storage.value.feedVisitedAt
-    storage.value = { ...storage.value, feedVisitedAt: new Date().toISOString() }
+    const now = Date.now()
+    const previousMs = previous != null ? new Date(previous).getTime() : null
+
+    // First-ever visit, or a real gap since the last visit: advance the
+    // watermark and return whatever was stored before.
+    if (previousMs == null || now - previousMs >= SESSION_GAP_MS) {
+      storage.value = { ...storage.value, feedVisitedAt: new Date(now).toISOString() }
+      return previous
+    }
+
+    // Same session: leave the stored watermark alone so the badge keeps
+    // showing activity since the real prior visit, not since we re-mounted.
     return previous
   }
 

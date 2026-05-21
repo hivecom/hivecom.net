@@ -72,7 +72,7 @@ function handleDelete(expense: Tables<'funding_expenses'>) {
         <Flex y-center gap="s">
           <AdminActions
             v-if="props.expense"
-            resource-type="funding_expenses"
+            resource-type="funding"
             :item="props.expense"
             :show-labels="true"
             @edit="(expenseItem) => handleEdit(expenseItem as Tables<'funding_expenses'>)"

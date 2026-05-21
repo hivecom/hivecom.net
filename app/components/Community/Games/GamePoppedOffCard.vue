@@ -128,34 +128,35 @@ watchEffect(() => {
                 This is popping off right now
               </template>
               <template v-else>
-                This recently popped off during an event
+                <span class="popped-off-card__label-desktop">This recently popped off during an event</span>
+                <span class="popped-off-card__label-mobile">Recently popped off during an event</span>
               </template>
             </span>
             <!-- Game identity -->
-            <Flex y-center gap="s">
+            <Flex y-center gap="s" class="popped-off-card__game-row">
               <GameDetailsModalTrigger v-slot="{ open }" :game-id="poppedOff.game.id">
-                <span style="cursor: pointer" @click.prevent.stop="open">
+                <span class="popped-off-card__icon-trigger" @click.prevent.stop="open">
                   <GameIcon :game="poppedOff.game" size="m" />
                 </span>
               </GameDetailsModalTrigger>
-              <span class="text-xxl text-bold">{{ poppedOff.game.name }}</span>
+              <span class="text-xxl text-bold popped-off-card__game-name">{{ poppedOff.game.name }}</span>
             </Flex>
             <!-- Peak stat -->
-            <Flex y-center x-between gap="s" expand class="mt-xs">
-              <Flex y-center gap="xs">
+            <div class="popped-off-card__bottom mt-xs">
+              <Flex y-center gap="xs" class="popped-off-card__peak">
                 <Icon name="ph:fire" size="16" class="text-color-lighter" />
                 <span class="text-s text-color-lighter">
                   {{ poppedOff.peakCount }} {{ poppedOff.peakCount === 1 ? 'person' : 'people' }} at peak - {{ peakDateLabel }}
                 </span>
               </Flex>
-              <GlowCard halo>
+              <GlowCard halo class="popped-off-card__cta-wrap">
                 <span class="popped-off-card__event-cta">
                   <Icon name="ph:calendar-check" size="18" class="text-color-lighter" />
-                  <span class="text-s text-bold">{{ linkedEvent.title }}</span>
+                  <span class="text-s text-bold popped-off-card__event-title">{{ linkedEvent.title }}</span>
                   <Icon name="ph:arrow-right" size="14" class="text-color-lighter popped-off-card__event-cta-arrow" />
                 </span>
               </GlowCard>
-            </Flex>
+            </div>
           </Flex>
         </div>
       </Card>
@@ -198,17 +199,60 @@ watchEffect(() => {
     display: flex;
     align-items: center;
     gap: var(--space-l);
+
+    @media (max-width: 480px) {
+      padding: var(--space-m) var(--space-l) var(--space-l);
+      justify-content: center;
+      text-align: center;
+    }
+  }
+
+  &__game-row {
+    @media (max-width: 480px) {
+      order: -1;
+      justify-content: center;
+    }
   }
 
   &__left {
     flex: 1;
     min-width: 0;
+
+    @media (max-width: 480px) {
+      align-items: center;
+      width: 100%;
+      gap: var(--space-l);
+    }
+  }
+
+  &__label-desktop {
+    @media (max-width: 480px) {
+      display: none;
+    }
+  }
+
+  &__label-mobile {
+    display: none;
+
+    @media (max-width: 480px) {
+      display: inline;
+    }
   }
 
   &__link {
     display: block;
     color: inherit;
     text-decoration: none;
+  }
+
+  &__icon-trigger {
+    cursor: pointer;
+  }
+
+  &__game-name {
+    @media (max-width: 480px) {
+      font-size: var(--font-size-xl);
+    }
   }
 
   &__label {
@@ -222,6 +266,11 @@ watchEffect(() => {
     &--live {
       color: var(--color-accent);
     }
+
+    @media (max-width: 480px) {
+      font-size: var(--font-size-l);
+      letter-spacing: 0.08em;
+    }
   }
 
   &__live-dot {
@@ -233,12 +282,56 @@ watchEffect(() => {
     animation: shimmer 2s linear infinite;
   }
 
+  &__bottom {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-s);
+    flex-wrap: wrap;
+
+    @media (max-width: 480px) {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-xs);
+    }
+  }
+
+  &__peak {
+    flex-shrink: 0;
+
+    @media (max-width: 480px) {
+      justify-content: center;
+    }
+  }
+
+  &__cta-wrap {
+    flex-shrink: 1;
+    min-width: 0;
+
+    @media (max-width: 480px) {
+      width: 100%;
+    }
+  }
+
+  &__event-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+  }
+
   &__event-cta {
     display: flex;
     align-items: center;
     gap: var(--space-xs);
     padding: var(--space-xs) var(--space-s);
     cursor: default;
+
+    @media (max-width: 480px) {
+      justify-content: center;
+      width: 100%;
+    }
   }
 
   &__event-cta-arrow {

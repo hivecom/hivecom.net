@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
-import { computed, onMounted, ref, watch } from 'vue'
+import { Button, Flex, Input, Sheet, Textarea, Tooltip } from '@dolanske/vui'
+import { computed, ref, watch } from 'vue'
 import { useSupabaseClient, useSupabaseUser } from '#imports'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
+import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
 import TagInput from '@/components/Shared/TagInput.vue'
 import { deleteProjectBanner, getProjectBannerUrl, uploadProjectBanner } from '@/lib/storage'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
@@ -36,18 +37,6 @@ interface QueryProject {
   github: string | null
 }
 
-// Interface for profile selection
-interface ProfileSelect {
-  id: string
-  username: string
-}
-
-// Interface for Select options
-interface SelectOption {
-  label: string
-  value: string
-}
-
 const isOpen = defineModel<boolean>('open', { default: false })
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -72,33 +61,6 @@ const canManageBanner = computed(() => !!props.project)
 const showDeleteConfirm = ref(false)
 const saveLoading = ref(false)
 
-// Loading states for dropdowns
-const loadingProfiles = ref(true)
-
-// Options for dropdowns
-const profiles = ref<ProfileSelect[]>([])
-
-// Computed options for selects
-const profileOptions = computed(() =>
-  profiles.value.map(profile => ({
-    label: profile.username || 'Unknown User',
-    value: profile.id,
-  })),
-)
-
-// Computed property to handle conversion between form values and select options
-const selectedOwnerComputed = computed({
-  get: () => {
-    if (!projectForm.value.owner)
-      return []
-    const option = profileOptions.value.find(opt => opt.value === projectForm.value.owner)
-    return option ? [option] : []
-  },
-  set: (value: SelectOption[] | null | undefined) => {
-    projectForm.value.owner = (value && value.length > 0 && value[0]) ? value[0].value : null
-  },
-})
-
 // GitHub repository format validation (username/repository)
 const githubRegex = /^\w[\w.-]*\/\w[\w.-]*$/
 
@@ -110,25 +72,6 @@ const validation = computed(() => ({
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
-
-// Fetch dropdown data
-async function fetchDropdownData() {
-  try {
-    // Fetch profiles
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .order('username')
-
-    if (profilesError)
-      throw profilesError
-    profiles.value = profilesData || []
-    loadingProfiles.value = false
-  }
-  catch (error) {
-    console.error('Error fetching dropdown data:', error)
-  }
-}
 
 // Update form data when project prop changes
 watch(
@@ -266,9 +209,6 @@ function confirmDelete() {
     return
   emit('delete', props.project.id)
 }
-
-// Fetch dropdown data when component mounts
-onMounted(fetchDropdownData)
 </script>
 
 <template>
@@ -343,18 +283,14 @@ onMounted(fetchDropdownData)
           placeholder="Enter external link (optional)"
         />
 
-        <Select
-          v-model="selectedOwnerComputed"
-          search
-          expand
-          name="owner"
-          label="Owner"
-          placeholder="Select owner"
-          :options="profileOptions"
-          :loading="loadingProfiles"
-          searchable
-          show-clear
-        />
+        <div>
+          <label class="input-label">Owner</label>
+          <ProfileSelect
+            v-model="projectForm.owner"
+            placeholder="Select owner"
+            expand
+          />
+        </div>
 
         <TagInput
           v-model="projectForm.tags"

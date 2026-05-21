@@ -12,11 +12,13 @@ import { glowGroupKey } from '@/components/Shared/glowGroup'
 
 interface Props {
   noGlow?: boolean
+  noBorders?: boolean
   halo?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   noGlow: false,
+  noBorders: false,
   halo: false,
 })
 
@@ -92,6 +94,7 @@ function handleMouseLeave() {
     class="glow-card"
     :class="{
       'glow-card--no-glow': props.noGlow,
+      'glow-card--no-borders': props.noBorders,
       'glow-card--halo': props.halo,
     }"
     @mousemove="handleMouseMove"
@@ -167,11 +170,13 @@ function handleMouseLeave() {
     }
   }
 
-  &--no-glow {
+  &--no-borders {
     &::after {
       display: none;
     }
+  }
 
+  &--no-glow {
     & > :deep(*::before) {
       display: none;
     }

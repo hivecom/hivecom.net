@@ -2316,6 +2316,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      array_elements_match_slug: { Args: { arr: string[] }; Returns: boolean }
       audit_fields_unchanged: {
         Args: { created_at: string; created_by: string }
         Returns: boolean
@@ -2470,6 +2471,7 @@ export type Database = {
           }
       get_admin_events_paginated: {
         Args: {
+          p_game_ids?: number[]
           p_hide_recurring?: boolean
           p_is_official?: boolean
           p_limit?: number
@@ -2839,6 +2841,10 @@ export type Database = {
           title: string
         }[]
       }
+      get_forum_activity_feed_count_since: {
+        Args: { p_exclude?: string; p_since: string }
+        Returns: number
+      }
       get_forum_activity_feed_today_count: {
         Args: { p_exclude?: string }
         Returns: number
@@ -2887,6 +2893,15 @@ export type Database = {
         | {
             Args: {
               p_game_id?: number
+              p_hide_recurring?: boolean
+              p_is_official?: boolean
+              p_search?: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_game_ids?: number[]
               p_hide_recurring?: boolean
               p_is_official?: boolean
               p_search?: string
@@ -3013,6 +3028,48 @@ export type Database = {
         | {
             Args: {
               p_game_id?: number
+              p_hide_recurring?: boolean
+              p_is_official?: boolean
+              p_limit?: number
+              p_offset?: number
+              p_search?: string
+            }
+            Returns: {
+              created_at: string
+              created_by: string | null
+              date: string
+              description: string
+              discord_event_id: string | null
+              discord_last_synced_at: string | null
+              duration_minutes: number | null
+              games: number[] | null
+              google_community_event_id: string | null
+              google_community_last_synced_at: string | null
+              google_event_id: string | null
+              google_last_synced_at: string | null
+              id: number
+              is_official: boolean
+              link: string | null
+              location: string | null
+              markdown: string | null
+              modified_at: string | null
+              modified_by: string | null
+              note: string | null
+              recurrence_exception: boolean
+              recurrence_parent_id: number | null
+              recurrence_rule: string | null
+              title: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "events"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_game_ids?: number[]
               p_hide_recurring?: boolean
               p_is_official?: boolean
               p_limit?: number

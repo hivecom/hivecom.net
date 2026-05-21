@@ -55,7 +55,7 @@ const {
   handleEditFromDetails,
   refresh: fetchExpenses,
 } = useAdminCrudTable<Expense, TransformedExpense>({
-  resourceType: 'funding_expenses',
+  resourceType: 'funding',
   queryParamKey: 'expense',
   refreshSignal,
   fetch: async () => {
@@ -239,7 +239,7 @@ async function handleExpenseDelete(expenseId: number) {
             <Table.Cell>{{ expense.Duration }}</Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
-                resource-type="funding_expenses"
+                resource-type="funding"
                 :item="expense._original"
                 button-size="s"
                 @edit="(item) => openEditExpenseForm(item as Expense)"

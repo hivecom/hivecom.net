@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import { Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
-import { useDataGames } from '@/composables/useDataGames'
+import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
 
 // Interface for gameserver query result
@@ -26,12 +26,6 @@ interface QueryGameserver {
   query_protocol: string | null
   query_port: number | null
   region: 'eu' | 'na' | 'all' | null
-}
-
-// Interface for profile selection
-interface ProfileSelect {
-  id: string
-  username: string
 }
 
 // Interface for Select options
@@ -79,14 +73,48 @@ const saveLoading = ref(false)
 
 // Loading states for dropdowns
 const loadingContainers = ref(true)
-const loadingProfiles = ref(true)
 
-// Games via shared composable
-const { games } = useDataGames()
+// Games state - loaded via debounced server-side search
+const games = ref<Tables<'games'>[]>([])
+const gamesLoading = ref(false)
+let gameSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+async function searchGames(query: string) {
+  gamesLoading.value = true
+  try {
+    let req = supabase
+      .from('games')
+      .select('*')
+      .order('name')
+      .limit(30)
+
+    if (query.trim()) {
+      req = req.or(`name.ilike.%${query.trim()}%,shorthand.ilike.%${query.trim()}%`)
+    }
+
+    const { data, error } = await req
+    if (error)
+      throw error
+    games.value = data ?? []
+  }
+  catch (err) {
+    console.error('GameServerForm: failed to fetch games', err)
+  }
+  finally {
+    gamesLoading.value = false
+  }
+}
+
+function debouncedSearchGames(query: string) {
+  if (gameSearchDebounceTimer !== null)
+    clearTimeout(gameSearchDebounceTimer)
+  gameSearchDebounceTimer = setTimeout(() => {
+    searchGames(query)
+  }, 300)
+}
 
 // Options for dropdowns
 const containers = ref<Tables<'network_containers'>[]>([])
-const profiles = ref<ProfileSelect[]>([])
 
 // Query protocol options
 const queryProtocolOptions = [
@@ -106,13 +134,6 @@ const containerOptions = computed(() =>
   containers.value.map(container => ({
     label: container.name,
     value: container.name,
-  })),
-)
-
-const profileOptions = computed(() =>
-  profiles.value.map(profile => ({
-    label: profile.username || 'Unknown User',
-    value: profile.id,
   })),
 )
 
@@ -148,18 +169,6 @@ const selectedContainerComputed = computed({
   },
 })
 
-const selectedAdministratorComputed = computed({
-  get: () => {
-    if (!gameserverForm.value.administrator)
-      return []
-    const option = profileOptions.value.find(opt => opt.value === gameserverForm.value.administrator)
-    return option ? [option] : []
-  },
-  set: (value: SelectOption[] | null | undefined) => {
-    gameserverForm.value.administrator = (value && value.length > 0) ? value[0]!.value : null
-  },
-})
-
 const selectedQueryProtocolComputed = computed({
   get: () => {
     if (!gameserverForm.value.query_protocol)
@@ -185,7 +194,6 @@ const isValid = computed(() => Object.values(validation.value).every(Boolean))
 // Fetch dropdown data
 async function fetchDropdownData() {
   try {
-    // Fetch containers
     const { data: containersData, error: containersError } = await supabase
       .from('network_containers')
       .select('*')
@@ -195,17 +203,6 @@ async function fetchDropdownData() {
       throw containersError
     containers.value = containersData || []
     loadingContainers.value = false
-
-    // Fetch profiles
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .order('username')
-
-    if (profilesError)
-      throw profilesError
-    profiles.value = profilesData || []
-    loadingProfiles.value = false
   }
   catch (error) {
     console.error('Error fetching dropdown data:', error)
@@ -271,8 +268,12 @@ function handleClose() {
 }
 
 watch(isOpen, (open) => {
-  if (!open)
+  if (!open) {
     saveLoading.value = false
+  }
+  else if (games.value.length === 0) {
+    searchGames('')
+  }
 })
 
 // Handle form submission
@@ -313,8 +314,10 @@ function confirmDelete() {
   emit('delete', props.gameserver.id)
 }
 
-// Fetch dropdown data when component mounts
-onMounted(fetchDropdownData)
+onMounted(() => {
+  fetchDropdownData()
+  searchGames('')
+})
 </script>
 
 <template>
@@ -375,6 +378,8 @@ onMounted(fetchDropdownData)
             <GameSelect
               :model-value="selectedGameIds"
               :games="games"
+              :loading="gamesLoading"
+              :on-search="debouncedSearchGames"
               placeholder="Select game"
               expand
               @update:model-value="onGameSelect"
@@ -397,18 +402,16 @@ onMounted(fetchDropdownData)
 
         <!-- Second row: Administrator and Port -->
         <Flex gap="m" wrap expand>
-          <Select
-            v-model="selectedAdministratorComputed"
-            search
-            expand
-            name="administrator"
-            label="Administrator"
-            placeholder="Select administrator"
-            :options="profileOptions"
-            :loading="loadingProfiles"
-            searchable
-            show-clear
-          />
+          <Flex column gap="s" expand>
+            <div class="gameserver-form__label">
+              Administrator
+            </div>
+            <ProfileSelect
+              v-model="gameserverForm.administrator"
+              expand
+              placeholder="Select administrator"
+            />
+          </Flex>
 
           <Input
             v-model="gameserverForm.port"

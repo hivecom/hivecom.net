@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Alert, Flex, Sheet } from '@dolanske/vui'
+import { Alert, Badge, Flex, Sheet } from '@dolanske/vui'
 
 import constants from '~~/constants.json'
 
@@ -27,6 +27,10 @@ const props = defineProps<{
       docker_control?: boolean | null
       accessible?: boolean | null
     } | null
+    gameserver: readonly {
+      id: number
+      name: string
+    }[] | null
   } | null
   logs: string
   logsLoading: boolean
@@ -51,6 +55,10 @@ interface ContainerWithServer {
     docker_control?: boolean | null
     accessible?: boolean | null
   } | null
+  gameserver: readonly {
+    id: number
+    name: string
+  }[] | null
 }
 
 interface ContainerAction {
@@ -148,6 +156,18 @@ const logsVisible = computed(() =>
           </template>
           <DetailRow label="Status">
             <ContainerStatusIndicator :status="containerStatus" :show-label="true" />
+          </DetailRow>
+          <DetailRow label="Gameserver">
+            <template v-if="container.gameserver && container.gameserver.length > 0">
+              <NuxtLink :to="`/admin/network?tab=Gameservers&gameserver=${container.gameserver[0]!.id}`">
+                <Badge variant="accent" size="m" outline>
+                  {{ container.gameserver[0]!.name }}
+                </Badge>
+              </NuxtLink>
+            </template>
+            <Badge v-else variant="neutral" size="m">
+              Not linked
+            </Badge>
           </DetailRow>
           <DetailRow label="Server">
             <span class="text-s">{{ container.server?.address || 'Unknown' }}</span>

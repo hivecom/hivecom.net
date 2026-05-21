@@ -205,8 +205,8 @@ defineOgImage('Default', {
 
       <section>
         <!-- Filters (list view only) -->
-        <Flex v-if="activeTab === 'list'" gap="s" wrap class="mb-l" y-center>
-          <Input v-model="search" placeholder="Search events..." style="min-width: 200px" :expand="false">
+        <Flex v-if="activeTab === 'list'" gap="s" wrap class="mb-l" y-center expand>
+          <Input v-model="search" placeholder="Search events..." style="min-width: 200px" :expand="isMobile">
             <template #start>
               <Icon name="ph:magnifying-glass" />
             </template>
@@ -223,7 +223,7 @@ defineOgImage('Default', {
             v-model="gameFilterIds"
             :games="eventGames"
             placeholder="Game"
-            expand
+            :expand="isMobile"
           />
           <Flex v-if="user" :gap="0" y-center>
             <Switch v-model="hideRecurring" />

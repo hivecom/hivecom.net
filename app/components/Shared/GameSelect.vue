@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Dropdown, DropdownItem, DropdownTitle, Input, searchString } from '@dolanske/vui'
-import { computed, ref } from 'vue'
+import { Button, Dropdown, DropdownItem, DropdownTitle, Input, searchString, Spinner } from '@dolanske/vui'
+import { computed, ref, watch } from 'vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
 
 interface Props {
@@ -11,6 +11,8 @@ interface Props {
   expand?: boolean
   clearable?: boolean
   size?: 's' | 'm'
+  loading?: boolean
+  onSearch?: (query: string) => void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -26,13 +28,30 @@ const emit = defineEmits<{
 
 const searchQuery = ref('')
 
+// When onSearch is provided, parent controls the list - just return props.games as-is.
+// When onSearch is not provided, filter locally.
 const filteredGames = computed(() => {
+  if (props.onSearch)
+    return props.games
   if (!searchQuery.value)
     return props.games
   const query = searchQuery.value.toLowerCase()
   return props.games.filter(game =>
     searchString([game.name ?? '', game.shorthand ?? ''], query),
   )
+})
+
+// Debounce timer for external search
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(searchQuery, (query) => {
+  if (!props.onSearch)
+    return
+  if (searchDebounceTimer !== null)
+    clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(() => {
+    props.onSearch!(query)
+  }, 300)
 })
 
 const selectedGame = computed(() =>
@@ -95,6 +114,10 @@ function clearSelection() {
       <DropdownTitle>
         <Input v-model="searchQuery" placeholder="Search..." expand focus />
       </DropdownTitle>
+
+      <DropdownItem v-if="loading && filteredGames.length === 0" disabled>
+        <Spinner size="s" />
+      </DropdownItem>
 
       <DropdownItem
         v-for="game in filteredGames"
