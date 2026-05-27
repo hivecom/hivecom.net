@@ -40,6 +40,7 @@ const props = defineProps<{
     discord_id: string | null
     discord_display_name?: string | null
     steam_id: string | null
+    lastfm_username?: string | null
     introduction: string | null
     markdown: string | null
     banned: boolean
@@ -417,7 +418,7 @@ defineExpose({ refreshBadges })
 
         <!-- Platform Connections -->
         <Flex
-          v-if="user.patreon_id || user.discord_id || user.steam_id || user.has_teamspeak"
+          v-if="user.patreon_id || user.discord_id || user.steam_id || user.has_teamspeak || user.lastfm_username"
           gap="s"
           :column="isBelowSmall"
           :wrap="!isBelowSmall"
@@ -494,6 +495,26 @@ defineExpose({ refreshBadges })
             <DetailTable bare>
               <DetailRow label="Steam ID">
                 <CopyValue :text="user.steam_id!" link />
+              </DetailRow>
+            </DetailTable>
+          </Card>
+
+          <Card v-if="user.lastfm_username" separators class="card-bg connection-card" expand>
+            <template #header>
+              <Flex x-between y-center>
+                <Flex gap="xs" y-center>
+                  <Icon name="simple-icons:lastdotfm" />
+                  <h6>Last.fm</h6>
+                </Flex>
+                <a :href="`https://www.last.fm/user/${user.lastfm_username}`" target="_blank" rel="noopener noreferrer">
+                  <Icon class="text-color-light" name="ph:arrow-square-out" />
+                </a>
+              </Flex>
+            </template>
+
+            <DetailTable bare>
+              <DetailRow label="Username">
+                <span class="text-s">{{ user.lastfm_username }}</span>
               </DetailRow>
             </DetailTable>
           </Card>

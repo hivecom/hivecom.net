@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ImpersonatableRole } from '@/composables/useRoleImpersonation'
-import { Button, Divider, Dropdown, DropdownItem, DropdownTitle, Flex, Spinner, Tooltip } from '@dolanske/vui'
+import { Button, Divider, Dropdown, DropdownItem, DropdownTitle, Flex, Popout, Spinner, Tooltip } from '@dolanske/vui'
 import { ref } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
@@ -41,6 +41,13 @@ const showComplaintModal = ref(false)
 // Effective role respects impersonation
 const { isAdminOrMod, role, isImpersonating, realRole } = useEffectiveRole()
 
+const impersonatePopoutAnchor = ref<HTMLElement | null>(null)
+const impersonatePopoutOpen = ref(false)
+
+function toggleImpersonatePopout() {
+  impersonatePopoutOpen.value = !impersonatePopoutOpen.value
+}
+
 // Impersonation controls
 const { start: startImpersonation, stop: stopImpersonationFn } = useRoleImpersonation()
 
@@ -48,6 +55,7 @@ const injectedStopImpersonation = inject<() => void>('stopImpersonation', () => 
 
 function impersonate(role: ImpersonatableRole) {
   startImpersonation(role)
+  impersonatePopoutOpen.value = false
   dropdown.value?.close()
 }
 
@@ -119,46 +127,53 @@ async function signOut() {
             >
               {{ isImpersonating ? ' *' : '' }}
             </RoleIndicator>
-            <Dropdown v-if="realRole === 'admin' && !isImpersonating" placement="bottom-end" min-width="160px">
-              <template #trigger="{ toggle }">
-                <Button square plain size="s" aria-label="Impersonate role" @click.stop="toggle">
-                  <Icon name="ph:user-circle-dashed" />
-                </Button>
-              </template>
-              <DropdownTitle>
-                <Flex expand x-between y-center>
-                  <span class="text-xs">Impersonate</span>
-                  <Tooltip>
-                    <template #tooltip>
-                      <p class="text-xs">
-                        Temporarily assume the <b>visual</b> permissions of another role for testing purposes. Your current session will be unaffected and you can switch back at any time.
-                      </p>
-                      <p class="text-xs mt-s">
-                        <i>
-                          Note: This is purely a client-side visual change and not an effective way to test RLS policies, as API responses will not be altered. Use with caution and always verify with real accounts when testing permissions.
-                        </i>
-                      </p>
-                    </template>
-                    <Icon name="ph:question" class="ml-xxs" />
-                  </Tooltip>
-                </Flex>
-              </DropdownTitle>
-              <DropdownItem @click="impersonate('moderator')">
-                <RoleIndicator role="moderator" tiny />
-              </DropdownItem>
-              <DropdownItem @click="impersonate('user')">
-                <RoleIndicator role="user" tiny />
-              </DropdownItem>
-              <template v-if="isImpersonating">
-                <Divider class="my-xxs" />
-                <DropdownItem @click="stopImpersonating">
-                  <template #icon>
-                    <Icon name="ph:arrow-counter-clockwise" />
+            <template v-if="realRole === 'admin' && !isImpersonating">
+              <Button ref="impersonatePopoutAnchor" square plain size="s" aria-label="Impersonate role" @click.stop="toggleImpersonatePopout">
+                <Icon name="ph:user-circle-dashed" />
+              </Button>
+              <Popout
+                :anchor="impersonatePopoutAnchor"
+                :visible="impersonatePopoutOpen"
+                placement="left-start"
+                @click-outside="impersonatePopoutOpen = false"
+              >
+                <div class="vui-dropdown">
+                  <DropdownTitle>
+                    <Flex expand x-between y-center>
+                      <span class="text-xs">Impersonate</span>
+                      <Tooltip>
+                        <template #tooltip>
+                          <p class="text-xs">
+                            Temporarily assume the <b>visual</b> permissions of another role for testing purposes. Your current session will be unaffected and you can switch back at any time.
+                          </p>
+                          <p class="text-xs mt-s">
+                            <i>
+                              Note: This is purely a client-side visual change and not an effective way to test RLS policies, as API responses will not be altered. Use with caution and always verify with real accounts when testing permissions.
+                            </i>
+                          </p>
+                        </template>
+                        <Icon name="ph:question" class="ml-xxs" />
+                      </Tooltip>
+                    </Flex>
+                  </DropdownTitle>
+                  <DropdownItem @click="impersonate('moderator')">
+                    <RoleIndicator role="moderator" tiny />
+                  </DropdownItem>
+                  <DropdownItem @click="impersonate('user')">
+                    <RoleIndicator role="user" tiny />
+                  </DropdownItem>
+                  <template v-if="isImpersonating">
+                    <Divider class="my-xxs" />
+                    <DropdownItem @click="stopImpersonating">
+                      <template #icon>
+                        <Icon name="ph:arrow-counter-clockwise" />
+                      </template>
+                      Reset
+                    </DropdownItem>
                   </template>
-                  Reset
-                </DropdownItem>
-              </template>
-            </Dropdown>
+                </div>
+              </Popout>
+            </template>
           </Flex>
         </Flex>
       </DropdownTitle>

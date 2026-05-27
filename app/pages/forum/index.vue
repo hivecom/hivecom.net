@@ -473,7 +473,7 @@ async function fetchDiscussionsIndex() {
 
   const { data, error } = await supabase
     .from('discussions')
-    .select('id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id')
+    .select('id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, last_activity_by, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id')
     .eq('is_draft', false)
     .not('discussion_topic_id', 'is', null)
 
@@ -601,7 +601,7 @@ const breadcrumbItems = computed(() =>
 const topicDiscussionsLoading = ref<Set<string>>(new Set())
 const topicPaginationLoading = ref<Set<string>>(new Set())
 
-const DISCUSSION_SELECT = 'id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id'
+const DISCUSSION_SELECT = 'id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, last_activity_by, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id'
 
 async function loadTopicDiscussions(topicId: string, page: number = 0, isExplicitPageChange: boolean = false) {
   const topic = topics.value.find(t => t.id === topicId)
@@ -1452,7 +1452,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               :discussion-count="subtopic.total_discussion_count"
               :reply-count="subtopic.total_reply_count"
               :view-count="subtopic.total_view_count"
-              :has-new="settings.show_forum_unread_bubbles && forumUnread.isTopicNewWithDiscussions(subtopic.id, subtopic.last_activity_at, [...(subtopic.stickyDiscussions ?? []), ...(subtopic.discussions ?? [])], subtopic.discussionsLoaded)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isTopicNewWithDiscussions(subtopic.id, subtopic.last_activity_at, [...(subtopic.stickyDiscussions ?? []), ...(subtopic.discussions ?? [])], subtopic.discussionsLoaded, (subtopic as any).last_activity_by /* TODO: regenerate types after migration */)"
               @click="setActiveTopicFromTopic(subtopic)"
               @update="replaceItemData('topic', $event)"
               @remove="removeItem('topic', $event)"
@@ -1464,7 +1464,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               :class="{ 'forum__category-post--dimmed': topicPaginationLoading.has(topic.id) }"
               :data="discussion"
               :last-activity="discussion.last_activity_at"
-              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.reply_count)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.reply_count, (discussion as any).last_activity_by /* TODO: regenerate types after migration */)"
               @click="forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)"
               @update="replaceItemData('discussion', $event)"
               @remove="removeItem('discussion', $event)"
@@ -1475,7 +1475,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               :class="{ 'forum__category-post--dimmed': topicPaginationLoading.has(topic.id) }"
               :data="discussion"
               :last-activity="discussion.last_activity_at"
-              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.reply_count)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.reply_count, (discussion as any).last_activity_by /* TODO: regenerate types after migration */)"
               @click="forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)"
               @update="replaceItemData('discussion', $event)"
               @remove="removeItem('discussion', $event)"

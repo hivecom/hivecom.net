@@ -43,6 +43,8 @@ const STORAGE_KEY = 'forum-unread-v3'
  * their current count to prevent a first-visit flood.
  */
 export function useDataForumUnread() {
+  const currentUserId = useUserId()
+
   const storage = useStorage<ForumUnreadStorage>(
     STORAGE_KEY,
     { topics: {}, discussions: {}, feedVisitedAt: null },
@@ -88,11 +90,14 @@ export function useDataForumUnread() {
   function isTopicNewWithDiscussions(
     topicId: string,
     lastActivityAt: string | null,
-    discussions: Array<{ id: string, reply_count?: number | null }>,
+    discussions: Array<{ id: string, reply_count?: number | null, last_activity_by?: string | null }>,
     discussionsLoaded: boolean,
+    lastActivityBy?: string | null,
   ): boolean {
+    if (lastActivityBy != null && lastActivityBy === currentUserId.value)
+      return false
     if (discussionsLoaded) {
-      return discussions.some(d => isDiscussionNew(d.id, d.reply_count ?? null))
+      return discussions.some(d => isDiscussionNew(d.id, d.reply_count ?? null, d.last_activity_by))
     }
     return isTopicNew(topicId, lastActivityAt)
   }
@@ -102,7 +107,9 @@ export function useDataForumUnread() {
    * seenReplyCount of -1 means the discussion was never seen (new in a known topic).
    * Always returns false for discussions not yet stored.
    */
-  function isDiscussionNew(discussionId: string, replyCount: number | null): boolean {
+  function isDiscussionNew(discussionId: string, replyCount: number | null, lastActivityBy?: string | null): boolean {
+    if (lastActivityBy != null && lastActivityBy === currentUserId.value)
+      return false
     const seen = storage.value.discussions[discussionId]
     if (!seen)
       return false

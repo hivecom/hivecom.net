@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, Flex, Grid, PopoutHover, Skeleton } from '@dolanske/vui'
+import { Flex, Grid, PopoutHover, Skeleton } from '@dolanske/vui'
 import { computed, onMounted, ref } from 'vue'
 import GameEventsSection from '@/components/Community/Games/GameEventsSection.vue'
 import GameMarquee from '@/components/Community/Games/GameMarquee.vue'
 import GamePoppedOffCard from '@/components/Community/Games/GamePoppedOffCard.vue'
 import GameRunnerUpCard from '@/components/Community/Games/GameRunnerUpCard.vue'
+import GameSteamCallout from '@/components/Community/Games/GameSteamCallout.vue'
 import GameTopCard from '@/components/Community/Games/GameTopCard.vue'
 import RecentGameActivitySection from '@/components/Community/Games/RecentGameActivitySection.vue'
 import GameServerModal from '@/components/GameServers/GameServerModal.vue'
@@ -95,9 +96,15 @@ const top3Games = computed(() => {
   if (!games.value.length || !metricsHistory.value.length)
     return []
 
+  const score = (id: string) => {
+    const sum = gamePlaySums.value.get(id) ?? 0
+    const peak = gamePlayTotals.value.get(id) ?? 0
+    return sum + peak * 2
+  }
+
   return [...games.value]
     .filter(g => gamePlaySums.value.has(String(g.id)))
-    .sort((a, b) => (gamePlaySums.value.get(String(b.id)) ?? 0) - (gamePlaySums.value.get(String(a.id)) ?? 0))
+    .sort((a, b) => score(String(b.id)) - score(String(a.id)))
     .slice(0, 3)
 })
 
@@ -430,29 +437,7 @@ const totalCurrentPlayers = computed<number | null>(() => {
         />
       </section>
 
-      <!-- CTA hidden for now -->
-      <section v-if="false" class="mt-m">
-        <Card class="cta-card">
-          <Flex :column="isMobile" gap="l" y-center x-between expand>
-            <Flex column gap="xs">
-              <h2 class="text-bold text-xl">
-                Ready to play?
-              </h2>
-              <p class="text-color-lighter">
-                Browse our game servers, see who's online, and connect directly from your browser.
-              </p>
-            </Flex>
-            <NuxtLink to="/servers/gameservers" :class="isMobile ? 'w-100' : ''">
-              <Button :expand="isMobile" variant="accent">
-                <template #end>
-                  <Icon name="ph:arrow-right" />
-                </template>
-                Browse Servers
-              </Button>
-            </NuxtLink>
-          </Flex>
-        </Card>
-      </section>
+      <GameSteamCallout class="mt-m" />
       <ChartActivityHistogramModal
         v-model:open="activityModalOpen"
         title="Game Activity"
@@ -539,13 +524,6 @@ const totalCurrentPlayers = computed<number | null>(() => {
     bottom: var(--space-s);
     right: var(--space-m);
   }
-}
-
-// ── CTA ───────────────────────────────────────────────────────────────────────
-.cta-card {
-  padding: var(--space-xl);
-  background: linear-gradient(135deg, var(--color-bg-raised) 0%, var(--color-bg-medium) 100%);
-  border: 1px solid var(--color-border);
 }
 
 // ── Playing users modal grid ──────────────────────────────────────────────────

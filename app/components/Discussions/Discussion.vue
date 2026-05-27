@@ -1059,7 +1059,7 @@ async function submitReply() {
         realtime.pendingReplyCount.value = 0
         // Notify parent so the forum unread state can be updated, preventing
         // a spurious activity indicator when the user was the last poster.
-        emit('replySubmitted', comments.value.length, discussion.value.id)
+        emit('replySubmitted', (discussion.value.reply_count ?? 0) + 1, discussion.value.id)
       }
 
       formLoading.value = false

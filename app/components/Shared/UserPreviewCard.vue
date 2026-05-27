@@ -135,8 +135,8 @@ const {
     <template v-if="loading">
       <Flex class="user-preview-card__header" expand x-between>
         <Skeleton :width="88" :height="88" :radius="44" />
-        <Flex gap="xxs" class="user-preview-card__badges-skeleton">
-          <Skeleton v-for="i in 3" :key="i" :width="28" :height="28" :radius="14" />
+        <Flex gap="xxs" class="user-preview-card__badges-skeleton" style="margin-top:-16px">
+          <Skeleton v-for="i in 3" :key="i" :width="48" :height="48" :radius="32" style="margin-left: -12px" />
         </Flex>
       </Flex>
 

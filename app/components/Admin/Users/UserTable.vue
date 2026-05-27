@@ -141,6 +141,7 @@ const platformOptions: SelectOption[] = [
   { label: 'Discord', value: 'discord' },
   { label: 'Patreon', value: 'patreon' },
   { label: 'TeamSpeak', value: 'teamspeak' },
+  { label: 'Last.fm', value: 'lastfm' },
 ]
 
 // ─── Action state ─────────────────────────────────────────────────────────────
@@ -221,6 +222,7 @@ function getPlatformInfo(platform: string) {
     discord: { icon: 'ph:discord-logo', label: 'Discord', color: 'var(--color-text-purple)' },
     patreon: { icon: 'ph:patreon-logo', label: 'Patreon', color: 'var(--color-accent)' },
     teamspeak: { icon: 'mdi:teamspeak', label: 'TeamSpeak', color: 'var(--color-text-blue)' },
+    lastfm: { icon: 'simple-icons:lastdotfm', label: 'Last.fm', color: 'var(--color-text-red)' },
   }
   return map[platform] ?? { icon: 'ph:question', label: 'Unknown', color: 'var(--color-text-light)' }
 }
@@ -632,8 +634,19 @@ defineExpose({ refresh: fetchUsers })
                       </Button>
                     </Tooltip>
 
+                    <Tooltip v-if="user.lastfm_username != null && user.lastfm_username !== ''" placement="top">
+                      <template #tooltip>
+                        <div>Last.fm: {{ user.lastfm_username }}</div>
+                      </template>
+                      <a :href="`https://www.last.fm/user/${user.lastfm_username}`" target="_blank" rel="noopener noreferrer" @click.stop>
+                        <Button variant="gray" size="s" square class="platform-button lastfm">
+                          <Icon :name="getPlatformInfo('lastfm').icon" size="16" />
+                        </Button>
+                      </a>
+                    </Tooltip>
+
                     <span
-                      v-if="(user.steam_id == null || user.steam_id === '') && (user.discord_id == null || user.discord_id === '') && (user.patreon_id == null || user.patreon_id === '') && !user.has_teamspeak"
+                      v-if="(user.steam_id == null || user.steam_id === '') && (user.discord_id == null || user.discord_id === '') && (user.patreon_id == null || user.patreon_id === '') && !user.has_teamspeak && (user.lastfm_username == null || user.lastfm_username === '')"
                       class="text-color-lightest text-s"
                     >
                       No connections
@@ -742,6 +755,13 @@ defineExpose({ refresh: fetchUsers })
     &:hover {
       background-color: var(--color-bg-blue-lowered);
       color: var(--color-text-blue);
+    }
+  }
+
+  &.lastfm {
+    &:hover {
+      background-color: var(--color-bg-red-lowered);
+      color: var(--color-text-red);
     }
   }
 }

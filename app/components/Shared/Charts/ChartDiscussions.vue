@@ -113,7 +113,16 @@ const chartData = computed(() => {
   return { datasets }
 })
 
-const localChartOptions: ChartOptions<'bar'> = {
+const computedBarThickness = computed(() => {
+  const count = metricsHistory.value.length
+  const width = chartWrapperWidth.value
+  if (!count || !width)
+    return undefined
+  const raw = (width / count) * 0.7
+  return Math.max(1, Math.floor(raw))
+})
+
+const localChartOptions = computed<ChartOptions<'bar'>>(() => ({
   plugins: {
     legend: { display: false },
     tooltip: {
@@ -148,26 +157,37 @@ const localChartOptions: ChartOptions<'bar'> = {
   },
   datasets: {
     bar: {
-      barPercentage: 1.0,
-      categoryPercentage: 0.7,
+      barThickness: computedBarThickness.value,
     },
   },
-}
+}))
 
-const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions) : {})
+const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions.value) : {})
 
 function refreshChartOptions() {
   nextTick(() => {
     const compactOverride: ChartOptions<'bar'> = props.compact
       ? { scales: { x: { ticks: { display: props.showXAxis ?? false } }, y: { ticks: { display: props.showYAxis } } } }
       : {}
-    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions, compactOverride)
+    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions.value, compactOverride)
   })
 }
 
 onMounted(() => refreshChartOptions())
 watch(theme, () => refreshChartOptions())
 watch(() => props.utc, () => refreshChartOptions())
+watch(computedBarThickness, () => refreshChartOptions())
+
+watch(chartData, () => {
+  nextTick(() => {
+    const width = chartWrapperRef.value?.clientWidth
+    const chart = chartRef.value?.chart
+    if (!width || !chart)
+      return
+    const containerHeight = chartWrapperRef.value?.clientHeight
+    chart.resize(Math.floor(width), containerHeight)
+  })
+})
 
 watchEffect(() => {
   const width = chartWrapperWidth.value

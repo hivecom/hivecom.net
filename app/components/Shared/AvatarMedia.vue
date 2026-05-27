@@ -37,19 +37,31 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
 
 const sizePixels = computed(() => getSizePixels(props.size))
 
-// Only set after JS preload completes - guarantees image is in cache before
-// the visible <img> mounts, so Transition fades in a fully decoded image.
-const visibleSrc = ref<string | null>(null)
+// Initialized from props so first paint shows the image when already cached.
+// Updated via preload() which skips the null-flash when the browser cache is warm.
+const visibleSrc = ref<string | null>(props.url ?? null)
 
 function preload(url: string) {
-  visibleSrc.value = null
-  if (!import.meta.client)
+  if (!import.meta.client) {
+    visibleSrc.value = url
     return
+  }
   const img = new Image()
+  img.src = url
+  // Cache hit: complete is true synchronously - no flash needed.
+  if (img.complete) {
+    visibleSrc.value = url
+    return
+  }
+  // Only blank the slot when switching to a genuinely different, uncached URL.
+  if (visibleSrc.value !== url)
+    visibleSrc.value = null
   img.onload = () => {
     visibleSrc.value = url
   }
-  img.src = url
+  img.onerror = () => {
+    visibleSrc.value = null
+  }
 }
 
 watch(

@@ -61,7 +61,7 @@ watchEffect(() => {
           <GameIcon :game="game" size="m" />
           <span class="text-xxl text-bold">{{ game.name }}</span>
         </Flex>
-        <span class="text-s text-color-lighter">Played by {{ recentPlayers === 1 ? '1 person' : `${recentPlayers} people` }} recently</span>
+        <span class="text-s text-color-lighter">{{ recentPlayers }} {{ recentPlayers === 1 ? 'person' : 'people' }} at peak</span>
         <Flex class="top-game-card__bottom" y-center gap="s">
           <Flex v-if="showCurrentPlayers && currentPlayerIds.length > 0" y-center gap="xs">
             <Tooltip placement="top">

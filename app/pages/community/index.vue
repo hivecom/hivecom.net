@@ -362,9 +362,7 @@ watch(user, () => {
             </Button>
           </NuxtLink>
         </Flex>
-        <NuxtLink to="/community/games" class="marquee-link">
-          <GameMarquee :games="marqueeGames" :interactive="false" />
-        </NuxtLink>
+        <GameMarquee :games="marqueeGames" :interactive="false" draggable @click="navigateTo('/community/games')" />
       </section>
 
       <!-- Recent Projects -->
@@ -435,11 +433,6 @@ watch(user, () => {
   border: none;
   position: relative;
   overflow: hidden;
-}
-
-.marquee-link {
-  display: block;
-  cursor: pointer;
 }
 
 .signin-prompt {

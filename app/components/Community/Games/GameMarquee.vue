@@ -1,44 +1,68 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Marquee } from '@dolanske/vui'
 import { ref } from 'vue'
 import GameCover from '@/components/Shared/GameCover.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
+import Marquee from '@/components/Shared/Marquee.vue'
 
 const props = withDefaults(defineProps<{
   games: Tables<'games'>[]
   speed?: number
   interactive?: boolean
+  draggable?: boolean
 }>(), {
   interactive: true,
+  draggable: undefined,
 })
 
 const emit = defineEmits<{
   select: [gameId: number]
+  click: []
 }>()
 
-const paused = ref(false)
+const wasDragged = ref(false)
+
+function onDragStart() {
+  wasDragged.value = false
+}
+
+function onDragEnd(payload: { dragged: boolean }) {
+  wasDragged.value = payload.dragged
+}
+
+function onGameClick(gameId: number) {
+  if (wasDragged.value)
+    return
+  if (props.interactive)
+    emit('select', gameId)
+  else
+    emit('click')
+}
 </script>
 
 <template>
   <section
     class="marquee-section"
     :class="{
-      'marquee-section--paused': paused,
       'marquee-section--non-interactive': !props.interactive,
     }"
-    @mouseenter="props.interactive ? (paused = true) : null"
-    @mouseleave="paused = false"
   >
-    <Marquee direction="left" :speed="speed ?? 30">
+    <Marquee
+      :speed="speed ?? 30"
+      direction="left"
+      :pause-on-hover="interactive"
+      :draggable="props.draggable ?? interactive"
+      @dragstart="onDragStart"
+      @dragend="onDragEnd"
+    >
       <GlowGroup>
         <div
           v-for="game in games"
           :key="game.id"
           class="marquee-item"
           :class="{ 'marquee-item--clickable': props.interactive }"
-          @click="props.interactive && emit('select', game.id)"
+          @click="onGameClick(game.id)"
         >
           <GlowCard :no-borders="!props.interactive">
             <GameCover :game="game" size="xl" aspect-ratio="card" :show-fallback="false" />
@@ -54,12 +78,6 @@ const paused = ref(false)
   mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
   height: 20rem;
   overflow: hidden;
-
-  &--paused {
-    :deep(.marquee-track) {
-      animation-play-state: paused;
-    }
-  }
 
   &--non-interactive:hover {
     .marquee-item :deep(.game-cover) {

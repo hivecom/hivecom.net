@@ -2,7 +2,7 @@
 import type { MetricsHistoryEntry, MetricsPeriod } from '@/composables/useDataMetrics'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
-import { Badge, Button, Card, Flex, Grid, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
+import { Accordion, Badge, Button, Card, Flex, Grid, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
@@ -12,6 +12,7 @@ import GameIcon from '@/components/Shared/GameIcon.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
@@ -318,6 +319,21 @@ async function loadGameDetails(gameId: number) {
   }
 }
 
+function getEventStatus(ev: EventRow): { type: 'upcoming' | 'ongoing' | 'past', label: string } {
+  const now = new Date()
+  const start = new Date(ev.date)
+  const end = ev.duration_minutes
+    ? new Date(start.getTime() + ev.duration_minutes * 60 * 1000)
+    : start
+
+  if (now < start)
+    return { type: 'upcoming', label: 'UPCOMING' }
+  else if (now >= start && now <= end)
+    return { type: 'ongoing', label: 'NOW' }
+  else
+    return { type: 'past', label: 'PAST' }
+}
+
 function handleClose() {
   isOpen.value = false
   emit('close')
@@ -404,8 +420,67 @@ watch(
 
       <!-- Content -->
       <div v-else-if="currentDetails" class="game-details-modal__content">
-        <!-- Hero image -->
-        <div class="game-details-modal__media" :class="{ 'game-details-modal__media--empty': !heroImageUrl }">
+        <!-- Hero image / metadata accordion -->
+        <Accordion
+          v-if="currentDetails.game.description || currentDetails.game.markdown || currentDetails.game.genre_tags?.length || currentDetails.game.multiplayer_modes?.length || currentDetails.game.release_date"
+          unstyled
+          class="game-details-modal__media-accordion"
+        >
+          <template #trigger="{ toggle, isOpen: metaOpen }">
+            <div class="game-details-modal__media" :class="{ 'game-details-modal__media--empty': !heroImageUrl }" @click="toggle()">
+              <div v-if="heroImageUrl && !heroImageReady" class="game-details-modal__media-skeleton" />
+              <img
+                v-if="heroImageUrl"
+                :src="heroImageUrl"
+                :alt="`${gameName} artwork`"
+                loading="lazy"
+                :class="{ 'game-details-modal__media-img--ready': heroImageReady }"
+                @load="heroImageReady = true"
+              >
+              <div v-else class="game-details-modal__media-placeholder">
+                <Icon name="ph:image" size="32" />
+                <span>No artwork available</span>
+              </div>
+              <div class="game-details-modal__media-hint">
+                <Icon :name="metaOpen ? 'ph:caret-up' : 'ph:info'" size="14" />
+              </div>
+            </div>
+          </template>
+
+          <div class="game-details-modal__meta">
+            <div v-if="currentDetails.backgroundUrl ?? currentDetails.coverUrl" class="game-details-modal__meta-bg" :style="{ backgroundImage: `url(${currentDetails.backgroundUrl ?? currentDetails.coverUrl})` }" />
+            <div class="game-details-modal__meta-content">
+              <Flex gap="m">
+                <img
+                  v-if="currentDetails.coverUrl"
+                  :src="currentDetails.coverUrl"
+                  :alt="gameName"
+                  class="game-details-modal__meta-cover"
+                >
+                <Flex column gap="s" class="game-details-modal__meta-text">
+                  <p v-if="currentDetails.game.description" class="text-s text-color-light">
+                    {{ currentDetails.game.description }}
+                  </p>
+                  <p v-if="currentDetails.game.markdown" class="text-s text-color-lighter">
+                    {{ currentDetails.game.markdown }}
+                  </p>
+                  <Flex v-if="currentDetails.game.genre_tags?.length || currentDetails.game.multiplayer_modes?.length || currentDetails.game.release_date" wrap gap="xs" y-center>
+                    <Badge v-for="tag in currentDetails.game.genre_tags" :key="tag" variant="neutral" size="s">
+                      {{ tag }}
+                    </Badge>
+                    <Badge v-for="mode in currentDetails.game.multiplayer_modes" :key="mode" variant="info" size="s">
+                      {{ mode }}
+                    </Badge>
+                    <TimestampDate v-if="currentDetails.game.release_date" :date="currentDetails.game.release_date" format="YYYY" size="xs" />
+                  </Flex>
+                </Flex>
+              </Flex>
+            </div>
+          </div>
+        </Accordion>
+
+        <!-- Hero image (no metadata) -->
+        <div v-else class="game-details-modal__media" :class="{ 'game-details-modal__media--empty': !heroImageUrl }">
           <div v-if="heroImageUrl && !heroImageReady" class="game-details-modal__media-skeleton" />
           <img
             v-if="heroImageUrl"
@@ -566,7 +641,12 @@ watch(
               @click="handleClose"
             >
               <Flex column gap="xxs">
-                <span class="text-s text-bold game-details-modal__event-title">{{ ev.title }}</span>
+                <Flex expand x-between y-center gap="xs">
+                  <span class="text-s text-bold game-details-modal__event-title">{{ ev.title }}</span>
+                  <Badge v-if="getEventStatus(ev).type !== 'past'" :variant="getEventStatus(ev).type === 'ongoing' ? 'success' : 'accent'" size="s">
+                    {{ getEventStatus(ev).label }}
+                  </Badge>
+                </Flex>
                 <span class="text-xs text-color-lighter">{{ formatDate(ev.date) }}</span>
               </Flex>
             </NuxtLink>
@@ -660,7 +740,7 @@ watch(
 
     img {
       width: 100%;
-      height: 180px;
+      height: 240px;
       object-fit: cover;
       display: block;
       opacity: 0;
@@ -670,6 +750,30 @@ watch(
     &--empty {
       border-style: dashed;
     }
+  }
+
+  &__media-accordion {
+    :deep(.vui-accordion-content) {
+      margin-top: 0;
+    }
+
+    &.open .game-details-modal__media {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      border-bottom-color: transparent;
+    }
+
+    .game-details-modal__media {
+      cursor: pointer;
+    }
+  }
+
+  &__media-hint {
+    position: absolute;
+    bottom: var(--space-xs);
+    right: var(--space-s);
+    color: var(--color-text-lighter);
+    opacity: 0.7;
   }
 
   &__media-img--ready {
@@ -799,6 +903,41 @@ watch(
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  &__meta {
+    position: relative;
+    border-radius: 0 0 var(--border-radius-l) var(--border-radius-l);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-top: none;
+  }
+
+  &__meta-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    filter: blur(16px) brightness(0.3);
+    transform: scale(1.1);
+  }
+
+  &__meta-content {
+    position: relative;
+    padding: var(--space-m);
+  }
+
+  &__meta-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__meta-cover {
+    flex-shrink: 0;
+    width: 90px;
+    align-self: flex-start;
+    border-radius: var(--border-radius-s);
+    object-fit: cover;
   }
 
   &__title {

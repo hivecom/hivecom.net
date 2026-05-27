@@ -254,7 +254,19 @@ const resolvedSkeletonHeight = computed(() =>
     : (props.skeletonHeight ?? 280),
 )
 
-const localChartOptions = {
+// Compute bar thickness in pixels from chart width and data point count.
+// This prevents Chart.js computeMinSampleSize from shrinking bars when data
+// is sparse (gaps between entries widen the minimum sample size).
+const computedBarThickness = computed(() => {
+  const count = metricsHistory.value.length
+  const width = chartWrapperWidth.value
+  if (!count || !width)
+    return undefined
+  const raw = (width / count) * 0.7
+  return Math.max(1, Math.floor(raw))
+})
+
+const localChartOptions = computed(() => ({
   plugins: {
     legend: { display: false },
     barGapPlugin: { enabled: false },
@@ -286,13 +298,12 @@ const localChartOptions = {
   },
   datasets: {
     bar: {
-      barPercentage: 1.0,
-      categoryPercentage: 0.7,
+      barThickness: computedBarThickness.value,
     },
   },
-}
+}))
 
-const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions as ChartOptions<'bar'>) : {})
+const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions.value as ChartOptions<'bar'>) : {})
 
 function refreshChartOptions() {
   nextTick(() => {
@@ -302,7 +313,7 @@ function refreshChartOptions() {
     const compactOverride: ChartOptions<'bar'> = props.compact
       ? { scales: { x: { ticks: { display: false } }, y: { ticks: { display: props.showYAxis } } } }
       : {}
-    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions as ChartOptions<'bar'>, windowScale, compactOverride)
+    chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions.value as ChartOptions<'bar'>, windowScale, compactOverride)
   })
 }
 
@@ -310,6 +321,7 @@ onMounted(() => refreshChartOptions())
 watch(theme, () => refreshChartOptions())
 watch(() => props.utc, () => refreshChartOptions())
 watch(() => props.window, () => refreshChartOptions())
+watch(computedBarThickness, () => refreshChartOptions())
 
 watchEffect(() => {
   const width = chartWrapperWidth.value
