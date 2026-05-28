@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Flex, Skeleton } from '@dolanske/vui'
+import { defineAsyncComponent } from 'vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
-import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 
 defineProps<{
@@ -9,6 +9,8 @@ defineProps<{
   onlineUsersLoading: boolean
   onlineCount: number | null
 }>()
+
+const ChartOnlineUsers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartOnlineUsers.vue'))
 
 const open = defineModel<boolean>('open', { default: false })
 </script>

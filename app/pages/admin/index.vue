@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { Button, Card, Divider, Flex, Grid } from '@dolanske/vui'
-import { computed, ref } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import Alerts from '@/components/Admin/Alerts.vue'
-import IncomeChart from '@/components/Admin/Dashboard/IncomeChart.vue'
-import UserChart from '@/components/Admin/Dashboard/UserChart.vue'
 import KPIOverview from '@/components/Admin/KPIOverview.vue'
-import ChartDiscussions from '@/components/Shared/Charts/ChartDiscussions.vue'
-import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
-import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
-import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
 import GrowthBadge from '@/components/Shared/GrowthBadge.vue'
 import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { useDataAdminKPIs } from '@/composables/useDataAdminKPIs'
 import { useBreakpoint } from '@/lib/mediaQuery'
+
+const IncomeChart = defineAsyncComponent(() => import('@/components/Admin/Dashboard/IncomeChart.vue'))
+const UserChart = defineAsyncComponent(() => import('@/components/Admin/Dashboard/UserChart.vue'))
+const ChartDiscussions = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartDiscussions.vue'))
+const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameserversPlayers.vue'))
+const ChartOnlineUsers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartOnlineUsers.vue'))
+const ChartTeamSpeakOnline = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartTeamSpeakOnline.vue'))
 
 definePageMeta({ layout: 'admin' })
 

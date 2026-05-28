@@ -99,8 +99,23 @@ export function useGlobeBase() {
       window.GPUShaderStage = { VERTEX: 1, FRAGMENT: 2, COMPUTE: 4 }
     }
 
-    const Globe = (await import('globe.gl')).default
-    const { MeshStandardMaterial } = await import('three')
+    async function importWithRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 800): Promise<T> {
+      let lastError: unknown
+      for (let i = 0; i < retries; i++) {
+        try {
+          return await fn()
+        }
+        catch (err) {
+          lastError = err
+          if (i < retries - 1)
+            await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1)))
+        }
+      }
+      throw lastError
+    }
+
+    const Globe = (await importWithRetry(async () => import('globe.gl'))).default
+    const { MeshStandardMaterial } = await importWithRetry(async () => import('three'))
 
     globeInstance = new Globe(container)
     globeMaterial = new MeshStandardMaterial({

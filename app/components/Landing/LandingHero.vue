@@ -1,9 +1,8 @@
 <script setup lang="ts">
+import { defineAsyncComponent, onBeforeUnmount } from 'vue'
 import constants from '~~/constants.json'
-
 import LandingHeroActions from '@/components/Landing/LandingHeroActions.vue'
 import LandingHeroShader from '@/components/Landing/LandingHeroBackground.vue'
-import LandingHeroGlobe from '@/components/Landing/LandingHeroGlobe.vue'
 import LandingHeroStats from '@/components/Landing/LandingHeroStats.vue'
 import LandingMotd from '@/components/Landing/LandingMotd.vue'
 
@@ -21,12 +20,42 @@ defineProps<{
   loading: boolean
 }>()
 
+const LandingHeroGlobe = defineAsyncComponent(() => import('@/components/Landing/LandingHeroGlobe.vue'))
+
 const defaultSplashMessage
   = (typeof constants.SPLASH_MESSAGE === 'string' && constants.SPLASH_MESSAGE.trim())
     ? constants.SPLASH_MESSAGE
     : 'A community of friends from all around the world'
 
 const splashMessage = ref(defaultSplashMessage)
+
+// Splash fades out when the globe signals it has rendered its first frame.
+// Fallback timeout covers the case where the globe fails to load entirely or
+// takes pathologically long, so users are never stuck looking at a placeholder.
+const globeReady = ref(false)
+let splashFallbackTimer: ReturnType<typeof setTimeout> | null = null
+
+function handleGlobeReady() {
+  globeReady.value = true
+  if (splashFallbackTimer != null) {
+    clearTimeout(splashFallbackTimer)
+    splashFallbackTimer = null
+  }
+}
+
+onMounted(() => {
+  splashFallbackTimer = setTimeout(() => {
+    globeReady.value = true
+    splashFallbackTimer = null
+  }, 8000)
+})
+
+onBeforeUnmount(() => {
+  if (splashFallbackTimer != null) {
+    clearTimeout(splashFallbackTimer)
+    splashFallbackTimer = null
+  }
+})
 
 onMounted(() => {
   const alternatives = Array.isArray(constants.SPLASH_ALTERNATIVES)
@@ -57,10 +86,10 @@ onMounted(() => {
   <section class="hero-overlay">
     <LandingHeroShader class="hero-overlay__shader" />
     <div class="hero-overlay__body">
-      <div class="hero-overlay__splash-base" aria-hidden="true" />
-      <div class="hero-overlay__splash" aria-hidden="true" />
+      <div class="hero-overlay__splash-base" :class="{ 'is-faded': globeReady }" aria-hidden="true" />
+      <div class="hero-overlay__splash" :class="{ 'is-faded': globeReady }" aria-hidden="true" />
       <ClientOnly>
-        <LandingHeroGlobe />
+        <LandingHeroGlobe @ready="handleGlobeReady" />
       </ClientOnly>
 
       <div class="hero-overlay__text">
@@ -68,10 +97,10 @@ onMounted(() => {
           Hivecom
         </h1>
         <img src="/logotype-white.svg" class="hero-overlay__logo">
-        <LandingMotd :fallback-text="splashMessage" />
       </div>
 
       <LandingHeroStats class="hero-overlay__stats" :community-stats="communityStats" :loading="loading" />
+      <LandingMotd :fallback-text="splashMessage" />
       <LandingHeroActions />
     </div>
   </section>
@@ -157,9 +186,13 @@ onMounted(() => {
   background-size: cover;
   background-position: center;
   opacity: 1;
-  animation: hero-splash-fade 3000ms ease 3000ms forwards;
+  transition: opacity 3000ms ease;
   will-change: opacity;
   pointer-events: none;
+
+  &.is-faded {
+    opacity: 0;
+  }
 }
 
 .hero-overlay__splash {
@@ -171,10 +204,14 @@ onMounted(() => {
   background-position: center;
   filter: blur(128px);
   opacity: 1;
-  animation: hero-splash-fade 3000ms ease 3000ms forwards;
+  transition: opacity 3000ms ease;
   will-change: opacity, transform, filter;
   pointer-events: none;
   isolation: isolate;
+
+  &.is-faded {
+    opacity: 0;
+  }
 
   &::after {
     content: '';
@@ -187,24 +224,9 @@ onMounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-overlay__splash-base {
-    animation: none;
-    opacity: 0;
-  }
-
+  .hero-overlay__splash-base,
   .hero-overlay__splash {
-    animation: none;
-    opacity: 0;
-  }
-}
-
-@keyframes hero-splash-fade {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
+    transition: none;
   }
 }
 
@@ -278,7 +300,7 @@ onMounted(() => {
 }
 
 .hero-overlay__stats {
-  margin-top: 0.5rem;
+  /* margin-top: 0.5rem; */
   width: 100%;
   position: relative;
   z-index: 4;

@@ -17,7 +17,7 @@ function findImageRows(doc: PmNode): ImagePos[][] {
   let currentRun: ImagePos[] = []
 
   doc.forEach((node, offset) => {
-    if (node.type.name === 'image') {
+    if (node.type.name === 'image' || node.type.name === 'video') {
       currentRun.push({ from: offset, to: offset + node.nodeSize })
     }
     else {

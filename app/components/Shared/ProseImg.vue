@@ -11,18 +11,25 @@ defineOptions({ inheritAttrs: false })
 
 const attrs = useAttrs()
 const visibleSrc = ref<string | null>(null)
+const hasError = ref(false)
 const src = computed(() => (attrs.src as string | undefined) ?? null)
 
 function preload(url: string) {
   visibleSrc.value = null
+  hasError.value = false
   if (!import.meta.client)
     return
+  // blob: URLs are session-scoped and always fail on reload - treat as missing immediately
+  if (url.startsWith('blob:')) {
+    hasError.value = true
+    return
+  }
   const img = new Image()
   img.onload = () => {
     visibleSrc.value = url
   }
   img.onerror = () => {
-    visibleSrc.value = url
+    hasError.value = true
   }
   img.src = url
 }
@@ -37,7 +44,10 @@ watch(src, (url) => {
 
 <template>
   <Transition name="prose-img-fade" mode="out-in">
-    <div v-if="!visibleSrc" class="prose-img-skeleton" />
+    <div v-if="hasError" class="prose-img-missing">
+      <span>Missing or deleted media</span>
+    </div>
+    <div v-else-if="!visibleSrc" class="prose-img-skeleton" />
     <img
       v-else
       v-bind="$attrs"
@@ -55,6 +65,27 @@ watch(src, (url) => {
   border-radius: var(--border-radius-s);
   background-color: var(--color-bg-raised);
   display: block;
+}
+
+.prose-img-missing {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--border-radius-s);
+  background-color: var(--color-bg-raised);
+  background-image: url('/landing/noise.gif');
+  background-size: 120px;
+  background-repeat: repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  span {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    background: rgba(0, 0, 0, 0.45);
+    padding: var(--space-xxs) var(--space-xs);
+    border-radius: var(--border-radius-s);
+  }
 }
 
 img {

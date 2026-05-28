@@ -2,10 +2,9 @@
 import type { IgdbGameDetails } from '@/composables/useIgdb'
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, ButtonGroup, Calendar, Dropdown, DropdownItem, DropdownTitle, Flex, Input, searchString, Select, Sheet, Tooltip } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useSupabaseClient, useSupabaseUser } from '#imports'
 import IGDBLookupModal from '@/components/Admin/Games/IGDBLookupModal.vue'
-import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ColorPicker from '@/components/Shared/ColorPicker.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
@@ -23,6 +22,8 @@ const props = defineProps<{
 
 // Define emits
 const emit = defineEmits(['save', 'delete'])
+
+const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')

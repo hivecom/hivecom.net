@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { Flex, Skeleton } from '@dolanske/vui'
+import CornerCard from '@/components/Shared/CornerCard.vue'
+import CornerGroup from '@/components/Shared/CornerGroup.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
+import GlowCard from '@/components/Shared/GlowCard.vue'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
 
 interface CommunityStats {
   users: number
@@ -20,69 +24,91 @@ defineProps<{
 <template>
   <div class="hero-section__stats">
     <div class="hero-section__divider" />
-    <div class="hero-section__stats-grid">
-      <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
-        <Flex x-center y-center class="hero-section__stats-value">
-          <template v-if="loading">
-            <Skeleton height="2.5rem" width="4rem" />
-          </template>
-          <template v-else>
-            <CountDisplay :value="communityStats.users" :approx="!communityStats.usersAccurate" class="text-xxl" />
-          </template>
-        </Flex>
-        <span class="text-xs">Users</span>
-      </NuxtLink>
+    <CornerGroup class="hero-section__stats-grid">
+      <GlowGroup>
+        <GlowCard no-glow>
+          <CornerCard>
+            <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
+              <Flex x-center y-center class="hero-section__stats-value">
+                <template v-if="loading">
+                  <Skeleton height="2.5rem" width="4rem" />
+                </template>
+                <template v-else>
+                  <CountDisplay :value="communityStats.users" :approx="!communityStats.usersAccurate" class="text-xxl" />
+                </template>
+              </Flex>
+              <span class="text-xs">Users</span>
+            </NuxtLink>
+          </CornerCard>
+        </GlowCard>
 
-      <NuxtLink to="/forum" class="hero-section__stats-card hero-section__stats-card--clickable">
-        <Flex x-center y-center class="hero-section__stats-value">
-          <template v-if="loading">
-            <Skeleton height="2.5rem" width="4rem" />
-          </template>
-          <template v-else>
-            <CountDisplay :value="communityStats.forumPosts" class="text-xxl" />
-          </template>
-        </Flex>
-        <span class="text-xs">Discussions</span>
-      </NuxtLink>
+        <GlowCard no-glow>
+          <CornerCard>
+            <NuxtLink to="/forum" class="hero-section__stats-card hero-section__stats-card--clickable">
+              <Flex x-center y-center class="hero-section__stats-value">
+                <template v-if="loading">
+                  <Skeleton height="2.5rem" width="4rem" />
+                </template>
+                <template v-else>
+                  <CountDisplay :value="communityStats.forumPosts" class="text-xxl" />
+                </template>
+              </Flex>
+              <span class="text-xs">Discussions</span>
+            </NuxtLink>
+          </CornerCard>
+        </GlowCard>
 
-      <NuxtLink to="/servers/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
-        <Flex x-center y-center class="hero-section__stats-value">
-          <template v-if="loading">
-            <Skeleton height="2.5rem" width="2rem" />
-          </template>
-          <template v-else>
-            {{ communityStats.gameservers }}
-          </template>
-        </Flex>
-        <span class="text-xs">Game Servers</span>
-      </NuxtLink>
+        <GlowCard no-glow>
+          <CornerCard>
+            <NuxtLink to="/servers/gameservers" class="hero-section__stats-card hero-section__stats-card--clickable">
+              <Flex x-center y-center class="hero-section__stats-value">
+                <template v-if="loading">
+                  <Skeleton height="2.5rem" width="2rem" />
+                </template>
+                <template v-else>
+                  {{ communityStats.gameservers }}
+                </template>
+              </Flex>
+              <span class="text-xs">Game Servers</span>
+            </NuxtLink>
+          </CornerCard>
+        </GlowCard>
 
-      <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
-        <Flex x-center y-center class="hero-section__stats-value">
-          <span class="text-xxl">{{ communityStats.age }} Years</span>
-        </Flex>
-        <span class="text-xs">Founded in 2013</span>
-      </NuxtLink>
+        <GlowCard no-glow>
+          <CornerCard>
+            <NuxtLink to="/community" class="hero-section__stats-card hero-section__stats-card--clickable">
+              <Flex x-center y-center class="hero-section__stats-value">
+                <span class="text-xxl">{{ communityStats.age }} Years</span>
+              </Flex>
+              <span class="text-xs">Founded in 2013</span>
+            </NuxtLink>
+          </CornerCard>
+        </GlowCard>
 
-      <NuxtLink to="/community/projects" class="hero-section__stats-card hero-section__stats-card--clickable">
-        <Flex x-center class="hero-section__stats-value">
-          <template v-if="loading">
-            <Skeleton height="2.5rem" width="2rem" />
-          </template>
-          <template v-else>
-            {{ communityStats.projects }}
-          </template>
-        </Flex>
-        <span class="text-xs">Projects</span>
-      </NuxtLink>
-    </div>
+        <GlowCard no-glow>
+          <CornerCard>
+            <NuxtLink to="/community/projects" class="hero-section__stats-card hero-section__stats-card--clickable">
+              <Flex x-center class="hero-section__stats-value">
+                <template v-if="loading">
+                  <Skeleton height="2.5rem" width="2rem" />
+                </template>
+                <template v-else>
+                  {{ communityStats.projects }}
+                </template>
+              </Flex>
+              <span class="text-xs">Projects</span>
+            </NuxtLink>
+          </CornerCard>
+        </GlowCard>
+      </GlowGroup>
+    </CornerGroup>
   </div>
 </template>
 
 <style scoped lang="scss">
 .hero-section__stats {
   z-index: 1;
-  margin-bottom: 32px;
+  margin-bottom: 48px;
 }
 
 :root.light {
@@ -99,7 +125,7 @@ defineProps<{
 }
 
 .hero-section__divider {
-  max-width: 612px;
+  max-width: 640px;
   width: 100%;
   margin-top: 8px;
   display: block;
@@ -124,13 +150,13 @@ defineProps<{
 }
 
 .hero-section__stats-card {
+  display: block;
   width: 152px;
   border-radius: var(--border-radius-m);
   text-align: center;
   padding: var(--space-m);
   text-decoration: none;
   color: inherit;
-  transition: all 0.3s ease;
 
   span {
     text-shadow: 2px 0 0 var(--color-bg) 3px;
@@ -138,21 +164,9 @@ defineProps<{
 
   &--clickable {
     cursor: pointer;
-    border: 1px solid transparent;
-
-    &:hover {
-      transform: translateY(-2px);
-      border-color: var(--color-accent-alpha);
-      background: var(--color-bg-subtle);
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-
-      .hero-section__stats-value {
-        color: var(--color-accent);
-      }
-    }
 
     &:active {
-      transform: translateY(0);
+      opacity: 0.8;
     }
   }
 }

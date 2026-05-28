@@ -3,14 +3,13 @@ import type { Ref } from 'vue'
 import type { MetricsHistoryEntry } from '@/composables/useDataMetrics'
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, defineTable, Flex, Input, paginate, Pagination, Table, Tooltip } from '@dolanske/vui'
-import { computed, inject, onBeforeMount, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, inject, onBeforeMount, ref, watch } from 'vue'
 
 import GameForm from '@/components/Admin/Games/GameForm.vue'
 
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
-import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
@@ -19,6 +18,8 @@ import { invalidateGamesCache } from '@/composables/useDataGames'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useUserId } from '@/composables/useUserId'
 import { useBreakpoint } from '@/lib/mediaQuery'
+
+const ChartGameActivity = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameActivity.vue'))
 
 const WHITESPACE_RE = /\s+/g
 

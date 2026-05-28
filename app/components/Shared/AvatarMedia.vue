@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Avatar } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 interface Props {
   url?: string | null
@@ -37,9 +37,10 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
 
 const sizePixels = computed(() => getSizePixels(props.size))
 
-// Initialized from props so first paint shows the image when already cached.
-// Updated via preload() which skips the null-flash when the browser cache is warm.
-const visibleSrc = ref<string | null>(props.url ?? null)
+// Only set after preload completes - guarantees the Transition fades in a
+// fully decoded image. Uses nextTick for cache hits so the transition still
+// plays after the component mounts.
+const visibleSrc = ref<string | null>(null)
 
 function preload(url: string) {
   if (!import.meta.client) {
@@ -48,14 +49,14 @@ function preload(url: string) {
   }
   const img = new Image()
   img.src = url
-  // Cache hit: complete is true synchronously - no flash needed.
   if (img.complete) {
-    visibleSrc.value = url
+    // Defer so the Transition has a chance to mount before we flip the value.
+    nextTick(() => {
+      visibleSrc.value = url
+    })
     return
   }
-  // Only blank the slot when switching to a genuinely different, uncached URL.
-  if (visibleSrc.value !== url)
-    visibleSrc.value = null
+  visibleSrc.value = null
   img.onload = () => {
     visibleSrc.value = url
   }

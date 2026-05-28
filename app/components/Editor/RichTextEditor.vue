@@ -1750,8 +1750,9 @@ onBeforeRouteLeave(() => {
     // CSS uses those attributes to lay images out as inline-block rows.
     // Gap between items is 8px. Width calc subtracts the gap share per item.
 
-    // Base styles for any grouped image.
-    .ProseMirror > img[data-img-run-total] {
+    // Base styles for any grouped image or video.
+    .ProseMirror > img[data-img-run-total],
+    .ProseMirror > div[data-video-embed][data-img-run-total] {
       display: inline-block;
       vertical-align: top;
       max-height: 240px;
@@ -1759,26 +1760,48 @@ onBeforeRouteLeave(() => {
       aspect-ratio: 16 / 9;
       object-fit: cover;
       border-radius: var(--border-radius-s);
+      margin-top: 0;
       margin-bottom: var(--space-xs);
     }
 
-    // Run of 2
-    // Run of 2: each image gets ~50% minus half the gap.
-    .ProseMirror > img[data-img-run-total='2'] {
+    // Video: inner element covers the tile.
+    .ProseMirror > div[data-video-embed][data-img-run-total] {
+      display: inline-block;
+      vertical-align: top;
+      overflow: hidden;
+      position: relative;
+
+      video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+    }
+
+    // Run of 2: each item gets ~50% minus half the gap.
+    .ProseMirror > img[data-img-run-total='2'],
+    .ProseMirror > div[data-video-embed][data-img-run-total='2'] {
       width: calc(50% - 4px);
     }
 
-    .ProseMirror > img[data-img-run-total='2'][data-img-run-index='0'] {
+    .ProseMirror > img[data-img-run-total='2'][data-img-run-index='0'],
+    .ProseMirror > div[data-video-embed][data-img-run-total='2'][data-img-run-index='0'] {
       margin-right: 8px;
     }
 
-    // Run of 3: each image gets ~33% minus a third of the total gap.
-    .ProseMirror > img[data-img-run-total='3'] {
+    // Run of 3: each item gets ~33% minus a third of the total gap.
+    .ProseMirror > img[data-img-run-total='3'],
+    .ProseMirror > div[data-video-embed][data-img-run-total='3'] {
       width: calc(33.333% - 6px);
     }
 
     .ProseMirror > img[data-img-run-total='3'][data-img-run-index='0'],
-    .ProseMirror > img[data-img-run-total='3'][data-img-run-index='1'] {
+    .ProseMirror > img[data-img-run-total='3'][data-img-run-index='1'],
+    .ProseMirror > div[data-video-embed][data-img-run-total='3'][data-img-run-index='0'],
+    .ProseMirror > div[data-video-embed][data-img-run-total='3'][data-img-run-index='1'] {
       margin-right: 8px;
     }
 
@@ -1793,8 +1816,9 @@ onBeforeRouteLeave(() => {
         object-fit: unset;
       }
 
-      // Grouped images: stack vertically, cap height to keep them compact.
-      .ProseMirror > img[data-img-run-total] {
+      // Grouped images and videos: stack vertically, cap height to keep them compact.
+      .ProseMirror > img[data-img-run-total],
+      .ProseMirror > div[data-video-embed][data-img-run-total] {
         display: block;
         width: 100%;
         max-width: 100%;
@@ -1934,7 +1958,7 @@ onBeforeRouteLeave(() => {
   }
 
   // Video embeds (:::video directive / uploaded videos)
-  .ProseMirror div[data-video-embed] {
+  .ProseMirror div[data-video-embed]:not([data-img-run-total]) {
     display: flex;
     justify-content: center;
     margin: var(--space-s) 0;

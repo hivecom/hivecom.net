@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import { Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
-import { computed, onMounted, ref, watch } from 'vue'
-import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
 import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
+
+const props = defineProps<{
+  gameserver: QueryGameserver | null
+  isEditMode: boolean
+}>()
+
+// Define emits
+const emit = defineEmits(['save', 'delete'])
+
+const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
 // Interface for gameserver query result
 interface QueryGameserver {
@@ -33,14 +42,6 @@ interface SelectOption {
   label: string
   value: string
 }
-
-const props = defineProps<{
-  gameserver: QueryGameserver | null
-  isEditMode: boolean
-}>()
-
-// Define emits
-const emit = defineEmits(['save', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')

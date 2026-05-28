@@ -4,14 +4,13 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Avatar, Badge, Button, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import { defineAsyncComponent } from 'vue'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import ModalDeleteReply from '@/components/Discussions/ModalDeleteReply.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
-import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import BannerDisplay from '@/components/Profile/Banner/BannerDisplay.vue'
 import ReactionsList from '@/components/Reactions/ReactionsList.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
-
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
@@ -40,6 +39,8 @@ const emit = defineEmits<{
   interact: []
   openReplies: []
 }>()
+
+const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
 dayjs.extend(relativeTime)
 

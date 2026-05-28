@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import { Button, Flex, Input, Sheet, Textarea, Tooltip } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useSupabaseClient, useSupabaseUser } from '#imports'
-import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
@@ -20,6 +19,8 @@ const emit = defineEmits<{
   (e: 'save', project: TablesInsert<'projects'> | TablesUpdate<'projects'>): void
   (e: 'delete', projectId: number): void
 }>()
+
+const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
 // Interface for project query result
 interface QueryProject {

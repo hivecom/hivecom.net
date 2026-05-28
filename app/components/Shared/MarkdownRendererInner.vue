@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MDCRoot } from '@nuxtjs/mdc'
-import { onMounted, onUnmounted } from 'vue'
+import { nextTick, onMounted, onUnmounted } from 'vue'
 import SharedLinkEmbed from '@/components/LinkEmbed/index.vue'
 import ProseImg from '@/components/Shared/ProseImg.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
@@ -77,6 +77,30 @@ async function runParse(val: string) {
     data: result.data as Record<string, unknown>,
   }
   emit('parsed')
+  await nextTick()
+  setupVideoErrorHandlers()
+}
+
+function setupVideoErrorHandlers() {
+  if (!container.value)
+    return
+  container.value.querySelectorAll('.md-video-embed video').forEach((video) => {
+    const el = video as HTMLVideoElement
+    // blob: URLs are session-scoped and always broken on reload
+    if (el.src.startsWith('blob:') || el.getAttribute('src')?.startsWith('blob:')) {
+      markVideoMissing(el)
+      return
+    }
+    el.addEventListener('error', () => markVideoMissing(el), { once: true })
+  })
+}
+
+function markVideoMissing(video: HTMLVideoElement) {
+  const wrapper = video.closest('.md-video-embed') as HTMLElement | null
+  if (!wrapper || wrapper.classList.contains('md-video-missing'))
+    return
+  wrapper.classList.add('md-video-missing')
+  wrapper.innerHTML = '<span class="md-missing-label">Missing or deleted media</span>'
 }
 
 onMounted(() => {
@@ -116,7 +140,8 @@ watch(processedMarkdown, (val) => {
 
   > p,
   > img,
-  > .prose-img-skeleton {
+  > .prose-img-skeleton,
+  > div.md-video-embed {
     min-width: 0;
     margin: 0;
   }
@@ -131,6 +156,42 @@ watch(processedMarkdown, (val) => {
     aspect-ratio: 16 / 9;
     object-fit: cover;
     border-radius: var(--border-radius-s);
+  }
+
+  // Video tiles inside the group: cover-crop to match image tiles, hide native controls.
+  > div.md-video-embed {
+    display: block;
+    overflow: hidden;
+    border-radius: var(--border-radius-s);
+    cursor: pointer;
+    aspect-ratio: 16 / 9;
+    max-height: 240px;
+    max-width: none;
+    position: relative;
+
+    > video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+    }
+
+    // Centered play icon overlay
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 44px;
+      height: 44px;
+      background: rgba(0, 0, 0, 0.55)
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpolygon points='9%2C6 9%2C18 19%2C12' fill='white'/%3E%3C/svg%3E")
+        center / 18px no-repeat;
+      border-radius: 50%;
+      pointer-events: none;
+    }
   }
 
   // 2-image group: switch to 2 equal columns so they fill the row.
@@ -156,7 +217,8 @@ watch(processedMarkdown, (val) => {
 
     > p,
     > img,
-    > .prose-img-skeleton {
+    > .prose-img-skeleton,
+    > div.md-video-embed {
       grid-column: span 2;
     }
 
@@ -178,7 +240,8 @@ watch(processedMarkdown, (val) => {
 
       > p,
       > img,
-      > .prose-img-skeleton {
+      > .prose-img-skeleton,
+      > div.md-video-embed {
         grid-column: unset;
       }
 
@@ -190,7 +253,8 @@ watch(processedMarkdown, (val) => {
     > p > img,
     > p > .prose-img-skeleton,
     > img,
-    > .prose-img-skeleton {
+    > .prose-img-skeleton,
+    > div.md-video-embed {
       max-height: 40vh;
       aspect-ratio: 4 / 3;
     }
@@ -250,6 +314,26 @@ watch(processedMarkdown, (val) => {
     max-height: 60vh;
     border-radius: var(--border-radius-s);
   }
+
+  &.md-video-missing {
+    aspect-ratio: 16 / 9;
+    max-height: 240px;
+    background-color: var(--color-bg-raised);
+    background-image: url('/landing/noise.gif');
+    background-size: 120px;
+    background-repeat: repeat;
+    border-radius: var(--border-radius-s);
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+:deep(.md-missing-label) {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-lighter);
+  background: rgba(0, 0, 0, 0.45);
+  padding: var(--space-xxs) var(--space-xs);
+  border-radius: var(--border-radius-s);
 }
 
 /* KaTeX math produced by rehype-katex */

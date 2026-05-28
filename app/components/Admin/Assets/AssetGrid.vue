@@ -250,7 +250,7 @@ function getUploaderId(asset: StorageAsset): string | null {
     <div ref="lightboxWrap" class="md-lightbox__img-wrap">
       <Transition :name="`md-lightbox-slide-${slideDir}`">
         <div v-if="lightboxUrl" :key="lightboxUrl" class="md-lightbox__slide" @click.self="closeLightbox">
-          <img class="ignored" :src="lightboxUrl" :alt="imageAssets[lightboxIndex]?.name ?? ''">
+          <img class="ignored" :src="lightboxUrl" :alt="imageAssets[lightboxIndex]?.name ?? ''" loading="lazy" decoding="async">
         </div>
       </Transition>
     </div>

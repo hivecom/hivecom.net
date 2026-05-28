@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { UserFormState } from '@/composables/useUserFormValidation'
 import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
-import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import ProfileBadgeFromSlug from '@/components/Profile/Badges/ProfileBadgeFromSlug.vue'
 import AvatarDelete from '@/components/Shared/AvatarDelete.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -41,11 +40,15 @@ const props = defineProps<{
   } | null
   isEditMode: boolean
 }>()
+
 // Define emits
 const emit = defineEmits<{
   save: [userData: Record<string, unknown>, badges: string[], currentBadges: string[]]
   delete: [userId: string]
 }>()
+
+const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
+
 // Interface for Select options
 interface SelectOption {
   label: string

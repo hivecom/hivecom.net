@@ -2,7 +2,7 @@
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
 import type { Tables } from '@/types/database.overrides'
 import { Flex, Grid, PopoutHover, Skeleton } from '@dolanske/vui'
-import { computed, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import GameEventsSection from '@/components/Community/Games/GameEventsSection.vue'
 import GameMarquee from '@/components/Community/Games/GameMarquee.vue'
 import GamePoppedOffCard from '@/components/Community/Games/GamePoppedOffCard.vue'
@@ -12,7 +12,6 @@ import GameTopCard from '@/components/Community/Games/GameTopCard.vue'
 import RecentGameActivitySection from '@/components/Community/Games/RecentGameActivitySection.vue'
 import GameServerModal from '@/components/GameServers/GameServerModal.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
-import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
 import GameDetailsModal from '@/components/Shared/GameDetailsModal.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
@@ -25,6 +24,8 @@ import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
 import { useBreakpoint } from '@/lib/mediaQuery'
+
+const ChartGameActivity = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameActivity.vue'))
 
 const { games, loading: gamesLoading } = useDataGames()
 const { gameservers } = useDataGameservers()

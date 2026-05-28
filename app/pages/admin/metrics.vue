@@ -2,16 +2,17 @@
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
 import type { Database } from '@/types/database.types'
 import { Button, Flex, Tooltip } from '@dolanske/vui'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
 import ChartBrush from '@/components/Shared/Charts/ChartBrush.vue'
-import ChartDiscussions from '@/components/Shared/Charts/ChartDiscussions.vue'
-import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
-import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
-import ChartOnlineUsers from '@/components/Shared/Charts/ChartOnlineUsers.vue'
-import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
 import MetricsRefreshCountdown from '@/components/Shared/Charts/MetricsRefreshCountdown.vue'
 import { METRICS_COLLECTION_INTERVAL, METRICS_REFRESH_BUFFER_MS, useDataMetrics } from '@/composables/useDataMetrics'
 import { useBreakpoint } from '@/lib/mediaQuery'
+
+const ChartDiscussions = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartDiscussions.vue'))
+const ChartGameActivity = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameActivity.vue'))
+const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameserversPlayers.vue'))
+const ChartOnlineUsers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartOnlineUsers.vue'))
+const ChartTeamSpeakOnline = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartTeamSpeakOnline.vue'))
 
 definePageMeta({ layout: 'admin' })
 

@@ -300,8 +300,11 @@ export function useDataNotifications() {
   }
 
   async function subscribeRealtime(uid: string) {
-    if (notificationChannel != null && subscribedUserId === uid)
+    if (subscribedUserId === uid && notificationChannel != null)
       return
+
+    // Mark intent immediately so concurrent calls for same uid exit above.
+    subscribedUserId = uid
 
     await unsubscribeRealtime()
 
@@ -403,7 +406,6 @@ export function useDataNotifications() {
       channels.push(supabase.removeChannel(ch))
     }
 
-    subscribedUserId = null
     await Promise.allSettled(channels)
   }
 
@@ -411,10 +413,13 @@ export function useDataNotifications() {
   watch(
     userId,
     (uid) => {
-      if (uid != null)
+      if (uid != null) {
         void subscribeRealtime(uid)
-      else
+      }
+      else {
+        subscribedUserId = null
         void unsubscribeRealtime()
+      }
     },
     { immediate: true },
   )
@@ -452,6 +457,7 @@ export function useDataNotifications() {
   }
 
   onScopeDispose(() => {
+    subscribedUserId = null
     void unsubscribeRealtime()
   })
 

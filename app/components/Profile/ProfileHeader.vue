@@ -480,7 +480,7 @@ onUnmounted(() => stopConfetti())
               muted
               playsinline
             />
-            <img v-else :src="avatarUrl" class="avatar-lightbox">
+            <img v-else :src="avatarUrl" class="avatar-lightbox" loading="lazy" decoding="async">
           </Modal>
 
           <Flex column gap="s" expand x-end class="h-100">

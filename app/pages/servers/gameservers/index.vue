@@ -3,15 +3,17 @@ import type { GameserverWithContainer } from '@/composables/useDataGameservers'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { Button, Flex, Tab, Tabs } from '@dolanske/vui'
+import { defineAsyncComponent } from 'vue'
 import GameLibrary from '@/components/GameServers/GameServerLibrary.vue'
 import GameListing from '@/components/GameServers/GameServerListing.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
-import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
+
+const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameserversPlayers.vue'))
 
 const supabase = useSupabaseClient<Database>()
 

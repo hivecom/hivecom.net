@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import type { MetricsServerDetailMinecraft, MetricsServerDetailSource, SourcePlayer } from '@/types/metrics'
 import { Button, Card, Flex, Grid } from '@dolanske/vui'
-import { computed, onMounted, ref, shallowRef } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, shallowRef } from 'vue'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
-import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCSSVariable } from '@/lib/utils/common'
 
+const props = defineProps<Props>()
+
+const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameserversPlayers.vue'))
+
 interface Props {
   id: number
 }
-
-const props = defineProps<Props>()
 
 const { metrics, fetchMetrics, fetchMetricsForServer } = useDataMetrics()
 const { gameservers } = useDataGameservers()

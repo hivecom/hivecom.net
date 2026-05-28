@@ -2,11 +2,10 @@
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Card, Flex, Sheet } from '@dolanske/vui'
 
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
 import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
-import ChartGameserversPlayers from '@/components/Shared/Charts/ChartGameserversPlayers.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
@@ -16,6 +15,15 @@ import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
+const props = defineProps<{
+  gameserver: GameServerWithJoins | null
+}>()
+
+// Define emits
+const emit = defineEmits(['edit', 'delete'])
+
+const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameserversPlayers.vue'))
+
 type GameServerWithJoins = Omit<Tables<'network_gameservers'>, 'game'> & {
   game_name?: string
   game?: {
@@ -24,13 +32,6 @@ type GameServerWithJoins = Omit<Tables<'network_gameservers'>, 'game'> & {
     shorthand?: string | null
   } | null
 }
-
-const props = defineProps<{
-  gameserver: GameServerWithJoins | null
-}>()
-
-// Define emits
-const emit = defineEmits(['edit', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')

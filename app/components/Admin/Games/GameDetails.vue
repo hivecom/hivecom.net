@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex, Sheet, Skeleton } from '@dolanske/vui'
-import { ref, watchEffect } from 'vue'
+import { defineAsyncComponent, ref, watchEffect } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
 import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
-import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
@@ -21,6 +20,8 @@ const emit = defineEmits<{
   edit: [item: Tables<'games'>]
   delete: [item: Tables<'games'>]
 }>()
+
+const ChartGameActivity = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameActivity.vue'))
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')

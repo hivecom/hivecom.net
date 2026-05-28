@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, defineTable, DropdownItem, Flex, Input, Pagination, Table } from '@dolanske/vui'
-import { computed } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import MOTDEditModal from './MOTDEditModal.vue'
@@ -17,6 +19,7 @@ type Motd = Tables<'motds'>
 const supabase = useSupabaseClient()
 const userId = useUserId()
 const isBelowMedium = useBreakpoint('<m')
+const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 
 const {
   items: _motds,
@@ -60,9 +63,14 @@ const {
 
 const displayRows = computed(() => filteredRows.value)
 
-const { headers, rows, pagination, setPage, setSort, selectedRows, deselectAllRows } = defineTable(displayRows, {
-  pagination: { enabled: true },
+const { headers, rows, pagination, setPage, setSort, selectedRows, deselectAllRows, options } = defineTable(displayRows, {
+  pagination: { enabled: true, perPage: adminTablePerPage.value },
   select: true,
+})
+
+watch(adminTablePerPage, (perPage) => {
+  options.value.pagination.perPage = perPage
+  setPage(1)
 })
 
 const shouldShowPagination = computed(() => {

@@ -14,7 +14,7 @@ function scrollUp() {
     <div class="container-footer">
       <Flex x-between>
         <div>
-          <img src="/logotype-white.svg" class="footer__logo">
+          <img src="/logotype-white.svg" class="footer__logo" loading="lazy" decoding="async">
           <p class="footer__established">
             Established in 2013
           </p>

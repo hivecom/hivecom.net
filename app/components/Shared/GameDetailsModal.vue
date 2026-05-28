@@ -3,10 +3,9 @@ import type { MetricsHistoryEntry, MetricsPeriod } from '@/composables/useDataMe
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { Accordion, Badge, Button, Card, Flex, Grid, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
-import ChartGameActivity from '@/components/Shared/Charts/ChartGameActivity.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
@@ -20,11 +19,6 @@ import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-interface Props {
-  gameId?: number | null
-  open?: boolean
-}
-
 const props = withDefaults(defineProps<Props>(), {
   gameId: null,
 })
@@ -33,6 +27,13 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'openServers', gameId: number): void
 }>()
+
+const ChartGameActivity = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameActivity.vue'))
+
+interface Props {
+  gameId?: number | null
+  open?: boolean
+}
 
 const isOpen = defineModel<boolean>('open', { default: false })
 

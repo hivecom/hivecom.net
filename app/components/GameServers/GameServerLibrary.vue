@@ -7,6 +7,7 @@ import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
+import { useDataGameAssets } from '@/composables/useDataGameAssets'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useOngoingEvents } from '@/composables/useOngoingEvents'
 
@@ -31,6 +32,7 @@ interface Props {
   filteredGames: Tables<'games'>[]
 }
 
+const { getGameCoverUrl } = useDataGameAssets()
 const { metrics, fetchMetrics } = useDataMetrics()
 const { getOngoingEventsForGame, hasOngoingEventForGame } = useOngoingEvents()
 
@@ -113,7 +115,6 @@ function getServerCountForGame(gameId: number) {
 
 // Get game cover image using the cached composable
 async function getGameCover(game: Tables<'games'>) {
-  const { getGameCoverUrl } = useDataGameAssets()
   const coverUrl = await getGameCoverUrl(game)
   // Return empty string if no cover to show only the small logo
   return coverUrl || ''
@@ -200,7 +201,7 @@ function isCoverLoading(gameId: number): boolean {
                     <div class="cover-image-container">
                       <!-- Base fallback: Hivecom logo -->
                       <div class="cover-fallback">
-                        <img src="/icon.svg" alt="Hivecom logo" class="fallback-logo">
+                        <img src="/icon.svg" alt="Hivecom logo" class="fallback-logo" loading="lazy" decoding="async">
                       </div>
                       <!-- Loading skeleton -->
                       <Skeleton v-if="isCoverLoading(game.id)" :height="280" :radius="0" class="cover-skeleton" />

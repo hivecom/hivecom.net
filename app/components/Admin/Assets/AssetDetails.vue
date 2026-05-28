@@ -149,7 +149,7 @@ function requestRename() {
             </div>
           </Flex>
         </template>
-        <img v-else :src="assetUrl" :alt="props.asset?.name ?? 'Preview'" class="asset-details__img">
+        <img v-else :src="assetUrl" :alt="props.asset?.name ?? 'Preview'" class="asset-details__img" loading="lazy" decoding="async">
         <MarkdownLightbox v-if="lightboxMarkdown" :markdown="lightboxMarkdown" :container="previewContainer" />
       </Flex>
 
