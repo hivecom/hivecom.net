@@ -63,6 +63,16 @@ const gameNameMap = computed(() => {
   return map
 })
 
+// Map community game numeric string ID -> accent color (if set)
+const gameColorMap = computed(() => {
+  const map = new Map<string, string>()
+  for (const game of games.value) {
+    if (game.color)
+      map.set(String(game.id), game.color)
+  }
+  return map
+})
+
 // Map community game ID -> its Steam app ID string (for fallback lookups)
 const gameToSteamIdMap = computed(() => {
   const map = new Map<string, string>()
@@ -230,17 +240,20 @@ const chartData = computed(() => {
 
   return {
     datasets: ids.map((id, i) => {
+      const gameAccent = gameColorMap.value.get(id)
+      const fallbackColor = colorized
+        ? colorized[i % colorized.length]
+        : isFiltered
+          ? `${palette.datasets[i % palette.datasets.length]}cc`
+          : `${props.color ?? palette.datasets[1]}cc`
+      const barColor = gameAccent ? `${gameAccent}cc` : fallbackColor
       return {
         label: gameLabel(id),
         data: metricsHistory.value.map((e: MetricsHistoryEntry) => ({
           x: new Date(e.capturedAt).getTime(),
           y: e.usersByGame?.[id] ?? null,
         })),
-        backgroundColor: colorized
-          ? colorized[i % colorized.length]
-          : isFiltered
-            ? `${palette.datasets[i % palette.datasets.length]}cc`
-            : `${props.color ?? palette.datasets[1]}cc`,
+        backgroundColor: barColor,
         clip: false,
         stack: 'mg',
       }
@@ -408,5 +421,7 @@ watch(chartData, () => {
         :options="chartOptions"
       />
     </div>
+
+    <slot v-if="!loadingHistory" />
   </div>
 </template>

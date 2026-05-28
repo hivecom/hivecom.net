@@ -379,10 +379,11 @@ const totalCurrentPlayers = computed<number | null>(() => {
           :show-y-axis="true"
           hide-title
           hide-untracked
-        />
-        <p class="chart-section__subtitle text-color-lighter text-xxs">
-          Last 14 days of game activity
-        </p>
+        >
+          <p class="chart-section__subtitle text-color-lighter text-xxs">
+            Last 14 days of game activity
+          </p>
+        </ChartGameActivity>
       </section>
 
       <!-- Recent games -->

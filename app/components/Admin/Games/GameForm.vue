@@ -257,8 +257,44 @@ async function importSteamAsset(assetType: 'icon' | 'cover' | 'background', url:
 // --- IGDB metadata autofill ---
 const igdbLookupOpen = ref(false)
 
+// Captured from last applied IGDB result so user can re-import assets without re-running the lookup flow.
+const igdbAssetLinks = ref<{
+  igdb_id: number
+  igdb_url: string
+  cover_url: string | null
+  background_url: string | null
+} | null>(null)
+
+const importingAllIgdbAssets = ref(false)
+async function importAllIgdbAssets() {
+  if (!igdbAssetLinks.value)
+    return
+  importingAllIgdbAssets.value = true
+  try {
+    await Promise.all([
+      igdbAssetLinks.value.cover_url && !assetsUrl.value.cover
+        ? importRemoteAsset('cover', igdbAssetLinks.value.cover_url)
+        : Promise.resolve(),
+      igdbAssetLinks.value.background_url && !assetsUrl.value.background
+        ? importRemoteAsset('background', igdbAssetLinks.value.background_url)
+        : Promise.resolve(),
+    ])
+  }
+  finally {
+    importingAllIgdbAssets.value = false
+  }
+}
+
 function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) {
   const overwrite = payload._overwrite ?? false
+
+  // Capture asset links so user can re-import without re-running the lookup.
+  igdbAssetLinks.value = {
+    igdb_id: payload.igdb_id,
+    igdb_url: payload.igdb_url ?? `https://www.igdb.com/games/${payload.igdb_id}`,
+    cover_url: payload.cover_url,
+    background_url: payload.background_url,
+  }
 
   // name - only fill when empty
   if (!gameForm.value.name.trim())
@@ -266,11 +302,7 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
 
   // shorthand - suggest only if not manually set and name was just filled
   if (!shorthandManuallySet.value && !gameForm.value.shorthand.trim())
-    gameForm.value.shorthand = suggestShorthand(payload.name)
-
-  // description (tagline) - clip to DESCRIPTION_MAX
-  if (overwrite || !gameForm.value.description.trim())
-    gameForm.value.description = (payload.summary ?? '').slice(0, DESCRIPTION_MAX)
+    gameForm.value.shorthand = payload.acronym?.toLowerCase() ?? suggestShorthand(payload.name)
 
   // markdown body - summary + storyline
   if (overwrite || !gameForm.value.markdown.trim()) {
@@ -285,6 +317,10 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
   // website
   if (overwrite || !gameForm.value.website.trim())
     gameForm.value.website = payload.website ?? ''
+
+  // steam_id
+  if (payload.steam_id && (overwrite || !gameForm.value.steam_id.trim()))
+    gameForm.value.steam_id = payload.steam_id
 
   // genre_tags - always merge (dedupe case-insensitively); overwrite replaces entirely
   const incomingTags = payload.genre_tags.map(t => sanitizeTag(t))
@@ -472,6 +508,7 @@ function resetForm() {
   }
   assetsUrl.value = { icon: null, cover: null, background: null }
   assetsError.value = { icon: null, cover: null, background: null }
+  igdbAssetLinks.value = null
   steamClientIconUrl.value = null
   shorthandManuallySet.value = false
 }
@@ -810,6 +847,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
             <ButtonGroup>
               <Tooltip v-if="steamAssetLinks">
                 <Button
+                  variant="fill"
                   square
                   :loading="importingAllAssets"
                   @click="importAllSteamAssets"
@@ -824,11 +862,13 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
               <Dropdown v-if="steamAssetLinks" placement="bottom-end">
                 <template #trigger="{ toggle }">
                   <Button
-                    square
+                    outline
                     @click="toggle()"
                   >
                     <Icon name="ph:steam-logo" />
-                    <Icon name="ph:caret-down" size="12" />
+                    <template #end>
+                      <Icon name="ph:caret-down" size="12" />
+                    </template>
                   </Button>
                 </template>
 
@@ -852,6 +892,49 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
                 </DropdownItem>
                 <DropdownItem icon="ph:image" @click="openExternalLink(steamAssetLinks.header)">
                   Header (store)
+                </DropdownItem>
+              </Dropdown>
+            </ButtonGroup>
+
+            <ButtonGroup v-if="igdbAssetLinks">
+              <Tooltip>
+                <Button
+                  variant="fill"
+                  square
+                  :loading="importingAllIgdbAssets"
+                  @click="importAllIgdbAssets"
+                >
+                  <Icon name="ph:download-simple" />
+                </Button>
+                <template #tooltip>
+                  <p>Import all assets from IGDB</p>
+                </template>
+              </Tooltip>
+
+              <Dropdown placement="bottom-end">
+                <template #trigger="{ toggle }">
+                  <Button
+                    outline
+                    @click="toggle()"
+                  >
+                    <Icon name="ph:game-controller" />
+                    <template #end>
+                      <Icon name="ph:caret-down" size="12" />
+                    </template>
+                  </Button>
+                </template>
+
+                <DropdownTitle>
+                  IGDB Assets
+                </DropdownTitle>
+                <DropdownItem icon="ph:link" @click="openExternalLink(igdbAssetLinks.igdb_url)">
+                  IGDB page
+                </DropdownItem>
+                <DropdownItem v-if="igdbAssetLinks.cover_url" icon="ph:portrait" @click="openExternalLink(igdbAssetLinks.cover_url!)">
+                  Cover
+                </DropdownItem>
+                <DropdownItem v-if="igdbAssetLinks.background_url" icon="ph:panorama" @click="openExternalLink(igdbAssetLinks.background_url!)">
+                  Background (artwork)
                 </DropdownItem>
               </Dropdown>
             </ButtonGroup>
