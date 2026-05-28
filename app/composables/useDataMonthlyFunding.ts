@@ -30,31 +30,31 @@ export function useDataMonthlyFunding() {
   const { withCache, cache, loading, error, onExternalInvalidation } = useCacheModule(CACHE_NAMESPACES.community)
   const supabase = useSupabaseClient<Database>()
 
-  const allFunding = ref<Tables<'monthly_funding'>[]>([])
-  const latestFunding = ref<Tables<'monthly_funding'> | null>(null)
+  const allFunding = ref<Tables<'funding_history'>[]>([])
+  const latestFunding = ref<Tables<'funding_history'> | null>(null)
 
   // Pre-populate synchronously from cache so the first render has data.
-  const _initialAll = cache.get<Tables<'monthly_funding'>[]>(CACHE_KEY_ALL)
+  const _initialAll = cache.get<Tables<'funding_history'>[]>(CACHE_KEY_ALL)
   if (_initialAll !== null) {
     allFunding.value = _initialAll
-    latestFunding.value = cache.get<Tables<'monthly_funding'>>(CACHE_KEY_LATEST)
+    latestFunding.value = cache.get<Tables<'funding_history'>>(CACHE_KEY_LATEST)
   }
 
   async function fetch(force = false): Promise<void> {
     // Pre-check both keys - if the full list is cached, derive latest from the
     // separately-cached entry and return early without calling withCache.
     if (!force) {
-      const cachedAll = cache.get<Tables<'monthly_funding'>[]>(CACHE_KEY_ALL)
+      const cachedAll = cache.get<Tables<'funding_history'>[]>(CACHE_KEY_ALL)
       if (cachedAll !== null) {
         allFunding.value = cachedAll
-        latestFunding.value = cache.get<Tables<'monthly_funding'>>(CACHE_KEY_LATEST)
+        latestFunding.value = cache.get<Tables<'funding_history'>>(CACHE_KEY_LATEST)
         return
       }
     }
 
-    const result = await withCache<Tables<'monthly_funding'>[]>(CACHE_KEY_ALL, async () => {
+    const result = await withCache<Tables<'funding_history'>[]>(CACHE_KEY_ALL, async () => {
       const { data, error: fetchError } = await supabase
-        .from('monthly_funding')
+        .from('funding_history')
         .select('*')
         .order('month', { ascending: false })
       if (fetchError)

@@ -7,12 +7,15 @@ import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { invalidateEventsCache } from '@/composables/useDataEvents'
+import { useDataGames } from '@/composables/useDataGames'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useTableActions } from '@/composables/useTableActions'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { nextOccurrenceDate } from '@/lib/utils/rrule'
 import EventDetails from './EventDetails.vue'
 import EventFilters from './EventFilters.vue'
 import EventForm from './EventForm.vue'
@@ -66,6 +69,10 @@ const { canManageResource, canCreate } = useTableActions('events')
 
 const isBelowMedium = useBreakpoint('<m')
 
+// ─── Games ─────────────────────────────────────────────────────────────────────
+
+const { games, getByIds: getGamesByIds } = useDataGames()
+
 // ─── State ────────────────────────────────────────────────────────────────────
 
 const loading = ref(false)
@@ -111,10 +118,6 @@ function setActionLoading(id: number, action: string, value: boolean): void {
 
 const { rows } = defineTable(items, { pagination: { enabled: false }, select: false })
 
-// ─── Derived counts ───────────────────────────────────────────────────────────
-
-const isFiltered = computed(() => search.value.trim() !== '')
-
 // ─── Sorting ─────────────────────────────────────────────────────────────────
 
 const sortColMap: Record<string, string> = {
@@ -148,6 +151,19 @@ function sortIcon(label: string): string {
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
 const isOfficialFilter = ref<boolean | null>(null)
+const isRecurringFilter = ref<boolean | null>(null)
+const gameFilter = ref<number[]>([])
+
+// ─── Derived counts ───────────────────────────────────────────────────────────
+
+const isFiltered = computed(() => search.value.trim() !== '' || isOfficialFilter.value !== null || isRecurringFilter.value !== null || gameFilter.value.length > 0)
+
+const eventGames = computed(() => {
+  const ids = new Set(items.value.flatMap(e => e.games ?? []))
+  return games.value
+    .filter(g => ids.has(g.id))
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+})
 
 async function fetchEvents() {
   loading.value = true
@@ -161,7 +177,9 @@ async function fetchEvents() {
       p_limit: adminTablePerPage.value,
       p_offset: (page.value - 1) * adminTablePerPage.value,
       ...(isOfficialFilter.value !== null ? { p_is_official: isOfficialFilter.value } : {}),
-    })
+      ...(isRecurringFilter.value === true ? { p_hide_recurring: true } : {}),
+      ...(gameFilter.value.length > 0 ? { p_game_ids: gameFilter.value } : {}),
+    } as Record<string, unknown>)
 
     if (error)
       throw error
@@ -189,6 +207,21 @@ function setPage(n: number) {
 
 function getEventStatus(event: RpcEvent): { label: string, variant: 'accent' | 'success' | 'neutral' } {
   const now = new Date()
+
+  if (event.recurrence_rule) {
+    const next = nextOccurrenceDate(event as unknown as Parameters<typeof nextOccurrenceDate>[0])
+    if (next) {
+      const nextEnd = event.duration_minutes
+        ? new Date(next.getTime() + event.duration_minutes * 60 * 1000)
+        : next
+      if (now >= next && now <= nextEnd)
+        return { label: 'Ongoing', variant: 'success' }
+      return { label: 'Recurring', variant: 'accent' }
+    }
+    // No future occurrences - series ended
+    return { label: 'Past', variant: 'neutral' }
+  }
+
   const eventStart = new Date(event.date)
   const eventEnd = event.duration_minutes
     ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
@@ -324,6 +357,16 @@ watch(isOfficialFilter, () => {
   void fetchEvents()
 })
 
+watch(isRecurringFilter, () => {
+  page.value = 1
+  void fetchEvents()
+})
+
+watch(gameFilter, () => {
+  page.value = 1
+  void fetchEvents()
+})
+
 watch([sortCol, sortDir], () => {
   page.value = 1
   void fetchEvents()
@@ -371,7 +414,7 @@ onBeforeMount(async () => {
     <Flex v-else-if="initialLoad" gap="s" column expand>
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
-          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" />
+          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" v-model:is-recurring="isRecurringFilter" v-model:game-filter="gameFilter" :games="eventGames" />
         </Flex>
 
         <Flex
@@ -405,7 +448,7 @@ onBeforeMount(async () => {
     <Flex v-else gap="s" column expand>
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
-          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" />
+          <EventFilters v-model:search="search" v-model:is-official="isOfficialFilter" v-model:is-recurring="isRecurringFilter" v-model:game-filter="gameFilter" :games="eventGames" />
         </Flex>
 
         <Flex
@@ -452,6 +495,7 @@ onBeforeMount(async () => {
                 </Flex>
               </Table.Head>
               <Table.Head>Location</Table.Head>
+              <Table.Head>Games</Table.Head>
               <Table.Head class="sortable-head" @click="handleSort('Official')">
                 <Flex gap="xs" y-center>
                   Official
@@ -483,6 +527,17 @@ onBeforeMount(async () => {
                   <span v-else>-</span>
                 </Table.Cell>
                 <Table.Cell>
+                  <Flex v-if="event.games && event.games.length > 0" gap="xs" y-center wrap>
+                    <GameIcon
+                      v-for="game in getGamesByIds(event.games)"
+                      :key="game.id"
+                      :game="game"
+                      size="xs"
+                    />
+                  </Flex>
+                  <span v-else>-</span>
+                </Table.Cell>
+                <Table.Cell>
                   <Badge v-if="event.is_official" variant="accent">
                     <Icon name="ph:star-fill" size="12" />
                     Official
@@ -490,12 +545,10 @@ onBeforeMount(async () => {
                   <span v-else>-</span>
                 </Table.Cell>
                 <Table.Cell>
-                  <Badge v-if="event.recurrence_rule" variant="neutral">
-                    {{ event.recurrence_rule }}
-                  </Badge>
+                  <code v-if="event.recurrence_rule" class="text-s">{{ event.recurrence_rule }}</code>
                   <span v-else>-</span>
                 </Table.Cell>
-                <Table.Cell @click.stop>
+                <Table.Cell>
                   <Badge :variant="getEventStatus(event).variant">
                     {{ getEventStatus(event).label }}
                   </Badge>
@@ -528,7 +581,7 @@ onBeforeMount(async () => {
         v-model:is-open="showEventDetails"
         :event="selectedEvent"
         @edit="handleEditFromDetails"
-        @delete="(item) => handleEventDelete((item as Event).id)"
+        @delete="(item) => handleEventDelete(item.id)"
       />
 
       <EventForm

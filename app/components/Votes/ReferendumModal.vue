@@ -2,8 +2,8 @@
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import { Badge, Button, Calendar, Checkbox, Flex, Grid, Input, Modal, Textarea, Tooltip } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { useDataUser } from '@/composables/useDataUser'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
@@ -29,14 +29,10 @@ const subscriptionsCache = useDiscussionSubscriptionsCache()
 // already fetched and shared across the page. referendums.update and
 // referendums.delete are granted to admin and moderator only.
 
-const { user: cachedUser } = useDataUser(userId, { includeRole: true })
+const { isAdminOrMod } = useEffectiveRole()
 
-const canMakePublic = computed(() =>
-  cachedUser.value?.role === 'admin' || cachedUser.value?.role === 'moderator',
-)
-const canDelete = computed(() =>
-  cachedUser.value?.role === 'admin' || cachedUser.value?.role === 'moderator',
-)
+const canMakePublic = isAdminOrMod
+const canDelete = isAdminOrMod
 
 // ─── Mode ─────────────────────────────────────────────────────────────────────
 
@@ -347,7 +343,7 @@ const isMobile = useBreakpoint('<s')
                 outline
                 :class="{ error: form.date_start == null }"
               >
-                {{ form.date_start ? form.date_start.toLocaleString('en-US', {
+                {{ form.date_start ? form.date_start.toLocaleString(undefined, {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',
@@ -382,7 +378,7 @@ const isMobile = useBreakpoint('<s')
                 outline
                 :class="{ error: form.date_end == null || !validation.dateRange || !validation.startBeforeEnd }"
               >
-                {{ form.date_end ? form.date_end.toLocaleString('en-US', {
+                {{ form.date_end ? form.date_end.toLocaleString(undefined, {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',

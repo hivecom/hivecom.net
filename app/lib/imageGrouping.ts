@@ -1,13 +1,27 @@
 // ---------------------------------------------------------------------------
 // AST-level grouping (used by MarkdownRendererInner before MDCRenderer sees it)
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 interface ASTNode {
   type: string
   tag?: string
   props?: Record<string, unknown>
   children?: ASTNode[]
   value?: string
+}
+
+function isSoloVideoASTNode(node: ASTNode): boolean {
+  // Structured element path - rehype stores class as props.className (string array)
+  if (node.type === 'element' && node.tag === 'div') {
+    const cls = node.props?.className ?? node.props?.class
+    if (typeof cls === 'string')
+      return cls.split(' ').includes('md-video-embed')
+    if (Array.isArray(cls))
+      return (cls as string[]).includes('md-video-embed')
+  }
+  // Fallback: raw HTML node (type:'raw' or 'html') if MDC doesn't parse the HTML
+  if ((node.type === 'raw' || node.type === 'html') && typeof node.value === 'string')
+    return node.value.trimStart().startsWith('<div class="md-video-embed">')
+  return false
 }
 
 function isSoloImageASTNode(node: ASTNode): boolean {
@@ -39,6 +53,28 @@ function splitMultiImageASTNode(node: ASTNode): ASTNode[] {
   }))
 }
 
+// Strip the `controls` attribute from a video AST node so gallery tiles don't
+// show the native controls bar. Handles both raw HTML string nodes and
+// structured element nodes produced by rehype.
+function stripVideoControls(node: ASTNode): ASTNode {
+  if ((node.type === 'raw' || node.type === 'html') && typeof node.value === 'string') {
+    return { ...node, value: node.value.replace(/\s+controls(?:="[^"]*")?/g, '') }
+  }
+  if (node.type === 'element' && node.tag === 'div') {
+    return {
+      ...node,
+      children: (node.children ?? []).map((child) => {
+        if (child.tag === 'video') {
+          const { controls: _controls, ...restProps } = child.props ?? {}
+          return { ...child, props: restProps }
+        }
+        return child
+      }),
+    }
+  }
+  return node
+}
+
 // Walk the root AST body and wrap runs of solo-image <p> nodes in a
 // <div class="md-image-group" data-count="N"> node so that Vue renders the
 // grouping natively and never patches it away.
@@ -60,16 +96,16 @@ export function groupImagesAST(body: ASTNode): ASTNode {
   while (i < flatChildren.length) {
     const node = flatChildren[i]!
 
-    if (!isSoloImageASTNode(node)) {
+    if (!isSoloImageASTNode(node) && !isSoloVideoASTNode(node)) {
       newChildren.push(node)
       i++
       continue
     }
 
-    // Collect full run of consecutive solo-image paragraphs.
+    // Collect full run of consecutive solo-image/video nodes.
     const run: ASTNode[] = []
     let j = i
-    while (j < flatChildren.length && isSoloImageASTNode(flatChildren[j]!)) {
+    while (j < flatChildren.length && (isSoloImageASTNode(flatChildren[j]!) || isSoloVideoASTNode(flatChildren[j]!))) {
       run.push(flatChildren[j]!)
       j++
     }
@@ -82,7 +118,7 @@ export function groupImagesAST(body: ASTNode): ASTNode {
         type: 'element',
         tag: 'div',
         props: { 'class': 'md-image-group', 'data-count': String(run.length) },
-        children: run,
+        children: run.map(n => isSoloVideoASTNode(n) ? stripVideoControls(n) : n),
       })
     }
 
@@ -94,8 +130,7 @@ export function groupImagesAST(body: ASTNode): ASTNode {
 
 // ---------------------------------------------------------------------------
 // DOM-level grouping (used by the ProseMirror editor)
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // If a <p> contains only <img> elements (no other non-whitespace content),
 // split it into individual solo-image <p> nodes in the DOM.
 function splitMultiImageNode(node: HTMLElement, container: HTMLElement): void {
@@ -115,14 +150,18 @@ function splitMultiImageNode(node: HTMLElement, container: HTMLElement): void {
   container.removeChild(node)
 }
 
-// A "solo image node" is either:
+// A "solo media node" is either:
 // - a <p> whose only non-whitespace child is an <img>  (MDC renderer output)
 // - a bare <img> that is a direct child of the container (ProseMirror output)
+// - a <div class="md-video-embed"> block (MDC renderer output for :::video)
 function isSoloImageNode(node: ChildNode): node is HTMLElement {
   if (!(node instanceof HTMLElement))
     return false
 
   if (node.tagName === 'IMG')
+    return true
+
+  if (node.tagName === 'DIV' && node.classList.contains('md-video-embed'))
     return true
 
   if (node.tagName === 'P') {

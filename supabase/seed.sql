@@ -33,6 +33,7 @@ INSERT INTO public.themes (
   dark_text_green,  dark_bg_green_lowered,  dark_bg_green_raised,
   dark_text_yellow, dark_bg_yellow_lowered, dark_bg_yellow_raised,
   dark_text_blue,   dark_bg_blue_lowered,   dark_bg_blue_raised,
+  dark_text_purple, dark_bg_purple_lowered, dark_bg_purple_raised,
   dark_border, dark_border_strong, dark_border_weak,
   dark_accent, dark_bg_accent_lowered, dark_bg_accent_raised,
   -- light palette
@@ -43,6 +44,7 @@ INSERT INTO public.themes (
   light_text_green,  light_bg_green_lowered,  light_bg_green_raised,
   light_text_yellow, light_bg_yellow_lowered, light_bg_yellow_raised,
   light_text_blue,   light_bg_blue_lowered,   light_bg_blue_raised,
+  light_text_purple, light_bg_purple_lowered, light_bg_purple_raised,
   light_border, light_border_strong, light_border_weak,
   light_accent, light_bg_accent_lowered, light_bg_accent_raised
 )
@@ -71,6 +73,8 @@ VALUES
   '#ffc107', '#4e3400', '#986800',
   -- dark semantic: blue (unchanged)
   '#558df5', '#0d204a', '#1a3b77',
+  -- dark semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- dark borders / accent: brand green
   '#282828', '#363636', '#242424',
   '#a7fc2f', '#4e8502', '#69b103',
@@ -86,6 +90,8 @@ VALUES
   '#b0810f', '#e6cd89', '#fdc856',
   -- light semantic: blue (unchanged)
   '#558df5', '#c4d6ff', '#88b2ff',
+  -- light semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- light borders / accent: brand green
   '#c8c8c8', '#989898', '#e0e0e0',
   '#69883e', '#93be57', '#7ea34a'
@@ -114,6 +120,8 @@ VALUES
   '#f0429e', '#5e0a38', '#870f50',
   -- dark semantic: blue -> cyan-teal
   '#22d4c8', '#0a3d3a', '#0d5e59',
+  -- dark semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- dark borders / accent: brand green
   '#282828', '#363636', '#242424',
   '#a7fc2f', '#4e8502', '#69b103',
@@ -129,6 +137,8 @@ VALUES
   '#c4186e', '#e8b4ce', '#f07ab8',
   -- light semantic: blue -> cyan-teal
   '#0e9e96', '#b0e4e2', '#7dd4d0',
+  -- light semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- light borders / accent: brand green
   '#c8c8c8', '#989898', '#e0e0e0',
   '#69883e', '#93be57', '#7ea34a'
@@ -161,6 +171,8 @@ VALUES
   '#737373', '#2a2a2a', '#333333',
   -- dark semantic: blue -> medium-dark gray (~80)
   '#505050', '#1e1e1e', '#272727',
+  -- dark semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- dark borders / accent: high-luminance gray - green can't be used here since
   -- it would be indistinguishable from the semantic green slot in grayscale
   '#282828', '#363636', '#242424',
@@ -177,6 +189,8 @@ VALUES
   '#6e6e6e', '#aaaaaa', '#909090',
   -- light semantic: blue -> medium-light gray (~145)
   '#919191', '#c8c8c8', '#b4b4b4',
+  -- light semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- light borders / accent: near-black gray - same reasoning as dark palette
   '#c8c8c8', '#989898', '#e0e0e0',
   '#1e1e1e', '#9a9a9a', '#b0b0b0'
@@ -207,6 +221,8 @@ VALUES
   '#ffe000', '#4a3d00', '#6e5a00',
   -- dark semantic: blue - bright saturated blue
   '#3399ff', '#002b66', '#003d99',
+  -- dark semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- dark borders: high contrast borders visible against black
   '#444444', '#666666', '#333333',
   -- dark accent: brand green pushed to full brightness for maximum contrast
@@ -223,6 +239,8 @@ VALUES
   '#8a6000', '#d4b87a', '#c49a20',
   -- light semantic: blue - deep saturated blue
   '#0055cc', '#aac4f0', '#5599ee',
+  -- light semantic: purple
+  '#C176FF', '#481C76', '#622C9E',
   -- light borders: strong visible borders
   '#888888', '#444444', '#bbbbbb',
   -- light accent: brand green darkened for white bg contrast
@@ -242,10 +260,10 @@ VALUES
 ('admin', 'complaints.delete'),
 ('admin', 'complaints.read'),
 ('admin', 'complaints.update'),
-('admin', 'containers.create'),
-('admin', 'containers.delete'),
-('admin', 'containers.read'),
-('admin', 'containers.update'),
+('admin', 'network.create'),
+('admin', 'network.delete'),
+('admin', 'network.read'),
+('admin', 'network.update'),
 ('admin', 'discussion_topics.create'),
 ('admin', 'discussion_topics.delete'),
 ('admin', 'discussion_topics.read'),
@@ -258,10 +276,6 @@ VALUES
 ('admin', 'events.delete'),
 ('admin', 'events.read'),
 ('admin', 'events.update'),
-('admin', 'expenses.create'),
-('admin', 'expenses.delete'),
-('admin', 'expenses.read'),
-('admin', 'expenses.update'),
 ('admin', 'funding.create'),
 ('admin', 'funding.delete'),
 ('admin', 'funding.read'),
@@ -270,10 +284,6 @@ VALUES
 ('admin', 'games.delete'),
 ('admin', 'games.read'),
 ('admin', 'games.update'),
-('admin', 'gameservers.create'),
-('admin', 'gameservers.delete'),
-('admin', 'gameservers.read'),
-('admin', 'gameservers.update'),
 ('admin', 'kvstore.create'),
 ('admin', 'kvstore.delete'),
 ('admin', 'kvstore.read'),
@@ -297,10 +307,6 @@ VALUES
 ('admin', 'roles.delete'),
 ('admin', 'roles.read'),
 ('admin', 'roles.update'),
-('admin', 'servers.create'),
-('admin', 'servers.delete'),
-('admin', 'servers.read'),
-('admin', 'servers.update'),
 ('admin', 'users.create'),
 ('admin', 'users.delete'),
 ('admin', 'users.read'),
@@ -325,16 +331,10 @@ VALUES
 ('moderator', 'events.delete'),
 ('moderator', 'events.read'),
 ('moderator', 'events.update'),
-('moderator', 'expenses.read'),
-('moderator', 'funding.read'),
 ('moderator', 'games.create'),
 ('moderator', 'games.delete'),
 ('moderator', 'games.read'),
 ('moderator', 'games.update'),
-('moderator', 'gameservers.create'),
-('moderator', 'gameservers.delete'),
-('moderator', 'gameservers.read'),
-('moderator', 'gameservers.update'),
 ('moderator', 'motds.create'),
 ('moderator', 'motds.delete'),
 ('moderator', 'motds.read'),
@@ -348,6 +348,7 @@ VALUES
 ('moderator', 'referendums.delete'),
 ('moderator', 'referendums.read'),
 ('moderator', 'referendums.update'),
+('moderator', 'funding.read'),
 ('moderator', 'roles.read'),
 ('moderator', 'users.create'),
 ('moderator', 'users.read'),
@@ -374,8 +375,8 @@ INSERT INTO public.user_roles(role, user_id)
   VALUES ('admin', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
 -- Create or update a profile for our admin user
-INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, supporter_lifetime, badges, markdown, public, avatar_extension)
-  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', '76561198000000001', '2013-01-01 00:00:00+00', 'Hivecom', 'Local develop and test user', 'true', ARRAY['founder']::public.profile_badge[], '# whoami
+INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, supporter_lifetime, markdown, public, avatar_extension)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', '76561198000000001', '2013-01-01 00:00:00+00', 'Hivecom', 'Local develop and test user', 'true', '# whoami
 
 ```javascript
 console.log("Hello, Hivecom!");
@@ -403,6 +404,15 @@ Hey there! I''m @{018d224c-0e49-4b6d-b57a-87299605c2b1}, the developer test acco
 2. Second item
    1. Nested item 2.1
    2. Nested item 2.2
+3. Third item
+
+### Mixed List
+1. First item
+  - Nested unordered item
+  - Another nested unordered item
+2. Second item
+  1. Nested ordered item
+  2. Another nested ordered item
 3. Third item
 
 ## Links
@@ -560,7 +570,6 @@ ON CONFLICT (id)
     steam_id = EXCLUDED.steam_id,
     username = EXCLUDED.username,
     introduction = EXCLUDED.introduction,
-    badges = EXCLUDED.badges,
     markdown = EXCLUDED.markdown,
     public = EXCLUDED.public,
     avatar_extension = EXCLUDED.avatar_extension;
@@ -571,6 +580,11 @@ ON CONFLICT (id)
 ALTER TABLE public.profiles DISABLE TRIGGER update_profiles_audit_fields;
 UPDATE public.profiles SET created_at = '2013-01-01 00:00:00+00' WHERE id = '018d224c-0e49-4b6d-b57a-87299605c2b1';
 ALTER TABLE public.profiles ENABLE TRIGGER update_profiles_audit_fields;
+
+-- Seed the founder badge for the dev account (previously stored in profiles.badges)
+INSERT INTO public.profile_badges (profile_id, slug, tier, source, earned_at, updated_at)
+  VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', 'founder', 'shiny', 'manual', '2013-01-01 00:00:00+00', now())
+  ON CONFLICT (profile_id, slug) DO NOTHING;
 
 -- Seed a Steam presence entry for Hivecom (current game + last app)
 INSERT INTO public.presences_steam(
@@ -875,7 +889,7 @@ Drop in whenever, leave whenever. See you there!
   ', 180, true, 'FREQ=MONTHLY');
 
 -- Mark the test user as having RSVP'd to the past event
-INSERT INTO public.events_rsvps(user_id, event_id, rsvp, created_at, created_by)
+INSERT INTO public.event_rsvps(user_id, event_id, rsvp, created_at, created_by)
 SELECT
   '018d224c-0e49-4b6d-b57a-87299605c2b3',
   id,
@@ -891,7 +905,7 @@ ORDER BY
 LIMIT 1;
 
 -- Insert a test server
-INSERT INTO public.servers(active, address, created_at, docker_control, docker_control_secure, docker_control_port, accessible, last_accessed)
+INSERT INTO public.network_servers(active, address, created_at, docker_control, docker_control_secure, docker_control_port, accessible, last_accessed)
   VALUES (TRUE, 'host.docker.internal', NOW(), TRUE, FALSE, 54320, TRUE, NOW());
 
 -- Insert test games
@@ -899,16 +913,17 @@ INSERT INTO public.games(created_at, created_by, name, shorthand, steam_id)
 VALUES
   (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Counter-Strike 2', 'cs2', 730),
   (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Garrys Mod', 'gmod', 4000),
-  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Minecraft', 'minecraft', NULL);
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Minecraft', 'minecraft', NULL),
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Generic Game', 'generic', NULL);
 
 -- Insert a test container for our gameserver
-INSERT INTO public.containers(created_at, healthy, name, reported_at, running, server, started_at)
+INSERT INTO public.network_containers(created_at, healthy, name, reported_at, running, server, started_at)
   VALUES (NOW(), TRUE, 'gameserver-cs2', NOW(), TRUE, 1, -- References the server ID we just created
     NOW() - INTERVAL '1 hour' -- Set started_at to 1 hour ago
 );
 
 -- Insert a test gameserver for CS2
-INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region, container, markdown)
+INSERT INTO public.network_gameservers(addresses, created_at, created_by, description, game, name, port, region, container, markdown, query_protocol)
   VALUES (ARRAY['cs2.gameserver.hivecom.net', 'cs2.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community CS2 server for casual play', 1, -- References the game ID we just created
     'Hivecom CS2 Community Server', '27015', 'eu', 'gameserver-cs2', '
 # CS 2
@@ -923,18 +938,22 @@ This server is geared towards casual play - if you are looking for a competitive
 2. No cheating or exploiting.
 3. Follow the server admin instructions.
 4. Have fun!
-  ');
+  ', 'source');
 
 -- Insert a test gameserver for Garrys Mod
-INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region)
-  VALUES (ARRAY['gmod.gameserver.hivecom.net', 'gmod.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Garrys Mod server for sandbox fun', 2, 'Hivecom Garrys Mod Sandbox Server', '27015', 'eu');
+INSERT INTO public.network_gameservers(addresses, created_at, created_by, description, game, name, port, region, query_protocol)
+  VALUES (ARRAY['gmod.gameserver.hivecom.net', 'gmod.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Garrys Mod server for sandbox fun', 2, 'Hivecom Garrys Mod Sandbox Server', '27015', 'eu', 'source');
 
 -- Insert a test gameserver for Minecraft
-INSERT INTO public.gameservers(addresses, created_at, created_by, description, game, name, port, region)
-  VALUES (ARRAY['mc.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Minecraft survival server', 3, 'Hivecom Minecraft Survival', '25565', 'eu');
+INSERT INTO public.network_gameservers(addresses, created_at, created_by, description, game, name, port, region, query_protocol)
+  VALUES (ARRAY['mc.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Minecraft survival server', 3, 'Hivecom Minecraft Survival', '25565', 'eu', 'minecraft');
+
+-- Insert a test gameserver for Generic Game (no query protocol configured)
+INSERT INTO public.network_gameservers(addresses, created_at, created_by, description, game, name, port, region)
+  VALUES (ARRAY['generic.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'A generic community game server with no query protocol', 4, 'Hivecom Generic Game Server', '7777', 'eu');
 
 -- Insert a test expense
-INSERT INTO public.expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)
+INSERT INTO public.funding_expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)
 VALUES
   (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Domain Fees', 'Domain registration fees', NULL, 100, NOW() - INTERVAL '1 month', NULL),
 (NOW() - INTERVAL '1 month', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Game Server Hosting', 'Monthly server hosting fees', NULL, 5000, NOW() - INTERVAL '6 months', NULL),
@@ -942,7 +961,7 @@ VALUES
 (NOW() - INTERVAL '12 months', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'VPS Web Hosting', 'VPS hosting fees for Hivecom website', NULL, 3000, NOW() - INTERVAL '12 months', NOW() - INTERVAL '3 months');
 
 -- Insert monthly funding records
-INSERT INTO public.monthly_funding(month, patreon_month_amount_cents, patreon_lifetime_amount_cents, patreon_count, donation_month_amount_cents, donation_lifetime_amount_cents, donation_count)
+INSERT INTO public.funding_history(month, patreon_month_amount_cents, patreon_lifetime_amount_cents, patreon_count, donation_month_amount_cents, donation_lifetime_amount_cents, donation_count)
 VALUES
   (DATE_TRUNC('month', NOW()), 3000, 9000, 3, 5000, 20000, 1),
 (DATE_TRUNC('month', NOW()) - INTERVAL '1 month', 2000, 6000, 2, 5000, 15000, 1),
@@ -1122,6 +1141,143 @@ SELECT
 FROM public.discussions d
 WHERE d.profile_id = '018d224c-0e49-4b6d-b57a-87299605c2b1'::uuid;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Fake metrics: 90 days of 15-minute snapshots with realistic activity curves.
+--
+-- Activity is shaped by two signals multiplied together:
+--   time-of-day  - low at night (3am trough), peak at 8pm
+--   day-of-week  - weekdays ~60%, weekends peak at 100%
+--
+-- Gameservers use IDs 1 (CS2), 2 (GMod), 3 (Minecraft), 4 (Generic) matching seed inserts.
+-- Members total grows slowly from 280 to 320 over the period.
+-- Discussions/replies grow monotonically.
+-- A few random zero-player slots are left to show the gap-fill rendering.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+INSERT INTO public.metrics (captured_at, data)
+SELECT
+  t AS captured_at,
+  jsonb_build_object(
+    'collectedAt', to_char(t AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+
+    -- Members: total grows slowly, online follows activity curve
+    'members', jsonb_build_object(
+      'total',     280 + FLOOR(40.0 * (EXTRACT(EPOCH FROM (t - (NOW() - INTERVAL '90 days'))) / (90.0 * 86400)))::int,
+      'online',    GREATEST(0, ROUND(activity * 18))::int,
+      'byCountry', jsonb_build_object(
+        'DE', GREATEST(0, ROUND(activity * 6))::int,
+        'US', GREATEST(0, ROUND(activity * 5))::int,
+        'GB', GREATEST(0, ROUND(activity * 3))::int,
+        'NL', GREATEST(0, ROUND(activity * 2))::int,
+        'SE', GREATEST(0, ROUND(activity * 2))::int
+      ),
+      'byGame', jsonb_build_object(
+        'cs2',       GREATEST(0, ROUND(activity * 7))::int,
+        'gmod',      GREATEST(0, ROUND(activity * 4))::int,
+        'minecraft', GREATEST(0, ROUND(activity * 3))::int
+      )
+    ),
+
+    'community', jsonb_build_object(
+      'projects', 4
+    ),
+
+    -- Discussions: monotonically growing totals, small deltas per slot
+    'discussions', jsonb_build_object(
+      'total',      (SELECT COUNT(*) FROM public.discussions)::int + FLOOR(EXTRACT(EPOCH FROM (t - (NOW() - INTERVAL '90 days'))) / (90.0 * 86400) * 60)::int,
+      'replies',    (SELECT COUNT(*) FROM public.discussion_replies)::int + FLOOR(EXTRACT(EPOCH FROM (t - (NOW() - INTERVAL '90 days'))) / (90.0 * 86400) * 200)::int,
+      'newTotal',   (SELECT COUNT(*) FROM public.discussions WHERE created_at >= t AND created_at < t + INTERVAL '15 minutes')::int,
+      'newReplies', (SELECT COUNT(*) FROM public.discussion_replies WHERE created_at >= t AND created_at < t + INTERVAL '15 minutes')::int
+    ),
+
+    -- TeamSpeak: single server, online follows activity
+    'teamspeak', jsonb_build_object(
+      'online', GREATEST(0, ROUND(activity * 8))::int,
+      'byServer', jsonb_build_object(
+        'eu', GREATEST(0, ROUND(activity * 8))::int
+      )
+    ),
+
+    -- Gameservers: CS2 busiest, GMod moderate, Minecraft light
+    -- Leave a handful of zero slots scattered to test gap rendering
+    'gameservers', jsonb_build_object(
+      'total',   4,
+      'players', (
+        GREATEST(0, ROUND(activity * 10))::int +
+        GREATEST(0, ROUND(activity *  5))::int +
+        GREATEST(0, ROUND(activity *  3))::int
+      ),
+      'byServer', jsonb_build_object(
+        '1', jsonb_build_object(
+          'protocol', 'source',
+          'data', jsonb_build_object(
+            'players',    GREATEST(0, ROUND(activity * 10))::int,
+            'maxPlayers', 24,
+            'map',        'cs_office'
+          )
+        ),
+        '2', jsonb_build_object(
+          'protocol', 'source',
+          'data', jsonb_build_object(
+            'players',    GREATEST(0, ROUND(activity * 5))::int,
+            'maxPlayers', 16,
+            'map',        'gm_flatgrass'
+          )
+        ),
+        '3', jsonb_build_object(
+          'protocol', 'minecraft',
+          'data', jsonb_build_object(
+            'players',    GREATEST(0, ROUND(activity * 3))::int,
+            'maxPlayers', 20,
+            'world',      'world',
+            'playerList', CASE
+              WHEN GREATEST(0, ROUND(activity * 3))::int >= 3 THEN '["Player1", "Player2", "Player3"]'::jsonb
+              WHEN GREATEST(0, ROUND(activity * 3))::int = 2 THEN '["Player1", "Player2"]'::jsonb
+              WHEN GREATEST(0, ROUND(activity * 3))::int = 1 THEN '["Player1"]'::jsonb
+              ELSE '[]'::jsonb
+            END,
+            'motd',       'Hivecom Survival',
+            'gameType',   'SMP',
+            'gameId',     'MINECRAFT',
+            'version',    '1.21',
+            'plugins',    null,
+            'hostPort',   25565,
+            'hostIp',     'mc.g.hivecom.net',
+            'extra',      null
+          )
+        ),
+        '4', jsonb_build_object(
+          'protocol', null,
+          'data',     null
+        )
+      )
+    )
+  )
+FROM (
+  SELECT
+    t,
+    -- time-of-day signal: trough at 3am (0.05), peak at 8pm (1.0)
+    -- day-of-week signal: Mon-Thu 0.6, Fri 0.8, Sat-Sun 1.0
+    GREATEST(0.0,
+      -- hour curve: cos shifted so peak at 20h, trough at 3h
+      0.5 + 0.5 * COS(PI() * (EXTRACT(HOUR FROM t AT TIME ZONE 'Europe/Berlin') - 20.0) / 12.0)
+    ) *
+    CASE EXTRACT(DOW FROM t AT TIME ZONE 'Europe/Berlin')
+      WHEN 0 THEN 1.0   -- Sunday
+      WHEN 1 THEN 0.55  -- Monday
+      WHEN 2 THEN 0.60  -- Tuesday
+      WHEN 3 THEN 0.65  -- Wednesday
+      WHEN 4 THEN 0.70  -- Thursday
+      WHEN 5 THEN 0.85  -- Friday
+      WHEN 6 THEN 1.0   -- Saturday
+    END AS activity
+  FROM generate_series(
+    NOW() - INTERVAL '90 days',
+    NOW(),
+    INTERVAL '15 minutes'
+  ) AS t
+) AS series;
+
 -- Insert test projects
 INSERT INTO public.projects(created_at, created_by, title, description, markdown, link, owner, tags, github)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'VUI', 'The UI library that powers the Hivecom platform interface.', '
@@ -1138,3 +1294,32 @@ The library''s consistent design language helps create a cohesive user experienc
 
 Give @dolanske a shout since we couldn''t have built this project without his hard work and dedication!
   ', 'https://dolanske.github.io/vui/', '018d224c-0e49-4b6d-b57a-87299605c2b1', ARRAY['vue', 'typescript', 'ui-library', 'components', 'frontend', 'open-source'], 'dolanske/vui');
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Points KV configuration
+--
+-- points_per_cent: rate used by Ko-fi webhook and Patreon cron to convert
+--   euro cents into points (0.1 = 100 points per €1).
+-- points_per_month_loyalty: points awarded to active users each month by
+--   cron_monthly_points_loyalty_award (0 = disabled until explicitly set).
+-- points_per_birthday: points awarded to a user on their birthday by
+--   cron_points_birthday_award (default 1000).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+INSERT INTO public.kvstore (key, type, value)
+VALUES
+  ('points_per_cent',         'NUMBER', '1'::jsonb),
+  ('points_per_month_loyalty','NUMBER', '50'::jsonb),
+  ('points_per_birthday',     'NUMBER', '1000'::jsonb)
+ON CONFLICT (key) DO NOTHING;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Seed profile points
+-- ─────────────────────────────────────────────────────────────────────────────
+
+INSERT INTO public.profile_points (profile_id, points_loyalty)
+VALUES
+  ('018d224c-0e49-4b6d-b57a-87299605c2b1', 10000), -- Hivecom
+  ('018d224c-0e49-4b6d-b57a-87299605c2b3',  1000), -- TestUser
+  ('018d224c-0e49-4b6d-b57a-87299605c2b4',  2000)  -- BirthdayUser
+ON CONFLICT (profile_id) DO NOTHING;

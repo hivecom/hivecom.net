@@ -300,8 +300,12 @@ export function humanizeRrule(rule: string): string {
       const dayNames = byDay
         .map(code => DAY_CODE_TO_NAME[code])
         .filter((name): name is string => name != null && name !== '')
-      if (dayNames.length > 0)
-        return `Repeats every ${dayNames.join(', ')}`
+      if (dayNames.length > 0) {
+        const dayLabel = dayNames.join(', ')
+        if (interval === 1)
+          return `Repeats every ${dayLabel}`
+        return `Repeats every ${interval} weeks on ${dayLabel}`
+      }
     }
     if (interval === 1)
       return 'Repeats weekly'

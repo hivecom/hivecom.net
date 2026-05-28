@@ -15,7 +15,7 @@ const { data }: { data: Tables<'events'> | null } = await supabase
   .single()
 
 const { count } = await supabase
-  .from('events_rsvps')
+  .from('event_rsvps')
   .select('*', { count: 'exact', head: true })
   .eq('event_id', props.eventId)
   .eq('rsvp', 'yes')

@@ -1,9 +1,17 @@
 <script setup lang="ts">
-import { Flex, Input, Select } from '@dolanske/vui'
+import type { Tables } from '@/types/database.overrides'
+import { Flex, Input, Select, Switch } from '@dolanske/vui'
+import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
+
+const props = defineProps<{
+  games: Tables<'games'>[]
+}>()
 
 const search = defineModel<string>('search', { default: '' })
 const isOfficial = defineModel<boolean | null>('isOfficial', { default: null })
+const isRecurring = defineModel<boolean | null>('isRecurring', { default: null })
+const gameFilter = defineModel<number[]>('gameFilter', { default: () => [] })
 
 const isBelowMedium = useBreakpoint('<m')
 
@@ -32,6 +40,15 @@ const officialSelection = computed<SelectOption[]>({
     else {
       isOfficial.value = val[0].value === 'true'
     }
+  },
+})
+
+const hideRecurring = computed<boolean>({
+  get() {
+    return isRecurring.value === true
+  },
+  set(val) {
+    isRecurring.value = val ? true : null
   },
 })
 </script>
@@ -64,5 +81,17 @@ const officialSelection = computed<SelectOption[]>({
       show-clear
       :single="true"
     />
+
+    <GameSelect
+      v-model="gameFilter"
+      :games="props.games"
+      placeholder="Game"
+      :expand="isBelowMedium"
+    />
+
+    <Flex gap="xs" y-center>
+      <Switch v-model="hideRecurring" />
+      <span class="text-s text-color-light">Hide recurring</span>
+    </Flex>
   </Flex>
 </template>

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { ProfileFriendshipStatus } from '@/types/profile.ts'
-import { Badge, Button, Card, CopyClipboard, Flex, Grid, Modal, Skeleton, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, CopyClipboard, Flex, Grid, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import { useDataUser } from '@/composables/useDataUser'
-import { getUserActivityStatus } from '@/lib/lastSeen'
+import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
 import { isBirthdayDateToday } from '@/lib/utils/date'
@@ -119,7 +119,7 @@ const birthdayTooltipText = computed(() => {
 
   const ageText = `${birthdayInfo.value.age} year${birthdayInfo.value.age === 1 ? '' : 's'} old`
   if (birthdayInfo.value.age < 6) {
-    return `${ageText} · Suspiciously young`
+    return `${ageText} - Suspiciously young`
   }
 
   return ageText
@@ -458,9 +458,10 @@ onUnmounted(() => stopConfetti())
                 <template #tooltip>
                   <p>{{ activityStatus.lastSeenText }}</p>
                 </template>
-                <div
+                <Indicator
+                  :variant="activityStatus.isActive ? 'online' : activityStatus.isAway ? 'away' : 'offline'"
                   class="profile__online-indicator"
-                  :class="{ active: activityStatus.isActive }"
+                  outline
                 />
               </Tooltip>
             </div>
@@ -479,7 +480,7 @@ onUnmounted(() => stopConfetti())
               muted
               playsinline
             />
-            <img v-else :src="avatarUrl" class="avatar-lightbox">
+            <img v-else :src="avatarUrl" class="avatar-lightbox" loading="lazy" decoding="async">
           </Modal>
 
           <Flex column gap="s" expand x-end class="h-100">
@@ -488,11 +489,10 @@ onUnmounted(() => stopConfetti())
               <Badge
                 v-if="userRole && getRoleInfo(userRole)"
                 :variant="getRoleInfo(userRole)?.variant"
-                size="s"
               >
                 {{ getRoleInfo(userRole)?.display }}
               </Badge>
-              <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning" size="s">
+              <Badge v-if="profile.supporter_patreon || profile.supporter_lifetime" variant="warning">
                 <Icon name="ph:heart" class="gold" />
                 Supporter
               </Badge>
@@ -500,7 +500,6 @@ onUnmounted(() => stopConfetti())
               <Badge
                 v-if="!isOwnProfile && friendshipStatus === 'mutual'"
                 variant="success"
-                size="s"
               >
                 <Icon name="ph:user-check" />
                 Friends
@@ -508,7 +507,6 @@ onUnmounted(() => stopConfetti())
               <Badge
                 v-else-if="!isOwnProfile && friendshipStatus === 'sent_request'"
                 variant="info"
-                size="s"
               >
                 <Icon name="ph:clock" />
                 Request Sent
@@ -516,7 +514,6 @@ onUnmounted(() => stopConfetti())
               <Badge
                 v-else-if="!isOwnProfile && friendshipStatus === 'received_request'"
                 variant="accent"
-                size="s"
               >
                 <Icon name="ph:bell" />
                 Friend Request
@@ -623,6 +620,21 @@ onUnmounted(() => stopConfetti())
                     </span>
                   </Flex>
                 </Tooltip>
+
+                <!-- Last seen - only shown on mobile where the activity indicator is not tappable -->
+                <Flex v-if="isTablet && activityStatus && !activityStatus.isActive" gap="xs" y-center class="text-color-lighter">
+                  <Icon
+                    class="text-color-lighter"
+                    name="ph:clock"
+                    size="16"
+                  />
+                  <span
+                    class="text-s text-color-lighter"
+                    :class="getLastSeenTextClass(getLastSeenVariant(activityStatus))"
+                  >
+                    {{ activityStatus.lastSeenText }}
+                  </span>
+                </Flex>
               </Flex>
             </Flex>
           </Flex>
@@ -673,29 +685,18 @@ onUnmounted(() => stopConfetti())
   border-radius: var(--border-radius-m);
 }
 
-.profile__online-indicator {
-  position: absolute;
-  bottom: 15px;
-  right: 15px;
-  width: 16px;
-  height: 16px;
-  background-color: var(--color-text-lighter);
-  border: 2px solid var(--color-bg);
-  border-radius: var(--border-radius-pill);
-  box-shadow: 0 0 0 1px var(--color-border);
-  transition: background-color 0.2s ease;
-
-  &.active {
-    background-color: var(--color-text-green);
-  }
-}
-
 .avatar-lightbox {
   display: block;
   max-width: 100%;
   max-height: 100%;
   margin: auto;
   border-radius: var(--border-radius-m);
+}
+
+.profile__online-indicator {
+  position: absolute;
+  bottom: 18px;
+  right: 18px;
 }
 
 .profile-action-buttons {

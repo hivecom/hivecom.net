@@ -10,6 +10,7 @@ interface Props {
   size?: 's' | 'm' | 'l'
   showProfilePreview?: boolean
   hideAvatar?: boolean
+  hideUsername?: boolean
   centered?: boolean
 }
 
@@ -18,6 +19,7 @@ withDefaults(defineProps<Props>(), {
   size: 'm',
   showProfilePreview: true,
   hideAvatar: false,
+  hideUsername: false,
 })
 </script>
 
@@ -39,7 +41,7 @@ withDefaults(defineProps<Props>(), {
       </template>
 
       <!-- Name & role -->
-      <div class="user-display__info">
+      <div v-if="!hideUsername" class="user-display__info">
         <Flex
           gap="xs"
           :x-start="!centered"
@@ -49,7 +51,7 @@ withDefaults(defineProps<Props>(), {
           class="user-display__name-row"
         >
           <UserName :user-id="userId" :size="size" :show-preview="showProfilePreview">
-            <Badge v-if="!userId && showRole" size="xs" variant="accent">
+            <Badge v-if="!userId && showRole" variant="accent">
               System
             </Badge>
           </UserName>

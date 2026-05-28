@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Button, Flex, Sheet } from '@dolanske/vui'
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import ServerStatusIndicator from './ServerStatusIndicator.vue'
 
 const props = defineProps<{
-  server: Tables<'servers'> | null
+  server: Tables<'network_servers'> | null
 }>()
 
 // Declare emits for edit event
@@ -13,6 +17,7 @@ const emit = defineEmits(['edit'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+const isMobile = useBreakpoint('<s')
 
 // Handle closing the sheet
 function handleClose() {
@@ -44,7 +49,14 @@ function handleEdit() {
         </Flex>
         <Flex y-center gap="s">
           <Button
-            v-if="props.server"
+            v-if="props.server && isMobile"
+            square
+            @click="handleEdit"
+          >
+            <Icon name="ph:pencil" />
+          </Button>
+          <Button
+            v-else-if="props.server"
             @click="handleEdit"
           >
             <template #start>
@@ -59,71 +71,52 @@ function handleEdit() {
     <Flex v-if="props.server" column gap="m" class="server-detail">
       <Flex column gap="m" expand>
         <!-- Basic info -->
-        <Card class="card-bg">
-          <Flex column gap="l" expand>
-            <Grid class="detail-item" expand :columns="2">
-              <span class="text-color-light text-bold">ID:</span>
-              <span>{{ props.server.id }}</span>
-            </Grid>
-
-            <Grid class="detail-item" expand :columns="2">
-              <span class="text-color-light text-bold">Address:</span>
-              <span>{{ props.server.address }}</span>
-            </Grid>
-
-            <Grid class="detail-item" expand :columns="2">
-              <span class="text-color-light text-bold">Status:</span>
-              <ServerStatusIndicator :status="!props.server.active ? 'inactive' : props.server.docker_control && !props.server.accessible ? 'inaccessible' : 'active'" show-label />
-            </Grid>
-
-            <Grid class="detail-item" expand :columns="2">
-              <span class="text-color-light text-bold">Accessible:</span>
-              <ServerStatusIndicator :status="props.server.docker_control ? (props.server.accessible ? 'accessible' : 'inaccessible') : 'not_enabled'" show-label />
-            </Grid>
-
-            <Grid class="detail-item" expand :columns="2">
-              <span class="text-color-light text-bold">Last Accessed:</span>
-              <TimestampDate v-if="props.server.last_accessed" :date="props.server.last_accessed" />
-              <span v-else>Never</span>
-            </Grid>
-
-            <Grid class="detail-item" expand :columns="2">
-              <span class="text-color-light text-bold">Created:</span>
-              <TimestampDate :date="props.server.created_at" />
-            </Grid>
-          </Flex>
-        </Card>
+        <DetailTable>
+          <template #header>
+            <Icon name="ph:server" />
+            <h6>Overview</h6>
+          </template>
+          <DetailRow label="ID">
+            <CopyValue :text="String(props.server.id)" link />
+          </DetailRow>
+          <DetailRow label="Address">
+            <CopyValue :text="props.server.address" link />
+          </DetailRow>
+          <DetailRow label="Status">
+            <ServerStatusIndicator :status="!props.server.active ? 'inactive' : props.server.docker_control && !props.server.accessible ? 'inaccessible' : 'active'" show-label />
+          </DetailRow>
+          <DetailRow label="Accessible">
+            <ServerStatusIndicator :status="props.server.docker_control ? (props.server.accessible ? 'accessible' : 'inaccessible') : 'not_enabled'" show-label />
+          </DetailRow>
+          <DetailRow label="Last Accessed">
+            <TimestampDate v-if="props.server.last_accessed" :date="props.server.last_accessed" />
+            <span v-else class="text-s">Never</span>
+          </DetailRow>
+          <DetailRow label="Created">
+            <TimestampDate :date="props.server.created_at" />
+          </DetailRow>
+        </DetailTable>
 
         <!-- Docker Control Info -->
-        <Card separators class="card-bg">
+        <DetailTable>
           <template #header>
+            <Icon name="ph:circles-three" />
             <h6>Docker Control</h6>
           </template>
-
-          <Flex column gap="l" expand>
-            <Grid class="detail-item" expand :columns="2">
-              <span class="text-color-light text-bold">Enabled:</span>
-              <span>{{ props.server.docker_control ? 'Yes' : 'No' }}</span>
-            </Grid>
-
-            <template v-if="props.server.docker_control">
-              <Grid class="detail-item" expand :columns="2">
-                <span class="text-color-light text-bold">Port:</span>
-                <span>{{ props.server.docker_control_port || 'Default' }}</span>
-              </Grid>
-
-              <Grid class="detail-item" expand :columns="2">
-                <span class="text-color-light text-bold">Secure:</span>
-                <span>{{ props.server.docker_control_secure ? 'Yes' : 'No' }}</span>
-              </Grid>
-
-              <Grid class="detail-item" expand :columns="2">
-                <span class="text-color-light text-bold">Subdomain:</span>
-                <span>{{ props.server.docker_control_subdomain || 'None' }}</span>
-              </Grid>
-            </template>
-          </Flex>
-        </Card>
+          <DetailRow label="Enabled">
+            <span class="text-s">{{ props.server.docker_control ? 'Yes' : 'No' }}</span>
+          </DetailRow>
+          <DetailRow label="Port" :hidden="!props.server.docker_control">
+            <span class="text-s">{{ props.server.docker_control_port || 'Default' }}</span>
+          </DetailRow>
+          <DetailRow label="Secure" :hidden="!props.server.docker_control">
+            <span class="text-s">{{ props.server.docker_control_secure ? 'Yes' : 'No' }}</span>
+          </DetailRow>
+          <DetailRow label="Subdomain" :hidden="!props.server.docker_control">
+            <CopyValue v-if="props.server.docker_control_subdomain" :text="`${props.server.docker_control_subdomain}.${props.server.address}`" link />
+            <span v-else class="text-s">None</span>
+          </DetailRow>
+        </DetailTable>
       </Flex>
     </Flex>
   </Sheet>

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import ThemeTable from '@/components/Admin/Themes/ThemeTable.vue'
+import { useAdminPermissions } from '@/composables/useAdminPermissions'
+
+definePageMeta({ layout: 'admin' })
 
 const { hasPermission } = useAdminPermissions()
 

@@ -4,7 +4,7 @@ import type { Database } from '@/types/database.types'
 import { Button, Dropdown, DropdownItem, DropdownTitle, Flex, Modal } from '@dolanske/vui'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useRSVP } from '@/composables/useRSVP'
-import { isSeriesActive } from '@/lib/utils/rrule'
+import { isSeriesActive, nextOccurrenceDate } from '@/lib/utils/rrule'
 
 type RSVPStatus = Database['public']['Enums']['events_rsvp_status']
 
@@ -29,7 +29,12 @@ const {
   removeRsvp,
 } = useRSVP(
   () => props.event,
-  () => isSeriesActive(props.event) ? props.event.date : null,
+  () => {
+    if (!isSeriesActive(props.event))
+      return null
+    const next = nextOccurrenceDate(props.event)
+    return next != null ? next.toISOString() : props.event.date
+  },
 )
 
 // Recurring series parent with future occurrences: UNTIL not yet passed.

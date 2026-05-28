@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { Alert, Flex, Tab, Tabs } from '@dolanske/vui'
-import ContainerKPIs from '@/components/Admin/Network/ContainerKPIs.vue'
+import { computed, ref } from 'vue'
 
+import ContainerKPIs from '@/components/Admin/Network/ContainerKPIs.vue'
 import ContainerTable from '@/components/Admin/Network/ContainerTable.vue'
 import GameserverTable from '@/components/Admin/Network/GameServerTable.vue'
 import ServerTable from '@/components/Admin/Network/ServerTable.vue'
+import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { getRouteQueryString } from '@/lib/utils/common'
+
+definePageMeta({ layout: 'admin' })
 
 // Define container with server interface to match what ContainerTable expects
 interface ContainerWithServer {
@@ -26,9 +30,9 @@ const { hasPermission } = useAdminPermissions()
 const route = useRoute()
 
 // Check permissions for each resource type
-const canReadServers = computed(() => hasPermission('servers.read'))
-const canReadGameservers = computed(() => hasPermission('gameservers.read'))
-const canReadContainers = computed(() => hasPermission('containers.read'))
+const canReadServers = computed(() => hasPermission('network.read'))
+const canReadGameservers = computed(() => hasPermission('network.read'))
+const canReadContainers = computed(() => hasPermission('network.read'))
 
 // Tab management
 const availableTabs = computed(() => {

@@ -58,7 +58,7 @@ export interface GlobePerfParams {
 
 const PERF_PARAMS: Record<GlobeQualityTier, GlobePerfParams> = {
   high: {
-    maxArcs: 8,
+    maxArcs: 5,
     hexResolution: 3,
     hexCurvatureResolution: 5,
     hexDotResolution: 12,
@@ -70,7 +70,7 @@ const PERF_PARAMS: Record<GlobeQualityTier, GlobePerfParams> = {
     bgResScale: 0.2,
   },
   medium: {
-    maxArcs: 5,
+    maxArcs: 3,
     hexResolution: 3,
     hexCurvatureResolution: 8,
     hexDotResolution: 8,
@@ -82,7 +82,7 @@ const PERF_PARAMS: Record<GlobeQualityTier, GlobePerfParams> = {
     bgResScale: 0.1,
   },
   low: {
-    maxArcs: 3,
+    maxArcs: 2,
     hexResolution: 2,
     hexCurvatureResolution: 12,
     hexDotResolution: 6,
@@ -97,8 +97,7 @@ const PERF_PARAMS: Record<GlobeQualityTier, GlobePerfParams> = {
 
 // ---------------------------------------------------------------------------
 // Frame-time probe config
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // Frame-time thresholds (ms). If the median frame time during the probe
 // window exceeds these values, we drop to the next tier.
 const THRESHOLD_HIGH_MS = 20 // ~50 fps
@@ -113,8 +112,7 @@ const LOW_CPU_CORE_THRESHOLD = 4
 
 // ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const VALID_TIERS = new Set<GlobeQualityTier>(['high', 'medium', 'low'])
 
 function readTierOverride(): GlobeQualityTier | null {
@@ -156,8 +154,7 @@ function detectInitialTier(): GlobeQualityTier {
 // Module-level singleton state
 // Shared across all callers so the probe only runs once and all consumers
 // react to the same tier changes (e.g. globe + background shader).
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const _tier = ref<GlobeQualityTier>('high') // initialised lazily on first client call
 const _params = ref<GlobePerfParams>({ ...PERF_PARAMS.high })
 let _initialised = false
@@ -178,8 +175,7 @@ function _ensureInitialised() {
 
 // ---------------------------------------------------------------------------
 // Composable
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function useGlobePerf() {
   // Lazily detect on first call so SSR never touches window/navigator.
   if (import.meta.client)

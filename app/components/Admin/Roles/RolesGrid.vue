@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { Alert, Card, Flex, Grid, Input, searchString, Skeleton } from '@dolanske/vui'
+import { Alert, Badge, Card, Flex, Grid, Input, searchString, Skeleton } from '@dolanske/vui'
 import RoleKPIs from '@/components/Admin/Roles/RoleKPIs.vue'
-import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { formatCategoryName, formatPermissionName, getCategoryIcon, getRoleColor, getRoleVariant } from '@/lib/rolePermissions'
+import { DEFAULT_USER_PERMISSIONS, formatCategoryName, formatPermissionName, getCategoryIcon, getRoleColor, getRoleVariant } from '@/lib/rolePermissions'
 
 const isBelowMedium = useBreakpoint('<m')
 
@@ -16,31 +15,7 @@ const refreshSignal = ref(0)
 
 const search = ref('')
 
-const defaultUserPermissions = [
-  'containers.read',
-  'discussion_topics.read',
-  'discussions.read',
-  'discussions.create',
-  'discussions.update.own',
-  'discussions.delete.own',
-  'discussion_replies.read',
-  'discussion_replies.create',
-  'discussion_replies.update.own',
-  'discussion_replies.delete.own',
-  'events.read',
-  'games.read',
-  'gameservers.read',
-  'profiles.read',
-  'referendums.create',
-  'referendums.read',
-  'roles.read',
-  'profiles.update.own',
-  'complaints.create.own',
-  'complaints.read.own',
-  'referendum_votes.create',
-  'referendum_votes.update.own',
-  'referendum_votes.delete.own',
-]
+const defaultUserPermissions = DEFAULT_USER_PERMISSIONS
 
 const permissionsByRole = computed(() => {
   const grouped: Record<string, string[]> = {}
@@ -178,7 +153,7 @@ onBeforeMount(fetchRolePermissions)
   <template v-else>
     <Input
       v-model="search"
-      placeholder="Seach for a role"
+      placeholder="Search for a role"
       :expand="isBelowMedium"
     >
       <template #start>
@@ -195,9 +170,9 @@ onBeforeMount(fetchRolePermissions)
                 {{ role.charAt(0).toUpperCase() + role.slice(1) }}
               </h3>
             </Flex>
-            <BadgeCircle :variant="getRoleVariant(role)">
+            <Badge :variant="getRoleVariant(role)" circle>
               {{ permissionsByRole[role]?.length || 0 }}
-            </BadgeCircle>
+            </Badge>
           </Flex>
         </template>
 
@@ -208,7 +183,9 @@ onBeforeMount(fetchRolePermissions)
               <h4 class="category-title">
                 {{ formatCategoryName(category) }}
               </h4>
-              <span class="text-color-light text-xs">({{ permissions.length }})</span>
+              <Badge variant="neutral" size="s" circle>
+                {{ permissions.length }}
+              </Badge>
             </Flex>
 
             <Flex column gap="xxs" class="permissions-list" expand>

@@ -20,8 +20,7 @@ const credentials = buildTeamSpeakCredentials(
 const CACHE_MAX_AGE_MS = 60_000;
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-const supabaseKey =
-  Deno.env.get("SUPABASE_SECRET_KEY") ??
+const supabaseKey = Deno.env.get("SUPABASE_SECRET_KEY") ??
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
 
@@ -30,13 +29,15 @@ if (!supabaseUrl) {
 }
 
 if (!supabaseKey) {
-  throw new Error("SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY environment variable is not set");
+  throw new Error(
+    "SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY environment variable is not set",
+  );
 }
 
 const supabase = createClient<Database>(supabaseUrl, supabaseKey);
 
 Deno.serve(async (req) => {
-    // This is needed if you're planning to invoke your function from a browser. Which we are.
+  // This is needed if you're planning to invoke your function from a browser. Which we are.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -50,7 +51,7 @@ Deno.serve(async (req) => {
       if (cached === null) {
         return jsonResponse(500, {});
       } else {
-        return jsonResponse(200, cached );
+        return jsonResponse(200, cached);
       }
     }
 

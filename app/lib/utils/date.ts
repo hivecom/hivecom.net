@@ -28,7 +28,7 @@ export function formatDate(dateStr: string) {
 
 // Format month helper
 export function formatMonth(month: string): string {
-  return new Date(`${month}T00:00:00Z`).toLocaleDateString('en-US', {
+  return new Date(`${month}T00:00:00Z`).toLocaleDateString(undefined, {
     month: 'long',
     year: 'numeric',
   })
@@ -64,7 +64,7 @@ export function formatDateShort(dateString: string | null | undefined): string {
   const parsed = new Date(dateString)
   if (Number.isNaN(parsed.getTime()))
     return 'Unknown'
-  return parsed.toLocaleDateString('en-US', {
+  return parsed.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -81,7 +81,7 @@ export function formatDateLong(dateString: string | null | undefined): string {
   const parsed = new Date(dateString)
   if (Number.isNaN(parsed.getTime()))
     return 'Unknown'
-  return parsed.toLocaleDateString('en-US', {
+  return parsed.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -98,7 +98,7 @@ export function formatDateWithTime(dateString: string | null | undefined): strin
   const parsed = new Date(dateString)
   if (Number.isNaN(parsed.getTime()))
     return 'Unknown'
-  return parsed.toLocaleDateString('en-US', {
+  return parsed.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

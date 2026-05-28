@@ -14,7 +14,7 @@ const props = defineProps<{
 const supabase = useSupabaseClient()
 
 const result = await supabase
-  .from('gameservers')
+  .from('network_gameservers')
   .select('name, description, region, addresses, game:games(name)')
   .eq('id', props.gameserverId)
   .single()

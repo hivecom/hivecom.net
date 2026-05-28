@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { StorageBucketId } from '@/lib/storageAssets'
-import { Button, Calendar, Flex, Grid, Input, Select, Switch } from '@dolanske/vui'
+import { Button, Calendar, Flex, Grid, Input, Switch } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import RecurrenceBuilder from '@/components/Events/RecurrenceBuilder.vue'
+import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -22,11 +23,6 @@ export interface FormState {
   markdown: string
   recurrence_rule: string | null
   games: number[]
-}
-
-interface SelectOption {
-  label: string
-  value: number
 }
 
 // ── Props / Emits ──────────────────────────────────────────────────────────────
@@ -66,57 +62,7 @@ const isBelowMedium = useBreakpoint('<m')
 
 // ── Games ──────────────────────────────────────────────────────────────────────
 
-const { games, loading: loadingGames } = useDataGames()
-
-const gameOptions = computed<SelectOption[]>(() =>
-  games.value.map(game => ({
-    label: game.name ?? 'Unknown Game',
-    value: game.id,
-  })),
-)
-
-const selectedGames = ref<SelectOption[]>([])
-
-// Sync selectedGames from the current modelValue.games + gameOptions.
-// Called on mount and whenever gameOptions become available.
-function syncSelectedGames() {
-  selectedGames.value = gameOptions.value.filter(opt =>
-    props.modelValue.games.includes(opt.value),
-  )
-}
-
-// On mount: games may already be cached and gameOptions populated.
-onMounted(() => {
-  if (gameOptions.value.length > 0)
-    syncSelectedGames()
-})
-
-// Games finished loading (async path) -> sync
-watch(gameOptions, (opts) => {
-  if (opts.length > 0)
-    syncSelectedGames()
-})
-
-// modelValue.games changed externally (form reset / populate) -> re-sync
-// Only runs when gameOptions are already available.
-watch(
-  () => props.modelValue.games,
-  () => {
-    if (gameOptions.value.length > 0)
-      syncSelectedGames()
-  },
-  { deep: true },
-)
-
-// selectedGames changed by user -> propagate up
-watch(selectedGames, (newVal) => {
-  const gameIds = Array.isArray(newVal) ? newVal.map(o => o.value) : []
-  // Skip if it already matches to avoid a spurious emit during sync
-  const same = gameIds.length === props.modelValue.games.length
-    && gameIds.every(id => props.modelValue.games.includes(id))
-  if (!same)
-    emit('update:modelValue', { ...props.modelValue, games: gameIds })
-}, { deep: true })
+const { games } = useDataGames()
 
 // ── Field helpers ──────────────────────────────────────────────────────────────
 
@@ -170,6 +116,7 @@ const mediaContext = computed(() =>
     <!-- Official event toggle - privileged only -->
     <Switch
       v-if="isPrivileged"
+      reversed
       :model-value="isOfficial"
       label="Official Event"
       hint="All events are synced to Discord. Official events sync to the official Google Calendar, non-official events to the community Google Calendar."
@@ -214,7 +161,7 @@ const mediaContext = computed(() =>
               expand
               :class="{ error: !effectiveValidation.date }"
             >
-              {{ localDate ? localDate.toLocaleString('en-US', {
+              {{ localDate ? localDate.toLocaleString(undefined, {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
@@ -309,17 +256,18 @@ const mediaContext = computed(() =>
     />
 
     <!-- Games -->
-    <Select
-      v-model="selectedGames"
-      :single="false"
-      expand
-      :options="gameOptions"
-      :disabled="loadingGames"
-      label="Games"
-      placeholder="Select associated games (optional)"
-      search
-      show-clear
-    />
+    <Flex column gap="s" expand>
+      <div class="event-form-fields__label">
+        Games
+      </div>
+      <GameSelect
+        :model-value="modelValue.games"
+        :games="games"
+        placeholder="Select associated games (optional)"
+        expand
+        @update:model-value="update('games', $event)"
+      />
+    </Flex>
 
     <!-- Rich text content -->
     <RichTextEditor

@@ -34,7 +34,7 @@ async function fetchContainerMetrics() {
   try {
     // Query for all containers
     const { data, error } = await supabase
-      .from('containers')
+      .from('network_containers')
       .select(`
         name,
         running,
@@ -78,11 +78,9 @@ async function fetchContainerMetrics() {
           break
         case 'stopped':
           newMetrics.stopped++
-          newMetrics.unhealthy++
           break
         case 'stale':
           newMetrics.stale++
-          newMetrics.unhealthy++
           break
         case 'unhealthy':
         case 'restarting':

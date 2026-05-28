@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Card, Flex, Tooltip } from '@dolanske/vui'
+import GlowCard from '@/components/Shared/GlowCard.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { humanizeRrule } from '@/lib/utils/rrule'
-// import { useBreakpoint } from '@/lib/mediaQuery'
 import CountdownTimer from './CountdownTimer.vue'
 import EventRSVPCount from './EventRSVPCount.vue'
 
@@ -54,7 +55,7 @@ function updateTime() {
   }
 }
 
-// const isBelowSmall = useBreakpoint('<s')
+const isBelowSmall = useBreakpoint('<s')
 
 useIntervalFn(updateTime, 1000, { immediate: true })
 updateTime()
@@ -62,75 +63,81 @@ updateTime()
 
 <template>
   <NuxtLink :to="`/events/${data.id}`">
-    <Card class="event-item" :class="{ 'event-item--first': props.isHighlight }">
-      <div class="event-item__container">
-        <div>
-          <Flex class="mb-xs" y-center>
-            <h3>{{ props.data.title }}</h3>
-            <Tooltip v-if="props.data.link">
-              <Button
-                square
-                outline
-                plain
-                :size="props.isHighlight ? 'm' : 's'"
-                target="_blank"
-                rel="noopener noreferrer"
-                :href="props.data.link"
-              >
-                <span class="visually-hidden">
-                  Visit Event Link
-                </span>
-                <Icon name="ph:arrow-square-out" size="14" />
-              </Button>
-              <template #tooltip>
-                <p>Visit website</p>
-              </template>
-            </Tooltip>
-          </Flex>
-          <p class="mb-m text-color-light">
-            {{ props.data.description }}
-          </p>
-          <Flex>
-            <Badge v-if="props.data.is_official" variant="accent" size="l">
-              <Icon name="ph:star-fill" />
-              Official
-            </Badge>
-            <Badge v-if="props.data.recurrence_rule" variant="neutral" size="l">
-              <Icon name="ph:arrows-clockwise" />
-              {{ humanizeRrule(props.data.recurrence_rule) }}
-            </Badge>
-            <Badge v-if="props.data.location" variant="neutral" size="l">
-              <Icon name="ph:map-pin-fill" />
-              {{ props.data.location }}
-            </Badge>
-            <Tooltip v-if="props.data.note" placement="right">
-              <template #tooltip>
-                <div class="event-item__tooltip-content">
-                  {{ props.data.note }}
-                </div>
-              </template>
-              <Badge variant="neutral" size="l" class="event-item__note-badge">
-                <Icon name="ph:note" />
-                Note
+    <GlowCard>
+      <Card class="event-item" :class="{ 'event-item--first': props.isHighlight }">
+        <div class="event-item__container">
+          <div>
+            <Flex class="mb-xs" y-center>
+              <h3>{{ props.data.title }}</h3>
+              <Tooltip v-if="props.data.link">
+                <Button
+                  square
+                  outline
+                  plain
+                  :size="props.isHighlight ? 'm' : 's'"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  :href="props.data.link"
+                >
+                  <span class="visually-hidden">
+                    Visit Event Link
+                  </span>
+                  <Icon name="ph:arrow-square-out" size="14" />
+                </Button>
+                <template #tooltip>
+                  <p>Visit website</p>
+                </template>
+              </Tooltip>
+            </Flex>
+            <p class="mb-m text-color-light">
+              {{ props.data.description }}
+            </p>
+            <Flex wrap>
+              <Badge v-if="props.data.is_official" variant="accent">
+                <Icon name="ph:star-fill" />
+                Official
               </Badge>
-            </Tooltip>
-            <EventRSVPCount
-              :event="props.data"
-              size="s"
-              :show-when-zero="false"
+              <Badge v-if="props.data.recurrence_rule" variant="neutral">
+                <Icon name="ph:arrows-clockwise" />
+                {{ humanizeRrule(props.data.recurrence_rule) }}
+              </Badge>
+              <Badge v-if="props.data.location" variant="neutral">
+                <Icon name="ph:map-pin-fill" />
+                {{ props.data.location }}
+              </Badge>
+              <Tooltip v-if="props.data.note && !isBelowSmall" placement="right">
+                <template #tooltip>
+                  <div class="event-item__tooltip-content">
+                    {{ props.data.note }}
+                  </div>
+                </template>
+                <Badge variant="neutral" class="event-item__note-badge">
+                  <Icon name="ph:note" />
+                  Note
+                </Badge>
+              </Tooltip>
+              <Badge v-else-if="props.data.note" variant="neutral">
+                <Icon name="ph:note" />
+                {{ props.data.note }}
+              </Badge>
+              <EventRSVPCount
+                :event="props.data"
+                size="s"
+                :show-when-zero="false"
+              />
+            </Flex>
+          </div>
+          <div class="event-item__countdown-wrap">
+            <CountdownTimer
+              :countdown
+              :is-ongoing="props.isOngoing ?? false"
+              :created-at="props.data.created_at"
+              :simple="!props.isHighlight"
             />
-          </Flex>
+          </div>
         </div>
-        <div class="event-item__countdown-wrap">
-          <CountdownTimer
-            :countdown
-            :is-ongoing="props.isOngoing ?? false"
-            :created-at="props.data.created_at"
-            :simple="!props.isHighlight"
-          />
-        </div>
-      </div>
-    </Card>
+      </Card>
+    </GlowCard>
   </NuxtLink>
 </template>
 

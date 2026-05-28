@@ -1,20 +1,26 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
-import type { TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, watch } from 'vue'
+import type { MetricsHistoryEntry } from '@/composables/useDataMetrics'
+import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
+import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { computed, onMounted, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { invalidateGameserversCache } from '@/composables/useDataGameservers'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import GameserverDetails from './GameServerDetails.vue'
 import GameserverFilters from './GameServerFilters.vue'
 import GameserverForm from './GameServerForm.vue'
+
+const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 const supabase = useSupabaseClient()
 const userId = useUserId()
@@ -23,7 +29,7 @@ const route = useRoute()
 const router = useRouter()
 const isBelowMedium = useBreakpoint('<m')
 
-const gameserversQuery = supabase.from('gameservers').select(`
+const gameserversQuery = supabase.from('network_gameservers').select(`
   *,
   game (
     id,
@@ -43,13 +49,13 @@ interface TransformedGameserver extends Record<string, unknown> {
   Name: string
   Game: string | null
   Region: string | null
-  Created: string
+  Activity: number | null
   Container: string | null
 }
 
 // Filter states kept local - region/game filters go beyond simple search
-const regionFilter = ref<SelectOption[]>()
-const gameFilter = ref<SelectOption[]>()
+const regionFilter = ref<{ label: string, value: string }[]>()
+const gameFilter = ref<number[]>([])
 
 const regionOptions: SelectOption[] = [
   { label: 'Europe', value: 'eu' },
@@ -78,9 +84,10 @@ const {
   handleEditFromDetails,
   refresh: fetchGameservers,
 } = useAdminCrudTable<QueryGameserver, TransformedGameserver>({
-  resourceType: 'gameservers',
+  resourceType: 'network_gameservers',
   // URL param sync handled manually below (also needs to set tab= param)
   queryParamKey: false,
+  refreshSignal,
   fetch: async () => {
     const { data, error } = await gameserversQuery
     if (error)
@@ -91,25 +98,62 @@ const {
     Name: gameserver.name,
     Game: gameserver.game?.name ?? 'Unknown',
     Region: gameserver.region ?? 'Unknown',
-    Created: gameserver.created_at,
+    Activity: null,
     Container: gameserver.container,
   }),
   defaultSort: { column: 'Name', direction: 'asc' },
 })
 
-// Compute game options from loaded data
-const gameOptions = computed<SelectOption[]>(() => {
-  const uniqueGames = new Map<number, string>()
+// Compute game entries from loaded data
+const gameEntries = computed<Tables<'games'>[]>(() => {
+  const uniqueGames = new Map<number, Tables<'games'>>()
   gameservers.value.forEach((gs) => {
-    if (gs.game?.name) {
-      uniqueGames.set(gs.game.id, gs.game.name)
+    if (gs.game?.id) {
+      uniqueGames.set(gs.game.id, gs.game as unknown as Tables<'games'>)
     }
   })
-  return Array.from(uniqueGames.entries(), ([id, name]) => ({
-    label: name,
-    value: id.toString(),
-  }))
+  return Array.from(uniqueGames.values())
 })
+
+const { latestMetrics, fetchLatestMetrics, fetchDailyHistory } = useDataMetrics()
+
+const localHistoryLoading = ref(false)
+const localHistory = ref<MetricsHistoryEntry[]>([])
+
+onMounted(async () => {
+  fetchLatestMetrics()
+  localHistoryLoading.value = true
+  try {
+    localHistory.value = await fetchDailyHistory() ?? []
+  }
+  finally {
+    localHistoryLoading.value = false
+  }
+})
+
+function getServerHistogram(gameserverId: number): number[] {
+  const id = String(gameserverId)
+  return localHistory.value
+    .map(e => e.gameserversByServer?.[id] ?? 0)
+}
+
+function getServerTimestamps(): string[] {
+  return localHistory.value.map(e => e.capturedAt)
+}
+
+function getServerPlayers(gameserverId: number): number | null {
+  const byServer = latestMetrics.value?.gameservers?.byServer
+  if (!byServer)
+    return null
+  const detail = byServer[String(gameserverId)]
+  if (!detail || detail.protocol === null)
+    return null
+  if (detail.protocol === 'source')
+    return detail.data.players
+  if (detail.protocol === 'minecraft')
+    return detail.data.numPlayers
+  return null
+}
 
 // Apply secondary filters on top of the composable's search-filtered rows
 const filteredData = computed(() => {
@@ -126,13 +170,15 @@ const filteredData = computed(() => {
     }
 
     if (gameFilter.value != null && gameFilter.value.length > 0 && row._original.game) {
-      const gameFilterVal = Number.parseInt(gameFilter.value[0]?.value ?? '0')
-      if (row._original.game.id !== gameFilterVal)
+      if (!gameFilter.value.includes(row._original.game.id))
         return false
     }
 
     return true
-  })
+  }).map(row => ({
+    ...row,
+    Activity: getServerPlayers(row._original.id),
+  }))
 })
 
 const filteredCount = computed(() => filteredData.value.length)
@@ -186,11 +232,11 @@ watch(
   { immediate: true },
 )
 
-async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> | TablesUpdate<'gameservers'>) {
+async function handleGameserverSave(gameserverData: TablesInsert<'network_gameservers'> | TablesUpdate<'network_gameservers'>) {
   try {
     if (isEditMode.value && selectedGameserver.value) {
       const { error } = await supabase
-        .from('gameservers')
+        .from('network_gameservers')
         .update({
           ...gameserverData,
           modified_at: new Date().toISOString(),
@@ -202,13 +248,13 @@ async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> 
     }
     else {
       const { error } = await supabase
-        .from('gameservers')
+        .from('network_gameservers')
         .insert({
           ...gameserverData,
           created_by: userId.value ?? null,
           modified_by: userId.value ?? null,
           modified_at: new Date().toISOString(),
-        } as TablesInsert<'gameservers'>)
+        } as TablesInsert<'network_gameservers'>)
       if (error)
         throw error
 
@@ -228,7 +274,7 @@ async function handleGameserverSave(gameserverData: TablesInsert<'gameservers'> 
 async function handleGameserverDelete(gameserverId: number) {
   try {
     const { error } = await supabase
-      .from('gameservers')
+      .from('network_gameservers')
       .delete()
       .eq('id', gameserverId)
     if (error)
@@ -246,7 +292,7 @@ async function handleGameserverDelete(gameserverId: number) {
 function clearFilters() {
   search.value = ''
   regionFilter.value = undefined
-  gameFilter.value = undefined
+  gameFilter.value = []
 }
 </script>
 
@@ -263,7 +309,7 @@ function clearFilters() {
           v-model:region-filter="regionFilter"
           v-model:game-filter="gameFilter"
           :region-options="regionOptions"
-          :game-options="gameOptions"
+          :game-entries="gameEntries"
           :expand="isBelowMedium"
           @clear-filters="clearFilters"
         />
@@ -301,7 +347,7 @@ function clearFilters() {
         v-model:region-filter="regionFilter"
         v-model:game-filter="gameFilter"
         :region-options="regionOptions"
-        :game-options="gameOptions"
+        :game-entries="gameEntries"
         :expand="isBelowMedium"
         @clear-filters="clearFilters"
       />
@@ -345,19 +391,53 @@ function clearFilters() {
         <template #body>
           <tr v-for="gameserver in rows" :key="gameserver._original.id" class="clickable-row" @click="viewGameserver(gameserver._original as QueryGameserver)">
             <Table.Cell>{{ gameserver.Name }}</Table.Cell>
-            <Table.Cell>{{ gameserver.Game }}</Table.Cell>
+            <Table.Cell>
+              <Flex v-if="(gameserver._original as QueryGameserver).game" gap="xs" y-center>
+                <GameIcon :game="(gameserver._original as QueryGameserver).game as Tables<'games'>" size="xs" />
+                <span class="text-s">{{ gameserver.Game }}</span>
+              </Flex>
+              <span v-else class="text-s">{{ gameserver.Game }}</span>
+            </Table.Cell>
             <Table.Cell>
               <RegionIndicator :region="gameserver._original.region" show-label />
             </Table.Cell>
             <Table.Cell>
-              <TimestampDate :date="gameserver.Created" />
+              <template v-if="(gameserver._original as QueryGameserver).query_protocol != null">
+                <Flex y-center gap="s" style="max-width: 260px">
+                  <OnlineBadge
+                    :count="getServerPlayers((gameserver._original as QueryGameserver).id)"
+                    label="Players"
+                    singular="Player"
+                    size="s"
+                    style="min-width: 78px"
+                  />
+                  <ChartActivityHistogram
+                    v-if="!localHistoryLoading"
+                    :data="getServerHistogram((gameserver._original as QueryGameserver).id)"
+                    :timestamps="getServerTimestamps()"
+                    :height="28"
+                    gap="xxs"
+                    expand
+                  >
+                    <template #tooltip="{ value, daysAgo }">
+                      {{ value }} players<template v-if="daysAgo">
+                        - {{ daysAgo }}
+                      </template>
+                    </template>
+                  </ChartActivityHistogram>
+                </Flex>
+              </template>
+              <span v-else class="text-color-lighter text-xs">No query</span>
             </Table.Cell>
             <Table.Cell>
-              {{ gameserver.Container || '-' }}
+              <Badge v-if="gameserver.Container" variant="neutral" outline size="s">
+                {{ gameserver.Container }}
+              </Badge>
+              <span v-else>-</span>
             </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
-                resource-type="gameservers"
+                resource-type="network_gameservers"
                 :item="gameserver._original"
                 button-size="s"
                 :custom-actions="[

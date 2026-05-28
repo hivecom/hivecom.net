@@ -7,6 +7,8 @@ export const FORUMS_BUCKET_ID = 'hivecom-content-forums' as const
 export const STATIC_BUCKET_ID = 'hivecom-content-static' as const
 export const USERS_BUCKET_ID = 'hivecom-content-users' as const
 
+export const STORAGE_BUCKET_IDS = [CMS_BUCKET_ID, FORUMS_BUCKET_ID, STATIC_BUCKET_ID, USERS_BUCKET_ID] as const
+
 export type StorageBucketId
   = | typeof CMS_BUCKET_ID
     | typeof FORUMS_BUCKET_ID
@@ -23,6 +25,80 @@ export const BUCKET_SIZE_LIMITS: Record<StorageBucketId, number> = {
 
 export type SortColumn = 'name' | 'updated_at' | 'created_at'
 export type SortOrder = 'asc' | 'desc'
+export type FlatSortColumn = 'name' | 'updated_at' | 'created_at' | 'size'
+
+export interface FlatListOptions {
+  prefix?: string
+  limit?: number
+  offset?: number
+  search?: string
+  sortBy?: {
+    column: FlatSortColumn
+    order: SortOrder
+  }
+}
+
+export interface FlatListResult {
+  assets: StorageAsset[]
+  totalCount: number
+  /** True when there may be more results (returned count === limit). */
+  hasMore: boolean
+}
+
+export async function listStorageObjectsFlat(
+  client: SupabaseClient<Database>,
+  bucketId: StorageBucketId,
+  options: FlatListOptions = {},
+): Promise<FlatListResult> {
+  const limit = options.limit ?? 100
+  const offset = options.offset ?? 0
+  const sortCol = options.sortBy?.column ?? 'updated_at'
+  const sortOrder = options.sortBy?.order ?? 'desc'
+  const prefix = normalizePrefix(options.prefix)
+
+  const search = options.search?.trim() ?? ''
+
+  const { data, error } = await client.rpc('list_storage_objects', {
+    p_bucket_id: bucketId,
+    p_prefix: prefix,
+    p_limit: limit,
+    p_offset: offset,
+    p_sort_col: sortCol,
+    p_sort_order: sortOrder,
+    p_search: search,
+  })
+
+  if (error)
+    throw error
+
+  type RpcRow = Database['public']['Functions']['list_storage_objects']['Returns'][number]
+  const rows: RpcRow[] = data ?? []
+
+  const assets: StorageAsset[] = rows.map((row) => {
+    const extension = extractExtension(row.name)
+    const publicUrl = row.name
+      ? client.storage.from(bucketId).getPublicUrl(row.name).data.publicUrl
+      : null
+
+    return {
+      id: row.id,
+      bucket_id: row.bucket_id,
+      name: row.name.split('/').pop() ?? row.name,
+      path: row.name,
+      type: 'file' as const,
+      size: row.size ?? 0,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      last_accessed_at: row.last_accessed_at,
+      metadata: null,
+      mimeType: row.mimetype,
+      extension,
+      publicUrl,
+    }
+  })
+
+  return { assets, totalCount: rows[0]?.total_count ?? 0, hasMore: rows.length === limit }
+}
 
 export interface StorageAsset {
   id: string | null
@@ -101,6 +177,31 @@ export async function listStorageDirectory(
   return entries
 }
 
+/**
+ * Parallel recursive fetch. Fires all folder expansions concurrently.
+ * Calls `onBatch` as each batch of files resolves so the UI can stream results in.
+ */
+export async function listStorageFilesRecursiveParallel(
+  client: SupabaseClient<Database>,
+  bucketId: StorageBucketId,
+  prefix: string = '',
+  onBatch?: (files: StorageAsset[]) => void,
+): Promise<StorageAsset[]> {
+  const directoryEntries = await listStorageDirectory(client, bucketId, { prefix })
+
+  const immediateFiles = directoryEntries.filter(e => e.type === 'file')
+  if (immediateFiles.length > 0)
+    onBatch?.(immediateFiles)
+
+  const folders = directoryEntries.filter(e => e.type === 'folder')
+
+  const nestedResults = await Promise.all(
+    folders.map(async f => listStorageFilesRecursiveParallel(client, bucketId, f.path, onBatch)),
+  )
+
+  return [...immediateFiles, ...nestedResults.flat()]
+}
+
 export async function listStorageFilesRecursive(
   client: SupabaseClient<Database>,
   bucketId: StorageBucketId,
@@ -163,6 +264,26 @@ export function isImageAsset(asset: StorageAsset): boolean {
 
   const knownImageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'ico']
   return knownImageExtensions.includes(extension)
+}
+
+export function isVideoAsset(asset: StorageAsset): boolean {
+  const mime = asset.mimeType ?? ''
+  const extension = asset.extension ?? ''
+  if (mime.startsWith('video/'))
+    return true
+
+  const knownVideoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v']
+  return knownVideoExtensions.includes(extension)
+}
+
+export function isTextAsset(asset: StorageAsset): boolean {
+  const mime = asset.mimeType ?? ''
+  const extension = asset.extension ?? ''
+  if (mime.startsWith('text/') || mime === 'application/json' || mime === 'application/xml')
+    return true
+
+  const knownTextExtensions = ['txt', 'md', 'csv', 'json', 'xml', 'yaml', 'yml', 'toml', 'ini', 'log', 'sh', 'ts', 'js', 'css', 'html', 'htm', 'svg']
+  return knownTextExtensions.includes(extension)
 }
 
 export function getPublicAssetUrl(

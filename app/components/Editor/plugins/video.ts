@@ -9,10 +9,9 @@ import { createAtomBlockMarkdownSpec, mergeAttributes, Node } from '@tiptap/core
 //
 // Directive format (mirrors the YouTube extension pattern):
 //   :::video {src="https://..."} :::
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 declare module '@tiptap/core' {
-  // eslint-disable-next-line unused-imports/no-unused-vars
+
   interface Commands<ReturnType> {
     video: {
       /** Insert a video node at the current selection. */

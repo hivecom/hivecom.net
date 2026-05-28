@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Badge, Flex, Sheet } from '@dolanske/vui'
 import { capitalize, computed } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
-import CountDisplay from '@/components/Shared/CountDisplay.vue'
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import ReferendumResults from '@/components/Shared/ReferendumResults.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -14,7 +16,10 @@ const props = defineProps<{
 }>()
 
 // Define emits
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits<{
+  edit: [referendum: Tables<'referendums'>]
+  delete: [referendum: Tables<'referendums'>]
+}>()
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -81,7 +86,9 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
         <Flex column :gap="0">
           <h4>Referendum Details</h4>
           <p v-if="props.referendum" class="text-color-light text-xs">
-            {{ props.referendum.title }}
+            <NuxtLink :to="`/votes/${props.referendum.id}`" target="_blank">
+              {{ props.referendum.title }}
+            </NuxtLink>
           </p>
         </Flex>
         <Flex y-center gap="s">
@@ -100,88 +107,69 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
     <Flex v-if="props.referendum" column gap="m" class="referendum-details">
       <Flex column gap="m" expand>
         <!-- Basic info -->
-        <Card class="card-bg">
-          <Flex column gap="l" expand>
-            <Grid class="referendum-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">ID:</span>
-              <span>{{ props.referendum.id }}</span>
-            </Grid>
-
-            <Grid class="referendum-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Title:</span>
-              <span>{{ props.referendum.title }}</span>
-            </Grid>
-
-            <Grid class="referendum-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Status:</span>
-              <span>
-
-                <Badge
-                  size="xs"
-                  :variant="getReferendumStatusVariant(getReferendumStatus(props.referendum))"
-                >
-                  {{ capitalize(getReferendumStatus(props.referendum)) }}
-                </Badge>
-              </span>
-            </Grid>
-
-            <Grid class="referendum-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Type:</span>
-              <span>
-                <Badge
-                  size="xs"
-                  :variant="props.referendum.multiple_choice ? 'accent' : 'neutral'"
-                >
-                  {{ props.referendum.multiple_choice ? 'Multiple Choice' : 'Single Choice' }}
-                </Badge>
-              </span>
-            </Grid>
-
-            <Grid class="referendum-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Visibility:</span>
-              <span>
-                <Badge
-                  size="xs"
-                  :variant="props.referendum.is_public ? 'success' : 'neutral'"
-                >
-                  <Icon :name="props.referendum.is_public ? 'ph:globe' : 'ph:lock'" />
-                  {{ props.referendum.is_public ? 'Public' : 'Private' }}
-                </Badge>
-              </span>
-            </Grid>
-
-            <Grid class="referendum-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Start Date:</span>
-              <TimestampDate
-                :date="props.referendum.date_start"
-                size="s"
-                class="text-color"
-              />
-            </Grid>
-
-            <Grid class="referendum-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">End Date:</span>
-              <TimestampDate
-                :date="props.referendum.date_end"
-                size="s"
-                class="text-color"
-              />
-            </Grid>
-
-            <Grid class="referendum-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Votes:</span>
-              <span><CountDisplay :value="voteCount" /> vote{{ voteCount !== 1 ? 's' : '' }}</span>
-            </Grid>
-          </Flex>
-        </Card>
-        <!-- Description -->
-        <Card v-if="props.referendum.description" separators class="card-bg">
+        <DetailTable>
           <template #header>
-            <h6>Description</h6>
+            <Icon name="ph:scales" />
+            <h6>Overview</h6>
           </template>
 
-          <p>{{ props.referendum.description }}</p>
-        </Card>
+          <DetailRow label="ID">
+            <CopyValue :text="String(props.referendum.id)" link />
+          </DetailRow>
+
+          <DetailRow label="Status">
+            <Badge
+              size="m"
+              :variant="getReferendumStatusVariant(getReferendumStatus(props.referendum))"
+            >
+              {{ capitalize(getReferendumStatus(props.referendum)) }}
+            </Badge>
+          </DetailRow>
+
+          <DetailRow label="Type">
+            <Badge
+              size="m"
+              :variant="props.referendum.multiple_choice ? 'accent' : 'neutral'"
+            >
+              {{ props.referendum.multiple_choice ? 'Multiple Choice' : 'Single Choice' }}
+            </Badge>
+          </DetailRow>
+
+          <DetailRow label="Visibility">
+            <Badge
+              size="m"
+              :variant="props.referendum.is_public ? 'success' : 'neutral'"
+            >
+              <Icon :name="props.referendum.is_public ? 'ph:globe' : 'ph:lock'" />
+              {{ props.referendum.is_public ? 'Public' : 'Private' }}
+            </Badge>
+          </DetailRow>
+
+          <DetailRow label="Start Date">
+            <TimestampDate :date="props.referendum.date_start" size="s" class="text-color" />
+          </DetailRow>
+
+          <DetailRow label="End Date">
+            <TimestampDate :date="props.referendum.date_end" size="s" class="text-color" />
+          </DetailRow>
+
+          <DetailRow label="Votes">
+            <span class="text-s">{{ voteCount }} vote{{ voteCount !== 1 ? 's' : '' }}</span>
+          </DetailRow>
+        </DetailTable>
+
+        <!-- Description -->
+        <DetailTable v-if="props.referendum.description">
+          <template #header>
+            <Icon name="ph:text-align-left" />
+            <h6>Description</h6>
+          </template>
+          <div class="referendum-details__description">
+            <p class="text-s">
+              {{ props.referendum.description }}
+            </p>
+          </div>
+        </DetailTable>
 
         <!-- Results -->
         <Flex v-if="referendumVotes && referendumVotes.length > 0" expand>
@@ -190,17 +178,20 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
             :votes="referendumVotes"
           />
         </Flex>
-        <Card v-else class="card-bg">
-          <Flex x-between y-center class="mb-m">
-            <h3>Results</h3>
-          </Flex>
-          <div class="text-center p-l">
-            <Icon name="ph:chart-bar" size="2rem" class="text-color-light mb-s" />
+        <DetailTable v-else>
+          <template #header>
+            <Icon name="ph:chart-bar" />
+            <h6>Results</h6>
+          </template>
+          <div class="referendum-details__no-votes">
+            <Icon name="ph:chart-bar" size="2rem" class="text-color-light" />
             <p class="text-color-light">
               No votes yet
             </p>
           </div>
-        </Card><!-- Metadata -->
+        </DetailTable>
+
+        <!-- Metadata -->
         <Metadata
           :created-at="props.referendum.created_at"
           :created-by="props.referendum.created_by"
@@ -216,12 +207,17 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
 .referendum-details {
   padding-bottom: var(--space);
 
-  &__not-assigned {
-    opacity: 0.5;
+  &__description {
+    padding: var(--space-m);
   }
 
-  &__item {
-    min-height: 1.5rem;
+  &__no-votes {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-s);
+    padding: var(--space-l);
   }
 }
 </style>

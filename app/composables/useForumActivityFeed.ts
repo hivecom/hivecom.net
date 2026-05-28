@@ -231,6 +231,7 @@ export function useForumActivityFeed({
   })
 
   const postSinceYesterday = ref(0)
+  const postsSinceLastVisit = ref(0)
 
   async function fetchTodayCount() {
     const cacheKey = userId.value != null
@@ -253,6 +254,38 @@ export function useForumActivityFeed({
     const count = data ?? 0
     postSinceYesterday.value = count
     forumCache.set<number>(cacheKey, count, FORUM_TODAY_COUNT_TTL)
+  }
+
+  /**
+   * Server-side count of forum activity (replies + new discussions + new topics)
+   * since `since`, excluding the current user's own posts. Used to drive the
+   * "since last visit" badge so it isn't capped by the rendered carousel slice
+   * or by the 30-row latest-replies fetch.
+   *
+   * No caching: this is keyed on a watermark that changes per visit, so a
+   * stale cache value would actively mislead the badge. The realtime
+   * subscription nudges the count locally between fetches.
+   */
+  async function fetchSinceLastVisitCount(since: string | null) {
+    if (since == null) {
+      postsSinceLastVisit.value = 0
+      return
+    }
+
+    const { data, error } = await supabase.rpc('get_forum_activity_feed_count_since', {
+      p_since: since,
+      ...(userId.value != null ? { p_exclude: userId.value } : {}),
+    })
+    if (error != null) {
+      console.error('[useForumActivityFeed] since-last-visit count error:', error.message)
+      return
+    }
+    postsSinceLastVisit.value = data ?? 0
+  }
+
+  /** Locally increment the badge when realtime delivers a new item. */
+  function bumpSinceLastVisitCount(delta = 1) {
+    postsSinceLastVisit.value = Math.max(0, postsSinceLastVisit.value + delta)
   }
 
   /**
@@ -284,9 +317,12 @@ export function useForumActivityFeed({
     latestPostMentionIds,
     latestPostAuthorIds,
     postSinceYesterday,
+    postsSinceLastVisit,
     visibleReplies,
     fetchLatestReplies,
     fetchTodayCount,
+    fetchSinceLastVisitCount,
+    bumpSinceLastVisitCount,
     prependReplyItem,
     prependDiscussionItem,
   }

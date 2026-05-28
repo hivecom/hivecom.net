@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, Flex, Modal, Skeleton } from '@dolanske/vui'
-import GameIcon from '@/components/GameServers/GameIcon.vue'
-import GameServerRow from '@/components/GameServers/GameServerRow.vue'
+import { Alert, Badge, BadgeGroup, Indicator, Popout, Skeleton, Tooltip } from '@dolanske/vui'
+import EventPopoverList from '@/components/Events/EventPopoverList.vue'
+import GameServerModal from '@/components/GameServers/GameServerModal.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
-import { useBreakpoint } from '@/lib/mediaQuery'
+
+import GlowCard from '@/components/Shared/GlowCard.vue'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
+import { useDataGameAssets } from '@/composables/useDataGameAssets'
+import { useDataMetrics } from '@/composables/useDataMetrics'
+import { useOngoingEvents } from '@/composables/useOngoingEvents'
 
 const props = defineProps<Props>()
 
-type GameserverWithContainer = Tables<'gameservers'> & {
-  container?: (Tables<'containers'> & {
+type GameserverWithContainer = Tables<'network_gameservers'> & {
+  container?: (Tables<'network_containers'> & {
     server?: {
       docker_control?: boolean | null
       accessible?: boolean | null
@@ -27,12 +32,62 @@ interface Props {
   filteredGames: Tables<'games'>[]
 }
 
+const { getGameCoverUrl } = useDataGameAssets()
+const { metrics, fetchMetrics } = useDataMetrics()
+const { getOngoingEventsForGame, hasOngoingEventForGame } = useOngoingEvents()
+
+const livePopoutOpen = ref<Map<number, boolean>>(new Map())
+function toggleLivePopout(gameId: number, event: Event) {
+  event.stopPropagation()
+  livePopoutOpen.value = new Map(livePopoutOpen.value)
+  livePopoutOpen.value.set(gameId, !(livePopoutOpen.value.get(gameId) ?? false))
+}
+function closeLivePopout(gameId: number) {
+  if (livePopoutOpen.value.get(gameId)) {
+    livePopoutOpen.value = new Map(livePopoutOpen.value)
+    livePopoutOpen.value.set(gameId, false)
+  }
+}
+
+const liveIndicatorRefs = ref<Map<number, HTMLElement>>(new Map())
+function setLiveIndicatorRef(gameId: number, el: HTMLElement | null) {
+  if (el)
+    liveIndicatorRefs.value.set(gameId, el)
+  else liveIndicatorRefs.value.delete(gameId)
+}
+
+onMounted(() => {
+  if (metrics.value === null)
+    fetchMetrics()
+})
+
+function getPlayersForGame(gameId: number): number | null {
+  if (!metrics.value || !props.gameservers)
+    return null
+  const byServer = metrics.value.gameservers.byServer
+  const servers = props.gameservers.filter(gs => gs.game === gameId && gs.query_protocol != null)
+  if (!servers.length)
+    return null
+  let total = 0
+  for (const gs of servers) {
+    const detail = byServer[String(gs.id)]
+    if (!detail?.data)
+      continue
+    const count = detail.protocol === 'minecraft'
+      ? detail.data.numPlayers
+      : detail.protocol === 'source'
+        ? detail.data.players
+        : null
+    total += count ?? 0
+  }
+  return total
+}
+
 const showModal = ref(false)
 const selectedGame = ref<Tables<'games'> | null>(null)
 const selectedGameServers = ref<GameserversType>([])
 const gameCovers = ref<Map<number, string>>(new Map())
 const coverLoadingStates = ref<Set<number>>(new Set())
-const isBelowSmall = useBreakpoint('<xs')
 
 function compareGameServerName(a: GameserversType[0], b: GameserversType[0]) {
   const nameA = a.name ?? ''
@@ -60,7 +115,6 @@ function getServerCountForGame(gameId: number) {
 
 // Get game cover image using the cached composable
 async function getGameCover(game: Tables<'games'>) {
-  const { getGameCoverUrl } = useDataGameAssets()
   const coverUrl = await getGameCoverUrl(game)
   // Return empty string if no cover to show only the small logo
   return coverUrl || ''
@@ -130,39 +184,100 @@ function isCoverLoading(gameId: number): boolean {
       <!-- Content -->
       <template v-if="games && gameservers && filteredGames.length > 0">
         <div class="game-grid">
-          <TransitionGroup name="card-fade" tag="div" class="game-grid-container" appear>
-            <button
-              v-for="(game, index) in filteredGames" :key="game.id" class="game-card" :class="{
-                'content-loaded': !isCoverLoading(game.id),
-              }" :style="{ '--delay': `${index * 50}ms` }" @click="openGameModal(game)"
-            >
-              <div class="game-cover">
-                <div class="cover-image-container">
-                  <!-- Base fallback: Hivecom logo -->
-                  <div class="cover-fallback">
-                    <img src="/icon.svg" alt="Hivecom logo" class="fallback-logo">
+          <GlowGroup>
+            <TransitionGroup name="card-fade" tag="div" class="game-grid-container" appear>
+              <GlowCard
+                v-for="(game, index) in filteredGames" :key="game.id"
+                no-glow
+                halo
+              >
+                <button
+                  class="game-card"
+                  :class="{ 'content-loaded': !isCoverLoading(game.id) }"
+                  :style="{ '--delay': `${index * 50}ms` }"
+                  @click="openGameModal(game)"
+                >
+                  <div class="game-cover">
+                    <div class="cover-image-container">
+                      <!-- Base fallback: Hivecom logo -->
+                      <div class="cover-fallback">
+                        <img src="/icon.svg" alt="Hivecom logo" class="fallback-logo" loading="lazy" decoding="async">
+                      </div>
+                      <!-- Loading skeleton -->
+                      <Skeleton v-if="isCoverLoading(game.id)" :height="280" :radius="0" class="cover-skeleton" />
+                      <!-- Actual cover image (custom or Steam) -->
+                      <img
+                        v-else-if="getCachedGameCover(game.id)"
+                        :src="getCachedGameCover(game.id)"
+                        :alt="game.name || 'Game cover'"
+                        class="cover-image"
+                        @load="handleCoverLoad"
+                      >
+                    </div>
+                    <ClientOnly>
+                      <template v-if="hasOngoingEventForGame(game.id)">
+                        <span
+                          :ref="(el) => setLiveIndicatorRef(game.id, el as HTMLElement | null)"
+                          class="cover-live-indicator-anchor"
+                        >
+                          <Indicator
+                            variant="alert"
+                            class="cover-live-indicator"
+                            outline
+                            ripple
+                            @click.stop="toggleLivePopout(game.id, $event)"
+                          />
+                        </span>
+                        <Popout
+                          :anchor="liveIndicatorRefs.get(game.id) ?? null"
+                          :visible="livePopoutOpen.get(game.id) ?? false"
+                          placement="bottom-end"
+                          :offset="8"
+                          @click-outside="closeLivePopout(game.id)"
+                        >
+                          <EventPopoverList :events="getOngoingEventsForGame(game.id)" />
+                        </Popout>
+                      </template>
+                      <Tooltip v-else-if="(getPlayersForGame(game.id) ?? 0) > 0" placement="top">
+                        <Indicator
+                          variant="online"
+                          class="cover-live-indicator"
+                          outline
+                          ripple
+                        />
+                        <template #tooltip>
+                          <p>{{ getPlayersForGame(game.id) }} online</p>
+                        </template>
+                      </Tooltip>
+                    </ClientOnly>
                   </div>
-
-                  <!-- Loading skeleton -->
-                  <Skeleton v-if="isCoverLoading(game.id)" :height="280" :radius="0" class="cover-skeleton" />
-
-                  <!-- Actual cover image (custom or Steam) -->
-                  <img
-                    v-else-if="getCachedGameCover(game.id)" :src="getCachedGameCover(game.id)"
-                    :alt="game.name || 'Game cover'" class="cover-image" @load="handleCoverLoad"
-                  >
-                </div>
-              </div>
-              <div class="game-info">
-                <h3 class="game-title">
-                  {{ game.name }}
-                </h3>
-                <div class="counter text-semibold">
-                  {{ getServerCountForGame(game.id) }}
-                </div>
-              </div>
-            </button>
-          </TransitionGroup>
+                  <div class="game-info">
+                    <h3 class="game-title">
+                      {{ game.name }}
+                    </h3>
+                    <BadgeGroup>
+                      <Tooltip placement="top">
+                        <Badge variant="neutral" size="s" circle>
+                          {{ getServerCountForGame(game.id) }}
+                        </Badge>
+                        <template #tooltip>
+                          <p>Servers</p>
+                        </template>
+                      </Tooltip>
+                      <Tooltip v-if="(getPlayersForGame(game.id) ?? 0) > 0" placement="top">
+                        <Badge variant="accent" size="s" circle>
+                          {{ getPlayersForGame(game.id) }}
+                        </Badge>
+                        <template #tooltip>
+                          <p>Players online</p>
+                        </template>
+                      </Tooltip>
+                    </BadgeGroup>
+                  </div>
+                </button>
+              </GlowCard>
+            </TransitionGroup>
+          </GlowGroup>
         </div>
       </template>
 
@@ -175,45 +290,12 @@ function isCoverLoading(gameId: number): boolean {
     </template>
 
     <!-- Game Servers Modal -->
-    <Modal
-      v-if="showModal" :open="showModal" :size="isBelowSmall ? 'screen' : undefined" :card="{ separators: true }"
-      @close="closeModal"
-    >
-      <template v-if="selectedGame" #header>
-        <Flex gap="s" y-center expand>
-          <GameIcon :game="selectedGame" size="m" />
-          <Flex y-center gap="s" expand x-between>
-            <h3>{{ selectedGame.name }}</h3>
-          </Flex>
-        </Flex>
-      </template>
-      <div class="modal-content">
-        <div v-if="selectedGameServers.length > 0" class="servers-list">
-          <GameServerRow
-            v-for="gameserver in selectedGameServers" :key="gameserver.id"
-            :gameserver="gameserver"
-            :container="gameserver.container ?? null" :game="selectedGame"
-            compact
-          />
-        </div>
-
-        <Alert v-else variant="info">
-          No servers available for this game.
-        </Alert>
-      </div>
-
-      <template #footer>
-        <Flex x-end gap="s" expand>
-          <Button :expand="isBelowSmall" @click="closeModal">
-            Close
-          </Button>
-        </Flex>
-      </template>
-    </Modal>
+    <GameServerModal :open="showModal" :game="selectedGame" :gameservers="selectedGameServers" @close="closeModal" />
   </div>
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
 .game-library {
   width: 100%;
 }
@@ -223,11 +305,21 @@ function isCoverLoading(gameId: number): boolean {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: var(--space-m);
   width: 100%;
+
+  @media (max-width: $breakpoint-xs) {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
 }
 
 .game-grid-container {
   display: contents;
   /* Make the transition group container not affect grid layout */
+}
+
+:deep(.glow-card) {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-m);
+  height: 100%;
 }
 
 /* Card fade-in animations */
@@ -281,17 +373,17 @@ function isCoverLoading(gameId: number): boolean {
 }
 
 .game-card {
+  width: 100%;
   padding: 0;
   display: flex;
   flex-direction: column;
   background: var(--color-bg-medium);
-  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
   overflow: hidden;
   text-align: left;
+  height: 100%;
   cursor: pointer;
   transition:
-    transform 0.2s ease,
     box-shadow 0.2s ease,
     border-color 0.2s ease,
     opacity 0.3s ease;
@@ -304,7 +396,6 @@ function isCoverLoading(gameId: number): boolean {
   }
 
   &:hover {
-    transform: translateY(-4px);
     box-shadow: var(--shadow-l);
     border-color: var(--color-border-hover);
   }
@@ -319,7 +410,6 @@ function isCoverLoading(gameId: number): boolean {
   position: relative;
   aspect-ratio: 2 / 2.8;
   height: auto;
-  overflow: hidden;
   border-radius: var(--border-radius-m) var(--border-radius-m) 0 0;
 
   .cover-image-container {
@@ -330,6 +420,8 @@ function isCoverLoading(gameId: number): boolean {
     align-items: center;
     justify-content: center;
     background: var(--color-background-secondary);
+    overflow: hidden;
+    border-radius: var(--border-radius-m) var(--border-radius-m) 0 0;
   }
 
   .cover-fallback {
@@ -377,6 +469,18 @@ function isCoverLoading(gameId: number): boolean {
       opacity: 1;
     }
   }
+
+  .cover-live-indicator-anchor {
+    position: absolute;
+    top: var(--space-s);
+    right: var(--space-s);
+    z-index: 4;
+    display: flex;
+  }
+
+  .cover-live-indicator {
+    cursor: pointer;
+  }
 }
 
 .game-info {
@@ -390,6 +494,10 @@ function isCoverLoading(gameId: number): boolean {
 .game-title {
   margin: 0;
   font-size: var(--font-size-m);
+
+  @media (max-width: $breakpoint-xs) {
+    font-size: var(--font-size-xs);
+  }
   font-weight: 600;
   line-height: 1.2;
   color: var(--color-text);

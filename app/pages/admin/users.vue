@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import type { AdminUserProfile } from '@/composables/useAdminUserTableData'
 import { Alert, Flex, Tab, Tabs } from '@dolanske/vui'
+import { computed, ref } from 'vue'
 import RolesGrid from '@/components/Admin/Roles/RolesGrid.vue'
 
+import AdminGlobe from '@/components/Admin/Users/AdminGlobe.vue'
 import UserDetails from '@/components/Admin/Users/UserDetails.vue'
 import UserForm from '@/components/Admin/Users/UserForm.vue'
 import UserKPIs from '@/components/Admin/Users/UserKPIs.vue'
 import UserTable from '@/components/Admin/Users/UserTable.vue'
+import { useAdminPermissions } from '@/composables/useAdminPermissions'
+import { useDataProfileBadges } from '@/composables/useDataProfileBadges'
+import { BADGE_CATALOG } from '@/lib/badges/catalog'
 import { getRouteQueryString } from '@/lib/utils/common'
+
+definePageMeta({ layout: 'admin' })
 
 interface UserAction {
   user: AdminUserProfile
@@ -49,11 +56,13 @@ if (!canViewUsers.value && !canViewRoles.value) {
 
 // Tab management (pattern aligned with admin/network)
 const availableTabs = computed(() => {
-  const tabs: { label: string, value: 'Users' | 'Roles' }[] = []
+  const tabs: { label: string, value: 'Users' | 'Roles' | 'Globe' }[] = []
   if (canViewUsers.value)
     tabs.push({ label: 'Users', value: 'Users' })
   if (canViewRoles.value)
     tabs.push({ label: 'Roles', value: 'Roles' })
+  if (canViewUsers.value)
+    tabs.push({ label: 'Globe', value: 'Globe' })
   return tabs
 })
 
@@ -75,8 +84,10 @@ const pageSubtitle = computed(() => {
 // Reactive state
 const selectedUser = ref<AdminUserProfile | null>(null)
 const showUserDetails = ref(false)
+const userDetailsRef = ref<{ refreshBadges: () => Promise<void> } | null>(null)
 const userAction = ref<UserAction | null>(null)
 const refreshSignal = ref(0)
+const countryFilter = ref('')
 const userRefreshTrigger = ref(false)
 const detailActionLoading = ref<Partial<Record<ActionType, boolean>>>({})
 
@@ -84,6 +95,12 @@ const detailActionLoading = ref<Partial<Record<ActionType, boolean>>>({})
 const showUserForm = ref(false)
 const isEditMode = ref(false)
 const userToEdit = ref<AdminUserProfile | null>(null)
+const { invalidate: invalidateProfileBadges } = useDataProfileBadges(null)
+
+function handleCountryClick(iso: string) {
+  activeTab.value = 'Users'
+  countryFilter.value = iso
+}
 
 // Close the details panel when leaving the Users tab.
 watch(activeTab, (tab) => {
@@ -260,7 +277,7 @@ function handleEditFromDetails(user: AdminUserProfile) {
 }
 
 // Handle save from UserForm
-async function handleUserSave(userData: UserFormData) {
+async function handleUserSave(userData: UserFormData, badges: string[], currentBadges: string[]) {
   try {
     const supabase = useSupabaseClient()
 
@@ -268,7 +285,7 @@ async function handleUserSave(userData: UserFormData) {
       return
 
     // Extract role from userData (single role management)
-    const { role, ...profileData } = userData
+    const { role, badges: _badges, ...profileData } = userData
 
     // Update user profile data
     const { error: profileError } = await supabase
@@ -312,6 +329,44 @@ async function handleUserSave(userData: UserFormData) {
         if (insertError)
           throw insertError
       }
+    }
+
+    // Apply manual badge changes via RPCs
+    if (userToEdit.value && badges !== undefined) {
+      const profileId = userToEdit.value.id
+      const currentBadgeSlugs = new Set(currentBadges)
+      const newBadgeSlugs = new Set(badges)
+      const manualSlugs = ['builder', 'earlybird', 'founder', 'host']
+
+      // Grant newly added badges
+      for (const slug of manualSlugs) {
+        if (newBadgeSlugs.has(slug) && !currentBadgeSlugs.has(slug)) {
+          const entry = BADGE_CATALOG[slug as keyof typeof BADGE_CATALOG]
+          const tier = entry && entry.kind !== 'computed' ? entry.defaultTier : undefined
+          const { error: setError } = await supabase.rpc('admin_set_profile_badge', {
+            p_profile_id: profileId,
+            p_slug: slug,
+            ...(tier ? { p_tier: tier } : {}),
+          })
+          if (setError)
+            throw setError
+        }
+      }
+
+      // Revoke removed badges
+      for (const slug of manualSlugs) {
+        if (!newBadgeSlugs.has(slug) && currentBadgeSlugs.has(slug)) {
+          const { error: removeError } = await supabase.rpc('admin_remove_profile_badge', {
+            p_profile_id: profileId,
+            p_slug: slug,
+          })
+          if (removeError)
+            throw removeError
+        }
+      }
+
+      invalidateProfileBadges(profileId)
+      void userDetailsRef.value?.refreshBadges()
     }
 
     // Close the form and refresh data
@@ -396,6 +451,7 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
 
         <UserTable
           v-model:refresh-signal="refreshSignal"
+          v-model:country-filter="countryFilter"
           :can-view-user-emails="canViewUserEmails"
           :focus-user-id="focusedUserId"
           @user-selected="handleUserSelected"
@@ -405,14 +461,17 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
       </Flex>
 
       <!-- Roles Tab -->
-      <Flex v-if="canViewRoles" v-show="activeTab === 'Roles'" column gap="l" expand>
+      <Flex v-if="canViewRoles" v-show="activeTab === 'Roles'" column gap="m" expand>
         <RolesGrid />
       </Flex>
     </Flex>
+    <!-- Globe Tab -->
+    <AdminGlobe v-show="activeTab === 'Globe'" @country-click="handleCountryClick" />
 
     <!-- User Details Side Panel -->
     <UserDetails
       v-if="activeTab === 'Users'"
+      ref="userDetailsRef"
       v-model:is-open="showUserDetails"
       v-model:user-action="userAction"
       v-model:refresh-user="userRefreshTrigger"
@@ -435,5 +494,4 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
 </template>
 
 <style lang="scss" scoped>
-
 </style>

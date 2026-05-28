@@ -1,21 +1,26 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Badge, Flex, Sheet } from '@dolanske/vui'
 import { computed } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
-import { useDataProjectBanner } from '@/composables/useDataProjectBanner'
 
 const props = defineProps<{
   project: Tables<'projects'> | null
 }>()
 
 // Define emits
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits<{
+  edit: [project: Tables<'projects'>]
+  delete: [project: Tables<'projects'>]
+}>()
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -55,7 +60,9 @@ function handleDelete(project: Tables<'projects'>) {
         <Flex column :gap="0">
           <h4>Project Details</h4>
           <p v-if="props.project" class="text-color-light text-xs">
-            {{ props.project.title }}
+            <NuxtLink :to="`/community/projects/${props.project.id}`" target="_blank">
+              {{ props.project.title }}
+            </NuxtLink>
           </p>
         </Flex>
         <Flex y-center gap="s">
@@ -74,90 +81,85 @@ function handleDelete(project: Tables<'projects'>) {
     <Flex v-if="props.project" column gap="m" class="project-details">
       <Flex column gap="m" expand>
         <!-- Basic info -->
-        <Card class="card-bg">
-          <Flex column gap="l" expand>
-            <Grid class="project-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">ID:</span>
-              <span>{{ props.project.id }}</span>
-            </Grid>
+        <DetailTable>
+          <template #header>
+            <Icon name="ph:folder" />
+            <h6>Overview</h6>
+          </template>
 
-            <Grid class="project-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Title:</span>
-              <span>{{ props.project.title }}</span>
-            </Grid>
+          <DetailRow label="ID">
+            <CopyValue :text="String(props.project.id)" link />
+          </DetailRow>
 
-            <Grid class="project-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Owner:</span>
-              <div :class="{ 'project-details__not-assigned': !props.project.owner }">
-                <UserLink v-if="props.project.owner" :user-id="props.project.owner" class="text-m" show-avatar />
-                <span v-else>Not Assigned</span>
-              </div>
-            </Grid>
+          <DetailRow label="Owner">
+            <UserLink v-if="props.project.owner" :user-id="props.project.owner" class="text-s" show-avatar />
+            <span v-else class="project-details__not-assigned text-s">Not Assigned</span>
+          </DetailRow>
 
-            <Grid class="project-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Created:</span>
-              <TimestampDate
-                :date="props.project.created_at"
-                size="s"
-                class="text-color"
-              />
-            </Grid>
+          <DetailRow label="Created">
+            <TimestampDate :date="props.project.created_at" size="s" class="text-color" />
+          </DetailRow>
 
-            <Grid v-if="props.project.link" class="project-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Link:</span>
-              <NuxtLink external :href="props.project.link" target="_blank" class="color-accent text-m">
-                {{ props.project.link }}
-              </NuxtLink>
-            </Grid>
+          <DetailRow label="Link" :hidden="!props.project.link">
+            <NuxtLink external :href="props.project.link ?? ''" target="_blank" class="color-accent text-s">
+              {{ props.project.link }}
+            </NuxtLink>
+          </DetailRow>
 
-            <Grid v-if="props.project.github" class="project-details__item" expand :columns="2" y-center>
-              <span class="text-color-light text-bold">GitHub:</span>
-              <GitHubLink :github="props.project.github" :show-icon="true" />
-            </Grid>
+          <DetailRow label="GitHub" :hidden="!props.project.github">
+            <GitHubLink :github="props.project.github ?? ''" :show-icon="true" />
+          </DetailRow>
 
-            <Grid v-if="props.project.tags && props.project.tags.length > 0" class="project-details__item" expand :columns="2">
-              <span class="text-color-light text-bold">Tags:</span>
-              <div class="tags-display">
-                <Badge
-                  v-for="tag in props.project.tags"
-                  :key="tag"
-                  size="xs"
-                  variant="neutral"
-                >
-                  {{ tag }}
-                </Badge>
-              </div>
-            </Grid>
-          </Flex>
-        </Card>
+          <DetailRow label="Tags" :hidden="!props.project.tags || props.project.tags.length === 0" wrap>
+            <Badge
+              v-for="tag in props.project.tags"
+              :key="tag"
+              size="m"
+              variant="neutral"
+            >
+              {{ tag }}
+            </Badge>
+          </DetailRow>
+        </DetailTable>
 
         <!-- Banner -->
-        <Card v-if="projectBannerUrl" class="card-bg project-details__banner-card">
+        <div v-if="projectBannerUrl" class="project-details__banner-card">
           <div
             class="project-details__banner-preview"
             :style="{ backgroundImage: `url(${projectBannerUrl})` }"
             role="img"
             :aria-label="`${props.project.title} banner preview`"
           />
-        </Card>
+        </div>
 
         <!-- Description -->
-        <Card v-if="props.project.description" separators class="card-bg">
+        <DetailTable v-if="props.project.description">
           <template #header>
+            <Icon name="ph:text-align-left" />
             <h6>Description</h6>
           </template>
-
-          <p>{{ props.project.description }}</p>
-        </Card>
+          <div class="project-details__description">
+            <p class="text-s">
+              {{ props.project.description }}
+            </p>
+          </div>
+        </DetailTable>
 
         <!-- Markdown Content -->
-        <Card v-if="props.project.markdown" separators class="card-bg">
+        <DetailTable v-if="props.project.markdown">
           <template #header>
-            <h6>Content</h6>
+            <Flex x-between y-center expand>
+              <Flex y-center gap="xs">
+                <Icon name="ph:article" />
+                <h6>Content</h6>
+              </Flex>
+              <span class="text-color-lightest text-xs">Markdown</span>
+            </Flex>
           </template>
-
-          <MarkdownRenderer :md="props.project.markdown" class="project-details__markdown-content" />
-        </Card>
+          <div class="project-details__markdown-content text-s">
+            <MarkdownRenderer :md="props.project.markdown" />
+          </div>
+        </DetailTable>
 
         <!-- Metadata -->
         <Metadata
@@ -175,7 +177,17 @@ function handleDelete(project: Tables<'projects'>) {
 .project-details {
   padding-bottom: var(--space);
 
+  &__not-assigned {
+    opacity: 0.5;
+  }
+
+  &__description {
+    padding: var(--space-m);
+  }
+
   &__markdown-content {
+    padding: var(--space-m);
+
     h1 {
       margin-top: var(--space-s);
       font-size: var(--font-size-xxl);
@@ -186,21 +198,13 @@ function handleDelete(project: Tables<'projects'>) {
       font-size: var(--font-size-xxl);
     }
   }
-
-  &__not-assigned {
-    opacity: 0.5;
-  }
-}
-
-.tags-display {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
 }
 
 .project-details__banner-card {
-  padding: 0;
+  width: 100%;
   overflow: hidden;
+  border-radius: var(--border-radius-m);
+  border: 1px solid var(--color-border);
 }
 
 .project-details__banner-preview {

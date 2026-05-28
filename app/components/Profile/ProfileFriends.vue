@@ -162,7 +162,7 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
         <Icon name="ph:users" size="32" class="text-color-light" />
         <p class="text-color-light text-s text-center mb-m">
           <template v-if="isOwnProfile">
-            You haven't made any friends yet. Start connecting with other community members!
+            You haven't made any friends yet. Start connecting with other users!
           </template>
           <template v-else>
             {{ profile?.username }} hasn't made any friends yet. Why not be the first?

@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, Card, Flex, Input, Select, Skeleton } from '@dolanske/vui'
-import { computed } from 'vue'
-import GameIcon from '@/components/GameServers/GameIcon.vue'
+import { Alert, Badge, Button, Card, Flex, Indicator, Input, Popout, Select, Skeleton } from '@dolanske/vui'
+import { computed, ref } from 'vue'
+import EventPopoverList from '@/components/Events/EventPopoverList.vue'
 import GameServerRow from '@/components/GameServers/GameServerRow.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
+import GameSelect from '@/components/Shared/GameSelect.vue'
+import { useOngoingEvents } from '@/composables/useOngoingEvents'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-type GameserverWithContainer = Tables<'gameservers'> & {
-  container?: (Tables<'containers'> & {
+type GameserverWithContainer = Tables<'network_gameservers'> & {
+  container?: (Tables<'network_containers'> & {
     server?: {
       docker_control?: boolean | null
       accessible?: boolean | null
@@ -31,15 +34,15 @@ interface Props {
   filteredGameservers: GameserversType
   gameserversWithoutGame: GameserversType
   search: string
-  selectedGames?: { label: string, value: number }[]
+  selectedGameIds?: number[]
   selectedRegions?: { label: string, value: string }[]
-  gameOptions: { label: string, value: number }[]
+  gamesWithServers: Tables<'games'>[]
   regionOptions: { label: string, value: string }[]
 }
 
 interface Emits {
   (e: 'update:search', value: string): void
-  (e: 'update:selectedGames', value: { label: string, value: number }[] | undefined): void
+  (e: 'update:selectedGameIds', value: number[]): void
   (e: 'update:selectedRegions', value: { label: string, value: string }[] | undefined): void
   (e: 'clearFilters'): void
 }
@@ -68,12 +71,33 @@ function updateSearch(value: string | number) {
   emit('update:search', String(value))
 }
 
-function updateSelectedGames(value: { label: string, value: number }[] | undefined) {
-  emit('update:selectedGames', value)
+function updateSelectedGames(value: number[]) {
+  emit('update:selectedGameIds', value)
 }
 
 function updateSelectedRegions(value: { label: string, value: string }[] | undefined) {
   emit('update:selectedRegions', value)
+}
+
+const { getOngoingEventsForGame, hasOngoingEventForGame } = useOngoingEvents()
+
+const livePopoutOpen = ref<Map<number, boolean>>(new Map())
+function toggleLivePopout(gameId: number, event: Event) {
+  event.stopPropagation()
+  livePopoutOpen.value = new Map(livePopoutOpen.value)
+  livePopoutOpen.value.set(gameId, !(livePopoutOpen.value.get(gameId) ?? false))
+}
+function closeLivePopout(gameId: number) {
+  if (livePopoutOpen.value.get(gameId)) {
+    livePopoutOpen.value = new Map(livePopoutOpen.value)
+    livePopoutOpen.value.set(gameId, false)
+  }
+}
+const liveIndicatorRefs = ref<Map<number, HTMLElement>>(new Map())
+function setLiveIndicatorRef(gameId: number, el: HTMLElement | null) {
+  if (el)
+    liveIndicatorRefs.value.set(gameId, el)
+  else liveIndicatorRefs.value.delete(gameId)
 }
 </script>
 
@@ -110,13 +134,20 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
               <Icon name="ph:magnifying-glass" />
             </template>
           </Input>
-          <Select
-            :model-value="selectedGames"
-            :options="gameOptions"
-            placeholder="Select game"
-            :expand="isCompactLayout"
-            @update:model-value="updateSelectedGames"
-          />
+          <ClientOnly>
+            <GameSelect
+              :model-value="selectedGameIds ?? []"
+              :games="gamesWithServers"
+              placeholder="Select game"
+              :expand="isCompactLayout"
+              @update:model-value="updateSelectedGames"
+            />
+            <template #fallback>
+              <Button outline size="m" :expand="isCompactLayout" disabled>
+                Select game
+              </Button>
+            </template>
+          </ClientOnly>
           <Select
             :model-value="selectedRegions"
             :options="regionOptions"
@@ -125,7 +156,7 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
             @update:model-value="updateSelectedRegions"
           />
           <Button
-            v-if="selectedGames || selectedRegions || search"
+            v-if="selectedGameIds?.length || selectedRegions || search"
             plain
             outline
             :expand="isCompactLayout"
@@ -155,6 +186,31 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
                     <div class="counter">
                       {{ getServersByGameId(game.id).length }}
                     </div>
+                    <ClientOnly>
+                      <span
+                        v-if="hasOngoingEventForGame(game.id)"
+                        :ref="(el) => setLiveIndicatorRef(game.id, el as HTMLElement | null)"
+                        class="live-event-anchor"
+                      >
+                        <Indicator
+                          variant="alert"
+                          class="live-event-indicator"
+                          outline
+                          ripple
+                          @click.stop="toggleLivePopout(game.id, $event)"
+                        />
+                      </span>
+                      <Popout
+                        v-if="hasOngoingEventForGame(game.id)"
+                        :anchor="liveIndicatorRefs.get(game.id) ?? null"
+                        :visible="livePopoutOpen.get(game.id) ?? false"
+                        placement="bottom-start"
+                        :offset="8"
+                        @click-outside="closeLivePopout(game.id)"
+                      >
+                        <EventPopoverList :events="getOngoingEventsForGame(game.id)" />
+                      </Popout>
+                    </ClientOnly>
                   </Flex>
                   <!-- <SteamLink v-if="game.steam_id" :steam-id="game.steam_id" show-icon hide-id /> -->
                 </Flex>
@@ -175,7 +231,7 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
             <h3 class="mb-s">
               <Flex gap="m" y-center>
                 Unassigned Servers
-                <Badge>
+                <Badge variant="neutral" circle>
                   {{ sortedGameserversWithoutGame.length }}
                 </Badge>
               </Flex>
@@ -202,6 +258,16 @@ function updateSelectedRegions(value: { label: string, value: string }[] | undef
 </template>
 
 <style lang="scss" scoped>
+.live-event-anchor {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.live-event-indicator {
+  cursor: pointer;
+}
+
 .game-listing__game-icon-button {
   border: none;
   background: transparent;

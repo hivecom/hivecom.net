@@ -1,12 +1,11 @@
 ---
+
 title: Terms of Service
-date: 2026-03-14
-revisions: [2025-05-01]
+date: 2026-05-14
+revisions: [2025-05-01, 2026-03-14]
 notes:
-  - Added content rules acknowledgment requirement for posting, clarified profile visibility and forum anonymization, added third-party service integrations section covering Steam, Discord, TeamSpeak, and Patreon.
-  - Specified Alberta/Canada governing law, added GDPR compliance acknowledgment, and added email notification requirement for material changes.
-  - Added community projects and OAuth access section clarifying that second-party integrations inherit these Terms and associated privacy protections, with Hivecom retaining responsibility for all OAuth clients.
----
+
+- Expanded Section 5 to disclose community statistics collection and server presence snapshots. Clarified that in-game usernames and TeamSpeak display names are captured in periodic snapshots, and that where a linked account identity can be matched, server presence is associated with the corresponding user profile.
 
 ## 1. Introduction and Acceptance
 
@@ -67,16 +66,20 @@ We provide game servers as a service to our community. When using these servers:
 - You must comply with the specific rules of each game server
 - We reserve the right to modify, suspend, or terminate access to any game server at our discretion
 - In-game content and achievements may be subject to change or deletion
+- Temporary short-lived connection logs are kept for security and moderation purposes
+- Your in-game username and other publicly visible server data may be captured in periodic snapshots used to power live server displays and community statistics - the same information any other connected player can see
+- Where your in-game identity can be matched to a linked Hivecom account (e.g. via a connected Steam account), that presence may be associated with your profile - see our [Privacy Policy](/legal/privacy) for details
 
 ### 5.2 Communication Services
 
 Our IRC and TeamSpeak services are provided as community communication tools. When using these services:
 
-- We collect minimal connection logs for security and moderation purposes which include IP addresses, connection times, and disconnection times
+- Temporary short-lived connection logs are kept for security and moderation purposes, including IP addresses, connection times, and disconnection times
 - IRC channels (#public, #lounge, #staff) are logged for moderation purposes, and we reserve the right to review these logs
 - IRC direct (query) conversations are not logged unless you are communicating using our IRC bouncer which to serve its purpose must log conversations
 - TeamSpeak voice channels have minimal connection logs but otherwise store no data about your voice conversations
 - TeamSpeak channel chats are not logged but can be observed by others if in the same channel
+- TeamSpeak display names are captured in periodic snapshots to power the live TeamSpeak viewer; where your TeamSpeak unique identity matches a linked Hivecom account, your presence is associated with your profile - enabling other users to navigate to your profile from the viewer
 
 It's worth noting for any present and future services used by the community that are not hosted by us: **We can't control any third-party communication services such as Discord, and we are not responsible for any data collected by these services**
 
@@ -94,7 +97,7 @@ Our community referendum mechanism allows users to vote on community matters. We
 
 ## 5.5 Community Projects and OAuth Access
 
-Some community projects - whether operated by Hivecom directly or built by affiliated contributors and members - may request access to your Hivecom account data through an OAuth authorization flow. These are considered second-party integrations and are part of the broader Hivecom community ecosystem. Hivecom maintains responsibility for all OAuth clients, including those created on behalf of community-built projects.
+Some community projects - whether operated by Hivecom directly or built by affiliated contributors and users - may request access to your Hivecom account data through an OAuth authorization flow. These are considered second-party integrations and are part of the broader Hivecom community ecosystem. Hivecom maintains responsibility for all OAuth clients, including those created on behalf of community-built projects.
 
 By authorizing such a connection, you grant that sub-project access only to the specific data scopes you approve at the time of authorization. You may revoke this access at any time from your account settings.
 

@@ -9,8 +9,7 @@ const props = defineProps<{
 
 // ---------------------------------------------------------------------------
 // Detect whether the cursor is currently inside a table
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function getTableDomNode(): HTMLElement | null {
   const { state, view } = props.editor
   if (!view.dom.isConnected)
@@ -33,8 +32,7 @@ function getTableDomNode(): HTMLElement | null {
 
 // ---------------------------------------------------------------------------
 // Reactive position - updated on every editor transaction
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 interface MenuPos {
   top: number
   left: number
@@ -83,8 +81,7 @@ const isVisible = computed(() => menuPos.value !== null)
 
 // ---------------------------------------------------------------------------
 // Table commands
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function run(fn: () => void) {
   fn()
   props.editor.commands.focus()

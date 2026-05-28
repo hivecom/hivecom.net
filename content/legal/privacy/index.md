@@ -1,12 +1,11 @@
 ---
+
 title: Privacy Policy
-date: 2026-03-14
-revisions: [2025-05-01]
+date: 2026-05-14
+revisions: [2025-05-01, 2026-03-14]
 notes:
-  - Added explicit disclosure of third-party service integrations (Steam, Discord, TeamSpeak, Patreon) and what data is collected from each. Clarified profile visibility controls and forum anonymization. Added supporter and funding data section.
-  - Strengthened GDPR language and added email notification requirement for material changes.
-  - Added community projects and OAuth data access section clarifying that second-party integrations inherit these privacy protections, with Hivecom retaining responsibility for all OAuth clients.
----
+
+- Added community statistics section (2.9) disclosing anonymous aggregate counts, and server presence snapshots section (2.10) disclosing capture of in-game usernames and identity association with linked Hivecom accounts on game and voice servers.
 
 ## 1. Introduction
 
@@ -87,7 +86,7 @@ Each of these services has its own privacy policy. By connecting your account, y
 
 ### 2.7 Community Projects and OAuth Data Access
 
-Some community projects - whether operated by Hivecom directly or built by affiliated contributors and members - may request access to your Hivecom account data through an OAuth authorization flow. These are considered second-party integrations and are part of the broader Hivecom community ecosystem. Hivecom maintains responsibility for all OAuth clients, including those created on behalf of community-built projects.
+Some community projects - whether operated by Hivecom directly or built by affiliated contributors and users - may request access to your Hivecom account data through an OAuth authorization flow. These are considered second-party integrations and are part of the broader Hivecom community ecosystem. Hivecom maintains responsibility for all OAuth clients, including those created on behalf of community-built projects.
 
 When you authorize such a connection, you grant that sub-project access only to the specific data scopes you approve at the time of authorization. You can revoke this access at any time from your account settings.
 
@@ -103,7 +102,24 @@ Hivecom reserves the right to revoke OAuth access from any sub-project that viol
 
 If you support Hivecom through Patreon or direct donations, we store your supporter status and aggregate contribution data. This is used to track community funding and recognize supporters. We do not store payment details directly - all payment processing is handled by the respective platform (e.g., Patreon, PayPal).
 
-### 2.9 Cookies and Tracking Technologies
+### 2.9 Community Statistics
+
+We periodically collect aggregate, anonymous snapshots of community activity to power the public community statistics display and internal reporting. These counts contain no personal information and no individual user can be identified from them:
+
+- **Online activity**: Total member count and count of currently online users, derived from the `last_seen` timestamp updated while you are signed in. Member counts broken down by country are also recorded, using the country you have optionally set on your profile.
+- **Discussion and reply counts**: Total number of discussions and replies across the forum - purely numeric counts with no content or author information.
+- **Game activity**: Count of how many users are currently playing each game, derived from Steam presence data. Only counted for users who have explicitly opted in to rich presence (see Section 2.6).
+- **Communication, game and voice server counts**: Total player counts across Hivecom-operated game servers, IRC connections and TeamSpeak users.
+
+### 2.10 Server Presence Snapshots
+
+When querying communication and game servers for the above statistics, we capture a snapshot of who is currently connected. This includes in-game usernames and TeamSpeak display names as an example - the same information visible to any other player on the same server at the time.
+
+Where a connected player's identity can be matched to a linked Hivecom account - for example, a Steam ID associated with a connected Steam account, or a TeamSpeak unique identity matching a linked TeamSpeak identity - that presence is associated with the corresponding user profile. This association is what enables features like clicking a username in the TeamSpeak viewer to navigate to a user's profile. This data - unless the profile is private - is not accessible without being signed in.
+
+This data is used solely to power live server displays within Hivecom. No chat, voice, or private connection details are recorded.
+
+### 2.11 Cookies and Tracking Technologies
 
 Cookies are small data files stored on your device that help us recognize you and remember your preferences. You can control cookie settings through your browser, but disabling cookies may affect your ability to use certain features of our services.
 

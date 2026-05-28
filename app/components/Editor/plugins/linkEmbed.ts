@@ -19,12 +19,10 @@ import { parseInternalUrl } from '@/composables/useDataLinkPreview'
 // A ProseMirror appendTransaction plugin watches every document change and
 // converts any paragraph whose only content is a single self-linked text node
 // pointing at a recognised internal hivecom URL into a linkEmbed node.
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 /**
  * If `node` is a paragraph containing only a single text node that:
  *   - has exactly one mark of type "link"
@@ -70,8 +68,7 @@ function getStandaloneLinkHref(node: import('@tiptap/pm/model').Node): string | 
 
 // ---------------------------------------------------------------------------
 // Node definition
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export const LinkEmbed = Node.create({
   name: 'linkEmbed',
 
@@ -107,7 +104,7 @@ export const LinkEmbed = Node.create({
 
     const isLinkedReply = parsed?.type === 'forum-discussion' && parsed.commentId !== null
     const eyebrow = parsed?.type === 'forum-discussion'
-      ? isLinkedReply ? 'Forum discussion · Linked reply' : 'Forum discussion'
+      ? isLinkedReply ? 'Forum discussion - Linked reply' : 'Forum discussion'
       : parsed?.type === 'profile'
         ? 'Profile'
         : parsed?.type === 'gameserver'

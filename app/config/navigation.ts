@@ -16,6 +16,7 @@ export const commandLinks: CommandLink[] = [
   // Community
   { path: '/community', label: 'Community', group: 'Community', icon: 'ph:users' },
   { path: '/community/funding', label: 'Funding', group: 'Community', icon: 'ph:coins' },
+  { path: '/community/games', label: 'Games', group: 'Community', icon: 'ph:game-controller' },
   { path: '/community/badges', label: 'Badges', group: 'Community', icon: 'ph:medal' },
   { path: '/community/projects', label: 'Projects', group: 'Community', icon: 'ph:code' },
   // Forum
@@ -36,6 +37,7 @@ export const commandLinks: CommandLink[] = [
   { path: '/profile/settings', label: 'Settings', group: 'Account', icon: 'ph:gear', requiresAuth: true },
   // Admin
   { path: '/admin', label: 'Admin Dashboard', group: 'Admin', icon: 'ph:gauge', requiresRole: ['admin', 'moderator'] },
+  { path: '/admin/metrics', label: 'Admin Metrics', group: 'Admin', icon: 'ph:chart-line', requiresRole: ['admin', 'moderator'] },
   { path: '/admin/users', label: 'Admin Users', group: 'Admin', icon: 'ph:users-three', requiresRole: ['admin', 'moderator'] },
   { path: '/admin/complaints', label: 'Admin Complaints', group: 'Admin', icon: 'ph:warning', requiresRole: ['admin', 'moderator'] },
   { path: '/admin/discussions', label: 'Admin Discussions', group: 'Admin', icon: 'ph:chat-circle', requiresRole: ['admin', 'moderator'] },
@@ -70,6 +72,10 @@ export const navigationLinks = [
       {
         path: '/community/funding',
         label: 'Funding',
+      },
+      {
+        path: '/community/games',
+        label: 'Games',
       },
       {
         path: '/community/projects',

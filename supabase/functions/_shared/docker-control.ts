@@ -4,8 +4,8 @@ import type { Database, Tables } from "database-types";
 
 // Interface for container with its server details
 export interface ContainerWithServer {
-  container: Tables<"containers">;
-  server: Tables<"servers">;
+  container: Tables<"network_containers">;
+  server: Tables<"network_servers">;
 }
 
 // Interface for Docker control container response
@@ -23,7 +23,7 @@ export type DockerControlResponse = DockerControlContainer[];
  * Builds a Docker control URL for server-wide actions
  */
 export function buildDockerControlServerUrl(
-  server: Tables<"servers">,
+  server: Tables<"network_servers">,
   endpoint: string = "status",
 ): string {
   return `${server.docker_control_secure ? "https" : "http"}://${
@@ -39,7 +39,7 @@ export function buildDockerControlServerUrl(
  * Builds a Docker control URL for a specific container and action
  */
 export function buildDockerControlActionUrl(
-  server: Tables<"servers">,
+  server: Tables<"network_servers">,
   containerName: string,
   action: string,
 ): string {
@@ -59,7 +59,7 @@ export async function getContainerWithServer(
 ): Promise<{ container: ContainerWithServer | null; error: Response | null }> {
   // Get container details including the server it's hosted on
   const { data: container, error: containerError } = await supabaseClient
-    .from("containers")
+    .from("network_containers")
     .select("*, server(*)")
     .eq("name", containerName)
     .single();
@@ -81,7 +81,7 @@ export async function getContainerWithServer(
   }
 
   // Get the server that hosts this container
-  const server = container.server as Tables<"servers">;
+  const server = container.server as Tables<"network_servers">;
 
   if (!server) {
     return {
@@ -128,7 +128,7 @@ export async function getContainerWithServer(
 export async function updateContainerStatus(
   supabaseClient: ReturnType<typeof createClient<Database>>,
   containerName: string,
-  statusUpdate: Partial<Tables<"containers">>,
+  statusUpdate: Partial<Tables<"network_containers">>,
 ): Promise<{ success: boolean; error: string | null }> {
   try {
     const now = new Date().toISOString();
@@ -138,8 +138,8 @@ export async function updateContainerStatus(
     };
 
     const { error: dbError } = await supabaseClient
-      .from("containers")
-      .update(updateData as Tables<"containers">)
+      .from("network_containers")
+      .update(updateData as Tables<"network_containers">)
       .eq("name", containerName);
 
     if (dbError) {
@@ -186,10 +186,12 @@ export async function performDockerControlAction(
  */
 export async function getActiveDockerControlServers(
   supabaseClient: ReturnType<typeof createClient<Database>>,
-): Promise<{ servers: Tables<"servers">[] | null; error: Response | null }> {
+): Promise<
+  { servers: Tables<"network_servers">[] | null; error: Response | null }
+> {
   try {
     const { data: servers, error: dbError } = await supabaseClient
-      .from("servers")
+      .from("network_servers")
       .select("*")
       .eq("active", true)
       .eq("docker_control", true);

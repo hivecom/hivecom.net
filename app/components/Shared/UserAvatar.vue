@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { useSupabaseUser } from '#imports'
-import { Skeleton } from '@dolanske/vui'
+import { Indicator, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
+import { useSupabaseUser } from '#imports'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useDataUser } from '@/composables/useDataUser'
+import { getUserActivityStatus } from '@/lib/lastSeen'
 
 interface Props {
   userId?: string | null
@@ -13,12 +14,15 @@ interface Props {
   linked?: boolean
   /** Wrap the avatar in a UserPreviewHover popout. */
   showPreview?: boolean
+  /** Show an online/away indicator dot based on last_seen. */
+  showOnlineIndicator?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'm',
   linked: false,
   showPreview: false,
+  showOnlineIndicator: false,
 })
 
 const currentUser = useSupabaseUser()
@@ -71,6 +75,20 @@ const showSkeleton = computed(() =>
   loading.value && !!props.userId,
 )
 
+const activityStatus = computed(() => {
+  if (!props.showOnlineIndicator || !userData.value?.last_seen)
+    return null
+  return getUserActivityStatus(userData.value.last_seen)
+})
+
+const indicatorSize = computed((): 's' | 'm' | 'l' => {
+  if (props.size === 's')
+    return 's'
+  if (props.size === 'l')
+    return 'l'
+  return 's'
+})
+
 function getSizePixels(size: 's' | 'm' | 'l' | number): string {
   if (typeof size === 'number')
     return `${size}px`
@@ -104,13 +122,26 @@ const attrs = useAttrs()
       class="user-avatar__link"
       :aria-label="ariaLabel"
     >
-      <AvatarMedia
-        :url="avatarUrl"
-        :size="size"
-        :initials="initials"
-        :alt="ariaLabel"
-        v-bind="attrs"
-      />
+      <div class="user-avatar__media-wrap">
+        <AvatarMedia
+          :url="avatarUrl"
+          :size="size"
+          :initials="initials"
+          :alt="ariaLabel"
+          v-bind="attrs"
+        />
+        <Tooltip v-if="activityStatus" placement="top">
+          <template #tooltip>
+            <p>{{ activityStatus.lastSeenText }}</p>
+          </template>
+          <Indicator
+            :variant="activityStatus.isActive ? 'online' : 'away'"
+            :size="indicatorSize"
+            class="user-avatar__online-indicator"
+            outline
+          />
+        </Tooltip>
+      </div>
     </NuxtLink>
   </UserPreviewHover>
 
@@ -120,13 +151,26 @@ const attrs = useAttrs()
     :user-id="userId"
     class="user-avatar__wrapper"
   >
-    <AvatarMedia
-      :url="avatarUrl"
-      :size="size"
-      :initials="initials"
-      :alt="ariaLabel"
-      v-bind="attrs"
-    />
+    <div class="user-avatar__media-wrap">
+      <AvatarMedia
+        :url="avatarUrl"
+        :size="size"
+        :initials="initials"
+        :alt="ariaLabel"
+        v-bind="attrs"
+      />
+      <Tooltip v-if="activityStatus" placement="top">
+        <template #tooltip>
+          <p>{{ activityStatus.lastSeenText }}</p>
+        </template>
+        <Indicator
+          :variant="activityStatus.isActive ? 'online' : 'away'"
+          :size="indicatorSize"
+          class="user-avatar__online-indicator"
+          outline
+        />
+      </Tooltip>
+    </div>
   </UserPreviewHover>
 
   <!-- Link only, no preview -->
@@ -136,6 +180,30 @@ const attrs = useAttrs()
     class="user-avatar__link"
     :aria-label="ariaLabel"
   >
+    <div class="user-avatar__media-wrap">
+      <AvatarMedia
+        :url="avatarUrl"
+        :size="size"
+        :initials="initials"
+        :alt="ariaLabel"
+        v-bind="attrs"
+      />
+      <Tooltip v-if="activityStatus" placement="top">
+        <template #tooltip>
+          <p>{{ activityStatus.lastSeenText }}</p>
+        </template>
+        <Indicator
+          :variant="activityStatus.isActive ? 'online' : 'away'"
+          :size="indicatorSize"
+          class="user-avatar__online-indicator"
+          outline
+        />
+      </Tooltip>
+    </div>
+  </NuxtLink>
+
+  <!-- Plain avatar -->
+  <div v-else class="user-avatar__media-wrap">
     <AvatarMedia
       :url="avatarUrl"
       :size="size"
@@ -143,17 +211,18 @@ const attrs = useAttrs()
       :alt="ariaLabel"
       v-bind="attrs"
     />
-  </NuxtLink>
-
-  <!-- Plain avatar -->
-  <AvatarMedia
-    v-else
-    :url="avatarUrl"
-    :size="size"
-    :initials="initials"
-    :alt="ariaLabel"
-    v-bind="attrs"
-  />
+    <Tooltip v-if="activityStatus" placement="top">
+      <template #tooltip>
+        <p>{{ activityStatus.lastSeenText }}</p>
+      </template>
+      <Indicator
+        :variant="activityStatus.isActive ? 'online' : 'away'"
+        :size="indicatorSize"
+        class="user-avatar__online-indicator"
+        outline
+      />
+    </Tooltip>
+  </div>
 </template>
 
 <style lang="scss" scoped>
@@ -171,6 +240,17 @@ const attrs = useAttrs()
     &:hover {
       opacity: 0.8;
     }
+  }
+
+  &__media-wrap {
+    position: relative;
+    display: inline-flex;
+  }
+
+  &__online-indicator {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
   }
 }
 </style>

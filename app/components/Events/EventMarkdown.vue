@@ -17,13 +17,14 @@ const props = defineProps<Props>()
     <div class="event-markdown__content">
       <MarkdownRenderer :md="props.event.markdown" />
     </div>
-    <MetadataCard
-      :created-at="event.created_at"
-      :created-by="event.created_by"
-      :modified-at="event.modified_at"
-      :modified-by="event.modified_by"
-    />
   </Card>
+
+  <MetadataCard
+    :created-at="event.created_at"
+    :created-by="event.created_by"
+    :modified-at="event.modified_at"
+    :modified-by="event.modified_by"
+  />
 </template>
 
 <style lang="scss" scoped>

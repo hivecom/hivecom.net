@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Alert, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Alert, Badge, Flex, Sheet } from '@dolanske/vui'
 
 import constants from '~~/constants.json'
 
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-
 import { getContainerStatus } from '@/lib/containerStatus'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import ContainerActions from './ContainerActions.vue'
 import ContainerLogViewer from './ContainerLogViewer.vue'
 
@@ -25,6 +27,10 @@ const props = defineProps<{
       docker_control?: boolean | null
       accessible?: boolean | null
     } | null
+    gameserver: readonly {
+      id: number
+      name: string
+    }[] | null
   } | null
   logs: string
   logsLoading: boolean
@@ -49,6 +55,10 @@ interface ContainerWithServer {
     docker_control?: boolean | null
     accessible?: boolean | null
   } | null
+  gameserver: readonly {
+    id: number
+    name: string
+  }[] | null
 }
 
 interface ContainerAction {
@@ -58,6 +68,8 @@ interface ContainerAction {
 const containerAction = defineModel<ContainerAction | null>('containerAction', { default: null })
 
 const refreshContainer = defineModel<boolean>('refreshContainer', { default: false })
+
+const isMobile = useBreakpoint('<s')
 
 // Computed property for container status
 const containerStatus = computed(() => {
@@ -119,7 +131,8 @@ const logsVisible = computed(() =>
           v-model="containerAction"
           :container="container"
           :status="containerStatus"
-          :show-labels="true"
+          :show-labels="!isMobile"
+          :size="isMobile ? 'm' : undefined"
           :is-loading="(action) => {
             if (!container) return false
             return !!props.actionLoading[container.name]?.[action]
@@ -136,39 +149,39 @@ const logsVisible = computed(() =>
         </Alert>
 
         <!-- Basic info -->
-        <Card class="container-info" separators>
-          <Flex column gap="l" expand>
-            <Grid class="detail-item" expand :columns="2">
-              <span class="text-color-light text-bold">Name:</span>
-              <span class="container-name">{{ container.name }}</span>
-            </Grid>
-
-            <Grid class="detail-item" expand :columns="2">
-              <span class="text-color-light text-bold">Status:</span>
-              <ContainerStatusIndicator :status="containerStatus" :show-label="true" />
-            </Grid>
-
-            <Grid class="detail-item" expand :columns="2">
-              <span class="text-color-light text-bold">Server:</span>
-              <span>{{ container.server?.address || 'Unknown' }}</span>
-            </Grid>
-
-            <Grid class="detail-item" :columns="2" expand>
-              <span class="text-color-light text-bold">Started:</span>
-              <TimestampDate :date="container.started_at" fallback="Not started" />
-            </Grid>
-
-            <Grid class="detail-item" :columns="2" expand>
-              <span class="text-color-light text-bold">Last Report:</span>
-              <TimestampDate :date="container.reported_at" />
-            </Grid>
-
-            <Grid class="detail-item" :columns="2" expand>
-              <span class="text-color-light text-bold">Created:</span>
-              <TimestampDate :date="container.created_at" />
-            </Grid>
-          </Flex>
-        </Card>
+        <DetailTable>
+          <template #header>
+            <Icon name="ph:cube" />
+            <h6>Overview</h6>
+          </template>
+          <DetailRow label="Status">
+            <ContainerStatusIndicator :status="containerStatus" :show-label="true" />
+          </DetailRow>
+          <DetailRow label="Gameserver">
+            <template v-if="container.gameserver && container.gameserver.length > 0">
+              <NuxtLink :to="`/admin/network?tab=Gameservers&gameserver=${container.gameserver[0]!.id}`">
+                <Badge variant="accent" size="m" outline>
+                  {{ container.gameserver[0]!.name }}
+                </Badge>
+              </NuxtLink>
+            </template>
+            <Badge v-else variant="neutral" size="m">
+              Not linked
+            </Badge>
+          </DetailRow>
+          <DetailRow label="Server">
+            <span class="text-s">{{ container.server?.address || 'Unknown' }}</span>
+          </DetailRow>
+          <DetailRow label="Started">
+            <TimestampDate :date="container.started_at" fallback="Not started" />
+          </DetailRow>
+          <DetailRow label="Last Report">
+            <TimestampDate :date="container.reported_at" />
+          </DetailRow>
+          <DetailRow label="Created">
+            <TimestampDate :date="container.created_at" />
+          </DetailRow>
+        </DetailTable>
 
         <!-- Log viewer -->
         <Alert
@@ -199,18 +212,7 @@ const logsVisible = computed(() =>
   padding-bottom: var(--space);
 }
 
-.container-info {
-  background-color: var(--color-bg);
-  margin-bottom: var(--space-l);
-}
-
 .w-100 {
   width: 100%;
-}
-
-.container-name {
-  font-family: monospace;
-  font-weight: bold;
-  color: var(--color-text);
 }
 </style>

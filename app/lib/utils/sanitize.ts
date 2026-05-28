@@ -81,6 +81,35 @@ export function validateMarkdownNoHtml(markdown: string): { valid: boolean, erro
   return { valid: true, error: null }
 }
 
+const TAG_INVALID_CHARS_RE = /[^a-z0-9-]/g
+const TAG_MULTI_HYPHEN_RE = /-{2,}/g
+const TAG_TRIM_HYPHEN_RE = /^-+|-+$/g
+
+/**
+ * Normalizes a single tag: lowercase, replace spaces with hyphens,
+ * strip all non-alphanumeric/hyphen characters, collapse and trim hyphens.
+ */
+export function sanitizeTag(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(TAG_INVALID_CHARS_RE, '')
+    .replace(TAG_MULTI_HYPHEN_RE, '-')
+    .replace(TAG_TRIM_HYPHEN_RE, '')
+}
+
+/**
+ * Splits a comma-separated string into sanitized, deduplicated tags.
+ * Ignores empty results after sanitization.
+ */
+export function sanitizeTags(raw: string, existing: string[] = []): string[] {
+  const existingSet = new Set(existing)
+  return raw
+    .split(',')
+    .map(t => sanitizeTag(t.trim()))
+    .filter(t => t.length > 0 && !existingSet.has(t))
+}
+
 export function replaceMarkdownH1(markdown: string): string {
   if (!markdown)
     return ''

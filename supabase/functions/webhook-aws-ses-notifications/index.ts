@@ -85,7 +85,10 @@ Deno.serve(async (req) => {
     return false;
   });
   if (!signatureValid) {
-    console.warn("SNS signature invalid", { topic: sns.TopicArn, messageId: sns.MessageId });
+    console.warn("SNS signature invalid", {
+      topic: sns.TopicArn,
+      messageId: sns.MessageId,
+    });
     return jsonResponse({ error: "Invalid SNS signature" }, 403);
   }
 
@@ -96,9 +99,12 @@ Deno.serve(async (req) => {
       token: sns.Token,
       messageId: sns.MessageId,
     });
-    
+
     const confirmed = await confirmSubscription(sns.SubscribeURL);
-    return jsonResponse({ ok: confirmed ? true : false }, confirmed ? 200 : 500);
+    return jsonResponse(
+      { ok: confirmed ? true : false },
+      confirmed ? 200 : 500,
+    );
   }
 
   if (sns.Type !== "Notification") {
@@ -151,7 +157,11 @@ async function confirmSubscription(subscribeUrl: string): Promise<boolean> {
   try {
     const res = await fetch(subscribeUrl, { method: "GET" });
     if (!res.ok) {
-      console.error("SNS subscription confirmation failed", res.status, res.statusText);
+      console.error(
+        "SNS subscription confirmation failed",
+        res.status,
+        res.statusText,
+      );
       return false;
     }
     return true;
@@ -197,7 +207,8 @@ async function findUserIdByEmail(email: string): Promise<string | undefined> {
 }
 
 async function flagEmails(emails: string[], reason: SesNotificationType) {
-  const summary: Array<{ email: string; updated: boolean; error?: string }> = [];
+  const summary: Array<{ email: string; updated: boolean; error?: string }> =
+    [];
 
   for (const email of emails) {
     try {
@@ -258,7 +269,9 @@ async function verifySnsSignature(message: SnsMessage): Promise<boolean> {
 
   const certPem = await certRes.text();
   if (!certPem.includes("-----BEGIN CERTIFICATE-----")) {
-    console.warn("SNS cert response missing certificate boundary", { url: certUrl.toString() });
+    console.warn("SNS cert response missing certificate boundary", {
+      url: certUrl.toString(),
+    });
     return false;
   }
 
@@ -290,7 +303,10 @@ function buildStringToSign(message: SnsMessage): string {
     add("Timestamp", message.Timestamp);
     add("TopicArn", message.TopicArn);
     add("Type", message.Type);
-  } else if (message.Type === "SubscriptionConfirmation" || message.Type === "UnsubscribeConfirmation") {
+  } else if (
+    message.Type === "SubscriptionConfirmation" ||
+    message.Type === "UnsubscribeConfirmation"
+  ) {
     add("Message", message.Message);
     add("MessageId", message.MessageId);
     add("SubscribeURL", message.SubscribeURL);

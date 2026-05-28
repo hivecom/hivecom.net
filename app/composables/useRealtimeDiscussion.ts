@@ -3,6 +3,9 @@ import type { RawComment } from '@/components/Discussions/Discussion.types'
 import type { Tables } from '@/types/database.overrides'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCache'
+import { usePageVisibility } from '@/composables/usePageVisibility'
+
+const BACKGROUND_POLL_INTERVAL_MS = 5 * 60 * 1000
 
 /**
  * Manages Supabase realtime channels for a discussion's replies and the
@@ -21,8 +24,7 @@ import { useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCac
 
 // ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // eslint-disable-next-line ts/no-explicit-any
 type AnySupabase = SupabaseClient<any, any, any>
 
@@ -48,8 +50,7 @@ interface SharedDiscussionChannel {
 // ---------------------------------------------------------------------------
 // Module-level registry - one channel per discussion ID, shared across all
 // composable instances that subscribe to the same discussion.
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const replyChannels = new Map<string, SharedReplyChannel>()
 const discussionChannels = new Map<string, SharedDiscussionChannel>()
 
@@ -135,17 +136,19 @@ function releaseDiscussionChannel(supabase: AnySupabase, discussionId: string) {
 
 // ---------------------------------------------------------------------------
 // Composable
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function useRealtimeDiscussion(
   comments: Ref<RawComment[]>,
   discussion: Ref<{ id: string, slug: string | null } | undefined>,
   model: Ref<'comment' | 'forum'>,
   hash?: string,
+  pushRealtimeReplies?: (newReplies: RawComment[], ascending: boolean) => void,
+  currentUserId?: Ref<string | null | undefined>,
 ) {
   const supabase = useSupabaseClient()
   const discussionCache = useDiscussionCache()
   const repliesCache = useDiscussionRepliesCache()
+  const { isHidden } = usePageVisibility()
 
   const pendingReplyCount = ref(0)
   const pendingLoading = ref(false)
@@ -153,6 +156,27 @@ export function useRealtimeDiscussion(
   // Track which discussion this instance is currently subscribed to, and
   // the exact handler functions registered so we can remove only ours.
   let subscribedDiscussionId: string | null = null
+
+  // Discussion ID saved before unsubscribing so we can restore when tab returns.
+  let pausedDiscussionId: string | null = null
+
+  // Background polling when tab is hidden.
+  let backgroundPollTimer: ReturnType<typeof setInterval> | null = null
+
+  function startBackgroundPoll() {
+    if (backgroundPollTimer != null)
+      return
+    backgroundPollTimer = setInterval(() => {
+      void loadPendingReplies()
+    }, BACKGROUND_POLL_INTERVAL_MS)
+  }
+
+  function stopBackgroundPoll() {
+    if (backgroundPollTimer == null)
+      return
+    clearInterval(backgroundPollTimer)
+    backgroundPollTimer = null
+  }
   let myInsertHandler: ((p: InsertPayload) => void) | null = null
   let myUpdateReplyHandler: ((p: UpdateReplyPayload) => void) | null = null
   let myDeleteHandler: ((p: DeletePayload) => void) | null = null
@@ -194,10 +218,26 @@ export function useRealtimeDiscussion(
       const existingIds = new Set(comments.value.map(c => c.id))
       const newReplies = (data as RawComment[]).filter(r => !existingIds.has(r.id))
 
-      if (model.value === 'comment')
+      // Only update if there are actually new replies - assigning a new array
+      // reference (even with identical contents) triggers the full reactive
+      // chain: modelledComments → threadNodeMap → threadRoots → re-render of
+      // every reply card. On a thread with 100+ replies this creates hundreds
+      // of short-lived reactive objects and causes heavy GC pressure.
+      if (newReplies.length === 0)
+        return
+
+      const ascendingOrder = model.value !== 'comment'
+      if (pushRealtimeReplies) {
+        // Delegate to the data composable which tracks realtime items separately
+        // so cursor-based loadMore pages remain in chronological order.
+        pushRealtimeReplies(newReplies, ascendingOrder)
+      }
+      else if (model.value === 'comment') {
         comments.value = [...newReplies, ...comments.value]
-      else
+      }
+      else {
         comments.value = [...comments.value, ...newReplies]
+      }
 
       pendingReplyCount.value = 0
 
@@ -223,6 +263,13 @@ export function useRealtimeDiscussion(
       const newReply = payload.new
       // Skip replies already present - covers optimistic inserts from this tab.
       if (comments.value.some(c => c.id === newReply.id))
+        return
+
+      // Skip own replies - never show the user a "new reply" indicator for
+      // something they just posted, regardless of timing.
+      const ownUserId = currentUserId?.value
+      const replyAuthor = newReply.created_by
+      if (ownUserId != null && replyAuthor != null && replyAuthor === ownUserId)
         return
 
       // When a hash filter is active only count replies for this section.
@@ -298,7 +345,31 @@ export function useRealtimeDiscussion(
     subscribedDiscussionId = null
   }
 
-  onScopeDispose(unsubscribe)
+  // Pause realtime when tab is hidden; poll instead. Resume on return.
+  watch(isHidden, (hidden) => {
+    if (hidden) {
+      if (subscribedDiscussionId != null) {
+        pausedDiscussionId = subscribedDiscussionId
+        unsubscribe()
+        startBackgroundPoll()
+      }
+    }
+    else {
+      stopBackgroundPoll()
+      if (pausedDiscussionId != null) {
+        const idToRestore = pausedDiscussionId
+        pausedDiscussionId = null
+        // Re-subscribe first so we don't miss events that arrive during fetch.
+        subscribe(idToRestore)
+        void loadPendingReplies()
+      }
+    }
+  })
+
+  onScopeDispose(() => {
+    stopBackgroundPoll()
+    unsubscribe()
+  })
 
   return {
     pendingReplyCount,

@@ -53,7 +53,7 @@ async function fetchContextUser(userId: string) {
 
 async function fetchContextGameserver(gameserverId: number) {
   const { data } = await supabase
-    .from('gameservers')
+    .from('network_gameservers')
     .select('name')
     .eq('id', gameserverId)
     .maybeSingle()
@@ -270,7 +270,7 @@ function confirmDeleteComplaint() {
                 :user-id="complaint.created_by"
                 show-role
               />
-              <Badge :variant="statusConfig.variant" size="s">
+              <Badge :variant="statusConfig.variant">
                 <Icon :name="statusConfig.icon" />
                 {{ statusConfig.label }}
               </Badge>

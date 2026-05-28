@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     }
 
     // Build the return URL for Steam callback (goes back to frontend)
-    const returnUrl = `${baseUrl}/auth/callback/steam`;
+    const returnUrl = `${baseUrl}/auth/callback/steam/`;
 
     // Create state parameter with mode and redirect info
     const state = btoa(JSON.stringify({ mode, redirect }));
@@ -52,9 +52,11 @@ Deno.serve(async (req) => {
       "http://specs.openid.net/auth/2.0",
     );
     steamOpenIdUrl.searchParams.set("openid.mode", "checkid_setup");
+    const returnToUrl = new URL(returnUrl);
+    returnToUrl.searchParams.set("state", state);
     steamOpenIdUrl.searchParams.set(
       "openid.return_to",
-      `${returnUrl}?state=${encodeURIComponent(state)}`,
+      returnToUrl.toString(),
     );
     steamOpenIdUrl.searchParams.set("openid.realm", baseUrl);
     steamOpenIdUrl.searchParams.set(

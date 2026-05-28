@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
-import { Avatar, Button, Divider, Flex, Skeleton } from '@dolanske/vui'
+import { Avatar, Button, Divider, Flex, Indicator, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, toRef } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
 import { useCachedFetch } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
+import { getUserActivityStatus } from '@/lib/lastSeen'
 import { getCountryInfo } from '@/lib/utils/country'
+import ActivityLastfm from '../Profile/Activity/ActivityLastfm.vue'
 import ActivitySteam from '../Profile/Activity/ActivitySteam.vue'
 import ActivityTeamspeak from '../Profile/Activity/ActivityTeamspeak.vue'
 
@@ -19,6 +21,8 @@ interface Props {
   showDescription?: boolean
   maxBadges?: number
   avatarSize?: 's' | 'm' | 'l' | number
+  roleOverride?: string | null
+  impersonating?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -27,6 +31,8 @@ const props = withDefaults(defineProps<Props>(), {
   showDescription: true,
   maxBadges: 4,
   avatarSize: 88,
+  roleOverride: undefined,
+  impersonating: false,
 })
 
 const userIdRef = toRef(props, 'userId')
@@ -42,6 +48,12 @@ const {
   includeAvatar: true,
   userTtl: 10 * 60 * 1000,
   avatarTtl: 30 * 60 * 1000,
+})
+
+const activityStatus = computed(() => {
+  if (!user.value?.last_seen)
+    return null
+  return getUserActivityStatus(user.value.last_seen)
 })
 
 const profileLink = computed(() => {
@@ -100,11 +112,13 @@ const {
 } = useCachedFetch<{
   steam_id: string | null
   teamspeak_identities: Tables<'profiles'>['teamspeak_identities'] | TeamSpeakIdentityRecord[] | null
+  rich_presence_enabled: boolean | null
+  lastfm_username: string | null
 }>(
   () => props.userId
     ? {
         table: 'profiles',
-        select: 'steam_id,teamspeak_identities',
+        select: 'steam_id,teamspeak_identities,rich_presence_enabled,lastfm_username',
         filters: { id: props.userId },
         single: true,
       }
@@ -121,8 +135,8 @@ const {
     <template v-if="loading">
       <Flex class="user-preview-card__header" expand x-between>
         <Skeleton :width="88" :height="88" :radius="44" />
-        <Flex gap="xxs" class="user-preview-card__badges-skeleton">
-          <Skeleton v-for="i in 3" :key="i" :width="28" :height="28" :radius="14" />
+        <Flex gap="xxs" class="user-preview-card__badges-skeleton" style="margin-top:-16px">
+          <Skeleton v-for="i in 3" :key="i" :width="48" :height="48" :radius="32" style="margin-left: -12px" />
         </Flex>
       </Flex>
 
@@ -189,28 +203,40 @@ const {
       <Flex column gap="xs">
         <Flex expand x-between class="user-preview-card__header">
           <Flex>
-            <NuxtLink
-              v-if="profileLink"
-              :to="profileLink"
-              class="user-preview-card__avatar-link"
-              :aria-label="`View profile of ${user.username}`"
-            >
-              <AvatarMedia class="user-preview-card__avatar" :size="props.avatarSize" :url="user.avatarUrl || undefined" :alt="user.username">
+            <div class="user-preview-card__avatar-wrap">
+              <NuxtLink
+                v-if="profileLink"
+                :to="profileLink"
+                class="user-preview-card__avatar-link"
+                :aria-label="`View profile of ${user.username}`"
+              >
+                <AvatarMedia class="user-preview-card__avatar" :size="props.avatarSize" :url="user.avatarUrl || undefined" :alt="user.username">
+                  <template v-if="!user.avatarUrl" #default>
+                    {{ userInitials }}
+                  </template>
+                </AvatarMedia>
+              </NuxtLink>
+              <AvatarMedia
+                v-else
+                :size="props.avatarSize"
+                :url="user.avatarUrl || undefined"
+                :alt="user.username"
+              >
                 <template v-if="!user.avatarUrl" #default>
                   {{ userInitials }}
                 </template>
               </AvatarMedia>
-            </NuxtLink>
-            <AvatarMedia
-              v-else
-              :size="props.avatarSize"
-              :url="user.avatarUrl || undefined"
-              :alt="user.username"
-            >
-              <template v-if="!user.avatarUrl" #default>
-                {{ userInitials }}
-              </template>
-            </AvatarMedia>
+              <Tooltip v-if="activityStatus">
+                <template #tooltip>
+                  <p>{{ activityStatus.lastSeenText }}</p>
+                </template>
+                <Indicator
+                  :variant="activityStatus.isActive ? 'online' : activityStatus.isAway ? 'away' : 'offline'"
+                  class="user-preview-card__online-indicator"
+                  outline
+                />
+              </Tooltip>
+            </div>
           </Flex>
 
           <UserPreviewCardBadges
@@ -233,7 +259,9 @@ const {
             <span v-else class="user-preview-card__name">
               {{ user.username }}
             </span>
-            <RoleIndicator v-if="user.role" :role="user.role" size="s" />
+            <RoleIndicator v-if="props.roleOverride !== undefined ? props.roleOverride : user.role" :role="props.roleOverride !== undefined ? props.roleOverride : user.role" size="s">
+              {{ props.impersonating ? ' *' : '' }}
+            </RoleIndicator>
           </Flex>
 
           <Flex expand x-between>
@@ -246,7 +274,7 @@ const {
           </Flex>
         </Flex>
 
-        <Divider v-if="(props.showDescription && hasCustomIntroduction) || (activity && props.showActivity && (activity.steam_id || (activity.teamspeak_identities && activity.teamspeak_identities.length > 0)))" class="my-xs" />
+        <Divider v-if="(props.showDescription && hasCustomIntroduction) || (activity && props.showActivity && (activity.steam_id || (activity.teamspeak_identities && activity.teamspeak_identities.length > 0) || activity.lastfm_username))" class="my-xs" />
 
         <template v-if="props.showDescription && hasCustomIntroduction">
           <Flex v-if="hasCustomIntroduction" column expand :gap="0">
@@ -258,6 +286,14 @@ const {
       </Flex>
 
       <Flex v-if="activity && props.showActivity && props.showDescription && user" column gap="xxs" expand class="user-preview-card__activity">
+        <ActivityLastfm
+          v-if="activity.lastfm_username"
+          :profile-id="user.id"
+          :lastfm-username="activity.lastfm_username"
+          :rich-presence-enabled="activity.rich_presence_enabled ?? false"
+          :is-own-profile="false"
+        />
+
         <ActivitySteam
           v-if="activity.steam_id"
           :profile-id="user.id"
@@ -270,6 +306,7 @@ const {
           :profile-id="user.id"
           :teamspeak-identities="activity.teamspeak_identities"
           :is-own-profile="false"
+          :rich-presence-enabled="activity.rich_presence_enabled ?? false"
         />
       </Flex>
     </template>
@@ -343,6 +380,17 @@ const {
 
 .user-preview-card__avatar-link {
   display: inline-flex;
+}
+
+.user-preview-card__avatar-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.user-preview-card__online-indicator {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
 }
 
 .user-preview-card__identity {

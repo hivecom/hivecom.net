@@ -108,9 +108,9 @@ async function fetchRSVPCounts(force = false) {
 
   try {
     const [yesResult, tentativeResult, noResult] = await Promise.all([
-      supabase.from('events_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'yes'),
-      supabase.from('events_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'tentative'),
-      supabase.from('events_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'no'),
+      supabase.from('event_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'yes'),
+      supabase.from('event_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'tentative'),
+      supabase.from('event_rsvps').select('*', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp', 'no'),
     ])
 
     if (yesResult.error)
@@ -153,7 +153,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="event-header">
+  <Flex column expand gap="l" class="event-header">
     <!-- Title and actions row -->
     <Flex
       :x-between="!isBelowSmall"
@@ -162,6 +162,7 @@ onMounted(() => {
       :column-reverse="isBelowSmall"
       :y-start="!isBelowSmall"
       :y-center="isBelowSmall"
+      expand
       gap="l"
       class="event-header__title-row"
     >
@@ -254,29 +255,33 @@ onMounted(() => {
     <!-- Event meta information -->
     <Flex gap="m" x-between expand :column="isBelowSmall">
       <Flex :gap="isBelowSmall ? 'xxs' : 's'" wrap class="event-header__badges-section" :x-center="isBelowSmall" :expand="isBelowSmall">
-        <Badge v-if="props.event.is_official" variant="accent" size="l">
+        <Badge v-if="props.event.is_official" variant="accent">
           <Icon name="ph:star-fill" />
           Official
         </Badge>
 
-        <Badge v-if="props.event.location" variant="neutral" size="l">
+        <Badge v-if="props.event.location" variant="neutral">
           <Icon name="ph:map-pin-fill" />
           {{ props.event.location }}
         </Badge>
 
-        <Tooltip v-if="props.event.note" placement="bottom">
+        <Tooltip v-if="props.event.note && !isBelowSmall" placement="bottom">
           <template #tooltip>
             <div class="event-header__tooltip-content">
               {{ props.event.note }}
             </div>
           </template>
-          <Badge variant="neutral" size="l" class="event-header__note-badge">
+          <Badge variant="neutral" class="event-header__note-badge">
             <Icon name="ph:note" />
             Note
           </Badge>
         </Tooltip>
+        <Badge v-else-if="props.event.note" variant="neutral">
+          <Icon name="ph:note" />
+          {{ props.event.note }}
+        </Badge>
 
-        <Badge v-if="props.event.recurrence_rule" variant="neutral" size="l">
+        <Badge v-if="props.event.recurrence_rule" variant="neutral">
           <Icon name="ph:arrows-clockwise" />
           {{ humanizeRrule(props.event.recurrence_rule) }}
         </Badge>
@@ -324,17 +329,13 @@ onMounted(() => {
       :event="event"
       @close="showRSVPModal = false"
     />
-  </div>
+  </Flex>
 </template>
 
 <style lang="scss">
 @use '@/assets/breakpoints.scss' as *;
 
 .event-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-l);
-
   &--ongoing {
     background: linear-gradient(135deg, var(--color-accent-muted), transparent);
   }
@@ -394,7 +395,7 @@ onMounted(() => {
   &__duration {
     font-size: var(--font-size-m);
     font-weight: var(--font-weight-semibold);
-    color: var(--color-text-lighter);
+    color: var(--color-text);
 
     @media (max-width: $breakpoint-s) {
       font-size: var(--font-size-xxs);

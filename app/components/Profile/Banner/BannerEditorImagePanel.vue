@@ -1,5 +1,7 @@
 <script setup lang="ts">
-/* eslint-disable vue/no-mutating-props */
+/* eslint-disable vue/no-mutating-props -- layer is a reactive object reference
+ * from the parent's layers array, not a cloned value. Mutations are intentional
+ * and propagate back to the parent via shared object identity. */
 import type { ImageLayer } from './types'
 import { Button, Flex } from '@dolanske/vui'
 
@@ -23,7 +25,7 @@ const emit = defineEmits<{
     <span class="banner-editor__group-label">Image</span>
     <Flex column gap="s">
       <p class="banner-editor__hint">
-        Drag to move &middot; drag corner to resize &middot; hold Shift to ignore aspect ratio
+        Drag to move - drag corner to resize - hold Shift to ignore aspect ratio
       </p>
 
       <!-- Rotation -->

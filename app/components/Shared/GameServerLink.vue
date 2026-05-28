@@ -39,7 +39,7 @@ async function fetchGameserver() {
 
   try {
     const { data: gameserver, error: gameserverError } = await supabase
-      .from('gameservers')
+      .from('network_gameservers')
       .select('name')
       .eq('id', props.gameserverId)
       .single()

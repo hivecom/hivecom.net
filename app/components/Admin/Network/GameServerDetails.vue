@@ -1,21 +1,19 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, Sheet } from '@dolanske/vui'
 
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
+import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
-
-type GameServerWithJoins = Omit<Tables<'gameservers'>, 'game'> & {
-  game_name?: string
-  game?: {
-    id?: number | null
-    name?: string | null
-  } | null
-}
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   gameserver: GameServerWithJoins | null
@@ -24,15 +22,27 @@ const props = defineProps<{
 // Define emits
 const emit = defineEmits(['edit', 'delete'])
 
+const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameserversPlayers.vue'))
+
+type GameServerWithJoins = Omit<Tables<'network_gameservers'>, 'game'> & {
+  game_name?: string
+  game?: {
+    id?: number | null
+    name?: string | null
+    shorthand?: string | null
+  } | null
+}
+
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
-const canUpdateGameservers = computed(() => hasPermission('gameservers.update'))
-const canDeleteGameservers = computed(() => hasPermission('gameservers.delete'))
+const canUpdateGameservers = computed(() => hasPermission('network.update'))
+const canDeleteGameservers = computed(() => hasPermission('network.delete'))
 const showDeleteConfirm = ref(false)
 const route = useRoute()
+const isMobile = useBreakpoint('<s')
 
 watch(
   () => [route.path, route.query.tab] as const,
@@ -86,13 +96,23 @@ function confirmDelete() {
       <Flex x-between y-center>
         <Flex column :gap="0">
           <h4>Game Server Details</h4>
-          <span v-if="props.gameserver" class="text-color-light text-xxs">
-            {{ props.gameserver.name }}
-          </span>
+          <p v-if="props.gameserver" class="text-color-light text-xs">
+            <NuxtLink :to="`/servers/gameservers/${props.gameserver.id}`" target="_blank">
+              {{ props.gameserver.name }}
+            </NuxtLink>
+          </p>
         </Flex>
         <Flex y-center gap="s">
           <Button
-            v-if="props.gameserver && canDeleteGameservers"
+            v-if="props.gameserver && canDeleteGameservers && isMobile"
+            variant="danger"
+            square
+            @click="handleDelete"
+          >
+            <Icon name="ph:trash" />
+          </Button>
+          <Button
+            v-else-if="props.gameserver && canDeleteGameservers"
             variant="danger"
             @click="handleDelete"
           >
@@ -102,7 +122,14 @@ function confirmDelete() {
             Delete
           </Button>
           <Button
-            v-if="props.gameserver && canUpdateGameservers"
+            v-if="props.gameserver && canUpdateGameservers && isMobile"
+            square
+            @click="handleEdit"
+          >
+            <Icon name="ph:pencil" />
+          </Button>
+          <Button
+            v-else-if="props.gameserver && canUpdateGameservers"
             @click="handleEdit"
           >
             <template #start>
@@ -117,103 +144,119 @@ function confirmDelete() {
     <Flex v-if="props.gameserver" column gap="m" class="gameserver-details">
       <Flex column gap="m" expand>
         <!-- Basic info -->
-        <Card>
-          <Flex column gap="l" expand>
-            <Grid expand :columns="2">
-              <span class="text-color-light text-bold">ID:</span>
-              <span>{{ props.gameserver.id }}</span>
-            </Grid>
-
-            <Grid expand :columns="2">
-              <span class="text-color-light text-bold">Name:</span>
-              <span>{{ props.gameserver.name }}</span>
-            </Grid>
-
-            <Grid expand :columns="2">
-              <span class="text-color-light text-bold">Game:</span>
-              <NuxtLink
-                v-if="props.gameserver.game?.id"
-                :to="`/admin/games?game=${props.gameserver.game.id}`"
-                class="text-m text-color-accent"
-              >
-                {{ props.gameserver.game_name || props.gameserver.game?.name || 'Unknown' }}
-              </NuxtLink>
-              <span v-else>{{ props.gameserver.game_name || props.gameserver.game?.name || 'Unknown' }}</span>
-            </Grid>
-
-            <Grid expand :columns="2">
-              <span class="text-color-light text-bold">Container:</span>
-              <Flex>
-                <NuxtLink
-                  v-if="props.gameserver.container"
-                  :to="`/admin/network?tab=Containers&container=${encodeURIComponent(props.gameserver.container)}`"
-                >
-                  <Badge>
-                    {{ props.gameserver.container }}
-                  </Badge>
-                </NuxtLink>
-                <Badge v-else variant="neutral">
-                  Not linked
-                </Badge>
-              </Flex>
-            </Grid>
-
-            <Grid expand :columns="2">
-              <span class="text-color-light text-bold">Region:</span>
-              <RegionIndicator :region="props.gameserver.region" show-label />
-            </Grid>
-
-            <Grid expand :columns="2">
-              <span class="text-color-light text-bold">Administrator:</span>
-              <div :class="{ 'gameserver-details__not-assigned': !props.gameserver.administrator }">
-                <UserLink v-if="props.gameserver.administrator" :user-id="props.gameserver.administrator" class="text-m" show-avatar />
-                <span v-else>Not Assigned</span>
-              </div>
-            </Grid>
-          </Flex>
-        </Card>
-
-        <!-- Description -->
-        <Card v-if="props.gameserver.description" separators>
+        <DetailTable>
           <template #header>
-            <h6>Description</h6>
+            <Icon name="ph:game-controller" />
+            <h6>Overview</h6>
           </template>
-
-          <p>{{ props.gameserver.description }}</p>
-        </Card>
-
-        <!-- Markdown Content -->
-        <Card v-if="props.gameserver.markdown" separators>
-          <template #header>
-            <h6>Markdown</h6>
-          </template>
-
-          <MarkdownRenderer :md="props.gameserver.markdown" class="gameserver-details__markdown-content" />
-        </Card>
+          <DetailRow label="ID">
+            <CopyValue :text="String(props.gameserver.id)" link />
+          </DetailRow>
+          <DetailRow label="Game">
+            <NuxtLink
+              v-if="props.gameserver.game?.id"
+              :to="`/admin/games?game=${props.gameserver.game.id}`"
+              class="text-s text-color-accent"
+              style="display:inline-flex; align-items:center; gap:var(--space-xs)"
+            >
+              <GameIcon
+                v-if="props.gameserver.game"
+                :game="props.gameserver.game as Tables<'games'>"
+                size="xs"
+                :show-fallback="false"
+              />
+              <span class="text-s">{{ props.gameserver.game_name || props.gameserver.game?.name || 'Unknown' }}</span>
+            </NuxtLink>
+            <span v-else class="text-s">{{ props.gameserver.game_name || props.gameserver.game?.name || 'Unknown' }}</span>
+          </DetailRow>
+          <DetailRow label="Container">
+            <NuxtLink
+              v-if="props.gameserver.container"
+              :to="`/admin/network?tab=Containers&container=${encodeURIComponent(props.gameserver.container)}`"
+            >
+              <Badge variant="accent" size="m" outline>
+                {{ props.gameserver.container }}
+              </Badge>
+            </NuxtLink>
+            <Badge v-else variant="neutral" size="m">
+              Not linked
+            </Badge>
+          </DetailRow>
+          <DetailRow label="Region">
+            <RegionIndicator :region="props.gameserver.region" show-label />
+          </DetailRow>
+          <DetailRow label="Administrator">
+            <UserLink v-if="props.gameserver.administrator" :user-id="props.gameserver.administrator" class="text-s" show-avatar />
+            <span v-else class="gameserver-details__not-assigned">Not Assigned</span>
+          </DetailRow>
+        </DetailTable>
 
         <!-- Network Details -->
-        <Card separators>
+        <DetailTable>
           <template #header>
-            <h6>Network details</h6>
+            <Icon name="ph:network" />
+            <h6>Network Details</h6>
           </template>
+          <DetailRow label="Addresses">
+            <template v-if="props.gameserver.addresses && props.gameserver.addresses.length">
+              <code v-for="address in props.gameserver.addresses" :key="address" class="text-s">{{ address }}</code>
+            </template>
+            <span v-else class="text-s">None configured</span>
+          </DetailRow>
+          <DetailRow label="Port">
+            <code v-if="props.gameserver.port">{{ props.gameserver.port }}</code>
+            <span v-else class="text-s">Not specified</span>
+          </DetailRow>
+          <DetailRow label="Query Protocol">
+            <Badge v-if="props.gameserver.query_protocol" variant="neutral" size="s" filled>
+              {{ props.gameserver.query_protocol.toUpperCase() }}
+            </Badge>
+            <span v-else class="text-s">None</span>
+          </DetailRow>
+          <DetailRow label="Query Port">
+            <code v-if="props.gameserver.query_protocol && (props.gameserver.query_port ?? props.gameserver.port)">{{ props.gameserver.query_port ?? props.gameserver.port }}</code>
+            <code v-else>{{ props.gameserver.query_protocol ? 'not specified' : 'n/a' }}</code>
+          </DetailRow>
+        </DetailTable>
 
-          <Flex column gap="l" expand>
-            <Grid expand :columns="2">
-              <span class="text-color-light text-bold">Addresses:</span>
-              <Flex v-if="props.gameserver.addresses && props.gameserver.addresses.length" gap="xs" wrap>
-                <Badge v-for="address in props.gameserver.addresses" :key="address">
-                  {{ address }}
-                </Badge>
-              </Flex>
-              <span v-else>None configured</span>
-            </Grid>
-
-            <Grid expand :columns="2">
-              <span class="text-color-light text-bold">Port:</span>
-              <span>{{ props.gameserver.port || 'Not specified' }}</span>
-            </Grid>
-          </Flex>
+        <!-- Activity (only for servers with query support) -->
+        <Card v-if="props.gameserver.query_protocol != null" separators class="card-bg">
+          <template #header>
+            <Flex y-center gap="xs">
+              <Icon name="ph:chart-bar" />
+              <h6>Activity</h6>
+            </Flex>
+          </template>
+          <ChartActivityHistogramControls :series="['gameserversPlayers']" :server-id="props.gameserver.id">
+            <template #default="{ period, window, utc, color }">
+              <ChartGameserversPlayers :period :window :utc :color :server-id="props.gameserver.id" compact />
+            </template>
+          </ChartActivityHistogramControls>
         </Card>
+
+        <DetailTable v-if="props.gameserver.description">
+          <template #header>
+            <Icon name="ph:text-align-left" />
+            <h6>Description</h6>
+          </template>
+          <p class="gameserver-details__description">
+            {{ props.gameserver.description }}
+          </p>
+        </DetailTable>
+
+        <!-- Markdown Content -->
+        <DetailTable v-if="props.gameserver.markdown">
+          <template #header>
+            <Flex x-between y-center expand>
+              <Flex y-center gap="xs">
+                <Icon name="ph:article" />
+                <h6>Content</h6>
+              </Flex>
+              <span class="text-color-lightest text-xs">Markdown</span>
+            </Flex>
+          </template>
+          <MarkdownRenderer :md="props.gameserver.markdown" class="gameserver-details__markdown-content" />
+        </DetailTable>
 
         <!-- Metadata -->
         <Metadata
@@ -241,20 +284,13 @@ function confirmDelete() {
 .gameserver-details {
   padding-bottom: var(--space);
 
-  &__metadata-by {
-    font-size: var(--font-size-l);
-    color: var(--color-text-light);
-  }
-
-  &__markdown {
-    width: 100%;
-  }
-
-  &__markdown-skeleton {
-    width: 100%;
+  &__description {
+    padding: var(--space-m);
   }
 
   &__markdown-content {
+    padding: var(--space-m);
+
     h1 {
       margin-top: var(--space-s);
       font-size: var(--font-size-xxl);

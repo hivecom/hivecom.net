@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
     // Verify user has permission to manage servers
     const authResponse = await authorizeAuthenticatedHasPermissionAal2(
       req,
-      ["containers.update"],
+      ["network.update"],
     );
 
     if (authResponse) {

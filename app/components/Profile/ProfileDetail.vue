@@ -14,6 +14,7 @@ import { useAvatarBus } from '@/composables/useAvatarBus'
 import { useCachedFetch } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
 import { useFriendship } from '@/composables/useFriendship'
+import { useSessionReady } from '@/composables/useSessionReady'
 import Discussion from '../Discussions/Discussion.vue'
 import ProfileActivity from './ProfileActivity.vue'
 import ProfileDiscussions from './ProfileDiscussions.vue'
@@ -28,6 +29,7 @@ const props = defineProps<Props>()
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const { waitForSessionReady } = useSessionReady()
 const isLoggedIn = computed(() => !!user.value)
 const authReady = ref(false)
 const sessionUser = ref<{ id: string } | null>(null)
@@ -35,12 +37,7 @@ const userId = useUserId() // Use helper to get ID from JWT claims
 const { navigateToSignIn } = useAuthRedirect()
 type ProfileRecord = Tables<'profiles'>
 
-type ProfileRecordInput = ProfileRecord | (Omit<ProfileRecord, 'badges'> & {
-  badges: ReadonlyArray<ProfileRecord['badges'][number]>
-})
-
 const profile = ref<ProfileRecord>()
-const loading = ref(true)
 const errorMessage = ref('')
 const isEditSheetOpen = ref(false)
 const showComplaintModal = ref(false)
@@ -50,11 +47,8 @@ const profileSubmissionError = ref<string | null>(null)
 // Add refresh functionality for avatar updates
 const refreshTrigger = ref(0)
 
-function cloneProfileRecord(record: ProfileRecordInput): ProfileRecord {
-  return {
-    ...record,
-    badges: [...record.badges],
-  }
+function cloneProfileRecord(record: ProfileRecord): ProfileRecord {
+  return { ...record }
 }
 
 // Computed property to check if this is the user's own profile
@@ -165,10 +159,13 @@ const {
 
 const hydratedProfileData = computed<ProfileRecord | null>(() => profileData.value as ProfileRecord | null)
 
+const fetchSettled = ref(false)
+const loading = computed(() => profileLoading.value || !fetchSettled.value)
+
 // Set profile from cached data
 watch(hydratedProfileData, (newData) => {
   if (newData) {
-    const hydratedProfile = cloneProfileRecord(newData as ProfileRecordInput)
+    const hydratedProfile = cloneProfileRecord(newData as ProfileRecord)
     profile.value = hydratedProfile
     // Check friendship status after profile is loaded
     checkFriendshipStatus()
@@ -180,6 +177,7 @@ watch(hydratedProfileData, (newData) => {
 // reload causes useSupabaseUser() to be null while the session is still being
 // restored, triggering a false redirect to sign-in.
 onMounted(async () => {
+  await waitForSessionReady()
   const result = await supabase.auth.getSession().catch(() => null)
   sessionUser.value = result?.data?.session?.user ?? null
   authReady.value = true
@@ -221,6 +219,10 @@ watch(profileError, (error) => {
         ? `User "${props.username}" was not found`
         : 'User not found'
     }
+    else if (!isLoggedIn.value) {
+      // RLS blocks unauthenticated reads on private profiles - surface a friendly hint
+      errorMessage.value = 'This profile could not be loaded. It may be private - sign in to view it.'
+    }
     else {
       errorMessage.value = error
     }
@@ -234,7 +236,7 @@ watch(profileError, (error) => {
 watch(() => [props.userId, props.username, user.value?.id], ([userId, username, currentUserId]) => {
   if (!userId && !username && !currentUserId) {
     errorMessage.value = 'No user ID or username provided'
-    loading.value = false
+    fetchSettled.value = true
   }
   else {
     // Clear message when we have enough info to load
@@ -244,8 +246,16 @@ watch(() => [props.userId, props.username, user.value?.id], ([userId, username, 
 }, { immediate: true })
 
 // Set loading state
-watch(profileLoading, (isLoading) => {
-  loading.value = isLoading
+// profileLoading starts as false before the first fetch fires. When data comes
+// from cache, loading never goes true at all. loading is computed so it stays
+// true until fetchSettled flips, which happens when data or error is non-null.
+watch(profileData, (data) => {
+  if (data !== null)
+    fetchSettled.value = true
+}, { immediate: true })
+watch(profileError, (err) => {
+  if (err !== null)
+    fetchSettled.value = true
 }, { immediate: true })
 
 // Typed avatar bus - replaces the raw window.addEventListener('avatar-updated') +
@@ -397,7 +407,7 @@ function openFriendsModal() {
   <div class="profile-view">
     <!-- Error State -->
     <template v-if="errorMessage">
-      <ErrorAlert :message="errorMessage" />
+      <ErrorAlert standalone :message="errorMessage" />
     </template>
 
     <!-- No Profile Found -->

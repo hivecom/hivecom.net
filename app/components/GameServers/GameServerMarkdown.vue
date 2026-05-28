@@ -5,22 +5,24 @@ import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import MetadataCard from '../Shared/MetadataCard.vue'
 
 interface Props {
-  gameserver: Tables<'gameservers'>
+  gameserver: Tables<'network_gameservers'>
 }
 
 defineProps<Props>()
 </script>
 
 <template>
-  <!-- Server Details (Markdown) -->
-  <Card v-if="gameserver.markdown" class="gameserver-markdown card-bg ">
-    <Flex column gap="l" class="pb-l">
-      <strong class="gameserver-markdown__title">
-        <Icon name="ph:article" />
-        Server Details
-      </strong>
-      <MarkdownRenderer :md="gameserver.markdown" class="gameserver-markdown__content" />
-    </Flex>
+  <Flex column gap="xs">
+    <!-- Server Details (Markdown) -->
+    <Card v-if="gameserver.markdown" class="gameserver-markdown card-bg ">
+      <Flex column gap="l" class="pb-l">
+        <strong class="gameserver-markdown__title">
+          <Icon name="ph:article" />
+          Server Details
+        </strong>
+        <MarkdownRenderer :md="gameserver.markdown" class="gameserver-markdown__content" />
+      </Flex>
+    </Card>
 
     <!-- Server Metadata -->
     <MetadataCard
@@ -29,7 +31,7 @@ defineProps<Props>()
       :modified-at="gameserver.modified_at"
       :modified-by="gameserver.modified_by"
     />
-  </Card>
+  </Flex>
 </template>
 
 <style lang="scss" scoped>

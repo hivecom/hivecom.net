@@ -55,11 +55,11 @@ const isActive = computed(() => data.id === route.query.comment)
 
 onMounted(async () => {
   if (isActive.value) {
-    // scrollToIdWhenStable re-anchors to the element every frame while layout
-    // is shifting (e.g. YouTube iframes, images loading above the target).
-    // This beats waitForLayoutStability+scrollIntoView which fires once and
-    // then gets pushed off-target by late-expanding content.
-    await scrollToIdWhenStable(`#${idPrefix}-${data.id}`, 'center', 12000, 150)
+    // scrollToIdWhenStable scrolls immediately on the first rAF tick then
+    // keeps re-anchoring every frame until the element's position has been
+    // stable for 500ms. If the user scrolls manually the loop exits and cedes
+    // control to them.
+    await scrollToIdWhenStable(`#${idPrefix}-${data.id}`, 'center', 12000, 500)
   }
 })
 
@@ -67,7 +67,7 @@ onMounted(async () => {
 watch(isActive, async (active) => {
   if (!active)
     return
-  await scrollToIdWhenStable(`#${idPrefix}-${data.id}`, 'center', 12000, 150)
+  await scrollToIdWhenStable(`#${idPrefix}-${data.id}`, 'center', 12000, 500)
 }, { immediate: false })
 
 // Copy link to item

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Alert, Badge, Button, Card, Divider, Flex, Tab, Tabs, theme } from '@dolanske/vui'
+import { Badge, Button, Card, Divider, Flex, Tab, Tabs, theme } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
-import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
+
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import ThemeDetailColors from '@/components/Themes/ThemeDetailColors.vue'
 import ThemeDetailCss from '@/components/Themes/ThemeDetailCss.vue'
@@ -110,9 +111,7 @@ const isMobile = useBreakpoint('<s')
   <div class="page">
     <div class="container-m">
       <template v-if="dataError">
-        <Alert variant="danger">
-          {{ dataError }}
-        </Alert>
+        <ErrorAlert message="Failed to load theme" :error="dataError" standalone />
       </template>
       <template v-else-if="data">
         <section>
@@ -142,9 +141,9 @@ const isMobile = useBreakpoint('<s')
               <div>
                 <h1>
                   {{ data.name }}
-                  <TinyBadge v-if="isThemeActive" variant="accent" style="vertical-align: middle;">
+                  <Badge v-if="isThemeActive" size="s" variant="accent" style="vertical-align: middle;">
                     Active
-                  </TinyBadge>
+                  </Badge>
                 </h1>
                 <p v-if="data.description">
                   {{ data.description }}
@@ -276,9 +275,9 @@ const isMobile = useBreakpoint('<s')
               <Flex x-between y-center expand class="theme-details__meta-item">
                 <span>Forks</span>
 
-                <BadgeCircle v-if="forks.length > 0">
+                <Badge v-if="forks.length > 0" circle>
                   {{ forks.length }}
-                </BadgeCircle>
+                </Badge>
                 <span v-else>None</span>
               </Flex>
 

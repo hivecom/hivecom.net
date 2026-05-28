@@ -1,16 +1,104 @@
-export interface MetricsTotals {
-  users: number
-  gameservers: number
-  projects: number
-  forumPosts: number
+// Protocol-specific server detail shapes
+export interface SourcePlayer {
+  name: string
+  score: number
+  duration: number
 }
 
-export interface MetricsBreakdowns {
-  usersByCountry: Record<string, number>
+export interface MetricsServerDetailSource {
+  protocol: 'source'
+  data: {
+    players: number | null
+    maxPlayers: number | null
+    map: string | null
+    playerList: SourcePlayer[] | null
+  }
+}
+
+export interface MetricsServerDetailMinecraft {
+  protocol: 'minecraft'
+  data: {
+    numPlayers: number | null
+    maxPlayers: number | null
+    world: string | null
+    players: string[] | null
+    motd: string | null
+    gameType: string | null
+    gameId: string | null
+    version: string | null
+    plugins: string | null
+    hostPort: number | null
+    hostIp: string | null
+    extra: Record<string, string> | null
+  }
+}
+
+// Servers with no query protocol configured
+export interface MetricsServerDetailNone {
+  protocol: null
+  data: null
+}
+
+// Union - extend with new protocol interfaces as they are implemented
+export type MetricsServerDetail
+  = | MetricsServerDetailSource
+    | MetricsServerDetailMinecraft
+    | MetricsServerDetailNone
+
+export interface MetricsUsers {
+  total: number
+  online: number
+  byCountry: Record<string, number>
+  byGame: Record<string, number>
+  /** Maps Steam app ID (as string) to player count. Only includes users with rich_presence_enabled. */
+  bySteamGame: Record<string, number>
+}
+
+export interface MetricsCommunity {
+  projects: number
+}
+
+export interface MetricsDiscussions {
+  total: number
+  replies: number
+  newTotal: number
+  newReplies: number
+}
+
+export interface MetricsTeamSpeak {
+  online: number
+  byServer: Record<string, number>
+}
+
+export interface MetricsGameServers {
+  total: number
+  players: number
+  byServer: Record<string, MetricsServerDetail>
+}
+
+export interface MetricsStorageBucket {
+  /** Total number of objects in the bucket */
+  totalFiles: number
+  /** Total size of all objects in bytes */
+  totalSize: number
+  /** Number of image objects */
+  totalImages: number
+  /** Delta in file count since previous snapshot */
+  deltaFiles: number
+  /** Delta in total size (bytes) since previous snapshot */
+  deltaSize: number
+}
+
+export interface MetricsStorage {
+  buckets: Record<string, MetricsStorageBucket>
 }
 
 export interface MetricsSnapshot {
   collectedAt: string
-  totals: MetricsTotals
-  breakdowns: MetricsBreakdowns
+  users: MetricsUsers
+  community: MetricsCommunity
+  discussions: MetricsDiscussions
+  teamspeak: MetricsTeamSpeak
+  gameservers: MetricsGameServers
+  storage: MetricsStorage
 }

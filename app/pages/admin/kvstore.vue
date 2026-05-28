@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
 import KVStoreTable from '@/components/Admin/KVStore/KVStoreTable.vue'
+
+definePageMeta({ layout: 'admin' })
 </script>
 
 <template>

@@ -490,21 +490,21 @@ onBeforeMount(async () => {
                 @click="viewReferendum(referendum)"
               >
                 <Table.Cell>
-                  <span>{{ referendum.title }}</span>
+                  <span class="text-s">{{ referendum.title }}</span>
                 </Table.Cell>
                 <Table.Cell>
                   <Badge
-                    size="xs"
+                    size="m"
                     :variant="getReferendumStatusVariant(getReferendumStatus(referendum))"
                   >
                     {{ capitalize(getReferendumStatus(referendum)) }}
                   </Badge>
                 </Table.Cell>
                 <Table.Cell>
-                  <CountDisplay :value="referendum.vote_count" />
+                  <CountDisplay :value="referendum.vote_count" class="text-s" />
                 </Table.Cell>
                 <Table.Cell>
-                  <Badge size="xs" :variant="referendum.is_public ? 'success' : 'neutral'">
+                  <Badge size="m" :variant="referendum.is_public ? 'success' : 'neutral'">
                     <Icon :name="referendum.is_public ? 'ph:globe' : 'ph:lock'" />
                     {{ referendum.is_public ? 'Public' : 'Private' }}
                   </Badge>

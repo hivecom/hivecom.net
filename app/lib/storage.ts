@@ -42,7 +42,7 @@ function isStorageNotFoundError(error: unknown): boolean {
 /**
  * Validates if a file is a valid image
  */
-export function validateImageFile(file: File): { valid: boolean, error?: string } {
+export function validateImageFile(file: File, maxSizeMB: number = 1): { valid: boolean, error?: string } {
   // Check file type
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'video/webm']
   if (!allowedTypes.includes(file.type)) {
@@ -52,12 +52,11 @@ export function validateImageFile(file: File): { valid: boolean, error?: string 
     }
   }
 
-  // Check file size (max 1MB - matches hivecom-content-users bucket limit)
-  const maxSize = 1 * 1024 * 1024 // 1MB in bytes
+  const maxSize = maxSizeMB * 1024 * 1024
   if (file.size > maxSize) {
     return {
       valid: false,
-      error: 'File size must be less than 1MB',
+      error: `File size must be less than ${maxSizeMB}MB`,
     }
   }
 
@@ -80,8 +79,8 @@ export async function stripImageMetadata(file: File): Promise<File> {
 
     img.onload = () => {
       const canvas = document.createElement('canvas')
-      canvas.width = img.width
-      canvas.height = img.height
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
 
       const ctx = canvas.getContext('2d')
       ctx?.drawImage(img, 0, 0)
@@ -128,8 +127,8 @@ export async function convertImageToWebP(file: File, quality: number = 0.8): Pro
 
     img.onload = () => {
       // Set canvas size to image size
-      canvas.width = img.width
-      canvas.height = img.height
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
 
       // Draw image to canvas
       ctx?.drawImage(img, 0, 0)
@@ -137,6 +136,7 @@ export async function convertImageToWebP(file: File, quality: number = 0.8): Pro
       // Convert to WebP blob
       canvas.toBlob(
         (blob) => {
+          URL.revokeObjectURL(img.src)
           if (blob) {
             // Create new File with WebP format
             const webpFile = new File([blob], file.name.replace(FILE_EXTENSION_RE, '.webp'), {
@@ -154,9 +154,126 @@ export async function convertImageToWebP(file: File, quality: number = 0.8): Pro
       )
     }
 
-    img.onerror = () => reject(new Error('Failed to load image for conversion'))
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src)
+      reject(new Error('Failed to load image for conversion'))
+    }
     img.src = URL.createObjectURL(file)
   })
+}
+
+async function loadImageElement(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src)
+      reject(new Error('Failed to load image'))
+    }
+    img.src = URL.createObjectURL(file)
+  })
+}
+
+async function encodeCanvasBlob(
+  img: HTMLImageElement,
+  width: number,
+  height: number,
+  type: string,
+  quality: number,
+): Promise<Blob | null> {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  ctx?.drawImage(img, 0, 0, width, height)
+  return new Promise((resolve) => {
+    canvas.toBlob(b => resolve(b), type, quality)
+  })
+}
+
+export interface CompressImageOptions {
+  /** Starting WebP quality (0..1). Default 0.95. */
+  initialQuality?: number
+  /** Lowest quality to try before stepping down resolution. Default 0.5. */
+  minQuality?: number
+  /** Smallest resolution scale (relative to original) to try. Default 0.2. */
+  minScale?: number
+  /** Quality decrement per attempt. Default 0.1. */
+  qualityStep?: number
+  /** Multiplicative scale reduction per resolution pass. Default 0.8. */
+  scaleStep?: number
+}
+
+/**
+ * Iteratively re-encodes an image as WebP, dropping quality first and then
+ * resolution, until the output fits within `maxBytes` (or the configured floor
+ * is reached). Returns a WebP File; falls back to the smallest attempt or the
+ * original file if encoding fails entirely.
+ *
+ * GIFs and non-raster inputs are passed through unchanged - re-encoding a GIF
+ * via canvas drops animation, so callers must handle oversize GIFs separately.
+ */
+export async function compressImageToFit(
+  file: File,
+  maxBytes: number,
+  options: CompressImageOptions = {},
+): Promise<File> {
+  if (file.type === 'image/gif')
+    return file
+  if (!file.type.startsWith('image/'))
+    return file
+
+  const initialQuality = options.initialQuality ?? 0.95
+  const minQuality = options.minQuality ?? 0.5
+  const minScale = options.minScale ?? 0.2
+  const qualityStep = options.qualityStep ?? 0.1
+  const scaleStep = options.scaleStep ?? 0.8
+
+  let img: HTMLImageElement
+  try {
+    img = await loadImageElement(file)
+  }
+  catch {
+    return file
+  }
+
+  const outName = file.name.replace(FILE_EXTENSION_RE, '.webp')
+  let best: File | null = null
+  let scale = 1
+
+  try {
+    while (scale >= minScale) {
+      const width = Math.max(1, Math.round(img.naturalWidth * scale))
+      const height = Math.max(1, Math.round(img.naturalHeight * scale))
+
+      let quality = initialQuality
+      while (quality >= minQuality - 1e-6) {
+        const blob = await encodeCanvasBlob(img, width, height, 'image/webp', quality)
+        if (!blob)
+          break
+
+        const candidate = new File([blob], outName, {
+          type: 'image/webp',
+          lastModified: Date.now(),
+        })
+
+        if (candidate.size <= maxBytes)
+          return candidate
+
+        if (!best || candidate.size < best.size)
+          best = candidate
+
+        quality = Math.round((quality - qualityStep) * 100) / 100
+      }
+
+      scale = Math.round(scale * scaleStep * 100) / 100
+    }
+  }
+  finally {
+    URL.revokeObjectURL(img.src)
+  }
+
+  return best ?? file
 }
 
 /**
@@ -167,6 +284,7 @@ export async function uploadUserAvatar(
   supabaseClient: SupabaseClient<Database>,
   userId: string,
   file: File,
+  uploadedBy?: string,
 ): Promise<UploadResult> {
   try {
     // Validate the file first
@@ -229,6 +347,7 @@ export async function uploadUserAvatar(
       .upload(filePath, processedFile, {
         upsert: true, // Replace existing file
         contentType: processedFile.type,
+        metadata: { uploadedBy: uploadedBy ?? userId },
       })
 
     if (error) {
@@ -436,6 +555,7 @@ export async function uploadTopicIcon(
   supabaseClient: SupabaseClient<Database>,
   topicId: string,
   file: File,
+  uploadedBy?: string,
 ): Promise<UploadResult> {
   try {
     const validation = validateImageFile(file)
@@ -460,6 +580,7 @@ export async function uploadTopicIcon(
       .upload(filePath, processedFile, {
         upsert: true,
         contentType: processedFile.type,
+        metadata: { uploadedBy: uploadedBy ?? 'unknown' },
       })
 
     if (error) {
@@ -581,10 +702,11 @@ export async function uploadGameAsset(
   gameShorthand: string,
   assetType: 'icon' | 'cover' | 'background',
   file: File,
+  uploadedBy?: string,
 ): Promise<UploadResult> {
   try {
-    // Validate the file first
-    const validation = validateImageFile(file)
+    // Validate the file first (game assets go to the static bucket, 5MB limit)
+    const validation = validateImageFile(file, 5)
     if (!validation.valid) {
       return { success: false, error: validation.error }
     }
@@ -608,6 +730,7 @@ export async function uploadGameAsset(
       .upload(filePath, processedFile, {
         upsert: true, // Replace existing file
         contentType: processedFile.type,
+        metadata: { uploadedBy: uploadedBy ?? 'unknown' },
       })
 
     if (error) {
@@ -730,6 +853,7 @@ export async function uploadProjectBanner(
   supabaseClient: SupabaseClient<Database>,
   projectId: number,
   file: File,
+  uploadedBy?: string,
 ): Promise<UploadResult> {
   try {
     const validation = validateImageFile(file)
@@ -763,6 +887,7 @@ export async function uploadProjectBanner(
       .upload(filePath, processedFile, {
         upsert: true,
         contentType: processedFile.type,
+        metadata: { uploadedBy: uploadedBy ?? 'unknown' },
       })
 
     if (error) {

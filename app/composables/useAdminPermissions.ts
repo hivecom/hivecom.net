@@ -13,18 +13,18 @@ const _noop = () => false
 const _noopAny = (_: string[]) => false
 
 export function useAdminPermissions() {
-  // Inject the permissions provided by the admin layout
-  const userPermissions = inject<Readonly<Ref<string[]>>>('userPermissions')
-  const userRole = inject<Readonly<Ref<string | null>>>('userRole')
-  const hasPermission = inject<(permission: string) => boolean>('hasPermission')
-  const hasAnyPermission = inject<(permissions: string[]) => boolean>('hasAnyPermission')
+  // Inject the permissions provided by the admin layout. Pass defaults so Vue
+  // does not emit injection-not-found warnings when this composable is used
+  // outside the admin layout (e.g. during a layout transition).
+  const userPermissions = inject<Readonly<Ref<string[]>>>('userPermissions', _falsePermissions)
+  const userRole = inject<Readonly<Ref<string | null>>>('userRole', _nullRole)
+  const hasPermission = inject<(permission: string) => boolean>('hasPermission', _noop)
+  const hasAnyPermission = inject<(permissions: string[]) => boolean>('hasAnyPermission', _noopAny)
 
-  const inContext = Boolean(userPermissions && userRole && hasPermission && hasAnyPermission)
-
-  const resolvedPermissions = inContext ? userPermissions! : _falsePermissions
-  const resolvedRole = inContext ? userRole! : _nullRole
-  const resolvedHasPermission = inContext ? hasPermission! : _noop
-  const resolvedHasAnyPermission = inContext ? hasAnyPermission! : _noopAny
+  const resolvedPermissions = userPermissions
+  const resolvedRole = userRole
+  const resolvedHasPermission = hasPermission
+  const resolvedHasAnyPermission = hasAnyPermission
 
   return {
     userPermissions: resolvedPermissions,
@@ -41,10 +41,10 @@ export function useAdminPermissions() {
     canViewEvents: computed(() => resolvedHasPermission('events.read')),
     canManageGames: computed(() => resolvedHasAnyPermission(['games.create', 'games.update', 'games.delete'])),
     canViewGames: computed(() => resolvedHasPermission('games.read')),
-    canManageGameServers: computed(() => resolvedHasAnyPermission(['gameservers.create', 'gameservers.update', 'gameservers.delete'])),
-    canViewGameServers: computed(() => resolvedHasPermission('gameservers.read')),
-    canManageFunding: computed(() => resolvedHasAnyPermission(['funding.create', 'funding.update', 'funding.delete', 'expenses.create', 'expenses.update', 'expenses.delete'])),
-    canViewFunding: computed(() => resolvedHasAnyPermission(['funding.read', 'expenses.read'])),
+    canManageNetwork: computed(() => resolvedHasAnyPermission(['network.create', 'network.update', 'network.delete'])),
+    canViewNetwork: computed(() => resolvedHasPermission('network.read')),
+    canManageFunding: computed(() => resolvedHasAnyPermission(['funding.create', 'funding.update', 'funding.delete'])),
+    canViewFunding: computed(() => resolvedHasPermission('funding.read')),
     canManageReferendums: computed(() => resolvedHasAnyPermission(['referendums.create', 'referendums.update', 'referendums.delete'])),
     canViewReferendums: computed(() => resolvedHasPermission('referendums.read')),
     canManageRoles: computed(() => resolvedHasAnyPermission(['roles.create', 'roles.update', 'roles.delete'])),

@@ -2,27 +2,15 @@
 import type { ValidationError } from '@dolanske/v-valid'
 import type { Comment, ProvidedDiscussion } from './Discussion.types'
 import { Alert, Button, Flex, Tooltip } from '@dolanske/vui'
-import { computed } from 'vue'
-import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import { computed, defineAsyncComponent } from 'vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { extractMentionIds } from '@/lib/markdownProcessors'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { normalizeErrors } from '@/lib/utils/formatting'
 import { DISCUSSION_KEYS } from './Discussion.keys'
-
-interface Props {
-  replyingTo: Comment | undefined
-  message: string
-  isNsfw: boolean
-  errors: { message: ValidationError }
-  formLoading: boolean
-  placeholder: string
-  userId: string | null | undefined
-  canBypassLock: boolean
-  floating: boolean
-}
 
 const {
   replyingTo,
@@ -42,6 +30,22 @@ const emit = defineEmits<{
   'update:isNsfw': [value: boolean]
   'submit': []
 }>()
+
+const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
+
+interface Props {
+  replyingTo: Comment | undefined
+  message: string
+  isNsfw: boolean
+  errors: { message: ValidationError }
+  formLoading: boolean
+  placeholder: string
+  userId: string | null | undefined
+  canBypassLock: boolean
+  floating: boolean
+}
+
+const isBelowSmall = useBreakpoint('<s')
 
 const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
 
@@ -80,7 +84,7 @@ defineExpose({
           </span>
           <MarkdownPreview :markdown="replyingTo.markdown" :mention-lookup="replyMentionLookup" :max-length="240" />
         </div>
-        <Tooltip>
+        <Tooltip :disabled="isBelowSmall">
           <Button square size="s" plain @click="emit('update:replyingTo', undefined)">
             <Icon name="ph:x" />
           </Button>
@@ -147,7 +151,7 @@ defineExpose({
                 </span>
                 <MarkdownPreview :markdown="replyingTo.markdown" :mention-lookup="replyMentionLookup" :max-length="240" />
               </div>
-              <Tooltip>
+              <Tooltip :disabled="isBelowSmall">
                 <Button square size="s" plain @click="emit('update:replyingTo', undefined)">
                   <Icon name="ph:x" />
                 </Button>

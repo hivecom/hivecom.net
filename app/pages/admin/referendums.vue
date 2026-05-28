@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
+import { ref } from 'vue'
 import ReferendumTable from '@/components/Admin/Referendums/ReferendumTable.vue'
+
+definePageMeta({ layout: 'admin' })
 
 // Refresh signal for referendum table
 const refreshSignal = ref(0)

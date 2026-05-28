@@ -5,6 +5,9 @@ import { pushToast, removeToast } from '@dolanske/vui'
 import ToastBodyFriendRequest from '@/components/Toast/ToastBodyFriendRequest.vue'
 import ToastBodyNotification from '@/components/Toast/ToastBodyNotification.vue'
 import { useDataUser } from '@/composables/useDataUser'
+import { usePageVisibility } from '@/composables/usePageVisibility'
+
+const BACKGROUND_POLL_INTERVAL_MS = 5 * 60 * 1000
 
 const BIRTHDAY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
@@ -37,6 +40,11 @@ const pendingComplaintCount = ref(0)
 let notificationChannel: RealtimeChannel | null = null
 let friendChannel: RealtimeChannel | null = null
 let subscribedUserId: string | null = null
+
+// Background polling when tab is hidden.
+let backgroundPollTimer: ReturnType<typeof setInterval> | null = null
+let pausedUserId: string | null = null
+let visibilityInitialized = false
 
 function parseBirthdayDate(value: string | null): Date | null {
   if (value == null || value === '')
@@ -178,7 +186,7 @@ export function useDataNotifications() {
     try {
       const [friendsResponse, profileResponse, notificationsResponse] = await Promise.all([
         supabase
-          .from('friends')
+          .from('profile_friends')
           .select('id, friender, friend')
           .or(`friender.eq.${userId.value},friend.eq.${userId.value}`),
         supabase
@@ -186,7 +194,7 @@ export function useDataNotifications() {
           .select('id, username, birthday')
           .eq('id', userId.value)
           .single(),
-        supabase.from('notifications')
+        supabase.from('user_notifications')
           .select('*')
           .eq('user_id', userId.value)
           .eq('is_read', false)
@@ -250,7 +258,7 @@ export function useDataNotifications() {
       return
     }
 
-    await supabase.from('notifications').update({ is_read: true }).in('id', ids)
+    await supabase.from('user_notifications').update({ is_read: true }).in('id', ids)
 
     unreadNotifications.value = []
   }
@@ -267,10 +275,10 @@ export function useDataNotifications() {
 
     try {
       if (action === 'accept') {
-        await supabase.from('friends').insert({ friender: userId.value, friend: requestUserId })
+        await supabase.from('profile_friends').insert({ friender: userId.value, friend: requestUserId })
       }
       else {
-        await supabase.from('friends').delete().match({ friender: requestUserId, friend: userId.value })
+        await supabase.from('profile_friends').delete().match({ friender: requestUserId, friend: userId.value })
       }
       await fetch()
     }
@@ -287,15 +295,18 @@ export function useDataNotifications() {
     markRead(notification.id)
 
     if (!notification.id.startsWith('dev-')) {
-      await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id)
+      await supabase.from('user_notifications').update({ is_read: true }).eq('id', notification.id)
     }
   }
 
-  function subscribeRealtime(uid: string) {
-    if (notificationChannel != null && subscribedUserId === uid)
+  async function subscribeRealtime(uid: string) {
+    if (subscribedUserId === uid && notificationChannel != null)
       return
 
-    void unsubscribeRealtime()
+    // Mark intent immediately so concurrent calls for same uid exit above.
+    subscribedUserId = uid
+
+    await unsubscribeRealtime()
 
     notificationChannel = supabase
       .channel(`notifications:${uid}`)
@@ -304,7 +315,7 @@ export function useDataNotifications() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'notifications',
+          table: 'user_notifications',
           filter: `user_id=eq.${uid}`,
         },
         (payload: RealtimePostgresInsertPayload<NotificationRow>) => {
@@ -329,7 +340,7 @@ export function useDataNotifications() {
               notificationId: incoming.id,
               onNavigate: (notificationId: string) => {
                 markRead(notificationId)
-                void supabase.from('notifications').update({ is_read: true }).eq('id', notificationId)
+                void supabase.from('user_notifications').update({ is_read: true }).eq('id', notificationId)
               },
             },
           })
@@ -344,7 +355,7 @@ export function useDataNotifications() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'friends',
+          table: 'profile_friends',
           filter: `friend=eq.${uid}`,
         },
         (payload: RealtimePostgresInsertPayload<{ id: number, friender: string, friend: string }>) => {
@@ -395,7 +406,6 @@ export function useDataNotifications() {
       channels.push(supabase.removeChannel(ch))
     }
 
-    subscribedUserId = null
     await Promise.allSettled(channels)
   }
 
@@ -403,15 +413,51 @@ export function useDataNotifications() {
   watch(
     userId,
     (uid) => {
-      if (uid != null)
-        subscribeRealtime(uid)
-      else
+      if (uid != null) {
+        void subscribeRealtime(uid)
+      }
+      else {
+        subscribedUserId = null
         void unsubscribeRealtime()
+      }
     },
     { immediate: true },
   )
 
+  // Pause channels when tab is hidden; background-poll instead.
+  // Guard ensures this only runs once across all composable instances.
+  if (import.meta.client && !visibilityInitialized) {
+    visibilityInitialized = true
+    const { isHidden } = usePageVisibility()
+
+    watch(isHidden, (hidden) => {
+      if (hidden) {
+        if (subscribedUserId != null) {
+          pausedUserId = subscribedUserId
+          void unsubscribeRealtime()
+          backgroundPollTimer ??= setInterval(() => {
+            void fetch()
+          }, BACKGROUND_POLL_INTERVAL_MS)
+        }
+      }
+      else {
+        if (backgroundPollTimer != null) {
+          clearInterval(backgroundPollTimer)
+          backgroundPollTimer = null
+        }
+        if (pausedUserId != null) {
+          const uid = pausedUserId
+          pausedUserId = null
+          // Re-subscribe then catch up on any missed notifications.
+          void subscribeRealtime(uid)
+          void fetch()
+        }
+      }
+    })
+  }
+
   onScopeDispose(() => {
+    subscribedUserId = null
     void unsubscribeRealtime()
   })
 

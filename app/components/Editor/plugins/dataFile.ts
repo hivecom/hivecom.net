@@ -9,10 +9,9 @@ import { createAtomBlockMarkdownSpec, mergeAttributes, Node } from '@tiptap/core
 //
 // Directive format:
 //   :::datafile {src="https://..." name="data.csv" type="csv"} :::
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 declare module '@tiptap/core' {
-  // eslint-disable-next-line unused-imports/no-unused-vars
+
   interface Commands<ReturnType> {
     dataFile: {
       /** Insert a data file node at the current selection. */

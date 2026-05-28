@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@dolanske/vui'
+import GlowCard from '@/components/Shared/GlowCard.vue'
 
 function scrollToPlatforms() {
   if (!import.meta.client)
@@ -15,9 +16,11 @@ function scrollToPlatforms() {
 
 <template>
   <div class="hero-section__actions">
-    <Button size="l" variant="accent" @click="scrollToPlatforms">
-      Learn more
-    </Button>
+    <GlowCard halo>
+      <Button size="l" square variant="link" @click="scrollToPlatforms">
+        <Icon name="mdi:arrow-down" />
+      </Button>
+    </GlowCard>
   </div>
 </template>
 
@@ -30,20 +33,10 @@ function scrollToPlatforms() {
   justify-content: start;
   align-items: center;
   flex-wrap: wrap;
-  padding-bottom: var(--space-xxl);
-
-  button.vui-button > .vui-button-slot > .vui-button-slot-default {
-    width: 200px !important;
-  }
+  padding-bottom: var(--space-l);
 
   @media screen and (max-width: $breakpoint-l) {
     justify-content: center;
-  }
-
-  @media screen and (max-width: $breakpoint-s) {
-    button.vui-button > .vui-button-slot > .vui-button-slot-default {
-      width: 80vw !important;
-    }
   }
 }
 </style>

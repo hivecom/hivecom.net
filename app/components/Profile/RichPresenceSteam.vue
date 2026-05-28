@@ -188,10 +188,15 @@ const visible = ref(false)
       @mouseleave="visible = false"
     >
       <div class="rp-tooltip">
-        <Flex x-between y-center class="mb-s">
-          <strong class="text-l text-bold">
-            Steam
-          </strong>
+        <Flex x-between y-center>
+          <Flex y-center gap="xs">
+            <strong class="text-l text-bold">
+              Steam
+            </strong>
+            <Badge v-if="presenceRow?.status" :variant="statusBadgeVariant">
+              {{ statusLabel }}
+            </Badge>
+          </Flex>
           <Button
             v-if="props.steamId"
             size="s"
@@ -213,17 +218,11 @@ const visible = ref(false)
             <span class="rp-label">Name</span>
             <span class="rp-value">{{ presenceRow.steam_name }}</span>
           </div>
-          <div v-if="presenceRow?.status" class="rp-row rp-row--inline">
-            <span class="rp-label">Status</span>
-            <Badge :variant="statusBadgeVariant" size="s">
-              {{ statusLabel }}
-            </Badge>
-          </div>
         </div>
 
-        <Divider v-if="hasPresence && props.richPresenceEnabled" class="my-xxs" />
+        <!-- <Divider v-if="hasPresence && !isPlaying && displayedAppId" class="my-xxs" /> -->
 
-        <div v-if="hasPresence && props.richPresenceEnabled" class="rp-section">
+        <div v-if="hasPresence && !isPlaying && displayedAppId" class="rp-section">
           <a
             v-if="displayedAppId"
             class="rp-row rp-row--link"

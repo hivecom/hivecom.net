@@ -8,8 +8,8 @@
     "teamspeak-types": "../../types/teamspeak.ts",
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
     "node-ts": "npm:node-ts@8",
-    "googleapis": "npm:googleapis@144",
-    "google-auth-library": "npm:google-auth-library@9"
+    "googleapis": "npm:googleapis@171",
+    "google-auth-library": "npm:google-auth-library@10"
   },
   "workspace": [
     "./_shared",
@@ -18,21 +18,27 @@
     "./admin-docker-control-container-start",
     "./admin-docker-control-container-status",
     "./admin-docker-control-container-stop",
+    "./admin-igdb-search",
+    "./admin-steam-icon-fetch",
     "./admin-user-ban",
     "./admin-user-delete",
     "./cron-docker-control-container-fetch",
     "./cron-metrics-fetch",
     "./cron-patreon-fetch",
     "./cron-teamspeak-sync",
+    "./lastfm-verify-confirm",
+    "./lastfm-verify-request",
     "./oauth-patreon",
     "./openid-steam-start",
     "./openid-steam-verify",
     "./ping",
+    "./presence-refresh-lastfm",
     "./presence-refresh-steam",
     "./teamspeak-unlink",
     "./teamspeak-verify-confirm",
     "./teamspeak-verify-request",
     "./teamspeak-viewer-refresh",
+    "./trigger-cleanup-discussion-media",
     "./trigger-discord-event-sync",
     "./trigger-google-calendar-sync",
     "./trigger-user-avatar-sync",
@@ -40,6 +46,8 @@
     "./user-info",
     "./user-link-discord",
     "./webhook-aws-ses-notifications",
+    "./webhook-kofi-donation",
+    "./worker-sync-lastfm",
     "./worker-sync-steam"
   ]
 }

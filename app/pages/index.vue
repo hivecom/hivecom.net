@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
+import type { MetricsSnapshot } from '@/types/metrics'
 import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import EventCardLanding from '@/components/Events/EventCardLanding.vue'
 import LandingHero from '@/components/Landing/LandingHero.vue'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataEvents } from '@/composables/useDataEvents'
 
 definePageMeta({
@@ -13,7 +15,7 @@ definePageMeta({
 // Fetch data from database
 const user = useSupabaseUser()
 const { fetchMetrics, metrics: cachedMetrics } = useDataMetrics()
-const loading = ref(cachedMetrics.value === null)
+const loading = ref(true)
 const errorMessage = ref('')
 
 // Events via shared cache - no dedicated fetch needed here
@@ -50,21 +52,21 @@ const events = computed<Tables<'events'>[]>(() => {
 })
 
 const communityStats = ref({
-  members: 100,
-  membersAccurate: false,
+  users: 100,
+  usersAccurate: false,
   gameservers: 5,
   age: new Date().getFullYear() - 2013,
   projects: 10,
   forumPosts: 1000,
 })
 
-function applyMetrics(snapshot: { totals: { users: number, gameservers: number, projects: number, forumPosts: number } }): void {
-  const users = snapshot.totals.users
-  communityStats.value.membersAccurate = users > 0
-  communityStats.value.members = users > 0 ? users : 100
-  communityStats.value.gameservers = snapshot.totals.gameservers
-  communityStats.value.projects = snapshot.totals.projects
-  communityStats.value.forumPosts = snapshot.totals.forumPosts
+function applyMetrics(snapshot: MetricsSnapshot): void {
+  const users = snapshot.users.total
+  communityStats.value.usersAccurate = users > 0
+  communityStats.value.users = users > 0 ? users : 100
+  communityStats.value.gameservers = snapshot.gameservers.total
+  communityStats.value.projects = snapshot.community.projects
+  communityStats.value.forumPosts = snapshot.discussions.total
 }
 
 // Pre-populate from cache synchronously - avoids placeholder numbers on warm visits
@@ -221,7 +223,6 @@ onMounted(async () => {
               <Skeleton height="1rem" width="60%" />
             </Card>
           </Grid>
-
           <div v-else-if="errorMessage" class="events-section__error">
             <Card>
               <p class="events-section__error-text">
@@ -229,21 +230,23 @@ onMounted(async () => {
               </p>
             </Card>
           </div>
-
           <div v-else-if="events.length === 0" class="events-section__empty">
             <Card>
               <p>No events scheduled.</p>
             </Card>
           </div>
-
-          <Grid v-else :columns="3" gap="m" expand y-stretch class="events-list">
-            <EventCardLanding
-              v-for="event in events"
-              :key="event.id"
-              :event="event"
-              compact
-            />
-          </Grid>
+          <div v-else>
+            <GlowGroup>
+              <Grid :columns="3" gap="m" expand y-stretch class="events-list">
+                <EventCardLanding
+                  v-for="event in events"
+                  :key="event.id"
+                  :event="event"
+                  compact
+                />
+              </Grid>
+            </GlowGroup>
+          </div>
 
           <div class="events-section__view-all mb-m">
             <NuxtLink to="/events">

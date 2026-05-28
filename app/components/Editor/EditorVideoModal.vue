@@ -34,7 +34,7 @@ function handleConfirm() {
     @close="isOpen = false"
   >
     <template #header>
-      <h4>Insert video</h4>
+      <h4>Embed video</h4>
     </template>
 
     <Flex column gap="m">

@@ -2,11 +2,9 @@ import * as constants from "constants" with { type: "json" };
 import { createClient, type User } from "@supabase/supabase-js";
 import type { Tables } from "database-types";
 import type { TeamSpeakIdentityRecord } from "../../../types/teamspeak.ts";
-import {
-  TeamSpeakClient,
-  TextMessageTargetMode,
-} from "node-ts/lib/node-ts.js";
+import { TeamSpeakClient } from "node-ts/lib/node-ts.js";
 import { corsHeaders } from "../_shared/cors.ts";
+import { checkAssuranceLevel } from "../_shared/auth.ts";
 import {
   createPrivateServiceRoleClient,
   createPublicServiceRoleClient,
@@ -15,6 +13,10 @@ import {
 } from "../_shared/serviceRoleClients.ts";
 import { parseEnvMap } from "../_shared/env.ts";
 import { normalizeTeamSpeakIdentities } from "../_shared/teamspeak.ts";
+
+// TextMessageTargetMode.CLIENT = 1 (enum from node-ts, re-declared here as
+// Deno's type checker doesn't resolve it from the .js import path)
+const TextMessageTargetMode = { CLIENT: 1, CHANNEL: 2, SERVER: 3 } as const;
 
 interface RequestPayload {
   uniqueId?: string;
@@ -50,13 +52,15 @@ interface AppConstants {
   PLATFORMS?: { TEAMSPEAK?: TeamSpeakPlatformConfig };
 }
 
-const appConstants = (constants as unknown as { default: AppConstants }).default;
+const appConstants =
+  (constants as unknown as { default: AppConstants }).default;
 
 interface TeamSpeakPlatformConfig {
   servers?: TeamSpeakServerDefinition[];
 }
 
-const teamSpeakPlatform = (appConstants?.PLATFORMS?.TEAMSPEAK ?? {}) as TeamSpeakPlatformConfig;
+const teamSpeakPlatform =
+  (appConstants?.PLATFORMS?.TEAMSPEAK ?? {}) as TeamSpeakPlatformConfig;
 
 const availableServers = Array.isArray(teamSpeakPlatform.servers)
   ? teamSpeakPlatform.servers as TeamSpeakServerDefinition[]
@@ -68,7 +72,10 @@ const credentials: CredentialsMap = {
 };
 
 type IdentityRecord = TeamSpeakIdentityRecord;
-type ProfileRecord = Pick<Tables<"profiles">, "id" | "username" | "banned" | "teamspeak_identities">;
+type ProfileRecord = Pick<
+  Tables<"profiles">,
+  "id" | "username" | "banned" | "teamspeak_identities"
+>;
 
 class HttpError extends Error {
   constructor(
@@ -111,16 +118,24 @@ Deno.serve(async (req) => {
     }
 
     if (profile.banned) {
-      throw new HttpError(403, "Banned accounts cannot link TeamSpeak identities");
+      throw new HttpError(
+        403,
+        "Banned accounts cannot link TeamSpeak identities",
+      );
     }
 
-    const existingIdentities = normalizeTeamSpeakIdentities(profile.teamspeak_identities);
-    const isAlreadyLinked = existingIdentities.some((identity: IdentityRecord) =>
-      identity.serverId === server.id && identity.uniqueId === uniqueId
+    const existingIdentities = normalizeTeamSpeakIdentities(
+      profile.teamspeak_identities,
     );
+    const isAlreadyLinked = existingIdentities.some((
+      identity: IdentityRecord,
+    ) => identity.serverId === server.id && identity.uniqueId === uniqueId);
 
     if (isAlreadyLinked) {
-      throw new HttpError(400, "This TeamSpeak identity is already linked to your account");
+      throw new HttpError(
+        400,
+        "This TeamSpeak identity is already linked to your account",
+      );
     }
 
     await ensureUniqueIdentity(supabaseAdmin, {
@@ -131,12 +146,17 @@ Deno.serve(async (req) => {
 
     const token = generateVerificationToken();
     const tokenHash = await hashToken(token);
-    const tokenExpiresAt = new Date(Date.now() + TOKEN_EXPIRATION_MINUTES * 60_000).toISOString();
+    const tokenExpiresAt = new Date(
+      Date.now() + TOKEN_EXPIRATION_MINUTES * 60_000,
+    ).toISOString();
     const username = credentials.usernames.get(server.id);
     const password = credentials.passwords.get(server.id);
 
     if (!username || !password) {
-      throw new HttpError(500, `Missing TeamSpeak credentials for server "${server.id}"`);
+      throw new HttpError(
+        500,
+        `Missing TeamSpeak credentials for server "${server.id}"`,
+      );
     }
 
     await persistVerificationToken({
@@ -171,7 +191,10 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     if (error instanceof HttpError) {
-      return jsonResponse(error.status, { error: error.message, details: error.details });
+      return jsonResponse(error.status, {
+        error: error.message,
+        details: error.details,
+      });
     }
 
     console.error("Unhandled TeamSpeak messaging error", error);
@@ -219,10 +242,21 @@ async function requireAuthenticatedUser(req: Request): Promise<User> {
     throw new HttpError(401, "Authentication required");
   }
 
+  const aalResponse = await checkAssuranceLevel(supabaseClient);
+  if (aalResponse) {
+    throw new HttpError(
+      403,
+      "Multi-factor authentication is required for this action",
+    );
+  }
+
   return data.user;
 }
 
-async function fetchProfile(client: PublicServiceClient, userId: string): Promise<ProfileRecord | null> {
+async function fetchProfile(
+  client: PublicServiceClient,
+  userId: string,
+): Promise<ProfileRecord | null> {
   const { data, error } = await client
     .from("profiles")
     .select("id, username, banned, teamspeak_identities")
@@ -237,7 +271,10 @@ async function fetchProfile(client: PublicServiceClient, userId: string): Promis
   return data ?? null;
 }
 
-async function ensureUniqueIdentity(client: PublicServiceClient, args: { uniqueId: string; serverId: string; userId: string }) {
+async function ensureUniqueIdentity(
+  client: PublicServiceClient,
+  args: { uniqueId: string; serverId: string; userId: string },
+) {
   const { data, error } = await client
     .from("profiles")
     .select("id, teamspeak_identities")
@@ -245,17 +282,29 @@ async function ensureUniqueIdentity(client: PublicServiceClient, args: { uniqueI
 
   if (error) {
     console.error("Failed to check existing TeamSpeak identities", error);
-    throw new HttpError(500, "Unable to validate TeamSpeak identity availability");
+    throw new HttpError(
+      500,
+      "Unable to validate TeamSpeak identity availability",
+    );
   }
 
-  const records = (data ?? []) as Array<Pick<Tables<"profiles">, "id" | "teamspeak_identities">>;
+  const records = (data ?? []) as Array<
+    Pick<Tables<"profiles">, "id" | "teamspeak_identities">
+  >;
   const conflict = records.find((record) => {
-    const identities = normalizeTeamSpeakIdentities(record.teamspeak_identities);
-    return identities.some((identity: IdentityRecord) => identity.serverId === args.serverId && identity.uniqueId === args.uniqueId);
+    const identities = normalizeTeamSpeakIdentities(
+      record.teamspeak_identities,
+    );
+    return identities.some((identity: IdentityRecord) =>
+      identity.serverId === args.serverId && identity.uniqueId === args.uniqueId
+    );
   });
 
   if (conflict && conflict.id !== args.userId) {
-    throw new HttpError(400, "This TeamSpeak identity is already linked to another account");
+    throw new HttpError(
+      400,
+      "This TeamSpeak identity is already linked to another account",
+    );
   }
 }
 
@@ -275,7 +324,10 @@ async function persistVerificationToken(args: {
     .lt("expires_at", nowIso);
 
   if (expiredCleanupError) {
-    console.warn("Failed to clean up expired TeamSpeak tokens", expiredCleanupError);
+    console.warn(
+      "Failed to clean up expired TeamSpeak tokens",
+      expiredCleanupError,
+    );
   }
 
   const { error: duplicateCleanupError } = await args.client
@@ -286,7 +338,10 @@ async function persistVerificationToken(args: {
     .eq("unique_id", args.uniqueId);
 
   if (duplicateCleanupError) {
-    console.warn("Failed to clean up previous TeamSpeak tokens", duplicateCleanupError);
+    console.warn(
+      "Failed to clean up previous TeamSpeak tokens",
+      duplicateCleanupError,
+    );
   }
 
   const { error } = await args.client.from("teamspeak_tokens").insert({
@@ -326,7 +381,9 @@ function buildVerificationMessage(args: {
   token: string;
 }): string {
   const lines = [
-    `TeamSpeak verification for this identity was requested by [i]${args.username}${args.email ? ` (${args.email})` : ''}[/i]. Enter the following token in the next step of the linking process:`,
+    `TeamSpeak verification for this identity was requested by [i]${args.username}${
+      args.email ? ` (${args.email})` : ""
+    }[/i]. Enter the following token in the next step of the linking process:`,
     ``,
     `Token: [b]${args.token}[/b]`,
     ``,
@@ -334,7 +391,9 @@ function buildVerificationMessage(args: {
   ];
 
   const message = lines.join("\n");
-  return message.length > MESSAGE_MAX_LENGTH ? message.slice(0, MESSAGE_MAX_LENGTH) : message;
+  return message.length > MESSAGE_MAX_LENGTH
+    ? message.slice(0, MESSAGE_MAX_LENGTH)
+    : message;
 }
 
 function resolveServer(preferredId?: string): TeamSpeakServerDefinition {
@@ -360,7 +419,10 @@ async function sendTeamSpeakMessage(args: {
   message: string;
   credentials: { username: string; password: string };
 }): Promise<{ clientId: number }> {
-  const client = new TeamSpeakClient(args.server.queryHost, args.server.queryPort ?? 10011);
+  const client = new TeamSpeakClient(
+    args.server.queryHost,
+    args.server.queryPort ?? 10011,
+  );
 
   try {
     await client.connect();
@@ -376,42 +438,63 @@ async function sendTeamSpeakMessage(args: {
     } else if (typeof args.server.voicePort === "number") {
       await sendRawCommand(client, "use", { port: args.server.voicePort });
     } else {
-      throw new HttpError(500, `Server "${args.server.id}" is missing routing information`);
+      throw new HttpError(
+        500,
+        `Server "${args.server.id}" is missing routing information`,
+      );
     }
 
     let lookup;
     try {
-      lookup = await sendRawCommand(client, "clientgetids", { cluid: args.uniqueId }) as {
+      lookup = await sendRawCommand(client, "clientgetids", {
+        cluid: args.uniqueId,
+      }) as {
         response?: Array<{ clid?: number | string }>;
         error?: { id?: number; msg?: string };
       };
     } catch (error) {
-      const tsErrorId = (error as { error?: { id?: number } })?.error?.id ?? (error as { id?: number })?.id;
+      const tsErrorId = (error as { error?: { id?: number } })?.error?.id ??
+        (error as { id?: number })?.id;
       if (tsErrorId === 1281) {
-        throw new HttpError(404, "No TeamSpeak client found for that unique ID on this server", {
-          uniqueId: args.uniqueId,
-        });
+        throw new HttpError(
+          404,
+          "No TeamSpeak client found for that unique ID on this server",
+          {
+            uniqueId: args.uniqueId,
+          },
+        );
       }
       throw error;
     }
 
     if (lookup?.error?.id === 1281) {
-      throw new HttpError(404, "No TeamSpeak client found for that unique ID on this server", {
-        uniqueId: args.uniqueId,
-      });
+      throw new HttpError(
+        404,
+        "No TeamSpeak client found for that unique ID on this server",
+        {
+          uniqueId: args.uniqueId,
+        },
+      );
     }
 
     const target = lookup.response?.[0];
 
     if (!target?.clid) {
-      throw new HttpError(404, "Client is not currently online on the specified server", {
-        uniqueId: args.uniqueId,
-      });
+      throw new HttpError(
+        404,
+        "Client is not currently online on the specified server",
+        {
+          uniqueId: args.uniqueId,
+        },
+      );
     }
 
     const clientId = Number(target.clid);
     if (!Number.isFinite(clientId)) {
-      throw new HttpError(500, "TeamSpeak returned an invalid client identifier");
+      throw new HttpError(
+        500,
+        "TeamSpeak returned an invalid client identifier",
+      );
     }
 
     await client.send("sendtextmessage", {
@@ -440,7 +523,10 @@ function sendRawCommand(
   params: Record<string, unknown> = {},
 ): Promise<unknown> {
   const untypedClient = client as unknown as {
-    send: (command: string, commandParams?: Record<string, unknown>) => Promise<unknown>;
+    send: (
+      command: string,
+      commandParams?: Record<string, unknown>,
+    ) => Promise<unknown>;
   };
 
   return untypedClient.send(cmd, params);

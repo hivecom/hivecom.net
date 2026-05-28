@@ -1,0 +1,278 @@
+-- Rewrite get_admin_users_paginated to use dynamic SQL for ORDER BY.
+-- The previous CASE WHEN approach had a fatal flaw: the text branch ELSE fallback
+-- would emit b.created_at::text as a sort key even when sorting by integer/boolean
+-- columns, overriding the intended sort entirely.
+DROP FUNCTION IF EXISTS public.get_admin_users_paginated(text, text, text, text, text, text, text, text, text, integer, integer);
+
+CREATE FUNCTION public.get_admin_users_paginated(
+  p_search    text    DEFAULT '',
+  p_role      text    DEFAULT '',
+  p_status    text    DEFAULT '',
+  p_provider  text    DEFAULT '',
+  p_platform  text    DEFAULT '',
+  p_supporter text    DEFAULT '',
+  p_country   text    DEFAULT '',
+  p_sort_col  text    DEFAULT 'created_at',
+  p_sort_dir  text    DEFAULT 'desc',
+  p_limit     integer DEFAULT 10,
+  p_offset    integer DEFAULT 0
+)
+RETURNS TABLE(
+  user_id              uuid,
+  username             text,
+  country              character varying,
+  birthday             date,
+  created_at           timestamp with time zone,
+  modified_at          timestamp with time zone,
+  modified_by          uuid,
+  supporter_lifetime   boolean,
+  supporter_patreon    boolean,
+  badges               profile_badge[],
+  patreon_id           text,
+  steam_id             text,
+  discord_id           text,
+  introduction         text,
+  markdown             text,
+  banned               boolean,
+  ban_reason           text,
+  ban_start            timestamp with time zone,
+  ban_end              timestamp with time zone,
+  last_seen            timestamp with time zone,
+  website              text,
+  public               boolean,
+  rich_presence_enabled boolean,
+  has_teamspeak        boolean,
+  role                 text,
+  email                text,
+  is_confirmed         boolean,
+  discord_display_name text,
+  auth_provider        text,
+  auth_providers       text[],
+  platform_count       integer,
+  is_supporter         boolean,
+  is_banned            boolean,
+  role_sort            integer,
+  total_count          bigint
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public', 'auth'
+AS $function$
+DECLARE
+  has_access    boolean;
+  is_admin_user boolean;
+  v_sort_expr   text;
+  v_sql         text;
+BEGIN
+  has_access := public.has_permission('users.read'::public.app_permission);
+
+  IF NOT has_access THEN
+    RAISE EXCEPTION 'Insufficient permissions to view admin user overview';
+  END IF;
+
+  is_admin_user := public.has_permission('roles.update'::public.app_permission);
+
+  -- Map sort column name to the actual expression used in the CTE
+  v_sort_expr := CASE p_sort_col
+    WHEN 'username'   THEN 'b.username'
+    WHEN 'last_seen'  THEN 'b.last_seen'
+    WHEN 'created_at' THEN 'b.created_at'
+    WHEN 'role'       THEN 'b.role_sort'
+    WHEN 'platforms'  THEN 'b.platform_count'
+    WHEN 'status'     THEN 'b.is_banned'
+    WHEN 'supporter'  THEN 'b.is_supporter'
+    WHEN 'confirmed'  THEN 'b.is_confirmed'
+    ELSE 'b.created_at'
+  END;
+
+  -- p_sort_dir is validated to only ever be 'asc' or 'desc' by the application
+  -- layer, so concatenating it here is safe.
+  v_sql := $q$
+    WITH base AS (
+      SELECT
+        p.id                                                          AS user_id,
+        p.username,
+        p.country,
+        p.birthday,
+        p.created_at,
+        p.modified_at,
+        p.modified_by,
+        p.supporter_lifetime,
+        p.supporter_patreon,
+        p.badges,
+        p.patreon_id,
+        p.steam_id,
+        p.discord_id,
+        p.introduction,
+        p.markdown,
+        p.banned,
+        p.ban_reason,
+        p.ban_start,
+        p.ban_end,
+        p.last_seen,
+        p.website,
+        p.public,
+        p.rich_presence_enabled,
+        (
+          p.teamspeak_identities IS NOT NULL
+          AND jsonb_array_length(p.teamspeak_identities) > 0
+        )                                                             AS has_teamspeak,
+        ur.role::text                                                 AS role,
+        CASE
+          WHEN $9 THEN u.email::text
+          ELSE NULL::text
+        END                                                           AS email,
+        (
+          EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements_text(
+              COALESCE(u.raw_app_meta_data->'providers', '[]'::jsonb)
+            ) AS p2(provider)
+            WHERE p2.provider <> 'email'
+          )
+          OR u.email_confirmed_at IS NOT NULL
+          OR u.phone_confirmed_at IS NOT NULL
+        )                                                             AS is_confirmed,
+        COALESCE(
+          NULLIF(i.identity_data->>'global_name',       ''),
+          NULLIF(i.identity_data->>'username',           ''),
+          NULLIF(i.identity_data->>'user_name',          ''),
+          NULLIF(i.identity_data->>'display_name',       ''),
+          NULLIF(i.identity_data->>'name',               ''),
+          NULLIF(i.identity_data->>'preferred_username', '')
+        )::text                                                       AS discord_display_name,
+        (u.raw_app_meta_data->>'provider')::text                     AS auth_provider,
+        (
+          SELECT COALESCE(
+            array_agg(DISTINCT p3.provider ORDER BY p3.provider),
+            ARRAY[]::text[]
+          )
+          FROM jsonb_array_elements_text(
+            COALESCE(u.raw_app_meta_data->'providers', '[]'::jsonb)
+          ) AS p3(provider)
+        )                                                             AS auth_providers,
+        (
+          (CASE WHEN p.steam_id   IS NOT NULL THEN 1 ELSE 0 END) +
+          (CASE WHEN p.discord_id IS NOT NULL THEN 1 ELSE 0 END) +
+          (CASE WHEN p.patreon_id IS NOT NULL THEN 1 ELSE 0 END)
+        )                                                             AS platform_count,
+        (COALESCE(p.supporter_lifetime, false) OR COALESCE(p.supporter_patreon, false))
+                                                                      AS is_supporter,
+        (
+          COALESCE(p.banned, false)
+          AND (p.ban_end IS NULL OR p.ban_end > now())
+        )                                                             AS is_banned,
+        CASE ur.role::text
+          WHEN 'admin'     THEN 2
+          WHEN 'moderator' THEN 1
+          ELSE 0
+        END                                                           AS role_sort
+      FROM public.profiles    AS p
+      JOIN auth.users          AS u  ON u.id       = p.id
+      LEFT JOIN public.user_roles  AS ur ON ur.user_id  = p.id
+      LEFT JOIN auth.identities    AS i
+        ON  i.user_id  = u.id
+        AND i.provider = 'discord'
+      WHERE
+        (
+          $1 = ''
+          OR p.username ILIKE '%' || $1 || '%'
+          OR p.id::text ILIKE '%' || $1 || '%'
+          OR ($9 AND u.email ILIKE '%' || $1 || '%')
+        )
+        AND (
+          $2 = ''
+          OR ($2 = 'user'      AND ur.role IS NULL)
+          OR ($2 = 'admin'     AND ur.role::text = 'admin')
+          OR ($2 = 'moderator' AND ur.role::text = 'moderator')
+        )
+        AND (
+          $3 = ''
+          OR (
+            $3 = 'banned'
+            AND COALESCE(p.banned, false)
+            AND (p.ban_end IS NULL OR p.ban_end > now())
+          )
+          OR (
+            $3 = 'active'
+            AND NOT (COALESCE(p.banned, false) AND (p.ban_end IS NULL OR p.ban_end > now()))
+          )
+        )
+        AND (
+          $4 = ''
+          OR u.raw_app_meta_data->'providers' @> to_jsonb($4::text)
+        )
+        AND (
+          $5 = ''
+          OR ($5 = 'steam'     AND p.steam_id IS NOT NULL)
+          OR ($5 = 'discord'   AND p.discord_id IS NOT NULL)
+          OR ($5 = 'patreon'   AND p.patreon_id IS NOT NULL)
+          OR ($5 = 'teamspeak' AND p.teamspeak_identities IS NOT NULL AND jsonb_array_length(p.teamspeak_identities) > 0)
+        )
+        AND (
+          $6 = ''
+          OR ($6 = 'true'  AND (COALESCE(p.supporter_lifetime, false) OR COALESCE(p.supporter_patreon, false)))
+          OR ($6 = 'false' AND NOT (COALESCE(p.supporter_lifetime, false) OR COALESCE(p.supporter_patreon, false)))
+        )
+        AND (
+          $7 = ''
+          OR p.country = $7
+        )
+    )
+    SELECT
+      b.user_id,
+      b.username,
+      b.country,
+      b.birthday,
+      b.created_at,
+      b.modified_at,
+      b.modified_by,
+      b.supporter_lifetime,
+      b.supporter_patreon,
+      b.badges,
+      b.patreon_id,
+      b.steam_id,
+      b.discord_id,
+      b.introduction,
+      b.markdown,
+      b.banned,
+      b.ban_reason,
+      b.ban_start,
+      b.ban_end,
+      b.last_seen,
+      b.website,
+      b.public,
+      b.rich_presence_enabled,
+      b.has_teamspeak,
+      b.role,
+      b.email,
+      b.is_confirmed,
+      b.discord_display_name,
+      b.auth_provider,
+      b.auth_providers,
+      b.platform_count,
+      b.is_supporter,
+      b.is_banned,
+      b.role_sort,
+      COUNT(*) OVER () AS total_count
+    FROM base AS b
+    ORDER BY $q$ || v_sort_expr || ' ' || p_sort_dir || $q$ NULLS LAST, b.created_at DESC
+    LIMIT  $10
+    OFFSET $11
+  $q$;
+
+  RETURN QUERY EXECUTE v_sql
+    USING
+      p_search,      -- $1
+      p_role,        -- $2
+      p_status,      -- $3
+      p_provider,    -- $4
+      p_platform,    -- $5
+      p_supporter,   -- $6
+      p_country,     -- $7
+      p_sort_col,    -- $8 (not used in query body, kept for positional alignment)
+      is_admin_user, -- $9
+      p_limit,       -- $10
+      p_offset;      -- $11
+END;
+$function$;

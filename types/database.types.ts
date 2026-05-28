@@ -7,6 +7,110 @@ export type Json =
   | Json[]
 
 export type Database = {
+  private: {
+    Tables: {
+      kvstore: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          key: string
+          modified_at: string | null
+          modified_by: string | null
+          type: Database["public"]["Enums"]["kvstore_type"]
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          key: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database["public"]["Enums"]["kvstore_type"]
+          value: Json
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          key?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database["public"]["Enums"]["kvstore_type"]
+          value?: Json
+        }
+        Relationships: []
+      }
+      teamspeak_tokens: {
+        Row: {
+          attempts: number
+          created_at: string
+          expires_at: string
+          server_id: string
+          token_hash: string
+          unique_id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          expires_at?: string
+          server_id: string
+          token_hash: string
+          unique_id: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          expires_at?: string
+          server_id?: string
+          token_hash?: string
+          unique_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      compute_count_badge_tier: {
+        Args: {
+          p_count: number
+          p_threshold_bronze: number
+          p_threshold_gold: number
+          p_threshold_shiny: number
+          p_threshold_silver: number
+        }
+        Returns: Database["public"]["Enums"]["badge_tier"]
+      }
+      queue_dispatch_worker_sync_lastfm: { Args: never; Returns: undefined }
+      queue_dispatch_worker_sync_steam: { Args: never; Returns: undefined }
+      queue_enqueue_worker_sync_lastfm: { Args: never; Returns: undefined }
+      queue_enqueue_worker_sync_steam: { Args: never; Returns: undefined }
+      remove_profile_badge: {
+        Args: { p_profile_id: string; p_slug: string }
+        Returns: undefined
+      }
+      upsert_profile_badge: {
+        Args: {
+          p_metadata?: Json
+          p_profile_id: string
+          p_progress?: number
+          p_slug: string
+          p_source: Database["public"]["Enums"]["badge_source"]
+          p_tier: Database["public"]["Enums"]["badge_tier"]
+        }
+        Returns: undefined
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       alerts: {
@@ -123,48 +227,31 @@ export type Database = {
             foreignKeyName: "complaints_context_gameserver_fkey"
             columns: ["context_gameserver"]
             isOneToOne: false
-            referencedRelation: "gameservers"
+            referencedRelation: "network_gameservers"
             referencedColumns: ["id"]
           },
         ]
       }
-      containers: {
+      data_steam_games: {
         Row: {
           created_at: string
-          healthy: boolean | null
           name: string
-          reported_at: string
-          running: boolean
-          server: number | null
-          started_at: string | null
+          steam_id: number
+          updated_at: string
         }
         Insert: {
           created_at?: string
-          healthy?: boolean | null
           name: string
-          reported_at: string
-          running: boolean
-          server?: number | null
-          started_at?: string | null
+          steam_id: number
+          updated_at?: string
         }
         Update: {
           created_at?: string
-          healthy?: boolean | null
           name?: string
-          reported_at?: string
-          running?: boolean
-          server?: number | null
-          started_at?: string | null
+          steam_id?: number
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "gameserver_containers_server_fkey"
-            columns: ["server"]
-            isOneToOne: false
-            referencedRelation: "servers"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       discussion_replies: {
         Row: {
@@ -498,7 +585,7 @@ export type Database = {
             foreignKeyName: "discussions_gameserver_id_fkey"
             columns: ["gameserver_id"]
             isOneToOne: false
-            referencedRelation: "gameservers"
+            referencedRelation: "network_gameservers"
             referencedColumns: ["id"]
           },
           {
@@ -548,6 +635,53 @@ export type Database = {
             columns: ["theme_id"]
             isOneToOne: false
             referencedRelation: "themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_rsvps: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_id: number
+          id: number
+          modified_at: string | null
+          modified_by: string | null
+          occurrence_date: string | null
+          rsvp: Database["public"]["Enums"]["events_rsvp_status"]
+          scope: Database["public"]["Enums"]["events_rsvp_scope"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_id: number
+          id?: number
+          modified_at?: string | null
+          modified_by?: string | null
+          occurrence_date?: string | null
+          rsvp: Database["public"]["Enums"]["events_rsvp_status"]
+          scope?: Database["public"]["Enums"]["events_rsvp_scope"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_id?: number
+          id?: number
+          modified_at?: string | null
+          modified_by?: string | null
+          occurrence_date?: string | null
+          rsvp?: Database["public"]["Enums"]["events_rsvp_status"]
+          scope?: Database["public"]["Enums"]["events_rsvp_scope"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]
@@ -641,54 +775,7 @@ export type Database = {
           },
         ]
       }
-      events_rsvps: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          event_id: number
-          id: number
-          modified_at: string | null
-          modified_by: string | null
-          occurrence_date: string | null
-          rsvp: Database["public"]["Enums"]["events_rsvp_status"]
-          scope: Database["public"]["Enums"]["events_rsvp_scope"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          event_id: number
-          id?: number
-          modified_at?: string | null
-          modified_by?: string | null
-          occurrence_date?: string | null
-          rsvp: Database["public"]["Enums"]["events_rsvp_status"]
-          scope?: Database["public"]["Enums"]["events_rsvp_scope"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          event_id?: number
-          id?: number
-          modified_at?: string | null
-          modified_by?: string | null
-          occurrence_date?: string | null
-          rsvp?: Database["public"]["Enums"]["events_rsvp_status"]
-          scope?: Database["public"]["Enums"]["events_rsvp_scope"]
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "events_rsvps_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      expenses: {
+      funding_expenses: {
         Row: {
           amount_cents: number
           created_at: string
@@ -730,160 +817,7 @@ export type Database = {
         }
         Relationships: []
       }
-      friends: {
-        Row: {
-          created_at: string
-          friend: string
-          friender: string
-          id: number
-        }
-        Insert: {
-          created_at?: string
-          friend: string
-          friender: string
-          id?: number
-        }
-        Update: {
-          created_at?: string
-          friend?: string
-          friender?: string
-          id?: number
-        }
-        Relationships: []
-      }
-      games: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: number
-          modified_at: string | null
-          modified_by: string | null
-          name: string | null
-          shorthand: string | null
-          steam_id: number | null
-          website: string | null
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: number
-          modified_at?: string | null
-          modified_by?: string | null
-          name?: string | null
-          shorthand?: string | null
-          steam_id?: number | null
-          website?: string | null
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: number
-          modified_at?: string | null
-          modified_by?: string | null
-          name?: string | null
-          shorthand?: string | null
-          steam_id?: number | null
-          website?: string | null
-        }
-        Relationships: []
-      }
-      gameservers: {
-        Row: {
-          addresses: string[] | null
-          administrator: string | null
-          container: string | null
-          created_at: string
-          created_by: string | null
-          description: string | null
-          game: number | null
-          id: number
-          markdown: string | null
-          modified_at: string | null
-          modified_by: string | null
-          name: string
-          port: string | null
-          region: Database["public"]["Enums"]["region"] | null
-        }
-        Insert: {
-          addresses?: string[] | null
-          administrator?: string | null
-          container?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          game?: number | null
-          id?: number
-          markdown?: string | null
-          modified_at?: string | null
-          modified_by?: string | null
-          name?: string
-          port?: string | null
-          region?: Database["public"]["Enums"]["region"] | null
-        }
-        Update: {
-          addresses?: string[] | null
-          administrator?: string | null
-          container?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          game?: number | null
-          id?: number
-          markdown?: string | null
-          modified_at?: string | null
-          modified_by?: string | null
-          name?: string
-          port?: string | null
-          region?: Database["public"]["Enums"]["region"] | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gameservers_container_fkey"
-            columns: ["container"]
-            isOneToOne: false
-            referencedRelation: "containers"
-            referencedColumns: ["name"]
-          },
-          {
-            foreignKeyName: "gameservers_game_fkey"
-            columns: ["game"]
-            isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      kvstore: {
-        Row: {
-          created_at: string
-          created_by: string
-          key: string
-          modified_at: string | null
-          modified_by: string | null
-          type: Database["public"]["Enums"]["kvstore_type"]
-          value: Json
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string
-          key: string
-          modified_at?: string | null
-          modified_by?: string | null
-          type?: Database["public"]["Enums"]["kvstore_type"]
-          value: Json
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          key?: string
-          modified_at?: string | null
-          modified_by?: string | null
-          type?: Database["public"]["Enums"]["kvstore_type"]
-          value?: Json
-        }
-        Relationships: []
-      }
-      monthly_funding: {
+      funding_history: {
         Row: {
           donation_count: number
           donation_lifetime_amount_cents: number
@@ -910,6 +844,122 @@ export type Database = {
           patreon_count?: number
           patreon_lifetime_amount_cents?: number
           patreon_month_amount_cents?: number
+        }
+        Relationships: []
+      }
+      games: {
+        Row: {
+          automated: boolean
+          color: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          discussion_topic_id: string | null
+          genre_tags: string[] | null
+          id: number
+          markdown: string | null
+          modified_at: string | null
+          modified_by: string | null
+          multiplayer_modes: string[] | null
+          name: string | null
+          release_date: string | null
+          shorthand: string | null
+          steam_id: number | null
+          website: string | null
+        }
+        Insert: {
+          automated?: boolean
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discussion_topic_id?: string | null
+          genre_tags?: string[] | null
+          id?: number
+          markdown?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
+          multiplayer_modes?: string[] | null
+          name?: string | null
+          release_date?: string | null
+          shorthand?: string | null
+          steam_id?: number | null
+          website?: string | null
+        }
+        Update: {
+          automated?: boolean
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discussion_topic_id?: string | null
+          genre_tags?: string[] | null
+          id?: number
+          markdown?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
+          multiplayer_modes?: string[] | null
+          name?: string | null
+          release_date?: string | null
+          shorthand?: string | null
+          steam_id?: number | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "games_discussion_topic_id_fkey"
+            columns: ["discussion_topic_id"]
+            isOneToOne: false
+            referencedRelation: "discussion_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kvstore: {
+        Row: {
+          created_at: string
+          key: string
+          modified_at: string | null
+          modified_by: string | null
+          type: Database["public"]["Enums"]["kvstore_type"]
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database["public"]["Enums"]["kvstore_type"]
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          type?: Database["public"]["Enums"]["kvstore_type"]
+          value?: Json
+        }
+        Relationships: []
+      }
+      metrics: {
+        Row: {
+          captured_at: string
+          data: Json
+          id: number
+          is_aggregated: boolean
+        }
+        Insert: {
+          captured_at?: string
+          data: Json
+          id?: number
+          is_aggregated?: boolean
+        }
+        Update: {
+          captured_at?: string
+          data?: Json
+          id?: number
+          is_aggregated?: boolean
         }
         Relationships: []
       }
@@ -940,48 +990,167 @@ export type Database = {
         }
         Relationships: []
       }
-      notifications: {
+      network_containers: {
         Row: {
-          body: string | null
           created_at: string
-          created_by: string | null
-          href: string | null
-          id: string
-          is_read: boolean
-          modified_at: string
-          modified_by: string | null
-          source: string | null
-          source_id: string | null
-          title: string
-          user_id: string
+          healthy: boolean | null
+          name: string
+          reported_at: string
+          running: boolean
+          server: number | null
+          started_at: string | null
         }
         Insert: {
-          body?: string | null
           created_at?: string
-          created_by?: string | null
-          href?: string | null
-          id?: string
-          is_read?: boolean
-          modified_at?: string
-          modified_by?: string | null
-          source?: string | null
-          source_id?: string | null
-          title: string
-          user_id: string
+          healthy?: boolean | null
+          name: string
+          reported_at: string
+          running: boolean
+          server?: number | null
+          started_at?: string | null
         }
         Update: {
-          body?: string | null
+          created_at?: string
+          healthy?: boolean | null
+          name?: string
+          reported_at?: string
+          running?: boolean
+          server?: number | null
+          started_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gameserver_containers_server_fkey"
+            columns: ["server"]
+            isOneToOne: false
+            referencedRelation: "network_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_gameservers: {
+        Row: {
+          addresses: string[] | null
+          administrator: string | null
+          container: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          game: number | null
+          id: number
+          markdown: string | null
+          modified_at: string | null
+          modified_by: string | null
+          name: string
+          port: string | null
+          query_port: number | null
+          query_protocol:
+            | Database["public"]["Enums"]["game_query_protocol"]
+            | null
+          region: Database["public"]["Enums"]["region"] | null
+        }
+        Insert: {
+          addresses?: string[] | null
+          administrator?: string | null
+          container?: string | null
           created_at?: string
           created_by?: string | null
-          href?: string | null
-          id?: string
-          is_read?: boolean
-          modified_at?: string
+          description?: string | null
+          game?: number | null
+          id?: number
+          markdown?: string | null
+          modified_at?: string | null
           modified_by?: string | null
-          source?: string | null
-          source_id?: string | null
-          title?: string
-          user_id?: string
+          name?: string
+          port?: string | null
+          query_port?: number | null
+          query_protocol?:
+            | Database["public"]["Enums"]["game_query_protocol"]
+            | null
+          region?: Database["public"]["Enums"]["region"] | null
+        }
+        Update: {
+          addresses?: string[] | null
+          administrator?: string | null
+          container?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          game?: number | null
+          id?: number
+          markdown?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
+          name?: string
+          port?: string | null
+          query_port?: number | null
+          query_protocol?:
+            | Database["public"]["Enums"]["game_query_protocol"]
+            | null
+          region?: Database["public"]["Enums"]["region"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gameservers_container_fkey"
+            columns: ["container"]
+            isOneToOne: false
+            referencedRelation: "network_containers"
+            referencedColumns: ["name"]
+          },
+          {
+            foreignKeyName: "gameservers_game_fkey"
+            columns: ["game"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_servers: {
+        Row: {
+          accessible: boolean
+          active: boolean
+          address: string
+          created_at: string
+          created_by: string | null
+          docker_control: boolean
+          docker_control_port: number | null
+          docker_control_secure: boolean
+          docker_control_subdomain: string | null
+          id: number
+          last_accessed: string | null
+          modified_at: string | null
+          modified_by: string | null
+        }
+        Insert: {
+          accessible?: boolean
+          active: boolean
+          address: string
+          created_at?: string
+          created_by?: string | null
+          docker_control?: boolean
+          docker_control_port?: number | null
+          docker_control_secure?: boolean
+          docker_control_subdomain?: string | null
+          id?: number
+          last_accessed?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
+        }
+        Update: {
+          accessible?: boolean
+          active?: boolean
+          address?: string
+          created_at?: string
+          created_by?: string | null
+          docker_control?: boolean
+          docker_control_port?: number | null
+          docker_control_secure?: boolean
+          docker_control_subdomain?: string | null
+          id?: number
+          last_accessed?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
         }
         Relationships: []
       }
@@ -1038,6 +1207,53 @@ export type Database = {
           },
         ]
       }
+      presences_lastfm: {
+        Row: {
+          album_art_url: string | null
+          album_name: string | null
+          artist_name: string | null
+          lastfm_username: string
+          now_playing: boolean
+          played_at: string | null
+          profile_id: string
+          track_name: string | null
+          track_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          album_art_url?: string | null
+          album_name?: string | null
+          artist_name?: string | null
+          lastfm_username: string
+          now_playing?: boolean
+          played_at?: string | null
+          profile_id: string
+          track_name?: string | null
+          track_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          album_art_url?: string | null
+          album_name?: string | null
+          artist_name?: string | null
+          lastfm_username?: string
+          now_playing?: boolean
+          played_at?: string | null
+          profile_id?: string
+          track_name?: string | null
+          track_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presences_lastfm_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       presences_steam: {
         Row: {
           current_app_id: number | null
@@ -1045,6 +1261,7 @@ export type Database = {
           details: Json | null
           fetched_at: string | null
           id: string
+          last_app_ended_at: string | null
           last_app_id: number | null
           last_app_name: string | null
           last_online_at: string | null
@@ -1060,6 +1277,7 @@ export type Database = {
           details?: Json | null
           fetched_at?: string | null
           id?: string
+          last_app_ended_at?: string | null
           last_app_id?: number | null
           last_app_name?: string | null
           last_online_at?: string | null
@@ -1075,6 +1293,7 @@ export type Database = {
           details?: Json | null
           fetched_at?: string | null
           id?: string
+          last_app_ended_at?: string | null
           last_app_id?: number | null
           last_app_name?: string | null
           last_online_at?: string | null
@@ -1141,11 +1360,230 @@ export type Database = {
           },
         ]
       }
+      profile_badge_definitions: {
+        Row: {
+          created_at: string
+          is_active: boolean
+          kind: Database["public"]["Enums"]["badge_source"]
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          is_active?: boolean
+          kind: Database["public"]["Enums"]["badge_source"]
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["badge_source"]
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      profile_badges: {
+        Row: {
+          earned_at: string
+          metadata: Json
+          profile_id: string
+          progress: number | null
+          slug: string
+          source: Database["public"]["Enums"]["badge_source"]
+          tier: Database["public"]["Enums"]["badge_tier"]
+          updated_at: string
+        }
+        Insert: {
+          earned_at?: string
+          metadata?: Json
+          profile_id: string
+          progress?: number | null
+          slug: string
+          source: Database["public"]["Enums"]["badge_source"]
+          tier?: Database["public"]["Enums"]["badge_tier"]
+          updated_at?: string
+        }
+        Update: {
+          earned_at?: string
+          metadata?: Json
+          profile_id?: string
+          progress?: number | null
+          slug?: string
+          source?: Database["public"]["Enums"]["badge_source"]
+          tier?: Database["public"]["Enums"]["badge_tier"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_badges_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_badges_slug_fkey"
+            columns: ["slug"]
+            isOneToOne: false
+            referencedRelation: "profile_badge_definitions"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
+      profile_friends: {
+        Row: {
+          created_at: string
+          friend: string
+          friender: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          friend: string
+          friender: string
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          friend?: string
+          friender?: string
+          id?: number
+        }
+        Relationships: []
+      }
+      profile_point_claims: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          email: string
+          id: number
+          points: number
+          source: Database["public"]["Enums"]["point_source"]
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          email: string
+          id?: never
+          points: number
+          source: Database["public"]["Enums"]["point_source"]
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          email?: string
+          id?: never
+          points?: number
+          source?: Database["public"]["Enums"]["point_source"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_point_claims_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_point_history: {
+        Row: {
+          amount: number
+          created_at: string
+          id: number
+          profile_id: string
+          profile_trade: string | null
+          source: Database["public"]["Enums"]["point_source"]
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: number
+          profile_id: string
+          profile_trade?: string | null
+          source: Database["public"]["Enums"]["point_source"]
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: number
+          profile_id?: string
+          profile_trade?: string | null
+          source?: Database["public"]["Enums"]["point_source"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_point_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_point_history_profile_trade_fkey"
+            columns: ["profile_trade"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_points: {
+        Row: {
+          created_at: string
+          modified_at: string | null
+          points_birthday: number
+          points_donations: number
+          points_loyalty: number
+          points_patreon: number
+          points_spent: number
+          points_total: number | null
+          profile_id: string
+          public: boolean
+        }
+        Insert: {
+          created_at?: string
+          modified_at?: string | null
+          points_birthday?: number
+          points_donations?: number
+          points_loyalty?: number
+          points_patreon?: number
+          points_spent?: number
+          points_total?: number | null
+          profile_id: string
+          public?: boolean
+        }
+        Update: {
+          created_at?: string
+          modified_at?: string | null
+          points_birthday?: number
+          points_donations?: number
+          points_loyalty?: number
+          points_patreon?: number
+          points_spent?: number
+          points_total?: number | null
+          profile_id?: string
+          public?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_points_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           agreed_content_rules: boolean
           avatar_extension: string | null
-          badges: Database["public"]["Enums"]["profile_badge"][]
           ban_end: string | null
           ban_reason: string | null
           ban_start: string | null
@@ -1161,6 +1599,7 @@ export type Database = {
           id: string
           introduction: string | null
           last_seen: string
+          lastfm_username: string | null
           markdown: string | null
           modified_at: string | null
           modified_by: string | null
@@ -1179,7 +1618,6 @@ export type Database = {
         Insert: {
           agreed_content_rules?: boolean
           avatar_extension?: string | null
-          badges?: Database["public"]["Enums"]["profile_badge"][]
           ban_end?: string | null
           ban_reason?: string | null
           ban_start?: string | null
@@ -1195,6 +1633,7 @@ export type Database = {
           id: string
           introduction?: string | null
           last_seen?: string
+          lastfm_username?: string | null
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
@@ -1213,7 +1652,6 @@ export type Database = {
         Update: {
           agreed_content_rules?: boolean
           avatar_extension?: string | null
-          badges?: Database["public"]["Enums"]["profile_badge"][]
           ban_end?: string | null
           ban_reason?: string | null
           ban_start?: string | null
@@ -1229,6 +1667,7 @@ export type Database = {
           id?: string
           introduction?: string | null
           last_seen?: string
+          lastfm_username?: string | null
           markdown?: string | null
           modified_at?: string | null
           modified_by?: string | null
@@ -1405,75 +1844,6 @@ export type Database = {
         }
         Relationships: []
       }
-      servers: {
-        Row: {
-          accessible: boolean
-          active: boolean
-          address: string
-          created_at: string
-          created_by: string | null
-          docker_control: boolean
-          docker_control_port: number | null
-          docker_control_secure: boolean
-          docker_control_subdomain: string | null
-          id: number
-          last_accessed: string | null
-          modified_at: string | null
-          modified_by: string | null
-        }
-        Insert: {
-          accessible?: boolean
-          active: boolean
-          address: string
-          created_at?: string
-          created_by?: string | null
-          docker_control?: boolean
-          docker_control_port?: number | null
-          docker_control_secure?: boolean
-          docker_control_subdomain?: string | null
-          id?: number
-          last_accessed?: string | null
-          modified_at?: string | null
-          modified_by?: string | null
-        }
-        Update: {
-          accessible?: boolean
-          active?: boolean
-          address?: string
-          created_at?: string
-          created_by?: string | null
-          docker_control?: boolean
-          docker_control_port?: number | null
-          docker_control_secure?: boolean
-          docker_control_subdomain?: string | null
-          id?: number
-          last_accessed?: string | null
-          modified_at?: string | null
-          modified_by?: string | null
-        }
-        Relationships: []
-      }
-      settings: {
-        Row: {
-          created_at: string
-          data: Json
-          id: string
-          modified_at: string | null
-        }
-        Insert: {
-          created_at?: string
-          data?: Json
-          id?: string
-          modified_at?: string | null
-        }
-        Update: {
-          created_at?: string
-          data?: Json
-          id?: string
-          modified_at?: string | null
-        }
-        Relationships: []
-      }
       themes: {
         Row: {
           created_at: string
@@ -1489,6 +1859,8 @@ export type Database = {
           dark_bg_green_raised: string
           dark_bg_lowered: string
           dark_bg_medium: string
+          dark_bg_purple_lowered: string
+          dark_bg_purple_raised: string
           dark_bg_raised: string
           dark_bg_red_lowered: string
           dark_bg_red_raised: string
@@ -1508,6 +1880,7 @@ export type Database = {
           dark_text_light: string
           dark_text_lighter: string
           dark_text_lightest: string
+          dark_text_purple: string
           dark_text_red: string
           dark_text_yellow: string
           description: string
@@ -1525,6 +1898,8 @@ export type Database = {
           light_bg_green_raised: string
           light_bg_lowered: string
           light_bg_medium: string
+          light_bg_purple_lowered: string
+          light_bg_purple_raised: string
           light_bg_raised: string
           light_bg_red_lowered: string
           light_bg_red_raised: string
@@ -1544,6 +1919,7 @@ export type Database = {
           light_text_light: string
           light_text_lighter: string
           light_text_lightest: string
+          light_text_purple: string
           light_text_red: string
           light_text_yellow: string
           modified_at: string | null
@@ -1568,6 +1944,8 @@ export type Database = {
           dark_bg_green_raised: string
           dark_bg_lowered: string
           dark_bg_medium: string
+          dark_bg_purple_lowered?: string
+          dark_bg_purple_raised?: string
           dark_bg_raised: string
           dark_bg_red_lowered: string
           dark_bg_red_raised: string
@@ -1587,6 +1965,7 @@ export type Database = {
           dark_text_light: string
           dark_text_lighter: string
           dark_text_lightest: string
+          dark_text_purple?: string
           dark_text_red: string
           dark_text_yellow: string
           description?: string
@@ -1604,6 +1983,8 @@ export type Database = {
           light_bg_green_raised: string
           light_bg_lowered: string
           light_bg_medium: string
+          light_bg_purple_lowered?: string
+          light_bg_purple_raised?: string
           light_bg_raised: string
           light_bg_red_lowered: string
           light_bg_red_raised: string
@@ -1623,6 +2004,7 @@ export type Database = {
           light_text_light: string
           light_text_lighter: string
           light_text_lightest: string
+          light_text_purple?: string
           light_text_red: string
           light_text_yellow: string
           modified_at?: string | null
@@ -1647,6 +2029,8 @@ export type Database = {
           dark_bg_green_raised?: string
           dark_bg_lowered?: string
           dark_bg_medium?: string
+          dark_bg_purple_lowered?: string
+          dark_bg_purple_raised?: string
           dark_bg_raised?: string
           dark_bg_red_lowered?: string
           dark_bg_red_raised?: string
@@ -1666,6 +2050,7 @@ export type Database = {
           dark_text_light?: string
           dark_text_lighter?: string
           dark_text_lightest?: string
+          dark_text_purple?: string
           dark_text_red?: string
           dark_text_yellow?: string
           description?: string
@@ -1683,6 +2068,8 @@ export type Database = {
           light_bg_green_raised?: string
           light_bg_lowered?: string
           light_bg_medium?: string
+          light_bg_purple_lowered?: string
+          light_bg_purple_raised?: string
           light_bg_raised?: string
           light_bg_red_lowered?: string
           light_bg_red_raised?: string
@@ -1702,6 +2089,7 @@ export type Database = {
           light_text_light?: string
           light_text_lighter?: string
           light_text_lightest?: string
+          light_text_purple?: string
           light_text_red?: string
           light_text_yellow?: string
           modified_at?: string | null
@@ -1722,6 +2110,51 @@ export type Database = {
           },
         ]
       }
+      user_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          created_by: string | null
+          href: string | null
+          id: string
+          is_read: boolean
+          modified_at: string
+          modified_by: string | null
+          source: string | null
+          source_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          href?: string | null
+          id?: string
+          is_read?: boolean
+          modified_at?: string
+          modified_by?: string | null
+          source?: string | null
+          source_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          href?: string | null
+          id?: string
+          is_read?: boolean
+          modified_at?: string
+          modified_by?: string | null
+          source?: string | null
+          source_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: number
@@ -1737,6 +2170,27 @@ export type Database = {
           id?: number
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          modified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          modified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          modified_at?: string | null
         }
         Relationships: []
       }
@@ -1850,6 +2304,19 @@ export type Database = {
         Args: { target_user: string }
         Returns: undefined
       }
+      admin_remove_profile_badge: {
+        Args: { p_profile_id: string; p_slug: string }
+        Returns: undefined
+      }
+      admin_set_profile_badge: {
+        Args: {
+          p_profile_id: string
+          p_slug: string
+          p_tier?: Database["public"]["Enums"]["badge_tier"]
+        }
+        Returns: undefined
+      }
+      array_elements_match_slug: { Args: { arr: string[] }; Returns: boolean }
       audit_fields_unchanged: {
         Args: { created_at: string; created_by: string }
         Returns: boolean
@@ -1860,7 +2327,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      claim_profile_points: { Args: never; Returns: number }
       contains_html_tags: { Args: { input_text: string }; Returns: boolean }
+      cron_metrics_daily_rollup: { Args: never; Returns: undefined }
+      cron_points_birthday_award: { Args: never; Returns: undefined }
+      cron_points_loyalty_award: { Args: never; Returns: undefined }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2000,6 +2471,8 @@ export type Database = {
           }
       get_admin_events_paginated: {
         Args: {
+          p_game_ids?: number[]
+          p_hide_recurring?: boolean
           p_is_official?: boolean
           p_limit?: number
           p_offset?: number
@@ -2035,6 +2508,27 @@ export type Database = {
           total_count: number
         }[]
       }
+      get_admin_games_paginated: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_sort_col?: string
+          p_sort_dir?: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          id: number
+          modified_at: string
+          modified_by: string
+          name: string
+          shorthand: string
+          steam_id: number
+          total_count: number
+          website: string
+        }[]
+      }
       get_admin_referendums_paginated: {
         Args: {
           p_limit?: number
@@ -2063,6 +2557,22 @@ export type Database = {
           vote_count: number
         }[]
       }
+      get_admin_steam_games_paginated: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_sort_col?: string
+          p_sort_dir?: string
+        }
+        Returns: {
+          created_at: string
+          name: string
+          steam_id: number
+          total_count: number
+          updated_at: string
+        }[]
+      }
       get_admin_themes_paginated: {
         Args: {
           p_limit?: number
@@ -2077,7 +2587,10 @@ export type Database = {
           custom_css: string
           dark_accent: string
           dark_bg_lowered: string
+          dark_bg_purple_lowered: string
+          dark_bg_purple_raised: string
           dark_text_blue: string
+          dark_text_purple: string
           dark_text_red: string
           dark_text_yellow: string
           description: string
@@ -2087,7 +2600,10 @@ export type Database = {
           is_unmaintained: boolean
           light_accent: string
           light_bg_lowered: string
+          light_bg_purple_lowered: string
+          light_bg_purple_raised: string
           light_text_blue: string
+          light_text_purple: string
           light_text_red: string
           light_text_yellow: string
           modified_at: string
@@ -2098,6 +2614,12 @@ export type Database = {
           total_count: number
           transitions: number
           widening: number
+        }[]
+      }
+      get_admin_user_countries: {
+        Args: never
+        Returns: {
+          country: string
         }[]
       }
       get_admin_user_overview: {
@@ -2113,18 +2635,21 @@ export type Database = {
       }
       get_admin_users_paginated: {
         Args: {
+          p_country?: string
           p_limit?: number
           p_offset?: number
+          p_platform?: string
+          p_provider?: string
           p_role?: string
           p_search?: string
           p_sort_col?: string
           p_sort_dir?: string
           p_status?: string
+          p_supporter?: string
         }
         Returns: {
           auth_provider: string
           auth_providers: string[]
-          badges: Database["public"]["Enums"]["profile_badge"][]
           ban_end: string
           ban_reason: string
           ban_start: string
@@ -2135,6 +2660,7 @@ export type Database = {
           discord_display_name: string
           discord_id: string
           email: string
+          has_teamspeak: boolean
           introduction: string
           is_banned: boolean
           is_confirmed: boolean
@@ -2146,6 +2672,7 @@ export type Database = {
           patreon_id: string
           platform_count: number
           public: boolean
+          rich_presence_enabled: boolean
           role: string
           role_sort: number
           steam_id: string
@@ -2262,6 +2789,8 @@ export type Database = {
           cursor_time: string
           page_index: number
           predecessor_count: number
+          prev_cursor_id: string
+          prev_cursor_time: string
         }[]
       }
       get_discussion_topic_breadcrumbs: {
@@ -2277,13 +2806,22 @@ export type Database = {
         Args: { p_occurrence_id: number; p_user_id: string }
         Returns: Database["public"]["Enums"]["events_rsvp_status"]
       }
-      get_effective_rsvps_for_occurrence: {
-        Args: { p_event_id: number }
-        Returns: {
-          rsvp: Database["public"]["Enums"]["events_rsvp_status"]
-          user_id: string
-        }[]
-      }
+      get_effective_rsvps_for_occurrence:
+        | {
+            Args: { p_event_id: number }
+            Returns: {
+              rsvp: Database["public"]["Enums"]["events_rsvp_status"]
+              user_id: string
+            }[]
+          }
+        | {
+            Args: { p_event_id: number; p_occurrence_date?: string }
+            Returns: {
+              rsvp: Database["public"]["Enums"]["events_rsvp_status"]
+              scope: Database["public"]["Enums"]["events_rsvp_scope"]
+              user_id: string
+            }[]
+          }
       get_forum_activity_feed: {
         Args: {
           p_created_by?: string
@@ -2303,14 +2841,71 @@ export type Database = {
           title: string
         }[]
       }
+      get_forum_activity_feed_count_since: {
+        Args: { p_exclude?: string; p_since: string }
+        Returns: number
+      }
       get_forum_activity_feed_today_count: {
         Args: { p_exclude?: string }
         Returns: number
+      }
+      get_game_playtime_minutes: {
+        Args: {
+          p_game_id: number
+          p_interval_mins?: number
+          p_since: string
+          p_until: string
+        }
+        Returns: number
+      }
+      get_metrics_bucketed: {
+        Args: { p_bucket_interval: string; p_since: string; p_until: string }
+        Returns: {
+          captured_at: string
+          discussions_new_replies: number
+          discussions_new_total: number
+          discussions_replies: number
+          discussions_total: number
+          gameservers_by_server: Json
+          gameservers_players: number
+          teamspeak_by_server: Json
+          teamspeak_online: number
+          users_by_game: Json
+          users_by_steam_game: Json
+          users_online: number
+          users_total: number
+        }[]
       }
       get_past_events_count:
         | { Args: never; Returns: number }
         | {
             Args: { p_is_official?: boolean; p_search?: string }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_hide_recurring?: boolean
+              p_is_official?: boolean
+              p_search?: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_game_id?: number
+              p_hide_recurring?: boolean
+              p_is_official?: boolean
+              p_search?: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_game_ids?: number[]
+              p_hide_recurring?: boolean
+              p_is_official?: boolean
+              p_search?: string
+            }
             Returns: number
           }
       get_past_events_paginated:
@@ -2389,6 +2984,131 @@ export type Database = {
               isSetofReturn: true
             }
           }
+        | {
+            Args: {
+              p_hide_recurring?: boolean
+              p_is_official?: boolean
+              p_limit?: number
+              p_offset?: number
+              p_search?: string
+            }
+            Returns: {
+              created_at: string
+              created_by: string | null
+              date: string
+              description: string
+              discord_event_id: string | null
+              discord_last_synced_at: string | null
+              duration_minutes: number | null
+              games: number[] | null
+              google_community_event_id: string | null
+              google_community_last_synced_at: string | null
+              google_event_id: string | null
+              google_last_synced_at: string | null
+              id: number
+              is_official: boolean
+              link: string | null
+              location: string | null
+              markdown: string | null
+              modified_at: string | null
+              modified_by: string | null
+              note: string | null
+              recurrence_exception: boolean
+              recurrence_parent_id: number | null
+              recurrence_rule: string | null
+              title: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "events"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_game_id?: number
+              p_hide_recurring?: boolean
+              p_is_official?: boolean
+              p_limit?: number
+              p_offset?: number
+              p_search?: string
+            }
+            Returns: {
+              created_at: string
+              created_by: string | null
+              date: string
+              description: string
+              discord_event_id: string | null
+              discord_last_synced_at: string | null
+              duration_minutes: number | null
+              games: number[] | null
+              google_community_event_id: string | null
+              google_community_last_synced_at: string | null
+              google_event_id: string | null
+              google_last_synced_at: string | null
+              id: number
+              is_official: boolean
+              link: string | null
+              location: string | null
+              markdown: string | null
+              modified_at: string | null
+              modified_by: string | null
+              note: string | null
+              recurrence_exception: boolean
+              recurrence_parent_id: number | null
+              recurrence_rule: string | null
+              title: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "events"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_game_ids?: number[]
+              p_hide_recurring?: boolean
+              p_is_official?: boolean
+              p_limit?: number
+              p_offset?: number
+              p_search?: string
+            }
+            Returns: {
+              created_at: string
+              created_by: string | null
+              date: string
+              description: string
+              discord_event_id: string | null
+              discord_last_synced_at: string | null
+              duration_minutes: number | null
+              games: number[] | null
+              google_community_event_id: string | null
+              google_community_last_synced_at: string | null
+              google_event_id: string | null
+              google_last_synced_at: string | null
+              id: number
+              is_official: boolean
+              link: string | null
+              location: string | null
+              markdown: string | null
+              modified_at: string | null
+              modified_by: string | null
+              note: string | null
+              recurrence_exception: boolean
+              recurrence_parent_id: number | null
+              recurrence_rule: string | null
+              title: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "events"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
       get_private_config: { Args: { config_key: string }; Returns: Json }
       get_random_forum_discussion: {
         Args: never
@@ -2396,6 +3116,14 @@ export type Database = {
           id: string
           slug: string
           title: string
+        }[]
+      }
+      get_storage_bucket_metrics: {
+        Args: { p_bucket_id: string }
+        Returns: {
+          total_files: number
+          total_images: number
+          total_size: number
         }[]
       }
       get_user_emails: {
@@ -2420,9 +3148,55 @@ export type Database = {
         Args: { target_discussion_id: string }
         Returns: undefined
       }
+      is_aal2_if_mfa: { Args: never; Returns: boolean }
       is_not_banned: { Args: never; Returns: boolean }
       is_owner: { Args: { record_user_id: string }; Returns: boolean }
       is_profile_owner: { Args: { profile_id: string }; Returns: boolean }
+      is_valid_hex_color: { Args: { value: string }; Returns: boolean }
+      list_storage_objects:
+        | {
+            Args: {
+              p_bucket_id: string
+              p_limit?: number
+              p_offset?: number
+              p_prefix?: string
+              p_sort_col?: string
+              p_sort_order?: string
+            }
+            Returns: {
+              bucket_id: string
+              created_at: string
+              id: string
+              last_accessed_at: string
+              mimetype: string
+              name: string
+              size: number
+              total_count: number
+              updated_at: string
+            }[]
+          }
+        | {
+            Args: {
+              p_bucket_id: string
+              p_limit?: number
+              p_offset?: number
+              p_prefix?: string
+              p_search?: string
+              p_sort_col?: string
+              p_sort_order?: string
+            }
+            Returns: {
+              bucket_id: string
+              created_at: string
+              id: string
+              last_accessed_at: string
+              mimetype: string
+              name: string
+              size: number
+              total_count: number
+              updated_at: string
+            }[]
+          }
       normalize_mentions: { Args: { input_text: string }; Returns: string }
       pgmq_delete: {
         Args: { msg_id: number; queue_name: string }
@@ -2439,6 +3213,26 @@ export type Database = {
         }
       }
       pgmq_send: { Args: { msg: Json; queue_name: string }; Returns: number }
+      recompute_all_profile_badges: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
+      recompute_chatterbox_badge: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
+      recompute_forum_regular_badge: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
+      recompute_one_of_us_badge: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
+      recompute_party_animal_badge: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
       search_global:
         | {
             Args: { p_limit?: number; p_query: string; p_types?: string[] }
@@ -2502,10 +3296,6 @@ export type Database = {
         | "complaints.delete"
         | "complaints.read"
         | "complaints.update"
-        | "containers.create"
-        | "containers.delete"
-        | "containers.read"
-        | "containers.update"
         | "discussion_topics.create"
         | "discussion_topics.read"
         | "discussion_topics.update"
@@ -2518,10 +3308,6 @@ export type Database = {
         | "events.delete"
         | "events.read"
         | "events.update"
-        | "expenses.create"
-        | "expenses.delete"
-        | "expenses.read"
-        | "expenses.update"
         | "funding.create"
         | "funding.delete"
         | "funding.read"
@@ -2530,10 +3316,6 @@ export type Database = {
         | "games.delete"
         | "games.read"
         | "games.update"
-        | "gameservers.create"
-        | "gameservers.delete"
-        | "gameservers.read"
-        | "gameservers.update"
         | "kvstore.create"
         | "kvstore.read"
         | "kvstore.update"
@@ -2557,10 +3339,6 @@ export type Database = {
         | "roles.delete"
         | "roles.read"
         | "roles.update"
-        | "servers.create"
-        | "servers.delete"
-        | "servers.read"
-        | "servers.update"
         | "users.create"
         | "users.delete"
         | "users.read"
@@ -2570,10 +3348,25 @@ export type Database = {
         | "themes.read"
         | "themes.update"
         | "themes.delete"
+        | "profile_points.read"
+        | "network.create"
+        | "network.read"
+        | "network.update"
+        | "network.delete"
       app_role: "admin" | "moderator"
+      badge_source: "manual" | "flag" | "computed"
+      badge_tier: "bronze" | "silver" | "gold" | "shiny"
       events_rsvp_scope: "occurrence" | "series"
       events_rsvp_status: "yes" | "no" | "tentative"
+      game_query_protocol: "source" | "minecraft"
       kvstore_type: "NUMBER" | "BOOLEAN" | "STRING" | "JSON"
+      point_source:
+        | "donation"
+        | "patreon"
+        | "loyalty"
+        | "spent"
+        | "trade"
+        | "birthday"
       presence_steam_status:
         | "offline"
         | "online"
@@ -2582,7 +3375,6 @@ export type Database = {
         | "snooze"
         | "looking_to_trade"
         | "looking_to_play"
-      profile_badge: "founder" | "earlybird" | "builder" | "host"
       region: "eu" | "na" | "all"
     }
     CompositeTypes: {
@@ -2709,6 +3501,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  private: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_permission: [
@@ -2720,10 +3515,6 @@ export const Constants = {
         "complaints.delete",
         "complaints.read",
         "complaints.update",
-        "containers.create",
-        "containers.delete",
-        "containers.read",
-        "containers.update",
         "discussion_topics.create",
         "discussion_topics.read",
         "discussion_topics.update",
@@ -2736,10 +3527,6 @@ export const Constants = {
         "events.delete",
         "events.read",
         "events.update",
-        "expenses.create",
-        "expenses.delete",
-        "expenses.read",
-        "expenses.update",
         "funding.create",
         "funding.delete",
         "funding.read",
@@ -2748,10 +3535,6 @@ export const Constants = {
         "games.delete",
         "games.read",
         "games.update",
-        "gameservers.create",
-        "gameservers.delete",
-        "gameservers.read",
-        "gameservers.update",
         "kvstore.create",
         "kvstore.read",
         "kvstore.update",
@@ -2775,10 +3558,6 @@ export const Constants = {
         "roles.delete",
         "roles.read",
         "roles.update",
-        "servers.create",
-        "servers.delete",
-        "servers.read",
-        "servers.update",
         "users.create",
         "users.delete",
         "users.read",
@@ -2788,11 +3567,27 @@ export const Constants = {
         "themes.read",
         "themes.update",
         "themes.delete",
+        "profile_points.read",
+        "network.create",
+        "network.read",
+        "network.update",
+        "network.delete",
       ],
       app_role: ["admin", "moderator"],
+      badge_source: ["manual", "flag", "computed"],
+      badge_tier: ["bronze", "silver", "gold", "shiny"],
       events_rsvp_scope: ["occurrence", "series"],
       events_rsvp_status: ["yes", "no", "tentative"],
+      game_query_protocol: ["source", "minecraft"],
       kvstore_type: ["NUMBER", "BOOLEAN", "STRING", "JSON"],
+      point_source: [
+        "donation",
+        "patreon",
+        "loyalty",
+        "spent",
+        "trade",
+        "birthday",
+      ],
       presence_steam_status: [
         "offline",
         "online",
@@ -2802,7 +3597,6 @@ export const Constants = {
         "looking_to_trade",
         "looking_to_play",
       ],
-      profile_badge: ["founder", "earlybird", "builder", "host"],
       region: ["eu", "na", "all"],
     },
   },

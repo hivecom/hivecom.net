@@ -28,14 +28,14 @@ export function useDataExpenses() {
   const supabase = useSupabaseClient<Database>()
 
   // Pre-populate synchronously so fundingProgress computes correctly on first render.
-  const _initialCached = cache.get<Tables<'expenses'>[]>(CACHE_KEY)
-  const expenses = ref<Tables<'expenses'>[]>(_initialCached ?? [])
+  const _initialCached = cache.get<Tables<'funding_expenses'>[]>(CACHE_KEY)
+  const expenses = ref<Tables<'funding_expenses'>[]>(_initialCached ?? [])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
   async function fetch(force = false): Promise<void> {
     if (!force) {
-      const cached = cache.get<Tables<'expenses'>[]>(CACHE_KEY)
+      const cached = cache.get<Tables<'funding_expenses'>[]>(CACHE_KEY)
       if (cached !== null) {
         expenses.value = cached
         return
@@ -47,7 +47,7 @@ export function useDataExpenses() {
 
     try {
       const { data, error: fetchError } = await supabase
-        .from('expenses')
+        .from('funding_expenses')
         .select('*')
         .order('started_at', { ascending: false })
 

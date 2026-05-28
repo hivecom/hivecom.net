@@ -10,7 +10,7 @@ import VoteHeader from '@/components/Votes/VoteHeader.vue'
 import VoteLoadingSkeleton from '@/components/Votes/VoteLoadingSkeleton.vue'
 import VoteResults from '@/components/Votes/VoteResults.vue'
 import { useCachedFetch } from '@/composables/useCache'
-import { useDataUser } from '@/composables/useDataUser'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useRealtimeReferendumVotes } from '@/composables/useRealtimeReferendumVotes'
 
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -49,13 +49,12 @@ const isOwnReferendum = computed(() =>
   !!userId.value && referendum.value?.created_by === userId.value,
 )
 
-const { user: currentUserData } = useDataUser(userId, { includeRole: true, includeAvatar: false })
+const { isAdminOrMod: isPrivileged } = useEffectiveRole()
 
 const canManage = computed(() => {
   if (!referendum.value || !userId.value)
     return false
-  const isPrivileged = currentUserData.value?.role === 'admin' || currentUserData.value?.role === 'moderator'
-  return isOwnReferendum.value || isPrivileged
+  return isOwnReferendum.value || isPrivileged.value
 })
 
 // Page-level delete

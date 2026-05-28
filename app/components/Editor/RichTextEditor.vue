@@ -2,7 +2,6 @@
 import type { JSONContent } from '@tiptap/core'
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
-import { useSupabaseClient } from '#imports'
 import { Button, ButtonGroup, Dropdown, DropdownItem, Modal, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import { Extension } from '@tiptap/core'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
@@ -22,11 +21,12 @@ import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { marked } from 'marked'
 import { computed, nextTick, ref, useId, watch } from 'vue'
+import { onBeforeRouteLeave, useSupabaseClient, useSupabaseUser } from '#imports'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, stripImageMetadata } from '@/lib/storage'
+import { allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, compressImageToFit, convertImageToWebP, stripImageMetadata } from '@/lib/storage'
 import { BUCKET_SIZE_LIMITS, formatBytes, FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import EditorMathModal from './EditorMathModal.vue'
 import EditorTableMenu from './EditorTableMenu.vue'
@@ -53,6 +53,14 @@ const {
 const emit = defineEmits<{
   (e: 'submit'): void
 }>()
+
+// Extend the stock Image node to add loading="lazy" and decoding="async" so
+// images in the editor view defer decode and don't block the main thread.
+const LazyImage = Image.extend({
+  renderHTML({ HTMLAttributes }) {
+    return ['div', { 'data-img-node': '' }, ['img', { loading: 'lazy', decoding: 'async', onerror: 'this.classList.add(\'img-error\')', ...HTMLAttributes }]]
+  },
+})
 
 const ENCODE_AMP_RE = /&/g
 const ENCODE_LT_RE = /</g
@@ -125,16 +133,12 @@ const content = defineModel<string>()
 // switches to the plain-text textarea we decode those entities so they see
 // "<foo>" instead of "&lt;foo&gt;".  Any edits they make are re-escaped before
 // being written back into the content model, preserving the invariant.
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const minHeightPlain = computed(() => {
   const cssValue = Number(minHeight.slice(0, -2))
   //                vv The height & margin of the now static menu
   return `${cssValue - 28}px`
 })
-
-// When switching to plain mode, the textarea starts at 2x the rich editor height.
-const plainTextStartHeight = ref<string | null>(null)
 
 function encodeHtmlEntities(str: string): string {
   return str.replace(ENCODE_AMP_RE, '&amp;').replace(ENCODE_LT_RE, '&lt;').replace(ENCODE_GT_RE, '&gt;')
@@ -146,16 +150,27 @@ function decodeHtmlEntities(str: string): string {
 
 // Decoded version of `content` used exclusively by the plain-text textarea.
 const plainTextContent = ref('')
+const plainTextarea = useTemplateRef<HTMLTextAreaElement>('plain-textarea')
+
+function resizePlainTextarea() {
+  const el = plainTextarea.value
+  if (!el)
+    return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}
 
 function handlePlainTextInput(value: string) {
   plainTextContent.value = value
   content.value = encodeHtmlEntities(value)
+  nextTick(resizePlainTextarea)
 }
 const isNsfw = defineModel<boolean>('nsfw', { default: false })
 
 const resolvedMediaBucketId = computed(() => props.mediaBucketId ?? FORUMS_BUCKET_ID)
 
 const supabase = useSupabaseClient<Database>()
+const user = useSupabaseUser()
 
 const { agreed: fetchedContentRulesAgreement, markAgreed } = useContentRulesAgreement()
 
@@ -195,6 +210,13 @@ const youtubeModalOpen = ref(false)
 
 // Video modal state (insert by URL)
 const videoModalOpen = ref(false)
+
+// Pending blobs: blobUrl -> File. Plain Map (not ref) - only mutated imperatively.
+const pendingBlobs = new Map<string, File>()
+// Per-blob upload progress 0-100. ref so template can react.
+const uploadProgress = ref(new Map<string, number>())
+// True only while flushPendingUploads is running - drives shimmer animation.
+const isUploading = ref(false)
 
 // A custom marked instance that intercepts inline HTML tokens so that raw tags
 // typed or pasted into the editor are treated as literal text rather than being
@@ -270,9 +292,11 @@ const editor = useEditor({
   content: content.value,
   extensions: [
     StarterKit,
+    // @tiptap/markdown vendors its own copy of marked; the two instances have
+    // incompatible internal types even though their runtime API is identical.
     // eslint-disable-next-line ts/no-explicit-any
     Markdown.configure({ marked: noHtmlMarked as any }),
-    Image,
+    LazyImage,
     ImageGroup,
     // Ctrl+Enter to submit
     Extension.create({
@@ -639,6 +663,14 @@ const editor = useEditor({
       if (nextSrcs.has(src))
         continue
 
+      if (src.startsWith('blob:')) {
+        URL.revokeObjectURL(src)
+        pendingBlobs.delete(src)
+        uploadProgress.value.delete(src)
+        uploadProgress.value = new Map(uploadProgress.value)
+        continue
+      }
+
       const storagePath = extractStoragePath(src, resolvedMediaBucketId.value)
       if (!storagePath)
         continue
@@ -696,6 +728,14 @@ function getEditorMarkdown(): string {
   return stripped.trim() === '' ? '' : stripped
 }
 
+const hasPendingUploads = computed(() => pendingBlobs.size > 0)
+const avgUploadProgress = computed(() => {
+  const vals = [...uploadProgress.value.values()]
+  if (vals.length === 0)
+    return 0
+  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
+})
+
 // Upload file into the bucket and set the editor node URL.
 //
 // Strategy: insert a blob URL placeholder immediately so the user sees a
@@ -705,92 +745,218 @@ function getEditorMarkdown(): string {
 //
 // The blob URL is intentionally NOT a Supabase storage URL, so extractStoragePath
 // returns null for it and the onTransaction cleanup handler leaves it alone.
-function handleFileUpload(files: File[] | null, pos?: number) {
-  if (!files)
+// Background conversion/compression for a single file. Runs AFTER the
+// placeholder has been inserted so the user sees an immediate preview, then
+// swaps the placeholder's blob src to the optimised bytes when ready.
+async function processPendingFile(originalFile: File, currentBlobUrl: string, isVideo: boolean) {
+  // Always convert raster images to WebP - it's a format/size optimisation
+  // that benefits every upload regardless of the metadata-stripping preference.
+  // Exceptions: GIF (canvas round-trip drops animation), WebP (already optimal),
+  // and video (handled separately).
+  const shouldConvert = !isVideo
+    && originalFile.type !== 'image/gif'
+    && originalFile.type !== 'image/webp'
+
+  const shouldStrip = !isVideo
+    && !shouldConvert
+    && originalFile.type !== 'image/webp'
+    && props.stripImageMetadata !== false
+    && settings.value.strip_image_metadata !== false
+
+  let file: File
+  if (shouldConvert) {
+    try {
+      file = await convertImageToWebP(originalFile, 0.85)
+    }
+    catch {
+      pushToast('Image conversion failed', {
+        description: 'Could not convert to WebP - uploading original format.',
+      })
+      file = originalFile
+    }
+  }
+  else if (shouldStrip) {
+    file = await stripImageMetadata(originalFile)
+  }
+  else {
+    file = originalFile
+  }
+
+  const sizeLimit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
+  if (!isVideo && file.type !== 'image/gif' && file.size > sizeLimit) {
+    try {
+      const compressed = await compressImageToFit(file, sizeLimit)
+      if (compressed.size < file.size)
+        file = compressed
+
+      if (file.size > sizeLimit) {
+        pushToast('Image still exceeds upload limit', {
+          description: `Compressed to ${formatBytes(file.size)}, limit is ${formatBytes(sizeLimit)}. Upload may fail.`,
+        })
+      }
+    }
+    catch {
+      pushToast('Image compression failed', {
+        description: 'Uploading original - it may exceed the size limit.',
+      })
+    }
+  }
+
+  // No transformation - placeholder already points at the right bytes.
+  if (file === originalFile)
     return
 
-  files.forEach(async (originalFile) => {
+  // Find the placeholder node (it may have been deleted while we were
+  // converting). If found, swap its src to the optimised blob URL.
+  const newBlobUrl = URL.createObjectURL(file)
+  let swapped = false
+  if (editor.value) {
+    editor.value.state.doc.descendants((node, nodePos) => {
+      if (swapped)
+        return false
+      const isMedia = node.type.name === 'image' || node.type.name === 'video'
+      if (isMedia && node.attrs.src === currentBlobUrl) {
+        editor.value!
+          .chain()
+          .command(({ tr }) => {
+            tr.setNodeAttribute(nodePos, 'src', newBlobUrl)
+            return true
+          })
+          .run()
+        swapped = true
+        return false
+      }
+    })
+  }
+
+  if (swapped) {
+    pendingBlobs.set(newBlobUrl, file)
+    pendingBlobs.delete(currentBlobUrl)
+    const progress = uploadProgress.value.get(currentBlobUrl) ?? 0
+    uploadProgress.value.set(newBlobUrl, progress)
+    uploadProgress.value.delete(currentBlobUrl)
+  }
+  else {
+    // Placeholder gone (user deleted it) - drop the converted blob too.
+    URL.revokeObjectURL(newBlobUrl)
+    pendingBlobs.delete(currentBlobUrl)
+    uploadProgress.value.delete(currentBlobUrl)
+  }
+  uploadProgress.value = new Map(uploadProgress.value)
+  URL.revokeObjectURL(currentBlobUrl)
+}
+
+function handleFileUpload(files: File[] | null, pos?: number) {
+  if (!files || files.length === 0)
+    return
+
+  // Two-phase upload to keep the UI responsive on slow devices:
+  //
+  // Phase 1 (sync): insert a placeholder for every file using a blob URL from
+  // the ORIGINAL file so the user sees a preview immediately, even when image
+  // conversion takes seconds on mobile. Inserting all placeholders synchronously
+  // also fixes a multi-image "glitching" bug where parallel async conversion
+  // would scramble insertion order and stack placeholders at the same position.
+  //
+  // Phase 2 (async, fire-and-forget): run conversion/compression for each file
+  // in the background and swap the placeholder's blob src to the optimised
+  // bytes when ready. flushPendingUploads (on submit) reads from pendingBlobs,
+  // which processPendingFile keeps up to date.
+  let nextPos = pos ?? editor.value?.state.selection.anchor ?? 0
+  const queue: Array<{ originalFile: File, blobUrl: string, isVideo: boolean }> = []
+
+  for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+    const originalFile = files[fileIndex]!
+    const isLast = fileIndex === files.length - 1
+
     if (!editor.value)
       return
 
     const isVideo = allowedVideoTypes.includes(originalFile.type)
     const nodeType = isVideo ? 'video' : 'image'
 
-    // Capture the insert position synchronously before any awaits so that
-    // concurrent uploads (e.g. a data file upload that calls .focus()) cannot
-    // shift the cursor between now and when we actually insert the placeholder.
-    const insertPos = pos ?? editor.value.state.selection.anchor
-
-    // Strip EXIF/metadata from images unless the caller explicitly opts out via
-    // prop, or the user has disabled it in their settings.
-    const shouldStrip = !isVideo
-      && props.stripImageMetadata !== false
-      && settings.value.strip_image_metadata !== false
-    const file = shouldStrip
-      ? await stripImageMetadata(originalFile)
-      : originalFile
-
-    // Create a local object URL so we can insert a placeholder immediately.
-    const blobUrl = URL.createObjectURL(file)
+    // Use the original file's blob URL as the immediate placeholder so we don't
+    // block on conversion. processPendingFile swaps this for the optimised blob.
+    const blobUrl = URL.createObjectURL(originalFile)
 
     // Insert the placeholder without selecting it - we don't want the bubble
-    // menu popping up mid-upload, and we don't want the node highlighted.
-    // CSS targets img[src^="blob:"] / video[src^="blob:"] to show a spinner.
-    editor.value
+    // menu popping up mid-upload. CSS targets img[src^="blob:"] / video[src^="blob:"]
+    // to show a shimmer during the actual storage upload. Only focus on the
+    // final insertion to avoid soft-keyboard flicker on mobile.
+    const chain = editor.value
       .chain()
-      .insertContentAt(insertPos, {
+      .insertContentAt(nextPos, {
         type: nodeType,
         attrs: { src: blobUrl },
       }, { updateSelection: false })
-      .focus()
-      .run()
 
-    const format = file.type.split('/')[1]
-    const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${format}`
+    if (isLast)
+      chain.focus().run()
+    else
+      chain.run()
 
-    const { error } = await supabase.storage
-      .from(resolvedMediaBucketId.value)
-      .upload(fileUrl, file, { contentType: file.type })
+    // image / video nodes have nodeSize 1; advance so the next iteration
+    // inserts after this placeholder rather than on top of it.
+    nextPos += 1
 
-    // Revoke the object URL now that we're done with it either way.
-    URL.revokeObjectURL(blobUrl)
+    // Register as pending immediately - this gates the submit button via
+    // hasPendingUploads. processPendingFile will replace the file ref with
+    // the optimised bytes when ready.
+    pendingBlobs.set(blobUrl, originalFile)
+    uploadProgress.value.set(blobUrl, 0)
 
-    if (error) {
-      // Remove the placeholder node - find it by its blob src.
-      const editorRef = editor.value
-      if (editorRef) {
-        editorRef.state.doc.descendants((node, nodePos) => {
-          if (node.type.name === nodeType && node.attrs.src === blobUrl) {
-            editorRef
-              .chain()
-              .deleteRange({ from: nodePos, to: nodePos + node.nodeSize })
-              .run()
-            return false
-          }
-        })
-      }
-      const limit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
-      const sizeInfo = `file is ${formatBytes(file.size)}, limit is ${formatBytes(limit)}`
-      pushToast('Error uploading media', {
-        description: `${error.message} (${sizeInfo})`,
-      })
-    }
-    else {
-      const { data } = supabase.storage
+    queue.push({ originalFile, blobUrl, isVideo })
+  }
+
+  uploadProgress.value = new Map(uploadProgress.value)
+
+  // Fire-and-forget conversion. Each call independently updates pendingBlobs
+  // and the editor node when its optimised bytes are ready.
+  for (const item of queue)
+    void processPendingFile(item.originalFile, item.blobUrl, item.isVideo)
+}
+
+// Converts the FileList from @input event into a File[]
+
+async function flushPendingUploads(): Promise<boolean> {
+  if (pendingBlobs.size === 0)
+    return true
+
+  isUploading.value = true
+  const entries = [...pendingBlobs.entries()]
+  const results = await Promise.all(
+    entries.map(async ([blobUrl, file]) => {
+      const format = file.type.split('/')[1]
+      const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${format}`
+
+      const { error } = await supabase.storage
         .from(resolvedMediaBucketId.value)
-        .getPublicUrl(fileUrl)
+        .upload(fileUrl, file, { contentType: file.type, metadata: { uploadedBy: user.value?.id ?? 'anonymous' } })
 
-      // Swap the blob placeholder src for the real public URL in-place.
-      // Walk the doc to find the node by its current blob src since the
-      // position may have shifted due to other edits during the upload.
+      if (error) {
+        const limit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
+        pushToast('Error uploading media', {
+          description: `${error.message} (file is ${formatBytes(file.size)}, limit is ${formatBytes(limit)})`,
+        })
+        return false
+      }
+
+      // Set progress to 100 on success (no onUploadProgress in this storage-js version)
+      uploadProgress.value.set(blobUrl, 100)
+      uploadProgress.value = new Map(uploadProgress.value)
+
+      const { data } = supabase.storage.from(resolvedMediaBucketId.value).getPublicUrl(fileUrl)
+
+      // Swap blob -> public URL in doc
       const editorRef = editor.value
       if (editorRef) {
         editorRef.state.doc.descendants((node, nodePos) => {
-          if (node.type.name === nodeType && node.attrs.src === blobUrl) {
+          const isMedia = node.type.name === 'image' || node.type.name === 'video'
+          if (isMedia && node.attrs.src === blobUrl) {
             editorRef
               .chain()
               .setNodeSelection(nodePos)
-              .updateAttributes(nodeType, { src: data.publicUrl })
+              .updateAttributes(node.type.name, { src: data.publicUrl })
               .setTextSelection(nodePos + node.nodeSize)
               .focus()
               .run()
@@ -798,14 +964,45 @@ function handleFileUpload(files: File[] | null, pos?: number) {
           }
         })
       }
-    }
-  })
+
+      URL.revokeObjectURL(blobUrl)
+      pendingBlobs.delete(blobUrl)
+      uploadProgress.value.delete(blobUrl)
+      uploadProgress.value = new Map(uploadProgress.value)
+      return true
+    }),
+  )
+
+  isUploading.value = false
+  return results.every(Boolean)
 }
 
-// Converts the FileList from @input event into a File[]
+function handleReplacePendingBlob(oldBlobUrl: string, newFile: File) {
+  if (!editor.value)
+    return
+  const newBlobUrl = URL.createObjectURL(newFile)
+
+  editor.value.state.doc.descendants((node, nodePos) => {
+    if (node.type.name === 'image' && node.attrs.src === oldBlobUrl) {
+      editor.value!
+        .chain()
+        .setNodeSelection(nodePos)
+        .updateAttributes('image', { src: newBlobUrl })
+        .focus()
+        .run()
+      return false
+    }
+  })
+
+  pendingBlobs.set(newBlobUrl, newFile)
+  pendingBlobs.delete(oldBlobUrl)
+  uploadProgress.value.set(newBlobUrl, 0)
+  uploadProgress.value.delete(oldBlobUrl)
+  uploadProgress.value = new Map(uploadProgress.value)
+  URL.revokeObjectURL(oldBlobUrl)
+}
 
 const fileInput = useTemplateRef('file-input')
-const plainTextarea = useTemplateRef<HTMLTextAreaElement>('plain-textarea')
 
 const DATA_FILE_EXT_RE = /\.(?:csv|json)$/i
 
@@ -831,7 +1028,7 @@ async function handleDataFileUpload(file: File) {
 
   const { error } = await supabase.storage
     .from(resolvedMediaBucketId.value)
-    .upload(fileUrl, file, { contentType: file.type })
+    .upload(fileUrl, file, { contentType: file.type, metadata: { uploadedBy: user.value?.id ?? 'anonymous' } })
 
   if (error) {
     pushToast('Error uploading file', { description: error.message })
@@ -1046,13 +1243,9 @@ async function handleEditorModeSwitch() {
     // Decode stored entities so the textarea shows readable "<foo>" rather than
     // the "&lt;foo&gt;" that the content model carries internally.
     plainTextContent.value = decodeHtmlEntities(content.value ?? '')
-    // Start the textarea at 2x the configured minHeight so the mode switch
-    // feels intentional rather than claustrophobic.
-    const cssValue = Number(minHeight.slice(0, -2))
-    plainTextStartHeight.value = `${cssValue * 2}px`
+    nextTick(resizePlainTextarea)
   }
   else if (newMode === 'rich') {
-    plainTextStartHeight.value = null
     // The model always stores the escaped form (&lt;/&gt;) for the DB/renderer.
     // Tiptap receives the decoded form (raw angle brackets) - the noHtmlMarked
     // inline interceptor converts them to plain text tokens so they are never
@@ -1105,6 +1298,8 @@ function handleExpandedSubmit() {
   expandedOpen.value = false
 }
 
+let submitted = false
+
 async function handleSubmit() {
   if (!content.value || content.value.trim().length === 0)
     return
@@ -1112,6 +1307,12 @@ async function handleSubmit() {
   isSubmitting.value = true
 
   try {
+    if (pendingBlobs.size > 0) {
+      const ok = await flushPendingUploads()
+      if (!ok)
+        return
+    }
+
     if (editorMode.value === 'plain') {
       // Ensure the final value in the model is properly escaped - the textarea
       // binds to plainTextContent (decoded) so we must re-encode before submit.
@@ -1122,12 +1323,19 @@ async function handleSubmit() {
       content.value = await resolvePlainTextMentions(content.value, supabase)
     }
 
+    submitted = true
     emit('submit')
   }
   finally {
     isSubmitting.value = false
   }
 }
+
+onBeforeRouteLeave(() => {
+  if (!editorIsEmpty.value && !submitted)
+    // eslint-disable-next-line no-alert
+    return window.confirm('You have unsent content. Leave anyway?')
+})
 </script>
 
 <template>
@@ -1138,13 +1346,18 @@ async function handleSubmit() {
     </p>
 
     <!-- Media context menu (image + video) -->
-    <RichTextMediaMenu v-if="editor && props.mediaContext" :editor :bucket-id="resolvedMediaBucketId" :media-context="props.mediaContext" />
+    <RichTextMediaMenu v-if="editor && props.mediaContext" :editor :bucket-id="resolvedMediaBucketId" :media-context="props.mediaContext" @replace-pending-blob="handleReplacePendingBlob" />
 
     <!-- Table context menu (add/remove rows & columns) -->
     <EditorTableMenu v-if="editor && editorMode === 'rich'" :editor />
 
     <!-- Main editor instance -->
-    <div class="relative editor-host" :inert="expandedOpen || isSubmitting || props.loading">
+    <div
+      class="relative editor-host"
+      :class="{ 'is-uploading': isUploading,
+                'is-submitting': isSubmitting || props.loading }"
+      :inert="expandedOpen || isSubmitting || props.loading"
+    >
       <!-- Content agreement -->
       <div v-if="shouldShowContentRulesOverlay" class="editor-overlay">
         <p>{{ props.contentRulesOverlayText || 'Before being able to add content, you must agree our content rules' }}</p>
@@ -1183,6 +1396,9 @@ async function handleSubmit() {
       <!-- Editor content & controls -->
       <div class="editor-container" :class="{ 'is-plain': editorMode === 'plain' }">
         <!-- Toolbar: floating bubble in rich mode, static bar in plain mode -->
+        <div v-if="hasPendingUploads" class="upload-progress-bar">
+          <div class="upload-progress-bar__fill" :style="{ width: `${avgUploadProgress}%` }" />
+        </div>
         <RichTextSelectionMenu v-if="editor" :editor :plain-text="editorMode === 'plain'" :textarea-el="editorMode === 'plain' ? plainTextarea ?? null : null" />
 
         <div v-show="editorMode === 'rich'" class="editor-rich-wrapper">
@@ -1193,7 +1409,6 @@ async function handleSubmit() {
           v-show="editorMode === 'plain'"
           ref="plain-textarea"
           class="plain-textarea"
-          :rows="1"
           :value="plainTextContent"
           :placeholder="placeholder"
           @input="handlePlainTextInput(($event.target as HTMLTextAreaElement).value)"
@@ -1237,7 +1452,7 @@ async function handleSubmit() {
                 <template #icon>
                   <Icon :size="18" name="ph:video" />
                 </template>
-                Insert video
+                Embed video
               </DropdownItem>
               <DropdownItem @click="mathModalEditPos = null; mathModalType = 'inline'; mathModalLatex = ''; mathModalOpen = true">
                 <template #icon>
@@ -1390,13 +1605,19 @@ async function handleSubmit() {
   .plain-textarea {
     display: block;
     width: 100%;
-    resize: vertical;
+    resize: none;
     font-family: inherit;
     font-size: var(--font-size-m);
     color: var(--color-text);
     // Textarea always removes a bit of its min-height so that floating menu does not cause layout shift
     min-height: v-bind(minHeightPlain) !important;
     height: unset;
+  }
+
+  .is-submitting {
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity var(--transition-slow);
   }
 
   .editor-overlay {
@@ -1529,8 +1750,10 @@ async function handleSubmit() {
     // CSS uses those attributes to lay images out as inline-block rows.
     // Gap between items is 8px. Width calc subtracts the gap share per item.
 
-    // Base styles for any grouped image.
-    .ProseMirror > img[data-img-run-total] {
+    // Base styles for any grouped image or video.
+    .ProseMirror > img[data-img-run-total],
+    .ProseMirror > div[data-video-embed][data-img-run-total],
+    .ProseMirror > div[data-img-node][data-img-run-total] {
       display: inline-block;
       vertical-align: top;
       max-height: 240px;
@@ -1538,33 +1761,89 @@ async function handleSubmit() {
       aspect-ratio: 16 / 9;
       object-fit: cover;
       border-radius: var(--border-radius-s);
+      margin-top: 0;
       margin-bottom: var(--space-xs);
     }
 
-    // Run of 2
-    // Run of 2: each image gets ~50% minus half the gap.
-    .ProseMirror > img[data-img-run-total='2'] {
+    // Video: inner element covers the tile.
+    .ProseMirror > div[data-video-embed][data-img-run-total] {
+      display: inline-block;
+      vertical-align: top;
+      overflow: hidden;
+      position: relative;
+
+      video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+    }
+
+    // Image node wrapper in gallery: inner img covers the tile.
+    .ProseMirror > div[data-img-node][data-img-run-total] {
+      display: inline-block;
+      vertical-align: top;
+      overflow: hidden;
+      position: relative;
+
+      img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+    }
+
+    // Image node wrapper solo (no gallery): transparent passthrough.
+    .ProseMirror > div[data-img-node]:not([data-img-run-total]) {
+      display: block;
+
+      img {
+        display: block;
+        max-width: 100%;
+        height: auto;
+      }
+    }
+
+    // Run of 2: each item gets ~50% minus half the gap.
+    .ProseMirror > img[data-img-run-total='2'],
+    .ProseMirror > div[data-video-embed][data-img-run-total='2'],
+    .ProseMirror > div[data-img-node][data-img-run-total='2'] {
       width: calc(50% - 4px);
     }
 
-    .ProseMirror > img[data-img-run-total='2'][data-img-run-index='0'] {
+    .ProseMirror > img[data-img-run-total='2'][data-img-run-index='0'],
+    .ProseMirror > div[data-video-embed][data-img-run-total='2'][data-img-run-index='0'],
+    .ProseMirror > div[data-img-node][data-img-run-total='2'][data-img-run-index='0'] {
       margin-right: 8px;
     }
 
-    // Run of 3: each image gets ~33% minus a third of the total gap.
-    .ProseMirror > img[data-img-run-total='3'] {
+    // Run of 3: each item gets ~33% minus a third of the total gap.
+    .ProseMirror > img[data-img-run-total='3'],
+    .ProseMirror > div[data-video-embed][data-img-run-total='3'],
+    .ProseMirror > div[data-img-node][data-img-run-total='3'] {
       width: calc(33.333% - 6px);
     }
 
     .ProseMirror > img[data-img-run-total='3'][data-img-run-index='0'],
-    .ProseMirror > img[data-img-run-total='3'][data-img-run-index='1'] {
+    .ProseMirror > img[data-img-run-total='3'][data-img-run-index='1'],
+    .ProseMirror > div[data-video-embed][data-img-run-total='3'][data-img-run-index='0'],
+    .ProseMirror > div[data-video-embed][data-img-run-total='3'][data-img-run-index='1'],
+    .ProseMirror > div[data-img-node][data-img-run-total='3'][data-img-run-index='0'],
+    .ProseMirror > div[data-img-node][data-img-run-total='3'][data-img-run-index='1'] {
       margin-right: 8px;
     }
 
     // On mobile, collapse grouped images to full-width single images and cap height.
     @media (max-width: 600px) {
       // Solo images: fill width, natural height, no cropping.
-      .ProseMirror > img:not([data-img-run-total]) {
+      .ProseMirror > img:not([data-img-run-total]),
+      .ProseMirror > div[data-img-node]:not([data-img-run-total]) img {
         width: 100%;
         height: auto;
         max-height: none;
@@ -1572,8 +1851,10 @@ async function handleSubmit() {
         object-fit: unset;
       }
 
-      // Grouped images: stack vertically, cap height to keep them compact.
-      .ProseMirror > img[data-img-run-total] {
+      // Grouped images and videos: stack vertically, cap height to keep them compact.
+      .ProseMirror > img[data-img-run-total],
+      .ProseMirror > div[data-video-embed][data-img-run-total],
+      .ProseMirror > div[data-img-node][data-img-run-total] {
         display: block;
         width: 100%;
         max-width: 100%;
@@ -1588,6 +1869,24 @@ async function handleSubmit() {
       display: flex;
       justify-content: flex-end;
       gap: var(--space-xs);
+    }
+
+    .upload-progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--color-bg-raised);
+      border-radius: 0 0 var(--border-radius-s) var(--border-radius-s);
+      overflow: hidden;
+      z-index: var(--z-active);
+
+      &__fill {
+        height: 100%;
+        background: var(--color-accent);
+        transition: width 0.2s ease;
+      }
     }
   }
 
@@ -1620,8 +1919,52 @@ async function handleSubmit() {
     border-color: var(--color-border-strong);
   }
 
-  img.ProseMirror-selectednode {
+  img.ProseMirror-selectednode,
+  div[data-img-node].ProseMirror-selectednode {
     outline: 2px solid var(--color-text);
+  }
+
+  // Missing/broken image placeholder - noise at 25% opacity with label.
+  .ProseMirror > div[data-img-node]:has(img.img-error) {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-bg-raised);
+    border-radius: var(--border-radius-s);
+
+    &:not([data-img-run-total]) {
+      aspect-ratio: 16 / 9;
+      width: 100%;
+    }
+
+    img {
+      display: none;
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url('/landing/noise.gif');
+      background-size: 120px;
+      background-repeat: repeat;
+      opacity: 0.05;
+      z-index: 1;
+    }
+
+    &::after {
+      content: 'Missing or deleted media';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: var(--font-size-xs);
+      color: var(--color-text);
+      background: var(--color-bg-medium);
+      padding: var(--space-xxs) var(--space-xs);
+      border-radius: var(--border-radius-s);
+      white-space: nowrap;
+      z-index: 2;
+    }
   }
 
   // Uploading placeholder states.
@@ -1641,12 +1984,12 @@ async function handleSubmit() {
     }
   }
 
-  .ProseMirror img[src^='blob:'] {
+  .is-uploading .ProseMirror img[src^='blob:'] {
     animation: upload-shimmer 1.4s ease-in-out infinite;
     border-radius: var(--border-radius-s);
   }
 
-  .ProseMirror div[data-video-embed]:has(video[src^='blob:']) {
+  .is-uploading .ProseMirror div[data-video-embed]:has(video[src^='blob:']) {
     position: relative;
 
     &::after {
@@ -1695,7 +2038,7 @@ async function handleSubmit() {
   }
 
   // Video embeds (:::video directive / uploaded videos)
-  .ProseMirror div[data-video-embed] {
+  .ProseMirror div[data-video-embed]:not([data-img-run-total]) {
     display: flex;
     justify-content: center;
     margin: var(--space-s) 0;

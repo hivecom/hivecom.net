@@ -215,7 +215,7 @@ const monthDayInputValue = computed({
 const untilDateLabel = computed(() => {
   if (!untilDate.value)
     return 'No end date'
-  return untilDate.value.toLocaleDateString('en-US', {
+  return untilDate.value.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

@@ -7,8 +7,7 @@ const OPENING_DIRECTIVE_RE = /^[a-z]+\[/i
 
 // ---------------------------------------------------------------------------
 // Named color palette
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // The canonical set of allowed color names. Each name maps to a CSS custom
 // property defined in app/assets/index.scss so that the actual hue adapts
 // automatically to the active theme (light / dark / future themes).
@@ -49,10 +48,9 @@ function isValidColorName(value: string): value is TextColorName {
 
 // ---------------------------------------------------------------------------
 // TipTap Mark extension
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 declare module '@tiptap/core' {
-  // eslint-disable-next-line unused-imports/no-unused-vars
+
   interface Commands<ReturnType> {
     textColor: {
       /** Apply a named palette color to the selected text, e.g. "red". */
@@ -76,8 +74,7 @@ export const TextColor = Mark.create({
 
   // ---------------------------------------------------------------------------
   // Attributes
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   addAttributes() {
     return {
       color: {
@@ -113,8 +110,7 @@ export const TextColor = Mark.create({
 
   // ---------------------------------------------------------------------------
   // HTML (ProseMirror DOM) parsing & rendering
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   parseHTML() {
     return [
       {
@@ -149,8 +145,7 @@ export const TextColor = Mark.create({
 
   // ---------------------------------------------------------------------------
   // Commands
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   addCommands() {
     return {
       setTextColor:
@@ -172,8 +167,7 @@ export const TextColor = Mark.create({
   // Markdown serialization
   // Serializes to :::color[name]text::: - triple-colon inline directive
   // syntax, consistent with other custom directives in the markdown dialect.
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   renderMarkdown(node: JSONContent, h: MarkdownRendererHelpers, _ctx: RenderContext): string {
     // eslint-disable-next-line ts/no-unsafe-assignment
     const color = (node.attrs)?.color
@@ -185,8 +179,7 @@ export const TextColor = Mark.create({
 
   // ---------------------------------------------------------------------------
   // Markdown tokenizer - teaches marked.js to recognise :::color[name]text:::
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   markdownTokenizer: {
     name: 'textColor',
     level: 'inline',

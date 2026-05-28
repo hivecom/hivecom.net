@@ -4,28 +4,27 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Avatar, Badge, Button, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import { defineAsyncComponent } from 'vue'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import ModalDeleteReply from '@/components/Discussions/ModalDeleteReply.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
-import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import BannerDisplay from '@/components/Profile/Banner/BannerDisplay.vue'
 import ReactionsList from '@/components/Reactions/ReactionsList.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
-import BadgeCircle from '@/components/Shared/BadgeCircle.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import SharedUserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import UserRole from '@/components/Shared/UserRole.vue'
-import { useBadgeDiscussionReplyCount } from '@/composables/useBadgeDiscussionReplyCount'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useDataUserDiscussionCount } from '@/composables/useDataUserDiscussionCount'
+import { useDataUserReplyCount } from '@/composables/useDataUserReplyCount'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { extractMentionIds } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
@@ -40,6 +39,8 @@ const emit = defineEmits<{
   interact: []
   openReplies: []
 }>()
+
+const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
 dayjs.extend(relativeTime)
 
@@ -56,6 +57,11 @@ const discussionCache = useDiscussionCache()
 const currentUser = useSupabaseUser()
 
 const { user: currentUserData } = useDataUser(userId, { includeRole: true })
+const { isAdmin, role: effectiveRole } = useEffectiveRole()
+
+const effectiveUserData = computed(() =>
+  currentUserData.value ? { ...currentUserData.value, role: effectiveRole.value } : null,
+)
 
 const isMobile = useBreakpoint('<s')
 
@@ -65,7 +71,7 @@ const canBypassLock = inject(DISCUSSION_KEYS.canBypassLock, ref(false))
 
 const authorId = computed(() => data.value.created_by ?? null)
 const { count: discussionCount } = useDataUserDiscussionCount(authorId)
-const { count: replyCount } = useBadgeDiscussionReplyCount(authorId)
+const { count: replyCount } = useDataUserReplyCount(authorId)
 
 const { user } = useDataUser(data.value.created_by!, {
   includeRole: true,
@@ -191,8 +197,6 @@ const loadingDeletion = ref(false)
 const showDeleteModal = ref(false)
 const showForceDeleteModal = ref(false)
 const loadingForceDeletion = ref(false)
-
-const isAdmin = computed(() => currentUserData.value?.role === 'admin')
 
 function handleDeletion() {
   loadingDeletion.value = true
@@ -335,9 +339,9 @@ const editedAtFormatted = computed(() => {
         <SharedUserAvatar :user-id="data.created_by" size="l" linked />
         <Flex wrap gap="xxs" y-center x-center>
           <UserName :user-id="data.created_by" />
-          <BadgeCircle v-if="data.created_by === discussion?.created_by">
+          <Badge v-if="data.created_by === discussion?.created_by" circle size="s">
             <span class="text-xxs text-color-light">OP</span>
-          </BadgeCircle>
+          </Badge>
           <UserRole :user-id="data.created_by" />
         </Flex>
       </Flex>
@@ -398,7 +402,7 @@ const editedAtFormatted = computed(() => {
           <DiscussionActionsToolbar
             :data="data"
             :user-id="userId"
-            :current-user-data="currentUserData"
+            :current-user-data="effectiveUserData"
             :can-bypass-lock="canBypassLock"
             :can-mark-offtopic="canMarkOfftopic"
             :offtopic-loading="offtopicLoading"
@@ -435,12 +439,12 @@ const editedAtFormatted = computed(() => {
               <SharedUserAvatar :user-id="data.created_by" size="s" linked class="discussion-forum__mobile-avatar" />
               <Flex wrap gap="xxs" y-center>
                 <UserName :user-id="data.created_by" size="s" />
-                <BadgeCircle v-if="data.created_by === discussion?.created_by">
+                <Badge v-if="data.created_by === discussion?.created_by" circle>
                   <span class="text-xxs text-color-light">OP</span>
-                </BadgeCircle>
-                <TinyBadge v-if="shouldDisplayRole" :variant="roleVariant">
+                </Badge>
+                <Badge v-if="shouldDisplayRole" :variant="roleVariant" size="s">
                   {{ roleDisplay }}
-                </TinyBadge>
+                </Badge>
               </Flex>
             </Flex>
           </UserPreviewHover>
@@ -448,18 +452,18 @@ const editedAtFormatted = computed(() => {
             <SharedUserAvatar :user-id="data.created_by" size="s" linked class="discussion-forum__mobile-avatar" />
             <Flex wrap gap="xxs" y-center>
               <UserName :user-id="data.created_by" size="s" show-preview />
-              <BadgeCircle v-if="data.created_by === discussion?.created_by">
+              <Badge v-if="data.created_by === discussion?.created_by" circle>
                 <span class="text-xxs text-color-light">OP</span>
-              </BadgeCircle>
-              <TinyBadge v-if="shouldDisplayRole" :variant="roleVariant">
+              </Badge>
+              <Badge v-if="shouldDisplayRole" :variant="roleVariant" size="s">
                 {{ roleDisplay }}
-              </TinyBadge>
+              </Badge>
             </Flex>
           </Flex>
 
-          <TinyBadge v-if="isPinned" variant="accent" filled>
+          <Badge v-if="isPinned" variant="accent" size="s" filled>
             <Icon name="ph:push-pin" class="text-color-invert" />
-          </TinyBadge>
+          </Badge>
 
           <div class="flex-1" />
         </template>
@@ -468,7 +472,7 @@ const editedAtFormatted = computed(() => {
           v-if="!data.is_deleted"
           :data="data"
           :user-id="userId"
-          :current-user-data="currentUserData"
+          :current-user-data="effectiveUserData"
           :can-bypass-lock="canBypassLock"
           :can-mark-offtopic="canMarkOfftopic"
           :offtopic-loading="offtopicLoading"
@@ -644,9 +648,6 @@ const editedAtFormatted = computed(() => {
     <Modal :open="editing" centered scrollable size="l" :can-dismiss="false" @close="editing = false" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit">
       <template #header>
         <h3>Edit post</h3>
-        <p class="text-color-light">
-          Avoid writing offensive things.
-        </p>
       </template>
 
       <RichTextEditor
@@ -950,7 +951,7 @@ const editedAtFormatted = computed(() => {
 
   &__actions-anchor {
     position: sticky;
-    top: 154px;
+    top: calc(var(--navbar-offset) + var(--space-m) + 96px);
     min-height: 0;
     max-height: 0;
     overflow: visible;
@@ -961,8 +962,9 @@ const editedAtFormatted = computed(() => {
     display: flex;
     gap: 3px;
     position: absolute;
-    right: 0;
-    top: 0;
+    right: calc(-1 * 17px);
+    top: calc(-1 * var(--space-m));
+    transform: translateY(-50%);
     opacity: 0;
     z-index: -1;
     visibility: hidden;

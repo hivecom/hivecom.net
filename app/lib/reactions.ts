@@ -50,11 +50,11 @@ export const HIVECOM_PROVIDER = 'hivecom' as const
 export const HIVECOM_EMOTE_GROUPS: { label: string, emotes: string[] }[] = [
   {
     label: 'Reactions',
-    emotes: ['👍', '👎', '🙌', '❤️', '🔥', '🎉', '👀', '💯', '💀', '⭐', '🏆'],
+    emotes: ['👍', '👎', '🙌', '❤️', '🔥', '🎉', '👀', '💯', '💀', '⭐', '🏆', '✨'],
   },
   {
     label: 'Emoticons',
-    emotes: ['😂', '😢', '😭', '😳', '🤯', '😍', '😡', '🤔', '😴', '🫠', '😎'],
+    emotes: ['😂', '😢', '😭', '😳', '🤯', '😍', '😡', '🤔', '😴', '🫠', '😎', '🥵', '🥶'],
   },
   {
     label: 'Symbols',
@@ -62,7 +62,7 @@ export const HIVECOM_EMOTE_GROUPS: { label: string, emotes: string[] }[] = [
   },
   {
     label: 'Other',
-    emotes: ['💅', '🚀', '🏳️‍🌈', '🗿', '🍆', '🍑', '💦', '🌡️', '☀️', '🌧️', '🌞', '🌚', '🌿', '🌱', '🥀', '🐺', '🥚'],
+    emotes: ['💅', '🚀', '🏳️‍🌈', '🗿', '🍆', '🍑', '💦', '🌡️', '❄️', '☀️', '🌧️', '🌞', '🌚', '🌿', '🌱', '🥀', '🐺', '🥚', '🐸', '🐐', '⛰️', '🦀', '📸', '🦄', '🍤'],
   },
 ]
 

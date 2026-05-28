@@ -99,7 +99,10 @@ function toggleTheme(e: MouseEvent) {
       </template>
 
       <!-- Only render the actual Switch component on client-side -->
-      <div v-else @click.capture="captureOrigin">
+      <!-- mousedown.prevent keeps focus on the currently focused element so the
+           Switch can be used inside a VUI Dropdown without triggering its
+           focusout-based auto-close. We then drive the toggle manually. -->
+      <div v-else @mousedown.prevent @click="toggleTheme">
         <Switch v-model="isLight" class="theme-toggle__switch" />
       </div>
       <template #fallback>

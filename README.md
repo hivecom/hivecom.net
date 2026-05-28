@@ -114,14 +114,12 @@ npm run supabase functions deploy <function_name>
 To build the application for production:
 
 ```bash
-# npm
 npm run build
 ```
 
 Locally preview the production build (keep in mind this will run against `.env`):
 
 ```bash
-# npm
 npm run preview
 ```
 
@@ -180,7 +178,7 @@ npm run reset
 Then regenerate types:
 
 ```bash
-npx supabase gen types typescript --local --schema public,private > types/database.types.ts
+npm run types
 ```
 
 ### Pushing to production
@@ -195,43 +193,14 @@ npm run supabase db push
 > `npm run supabase db push` applies migrations to **production**. Treat it as a production release step.
 > Always review your migration SQL and confirm it’s safe before pushing.
 
-## DB Triggers
+## Further Reading
 
-Due to some triggers relying on tables that are built-in Supabase you will have to create these triggers manually and not through migrations. Please refer to [TRIGGERS.md](TRIGGERS.md) for more information.
+The documents below cover the detailed workings of the application - database triggers, scheduled jobs, secrets management, runtime configuration, and system architecture. If you are setting up a new environment, debugging unexpected behaviour, or extending an existing system, these are the right place to start.
 
-## RBAC
-
-Hivecom utilizes Supabase's setup for role based access control (RBAC). In their guide, they outline the use of auth hooks to inject JWT tokens with additional metadata so the front-end can correctly show what users have access to.
-
-For more information, please refer to the [official guide](https://supabase.com/docs/guides/database/postgres/custom-claims-and-role-based-access-control-rbac?queryGroups=language&language=plpgsql).
-
-## Vault Secrets
-
-The application requires several secrets to be configured in Supabase's Vault for proper operation. These secrets need to be manually added to your Supabase project's vault:
-
-### Required Secrets
-
-- `anon_key` - Supabase publishable (anon) key used by cron jobs for authorization
-- `project_url` - Base URL of your Supabase project
-- `system_cron_secret` - Secret token for authenticating system cron job requests
-- `system_trigger_secret` - Secret token for authenticating database trigger requests
-- `system_discord_notification_webhook_url` - Discord webhook URL for notification messages
-
-### Setting Up Vault Secrets
-
-1. Navigate to your Supabase project dashboard
-2. Go to Settings -> Vault
-3. Add each required secret with its corresponding value
-4. For production deployments, ensure all secrets are properly configured
-
-## cron & Database Triggers
-
-We use the `pg_cron` extension to schedule jobs in the database. This is a great way to run periodic tasks without needing an external service.
-
-Our migrations should automatically create the necessary tables and invocation functions as well as the associated `system_cron_secret` Supabase Vault secret. This secret is used as an authorization token when invoking our cron edge functions so as to not allow anything but the database to invoke them.
-
-Additionally, we use database triggers to automatically invoke edge functions when certain database operations occur (like creating/updating/deleting events for Google Calendar sync). These triggers use the `system_trigger_secret` for authentication.
-
-Your Edge Functions will still need to have the `system_cron_secret` and `system_trigger_secret` secrets added to them. Decrypt the secret from the Supabase Vault and add it to the edge function for these to properly work.
-
-Once these are set, we have helper functions in `_shared/auth.ts` for validating the system cron secret header. The JWT token is automatically validated by Supabase.
+| Document                                         | Contents                                                                                                        |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| [README_TRIGGERS.md](README_TRIGGERS.md)         | All database triggers - which are manual (protected schemas) and which are migration-managed                    |
+| [README_CRON.md](README_CRON.md)                 | Scheduled cron jobs, their schedules, and required environment variables                                        |
+| [README_VAULT.md](README_VAULT.md)               | Supabase Vault secrets required by triggers and cron functions                                                  |
+| [README_KVSTORE.md](README_KVSTORE.md)           | Public and private KV store keys and their consumers                                                            |
+| [README_ARCHITECTURE.md](README_ARCHITECTURE.md) | Cross-cutting system designs including RBAC, entity discussions, media cleanup, event sync, and the Steam queue |

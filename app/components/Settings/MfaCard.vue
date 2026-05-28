@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { Session } from '@supabase/supabase-js'
-import { Alert, Button, Card, CopyClipboard, Flex, Input, Modal, OTP, OTPItem, pushToast, Skeleton } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, CopyClipboard, Flex, Input, Modal, OTP, OTPItem, pushToast, Skeleton } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useMfaStatus } from '@/composables/useMfaStatus'
 import { useUserId } from '@/composables/useUserId'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import TinyBadge from '../Shared/TinyBadge.vue'
 
 interface MfaFactor {
   id: string
@@ -476,12 +475,12 @@ onBeforeMount(() => {
                 <Flex column gap="xxs" :y-center="isBelowSmall" :expand="isBelowSmall">
                   <Flex gap="s" y-center wrap>
                     <strong>{{ hasVerifiedTotp ? 'Enabled' : 'Not Enabled' }}</strong>
-                    <TinyBadge :variant="mfaStatusBadge.variant">
+                    <Badge size="s" :variant="mfaStatusBadge.variant">
                       <Icon :class="`text-color-${mfaStatusBadge.variant === 'success' ? 'accent' : 'red'}`" :name="mfaStatusIcon" />
                       {{ mfaStatusBadge.label }}
-                    </TinyBadge>
+                    </Badge>
                   </Flex>
-                  <p :class="`text-m text-color-lighter ${isBelowSmall ? 'text-center' : ''}`">
+                  <p :class="`text-s text-color-lighter ${isBelowSmall ? 'text-center' : ''}`">
                     {{ mfaStatusCopy }}
                   </p>
                 </Flex>
@@ -524,9 +523,9 @@ onBeforeMount(() => {
                   </Flex>
 
                   <Flex gap="s" y-center :row="!isBelowSmall">
-                    <TinyBadge :variant="factor.status === 'verified' ? 'success' : 'warning'">
+                    <Badge size="s" :variant="factor.status === 'verified' ? 'success' : 'warning'">
                       {{ factor.status === 'verified' ? 'Verified' : 'Pending' }}
-                    </TinyBadge>
+                    </Badge>
                     <Button
                       variant="danger"
                       plain
@@ -773,7 +772,7 @@ onBeforeMount(() => {
     display: inline;
     font-size: var(--font-size-m);
     letter-spacing: 0.05em;
-    font-family: var(--font-family-mono, 'Courier New', Courier, monospace);
+    font-family: var(--font-mono, 'Courier New', Courier, monospace);
   }
 }
 /*

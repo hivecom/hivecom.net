@@ -3,7 +3,7 @@ import type { ActivityItem } from '@/composables/useForumActivityFeed'
 import type { UseForumActivityFeedPaginatedOptions } from '@/composables/useForumActivityFeedPaginated'
 import { Badge, Button, Carousel, Flex, Sheet, Skeleton, Spinner, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import ForumLatestItem from '@/components/Forum/ForumLatestItem.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
+
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useForumActivityFeedPaginated } from '@/composables/useForumActivityFeedPaginated'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -12,6 +12,13 @@ const props = defineProps<{
   loading: boolean
   latestPosts: ActivityItem[]
   postSinceYesterday: number
+  /**
+   * Authoritative server-side count of new forum activity since the user's
+   * last visit, excluding their own posts. Drives the "since last visit"
+   * badge. Computed locally as a fallback when the prop isn't supplied so
+   * older callers keep working.
+   */
+  postsSinceLastVisit?: number
   lastVisitedAt: string | null
   mentionLookup: Record<string, string>
   // Pass-through options for the paginated sheet feed
@@ -74,12 +81,16 @@ const splitIndex = computed<number | null>(() => {
   return idx
 })
 
-// New-since-last-visit count scoped to the rendered slice - already excludes
-// own posts via carouselPosts. Computed independently so it works even when
-// every visible post is newer than the visit boundary (splitIndex is null then).
+// New-since-last-visit count. Prefers the server-side count passed in via
+// `postsSinceLastVisit` (accurate across the entire feed) and falls back to
+// counting against the rendered carousel slice. The fallback is naturally
+// bounded by `CAROUSEL_LIMIT` so it can undercount on busy forums - the
+// server-side count exists specifically to avoid that.
 const newSinceLastVisit = computed<number>(() => {
   if (visitedAt.value == null || user.value == null || props.loading)
     return 0
+  if (props.postsSinceLastVisit != null)
+    return props.postsSinceLastVisit
   return carouselSlice.value.filter(
     post => new Date(post.timestampRaw).getTime() > visitedAt.value!,
   ).length
@@ -128,6 +139,21 @@ const sheetSplitIndex = computed<number | null>(() => {
   if (idx <= 0 || idx >= sheetItems.value.length)
     return null
   return idx
+})
+
+// True when all loaded sheet items are newer than the visit boundary -
+// meaning the divider belongs after the last visible item, not inline.
+// Only show this trailing divider when there are actually new items to indicate.
+const sheetTrailingDivider = computed<boolean>(() => {
+  if (visitedAt.value == null || sheetLoading.value || sheetSplitIndex.value !== null)
+    return false
+  if (sheetItems.value.length === 0)
+    return false
+  // All items are newer than the visit boundary
+  const allNewer = sheetItems.value.every(
+    item => new Date(item.timestampRaw).getTime() > visitedAt.value!,
+  )
+  return allNewer && newSinceLastVisit.value > 0
 })
 
 // ── Mention / author cache ─────────────────────────────────────────────────
@@ -284,15 +310,15 @@ onUnmounted(() => {
       <h5>
         Recent activity
       </h5>
-      <TinyBadge v-if="isMobile && newSinceLastVisit > 0" variant="accent">
+      <Badge v-if="isMobile && newSinceLastVisit > 0" size="s" variant="accent">
         {{ newSinceLastVisit }} new
-      </TinyBadge>
+      </Badge>
       <Badge v-else-if="newSinceLastVisit > 0" variant="accent">
         {{ newSinceLastVisit }} since last visit
       </Badge>
-      <TinyBadge v-if="isMobile && !props.loading && props.postSinceYesterday" variant="neutral">
+      <Badge v-if="isMobile && !props.loading && props.postSinceYesterday" size="s" variant="neutral">
         {{ props.postSinceYesterday }}
-      </TinyBadge>
+      </Badge>
       <Badge v-else-if="!props.loading && props.postSinceYesterday" variant="neutral">
         {{ props.postSinceYesterday }} today
       </Badge>
@@ -395,13 +421,18 @@ onUnmounted(() => {
             />
           </template>
 
+          <Tooltip v-if="sheetTrailingDivider" :disabled="isMobile">
+            <div class="forum__latest-divider forum__latest-divider--sheet">
+              <Icon name="ph:clock" :size="16" />
+            </div>
+            <template #tooltip>
+              <p>Older posts start here</p>
+            </template>
+          </Tooltip>
+
           <div ref="sentinel" class="forum__latest-sentinel">
-            <Flex v-if="sheetLoadingMore" expand x-center>
-              <Spinner />
-            </Flex>
-            <span v-else-if="sheetExhausted" class="forum__latest-exhausted">
-              All caught up
-            </span>
+            <Spinner v-if="sheetLoadingMore" />
+            <span v-else-if="sheetExhausted" class="text-xs text-color-lighter">All caught up</span>
           </div>
         </template>
       </Flex>
@@ -429,12 +460,8 @@ onUnmounted(() => {
           />
 
           <div ref="mineSentinel" class="forum__latest-sentinel">
-            <Flex v-if="mineLoadingMore" expand x-center>
-              <Spinner />
-            </Flex>
-            <span v-else-if="mineExhausted" class="forum__latest-exhausted">
-              That's everything
-            </span>
+            <Spinner v-if="mineLoadingMore" />
+            <span v-else-if="mineExhausted" class="text-xs text-color-lighter">That's everything</span>
           </div>
         </template>
       </Flex>
@@ -445,6 +472,21 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .forum__latest {
   margin-bottom: var(--space-xl);
+}
+
+.forum__latest-sentinel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-m) 0;
+  min-height: 48px;
+}
+
+:deep(.overflow.is-horizontal .overflow-content > *) {
+  min-width: 320px;
+  width: 320px;
+  max-width: 320px;
 }
 
 .forum__latest-skeleton {
@@ -514,20 +556,6 @@ onUnmounted(() => {
       width: 34px;
     }
   }
-}
-
-.forum__latest-sentinel {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: var(--space-m) 0;
-  min-height: 48px;
-}
-
-.forum__latest-exhausted {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-lighter);
 }
 
 .forum__latest-empty {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Flex, Skeleton } from '@dolanske/vui'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { nextOccurrenceDate } from '@/lib/utils/rrule'
 import Event from './Event.vue'
 import EventsPastListing from './EventsPastListing.vue'
@@ -11,11 +12,15 @@ interface Props {
   errorMessage: string
   search?: string
   officialFilter?: boolean | null
+  recurringFilter?: boolean | null
+  gameFilter?: number[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   search: '',
   officialFilter: null,
+  recurringFilter: null,
+  gameFilter: () => [],
 })
 
 function matchesFilters(event: Tables<'events'>): boolean {
@@ -28,38 +33,62 @@ function matchesFilters(event: Tables<'events'>): boolean {
   }
   if (props.officialFilter != null && event.is_official !== props.officialFilter)
     return false
+  if (props.recurringFilter === true && event.recurrence_rule != null)
+    return false
+  if (props.gameFilter.length > 0 && !event.games?.some(id => props.gameFilter.includes(id)))
+    return false
   return true
 }
 
-// For a recurring series, the relevant date is the next occurrence, not the
-// stored origin date. This ensures recurring events don't sink into "past".
-function effectiveDate(event: Tables<'events'>): Date {
+// For a recurring series, find the most recent occurrence that could still be
+// ongoing (look back by duration_minutes), or the next future occurrence.
+function effectiveDate(event: Tables<'events'>, now: Date = new Date()): Date {
   if (event.recurrence_rule) {
-    const next = nextOccurrenceDate(event)
+    // Look back far enough to catch an in-progress occurrence
+    const lookback = event.duration_minutes ?? 0
+    const searchFrom = new Date(now.getTime() - lookback * 60 * 1000)
+    const next = nextOccurrenceDate(event, searchFrom)
     if (next)
       return next
   }
   return new Date(event.date)
 }
 
+// Returns a copy of the event with `date` set to the effective occurrence date
+// so that child components (e.g. Event.vue) use the right date for countdown.
+function withEffectiveDate(event: Tables<'events'>, now: Date): Tables<'events'> {
+  const start = effectiveDate(event, now)
+  const isoDate = start.toISOString()
+  if (isoDate === event.date)
+    return event
+  return { ...event, date: isoDate }
+}
+
 const ongoingEvents = computed(() => {
   if (!props.events)
     return []
   const now = new Date()
-  return props.events.filter((event) => {
-    const start = effectiveDate(event)
-    const end = event.duration_minutes
-      ? new Date(start.getTime() + event.duration_minutes * 60 * 1000)
-      : start
-    return start <= now && now <= end
-  }).filter(matchesFilters)
+  return props.events
+    .filter((event) => {
+      const start = effectiveDate(event, now)
+      const end = event.duration_minutes
+        ? new Date(start.getTime() + event.duration_minutes * 60 * 1000)
+        : start
+      return start <= now && now <= end
+    })
+    .filter(matchesFilters)
+    .map(event => withEffectiveDate(event, now))
 })
 
 const upcomingEvents = computed(() => {
   if (!props.events)
     return []
   const now = new Date()
-  return props.events.filter(event => effectiveDate(event) > now).filter(matchesFilters)
+  return props.events
+    .filter(event => effectiveDate(event, now) > now)
+    .filter(matchesFilters)
+    .map(event => withEffectiveDate(event, now))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 })
 
 const hasActiveEvents = computed(() =>
@@ -92,15 +121,17 @@ const hasActiveEvents = computed(() =>
         Happening Now
       </h2>
 
-      <div class="events-section__list">
-        <Event
-          v-for="event in ongoingEvents"
-          :key="event.id"
-          :data="event"
-          :is-ongoing="true"
-          :is-highlight="true"
-        />
-      </div>
+      <GlowGroup>
+        <div class="events-section__list">
+          <Event
+            v-for="event in ongoingEvents"
+            :key="event.id"
+            :data="event"
+            :is-ongoing="true"
+            :is-highlight="true"
+          />
+        </div>
+      </GlowGroup>
     </div>
 
     <!-- Upcoming Events Section -->
@@ -109,14 +140,16 @@ const hasActiveEvents = computed(() =>
         Upcoming Events
       </h2>
 
-      <div class="events-section__list">
-        <Event
-          v-for="(event, index) in upcomingEvents"
-          :key="event.id"
-          :data="event"
-          :is-highlight="index === 0 && ongoingEvents.length === 0"
-        />
-      </div>
+      <GlowGroup>
+        <div class="events-section__list">
+          <Event
+            v-for="(event, index) in upcomingEvents"
+            :key="event.id"
+            :data="event"
+            :is-highlight="index === 0 && ongoingEvents.length === 0"
+          />
+        </div>
+      </GlowGroup>
     </div>
 
     <!-- No active events message - past listing handles its own empty state -->
@@ -127,7 +160,7 @@ const hasActiveEvents = computed(() =>
     </div>
 
     <!-- Past Events Section - self-contained, manages its own data fetching -->
-    <EventsPastListing :search="search" :official-filter="officialFilter" />
+    <EventsPastListing :search="search" :official-filter="officialFilter" :recurring-filter="recurringFilter" :game-filter="gameFilter" />
   </template>
 </template>
 
@@ -227,14 +260,6 @@ const hasActiveEvents = computed(() =>
 
 // Mobile responsiveness
 @media (max-width: $breakpoint-s) {
-  .events-section {
-    text-align: center !important;
-  }
-
-  .events-section__title {
-    text-align: center !important;
-  }
-
   // Hide the header row on mobile since individual events are centered
   .events-section > .vui-flex:has(.events-section__countdown-header),
   .events-section > .vui-flex:has(.time-ago-header),
@@ -262,17 +287,14 @@ const hasActiveEvents = computed(() =>
 @media (max-width: $breakpoint-xs) {
   .events-section {
     margin-bottom: 2rem;
-    text-align: center !important;
   }
 
   .events-section__title {
     margin-bottom: 1rem;
-    text-align: center !important;
   }
 
   .time-ago-header,
   .ongoing-header {
-    text-align: center !important;
     justify-content: center !important;
   }
 

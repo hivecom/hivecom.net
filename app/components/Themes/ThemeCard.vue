@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Alert, Button, ButtonGroup, Card, Dropdown, DropdownItem, Flex, Skeleton, theme, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, ButtonGroup, Card, Dropdown, DropdownItem, Flex, Skeleton, theme, Tooltip } from '@dolanske/vui'
+import GlowCard from '@/components/Shared/GlowCard.vue'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useThemePreview } from '@/composables/useThemePreview'
 import { useUserId } from '@/composables/useUserId'
 import { themeToScopedProperties } from '@/lib/theme'
 import ConfirmModal from '../Shared/ConfirmModal.vue'
-import TinyBadge from '../Shared/TinyBadge.vue'
+
 import UserAvatar from '../Shared/UserAvatar.vue'
 import UserName from '../Shared/UserName.vue'
 import ThemeIcon from './ThemeIcon.vue'
@@ -49,9 +51,7 @@ function handleApplyClick(e: MouseEvent) {
   }
 }
 const userId = useUserId()
-const { user: userData } = useDataUser(userId, { includeRole: true })
-
-const isAdmin = computed(() => userData.value?.role === 'admin')
+const { isAdmin } = useEffectiveRole()
 const isOwner = computed(() => userId.value != null && props.item.created_by === userId.value)
 const canSeeDropdown = computed(() => isOwner.value || isAdmin.value)
 
@@ -83,116 +83,118 @@ onClickOutside(self, () => {
 </script>
 
 <template>
-  <NuxtLink
-    ref="selfRef"
-    :to="`/themes/${props.item.id}`"
-    class="theme-menu__card" :class="{ active: isActive,
-                                       unmaintained: props.item.is_unmaintained }"
-  >
-    <!-- Theme preview UI -->
-    <TinyBadge v-if="isActive" variant="accent" filled>
-      Active
-    </TinyBadge>
+  <GlowCard no-glow>
+    <NuxtLink
+      ref="selfRef"
+      :to="`/themes/${props.item.id}`"
+      class="theme-menu__card" :class="{ active: isActive,
+                                         unmaintained: props.item.is_unmaintained }"
+    >
+      <!-- Theme preview UI -->
+      <Badge v-if="isActive" size="s" variant="accent" filled class="theme-card-badge">
+        Active
+      </Badge>
 
-    <TinyBadge v-else-if="props.item.is_unmaintained" variant="neutral">
-      Deprecated
-    </TinyBadge>
+      <Badge v-else-if="props.item.is_unmaintained" size="s" variant="neutral" class="theme-card-badge">
+        Deprecated
+      </Badge>
 
-    <ButtonGroup :gap="2" class="theme-menu__card--context" :class="{ persist: persistHover }">
-      <Button size="s" :variant="isPreviewing ? 'accent' : 'gray'" @click.prevent.stop="handleApplyClick">
-        <template #start>
-          <Icon :name="isActive ? 'ph:paint-brush' : 'ph:paint-brush-fill'" :size="16" />
-        </template>
-        {{ isActive ? 'Remove' : isPreviewing ? 'Keep' : 'Preview' }}
-      </Button>
-      <Dropdown v-if="canSeeDropdown && !props.item.is_official">
-        <template #trigger="{ toggle, isOpen }">
-          <Button size="s" square :class="{ active: isOpen }" @click.prevent.stop="toggle">
-            <Icon name="ph:dots-three-bold" :size="18" />
-          </Button>
-        </template>
-        <DropdownItem v-if="isOwner || isAdmin" @click="emit('edit')">
-          Edit
-        </DropdownItem>
-        <DropdownItem v-if="!props.item.is_unmaintained && !props.item.is_official" @click="confirmDeprecate = true">
-          Deprecate
-        </DropdownItem>
-        <DropdownItem v-if="isAdmin && props.item.is_unmaintained" class="text-danger" @click="confirmDelete = true">
-          Delete
-        </DropdownItem>
-      </Dropdown>
-    </ButtonGroup>
-
-    <div class="theme-menu__card--preview" :style="themeToScopedProperties(props.item, theme === 'light' ? 'light' : 'dark')">
-      <Card>
-        <template #header>
-          <Flex column gap="xxs">
-            <Flex gap="xs" y-center>
-              <Skeleton class="text-skeleton accent" height="13px" width="48px" style="background-color: var(--color-accent)" />
-              <Skeleton class="text-skeleton" height="13px" width="80px" style="background-color: var(--color-text)" />
-            </Flex>
-            <p>
-              <Skeleton class="text-skeleton" height="16px" width="120px" style="background-color: var(--color-text-lighter)" />
-            </p>
-          </Flex>
-        </template>
-        <template #header-end>
-          <Flex gap="xs">
-            <TinyBadge variant="info">
-              <Skeleton class="badge-skeleton" height="12px" width="24px" style="background-color: var(--color-text-blue)" />
-            </TinyBadge>
-            <TinyBadge variant="warning">
-              <Skeleton class="badge-skeleton" height="12px" width="36px" style="background-color: var(--color-text-yellow)" />
-            </TinyBadge>
-          </Flex>
-        </template>
-        <Alert variant="info" filled>
-          <Skeleton class="text-skeleton" height="16px" width="154px" style="background-color: var(--color-text-lighter)" />
-        </Alert>
-
-        <div style="height:167px" />
-      </Card>
-    </div>
-
-    <!-- Theme metadata -->
-    <div class="theme-menu__card--content">
-      <Flex x-start y-start gap="m">
-        <ThemeIcon size="l" :theme="props.item" />
-        <div class="flex-1">
-          <strong>{{ props.item.name }}</strong>
-          <p v-if="props.item.description">
-            <span class="text-m description-clamp">
-              {{ props.item.description }}
-            </span>
-          </p>
-        </div>
-        <Flex y-center gap="xs">
-          <Flex y-center gap="xs" class="theme-stats">
-            <template v-if="props.item.user_count != null && props.item.user_count > 0">
-              <Icon name="ph:users" :size="14" />
-              <span>{{ props.item.user_count }}</span>
-            </template>
-            <template v-if="props.item.fork_count != null && props.item.fork_count > 0">
-              <Icon name="ph:git-fork" :size="14" />
-              <span>{{ props.item.fork_count }}</span>
-            </template>
-          </Flex>
-          <template v-if="!props.item.is_official">
-            <Tooltip v-if="props.item.forked_from">
-              <UserAvatar :user-id="props.item.created_by ?? undefined" size="s" :show-preview="true" />
-              <template #tooltip>
-                <p v-if="fork" style="max-width:256px">
-                  This theme is based on {{ fork.name }} created by
-                  <b><UserName inherit :user-id="fork.created_by" /></b>
-                </p>
-              </template>
-            </Tooltip>
-            <UserAvatar v-else :user-id="props.item.created_by ?? undefined" size="s" :show-preview="true" />
+      <ButtonGroup :gap="2" class="theme-menu__card--context" :class="{ persist: persistHover }">
+        <Button size="s" :variant="isPreviewing ? 'accent' : 'gray'" @click.prevent.stop="handleApplyClick">
+          <template #start>
+            <Icon :name="isActive ? 'ph:paint-brush' : 'ph:paint-brush-fill'" :size="16" />
           </template>
+          {{ isActive ? 'Remove' : isPreviewing ? 'Keep' : 'Preview' }}
+        </Button>
+        <Dropdown v-if="canSeeDropdown && !props.item.is_official">
+          <template #trigger="{ toggle, isOpen }">
+            <Button size="s" square :class="{ active: isOpen }" @click.prevent.stop="toggle">
+              <Icon name="ph:dots-three-bold" :size="18" />
+            </Button>
+          </template>
+          <DropdownItem v-if="isOwner || isAdmin" @click="emit('edit')">
+            Edit
+          </DropdownItem>
+          <DropdownItem v-if="!props.item.is_unmaintained && !props.item.is_official" @click="confirmDeprecate = true">
+            Deprecate
+          </DropdownItem>
+          <DropdownItem v-if="isAdmin && props.item.is_unmaintained" class="text-danger" @click="confirmDelete = true">
+            Delete
+          </DropdownItem>
+        </Dropdown>
+      </ButtonGroup>
+
+      <div class="theme-menu__card--preview" :style="themeToScopedProperties(props.item, theme === 'light' ? 'light' : 'dark')">
+        <Card>
+          <template #header>
+            <Flex column gap="xxs">
+              <Flex gap="xs" y-center>
+                <Skeleton class="text-skeleton accent" height="13px" width="48px" style="background-color: var(--color-accent)" />
+                <Skeleton class="text-skeleton" height="13px" width="80px" style="background-color: var(--color-text)" />
+              </Flex>
+              <p>
+                <Skeleton class="text-skeleton" height="16px" width="120px" style="background-color: var(--color-text-lighter)" />
+              </p>
+            </Flex>
+          </template>
+          <template #header-end>
+            <Flex gap="xs">
+              <Badge size="s" variant="info">
+                <Skeleton class="badge-skeleton" height="12px" width="24px" style="background-color: var(--color-text-blue)" />
+              </Badge>
+              <Badge size="s" variant="warning">
+                <Skeleton class="badge-skeleton" height="12px" width="36px" style="background-color: var(--color-text-yellow)" />
+              </Badge>
+            </Flex>
+          </template>
+          <Alert variant="info" filled>
+            <Skeleton class="text-skeleton" height="16px" width="156px" style="background-color: var(--color-text-lighter)" />
+          </Alert>
+
+          <div style="height:167px" />
+        </Card>
+      </div>
+
+      <!-- Theme metadata -->
+      <div class="theme-menu__card--content">
+        <Flex x-start y-start gap="m">
+          <ThemeIcon size="l" :theme="props.item" />
+          <div class="flex-1">
+            <strong>{{ props.item.name }}</strong>
+            <p v-if="props.item.description">
+              <span class="text-m description-clamp">
+                {{ props.item.description }}
+              </span>
+            </p>
+          </div>
+          <Flex y-center gap="xs">
+            <Flex y-center gap="xs" class="theme-stats">
+              <template v-if="props.item.user_count != null && props.item.user_count > 0">
+                <Icon name="ph:users" :size="14" />
+                <span>{{ props.item.user_count }}</span>
+              </template>
+              <template v-if="props.item.fork_count != null && props.item.fork_count > 0">
+                <Icon name="ph:git-fork" :size="14" />
+                <span>{{ props.item.fork_count }}</span>
+              </template>
+            </Flex>
+            <template v-if="!props.item.is_official">
+              <Tooltip v-if="props.item.forked_from">
+                <UserAvatar :user-id="props.item.created_by ?? undefined" size="s" :show-preview="true" />
+                <template #tooltip>
+                  <p v-if="fork" style="max-width:256px">
+                    This theme is based on {{ fork.name }} created by
+                    <b><UserName inherit :user-id="fork.created_by" /></b>
+                  </p>
+                </template>
+              </Tooltip>
+              <UserAvatar v-else :user-id="props.item.created_by ?? undefined" size="s" :show-preview="true" />
+            </template>
+          </Flex>
         </Flex>
-      </Flex>
-    </div>
-  </NuxtLink>
+      </div>
+    </NuxtLink>
+  </GlowCard>
 
   <ConfirmModal
     :open="confirmDeprecate"
@@ -243,7 +245,7 @@ onClickOutside(self, () => {
   flex-grow: 1;
   height: 100%;
 
-  & > .tiny-badge {
+  & > .theme-card-badge {
     position: absolute;
     top: 8px;
     left: 8px;

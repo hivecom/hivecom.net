@@ -23,8 +23,7 @@ const props = defineProps<{
 
 // ---------------------------------------------------------------------------
 // Plain text markdown insertion
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // Wraps or prefixes the current textarea selection with markdown syntax and
 // emits the updated value. After insertion the selection is restored so the
 // user can keep typing naturally.
@@ -131,8 +130,7 @@ ${hasSelection ? selected : '[content]'}
 
 // ---------------------------------------------------------------------------
 // Link picker
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const linkPickerOpen = ref(false)
 const linkButtonRef = ref<HTMLElement | null>(null)
 const linkInputRef = ref<{ focus: () => void } | null>(null)
@@ -200,8 +198,7 @@ function insertLinkMarkdown() {
 
 // ---------------------------------------------------------------------------
 // Heading picker
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const headingPickerOpen = ref(false)
 const headingButtonRef = ref<HTMLElement | null>(null)
 
@@ -259,8 +256,7 @@ function clearHeading() {
 
 // ---------------------------------------------------------------------------
 // Color picker
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const colorPickerOpen = ref(false)
 const bucketButtonRef = ref<HTMLElement | null>(null)
 
@@ -301,8 +297,7 @@ const bucketStyle = computed(() => {
 
 // ---------------------------------------------------------------------------
 // Font picker
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const fontPickerOpen = ref(false)
 const fontButtonRef = ref<HTMLElement | null>(null)
 
@@ -345,8 +340,7 @@ function clearFont() {
 
 // ---------------------------------------------------------------------------
 // Size picker
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function toggleTinyText() {
   const tinySize = 's'
 
@@ -365,8 +359,7 @@ function toggleTinyText() {
 
 // ---------------------------------------------------------------------------
 // Bubble menu visibility
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // Makes sure that when editor is clicked, we do not show bubble menu for empty
 // text selection. Not used in plain text mode.
 function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
@@ -385,8 +378,7 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
 
 // ---------------------------------------------------------------------------
 // Reusable toolbar template
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // The button groups are identical between the static (plain text) toolbar and
 // the floating bubble menu. We define them once here and render the same
 // template in both places instead of duplicating ~220 lines of markup.
@@ -394,8 +386,7 @@ const [DefineToolbar, ReuseToolbar] = createReusableTemplate()
 
 // ---------------------------------------------------------------------------
 // Global close-all-pickers on outside click
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const toolbarEl = useTemplateRef<HTMLElement>('toolbar-root')
 
 function closeAllPickers() {
@@ -763,8 +754,7 @@ useEventListener(document, 'mousedown', (e) => {
 
 // ---------------------------------------------------------------------------
 // Color picker popout
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 .color-popout {
   display: flex;
   flex-direction: column;
@@ -823,8 +813,7 @@ useEventListener(document, 'mousedown', (e) => {
 
 // ---------------------------------------------------------------------------
 // Font, size & heading picker popouts (shared list style)
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 .link-popout {
   padding: var(--space-xs);
   min-width: 220px;

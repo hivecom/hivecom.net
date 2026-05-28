@@ -8,6 +8,7 @@ import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import { invalidateForumTopicsCache } from '@/composables/useDataForumTopics'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { invalidateTopicIconCache } from '@/composables/useTopicIcon'
 import { deleteTopicIcon, getTopicIconUrl, uploadTopicIcon } from '@/lib/storage'
 import { flattenTopicsTree } from '@/lib/topics'
@@ -32,8 +33,7 @@ const search = ref('')
 const isEditing = computed(() => !!props.editedItem)
 
 const userId = useUserId()
-const { user: cachedUser } = useDataUser(userId, { includeRole: true, includeAvatar: false })
-const canDelete = computed(() => cachedUser.value?.role === 'admin')
+const { isAdmin: canDelete } = useEffectiveRole()
 
 const deleteTopicLoading = ref(false)
 const deleteTopicConfirm = ref(false)
@@ -131,7 +131,7 @@ async function handleIconUpload(file: File) {
   iconError.value = null
 
   try {
-    const result = await uploadTopicIcon(supabase, props.editedItem.id, file)
+    const result = await uploadTopicIcon(supabase, props.editedItem.id, file, userId.value ?? undefined)
 
     if (result.success && result.url) {
       iconUrl.value = result.url

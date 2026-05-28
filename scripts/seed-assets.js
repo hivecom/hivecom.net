@@ -21,6 +21,7 @@
  * Run via: npm run reset  (db reset + this script)
  */
 
+import { Buffer } from 'node:buffer'
 import { readdir, readFile } from 'node:fs/promises'
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -220,6 +221,46 @@ async function uploadUserAvatars(supabase) {
   return { success, fail }
 }
 
+// ── Metrics latest.json ──────────────────────────────────────────────────────
+
+async function uploadMetricsLatest(supabase) {
+  const { data, error: fetchError } = await supabase
+    .from('metrics')
+    .select('data')
+    .order('captured_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (fetchError || !data) {
+    console.log(`Skipping metrics/latest.json - could not fetch latest metrics row: ${fetchError?.message ?? 'no data'}`)
+    return { success: 0, fail: 1 }
+  }
+
+  process.stdout.write(`Uploading metrics/latest.json to "${STATIC_BUCKET}" ... `)
+
+  try {
+    const { error } = await supabase.storage
+      .from(STATIC_BUCKET)
+      .upload('metrics/latest.json', Buffer.from(JSON.stringify(data.data, null, 2)), {
+        contentType: 'application/json',
+        upsert: true,
+        cacheControl: '1800',
+      })
+
+    if (error) {
+      console.log(`FAIL (${error.message})`)
+      return { success: 0, fail: 1 }
+    }
+
+    console.log('OK')
+    return { success: 1, fail: 0 }
+  }
+  catch (err) {
+    console.log(`FAIL (${err.message})`)
+    return { success: 0, fail: 1 }
+  }
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -241,6 +282,12 @@ async function main() {
   const avatarResult = await uploadUserAvatars(supabase)
   totalSuccess += avatarResult.success
   totalFail += avatarResult.fail
+
+  console.log()
+
+  const metricsResult = await uploadMetricsLatest(supabase)
+  totalSuccess += metricsResult.success
+  totalFail += metricsResult.fail
 
   console.log(`\nDone. ${totalSuccess} uploaded, ${totalFail} failed.\n`)
 

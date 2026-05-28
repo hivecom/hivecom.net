@@ -148,7 +148,7 @@ function closeDrawer() {
         @mouseenter="handleEnter(getKey(reaction))"
         @mouseleave="handleLeave(getKey(reaction))"
       >
-        <Flex wrap y-center gap="xs" class="reactions__popout">
+        <Flex wrap y-center class="reactions__popout">
           <UserAvatar
             v-for="userId in reaction.reactors"
             :key="userId"
@@ -191,6 +191,10 @@ function closeDrawer() {
 </template>
 
 <style scoped lang="scss">
+.reactions__popout {
+  padding: var(--space-xs);
+}
+
 .reactions__list {
   user-select: none;
 }

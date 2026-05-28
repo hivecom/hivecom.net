@@ -1,24 +1,29 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, CopyClipboard, Flex, Grid, Sheet, Tooltip } from '@dolanske/vui'
-
+import { Badge, Button, Card, CopyClipboard, Flex, Sheet, Tooltip } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
+
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import EventRSVPCount from '@/components/Events/EventRSVPCount.vue'
 import EventRSVPModal from '@/components/Events/EventRSVPModal.vue'
-import GameIcon from '@/components/GameServers/GameIcon.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
-import { humanizeRrule } from '@/lib/utils/rrule'
+import { humanizeRrule, nextOccurrenceDate } from '@/lib/utils/rrule'
 
 const props = defineProps<{
   event: Tables<'events'> | null
 }>()
 
 // Define emits
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits<{
+  edit: [event: Tables<'events'>]
+  delete: [event: Tables<'events'>]
+}>()
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -55,20 +60,31 @@ function handleDelete(event: Tables<'events'>) {
 // Helper function to get event status
 function getEventStatus(event: Tables<'events'>): { label: string, variant: 'accent' | 'success' | 'neutral' } {
   const now = new Date()
+
+  if (event.recurrence_rule) {
+    const next = nextOccurrenceDate(event)
+    if (next) {
+      const nextEnd = event.duration_minutes
+        ? new Date(next.getTime() + event.duration_minutes * 60 * 1000)
+        : next
+      if (now >= next && now <= nextEnd)
+        return { label: 'Ongoing', variant: 'success' }
+      return { label: 'Recurring', variant: 'accent' }
+    }
+    return { label: 'Past', variant: 'neutral' }
+  }
+
   const eventStart = new Date(event.date)
   const eventEnd = event.duration_minutes
     ? new Date(eventStart.getTime() + event.duration_minutes * 60 * 1000)
     : eventStart
 
-  if (now < eventStart) {
+  if (now < eventStart)
     return { label: 'Upcoming', variant: 'accent' }
-  }
-  else if (now >= eventStart && now <= eventEnd) {
+  else if (now >= eventStart && now <= eventEnd)
     return { label: 'Ongoing', variant: 'success' }
-  }
-  else {
+  else
     return { label: 'Past', variant: 'neutral' }
-  }
 }
 </script>
 
@@ -85,7 +101,9 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
         <Flex column :gap="0">
           <h4>Event Details</h4>
           <p v-if="props.event" class="text-color-light text-xs">
-            {{ props.event.title }}
+            <NuxtLink :to="`/events/${props.event.id}`" target="_blank">
+              {{ props.event.title }}
+            </NuxtLink>
           </p>
         </Flex>
         <Flex y-center gap="s">
@@ -104,214 +122,179 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
     <Flex v-if="props.event" column gap="m" class="event-detail">
       <Flex column gap="m" expand>
         <!-- Basic info -->
-        <Card class="card-bg">
-          <Flex column gap="l" expand>
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">ID:</span>
-              <span>{{ props.event.id }}</span>
-            </Grid>
+        <DetailTable>
+          <template #header>
+            <Icon name="ph:calendar" />
+            <h6>Overview</h6>
+          </template>
 
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Title:</span>
-              <span>{{ props.event.title }}</span>
-            </Grid>
+          <DetailRow label="ID">
+            <span class="text-s">{{ props.event.id }}</span>
+          </DetailRow>
 
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Date:</span>
-              <Flex wrap y-center>
-                <TimestampDate size="m" :date="props.event.date" />
-                <Badge
-                  v-if="props.event"
-                  :variant="getEventStatus(props.event).variant"
-                >
-                  {{ getEventStatus(props.event).label }}
-                </Badge>
-              </Flex>
-            </Grid>
+          <DetailRow label="Date" wrap>
+            <TimestampDate size="s" :date="props.event.date" />
+            <Badge
+              v-if="props.event"
+              :variant="getEventStatus(props.event).variant"
+            >
+              {{ getEventStatus(props.event).label }}
+            </Badge>
+          </DetailRow>
 
-            <Grid v-if="props.event.duration_minutes" class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Duration:</span>
-              <span>{{ formatDurationFromMinutes(props.event.duration_minutes) }}</span>
-            </Grid>
+          <DetailRow label="Duration" :hidden="!props.event.duration_minutes">
+            <span class="text-s">{{ props.event.duration_minutes ? formatDurationFromMinutes(props.event.duration_minutes) : '' }}</span>
+          </DetailRow>
 
-            <Grid v-if="props.event.location" class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Location:</span>
-              <span>{{ props.event.location }}</span>
-            </Grid>
+          <DetailRow label="Location" :hidden="!props.event.location">
+            <span class="text-s">{{ props.event.location }}</span>
+          </DetailRow>
 
-            <Grid v-if="props.event.note" class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Note:</span>
-              <span>{{ props.event.note }}</span>
-            </Grid>
+          <DetailRow label="Note" :hidden="!props.event.note">
+            <span class="text-s">{{ props.event.note }}</span>
+          </DetailRow>
 
-            <Grid v-if="props.event.link" class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Link:</span>
-              <NuxtLink external :href="props.event.link" target="_blank" rel="noopener noreferrer" class="link text-m">
-                {{ props.event.link }}
-                <Icon name="ph:arrow-square-out" />
-              </NuxtLink>
-            </Grid>
+          <DetailRow label="Link" :hidden="!props.event.link">
+            <NuxtLink v-if="props.event.link" external :href="props.event.link" target="_blank" rel="noopener noreferrer" class="link text-m">
+              {{ props.event.link }}
+              <Icon name="ph:arrow-square-out" />
+            </NuxtLink>
+          </DetailRow>
 
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Official:</span>
-              <Flex gap="xs" y-center>
-                <Badge v-if="props.event.is_official" variant="accent">
-                  <template #start>
-                    <Icon name="ph:star-fill" size="12" />
-                  </template>
-                  Official
-                </Badge>
-                <span v-else class="text-color-lighter">No</span>
-              </Flex>
-            </Grid>
+          <DetailRow label="Official">
+            <Badge v-if="props.event.is_official" variant="accent">
+              <template #start>
+                <Icon name="ph:star-fill" size="12" />
+              </template>
+              Official
+            </Badge>
+            <span v-else class="text-color-lighter text-s">No</span>
+          </DetailRow>
 
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Recurrence:</span>
-              <Flex gap="xs" y-center>
-                <Badge v-if="props.event.recurrence_rule" variant="neutral">
-                  <template #start>
-                    <Icon name="ph:arrows-clockwise" size="12" />
-                  </template>
-                  {{ humanizeRrule(props.event.recurrence_rule) }}
-                </Badge>
-                <Tooltip v-if="props.event.recurrence_parent_id" text="This event is a child occurrence of a recurring series">
-                  <Badge variant="neutral">
-                    <template #start>
-                      <Icon name="ph:link" size="12" />
-                    </template>
-                    Child occurrence
-                  </Badge>
-                </Tooltip>
-                <Tooltip v-if="props.event.recurrence_exception" text="This occurrence has been individually overridden within its series">
-                  <Badge variant="warning">
-                    <template #start>
-                      <Icon name="ph:warning" size="12" />
-                    </template>
-                    Exception
-                  </Badge>
-                </Tooltip>
-                <span v-if="!props.event.recurrence_rule && !props.event.recurrence_parent_id" class="text-color-lighter">One-off</span>
-              </Flex>
-            </Grid>
-
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">RSVPs:</span>
-              <Flex gap="xs" y-center wrap>
-                <EventRSVPCount
-                  :event="props.event"
-                  variant="info"
-                  size="s"
-                  :show-when-zero="true"
-                />
-                <Button
-                  variant="gray"
-                  size="s"
-                  @click="showRSVPModal = true"
-                >
-                  View Details
-                </Button>
-              </Flex>
-            </Grid>
-
-            <!-- Games -->
-            <Grid v-if="props.event.games && props.event.games.length > 0" class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Games:</span>
-              <Flex gap="xs" y-center>
-                <!-- Loading state -->
-                <div v-if="loadingGames" class="game-skeleton-container">
-                  <div v-for="n in (props.event.games?.length || 1)" :key="n" class="game-skeleton" />
-                </div>
-                <!-- Games icons -->
-                <template v-else>
-                  <GameIcon
-                    v-for="game in eventGames"
-                    :key="game.id"
-                    :game="game"
-                    size="s"
-                  />
+          <DetailRow label="Recurrence" wrap>
+            <Badge v-if="props.event.recurrence_rule" variant="neutral">
+              <template #start>
+                <Icon name="ph:arrows-clockwise" size="12" />
+              </template>
+              {{ humanizeRrule(props.event.recurrence_rule) }}
+            </Badge>
+            <Tooltip v-if="props.event.recurrence_parent_id" text="This event is a child occurrence of a recurring series">
+              <Badge variant="neutral">
+                <template #start>
+                  <Icon name="ph:link" size="12" />
                 </template>
-              </Flex>
-            </Grid>
-          </Flex>
-        </Card>
+                Child occurrence
+              </Badge>
+            </Tooltip>
+            <Tooltip v-if="props.event.recurrence_exception" text="This occurrence has been individually overridden within its series">
+              <Badge variant="warning">
+                <template #start>
+                  <Icon name="ph:warning" size="12" />
+                </template>
+                Exception
+              </Badge>
+            </Tooltip>
+            <span v-if="!props.event.recurrence_rule && !props.event.recurrence_parent_id" class="text-color-lighter text-s">One-off</span>
+          </DetailRow>
+
+          <DetailRow label="RSVPs">
+            <Button variant="link" class="btn-no-padding" @click="showRSVPModal = true">
+              <EventRSVPCount :event="props.event" variant="info" size="s" :show-when-zero="true" />
+            </Button>
+          </DetailRow>
+
+          <DetailRow label="Games" :hidden="!(props.event.games && props.event.games.length > 0)">
+            <!-- Loading state -->
+            <div v-if="loadingGames" class="game-skeleton-container">
+              <div v-for="n in (props.event.games?.length || 1)" :key="n" class="game-skeleton" />
+            </div>
+            <!-- Games icons -->
+            <template v-else>
+              <GameIcon
+                v-for="game in eventGames"
+                :key="game.id"
+                :game="game"
+                size="s"
+              />
+            </template>
+          </DetailRow>
+        </DetailTable>
 
         <!-- Description -->
         <Card v-if="props.event.description" separators class="card-bg">
           <template #header>
-            <h6>Description</h6>
+            <Flex gap="xs" y-center>
+              <Icon name="ph:text-align-left" />
+              <h6>Description</h6>
+            </Flex>
           </template>
 
-          <p>{{ props.event.description }}</p>
+          <p class="text-s">
+            {{ props.event.description }}
+          </p>
         </Card>
 
         <!-- Markdown Content -->
         <Card v-if="props.event.markdown" separators class="card-bg">
           <template #header>
-            <h6>Markdown</h6>
+            <Flex x-between y-center expand>
+              <Flex y-center gap="xs">
+                <Icon name="ph:article" />
+                <h6>Content</h6>
+              </Flex>
+              <span class="text-color-lightest text-xs">Markdown</span>
+            </Flex>
           </template>
 
           <MarkdownRenderer :md="props.event.markdown" class="event-markdown-content" />
         </Card>
 
         <!-- Sync status -->
-        <Card separators class="card-bg">
+        <DetailTable>
           <template #header>
+            <Icon name="ph:arrows-clockwise" />
             <h6>Sync Status</h6>
           </template>
 
-          <Flex column gap="l" expand>
-            <!-- Discord -->
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <Flex gap="xs" y-center>
-                <Icon name="ph:discord-logo" size="14" class="text-color-light" />
-                <span class="text-color-light text-bold">Discord:</span>
-              </Flex>
-              <Flex column :gap="0">
-                <CopyClipboard v-if="props.event.discord_event_id" :text="props.event.discord_event_id">
-                  <span class="text-xs text-mono text-color-light">{{ props.event.discord_event_id }}</span>
-                </CopyClipboard>
-                <span v-else class="text-color-lighter text-xs">Not synced</span>
-                <span v-if="props.event.discord_last_synced_at" class="text-xs text-color-lighter">
-                  Last synced <TimestampDate :date="props.event.discord_last_synced_at" relative />
-                </span>
-              </Flex>
-            </Grid>
+          <!-- Discord -->
+          <DetailRow label="Discord">
+            <Flex column :gap="0">
+              <CopyClipboard v-if="props.event.discord_event_id" :text="props.event.discord_event_id">
+                <code class="text-s text-color-light">{{ props.event.discord_event_id }}</code>
+              </CopyClipboard>
+              <span v-else class="text-color-lighter text-s">Not synced</span>
+              <span v-if="props.event.discord_last_synced_at" class="text-s text-color-lighter">
+                Last synced <TimestampDate :date="props.event.discord_last_synced_at" relative />
+              </span>
+            </Flex>
+          </DetailRow>
 
-            <!-- Google Calendar (official) -->
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <Flex gap="xs" y-center>
-                <Icon name="ph:google-logo" size="14" class="text-color-light" />
-                <span class="text-color-light text-bold">Official:</span>
-              </Flex>
-              <Flex column :gap="0">
-                <CopyClipboard v-if="props.event.google_event_id" :text="props.event.google_event_id">
-                  <span class="text-xs text-mono text-color-light">{{ props.event.google_event_id }}</span>
-                </CopyClipboard>
-                <span v-else class="text-color-lighter text-xs">Not synced</span>
-                <span v-if="props.event.google_last_synced_at" class="text-xs text-color-lighter">
-                  Last synced <TimestampDate :date="props.event.google_last_synced_at" relative />
-                </span>
-              </Flex>
-            </Grid>
+          <!-- Google Calendar (official) -->
+          <DetailRow label="Google (official)">
+            <Flex column :gap="0">
+              <CopyClipboard v-if="props.event.google_event_id" :text="props.event.google_event_id">
+                <code class="text-s text-color-light">{{ props.event.google_event_id }}</code>
+              </CopyClipboard>
+              <span v-else class="text-color-lighter text-s">Not synced</span>
+              <span v-if="props.event.google_last_synced_at" class="text-s text-color-lighter">
+                Last synced <TimestampDate :date="props.event.google_last_synced_at" relative />
+              </span>
+            </Flex>
+          </DetailRow>
 
-            <!-- Google Calendar (community) -->
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <Flex gap="xs" y-center>
-                <Icon name="ph:google-logo" size="14" class="text-color-light" />
-                <span class="text-color-light text-bold">Community:</span>
-              </Flex>
-              <Flex column :gap="0">
-                <CopyClipboard v-if="props.event.google_community_event_id" :text="props.event.google_community_event_id">
-                  <span class="text-xs text-mono text-color-light">{{ props.event.google_community_event_id }}</span>
-                </CopyClipboard>
-                <span v-else class="text-color-lighter text-xs">Not synced</span>
-                <span v-if="props.event.google_community_last_synced_at" class="text-xs text-color-lighter">
-                  Last synced <TimestampDate :date="props.event.google_community_last_synced_at" relative />
-                </span>
-              </Flex>
-            </Grid>
-          </Flex>
-        </Card>
+          <!-- Google Calendar (community) -->
+          <DetailRow label="Google (community)">
+            <Flex column :gap="0">
+              <CopyClipboard v-if="props.event.google_community_event_id" :text="props.event.google_community_event_id">
+                <code class="text-s text-color-light">{{ props.event.google_community_event_id }}</code>
+              </CopyClipboard>
+              <span v-else class="text-color-lighter text-s">Not synced</span>
+              <span v-if="props.event.google_community_last_synced_at" class="text-s text-color-lighter">
+                Last synced <TimestampDate :date="props.event.google_community_last_synced_at" relative />
+              </span>
+            </Flex>
+          </DetailRow>
+        </DetailTable>
 
         <!-- Metadata -->
         <Metadata
@@ -368,6 +351,10 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
 
 .link:hover {
   text-decoration: underline;
+}
+
+.btn-no-padding {
+  padding-inline: 0;
 }
 
 .game-skeleton-container {

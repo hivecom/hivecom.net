@@ -127,8 +127,9 @@ watch(tapped, (val) => {
   >
     <video
       v-if="showBanner && isVideoBanner"
+      ref="imgRef"
       :src="bannerUrl!"
-      class="banner-display__image"
+      class="banner-display__image banner-display__image--video"
       :style="{
         filter: isActive ? 'saturate(1)' : 'saturate(0)',
         opacity: isActive ? '1' : '0.2',
@@ -182,15 +183,24 @@ watch(tapped, (val) => {
     // Enforce the canonical 728x36 aspect ratio and scale down on narrow
     // viewports. The image never exceeds its native width, and height is
     // derived from the ratio so nothing gets squished or stretched.
+    display: block;
     width: 100%;
+    // Enforce canonical 728x36 ratio regardless of the image's intrinsic
+    // dimensions. object-fit: cover crops oversized banners cleanly.
+    aspect-ratio: 728 / 36;
     max-height: 36px;
-    height: auto;
+    object-fit: cover;
     border-radius: var(--border-radius-s);
     // filter and opacity are driven by inline :style bindings so hover/tap
     // state is handled in JS, avoiding scoped-CSS descendant selector quirks.
     transition:
       filter 0.25s cubic-bezier(0.65, 0, 0.35, 1),
       opacity 0.25s cubic-bezier(0.65, 0, 0.35, 1);
+
+    &--video {
+      // <video> also needs explicit object-fit; aspect-ratio handles height.
+      object-fit: cover;
+    }
 
     @media screen and (max-width: $breakpoint-s) {
       // On mobile, banners are full-bleed and flush with the top of the

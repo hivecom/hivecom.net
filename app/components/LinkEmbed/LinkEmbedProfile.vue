@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { useDataLinkPreview } from '@/composables/useDataLinkPreview'
-import { useSupabaseUser } from '#imports'
 import { Button, Flex } from '@dolanske/vui'
 import { resolveComponent } from 'vue'
+import { useSupabaseUser } from '#imports'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 
 import UserRole from '@/components/Shared/UserRole.vue'
@@ -48,7 +48,7 @@ const showRealData = computed(() => props.data.isPublic || !!user.value)
           Sign in to view this profile
         </span>
       </Flex>
-      <UserRole v-if="showRealData" :user-id="props.data.userId" size="xs" :tiny="isMobile" class="link-embed__role" />
+      <UserRole v-if="showRealData" :user-id="props.data.userId" size="s" :tiny="isMobile" class="link-embed__role" />
       <NuxtLink
         v-if="!showRealData"
         to="/auth/sign-in"

@@ -16,6 +16,10 @@ const props = withDefaults(defineProps<Props>(), {
   showSystemUserForMissingCreatedBy: false,
 })
 
+const showCreatedUser = computed(() => {
+  return !!(props.createdBy || props.showSystemUserForMissingCreatedBy)
+})
+
 const showModifiedUser = computed(() => {
   return !!props.modifiedBy && props.modifiedBy !== props.createdBy
 })
@@ -29,13 +33,13 @@ const showModifiedUser = computed(() => {
     </Flex>
 
     <Flex v-else wrap gap="m" expand>
-      <Flex column gap="xs">
+      <Flex column gap="xs" class="metadata-col">
         <span class="text-xxs text-color-lighter" style="text-transform: uppercase; letter-spacing: 0.5px;">
           Created
         </span>
         <TimestampDate size="xs" :date="createdAt" format="MMM D, YYYY [at] HH:mm" />
         <UserDisplay
-          v-if="createdBy || props.showSystemUserForMissingCreatedBy"
+          v-if="showCreatedUser"
           class="mt-xs"
           :user-id="createdBy"
           show-role
@@ -43,13 +47,25 @@ const showModifiedUser = computed(() => {
         />
       </Flex>
 
-      <Flex v-if="modifiedAt" column gap="xs">
+      <Flex v-if="modifiedAt" column gap="xs" class="metadata-col">
         <span class="text-xxs text-color-lighter" style="text-transform: uppercase; letter-spacing: 0.5px;">
           Modified
         </span>
         <TimestampDate size="xs" :date="modifiedAt" format="MMM D, YYYY [at] HH:mm" />
-        <UserDisplay v-if="showModifiedUser" class="mt-xs" :user-id="modifiedBy" show-role size="s" />
+        <UserDisplay
+          v-if="showModifiedUser"
+          class="mt-xs"
+          :user-id="modifiedBy"
+          show-role
+          size="s"
+        />
       </Flex>
     </Flex>
   </Flex>
 </template>
+
+<style lang="scss" scoped>
+.metadata-col {
+  min-width: 160px;
+}
+</style>

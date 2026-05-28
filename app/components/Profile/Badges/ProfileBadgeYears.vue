@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BadgeVariant } from '@/lib/badges'
+import type { BadgeVariant } from '@/lib/badges/catalog'
 import { computed } from 'vue'
 import ProfileBadge from '@/components/Profile/Badges/ProfileBadge.vue'
 
@@ -39,8 +39,8 @@ const formattedSince = computed(() => {
 
 const description = computed(() => {
   if (!formattedSince.value)
-    return `Member for ${subtitle.value}`
-  return `Member for ${subtitle.value} (since ${formattedSince.value})`
+    return `User for ${subtitle.value}`
+  return `User for ${subtitle.value} (since ${formattedSince.value})`
 })
 </script>
 

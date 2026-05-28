@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Button, Card, Flex, Input, pushToast, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
-import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import { defineAsyncComponent } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { slugify } from '@/lib/utils/formatting'
-
-type DiscussionRecord = Tables<'discussions'>
 
 const props = defineProps<{
   discussion: DiscussionRecord | null
@@ -18,6 +16,10 @@ const emit = defineEmits<{
   updated: [discussion: DiscussionRecord]
   deleted: [discussionId: string]
 }>()
+
+const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
+
+type DiscussionRecord = Tables<'discussions'>
 
 const isOpen = defineModel<boolean>('isOpen')
 
@@ -188,7 +190,7 @@ async function handleDelete() {
           expand
         />
 
-        <Flex column gap="xs">
+        <Flex column gap="xs" expand>
           <Flex x-between y-center>
             <span class="text-s" style="font-weight: var(--font-weight-medium);">Slug</span>
             <button class="slugify-btn text-xs text-color-accent" type="button" @click="applySlugFromTitle">

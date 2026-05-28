@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Flex, Grid, paginate, Pagination, Skeleton } from '@dolanske/vui'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataEventsPaged } from '@/composables/useDataEventsPaged'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import EventPast from './EventPast.vue'
@@ -7,15 +8,21 @@ import EventPast from './EventPast.vue'
 interface Props {
   search?: string
   officialFilter?: boolean | null
+  recurringFilter?: boolean | null
+  gameFilter?: number[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   search: '',
   officialFilter: null,
+  recurringFilter: null,
+  gameFilter: () => [],
 })
 
 const searchRef = computed(() => props.search)
 const officialFilterRef = computed(() => props.officialFilter)
+const recurringFilterRef = computed(() => props.recurringFilter)
+const gameFilterRef = computed(() => props.gameFilter ?? [])
 
 const isMobile = useBreakpoint('<s')
 const isTablet = useBreakpoint('<m')
@@ -30,7 +37,7 @@ const columns = computed(() => {
 
 const pageSize = computed(() => isMobile.value ? 4 : 6)
 
-const { pastEvents, pastTotalCount, pastPage, loadingPast, setPage } = useDataEventsPaged(pageSize, searchRef, officialFilterRef)
+const { pastEvents, pastTotalCount, pastPage, loadingPast, setPage } = useDataEventsPaged(pageSize, searchRef, officialFilterRef, recurringFilterRef, gameFilterRef)
 
 const pastPagination = computed(() => paginate(pastTotalCount.value, pastPage.value, pageSize.value))
 </script>
@@ -53,13 +60,15 @@ const pastPagination = computed(() => paginate(pastTotalCount.value, pastPage.va
     </div>
 
     <template v-else>
-      <Grid class="events-section__past-grid" :columns="columns" gap="m">
-        <EventPast
-          v-for="event in pastEvents"
-          :key="event.id"
-          :data="event"
-        />
-      </Grid>
+      <GlowGroup>
+        <Grid class="events-section__past-grid" :columns="columns" gap="m">
+          <EventPast
+            v-for="event in pastEvents"
+            :key="event.id"
+            :data="event"
+          />
+        </Grid>
+      </GlowGroup>
 
       <Flex v-if="pastPagination.totalPages > 1" x-center class="mt-l">
         <Pagination :pagination="pastPagination" @change="setPage($event)" />

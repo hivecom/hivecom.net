@@ -2,6 +2,7 @@
 import type { Database } from '@/types/database.types'
 import { Button, Card, Flex, Grid, Input, paginate, Pagination, Select, Skeleton, Switch, Tab, Tabs } from '@dolanske/vui'
 import { watchDebounced } from '@vueuse/core'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -360,42 +361,44 @@ defineExpose({ refresh, switchToCreated })
       </Flex>
     </Flex>
 
-    <Grid column gap="l" expand :columns="isMobile ? 1 : 2">
-      <template v-if="loading">
-        <div v-for="i in 6" :key="i" class="theme-card-skeleton">
-          <div class="skeleton-preview" />
-          <div class="skeleton-content">
-            <Skeleton :height="24" width="55%" />
-            <Skeleton :height="20" width="80%" />
-            <Flex x-between y-center class="mt-m">
-              <Skeleton :height="28" :width="96" :radius="8" />
-              <Skeleton :height="28" :width="72" />
-            </Flex>
+    <GlowGroup>
+      <Grid column gap="l" expand :columns="isMobile ? 1 : 2">
+        <template v-if="loading">
+          <div v-for="i in 6" :key="i" class="theme-card-skeleton">
+            <div class="skeleton-preview" />
+            <div class="skeleton-content">
+              <Skeleton :height="24" width="55%" />
+              <Skeleton :height="20" width="80%" />
+              <Flex x-between y-center class="mt-m">
+                <Skeleton :height="28" :width="96" :radius="8" />
+                <Skeleton :height="28" :width="72" />
+              </Flex>
+            </div>
           </div>
-        </div>
-      </template>
+        </template>
 
-      <template v-else>
-        <!-- Fake default theme card - always first in the official tab -->
-        <ThemeCard
-          v-if="activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch"
-          :item="DEFAULT_THEME"
-          :active-theme-id="activeTheme?.id"
-          @remove="(origin) => setActiveTheme(null, origin)"
-        />
+        <template v-else>
+          <!-- Fake default theme card - always first in the official tab -->
+          <ThemeCard
+            v-if="activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch"
+            :item="DEFAULT_THEME"
+            :active-theme-id="activeTheme?.id"
+            @remove="(origin) => setActiveTheme(null, origin)"
+          />
 
-        <ThemeCard
-          v-for="item in items"
-          :key="item.id"
-          :item="item"
-          :active-theme-id="activeTheme?.id"
-          @remove="(origin) => setActiveTheme(null, origin)"
-          @edit="emit('edit', item)"
-          @deprecate="deprecateTheme(item.id)"
-          @delete="deleteTheme(item.id)"
-        />
-      </template>
-    </Grid>
+          <ThemeCard
+            v-for="item in items"
+            :key="item.id"
+            :item="item"
+            :active-theme-id="activeTheme?.id"
+            @remove="(origin) => setActiveTheme(null, origin)"
+            @edit="emit('edit', item)"
+            @deprecate="deprecateTheme(item.id)"
+            @delete="deleteTheme(item.id)"
+          />
+        </template>
+      </Grid>
+    </GlowGroup>
 
     <template v-if="!loading && items.length === 0 && !(activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch)">
       <Card class="card-bg">

@@ -3,24 +3,39 @@ import { Button, Flex, Modal } from '@dolanske/vui'
 
 const props = defineProps<Props>()
 
-const IMAGE_URL_SOURCE = String.raw`!\[.*?\]\((.*?\.(?:jpe?g|png|webp|gif)(?:\?[^)]*)?)\)`
-
 interface Props {
   markdown: string
-  container: HTMLElement | null
+  // May be a raw HTMLElement or a Vue component instance (e.g. when ref is on a VUI wrapper)
+  container: HTMLElement | { $el: HTMLElement } | null
 }
 
-// Extract image URLs from the markdown content
-const imageUrls = computed(() => {
-  return Array.from(props.markdown.matchAll(new RegExp(IMAGE_URL_SOURCE, 'gi')), m => m[1]!)
+interface MediaItem {
+  type: 'image' | 'video'
+  url: string
+}
+
+const IMAGE_URL_SOURCE = String.raw`!\[.*?\]\((.*?\.(?:jpe?g|png|webp|gif)(?:\?[^)]*)?)\)`
+const VIDEO_URL_SOURCE = String.raw`:::video\s*\{[^}]*src="([^"]+)"[^}]*\}\s*:::`
+
+// Extract all media (images and videos) in document order.
+const mediaItems = computed((): MediaItem[] => {
+  const items: { pos: number, item: MediaItem }[] = []
+
+  for (const m of props.markdown.matchAll(new RegExp(IMAGE_URL_SOURCE, 'gi')))
+    items.push({ pos: m.index!, item: { type: 'image', url: m[1]! } })
+  for (const m of props.markdown.matchAll(new RegExp(VIDEO_URL_SOURCE, 'gi')))
+    items.push({ pos: m.index!, item: { type: 'video', url: m[1]! } })
+
+  items.sort((a, b) => a.pos - b.pos)
+  return items.map(i => i.item)
 })
 
 const activeIndex = ref(-1)
-const activeUrl = computed(() => imageUrls.value[activeIndex.value] ?? null)
+const activeItem = computed(() => mediaItems.value[activeIndex.value] ?? null)
 const isOpen = computed(() => activeIndex.value !== -1)
 
 const hasPrev = computed(() => activeIndex.value > 0)
-const hasNext = computed(() => activeIndex.value < imageUrls.value.length - 1)
+const hasNext = computed(() => activeIndex.value < mediaItems.value.length - 1)
 
 // Track slide direction so the transition CSS knows which way to animate.
 // Must be set before mutating activeIndex so Vue picks up the right classes.
@@ -50,22 +65,27 @@ function next() {
   }
 }
 
-// Listen for clicks on any <img> inside this instance's own container only.
-// Scoping by container ref ensures that when many MarkdownLightbox instances are on
-// the same page, only the one that owns the clicked image responds.
+// Listen for clicks inside this instance's container only.
 useEventListener('click', (event) => {
   const target = event.target as HTMLElement
 
-  if (!props.container?.contains(target))
+  const el = props.container && '$el' in props.container ? props.container.$el : props.container
+  if (!el?.contains(target))
     return
 
   if (target.tagName === 'IMG' && !target.classList.contains('ignored')) {
     const src = target.getAttribute('src')
-    const index = imageUrls.value.indexOf(src ?? '')
-
-    if (index !== -1) {
+    const index = mediaItems.value.findIndex(m => m.type === 'image' && m.url === src)
+    if (index !== -1)
       open(index)
-    }
+  }
+  else if (target.tagName === 'DIV' && target.classList.contains('md-video-embed') && target.closest('.md-image-group')) {
+    // Grouped videos: inner video has pointer-events: none so the click lands on the div wrapper.
+    const video = target.querySelector('video')
+    const src = video?.getAttribute('src') ?? null
+    const index = mediaItems.value.findIndex(m => m.type === 'video' && m.url === src)
+    if (index !== -1)
+      open(index)
   }
 })
 
@@ -84,10 +104,9 @@ useEventListener('keydown', (event) => {
   }
 })
 
-// Listen for swipe events - use onSwipeEnd so it fires exactly once per gesture,
-// not on every touch-move frame like whenever(isSwiping) would.
+// Live drag tracking: imageWrap follows the pointer (mouse + touch), transitions only on release.
 const imageWrap = useTemplateRef('imageWrap')
-useSwipe(imageWrap, {
+const { isSwiping, posStart, posEnd } = usePointerSwipe(imageWrap, {
   onSwipeEnd(_e, direction) {
     if (direction === 'left') {
       next()
@@ -97,23 +116,52 @@ useSwipe(imageWrap, {
     }
   },
 })
+
+// Hard stop at gallery edges - no drag past first/last item.
+// posEnd.x - posStart.x is positive when dragging right, negative when dragging left.
+const dragOffset = computed(() => {
+  if (!isSwiping.value)
+    return 0
+  const raw = posEnd.x - posStart.x
+  if (raw > 0 && !hasPrev.value)
+    return 0
+  if (raw < 0 && !hasNext.value)
+    return 0
+  return raw
+})
+
+const dragStyle = computed(() => {
+  if (!isSwiping.value)
+    return {}
+  return {
+    transform: `translateX(${dragOffset.value}px)`,
+    transition: 'none',
+  }
+})
 </script>
 
 <template>
   <Modal class="md-lightbox" size="screen" :open="isOpen" centered @close="close">
     <div ref="imageWrap" class="md-lightbox__img-wrap">
       <Transition :name="`md-lightbox-slide-${slideDir}`">
-        <div v-if="activeUrl" :key="activeUrl" class="md-lightbox__slide" @click.self="close">
-          <img class="ignored" :src="activeUrl">
+        <div
+          v-if="activeItem"
+          :key="activeItem.url"
+          class="md-lightbox__slide"
+          :style="dragStyle"
+          @click.self="close"
+        >
+          <img v-if="activeItem.type === 'image'" class="ignored" :src="activeItem.url" loading="lazy" decoding="async" draggable="false">
+          <video v-else controls autoplay :src="activeItem.url" draggable="false" />
         </div>
       </Transition>
     </div>
 
-    <Flex v-if="imageUrls.length > 1" x-center gap="l" class="md-lightbox-nav" y-center>
+    <Flex v-if="mediaItems.length > 1" x-center gap="l" class="md-lightbox-nav" y-center>
       <Button size="s" square :disabled="!hasPrev" :variant="hasPrev ? 'fill' : 'gray'" @click="prev">
         <Icon name="ph:arrow-left" />
       </Button>
-      <span>{{ activeIndex + 1 }} / {{ imageUrls.length }}</span>
+      <span>{{ activeIndex + 1 }} / {{ mediaItems.length }}</span>
       <Button size="s" square :disabled="!hasNext" :variant="hasNext ? 'fill' : 'gray'" @click="next">
         <Icon name="ph:arrow-right" />
       </Button>
@@ -133,6 +181,8 @@ useSwipe(imageWrap, {
     width: var(--width);
     position: relative;
     overflow: hidden;
+    user-select: none;
+    touch-action: none;
   }
 
   &__slide {
@@ -143,6 +193,14 @@ useSwipe(imageWrap, {
     width: var(--width);
 
     img {
+      border-radius: var(--border-radius-m);
+      max-height: var(--height);
+      max-width: var(--width);
+      display: block;
+      margin: auto;
+    }
+
+    video {
       border-radius: var(--border-radius-m);
       max-height: var(--height);
       max-width: var(--width);

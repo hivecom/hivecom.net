@@ -1,21 +1,20 @@
 <script setup lang="ts">
-import type { Enums } from '@/types/database.types'
-import { Button, Card, CopyClipboard, Flex, Grid, Sheet } from '@dolanske/vui'
-
+import { Button, Card, Flex, Sheet, Skeleton } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
-import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
 
-import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
-import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
-import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
+import ProfileBadgeFromSlug from '@/components/Profile/Badges/ProfileBadgeFromSlug.vue'
 import FriendsModal from '@/components/Profile/FriendsModal.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import UserLink from '@/components/Shared/UserLink.vue'
 import { useCachedFetch } from '@/composables/useCache'
+import { useDataProfileBadges } from '@/composables/useDataProfileBadges'
+import { BADGE_CATALOG } from '@/lib/badges/catalog'
 import { isBanActive } from '@/lib/banStatus'
 import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -25,7 +24,6 @@ import UserActions from './UserActions.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
 
 type UserActionType = 'ban' | 'unban' | 'edit' | 'delete'
-type ProfileBadge = Enums<'profile_badge'>
 
 const props = defineProps<{
   user: {
@@ -42,6 +40,7 @@ const props = defineProps<{
     discord_id: string | null
     discord_display_name?: string | null
     steam_id: string | null
+    lastfm_username?: string | null
     introduction: string | null
     markdown: string | null
     banned: boolean
@@ -53,8 +52,10 @@ const props = defineProps<{
     role?: string | null
     country?: string | null
     birthday?: string | null
-    badges?: ProfileBadge[]
+    badges?: string[]
     public?: boolean
+    rich_presence_enabled?: boolean
+    has_teamspeak?: boolean
     confirmed?: boolean
     website?: string | null
   } | null
@@ -65,14 +66,22 @@ const props = defineProps<{
 // Define emits
 const emit = defineEmits(['edit'])
 
-const BADGE_COMPONENTS: Record<ProfileBadge, unknown> = {
-  builder: ProfileBadgeBuilder,
-  earlybird: ProfileBadgeEarlybird,
-  founder: ProfileBadgeFounder,
-  host: ProfileBadgeHost,
-}
-
 const isBelowSmall = useBreakpoint('<s')
+
+const profileId = computed(() => props.user?.id ?? null)
+const { badges, refresh: refreshBadges } = useDataProfileBadges(profileId)
+
+const TIER_RANK: Record<string, number> = { shiny: 0, gold: 1, silver: 2, bronze: 3 }
+const sortedBadges = computed(() => {
+  return [...badges.value].sort((a, b) => {
+    const tierDiff = (TIER_RANK[a.tier] ?? 99) - (TIER_RANK[b.tier] ?? 99)
+    if (tierDiff !== 0)
+      return tierDiff
+    const aOrder = BADGE_CATALOG[a.slug as keyof typeof BADGE_CATALOG]?.sortOrder ?? 99
+    const bOrder = BADGE_CATALOG[b.slug as keyof typeof BADGE_CATALOG]?.sortOrder ?? 99
+    return aOrder - bOrder
+  })
+})
 
 // Get current user
 const currentUser = useSupabaseUser()
@@ -90,10 +99,11 @@ const allFriendships = ref<Array<{ id: number, friender: string, friend: string 
 // Fetch all friendships for this user
 const {
   data: friendshipsData,
+  loading: friendshipsLoading,
   refetch: refetchFriendships,
 } = useCachedFetch<Array<{ id: number, friender: string, friend: string }>>(
   () => ({
-    table: 'friends',
+    table: 'profile_friends',
     select: 'id, friender, friend',
     filters: {},
   }),
@@ -213,6 +223,7 @@ watch(() => userAction.value, (action) => {
 // Watch for user changes to fetch avatar and refetch friends data
 watch(() => props.user, async (newUser) => {
   if (newUser?.id) {
+    avatarUrl.value = null
     avatarUrl.value = await getUserAvatarUrl(supabase, newUser.id)
     // Refetch friends data when user changes
     await refetchFriendships()
@@ -261,6 +272,8 @@ function getUserInitials(username: string): string {
     .substring(0, 2)
     .toUpperCase()
 }
+
+defineExpose({ refreshBadges })
 </script>
 
 <template>
@@ -276,7 +289,9 @@ function getUserInitials(username: string): string {
         <Flex column :gap="0">
           <h4>User Details</h4>
           <p v-if="user" class="text-color-light text-xs">
-            <UserLink :user-id="user.id" />
+            <NuxtLink :to="`/profile/${user.username}`" target="_blank">
+              {{ user.username }}
+            </NuxtLink>
           </p>
         </Flex>
 
@@ -295,123 +310,81 @@ function getUserInitials(username: string): string {
     <Flex v-if="user" column gap="m" class="user-detail">
       <Flex column gap="m" expand>
         <!-- Basic Info -->
-        <Card class="card-bg">
-          <Flex column gap="l" expand>
-            <Grid class="detail-item" columns="1fr 2fr" expand>
-              <span class="text-color-light text-bold">UUID:</span>
-              <CopyClipboard :text="user.id">
-                <code class="user-id">{{ user.id }}</code>
-              </CopyClipboard>
-            </Grid>
+        <DetailTable>
+          <template #header>
+            <Icon name="ph:info" />
+            <h6>Overview</h6>
+          </template>
+          <DetailRow label="UUID">
+            <CopyValue :text="user.id" link />
+          </DetailRow>
 
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Username:</span>
-              <UserLink :user-id="user.id" class="text-m" show-avatar />
-            </Grid>
+          <DetailRow v-if="canViewUserEmails" label="Email">
+            <CopyValue v-if="user.email" :text="user.email" link />
+            <span v-else class="text-color-light text-s">No email on file</span>
+          </DetailRow>
 
-            <Grid v-if="canViewUserEmails" class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Email:</span>
-              <template v-if="user.email">
-                <CopyClipboard :text="user.email" confirm>
-                  <Flex y-center>
-                    <Icon name="ph:copy" />
-                    <span class="user-email">{{ user.email }}</span>
-                  </Flex>
-                </CopyClipboard>
-              </template>
-              <span v-else class="text-color-light text-s">No email on file</span>
-            </Grid>
+          <DetailRow label="Status">
+            <UserStatusIndicator :status="userStatus" :show-label="true" />
+          </DetailRow>
 
-            <Grid class="detail-item" expand columns="1fr 2fr">
-              <span class="text-color-light text-bold">Status:</span>
-              <UserStatusIndicator :status="userStatus" :show-label="true" />
-            </Grid>
+          <DetailRow label="Role">
+            <RoleIndicator :role="user.role" size="m" />
+          </DetailRow>
 
-            <Grid class="detail-item" columns="1fr 2fr" expand>
-              <span class="text-color-light text-bold">Role:</span>
-              <span>
-                <RoleIndicator :role="user.role" />
+          <DetailRow label="Is Public">
+            <Icon :name="user.public ? 'ph:eye' : 'ph:eye-slash'" />
+            <span class="text-s">{{ user.public ? 'Yes' : 'No' }}</span>
+          </DetailRow>
+
+          <DetailRow label="Rich Presence">
+            <Icon name="ph:activity" :class="user.rich_presence_enabled ? 'text-color-green' : 'text-color-lighter'" />
+            <span class="text-s">{{ user.rich_presence_enabled ? 'Enabled' : 'Disabled' }}</span>
+          </DetailRow>
+
+          <DetailRow label="Last Seen">
+            <span v-if="lastSeenVariant === 'online'" class="online-dot" />
+            <span class="text-s" :class="getLastSeenTextClass(lastSeenVariant)">
+              {{ activityStatus?.lastSeenText || 'Never' }}
+            </span>
+          </DetailRow>
+
+          <!-- Website Information -->
+          <DetailRow :hidden="!user.website" label="Website">
+            <a
+              :href="user.website!"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="website-link"
+            >
+              {{ user.website }}
+            </a>
+          </DetailRow>
+
+          <!-- Friends Information -->
+          <DetailRow label="Friends">
+            <Skeleton v-if="friendshipsLoading" :height="16" :width="80" :radius="4" />
+            <template v-else-if="friends.length > 0 || sentRequests.length > 0 || incomingRequests.length > 0">
+              <Button variant="link" class="friends-link" @click="showFriendsModal = true">
+                {{ friends.length }} {{ friends.length === 1 ? 'friend' : 'friends' }}{{ sentRequests.length > 0 ? `, ${sentRequests.length} sent` : '' }}{{ incomingRequests.length > 0 ? `, ${incomingRequests.length} incoming` : '' }}
+              </Button>
+            </template>
+            <span v-else class="text-s text-color-lighter">No friends</span>
+          </DetailRow>
+
+          <DetailRow :hidden="!(hasActiveBan && user.ban_duration)" label="Ban Duration">
+            <span class="ban-duration">{{ user.ban_duration }}</span>
+          </DetailRow>
+
+          <DetailRow :hidden="!countryInfo" label="Country">
+            <Flex gap="xs" y-center class="country-display">
+              <span class="country-emoji" role="img" :aria-label="countryInfo?.name">
+                {{ countryInfo?.emoji }}
               </span>
-            </Grid>
-
-            <Grid class="detail-item" columns="1fr 2fr" expand>
-              <span class="text-color-light text-bold">Is Public:</span>
-              <Flex gap="xs" y-center>
-                <Icon :name="user.public ? 'ph:eye' : 'ph:eye-slash'" />
-                <span class="text-s">
-                  {{ user.public ? 'Yes' : 'No' }}
-                </span>
-              </Flex>
-            </Grid>
-
-            <Grid class="detail-item" columns="1fr 2fr" expand>
-              <span class="text-color-light text-bold">Last Seen:</span>
-              <Flex gap="xs" y-center>
-                <span v-if="lastSeenVariant === 'online'" class="online-dot" />
-                <span
-                  class="text-s"
-                  :class="getLastSeenTextClass(lastSeenVariant)"
-                >
-                  {{ activityStatus?.lastSeenText || 'Never' }}
-                </span>
-              </Flex>
-            </Grid>
-
-            <!-- Website Information -->
-            <Grid v-if="user.website" class="detail-item" columns="1fr 2fr" expand>
-              <span class="text-color-light text-bold">Website:</span>
-              <a
-                :href="user.website"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="website-link"
-              >
-                {{ user.website }}
-              </a>
-            </Grid>
-
-            <!-- Friends Information -->
-            <Grid class="detail-item" columns="1fr 2fr" expand wrap>
-              <span class="text-color-light text-bold">Friends:</span>
-              <Flex gap="xs" y-center wrap>
-                <span class="text-s">
-                  {{ friends.length }} {{ friends.length === 1 ? 'friend' : 'friends' }}
-                </span>
-                <span v-if="sentRequests.length > 0" class="text-s text-color-light">
-                  • {{ sentRequests.length }} sent
-                </span>
-                <span v-if="incomingRequests.length > 0" class="text-s text-color-light">
-                  • {{ incomingRequests.length }} incoming
-                </span>
-                <Button
-                  v-if="friends.length > 0 || sentRequests.length > 0 || incomingRequests.length > 0"
-                  variant="gray"
-                  size="s"
-                  @click="showFriendsModal = true"
-                >
-                  View Details
-                </Button>
-              </Flex>
-            </Grid>
-
-            <Grid v-if="hasActiveBan && user.ban_duration" class="detail-item" columns="1fr 2fr" expand>
-              <span class="text-color-light text-bold">Ban Duration:</span>
-              <span class="ban-duration">{{ user.ban_duration }}</span>
-            </Grid>
-
-            <Grid v-if="countryInfo" class="detail-item" columns="1fr 2fr" expand>
-              <span class="text-color-light text-bold">Country:</span>
-              <Flex gap="xs" y-center class="country-display">
-                <span class="country-emoji" role="img" :aria-label="countryInfo.name">
-                  {{ countryInfo.emoji }}
-                </span>
-                <span class="text-s">
-                  {{ countryInfo.name }} ({{ countryInfo.code }})
-                </span>
-              </Flex>
-            </Grid>
-          </Flex>
-        </Card>
+              <span class="text-s">{{ countryInfo?.name }} ({{ countryInfo?.code }})</span>
+            </Flex>
+          </DetailRow>
+        </DetailTable>
 
         <!-- Ban Information -->
         <Card v-if="user.banned" separators class="ban-info-card card-bg">
@@ -421,37 +394,31 @@ function getUserInitials(username: string): string {
             </h6>
           </template>
 
-          <Flex column gap="l" expand>
-            <Grid v-if="user.ban_reason" class="detail-item" :columns="2" expand>
-              <span class="text-color-light text-bold">Reason:</span>
+          <DetailTable bare>
+            <DetailRow :hidden="!user.ban_reason" label="Reason">
               <span class="ban-reason-text">{{ user.ban_reason }}</span>
-            </Grid>
+            </DetailRow>
 
-            <Grid v-if="user.ban_start" class="detail-item" :columns="2" expand>
-              <span class="text-color-light text-bold">Ban Start:</span>
-              <TimestampDate :date="user.ban_start" />
-            </Grid>
+            <DetailRow :hidden="!user.ban_start" label="Ban Start">
+              <TimestampDate :date="user.ban_start!" />
+            </DetailRow>
 
-            <Grid v-if="user.ban_end" class="detail-item" :columns="2" expand>
-              <span class="text-color-light text-bold">Ban End:</span>
+            <DetailRow v-if="user.ban_end" label="Ban End">
               <TimestampDate :date="user.ban_end" />
-            </Grid>
-
-            <Grid v-else-if="user.banned" class="detail-item" :columns="2" expand>
-              <span class="text-color-light text-bold">Ban Type:</span>
+            </DetailRow>
+            <DetailRow v-else-if="user.banned" label="Ban Type">
               <span class="ban-permanent">Permanent</span>
-            </Grid>
+            </DetailRow>
 
-            <Grid v-if="user.ban_duration" class="detail-item" :columns="2" expand>
-              <span class="text-color-light text-bold">Duration:</span>
+            <DetailRow :hidden="!user.ban_duration" label="Duration">
               <span class="ban-duration">{{ user.ban_duration }}</span>
-            </Grid>
-          </Flex>
+            </DetailRow>
+          </DetailTable>
         </Card>
 
         <!-- Platform Connections -->
         <Flex
-          v-if="user.patreon_id || user.discord_id || user.steam_id"
+          v-if="user.patreon_id || user.discord_id || user.steam_id || user.has_teamspeak || user.lastfm_username"
           gap="s"
           :column="isBelowSmall"
           :wrap="!isBelowSmall"
@@ -468,21 +435,14 @@ function getUserInitials(username: string): string {
               </Flex>
             </template>
 
-            <Flex column gap="s" expand>
-              <Grid class="detail-item" :columns="2" expand>
-                <span class="text-color-light text-bold">Name:</span>
-                <span class="text-s">
-                  {{ user.discord_display_name || 'Unknown' }}
-                </span>
-              </Grid>
-
-              <Grid class="detail-item" :columns="2" expand>
-                <span class="text-color-light text-bold">Discord ID:</span>
-                <CopyClipboard :text="user.discord_id" confirm>
-                  <span class="platform-id">{{ user.discord_id }}</span>
-                </CopyClipboard>
-              </Grid>
-            </Flex>
+            <DetailTable bare>
+              <DetailRow label="Name">
+                <span class="text-s">{{ user.discord_display_name || 'Unknown' }}</span>
+              </DetailRow>
+              <DetailRow label="Discord ID">
+                <CopyValue :text="user.discord_id!" link />
+              </DetailRow>
+            </DetailTable>
           </Card>
 
           <Card v-if="user.patreon_id" separators class="card-bg connection-card" expand>
@@ -496,17 +456,29 @@ function getUserInitials(username: string): string {
               </Flex>
             </template>
 
-            <Flex column gap="s" expand>
-              <Grid class="detail-item" :columns="2" expand>
-                <span class="text-color-light text-bold">Patreon ID:</span>
-                <CopyClipboard :text="user.patreon_id" confirm>
-                  <Flex y-center>
-                    <Icon name="ph:copy" />
-                    <span class="platform-id">{{ user.patreon_id }}</span>
-                  </Flex>
-                </CopyClipboard>
-              </Grid>
-            </Flex>
+            <DetailTable bare>
+              <DetailRow label="Patreon ID">
+                <CopyValue :text="user.patreon_id!" link />
+              </DetailRow>
+            </DetailTable>
+          </Card>
+
+          <Card v-if="user.has_teamspeak" separators class="card-bg connection-card" expand>
+            <template #header>
+              <Flex x-between y-center>
+                <Flex gap="xs" y-center>
+                  <Icon name="mdi:teamspeak" />
+                  <h6>TeamSpeak</h6>
+                </Flex>
+                <Icon class="text-color-light" name="ph:link" />
+              </Flex>
+            </template>
+
+            <DetailTable bare>
+              <DetailRow label="Status">
+                <span class="text-s">Identities linked</span>
+              </DetailRow>
+            </DetailTable>
           </Card>
 
           <Card v-if="user.steam_id" separators class="card-bg connection-card" expand>
@@ -520,17 +492,31 @@ function getUserInitials(username: string): string {
               </Flex>
             </template>
 
-            <Flex column gap="s" expand>
-              <Grid class="detail-item" :columns="2" expand>
-                <span class="text-color-light text-bold">Steam ID:</span>
-                <CopyClipboard :text="user.steam_id" confirm>
-                  <Flex y-center>
-                    <Icon name="ph:copy" />
-                    <span class="platform-id">{{ user.steam_id }}</span>
-                  </Flex>
-                </CopyClipboard>
-              </Grid>
-            </Flex>
+            <DetailTable bare>
+              <DetailRow label="Steam ID">
+                <CopyValue :text="user.steam_id!" link />
+              </DetailRow>
+            </DetailTable>
+          </Card>
+
+          <Card v-if="user.lastfm_username" separators class="card-bg connection-card" expand>
+            <template #header>
+              <Flex x-between y-center>
+                <Flex gap="xs" y-center>
+                  <Icon name="simple-icons:lastdotfm" />
+                  <h6>Last.fm</h6>
+                </Flex>
+                <a :href="`https://www.last.fm/user/${user.lastfm_username}`" target="_blank" rel="noopener noreferrer">
+                  <Icon class="text-color-light" name="ph:arrow-square-out" />
+                </a>
+              </Flex>
+            </template>
+
+            <DetailTable bare>
+              <DetailRow label="Username">
+                <span class="text-s">{{ user.lastfm_username }}</span>
+              </DetailRow>
+            </DetailTable>
           </Card>
         </Flex>
 
@@ -538,9 +524,12 @@ function getUserInitials(username: string): string {
           <!-- User Introduction -->
           <Card separators expand class="introduction-card card-bg">
             <template #header>
-              <h6>Introduction</h6>
+              <Flex gap="xs" y-center>
+                <Icon name="ph:user-circle" />
+                <h6>Introduction</h6>
+              </Flex>
             </template>
-            <div :class="`introduction-text ${!user.introduction ? 'text-color-lighter' : ''}`">
+            <div :class="`introduction-text text-s ${!user.introduction ? 'text-color-lighter' : ''}`">
               {{ user.introduction ? user.introduction : 'No introduction provided.' }}
             </div>
           </Card>
@@ -560,7 +549,13 @@ function getUserInitials(username: string): string {
         <!-- User Profile Markdown -->
         <Card v-if="user.markdown" separators class="card-bg">
           <template #header>
-            <h6>Content</h6>
+            <Flex x-between y-center expand>
+              <Flex y-center gap="xs">
+                <Icon name="ph:article" />
+                <h6>Content</h6>
+              </Flex>
+              <span class="text-color-lightest text-xs">Markdown</span>
+            </Flex>
           </template>
           <div class="profile-markdown">
             <MarkdownRenderer :md="user.markdown" />
@@ -568,17 +563,23 @@ function getUserInitials(username: string): string {
         </Card>
 
         <!-- Fixed Badges -->
-        <Card v-if="user.badges?.length" separators class="card-bg">
+        <Card v-if="sortedBadges.length" separators class="card-bg">
           <template #header>
             <h6>Badges</h6>
           </template>
           <div class="badges-grid">
             <div
-              v-for="badge in user.badges"
-              :key="badge"
+              v-for="badge in sortedBadges"
+              :key="badge.slug"
               class="badge-cell"
             >
-              <component :is="BADGE_COMPONENTS[badge]" compact />
+              <ProfileBadgeFromSlug
+                :slug="badge.slug"
+                :tier="badge.tier"
+                :progress="badge.progress ?? undefined"
+                :earned-at="badge.earned_at"
+                compact
+              />
             </div>
           </div>
         </Card>
@@ -609,6 +610,10 @@ function getUserInitials(username: string): string {
 </template>
 
 <style scoped lang="scss">
+.friends-link {
+  padding-inline: 0;
+}
+
 .user-detail {
   padding-bottom: var(--space);
 }
@@ -665,7 +670,7 @@ function getUserInitials(username: string): string {
 }
 
 .introduction-text {
-  font-size: var(--font-size-m);
+  font-size: var(--font-size-s);
   line-height: 1.6;
   color: var(--color-text);
 }

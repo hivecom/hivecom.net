@@ -5,7 +5,7 @@ import { useDataUser } from '@/composables/useDataUser'
 
 interface Props {
   userId?: string | null
-  size?: 'xs' | 's' | 'm' | 'l'
+  size?: 's' | 'm' | 'l'
   tiny?: boolean
 }
 

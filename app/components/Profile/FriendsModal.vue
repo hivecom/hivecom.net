@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { Button, Flex, Modal, Tab, Tabs } from '@dolanske/vui'
+import { Badge, Button, Flex, Modal, Tab, Tabs } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import TinyBadge from '../Shared/TinyBadge.vue'
 
 interface Props {
   friends: string[]
@@ -73,27 +72,27 @@ function handleClose() {
           <Flex y-center gap="xs">
             <Icon name="ph:users" />
             Friends
-            <TinyBadge v-if="friendsCount > 0" variant="success" size="s">
+            <Badge v-if="friendsCount > 0" size="s" variant="success">
               {{ friendsCount }}
-            </TinyBadge>
+            </Badge>
           </Flex>
         </Tab>
         <Tab value="sent">
           <Flex y-center gap="xs">
             <Icon name="ph:paper-plane-tilt" />
             Sent
-            <TinyBadge v-if="sentCount > 0" variant="info" size="s">
+            <Badge v-if="sentCount > 0" size="s" variant="info">
               {{ sentCount }}
-            </TinyBadge>
+            </Badge>
           </Flex>
         </Tab>
         <Tab value="incoming">
           <Flex y-center gap="xs">
             <Icon name="ph:bell" />
             Incoming
-            <TinyBadge v-if="incomingCount > 0" variant="warning" size="s">
+            <Badge v-if="incomingCount > 0" size="s" variant="warning">
               {{ incomingCount }}
-            </TinyBadge>
+            </Badge>
           </Flex>
         </Tab>
       </Tabs>

@@ -1,126 +1,244 @@
 import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
-import type { Database, Tables } from "database-types";
+import {
+  buildDockerControlServerUrl,
+  getDockerControlToken,
+} from "../_shared/docker-control.ts";
+import {
+  fetchSnapshotFromStorage,
+  isSnapshotFresh,
+} from "../_shared/teamspeak.ts";
+import type { Database, Json, Tables } from "database-types";
 import { COUNTRIES } from "../../../app/lib/utils/country.ts";
-import type { MetricsSnapshot } from "metrics-types";
+import type { MetricsServerDetail, MetricsSnapshot } from "metrics-types";
 
+// ---------------------------------------------------------------------------
+// Country normalization (unchanged from previous implementation)
+// ------------------------------------------------------------------------
 interface CountryRow {
   country: Tables<"profiles">["country"];
 }
 
-const VALID_COUNTRY_CODES = new Set(COUNTRIES.map((country) => country.code));
-
+const VALID_COUNTRY_CODES = new Set(COUNTRIES.map((c) => c.code));
 const UNKNOWN_COUNTRY_KEY = "unknown";
 
 function normalizeCountryCode(value: string | null | undefined): string | null {
-  if (!value) {
-    return null;
-  }
-
+  if (!value) return null;
   const normalized = value.trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(normalized)) {
-    return null;
-  }
-
+  if (!/^[A-Z]{2}$/.test(normalized)) return null;
   return VALID_COUNTRY_CODES.has(normalized) ? normalized : null;
 }
 
+// ---------------------------------------------------------------------------
+// Local row shapes
+// ------------------------------------------------------------------------
+type GameRow = Pick<Tables<"games">, "id" | "steam_id">;
+
+type GameserverRow = Pick<
+  Tables<"network_gameservers">,
+  | "id"
+  | "name"
+  | "query_protocol"
+  | "query_port"
+  | "port"
+  | "addresses"
+  | "container"
+>;
+
+// presences_steam row with embedded profile
+type SteamPresenceRow = Pick<Tables<"presences_steam">, "current_app_id"> & {
+  profile: Pick<Tables<"profiles">, "rich_presence_enabled"> | null;
+};
+
+// Container row with embedded server
+interface ContainerWithServerRow {
+  name: string;
+  server: Tables<"network_servers"> | null;
+}
+
+// Docker-control query endpoint response
+interface DockerSourceQueryResult {
+  success: boolean;
+  players: number;
+  maxPlayers: number;
+  map: string;
+  playerList: { name: string; score: number; duration: number }[] | null;
+}
+
+interface DockerMinecraftQueryResult {
+  success: boolean;
+  numPlayers: number;
+  maxPlayers: number;
+  players: string[];
+  world: string;
+  motd?: string;
+  gameType?: string;
+  gameId?: string;
+  version?: string;
+  plugins?: string;
+  hostPort?: number;
+  hostIp?: string;
+  extra?: Record<string, string>;
+}
+
+// ---------------------------------------------------------------------------
+// Main handler
+// ------------------------------------------------------------------------
 Deno.serve(async (req: Request) => {
-  // Skip CORS preflight check for OPTIONS requests as this should not originate from a browser.
   try {
-    // Authorize the request using the system cron authorization function
     const authorizeResponse = authorizeSystemCron(req);
     if (authorizeResponse) {
       console.error("Authorization failed:", authorizeResponse.statusText);
-
       return authorizeResponse;
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseKey =
-      Deno.env.get("SUPABASE_SECRET_KEY") ??
+    const supabaseKey = Deno.env.get("SUPABASE_SECRET_KEY") ??
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
       "";
 
     if (!supabaseUrl) {
       throw new Error("SUPABASE_URL environment variable is not set");
     }
-
     if (!supabaseKey) {
       throw new Error(
         "SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY environment variable is not set",
       );
     }
 
-    // Create a Supabase client with elevated permissions for internal metrics collection
+    const DOCKER_CONTROL_TOKEN = getDockerControlToken();
+
     const supabaseClient = createClient<Database>(supabaseUrl, supabaseKey);
 
+    const onlineThreshold = new Date(Date.now() - 6 * 60 * 1000).toISOString();
+
+    // Bucket IDs to track storage metrics for
+    const TRACKED_BUCKETS = [
+      "hivecom-cms",
+      "hivecom-content-forums",
+      "hivecom-content-static",
+      "hivecom-content-users",
+    ] as const;
+
+    // Round 1: all independent DB + storage queries in parallel
     const [
-      totalUsersResponse,
-      countryResponse,
-      gameserverResponse,
-      projectResponse,
-      forumResponse,
+      totalMembersRes,
+      onlineMembersRes,
+      countryRes,
+      projectsRes,
+      forumRes,
+      repliesRes,
+      gamesRes,
+      presencesRes,
+      gameserversRes,
+      tsSnapshot,
+      prevMetricsRes,
+      ...bucketMetricsResults
     ] = await Promise.all([
       supabaseClient.from("profiles").select("id", {
         count: "exact",
         head: true,
       }),
+      supabaseClient
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .gt("last_seen", onlineThreshold),
       supabaseClient.from("profiles").select("country"),
-      supabaseClient.from("gameservers").select("id", {
-        count: "exact",
-        head: true,
-      }),
       supabaseClient.from("projects").select("id", {
         count: "exact",
         head: true,
       }),
       supabaseClient
         .from("discussions")
-        .select("id", {
-          count: "exact",
-          head: true,
-        })
+        .select("id", { count: "exact", head: true })
         .not("discussion_topic_id", "is", null),
+      supabaseClient
+        .from("discussion_replies")
+        .select("id", { count: "exact", head: true })
+        .not("discussion_id", "is", null),
+      supabaseClient.from("games").select("id, steam_id").not(
+        "steam_id",
+        "is",
+        null,
+      ),
+      supabaseClient
+        .from("presences_steam")
+        .select(
+          "current_app_id, profile:profiles!presences_steam_profile_id_fkey(rich_presence_enabled)",
+        )
+        .not("current_app_id", "is", null),
+      supabaseClient
+        .from("network_gameservers")
+        .select(
+          "id, name, query_protocol, query_port, port, addresses, container",
+        )
+        .not("container", "is", null),
+      fetchSnapshotFromStorage(supabaseClient),
+      // Fetch previous snapshot for delta computation
+      supabaseClient
+        .from("metrics")
+        .select("data")
+        .order("captured_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      // Per-bucket storage metrics via RPC
+      ...TRACKED_BUCKETS.map((bucketId) =>
+        supabaseClient.rpc("get_storage_bucket_metrics", {
+          p_bucket_id: bucketId,
+        })
+      ),
     ]);
 
-    if (totalUsersResponse.error) {
+    // Validate required query results
+    if (totalMembersRes.error) {
       throw new Error(
-        `Unable to get user count: ${totalUsersResponse.error.message}`,
+        `Unable to get member count: ${totalMembersRes.error.message}`,
+      );
+    }
+    if (onlineMembersRes.error) {
+      throw new Error(
+        `Unable to get online member count: ${onlineMembersRes.error.message}`,
+      );
+    }
+    if (countryRes.error) {
+      throw new Error(
+        `Unable to get country data: ${countryRes.error.message}`,
+      );
+    }
+    if (projectsRes.error) {
+      throw new Error(
+        `Unable to get project count: ${projectsRes.error.message}`,
+      );
+    }
+    if (forumRes.error) {
+      throw new Error(
+        `Unable to get forum post count: ${forumRes.error.message}`,
+      );
+    }
+    if (repliesRes.error) {
+      throw new Error(
+        `Unable to get discussion reply count: ${repliesRes.error.message}`,
+      );
+    }
+    if (gamesRes.error) {
+      throw new Error(`Unable to get games: ${gamesRes.error.message}`);
+    }
+    if (presencesRes.error) {
+      throw new Error(
+        `Unable to get Steam presences: ${presencesRes.error.message}`,
+      );
+    }
+    if (gameserversRes.error) {
+      throw new Error(
+        `Unable to get gameservers: ${gameserversRes.error.message}`,
       );
     }
 
-    if (countryResponse.error) {
-      throw new Error(
-        `Unable to get country data: ${countryResponse.error.message}`,
-      );
-    }
-
-    if (gameserverResponse.error) {
-      throw new Error(
-        `Unable to get gameserver count: ${gameserverResponse.error.message}`,
-      );
-    }
-
-    if (projectResponse.error) {
-      throw new Error(
-        `Unable to get project count: ${projectResponse.error.message}`,
-      );
-    }
-
-    if (forumResponse.error) {
-      throw new Error(
-        `Unable to get forum discussion count: ${forumResponse.error.message}`,
-      );
-    }
-
-    const totalUsers = totalUsersResponse.count ?? 0;
-    const totalGameservers = gameserverResponse.count ?? 0;
-    const totalProjects = projectResponse.count ?? 0;
-    const totalForumPosts = forumResponse.count ?? 0;
-
-    const countryCounts = (countryResponse.data as CountryRow[] | null)?.reduce(
+    // ---------------------------------------------------------------------------
+    // Members - byCountry
+    // ------------------------------------------------------------------------
+    const countryCounts = (countryRes.data as CountryRow[] | null)?.reduce(
       (acc, row) => {
         const code = normalizeCountryCode(row.country) ?? UNKNOWN_COUNTRY_KEY;
         acc[code] = (acc[code] ?? 0) + 1;
@@ -129,45 +247,362 @@ Deno.serve(async (req: Request) => {
       {} as Record<string, number>,
     ) ?? {};
 
-    const usersByCountry = Object.fromEntries(
+    const byCountry = Object.fromEntries(
       Object.entries(countryCounts).sort(([, a], [, b]) => b - a),
     );
 
+    // ---------------------------------------------------------------------------
+    // Members - byGame
+    // ------------------------------------------------------------------------
+    // Build steam_id -> game.id map (only for games with a known steam_id)
+    const steamIdToGameId = new Map<number, number>();
+    for (const g of (gamesRes.data as GameRow[] | null) ?? []) {
+      if (g.steam_id != null) steamIdToGameId.set(g.steam_id, g.id);
+    }
+
+    const byGame: Record<string, number> = {};
+    for (const row of (presencesRes.data as SteamPresenceRow[] | null) ?? []) {
+      if (!row.profile?.rich_presence_enabled) continue;
+      const appId = row.current_app_id;
+      if (appId == null) continue;
+      const gameId = steamIdToGameId.get(appId);
+      if (gameId == null) continue; // not a tracked game
+      const key = String(gameId);
+      byGame[key] = (byGame[key] ?? 0) + 1;
+    }
+
+    // bySteamGame: all Steam app IDs being played by opt-in users, keyed by steam app ID string
+    const bySteamGame: Record<string, number> = {};
+    for (const row of (presencesRes.data as SteamPresenceRow[] | null) ?? []) {
+      if (!row.profile?.rich_presence_enabled) continue;
+      const appId = row.current_app_id;
+      if (appId == null) continue;
+      const key = String(appId);
+      bySteamGame[key] = (bySteamGame[key] ?? 0) + 1;
+    }
+
+    // ---------------------------------------------------------------------------
+    // TeamSpeak
+    // ------------------------------------------------------------------------
+    const tsServers = isSnapshotFresh(tsSnapshot, 20 * 60 * 1000)
+      ? (tsSnapshot?.servers ?? [])
+      : [];
+
+    type TsServerCfg = { id: string; roleMusicBotGroupId?: number };
+    type AppConstants = {
+      PLATFORMS?: { TEAMSPEAK?: { servers?: TsServerCfg[] } };
+    };
+    const appConstants =
+      (constants as unknown as { default: AppConstants }).default;
+    const tsServerCfgMap = new Map(
+      (appConstants?.PLATFORMS?.TEAMSPEAK?.servers ?? []).map(
+        (srv) => [srv.id, srv] as [string, TsServerCfg],
+      ),
+    );
+
+    function countNonBotClients(s: (typeof tsServers)[number]): number {
+      const cfg = tsServerCfgMap.get(s.id);
+      const musicBotGroupId = cfg?.roleMusicBotGroupId;
+      return s.clients.filter(
+        (c) =>
+          c.uniqueId !== "serveradmin" &&
+          (!musicBotGroupId || !c.serverGroups.includes(musicBotGroupId)),
+      ).length;
+    }
+
+    const tsByServer: Record<string, number> = {};
+    for (const s of tsServers) {
+      tsByServer[s.id] = countNonBotClients(s);
+    }
+
+    const tsOnline = tsServers.reduce(
+      (sum, s) => sum + countNonBotClients(s),
+      0,
+    );
+
+    // ---------------------------------------------------------------------------
+    // Gameservers - docker-control queries
+    // ------------------------------------------------------------------------
+    const gameservers = (gameserversRes.data ?? []) as GameserverRow[];
+    const totalGameservers = gameservers.length;
+
+    // Find gameservers that support querying
+    const queryableGameservers = gameservers.filter(
+      (gs) => gs.query_protocol != null && gs.container != null,
+    );
+
+    // Round 2: batch-fetch container+server records for all queryable gameservers
+    const containerNames = queryableGameservers.map((gs) => gs.container!);
+
+    const containerServerMap = new Map<string, Tables<"network_servers">>();
+
+    if (containerNames.length > 0) {
+      const { data: containerRows, error: containersError } =
+        await supabaseClient
+          .from("network_containers")
+          .select("name, server(*)")
+          .in("name", containerNames);
+
+      if (containersError) {
+        console.error(
+          "Failed to fetch container server mappings:",
+          containersError.message,
+        );
+      } else {
+        for (
+          const row of (containerRows as ContainerWithServerRow[] | null) ?? []
+        ) {
+          if (row.server) containerServerMap.set(row.name, row.server);
+        }
+      }
+    }
+
+    // Round 3: query each game server in parallel via docker-control
+    const byServer: Record<string, MetricsServerDetail> = {};
+
+    // Initialise all gameservers with null detail so every entry is present
+    for (const gs of gameservers) {
+      byServer[String(gs.id)] = { protocol: null, data: null };
+    }
+
+    if (queryableGameservers.length > 0) {
+      const queryResults = await Promise.allSettled(
+        queryableGameservers.map(async (gs) => {
+          const nullDetail = {
+            id: gs.id,
+            detail: {
+              protocol: gs.query_protocol!,
+              data: {
+                players: null,
+                maxPlayers: null,
+                map: null,
+                playerList: null,
+              },
+            } as MetricsServerDetail,
+          };
+
+          const server = containerServerMap.get(gs.container!);
+          if (!server) {
+            console.warn(
+              `No server found for container "${gs.container}" (gameserver ${gs.id})`,
+            );
+            return nullDetail;
+          }
+
+          const port = gs.query_port?.toString() ?? gs.port ?? undefined;
+          const baseUrl = buildDockerControlServerUrl(
+            server,
+            `query/name/${gs.container!}`,
+          );
+          const params = new URLSearchParams({ protocol: gs.query_protocol! });
+          if (port != null) params.set("port", port);
+          const url = `${baseUrl}?${params.toString()}`;
+
+          try {
+            const res = await fetch(url, {
+              method: "GET",
+              headers: { Authorization: `Bearer ${DOCKER_CONTROL_TOKEN}` },
+              signal: AbortSignal.timeout(5000),
+            });
+
+            if (!res.ok) {
+              console.warn(
+                `Query failed for gameserver ${gs.id} (${gs.name}): HTTP ${res.status}`,
+              );
+              return nullDetail;
+            }
+
+            const protocol = gs.query_protocol!;
+            let detail: MetricsServerDetail;
+
+            if (protocol === "minecraft") {
+              const body = await res.json() as DockerMinecraftQueryResult;
+              if (!body.success) return nullDetail;
+              detail = {
+                protocol,
+                data: {
+                  numPlayers: body.numPlayers,
+                  maxPlayers: body.maxPlayers,
+                  world: body.world ?? null,
+                  players: body.players ?? null,
+                  motd: body.motd ?? null,
+                  gameType: body.gameType ?? null,
+                  gameId: body.gameId ?? null,
+                  version: body.version ?? null,
+                  plugins: body.plugins ?? null,
+                  hostPort: body.hostPort ?? null,
+                  hostIp: body.hostIp ?? null,
+                  extra: body.extra ?? null,
+                },
+              };
+            } else {
+              const body = await res.json() as DockerSourceQueryResult;
+              if (!body.success) return nullDetail;
+              detail = {
+                protocol,
+                data: {
+                  players: body.players,
+                  maxPlayers: body.maxPlayers,
+                  map: body.map ?? null,
+                  playerList: body.playerList ?? null,
+                },
+              };
+            }
+
+            return { id: gs.id, detail };
+          } catch (err) {
+            const error = err as Error;
+            console.warn(
+              `Query error for gameserver ${gs.id} (${gs.name}):`,
+              error.message,
+            );
+            return nullDetail;
+          }
+        }),
+      );
+
+      for (const result of queryResults) {
+        if (result.status === "fulfilled") {
+          byServer[String(result.value.id)] = result.value.detail;
+        }
+      }
+    }
+
+    const totalPlayers = Object.values(byServer).reduce(
+      (sum, d) => {
+        if (!d.data) return sum;
+        if (d.protocol === "minecraft") return sum + (d.data.numPlayers ?? 0);
+        return sum + (d.data.players ?? 0);
+      },
+      0,
+    );
+
+    // ---------------------------------------------------------------------------
+    // Storage metrics
+    // ------------------------------------------------------------------------
+    const prevSnapshot =
+      prevMetricsRes.data?.data as unknown as MetricsSnapshot | null ?? null;
+
+    const storageBuckets: MetricsSnapshot["storage"]["buckets"] = {};
+
+    for (let i = 0; i < TRACKED_BUCKETS.length; i++) {
+      const bucketId = TRACKED_BUCKETS[i];
+      const res = bucketMetricsResults[i];
+
+      if (res.error) {
+        console.warn(
+          `Failed to fetch metrics for bucket ${bucketId}:`,
+          res.error.message,
+        );
+        continue;
+      }
+
+      // RPC returns an array with a single row
+      const row = Array.isArray(res.data) ? res.data[0] : res.data;
+      if (!row) continue;
+
+      const totalFiles = Number(row.total_files ?? 0);
+      const totalSize = Number(row.total_size ?? 0);
+      const totalImages = Number(row.total_images ?? 0);
+
+      const prev = prevSnapshot?.storage?.buckets?.[bucketId];
+      const deltaFiles = prev ? totalFiles - prev.totalFiles : 0;
+      const deltaSize = prev ? totalSize - prev.totalSize : 0;
+
+      storageBuckets[bucketId] = {
+        totalFiles,
+        totalSize,
+        totalImages,
+        deltaFiles,
+        deltaSize,
+      };
+    }
+
+    // ---------------------------------------------------------------------------
+    // Build payload
+    // ------------------------------------------------------------------------
     const now = new Date();
-    const filePath = `metrics/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}.json`;
 
     const payload: MetricsSnapshot = {
       collectedAt: now.toISOString(),
-      totals: {
-        users: totalUsers,
-        gameservers: totalGameservers,
-        projects: totalProjects,
-        forumPosts: totalForumPosts,
+      users: {
+        total: totalMembersRes.count ?? 0,
+        online: onlineMembersRes.count ?? 0,
+        byCountry,
+        byGame,
+        bySteamGame,
       },
-      breakdowns: {
-        usersByCountry,
+      community: {
+        projects: projectsRes.count ?? 0,
+      },
+      discussions: {
+        total: forumRes.count ?? 0,
+        replies: repliesRes.count ?? 0,
+        newTotal: prevSnapshot
+          ? Math.max(
+            0,
+            (forumRes.count ?? 0) - (prevSnapshot.discussions.total),
+          )
+          : 0,
+        newReplies: prevSnapshot
+          ? Math.max(
+            0,
+            (repliesRes.count ?? 0) - (prevSnapshot.discussions.replies),
+          )
+          : 0,
+      },
+      teamspeak: {
+        online: tsOnline,
+        byServer: tsByServer,
+      },
+      gameservers: {
+        total: totalGameservers,
+        players: totalPlayers,
+        byServer,
+      },
+      storage: {
+        buckets: storageBuckets,
       },
     };
 
+    // ---------------------------------------------------------------------------
+    // Persist: INSERT into metrics table
+    // ------------------------------------------------------------------------
+    const { error: insertError } = await supabaseClient
+      .from("metrics")
+      .insert({
+        captured_at: now.toISOString(),
+        data: payload as unknown as Json,
+      });
+
+    if (insertError) {
+      throw new Error(`Failed to insert metrics row: ${insertError.message}`);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Persist: upload latest snapshot to storage
+    // ------------------------------------------------------------------------
     const { error: uploadError } = await supabaseClient.storage
       .from("hivecom-content-static")
       .upload(
-        filePath,
+        "metrics/latest.json",
         new Blob([JSON.stringify(payload, null, 2)], {
           type: "application/json",
         }),
         {
-          cacheControl: "86400",
           upsert: true,
+          cacheControl: "1800",
           contentType: "application/json",
         },
       );
 
     if (uploadError) {
-      throw new Error(`Failed to upload metrics file: ${uploadError.message}`);
+      throw new Error(
+        `Failed to upload metrics snapshot: ${uploadError.message}`,
+      );
     }
 
-    console.log(`Uploaded metrics snapshot to hivecom-content-static/${filePath}`);
+    console.log("Collected and stored metrics snapshot:", payload.collectedAt);
 
     return new Response(
       JSON.stringify({
@@ -184,7 +619,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: constants.default.API_ERROR,
+        error: constants.API_ERROR,
       }),
       {
         headers: { "Content-Type": "application/json" },

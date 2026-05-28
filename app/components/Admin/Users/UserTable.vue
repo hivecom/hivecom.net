@@ -6,14 +6,17 @@ import { Alert, Button, CopyClipboard, defineTable, Flex, paginate, Pagination, 
 import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
+import ElapsedTimeIndicator from '@/components/Shared/ElapsedTimeIndicator.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
-import TimestampDate from '@/components/Shared/TimestampDate.vue'
+
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useAdminUserTableData } from '@/composables/useAdminUserTableData'
-import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
+
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { getCountryInfo } from '@/lib/utils/country'
 import UserActions from './UserActions.vue'
 import UserFilters from './UserFilters.vue'
 import UserStatusIndicator from './UserStatusIndicator.vue'
@@ -67,6 +70,7 @@ const emit = defineEmits<{
 }>()
 
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+const externalCountryFilter = defineModel<string>('countryFilter', { default: '' })
 
 // ─── Session user ─────────────────────────────────────────────────────────────
 
@@ -91,6 +95,12 @@ const {
   search,
   roleFilter,
   statusFilter,
+  providerFilter,
+  platformFilter,
+  supporterFilter,
+  countryFilter,
+  availableCountries,
+  fetchCountries,
   fetchUsers,
   setPage,
   setSort,
@@ -100,6 +110,12 @@ const {
 // defineTable is used solely to provide the VUI table injection context
 // (TableSelectionProvideSymbol). All pagination/sorting is server-driven.
 const { rows } = defineTable(users, { pagination: { enabled: false }, select: false })
+
+// Sync external countryFilter into internal state
+watch(externalCountryFilter, (val) => {
+  if (val !== countryFilter.value)
+    countryFilter.value = val
+})
 
 // ─── Filter options ───────────────────────────────────────────────────────────
 
@@ -112,6 +128,20 @@ const roleOptions: SelectOption[] = [
 const statusOptions: SelectOption[] = [
   { label: 'Active', value: 'active' },
   { label: 'Banned', value: 'banned' },
+]
+
+const providerOptions: SelectOption[] = [
+  { label: 'Email', value: 'email' },
+  { label: 'Discord', value: 'discord' },
+  { label: 'Google', value: 'google' },
+]
+
+const platformOptions: SelectOption[] = [
+  { label: 'Steam', value: 'steam' },
+  { label: 'Discord', value: 'discord' },
+  { label: 'Patreon', value: 'patreon' },
+  { label: 'TeamSpeak', value: 'teamspeak' },
+  { label: 'Last.fm', value: 'lastfm' },
 ]
 
 // ─── Action state ─────────────────────────────────────────────────────────────
@@ -127,12 +157,16 @@ const shouldShowPagination = computed(() => totalCount.value > adminTablePerPage
 
 // ─── Filters ─────────────────────────────────────────────────────────────────
 
-const isFiltered = computed(() => search.value !== '' || roleFilter.value !== '' || statusFilter.value !== '')
+const isFiltered = computed(() => search.value !== '' || roleFilter.value !== '' || statusFilter.value !== '' || providerFilter.value !== '' || platformFilter.value !== '' || supporterFilter.value !== '' || countryFilter.value !== '')
 
 function clearFilters() {
   search.value = ''
   roleFilter.value = ''
   statusFilter.value = ''
+  providerFilter.value = ''
+  platformFilter.value = ''
+  supporterFilter.value = ''
+  countryFilter.value = ''
 }
 
 function handleSearchEnter() {
@@ -143,7 +177,7 @@ function handleSearchEnter() {
 // ─── Sorting ─────────────────────────────────────────────────────────────────
 
 // Columns that default to 'asc' when first clicked; everything else defaults to 'desc'
-const ascDefaultCols = new Set<AdminUserSortCol>(['username', 'role'])
+const ascDefaultCols = new Set<AdminUserSortCol>(['username'])
 
 function handleSort(col: AdminUserSortCol) {
   if (sortCol.value === col) {
@@ -158,22 +192,6 @@ function sortIcon(col: AdminUserSortCol): string {
   if (sortCol.value !== col)
     return 'ph:arrows-down-up'
   return sortDir.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'
-}
-
-// ─── Last-seen helpers (inline, per-row) ─────────────────────────────────────
-
-function getLastSeenVariantFor(lastSeen: string) {
-  const status = lastSeen ? getUserActivityStatus(lastSeen) : null
-  return getLastSeenVariant(status)
-}
-
-function getLastSeenTextFor(lastSeen: string): string {
-  if (!lastSeen)
-    return 'Never'
-  const status = getUserActivityStatus(lastSeen)
-  if (!status || Number.isNaN(status.lastSeenTimestamp.getTime()))
-    return 'Never'
-  return status.lastSeenText || 'Never'
 }
 
 // ─── Auth provider helpers ────────────────────────────────────────────────────
@@ -203,6 +221,8 @@ function getPlatformInfo(platform: string) {
     steam: { icon: 'ph:steam-logo', label: 'Steam', color: 'var(--color-text-blue)' },
     discord: { icon: 'ph:discord-logo', label: 'Discord', color: 'var(--color-text-purple)' },
     patreon: { icon: 'ph:patreon-logo', label: 'Patreon', color: 'var(--color-accent)' },
+    teamspeak: { icon: 'mdi:teamspeak', label: 'TeamSpeak', color: 'var(--color-text-blue)' },
+    lastfm: { icon: 'simple-icons:lastdotfm', label: 'Last.fm', color: 'var(--color-text-red)' },
   }
   return map[platform] ?? { icon: 'ph:question', label: 'Unknown', color: 'var(--color-text-light)' }
 }
@@ -241,7 +261,7 @@ watchDebounced(search, () => {
 }, { debounce: 300 })
 
 // Filters: immediate re-fetch on change
-watch([roleFilter, statusFilter], () => {
+watch([roleFilter, statusFilter, providerFilter, platformFilter, supporterFilter, countryFilter], () => {
   page.value = 1
   void fetchUsers()
 })
@@ -318,7 +338,10 @@ watch(
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
-onBeforeMount(() => void fetchUsers())
+onBeforeMount(() => {
+  void fetchUsers()
+  void fetchCountries()
+})
 
 defineExpose({ refresh: fetchUsers })
 </script>
@@ -336,8 +359,15 @@ defineExpose({ refresh: fetchUsers })
         v-model:search="search"
         v-model:role-filter="roleFilter"
         v-model:status-filter="statusFilter"
+        v-model:provider-filter="providerFilter"
+        v-model:platform-filter="platformFilter"
+        v-model:supporter-filter="supporterFilter"
+        v-model:country-filter="countryFilter"
         :role-options="roleOptions"
         :status-options="statusOptions"
+        :provider-options="providerOptions"
+        :platform-options="platformOptions"
+        :country-options="availableCountries"
         @clear-filters="clearFilters"
         @search-enter="handleSearchEnter"
       />
@@ -356,8 +386,15 @@ defineExpose({ refresh: fetchUsers })
           v-model:search="search"
           v-model:role-filter="roleFilter"
           v-model:status-filter="statusFilter"
+          v-model:provider-filter="providerFilter"
+          v-model:platform-filter="platformFilter"
+          v-model:supporter-filter="supporterFilter"
+          v-model:country-filter="countryFilter"
           :role-options="roleOptions"
           :status-options="statusOptions"
+          :provider-options="providerOptions"
+          :platform-options="platformOptions"
+          :country-options="availableCountries"
           @clear-filters="clearFilters"
           @search-enter="handleSearchEnter"
         />
@@ -377,7 +414,7 @@ defineExpose({ refresh: fetchUsers })
         </Flex>
       </Flex>
 
-      <div class="table-loading-wrapper" :class="{ 'table-loading': loading && !initialLoad }">
+      <Flex class="table-loading-wrapper" :class="{ 'table-loading': loading && !initialLoad }">
         <TableContainer>
           <Table.Root v-if="rows.length > 0" separate-cells>
             <template #header>
@@ -463,7 +500,7 @@ defineExpose({ refresh: fetchUsers })
             <template #body>
               <tr v-for="user in rows" :key="user.id" class="clickable-row" @click="handleUserClick(user as unknown as AdminUserRecord)">
                 <!-- Confirmed -->
-                <Table.Cell class="confirmed-cell" @click.stop>
+                <Table.Cell class="confirmed-cell">
                   <Tooltip placement="top">
                     <template #tooltip>
                       <div>{{ user.is_confirmed ? 'User confirmed (via social auth or email)' : 'Not confirmed' }}</div>
@@ -479,42 +516,34 @@ defineExpose({ refresh: fetchUsers })
 
                 <!-- Username -->
                 <Table.Cell class="username-cell">
-                  <div class="username-content">
+                  <Flex expand y-center gap="xs">
                     <UserAvatar :user-id="user.id" :size="20" show-preview />
                     <UserLink :user-id="user.id" />
-                  </div>
+                    <Tooltip v-if="getCountryInfo(user.country)" placement="top">
+                      <template #tooltip>
+                        <div>{{ getCountryInfo(user.country)?.name }}</div>
+                      </template>
+                      <span class="country-flag">{{ getCountryInfo(user.country)?.emoji }}</span>
+                    </Tooltip>
+                  </Flex>
                 </Table.Cell>
 
                 <!-- Email -->
-                <Table.Cell v-if="props.canViewUserEmails" class="email-cell" @click.stop>
+                <Table.Cell v-if="props.canViewUserEmails" class="email-cell">
                   <template v-if="user.email != null && user.email !== ''">
-                    <CopyClipboard :text="user.email" confirm>
-                      <Button variant="gray" plain size="s" class="email-button">
-                        <template #start>
-                          <Icon name="ph:copy" />
-                        </template>
-                        <span class="text-xxs">{{ user.email }}</span>
-                      </Button>
-                    </CopyClipboard>
+                    <CopyValue :text="user.email" />
                   </template>
                   <span v-else class="text-color-light text-xxs">No email on file</span>
                 </Table.Cell>
 
                 <!-- UUID -->
-                <Table.Cell class="uuid-cell" @click.stop>
-                  <CopyClipboard :text="user.id" confirm>
-                    <Button variant="gray" plain size="s" class="uuid-button">
-                      <template #start>
-                        <Icon name="ph:copy" />
-                      </template>
-                      <span class="text-xxs">{{ user.id }}</span>
-                    </Button>
-                  </CopyClipboard>
+                <Table.Cell class="uuid-cell">
+                  <CopyValue :text="user.id" />
                 </Table.Cell>
 
                 <!-- Role -->
                 <Table.Cell class="role-cell">
-                  <RoleIndicator :role="user.role" size="s" />
+                  <RoleIndicator :role="user.role" size="m" />
                 </Table.Cell>
 
                 <!-- Status -->
@@ -549,15 +578,7 @@ defineExpose({ refresh: fetchUsers })
 
                 <!-- Last Seen -->
                 <Table.Cell class="last-seen-cell">
-                  <Flex gap="xs" y-center>
-                    <span v-if="getLastSeenVariantFor(user.last_seen) === 'online'" class="online-dot" />
-                    <span
-                      class="text-s"
-                      :class="getLastSeenTextClass(getLastSeenVariantFor(user.last_seen))"
-                    >
-                      {{ getLastSeenTextFor(user.last_seen) }}
-                    </span>
-                  </Flex>
+                  <ElapsedTimeIndicator :date="user.last_seen" />
                 </Table.Cell>
 
                 <!-- Platform connections -->
@@ -604,9 +625,29 @@ defineExpose({ refresh: fetchUsers })
                       </CopyClipboard>
                     </Tooltip>
 
+                    <Tooltip v-if="user.has_teamspeak" placement="top">
+                      <template #tooltip>
+                        <div>TeamSpeak identities linked</div>
+                      </template>
+                      <Button variant="gray" size="s" square class="platform-button teamspeak">
+                        <Icon :name="getPlatformInfo('teamspeak').icon" size="16" />
+                      </Button>
+                    </Tooltip>
+
+                    <Tooltip v-if="user.lastfm_username != null && user.lastfm_username !== ''" placement="top">
+                      <template #tooltip>
+                        <div>Last.fm: {{ user.lastfm_username }}</div>
+                      </template>
+                      <a :href="`https://www.last.fm/user/${user.lastfm_username}`" target="_blank" rel="noopener noreferrer" @click.stop>
+                        <Button variant="gray" size="s" square class="platform-button lastfm">
+                          <Icon :name="getPlatformInfo('lastfm').icon" size="16" />
+                        </Button>
+                      </a>
+                    </Tooltip>
+
                     <span
-                      v-if="(user.steam_id == null || user.steam_id === '') && (user.discord_id == null || user.discord_id === '') && (user.patreon_id == null || user.patreon_id === '')"
-                      class="text-color-light text-s"
+                      v-if="(user.steam_id == null || user.steam_id === '') && (user.discord_id == null || user.discord_id === '') && (user.patreon_id == null || user.patreon_id === '') && !user.has_teamspeak && (user.lastfm_username == null || user.lastfm_username === '')"
+                      class="text-color-lightest text-s"
                     >
                       No connections
                     </span>
@@ -615,12 +656,17 @@ defineExpose({ refresh: fetchUsers })
 
                 <!-- Supporter -->
                 <Table.Cell class="supporter-cell">
-                  <span class="text-s">{{ user.is_supporter ? 'Yes' : 'No' }}</span>
+                  <span
+                    :class="{ 'text-color-lightest text-s': !user.is_supporter,
+                              'text-color-accent text-s': user.is_supporter }"
+                  >
+                    {{ user.is_supporter ? 'Yes' : 'No' }}
+                  </span>
                 </Table.Cell>
 
                 <!-- Joined -->
                 <Table.Cell class="joined-cell">
-                  <TimestampDate :date="user.created_at" />
+                  <ElapsedTimeIndicator :date="user.created_at" :active-label="null" />
                 </Table.Cell>
 
                 <!-- Actions -->
@@ -653,9 +699,9 @@ defineExpose({ refresh: fetchUsers })
             No users found
           </Alert>
         </TableContainer>
-      </div>
+      </Flex>
     </Flex>
-  </Flex>
+  </flex>
 </template>
 
 <style lang="scss">
@@ -702,6 +748,20 @@ defineExpose({ refresh: fetchUsers })
     &:hover {
       background-color: var(--color-bg-accent-lowered);
       color: var(--color-accent);
+    }
+  }
+
+  &.teamspeak {
+    &:hover {
+      background-color: var(--color-bg-blue-lowered);
+      color: var(--color-text-blue);
+    }
+  }
+
+  &.lastfm {
+    &:hover {
+      background-color: var(--color-bg-red-lowered);
+      color: var(--color-text-red);
     }
   }
 }
@@ -768,10 +828,10 @@ defineExpose({ refresh: fetchUsers })
   color: var(--color-text-light);
 }
 
-.username-content {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
+.country-flag {
+  font-size: var(--font-size-s);
+  line-height: 1;
+  cursor: default;
 }
 
 .username {

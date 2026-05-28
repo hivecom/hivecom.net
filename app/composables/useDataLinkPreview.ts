@@ -1,5 +1,6 @@
 import type { Database } from '@/types/database.types'
 import { useSupabaseUser } from '#imports'
+import { unwrapJoin } from '@/lib/utils/common'
 
 export type LinkPreviewType = 'forum-discussion' | 'profile' | 'gameserver' | 'event' | 'vote' | 'unknown'
 
@@ -32,6 +33,7 @@ export interface LinkPreviewUnknown {
 
 export interface LinkPreviewGameserver {
   type: 'gameserver'
+  id: number
   href: string
   name: string
   description: string | null
@@ -71,8 +73,7 @@ export type LinkPreviewData = LinkPreviewDiscussion | LinkPreviewProfile | LinkP
 
 // ---------------------------------------------------------------------------
 // URL parsing
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const FORUM_PATH_RE = /^\/forum\/([^/?#]+)/
 const PROFILE_PATH_RE = /^\/profile\/([^/?#]+)/
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -187,8 +188,7 @@ export function parseInternalUrl(raw: string): ParsedInternalUrl | null {
 
 // ---------------------------------------------------------------------------
 // Composable
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 /**
  * Fetches a rich preview for a single internal hivecom URL.
  *
@@ -225,9 +225,7 @@ export function useDataLinkPreview(url: string) {
     }
 
     interface ProfileJoin { username: string | null }
-    const profileRaw: ProfileJoin | ProfileJoin[] | null = row.profiles
-    // eslint-disable-next-line ts/no-unsafe-assignment
-    const profile: ProfileJoin | null | undefined = Array.isArray(profileRaw) ? profileRaw[0] : profileRaw
+    const profile = unwrapJoin<ProfileJoin>(row.profiles)
 
     let replyContent: string | null = null
     let replyAuthorUsername: string | null = null
@@ -248,10 +246,7 @@ export function useDataLinkPreview(url: string) {
       if (!replyError && replyRow != null && !replyRow.is_deleted) {
         replyContent = replyRow.markdown
 
-        const replyProfileRaw: ReplyProfileJoin | ReplyProfileJoin[] | null = replyRow.profiles
-        const replyProfile: ReplyProfileJoin | null | undefined = Array.isArray(replyProfileRaw)
-          ? replyProfileRaw[0]
-          : replyProfileRaw
+        const replyProfile = unwrapJoin<ReplyProfileJoin>(replyRow.profiles)
         replyAuthorUsername = replyProfile?.username ?? null
       }
     }
@@ -271,7 +266,7 @@ export function useDataLinkPreview(url: string) {
 
   async function fetchGameserver(id: number, href: string) {
     const { data: row, error: fetchError } = await supabase
-      .from('gameservers')
+      .from('network_gameservers')
       .select(`
         id, name, description, region, game, addresses, port,
         container (
@@ -332,6 +327,7 @@ export function useDataLinkPreview(url: string) {
 
     data.value = {
       type: 'gameserver',
+      id,
       href,
       name: row.name,
       description: row.description ?? null,

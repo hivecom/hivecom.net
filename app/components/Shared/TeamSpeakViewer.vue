@@ -1,26 +1,97 @@
 <script setup lang="ts">
 import type { TeamSpeakIdentityRecord, TeamSpeakNormalizedChannel, TeamSpeakServerSnapshot, TeamSpeakSnapshot } from '@/types/teamspeak'
-import { Alert, Badge, Button, Card, Flex, Grid, Select, Skeleton, Switch, Tooltip } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { Alert, Badge, Button, Card, Flex, Grid, PopoutHover, Select, Skeleton, Tooltip } from '@dolanske/vui'
+import { computed, ref, shallowRef, watch } from 'vue'
 import constants from '~~/constants.json'
+import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
+import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
+import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataTeamSpeakSnapshot } from '@/composables/useDataTeamSpeakSnapshot'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryEmoji } from '@/lib/utils/country'
-import BadgeCircle from './BadgeCircle.vue'
+import { formatDuration as formatDurationMs } from '@/lib/utils/duration'
 import TimestampDate from './TimestampDate.vue'
 
 const props = withDefaults(defineProps<Props>(), {
   refreshInterval: 5 * 60 * 1000,
   servers: null,
 })
+
+const emit = defineEmits<{ 'update:totalOnline': [count: number | null] }>()
+
 const SPACER_STRIP_RE = /^\[l?spacer\d*\]\s*/i
 const PARENS_UNWRAP_RE = /^\((.*)\)$/u
 const SPACER_DETECT_RE = /^\[l?spacer\d*\]/i
 
-const isBelowLarge = useBreakpoint('<l')
+const isMobile = useBreakpoint('<s')
+
+const { fetchMetricsHistory } = useDataMetrics()
+
+const histogramHistory = shallowRef<{ capturedAt: string, max: number }[]>([])
+const histogramData = computed(() => histogramHistory.value.map(e => e.max))
+
+fetchMetricsHistory('14d').then((entries) => {
+  const byDay = new Map<string, { capturedAt: string, max: number }>()
+  for (const e of entries) {
+    const d = new Date(e.capturedAt)
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+    const val = e.teamspeakOnline ?? 0
+    if (!byDay.has(key))
+      byDay.set(key, { capturedAt: e.capturedAt, max: val })
+    else
+      byDay.get(key)!.max = Math.max(byDay.get(key)!.max, val)
+  }
+  histogramHistory.value = Array.from(byDay.values()).slice(-14)
+})
+
+const showActivityModal = ref(false)
+const clickedWindow = ref<{ start: Date, end: Date } | null>(null)
+
+function onHistogramClick(index: number) {
+  if (index >= 0) {
+    const entry = histogramHistory.value[index]
+    if (entry) {
+      // capturedAt is UTC midnight. Convert to local date, then use local midnight boundaries
+      // so the chart window aligns with midnight-to-midnight in the user's timezone.
+      const d = new Date(entry.capturedAt)
+      const localDate = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+      const start = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 0, 0, 0, 0)
+      const end = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 1, 0, 0, 0, 0)
+      clickedWindow.value = { start, end }
+    }
+    else {
+      clickedWindow.value = null
+    }
+  }
+  else {
+    clickedWindow.value = null
+  }
+  showActivityModal.value = true
+}
+
+function histogramTooltipLabel(index: number, value: number): string {
+  const entry = histogramHistory.value[index]
+  const suffix = `${value} online`
+  if (!entry)
+    return suffix
+
+  const entryDate = new Date(entry.capturedAt)
+  const entryDay = Date.UTC(entryDate.getUTCFullYear(), entryDate.getUTCMonth(), entryDate.getUTCDate())
+  const now = new Date()
+  const todayDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const diffDays = Math.round((todayDay - entryDay) / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0)
+    return `${suffix} - today`
+  if (diffDays === 1)
+    return `${suffix} - yesterday`
+  return `${suffix} - ${diffDays} days ago`
+}
 
 type ClientRole = 'admin' | 'moderator' | 'supporter' | 'registered' | 'music-bot'
 
@@ -77,7 +148,7 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
               channelId: '1',
               channelName: 'Lobby',
               channelPath: ['Lobby'],
-              serverGroups: [],
+              serverGroups: [7],
               away: false,
               muted: false,
               inputMuted: false,
@@ -122,7 +193,7 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
                   channelId: '3',
                   channelName: 'General',
                   channelPath: ['[spacer0]Games', 'General'],
-                  serverGroups: [],
+                  serverGroups: [14],
                   away: true,
                   muted: false,
                   inputMuted: true,
@@ -271,7 +342,7 @@ const isDev = process.env.NODE_ENV === 'development'
 
 const manualRefreshPending = ref(false)
 
-const canRefresh = computed(() => {
+const _canRefresh = computed(() => {
   const raw = lastUpdated.value
   if (!raw)
     return true
@@ -283,7 +354,7 @@ const canRefresh = computed(() => {
   return Date.now() - parsed >= 60_000
 })
 
-async function handleRefresh() {
+async function _handleRefresh() {
   if (manualRefreshPending.value)
     return
 
@@ -297,7 +368,7 @@ async function handleRefresh() {
 }
 
 const selectedServerId = ref<string | null>(props.serverId ?? null)
-const showMusicBots = ref(false)
+const showMusicBots = ref(true)
 
 // Fetch users with TeamSpeak identities to enable UserLink
 const supabase = useSupabaseClient()
@@ -520,20 +591,7 @@ const errorMessage = computed(() => {
   return 'Unable to load TeamSpeak status.'
 })
 
-function formatDuration(seconds?: number): string {
-  if (seconds === undefined || !Number.isFinite(seconds))
-    return '-'
-
-  const days = Math.floor(seconds / 86_400)
-  const hours = Math.floor((seconds % 86_400) / 3_600)
-  const minutes = Math.floor((seconds % 3_600) / 60)
-
-  if (days > 0)
-    return `${days}d ${hours}h`
-  if (hours > 0)
-    return `${hours}h ${minutes}m`
-  return `${minutes}m`
-}
+// Local formatDuration removed - use formatDurationMs from utility
 
 function flattenChannels(tree: TeamSpeakNormalizedChannel[]): TeamSpeakNormalizedChannel[] {
   const rows: TeamSpeakNormalizedChannel[] = []
@@ -642,7 +700,7 @@ function serverClientCount(server: TeamSpeakServerSnapshot): number {
     return 0
   let total = 0
   channelMap.forEach((list) => {
-    total += list.filter(client => !isMusicBot(server.id, client)).length
+    total += showMusicBots.value ? list.length : list.filter(client => !isMusicBot(server.id, client)).length
   })
   return total
 }
@@ -706,7 +764,25 @@ const renderRowsByServer = computed(() => {
   return map
 })
 
-function openRawSnapshot() {
+function serverClientCountNoBots(server: TeamSpeakServerSnapshot): number {
+  const channelMap = clientsByServerChannel.value[server.id]
+  if (!channelMap)
+    return 0
+  let total = 0
+  channelMap.forEach((list) => {
+    total += list.filter(client => !isMusicBot(server.id, client)).length
+  })
+  return total
+}
+
+// Emit total non-bot online count whenever selected server or snapshot changes
+watch(
+  () => snapshotLoading.value ? null : (selectedServer.value ? serverClientCountNoBots(selectedServer.value) : 0),
+  count => emit('update:totalOnline', count),
+  { immediate: true },
+)
+
+function _openRawSnapshot() {
   if (!process.client)
     return
   if (!rawSnapshotUrl.value)
@@ -719,9 +795,55 @@ function openRawSnapshot() {
 <template>
   <Card class="ts-viewer" separators>
     <template #header>
-      <Flex expand x-between y-top gap="s">
-        <Flex expand y-center gap="s" wrap>
-          <Icon name="mdi:teamspeak" size="24" />
+      <!-- Mobile layout -->
+      <template v-if="isMobile">
+        <Flex expand gap="s" x-between y-center>
+          <Flex y-center gap="s">
+            <div v-if="serversSorted.length <= 1 || props.serverId">
+              <strong class="text-xl">
+                {{ selectedServer ? formatServerLabel(selectedServer) : platformTitle }}
+                <span v-if="selectedServer && regionForServer(selectedServer.id) === 'eu'" class="text-xl">🇪🇺</span>
+                <span v-else-if="selectedServer && regionForServer(selectedServer.id) === 'na'" class="text-xl">🇺🇸</span>
+              </strong>
+            </div>
+            <Select
+              v-else
+              v-model="serverSelectModel"
+              :options="serverOptions"
+              placeholder="Select server"
+              size="s"
+            />
+          </Flex>
+          <Flex gap="xs" y-center x-end>
+            <ChartActivityHistogram
+              v-if="selectedServer && histogramData.length"
+              :data="histogramData"
+              :height="24"
+              gap="xxs"
+              clickable
+              @click="onHistogramClick"
+            >
+              <template #tooltip="{ value, index }">
+                <p>{{ histogramTooltipLabel(index, value) }}</p>
+              </template>
+            </ChartActivityHistogram>
+            <Button
+              v-if="teamspeakConnectUrl"
+              size="s"
+              variant="accent"
+              square
+              :href="teamspeakConnectUrl"
+              aria-label="Connect to TeamSpeak"
+            >
+              <Icon name="mdi:phone-outgoing" size="16" />
+            </Button>
+          </Flex>
+        </Flex>
+      </template>
+
+      <!-- Desktop layout -->
+      <Flex v-else expand x-between y-center gap="s">
+        <Flex expand y-center gap="s">
           <div v-if="serversSorted.length <= 1 || props.serverId">
             <strong class="text-xl">
               {{ selectedServer ? formatServerLabel(selectedServer) : platformTitle }}
@@ -736,83 +858,49 @@ function openRawSnapshot() {
             placeholder="Select server"
             size="s"
           />
-          <Flex v-if="selectedServer" x-start y-center gap="xs" wrap>
-            <Badge variant="success">
-              {{ serverClientCount(selectedServer) }} online
-            </Badge>
-            <Tooltip v-if="selectedServer.serverInfo?.platform || selectedServer.serverInfo?.version || selectedServer.serverInfo?.uptimeSeconds || selectedServer.collectedAt">
-              <BadgeCircle variant="neutral">
-                <Icon name="ph:info" size="16" class="ts-viewer__info-icon" />
-              </BadgeCircle>
-              <template #tooltip>
-                <Grid gap="s" columns="96px 1fr" class="ts-viewer__info-tooltip">
-                  <template v-if="selectedServer.serverInfo?.platform">
-                    <strong>Platform</strong>
-                    <span>{{ selectedServer.serverInfo?.platform }}</span>
-                  </template>
-                  <template v-if="selectedServer.serverInfo?.version">
-                    <strong>Version</strong>
-                    <span>{{ selectedServer.serverInfo?.version }}</span>
-                  </template>
-                  <template v-if="selectedServer.serverInfo?.uptimeSeconds">
-                    <strong>Uptime</strong>
-                    <span>{{ formatDuration(selectedServer.serverInfo?.uptimeSeconds) }}</span>
-                  </template>
-                </Grid>
-              </template>
-            </Tooltip>
-            <Flex class="text-color-lightest">
-              <TimestampDate
-                :date="lastUpdated"
-                size="xxs"
-                :tooltip="true"
-              />
-            </Flex>
-          </Flex>
         </Flex>
-        <Flex gap="xs" y-center wrap x-end expand>
-          <Tooltip placement="bottom">
-            <Icon name="ph:music-notes" size="16" />
-            <Switch
-              v-model="showMusicBots"
-              size="xs"
-            />
-            <template #tooltip>
-              <div class="text-xs">
-                Toggle visibility of music bot clients in the channel lists.
-              </div>
+        <Flex gap="xs" y-center x-end>
+          <PopoutHover v-if="selectedServer && (selectedServer.serverInfo?.platform || selectedServer.serverInfo?.version || selectedServer.serverInfo?.uptimeSeconds || selectedServer.collectedAt)">
+            <template #trigger>
+              <Badge variant="neutral" circle>
+                <Icon name="ph:info" :size="16" />
+              </Badge>
             </template>
-          </Tooltip>
+            <Grid gap="xs" columns="auto 1fr" class="ts-viewer__info-tooltip">
+              <template v-if="selectedServer.serverInfo?.platform">
+                <span class="text-xs text-color-light">Platform</span>
+                <Flex gap="xxs" y-center>
+                  <Icon name="ph:desktop" size="12" />
+                  <span class="text-xs">{{ selectedServer.serverInfo?.platform }}</span>
+                </Flex>
+              </template>
+              <template v-if="selectedServer.serverInfo?.version">
+                <span class="text-xs text-color-light">Version</span>
+                <span class="text-xs">{{ selectedServer.serverInfo?.version }}</span>
+              </template>
+              <template v-if="selectedServer.serverInfo?.uptimeSeconds">
+                <span class="text-xs text-color-light">Uptime</span>
+                <span class="text-xs">{{ formatDurationMs((selectedServer.serverInfo?.uptimeSeconds ?? 0) * 1000) || '-' }}</span>
+              </template>
+              <template v-if="selectedServer.serverInfo?.uptimeSeconds">
+                <span class="text-xs text-color-light">Last update</span>
+                <TimestampDate :date="lastUpdated" size="xxs" :tooltip="true" />
+              </template>
+            </Grid>
+          </PopoutHover>
+          <ChartActivityHistogram
+            v-if="histogramData.length"
+            :data="histogramData"
+            :height="24"
+            gap="xxs"
+            clickable
+            @click="onHistogramClick"
+          >
+            <template #tooltip="{ value, index }">
+              <p>{{ histogramTooltipLabel(index, value) }}</p>
+            </template>
+          </ChartActivityHistogram>
 
-          <Tooltip :disabled="isBelowLarge">
-            <Button
-              size="s"
-              square
-              :loading="snapshotLoading || manualRefreshPending"
-              :disabled="snapshotLoading || manualRefreshPending || !canRefresh"
-              aria-label="Refresh TeamSpeak snapshot"
-              @click="handleRefresh"
-            >
-              <Icon name="ph:arrow-clockwise" size="16" />
-            </Button>
-            <template #tooltip>
-              <p>Refresh</p>
-            </template>
-          </Tooltip>
-          <Tooltip :disabled="isBelowLarge">
-            <Button
-              size="s"
-              square
-              :disabled="!rawSnapshotUrl"
-              aria-label="Open raw TeamSpeak snapshot"
-              @click="openRawSnapshot"
-            >
-              <Icon name="ph:code" size="16" />
-            </Button>
-            <template #tooltip>
-              <p>Open raw snapshot</p>
-            </template>
-          </Tooltip>
           <Button
             v-if="teamspeakConnectUrl"
             size="s"
@@ -911,14 +999,14 @@ function openRawSnapshot() {
                 v-if="row.visibleClients.length"
                 expand
                 wrap
-                gap="xs"
+                gap="xxs"
                 class="ts-viewer__client-list"
                 :style="{ paddingLeft: '16px' }"
               >
                 <Flex
                   v-for="client in row.visibleClients"
                   :key="`${row.channel.id}-${client.uniqueId}`"
-                  gap="xs"
+                  :gap="6"
                   y-center
                   class="ts-viewer__client-bubble"
                   :class="{ 'full-mute': client.inputMuted && client.outputMuted }"
@@ -927,18 +1015,24 @@ function openRawSnapshot() {
                     v-if="client.muted || client.inputMuted || client.outputMuted || client.channelMuted"
                     name="ph:microphone-slash-duotone"
                     size="14"
+                    class="mr-xxs"
                   />
                   <span v-if="getCountryEmoji(client.country)" class="ts-viewer__client-flag">{{ getCountryEmoji(client.country) }}</span>
-                  <UserLink
-                    v-if="getUserIdForClient(selectedServer.id, client.uniqueId)"
-                    :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
-                    class="ts-viewer__client-name"
-                  />
+                  <template v-if="getUserIdForClient(selectedServer.id, client.uniqueId)">
+                    <UserAvatar
+                      :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
+                      :size="16"
+                    />
+                    <UserLink
+                      :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
+                      class="ts-viewer__client-name"
+                    />
+                  </template>
                   <span v-else class="ts-viewer__client-name"> {{ client.nickname }}</span>
                   <RoleIndicator
                     v-if="clientRole(selectedServer.id, client)"
                     :role="clientRole(selectedServer.id, client)!"
-                    size="xs"
+                    size="s"
                     shorten
                   />
                 </Flex>
@@ -949,6 +1043,22 @@ function openRawSnapshot() {
       </Flex>
     </Flex>
   </Card>
+
+  <ChartActivityHistogramModal
+    v-model:open="showActivityModal"
+    title="TeamSpeak Online"
+    :count="selectedServer ? serverClientCount(selectedServer) : null"
+    count-label="online"
+    count-singular="online"
+    :series="['teamspeakOnline']"
+    :initial-period="selectedServer && serverClientCount(selectedServer) > 0 ? '24h' : '14d'"
+    :initial-window="clickedWindow"
+    :server-name="selectedServer?.id ?? undefined"
+  >
+    <template #default="{ period, window, utc, color }">
+      <ChartTeamSpeakOnline :period :window :utc :color :server-name="selectedServer?.id ?? undefined" hide-title />
+    </template>
+  </ChartActivityHistogramModal>
 </template>
 
 <style lang="scss">
@@ -1019,12 +1129,11 @@ function openRawSnapshot() {
 }
 
 .ts-viewer__client-bubble {
-  border: 1px solid var(--color-border-weak);
   border-radius: 32px;
-  padding: 6px 8px 6px 16px;
+  padding-inline: var(--space-s);
+  padding-block: var(--space-xs);
   background: var(--color-bg);
   color: var(--color-text-light);
-  font-size: 13px;
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease;
@@ -1038,19 +1147,11 @@ function openRawSnapshot() {
 }
 
 .ts-viewer__client-flag {
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .ts-viewer__info-tooltip {
-  max-width: 292px;
-
-  span,
-  strong {
-    font-size: var(--n-font-size-s);
-  }
-
-  strong {
-    color: var(--color-text-lighter);
-  }
+  padding: var(--space-s);
+  min-width: 180px;
 }
 </style>

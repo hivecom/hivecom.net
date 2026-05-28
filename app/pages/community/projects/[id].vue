@@ -87,11 +87,8 @@ defineOgImage('Project', {
         :error="error"
         back-to="/community/projects"
         back-label="Projects"
-      >
-        <template #error-message>
-          The project you're looking for might have been removed or doesn't exist.
-        </template>
-      </DetailStates>
+        error-message="The project you're looking for might have been removed or doesn't exist."
+      />
 
       <!-- Project Content -->
       <div v-if="project && !loading && !error" class="page-content">
@@ -124,7 +121,7 @@ defineOgImage('Project', {
             />
           </div>
 
-          <div class="project-header__body">
+          <div class="mt-s">
             <Flex column gap="m" expand :y-center="isMobile">
               <h1 class="project-header__title">
                 {{ project.title }}
@@ -144,7 +141,7 @@ defineOgImage('Project', {
                   <Button
                     v-if="project.link"
                     class="project-header__action"
-                    :size="isMobile ? 'l' : 's'"
+                    :size="isMobile ? 'm' : 's'"
                     :href="project.link"
                     target="_blank"
                     expand
@@ -157,7 +154,7 @@ defineOgImage('Project', {
                   <Button
                     v-if="project.github"
                     class="project-header__action"
-                    :size="isMobile ? 'l' : 's'"
+                    :size="isMobile ? 'm' : 's'"
                     :href="`https://github.com/${project.github}`"
                     target="_blank"
                     expand
@@ -173,11 +170,13 @@ defineOgImage('Project', {
           </div>
         </Card>
 
-        <!-- Project Content (Markdown) -->
-        <Card class="project-content card-bg">
-          <div class="project-content__markdown">
-            <MarkdownRenderer :md="project.markdown" />
-          </div>
+        <Flex column>
+          <!-- Project Content (Markdown) -->
+          <Card class="project-content card-bg">
+            <div class="project-content__markdown">
+              <MarkdownRenderer :md="project.markdown" />
+            </div>
+          </Card>
 
           <!-- Project Metadata -->
           <MetadataCard
@@ -187,7 +186,7 @@ defineOgImage('Project', {
             :modified-at="project.modified_at"
             :modified-by="project.modified_by"
           />
-        </Card>
+        </Flex>
 
         <!-- Related discussion -->
         <Discussion
@@ -236,12 +235,9 @@ defineOgImage('Project', {
   transform: var(--banner-placeholder-transform, scale(1)) scale(1.05);
 }
 
-.project-header__body {
-  padding: var(--space-l);
-}
-
 .project-header__title {
-  font-size: var(--font-size-xxxl);
+  text-align: center;
+  font-size: var(--font-size-xxxxl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
   margin: 0;
@@ -261,17 +257,13 @@ defineOgImage('Project', {
 
 .project-content {
   &__markdown {
-    padding-bottom: var(--space-l);
+    padding-bottom: var(--space-m);
   }
 }
 
 @media (max-width: 768px) {
   .project-header__banner {
     height: 180px;
-  }
-
-  .project-header__body {
-    padding: var(--space-m);
   }
 
   .project-header__title {

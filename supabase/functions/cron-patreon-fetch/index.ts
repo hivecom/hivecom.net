@@ -1,6 +1,7 @@
 import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
+import { sendDiscordNotification } from "../_shared/discord.ts";
 import type { Database, Tables } from "database-types";
 
 // Define interfaces for Patreon API response types
@@ -139,6 +140,8 @@ Deno.serve(async (req: Request) => {
     // Track patrons by ID for profile updates
     const activePatronIds: string[] = [];
     const supporterPatronIds: string[] = [];
+    // Map patreon user ID -> monthly cents for points awarding
+    const activePatronMonthlyCents = new Map<string, number>();
 
     // Process each member to calculate total and identify supporters
     for (const member of members) {
@@ -161,6 +164,7 @@ Deno.serve(async (req: Request) => {
         // Get the actual Patreon user ID from the user relationship (not the member ID)
         const patreonUserId = member.relationships.user.data.id;
         activePatronIds.push(patreonUserId);
+        activePatronMonthlyCents.set(patreonUserId, patronAmountCents);
 
         console.log(
           `Patron ${patreonUserId}: €${
@@ -214,13 +218,13 @@ Deno.serve(async (req: Request) => {
     // Upsert the monthly funding record for this month based on the Patreon data
     // Using the new column structure as per the DB schema changes
     const { error: upsertError } = await supabaseClient
-      .from("monthly_funding")
+      .from("funding_history")
       .upsert({
         month: currentMonthDate,
         patreon_month_amount_cents: monthlyPatreonTotal, // Monthly amount in cents
         patreon_count: activePatronIds.length, // Number of active patrons
         patreon_lifetime_amount_cents: lifetimePatreonTotal, // Lifetime total in cents
-      } as Tables<"monthly_funding">, {
+      } as Tables<"funding_history">, {
         onConflict: "month",
       });
 
@@ -230,6 +234,121 @@ Deno.serve(async (req: Request) => {
         `Failed to update monthly funding record: ${upsertError.message}`,
       );
     }
+
+    // Read points_per_cent rate from kvstore
+    let pointsPerEuroCent = 1;
+    const { data: kvRow } = await supabaseClient
+      .from("kvstore")
+      .select("value")
+      .eq("key", "points_per_cent")
+      .maybeSingle();
+
+    if (kvRow?.value !== undefined && kvRow.value !== null) {
+      const parsed = Number(kvRow.value);
+      if (!isNaN(parsed) && parsed > 0) {
+        pointsPerEuroCent = parsed;
+      }
+    }
+
+    console.log(`Points per euro cent rate: ${pointsPerEuroCent}`);
+
+    // Award Patreon points to linked profiles
+    let linkedProfileCount = 0;
+    let totalPointsAwarded = 0;
+
+    for (const [patreonUserId, monthlyCents] of activePatronMonthlyCents) {
+      const { data: profile } = await supabaseClient
+        .from("profiles")
+        .select("id")
+        .eq("patreon_id", patreonUserId)
+        .maybeSingle();
+
+      if (!profile) {
+        continue;
+      }
+
+      linkedProfileCount++;
+      const points = Math.round(monthlyCents * pointsPerEuroCent);
+
+      const { data: existingPoints } = await supabaseClient
+        .from("profile_points")
+        .select("points_patreon")
+        .eq("profile_id", profile.id)
+        .maybeSingle();
+
+      if (existingPoints) {
+        const { error: pointsUpdateError } = await supabaseClient
+          .from("profile_points")
+          .update({
+            points_patreon: (existingPoints.points_patreon ?? 0) + points,
+          })
+          .eq("profile_id", profile.id);
+
+        if (pointsUpdateError) {
+          console.error(
+            `Error updating points for profile ${profile.id}:`,
+            pointsUpdateError,
+          );
+        } else {
+          console.log(
+            `Awarded ${points} points to profile ${profile.id} (patreon: ${patreonUserId}), new total: ${
+              existingPoints.points_patreon + points
+            }`,
+          );
+          totalPointsAwarded += points;
+
+          const { error: historyError } = await supabaseClient
+            .from("profile_point_history")
+            .insert({
+              profile_id: profile.id,
+              amount: points,
+              source: "patreon",
+            });
+
+          if (historyError) {
+            console.error(
+              `Error inserting point history for profile ${profile.id}:`,
+              historyError,
+            );
+          }
+        }
+      } else {
+        const { error: pointsInsertError } = await supabaseClient
+          .from("profile_points")
+          .insert({ profile_id: profile.id, points_patreon: points });
+
+        if (pointsInsertError) {
+          console.error(
+            `Error inserting points for profile ${profile.id}:`,
+            pointsInsertError,
+          );
+        } else {
+          console.log(
+            `Awarded ${points} points (new row) to profile ${profile.id} (patreon: ${patreonUserId})`,
+          );
+          totalPointsAwarded += points;
+
+          const { error: historyError } = await supabaseClient
+            .from("profile_point_history")
+            .insert({
+              profile_id: profile.id,
+              amount: points,
+              source: "patreon",
+            });
+
+          if (historyError) {
+            console.error(
+              `Error inserting point history for profile ${profile.id}:`,
+              historyError,
+            );
+          }
+        }
+      }
+    }
+
+    console.log(
+      `Points summary: ${linkedProfileCount} linked profiles, ${totalPointsAwarded} total points awarded`,
+    );
 
     // Update supporter status for all profiles with patreon_id
     // IMPORTANT:
@@ -290,6 +409,27 @@ Deno.serve(async (req: Request) => {
       }
 
       supporterUpdateResult = updatedProfiles;
+    }
+
+    // Notify Discord for each newly-awarded supporter
+    if (supporterUpdateResult && supporterUpdateResult.length > 0) {
+      for (const profile of supporterUpdateResult) {
+        await sendDiscordNotification({
+          embeds: [{
+            title: "New Patreon Supporter",
+            color: 0xFF424D,
+            fields: [
+              {
+                name: "Username",
+                value: profile.username ?? "Unknown",
+                inline: true,
+              },
+              { name: "User ID", value: profile.id, inline: true },
+            ],
+            timestamp: new Date().toISOString(),
+          }],
+        });
+      }
     }
 
     const results = {

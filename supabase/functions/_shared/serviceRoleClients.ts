@@ -3,7 +3,8 @@ import type { Database } from "database-types";
 
 function requireServiceCredentials(): { url: string; key: string } {
   const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_KEY");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+    Deno.env.get("SUPABASE_KEY");
 
   if (!url || !key) {
     throw new Error("Missing Supabase service role configuration");

@@ -4,7 +4,7 @@ import LegalDiffView from '@/components/Legal/DiffView.vue'
 import { formatDateLong } from '@/lib/utils/date'
 
 const route = useRoute()
-const name = computed(() => (route.params.name as string[]).join('/'))
+const name = computed(() => (route.params.name as string[]).filter(Boolean).join('/'))
 
 const { data: content, error: contentError } = await useAsyncData(
   () => `legal:${name.value}`,

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Tooltip } from '@dolanske/vui'
+import { Badge, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useTopicIcon } from '@/composables/useTopicIcon'
-import BadgeCircle from '../Shared/BadgeCircle.vue'
+
 import ForumItemActions from './ForumItemActions.vue'
 
 interface Props {
@@ -73,18 +73,18 @@ const { iconUrl } = useTopicIcon(topicId)
         <strong>
           {{ data.name }}
           <Tooltip>
-            <BadgeCircle v-if="data.is_locked">
+            <Badge v-if="data.is_locked" circle>
               <Icon name="ph:lock" />
-            </BadgeCircle>
+            </Badge>
             <template #tooltip>
               <p>Locked</p>
             </template>
           </Tooltip>
 
           <Tooltip>
-            <BadgeCircle v-if="data.is_archived" variant="warning">
+            <Badge v-if="data.is_archived" variant="warning" circle>
               <Icon name="ph:archive" class="text-color-yellow" />
-            </BadgeCircle>
+            </Badge>
             <template #tooltip>
               <p>Archived</p>
             </template>

@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { Button, Divider, DropdownItem, Flex, Sheet, Spinner } from '@dolanske/vui'
+import type { ImpersonatableRole } from '@/composables/useRoleImpersonation'
+import { Button, Divider, Drawer, DropdownItem, Flex, Sheet, Spinner } from '@dolanske/vui'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
+import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { useDataUser } from '@/composables/useDataUser'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
+import { useRoleImpersonation } from '@/composables/useRoleImpersonation'
 
 const user = useSupabaseUser()
 const userId = useUserId()
@@ -29,9 +33,25 @@ watch(() => route.fullPath, () => {
   open.value = false
 })
 
-const isAdminOrMod = computed(() => {
-  return userData.value?.role === 'admin' || userData.value?.role === 'moderator'
-})
+const { isAdminOrMod, isImpersonating, realRole, role } = useEffectiveRole()
+
+const { start: startImpersonation, stop: stopImpersonationFn } = useRoleImpersonation()
+
+const injectedStopImpersonation = inject<() => void>('stopImpersonation', () => {})
+
+const impersonateDrawerOpen = ref(false)
+
+function impersonate(role: ImpersonatableRole) {
+  startImpersonation(role)
+  impersonateDrawerOpen.value = false
+  open.value = false
+}
+
+function stopImpersonating() {
+  stopImpersonationFn()
+  injectedStopImpersonation()
+  open.value = false
+}
 
 // Complaint modal state
 const showComplaintModal = ref(false)
@@ -98,6 +118,8 @@ async function signOut() {
             :show-badges="true"
             :show-activity="false"
             :show-description="false"
+            :role-override="isAdminOrMod ? role : null"
+            :impersonating="isImpersonating"
           />
         </div>
 
@@ -149,6 +171,39 @@ async function signOut() {
                 Admin Panel
               </DropdownItem>
             </NuxtLink>
+            <DropdownItem v-if="realRole === 'admin' && !isImpersonating" expand @click="impersonateDrawerOpen = true">
+              <template #icon>
+                <Icon name="ph:user-circle-dashed" :size="18" />
+              </template>
+              Impersonate
+            </DropdownItem>
+            <Drawer :open="impersonateDrawerOpen" @close="impersonateDrawerOpen = false">
+              <h4>Impersonate</h4>
+              <p class="text-xs text-color-light mt-xxs">
+                Temporarily assume the <b>visual</b> permissions of another role for testing purposes. Your session is unaffected - switch back at any time.
+              </p>
+              <p class="text-xs text-color-light mt-s">
+                <i>Note: Client-side only. API responses are not altered. Verify with real accounts when testing permissions.</i>
+              </p>
+              <Divider class="my-m" />
+              <Flex column gap="xs">
+                <DropdownItem expand @click="impersonate('moderator')">
+                  <RoleIndicator role="moderator" size="l" />
+                </DropdownItem>
+                <DropdownItem expand @click="impersonate('user')">
+                  <RoleIndicator role="user" size="l" />
+                </DropdownItem>
+                <template v-if="isImpersonating">
+                  <Divider class="my-xxs" />
+                  <DropdownItem expand @click="stopImpersonating">
+                    <template #icon>
+                      <Icon name="ph:arrow-counter-clockwise" />
+                    </template>
+                    Reset
+                  </DropdownItem>
+                </template>
+              </Flex>
+            </Drawer>
           </template>
         </Flex>
       </Flex>

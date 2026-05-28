@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { useSupabaseClient } from '#imports'
 import { Button, Flex, Modal } from '@dolanske/vui'
 import { ref } from 'vue'
+import { useSupabaseClient } from '#imports'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useUserId } from '@/composables/useUserId'
 import { useBreakpoint } from '@/lib/mediaQuery'

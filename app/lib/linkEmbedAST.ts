@@ -4,8 +4,7 @@
 // Walks the parsed MDC AST and replaces any top-level <p> that contains only
 // a single <a href="..."> pointing at a recognised internal hivecom URL with a
 // <SharedLinkEmbed url="..."> component node.  All other nodes are untouched.
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 import { parseInternalUrl } from '@/composables/useDataLinkPreview'
 
 interface ASTNode {

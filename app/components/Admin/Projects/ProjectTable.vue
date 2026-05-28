@@ -272,7 +272,7 @@ function clearFilters() {
           <tr v-for="project in rows" :key="project._original.id" class="clickable-row" @click="viewProject(project._original as QueryProject)">
             <Table.Cell>
               <Flex gap="xs" y-center>
-                <span>{{ project.Title }}</span>
+                <span class="text-s">{{ project.Title }}</span>
                 <GitHubLink
                   v-if="project._original.github"
                   :github="project._original.github"
@@ -288,18 +288,18 @@ function clearFilters() {
                 <Badge
                   v-for="tag in project.Tags"
                   :key="tag"
-                  size="xs"
+                  size="s"
                   variant="neutral"
                   class="table-tag"
                 >
                   {{ tag }}
                 </Badge>
               </Flex>
-              <span v-else class="text-color-light">No tags</span>
+              <span v-else class="text-color-light text-s">No tags</span>
             </Table.Cell>
             <Table.Cell>
-              <UserLink v-if="project.Owner" :user-id="project.Owner" />
-              <span v-else class="text-color-light">No owner</span>
+              <UserLink v-if="project.Owner" :user-id="project.Owner" class="text-s" />
+              <span v-else class="text-color-light text-s">No owner</span>
             </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions

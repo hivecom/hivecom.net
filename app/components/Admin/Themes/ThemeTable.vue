@@ -2,13 +2,12 @@
 import type { Ref } from 'vue'
 import type { Tables, TablesUpdate } from '@/types/database.overrides'
 import type { Theme } from '@/types/theme'
-import { Alert, defineTable, Flex, paginate, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, defineTable, Flex, paginate, Pagination, Table } from '@dolanske/vui'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import { useAdminPermissions } from '@/composables/useAdminPermissions'
@@ -157,6 +156,7 @@ function setPage(p: number) {
 // ─── Detail open/close ────────────────────────────────────────────────────────
 
 async function openThemeDetails(theme: RpcTheme) {
+  selectedTheme.value = null
   showThemeDetails.value = true
   void router.replace({ query: { ...route.query, theme: theme.id } })
 
@@ -316,19 +316,19 @@ onBeforeMount(async () => {
                 <Table.Cell>
                   <Flex gap="xs" y-center>
                     <ThemeIcon :theme="theme as unknown as Theme" size="s" />
-                    <span>{{ theme.name }}</span>
+                    <span class="text-s">{{ theme.name }}</span>
                   </Flex>
                 </Table.Cell>
                 <Table.Cell>
-                  <TinyBadge v-if="theme.is_official" variant="accent" size="xs" filled>
+                  <Badge v-if="theme.is_official" variant="accent" size="m" filled>
                     Official
-                  </TinyBadge>
+                  </Badge>
                   <span v-else class="text-color-lighter">-</span>
                 </Table.Cell>
                 <Table.Cell>
-                  <TinyBadge v-if="theme.is_unmaintained" variant="warning" size="xs" filled>
+                  <Badge v-if="theme.is_unmaintained" variant="warning" size="m" filled>
                     Unmaintained
-                  </TinyBadge>
+                  </Badge>
                   <span v-else class="text-color-lighter">-</span>
                 </Table.Cell>
                 <Table.Cell>
@@ -366,7 +366,7 @@ onBeforeMount(async () => {
   <ThemeDetails
     v-model:is-open="showThemeDetails"
     :theme="selectedTheme"
-    @delete="(item) => handleThemeDelete((item as unknown as { id: string }).id)"
+    @delete="(item) => handleThemeDelete(item.id)"
     @update="(id: string, data: TablesUpdate<'themes'>) => handleThemeUpdate(id, data)"
   />
 </template>

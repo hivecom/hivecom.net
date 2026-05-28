@@ -58,8 +58,7 @@ export function useDiscussionCache() {
 
   // ---------------------------------------------------------------------------
   // Cache primitives
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   /**
    * Read a cached discussion by ID. Returns null if cold or expired.
    */
@@ -140,8 +139,7 @@ export function useDiscussionCache() {
 
   // ---------------------------------------------------------------------------
   // Fetch helpers
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   /**
    * Fetch the base discussions row by entity type + entity ID, consulting the
    * cache first. Sets all three cache keys on success.
@@ -250,8 +248,7 @@ export function useDiscussionCache() {
     // This is intentionally a no-op placeholder for future use.
   })
 
-  // ---------------------------------------------------------------------------
-
+  // ------------------------------------------------------------------------
   return {
     // State
     loading,

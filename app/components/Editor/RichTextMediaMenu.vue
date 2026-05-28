@@ -3,11 +3,12 @@ import type { Editor } from '@tiptap/vue-3'
 import type { StorageBucketId } from '@/lib/storageAssets'
 import type { Database } from '@/types/database.types'
 import type { ShouldShowMenuProps } from '@/types/rich-text-editor'
-import { useSupabaseClient } from '#imports'
 import { Button, Flex, Modal, pushToast, Textarea } from '@dolanske/vui'
 import { NodeSelection } from '@tiptap/pm/state'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import { computed, ref, watch } from 'vue'
+import { useSupabaseClient, useSupabaseUser } from '#imports'
+import FileCropModal from '@/components/Shared/FileCropModal.vue'
 import { slugify } from '@/lib/utils/formatting'
 
 type MediaNodeType = 'image' | 'video'
@@ -18,15 +19,22 @@ const props = defineProps<{
   mediaContext: string
 }>()
 
+const emit = defineEmits<{
+  replacePendingBlob: [oldBlobUrl: string, newFile: File]
+}>()
+
 const supabase = useSupabaseClient<Database>()
+const user = useSupabaseUser()
 
 // ---------------------------------------------------------------------------
 // Modal state
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const modalOpen = ref(false)
 const slug = ref('')
 const saving = ref(false)
+
+const cropModalOpen = ref(false)
+const cropBlobSrc = ref('')
 
 // Snapshot of node info captured when the modal is opened, so changes to the
 // selection mid-edit don't corrupt the operation.
@@ -35,8 +43,7 @@ const capturedSrc = ref<string | null>(null)
 
 // ---------------------------------------------------------------------------
 // Node selection helpers
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function getSelectedNodeType(): MediaNodeType | null {
   const { selection } = props.editor.state
   if (!(selection instanceof NodeSelection))
@@ -47,24 +54,34 @@ function getSelectedNodeType(): MediaNodeType | null {
   return null
 }
 
-function shouldShow({ state }: ShouldShowMenuProps): boolean {
+function shouldShow({ state, view }: ShouldShowMenuProps): boolean {
   const { selection } = state
   const node = (selection as { node?: { type?: { name?: string }, attrs?: { src?: string } } }).node
   const name = node?.type?.name
   const src = node?.attrs?.src ?? ''
-  // Don't show trigger button while upload is in progress
-  if (src.startsWith('blob:'))
-    return false
-  return name === 'image' || name === 'video'
+  // Show for blob images (crop available) and all uploaded media
+  // Hide for blob videos (no crop, no useful actions while pending)
+  // Hide for errored/missing images
+  if (name === 'image') {
+    const domNode = view.nodeDOM((selection as { from: number }).from) as HTMLElement | null
+    if (domNode?.querySelector('img.img-error'))
+      return false
+    return true
+  }
+  if (name === 'video')
+    return !src.startsWith('blob:')
+  return false
 }
 
-const activeNodeType = computed<MediaNodeType | null>(() => getSelectedNodeType())
-const isVideo = computed(() => activeNodeType.value === 'video')
+const isBlobImage = computed(() => {
+  const { selection } = props.editor.state
+  const node = (selection as { node?: { type?: { name?: string }, attrs?: { src?: string } } }).node
+  return node?.type?.name === 'image' && (node?.attrs?.src ?? '').startsWith('blob:')
+})
 
 // ---------------------------------------------------------------------------
 // Virtual anchor - positions the bubble trigger just below the selected node
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function getReferencedVirtualElement() {
   const { state, view } = props.editor
   const { selection } = state
@@ -90,8 +107,7 @@ function getReferencedVirtualElement() {
 
 // ---------------------------------------------------------------------------
 // Modal open / close
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function openModal() {
   const nodeType = getSelectedNodeType()
   if (!nodeType)
@@ -133,8 +149,7 @@ const slugPlaceholder = computed(() =>
 
 // ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function getStoragePath(src: string): string | null {
   const filename = decodeURIComponent(src.slice(src.lastIndexOf('/') + 1))
   if (!filename)
@@ -144,7 +159,29 @@ function getStoragePath(src: string): string | null {
 
 // ---------------------------------------------------------------------------
 // Actions
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+function openCropModal() {
+  const { selection } = props.editor.state
+  if (!(selection instanceof NodeSelection))
+    return
+  const src = (selection.node.attrs as { src?: string }).src ?? ''
+  if (!src.startsWith('blob:'))
+    return
+  cropBlobSrc.value = src
+  cropModalOpen.value = true
+}
+
+function handleCropConfirm(croppedFile: File) {
+  const oldBlobUrl = cropBlobSrc.value
+  cropModalOpen.value = false
+  cropBlobSrc.value = ''
+  emit('replacePendingBlob', oldBlobUrl, croppedFile)
+}
+
+function handleCropCancel() {
+  cropModalOpen.value = false
+  cropBlobSrc.value = ''
+}
 
 function removeMedia() {
   // Storage cleanup handled by onTransaction in RichTextEditor
@@ -169,7 +206,7 @@ async function updateMedia() {
 
   saving.value = true
 
-  const storagePath = getStoragePath(src)
+  const storagePath = src.startsWith('blob:') ? null : getStoragePath(src)
 
   if (!props.bucketId || !storagePath) {
     // No bucket - just update alt attribute best-effort
@@ -206,7 +243,7 @@ async function updateMedia() {
 
   const { error: uploadError } = await supabase.storage
     .from(props.bucketId)
-    .upload(newPath, fetchData, { contentType: fetchData.type })
+    .upload(newPath, fetchData, { contentType: fetchData.type, metadata: { uploadedBy: user.value?.id ?? 'unknown' } })
 
   if (uploadError) {
     pushToast('Error updating media', { description: uploadError.message })
@@ -251,11 +288,11 @@ async function updateMedia() {
       <Button size="s" variant="danger" square @click="removeMedia">
         <Icon name="ph:trash" />
       </Button>
-      <Button size="s" variant="gray" @click="openModal">
-        <template #start>
-          <Icon name="ph:pencil-simple" />
-        </template>
-        {{ isVideo ? 'Edit label' : 'Edit alt text' }}
+      <Button v-if="isBlobImage" size="s" variant="gray" square @click="openCropModal">
+        <Icon name="ph:crop" />
+      </Button>
+      <Button size="s" variant="gray" square @click="openModal">
+        <Icon name="ph:tag" />
       </Button>
     </Flex>
   </BubbleMenu>
@@ -294,7 +331,7 @@ async function updateMedia() {
         <Button variant="danger" size="s" @click="removeMedia">
           Delete media
         </Button>
-        <Flex gap="s">
+        <Flex gap="xs">
           <Button size="s" @click="close">
             Cancel
           </Button>
@@ -310,6 +347,14 @@ async function updateMedia() {
       </Flex>
     </template>
   </Modal>
+
+  <FileCropModal
+    :open="cropModalOpen"
+    :image-src="cropBlobSrc"
+    image-mime="image/webp"
+    @confirm="handleCropConfirm"
+    @cancel="handleCropCancel"
+  />
 </template>
 
 <style scoped lang="scss">

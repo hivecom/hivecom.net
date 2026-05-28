@@ -2,39 +2,38 @@ import constants from '~~/constants.json'
 
 /**
  * Formats a monetary amount in cents to a localized currency string
- * using the currency configuration from constants.json
+ * using Intl.NumberFormat and the currency code from constants.json.
+ * Symbol position, decimal separators, and grouping are all browser-localized.
  *
  * @param cents - Amount in cents (e.g., 1500 for €15.00)
  * @param options - Optional formatting options
- * @param options.showDecimals - Include decimal places (defaults to false for whole euros)
+ * @param options.showDecimals - Include decimal places (defaults to false for whole units)
  * @param options.decimalPlaces - Number of decimal places to show (defaults to 2)
- * @returns Formatted currency string (e.g., "€15")
+ * @param options.locale - BCP 47 locale string (defaults to browser locale)
+ * @returns Formatted currency string (e.g., "€15" or "15,50 €" depending on locale)
  */
 export function formatCurrency(
   cents: number,
   options: {
-    /** Include decimal places (defaults to false for whole euros) */
+    /** Include decimal places (defaults to false for whole units) */
     showDecimals?: boolean
     /** Number of decimal places to show (defaults to 2) */
     decimalPlaces?: number
+    /** BCP 47 locale string (defaults to browser locale) */
+    locale?: string
   } = {},
 ): string {
-  const { showDecimals = false, decimalPlaces = 2 } = options
+  const { showDecimals = false, decimalPlaces = 2, locale } = options
 
-  // Convert cents to main currency unit
   const amount = cents / 100
+  const { CODE } = constants.CURRENCY
 
-  // Get currency symbol from constants
-  const { SYMBOL } = constants.CURRENCY
-
-  // Format the amount based on options
-  if (showDecimals) {
-    return `${SYMBOL}${amount.toFixed(decimalPlaces)}`
-  }
-  else {
-    // Default behavior: show whole euros only
-    return `${SYMBOL}${amount.toFixed(0)}`
-  }
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: CODE,
+    minimumFractionDigits: showDecimals ? decimalPlaces : 0,
+    maximumFractionDigits: showDecimals ? decimalPlaces : 0,
+  }).format(amount)
 }
 
 /**

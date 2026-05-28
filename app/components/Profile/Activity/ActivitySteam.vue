@@ -292,16 +292,23 @@ watch(() => props.profileId, () => {
             </div>
 
             <!-- Right side: game icon -->
-            <img
+            <a
               v-if="isPlaying && gameIconUrl"
-              :key="gameIconUrl"
-              :src="gameIconUrl"
-              :alt="`${presence.current_app_name} icon`"
-              width="32"
-              height="32"
-              class="activity-item__game-icon"
-              @error="onGameIconError"
+              :href="currentAppUrl ?? undefined"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="activity-item__game-icon-link"
             >
+              <img
+                :key="gameIconUrl"
+                :src="gameIconUrl"
+                :alt="`${presence.current_app_name} icon`"
+                width="32"
+                height="32"
+                class="activity-item__game-icon"
+                @error="onGameIconError"
+              >
+            </a>
           </template>
 
           <!-- No presence data -->
@@ -329,6 +336,11 @@ watch(() => props.profileId, () => {
   width: 6px;
   height: 6px;
   border-radius: var(--border-radius-pill);
+}
+
+.activity-item__game-icon-link {
+  display: flex;
+  flex-shrink: 0;
 }
 
 .activity-item__game-icon {

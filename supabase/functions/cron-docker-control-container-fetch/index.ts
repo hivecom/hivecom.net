@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
                 : null;
 
               const { error: dbError } = await supabaseClient
-                .from("containers")
+                .from("network_containers")
                 .upsert({
                   name: container.name,
                   running: running,
@@ -106,7 +106,7 @@ Deno.serve(async (req: Request) => {
                     ? new Date(container.started).toISOString()
                     : null,
                   server: server.id,
-                } as Tables<"containers">, {});
+                } as Tables<"network_containers">, {});
 
               return {
                 container: container.name,
@@ -117,7 +117,7 @@ Deno.serve(async (req: Request) => {
           );
 
           const { error: accessError } = await supabaseClient
-            .from("servers")
+            .from("network_servers")
             .update({ accessible: true, last_accessed: now })
             .eq("id", server.id);
 
@@ -137,7 +137,7 @@ Deno.serve(async (req: Request) => {
           console.error(`Error processing server ${server.address}:`, error);
 
           const { error: accessError } = await supabaseClient
-            .from("servers")
+            .from("network_servers")
             .update({ accessible: false })
             .eq("id", server.id);
 

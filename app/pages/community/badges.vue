@@ -1,26 +1,74 @@
 <script setup lang="ts">
+import type { BadgeVariant } from '@/lib/badges/catalog'
 import { Card, Flex } from '@dolanske/vui'
-import ProfileBadgeBuilder from '@/components/Profile/Badges/ProfileBadgeBuilder.vue'
-import ProfileBadgeDiscussionReplies from '@/components/Profile/Badges/ProfileBadgeDiscussionReplies.vue'
-import ProfileBadgeDiscussionStarter from '@/components/Profile/Badges/ProfileBadgeDiscussionStarter.vue'
-import ProfileBadgeEarlybird from '@/components/Profile/Badges/ProfileBadgeEarlybird.vue'
-import ProfileBadgeFounder from '@/components/Profile/Badges/ProfileBadgeFounder.vue'
-import ProfileBadgeHost from '@/components/Profile/Badges/ProfileBadgeHost.vue'
-import ProfileBadgeRSVPs from '@/components/Profile/Badges/ProfileBadgeRSVPs.vue'
-import ProfileBadgeSupporter from '@/components/Profile/Badges/ProfileBadgeSupporter.vue'
-import ProfileBadgeSupporterLifetime from '@/components/Profile/Badges/ProfileBadgeSupporterLifetime.vue'
-import ProfileBadgeYears from '@/components/Profile/Badges/ProfileBadgeYears.vue'
+import { computed } from 'vue'
+import ProfileBadgeFromSlug from '@/components/Profile/Badges/ProfileBadgeFromSlug.vue'
+import { BADGE_CATALOG, BADGE_VARIANT_ORDER } from '@/lib/badges/catalog'
 
-function memberSinceYearsAgo(years: number) {
+// useSeoMeta / defineOgImage are Nuxt auto-imports - no explicit import needed
+
+// Build preview entries for computed badges: one entry per defined tier threshold
+interface BadgePreviewEntry {
+  slug: string
+  tier: BadgeVariant
+  progress: number
+  earnedAt?: string
+}
+
+function memberSinceYearsAgo(years: number): string {
   const date = new Date()
   date.setFullYear(date.getFullYear() - years)
   return date.toISOString()
 }
 
-const membershipSnapshots = [1, 5, 10, 20].map(years => ({
-  years,
-  memberSince: memberSinceYearsAgo(years),
-}))
+// Special recognition: manual + flag badges, shown at their defaultTier
+const specialBadges = computed(() =>
+  Object.entries(BADGE_CATALOG)
+    .filter(([, entry]) => entry.kind === 'manual' || entry.kind === 'flag')
+    .sort(([, a], [, b]) => a.sortOrder - b.sortOrder)
+    .map(([slug, entry]) => ({
+      slug,
+      tier: (entry as { defaultTier: BadgeVariant }).defaultTier,
+    })),
+)
+
+// Community participation: computed badges with unit rsvps/discussions/replies
+// Show all defined tiers from lowest to highest
+const participationBadges = computed((): BadgePreviewEntry[] => {
+  const result: BadgePreviewEntry[] = []
+  const participationSlugs = Object.entries(BADGE_CATALOG)
+    .filter(([, e]) => e.kind === 'computed' && (e as { unit: string }).unit !== 'years')
+    .sort(([, a], [, b]) => a.sortOrder - b.sortOrder)
+
+  for (const [slug, entry] of participationSlugs) {
+    if (entry.kind !== 'computed')
+      continue
+    const tiers = entry.tiers as Partial<Record<BadgeVariant, number>>
+    // Iterate from lowest tier to highest for display order
+    for (const tier of [...BADGE_VARIANT_ORDER].reverse()) {
+      const threshold = tiers[tier]
+      if (threshold !== undefined) {
+        result.push({ slug, tier, progress: threshold })
+      }
+    }
+  }
+  return result
+})
+
+// Years badges: one_of_us at each defined tier
+const yearsBadges = computed((): BadgePreviewEntry[] => {
+  const entry = BADGE_CATALOG.one_of_us
+  const tiers = entry.tiers as Partial<Record<BadgeVariant, number>>
+  return [...BADGE_VARIANT_ORDER]
+    .filter(tier => tiers[tier] !== undefined)
+    .map(tier => ({
+      slug: 'one_of_us',
+      tier,
+      progress: tiers[tier]!,
+      earnedAt: memberSinceYearsAgo(tiers[tier]!),
+    }))
+    .reverse() // bronze first, shiny last for ascending display
+})
 
 useSeoMeta({
   title: 'Badges',
@@ -51,23 +99,12 @@ defineOgImage('Default', {
       </Flex>
       <Card class="playground-card">
         <div class="badge-grid">
-          <div class="badge-preview">
-            <ProfileBadgeHost />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeBuilder />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeEarlybird />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeSupporter />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeSupporterLifetime />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeFounder />
+          <div
+            v-for="badge in specialBadges"
+            :key="badge.slug"
+            class="badge-preview"
+          >
+            <ProfileBadgeFromSlug :slug="badge.slug" :tier="badge.tier" />
           </div>
         </div>
       </Card>
@@ -80,32 +117,16 @@ defineOgImage('Default', {
       </Flex>
       <Card class="playground-card">
         <div class="badge-grid">
-          <div class="badge-preview">
-            <ProfileBadgeRSVPs :rsvps="3" />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeRSVPs :rsvps="10" />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeRSVPs :rsvps="50" />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeDiscussionStarter :discussions="10" />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeDiscussionStarter :discussions="100" />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeDiscussionStarter :discussions="1000" />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeDiscussionReplies :replies="100" />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeDiscussionReplies :replies="1000" />
-          </div>
-          <div class="badge-preview">
-            <ProfileBadgeDiscussionReplies :replies="10000" />
+          <div
+            v-for="badge in participationBadges"
+            :key="`${badge.slug}-${badge.tier}`"
+            class="badge-preview"
+          >
+            <ProfileBadgeFromSlug
+              :slug="badge.slug"
+              :tier="badge.tier"
+              :progress="badge.progress"
+            />
           </div>
         </div>
       </Card>
@@ -113,19 +134,21 @@ defineOgImage('Default', {
 
     <section class="playground-section">
       <Flex class="section-heading" column gap="xxs">
-        <h2>Membership Years</h2>
-        <p>These badges represent the length of time a member has been part of the community.</p>
+        <h2>Community Years</h2>
+        <p>These badges represent the length of time a user has been part of the community.</p>
       </Flex>
       <Card class="playground-card">
         <div class="badge-grid">
           <div
-            v-for="snapshot in membershipSnapshots"
-            :key="snapshot.years"
+            v-for="badge in yearsBadges"
+            :key="`${badge.slug}-${badge.tier}`"
             class="badge-preview"
           >
-            <ProfileBadgeYears
-              :years="snapshot.years"
-              :member-since="snapshot.memberSince"
+            <ProfileBadgeFromSlug
+              :slug="badge.slug"
+              :tier="badge.tier"
+              :progress="badge.progress"
+              :earned-at="badge.earnedAt"
             />
           </div>
         </div>

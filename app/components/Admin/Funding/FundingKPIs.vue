@@ -34,7 +34,7 @@ async function fetchFundingMetrics() {
   try {
     // Get current active expenses (started and not ended)
     const { data: expensesData, error: expensesError } = await supabase
-      .from('expenses')
+      .from('funding_expenses')
       .select('amount_cents')
       .is('ended_at', null)
       .lte('started_at', new Date().toISOString())

@@ -9,16 +9,28 @@ import DeleteAccountCard from '@/components/Settings/DeleteAccountCard.vue'
 import GeneralUserSettings from '@/components/Settings/GeneralUserSettings.vue'
 import MfaCard from '@/components/Settings/MfaCard.vue'
 import PasskeyCard from '@/components/Settings/PasskeyCard.vue'
+import RichPresencePromptModal from '@/components/Settings/RichPresencePromptModal.vue'
+import { useSessionReady } from '@/composables/useSessionReady'
 import { scrollToId } from '@/lib/utils/common'
 
 const isDev = import.meta.dev
+const route = useRoute()
+
+const richPresencePromptOpen = ref(false)
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const { waitForSessionReady } = useSessionReady()
 const userId = useUserId()
 const { navigateToSignIn } = useAuthRedirect()
 
 const profile = ref<Tables<'profiles'> | null>(null)
+
+function maybePromptRichPresence() {
+  if (!profile.value?.rich_presence_enabled) {
+    richPresencePromptOpen.value = true
+  }
+}
 const loading = ref(true)
 const profileError = ref('')
 const authReady = ref(false)
@@ -60,26 +72,31 @@ function handleProfileUpdated() {
 
 let authSubscription: { unsubscribe: () => void } | null = null
 
-onBeforeMount(() => {
-  const { data } = supabase.auth.onAuthStateChange((event) => {
-    authReady.value = true
+onBeforeMount(async () => {
+  await waitForSessionReady()
+  authReady.value = true
 
-    if (event === 'SIGNED_OUT' || (!user.value && authReady.value))
+  if (!user.value) {
+    navigateToSignIn()
+    return
+  }
+
+  await fetchProfile()
+
+  if (route.query.connected === 'steam') {
+    maybePromptRichPresence()
+    // Clean query param without navigation
+    const url = new URL(window.location.href)
+    url.searchParams.delete('connected')
+    window.history.replaceState({}, '', `${url.pathname}${url.search}`)
+  }
+
+  const { data } = supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT' || !user.value)
       navigateToSignIn()
   })
 
   authSubscription = data.subscription
-
-  if (user.value) {
-    authReady.value = true
-    fetchProfile()
-  }
-  else {
-    setTimeout(() => {
-      if (!user.value && authReady.value)
-        navigateToSignIn()
-    }, 1000)
-  }
 })
 
 onUnmounted(() => {
@@ -182,7 +199,7 @@ onMounted(() => {
             <GeneralUserSettings class="mb-m" />
           </div>
           <div id="connections" class="w-100">
-            <ConnectionsCard :profile="profile" @updated="handleProfileUpdated" />
+            <ConnectionsCard :profile="profile" @updated="handleProfileUpdated" @connected="maybePromptRichPresence" />
           </div>
           <div id="security" class="w-100">
             <strong class="block mb-m text-color-light">
@@ -218,6 +235,12 @@ onMounted(() => {
         </div>
       </div>
     </template>
+
+    <RichPresencePromptModal
+      :open="richPresencePromptOpen"
+      @close="richPresencePromptOpen = false"
+      @enabled="handleProfileUpdated"
+    />
   </div>
 </template>
 

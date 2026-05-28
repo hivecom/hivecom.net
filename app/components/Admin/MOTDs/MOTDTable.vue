@@ -1,11 +1,15 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, defineTable, Flex, Input, Pagination, Table } from '@dolanske/vui'
-import { computed } from 'vue'
+import { Alert, Button, defineTable, DropdownItem, Flex, Input, Pagination, Table } from '@dolanske/vui'
+import { computed, inject, ref, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import MOTDEditModal from './MOTDEditModal.vue'
@@ -15,6 +19,7 @@ type Motd = Tables<'motds'>
 const supabase = useSupabaseClient()
 const userId = useUserId()
 const isBelowMedium = useBreakpoint('<m')
+const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 
 const {
   items: _motds,
@@ -58,9 +63,14 @@ const {
 
 const displayRows = computed(() => filteredRows.value)
 
-const { headers, rows, pagination, setPage, setSort } = defineTable(displayRows, {
-  pagination: { enabled: true },
-  select: false,
+const { headers, rows, pagination, setPage, setSort, selectedRows, deselectAllRows, options } = defineTable(displayRows, {
+  pagination: { enabled: true, perPage: adminTablePerPage.value },
+  select: true,
+})
+
+watch(adminTablePerPage, (perPage) => {
+  options.value.pagination.perPage = perPage
+  setPage(1)
 })
 
 const shouldShowPagination = computed(() => {
@@ -115,15 +125,17 @@ async function handleSave(payload: { id?: number, message: string }) {
   }
 }
 
-async function handleDelete(entry: Motd) {
+async function handleDelete(ids: number[]) {
   errorMessage.value = ''
 
   try {
-    setActionLoading(entry.id, 'delete', true)
+    for (const id of ids)
+      setActionLoading(id, 'delete', true)
+
     const { error } = await supabase
       .from('motds')
       .delete()
-      .eq('id', entry.id)
+      .in('id', ids)
 
     if (error)
       throw error
@@ -134,8 +146,18 @@ async function handleDelete(entry: Motd) {
     errorMessage.value = error instanceof Error ? error.message : 'Failed to delete MOTD'
   }
   finally {
-    setActionLoading(entry.id, 'delete', false)
+    for (const id of ids)
+      setActionLoading(id, 'delete', false)
   }
+}
+
+// Bulk deletion
+const showBulkDeleteConfirm = ref(false)
+
+function handleBulkDelete() {
+  showBulkDeleteConfirm.value = false
+  const ids = [...selectedRows.value].map(row => (row._original as unknown as Motd).id)
+  handleDelete(ids)
 }
 </script>
 
@@ -145,11 +167,14 @@ async function handleDelete(entry: Motd) {
       <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
         <Input
           v-model="search"
-          size="s"
           placeholder="Search messages"
           clearable
           :expand="isBelowMedium"
-        />
+        >
+          <template #start>
+            <Icon name="ph:magnifying-glass" />
+          </template>
+        </Input>
       </Flex>
       <Flex
         gap="s"
@@ -187,6 +212,7 @@ async function handleDelete(entry: Motd) {
       <TableContainer>
         <Table.Root :loading="loading" separate-cells>
           <template #header>
+            <th class="vui-table-interactive-cell" />
             <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
             <Table.Head
               v-if="canManageResource"
@@ -198,6 +224,7 @@ async function handleDelete(entry: Motd) {
 
           <template #body>
             <tr v-for="row in rows" :key="row._original.id">
+              <Table.SelectRow :row="row as any" />
               <Table.Cell>
                 {{ row.Message }}
               </Table.Cell>
@@ -215,7 +242,7 @@ async function handleDelete(entry: Motd) {
                   button-size="s"
                   :is-loading="(action) => isActionLoading(row._original.id, action)"
                   @edit="(item) => openEditModal(item as Motd)"
-                  @delete="(item) => handleDelete(item as Motd)"
+                  @delete="(item) => handleDelete([(item as Motd).id])"
                 />
               </Table.Cell>
             </tr>
@@ -233,10 +260,34 @@ async function handleDelete(entry: Motd) {
     </template>
   </Flex>
 
+  <SelectedRowsActions
+    :selected-count="selectedRows.size"
+    @clear="deselectAllRows()"
+  >
+    <DropdownItem @click="showBulkDeleteConfirm = true">
+      <template #icon>
+        <Icon name="ph:trash" class="text-color-red" />
+      </template>
+      Delete
+    </DropdownItem>
+  </SelectedRowsActions>
+
   <MOTDEditModal
     v-model:open="showModal"
     :entry="selectedEntry"
     :is-edit-mode="isEditMode"
     @save="handleSave"
+  />
+
+  <!-- Bulk Delete Confirmation Modal -->
+  <ConfirmModal
+    :open="showBulkDeleteConfirm"
+    :title="`Delete ${selectedRows.size} items`"
+    :description="`Are you sure you want to delete ${selectedRows.size} MOTD items? This action cannot be undone.`"
+    confirm-text="Delete"
+    cancel-text="Cancel"
+    :destructive="true"
+    @cancel="showBulkDeleteConfirm = false"
+    @confirm="handleBulkDelete"
   />
 </template>

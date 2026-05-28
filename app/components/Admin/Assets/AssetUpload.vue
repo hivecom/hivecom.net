@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { StorageBucketId } from '@/lib/storageAssets'
 import { Alert, Button, Card, Flex, Input, Progress, Sheet, Switch } from '@dolanske/vui'
-
 import { computed, ref, watch } from 'vue'
+
+import { useSupabaseClient, useSupabaseUser } from '#imports'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import { CMS_BUCKET_ID, formatBytes, getBucketDescription, getBucketLabel, joinAssetPath, normalizePrefix } from '@/lib/storageAssets'
 
@@ -32,6 +33,7 @@ interface QueuedFile {
 }
 
 const supabase = useSupabaseClient()
+const user = useSupabaseUser()
 const resolvedBucketId = computed(() => props.bucketId ?? CMS_BUCKET_ID)
 const bucketLabel = computed(() => getBucketLabel(resolvedBucketId.value))
 const bucketDescription = computed(() => getBucketDescription(resolvedBucketId.value))
@@ -80,6 +82,7 @@ async function handleUpload() {
         .upload(storagePath, item.file, {
           contentType: item.file.type,
           upsert: replaceExisting.value,
+          metadata: { uploadedBy: user.value?.id ?? 'unknown' },
         })
 
       if (error)

@@ -6,6 +6,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import { computed, ref, watch } from 'vue'
 import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
+import { unwrapJoin } from '@/lib/utils/common'
 
 interface ReplyJoinedDiscussion {
   id: string | null
@@ -95,9 +96,7 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
 
     // Build reply items - timestamp is when the user actually posted the reply
     const replyItems: UserActivityItem[] = (repliesRes.data ?? []).map((item) => {
-      // eslint-disable-next-line ts/no-unsafe-assignment
-      const rawDiscussion = Array.isArray(item.discussions) ? item.discussions[0] : item.discussions
-      const discussion = rawDiscussion as ReplyJoinedDiscussion | null | undefined
+      const discussion = unwrapJoin<ReplyJoinedDiscussion>(item.discussions)
       const slug = discussion?.slug ?? item.discussion_id
       return {
         id: (item.id ?? item.discussion_id)!,

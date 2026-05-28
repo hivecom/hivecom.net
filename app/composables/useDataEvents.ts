@@ -1,7 +1,7 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
-import { useSupabaseUser } from '#imports'
 import { ref, watch } from 'vue'
+import { useSupabaseUser } from '#imports'
 import { useCache } from '@/composables/useCache'
 import { useCacheModule } from '@/composables/useCacheModule'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'

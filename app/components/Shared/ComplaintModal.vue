@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex, Modal, Textarea } from '@dolanske/vui'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
@@ -11,6 +11,7 @@ const props = defineProps<{
   contextGameserverName?: string
   contextDiscussionId?: string
   contextDiscussionReplyId?: string
+  initialMessage?: string
 }>()
 
 const emit = defineEmits<{
@@ -19,7 +20,13 @@ const emit = defineEmits<{
 }>()
 
 // Form state
-const complaintMessage = ref('')
+const complaintMessage = ref(props.initialMessage ?? '')
+
+watch(() => props.open, (isOpen) => {
+  if (isOpen) {
+    complaintMessage.value = props.initialMessage ?? ''
+  }
+})
 const isSubmitting = ref(false)
 const submitError = ref('')
 const isBelowSmall = useBreakpoint('<xs')
@@ -95,7 +102,7 @@ async function handleSubmit() {
 }
 
 function resetForm() {
-  complaintMessage.value = ''
+  complaintMessage.value = props.initialMessage ?? ''
   isSubmitting.value = false
   submitError.value = ''
 }

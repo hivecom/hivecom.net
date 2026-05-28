@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Select, Tab, Tabs } from '@dolanske/vui'
+import { Button, Flex, Input, Select, Switch, Tab, Tabs } from '@dolanske/vui'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import CreateEventModal from '@/components/Events/CreateEventModal.vue'
 import EventsCalendar from '@/components/Events/EventsCalendar.vue'
 import EventsListing from '@/components/Events/EventsListing.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
+import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataEvents } from '@/composables/useDataEvents'
+import { useDataGames } from '@/composables/useDataGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface SelectOption {
   label: string
-  value: string
+  value: string | number
 }
 
 // Filters
@@ -31,10 +33,62 @@ const officialFilterOptions: SelectOption[] = [
   { label: 'Community', value: 'unofficial' },
 ]
 
+const hideRecurring = ref(false)
+const recurringFilter = computed<boolean | null>(() => hideRecurring.value ? true : null)
+
 // Tab management
 const activeTab = ref('list')
 const route = useRoute()
 const router = useRouter()
+
+const { games } = useDataGames()
+
+// Fetch data for the listing view only - the calendar self-fetches its own windowed data
+const { events, loading, error, refresh } = useDataEvents()
+const errorMessage = computed(() => error.value ?? '')
+
+const gameFilterIds = ref<number[]>([])
+
+const gameFilter = computed<number[]>(() => gameFilterIds.value)
+
+const eventGameIds = computed(() => {
+  const ids = new Set(events.value.flatMap(e => e.games ?? []))
+  return Array.from(ids)
+})
+
+const eventGames = computed(() =>
+  eventGameIds.value
+    .map(id => games.value.find(g => g.id === id))
+    .filter((g): g is NonNullable<typeof g> => g !== undefined)
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')),
+)
+
+// Sync URL -> gameFilterIds
+watch(
+  () => route.query.game,
+  (raw) => {
+    const raws = Array.isArray(raw) ? raw : (raw ? [raw] : [])
+    const ids = raws.map(Number).filter(id => !Number.isNaN(id) && id > 0)
+    const current = gameFilterIds.value
+    if (ids.length === current.length && ids.every((id, i) => id === current[i]))
+      return
+    gameFilterIds.value = ids
+  },
+  { immediate: true },
+)
+
+// Sync gameFilterIds -> URL
+watch(gameFilterIds, (ids) => {
+  const currentRaw = route.query.game
+  const rawList = Array.isArray(currentRaw) ? currentRaw : (currentRaw ? [currentRaw] : [])
+  const current = rawList
+    .map(Number)
+    .filter(id => !Number.isNaN(id) && id > 0)
+  if (ids.length === current.length && ids.every((id, i) => id === current[i]))
+    return
+  const { game: _game, ...rest } = route.query
+  void router.replace({ query: ids.length > 0 ? { ...rest, game: ids.map(String) } : rest })
+})
 
 const queryTab = computed(() => {
   const tab = route.query.tab
@@ -96,10 +150,6 @@ function handleContentRulesConfirmed() {
   showCreateEventModal.value = true
 }
 
-// Fetch data for the listing view only - the calendar self-fetches its own windowed data
-const { events, loading, error, refresh } = useDataEvents()
-const errorMessage = computed(() => error.value ?? '')
-
 useSeoMeta({
   title: 'Events',
   description: 'Discover upcoming, ongoing, and past events in the Hivecom community.',
@@ -155,8 +205,8 @@ defineOgImage('Default', {
 
       <section>
         <!-- Filters (list view only) -->
-        <Flex v-if="activeTab === 'list'" gap="s" wrap class="mb-l">
-          <Input v-model="search" placeholder="Search events..." style="min-width: 200px">
+        <Flex v-if="activeTab === 'list'" gap="s" wrap class="mb-l" y-center expand>
+          <Input v-model="search" placeholder="Search events..." style="min-width: 200px" :expand="isMobile">
             <template #start>
               <Icon name="ph:magnifying-glass" />
             </template>
@@ -169,6 +219,16 @@ defineOgImage('Default', {
             single
             show-clear
           />
+          <GameSelect
+            v-model="gameFilterIds"
+            :games="eventGames"
+            placeholder="Game"
+            :expand="isMobile"
+          />
+          <Flex v-if="user" :gap="0" y-center>
+            <Switch v-model="hideRecurring" />
+            <span class="text-s text-color-lighter">Hide recurring</span>
+          </Flex>
         </Flex>
 
         <!-- Listing View -->
@@ -179,6 +239,8 @@ defineOgImage('Default', {
           :error-message="errorMessage"
           :search="search"
           :official-filter="officialFilter"
+          :recurring-filter="recurringFilter"
+          :game-filter="gameFilter"
         />
 
         <!-- Calendar View -->

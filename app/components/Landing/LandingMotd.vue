@@ -192,7 +192,10 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .hero-motd {
-  font-size: var(--font-size-l);
+  z-index: var(--z-active);
+  span {
+    font-size: var(--font-size-s);
+  }
   margin: 0;
   opacity: 0.82;
   cursor: default;

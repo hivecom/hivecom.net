@@ -104,7 +104,7 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
       // Always fetch occurrence-scoped RSVP for this event
       const occurrenceDateVal = occurrenceDate.value
       const occurrenceQuery = supabase
-        .from('events_rsvps')
+        .from('event_rsvps')
         .select('id, rsvp, scope, occurrence_date')
         .eq('user_id', currentUserId)
         .eq('event_id', currentEvent.id)
@@ -118,7 +118,7 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
       // Fetch series-scoped RSVP if this is a recurring event
       const seriesPromise = currentEvent.recurrence_rule != null
         ? supabase
-            .from('events_rsvps')
+            .from('event_rsvps')
             .select('id, rsvp, scope, occurrence_date')
             .eq('user_id', currentUserId)
             .eq('event_id', currentEvent.id)
@@ -173,7 +173,7 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
 
       if (existingRow != null) {
         const result = await supabase
-          .from('events_rsvps')
+          .from('event_rsvps')
           .update({ rsvp: newStatus, modified_by: currentUserId })
           .eq('id', existingRow.id)
           .select('id, rsvp, scope, occurrence_date')
@@ -187,7 +187,7 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
       else {
         const occurrenceDateVal = occurrenceDate.value
         const result = await supabase
-          .from('events_rsvps')
+          .from('event_rsvps')
           .insert({
             user_id: currentUserId,
             event_id: targetEventId,
@@ -254,7 +254,7 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
       }
 
       const { error } = await supabase
-        .from('events_rsvps')
+        .from('event_rsvps')
         .delete()
         .in('id', toDelete.map(r => r.id))
 

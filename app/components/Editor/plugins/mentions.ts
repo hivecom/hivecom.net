@@ -210,7 +210,7 @@ export function createMentionExtension(
       class: 'mention',
     },
     renderHTML(props) {
-      return `@${props.node.attrs.label ?? props.node.attrs.id}`
+      return ['span', {}, `@${props.node.attrs.label ?? props.node.attrs.id}`]
     },
     renderText(props) {
       return `@{${props.node.attrs.id}}`

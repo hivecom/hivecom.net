@@ -91,13 +91,13 @@ defineExpose({
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="userIds.length === 0" class="bulk-user-display__empty">
+    <Flex v-else-if="userIds.length === 0" expand x-center y-center class="bulk-user-display__empty">
       <slot name="empty">
         <p class="text-color-light">
           No users to display
         </p>
       </slot>
-    </div>
+    </Flex>
 
     <!-- Users Grid -->
     <Grid
@@ -114,13 +114,14 @@ defineExpose({
       >
         <UserPreviewHover :user-id="user.profile?.id || user.id" class="bulk-user-display__hover">
           <Card :class="itemClass" class="bulk-user-display__card">
-            <Flex x-start expand>
+            <Flex x-start x-between y-center expand>
               <UserDisplay
                 :user-id="user.id"
                 :show-role="showRole"
                 :size="userSize"
                 :show-profile-preview="false"
               />
+              <slot name="user-extra" :user="user" />
             </Flex>
           </Card>
         </UserPreviewHover>

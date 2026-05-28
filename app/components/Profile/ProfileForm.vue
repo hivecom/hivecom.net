@@ -186,7 +186,7 @@ async function handleAnimatedFile(e: Event) {
 
     await supabase.storage
       .from(USERS_BUCKET_ID)
-      .upload(filePath, file, { upsert: true, contentType: file.type })
+      .upload(filePath, file, { upsert: true, contentType: file.type, metadata: { uploadedBy: props.profile.id } })
 
     await supabase
       .from('profiles')
@@ -240,7 +240,7 @@ async function handleImportFile(e: Event) {
 
       await supabase.storage
         .from(USERS_BUCKET_ID)
-        .upload(filePath, file, { upsert: true, contentType: 'image/webp' })
+        .upload(filePath, file, { upsert: true, contentType: 'image/webp', metadata: { uploadedBy: props.profile.id } })
 
       await supabase
         .from('profiles')
@@ -272,7 +272,7 @@ async function handleImportFile(e: Event) {
 
       await supabase.storage
         .from(USERS_BUCKET_ID)
-        .upload(filePath, file, { upsert: true, contentType: file.type })
+        .upload(filePath, file, { upsert: true, contentType: file.type, metadata: { uploadedBy: props.profile.id } })
 
       await supabase
         .from('profiles')
@@ -387,7 +387,7 @@ const birthdayButtonLabel = computed(() => {
   if (!birthdayDateModel.value)
     return 'Choose birthday (optional)'
 
-  return birthdayDateModel.value.toLocaleDateString('en-US', {
+  return birthdayDateModel.value.toLocaleDateString(undefined, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -502,7 +502,7 @@ async function handleAvatarUpload(file: File) {
     avatarError.value = null
 
     const supabase = useSupabaseClient()
-    const result = await uploadUserAvatar(supabase, props.profile.id, file)
+    const result = await uploadUserAvatar(supabase, props.profile.id, file, props.profile.id)
 
     if (result.success && result.url) {
       avatarUrl.value = result.url
@@ -636,17 +636,20 @@ async function confirmAvatarDelete() {
           <h4>Basic Information</h4>
 
           <Flex>
-            <Flex y-center gap="xs">
-              <Switch
-                v-model="profileForm.public"
-                label="Public profile"
-              />
-              <Tooltip placement="top">
-                <Icon name="ph:info" class="public-profile-info-icon" />
-                <template #tooltip>
-                  <p>When enabled, anyone - including visitors who are not logged in - can view your full profile page, including your introduction, content, and other public details.</p>
-                </template>
-              </Tooltip>
+            <Flex column gap="xs">
+              <Flex y-center gap="xs">
+                <Switch
+                  v-model="profileForm.public"
+                  label="Public profile"
+                />
+                <Tooltip v-if="!isMobile" placement="top">
+                  <Icon name="ph:info" class="public-profile-info-icon" />
+                  <template #tooltip>
+                    <p>When enabled, anyone - including visitors who are not logged in - can view your full profile page, including your introduction, content, and other public details.</p>
+                  </template>
+                </Tooltip>
+              </Flex>
+              <span v-if="isMobile" class="text-s text-color-lighter">When enabled, anyone - including visitors who are not logged in - can view your full profile page.</span>
             </Flex>
           </Flex>
 
@@ -1097,6 +1100,10 @@ async function confirmAvatarDelete() {
   &__signature-mobile-notice {
     width: 100%;
     margin-bottom: var(--space-xs);
+
+    :deep(.vui-alert-content) {
+      font-size: var(--font-size-xs);
+    }
   }
 
   &__signature-editor {

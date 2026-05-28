@@ -4,7 +4,6 @@ import type { Database } from '@/types/database.types'
 import { Badge, Button, Flex } from '@dolanske/vui'
 import { useIntervalFn } from '@vueuse/core'
 import { resolveComponent } from 'vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDuration } from '@/lib/utils/duration'
 
@@ -326,21 +325,21 @@ async function removeVote() {
       </ul>
 
       <Flex v-if="user" y-center gap="s" class="link-embed__meta">
-        <component :is="isMobile ? TinyBadge : Badge" :variant="voteStatusVariant" size="xs">
+        <Badge size="s" :variant="voteStatusVariant">
           {{ voteStatusLabel }}
-        </component>
-        <span class="link-embed__meta-sep">&middot;</span>
+        </Badge>
+        <span class="link-embed__meta-sep">-</span>
         <span class="link-embed__meta-item">
           {{ displayVoteCount }} {{ displayVoteCount === 1 ? 'vote' : 'votes' }}
         </span>
         <template v-if="data.multipleChoice">
-          <span class="link-embed__meta-sep">&middot;</span>
+          <span class="link-embed__meta-sep">-</span>
           <span class="link-embed__meta-item">Multiple choice</span>
         </template>
         <!-- Desktop: inline action buttons in meta row -->
         <template v-if="voteStatus === 'active' && user && !isMobile">
           <template v-if="hasVoted">
-            <span class="link-embed__meta-sep">&middot;</span>
+            <span class="link-embed__meta-sep">-</span>
             <Button
               variant="danger"
               size="s"
@@ -356,7 +355,7 @@ async function removeVote() {
             </Button>
           </template>
           <template v-if="data.multipleChoice && selectedChoices.length > 0">
-            <span class="link-embed__meta-sep">&middot;</span>
+            <span class="link-embed__meta-sep">-</span>
             <Button
               variant="accent"
               size="s"

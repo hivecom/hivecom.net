@@ -48,21 +48,6 @@ const containerStyle = computed(() => {
         <slot />
       </div>
     </div>
-
-    <svg class="metaball-defs" aria-hidden="true">
-      <defs>
-        <filter id="metaball">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blur" />
-          <feColorMatrix
-            in="blur"
-            mode="matrix"
-            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -12"
-            result="goo"
-          />
-          <feBlend in="SourceGraphic" in2="goo" />
-        </filter>
-      </defs>
-    </svg>
   </div>
 </template>
 
@@ -114,7 +99,7 @@ const containerStyle = computed(() => {
 .blob-field {
   position: absolute;
   inset: -6%;
-  filter: url('#metaball');
+  filter: contrast(3) blur(32px);
 }
 
 .content {

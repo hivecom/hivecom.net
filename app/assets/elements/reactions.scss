@@ -21,6 +21,8 @@
 
     &:has(.reactions__counter) {
       width: fit-content;
+      padding-left: var(--space-xxs);
+      padding-right: var(--space-xxs);
     }
 
     .reactions__counter {

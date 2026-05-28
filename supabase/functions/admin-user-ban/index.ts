@@ -38,8 +38,8 @@ Deno.serve(async (req: Request) => {
 
     // Normalize ban duration for Supabase Auth (it expects values like 1h, 7d, 100y, or none)
     let normalizedBanDuration = banDuration;
-    if (banDuration === 'permanent') {
-      normalizedBanDuration = '100y';
+    if (banDuration === "permanent") {
+      normalizedBanDuration = "100y";
     }
 
     if (!userId || typeof userId !== "string") {
@@ -59,7 +59,8 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "Ban duration is required and must be a string (e.g., '1h', '30m', '100y' for permanent, or 'none' to unban)",
+          error:
+            "Ban duration is required and must be a string (e.g., '1h', '30m', '100y' for permanent, or 'none' to unban)",
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -94,10 +95,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseAnonKey =
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-    const supabaseServiceRoleKey =
-      Deno.env.get("SUPABASE_SECRET_KEY") ??
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SECRET_KEY") ??
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
       "";
 
@@ -111,7 +110,8 @@ Deno.serve(async (req: Request) => {
       },
     );
 
-    const { data: { user: currentUser }, error: userError } = await tempClient.auth.getUser();
+    const { data: { user: currentUser }, error: userError } = await tempClient
+      .auth.getUser();
 
     if (userError || !currentUser) {
       return new Response(
@@ -181,16 +181,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`Attempting to ban user: ${userProfile.username} (${userId}) for duration: ${banDuration}${banReason ? ` with reason: ${banReason}` : ''}`);
+    console.log(
+      `Attempting to ban user: ${userProfile.username} (${userId}) for duration: ${banDuration}${
+        banReason ? ` with reason: ${banReason}` : ""
+      }`,
+    );
 
     // Determine ban start and end times
     let banStart: string | null = null;
     let banEnd: string | null = null;
 
-    if (banDuration !== 'none') {
+    if (banDuration !== "none") {
       banStart = new Date().toISOString();
 
-      if (banDuration !== 'permanent') {
+      if (banDuration !== "permanent") {
         // Parse duration and calculate end time
         // This is a simplified parser - you might want to use a more robust one
         const durationMatch = banDuration.match(/^(\d+)([hmdy])$/);
@@ -200,16 +204,16 @@ Deno.serve(async (req: Request) => {
           const now = new Date();
 
           switch (unit) {
-            case 'h':
+            case "h":
               now.setHours(now.getHours() + amount);
               break;
-            case 'd':
+            case "d":
               now.setDate(now.getDate() + amount);
               break;
-            case 'm':
+            case "m":
               now.setMinutes(now.getMinutes() + amount);
               break;
-            case 'y':
+            case "y":
               now.setFullYear(now.getFullYear() + amount);
               break;
           }
@@ -220,9 +224,9 @@ Deno.serve(async (req: Request) => {
     }
 
     const banMetadata = {
-      ban_reason: banDuration === 'none' ? null : (banReason || null),
-      ban_start: banDuration === 'none' ? null : banStart,
-      ban_end: banDuration === 'none' ? null : banEnd,
+      ban_reason: banDuration === "none" ? null : (banReason || null),
+      ban_start: banDuration === "none" ? null : banStart,
+      ban_end: banDuration === "none" ? null : banEnd,
     };
 
     // Ban the user using Supabase Auth Admin API
@@ -249,7 +253,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (banDuration !== 'none') {
+    if (banDuration !== "none") {
       // Call security-definer RPC to purge sessions/refresh tokens and force immediate sign-out
       const { error: sessionPurgeError } = await supabaseClient.rpc(
         "admin_delete_user_sessions",
@@ -275,14 +279,16 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const action = banDuration === 'none' ? 'unbanned' : 'banned';
-    console.log(`Successfully ${action} user: ${userProfile.username} (${userId})`);
+    const action = banDuration === "none" ? "unbanned" : "banned";
+    console.log(
+      `Successfully ${action} user: ${userProfile.username} (${userId})`,
+    );
 
     // Return success response
     return new Response(
       JSON.stringify({
         success: true,
-        message: banDuration === 'none'
+        message: banDuration === "none"
           ? `User ${userProfile.username} has been successfully unbanned`
           : `User ${userProfile.username} has been successfully banned for ${banDuration}`,
         userId: userId,

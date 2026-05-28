@@ -47,8 +47,7 @@ export interface UseRealtimeForumFeedOptions {
 
 // ---------------------------------------------------------------------------
 // Module-level channel registry
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 interface SharedChannel<TPayload> {
   channel: RealtimeChannel
   refCount: number
@@ -149,8 +148,7 @@ function releaseTopicActivityChannel(supabase: AnySupabase) {
 
 // ---------------------------------------------------------------------------
 // Composable
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function useRealtimeForumFeed({
   onReply,
   onDiscussion,

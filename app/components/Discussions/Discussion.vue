@@ -6,12 +6,14 @@ import type { TimelineBucket } from './DiscussionTimeline.vue'
 import type { SubscriptionRow } from '@/composables/useDiscussionSubscriptionsCache'
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
-import { Alert, paginate, Pagination, Skeleton } from '@dolanske/vui'
+import { paginate, Pagination, Skeleton } from '@dolanske/vui'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useDataDiscussionReplies } from '@/composables/useDataDiscussionReplies'
-import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
+import { useBulkDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { PAGE_SIZE_COMMENT, PAGE_SIZE_FORUM, useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCache'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useRealtimeDiscussion } from '@/composables/useRealtimeDiscussion'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
 import { scrollToId, scrollToIdWhenStable, waitForLayoutStability } from '@/lib/utils/common'
@@ -83,11 +85,7 @@ const MAX_COMMENT_CHARS = 8192
 
 const userId = useUserId()
 
-const { user: currentUserData } = useDataUser(userId, { includeRole: true })
-const canBypassLock = computed(() => {
-  const role = currentUserData.value?.role
-  return role === 'admin' || role === 'moderator'
-})
+const { isAdminOrMod: canBypassLock } = useEffectiveRole()
 
 // Re-export from Discussion.types.ts for backward compatibility with consumers
 // that import these types from Discussion.vue directly.
@@ -140,7 +138,21 @@ useBulkDataUser(replyAuthorIds, {
   avatarTtl: 30 * 60 * 1000,
 })
 
-const realtime = useRealtimeDiscussion(comments, discussion, modelRef, props.hash)
+// Declared here so the realtime composable can reference it before
+// useDataDiscussionReplies is initialized (both need each other).
+
+let pushRealtimeReplies: (newReplies: RawComment[], ascending: boolean) => void = () => {}
+
+const realtime = useRealtimeDiscussion(
+  comments,
+  discussion,
+  modelRef,
+  props.hash,
+  // Lazily delegate to pushRealtimeReplies once the data composable has
+  // initialised - avoids a circular initialisation dependency.
+  (newReplies, ascending) => pushRealtimeReplies(newReplies, ascending),
+  userId,
+)
 
 // ── Subscription (comment model only) ────────────────────────────────────────
 
@@ -247,6 +259,7 @@ const {
   forceDeleteComment: forceDeleteCommentFromList,
   offtopicCount,
   replyCountMap,
+  pushRealtimeReplies: _pushRealtimeReplies,
 } = useDataDiscussionReplies(
   {
     id: props.id,
@@ -269,6 +282,7 @@ const {
     }
   },
 )
+pushRealtimeReplies = _pushRealtimeReplies
 
 provide(DISCUSSION_KEYS.loadChildren, loadChildren)
 provide(DISCUSSION_KEYS.childrenMap, childrenMap)
@@ -317,12 +331,35 @@ function handleShowThreadRepliesUpdate(val: boolean) {
 // We also watch route.query.comment reactively so that notification clicks
 // while already on this page (which only change the query param) still
 // trigger the deep-link navigation.
+const navigatingToComment = ref(false)
+
 async function navigateToLinkedComment(commentId: string) {
+  // If the target element is already in the DOM, the scroll will be instant -
+  // no need to dim the page.
+  const alreadyInDom = document.querySelector(`#comment-${commentId}`) != null
+  if (!alreadyInDom)
+    navigatingToComment.value = true
   // If discussion isn't loaded yet, wait for it first.
   if (discussion.value == null) {
     await new Promise<void>((resolve) => {
       const unwatch = watch(discussion, (disc) => {
         if (disc == null)
+          return
+        unwatch()
+        resolve()
+      })
+    })
+  }
+
+  // Wait for the initial page load to finish before navigating. Without this,
+  // navigateToComment races with loadFirstPage: discussion.value is set before
+  // loadFirstPage completes, so navigateToComment may fetch and populate
+  // comments.value, then loadFirstPage's applyPage(reset: true) overwrites it,
+  // leaving the target comment absent from the DOM and the scroll never firing.
+  if (loading.value) {
+    await new Promise<void>((resolve) => {
+      const unwatch = watch(loading, (isLoading) => {
+        if (isLoading)
           return
         unwatch()
         resolve()
@@ -339,6 +376,10 @@ async function navigateToLinkedComment(commentId: string) {
     showOfftopic.value = true
     hasManuallySwitched.value = true
   }
+  // Wait for the scroll to actually land before clearing the loading state.
+  await nextTick()
+  await waitForLayoutStability()
+  navigatingToComment.value = false
 }
 
 watch(
@@ -1012,12 +1053,13 @@ async function submitReply() {
           // instead of serving the stale pages that predate this new reply.
           useDiscussionRepliesCache().invalidate(discussion.value.id)
         }
-        // The realtime subscription will fire for our own post too - pre-emptively
-        // bump latestCommentTime by ensuring the new reply is in the list before
-        // the INSERT event arrives, which is guaranteed since we already pushed it.
+        // The realtime INSERT event for our own post may arrive before or after
+        // the optimistic push. Reset pendingReplyCount so our own reply never
+        // shows up as a "new reply" indicator.
+        realtime.pendingReplyCount.value = 0
         // Notify parent so the forum unread state can be updated, preventing
         // a spurious activity indicator when the user was the last poster.
-        emit('replySubmitted', comments.value.length, discussion.value.id)
+        emit('replySubmitted', (discussion.value.reply_count ?? 0) + 1, discussion.value.id)
       }
 
       formLoading.value = false
@@ -1041,6 +1083,16 @@ function isCommentVisible(comment: Comment): boolean {
 function isNodeVisible(node: ThreadNode): boolean {
   return isCommentVisible(node.comment)
 }
+
+function openTimeline() {
+  timelineRef.value?.openJumpModal()
+}
+
+function goToEnd() {
+  void handleTimelineNavigateToEnd()
+}
+
+defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
 </script>
 
 <template>
@@ -1062,12 +1114,7 @@ function isNodeVisible(node: ThreadNode): boolean {
     </template>
 
     <template v-else-if="error">
-      <Alert variant="danger" filled>
-        <p>Failed to load discussion</p>
-        <p class="text-color-lighter text-size-s">
-          {{ error }}
-        </p>
-      </Alert>
+      <ErrorAlert message="Failed to load discussion" :error="error" />
     </template>
 
     <!-- Listing view -->

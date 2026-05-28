@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { UserDisplayData } from '@/composables/useDataUser'
-import { Flex, Skeleton } from '@dolanske/vui'
+import { Flex, Indicator, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
+import { getUserActivityStatus } from '@/lib/lastSeen'
 import { shuffleArray } from '@/lib/utils/random'
 
 interface Props {
@@ -23,6 +24,11 @@ interface Props {
    * the overflow bubble, and no remainingClick interaction.
    */
   cluster?: boolean
+  /**
+   * Show a green online indicator dot on avatars whose last_seen is within
+   * the active threshold (~15 minutes).
+   */
+  showOnlineIndicator?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -35,6 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
   supporterHighlight: false,
   expand: true,
   cluster: false,
+  showOnlineIndicator: false,
 })
 
 const emit = defineEmits<{
@@ -145,6 +152,12 @@ const avatarStyleVars = computed(() => ({
 
 const isSupporter = (profile?: UserDisplayData | null) => Boolean(profile?.supporter_lifetime || profile?.supporter_patreon)
 
+function getActivityStatus(profile?: UserDisplayData | null) {
+  if (!profile?.last_seen)
+    return null
+  return getUserActivityStatus(profile.last_seen)
+}
+
 // Get user initials
 function getUserInitials(username: string): string {
   return username
@@ -217,35 +230,45 @@ defineExpose({
         :style="avatarStyleVars"
       >
         <UserPreviewHover :user-id="entry.profile?.id || entry.id" class="bulk-avatar-display__hover">
-          <NuxtLink
-            v-if="entry.profile?.username"
-            :to="`/profile/${entry.profile.username}`"
-            class="bulk-avatar-display__link"
-          >
+          <div class="bulk-avatar-display__avatar-wrap">
+            <NuxtLink
+              v-if="entry.profile?.username"
+              :to="`/profile/${entry.profile.username}`"
+              class="bulk-avatar-display__link"
+            >
+              <AvatarMedia
+                :size="avatarSize"
+                :url="entry.profile?.avatarUrl || undefined"
+                :alt="entry.profile.username"
+                class="bulk-avatar-display__avatar-item"
+              >
+                {{ getUserInitials(entry.profile.username) }}
+              </AvatarMedia>
+            </NuxtLink>
+
+            <!-- Fallback for users without username -->
             <AvatarMedia
+              v-else
               :size="avatarSize"
               :url="entry.profile?.avatarUrl || undefined"
-              :alt="entry.profile.username"
+              :alt="entry.profile?.username || 'User'"
               class="bulk-avatar-display__avatar-item"
             >
-              <template v-if="!entry.profile?.avatarUrl" #default>
-                {{ getUserInitials(entry.profile.username) }}
-              </template>
-            </AvatarMedia>
-          </NuxtLink>
-
-          <!-- Fallback for users without username -->
-          <AvatarMedia
-            v-else
-            :size="avatarSize"
-            :url="entry.profile?.avatarUrl || undefined"
-            :alt="entry.profile?.username || 'User'"
-            class="bulk-avatar-display__avatar-item"
-          >
-            <template v-if="!entry.profile?.avatarUrl" #default>
               {{ entry.profile ? getUserInitials(entry.profile.username || 'User') : '?' }}
-            </template>
-          </AvatarMedia>
+            </AvatarMedia>
+
+            <Tooltip v-if="showOnlineIndicator && (getActivityStatus(entry.profile)?.isActive || getActivityStatus(entry.profile)?.isAway)">
+              <template #tooltip>
+                <p>{{ getActivityStatus(entry.profile)!.lastSeenText }}</p>
+              </template>
+              <Indicator
+                :variant="getActivityStatus(entry.profile)!.isActive ? 'online' : 'away'"
+                class="bulk-avatar-display__online-indicator z-active"
+                outline
+                size="s"
+              />
+            </Tooltip>
+          </div>
         </UserPreviewHover>
       </div>
 
@@ -303,6 +326,19 @@ defineExpose({
     overflow: visible;
   }
 
+  &__online-indicator {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+  }
+
+  &__avatar-wrap {
+    position: relative;
+    display: inline-flex;
+    width: 100%;
+    height: 100%;
+  }
+
   &__avatar-item {
     transition:
       transform 0.2s ease,
@@ -320,18 +356,21 @@ defineExpose({
 
   &__avatar--supporter {
     .bulk-avatar-display__avatar-item {
-      border: 2px solid transparent;
-      background:
-        linear-gradient(var(--color-bg), var(--color-bg)) padding-box,
-        linear-gradient(120deg, #fdf4d4 0%, #f2c15a 45%, #c88a2a 100%) border-box;
-      background-size:
-        100% 100%,
-        220% 220%;
-      background-origin: border-box;
-      box-shadow:
-        0 0 16px rgba(253, 244, 212, 0.45),
-        0 0 20px rgba(0, 0, 0, 0.25);
-      animation: goldShimmer 14s ease-in-out infinite;
+      :deep(.avatar-media__image),
+      :deep(.vui-avatar) {
+        border: 2px solid transparent;
+        background:
+          linear-gradient(var(--color-bg), var(--color-bg)) padding-box,
+          linear-gradient(120deg, #fdf4d4 0%, #f2c15a 45%, #c88a2a 100%) border-box;
+        background-size:
+          100% 100%,
+          220% 220%;
+        background-origin: border-box;
+        box-shadow:
+          0 0 16px rgba(253, 244, 212, 0.45),
+          0 0 20px rgba(0, 0, 0, 0.25);
+        animation: goldShimmer 14s ease-in-out infinite;
+      }
     }
   }
 

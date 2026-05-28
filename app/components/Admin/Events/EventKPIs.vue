@@ -12,6 +12,9 @@ const totalEvents = computed(() => events.value.length)
 const upcomingEvents = computed(() => {
   const now = new Date()
   return events.value.filter((event) => {
+    if (event.is_official === false)
+      return false
+
     const eventStart = new Date(event.date)
     return eventStart > now
   }).length
@@ -52,7 +55,7 @@ const eventsThisMonth = computed(() => {
     />
 
     <KPICard
-      label="Upcoming Events"
+      label="Upcoming Official One-off Events"
       :value="upcomingEvents"
       icon="ph:clock"
       :is-loading="loading"

@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import { Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
-import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { useDataGames } from '@/composables/useDataGames'
+import GameSelect from '@/components/Shared/GameSelect.vue'
+import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
+
+const props = defineProps<{
+  gameserver: QueryGameserver | null
+  isEditMode: boolean
+}>()
+
+// Define emits
+const emit = defineEmits(['save', 'delete'])
+
+const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
 // Interface for gameserver query result
 interface QueryGameserver {
@@ -22,13 +32,9 @@ interface QueryGameserver {
   modified_by: string | null
   name: string
   port: string | null
+  query_protocol: string | null
+  query_port: number | null
   region: 'eu' | 'na' | 'all' | null
-}
-
-// Interface for profile selection
-interface ProfileSelect {
-  id: string
-  username: string
 }
 
 // Interface for Select options
@@ -36,14 +42,6 @@ interface SelectOption {
   label: string
   value: string
 }
-
-const props = defineProps<{
-  gameserver: QueryGameserver | null
-  isEditMode: boolean
-}>()
-
-// Define emits
-const emit = defineEmits(['save', 'delete'])
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -56,9 +54,11 @@ const gameserverForm = ref({
   name: '',
   description: '',
   markdown: '',
-  region: null as Tables<'gameservers'>['region'],
+  region: null as Tables<'network_gameservers'>['region'],
   addresses: [] as string[],
   port: '',
+  query_protocol: null as string | null,
+  query_port: '' as string,
   game: null as number | null,
   container: null as string | null,
   administrator: null as string | null, // UUID of the administrator
@@ -70,16 +70,58 @@ const newAddress = ref('')
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 
+const saveLoading = ref(false)
+
 // Loading states for dropdowns
 const loadingContainers = ref(true)
-const loadingProfiles = ref(true)
 
-// Games via shared composable
-const { games, loading: loadingGames } = useDataGames()
+// Games state - loaded via debounced server-side search
+const games = ref<Tables<'games'>[]>([])
+const gamesLoading = ref(false)
+let gameSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+async function searchGames(query: string) {
+  gamesLoading.value = true
+  try {
+    let req = supabase
+      .from('games')
+      .select('*')
+      .order('name')
+      .limit(30)
+
+    if (query.trim()) {
+      req = req.or(`name.ilike.%${query.trim()}%,shorthand.ilike.%${query.trim()}%`)
+    }
+
+    const { data, error } = await req
+    if (error)
+      throw error
+    games.value = data ?? []
+  }
+  catch (err) {
+    console.error('GameServerForm: failed to fetch games', err)
+  }
+  finally {
+    gamesLoading.value = false
+  }
+}
+
+function debouncedSearchGames(query: string) {
+  if (gameSearchDebounceTimer !== null)
+    clearTimeout(gameSearchDebounceTimer)
+  gameSearchDebounceTimer = setTimeout(() => {
+    searchGames(query)
+  }, 300)
+}
 
 // Options for dropdowns
-const containers = ref<Tables<'containers'>[]>([])
-const profiles = ref<ProfileSelect[]>([])
+const containers = ref<Tables<'network_containers'>[]>([])
+
+// Query protocol options
+const queryProtocolOptions = [
+  { label: 'Source (A2S)', value: 'source' },
+  { label: 'Minecraft (Query)', value: 'minecraft' },
+]
 
 // Region options
 const regionOptions = [
@@ -89,13 +131,6 @@ const regionOptions = [
 ]
 
 // Computed options for selects
-const gameOptions = computed(() =>
-  games.value.map(game => ({
-    label: game.name || 'Unknown Game',
-    value: game.id,
-  })),
-)
-
 const containerOptions = computed(() =>
   containers.value.map(container => ({
     label: container.name,
@@ -103,12 +138,12 @@ const containerOptions = computed(() =>
   })),
 )
 
-const profileOptions = computed(() =>
-  profiles.value.map(profile => ({
-    label: profile.username || 'Unknown User',
-    value: profile.id,
-  })),
-)
+// Bridge GameSelect (multi) to single-game form field: pick newly added id, or null when cleared
+const selectedGameIds = computed(() => gameserverForm.value.game ? [gameserverForm.value.game] : [])
+function onGameSelect(ids: number[]) {
+  const next = ids.find(id => id !== gameserverForm.value.game)
+  gameserverForm.value.game = next ?? null
+}
 
 // Computed properties to handle conversion between form values and select options
 const selectedRegionComputed = computed({
@@ -119,19 +154,7 @@ const selectedRegionComputed = computed({
     return option ? [option] : []
   },
   set: (value: SelectOption[] | null | undefined) => {
-    gameserverForm.value.region = (value && value.length > 0) ? value[0]!.value as Tables<'gameservers'>['region'] : null
-  },
-})
-
-const selectedGameComputed = computed({
-  get: () => {
-    if (!gameserverForm.value.game)
-      return []
-    const option = gameOptions.value.find(opt => opt.value === gameserverForm.value.game)
-    return option ? [option] : []
-  },
-  set: (value: SelectOption[] | null | undefined) => {
-    gameserverForm.value.game = (value && value.length > 0) ? Number(value[0]!.value) : null
+    gameserverForm.value.region = (value && value.length > 0) ? value[0]!.value as Tables<'network_gameservers'>['region'] : null
   },
 })
 
@@ -147,15 +170,18 @@ const selectedContainerComputed = computed({
   },
 })
 
-const selectedAdministratorComputed = computed({
+const selectedQueryProtocolComputed = computed({
   get: () => {
-    if (!gameserverForm.value.administrator)
+    if (!gameserverForm.value.query_protocol)
       return []
-    const option = profileOptions.value.find(opt => opt.value === gameserverForm.value.administrator)
+    const option = queryProtocolOptions.find(opt => opt.value === gameserverForm.value.query_protocol)
     return option ? [option] : []
   },
   set: (value: SelectOption[] | null | undefined) => {
-    gameserverForm.value.administrator = (value && value.length > 0) ? value[0]!.value : null
+    gameserverForm.value.query_protocol = (value && value.length > 0) ? value[0]!.value : null
+    // Clear query port when protocol is cleared
+    if (!gameserverForm.value.query_protocol)
+      gameserverForm.value.query_port = ''
   },
 })
 
@@ -169,9 +195,8 @@ const isValid = computed(() => Object.values(validation.value).every(Boolean))
 // Fetch dropdown data
 async function fetchDropdownData() {
   try {
-    // Fetch containers
     const { data: containersData, error: containersError } = await supabase
-      .from('containers')
+      .from('network_containers')
       .select('*')
       .order('name')
 
@@ -179,17 +204,6 @@ async function fetchDropdownData() {
       throw containersError
     containers.value = containersData || []
     loadingContainers.value = false
-
-    // Fetch profiles
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .order('username')
-
-    if (profilesError)
-      throw profilesError
-    profiles.value = profilesData || []
-    loadingProfiles.value = false
   }
   catch (error) {
     console.error('Error fetching dropdown data:', error)
@@ -208,6 +222,8 @@ watch(
         region: newGameserver.region,
         addresses: newGameserver.addresses || [],
         port: newGameserver.port || '',
+        query_protocol: newGameserver.query_protocol,
+        query_port: newGameserver.query_port?.toString() || '',
         game: newGameserver.game?.id || null,
         container: newGameserver.container,
         administrator: newGameserver.administrator,
@@ -222,6 +238,8 @@ watch(
         region: null,
         addresses: [],
         port: '',
+        query_protocol: null,
+        query_port: '',
         game: null,
         container: null,
         administrator: null,
@@ -250,24 +268,36 @@ function handleClose() {
   isOpen.value = false
 }
 
+watch(isOpen, (open) => {
+  if (!open) {
+    saveLoading.value = false
+  }
+  else if (games.value.length === 0) {
+    searchGames('')
+  }
+})
+
 // Handle form submission
 function handleSubmit() {
   if (!isValid.value)
     return
 
   // Prepare the data to save
-  const gameserverData: TablesInsert<'gameservers'> | TablesUpdate<'gameservers'> = {
+  const gameserverData: TablesInsert<'network_gameservers'> | TablesUpdate<'network_gameservers'> = {
     name: gameserverForm.value.name,
     description: gameserverForm.value.description || null,
     markdown: gameserverForm.value.markdown || null,
     region: gameserverForm.value.region,
     addresses: gameserverForm.value.addresses.length > 0 ? gameserverForm.value.addresses : null,
     port: gameserverForm.value.port || null,
+    query_protocol: gameserverForm.value.query_protocol as TablesInsert<'network_gameservers'>['query_protocol'],
+    query_port: gameserverForm.value.query_port ? Number(gameserverForm.value.query_port) : null,
     game: gameserverForm.value.game,
     container: gameserverForm.value.container,
     administrator: gameserverForm.value.administrator,
   }
 
+  saveLoading.value = true
   emit('save', gameserverData)
 }
 
@@ -285,8 +315,10 @@ function confirmDelete() {
   emit('delete', props.gameserver.id)
 }
 
-// Fetch dropdown data when component mounts
-onMounted(fetchDropdownData)
+onMounted(() => {
+  fetchDropdownData()
+  searchGames('')
+})
 </script>
 
 <template>
@@ -323,28 +355,6 @@ onMounted(fetchDropdownData)
           placeholder="Enter game server name"
         />
 
-        <Textarea
-          v-model="gameserverForm.description"
-          expand
-          name="description"
-          label="Description"
-          placeholder="Enter game server description (optional)"
-          :rows="3"
-        />
-
-        <!-- Markdown Content -->
-        <RichTextEditor
-          v-model="gameserverForm.markdown"
-          label="Markdown"
-          hint="You can use markdown"
-          placeholder="Enter markdown content (optional)"
-          min-height="216px"
-          show-expand-button
-          :media-context="props.gameserver?.id ? `gameservers/${props.gameserver.id}/markdown/media` : undefined"
-          :media-bucket-id="CMS_BUCKET_ID"
-          :show-attachment-button="!!props.gameserver?.id"
-        />
-
         <Select
           v-model="selectedRegionComputed"
           expand
@@ -362,18 +372,20 @@ onMounted(fetchDropdownData)
 
         <!-- First row: Game and Container -->
         <Flex gap="m" wrap expand>
-          <Select
-            v-model="selectedGameComputed"
-            search
-            expand
-            name="game"
-            label="Game"
-            placeholder="Select game"
-            :options="gameOptions"
-            :loading="loadingGames"
-            searchable
-            show-clear
-          />
+          <Flex column gap="s" expand>
+            <div class="gameserver-form__label">
+              Game
+            </div>
+            <GameSelect
+              :model-value="selectedGameIds"
+              :games="games"
+              :loading="gamesLoading"
+              :on-search="debouncedSearchGames"
+              placeholder="Select game"
+              expand
+              @update:model-value="onGameSelect"
+            />
+          </Flex>
 
           <Select
             v-model="selectedContainerComputed"
@@ -391,18 +403,16 @@ onMounted(fetchDropdownData)
 
         <!-- Second row: Administrator and Port -->
         <Flex gap="m" wrap expand>
-          <Select
-            v-model="selectedAdministratorComputed"
-            search
-            expand
-            name="administrator"
-            label="Administrator"
-            placeholder="Select administrator"
-            :options="profileOptions"
-            :loading="loadingProfiles"
-            searchable
-            show-clear
-          />
+          <Flex column gap="s" expand>
+            <div class="gameserver-form__label">
+              Administrator
+            </div>
+            <ProfileSelect
+              v-model="gameserverForm.administrator"
+              expand
+              placeholder="Select administrator"
+            />
+          </Flex>
 
           <Input
             v-model="gameserverForm.port"
@@ -410,6 +420,29 @@ onMounted(fetchDropdownData)
             name="port"
             label="Port"
             placeholder="Enter port (optional)"
+          />
+        </Flex>
+
+        <!-- Third row: Query Protocol and Query Port -->
+        <Flex gap="m" wrap expand>
+          <Select
+            v-model="selectedQueryProtocolComputed"
+            expand
+            name="query_protocol"
+            label="Query Protocol"
+            placeholder="None"
+            :options="queryProtocolOptions"
+            show-clear
+          />
+
+          <Input
+            v-model="gameserverForm.query_port"
+            expand
+            name="query_port"
+            label="Query Port"
+            placeholder="Defaults to port if unset"
+            :disabled="!gameserverForm.query_protocol"
+            type="number"
           />
         </Flex>
       </Flex>
@@ -455,15 +488,40 @@ onMounted(fetchDropdownData)
           </Flex>
         </Flex>
       </Flex>
-    </Flex>
 
-    <!-- Form Actions -->
+      <!-- Markdown Content -->
+      <Flex column gap="m" expand>
+        <h4>Content</h4>
+
+        <Textarea
+          v-model="gameserverForm.description"
+          expand
+          name="description"
+          label="Description"
+          placeholder="Enter game server description (optional)"
+          :rows="3"
+        />
+
+        <RichTextEditor
+          v-model="gameserverForm.markdown"
+          label="Content"
+          hint="You can use markdown and add media by drag-and-drop"
+          placeholder="Enter markdown content (optional)"
+          min-height="216px"
+          show-expand-button
+          :media-context="props.gameserver?.id ? `gameservers/${props.gameserver.id}/markdown/media` : undefined"
+          :media-bucket-id="CMS_BUCKET_ID"
+          :show-attachment-button="!!props.gameserver?.id"
+        />
+      </Flex>
+    </Flex>
     <template #footer>
       <Flex gap="xs" class="form-actions">
         <Button
           type="submit"
           variant="accent"
-          :disabled="!isValid"
+          :loading="saveLoading"
+          :disabled="!isValid || saveLoading"
           @click.prevent="handleSubmit"
         >
           <template #start>
@@ -509,6 +567,12 @@ onMounted(fetchDropdownData)
 <style scoped lang="scss">
 .gameserver-form {
   padding-bottom: var(--space);
+
+  &__label {
+    font-size: var(--font-size-s);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+  }
 }
 
 .form-actions {

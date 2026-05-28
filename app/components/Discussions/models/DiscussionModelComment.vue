@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { Comment, DiscussionSettings, ProvidedDiscussion, RawComment } from '../Discussion.types'
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import { defineAsyncComponent } from 'vue'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import ModalDeleteReply from '@/components/Discussions/ModalDeleteReply.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
-import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ReactionsList from '@/components/Reactions/ReactionsList.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
@@ -15,11 +15,11 @@ import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
@@ -32,6 +32,8 @@ const emit = defineEmits<{
   scrollReply: []
   openReplies: []
 }>()
+
+const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
 dayjs.extend(relativeTime)
 
@@ -53,6 +55,11 @@ const supabase = useSupabaseClient()
 const discussionCache = useDiscussionCache()
 
 const { user: currentUserData } = useDataUser(userId, { includeRole: true })
+const { isAdmin, role: effectiveRole } = useEffectiveRole()
+
+const effectiveUserData = computed(() =>
+  currentUserData.value ? { ...currentUserData.value, role: effectiveRole.value } : null,
+)
 
 const modifierId = computed(() => {
   const { modified_at, created_at, modified_by, created_by } = data.value
@@ -123,8 +130,6 @@ const loadingDeletion = ref(false)
 const showDeleteModal = ref(false)
 const showForceDeleteModal = ref(false)
 const loadingForceDeletion = ref(false)
-
-const isAdmin = computed(() => currentUserData.value?.role === 'admin')
 
 function handleDeletion() {
   loadingDeletion.value = true
@@ -273,7 +278,7 @@ watch(
         <DiscussionActionsToolbar
           :data="data"
           :user-id="userId"
-          :current-user-data="currentUserData"
+          :current-user-data="effectiveUserData"
           :can-bypass-lock="canBypassLock"
           :can-mark-offtopic="canMarkOfftopic"
           :offtopic-loading="offtopicLoading"
@@ -320,12 +325,12 @@ watch(
           <CountDisplay class="text-xs" :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
         </button>
 
-        <TinyBadge v-if="isPinned" variant="accent" style="margin-right:2px" filled>
+        <Badge v-if="isPinned" variant="accent" size="s" style="margin-right:2px" filled>
           <Icon name="ph:push-pin" class="text-color-invert" />
           <template v-if="!isMobile">
             Pinned
           </template>
-        </TinyBadge>
+        </Badge>
       </Flex>
 
       <!-- Mobile: reaction button (only when no reactions exist) + three-dot trigger -->
@@ -340,7 +345,7 @@ watch(
         <DiscussionActionsToolbar
           :data="data"
           :user-id="userId"
-          :current-user-data="currentUserData"
+          :current-user-data="effectiveUserData"
           :can-bypass-lock="canBypassLock"
           :can-mark-offtopic="canMarkOfftopic"
           :offtopic-loading="offtopicLoading"
@@ -696,20 +701,19 @@ watch(
   }
 
   &__actions-anchor {
-    position: sticky;
-    top: var(--space-s);
+    position: absolute;
+    top: var(--space-xxs);
+    right: 0;
     min-height: 0;
     max-height: 0;
     overflow: visible;
     z-index: 10;
+    transform: translateY(-50%);
   }
 
   &__actions {
     display: flex;
     gap: 3px;
-    position: absolute;
-    right: 0;
-    top: 0;
     opacity: 0;
     z-index: -1;
     visibility: hidden;

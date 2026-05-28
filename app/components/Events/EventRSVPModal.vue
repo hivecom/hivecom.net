@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, Flex, Modal, Skeleton, Tab, Tabs } from '@dolanske/vui'
+import type { Database } from '@/types/database.types'
+import { Badge, Button, Flex, Modal, Skeleton, Tab, Tabs } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import BulkUserDisplay from '@/components/Shared/BulkUserDisplay.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
+
 import { useCache } from '@/composables/useCache'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useRsvpBus } from '@/composables/useRsvpBus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { isSeriesActive } from '@/lib/utils/rrule'
+import { isSeriesActive, nextOccurrenceDate } from '@/lib/utils/rrule'
 
 interface Props {
   event: Tables<'events'>
@@ -34,11 +36,18 @@ const rsvpListCache = useCache(CACHE_NAMESPACES.rsvps)
 const loading = ref(true)
 const error = ref('')
 
+type RSVPScope = Database['public']['Enums']['events_rsvp_scope']
+
+interface RsvpEntry {
+  user_id: string
+  scope: RSVPScope | null
+}
+
 // RSVP data by status
 const rsvpData = ref<{
-  yes: string[]
-  tentative: string[]
-  no: string[]
+  yes: RsvpEntry[]
+  tentative: RsvpEntry[]
+  no: RsvpEntry[]
 }>({
   yes: [],
   tentative: [],
@@ -51,9 +60,27 @@ const tentativeCount = computed(() => rsvpData.value.tentative.length)
 const noCount = computed(() => rsvpData.value.no.length)
 const totalCount = computed(() => yesCount.value + tentativeCount.value + noCount.value)
 
-// Computed data for current tab - returns array of user IDs
+// Computed data for current tab - returns array of entries
 const currentTabData = computed(() => {
   return rsvpData.value[activeTab.value] || []
+})
+
+// Computed user IDs for current tab (for BulkUserDisplay)
+const currentTabUserIds = computed(() => currentTabData.value.map(e => e.user_id))
+
+// Scope lookup map for current tab
+const currentTabScopeMap = computed(() => {
+  const map = new Map<string, RSVPScope | null>()
+  currentTabData.value.forEach(e => map.set(e.user_id, e.scope))
+  return map
+})
+
+const scopeBadgeVariant = computed(() => {
+  if (activeTab.value === 'yes')
+    return 'success'
+  if (activeTab.value === 'tentative')
+    return 'warning'
+  return 'danger'
 })
 
 const { hasEventEnded } = useEventTiming(() => props.event)
@@ -65,7 +92,7 @@ const eventEnded = computed(() => hasEventEnded.value && !isRecurringSeries.valu
 const yesTabLabel = computed(() => eventEnded.value ? 'Went' : 'Going')
 const yesEmptyCopy = computed(() => eventEnded.value ? 'as having gone' : 'as going')
 
-interface RsvpListEntry { yes: string[], tentative: string[], no: string[] }
+interface RsvpListEntry { yes: RsvpEntry[], tentative: RsvpEntry[], no: RsvpEntry[] }
 
 function listCacheKey(eventId: number): string {
   return `rsvp:list:${eventId}`
@@ -95,17 +122,21 @@ async function fetchRSVPs(force = false) {
     let rows: Array<{ user_id: string, rsvp: string }> = []
 
     if (isRecurringSeries.value) {
+      const nextDate = nextOccurrenceDate(props.event)
       const { data, error: fetchError } = await supabase
-        .rpc('get_effective_rsvps_for_occurrence', { p_event_id: eventId })
+        .rpc('get_effective_rsvps_for_occurrence', {
+          p_event_id: eventId,
+          ...(nextDate != null ? { p_occurrence_date: nextDate.toISOString() } : {}),
+        })
 
       if (fetchError)
         throw fetchError
 
-      rows = (data ?? []) as Array<{ user_id: string, rsvp: string }>
+      rows = (data ?? []) as Array<{ user_id: string, rsvp: string, scope?: string }>
     }
     else {
       const { data, error: fetchError } = await supabase
-        .from('events_rsvps')
+        .from('event_rsvps')
         .select('user_id, rsvp')
         .eq('event_id', eventId)
         .order('created_at', { ascending: true })
@@ -116,7 +147,7 @@ async function fetchRSVPs(force = false) {
       rows = (data ?? []) as Array<{ user_id: string, rsvp: string }>
     }
 
-    // Group RSVPs by status - store just user IDs
+    // Group RSVPs by status
     const groupedData: RsvpListEntry = {
       yes: [],
       tentative: [],
@@ -124,8 +155,12 @@ async function fetchRSVPs(force = false) {
     }
 
     rows.forEach((rsvp) => {
-      if (rsvp.rsvp && groupedData[rsvp.rsvp as keyof typeof groupedData]) {
-        groupedData[rsvp.rsvp as keyof typeof groupedData].push(rsvp.user_id)
+      const key = rsvp.rsvp as keyof typeof groupedData
+      if (rsvp.rsvp && groupedData[key]) {
+        groupedData[key].push({
+          user_id: rsvp.user_id,
+          scope: (rsvp as { user_id: string, rsvp: string, scope?: string }).scope as RSVPScope | null ?? null,
+        })
       }
     })
 
@@ -201,9 +236,7 @@ function handleClose() {
       </div>
 
       <!-- Error State -->
-      <Alert v-else-if="error" variant="danger">
-        {{ error }}
-      </Alert>
+      <ErrorAlert v-else-if="error" :message="error" />
 
       <!-- Content -->
       <div v-else>
@@ -226,27 +259,27 @@ function handleClose() {
               <Flex y-center gap="xs">
                 <Icon name="ph:check-circle" class="rsvp-modal__icon" />
                 {{ yesTabLabel }}
-                <TinyBadge v-if="yesCount > 0" variant="success">
+                <Badge v-if="yesCount > 0" size="s" variant="success">
                   {{ yesCount }}
-                </TinyBadge>
+                </Badge>
               </Flex>
             </Tab>
             <Tab value="tentative">
               <Flex y-center gap="xs">
                 <Icon name="ph:question" class="rsvp-modal__icon" />
                 Maybe
-                <TinyBadge v-if="tentativeCount > 0" variant="warning">
+                <Badge v-if="tentativeCount > 0" size="s" variant="warning">
                   {{ tentativeCount }}
-                </TinyBadge>
+                </Badge>
               </Flex>
             </Tab>
             <Tab value="no">
               <Flex y-center gap="xs">
                 <Icon name="ph:x-circle" class="rsvp-modal__icon" />
                 Not Going
-                <TinyBadge v-if="noCount > 0" variant="danger">
+                <Badge v-if="noCount > 0" size="s" variant="danger">
                   {{ noCount }}
-                </TinyBadge>
+                </Badge>
               </Flex>
             </Tab>
           </Tabs>
@@ -272,13 +305,33 @@ function handleClose() {
             <!-- User List -->
             <BulkUserDisplay
               v-else
-              :user-ids="currentTabData"
+              :user-ids="currentTabUserIds"
               :columns="2"
               gap="s"
               :expand="true"
               user-size="s"
               item-class="rsvp-modal__user-item"
-            />
+            >
+              <template v-if="isRecurringSeries" #user-extra="{ user }">
+                <Badge
+                  v-if="currentTabScopeMap.get(user.id) === 'occurrence'"
+                  size="s"
+                  :variant="scopeBadgeVariant"
+                  class="rsvp-modal__scope-badge"
+                >
+                  This occurrence
+                </Badge>
+                <Badge
+                  v-else
+                  size="s"
+                  :variant="scopeBadgeVariant"
+                  outline
+                  class="rsvp-modal__scope-badge"
+                >
+                  Entire series
+                </Badge>
+              </template>
+            </BulkUserDisplay>
           </div>
         </div>
       </div>

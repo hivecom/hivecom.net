@@ -24,6 +24,7 @@
  */
 
 import type { Database, Json } from './database.types'
+import type { MetricsSnapshot } from './metrics'
 
 // Re-export pass-throughs so callers only need one import source.
 export type { Database, Json }
@@ -76,7 +77,7 @@ interface TableColumnOverrides {
     reactions: ReactionData
   }
 
-  settings: {
+  user_settings: {
     data: {
       theme: 'dark' | 'light'
       show_nsfw_warning: boolean
@@ -88,11 +89,19 @@ interface TableColumnOverrides {
       show_forum_recently_visited: boolean
       show_forum_archived: boolean
       show_forum_unread_bubbles: boolean
+      show_user_banners: boolean
       editor_floating: boolean
       strip_image_metadata: boolean
-      show_user_banners: boolean
       allow_custom_css: boolean
+      admin_mini_sidebar: boolean
+      admin_expanded_layout: boolean
+      admin_asset_view_mode: 'table' | 'grid'
+      admin_asset_flat_view: boolean
     }
+  }
+
+  metrics: {
+    data: MetricsSnapshot
   }
 
 }

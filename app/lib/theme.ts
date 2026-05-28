@@ -82,6 +82,9 @@ export const VUI_DEFAULT_COLORS: Record<'dark' | 'light', Record<string, string>
     'text-blue': '#558df5',
     'bg-blue-lowered': '#0d204a',
     'bg-blue-raised': '#1a3b77',
+    'text-purple': '#C176FF',
+    'bg-purple-lowered': '#481C76',
+    'bg-purple-raised': '#622C9E',
     'border': '#282828',
     'border-strong': '#363636',
     // VUI default: rgb(36, 36, 36) override
@@ -120,6 +123,9 @@ export const VUI_DEFAULT_COLORS: Record<'dark' | 'light', Record<string, string>
     'text-blue': '#558df5',
     'bg-blue-lowered': '#c4d6ff',
     'bg-blue-raised': '#88b2ff',
+    'text-purple': '#C176FF',
+    'bg-purple-lowered': '#481C76',
+    'bg-purple-raised': '#622C9E',
     'border': '#c8c8c8',
     'border-strong': '#989898',
     'border-weak': '#e0e0e0',
@@ -131,7 +137,7 @@ export const VUI_DEFAULT_COLORS: Record<'dark' | 'light', Record<string, string>
 }
 
 /**
- * The 30 VUI color variable suffixes (without `--dark-color-` / `--light-color-` prefix).
+ * The VUI color variable suffixes (without `--dark-color-` / `--light-color-` prefix).
  *
  * Column names in the DB use underscores where VUI uses hyphens, and drop the
  * `color-` segment (e.g. column `dark_bg_raised` -> CSS var `--dark-color-bg-raised`).
@@ -162,6 +168,9 @@ export const VUI_COLOR_KEYS = [
   'text-blue',
   'bg-blue-lowered',
   'bg-blue-raised',
+  'text-purple',
+  'bg-purple-lowered',
+  'bg-purple-raised',
   'border',
   'border-strong',
   'border-weak',
@@ -280,6 +289,7 @@ export const COLOR_GROUPS: Record<string, typeof VUI_COLOR_KEYS[number][]> = {
   Green: ['text-green', 'bg-green-lowered', 'bg-green-raised'],
   Yellow: ['text-yellow', 'bg-yellow-lowered', 'bg-yellow-raised'],
   Blue: ['text-blue', 'bg-blue-lowered', 'bg-blue-raised'],
+  Purple: ['text-purple', 'bg-purple-lowered', 'bg-purple-raised'],
   Border: ['border', 'border-strong', 'border-weak'],
   Accent: ['accent', 'bg-accent-lowered', 'bg-accent-raised'],
 }

@@ -1,8 +1,7 @@
 import type { Ref } from 'vue'
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
-
-type ProfileBadge = Database['public']['Enums']['profile_badge']
+import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -18,10 +17,10 @@ export interface AdminUserRecord {
   modified_by: string | null
   supporter_lifetime: boolean
   supporter_patreon: boolean
-  badges: ProfileBadge[]
   patreon_id: string | null
   steam_id: string | null
   discord_id: string | null
+  lastfm_username: string | null
   introduction: string | null
   markdown: string | null
   banned: boolean
@@ -31,6 +30,8 @@ export interface AdminUserRecord {
   last_seen: string
   website: string | null
   public: boolean
+  rich_presence_enabled: boolean
+  has_teamspeak: boolean
   // joined fields
   role: string | null
   email: string | null
@@ -58,10 +59,10 @@ export interface AdminUserProfile {
   modified_by: string | null
   supporter_lifetime: boolean
   supporter_patreon: boolean
-  badges: ProfileBadge[]
   patreon_id: string | null
   steam_id: string | null
   discord_id: string | null
+  lastfm_username: string | null
   introduction: string | null
   markdown: string | null
   banned: boolean
@@ -71,6 +72,8 @@ export interface AdminUserProfile {
   last_seen: string
   website: string | null
   public: boolean
+  rich_presence_enabled: boolean
+  has_teamspeak: boolean
   email: string | null
   role?: string | null
   confirmed?: boolean
@@ -103,8 +106,21 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
   const search = ref('')
   const roleFilter = ref('')
   const statusFilter = ref('')
+  const providerFilter = ref('')
+  const platformFilter = ref('')
+  const supporterFilter = ref('')
+  const countryFilter = ref('')
+  const availableCountries = ref<Array<{ label: string, value: string }>>([])
 
   // ─── Fetch ───────────────────────────────────────────────────────────────
+
+  async function fetchCountries(): Promise<void> {
+    const { data } = await supabase.rpc('get_admin_user_countries' as never)
+    if (data != null) {
+      const codes = new Set((data as unknown as Array<{ country: string }>).map(r => r.country))
+      availableCountries.value = COUNTRY_SELECT_OPTIONS.filter(o => codes.has(o.value))
+    }
+  }
 
   async function fetchUsers(): Promise<void> {
     if (inflight.value)
@@ -118,6 +134,10 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
         p_search: search.value,
         p_role: roleFilter.value,
         p_status: statusFilter.value,
+        p_provider: providerFilter.value,
+        p_platform: platformFilter.value,
+        p_supporter: supporterFilter.value,
+        p_country: countryFilter.value,
         p_sort_col: sortCol.value,
         p_sort_dir: sortDir.value,
         p_limit: perPage.value,
@@ -127,41 +147,46 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
       if (error != null)
         throw error
 
-      users.value = (data ?? []).map((row): AdminUserRecord => ({
-        id: row.user_id,
-        username: row.username,
-        country: row.country,
-        birthday: row.birthday,
-        created_at: row.created_at,
-        modified_at: row.modified_at,
-        modified_by: row.modified_by,
-        supporter_lifetime: row.supporter_lifetime ?? false,
-        supporter_patreon: row.supporter_patreon ?? false,
-        badges: row.badges ?? [],
-        patreon_id: row.patreon_id,
-        steam_id: row.steam_id,
-        discord_id: row.discord_id,
-        introduction: row.introduction,
-        markdown: row.markdown,
-        banned: row.banned ?? false,
-        ban_reason: row.ban_reason,
-        ban_start: row.ban_start,
-        ban_end: row.ban_end,
-        last_seen: row.last_seen,
-        website: row.website,
-        public: row.public ?? false,
-        role: row.role,
-        email: row.email,
-        is_confirmed: row.is_confirmed ?? false,
-        discord_display_name: row.discord_display_name,
-        auth_provider: row.auth_provider,
-        auth_providers: row.auth_providers ?? [],
-        platform_count: row.platform_count ?? 0,
-        is_supporter: row.is_supporter ?? false,
-        is_banned: row.is_banned ?? false,
-        role_sort: row.role_sort ?? 0,
-        total_count: Number(row.total_count ?? 0),
-      }))
+      users.value = (data ?? []).map((row): AdminUserRecord => {
+        const r = row as typeof row & { lastfm_username: string | null }
+        return {
+          id: r.user_id,
+          username: r.username,
+          country: r.country,
+          birthday: r.birthday,
+          created_at: r.created_at,
+          modified_at: r.modified_at,
+          modified_by: r.modified_by,
+          supporter_lifetime: r.supporter_lifetime ?? false,
+          supporter_patreon: r.supporter_patreon ?? false,
+          patreon_id: r.patreon_id,
+          steam_id: r.steam_id,
+          discord_id: r.discord_id,
+          lastfm_username: r.lastfm_username,
+          introduction: r.introduction,
+          markdown: r.markdown,
+          banned: r.banned ?? false,
+          ban_reason: r.ban_reason,
+          ban_start: r.ban_start,
+          ban_end: r.ban_end,
+          last_seen: r.last_seen,
+          website: r.website,
+          public: r.public ?? false,
+          rich_presence_enabled: r.rich_presence_enabled ?? false,
+          has_teamspeak: r.has_teamspeak ?? false,
+          role: r.role,
+          email: r.email,
+          is_confirmed: r.is_confirmed ?? false,
+          discord_display_name: r.discord_display_name,
+          auth_provider: r.auth_provider,
+          auth_providers: r.auth_providers ?? [],
+          platform_count: r.platform_count ?? 0,
+          is_supporter: r.is_supporter ?? false,
+          is_banned: r.is_banned ?? false,
+          role_sort: r.role_sort ?? 0,
+          total_count: Number(r.total_count ?? 0),
+        }
+      })
 
       totalCount.value = users.value[0]?.total_count ?? 0
     }
@@ -200,10 +225,10 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
       modified_by: user.modified_by,
       supporter_lifetime: user.supporter_lifetime,
       supporter_patreon: user.supporter_patreon,
-      badges: user.badges,
       patreon_id: user.patreon_id,
       steam_id: user.steam_id,
       discord_id: user.discord_id,
+      lastfm_username: user.lastfm_username,
       introduction: user.introduction,
       markdown: user.markdown,
       banned: user.banned,
@@ -213,6 +238,8 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
       last_seen: user.last_seen,
       website: user.website,
       public: user.public,
+      rich_presence_enabled: user.rich_presence_enabled,
+      has_teamspeak: user.has_teamspeak,
       email: user.email,
       role: user.role,
       confirmed: user.is_confirmed,
@@ -234,6 +261,12 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
     search,
     roleFilter,
     statusFilter,
+    providerFilter,
+    platformFilter,
+    supporterFilter,
+    countryFilter,
+    availableCountries,
+    fetchCountries,
     fetchUsers,
     setPage,
     setSort,

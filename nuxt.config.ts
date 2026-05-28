@@ -73,6 +73,8 @@ export default defineNuxtConfig({
       'bg_green_lowered','bg_green_raised',
       'bg_yellow_lowered','bg_yellow_raised',
       'bg_blue_lowered','bg_blue_raised',
+      'text_purple',
+      'bg_purple_lowered','bg_purple_raised',
       'border','border_strong','border_weak',
       'button_gray','button_gray_hover','button_fill','button_fill_hover',
       'accent','bg_accent_lowered','bg_accent_raised'
@@ -313,6 +315,8 @@ export default defineNuxtConfig({
         // Global search + searches
         'ph:magnifying-glass',
         'ph:list-magnifying-glass',
+        'ph:selection-slash',
+        'ph:arrow-square-out',
       ],
     },
   },
@@ -392,6 +396,21 @@ export default defineNuxtConfig({
         '@tiptap/pm/view',
         '@tiptap/extension-mention',
         '@floating-ui/dom',
+        'globe.gl',
+        'h3-js',
+        'three',
+        'three/examples/jsm/postprocessing/AfterimagePass.js',
+        'three/examples/jsm/postprocessing/OutputPass.js',
+        'three/examples/jsm/postprocessing/ShaderPass.js',
+        'three/examples/jsm/postprocessing/UnrealBloomPass.js',
+        'ansi-to-html', // CJS
+        'remark-math',
+        'rehype-katex',
+        'vue-advanced-cropper',
+        'chart.js',
+        'vue-chartjs',
+        'chartjs-scale-timestack',
+        'v-calendar',
       ],
     },
   },
@@ -426,6 +445,15 @@ export default defineNuxtConfig({
     },
   },
   hooks: {
+    'nitro:build:before': (nitro) => {
+      // Force-exit after Nitro fully closes (post-prerender) so the CI process
+      // doesn't hang on open handles (native addons, etc.) in static builds.
+      nitro.hooks.hook('close', () => {
+        if (isBuildCommand) {
+          process.exit(0)
+        }
+      })
+    },
     'nitro:config': async (nitroConfig) => {
       if (!isBuildCommand) {
         return
@@ -452,6 +480,7 @@ export default defineNuxtConfig({
       failOnError: false,
       crawlLinks: true,
       routes: ['/', '/robots.txt', '/sitemap.xml', '/llms.txt'],
+      ignore: ['/auth/callback', '/auth/oauth', '/auth/confirm', '/auth/confirm-password'],
     },
   },
   supabase: {

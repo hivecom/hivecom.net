@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { Badge, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
-import BadgeCircle from './BadgeCircle.vue'
-import TinyBadge from './TinyBadge.vue'
 
 const props = withDefaults(defineProps<Props>(), {
   size: 's',
@@ -14,10 +12,10 @@ const ROLE_SEPARATOR_RE = /[-_]/g
 
 interface Props {
   role: string | null | undefined
-  size?: 'xs' | 's' | 'm' | 'l'
+  size?: 's' | 'm' | 'l'
   /** Show a single-letter badge with full label on hover. */
   shorten?: boolean
-  /** Use TinyBadge instead of Badge for compact display. */
+  /** Use small Badge instead of full-size Badge for compact display. */
   tiny?: boolean
 }
 
@@ -67,27 +65,29 @@ const variant = computed(() => {
 
 <template>
   <Tooltip v-if="props.shorten" placement="top">
-    <BadgeCircle
+    <Badge
       :variant="variant"
       :size="props.size"
+      circle
     >
-      {{ shortDisplay }}
-    </BadgeCircle>
+      {{ shortDisplay }}<slot />
+    </Badge>
     <template #tooltip>
       <span class="text-xs">{{ roleDisplay }}</span>
     </template>
   </Tooltip>
-  <TinyBadge
+  <Badge
     v-else-if="props.tiny"
+    size="s"
     :variant="variant"
   >
-    {{ roleDisplay }}
-  </TinyBadge>
+    {{ roleDisplay }}<slot />
+  </Badge>
   <Badge
     v-else
     :variant="variant"
     :size="props.size"
   >
-    {{ roleDisplay }}
+    {{ roleDisplay }}<slot />
   </Badge>
 </template>

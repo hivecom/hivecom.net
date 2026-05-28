@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
 
-import type { StorageAsset as CmsAsset, StorageBucketId } from '@/lib/storageAssets'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, Card, CopyClipboard, defineTable, Flex, Grid, Input, pushToast, Select, Table, Tooltip } from '@dolanske/vui'
+import type { StorageAsset as CmsAsset, FlatSortColumn, StorageBucketId } from '@/lib/storageAssets'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, CopyClipboard, defineTable, Flex, Grid, Input, paginate, Pagination, pushToast, Select, Skeleton, Table, Tooltip } from '@dolanske/vui'
 
+import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
+import AssetGrid from '@/components/Admin/Assets/AssetGrid.vue'
 import AssetRenameModal from '@/components/Admin/Assets/AssetRenameModal.vue'
 import AssetUpload from '@/components/Admin/Assets/AssetUpload.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { CMS_BUCKET_ID, formatBytes, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, normalizePrefix } from '@/lib/storageAssets'
+import { CMS_BUCKET_ID, formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, listStorageObjectsFlat, normalizePrefix } from '@/lib/storageAssets'
 
 interface Props {
   bucketId?: StorageBucketId
@@ -45,17 +47,62 @@ const storageConsoleUrl = computed(() => {
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 const loading = ref(true)
+const reloading = ref(false)
 const errorMessage = ref('')
 const assets = ref<CmsAsset[]>([])
-const currentPrefix = ref('')
+const currentPrefix = defineModel<string>('currentPrefix', { default: '' })
 const searchQuery = ref('')
 const typeFilter = ref<TypeFilterValue>('all')
 const sortOption = ref<SortOptionValue>('name-asc')
-const viewMode = ref<'table' | 'grid'>('table')
+const viewMode = defineModel<'table' | 'grid'>('viewMode', { default: 'table' })
+const flatView = defineModel<boolean>('flatView', { default: false })
+
 const isBelowMedium = useBreakpoint('<m')
 type AssetActionKey = 'delete' | 'rename'
 
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
+
+// ─── Flat view pagination & sort ──────────────────────────────────────────────
+const PAGE_SIZE = computed(() => adminTablePerPage.value > 10 ? 50 : 25)
+const page = defineModel<number>('page', { default: 1 })
+const totalCount = ref(0)
+
+type FlatSortOptionValue = 'newest' | 'oldest' | 'name-asc' | 'name-desc' | 'size-desc' | 'size-asc'
+const flatSortOption = ref<FlatSortOptionValue>('newest')
+
+const flatSortSelectOptions: SelectOption<FlatSortOptionValue>[] = [
+  { label: 'Newest first', value: 'newest' },
+  { label: 'Oldest first', value: 'oldest' },
+  { label: 'Name (A → Z)', value: 'name-asc' },
+  { label: 'Name (Z → A)', value: 'name-desc' },
+  { label: 'Size (largest)', value: 'size-desc' },
+  { label: 'Size (smallest)', value: 'size-asc' },
+]
+
+const flatSortOptionModel = computed<SelectOption<FlatSortOptionValue>[] | undefined>({
+  get() {
+    const match = flatSortSelectOptions.find(o => o.value === flatSortOption.value)
+    return match ? [match] : undefined
+  },
+  set(selection) {
+    flatSortOption.value = selection?.[0]?.value ?? 'newest'
+    fetchAssets()
+  },
+})
+
+function flatSortParams(): { column: FlatSortColumn, order: 'asc' | 'desc' } {
+  switch (flatSortOption.value) {
+    case 'oldest': return { column: 'updated_at', order: 'asc' }
+    case 'name-asc': return { column: 'name', order: 'asc' }
+    case 'name-desc': return { column: 'name', order: 'desc' }
+    case 'size-desc': return { column: 'size', order: 'desc' }
+    case 'size-asc': return { column: 'size', order: 'asc' }
+    case 'newest': default: return { column: 'updated_at', order: 'desc' }
+  }
+}
+
+const paginationState = computed(() => paginate(totalCount.value, page.value, PAGE_SIZE.value))
+const shouldShowPagination = computed(() => totalCount.value > PAGE_SIZE.value)
 
 const assetGridColumns = computed(() => {
   if (isBelowMedium.value)
@@ -129,17 +176,7 @@ const breadcrumbs = computed(() => {
 const documentExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'md']
 
 const filteredAssets = computed(() => {
-  const normalizedSearch = searchQuery.value.trim().toLowerCase()
-
   const entries = assets.value.filter((asset) => {
-    const matchesSearch = normalizedSearch
-      ? asset.name.toLowerCase().includes(normalizedSearch)
-      || asset.path.toLowerCase().includes(normalizedSearch)
-      : true
-
-    if (!matchesSearch)
-      return false
-
     if (asset.type === 'folder')
       return true
 
@@ -159,24 +196,27 @@ const filteredAssets = computed(() => {
     .filter(asset => asset.type === 'folder')
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  const files = entries
-    .filter(asset => asset.type === 'file')
-    .sort((a, b) => sortFiles(a, b))
+  const files = entries.filter(asset => asset.type === 'file')
+
+  // In flat mode the server already sorted; don't clobber with client-side sort.
+  if (!flatView.value)
+    files.sort((a, b) => sortFiles(a, b))
 
   return [...directories, ...files]
 })
 
 const tableData = computed(() => filteredAssets.value.map(asset => ({
-  'Name': asset.name,
+  [flatView.value ? 'Path' : 'Name']: flatView.value ? asset.path : asset.name,
   'Type': getAssetTypeLabel(asset),
   'Size': asset.type === 'folder' ? 0 : asset.size,
   'Last Modified': asset.updated_at ?? asset.created_at ?? '',
   '_original': asset,
 })))
 
-const totalCount = computed(() => assets.value.length)
 const filteredCount = computed(() => filteredAssets.value.length)
-const isFiltered = computed(() => filteredCount.value !== totalCount.value)
+const isFiltered = computed(() => filteredCount.value !== assets.value.length)
+
+const isForumsBucket = computed(() => resolvedBucketId.value === FORUMS_BUCKET_ID)
 
 const { headers, rows: tableRows, setSort } = defineTable(tableData, {
   pagination: {
@@ -203,6 +243,11 @@ function sortNameFolderFirst(a: (typeof tableRows.value)[number], b: (typeof tab
 }
 
 const tableRowsFolderFirst = computed(() => {
+  // In flat mode the server already returned rows in the requested sort order;
+  // skip any client-side re-sort so we don't clobber the server ordering.
+  if (flatView.value)
+    return tableRows.value
+
   if (!nameSortDirection.value)
     return tableRows.value
 
@@ -218,23 +263,63 @@ function sortFiles(a: CmsAsset, b: CmsAsset) {
     case 'size-asc':
       return a.size - b.size
     case 'newest':
-      return new Date(b.created_at ?? b.updated_at ?? 0).getTime()
-        - new Date(a.created_at ?? a.updated_at ?? 0).getTime()
+      return new Date(b.updated_at ?? b.created_at ?? 0).getTime()
+        - new Date(a.updated_at ?? a.created_at ?? 0).getTime()
     case 'oldest':
-      return new Date(a.created_at ?? a.updated_at ?? 0).getTime()
-        - new Date(b.created_at ?? b.updated_at ?? 0).getTime()
+      return new Date(a.updated_at ?? a.created_at ?? 0).getTime()
+        - new Date(b.updated_at ?? b.created_at ?? 0).getTime()
     case 'name-asc':
     default:
       return a.name.localeCompare(b.name)
   }
 }
 
-async function fetchAssets() {
-  loading.value = true
-  errorMessage.value = ''
+async function fetchAssets(silent = false) {
+  if (silent) {
+    reloading.value = true
+  }
+  else {
+    loading.value = true
+    errorMessage.value = ''
+    assets.value = []
+    totalCount.value = 0
+  }
   try {
-    const entries = await listCmsDirectory(supabase, resolvedBucketId.value, { prefix: currentPrefix.value })
-    assets.value = entries
+    if (flatView.value) {
+      const { assets: batch, totalCount: count } = await listStorageObjectsFlat(supabase, resolvedBucketId.value, {
+        prefix: currentPrefix.value,
+        limit: PAGE_SIZE.value,
+        offset: (page.value - 1) * PAGE_SIZE.value,
+        search: searchQuery.value.trim() || undefined,
+        sortBy: flatSortParams(),
+      })
+      assets.value = batch
+      totalCount.value = count
+    }
+    else {
+      const activeSearch = searchQuery.value.trim()
+      if (activeSearch) {
+        // Search uses the RPC to scan across all pages server-side.
+        const { assets: batch, totalCount: count } = await listStorageObjectsFlat(supabase, resolvedBucketId.value, {
+          prefix: currentPrefix.value,
+          limit: PAGE_SIZE.value,
+          offset: (page.value - 1) * PAGE_SIZE.value,
+          search: activeSearch,
+          sortBy: { column: 'name', order: 'asc' },
+        })
+        assets.value = batch
+        totalCount.value = count
+      }
+      else {
+        // Fetch all direct children at this prefix level via the Storage API.
+        // listCmsDirectory already handles internal pagination (loops until done).
+        // Paginate the result client-side so counts and offsets are always accurate.
+        const allEntries = await listCmsDirectory(supabase, resolvedBucketId.value, { prefix: currentPrefix.value })
+        totalCount.value = allEntries.length
+        const start = (page.value - 1) * PAGE_SIZE.value
+        assets.value = allEntries.slice(start, start + PAGE_SIZE.value)
+      }
+    }
   }
   catch (error) {
     console.error('Failed to load assets', error)
@@ -242,7 +327,13 @@ async function fetchAssets() {
   }
   finally {
     loading.value = false
+    reloading.value = false
   }
+}
+
+function setPage(n: number) {
+  page.value = n
+  // fetch is driven by watch(page) below
 }
 
 function changePrefix(path: string) {
@@ -286,7 +377,7 @@ async function deleteAsset(asset: CmsAsset) {
     }
 
     pushToast(`${asset.type === 'folder' ? 'Folder' : 'File'} deleted`)
-    await fetchAssets()
+    await fetchAssets(true)
     notifyPeers()
   }
   catch (error) {
@@ -372,7 +463,7 @@ async function renameFileAsset(asset: CmsAsset, newPathInput: string): Promise<s
       throw error
 
     pushToast('File renamed')
-    await fetchAssets()
+    await fetchAssets(true)
     notifyPeers()
     return targetPath
   }
@@ -420,12 +511,6 @@ function notifyPeers() {
   refreshSignal.value = (refreshSignal.value || 0) + 1
 }
 
-function openStorageConsole() {
-  if (!storageConsoleUrl.value)
-    return
-  window.open(storageConsoleUrl.value, '_blank', 'noopener')
-}
-
 function getAssetBadgeVariant(asset: CmsAsset): BadgeVariant {
   if (asset.type === 'folder')
     return 'info'
@@ -442,13 +527,69 @@ function getAssetTypeLabel(asset: CmsAsset): string {
   return 'File'
 }
 
+watch(flatView, (val) => {
+  if (val) {
+    currentPrefix.value = ''
+    // Clear defineTable's client-side sort so server ordering is preserved in flat mode.
+    setSort('', 'asc')
+  }
+  else {
+    // Restore default name-asc sort for non-flat table view.
+    setSort('Name', 'asc')
+  }
+  if (page.value !== 1) {
+    page.value = 1
+    // page watch triggers fetch
+  }
+  else {
+    fetchAssets()
+  }
+})
+
 watch(resolvedBucketId, () => {
   currentPrefix.value = ''
-  fetchAssets()
+  if (page.value !== 1) {
+    page.value = 1
+    // page watch triggers fetch
+  }
+  else {
+    fetchAssets()
+  }
+})
+
+watch(adminTablePerPage, () => {
+  if (page.value !== 1) {
+    page.value = 1
+    // page watch will trigger fetch
+  }
+  else {
+    void fetchAssets()
+  }
 })
 
 watch(currentPrefix, () => {
-  fetchAssets()
+  if (page.value !== 1) {
+    page.value = 1
+    // page watch triggers fetch
+  }
+  else {
+    fetchAssets()
+  }
+})
+
+watchDebounced(searchQuery, () => {
+  if (page.value !== 1) {
+    page.value = 1
+    // page watch triggers fetch
+  }
+  else {
+    void fetchAssets(true)
+  }
+}, { debounce: 300 })
+
+// Page change drives silent re-fetch
+watch(page, () => {
+  void fetchAssets(true)
 })
 
 watch(() => refreshSignal.value, (newValue, oldValue) => {
@@ -476,7 +617,7 @@ onBeforeMount(fetchAssets)
 <template>
   <Flex column gap="l" expand>
     <Flex column gap="s" expand>
-      <Breadcrumbs>
+      <Breadcrumbs v-if="!flatView">
         <BreadcrumbItem
           v-for="(crumb, index) in breadcrumbs"
           :key="crumb.path || `crumb-${index}`"
@@ -514,10 +655,19 @@ onBeforeMount(fetchAssets)
           />
 
           <Select
-            v-if="viewMode === 'grid'"
+            v-if="viewMode === 'grid' && !flatView"
             v-model="sortOptionModel"
             :options="sortSelectOptions"
             placeholder="Sort files"
+            single
+            :expand="isBelowMedium"
+          />
+
+          <Select
+            v-if="flatView"
+            v-model="flatSortOptionModel"
+            :options="flatSortSelectOptions"
+            placeholder="Sort by"
             single
             :expand="isBelowMedium"
           />
@@ -533,16 +683,15 @@ onBeforeMount(fetchAssets)
           :column-reverse="isBelowMedium"
         >
           <span class="text-s text-color-lighter">
-            {{ filteredCount }}{{ isFiltered ? ` of ${totalCount}` : '' }} items
+            {{ filteredCount }}{{ isFiltered ? ` of ${assets.length}` : '' }} items{{ totalCount > assets.length ? ` (${totalCount} total)` : '' }}
           </span>
 
-          <Flex :gap="isBelowMedium ? 's' : 'xs'" :expand="isBelowMedium" :column="isBelowMedium">
-            <!-- <Flex gap="xs" class="asset-manager__view-toggle" :x-center="isBelowMedium" :expand="isBelowMedium"> -->
-            <ButtonGroup>
+          <Flex gap="xs" :expand="isBelowMedium" :x-between="isBelowMedium">
+            <ButtonGroup :expand="isBelowMedium">
               <Button
                 :variant="viewMode === 'table' ? 'accent' : 'gray'"
                 :square="!isBelowMedium"
-                expand
+                :expand="isBelowMedium"
                 @click="viewMode = 'table'"
               >
                 <Icon name="ph:list" size="18" />
@@ -550,55 +699,68 @@ onBeforeMount(fetchAssets)
               <Button
                 :variant="viewMode === 'grid' ? 'accent' : 'gray'"
                 :square="!isBelowMedium"
-                expand
+                :expand="isBelowMedium"
                 @click="viewMode = 'grid'"
               >
                 <Icon name="ph:squares-four" size="18" />
               </Button>
             </ButtonGroup>
 
-            <!-- </Flex> -->
-
-            <Flex
-              :gap="isBelowMedium ? 's' : 'xs'"
-              class="asset-manager__toolbar-actions"
-              wrap
-              :x-end="!isBelowMedium"
-              :x-center="isBelowMedium"
-              :expand="isBelowMedium"
-            >
-              <Flex :expand="isBelowMedium" :gap="isBelowMedium ? 's' : 'xs'">
-                <Button variant="gray" :expand="isBelowMedium" @click="fetchAssets">
-                  <template #start>
-                    <Icon name="ph:arrow-clockwise" />
-                  </template>
-                  Refresh
-                </Button>
-                <Button
-                  v-if="true"
-                  variant="gray"
-                  :disabled="!storageConsoleUrl"
-                  :expand="isBelowMedium"
-                  @click="openStorageConsole"
-                >
-                  <template #start>
-                    <Icon name="ph:folder-open" />
-                  </template>
-                  Supabase Files
-                </Button>
-              </Flex>
+            <Tooltip>
               <Button
-                v-if="canUpload"
-                variant="accent"
+                :variant="flatView ? 'accent' : 'gray'"
+                :square="!isBelowMedium"
                 :expand="isBelowMedium"
-                @click="showUploadDrawer = true"
+                @click="flatView = !flatView"
               >
+                <Icon name="ph:rows" size="18" />
+              </Button>
+              <template #tooltip>
+                <p>{{ flatView ? 'Flat view - all files' : 'Switch to flat view' }}</p>
+              </template>
+            </Tooltip>
+          </Flex>
+
+          <Flex
+            gap="xs"
+            class="asset-manager__toolbar-actions"
+            wrap
+            :x-end="!isBelowMedium"
+            :expand="isBelowMedium"
+          >
+            <Flex :expand="isBelowMedium" gap="xs">
+              <!-- <Button variant="gray" :expand="isBelowMedium" @click="fetchAssets">
                 <template #start>
-                  <Icon name="ph:upload" />
+                  <Icon name="ph:arrow-clockwise" />
                 </template>
-                Upload
+                Refresh
+              </Button> -->
+              <Button
+                v-if="storageConsoleUrl"
+                variant="gray"
+                :disabled="!storageConsoleUrl"
+                :expand="isBelowMedium"
+                :href="storageConsoleUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Supabase
+                <template #end>
+                  <Icon name="ph:arrow-square-out" />
+                </template>
               </Button>
             </Flex>
+            <Button
+              v-if="canUpload"
+              variant="accent"
+              :expand="isBelowMedium"
+              @click="showUploadDrawer = true"
+            >
+              <template #start>
+                <Icon name="ph:upload" />
+              </template>
+              Upload
+            </Button>
           </Flex>
         </Flex>
       </Flex>
@@ -607,16 +769,24 @@ onBeforeMount(fetchAssets)
         {{ errorMessage }}
       </Alert>
 
-      <TableSkeleton v-if="loading" :columns="4" :rows="6" />
+      <TableSkeleton v-if="loading && viewMode === 'table'" :columns="4" :rows="6" />
+      <Grid
+        v-else-if="loading && viewMode === 'grid'"
+        class="asset-manager__grid"
+        expand
+        :columns="assetGridColumns"
+      >
+        <Skeleton v-for="i in PAGE_SIZE" :key="i" :height="207" :radius="8" />
+      </Grid>
 
-      <template v-else>
+      <Flex v-else expand class="asset-manager__content" :class="{ 'is-reloading': reloading }">
         <TableContainer v-if="viewMode === 'table'">
           <Table.Root v-if="tableRows.length" separate-cells>
             <template #header>
               <Table.Head
                 v-for="header in headers.filter((header: { label: string }) => header.label !== '_original')"
                 :key="header.label"
-                sort
+                :sort="!flatView"
                 :header="header"
               />
               <Table.Head
@@ -636,7 +806,13 @@ onBeforeMount(fetchAssets)
                 <Table.Cell>
                   <Flex gap="xs" y-center>
                     <Icon :name="row._original.type === 'folder' ? 'ph:folder-simple' : 'ph:file'" />
-                    <span>{{ row._original.name }}</span>
+                    <Tooltip v-if="flatView" :disabled="!row._original.path">
+                      <span class="text-s">{{ row._original.name }}</span>
+                      <template #tooltip>
+                        <p>{{ row._original.path }}</p>
+                      </template>
+                    </Tooltip>
+                    <span v-else class="text-s">{{ row._original.name }}</span>
                   </Flex>
                 </Table.Cell>
                 <Table.Cell>
@@ -711,42 +887,26 @@ onBeforeMount(fetchAssets)
         </TableContainer>
 
         <Flex v-else expand>
-          <Grid
+          <AssetGrid
             v-if="filteredAssets.length"
-            class="asset-manager__grid"
-            expand
+            :assets="filteredAssets"
             :columns="assetGridColumns"
-          >
-            <Card
-              v-for="asset in filteredAssets"
-              :key="asset.path"
-              class="asset-manager__grid-card"
-              @click="handleRowClick(asset)"
-            >
-              <div class="asset-manager__grid-preview" :class="{ 'is-folder': asset.type === 'folder' }">
-                <template v-if="asset.type === 'folder'">
-                  <Icon name="ph:folder-simple" size="32" />
-                </template>
-                <template v-else-if="isImageAsset(asset) && asset.publicUrl">
-                  <img :src="asset.publicUrl" :alt="asset.name">
-                </template>
-                <template v-else>
-                  <Icon name="ph:file" size="32" />
-                </template>
-              </div>
-              <Flex column gap="xxs">
-                <strong class="text-s">{{ asset.name }}</strong>
-                <span class="text-xxs text-color-light">{{ asset.type === 'folder' ? 'Folder' : formatBytes(asset.size) }}</span>
-              </Flex>
-            </Card>
-          </Grid>
+            :can-delete="canDelete"
+            :is-forums-bucket="isForumsBucket"
+            @click-asset="handleRowClick"
+            @delete-asset="promptDeleteAsset"
+          />
           <Flex v-else expand>
             <Alert variant="info">
               No assets found in this folder.
             </Alert>
           </Flex>
         </Flex>
-      </template>
+      </Flex>
+
+      <Flex v-if="shouldShowPagination" x-center expand>
+        <Pagination :pagination="paginationState" @change="setPage" />
+      </Flex>
     </Flex>
 
     <AssetUpload
@@ -785,6 +945,15 @@ onBeforeMount(fetchAssets)
 
 <style scoped lang="scss">
 .asset-manager {
+  &__content {
+    transition: opacity var(--transition-slow);
+
+    &.is-reloading {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+  }
+
   &__toolbar-actions {
     gap: var(--space-xxs);
   }
@@ -794,43 +963,6 @@ onBeforeMount(fetchAssets)
 
     &:hover td {
       background-color: var(--color-bg-raised);
-    }
-  }
-
-  &__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: var(--space-m);
-  }
-
-  &__grid-card {
-    cursor: pointer;
-    transition: border-color 0.2s ease;
-
-    &:hover {
-      border-color: var(--color-accent);
-    }
-  }
-
-  &__grid-preview {
-    width: 100%;
-    height: 140px;
-    border-radius: var(--border-radius-m);
-    margin-bottom: var(--space-s);
-    background: var(--color-bg-raised);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-
-    &.is-folder {
-      color: var(--color-text-light);
-    }
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
     }
   }
 }

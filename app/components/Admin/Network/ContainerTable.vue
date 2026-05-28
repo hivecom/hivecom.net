@@ -7,6 +7,7 @@ import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, inject, ref, watch } from 'vue'
 
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ElapsedTimeIndicator from '@/components/Shared/ElapsedTimeIndicator.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { getContainerStatus } from '@/lib/containerStatus'
@@ -30,9 +31,11 @@ interface ContainerWithServer {
     docker_control?: boolean | null
     accessible?: boolean | null
   } | null
+  gameserver: readonly {
+    id: number
+    name: string
+  }[] | null
 }
-
-// Define interface for transformed container data
 interface TransformedContainer {
   'Name': string
   'Server': string
@@ -52,9 +55,12 @@ interface TransformedContainer {
       docker_control?: boolean | null
       accessible?: boolean | null
     } | null
+    gameserver: readonly {
+      id: number
+      name: string
+    }[] | null
   }
 }
-
 // Define interface for Select options
 interface SelectOption {
   label: string
@@ -78,11 +84,11 @@ const route = useRoute()
 const router = useRouter()
 
 // Check if user can read containers
-const canReadContainers = computed(() => hasPermission('containers.read'))
+const canReadContainers = computed(() => hasPermission('network.read'))
 
 // Define query
 const supabase = useSupabaseClient()
-const containersQuery = supabase.from('containers').select(`
+const containersQuery = supabase.from('network_containers').select(`
   name,
   running,
   healthy,
@@ -94,6 +100,10 @@ const containersQuery = supabase.from('containers').select(`
     address,
     docker_control,
     accessible
+  ),
+  gameserver:network_gameservers!gameservers_container_fkey (
+    id,
+    name
   )
 `)
 
@@ -442,7 +452,7 @@ async function handlePrune(container: ContainerWithServer) {
     // Use count: 'exact' so we can detect a silent RLS block - PostgREST
     // returns 204 with no error even when 0 rows are deleted.
     const { error, count } = await supabase
-      .from('containers')
+      .from('network_containers')
       .delete({ count: 'exact' })
       .eq('name', container.name)
 
@@ -659,10 +669,10 @@ onBeforeMount(fetchContainers)
               </Table.Cell>
               <Table.Cell>
                 <TimestampDate v-if="container.Started" :date="container.Started" />
-                <span v-else>Not started</span>
+                <span v-else class="text-color-lighter text-s">Not started</span>
               </Table.Cell>
               <Table.Cell>
-                <TimestampDate :date="container['Last Report']" />
+                <ElapsedTimeIndicator :date="container['Last Report']" :active-label="null" />
               </Table.Cell>
               <Table.Cell v-if="canManageResource" @click.stop>
                 <ContainerActions

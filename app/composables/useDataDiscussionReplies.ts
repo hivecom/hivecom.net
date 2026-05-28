@@ -98,6 +98,11 @@ export function useDataDiscussionReplies(
   // them while they remain pinned at the end.
   const _tailBlock = ref<RawComment[]>([])
 
+  // Realtime-appended rows that arrived after a deep-link navigation loaded a
+  // tail block. Tracked so applyPage (loadMore) can insert cursor-fetched
+  // pages before them, preserving chronological order.
+  const _realtimeAppended = ref<RawComment[]>([])
+
   const gap = ref<ReplyGap | null>(null)
   const loadingGapTop = ref(false)
   const loadingGapBottom = ref(false)
@@ -139,6 +144,7 @@ export function useDataDiscussionReplies(
   async function loadFirstPage(discussionId: string): Promise<void> {
     gap.value = null
     _tailBlock.value = []
+    _realtimeAppended.value = []
 
     const page = await repliesCache.fetchPage(discussionId, {
       ascending: ascending.value,
@@ -259,12 +265,34 @@ export function useDataDiscussionReplies(
   function applyPage(page: ReplyPage, reset: boolean): void {
     if (reset) {
       comments.value = page.rows
+      _realtimeAppended.value = []
     }
     else {
       // De-duplicate: realtime may have already added some of these rows
       const existingIds = new Set(comments.value.map(c => c.id))
       const fresh = page.rows.filter(r => !existingIds.has(r.id))
-      comments.value = [...comments.value, ...fresh]
+
+      // If realtime replies were appended after the tail block, insert cursor
+      // pages before them to maintain chronological order. Realtime items are
+      // always newer than anything fetched via the DB cursor, so they must
+      // remain at the very end of the list.
+      if (_realtimeAppended.value.length > 0 && fresh.length > 0) {
+        const firstRealtimeId = _realtimeAppended.value[0]!.id
+        const insertPoint = comments.value.findIndex(c => c.id === firstRealtimeId)
+        if (insertPoint !== -1) {
+          comments.value = [
+            ...comments.value.slice(0, insertPoint),
+            ...fresh,
+            ...comments.value.slice(insertPoint),
+          ]
+        }
+        else {
+          comments.value = [...comments.value, ...fresh]
+        }
+      }
+      else {
+        comments.value = [...comments.value, ...fresh]
+      }
     }
     hasMore.value = page.hasMore
     nextCursor.value = page.nextCursor
@@ -327,13 +355,20 @@ export function useDataDiscussionReplies(
       loading.value = true
     gap.value = null
     _tailBlock.value = []
+    _realtimeAppended.value = []
 
     try {
       const fetchOpts = { ascending: ascending.value, pageSize: pageSize.value, hash: props.hash, rootOnly: false }
 
-      // Fetch page 1 and the target page in parallel.
-      const [firstPage, targetPage] = await Promise.all([
+      // Fetch page 1, an optional context page (page N-1), and the target
+      // page in parallel. When the target is on page N >= 2 and prevCursor is
+      // available, we also load page N-1 so the user always sees at least one
+      // page of context immediately before the target comment.
+      const [firstPage, prevPage, targetPage] = await Promise.all([
         repliesCache.fetchPage(discussionId, { ...fetchOpts, cursor: null }),
+        result.prevCursor != null
+          ? repliesCache.fetchPage(discussionId, { ...fetchOpts, cursor: result.prevCursor })
+          : Promise.resolve(null),
         result.pageIndex === 0
           ? Promise.resolve(null) // target is on page 1, no second fetch needed
           : repliesCache.fetchPage(discussionId, { ...fetchOpts, cursor: result.cursor }),
@@ -347,28 +382,26 @@ export function useDataDiscussionReplies(
         applyPage(firstPage, true)
       }
       else {
-        // Page 1 + target page loaded. Establish a gap between them.
+        // Page 1 + target page (and optionally page N-1) loaded.
+        // Tail block = [prevPage rows] + [target page rows], deduped.
         const firstPageIds = new Set(firstPage.rows.map(r => r.id))
-        const freshTarget = targetPage.rows.filter(r => !firstPageIds.has(r.id))
+        const prevRows = prevPage?.rows.filter(r => !firstPageIds.has(r.id)) ?? []
+        const prevIds = new Set(prevRows.map(r => r.id))
+        const freshTarget = targetPage.rows.filter(r => !firstPageIds.has(r.id) && !prevIds.has(r.id))
 
-        _tailBlock.value = freshTarget
-        comments.value = [...firstPage.rows, ...freshTarget]
+        const tailRows = [...prevRows, ...freshTarget]
+        _tailBlock.value = tailRows
+        comments.value = [...firstPage.rows, ...tailRows]
 
-        // predecessorCount is the number of replies strictly before the target
-        // reply itself - it includes items on the target page that precede the
-        // target. Those items are already loaded as part of the target page, so
-        // using predecessorCount directly over-counts the gap.
+        // Gap sits between the end of page 1 and the start of the first tail
+        // page (page N-1 when prevCursor was available, page N otherwise).
         //
-        // The correct gap size is the number of items between the END of page 1
-        // and the START of the target page:
-        //   page_index * pageSize - firstPage.rows.length
-        //
-        // page_index = floor(predecessorCount / pageSize), so:
-        //   result.pageIndex * pageSize.value
-        // gives the 0-based index of the first item on the target page, which
-        // is exactly where the gap ends. Subtracting firstPage.rows.length
-        // (the items already loaded on page 1) gives the true unloaded count.
-        const gapCount = result.pageIndex * pageSize.value - firstPage.rows.length
+        // When prevPage is loaded: gap ends at page N-1 start, so:
+        //   gapCount = (pageIndex - 1) * pageSize - firstPage.rows.length
+        // When no prevPage: gap ends at page N start, so:
+        //   gapCount = pageIndex * pageSize - firstPage.rows.length
+        const tailStartPageIndex = result.prevCursor != null ? result.pageIndex - 1 : result.pageIndex
+        const gapCount = tailStartPageIndex * pageSize.value - firstPage.rows.length
 
         if (gapCount > 0 && firstPage.nextCursor != null) {
           gap.value = {
@@ -518,6 +551,7 @@ export function useDataDiscussionReplies(
       if (gapClosed) {
         gap.value = null
         _tailBlock.value = []
+        _realtimeAppended.value = []
         if (forwardPage.hasMore && !reachedTail && forwardPage.nextCursor != null) {
           hasMore.value = true
           nextCursor.value = forwardPage.nextCursor
@@ -592,6 +626,7 @@ export function useDataDiscussionReplies(
       if (gapClosed) {
         gap.value = null
         _tailBlock.value = []
+        _realtimeAppended.value = []
       }
       else {
         _tailBlock.value = [...freshBottom, ..._tailBlock.value]
@@ -686,6 +721,7 @@ export function useDataDiscussionReplies(
       fetchedPinnedReply.value = null
       gap.value = null
       _tailBlock.value = []
+      _realtimeAppended.value = []
 
       // ── Synchronous cache fast-path ─────────────────────────────────────────
       // If the discussion meta AND the first reply page are already in
@@ -807,7 +843,7 @@ export function useDataDiscussionReplies(
     if (pendingNotification != null) {
       ops.push(
         supabase
-          .from('notifications')
+          .from('user_notifications')
           .update({ is_read: true })
           .eq('user_id', userId.value)
           .eq('source', 'discussion_reply')
@@ -1019,6 +1055,38 @@ export function useDataDiscussionReplies(
     onDeleted?.(id)
   }
 
+  /**
+   * Append realtime-delivered replies to the comment list.
+   *
+   * For the forum model (ascending), if cursor-based pagination is still in
+   * flight (hasMore or _tailBlock active), we track the realtime items
+   * separately so applyPage (loadMore) can insert cursor pages before them,
+   * keeping the list in chronological order.
+   *
+   * For the comment model (descending), new replies are prepended - they are
+   * always the newest and belong at the top.
+   */
+  function pushRealtimeReplies(newReplies: RawComment[], ascendingOrder: boolean): void {
+    if (newReplies.length === 0)
+      return
+
+    const existingIds = new Set(comments.value.map(c => c.id))
+    const fresh = newReplies.filter(r => !existingIds.has(r.id))
+    if (fresh.length === 0)
+      return
+
+    if (ascendingOrder) {
+      // Track these as realtime-appended so loadMore can insert cursor pages
+      // before them.
+      _realtimeAppended.value = [..._realtimeAppended.value, ...fresh]
+      comments.value = [...comments.value, ...fresh]
+    }
+    else {
+      // Descending (comment model): prepend newest replies at the top.
+      comments.value = [...fresh, ...comments.value]
+    }
+  }
+
   return {
     loading,
     loadingMore,
@@ -1049,5 +1117,6 @@ export function useDataDiscussionReplies(
     deleteComment,
     forceDeleteComment,
     offtopicCount,
+    pushRealtimeReplies,
   }
 }

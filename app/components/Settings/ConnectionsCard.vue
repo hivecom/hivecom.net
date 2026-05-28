@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, Flex, pushToast, Switch } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, pushToast, Switch } from '@dolanske/vui'
 import { reactive, ref, watch } from 'vue'
 import SharedErrorToast from '@/components/Shared/ErrorToast.vue'
-import TinyBadge from '@/components/Shared/TinyBadge.vue'
+
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
 
 const props = defineProps<{ profile: Tables<'profiles'> | null }>()
-const emit = defineEmits<{ (e: 'updated'): void }>()
+const emit = defineEmits<{
+  (e: 'updated'): void
+  (e: 'connected', service: 'steam' | 'teamspeak'): void
+}>()
 
 const supabase = useSupabaseClient()
 
@@ -18,12 +21,14 @@ const disconnectLoading = reactive({
   patreon: false,
   discord: false,
   steam: false,
+  lastfm: false,
 })
 
 const ConnectPatreonButton = defineAsyncComponent(() => import('@/components/Settings/ConnectPatreon.vue'))
 const ConnectDiscord = defineAsyncComponent(() => import('@/components/Settings/ConnectDiscord.vue'))
 const ConnectSteam = defineAsyncComponent(() => import('@/components/Settings/ConnectSteam.vue'))
 const ConnectTeamspeak = defineAsyncComponent(() => import('@/components/Settings/ConnectTeamSpeak.vue'))
+const ConnectLastfm = defineAsyncComponent(() => import('@/components/Settings/ConnectLastfm.vue'))
 
 const richPresenceEnabled = ref(props.profile?.rich_presence_enabled ?? false)
 const richPresenceLoading = ref(false)
@@ -124,6 +129,38 @@ async function disconnectDiscord() {
   }
   finally {
     disconnectLoading.discord = false
+  }
+}
+
+async function disconnectLastfm() {
+  if (disconnectLoading.lastfm)
+    return
+
+  disconnectLoading.lastfm = true
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error)
+      throw error
+    if (!user)
+      throw new Error('You must be signed in to disconnect Last.fm.')
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ lastfm_username: null } as never)
+      .eq('id', user.id)
+
+    if (updateError)
+      throw updateError
+
+    pushToast('Last.fm disconnected successfully.')
+    emit('updated')
+  }
+  catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to disconnect Last.fm.'
+    showErrorToast(message)
+  }
+  finally {
+    disconnectLoading.lastfm = false
   }
 }
 
@@ -270,10 +307,10 @@ function toggleRichPresence() {
             <Flex column expand gap="xxs">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
                 <strong>Discord</strong>
-                <TinyBadge v-if="props.profile?.discord_id" variant="success">
+                <Badge v-if="props.profile?.discord_id" size="s" variant="success">
                   <Icon class="text-color-accent" name="ph:check" />
                   Connected
-                </TinyBadge>
+                </Badge>
               </Flex>
               <p class="text-s text-color-lighter">
                 Sign-in through Discord
@@ -327,10 +364,10 @@ function toggleRichPresence() {
             <Flex column expand gap="xxs">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
                 <strong>Patreon</strong>
-                <TinyBadge v-if="props.profile?.patreon_id" variant="success">
+                <Badge v-if="props.profile?.patreon_id" size="s" variant="success">
                   <Icon class="text-color-accent" name="ph:check" />
                   Connected
-                </TinyBadge>
+                </Badge>
               </Flex>
               <p class="text-s text-color-lighter">
                 Connect to get your supporter benefits
@@ -384,13 +421,13 @@ function toggleRichPresence() {
             <Flex column expand gap="xxs">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
                 <strong>Steam</strong>
-                <TinyBadge v-if="props.profile?.steam_id" variant="success">
+                <Badge v-if="props.profile?.steam_id" size="s" variant="success">
                   <Icon class="text-color-accent" name="ph:check" />
                   Connected
-                </TinyBadge>
+                </Badge>
               </Flex>
               <p class="text-s text-color-lighter">
-                Connect your gaming profile
+                Connect your gaming profile and show what you're playing
               </p>
             </Flex>
           </Flex>
@@ -424,6 +461,63 @@ function toggleRichPresence() {
         </Flex>
       </Flex>
 
+      <!-- Last.fm -->
+      <Flex expand class="account-connection-row">
+        <Flex
+          :row="!isBelowSmall"
+          :column="isBelowSmall"
+          :x-between="!isBelowSmall"
+          :y-center="!isBelowSmall"
+          gap="m"
+          expand
+        >
+          <Flex expand gap="m" y-center>
+            <div class="account-icon lastfm">
+              <Icon name="simple-icons:lastdotfm" size="22" />
+            </div>
+            <Flex column expand gap="xxs">
+              <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
+                <strong>Last.fm</strong>
+                <Badge v-if="(props.profile as Record<string, unknown>)?.lastfm_username" size="s" variant="success">
+                  <Icon class="text-color-accent" name="ph:check" />
+                  Connected
+                </Badge>
+              </Flex>
+              <p class="text-s text-color-lighter">
+                Show what you're listening to
+              </p>
+            </Flex>
+          </Flex>
+
+          <div class="account-status" :style="{ width: isBelowSmall ? '100%' : undefined }">
+            <Button
+              v-if="isProfileLoading"
+              :expand="isBelowSmall"
+              variant="fill"
+              :loading="true"
+              disabled
+              aria-disabled="true"
+              size="s"
+            >
+              Loading
+            </Button>
+            <Button
+              v-else-if="(props.profile as Record<string, unknown>)?.lastfm_username"
+              :expand="isBelowSmall"
+              variant="danger"
+              :loading="disconnectLoading.lastfm"
+              size="s"
+              @click="disconnectLastfm"
+            >
+              Disconnect
+            </Button>
+            <ClientOnly v-else>
+              <ConnectLastfm :expand="isBelowSmall" @linked="emit('updated')" />
+            </ClientOnly>
+          </div>
+        </Flex>
+      </Flex>
+
       <!-- TeamSpeak -->
       <Flex expand class="account-connection-row">
         <Flex
@@ -441,10 +535,10 @@ function toggleRichPresence() {
             <Flex column expand gap="xxs">
               <Flex expand gap="s" y-center wrap :x-between="isBelowSmall">
                 <strong>TeamSpeak</strong>
-                <TinyBadge v-if="hasTeamSpeakConnected" variant="success">
+                <Badge v-if="hasTeamSpeakConnected" size="s" variant="success">
                   <Icon class="text-color-accent" name="ph:check" />
                   Connected
-                </TinyBadge>
+                </Badge>
               </Flex>
               <p class="text-s text-color-lighter">
                 Link your TeamSpeak identities to receive server access and roles
@@ -465,7 +559,7 @@ function toggleRichPresence() {
               Loading
             </Button>
             <ClientOnly v-else>
-              <ConnectTeamspeak :profile="props.profile" @linked="emit('updated')" />
+              <ConnectTeamspeak :profile="props.profile" @linked="emit('updated'); emit('connected', 'teamspeak')" />
             </ClientOnly>
           </div>
         </Flex>
@@ -511,6 +605,10 @@ function toggleRichPresence() {
 
 .account-icon.discord {
   background: linear-gradient(135deg, #5865f2 0%, #7289da 100%);
+}
+
+.account-icon.lastfm {
+  background: linear-gradient(135deg, #d51007 0%, #8b0000 100%);
 }
 
 .account-icon.teamspeak {

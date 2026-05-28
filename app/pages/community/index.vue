@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { Button, Card, Flex, Grid } from '@dolanske/vui'
+import { Button, Card, Flex, Grid, Skeleton } from '@dolanske/vui'
 import CommunityBirthdays from '@/components/Community/CommunityBirthdays.vue'
 import FundingProgress from '@/components/Community/FundingProgress.vue'
+import GameMarquee from '@/components/Community/Games/GameMarquee.vue'
 import ProjectCard from '@/components/Community/ProjectCard.vue'
 import SupportCTA from '@/components/Community/SupportCTA.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import ChartOnlineUsersModal from '@/components/Shared/Charts/ChartOnlineUsersModal.vue'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useCache } from '@/composables/useCache'
+import { useDataGames } from '@/composables/useDataGames'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataProjects } from '@/composables/useDataProjects'
+import { patchProfileLastSeen } from '@/composables/useDataUser'
 import { isBanActive } from '@/lib/banStatus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -29,51 +36,22 @@ if (queryTab.value === 'voice') {
   await navigateTo('/servers/voiceservers', { redirectCode: 301 })
 }
 
-const communityLinks = [
-  {
-    to: '/events',
-    ariaLabel: 'View upcoming community events and activities',
-    icon: 'ph:calendar',
-    title: 'Community Events',
-    subtitle: 'Join our community events and online gatherings',
-  },
-  {
-    to: '/community/projects',
-    ariaLabel: 'Explore community projects and initiatives',
-    icon: 'ph:folder',
-    title: 'Community Projects',
-    subtitle: 'Explore projects and initiatives from our community',
-  },
-  {
-    to: '/community/funding',
-    ariaLabel: 'View our funding transparency and financial information',
-    icon: 'ph:chart-bar',
-    title: 'Funding & Transparency',
-    subtitle: 'See how we\'re funded and where contributions go',
-  },
-  {
-    to: '/servers/gameservers',
-    ariaLabel: 'Explore our game servers and gaming community',
-    icon: 'ph:game-controller',
-    title: 'Game Servers',
-    subtitle: 'Connect to our hosted game servers',
-  },
-]
-
 useSeoMeta({
   title: 'Community',
-  description: 'Learn about Hivecom, explore community projects, and connect with members.',
+  description: 'Learn about Hivecom, explore community projects, and connect with users.',
   ogTitle: 'Community',
-  ogDescription: 'Learn about Hivecom, explore community projects, and connect with members.',
+  ogDescription: 'Learn about Hivecom, explore community projects, and connect with users.',
 })
 
 defineOgImage('Default', {
   title: 'Community',
-  description: 'Learn about Hivecom, explore community projects, and connect with members.',
+  description: 'Learn about Hivecom, explore community projects, and connect with users.',
 })
 
 // State for community members - hoist cache check before loading so it initializes correctly
 const { projects: allProjects } = useDataProjects()
+const { games } = useDataGames()
+const marqueeGames = computed(() => [...games.value].sort(() => Math.random() - 0.5).slice(0, 60))
 const communityCache = useCache(CACHE_NAMESPACES.community)
 
 const COMMUNITY_MEMBERS_CACHE_KEY = 'community-page:members'
@@ -91,7 +69,49 @@ const randomUsers = ref<string[]>(_cachedMembers?.randomUsers ?? [])
 const supporters = ref<string[]>(_cachedMembers?.supporters ?? [])
 const birthdayUserIds = ref<string[]>(_cachedMembers?.birthdayUserIds ?? [])
 const loading = ref(_cachedMembers === null)
+const showOnlineModal = ref(false)
 const error = ref('')
+
+const ONLINE_THRESHOLD_MS = 15 * 60 * 1000
+const ONLINE_USERS_CACHE_KEY = 'community-page:online-users'
+const ONLINE_USERS_TTL = 60 * 1000 // 1 minute
+const onlineUserIds = ref<string[]>([])
+const onlineUsersLoading = ref(false)
+
+async function fetchOnlineUsers() {
+  const cached = communityCache.get<string[]>(ONLINE_USERS_CACHE_KEY)
+  if (cached) {
+    onlineUserIds.value = cached
+    return
+  }
+  onlineUsersLoading.value = true
+  const threshold = new Date(Date.now() - ONLINE_THRESHOLD_MS).toISOString()
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, last_seen')
+    .gt('last_seen', threshold)
+    .order('last_seen', { ascending: false })
+    .limit(100)
+  const rows = data ?? []
+  const ids = rows.map(p => p.id)
+  onlineUserIds.value = ids
+  communityCache.set(ONLINE_USERS_CACHE_KEY, ids, ONLINE_USERS_TTL)
+  for (const row of rows) {
+    if (row.last_seen)
+      patchProfileLastSeen(row.id, row.last_seen)
+  }
+  onlineUsersLoading.value = false
+}
+
+watch(showOnlineModal, (open) => {
+  if (open)
+    void fetchOnlineUsers()
+})
+
+const { latestMetrics, fetchLatestMetrics } = useDataMetrics()
+const onlineCount = computed(() => onlineUserIds.value.length > 0 ? onlineUserIds.value.length : (latestMetrics.value?.users.online ?? null))
+fetchLatestMetrics()
+void fetchOnlineUsers()
 
 // State for recent projects
 const recentProjects = ref<ReturnType<typeof useDataProjects>['projects']['value']>([])
@@ -250,22 +270,31 @@ watch(user, () => {
 <template>
   <div class="page container-l">
     <!-- Hero section -->
-    <section class="page-title">
+    <!-- <section class="page-title">
       <h1>Community</h1>
       <p>Friends building things together</p>
-    </section>
+    </section> -->
 
-    <!-- Community Members (includes birthday sub-section when applicable) -->
+    <!-- Community Users (includes birthday sub-section when applicable) -->
     <ClientOnly>
-      <Card v-if="user && (randomUsers.length > 0 || birthdayUserIds.length > 0)" class="pb-l mt-l community-card">
+      <ChartOnlineUsersModal
+        v-model:open="showOnlineModal"
+        :online-user-ids="onlineUserIds"
+        :online-users-loading="onlineUsersLoading"
+        :online-count="onlineCount"
+      />
+
+      <Skeleton v-if="loading" :height="376" :radius="8" class="mt-l mb-l" style="display: block;" />
+
+      <Card v-else-if="user && !loading && (randomUsers.length > 0 || birthdayUserIds.length > 0)" :padding="false" class="pb-l mt-l community-card">
         <Flex column gap="l" x-center y-center>
           <Flex y-center gap="m" x-center expand>
             <Flex column :gap="0" x-center class="text-center" y-center>
-              <h2 class="text-bold text-xxl">
-                One of Many
-              </h2>
+              <h1 class="text-bold text-xxxxl">
+                Community
+              </h1>
               <p class="text-color-light">
-                A slice of our community from around the world
+                One of many and many of one
               </p>
             </Flex>
           </Flex>
@@ -276,8 +305,10 @@ watch(user, () => {
             :avatar-size="64"
             :gap="12"
             :supporter-highlight="true"
+            show-online-indicator
             cluster
           />
+          <OnlineBadge :count="onlineCount" clickable @click="showOnlineModal = true" />
           <CommunityBirthdays
             v-if="birthdayUserIds.length > 0"
             :user-ids="birthdayUserIds"
@@ -287,17 +318,17 @@ watch(user, () => {
       </Card>
 
       <!-- Sign-in prompt for community features -->
-      <section v-if="!user" class="mt-m">
+      <section v-else class="mt-m mb-l">
         <Card class="signin-prompt">
-          <Flex column gap="m" y-center class="signin-prompt__content">
+          <Flex column gap="l" y-center class="signin-prompt__content">
             <div class="signin-prompt__icon">
-              <Icon name="ph:users-three" size="2.5rem" />
+              <Icon name="ph:users-three" size="5rem" />
             </div>
-            <h3 class="text-bold text-xl">
+            <h3 class="text-bold text-xxl">
               Discover Our Community
             </h3>
             <p class="text-color-light text-center">
-              Sign in to see our supporters and meet community members from around the world
+              Sign in to see our supporters and meet our community from around the world
             </p>
             <NuxtLink to="/auth/sign-in">
               <Button variant="accent">
@@ -311,132 +342,81 @@ watch(user, () => {
         </Card>
       </section>
 
-      <!-- Community Overview -->
-      <section class="mt-xl">
-        <Grid :columns="2" gap="l" class="community-grid">
-          <!-- About Our Community -->
-          <Card class="community-info-card card-bg">
-            <Flex column gap="m" expand>
-              <Flex y-center gap="m">
-                <div class="community-info-card__icon">
-                  <Icon name="ph:users-three" size="2rem" />
-                </div>
-                <h3>
-                  Our Community
-                </h3>
-              </Flex>
-
-              <p class="about-description">
-                Hivecom is a passionate community of developers, gamers, and friends who love building and sharing projects together. We host game servers, develop open-source tools, and create a welcoming space for collaboration.
-              </p>
-
-              <Flex expand column gap="xxs">
-                <h4>
-                  What We Do
-                </h4>
-                <Grid :columns="isMobile ? 1 : 2" class="activities-grid" expand>
-                  <div class="activity-item">
-                    <Icon name="ph:game-controller" :size="18" class="activity-icon" />
-                    <span>Host dedicated game servers</span>
-                  </div>
-                  <div class="activity-item">
-                    <Icon name="ph:code" :size="18" class="activity-icon" />
-                    <span>Develop open-source projects</span>
-                  </div>
-                  <div class="activity-item">
-                    <Icon name="ph:chat-circle" :size="18" class="activity-icon" />
-                    <span>Provide community platforms</span>
-                  </div>
-                  <div class="activity-item">
-                    <Icon name="ph:share-network" :size="18" class="activity-icon" />
-                    <span>Share knowledge & resources</span>
-                  </div>
-                </Grid>
-              </Flex>
-            </Flex>
-          </Card>
-
-          <!-- Community Links -->
-          <Card class="community-info-card card-bg">
-            <Flex column gap="m" expand>
-              <Flex y-center gap="m">
-                <div class="community-info-card__icon">
-                  <Icon name="ph:compass" size="2rem" />
-                </div>
-                <h3>
-                  Explore
-                </h3>
-              </Flex>
-
-              <Flex column gap="s" expand>
-                <NuxtLink
-                  v-for="link in communityLinks"
-                  :key="link.to"
-                  :to="link.to"
-                  :aria-label="link.ariaLabel"
-                  class="community-link"
-                >
-                  <div class="community-link__content">
-                    <div class="community-link__icon">
-                      <Icon :name="link.icon" :size="20" />
-                    </div>
-
-                    <div class="community-link__text">
-                      <strong class="community-link__title">
-                        {{ link.title }}
-                      </strong>
-                      <p class="community-link__subtitle">
-                        {{ link.subtitle }}
-                      </p>
-                    </div>
-                    <div class="community-link__arrow">
-                      <Icon name="ph:arrow-right" :size="18" />
-                    </div>
-                  </div>
-                </NuxtLink>
-              </Flex>
-            </Flex>
-          </Card>
-        </Grid>
+      <!-- What We Play -->
+      <section v-if="marqueeGames.length > 0">
+        <Flex x-between y-center class="mb-s">
+          <Flex column gap="xxs">
+            <h3 class="section-title">
+              What We Play
+            </h3>
+            <p class="section-subtitle">
+              Maybe there's something in here for you too
+            </p>
+          </Flex>
+          <NuxtLink to="/community/games">
+            <Button size="s" outline>
+              All Game Activity
+              <template #end>
+                <Icon name="ph:arrow-right" />
+              </template>
+            </Button>
+          </NuxtLink>
+        </Flex>
+        <GameMarquee :games="marqueeGames" :interactive="false" draggable @click="navigateTo('/community/games')" />
       </section>
 
       <!-- Recent Projects -->
-      <section v-if="recentProjects.length > 0" class="mt-xl">
+      <section v-if="recentProjects.length > 0 || loading" class="mt-xl">
         <Flex column gap="l">
           <Flex :y-end="!isMobile" :x-between="!isMobile" :column="isMobile" expand>
             <Flex gap="xxs" column>
-              <h2 class="text-bold text-xxl">
-                Featured Projects
-              </h2>
-              <p class="text-color-light">
+              <h3 class="section-title">
+                Projects
+              </h3>
+              <p class="section-subtitle">
                 Discover what our community has been building
               </p>
             </Flex>
             <NuxtLink to="/community/projects" :class="isMobile ? 'w-100' : ''">
-              <Button :expand="isMobile">
+              <Button :expand="isMobile" size="s" outline>
                 <template #end>
                   <Icon name="ph:arrow-right" />
                 </template>
-                View All Projects
+                All Projects
               </Button>
             </NuxtLink>
           </Flex>
 
-          <Grid :columns="3" gap="m" class="projects-grid" expand>
-            <ProjectCard
-              v-for="project in recentProjects"
-              :key="project.id"
-              :project="project"
-              compact
-            />
-          </Grid>
+          <GlowGroup>
+            <Grid :columns="3" gap="m" class="projects-grid" expand>
+              <template v-if="loading">
+                <Skeleton v-for="i in 3" :key="i" :height="260" :radius="8" />
+              </template>
+              <template v-else>
+                <ProjectCard
+                  v-for="project in recentProjects"
+                  :key="project.id"
+                  :project="project"
+                  compact
+                />
+              </template>
+            </Grid>
+          </GlowGroup>
         </Flex>
       </section>
 
       <!-- Monthly Funding Progress -->
-      <section class="mt-xl">
+      <Flex column gap="l" class="mt-xl">
+        <Flex gap="xxs" column>
+          <h3 class="section-title">
+            Funding
+          </h3>
+          <p class="section-subtitle">
+            See how we're doing this month and how you can help support our community
+          </p>
+        </Flex>
         <FundingProgress />
-      </section>
+      </Flex>
 
       <!-- Support Section with Community Supporters -->
       <section class="mt-l">
@@ -450,167 +430,13 @@ watch(user, () => {
 @use '@/assets/breakpoints.scss' as *;
 
 .community-card {
+  border: none;
   position: relative;
   overflow: hidden;
-
-  &:before {
-    content: '';
-    display: block;
-    width: 125%;
-    height: 100%;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: #a7fc2f;
-    background: radial-gradient(
-      circle,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0) 25%,
-      rgba(167, 252, 47, 0.025) 65%,
-      rgba(167, 252, 47, 0.08) 100%
-    );
-  }
 }
 
-// Grid container for equal heights
-.community-grid {
-  align-items: stretch; // Ensure all grid items stretch to the same height
-
-  @media screen and (max-width: $breakpoint-s) {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-.community-info-card {
-  height: 100%;
-
-  p {
-    color: var(--color-text-light);
-    line-height: 1.6em;
-    font-size: var(--font-size-m);
-    margin-bottom: var(--space-s);
-  }
-
-  &__icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: var(--border-radius-m);
-    background: linear-gradient(135deg, var(--color-bg-accent-lowered) 0%, var(--color-bg-accent-raised) 100%);
-
-    .iconify {
-      color: #fff;
-    }
-  }
-}
-
-.activities-grid {
-  display: grid;
-  gap: var(--space-s);
-  margin-top: var(--space-s);
-
-  .activity-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: var(--space-s);
-    border-radius: var(--border-radius-m);
-    background: var(--color-bg-raised);
-    border: 1px solid var(--color-border-weak);
-    font-size: var(--font-size-xs);
-    color: var(--color-text);
-    transition: all 0.2s ease;
-
-    .iconify {
-      color: var(--color-accent);
-    }
-  }
-}
-
-.community-link {
-  display: block;
-  width: 100%;
-  border-radius: var(--border-radius-m);
-  border: 1px solid var(--color-border-weak);
-  background-color: var(--color-bg-raised);
-
-  &:hover {
-    background: var(--color-button-gray-hover);
-
-    .community-link__arrow {
-      transform: translateX(4px);
-
-      .iconify {
-        color: var(--color-text-light);
-      }
-    }
-  }
-
-  &__content {
-    display: flex;
-    align-items: center;
-    gap: var(--space-m);
-    padding: var(--space-m);
-    position: relative;
-    z-index: 2;
-  }
-
-  &__text {
-    flex: 1;
-
-    .community-link__title {
-      display: block;
-      margin-bottom: var(--space-xs);
-      font-size: var(--font-size-l);
-      color: var(--color-text);
-      font-weight: var(--font-weight-semibold);
-      margin-bottom: 2px;
-    }
-
-    .community-link__subtitle {
-      font-size: var(--font-size-s);
-      color: var(--color-text-lighter);
-      margin: 0 !important;
-    }
-  }
-
-  &__arrow {
-    transition: var(--transition);
-
-    .iconify {
-      color: var(--color-text-lighter);
-    }
-  }
-
-  &__icon {
-    display: flex;
-    justify-content: center;
-    width: 32px;
-  }
-}
-
-// Section Icons
-.section-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: var(--border-radius-l);
-  flex-shrink: 0;
-
-  &--members {
-    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
-    color: white;
-    box-shadow: 0 4px 15px -4px var(--color-accent-alpha);
-  }
-}
-
-// Sign-in Prompt
 .signin-prompt {
+  min-height: 376px;
   border: 2px dashed var(--color-border);
   text-align: center;
 

@@ -1,21 +1,75 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import type { MetricsSnapshot } from '@/types/metrics'
+import { onUnmounted, ref } from 'vue'
 import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
-const METRICS_CACHE_KEY = 'metrics:daily'
-const METRICS_TTL = 60 * 60 * 1000 // 1 hour - metrics are daily snapshots
+export type MetricsPeriod = '6h' | '24h' | '7d' | '14d' | '30d' | '90d'
+
+interface PeriodConfig {
+  label: string
+  hours: number
+  bucketMs: number
+}
+
+export const PERIOD_CONFIGS: Record<MetricsPeriod, PeriodConfig> = {
+  '6h': { label: 'Last 6 Hours', hours: 6, bucketMs: 5 * 60 * 1000 },
+  '24h': { label: 'Last 24 Hours', hours: 24, bucketMs: 15 * 60 * 1000 },
+  '7d': { label: 'Last 7 Days', hours: 168, bucketMs: 60 * 60 * 1000 },
+  '14d': { label: 'Last 14 Days', hours: 336, bucketMs: 2 * 60 * 60 * 1000 },
+  '30d': { label: 'Last 30 Days', hours: 720, bucketMs: 3 * 60 * 60 * 1000 },
+  '90d': { label: 'Last 90 Days', hours: 2160, bucketMs: 24 * 60 * 60 * 1000 },
+}
+
+export const METRICS_PERIOD_OPTIONS = (Object.entries(PERIOD_CONFIGS) as [MetricsPeriod, PeriodConfig][]).map(
+  ([value, cfg]) => ({ value, label: cfg.label }),
+)
+
+export interface MetricsHistoryEntry {
+  capturedAt: string
+  usersOnline: number | null
+  usersTotal: number | null
+  teamspeakOnline: number | null
+  gameserversPlayers: number | null
+  teamspeakByServer: Record<string, number> | null
+  gameserversByServer: Record<string, number> | null
+  usersByGame: Record<string, number> | null
+  usersBySteamGame: Record<string, number> | null
+  usersGameActivity: number | null
+  usersSteamGameActivity: number | null
+  discussionsTotal: number | null
+  discussionsReplies: number | null
+  discussionsNewTotal: number | null
+  discussionsNewReplies: number | null
+}
+
+const METRICS_CACHE_KEY = 'metrics:latest'
+export const METRICS_COLLECTION_INTERVAL = 5 * 60 * 1000 // 5 minutes
+export const METRICS_REFRESH_BUFFER_MS = 30 * 1000 // buffer after collection boundary
+
+/**
+ * Returns ms until the next 5-min collection boundary.
+ * e.g. at 12:07 -> 3 min; at 12:00 -> 5 min (fresh boundary).
+ */
+function msUntilNextCollection(): number {
+  const now = Date.now()
+  const elapsed = now % METRICS_COLLECTION_INTERVAL
+  return METRICS_COLLECTION_INTERVAL - elapsed
+}
+
+// Convert a millisecond duration to a Postgres interval string.
+function msToPgInterval(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return `${hours} hours ${minutes} minutes ${seconds} seconds`
+}
 
 const METRICS_BUCKET = 'hivecom-content-static'
-
-function buildPathFromDate(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-
-  return `metrics/${year}/${month}/${day}.json`
-}
+const METRICS_LATEST_PATH = 'metrics/latest.json'
 
 function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
   if (snapshot === null || snapshot === undefined || typeof snapshot !== 'object')
@@ -23,54 +77,77 @@ function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
 
   const record = snapshot as Record<string, unknown>
   const collectedAt = record.collectedAt
-  const totals = record.totals as Record<string, unknown> | undefined
-  const breakdowns = record.breakdowns as Record<string, unknown> | undefined
+  const users = record.users as Record<string, unknown> | undefined
+  const community = record.community as Record<string, unknown> | undefined
+  const teamspeak = record.teamspeak as Record<string, unknown> | undefined
+  const gameservers = record.gameservers as Record<string, unknown> | undefined
 
-  if (typeof collectedAt !== 'string' || totals === undefined)
+  if (typeof collectedAt !== 'string' || users === undefined)
     return null
-
-  const users = totals.users
-  const gameservers = totals.gameservers
-  const projects = totals.projects
-  const forumPosts = totals.forumPosts
-
-  if (
-    typeof users !== 'number'
-    || typeof gameservers !== 'number'
-    || typeof projects !== 'number'
-    || typeof forumPosts !== 'number'
-  ) {
-    return null
-  }
-
-  const usersByCountry
-    = typeof breakdowns?.usersByCountry === 'object' && breakdowns.usersByCountry !== null
-      ? (breakdowns.usersByCountry as Record<string, number>)
-      : {}
 
   return {
     collectedAt,
-    totals: {
-      users,
-      gameservers,
-      projects,
-      forumPosts,
+    users: {
+      total: typeof users.total === 'number' ? users.total : 0,
+      online: typeof users.online === 'number' ? users.online : 0,
+      byCountry: (typeof users.byCountry === 'object' && users.byCountry !== null)
+        ? (users.byCountry as Record<string, number>)
+        : {},
+      byGame: (typeof users.byGame === 'object' && users.byGame !== null)
+        ? (users.byGame as Record<string, number>)
+        : {},
+      bySteamGame: (typeof users.bySteamGame === 'object' && users.bySteamGame !== null)
+        ? (users.bySteamGame as Record<string, number>)
+        : {},
     },
-    breakdowns: {
-      usersByCountry,
+    community: {
+      projects: typeof community?.projects === 'number' ? community.projects : 0,
+    },
+    discussions: {
+      total: typeof (record.discussions as Record<string, unknown>)?.total === 'number' ? (record.discussions as Record<string, unknown>).total as number : 0,
+      replies: typeof (record.discussions as Record<string, unknown>)?.replies === 'number' ? (record.discussions as Record<string, unknown>).replies as number : 0,
+      newTotal: typeof (record.discussions as Record<string, unknown>)?.newTotal === 'number' ? (record.discussions as Record<string, unknown>).newTotal as number : 0,
+      newReplies: typeof (record.discussions as Record<string, unknown>)?.newReplies === 'number' ? (record.discussions as Record<string, unknown>).newReplies as number : 0,
+    },
+    teamspeak: {
+      online: typeof teamspeak?.online === 'number' ? teamspeak.online : 0,
+      byServer: (typeof teamspeak?.byServer === 'object' && teamspeak.byServer !== null)
+        ? (teamspeak.byServer as Record<string, number>)
+        : {},
+    },
+    gameservers: {
+      total: typeof gameservers?.total === 'number' ? gameservers.total : 0,
+      players: typeof gameservers?.players === 'number' ? gameservers.players : 0,
+      byServer: (typeof gameservers?.byServer === 'object' && gameservers.byServer !== null)
+        ? (gameservers.byServer as MetricsSnapshot['gameservers']['byServer'])
+        : {},
+    },
+    storage: {
+      buckets: (typeof (record.storage as Record<string, unknown>)?.buckets === 'object'
+        && (record.storage as Record<string, unknown>)?.buckets !== null)
+        ? (record.storage as Record<string, unknown>).buckets as MetricsSnapshot['storage']['buckets']
+        : {},
     },
   }
 }
 
-async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>, path: string) {
-  const { data, error } = await supabase.storage.from(METRICS_BUCKET).download(path)
+async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>) {
+  const { data: { publicUrl } } = supabase.storage.from(METRICS_BUCKET).getPublicUrl(METRICS_LATEST_PATH)
+  const bustUrl = `${publicUrl}?t=${Date.now()}`
 
-  if (error !== null || data === null)
+  let text: string
+  try {
+    const res = await fetch(bustUrl, { cache: 'no-store' })
+    if (!res.ok)
+      return null
+    text = await res.text()
+  }
+  catch {
     return null
+  }
 
   try {
-    const json = await data.text()
-    const parsed = JSON.parse(json) as unknown
+    const parsed = JSON.parse(text) as unknown
     return normalizeMetricsSnapshot(parsed)
   }
   catch {
@@ -78,21 +155,75 @@ async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>, path:
   }
 }
 
-async function fetchMetricsWithFallback(supabase: SupabaseClient<Database>) {
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(today.getDate() - 1)
-
-  for (const date of [today, yesterday]) {
-    const path = buildPathFromDate(date)
-    const snapshot = await fetchMetricsFromStorage(supabase, path)
-
-    if (snapshot)
-      return snapshot
+// Normalise one row returned by get_metrics_bucketed into MetricsHistoryEntry.
+// The RPC already handles bucketing/averaging - we just map column names.
+function normalizeRpcRow(row: Record<string, unknown>): MetricsHistoryEntry {
+  return {
+    capturedAt: row.captured_at as string,
+    usersOnline: row.users_online as number | null,
+    usersTotal: row.users_total as number | null,
+    teamspeakOnline: row.teamspeak_online as number | null,
+    gameserversPlayers: row.gameservers_players as number | null,
+    teamspeakByServer: row.teamspeak_by_server as Record<string, number> | null,
+    gameserversByServer: row.gameservers_by_server as Record<string, number> | null,
+    usersByGame: row.users_by_game as Record<string, number> | null,
+    usersBySteamGame: row.users_by_steam_game as Record<string, number> | null,
+    usersGameActivity: row.users_by_game !== null && row.users_by_game !== undefined
+      ? Object.values(row.users_by_game as Record<string, number>).reduce((a, b) => a + b, 0)
+      : null,
+    usersSteamGameActivity: row.users_by_steam_game !== null && row.users_by_steam_game !== undefined
+      ? Object.values(row.users_by_steam_game as Record<string, number>).reduce((a, b) => a + b, 0)
+      : null,
+    discussionsTotal: row.discussions_total as number | null,
+    discussionsReplies: row.discussions_replies as number | null,
+    discussionsNewTotal: row.discussions_new_total as number | null,
+    discussionsNewReplies: row.discussions_new_replies as number | null,
   }
-
-  return null
 }
+
+async function fetchMetricsHistoryFromDB(
+  supabase: SupabaseClient<Database>,
+  period: MetricsPeriod,
+): Promise<MetricsHistoryEntry[]> {
+  const config = PERIOD_CONFIGS[period]
+  const since = new Date(Date.now() - config.hours * 60 * 60 * 1000).toISOString()
+  const until = new Date().toISOString()
+  const bucketInterval = msToPgInterval(config.bucketMs)
+
+  const { data, error } = await supabase.rpc('get_metrics_bucketed', {
+    p_since: since,
+    p_until: until,
+    p_bucket_interval: bucketInterval,
+  })
+
+  if (error !== null || data === null)
+    return []
+
+  return (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
+}
+
+// Shared module-level state so all callers react to the same fetches.
+const metricsHistory = ref<MetricsHistoryEntry[]>([])
+const loadingHistory = ref(false)
+export const metricsWindow = ref<{ start: Date, end: Date } | null>(null)
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+
+// Global snapshot auto-refresh - runs as long as any component uses the composable.
+let snapshotRefreshTimer: ReturnType<typeof setTimeout> | null = null
+let activeConsumers = 0
+
+// Separate 90d overview dataset exclusively for the brush - never overwritten
+// by period fetches so the brush always shows the full context.
+const metricsOverview = ref<MetricsHistoryEntry[]>([])
+const loadingOverview = ref(false)
+
+// Shared snapshot state - hoisted so all callers share the same reactive ref.
+const metrics = shallowRef<MetricsSnapshot | null>(null)
+const loading = shallowRef(false)
+const error = shallowRef<string | null>(null)
+const latestMetrics = shallowRef<MetricsSnapshot | null>(null)
+const loadingLatest = shallowRef(false)
+const lastFetchedAt = shallowRef<Date | null>(null)
 
 export function useDataMetrics() {
   const supabase = useSupabaseClient<Database>()
@@ -100,15 +231,48 @@ export function useDataMetrics() {
 
   // Pre-populate synchronously so first render has data on warm cache.
   const _initialCached = metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
-  const metrics = ref<MetricsSnapshot | null>(_initialCached)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+  if (_initialCached !== null) {
+    metrics.value ??= _initialCached
+  }
+  // Set lastFetchedAt from whatever snapshot is available - cache or already-loaded module ref.
+  if (lastFetchedAt.value === null) {
+    const source = _initialCached ?? metrics.value
+    if (source !== null)
+      lastFetchedAt.value = new Date(source.collectedAt)
+  }
+
+  // Ref-counted snapshot refresh - starts on first consumer, stops on last unmount.
+  const scheduleSnapshotRefresh = () => {
+    if (snapshotRefreshTimer !== null)
+      clearTimeout(snapshotRefreshTimer)
+
+    const delay = msUntilNextCollection() + METRICS_REFRESH_BUFFER_MS
+    snapshotRefreshTimer = setTimeout(() => {
+      void (async () => {
+        const snapshot = await fetchMetricsFromStorage(supabase)
+        if (snapshot !== null) {
+          metrics.value = snapshot
+          const collectedAt = new Date(snapshot.collectedAt).getTime()
+          const ttl = Math.max(0, collectedAt + METRICS_COLLECTION_INTERVAL - Date.now())
+          metricsCache.set(METRICS_CACHE_KEY, snapshot, ttl)
+          lastFetchedAt.value = new Date()
+        }
+        if (activeConsumers > 0)
+          scheduleSnapshotRefresh()
+      })()
+    }, delay)
+  }
+
+  activeConsumers++
+  if (activeConsumers === 1)
+    scheduleSnapshotRefresh()
 
   const fetchMetrics = async () => {
-    // Serve from cache - metrics are daily, 1hr TTL is conservative
+    // Serve from cache until next collection boundary
     const cached = metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
     if (cached !== null) {
       metrics.value = cached
+      lastFetchedAt.value ??= new Date(cached.collectedAt)
       return cached
     }
 
@@ -116,10 +280,17 @@ export function useDataMetrics() {
     error.value = null
 
     try {
-      const snapshot = await fetchMetricsWithFallback(supabase)
+      const snapshot = await fetchMetricsFromStorage(supabase)
       metrics.value = snapshot
-      if (snapshot !== null)
-        metricsCache.set(METRICS_CACHE_KEY, snapshot, METRICS_TTL)
+      if (snapshot !== null) {
+        // TTL = time remaining until the *next* collection after this snapshot.
+        // Use collectedAt so we don't cache stale data for up to 5 extra minutes
+        // if fetchMetrics is called right after a fresh collection.
+        const collectedAt = new Date(snapshot.collectedAt).getTime()
+        const ttl = Math.max(0, collectedAt + METRICS_COLLECTION_INTERVAL - Date.now())
+        metricsCache.set(METRICS_CACHE_KEY, snapshot, ttl)
+        lastFetchedAt.value = new Date()
+      }
       return snapshot
     }
     catch (err) {
@@ -132,10 +303,369 @@ export function useDataMetrics() {
     }
   }
 
+  const fetchMetricsWindow = async (start: Date, end: Date): Promise<MetricsHistoryEntry[]> => {
+    const cacheKey = `metrics:history:window:${start.getTime()}:${end.getTime()}`
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null) {
+      metricsHistory.value = cached
+      return cached
+    }
+
+    loadingHistory.value = true
+    error.value = null
+
+    try {
+      const durationMs = end.getTime() - start.getTime()
+      let bucketMs: number
+      if (durationMs <= 6 * 60 * 60 * 1000)
+        bucketMs = 5 * 60 * 1000
+      else if (durationMs <= 24 * 60 * 60 * 1000)
+        bucketMs = 15 * 60 * 1000
+      else if (durationMs <= 7 * 24 * 60 * 60 * 1000)
+        bucketMs = 60 * 60 * 1000
+      else if (durationMs <= 30 * 24 * 60 * 60 * 1000)
+        bucketMs = 3 * 60 * 60 * 1000
+      else
+        bucketMs = 24 * 60 * 60 * 1000
+
+      const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
+        p_since: start.toISOString(),
+        p_until: end.toISOString(),
+        p_bucket_interval: msToPgInterval(bucketMs),
+      })
+
+      if (dbError !== null || data === null) {
+        metricsHistory.value = []
+        return []
+      }
+
+      const result = (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
+      metricsHistory.value = result
+      metricsCache.set(cacheKey, result, msUntilNextCollection())
+      return result
+    }
+    catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch metrics window'
+      error.value = message
+      throw new Error(message)
+    }
+    finally {
+      loadingHistory.value = false
+    }
+  }
+
+  // Like fetchMetricsWindow but does not write to shared refs.
+  const fetchMetricsWindowIsolated = async (start: Date, end: Date): Promise<MetricsHistoryEntry[]> => {
+    const cacheKey = `metrics:history:window:${start.getTime()}:${end.getTime()}`
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null)
+      return cached
+    try {
+      const durationMs = end.getTime() - start.getTime()
+      let bucketMs: number
+      if (durationMs <= 6 * 60 * 60 * 1000)
+        bucketMs = 5 * 60 * 1000
+      else if (durationMs <= 24 * 60 * 60 * 1000)
+        bucketMs = 15 * 60 * 1000
+      else if (durationMs <= 7 * 24 * 60 * 60 * 1000)
+        bucketMs = 60 * 60 * 1000
+      else if (durationMs <= 30 * 24 * 60 * 60 * 1000)
+        bucketMs = 3 * 60 * 60 * 1000
+      else
+        bucketMs = 24 * 60 * 60 * 1000
+      const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
+        p_since: start.toISOString(),
+        p_until: end.toISOString(),
+        p_bucket_interval: msToPgInterval(bucketMs),
+      })
+      if (dbError !== null || data === null)
+        return []
+      const result = (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
+      metricsCache.set(cacheKey, result, msUntilNextCollection())
+      return result
+    }
+    catch {
+      return []
+    }
+  }
+
+  const fetchMetricsHistory = async (period: MetricsPeriod = '24h') => {
+    const cacheKey = `metrics:history:${period}`
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null) {
+      metricsHistory.value = cached
+      return cached
+    }
+
+    loadingHistory.value = true
+    error.value = null
+
+    try {
+      const entries = await fetchMetricsHistoryFromDB(supabase, period)
+      metricsHistory.value = entries
+      metricsCache.set(cacheKey, entries, msUntilNextCollection())
+      return entries
+    }
+    catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch metrics history'
+      error.value = message
+      throw new Error(message)
+    }
+    finally {
+      loadingHistory.value = false
+    }
+  }
+
+  // Like fetchMetricsHistory but returns data without writing to the shared ref.
+  // Use this when you need history data in an isolated context (e.g. a modal)
+  // that should not affect other consumers of metricsHistory.
+  const fetchMetricsHistoryIsolated = async (period: MetricsPeriod = '24h'): Promise<MetricsHistoryEntry[]> => {
+    const cacheKey = `metrics:history:${period}`
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null)
+      return cached
+    try {
+      const entries = await fetchMetricsHistoryFromDB(supabase, period)
+      metricsCache.set(cacheKey, entries, msUntilNextCollection())
+      return entries
+    }
+    catch {
+      return []
+    }
+  }
+
+  // Fetch 14-day history with 24h buckets - used by admin table mini-histograms.
+  // Intentionally separate from fetchMetricsHistory so it always uses daily granularity
+  // regardless of what PERIOD_CONFIGS['14d'].bucketMs is set to.
+  const fetchDailyHistory = async (): Promise<MetricsHistoryEntry[]> => {
+    const cacheKey = 'metrics:history:14d-daily'
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null)
+      return cached
+
+    const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+    const until = new Date().toISOString()
+    const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
+      p_since: since,
+      p_until: until,
+      p_bucket_interval: '24 hours',
+    })
+    if (dbError !== null || data === null)
+      return []
+    const entries = (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
+    metricsCache.set(cacheKey, entries, msUntilNextCollection())
+    return entries
+  }
+
+  // Auto-refresh: after each 5-min boundary + 1 min buffer, fetch latest.json
+  // and append the new data point to the history without hitting the DB.
+
+  const scheduleRefresh = (period: MetricsPeriod) => {
+    if (refreshTimer !== null)
+      clearTimeout(refreshTimer)
+
+    const delay = msUntilNextCollection() + METRICS_REFRESH_BUFFER_MS
+    const doRefresh = async () => {
+      // Only the 6h view buckets at 5-min intervals matching the snapshot cadence.
+      // For all other periods the bucket size is larger than the collection interval,
+      // so appending a raw snapshot would create a spurious bar at the wrong
+      // granularity. Instead, evict the cache and re-fetch from the DB.
+      if (period !== '6h') {
+        const cacheKey = `metrics:history:${period}`
+        metricsCache.delete(cacheKey)
+        await fetchMetricsHistoryFromDB(supabase, period).then((entries) => {
+          metricsHistory.value = entries
+        })
+        scheduleRefresh(period)
+        return
+      }
+
+      const snapshot = await fetchMetricsFromStorage(supabase)
+      if (snapshot === null) {
+        // Fetch failed - append a null entry for this bucket so the gap shows
+        const bucketMs = PERIOD_CONFIGS['6h'].bucketMs
+        const bucketKey = Math.floor(Date.now() / bucketMs) * bucketMs
+        metricsHistory.value = [
+          ...metricsHistory.value,
+          {
+            capturedAt: new Date(bucketKey).toISOString(),
+            usersOnline: null,
+            usersTotal: null,
+            teamspeakOnline: null,
+            gameserversPlayers: null,
+            teamspeakByServer: null,
+            gameserversByServer: null,
+            usersByGame: null,
+            usersBySteamGame: null,
+            usersGameActivity: null,
+            usersSteamGameActivity: null,
+            discussionsTotal: null,
+            discussionsReplies: null,
+            discussionsNewTotal: null,
+            discussionsNewReplies: null,
+          },
+        ]
+      }
+      else {
+        metrics.value = snapshot
+        const collectedAt = new Date(snapshot.collectedAt).getTime()
+        const ttl = Math.max(0, collectedAt + METRICS_COLLECTION_INTERVAL - Date.now())
+        metricsCache.set(METRICS_CACHE_KEY, snapshot, ttl)
+
+        const bucketMs = PERIOD_CONFIGS['6h'].bucketMs
+        const bucketKey = Math.floor(Date.now() / bucketMs) * bucketMs
+        const newEntry: MetricsHistoryEntry = {
+          capturedAt: new Date(bucketKey).toISOString(),
+          usersOnline: snapshot.users.online,
+          usersTotal: snapshot.users.total,
+          teamspeakOnline: snapshot.teamspeak.online,
+          gameserversPlayers: snapshot.gameservers.players,
+          teamspeakByServer: snapshot.teamspeak.byServer,
+          gameserversByServer: Object.fromEntries(
+            Object.entries(snapshot.gameservers.byServer).map(([k, v]) => [k, v.protocol === 'minecraft' ? (v.data?.numPlayers ?? 0) : (v.data?.players ?? 0)]),
+          ),
+          usersByGame: snapshot.users.byGame,
+          usersBySteamGame: snapshot.users.bySteamGame,
+          usersGameActivity: snapshot.users.byGame !== null && snapshot.users.byGame !== undefined
+            ? Object.values(snapshot.users.byGame).reduce((a, b) => a + b, 0)
+            : null,
+          usersSteamGameActivity: snapshot.users.bySteamGame !== null && snapshot.users.bySteamGame !== undefined
+            ? Object.values(snapshot.users.bySteamGame).reduce((a, b) => a + b, 0)
+            : null,
+          discussionsTotal: snapshot.discussions.total,
+          discussionsReplies: snapshot.discussions.replies,
+          discussionsNewTotal: snapshot.discussions.newTotal,
+          discussionsNewReplies: snapshot.discussions.newReplies,
+        }
+
+        // Replace the last bucket if it matches, otherwise append
+        const last = metricsHistory.value.at(-1)
+        const lastBucket = last ? Math.floor(new Date(last.capturedAt).getTime() / bucketMs) * bucketMs : null
+        if (lastBucket === bucketKey) {
+          metricsHistory.value = [...metricsHistory.value.slice(0, -1), newEntry]
+        }
+        else {
+          metricsHistory.value = [...metricsHistory.value, newEntry]
+        }
+
+        // Evict the 6h history cache so next full load re-fetches from DB
+        metricsCache.delete('metrics:history:6h')
+      }
+
+      scheduleRefresh(period)
+    }
+    refreshTimer = setTimeout(() => {
+      void doRefresh()
+    }, delay)
+  }
+
+  onUnmounted(() => {
+    if (refreshTimer !== null)
+      clearTimeout(refreshTimer)
+
+    activeConsumers--
+    if (activeConsumers === 0 && snapshotRefreshTimer !== null) {
+      clearTimeout(snapshotRefreshTimer)
+      snapshotRefreshTimer = null
+    }
+  })
+
+  const fetchLatestMetrics = async () => {
+    if (latestMetrics.value != null)
+      return latestMetrics.value
+    loadingLatest.value = true
+    try {
+      const { data, error: dbError } = await supabase
+        .from('metrics')
+        .select('*')
+        .order('captured_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (dbError !== null || data === null)
+        return null
+
+      const snapshot = normalizeMetricsSnapshot((data as unknown as Tables<'metrics'>).data)
+      latestMetrics.value = snapshot
+      return snapshot
+    }
+    finally {
+      loadingLatest.value = false
+    }
+  }
+
+  const fetchMetricsOverview = async () => {
+    const cacheKey = 'metrics:history:90d'
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null) {
+      metricsOverview.value = cached
+      return cached
+    }
+
+    loadingOverview.value = true
+    try {
+      const entries = await fetchMetricsHistoryFromDB(supabase, '90d')
+      metricsOverview.value = entries
+      metricsCache.set(cacheKey, entries, msUntilNextCollection())
+      return entries
+    }
+    finally {
+      loadingOverview.value = false
+    }
+  }
+
+  const fetchMetricsForServer = async (
+    serverId: number,
+    days: number = 14,
+  ): Promise<{ capturedAt: string, players: number | null }[]> => {
+    const cacheKey = `metrics:server:${serverId}:${days}d`
+    const cached = metricsCache.get<{ capturedAt: string, players: number | null }[]>(cacheKey)
+    if (cached !== null)
+      return cached
+
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+    const until = new Date().toISOString()
+
+    const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
+      p_since: since,
+      p_until: until,
+      p_bucket_interval: '24 hours',
+    })
+
+    if (dbError !== null || data === null)
+      return []
+
+    const serverKey = String(serverId)
+    const result = (data as unknown as Record<string, unknown>[]).map(row => ({
+      capturedAt: row.captured_at as string,
+      players: (row.gameservers_by_server as Record<string, number> | null)?.[serverKey] ?? null,
+    }))
+
+    metricsCache.set(cacheKey, result, msUntilNextCollection())
+    return result
+  }
+
   return {
     metrics,
     loading,
     error,
     fetchMetrics,
+    latestMetrics,
+    loadingLatest,
+    fetchLatestMetrics,
+    metricsHistory,
+    loadingHistory,
+    fetchMetricsHistory,
+    fetchMetricsHistoryIsolated,
+    fetchMetricsWindow,
+    fetchMetricsWindowIsolated,
+    metricsWindow,
+    metricsOverview,
+    loadingOverview,
+    fetchMetricsOverview,
+    scheduleRefresh,
+    fetchMetricsForServer,
+    fetchDailyHistory,
+    lastFetchedAt,
   }
 }

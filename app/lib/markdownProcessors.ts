@@ -3,8 +3,7 @@ import { truncate } from './utils/formatting'
 
 // ---------------------------------------------------------------------------
 // Module-scope regex constants
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const TIPTAP_ATTR_RE = /(\w+)="([^"]*)"/g
 const YOUTUBE_SHORT_RE = /youtu\.be\/([^?&\s]+)/
 const YOUTUBE_ID_RE = /(?:[?&]v=|\/shorts\/)([\w-]+)/
@@ -23,6 +22,9 @@ const DATAFILE_DIRECTIVE_RE = /:::dataFile(?:\s+\{([^}]*)\})?\s*:::/g
 // These must be escaped before remark-math sees them so they are not treated
 // as inline math delimiters.
 const CURRENCY_DOLLAR_RE = /\$(?=\d)/g
+const ORDERED_LIST_ITEM_RE = /^(\d+)\.\s/
+const UNORDERED_SUB_ITEM_RE = /^(\s+)([-*+]\s)/
+const FENCED_CODE_RE = /^```/
 const STRIP_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_DATAFILE_RE = /:::dataFile(?:\s+\{[^}]*\})?\s*:::/g
@@ -53,8 +55,7 @@ const DETECT_DETAILS_RE = /:::details\b/
 
 // ---------------------------------------------------------------------------
 // YouTube directive pre-processor
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 /**
  * Parses a TipTap attribute string like `src="..." width="640"` into a plain
  * object. Only double-quoted string values are supported (which is all TipTap
@@ -313,8 +314,7 @@ export function extractMentionIds(markdown: string): string[] {
  */
 // ---------------------------------------------------------------------------
 // Color tag pre-processor
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 // The canonical palette names must match those exported by the textColor plugin
 // and the CSS custom properties defined in app/assets/index.scss.
 const TEXT_COLOR_NAMES = new Set([
@@ -364,8 +364,7 @@ export function processColorTags(markdown: string): string {
 
 // ---------------------------------------------------------------------------
 // Font tag pre-processor
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const TEXT_FONT_NAMES = new Set([
   'sans',
   'serif',
@@ -395,8 +394,7 @@ export function processFontTags(markdown: string): string {
 
 // ---------------------------------------------------------------------------
 // Size tag pre-processor
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const TEXT_SIZE_NAMES = new Set([
   'xs',
   's',
@@ -424,12 +422,86 @@ export function processSizeTags(markdown: string): string {
   )
 }
 
+/**
+ * CommonMark requires sub-list items to be indented by at least as many
+ * characters as the parent list item's content start column.
+ * e.g. `1. ` prefix is 3 chars, so nested bullets need >= 3 spaces of indent.
+ * Many editors (including our own) emit 2-space indented sub-items, which
+ * remark treats as a new top-level list instead of nesting.
+ * This function bumps those under-indented sub-items to the correct depth.
+ */
+function normalizeListIndentation(markdown: string): string {
+  const lines = markdown.split('\n')
+  const result: string[] = []
+  // Stack of required indent widths per nesting level
+  const indentStack: number[] = []
+  let inFencedCode = false
+
+  for (const line of lines) {
+    // Don't touch fenced code blocks
+    if (FENCED_CODE_RE.test(line)) {
+      inFencedCode = !inFencedCode
+      result.push(line)
+      continue
+    }
+    if (inFencedCode) {
+      result.push(line)
+      continue
+    }
+
+    const orderedMatch = ORDERED_LIST_ITEM_RE.exec(line)
+    if (orderedMatch) {
+      // Content starts after "N. " - that many chars is required indent for children
+      const requiredChildIndent = orderedMatch[1]!.length + 2 // digits + ". "
+      indentStack.push(requiredChildIndent)
+      result.push(line)
+      continue
+    }
+
+    const unorderedMatch = UNORDERED_SUB_ITEM_RE.exec(line)
+    if (unorderedMatch && indentStack.length > 0) {
+      const currentIndent = unorderedMatch[1]!.length
+      const requiredIndent = indentStack[indentStack.length - 1]!
+      if (currentIndent < requiredIndent) {
+        // Pad to required indent
+        result.push(' '.repeat(requiredIndent) + unorderedMatch[2]! + line.slice(unorderedMatch[0].length))
+        continue
+      }
+    }
+
+    // Nested ordered item (has leading whitespace + digits + ". ")
+    // e.g. Tiptap emits "  1. Nested" (2 spaces) under a "1. Parent" (needs 3)
+    const nestedOrderedMatch = /^(\s+)(\d+\.\s)/.exec(line)
+    if (nestedOrderedMatch && indentStack.length > 0) {
+      const currentIndent = nestedOrderedMatch[1]!.length
+      const requiredIndent = indentStack[indentStack.length - 1]!
+      if (currentIndent < requiredIndent) {
+        result.push(' '.repeat(requiredIndent) + nestedOrderedMatch[2]! + line.slice(nestedOrderedMatch[0].length))
+        continue
+      }
+    }
+
+    // Non-list line: if it's not blank and not indented, clear the stack
+    if (line.trim().length > 0 && !/^\s/.test(line)) {
+      indentStack.length = 0
+    }
+
+    result.push(line)
+  }
+
+  return result.join('\n')
+}
+
 export function processMarkdown(markdown: string): string {
   if (!markdown)
     return ''
 
   // Escape bare currency dollar signs (e.g. $3, $10) before any remark/MDC
   // processing so that remark-math does not treat them as inline math delimiters.
+  // Normalize list indentation so nested bullet items under ordered list items
+  // are indented enough for remark (CommonMark) to treat them as children.
+  markdown = normalizeListIndentation(markdown)
+
   markdown = markdown.replace(CURRENCY_DOLLAR_RE, '\\$')
 
   // Convert TipTap details/spoiler directives to native <details> HTML first

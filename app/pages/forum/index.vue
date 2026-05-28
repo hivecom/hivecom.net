@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Dropdown, DropdownItem, Flex, paginate, Pagination, Popout, Skeleton, Switch, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Card, Dropdown, DropdownItem, Flex, paginate, Pagination, Popout, PopoutHover, Skeleton, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
@@ -12,12 +12,16 @@ import ForumModalAddDiscussion from '@/components/Forum/ForumModalAddDiscussion.
 import ForumModalAddTopic from '@/components/Forum/ForumModalAddTopic.vue'
 import ForumRecentlyVisited from '@/components/Forum/ForumRecentlyVisited.vue'
 import ForumTopicItem from '@/components/Forum/ForumTopicItem.vue'
+import ChartOnlineUsersModal from '@/components/Shared/Charts/ChartOnlineUsersModal.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
-import SharedTinyBadge from '@/components/Shared/TinyBadge.vue'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCache } from '@/composables/useCache'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
-import { useBulkDataUser, useDataUser } from '@/composables/useDataUser'
+import { useDataMetrics } from '@/composables/useDataMetrics'
+import { patchProfileLastSeen, useBulkDataUser, useDataUser } from '@/composables/useDataUser'
 import { useDiscoverQueue } from '@/composables/useDiscoverQueue'
+import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useForumActivityFeed } from '@/composables/useForumActivityFeed'
 import { useForumDraftCount } from '@/composables/useForumDraftCount'
 import { useForumUserActivity } from '@/composables/useForumUserActivity'
@@ -32,6 +36,10 @@ dayjs.extend(relativeTime)
 
 const FORUM_TOPICS_CACHE_KEY = 'topics-v3'
 const FORUM_TOPICS_TTL = 5 * 60 * 1000 // 5 minutes
+
+const activityModalOpen = ref(false)
+const { latestMetrics, fetchLatestMetrics } = useDataMetrics()
+fetchLatestMetrics()
 
 useSeoMeta({
   title: 'Forum',
@@ -67,6 +75,7 @@ const userId = useUserId()
 const isMobile = useBreakpoint('<s')
 
 const { user } = useDataUser(userId, { includeRole: true })
+const { isAdminOrMod } = useEffectiveRole()
 
 // Track which topics/discussions have new content since last visit
 const forumUnread = useDataForumUnread()
@@ -84,6 +93,45 @@ const { settings } = useDataUserSettings()
 const loading = ref(false)
 const supabase = useSupabaseClient()
 const forumCache = useCache(CACHE_NAMESPACES.forum)
+
+const ONLINE_THRESHOLD_MS = 15 * 60 * 1000
+const ONLINE_USERS_CACHE_KEY = 'online-users'
+const ONLINE_USERS_TTL = 60 * 1000 // 1 minute
+const onlineUserIds = ref<string[]>([])
+const onlineUsersLoading = ref(false)
+const onlineCount = computed(() => onlineUserIds.value.length > 0 ? onlineUserIds.value.length : (latestMetrics.value?.users.online ?? null))
+
+async function fetchOnlineUsers() {
+  const cached = forumCache.get<string[]>(ONLINE_USERS_CACHE_KEY)
+  if (cached) {
+    onlineUserIds.value = cached
+    return
+  }
+  onlineUsersLoading.value = true
+  const threshold = new Date(Date.now() - ONLINE_THRESHOLD_MS).toISOString()
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, last_seen')
+    .gt('last_seen', threshold)
+    .order('last_seen', { ascending: false })
+    .limit(100)
+  const rows = data ?? []
+  const ids = rows.map(p => p.id)
+  onlineUserIds.value = ids
+  forumCache.set(ONLINE_USERS_CACHE_KEY, ids, ONLINE_USERS_TTL)
+  for (const row of rows) {
+    if (row.last_seen)
+      patchProfileLastSeen(row.id, row.last_seen)
+  }
+  onlineUsersLoading.value = false
+}
+
+watch(activityModalOpen, (open) => {
+  if (open)
+    void fetchOnlineUsers()
+})
+
+void fetchOnlineUsers()
 
 watch(contentRulesGateOpen, (open) => {
   if (!open)
@@ -299,17 +347,16 @@ const feedOptions = computed(() => ({
   onTopicClick: (id: string) => setActiveTopicById(id),
 }))
 
-onMounted(() => {
-  lastFeedVisitedAt.value = forumUnread.recordFeedVisit()
-})
-
 const {
   latestPosts,
   latestPostMentionIds,
   latestPostAuthorIds,
   postSinceYesterday,
+  postsSinceLastVisit,
   fetchLatestReplies,
   fetchTodayCount,
+  fetchSinceLastVisitCount,
+  bumpSinceLastVisitCount,
   prependReplyItem,
   prependDiscussionItem,
 } = useForumActivityFeed({
@@ -322,6 +369,36 @@ const {
   onTopicClick: (id: string) => setActiveTopicById(id),
 })
 
+const FEED_STALE_MS = 15 * 60 * 1000 // 15 minutes
+let hiddenAt: number | null = null
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    hiddenAt = Date.now()
+  }
+  else if (document.visibilityState === 'visible') {
+    if (hiddenAt != null && Date.now() - hiddenAt >= FEED_STALE_MS) {
+      void Promise.all([
+        fetchLatestReplies(),
+        fetchTodayCount(),
+        fetchSinceLastVisitCount(lastFeedVisitedAt.value),
+      ])
+    }
+    hiddenAt = null
+  }
+}
+
+onMounted(() => {
+  lastFeedVisitedAt.value = forumUnread.recordFeedVisit()
+  // Server-side count for the "since last visit" badge so it isn't capped by
+  // the carousel slice (16) or the latest-replies fetch (30).
+  void fetchSinceLastVisitCount(lastFeedVisitedAt.value)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+})
 // ── Realtime feed updates ─────────────────────────────────────────────────
 
 // Count of incoming items not yet reflected in the paginated sheet feed.
@@ -337,8 +414,24 @@ function handleTopicActivity(topicId: string, lastActivityAt: string) {
 }
 
 const { subscribe: subscribeForumFeed } = useRealtimeForumFeed({
-  onReply: prependReplyItem,
-  onDiscussion: prependDiscussionItem,
+  onReply: (item) => {
+    prependReplyItem(item)
+    // Bump the "since last visit" badge if the item is newer than the
+    // watermark and not authored by the current user.
+    if (lastFeedVisitedAt.value != null
+      && new Date(item.timestampRaw).getTime() > new Date(lastFeedVisitedAt.value).getTime()
+      && item.user !== userId.value) {
+      bumpSinceLastVisitCount(1)
+    }
+  },
+  onDiscussion: (item) => {
+    prependDiscussionItem(item)
+    if (lastFeedVisitedAt.value != null
+      && new Date(item.timestampRaw).getTime() > new Date(lastFeedVisitedAt.value).getTime()
+      && item.user !== userId.value) {
+      bumpSinceLastVisitCount(1)
+    }
+  },
   onPendingSheet: (delta) => { feedPendingCount.value += delta },
   onTopicActivity: handleTopicActivity,
   discussionLookup,
@@ -380,7 +473,7 @@ async function fetchDiscussionsIndex() {
 
   const { data, error } = await supabase
     .from('discussions')
-    .select('id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id')
+    .select('id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, last_activity_by, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id')
     .eq('is_draft', false)
     .not('discussion_topic_id', 'is', null)
 
@@ -508,7 +601,7 @@ const breadcrumbItems = computed(() =>
 const topicDiscussionsLoading = ref<Set<string>>(new Set())
 const topicPaginationLoading = ref<Set<string>>(new Set())
 
-const DISCUSSION_SELECT = 'id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id'
+const DISCUSSION_SELECT = 'id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, last_activity_by, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id'
 
 async function loadTopicDiscussions(topicId: string, page: number = 0, isExplicitPageChange: boolean = false) {
   const topic = topics.value.find(t => t.id === topicId)
@@ -866,6 +959,13 @@ function appendDiscussionToTopic(discussion: Tables<'discussions'>) {
     // Bust topic discussion page caches for all pages of this topic so next open fetches fresh
     forumCache.invalidateByPattern(new RegExp(`^topic-discussions:${discussion.discussion_topic_id}:`))
     forumCache.delete(FORUM_DISCUSSIONS_INDEX_CACHE_KEY)
+    // You created this discussion - seed it as seen so initializeTopics doesn't
+    // treat it as an unseen discussion in a known topic (seenReplyCount = -1).
+    forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)
+    // Advance the topic watermark to now so the act of creating a discussion
+    // doesn't produce a topic dot when returning from the discussion page.
+    if (discussion.discussion_topic_id)
+      forumUnread.markTopicSeen(discussion.discussion_topic_id)
   }
 }
 
@@ -1040,6 +1140,22 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               Bringing back the old school internet experience
             </p>
           </div>
+          <PopoutHover :disabled="!onlineCount || onlineCount <= 0" placement="bottom-end">
+            <template #trigger>
+              <OnlineBadge :count="onlineCount" clickable @click="activityModalOpen = true" />
+            </template>
+            <Flex column gap="xs" class="px-m py-s">
+              <UserDisplay
+                v-for="id in onlineUserIds"
+                :key="id"
+                :user-id="id"
+                size="s"
+                linked
+                show-preview
+                show-online-indicator
+              />
+            </Flex>
+          </PopoutHover>
         </Flex>
       </section>
 
@@ -1055,6 +1171,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
         :loading="loading"
         :latest-posts="latestPosts"
         :post-since-yesterday="postSinceYesterday"
+        :posts-since-last-visit="postsSinceLastVisit"
         :last-visited-at="lastFeedVisitedAt"
         :mention-lookup="mentionLookup"
         :feed-options="feedOptions"
@@ -1101,7 +1218,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               {{ isMobile ? draftCount : `${draftCount} Draft${draftCount > 1 ? 's' : ''}` }}
             </Button>
 
-            <Dropdown v-if="user.role === 'admin' || user.role === 'moderator'">
+            <Dropdown v-if="isAdminOrMod">
               <template #trigger="{ toggle }">
                 <Button size="s" variant="accent" :square="isMobile" @click="toggle">
                   <template v-if="!isMobile" #start>
@@ -1116,9 +1233,9 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               <DropdownItem size="s" @click="requestCreate('discussion')">
                 Discussion
                 <template v-if="draftCount > 0" #hint>
-                  <SharedTinyBadge>
+                  <Badge size="s">
                     {{ draftCount }} Draft{{ draftCount > 1 ? 's' : '' }}
-                  </SharedTinyBadge>
+                  </Badge>
                 </template>
               </DropdownItem>
               <DropdownItem size="s" @click="requestCreate('topic')">
@@ -1201,7 +1318,10 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
                 <span class="text-m mb-xs text-color-light">Display options</span>
                 <NuxtLink to="/profile/settings">
                   <Button size="s">
-                    All settings
+                    Settings
+                    <template #end>
+                      <Icon name="ph:arrow-square-out" />
+                    </template>
                   </Button>
                 </NuxtLink>
               </Flex>
@@ -1332,7 +1452,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               :discussion-count="subtopic.total_discussion_count"
               :reply-count="subtopic.total_reply_count"
               :view-count="subtopic.total_view_count"
-              :has-new="settings.show_forum_unread_bubbles && forumUnread.isTopicNew(subtopic.id, subtopic.last_activity_at)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isTopicNewWithDiscussions(subtopic.id, subtopic.last_activity_at, [...(subtopic.stickyDiscussions ?? []), ...(subtopic.discussions ?? [])], subtopic.discussionsLoaded, (subtopic as any).last_activity_by /* TODO: regenerate types after migration */)"
               @click="setActiveTopicFromTopic(subtopic)"
               @update="replaceItemData('topic', $event)"
               @remove="removeItem('topic', $event)"
@@ -1344,7 +1464,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               :class="{ 'forum__category-post--dimmed': topicPaginationLoading.has(topic.id) }"
               :data="discussion"
               :last-activity="discussion.last_activity_at"
-              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.reply_count)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.reply_count, (discussion as any).last_activity_by /* TODO: regenerate types after migration */)"
               @click="forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)"
               @update="replaceItemData('discussion', $event)"
               @remove="removeItem('discussion', $event)"
@@ -1355,7 +1475,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
               :class="{ 'forum__category-post--dimmed': topicPaginationLoading.has(topic.id) }"
               :data="discussion"
               :last-activity="discussion.last_activity_at"
-              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.reply_count)"
+              :has-new="settings.show_forum_unread_bubbles && forumUnread.isDiscussionNew(discussion.id, discussion.reply_count, (discussion as any).last_activity_by /* TODO: regenerate types after migration */)"
               @click="forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)"
               @update="replaceItemData('discussion', $event)"
               @remove="removeItem('discussion', $event)"
@@ -1384,10 +1504,14 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
                 </Button>
               </template>
               <template v-else>
-                <p>There are no discussions in this topic{{ topic.is_archived ? '' : ' - start one!' }}</p>
-                <Button v-if="!topic.is_archived && !topic.is_locked && user" size="s" variant="accent" @click="requestCreate('discussion')">
-                  Create discussion
-                </Button>
+                <Flex :column="isMobile" :x-between="!isMobile" y-center expand class="empty-state-wrap">
+                  <p class="text-s empty-state-text">
+                    There are no discussions in this topic{{ topic.is_archived ? '' : ' - start one!' }}
+                  </p>
+                  <Button v-if="!topic.is_archived && !topic.is_locked && user" size="s" variant="accent" class="empty-state-btn" @click="requestCreate('discussion')">
+                    Create discussion
+                  </Button>
+                </Flex>
               </template>
             </Flex>
           </div>
@@ -1415,6 +1539,13 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
           </Button>
         </NuxtLink>
       </Flex>
+
+      <ChartOnlineUsersModal
+        v-model:open="activityModalOpen"
+        :online-user-ids="onlineUserIds"
+        :online-users-loading="onlineUsersLoading"
+        :online-count="onlineCount"
+      />
     </ClientOnly>
   </div>
 </template>
@@ -1722,6 +1853,16 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
 
   .forum__category-post .forum__category-post--item .forum__category-post--meta span {
     font-size: var(--font-size-xxs);
+  }
+
+  .empty-state-btn {
+    width: 100%;
+  }
+
+  .empty-state-text {
+    width: 100%;
+    font-size: var(--font-size-xs);
+    text-align: center;
   }
 }
 </style>

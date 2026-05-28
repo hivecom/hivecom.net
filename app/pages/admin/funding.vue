@@ -5,6 +5,8 @@ import ExpenseTable from '@/components/Admin/Funding/ExpenseTable.vue'
 import FundingKPIs from '@/components/Admin/Funding/FundingKPIs.vue'
 import FundingTable from '@/components/Admin/Funding/FundingTable.vue'
 
+definePageMeta({ layout: 'admin' })
+
 // State for refresh coordination between components
 const refreshSignal = ref(0)
 </script>

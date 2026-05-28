@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Flex } from '@dolanske/vui'
+import ActivityLastfm from './Activity/ActivityLastfm.vue'
 import ActivitySteam from './Activity/ActivitySteam.vue'
 import ActivityTeamspeak from './Activity/ActivityTeamspeak.vue'
 
@@ -16,6 +17,13 @@ const props = defineProps<Props>()
 
 // Check if user has Steam linked
 const hasSteam = computed(() => !!props.profile.steam_id)
+
+// Check if user has Last.fm linked
+const hasLastfm = computed(() => !!(props.profile as Record<string, unknown>).lastfm_username)
+const profileLastfmUsername = computed(() => {
+  const u = (props.profile as Record<string, unknown>).lastfm_username
+  return typeof u === 'string' ? u : null
+})
 
 // Check if user has TeamSpeak identities linked
 const hasTeamspeak = computed(() => {
@@ -36,6 +44,13 @@ const hasTeamspeak = computed(() => {
 
     <template v-else>
       <!-- <ActivitySpotify /> -->
+      <ActivityLastfm
+        v-if="hasLastfm"
+        :profile-id="props.profile.id"
+        :lastfm-username="profileLastfmUsername"
+        :rich-presence-enabled="props.profile.rich_presence_enabled"
+        :is-own-profile="props.isOwnProfile"
+      />
       <ActivitySteam
         v-if="hasSteam"
         :profile-id="props.profile.id"

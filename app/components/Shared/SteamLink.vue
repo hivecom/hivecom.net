@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button } from '@dolanske/vui'
+import { Button, Flex } from '@dolanske/vui'
 
 const props = defineProps<{
   steamId: number | null
@@ -27,17 +27,22 @@ function navigateToSteam() {
   <span v-if="!steamId">-</span>
   <Button
     v-else
-    :expand="false"
     variant="link"
     :small="small"
     style="padding: 0; display: block;"
     @click.stop="navigateToSteam"
   >
+    <!-- This is yucky conditional logic and it's weird to put the number in the icon/start but it works for the game sheet -->
     <template v-if="showIcon" #start>
-      <Icon name="ph:steam-logo" />
+      <Flex y-end gap="xs">
+        <Icon name="ph:steam-logo" />
+        <template v-if="!hideId">
+          {{ steamId }}
+        </template>
+      </Flex>
     </template>
-    <template v-if="!hideId">
-      {{ steamId }}
+    <template v-if="!showIcon">
+      {{ hideId ? 'View on Steam' : steamId }}
     </template>
   </Button>
 </template>

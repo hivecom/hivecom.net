@@ -1,30 +1,66 @@
 <script setup lang="ts">
 import { Card, Flex, Skeleton, Tooltip } from '@dolanske/vui'
+import { computed } from 'vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
-defineProps<{
+const props = defineProps<{
   label: string
   value: string | number
   isLoading?: boolean
   icon?: string
-  variant?: 'primary' | 'success' | 'warning' | 'danger' | 'gray'
+  variant?: 'primary' | 'success' | 'warning' | 'danger' | 'gray' | 'info'
   prefix?: string
   suffix?: string
   description?: string
+  to?: string
 }>()
+
+const isMobile = useBreakpoint('<l')
+
+const linkAttrs = computed(() => {
+  if (!props.to)
+    return {}
+  return {
+    href: props.to,
+    onClick: (e: MouseEvent) => {
+      e.preventDefault()
+      navigateTo(props.to)
+    },
+  }
+})
 </script>
 
 <template>
-  <Card class="kpi-card card-bg" :padding="false">
-    <Flex column gap="m" expand>
-      <Flex gap="m" y-center expand>
-        <div v-if="icon" class="kpi-card__icon-container" :class="`kpi-card__icon-container--${variant || 'primary'}`">
-          <Icon :name="icon" size="24" />
-        </div>
-        <Flex class="kpi-card__label" y-center x-between expand>
-          {{ label }}
-          <Flex v-if="description" y-center>
-            <Tooltip placement="top">
+  <component
+    :is="to ? 'a' : 'div'"
+    class="kpi-card__link"
+    :class="{ 'kpi-card__link--clickable': !!to }"
+    v-bind="linkAttrs"
+  >
+    <Card class="kpi-card card-bg" :padding="false" expand>
+      <Flex column gap="m" expand x-between>
+        <!-- Desktop: icon + label top, value bottom -->
+        <template v-if="!isMobile">
+          <Flex gap="m" y-center expand>
+            <Flex gap="m" y-center>
+              <div v-if="icon" class="kpi-card__icon-container" :class="`kpi-card__icon-container--${variant || 'primary'}`">
+                <Icon :name="icon" size="24" />
+              </div>
+              <span class="kpi-card__label">{{ label }}</span>
+            </Flex>
+          </Flex>
+          <Flex y-center x-between expand>
+            <Skeleton v-if="isLoading" :height="32" width="60%" />
+            <div v-else class="kpi-card__value" :class="`kpi-card__value--${variant || 'primary'}`">
+              <template v-if="typeof value === 'number'">
+                {{ prefix }}<CountDisplay :value="value" class="text-xxl" />{{ suffix }}
+              </template>
+              <template v-else>
+                {{ prefix }}{{ value }}{{ suffix }}
+              </template>
+            </div>
+            <Tooltip v-if="description" placement="top">
               <Icon name="ph:info" size="18" class="kpi-card__info-icon" />
               <template #tooltip>
                 <p class="kpi-card__tooltip-content">
@@ -33,31 +69,66 @@ defineProps<{
               </template>
             </Tooltip>
           </Flex>
-        </Flex>
+        </template>
+
+        <!-- Mobile: icon + value top, label + description bottom -->
+        <template v-else>
+          <Flex gap="m" y-center x-between expand>
+            <div v-if="icon" class="kpi-card__icon-container" :class="`kpi-card__icon-container--${variant || 'primary'}`">
+              <Icon :name="icon" size="24" />
+            </div>
+            <Skeleton v-if="isLoading" :height="32" width="60px" />
+            <div v-else class="kpi-card__value" :class="`kpi-card__value--${variant || 'primary'}`">
+              <template v-if="typeof value === 'number'">
+                {{ prefix }}<CountDisplay :value="value" class="text-xxl" />{{ suffix }}
+              </template>
+              <template v-else>
+                {{ prefix }}{{ value }}{{ suffix }}
+              </template>
+            </div>
+          </Flex>
+          <Flex column expand :gap="0">
+            <span class="kpi-card__label">{{ label }}</span>
+            <p v-if="description" class="kpi-card__description">
+              {{ description }}
+            </p>
+          </Flex>
+        </template>
       </Flex>
-      <Flex column expand>
-        <Skeleton v-if="isLoading" :height="32" width="60%" class="mt-xs" />
-        <Flex v-else y-center gap="xs" class="mt-xs">
-          <div class="kpi-card__value" :class="`kpi-card__value--${variant || 'primary'}`">
-            <template v-if="typeof value === 'number'">
-              {{ prefix }}<CountDisplay :value="value" class="text-xxl" />{{ suffix }}
-            </template>
-            <template v-else>
-              {{ prefix }}{{ value }}{{ suffix }}
-            </template>
-          </div>
-        </Flex>
-      </Flex>
-    </Flex>
-  </Card>
+    </Card>
+  </component>
 </template>
 
 <style lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 .kpi-card {
   padding: var(--space-m);
   height: 100%;
   width: 100%;
   display: flex;
+
+  .vui-card-content {
+    width: 100%;
+  }
+
+  &__link {
+    display: flex;
+    flex: 1;
+    text-decoration: none;
+    border-radius: var(--border-radius-l);
+
+    @media (max-width: #{$breakpoint-m - 1px}) {
+      display: block;
+      width: 100%;
+      flex: unset;
+    }
+
+    &--clickable:hover .kpi-card {
+      border-color: var(--color-border-strong);
+      background: var(--color-bg-raised);
+    }
+  }
 
   &__icon-container {
     display: flex;
@@ -92,6 +163,11 @@ defineProps<{
       background-color: var(--color-bg-medium);
       color: var(--color-text-light);
     }
+
+    &--info {
+      background-color: var(--color-bg-blue-lowered);
+      color: var(--color-text-blue);
+    }
   }
 
   &__label {
@@ -122,10 +198,14 @@ defineProps<{
     &--gray {
       color: var(--color-text);
     }
+
+    &--info {
+      color: var(--color-text-blue);
+    }
   }
 
   &__info-icon {
-    color: var(--color-text-light);
+    color: var(--color-text-lighter);
     opacity: 0.7;
     cursor: help;
     transition: opacity 0.2s ease;
@@ -138,6 +218,13 @@ defineProps<{
   &__tooltip-content {
     max-width: 250px;
     font-size: var(--font-size-s);
+    line-height: 1.4;
+  }
+
+  &__description {
+    margin: var(--space-xs) 0 0;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
     line-height: 1.4;
   }
 }

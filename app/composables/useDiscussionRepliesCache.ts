@@ -31,8 +31,7 @@ import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 // ---------------------------------------------------------------------------
 // Constants
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
 
 export const PAGE_SIZE_FORUM = 10
@@ -40,8 +39,7 @@ export const PAGE_SIZE_COMMENT = 10
 
 // ---------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export interface PageCursor {
   cursorTime: string // ISO timestamptz - created_at of the last row on the preceding page
   cursorId: string // uuid - id of the last row on the preceding page
@@ -58,6 +56,8 @@ export interface ReplyPageCursorResult {
   pageIndex: number
   predecessorCount: number
   cursor: PageCursor | null // null when the target is on page 0
+  /** Cursor for the page BEFORE the target's page (page N-1). Non-null only when pageIndex >= 2. */
+  prevCursor: PageCursor | null
 }
 
 // Shape returned by get_discussion_reply_page_cursor RPC rows.
@@ -69,6 +69,8 @@ interface RawCursorRow {
   predecessor_count: number
   cursor_time: string | null
   cursor_id: string | null
+  prev_cursor_time: string | null
+  prev_cursor_id: string | null
 }
 
 // Shape returned by get_discussion_replies_tail RPC rows — derived from the
@@ -78,8 +80,7 @@ type TailRow = Database['public']['Functions']['get_discussion_replies_tail']['R
 
 // ---------------------------------------------------------------------------
 // Cache key helpers
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 function tailKey(
   discussionId: string,
   rootOnly: boolean = false,
@@ -112,8 +113,7 @@ function legacyKey(discussionId: string, ascending: boolean): string {
 
 // ---------------------------------------------------------------------------
 // Composable
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 export function useDiscussionRepliesCache() {
   const { cache } = useCacheModule(CACHE_NAMESPACES.replies)
 
@@ -324,10 +324,16 @@ export function useDiscussionRepliesCache() {
           ? { cursorTime: row.cursor_time, cursorId: row.cursor_id }
           : null
 
+      const prevCursor: PageCursor | null
+        = row.prev_cursor_time != null && row.prev_cursor_id != null
+          ? { cursorTime: row.prev_cursor_time, cursorId: row.prev_cursor_id }
+          : null
+
       return {
         pageIndex: row.page_index,
         predecessorCount: row.predecessor_count,
         cursor,
+        prevCursor,
       }
     }
     catch (err) {

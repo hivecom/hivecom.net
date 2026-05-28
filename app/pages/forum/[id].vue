@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, Card, Flex, pushToast, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { DISCUSSION_KEYS } from '@/components/Discussions/Discussion.keys'
@@ -12,8 +12,8 @@ import Reactions from '@/components/Reactions/Reactions.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
+import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
-import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import UserName from '@/components/Shared/UserName.vue'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
@@ -35,7 +35,7 @@ type DiscussionWithContext = Tables<'discussions'> & {
   profile?: Pick<Tables<'profiles'>, 'id' | 'username'> | null
   project?: Pick<Tables<'projects'>, 'id' | 'title'> | null
   event?: Pick<Tables<'events'>, 'id' | 'title'> | null
-  gameserver?: Pick<Tables<'gameservers'>, 'id' | 'name'> | null
+  gameserver?: Pick<Tables<'network_gameservers'>, 'id' | 'name'> | null
   referendum?: Pick<Tables<'referendums'>, 'id' | 'title'> | null
 }
 
@@ -49,14 +49,6 @@ type TopicBreadcrumb = Pick<Tables<'discussion_topics'>, 'id' | 'name' | 'slug' 
 
 const route = useRoute()
 const router = useRouter()
-
-function goBack() {
-  const prev = window.history.state?.back as string | undefined
-  if (prev && prev.startsWith('/forum'))
-    router.back()
-  else
-    router.push('/forum')
-}
 
 const { settings } = useDataUserSettings()
 const forumUnread = useDataForumUnread()
@@ -88,6 +80,16 @@ const breadcrumbItems = computed(() =>
     onClick: () => router.push(`/forum?${topic.slug ? `activeTopic=${topic.slug}` : `activeTopicId=${topic.id}`}`),
   })),
 )
+
+function goBack() {
+  // Navigate up to the immediate parent topic rather than using browser history,
+  // so the back button always moves up the breadcrumb tree predictably.
+  const parent = breadcrumbItems.value.at(-1)
+  if (parent)
+    router.push(parent.href)
+  else
+    router.push('/forum')
+}
 const publishConfirmOpen = ref(false)
 const showNSFWWarning = ref(false)
 const nsfwRevealed = ref(false)
@@ -312,6 +314,11 @@ onBeforeMount(async () => {
       // Mark the discussion seen in localStorage so the unread dot clears
       // even when navigating here by direct URL rather than from the forum index.
       forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
+      // Advance the parent topic's seenActivityAt to this discussion's last
+      // activity timestamp - not now, so we don't shadow concurrent activity
+      // in other discussions that may have happened more recently.
+      if (data.discussion_topic_id)
+        forumUnread.markTopicSeen(data.discussion_topic_id, data.last_activity_at ?? undefined)
     }
 
     loading.value = false
@@ -325,7 +332,7 @@ onBeforeMount(async () => {
       profile:profiles!discussions_profile_id_fkey(id, username),
       project:projects(id, title),
       event:events(id, title),
-      gameserver:gameservers(id, name),
+      gameserver:network_gameservers(id, name),
       referendum:referendums(id, title)
     `)
 
@@ -374,6 +381,11 @@ onBeforeMount(async () => {
         void fetchSubscription(data.id)
         // Mark seen in localStorage so the unread dot clears on direct URL visits.
         forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
+        // Advance the parent topic's seenActivityAt to this discussion's last
+        // activity timestamp - not now, so we don't shadow concurrent activity
+        // in other discussions that may have happened more recently.
+        if (data.discussion_topic_id)
+          forumUnread.markTopicSeen(data.discussion_topic_id, data.last_activity_at ?? undefined)
       }
 
       loading.value = false
@@ -479,8 +491,11 @@ function publish() {
  */
 function handleReplySubmitted(newReplyCount: number, discussionId: string) {
   forumUnread.markDiscussionSeen(discussionId, newReplyCount)
-  // Topic-level seen is timestamp-based; markTopicSeen is called when the user
-  // navigates to the topic, so no extra bump needed after posting a reply.
+  // Advance the topic watermark to now - your reply just became the latest
+  // activity, so any dot that appears after returning to the forum index would
+  // be from concurrent activity that happened after you posted.
+  if (post.value?.discussion_topic_id)
+    forumUnread.markTopicSeen(post.value.discussion_topic_id)
 }
 
 const pageTitle = useTemplateRef('page-title')
@@ -492,6 +507,64 @@ watch(isPageTitleVisible, () => {
 }, { once: true })
 
 const page = useTemplateRef('page')
+const discussionRef = useTemplateRef<InstanceType<typeof Discussion>>('discussion')
+
+// Start dimmed immediately if there's a comment deep-link in the URL so the
+// overlay is up before the page content even renders, preventing the flash of
+// unloaded content before Discussion.vue picks up the navigation.
+const scrollingToReply = ref(
+  import.meta.client
+    && typeof route.query.comment === 'string'
+    && route.query.comment.length > 0,
+)
+
+function preventScroll(e: Event) {
+  e.preventDefault()
+  e.stopImmediatePropagation()
+}
+
+// If we started dimmed, lock scroll right away.
+if (scrollingToReply.value) {
+  window.addEventListener('wheel', preventScroll, { passive: false })
+  window.addEventListener('touchmove', preventScroll, { passive: false })
+}
+
+watch(
+  () => discussionRef.value?.navigatingToComment,
+  (val) => {
+    scrollingToReply.value = val ?? false
+    // Lock scroll immediately when navigation starts. It stays locked until
+    // the overlay's fade-out transition fully completes (handled by @after-leave)
+    // so programmatic scrollToIdWhenStable isn't aborted by a stray event.
+    if (!import.meta.client)
+      return
+    if (val) {
+      window.addEventListener('wheel', preventScroll, { passive: false })
+      window.addEventListener('touchmove', preventScroll, { passive: false })
+    }
+  },
+)
+
+// Safety net: if Discussion mounted with navigatingToComment already false
+// (e.g. target was already in the DOM so the dim was never needed), clear
+// the pre-set overlay immediately.
+watch(discussionRef, (ref) => {
+  if (ref && !ref.navigatingToComment)
+    scrollingToReply.value = false
+})
+
+function handleScrollOverlayLeave() {
+  // intentional - called from template @after-leave
+  window.removeEventListener('wheel', preventScroll)
+  window.removeEventListener('touchmove', preventScroll)
+}
+
+onUnmounted(() => {
+  if (import.meta.client) {
+    window.removeEventListener('wheel', preventScroll)
+    window.removeEventListener('touchmove', preventScroll)
+  }
+})
 
 // If post is NSFW and user has disabled NSFW content, go back to the previous
 // page. This is to prevent users from accidentally seeing NSFW content if they
@@ -531,7 +604,13 @@ function revealNsfw() {
         <Transition name="fade">
           <section v-if="scrollHeaderReady && !isPageTitleVisible" class="forum-post__scroll">
             <div class="container-m">
-              <div>
+              <UserDisplay
+                v-if="isMobile"
+                :user-id="post.created_by"
+                :hide-username="true"
+                size="m"
+              />
+              <div class="forum-post__scroll-text">
                 <strong class="forum-post__scroll-title">
                   <Button
                     class="back-button"
@@ -544,15 +623,37 @@ function revealNsfw() {
                   >
                     <Icon class="text-color" name="ph:arrow-left" :size="16" />
                   </Button>
-                  {{ post.title ?? 'Unnamed discussion' }}
+                  <span class="forum-post__scroll-title-text">{{ post.title ?? 'Unnamed discussion' }}</span>
                 </strong>
-                <p v-if="post.description">
+                <p v-if="post.description" class="forum-post__scroll-description">
                   {{ post.description }}
                 </p>
               </div>
 
-              <UserAvatar v-if="isMobile" :user-id="post.created_by" linked />
-              <UserDisplay v-else :user-id="post.created_by" show-role />
+              <UserDisplay
+                v-if="!isMobile"
+                :user-id="post.created_by"
+                :show-role="true"
+              />
+
+              <Flex v-if="isMobile && discussionRef?.showTimeline" gap="xs" class="forum-post__scroll-actions">
+                <Tooltip :disabled="isMobile">
+                  <Button square size="s" variant="gray" aria-label="Jump to date" @click="discussionRef?.openTimeline()">
+                    <Icon :size="18" name="ph:clock" />
+                  </Button>
+                  <template #tooltip>
+                    <p>Jump to date</p>
+                  </template>
+                </Tooltip>
+                <Tooltip :disabled="isMobile">
+                  <Button square size="s" variant="gray" aria-label="Go to last reply" @click="discussionRef?.goToEnd()">
+                    <Icon :size="18" name="ph:arrow-down" />
+                  </Button>
+                  <template #tooltip>
+                    <p>Go to last reply</p>
+                  </template>
+                </Tooltip>
+              </Flex>
             </div>
           </section>
         </Transition>
@@ -726,7 +827,7 @@ function revealNsfw() {
                 </template>
               </Tooltip>
               <template v-if="post.modified_at !== post.created_at">
-                <span aria-hidden="true">·</span>
+                <span aria-hidden="true">-</span>
                 <Tooltip :delay="500">
                   <span>Edited {{ dayjs(post.modified_at).fromNow() }}</span>
                   <template #tooltip>
@@ -792,12 +893,19 @@ function revealNsfw() {
 
         <Discussion
           :id="String(post.id)"
+          ref="discussion"
           :key="String(post.id)"
           type="discussion"
           model="forum"
           placeholder="Write your reply to this thread..."
           @reply-submitted="handleReplySubmitted"
         />
+
+        <Transition name="fade" @after-leave="handleScrollOverlayLeave">
+          <div v-if="scrollingToReply" class="forum-post__scroll-overlay">
+            <Spinner />
+          </div>
+        </Transition>
       <!-- Removing this in place of the new timeline.
       <div v-show="contentHeight > 1600" class="forum-post__fast-travel">
         <Tooltip>
@@ -813,9 +921,7 @@ function revealNsfw() {
       </template>
 
       <!-- Nothing found or an error -->
-      <Alert v-else variant="danger" filled>
-        {{ errorMessage ?? 'There was a problem loading the article' }}
-      </Alert>
+      <ErrorAlert v-else message="Failed to load this post" :error="errorMessage ?? undefined" standalone />
     </ClientOnly>
   </div>
 </template>
@@ -916,13 +1022,22 @@ function revealNsfw() {
   padding-block: var(--space-s);
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
-  z-index: var(--z-nav);
+  z-index: var(--z-active);
 
   > div {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: var(--space-xs);
+    gap: var(--space-s);
+  }
+
+  &-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &-actions {
+    flex-shrink: 0;
   }
 
   // I couldn't get flex-shrink working without issues, so in this instance I'll
@@ -938,9 +1053,17 @@ function revealNsfw() {
   font-weight: var(--font-weight-black);
   position: relative;
 
+  &-text {
+    display: block;
+    font-size: inherit;
+    font-weight: inherit;
+    @include line-clamp(2);
+  }
+
   & + p {
     color: var(--color-text-lighter);
     margin-top: var(--space-xs);
+    @include line-clamp(1);
   }
 }
 
@@ -988,10 +1111,33 @@ function revealNsfw() {
   .forum-post__scroll-title {
     font-size: var(--font-size-l);
 
-    & + p {
-      font-size: var(--font-size-s);
+    .back-button {
+      display: none;
+    }
+
+    &-text {
       @include line-clamp(1);
     }
+
+    & + p {
+      font-size: var(--font-size-s);
+    }
   }
+}
+
+.forum-post__scroll-overlay {
+  position: fixed;
+  top: 64px; // matches navbar height used elsewhere on this page
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: color-mix(in srgb, var(--color-bg) 75%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: all;
 }
 </style>

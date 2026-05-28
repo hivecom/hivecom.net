@@ -1,0 +1,12 @@
+- Now that we've done an a pass of the detail sheets in admin, we should do one for admin as well since those have random misalignments and could have more consistent UX
+  - DiscussionEditSheet is a good example of breaking this pattern
+- GameDetailModal
+  - Should find a way to nicely integrate more metadata about a game? We have content and description for instance
+- Modals when scrolled have a scrolling background
+- Somehow content rules sometimes show up when creating an event then clicking away (?)
+- Better display for past events on event [id] in top right to match countdown design/positioning/layout
+- Add official VUI slider to Theme controls
+  - While we're at it, might want to add the new purple color to the sample
+  - Might also want to show rounding indicators like the official VUI example does?
+- Use text-color-purple for ChartDiscussions in metrics
+- Improve switch hint + label on event form

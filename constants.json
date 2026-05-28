@@ -25,7 +25,6 @@
     }
   },
   "CURRENCY": {
-    "SYMBOL": "€",
     "NAME": "Euro",
     "CODE": "EUR"
   },
@@ -34,6 +33,9 @@
   },
   "PATREON": {
     "URL": "https://www.patreon.com/hivecom"
+  },
+  "KOFI": {
+    "URL": "https://ko-fi.com/hivecom"
   },
   "LINKS": {
     "DISCORD": {

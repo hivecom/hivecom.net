@@ -4,6 +4,9 @@ import { computed, ref } from 'vue'
 
 import EventKPIs from '@/components/Admin/Events/EventKPIs.vue'
 import EventTable from '@/components/Admin/Events/EventTable.vue'
+import { useAdminPermissions } from '@/composables/useAdminPermissions'
+
+definePageMeta({ layout: 'admin' })
 
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()

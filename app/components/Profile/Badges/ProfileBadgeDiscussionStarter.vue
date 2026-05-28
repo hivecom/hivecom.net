@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ProfileBadge from '@/components/Profile/Badges/ProfileBadge.vue'
-import { DISCUSSION_STARTER_MIN_COUNT, getDiscussionStarterVariant } from '@/lib/discussionBadge'
+import { DISCUSSION_STARTER_MIN_COUNT, getVariantDiscussionStarter } from '@/lib/badges/catalog'
 
 const props = defineProps<{
   discussions: number
@@ -9,7 +9,7 @@ const props = defineProps<{
 }>()
 
 const discussionCount = computed(() => Math.max(0, Math.floor(props.discussions ?? 0)))
-const variant = computed(() => getDiscussionStarterVariant(discussionCount.value))
+const variant = computed(() => getVariantDiscussionStarter(discussionCount.value))
 const description = computed(() => `Started ${discussionCount.value} forum discussion${discussionCount.value === 1 ? '' : 's'}.`)
 const shouldRender = computed(() => (variant.value !== undefined) && discussionCount.value >= DISCUSSION_STARTER_MIN_COUNT)
 </script>

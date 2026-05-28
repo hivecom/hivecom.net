@@ -3,6 +3,7 @@ import type { useDataLinkPreview } from '@/composables/useDataLinkPreview'
 import { Flex } from '@dolanske/vui'
 import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
+import { useDataMetrics } from '@/composables/useDataMetrics'
 // useGameConnect is consumed inside GameServerConnectButton
 
 type GameserverData = NonNullable<ReturnType<typeof useDataLinkPreview>['data']['value']> & { type: 'gameserver' }
@@ -43,6 +44,26 @@ const containerStateConfig = computed(() => {
 })
 
 const hasAddresses = computed(() => props.data.addresses && props.data.addresses.length > 0)
+
+const { metrics, fetchMetrics } = useDataMetrics()
+
+onMounted(() => {
+  if (metrics.value === null)
+    fetchMetrics()
+})
+
+const playerCount = computed((): number | null => {
+  if (!metrics.value)
+    return null
+  const detail = metrics.value.gameservers.byServer[String(props.data.id)]
+  if (!detail?.data)
+    return null
+  if (detail.protocol === 'minecraft')
+    return detail.data.numPlayers
+  if (detail.protocol === 'source')
+    return detail.data.players
+  return null
+})
 </script>
 
 <template>
@@ -62,7 +83,7 @@ const hasAddresses = computed(() => props.data.addresses && props.data.addresses
         <Icon name="ph:game-controller" class="link-embed__icon" />
         <span class="link-embed__eyebrow">Game server</span>
         <template v-if="containerStateConfig">
-          <span class="link-embed__eyebrow link-embed__eyebrow--sep">&middot;</span>
+          <span class="link-embed__eyebrow link-embed__eyebrow--sep">-</span>
           <Flex y-center gap="xs">
             <span
               class="link-embed__status-dot"
@@ -83,9 +104,16 @@ const hasAddresses = computed(() => props.data.addresses && props.data.addresses
         <Flex y-center gap="s">
           <span v-if="data.gameName" class="link-embed__meta-item">{{ data.gameName }}</span>
           <template v-if="data.gameName && data.region">
-            <span class="link-embed__meta-sep">&middot;</span>
+            <span class="link-embed__meta-sep">-</span>
           </template>
           <span v-if="data.region" class="link-embed__meta-item">{{ data.region.toUpperCase() }}</span>
+          <template v-if="playerCount !== null">
+            <span class="link-embed__meta-sep">-</span>
+            <Flex y-center gap="xs">
+              <Icon name="ph:users" class="link-embed__meta-icon" />
+              <span class="link-embed__meta-item">{{ playerCount }} online</span>
+            </Flex>
+          </template>
         </Flex>
 
         <!-- Connect button - stop propagation so the NuxtLink doesn't navigate -->
@@ -151,5 +179,10 @@ const hasAddresses = computed(() => props.data.addresses && props.data.addresses
   &--unknown {
     background-color: var(--color-text-lighter);
   }
+}
+
+.link-embed__meta-icon {
+  font-size: var(--font-size-s);
+  color: var(--color-text-light);
 }
 </style>

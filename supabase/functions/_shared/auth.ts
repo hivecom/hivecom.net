@@ -4,8 +4,7 @@ import type { Database } from "database-types";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 /**
  * Checks whether the authenticated user currently has an active ban in their
  * profile. Uses the service role client so RLS never interferes with the
@@ -13,8 +12,7 @@ import type { Database } from "database-types";
  */
 async function checkBanStatus(userId: string): Promise<Response | undefined> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey =
-    Deno.env.get("SUPABASE_SECRET_KEY") ??
+  const serviceRoleKey = Deno.env.get("SUPABASE_SECRET_KEY") ??
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
     "";
 
@@ -32,8 +30,7 @@ async function checkBanStatus(userId: string): Promise<Response | undefined> {
     return undefined;
   }
 
-  const isActiveBan =
-    profile?.banned === true &&
+  const isActiveBan = profile?.banned === true &&
     (profile.ban_end == null || new Date(profile.ban_end) > new Date());
 
   if (isActiveBan) {
@@ -58,11 +55,11 @@ async function checkBanStatus(userId: string): Promise<Response | undefined> {
  * enrolled. If the user has no MFA factors this is a no-op. Returns a 403
  * Response when MFA is required but not satisfied, undefined when clear.
  */
-async function checkAssuranceLevel(
+export async function checkAssuranceLevel(
   supabaseClient: ReturnType<typeof createClient<Database>>,
 ): Promise<Response | undefined> {
-  const { data, error } =
-    await supabaseClient.auth.mfa.getAuthenticatorAssuranceLevel();
+  const { data, error } = await supabaseClient.auth.mfa
+    .getAuthenticatorAssuranceLevel();
 
   if (error) {
     // Fail open - don't block if we can't determine the level
@@ -70,8 +67,7 @@ async function checkAssuranceLevel(
     return undefined;
   }
 
-  const needsAal2 =
-    data?.nextLevel === "aal2" && data?.currentLevel !== "aal2";
+  const needsAal2 = data?.nextLevel === "aal2" && data?.currentLevel !== "aal2";
 
   if (needsAal2) {
     return new Response(
@@ -377,8 +373,7 @@ export async function authorizeAuthenticatedHasPermission(
 
 // ---------------------------------------------------------------------------
 // Admin-level guard: permission check + ban check + aal2 assurance
-// ---------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------
 /**
  * Like authorizeAuthenticatedHasPermission, but also enforces that the caller
  * has reached assurance level 2 when their account has MFA enrolled. Use this
@@ -556,7 +551,8 @@ export function authorizeSystemTrigger(req: Request): Response | undefined {
     return new Response(
       JSON.stringify({
         success: false,
-        message: "Unauthorized: Missing or invalid System-Trigger-Secret header",
+        message:
+          "Unauthorized: Missing or invalid System-Trigger-Secret header",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

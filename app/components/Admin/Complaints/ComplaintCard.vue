@@ -19,7 +19,7 @@ const contextGameserverName = ref<string | null>(null)
 onMounted(() => {
   if (props.complaint.context_gameserver) {
     supabase
-      .from('gameservers')
+      .from('network_gameservers')
       .select('name')
       .eq('id', props.complaint.context_gameserver)
       .maybeSingle()
@@ -109,7 +109,7 @@ function handleAcknowledge(event: Event) {
 
 <template>
   <Card
-    class="complaint-card"
+    class="complaint-card card-bg"
     :class="`complaint-card--${status}`"
     expand
     separators
@@ -128,7 +128,7 @@ function handleAcknowledge(event: Event) {
               class="text-color-light"
             />
           </Flex>
-          <Badge :variant="statusConfig.variant" size="s">
+          <Badge :variant="statusConfig.variant">
             <Icon :name="statusConfig.icon" />
             {{ statusConfig.label }}
           </Badge>

@@ -126,7 +126,7 @@ onBeforeMount(fetchRoleMetrics)
       label="Moderators"
       :value="metrics.moderatorUsers"
       icon="ph:gavel"
-      variant="gray"
+      variant="info"
       :is-loading="loading"
       description="Users assigned to the moderator role"
     />

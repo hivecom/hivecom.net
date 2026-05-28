@@ -1,9 +1,6 @@
 import type { Ref } from 'vue'
-import type { Enums } from '@/types/database.types'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { validateMarkdownNoHtml } from '@/lib/utils/sanitize'
-
-type ProfileBadge = Enums<'profile_badge'>
 
 // Minimal set of fields the validators actually read.
 // Both UserForm and ProfileForm satisfy this shape structurally.
@@ -19,12 +16,12 @@ export interface ProfileFormState {
 
 // Full admin user form state - superset of ProfileFormState
 export interface UserFormState extends ProfileFormState {
+  rich_presence_enabled: boolean
   supporter_patreon: boolean
   supporter_lifetime: boolean
   patreon_id: string
   discord_id: string
   steam_id: string
-  badges: ProfileBadge[]
 }
 
 export interface ValidationResult {

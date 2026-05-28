@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Flex, Sheet } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
+import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
+import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
+import CopyValue from '@/components/Shared/CopyValue.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { formatCurrency } from '@/lib/utils/currency'
@@ -24,7 +27,10 @@ const props = defineProps<{
 }>()
 
 // Define emits
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits<{
+  edit: [expense: Tables<'funding_expenses'>]
+  delete: [expense: Tables<'funding_expenses'>]
+}>()
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -35,13 +41,13 @@ function handleClose() {
 }
 
 // Handle edit action from AdminActions
-function handleEdit(expense: Tables<'expenses'>) {
+function handleEdit(expense: Tables<'funding_expenses'>) {
   emit('edit', expense)
   isOpen.value = false
 }
 
 // Handle delete action from AdminActions
-function handleDelete(expense: Tables<'expenses'>) {
+function handleDelete(expense: Tables<'funding_expenses'>) {
   emit('delete', expense)
   isOpen.value = false
 }
@@ -66,90 +72,71 @@ function handleDelete(expense: Tables<'expenses'>) {
         <Flex y-center gap="s">
           <AdminActions
             v-if="props.expense"
-            resource-type="expenses"
+            resource-type="funding"
             :item="props.expense"
             :show-labels="true"
-            @edit="(expenseItem) => handleEdit(expenseItem as Tables<'expenses'>)"
-            @delete="(expenseItem) => handleDelete(expenseItem as Tables<'expenses'>)"
+            @edit="(expenseItem) => handleEdit(expenseItem as Tables<'funding_expenses'>)"
+            @delete="(expenseItem) => handleDelete(expenseItem as Tables<'funding_expenses'>)"
           />
         </Flex>
       </Flex>
     </template>
 
     <Flex v-if="props.expense" column gap="m" class="expense-details">
-      <Flex column gap="l" expand>
-        <!-- Basic info -->
-        <Card class="card-bg">
-          <Flex column gap="l" expand>
-            <Grid class="expense-details__item" expand :columns="2">
-              <span class="expense-details__label">ID:</span>
-              <span>{{ props.expense.id }}</span>
-            </Grid>
+      <!-- Basic info -->
+      <DetailTable>
+        <template #header>
+          <Icon name="ph:receipt" />
+          <h6>Overview</h6>
+        </template>
+        <DetailRow label="ID">
+          <CopyValue :text="String(props.expense.id)" link />
+        </DetailRow>
+        <DetailRow label="Amount">
+          <span class="text-s text-bold">{{ formatCurrency(props.expense.amount_cents) }}</span>
+        </DetailRow>
+        <DetailRow label="Status">
+          <span class="text-s" :class="props.expense.ended_at ? 'text-color-light' : 'color-success'">
+            {{ props.expense.ended_at ? 'Ended' : 'Active' }}
+          </span>
+        </DetailRow>
+        <DetailRow label="Duration">
+          <span class="text-s">{{ calculateDurationBetweenDates(props.expense.started_at, props.expense.ended_at) }}</span>
+        </DetailRow>
+        <DetailRow label="Started">
+          <TimestampDate :date="props.expense.started_at" />
+        </DetailRow>
+        <DetailRow label="Ended" :hidden="!props.expense.ended_at">
+          <TimestampDate :date="props.expense.ended_at!" />
+        </DetailRow>
+        <DetailRow label="URL" :hidden="!props.expense.url">
+          <a :href="props.expense.url!" target="_blank" rel="noopener noreferrer" class="link">
+            {{ props.expense.url }}
+            <Icon name="ph:arrow-square-out" />
+          </a>
+        </DetailRow>
+      </DetailTable>
 
-            <Grid class="expense-details__item" expand :columns="2">
-              <span class="expense-details__label">Name:</span>
-              <span>{{ props.expense.name || 'Unnamed Expense' }}</span>
-            </Grid>
+      <!-- Description -->
+      <DetailTable v-if="props.expense.description">
+        <template #header>
+          <Icon name="ph:text-align-left" />
+          <h6>Description</h6>
+        </template>
+        <div class="expense-details__description">
+          <p class="text-s">
+            {{ props.expense.description }}
+          </p>
+        </div>
+      </DetailTable>
 
-            <Grid v-if="props.expense.description" class="expense-details__item" expand :columns="2">
-              <span class="expense-details__label">Description:</span>
-              <span>{{ props.expense.description }}</span>
-            </Grid>
-
-            <Grid class="expense-details__item" expand :columns="2">
-              <span class="expense-details__label">Amount:</span>
-              <span class="text-bold">{{ formatCurrency(props.expense.amount_cents) }}</span>
-            </Grid>
-
-            <Grid class="expense-details__item" expand :columns="2">
-              <span class="expense-details__label">Status:</span>
-              <span :class="props.expense.ended_at ? 'text-color-light' : 'color-success'">
-                {{ props.expense.ended_at ? 'Ended' : 'Active' }}
-              </span>
-            </Grid>
-
-            <Grid class="expense-details__item" expand :columns="2">
-              <span class="expense-details__label">Duration:</span>
-              <span>{{ calculateDurationBetweenDates(props.expense.started_at, props.expense.ended_at) }}</span>
-            </Grid>
-
-            <Grid v-if="props.expense.url" class="expense-details__item" expand :columns="2">
-              <span class="expense-details__label">URL:</span>
-              <a :href="props.expense.url" target="_blank" rel="noopener noreferrer" class="link">
-                {{ props.expense.url }}
-                <Icon name="ph:arrow-square-out" />
-              </a>
-            </Grid>
-          </Flex>
-        </Card>
-
-        <!-- Date Information -->
-        <Card separators class="card-bg">
-          <template #header>
-            <h6>Date Information</h6>
-          </template>
-
-          <Flex column gap="l" expand>
-            <Grid class="expense-details__item" expand :columns="2">
-              <span class="expense-details__label">Started:</span>
-              <TimestampDate :date="props.expense.started_at" />
-            </Grid>
-
-            <Grid v-if="props.expense.ended_at" class="expense-details__item" expand :columns="2">
-              <span class="expense-details__label">Ended:</span>
-              <TimestampDate :date="props.expense.ended_at" />
-            </Grid>
-          </Flex>
-        </Card>
-
-        <!-- Metadata -->
-        <Metadata
-          :created-at="props.expense.created_at"
-          :created-by="props.expense.created_by"
-          :modified-at="props.expense.modified_at"
-          :modified-by="props.expense.modified_by"
-        />
-      </Flex>
+      <!-- Metadata -->
+      <Metadata
+        :created-at="props.expense.created_at"
+        :created-by="props.expense.created_by"
+        :modified-at="props.expense.modified_at"
+        :modified-by="props.expense.modified_by"
+      />
     </Flex>
   </Sheet>
 </template>
@@ -158,14 +145,8 @@ function handleDelete(expense: Tables<'expenses'>) {
 .expense-details {
   padding-bottom: var(--space);
 
-  &__label {
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text-light);
-  }
-
-  &__metadata-by {
-    font-size: var(--font-size-l);
-    color: var(--color-text-light);
+  &__description {
+    padding: var(--space-m);
   }
 }
 

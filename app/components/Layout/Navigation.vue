@@ -4,6 +4,7 @@ import SharedLogo from '@/components/Shared/Logo.vue'
 import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useCommand } from '@/composables/useCommand'
 import { useMfaStatus } from '@/composables/useMfaStatus'
+import { useSessionReady } from '@/composables/useSessionReady'
 import { navigationLinks } from '@/config/navigation'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import NavEventBadge from './NavEventBadge.vue'
@@ -20,8 +21,8 @@ const { signInPath } = useAuthRedirect()
 
 // Listen for auth events
 const user = useSupabaseUser()
-const supabase = useSupabaseClient()
-const authReady = ref(false)
+const { waitForSessionReady, isSessionReady } = useSessionReady()
+const authReady = ref(isSessionReady())
 
 const route = useRoute()
 
@@ -49,7 +50,7 @@ watch(
 
 // Whether to show status badges in navbar or not
 onBeforeMount(async () => {
-  await supabase.auth.getSession().catch(() => null)
+  await waitForSessionReady()
   authReady.value = true
 })
 
@@ -110,7 +111,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
             <Icon name="ph:list" size="2rem" />
           </Button>
           <Button square plain aria-label="Search" class="navigation__mobile-search pl-4 vui-button-accent-weak vui-button-rounded" @click="openCommand()">
-            <Icon name="ph:magnifying-glass" size="16" />
+            <Icon name="ph:magnifying-glass" size="20" />
           </Button>
         </div>
 
@@ -169,7 +170,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
         >
           <template #header>
             <Flex x-between style="padding-top:3px">
-              <SharedLogo />
+              <SharedLogo class="navigation__sheet-logo" />
             </Flex>
           </template>
           <template #header-end />
@@ -469,7 +470,21 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
     opacity: 0.5;
   }
 
+  &__sheet-logo {
+    .logo--full {
+      display: block !important;
+    }
+
+    .logo--compact {
+      display: none !important;
+    }
+  }
+
   &__mobile-sheet {
+    .vui-card-header {
+      min-height: 64px !important;
+    }
+
     :deep(.vui-card-header > button) {
       display: none !important;
     }
@@ -670,7 +685,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
   }
 }
 
-@container navigation (max-width: #{$breakpoint-vui-mobile}) {
+@media (max-width: #{$breakpoint-vui-mobile}) {
   .navigation {
     &__mobile-menu {
       gap: var(--space-xs);
