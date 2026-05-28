@@ -68,7 +68,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="groupRef" class="corner-group" @mouseleave="onGroupLeave">
+  <div ref="groupRef" class="corner-group" @mouseleave="onGroupLeave" @touchend="onGroupLeave">
     <div ref="overlayRef" class="corner-overlay">
       <span class="corner corner--tl" />
       <span class="corner corner--tr" />

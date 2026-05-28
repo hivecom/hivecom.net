@@ -68,21 +68,31 @@ watch(src, (url) => {
 }
 
 .prose-img-missing {
+  position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: var(--border-radius-s);
   background-color: var(--color-bg-raised);
-  background-image: url('/landing/noise.gif');
-  background-size: 120px;
-  background-repeat: repeat;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('/landing/noise.gif');
+    background-size: 120px;
+    background-repeat: repeat;
+    opacity: 0.05;
+    border-radius: inherit;
+  }
 
   span {
     font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
-    background: rgba(0, 0, 0, 0.45);
+    color: var(--color-text);
+    background: var(--color-bg-medium);
     padding: var(--space-xxs) var(--space-xs);
     border-radius: var(--border-radius-s);
   }

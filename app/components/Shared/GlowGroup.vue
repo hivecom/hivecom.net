@@ -35,6 +35,26 @@ function handleMouseLeave() {
     card.deactivate()
   }
 }
+
+function handleTouchMove(e: TouchEvent) {
+  const touch = e.touches[0]
+  if (!touch)
+    return
+  for (const card of cards.value) {
+    const el = card.getEl()
+    if (!el)
+      continue
+    const rect = el.getBoundingClientRect()
+    card.setPosition(touch.clientX - rect.left, touch.clientY - rect.top)
+    card.activate()
+  }
+}
+
+function handleTouchEnd() {
+  for (const card of cards.value) {
+    card.deactivate()
+  }
+}
 </script>
 
 <template>
@@ -42,6 +62,8 @@ function handleMouseLeave() {
     class="glow-group"
     @mousemove="handleMouseMove"
     @mouseleave="handleMouseLeave"
+    @touchmove.passive="handleTouchMove"
+    @touchend="handleTouchEnd"
   >
     <slot />
   </div>

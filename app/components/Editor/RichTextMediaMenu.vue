@@ -54,15 +54,20 @@ function getSelectedNodeType(): MediaNodeType | null {
   return null
 }
 
-function shouldShow({ state }: ShouldShowMenuProps): boolean {
+function shouldShow({ state, view }: ShouldShowMenuProps): boolean {
   const { selection } = state
   const node = (selection as { node?: { type?: { name?: string }, attrs?: { src?: string } } }).node
   const name = node?.type?.name
   const src = node?.attrs?.src ?? ''
   // Show for blob images (crop available) and all uploaded media
   // Hide for blob videos (no crop, no useful actions while pending)
-  if (name === 'image')
+  // Hide for errored/missing images
+  if (name === 'image') {
+    const domNode = view.nodeDOM((selection as { from: number }).from) as HTMLElement | null
+    if (domNode?.querySelector('img.img-error'))
+      return false
     return true
+  }
   if (name === 'video')
     return !src.startsWith('blob:')
   return false

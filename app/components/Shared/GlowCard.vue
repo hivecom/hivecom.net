@@ -86,6 +86,26 @@ function handleMouseLeave() {
     return
   deactivate()
 }
+
+function handleTouchMove(e: TouchEvent) {
+  if (group)
+    return
+  const touch = e.touches[0]
+  if (!touch)
+    return
+  const el = wrapperRef.value
+  if (!el)
+    return
+  const rect = el.getBoundingClientRect()
+  setPosition(touch.clientX - rect.left, touch.clientY - rect.top)
+  activate()
+}
+
+function handleTouchEnd() {
+  if (group)
+    return
+  deactivate()
+}
 </script>
 
 <template>
@@ -99,6 +119,8 @@ function handleMouseLeave() {
     }"
     @mousemove="handleMouseMove"
     @mouseleave="handleMouseLeave"
+    @touchmove.passive="handleTouchMove"
+    @touchend="handleTouchEnd"
   >
     <slot />
   </div>

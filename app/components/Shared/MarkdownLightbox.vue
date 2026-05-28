@@ -104,10 +104,9 @@ useEventListener('keydown', (event) => {
   }
 })
 
-// Listen for swipe events - use onSwipeEnd so it fires exactly once per gesture,
-// not on every touch-move frame like whenever(isSwiping) would.
+// Live drag tracking: imageWrap follows the pointer (mouse + touch), transitions only on release.
 const imageWrap = useTemplateRef('imageWrap')
-useSwipe(imageWrap, {
+const { isSwiping, posStart, posEnd } = usePointerSwipe(imageWrap, {
   onSwipeEnd(_e, direction) {
     if (direction === 'left') {
       next()
@@ -117,15 +116,43 @@ useSwipe(imageWrap, {
     }
   },
 })
+
+// Hard stop at gallery edges - no drag past first/last item.
+// posEnd.x - posStart.x is positive when dragging right, negative when dragging left.
+const dragOffset = computed(() => {
+  if (!isSwiping.value)
+    return 0
+  const raw = posEnd.x - posStart.x
+  if (raw > 0 && !hasPrev.value)
+    return 0
+  if (raw < 0 && !hasNext.value)
+    return 0
+  return raw
+})
+
+const dragStyle = computed(() => {
+  if (!isSwiping.value)
+    return {}
+  return {
+    transform: `translateX(${dragOffset.value}px)`,
+    transition: 'none',
+  }
+})
 </script>
 
 <template>
   <Modal class="md-lightbox" size="screen" :open="isOpen" centered @close="close">
     <div ref="imageWrap" class="md-lightbox__img-wrap">
       <Transition :name="`md-lightbox-slide-${slideDir}`">
-        <div v-if="activeItem" :key="activeItem.url" class="md-lightbox__slide" @click.self="close">
-          <img v-if="activeItem.type === 'image'" class="ignored" :src="activeItem.url" loading="lazy" decoding="async">
-          <video v-else controls autoplay :src="activeItem.url" />
+        <div
+          v-if="activeItem"
+          :key="activeItem.url"
+          class="md-lightbox__slide"
+          :style="dragStyle"
+          @click.self="close"
+        >
+          <img v-if="activeItem.type === 'image'" class="ignored" :src="activeItem.url" loading="lazy" decoding="async" draggable="false">
+          <video v-else controls autoplay :src="activeItem.url" draggable="false" />
         </div>
       </Transition>
     </div>
@@ -154,6 +181,8 @@ useSwipe(imageWrap, {
     width: var(--width);
     position: relative;
     overflow: hidden;
+    user-select: none;
+    touch-action: none;
   }
 
   &__slide {

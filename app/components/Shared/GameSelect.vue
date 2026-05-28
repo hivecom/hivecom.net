@@ -77,7 +77,7 @@ function clearSelection() {
 </script>
 
 <template>
-  <Dropdown :expand="expand">
+  <Dropdown>
     <template #trigger="{ toggle, isOpen: dropdownOpen }">
       <button
         type="button"

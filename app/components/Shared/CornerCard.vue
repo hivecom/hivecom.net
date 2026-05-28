@@ -47,10 +47,36 @@ function onMouseLeave() {
     return
   overlay.style.opacity = '0'
 }
+
+function onTouchStart() {
+  if (group) {
+    group.notifyEnter(handle)
+    return
+  }
+  const overlay = overlayRef.value
+  if (!overlay)
+    return
+  overlay.style.transition = 'none'
+  overlay.style.transform = 'scale(0.5)'
+  overlay.style.opacity = '0'
+  void overlay.offsetHeight
+  overlay.style.transition = ''
+  overlay.style.transform = 'scale(1)'
+  overlay.style.opacity = '1'
+}
+
+function onTouchEnd() {
+  if (group)
+    return
+  const overlay = overlayRef.value
+  if (!overlay)
+    return
+  overlay.style.opacity = '0'
+}
 </script>
 
 <template>
-  <div ref="cardRef" class="corner-card" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave">
+  <div ref="cardRef" class="corner-card" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave" @touchstart.passive="onTouchStart" @touchend="onTouchEnd">
     <div v-if="!group" ref="overlayRef" class="corner-overlay">
       <span class="corner corner--tl" />
       <span class="corner corner--tr" />

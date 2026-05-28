@@ -58,7 +58,7 @@ const emit = defineEmits<{
 // images in the editor view defer decode and don't block the main thread.
 const LazyImage = Image.extend({
   renderHTML({ HTMLAttributes }) {
-    return ['img', { loading: 'lazy', decoding: 'async', ...HTMLAttributes }]
+    return ['div', { 'data-img-node': '' }, ['img', { loading: 'lazy', decoding: 'async', onerror: 'this.classList.add(\'img-error\')', ...HTMLAttributes }]]
   },
 })
 
@@ -1752,7 +1752,8 @@ onBeforeRouteLeave(() => {
 
     // Base styles for any grouped image or video.
     .ProseMirror > img[data-img-run-total],
-    .ProseMirror > div[data-video-embed][data-img-run-total] {
+    .ProseMirror > div[data-video-embed][data-img-run-total],
+    .ProseMirror > div[data-img-node][data-img-run-total] {
       display: inline-block;
       vertical-align: top;
       max-height: 240px;
@@ -1781,34 +1782,68 @@ onBeforeRouteLeave(() => {
       }
     }
 
+    // Image node wrapper in gallery: inner img covers the tile.
+    .ProseMirror > div[data-img-node][data-img-run-total] {
+      display: inline-block;
+      vertical-align: top;
+      overflow: hidden;
+      position: relative;
+
+      img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+    }
+
+    // Image node wrapper solo (no gallery): transparent passthrough.
+    .ProseMirror > div[data-img-node]:not([data-img-run-total]) {
+      display: block;
+
+      img {
+        display: block;
+        max-width: 100%;
+        height: auto;
+      }
+    }
+
     // Run of 2: each item gets ~50% minus half the gap.
     .ProseMirror > img[data-img-run-total='2'],
-    .ProseMirror > div[data-video-embed][data-img-run-total='2'] {
+    .ProseMirror > div[data-video-embed][data-img-run-total='2'],
+    .ProseMirror > div[data-img-node][data-img-run-total='2'] {
       width: calc(50% - 4px);
     }
 
     .ProseMirror > img[data-img-run-total='2'][data-img-run-index='0'],
-    .ProseMirror > div[data-video-embed][data-img-run-total='2'][data-img-run-index='0'] {
+    .ProseMirror > div[data-video-embed][data-img-run-total='2'][data-img-run-index='0'],
+    .ProseMirror > div[data-img-node][data-img-run-total='2'][data-img-run-index='0'] {
       margin-right: 8px;
     }
 
     // Run of 3: each item gets ~33% minus a third of the total gap.
     .ProseMirror > img[data-img-run-total='3'],
-    .ProseMirror > div[data-video-embed][data-img-run-total='3'] {
+    .ProseMirror > div[data-video-embed][data-img-run-total='3'],
+    .ProseMirror > div[data-img-node][data-img-run-total='3'] {
       width: calc(33.333% - 6px);
     }
 
     .ProseMirror > img[data-img-run-total='3'][data-img-run-index='0'],
     .ProseMirror > img[data-img-run-total='3'][data-img-run-index='1'],
     .ProseMirror > div[data-video-embed][data-img-run-total='3'][data-img-run-index='0'],
-    .ProseMirror > div[data-video-embed][data-img-run-total='3'][data-img-run-index='1'] {
+    .ProseMirror > div[data-video-embed][data-img-run-total='3'][data-img-run-index='1'],
+    .ProseMirror > div[data-img-node][data-img-run-total='3'][data-img-run-index='0'],
+    .ProseMirror > div[data-img-node][data-img-run-total='3'][data-img-run-index='1'] {
       margin-right: 8px;
     }
 
     // On mobile, collapse grouped images to full-width single images and cap height.
     @media (max-width: 600px) {
       // Solo images: fill width, natural height, no cropping.
-      .ProseMirror > img:not([data-img-run-total]) {
+      .ProseMirror > img:not([data-img-run-total]),
+      .ProseMirror > div[data-img-node]:not([data-img-run-total]) img {
         width: 100%;
         height: auto;
         max-height: none;
@@ -1818,7 +1853,8 @@ onBeforeRouteLeave(() => {
 
       // Grouped images and videos: stack vertically, cap height to keep them compact.
       .ProseMirror > img[data-img-run-total],
-      .ProseMirror > div[data-video-embed][data-img-run-total] {
+      .ProseMirror > div[data-video-embed][data-img-run-total],
+      .ProseMirror > div[data-img-node][data-img-run-total] {
         display: block;
         width: 100%;
         max-width: 100%;
@@ -1883,8 +1919,52 @@ onBeforeRouteLeave(() => {
     border-color: var(--color-border-strong);
   }
 
-  img.ProseMirror-selectednode {
+  img.ProseMirror-selectednode,
+  div[data-img-node].ProseMirror-selectednode {
     outline: 2px solid var(--color-text);
+  }
+
+  // Missing/broken image placeholder - noise at 25% opacity with label.
+  .ProseMirror > div[data-img-node]:has(img.img-error) {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-bg-raised);
+    border-radius: var(--border-radius-s);
+
+    &:not([data-img-run-total]) {
+      aspect-ratio: 16 / 9;
+      width: 100%;
+    }
+
+    img {
+      display: none;
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url('/landing/noise.gif');
+      background-size: 120px;
+      background-repeat: repeat;
+      opacity: 0.05;
+      z-index: 1;
+    }
+
+    &::after {
+      content: 'Missing or deleted media';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: var(--font-size-xs);
+      color: var(--color-text);
+      background: var(--color-bg-medium);
+      padding: var(--space-xxs) var(--space-xs);
+      border-radius: var(--border-radius-s);
+      white-space: nowrap;
+      z-index: 2;
+    }
   }
 
   // Uploading placeholder states.

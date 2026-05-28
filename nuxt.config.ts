@@ -410,6 +410,7 @@ export default defineNuxtConfig({
         'chart.js',
         'vue-chartjs',
         'chartjs-scale-timestack',
+        'v-calendar',
       ],
     },
   },
