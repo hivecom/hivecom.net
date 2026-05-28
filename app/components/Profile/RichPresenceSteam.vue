@@ -188,7 +188,7 @@ const visible = ref(false)
       @mouseleave="visible = false"
     >
       <div class="rp-tooltip">
-        <Flex x-between y-center class="mb-s">
+        <Flex x-between y-center>
           <Flex y-center gap="xs">
             <strong class="text-l text-bold">
               Steam
@@ -220,7 +220,7 @@ const visible = ref(false)
           </div>
         </div>
 
-        <Divider v-if="hasPresence && !isPlaying && displayedAppId" class="my-xxs" />
+        <!-- <Divider v-if="hasPresence && !isPlaying && displayedAppId" class="my-xxs" /> -->
 
         <div v-if="hasPresence && !isPlaying && displayedAppId" class="rp-section">
           <a
