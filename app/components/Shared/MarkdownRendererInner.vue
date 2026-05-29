@@ -402,7 +402,9 @@ watch(processedMarkdown, (val) => {
 .typeset {
   display: block;
   width: 100%;
-  overflow-wrap: break-word;
+  // `anywhere` (unlike `break-word`) also affects min-content sizing, so long
+  // unbreakable strings (e.g. URLs) wrap even inside flex/grid min-content boxes.
+  overflow-wrap: anywhere;
   word-break: break-word; // Safari fallback - break-word is non-standard but widely supported
 
   :deep(table) {

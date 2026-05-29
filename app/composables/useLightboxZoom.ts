@@ -31,6 +31,7 @@ const MAX_SCALE = 5
 const SWIPE_THRESHOLD = 60
 const MOVE_THRESHOLD = 8
 const DOUBLE_TAP_SCALE = 2.5
+const DOUBLE_TAP_DELAY = 300
 
 export function useLightboxZoom(
   container: Ref<HTMLElement | null | undefined>,
@@ -57,6 +58,10 @@ export function useLightboxZoom(
   let pinchStartDist = 0
   let pinchStartScale = 1
   let gestureStartScale = 1
+  // Touch double-tap tracking (touch devices don't reliably fire dblclick).
+  let lastTapTime = 0
+  let lastTapX = 0
+  let lastTapY = 0
 
   function reset() {
     scale.value = 1
@@ -218,6 +223,31 @@ export function useLightboxZoom(
         mode = 'none'
         startX = lastX = remaining[1].x
         startY = lastY = remaining[1].y
+      }
+    }
+
+    // Touch double-tap: a quick second tap near the first toggles zoom.
+    // Mouse uses the native dblclick handler, so skip it here.
+    if (
+      e.pointerType !== 'mouse'
+      && mode === 'none'
+      && Math.abs(e.clientX - startX) <= MOVE_THRESHOLD
+      && Math.abs(e.clientY - startY) <= MOVE_THRESHOLD
+    ) {
+      const now = Date.now()
+      if (
+        now - lastTapTime <= DOUBLE_TAP_DELAY
+        && Math.abs(e.clientX - lastTapX) <= MOVE_THRESHOLD * 2
+        && Math.abs(e.clientY - lastTapY) <= MOVE_THRESHOLD * 2
+      ) {
+        const { x, y } = toCenter(e.clientX, e.clientY)
+        zoomToScale(isZoomed.value ? MIN_SCALE : DOUBLE_TAP_SCALE, x, y)
+        lastTapTime = 0
+      }
+      else {
+        lastTapTime = now
+        lastTapX = e.clientX
+        lastTapY = e.clientY
       }
     }
 

@@ -979,6 +979,9 @@ const editedAtFormatted = computed(() => {
 
     &__content {
       width: 100%;
+      // Allow flex item to shrink below its content min-width so long
+      // words (e.g. URLs) can wrap instead of overflowing on narrow screens.
+      min-width: 0;
       border-top-right-radius: var(--border-radius-m);
       border-bottom-right-radius: var(--border-radius-m);
       // Reset desktop padding - mobile header/footer handle their own
@@ -987,6 +990,7 @@ const editedAtFormatted = computed(() => {
     }
 
     &__body {
+      min-width: 0;
       padding: var(--space-m);
       background-color: var(--color-bg-medium);
     }
