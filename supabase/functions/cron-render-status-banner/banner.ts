@@ -51,7 +51,7 @@ const TEXT = "rgb(240, 240, 240)"; // white
 const ACCENT = "rgb(167, 252, 47)"; // green  - website
 const STEAM_BLUE = "rgb(59, 130, 246)"; // blue   - steam
 const GAME_YELLOW = "rgb(234, 179, 8)"; // yellow - servers
-const LIVE = "rgb(239, 68, 68)";       // red    - live event
+const LIVE = "rgb(239, 68, 68)"; // red    - live event
 
 const MONO_FAMILY = "Consolas, 'Courier New', monospace";
 
@@ -231,7 +231,7 @@ export function buildScene(
                 children: [
                   kpiCard("In-game Steam", steamPlayers, STEAM_BLUE),
                   kpiCard(
-                    "In-game Servers",
+                    "Game Server Players",
                     metrics.gameservers.players,
                     GAME_YELLOW,
                   ),
