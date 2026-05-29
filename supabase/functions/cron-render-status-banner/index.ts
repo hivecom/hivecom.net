@@ -56,6 +56,7 @@ const renderer = new Renderer({
 // ---------------------------------------------------------------------------
 const BANNER_WIDTH = 1200;
 const BANNER_HEIGHT = 360;
+const BANNER_PADDING = 8;
 const LEFT_WIDTH = 500;
 const RIGHT_WIDTH = BANNER_WIDTH - LEFT_WIDTH;
 const RADIUS = 12;
@@ -63,6 +64,7 @@ const ACCENT = "rgb(167, 252, 47)";
 const METRICS_BUCKET = "hivecom-content-static";
 const METRICS_OBJECT = "metrics/latest.json";
 const BANNER_OBJECT = "banners/status.png";
+const BANNER_TRANSPARENT_OBJECT = "banners/status-transparent.png";
 
 // ---------------------------------------------------------------------------
 // History extraction helpers
@@ -70,19 +72,28 @@ const BANNER_OBJECT = "banners/status.png";
 interface HistorySeries {
   membersOnline: number[];
   teamspeakOnline: number[];
-  gameServers: number[];
   playersInGame: number[];
+  steamPlayers: number[];
 }
 
 function extractSeries(rows: Record<string, unknown>[]): HistorySeries {
   const num = (row: Record<string, unknown>, key: string): number =>
     typeof row[key] === "number" ? (row[key] as number) : 0;
 
+  const sumJsonb = (row: Record<string, unknown>, key: string): number => {
+    const obj = row[key];
+    if (obj === null || typeof obj !== "object") return 0;
+    return Object.values(obj as Record<string, number>).reduce(
+      (a, b) => a + (typeof b === "number" ? b : 0),
+      0,
+    );
+  };
+
   return {
     membersOnline: rows.map((r) => num(r, "users_online")),
     teamspeakOnline: rows.map((r) => num(r, "teamspeak_online")),
-    gameServers: rows.map((r) => num(r, "gameservers_total")),
     playersInGame: rows.map((r) => num(r, "gameservers_players")),
+    steamPlayers: rows.map((r) => sumJsonb(r, "users_by_steam_game")),
   };
 }
 
@@ -240,18 +251,29 @@ function buildScene(
   metrics: MetricsSnapshot,
   history: HistorySeries,
   live: LiveInfo | null,
+  transparent = false,
 ) {
   const updated = new Date(metrics.collectedAt).toUTCString();
+  const DIVIDER_W = 1;
 
   return container({
     style: {
       display: "flex",
       flexDirection: "row",
-      width: BANNER_WIDTH,
-      height: BANNER_HEIGHT,
+      width: BANNER_WIDTH + BANNER_PADDING * 2,
+      height: BANNER_HEIGHT + BANNER_PADDING * 2,
+      padding: transparent ? 0 : BANNER_PADDING,
       fontFamily: "Manrope",
     },
     children: [
+      container({
+        style: {
+          display: "flex",
+          flexDirection: "row",
+          width: BANNER_WIDTH,
+          height: BANNER_HEIGHT,
+        },
+        children: [
       // Left: branding panel
       container({
         style: {
@@ -265,36 +287,48 @@ function buildScene(
           paddingRight: 40,
           paddingTop: 40,
           paddingBottom: 40,
-          backgroundColor: "#161617",
-          borderTopLeftRadius: RADIUS,
-          borderBottomLeftRadius: RADIUS,
+          ...(transparent ? {} : {
+            backgroundColor: "#161617",
+            borderTopLeftRadius: RADIUS,
+            borderBottomLeftRadius: RADIUS,
+          }),
         },
         children: [
           // Logo SVG
           image({
             src: "logo",
-            width: 411,
-            height: 96,
+            width: 274,
+            height: 64,
             style: { objectFit: "contain" },
           }),
           ...(live ? [livePill(live)] : []),
         ],
       }),
+      // Divider (transparent variant only)
+      ...(transparent ? [container({
+        style: {
+          width: DIVIDER_W,
+          height: BANNER_HEIGHT,
+          backgroundColor: "#2a2a2a",
+        },
+      })] : []),
       // Right: stats panel
       container({
         style: {
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-start",
-          width: RIGHT_WIDTH,
+          width: transparent ? RIGHT_WIDTH - DIVIDER_W : RIGHT_WIDTH,
           height: BANNER_HEIGHT,
           paddingTop: 28,
           paddingBottom: 40,
           paddingLeft: 40,
           paddingRight: 40,
-          backgroundColor: "#0f0f10",
-          borderTopRightRadius: RADIUS,
-          borderBottomRightRadius: RADIUS,
+          ...(transparent ? {} : {
+            backgroundColor: "#0f0f10",
+            borderTopRightRadius: RADIUS,
+            borderBottomRightRadius: RADIUS,
+          }),
         },
         children: [
           statRow(
@@ -313,15 +347,15 @@ function buildScene(
           ),
           statRow(
             "Game Servers",
-            metrics.gameservers.total,
-            history.gameServers,
+            metrics.gameservers.players,
+            history.playersInGame,
             "rgb(234, 179, 8)",
             false,
           ),
           statRow(
             "Playing on Steam",
-            metrics.gameservers.players,
-            history.playersInGame,
+            Object.values(metrics.users.bySteamGame).reduce((a, b) => a + b, 0),
+            history.steamPlayers,
             "rgb(168, 85, 247)",
             true,
           ),
@@ -344,6 +378,8 @@ function buildScene(
               }),
             ],
           }),
+        ],
+      }),
         ],
       }),
     ],
@@ -455,42 +491,46 @@ Deno.serve(async (req: Request) => {
     // -----------------------------------------------------------------------
     // Render PNG (transparent background - no fill on outermost container)
     // -----------------------------------------------------------------------
-    const node = buildScene(metrics, history, live);
-    const png = renderer.render(node as any, {
-      width: BANNER_WIDTH,
-      height: BANNER_HEIGHT,
+    const renderOpts = {
+      width: BANNER_WIDTH + BANNER_PADDING * 2,
+      height: BANNER_HEIGHT + BANNER_PADDING * 2,
       format: "png",
-    });
+    };
+    const png = renderer.render(buildScene(metrics, history, live) as any, renderOpts);
+    const pngTransparent = renderer.render(buildScene(metrics, history, live, true) as any, renderOpts);
 
     // -----------------------------------------------------------------------
-    // Upload to public bucket
+    // Upload both variants to public bucket in parallel
     // -----------------------------------------------------------------------
-    const { error: uploadError } = await supabaseClient.storage
-      .from(METRICS_BUCKET)
-      .upload(
-        BANNER_OBJECT,
-        new Blob([new Uint8Array(png)], { type: "image/png" }),
-        {
-          upsert: true,
-          cacheControl: "60",
-          contentType: "image/png",
-        },
-      );
+    const toBlob = (buf: ArrayBuffer) =>
+      new Blob([new Uint8Array(buf)], { type: "image/png" });
+    const uploadOpts = { upsert: true, cacheControl: "60", contentType: "image/png" };
+
+    const [{ error: uploadError }, { error: uploadTransparentError }] =
+      await Promise.all([
+        supabaseClient.storage.from(METRICS_BUCKET).upload(BANNER_OBJECT, toBlob(png), uploadOpts),
+        supabaseClient.storage.from(METRICS_BUCKET).upload(BANNER_TRANSPARENT_OBJECT, toBlob(pngTransparent), uploadOpts),
+      ]);
 
     if (uploadError) {
       throw new Error(`Failed to upload banner: ${uploadError.message}`);
     }
+    if (uploadTransparentError) {
+      throw new Error(`Failed to upload transparent banner: ${uploadTransparentError.message}`);
+    }
 
     console.log(
-      `Rendered status banner (${png.byteLength} bytes) from snapshot at ${metrics.collectedAt}`,
+      `Rendered status banners (${png.byteLength}b + ${pngTransparent.byteLength}b transparent) from snapshot at ${metrics.collectedAt}`,
     );
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Rendered status banner",
+        message: "Rendered status banners",
         path: `${METRICS_BUCKET}/${BANNER_OBJECT}`,
+        pathTransparent: `${METRICS_BUCKET}/${BANNER_TRANSPARENT_OBJECT}`,
         bytes: png.byteLength,
+        bytesTransparent: pngTransparent.byteLength,
         snapshotAt: metrics.collectedAt,
       }),
       { headers: { "Content-Type": "application/json" } },
