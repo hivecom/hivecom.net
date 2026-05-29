@@ -56,7 +56,7 @@ const renderer = new Renderer({
 // ---------------------------------------------------------------------------
 const BANNER_WIDTH = 1200;
 const BANNER_HEIGHT = 360;
-const BANNER_PADDING = 8;
+const BANNER_PADDING = 0;
 const LEFT_WIDTH = 500;
 const RIGHT_WIDTH = BANNER_WIDTH - LEFT_WIDTH;
 const RADIUS = 12;
