@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { StorageAsset } from '@/lib/storageAssets'
 import { Button, Card, CopyClipboard, Flex, Grid, Modal, Tooltip } from '@dolanske/vui'
-import { useEventListener, useSwipe } from '@vueuse/core'
+import { useEventListener } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { formatBytes, FORUMS_BUCKET_ID, isImageAsset, isVideoAsset } from '@/lib/storageAssets'
@@ -104,14 +104,16 @@ function lightboxNext() {
 }
 
 const lightboxWrap = useTemplateRef('lightboxWrap')
-useSwipe(lightboxWrap, {
-  onSwipeEnd(_e, direction) {
-    if (direction === 'left')
-      lightboxNext()
-    else if (direction === 'right')
-      lightboxPrev()
-  },
+const zoomTarget = useTemplateRef('zoomTarget')
+const { contentStyle, navStyle, reset: resetZoom } = useLightboxZoom(lightboxWrap, zoomTarget, {
+  onNext: lightboxNext,
+  onPrev: lightboxPrev,
+  canNext: () => lightboxHasNext.value,
+  canPrev: () => lightboxHasPrev.value,
 })
+
+// Reset zoom/pan whenever the previewed asset changes or the lightbox closes.
+watch(lightboxIndex, resetZoom)
 
 useEventListener('keydown', (event) => {
   if (!lightboxIsOpen.value)
@@ -255,9 +257,9 @@ function getUploaderId(asset: StorageAsset): string | null {
   <Modal class="md-lightbox" size="screen" :open="lightboxIsOpen" centered @close="closeLightbox">
     <div ref="lightboxWrap" class="md-lightbox__img-wrap">
       <Transition :name="`md-lightbox-slide-${slideDir}`">
-        <div v-if="lightboxUrl" :key="lightboxUrl" class="md-lightbox__slide" @click.self="closeLightbox">
-          <video v-if="lightboxIsVideo" class="ignored" :src="lightboxUrl" controls autoplay loop playsinline preload="auto" />
-          <img v-else class="ignored" :src="lightboxUrl" :alt="lightboxAsset?.name ?? ''" loading="lazy" decoding="async">
+        <div v-if="lightboxUrl" :key="lightboxUrl" class="md-lightbox__slide" :style="navStyle" @click.self="closeLightbox">
+          <video v-if="lightboxIsVideo" ref="zoomTarget" class="ignored" :src="lightboxUrl" :style="contentStyle" controls autoplay loop playsinline preload="auto" />
+          <img v-else ref="zoomTarget" class="ignored" :src="lightboxUrl" :style="contentStyle" :alt="lightboxAsset?.name ?? ''" loading="lazy" decoding="async">
         </div>
       </Transition>
     </div>

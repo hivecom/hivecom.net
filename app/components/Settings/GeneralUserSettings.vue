@@ -67,6 +67,13 @@ const selectedVariantWithTransition = computed({
     <Divider class="my-l" />
 
     <strong class="text-color-lighter text-s block mb-m">
+      Accessibility
+    </strong>
+    <Switch v-model="settings.allow_browser_zoom" class="reversed" label="Allow browser zoom" hint="When enabled, pinch-to-zoom and trackpad zoom work across the whole site. Image and video lightboxes support zooming regardless of this setting." />
+
+    <Divider class="my-l" />
+
+    <strong class="text-color-lighter text-s block mb-m">
       Discussions
     </strong>
     <Switch v-model="settings.show_nsfw_content" class="reversed mb-m" label="Show NSFW content" />

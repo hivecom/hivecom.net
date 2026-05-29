@@ -104,40 +104,19 @@ useEventListener('keydown', (event) => {
   }
 })
 
-// Live drag tracking: imageWrap follows the pointer (mouse + touch), transitions only on release.
+// Pan / zoom / swipe gestures. Drag-to-navigate at native scale, pan while
+// zoomed, wheel + pinch to zoom, double-click/tap to toggle zoom.
 const imageWrap = useTemplateRef('imageWrap')
-const { isSwiping, posStart, posEnd } = usePointerSwipe(imageWrap, {
-  onSwipeEnd(_e, direction) {
-    if (direction === 'left') {
-      next()
-    }
-    else if (direction === 'right') {
-      prev()
-    }
-  },
+const zoomTarget = useTemplateRef('zoomTarget')
+const { contentStyle, navStyle, reset: resetZoom } = useLightboxZoom(imageWrap, zoomTarget, {
+  onNext: next,
+  onPrev: prev,
+  canNext: () => hasNext.value,
+  canPrev: () => hasPrev.value,
 })
 
-// Hard stop at gallery edges - no drag past first/last item.
-// posEnd.x - posStart.x is positive when dragging right, negative when dragging left.
-const dragOffset = computed(() => {
-  if (!isSwiping.value)
-    return 0
-  const raw = posEnd.x - posStart.x
-  if (raw > 0 && !hasPrev.value)
-    return 0
-  if (raw < 0 && !hasNext.value)
-    return 0
-  return raw
-})
-
-const dragStyle = computed(() => {
-  if (!isSwiping.value)
-    return {}
-  return {
-    transform: `translateX(${dragOffset.value}px)`,
-    transition: 'none',
-  }
-})
+// Reset zoom/pan whenever the visible media changes or the lightbox closes.
+watch(activeIndex, resetZoom)
 </script>
 
 <template>
@@ -148,11 +127,11 @@ const dragStyle = computed(() => {
           v-if="activeItem"
           :key="activeItem.url"
           class="md-lightbox__slide"
-          :style="dragStyle"
+          :style="navStyle"
           @click.self="close"
         >
-          <img v-if="activeItem.type === 'image'" class="ignored" :src="activeItem.url" loading="lazy" decoding="async" draggable="false">
-          <video v-else controls autoplay :src="activeItem.url" draggable="false" />
+          <img v-if="activeItem.type === 'image'" ref="zoomTarget" class="ignored" :src="activeItem.url" :style="contentStyle" loading="lazy" decoding="async" draggable="false">
+          <video v-else ref="zoomTarget" controls autoplay :src="activeItem.url" :style="contentStyle" draggable="false" />
         </div>
       </Transition>
     </div>

@@ -342,7 +342,7 @@ watchEffect(async () => {
         </template>
         <ChartActivityHistogramControls :series="['usersGameActivity']" :game-id="props.game.id">
           <template #default="{ period, window, utc, color }">
-            <ChartGameActivity :period :window :utc :color :game-id="props.game.id" compact />
+            <ChartGameActivity :period :window :utc :color="props.game.color ?? color" :game-id="props.game.id" compact />
           </template>
         </ChartActivityHistogramControls>
       </Card>

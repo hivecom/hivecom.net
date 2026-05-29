@@ -203,6 +203,15 @@ body {
   scrollbar-width: thin;
 }
 
+// Disable the browser's pinch-zoom and double-tap-to-zoom gestures when the
+// user hasn't opted into browser zoom (the default). Scrolling/panning is still
+// allowed; lightboxes opt back into zoom via their own gesture handling (their
+// containers set `touch-action: none`). Toggled by `useZoomPreference`.
+html.disable-zoom,
+html.disable-zoom body {
+  touch-action: pan-x pan-y;
+}
+
 // VUI's reset rule `span { font-size: var(--font-size-m) }` fires on any span,
 // including spans nested inside a [data-text-size] size mark. This means the
 // font-size set by the outer size span never reaches inner color/font spans.

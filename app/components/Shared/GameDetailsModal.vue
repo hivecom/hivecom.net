@@ -682,7 +682,7 @@ watch(
           class="game-details-modal__link"
           @click="handleClose"
         >
-          <Button :expand="isBelowSmall">
+          <Button variant="accent" :expand="isBelowSmall">
             <template #start>
               <Icon name="ph:chats" />
             </template>

@@ -6,6 +6,7 @@ import LayoutLoading from '@/components/Layout/Loading.vue'
 import ThemeEditorControls from '@/components/Themes/ThemeEditorControls.vue'
 import { useDataNotifications } from '@/composables/useDataNotifications'
 import { useUserTheme } from '@/composables/useUserTheme'
+import { useZoomPreference } from '@/composables/useZoomPreference'
 import { useLastSeenTracking } from '@/lib/lastSeen'
 import MarkdownRenderer from './components/Shared/MarkdownRenderer.vue'
 import { wrapCode } from './lib/utils/formatting'
@@ -75,6 +76,10 @@ const layoutName = computed(() => {
 
 // Initialize last seen tracking for authenticated users
 useLastSeenTracking()
+
+// Keep the browser-zoom preference (viewport meta + gesture blocking) in sync
+// with the user's setting.
+useZoomPreference()
 
 // Favicon badge - lights up when there are unread notifications or new realtime activity while tab is hidden
 const { unreadCount } = useDataNotifications()
