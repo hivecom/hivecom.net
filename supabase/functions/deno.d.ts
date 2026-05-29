@@ -39,6 +39,21 @@ declare module "node-ts/lib/node-ts.js" {
   }
 }
 
+declare module "@takumi-rs/wasm" {
+  const init: (options?: any) => Promise<any>;
+  export default init;
+  export class Renderer {
+    constructor(options?: any);
+    [key: string]: any;
+  }
+}
+
+declare module "@takumi-rs/helpers" {
+  export const container: any;
+  export const image: any;
+  export const text: any;
+}
+
 // Catch-all for any other unresolvable npm: specifiers
 declare module "*" {
   const _: any;
@@ -63,6 +78,7 @@ declare namespace Deno {
   function readTextFile(path: string): Promise<string>;
   function writeTextFile(path: string, data: string): Promise<void>;
   function readFile(path: string): Promise<Uint8Array>;
+  function writeFile(path: string, data: Uint8Array): Promise<void>;
 
   const args: string[];
   const pid: number;
