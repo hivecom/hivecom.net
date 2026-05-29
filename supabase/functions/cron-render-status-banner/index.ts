@@ -372,7 +372,7 @@ function buildScene(
                     fontSize: 12,
                     color: "#6a6a6a",
                   }),
-                  text("Histogram over 24 hours", {
+                  text("Histogram over 24 hours / Refreshes every 5 minutes", {
                     fontSize: 12,
                     color: "#6a6a6a",
                   }),

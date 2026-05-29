@@ -63,18 +63,24 @@ watch(() => props.assets, (assets) => {
 }, { immediate: true })
 
 // ─── Lightbox ─────────────────────────────────────────────────────────────────
-const imageAssets = computed(() => props.assets.filter(a => isImageAsset(a) && a.publicUrl))
+function isPreviewable(asset: StorageAsset): boolean {
+  return Boolean(asset.publicUrl) && (isImageAsset(asset) || isVideoAsset(asset))
+}
+
+const previewableAssets = computed(() => props.assets.filter(isPreviewable))
 const lightboxIndex = ref(-1)
-const lightboxUrl = computed(() => imageAssets.value[lightboxIndex.value]?.publicUrl ?? null)
+const lightboxAsset = computed(() => previewableAssets.value[lightboxIndex.value] ?? null)
+const lightboxUrl = computed(() => lightboxAsset.value?.publicUrl ?? null)
+const lightboxIsVideo = computed(() => lightboxAsset.value != null && isVideoAsset(lightboxAsset.value))
 const lightboxIsOpen = computed(() => lightboxIndex.value !== -1)
 const lightboxHasPrev = computed(() => lightboxIndex.value > 0)
-const lightboxHasNext = computed(() => lightboxIndex.value < imageAssets.value.length - 1)
+const lightboxHasNext = computed(() => lightboxIndex.value < previewableAssets.value.length - 1)
 
 type SlideDir = 'left' | 'right'
 const slideDir = ref<SlideDir>('left')
 
 function openLightbox(asset: StorageAsset) {
-  const idx = imageAssets.value.findIndex(a => a.path === asset.path)
+  const idx = previewableAssets.value.findIndex(a => a.path === asset.path)
   if (idx !== -1)
     lightboxIndex.value = idx
 }
@@ -187,7 +193,7 @@ function getUploaderId(asset: StorageAsset): string | null {
         </template>
 
         <div v-if="asset.type !== 'folder'" class="asset-grid-actions" @click.stop>
-          <Tooltip v-if="!props.clickToPreview && isImageAsset(asset) && asset.publicUrl">
+          <Tooltip v-if="!props.clickToPreview && isPreviewable(asset)">
             <Button size="s" variant="gray" square @click="openLightbox(asset)">
               <Icon name="ph:eye" size="16" />
             </Button>
@@ -250,15 +256,16 @@ function getUploaderId(asset: StorageAsset): string | null {
     <div ref="lightboxWrap" class="md-lightbox__img-wrap">
       <Transition :name="`md-lightbox-slide-${slideDir}`">
         <div v-if="lightboxUrl" :key="lightboxUrl" class="md-lightbox__slide" @click.self="closeLightbox">
-          <img class="ignored" :src="lightboxUrl" :alt="imageAssets[lightboxIndex]?.name ?? ''" loading="lazy" decoding="async">
+          <video v-if="lightboxIsVideo" class="ignored" :src="lightboxUrl" controls autoplay loop playsinline preload="auto" />
+          <img v-else class="ignored" :src="lightboxUrl" :alt="lightboxAsset?.name ?? ''" loading="lazy" decoding="async">
         </div>
       </Transition>
     </div>
-    <Flex v-if="imageAssets.length > 1" x-center gap="l" class="md-lightbox-nav" y-center>
+    <Flex v-if="previewableAssets.length > 1" x-center gap="l" class="md-lightbox-nav" y-center>
       <Button size="s" square :disabled="!lightboxHasPrev" :variant="lightboxHasPrev ? 'fill' : 'gray'" @click="lightboxPrev">
         <Icon name="ph:arrow-left" />
       </Button>
-      <span>{{ lightboxIndex + 1 }} / {{ imageAssets.length }}</span>
+      <span>{{ lightboxIndex + 1 }} / {{ previewableAssets.length }}</span>
       <Button size="s" square :disabled="!lightboxHasNext" :variant="lightboxHasNext ? 'fill' : 'gray'" @click="lightboxNext">
         <Icon name="ph:arrow-right" />
       </Button>
