@@ -274,112 +274,112 @@ function buildScene(
           height: BANNER_HEIGHT,
         },
         children: [
-      // Left: branding panel
-      container({
-        style: {
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          width: LEFT_WIDTH,
-          height: BANNER_HEIGHT,
-          paddingLeft: 40,
-          paddingRight: 40,
-          paddingTop: 40,
-          paddingBottom: 40,
-          ...(transparent ? {} : {
-            backgroundColor: "#161617",
-            borderTopLeftRadius: RADIUS,
-            borderBottomLeftRadius: RADIUS,
-          }),
-        },
-        children: [
-          // Logo SVG
-          image({
-            src: "logo",
-            width: 274,
-            height: 64,
-            style: { objectFit: "contain" },
-          }),
-          ...(live ? [livePill(live)] : []),
-        ],
-      }),
-      // Divider (transparent variant only)
-      ...(transparent ? [container({
-        style: {
-          width: DIVIDER_W,
-          height: BANNER_HEIGHT,
-          backgroundColor: "#2a2a2a",
-        },
-      })] : []),
-      // Right: stats panel
-      container({
-        style: {
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-start",
-          width: transparent ? RIGHT_WIDTH - DIVIDER_W : RIGHT_WIDTH,
-          height: BANNER_HEIGHT,
-          paddingTop: 28,
-          paddingBottom: 40,
-          paddingLeft: 40,
-          paddingRight: 40,
-          ...(transparent ? {} : {
-            backgroundColor: "#0f0f10",
-            borderTopRightRadius: RADIUS,
-            borderBottomRightRadius: RADIUS,
-          }),
-        },
-        children: [
-          statRow(
-            "Website",
-            metrics.users.online,
-            history.membersOnline,
-            ACCENT,
-            false,
-          ),
-          statRow(
-            "Teamspeak",
-            metrics.teamspeak.online,
-            history.teamspeakOnline,
-            "rgb(59, 130, 246)",
-            false,
-          ),
-          statRow(
-            "Game Servers",
-            metrics.gameservers.players,
-            history.playersInGame,
-            "rgb(234, 179, 8)",
-            false,
-          ),
-          statRow(
-            "Playing on Steam",
-            Object.values(metrics.users.bySteamGame).reduce((a, b) => a + b, 0),
-            history.steamPlayers,
-            "rgb(168, 85, 247)",
-            true,
-          ),
+          // Left: branding panel
           container({
             style: {
               display: "flex",
-              flexDirection: "row",
+              flexDirection: "column",
               justifyContent: "space-between",
-              width: "100%",
-              marginTop: "auto",
+              alignItems: "flex-start",
+              width: LEFT_WIDTH,
+              height: BANNER_HEIGHT,
+              paddingLeft: 40,
+              paddingRight: 40,
+              paddingTop: 40,
+              paddingBottom: 40,
+              ...(transparent ? {} : {
+                backgroundColor: "#161617",
+                borderTopLeftRadius: RADIUS,
+                borderBottomLeftRadius: RADIUS,
+              }),
             },
             children: [
-              text(`Updated ${updated}`, {
-                fontSize: 12,
-                color: "#3a3a3a",
+              // Logo SVG
+              image({
+                src: "logo",
+                width: 274,
+                height: 64,
+                style: { objectFit: "contain" },
               }),
-              text("Histogram over 24 hours", {
-                fontSize: 12,
-                color: "#3a3a3a",
+              ...(live ? [livePill(live)] : []),
+            ],
+          }),
+          // Divider (transparent variant only)
+          ...(transparent ? [container({
+            style: {
+              width: DIVIDER_W,
+              height: BANNER_HEIGHT,
+              backgroundColor: "#2a2a2a",
+            },
+          })] : []),
+          // Right: stats panel
+          container({
+            style: {
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "flex-start",
+              width: transparent ? RIGHT_WIDTH - DIVIDER_W : RIGHT_WIDTH,
+              height: BANNER_HEIGHT,
+              paddingTop: 28,
+              paddingBottom: 40,
+              paddingLeft: 40,
+              paddingRight: 40,
+              ...(transparent ? {} : {
+                backgroundColor: "#0f0f10",
+                borderTopRightRadius: RADIUS,
+                borderBottomRightRadius: RADIUS,
+              }),
+            },
+            children: [
+              statRow(
+                "Website",
+                metrics.users.online,
+                history.membersOnline,
+                ACCENT,
+                false,
+              ),
+              statRow(
+                "Teamspeak",
+                metrics.teamspeak.online,
+                history.teamspeakOnline,
+                "rgb(59, 130, 246)",
+                false,
+              ),
+              statRow(
+                "Game Servers",
+                metrics.gameservers.players,
+                history.playersInGame,
+                "rgb(234, 179, 8)",
+                false,
+              ),
+              statRow(
+                "Playing on Steam",
+                Object.values(metrics.users.bySteamGame).reduce((a, b) => a + b, 0),
+                history.steamPlayers,
+                "rgb(168, 85, 247)",
+                true,
+              ),
+              container({
+                style: {
+                  display: "flex",
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  width: "100%",
+                  marginTop: "auto",
+                },
+                children: [
+                  text(`Updated ${updated}`, {
+                    fontSize: 12,
+                    color: "#6a6a6a",
+                  }),
+                  text("Histogram over 24 hours", {
+                    fontSize: 12,
+                    color: "#6a6a6a",
+                  }),
+                ],
               }),
             ],
           }),
-        ],
-      }),
         ],
       }),
     ],
@@ -441,8 +441,7 @@ Deno.serve(async (req: Request) => {
 
     if (snapshotResult.error || !snapshotResult.data) {
       throw new Error(
-        `Failed to load metrics snapshot: ${
-          snapshotResult.error?.message ?? "no data"
+        `Failed to load metrics snapshot: ${snapshotResult.error?.message ?? "no data"
         }`,
       );
     }
