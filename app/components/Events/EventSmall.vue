@@ -2,19 +2,14 @@
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import { formatTimeAgo } from '@/lib/utils/date.js'
 import { truncate } from '@/lib/utils/formatting'
 import BulkAvatarDisplay from '../Shared/BulkAvatarDisplay.vue'
 
-// TODO: use subgrid to properly position items
-
 const props = defineProps<{
   data: Tables<'events'>
 }>()
-
-dayjs.extend(relativeTime)
 
 const isUpcoming = computed(() => {
   return dayjs(props.data.date).isAfter(dayjs())
