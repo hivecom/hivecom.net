@@ -116,6 +116,10 @@ export function getTextColor(): string {
   return cssVar('--color-text') || (isLightTheme() ? '#111111' : '#eeeeee')
 }
 
+export function getHexHoverColor(): string {
+  return cssVar('--color-border-strong') || (isLightTheme() ? '#bbbbbb' : '#555555')
+}
+
 export function getHexBaseColor(): string {
   return cssVar('--color-border') || (isLightTheme() ? '#dddddd' : '#333333')
 }

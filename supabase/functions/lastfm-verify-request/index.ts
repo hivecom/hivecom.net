@@ -74,8 +74,9 @@ Deno.serve(async (req: Request) => {
 
     // Build the callback URL that Last.fm will redirect back to
     const state = btoa(JSON.stringify({ redirect }));
-    const returnUrl =
-      `${baseUrl}/auth/callback/lastfm?state=${encodeURIComponent(state)}`;
+    const returnUrl = `${baseUrl}/auth/callback/lastfm?state=${
+      encodeURIComponent(state)
+    }`;
 
     // Build the Last.fm auth URL
     const lastfmAuthUrl = new URL("https://www.last.fm/api/auth/");

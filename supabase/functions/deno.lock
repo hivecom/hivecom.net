@@ -9,6 +9,8 @@
     "npm:@supabase/realtime-js@2.87.1": "2.87.1",
     "npm:@supabase/storage-js@2.87.1": "2.87.1",
     "npm:@supabase/supabase-js@2": "2.87.1",
+    "npm:@takumi-rs/helpers@1.6.0": "1.6.0",
+    "npm:@takumi-rs/wasm@1.6.0": "1.6.0",
     "npm:google-auth-library@10": "10.5.0",
     "npm:google-auth-library@9": "9.15.1",
     "npm:googleapis@144": "144.0.0",
@@ -96,6 +98,15 @@
         "@supabase/postgrest-js",
         "@supabase/realtime-js",
         "@supabase/storage-js"
+      ]
+    },
+    "@takumi-rs/helpers@1.6.0": {
+      "integrity": "sha512-pjNmUhh1sfqWoyCHRAd0eMciFaDCUYis7FTAb8+XZgNGC3FNJ0b+6hWpnj5zMuP8xrAUoq61FNgj2kGt+B5TRg=="
+    },
+    "@takumi-rs/wasm@1.6.0": {
+      "integrity": "sha512-3VFzUth3+vht8LtjdXRIdVB4vzTJHa0vEypjL149mbq+A7mXRHNCMqeQl4hqHK3lk2H2VElzmxilwzuwtGZf/g==",
+      "dependencies": [
+        "@takumi-rs/helpers"
       ]
     },
     "@types/node@10.17.60": {
@@ -708,6 +719,11 @@
           "jsr:@supabase/supabase-js@2"
         ]
       },
+      "admin-igdb-search": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
       "admin-steam-icon-fetch": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
@@ -738,7 +754,24 @@
           "jsr:@supabase/supabase-js@2"
         ]
       },
+      "cron-render-status-banner": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2",
+          "npm:@takumi-rs/helpers@1.6.0",
+          "npm:@takumi-rs/wasm@1.6.0"
+        ]
+      },
       "cron-teamspeak-sync": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "lastfm-verify-confirm": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "lastfm-verify-request": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
         ]
@@ -749,6 +782,11 @@
         ]
       },
       "openid-steam-verify": {
+        "dependencies": [
+          "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "presence-refresh-lastfm": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
         ]
@@ -826,6 +864,11 @@
       "webhook-kofi-donation": {
         "dependencies": [
           "jsr:@supabase/supabase-js@2"
+        ]
+      },
+      "worker-sync-lastfm": {
+        "dependencies": [
+          "npm:@supabase/supabase-js@2"
         ]
       },
       "worker-sync-steam": {

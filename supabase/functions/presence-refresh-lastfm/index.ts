@@ -69,7 +69,12 @@ Deno.serve(async (req: Request) => {
       .from("profiles")
       .select("lastfm_username, rich_presence_enabled")
       .eq("id", user.id)
-      .single() as { data: { lastfm_username: string | null; rich_presence_enabled: boolean } | null; error: { message: string } | null };
+      .single() as {
+        data:
+          | { lastfm_username: string | null; rich_presence_enabled: boolean }
+          | null;
+        error: { message: string } | null;
+      };
 
     if (profileError) {
       return new Response(
@@ -109,7 +114,8 @@ Deno.serve(async (req: Request) => {
         return new Response(
           JSON.stringify({
             success: false,
-            message: `Please wait ${waitSeconds} seconds before refreshing again`,
+            message:
+              `Please wait ${waitSeconds} seconds before refreshing again`,
             retry_after: waitSeconds,
           }),
           {
@@ -191,7 +197,9 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log(
-      `Refreshed Last.fm presence for ${user.id}: ${track.nowPlaying ? "now playing" : "last played"} "${track.name}" by ${track.artist}`,
+      `Refreshed Last.fm presence for ${user.id}: ${
+        track.nowPlaying ? "now playing" : "last played"
+      } "${track.name}" by ${track.artist}`,
     );
 
     return new Response(

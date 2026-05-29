@@ -1,0 +1,17 @@
+{
+  // Standalone tsconfig for Node scripts in this folder. Kept separate from the
+  // Nuxt-managed root tsconfig so we can opt into nodenext + node types here
+  // without affecting the app.
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["**/*.ts", "../types/**/*.ts"]
+}
