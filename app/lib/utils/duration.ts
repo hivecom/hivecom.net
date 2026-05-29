@@ -4,7 +4,7 @@
 /**
  * Formats a past duration in milliseconds to a human-readable "X ago" string.
  * Returns "Just now" for sub-minute durations.
- * 
+ *
  * @deprecated use `/lib/date`'s `formatTimeAgo`
  */
 export function formatTimeAgo(diffMs: number): string {
