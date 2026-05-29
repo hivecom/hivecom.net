@@ -447,7 +447,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
     top: 50%;
     left: 0;
     transform: translate3D(-50%, -50%, 0);
-    background-color: var(--color-bg-accent-lowered);
+    background-color: var(--color-bg-accent-raised);
     will-change: left, width;
     z-index: -1;
     opacity: 0;
@@ -457,7 +457,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
     pointer-events: none;
 
     &.active {
-      opacity: 0.4;
+      opacity: 0.6;
     }
   }
 

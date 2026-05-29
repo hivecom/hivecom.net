@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Flex, Skeleton } from '@dolanske/vui'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { nextOccurrenceDate } from '@/lib/utils/rrule'
-import Event from './Event.vue'
+import EventLarge from './EventLarge.vue'
 import EventsPastListing from './EventsPastListing.vue'
 
 interface Props {
@@ -123,7 +123,7 @@ const hasActiveEvents = computed(() =>
 
       <GlowGroup>
         <div class="events-section__list">
-          <Event
+          <EventLarge
             v-for="event in ongoingEvents"
             :key="event.id"
             :data="event"
@@ -142,7 +142,7 @@ const hasActiveEvents = computed(() =>
 
       <GlowGroup>
         <div class="events-section__list">
-          <Event
+          <EventLarge
             v-for="(event, index) in upcomingEvents"
             :key="event.id"
             :data="event"

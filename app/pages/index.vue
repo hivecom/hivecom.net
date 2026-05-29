@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import type { MetricsSnapshot } from '@/types/metrics'
 import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
-import EventCardLanding from '@/components/Events/EventCardLanding.vue'
+import EventSmall from '@/components/Events/EventSmall.vue'
 import LandingHero from '@/components/Landing/LandingHero.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataEvents } from '@/composables/useDataEvents'
@@ -238,10 +238,10 @@ onMounted(async () => {
           <div v-else>
             <GlowGroup>
               <Grid :columns="3" gap="m" expand y-stretch class="events-list">
-                <EventCardLanding
+                <EventSmall
                   v-for="event in events"
                   :key="event.id"
-                  :event="event"
+                  :data="event"
                   compact
                 />
               </Grid>

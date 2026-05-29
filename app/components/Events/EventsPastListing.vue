@@ -3,7 +3,7 @@ import { Flex, Grid, paginate, Pagination, Skeleton } from '@dolanske/vui'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataEventsPaged } from '@/composables/useDataEventsPaged'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import EventPast from './EventPast.vue'
+import EventSmall from './EventSmall.vue'
 
 interface Props {
   search?: string
@@ -61,8 +61,8 @@ const pastPagination = computed(() => paginate(pastTotalCount.value, pastPage.va
 
     <template v-else>
       <GlowGroup>
-        <Grid class="events-section__past-grid" :columns="columns" gap="m">
-          <EventPast
+        <Grid class="events-section__past-grid" :columns="columns" gap="m" y-stretch>
+          <EventSmall
             v-for="event in pastEvents"
             :key="event.id"
             :data="event"
