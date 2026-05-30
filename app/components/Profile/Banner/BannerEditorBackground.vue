@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FillType, GradientStop, SelectOption } from './types'
-import { Button, Color, Flex, Select, Tooltip } from '@dolanske/vui'
+import { Button, Color, Flex, Tooltip } from '@dolanske/vui'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import BannerGradientStops from './BannerGradientStops.vue'
 
 defineProps<{
@@ -33,11 +34,10 @@ const emit = defineEmits<{
     <span class="banner-editor__group-label">Background</span>
     <Flex column gap="xs" expand>
       <Flex y-center gap="xs">
-        <Select
+        <ExpandableSelect
           :model-value="fillTypeModel"
           :options="fillTypeOptions"
           single
-          expand
           @update:model-value="emit('update:fillTypeModel', $event)"
         />
         <!-- Solid: single colour swatch -->

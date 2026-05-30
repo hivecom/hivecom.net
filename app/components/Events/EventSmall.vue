@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Card, Flex } from '@dolanske/vui'
+import { Badge, Card, Flex, Skeleton } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import GlowCard from '@/components/Shared/GlowCard.vue'
+import { useCache } from '@/composables/useCache'
+import { useEventTiming } from '@/composables/useEventTiming'
+import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { formatTimeAgo } from '@/lib/utils/date.js'
 import { truncate } from '@/lib/utils/formatting'
 import BulkAvatarDisplay from '../Shared/BulkAvatarDisplay.vue'
@@ -15,20 +18,40 @@ const isUpcoming = computed(() => {
   return dayjs(props.data.date).isAfter(dayjs())
 })
 
+const user = useSupabaseUser()
+const { hasEventEnded } = useEventTiming(() => props.data)
 const userIds = ref<string[]>([])
+const rsvpCount = ref(0)
+const loadingRsvps = ref(false)
 const supabase = useSupabaseClient()
 
-onBeforeMount(() => {
-  supabase.from('event_rsvps')
+const _rsvpCache = useCache(CACHE_NAMESPACES.events)
+
+onBeforeMount(async () => {
+  const cacheKey = `event-rsvps:${props.data.id}`
+  const cached = _rsvpCache.get<string[]>(cacheKey)
+  if (cached !== null) {
+    rsvpCount.value = cached.length
+    if (user.value)
+      userIds.value = cached
+    return
+  }
+
+  loadingRsvps.value = true
+  const { data } = await supabase.from('event_rsvps')
     .select('user_id')
     .eq('rsvp', 'yes')
     .eq('event_id', props.data.id)
-    .then(({ data }) => {
-      // Deduplicate (should probably be fixed in query)
-      userIds.value = data
-        ? Array.from(new Set(data.map(({ user_id }) => user_id)))
-        : []
-    })
+  loadingRsvps.value = false
+
+  // Deduplicate (should probably be fixed in query)
+  const ids = data
+    ? Array.from(new Set(data.map(({ user_id }) => user_id)))
+    : []
+  _rsvpCache.set(cacheKey, ids)
+  rsvpCount.value = ids.length
+  if (user.value)
+    userIds.value = ids
 })
 </script>
 
@@ -50,8 +73,15 @@ onBeforeMount(() => {
         <p class="event-description">
           {{ truncate(props.data.description, 108) }}
         </p>
-        <Flex v-if="userIds.length > 0" x-start class="event-people">
-          <BulkAvatarDisplay :user-ids :max-users="4" avatar-size="s" :expand="false" :gap="6" cluster />
+        <Flex v-if="loadingRsvps" x-start class="event-people">
+          <Skeleton :height="28" :width="80" :radius="4" />
+        </Flex>
+        <Flex v-else-if="rsvpCount > 0" x-start class="event-people">
+          <BulkAvatarDisplay v-if="user" :user-ids :max-users="4" avatar-size="s" :expand="false" :gap="6" cluster />
+          <Badge v-else :variant="hasEventEnded ? 'neutral' : 'accent'">
+            <Icon name="ph:users" />
+            {{ rsvpCount }} {{ hasEventEnded ? 'Went' : 'Going' }}
+          </Badge>
         </Flex>
       </Card>
     </GlowCard>

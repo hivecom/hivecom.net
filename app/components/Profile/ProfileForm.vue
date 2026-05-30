@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, Calendar, Flex, Input, Modal, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
+import { Alert, Button, Calendar, Flex, Input, Modal, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, nextTick, ref, watch } from 'vue'
 import BannerEditor from '@/components/Profile/Banner/BannerEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import { normalizeWebsiteUrl, useUserFormValidation } from '@/composables/useUserFormValidation'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -722,9 +723,8 @@ async function confirmAvatarDelete() {
           </span>
         </Flex>
         <Flex expand class="profile-edit-form__country-container">
-          <Select
+          <ExpandableSelect
             v-model="countrySelectModel"
-            expand
             name="country"
             label="Country"
             placeholder="Select your country (optional)"

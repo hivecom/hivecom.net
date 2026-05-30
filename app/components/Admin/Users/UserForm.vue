@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { UserFormState } from '@/composables/useUserFormValidation'
-import { Button, Calendar, Flex, Input, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
+import { Button, Calendar, Flex, Input, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import ProfileBadgeFromSlug from '@/components/Profile/Badges/ProfileBadgeFromSlug.vue'
 import AvatarDelete from '@/components/Shared/AvatarDelete.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import { useDataProfileBadges } from '@/composables/useDataProfileBadges'
 import { INTRODUCTION_LIMIT, MARKDOWN_LIMIT, normalizeWebsiteUrl, USERNAME_LIMIT, useUserFormValidation } from '@/composables/useUserFormValidation'
 import { deleteUserAvatar, getUserAvatarUrl } from '@/lib/storage'
@@ -550,13 +551,12 @@ function clearBirthday() {
 
           <Flex v-else class="roles-section" column expand>
             <Flex class="role-dropdown" expand y-center :gap="0">
-              <Select
+              <ExpandableSelect
                 v-model="selectedRoleComputed"
                 label="User Role"
                 placeholder="Select role"
                 :options="roleSelectOptions"
                 :disabled="!canEditRoles"
-                expand
               />
             </Flex>
             <Flex v-if="!canEditRoles" class="help-text help-text-input">
@@ -667,9 +667,8 @@ function clearBirthday() {
           </span>
         </Flex>
 
-        <Select
+        <ExpandableSelect
           v-model="countrySelectModel"
-          expand
           label="Country"
           placeholder="Select country (optional)"
           single

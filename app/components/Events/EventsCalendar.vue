@@ -432,9 +432,9 @@ const pageTitle = computed(() => {
       </Button>
     </Flex>
     <Flex gap="xs" y-center>
-      <Flex :gap="0" y-center>
-        <Switch v-model="hideRecurring" />
+      <Flex y-center>
         <span class="text-s text-color-lighter">Hide recurring</span>
+        <Switch v-model="hideRecurring" />
       </Flex>
       <Select
         v-if="useSupabaseUser().value"

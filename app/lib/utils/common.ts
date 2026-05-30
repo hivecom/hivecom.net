@@ -92,7 +92,7 @@ export function deepMergePlainObjects<
   return deepMergePlainObjects(target, ...sources)
 }
 
-const SCROLL_NAVBAR_OFFSET = 148
+const SCROLL_NAVBAR_OFFSET = 92
 
 /**
  * Scrolls the element matching `id` into view, positioning its top edge just
@@ -128,7 +128,7 @@ function findVisibleElement(id: string): HTMLElement | null {
   return els[0]!
 }
 
-export function scrollToId(id: string, block: ScrollIntoViewOptions['block'] = 'start', smooth = false) {
+export function scrollToId(id: string, block: ScrollIntoViewOptions['block'] = 'start', smooth = false, additionalOffset = 0) {
   const el = findVisibleElement(id)
   if (!el)
     return
@@ -137,13 +137,17 @@ export function scrollToId(id: string, block: ScrollIntoViewOptions['block'] = '
   const absoluteTop = rect.top + window.scrollY
 
   let target: number
+  const totalOffset = SCROLL_NAVBAR_OFFSET + additionalOffset
   if (block === 'center') {
-    const availableHeight = window.innerHeight - SCROLL_NAVBAR_OFFSET
-    target = absoluteTop - SCROLL_NAVBAR_OFFSET - availableHeight / 2 + rect.height / 2
+    const availableHeight = window.innerHeight - totalOffset
+    target = absoluteTop - totalOffset - availableHeight / 2 + rect.height / 2
+  }
+  else if (block === 'end') {
+    target = absoluteTop + rect.height - window.innerHeight
   }
   else {
     // 'start' and everything else: align top of element to just below navbar
-    target = absoluteTop - SCROLL_NAVBAR_OFFSET
+    target = absoluteTop - totalOffset
   }
 
   // Programmatic navigation uses 'instant' by default so layout shifts during
@@ -172,6 +176,7 @@ export async function scrollToIdWhenStable(
   block: ScrollIntoViewOptions['block'] = 'start',
   timeoutMs = 5000,
   stableForMs = 150,
+  additionalOffset = 0,
 ): Promise<void> {
   if (!import.meta.client)
     return
@@ -217,13 +222,18 @@ export async function scrollToIdWhenStable(
       const rect = el.getBoundingClientRect()
       const absoluteTop = rect.top + window.scrollY
 
+      const totalOffset = SCROLL_NAVBAR_OFFSET + additionalOffset
       let target: number
       if (block === 'center') {
-        const availableHeight = window.innerHeight - SCROLL_NAVBAR_OFFSET
-        target = absoluteTop - SCROLL_NAVBAR_OFFSET - availableHeight / 2 + rect.height / 2
+        const availableHeight = window.innerHeight - totalOffset
+        target = absoluteTop - totalOffset - availableHeight / 2 + rect.height / 2
+      }
+      else if (block === 'end') {
+        // Align bottom of element to the bottom of the viewport.
+        target = absoluteTop + rect.height - window.innerHeight
       }
       else {
-        target = absoluteTop - SCROLL_NAVBAR_OFFSET
+        target = absoluteTop - totalOffset
       }
 
       // Always re-apply the scroll so we stay pinned to the element.

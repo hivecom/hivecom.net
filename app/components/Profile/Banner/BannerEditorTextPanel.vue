@@ -3,7 +3,8 @@
  * from the parent's layers array, not a cloned value. Mutations are intentional
  * and propagate back to the parent via shared object identity. */
 import type { FillType, SelectOption, TextLayer } from './types'
-import { Button, Color, Divider, Flex, Input, Select, Tooltip } from '@dolanske/vui'
+import { Button, Color, Divider, Flex, Input, Tooltip } from '@dolanske/vui'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import BannerGradientStops from './BannerGradientStops.vue'
 
 defineProps<{
@@ -52,13 +53,12 @@ const emit = defineEmits<{
       </Flex>
       <!-- Font family row -->
       <Flex y-center gap="xs" expand>
-        <Select
+        <ExpandableSelect
           v-if="!fontCustomMode"
           :model-value="fontFamilyModel"
           :options="fontOptions"
           single
           searchable
-          expand
           placeholder="Font family…"
           @update:model-value="emit('update:fontFamilyModel', $event)"
         />
@@ -130,11 +130,10 @@ const emit = defineEmits<{
       </Flex>
       <!-- Fill type + solid colour / gradient stops -->
       <Flex y-center gap="xs">
-        <Select
+        <ExpandableSelect
           :model-value="fillTypeModel"
           :options="fillTypeOptions"
           single
-          expand
           @update:model-value="emit('update:fillTypeModel', $event)"
         />
         <!-- Solid: single colour swatch -->

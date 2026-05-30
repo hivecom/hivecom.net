@@ -44,7 +44,7 @@ export interface ComputedBadge extends BadgeBase {
    * Tiers not listed are not awarded for this badge.
    */
   tiers: Partial<Record<BadgeVariant, number>>
-  unit: 'years' | 'rsvps' | 'discussions' | 'replies'
+  unit: 'years' | 'rsvps' | 'discussions' | 'replies' | 'replies_received'
   /**
    * When true, the numeric `progress` value is rendered inside the badge hex
    * instead of the default icon (e.g. the "One of Us" years badge).
@@ -145,6 +145,15 @@ export const BADGE_CATALOG = {
     tiers: { gold: 10000, silver: 1000, bronze: 100 },
     unit: 'replies',
     sortOrder: 9,
+  },
+  celebrity: {
+    kind: 'computed',
+    label: 'Celebrity',
+    icon: 'ph:star-bold',
+    description: 'Received replies from others on their profile wall',
+    tiers: { gold: 1000, silver: 100, bronze: 10 },
+    unit: 'replies_received',
+    sortOrder: 10,
   },
 } as const satisfies Record<string, BadgeCatalogEntry>
 

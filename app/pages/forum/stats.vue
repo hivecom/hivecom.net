@@ -2,7 +2,7 @@
 import type { ChartOptions } from 'chart.js'
 import type { ChartComponentRef } from 'vue-chartjs'
 import type { ForumUserStat } from '@/composables/useForumStats'
-import { Badge, BreadcrumbItem, Breadcrumbs, Card, Divider, Flex, Grid, Select, Skeleton, theme } from '@dolanske/vui'
+import { Badge, BreadcrumbItem, Breadcrumbs, Card, Divider, Flex, Grid, Skeleton, theme } from '@dolanske/vui'
 import { useElementSize } from '@vueuse/core'
 import {
   BarElement,
@@ -20,6 +20,7 @@ import { computed, onBeforeMount, ref, watchEffect } from 'vue'
 import { Bar, Line } from 'vue-chartjs'
 
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import LightRays from '@/components/Shared/LightRays.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserName from '@/components/Shared/UserName.vue'
@@ -511,9 +512,8 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
                 <Icon :name="leaderboardLabel.icon" size="20" />
                 <strong>{{ leaderboardLabel.header }}</strong>
               </Flex>
-              <Select
+              <ExpandableSelect
                 v-model="selectedLeaderboardOption"
-                :expand="isMobile"
                 :options="leaderboardOptions"
                 :show-clear="false"
                 size="m"

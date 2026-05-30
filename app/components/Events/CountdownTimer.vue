@@ -149,8 +149,13 @@ const timeProgressPercentage = computed(() => {
   border-radius: var(--border-radius-m);
   overflow: hidden;
   width: 100%;
+  min-height: 100px;
 
   &--simple {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
     .countdown-timer {
       &__item {
         padding: var(--space-xs);

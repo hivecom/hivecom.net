@@ -6,6 +6,7 @@ import GrowthBadge from '@/components/Shared/GrowthBadge.vue'
 import { useDataExpenses } from '@/composables/useDataExpenses'
 import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { scrollToId } from '@/lib/utils/common'
 import { formatCurrency } from '@/lib/utils/currency'
 
 interface Props {
@@ -106,7 +107,7 @@ function onSupportButtonClick(e: Event) {
 }
 
 function scrollToSupport() {
-  document.getElementById('support-cta')?.scrollIntoView({ behavior: 'smooth' })
+  scrollToId('#support-cta', 'start', true)
 }
 </script>
 

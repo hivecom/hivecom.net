@@ -73,6 +73,8 @@ const description = computed(() => {
       return `Started ${progress} forum discussion${progress === 1 ? '' : 's'}.`
     if (unit === 'replies')
       return `Posted ${progress} discussion repl${progress === 1 ? 'y' : 'ies'}.`
+    if (unit === 'replies_received')
+      return `Received ${progress} repl${progress === 1 ? 'y' : 'ies'} from others on their profile wall.`
   }
 
   return e.description

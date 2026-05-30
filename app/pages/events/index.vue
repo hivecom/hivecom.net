@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Select, Switch, Tab, Tabs } from '@dolanske/vui'
+import { Button, Flex, Input, Switch, Tab, Tabs } from '@dolanske/vui'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import CreateEventModal from '@/components/Events/CreateEventModal.vue'
 import EventsCalendar from '@/components/Events/EventsCalendar.vue'
 import EventsListing from '@/components/Events/EventsListing.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataEvents } from '@/composables/useDataEvents'
@@ -211,13 +212,14 @@ defineOgImage('Default', {
               <Icon name="ph:magnifying-glass" />
             </template>
           </Input>
-          <Select
+          <ExpandableSelect
             v-if="user"
             v-model="officialFilterOption"
             :options="officialFilterOptions"
             placeholder="Official"
             single
             show-clear
+            :expand="isMobile"
           />
           <GameSelect
             v-model="gameFilterIds"
