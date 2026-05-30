@@ -683,10 +683,10 @@ watch(
           @click="handleClose"
         >
           <Button variant="accent" :expand="isBelowSmall">
-            <template #start>
+            <Flex gap="xs" y-center>
               <Icon name="ph:chats" />
-            </template>
-            Forum Topic
+              Forum Topic
+            </Flex>
           </Button>
         </NuxtLink>
         <Button variant="gray" :expand="isBelowSmall" @click="handleClose">
@@ -872,6 +872,7 @@ watch(
 
   &__event-card {
     display: block;
+    height: 100%;
     padding: var(--space-s);
     border-radius: var(--border-radius-s);
     border: 1px solid var(--color-border);

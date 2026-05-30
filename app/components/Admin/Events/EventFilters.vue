@@ -77,7 +77,7 @@ const hideRecurring = computed<boolean>({
       v-model="officialSelection"
       :options="officialOptions"
       placeholder="Filter by official"
-      :expand="isBelowMedium"
+      :class="{ 'w-100': isBelowMedium }"
       show-clear
       :single="true"
     />

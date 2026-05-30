@@ -827,7 +827,14 @@ const editedAtFormatted = computed(() => {
   &__reply {
     margin-bottom: var(--space-m);
     cursor: pointer;
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
+
+    // VUI Alert content is `flex: 1` without `min-width: 0`, so long unbreakable
+    // strings (e.g. URLs) force the flex item past the container and overflow.
+    :deep(.vui-alert-content),
+    :deep(.vui-alert-default-content) {
+      min-width: 0;
+    }
 
     &:hover {
       background-color: var(--color-bg-raised);
@@ -979,9 +986,6 @@ const editedAtFormatted = computed(() => {
 
     &__content {
       width: 100%;
-      // Allow flex item to shrink below its content min-width so long
-      // words (e.g. URLs) can wrap instead of overflowing on narrow screens.
-      min-width: 0;
       border-top-right-radius: var(--border-radius-m);
       border-bottom-right-radius: var(--border-radius-m);
       // Reset desktop padding - mobile header/footer handle their own
@@ -990,7 +994,6 @@ const editedAtFormatted = computed(() => {
     }
 
     &__body {
-      min-width: 0;
       padding: var(--space-m);
       background-color: var(--color-bg-medium);
     }

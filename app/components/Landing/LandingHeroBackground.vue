@@ -166,22 +166,28 @@ function setupThemeWatcher() {
   })
 }
 
-onMounted(() => {
-  if (!import.meta.client)
-    return
+/**
+ * (Re)create the GL context, program, buffer and uniforms, then kick off the
+ * render loop. Returns false if anything failed so callers can bail.
+ *
+ * This is split out from onMounted so it can run again after a
+ * `webglcontextrestored` event. Chrome reclaims WebGL contexts much more
+ * aggressively than other browsers (and this page already runs a second,
+ * heavier context for the globe), so without restore handling the background
+ * silently goes blank once its context is lost.
+ */
+function initGL(): boolean {
   const canvas = canvasEl.value
   if (!canvas)
-    return
+    return false
 
   gl = canvas.getContext('webgl', { premultipliedAlpha: false })
   if (!gl)
-    return
-
-  startOffset = Math.random() * 100000
+    return false
 
   program = createProgram(gl, vertSrc, fragSrc)
   if (!program)
-    return
+    return false
 
   timeUniform = gl.getUniformLocation(program, 'u_time')
   resolutionUniform = gl.getUniformLocation(program, 'u_resolution')
@@ -189,7 +195,7 @@ onMounted(() => {
   altColorUniform = gl.getUniformLocation(program, 'u_alt_color')
   buffer = gl.createBuffer()
   if (!buffer || !timeUniform || !resolutionUniform || !baseColorUniform || !altColorUniform)
-    return
+    return false
 
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
@@ -203,17 +209,54 @@ onMounted(() => {
     1,
   ]), gl.STATIC_DRAW)
 
+  accentResolved = false
   readAccentColors()
-  setupThemeWatcher()
   resize()
+
+  if (rafId != null)
+    cancelAnimationFrame(rafId)
+  start = 0
   rafId = requestAnimationFrame(render)
+  return true
+}
+
+function handleContextLost(event: Event) {
+  // Default behaviour permanently loses the context; preventing it lets the
+  // browser fire webglcontextrestored so we can rebuild.
+  event.preventDefault()
+  if (rafId != null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
+}
+
+function handleContextRestored() {
+  initGL()
+}
+
+onMounted(() => {
+  if (!import.meta.client)
+    return
+  const canvas = canvasEl.value
+  if (!canvas)
+    return
+
+  startOffset = Math.random() * 100000
+
+  canvas.addEventListener('webglcontextlost', handleContextLost, false)
+  canvas.addEventListener('webglcontextrestored', handleContextRestored, false)
+
+  setupThemeWatcher()
   window.addEventListener('resize', resize)
+  initGL()
 })
 
 onBeforeUnmount(() => {
   if (rafId)
     cancelAnimationFrame(rafId)
   window.removeEventListener('resize', resize)
+  canvasEl.value?.removeEventListener('webglcontextlost', handleContextLost)
+  canvasEl.value?.removeEventListener('webglcontextrestored', handleContextRestored)
   themeMedia?.removeEventListener('change', onThemeChange)
   themeObserver?.disconnect()
   themeObserver = null

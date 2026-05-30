@@ -344,7 +344,7 @@ watch(user, () => {
 
       <!-- What We Play -->
       <section v-if="marqueeGames.length > 0">
-        <Flex x-between y-center class="mb-s">
+        <Flex :y-end="!isMobile" :x-between="!isMobile" :column="isMobile" expand class="mb-s">
           <Flex column gap="xxs">
             <h3 class="section-title">
               What We Play
@@ -353,8 +353,8 @@ watch(user, () => {
               Maybe there's something in here for you too
             </p>
           </Flex>
-          <NuxtLink to="/community/games">
-            <Button size="s" outline>
+          <NuxtLink to="/community/games" :class="isMobile ? 'w-100' : ''">
+            <Button :expand="isMobile" size="s" outline>
               All Game Activity
               <template #end>
                 <Icon name="ph:arrow-right" />

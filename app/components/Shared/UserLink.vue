@@ -42,12 +42,7 @@ const profileLink = computed(() => {
 </script>
 
 <template>
-  <!-- Only show content if user is authenticated (or prop is public) -->
-  <div v-if="!props.public && !currentUser" class="text-xs user-display">
-    {{ props.placeholder || 'Sign-in to view' }}
-  </div>
-
-  <div v-else-if="!props.userId" class="user-display">
+  <div v-if="!props.userId" class="user-display">
     {{ props.placeholder || 'None assigned' }}
   </div>
 
@@ -55,13 +50,8 @@ const profileLink = computed(() => {
     <Skeleton :width="120" :height="20" :radius="4" />
   </div>
 
-  <div v-else-if="!user" class="user-display">
-    <Flex gap="xs" x-center>
-      <span class="text-xs color-error">Failed to load user</span>
-    </Flex>
-  </div>
-
-  <div v-else class="user-display">
+  <!-- User loaded: authenticated, or a public profile visible to anon via RLS -->
+  <div v-else-if="user" class="user-display">
     <UserPreviewHover :user-id="props.userId" class="user-link__hover">
       <Flex gap="xs" y-center>
         <Avatar
@@ -83,6 +73,21 @@ const profileLink = computed(() => {
         </NuxtLink>
       </Flex>
     </UserPreviewHover>
+  </div>
+
+  <!-- Unauthenticated and profile is not public (RLS hid it) -->
+  <div v-else-if="!currentUser && !props.public" class="text-xs user-display">
+    {{ props.placeholder || '(Sign-in to view)' }}
+  </div>
+
+  <div v-else-if="props.placeholder" class="text-xs user-display">
+    {{ props.placeholder }}
+  </div>
+
+  <div v-else class="user-display">
+    <Flex gap="xs" x-center>
+      <span class="text-xs color-error">Failed to load user</span>
+    </Flex>
   </div>
 </template>
 

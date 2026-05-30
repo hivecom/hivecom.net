@@ -152,7 +152,7 @@ function setLiveIndicatorRef(gameId: number, el: HTMLElement | null) {
             :model-value="selectedRegions"
             :options="regionOptions"
             placeholder="Select region"
-            :expand="isCompactLayout"
+            :class="{ 'w-100': isCompactLayout }"
             @update:model-value="updateSelectedRegions"
           />
           <Button

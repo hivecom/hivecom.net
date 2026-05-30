@@ -1025,6 +1025,7 @@ function _openRawSnapshot() {
                     />
                     <UserLink
                       :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
+                      :placeholder="client.nickname"
                       class="ts-viewer__client-name"
                     />
                   </template>
