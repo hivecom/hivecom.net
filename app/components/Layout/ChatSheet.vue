@@ -2,6 +2,7 @@
 import { Button, Sheet, Tooltip } from '@dolanske/vui'
 import ChatApp from '@/components/Chat/ChatApp.vue'
 import ChatToolbar from '@/components/Chat/Toolbar.vue'
+import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
 
 const props = defineProps<{
@@ -10,7 +11,16 @@ const props = defineProps<{
 }>()
 
 const open = ref(false)
-const { isConnected } = useIrcChat()
+const { isConnected, hasUnread, hasMention } = useIrcChat()
+const { settings } = useDataUserSettings()
+
+// Honor the "only notify on mentions" preference for the navbar dot. When the
+// sheet is open the user is actively reading, so suppress the dot entirely.
+const showBadge = computed(() => {
+  if (open.value || !isConnected.value)
+    return false
+  return settings.value.chat_notify_only_mentions ? hasMention.value : hasUnread.value
+})
 
 const route = useRoute()
 watch(() => route.fullPath, () => {
@@ -29,7 +39,7 @@ watch(() => route.fullPath, () => {
         @click="open = true"
       >
         <Icon name="ph:chats" size="20" />
-        <span v-if="isConnected" class="chat-sheet__badge" />
+        <span v-if="showBadge" class="chat-sheet__badge" :class="{ 'chat-sheet__badge--mention': hasMention }" />
       </Button>
       <template #tooltip>
         <p>Chat</p>
@@ -45,7 +55,7 @@ watch(() => route.fullPath, () => {
       @click="open = true"
     >
       <Icon name="ph:chats" size="20" />
-      <span v-if="isConnected" class="chat-sheet__badge" />
+      <span v-if="showBadge" class="chat-sheet__badge" :class="{ 'chat-sheet__badge--mention': hasMention }" />
     </Button>
 
     <Sheet
@@ -79,6 +89,10 @@ watch(() => route.fullPath, () => {
     background-color: var(--color-text-green);
     border: 2px solid var(--color-bg);
     pointer-events: none;
+
+    &--mention {
+      background-color: var(--color-text-red);
+    }
   }
 }
 </style>

@@ -30,6 +30,12 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     admin_expanded_layout: false,
     admin_asset_view_mode: 'table',
     admin_asset_flat_view: false,
+    chat_colored_nicks: true,
+    chat_notify_only_mentions: true,
+    chat_autoconnect: false,
+    chat_show_inline_embeds: true,
+    chat_font_size: 14,
+    chat_mention_keywords: [],
   }
 }
 

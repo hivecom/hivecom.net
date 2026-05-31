@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Button, Flex, Resizable, Spinner } from '@dolanske/vui'
 import { useDataUser } from '@/composables/useDataUser'
+import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
+import ChatChannelList from './ChannelList.vue'
 import ChatComposer from './Composer.vue'
 import ChatConnectForm from './ConnectForm.vue'
 import ChatMessageLog from './MessageLog.vue'
@@ -26,15 +28,19 @@ if (import.meta.client && !localStorage.getItem(LAYOUT_KEY)) {
 
 const userId = useUserId()
 const { user } = useDataUser(userId)
+const { settings } = useDataUserSettings()
 
-const { connState, isConnected, disconnect, ensureNick } = useIrcChat()
+const { connState, isConnected, disconnect, ensureNick, activeBuffer } = useIrcChat()
+
+const isServerBuffer = computed(() => activeBuffer.value?.kind === 'server')
+const chatFontStyle = computed(() => ({ '--chat-font-size': `${settings.value.chat_font_size}px` }))
 
 const fallbackNick = `anon-${Math.random().toString(36).slice(2, 7)}`
 watch(user, u => ensureNick(u?.username ?? fallbackNick), { immediate: true })
 </script>
 
 <template>
-  <section class="chat-app" :class="{ 'chat-app--compact': props.compact }">
+  <section class="chat-app" :class="{ 'chat-app--compact': props.compact }" :style="chatFontStyle">
     <header v-if="!props.compact" class="chat-app__bar">
       <ChatToolbar />
     </header>
@@ -46,8 +52,8 @@ watch(user, u => ensureNick(u?.username ?? fallbackNick), { immediate: true })
         <span>Connecting...</span>
       </Flex>
 
-      <!-- Not connected: show connect form -->
-      <Flex v-else-if="!isConnected" column y-center x-center class="chat-app__connect">
+      <!-- Not connected: show connect form centered -->
+      <Flex v-else-if="!isConnected" y-center x-center class="chat-app__connect">
         <ChatConnectForm />
       </Flex>
 
@@ -57,8 +63,13 @@ watch(user, u => ensureNick(u?.username ?? fallbackNick), { immediate: true })
         :storage-key="LAYOUT_KEY"
         class="chat-app__layout"
       >
-        <Flex y-stretch class="chat-app__sidebar">
-          <ChatUserList />
+        <Flex column y-stretch class="chat-app__sidebar" expand>
+          <Flex class="chat-app__channels">
+            <ChatChannelList />
+          </Flex>
+          <Flex v-if="!isServerBuffer" class="chat-app__users">
+            <ChatUserList />
+          </Flex>
         </Flex>
         <Flex column gap="s" class="chat-app__main">
           <ChatMessageLog />
@@ -68,6 +79,7 @@ watch(user, u => ensureNick(u?.username ?? fallbackNick), { immediate: true })
 
       <!-- Connected: stacked layout for the compact sheet -->
       <Flex v-else column gap="s" class="chat-app__main">
+        <ChatChannelList horizontal />
         <ChatMessageLog />
         <ChatComposer />
       </Flex>
@@ -112,13 +124,14 @@ watch(user, u => ensureNick(u?.username ?? fallbackNick), { immediate: true })
     min-height: 0;
   }
 
-  &__status,
-  &__connect {
+  &__status {
     flex: 1;
     min-height: 0;
   }
 
   &__connect {
+    flex: 1;
+    min-height: 0;
     padding: var(--space-l);
     width: 100%;
     max-width: 480px;
@@ -133,8 +146,21 @@ watch(user, u => ensureNick(u?.username ?? fallbackNick), { immediate: true })
   &__sidebar {
     min-height: 0;
     height: 100%;
-    min-width: 140px;
+    min-width: 160px;
     border-right: 1px solid var(--color-border);
+  }
+
+  &__channels {
+    width: 100%;
+    flex: 0 0 auto;
+    max-height: 50%;
+    min-height: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  &__users {
+    flex: 1;
+    min-height: 0;
   }
 
   &__main {

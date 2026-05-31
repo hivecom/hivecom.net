@@ -1,0 +1,224 @@
+<script setup lang="ts">
+import { Badge, Button, Flex, Input, Tooltip } from '@dolanske/vui'
+import { useIrcChat } from '@/composables/useIrcChat'
+
+defineProps<{
+  // Horizontal strip layout for the compact navbar sheet.
+  horizontal?: boolean
+}>()
+
+const { buffers, activeName, setActive, closeBuffer, joinChannel } = useIrcChat()
+
+const joinInput = ref('')
+
+function bufferLabel(name: string, kind: string) {
+  if (kind === 'server')
+    return 'Server'
+  return name
+}
+
+function bufferIcon(kind: string) {
+  if (kind === 'pm')
+    return 'ph:user'
+  if (kind === 'server')
+    return 'ph:hard-drives'
+  return 'ph:hash'
+}
+
+function onJoin() {
+  const value = joinInput.value.trim()
+  if (!value)
+    return
+  joinChannel(value)
+  joinInput.value = ''
+}
+</script>
+
+<template>
+  <Flex
+    :column="!horizontal"
+    :gap="0"
+    :wrap="horizontal"
+    class="chat-channels"
+    :class="{ 'chat-channels--horizontal': horizontal }"
+    expand
+  >
+    <Flex v-if="!horizontal" expand y-center x-between class="chat-channels__header">
+      <span class="chat-channels__title">Channels</span>
+    </Flex>
+
+    <component
+      :is="horizontal ? Flex : 'div'"
+      :gap="horizontal ? 'xxs' : undefined"
+      class="chat-channels__list"
+      :class="{ 'chat-channels__list--horizontal': horizontal }"
+    >
+      <Tooltip
+        v-for="buf in buffers"
+        :key="buf.name"
+        placement="right"
+        :disabled="!buf.topic && buf.users.length === 0"
+      >
+        <button
+          type="button"
+          class="chat-channels__item"
+          :class="{ 'chat-channels__item--active': buf.name.toLowerCase() === activeName.toLowerCase() }"
+          @click="setActive(buf.name)"
+        >
+          <Icon :name="bufferIcon(buf.kind)" size="13" class="chat-channels__icon" />
+          <span class="chat-channels__name">{{ bufferLabel(buf.name, buf.kind) }}</span>
+          <Badge v-if="buf.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
+            {{ buf.mentions }}
+          </Badge>
+          <Badge v-else-if="buf.unread > 0" size="s" round variant="neutral" class="chat-channels__badge">
+            {{ buf.unread }}
+          </Badge>
+          <Button
+            v-if="buf.kind !== 'server'"
+            square
+            plain
+            size="s"
+            aria-label="Close"
+            class="chat-channels__close"
+            @click.stop="closeBuffer(buf.name)"
+          >
+            <Icon name="ph:x" size="12" />
+          </Button>
+        </button>
+        <template #tooltip>
+          <Flex column gap="xxs">
+            <p v-if="buf.topic" class="chat-channels__topic">
+              {{ buf.topic }}
+            </p>
+            <span v-if="buf.users.length" class="chat-channels__count">
+              {{ buf.users.length }} {{ buf.users.length === 1 ? 'user' : 'users' }}
+            </span>
+          </Flex>
+        </template>
+      </Tooltip>
+    </component>
+
+    <Flex v-if="!horizontal" gap="xs" class="chat-channels__join" expand>
+      <Input
+        v-model="joinInput"
+        expand
+        size="s"
+        placeholder="Join #channel"
+        @keydown.enter="onJoin"
+      />
+      <Button square aria-label="Join channel" :disabled="!joinInput.trim()" @click="onJoin">
+        <Icon name="ph:plus" size="14" />
+      </Button>
+    </Flex>
+  </Flex>
+</template>
+
+<style lang="scss" scoped>
+.chat-channels {
+  min-height: 0;
+  width: 100%;
+
+  &--horizontal {
+    border-bottom: 1px solid var(--color-border-weak);
+  }
+
+  &__header {
+    padding: var(--space-xs) var(--space-s);
+    border-bottom: 1px solid var(--color-border-weak);
+  }
+
+  &__title {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-light);
+  }
+
+  &__list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-xxs);
+    width: 100%;
+
+    &--horizontal {
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    width: 100%;
+    min-height: 34px;
+    padding: var(--space-xxs) var(--space-xs);
+    border: none;
+    background: transparent;
+    border-radius: var(--border-radius-s);
+    font-size: var(--font-size-s);
+    color: var(--color-text-light);
+    cursor: pointer;
+    text-align: left;
+    transition: background-color var(--transition-fast);
+
+    &:hover {
+      background: var(--color-bg-medium);
+
+      .chat-channels__close {
+        opacity: 1;
+      }
+    }
+
+    &--active {
+      background: var(--color-bg-accent-lowered);
+      color: var(--color-text);
+    }
+  }
+
+  &__list--horizontal &__item {
+    width: auto;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    color: var(--color-text-lighter);
+  }
+
+  &__name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__badge {
+    flex-shrink: 0;
+  }
+
+  &__close {
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
+
+  &__topic {
+    margin: 0;
+    font-size: var(--font-size-s);
+  }
+
+  &__count {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-light);
+  }
+
+  &__join {
+    padding: var(--space-xs);
+    border-top: 1px solid var(--color-border-weak);
+  }
+}
+</style>

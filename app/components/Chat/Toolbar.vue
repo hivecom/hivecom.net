@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Flex, Tooltip } from '@dolanske/vui'
 import ChatMenubar from './Menubar.vue'
+import ChatSettingsModal from './SettingsModal.vue'
 import ChatStateBadge from './StateBadge.vue'
 
 defineProps<{
@@ -9,6 +10,8 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{ collapse: [] }>()
+
+const settingsOpen = ref(false)
 </script>
 
 <template>
@@ -16,6 +19,14 @@ const emit = defineEmits<{ collapse: [] }>()
     <ChatMenubar />
     <Flex y-center gap="s">
       <ChatStateBadge />
+      <Tooltip>
+        <Button square plain aria-label="Chat settings" class="vui-button-accent-weak vui-button-rounded" @click="settingsOpen = true">
+          <Icon name="ph:gear-six" size="18" />
+        </Button>
+        <template #tooltip>
+          <p>Chat settings</p>
+        </template>
+      </Tooltip>
       <Tooltip v-if="expandable">
         <NuxtLink to="/chat" @click="emit('collapse')">
           <Button square plain aria-label="Expand chat" class="vui-button-accent-weak vui-button-rounded">
@@ -28,4 +39,6 @@ const emit = defineEmits<{ collapse: [] }>()
       </Tooltip>
     </Flex>
   </Flex>
+
+  <ChatSettingsModal :open="settingsOpen" @close="settingsOpen = false" />
 </template>

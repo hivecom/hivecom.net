@@ -1,11 +1,10 @@
 ---
-
 title: Privacy Policy
 date: 2026-05-14
 revisions: [2025-05-01, 2026-03-14]
 notes:
-
-- Added community statistics section (2.9) disclosing anonymous aggregate counts, and server presence snapshots section (2.10) disclosing capture of in-game usernames and identity association with linked Hivecom accounts on game and voice servers.
+  - Added community statistics section (2.9) disclosing anonymous aggregate counts, and server presence snapshots section (2.10) disclosing capture of in-game usernames and identity association with linked Hivecom accounts on game and voice servers.
+---
 
 ## 1. Introduction
 

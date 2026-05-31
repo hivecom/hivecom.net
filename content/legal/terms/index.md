@@ -1,11 +1,10 @@
 ---
-
 title: Terms of Service
 date: 2026-05-14
 revisions: [2025-05-01, 2026-03-14]
 notes:
-
-- Expanded Section 5 to disclose community statistics collection and server presence snapshots. Clarified that in-game usernames and TeamSpeak display names are captured in periodic snapshots, and that where a linked account identity can be matched, server presence is associated with the corresponding user profile.
+  - Expanded Section 5 to disclose community statistics collection and server presence snapshots. Clarified that in-game usernames and TeamSpeak display names are captured in periodic snapshots, and that where a linked account identity can be matched, server presence is associated with the corresponding user profile.
+---
 
 ## 1. Introduction and Acceptance
 

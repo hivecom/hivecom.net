@@ -99,6 +99,12 @@ interface TableColumnOverrides {
       admin_expanded_layout: boolean
       admin_asset_view_mode: 'table' | 'grid'
       admin_asset_flat_view: boolean
+      chat_colored_nicks: boolean
+      chat_notify_only_mentions: boolean
+      chat_autoconnect: boolean
+      chat_show_inline_embeds: boolean
+      chat_font_size: number
+      chat_mention_keywords: string[]
     }
   }
 

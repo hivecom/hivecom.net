@@ -204,3 +204,4 @@ The documents below cover the detailed workings of the application - database tr
 | [README_VAULT.md](README_VAULT.md)               | Supabase Vault secrets required by triggers and cron functions                                                  |
 | [README_KVSTORE.md](README_KVSTORE.md)           | Public and private KV store keys and their consumers                                                            |
 | [README_ARCHITECTURE.md](README_ARCHITECTURE.md) | Cross-cutting system designs including RBAC, entity discussions, media cleanup, event sync, and the Steam queue |
+| [README_CHAT.md](README_CHAT.md)                 | Chat client overview, OIDC/SASL auth bridge setup, and Ergo configuration checklist                             |
