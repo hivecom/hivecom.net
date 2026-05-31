@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getShortURLObject } from '@/lib/url-shortener'
+import type { ShortURL } from '@/lib/url-shortener'
 
 const getSupabaseClient = useSupabaseClient as () => SupabaseClient
 
@@ -15,11 +15,16 @@ export default defineNuxtRouteMiddleware(async (to) => {
     }
 
     const client = getSupabaseClient()
-    const result = await getShortURLObject(client, shortUrlId as string)
+    const { data, error } = await client.from('kvstore')
+      .select('value')
+      .eq('key', shortUrlId)
+      .single<{ value: ShortURL }>()
 
-    if (!result) {
+    if (error || !data.value) {
       return navigateTo('/', { replace: true })
     }
+
+    const result = data.value
 
     // Update entry and increment access count
     await client.from('kvstore')
