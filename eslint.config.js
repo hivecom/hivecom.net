@@ -25,6 +25,7 @@ export default antfu({
       args: 'none',
       ignoreRestSiblings: true,
     }],
+    'ts/strict-boolean-expressions': 'off',
   },
   ignores: [
     'app/global.d.ts',
