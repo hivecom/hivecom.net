@@ -78,6 +78,9 @@ const timeProgressPercentage = computed(() => {
     <div v-if="!props.simple" class="countdown-timer__progress-wrapper">
       <Skeleton width="100%" height="4px" />
     </div>
+    <Flex v-if="$slots.default" x-center class="mt-xs">
+      <slot />
+    </Flex>
   </div>
   <!-- Actual countdown when data is available -->
   <div
@@ -136,6 +139,10 @@ const timeProgressPercentage = computed(() => {
         </template>
       </Tooltip>
     </template>
+
+    <Flex v-if="$slots.default" x-center class="mt-xs">
+      <slot />
+    </Flex>
   </div>
 </template>
 

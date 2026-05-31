@@ -8,6 +8,8 @@ const props = defineProps<{
   small?: boolean
 }>()
 
+const { guardedOpen } = useExternalLinkGuard()
+
 // Format the Steam store URL if a steam_id exists
 const steamStoreUrl = computed(() => {
   if (!props.steamId)
@@ -18,7 +20,7 @@ const steamStoreUrl = computed(() => {
 // Navigate to Steam store page
 function navigateToSteam() {
   if (steamStoreUrl.value) {
-    window.open(steamStoreUrl.value, '_blank', 'noopener,noreferrer')
+    guardedOpen(steamStoreUrl.value)
   }
 }
 </script>

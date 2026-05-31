@@ -3,6 +3,7 @@ import { Button, Flex, Modal, Toasts } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import Command from '@/components/Command.vue'
 import LayoutLoading from '@/components/Layout/Loading.vue'
+import ExternalLinkModal from '@/components/Shared/ExternalLinkModal.vue'
 import ThemeEditorControls from '@/components/Themes/ThemeEditorControls.vue'
 import { useDataNotifications } from '@/composables/useDataNotifications'
 import { useUserTheme } from '@/composables/useUserTheme'
@@ -158,6 +159,7 @@ function onConfirmPreviewTheme(withCss: boolean, close: () => void) {
   <!-- Global always present components -->
   <LayoutLoading />
   <Command />
+  <ExternalLinkModal />
   <Modal
     :open="!!pendingTheme"
     centered

@@ -6,6 +6,7 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCache } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
+import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { useRealtimeRsvp } from '@/composables/useRealtimeRsvp'
 import { useRsvpBus } from '@/composables/useRsvpBus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
@@ -35,6 +36,8 @@ interface Props {
 // when clicked scrolls down to the comments
 
 const props = defineProps<Props>()
+
+const { handleContentClick } = useExternalLinkGuard()
 
 const isBelowSmall = useBreakpoint('<s')
 
@@ -312,6 +315,7 @@ onMounted(() => {
           :to="event.link"
           target="_blank"
           rel="noopener noreferrer"
+          @click="handleContentClick"
         >
           <Button :size="isBelowSmall ? 'm' : 's'">
             <template #start>

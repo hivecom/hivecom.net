@@ -17,6 +17,7 @@ import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
+import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = withDefaults(defineProps<Props>(), {
@@ -42,6 +43,7 @@ const { getGameCoverUrl, getGameBackgroundUrl } = useDataGameAssets()
 const { gameservers } = useDataGameservers()
 const { metrics, fetchMetricsHistoryIsolated, fetchMetricsWindowIsolated } = useDataMetrics()
 const { currentPlayersForSteamId } = useDataSteamPresences()
+const { handleContentClick } = useExternalLinkGuard()
 const supabase = useSupabaseClient<Database>()
 const user = useSupabaseUser()
 
@@ -476,11 +478,11 @@ watch(
                     <TimestampDate v-if="currentDetails.game.release_date" :date="currentDetails.game.release_date" format="YYYY" size="xs" />
                   </Flex>
                   <Flex v-if="steamUrl || websiteUrl" wrap gap="xs" y-center>
-                    <a v-if="steamUrl" :href="steamUrl" target="_blank" rel="noopener noreferrer" class="game-details-modal__meta-link">
+                    <a v-if="steamUrl" :href="steamUrl" target="_blank" rel="noopener noreferrer" class="game-details-modal__meta-link" @click="handleContentClick">
                       <Icon name="ph:steam-logo" size="14" />
                       Steam
                     </a>
-                    <a v-if="websiteUrl" :href="websiteUrl" target="_blank" rel="noopener noreferrer" class="game-details-modal__meta-link">
+                    <a v-if="websiteUrl" :href="websiteUrl" target="_blank" rel="noopener noreferrer" class="game-details-modal__meta-link" @click="handleContentClick">
                       <Icon name="ph:globe" size="14" />
                       Website
                     </a>

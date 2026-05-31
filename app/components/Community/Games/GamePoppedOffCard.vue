@@ -4,7 +4,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Card, Flex, Skeleton } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { computed, ref, watchEffect } from 'vue'
+import { computed, ref, resolveComponent, watchEffect } from 'vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
@@ -27,6 +27,8 @@ const props = defineProps<{
 }>()
 
 dayjs.extend(relativeTime)
+
+const NuxtLink = resolveComponent('NuxtLink')
 
 const poppedOff = computed(() => {
   if (!props.metricsHistory30d.length || !props.games.length)
@@ -105,8 +107,12 @@ watchEffect(() => {
 <template>
   <Skeleton v-if="loading" :height="120" :radius="8" />
 
-  <GlowCard v-if="poppedOff && linkedEvent" :halo="true" :class="{ 'popped-off-card--live': props.live }">
-    <NuxtLink :to="`/events/${linkedEvent.id}`" class="popped-off-card__link">
+  <GlowCard v-if="poppedOff" :halo="true" :class="{ 'popped-off-card--live': props.live }">
+    <component
+      :is="linkedEvent ? NuxtLink : 'div'"
+      class="popped-off-card__link"
+      v-bind="linkedEvent ? { to: `/events/${linkedEvent.id}` } : {}"
+    >
       <Card class="popped-off-card" :padding="false">
         <!-- Background art -->
         <div
@@ -127,9 +133,13 @@ watchEffect(() => {
                 <span class="popped-off-card__live-dot" />
                 This is popping off right now
               </template>
-              <template v-else>
+              <template v-else-if="linkedEvent">
                 <span class="popped-off-card__label-desktop">This recently popped off during an event</span>
                 <span class="popped-off-card__label-mobile">Recently popped off during an event</span>
+              </template>
+              <template v-else>
+                <span class="popped-off-card__label-desktop">This recently popped off</span>
+                <span class="popped-off-card__label-mobile">Recently popped off</span>
               </template>
             </span>
             <!-- Game identity -->
@@ -149,7 +159,7 @@ watchEffect(() => {
                   {{ poppedOff.peakCount }} {{ poppedOff.peakCount === 1 ? 'person' : 'people' }} at peak - {{ peakDateLabel }}
                 </span>
               </Flex>
-              <GlowCard halo class="popped-off-card__cta-wrap">
+              <GlowCard v-if="linkedEvent" halo class="popped-off-card__cta-wrap">
                 <span class="popped-off-card__event-cta">
                   <Icon name="ph:calendar-check" size="18" class="text-color-lighter" />
                   <span class="text-s text-bold popped-off-card__event-title">{{ linkedEvent.title }}</span>
@@ -160,7 +170,7 @@ watchEffect(() => {
           </Flex>
         </div>
       </Card>
-    </NuxtLink>
+    </component>
   </GlowCard>
 </template>
 

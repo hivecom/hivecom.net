@@ -69,7 +69,8 @@ const selectedVariantWithTransition = computed({
     <strong class="text-color-lighter text-s block mb-m">
       Accessibility
     </strong>
-    <Switch v-model="settings.allow_browser_zoom" class="reversed" label="Allow browser zoom" hint="When enabled, pinch-to-zoom and trackpad zoom work across the whole site. Image and video lightboxes support zooming regardless of this setting." />
+    <Switch v-model="settings.allow_browser_zoom" class="reversed mb-m" label="Allow browser zoom" hint="When enabled, pinch-to-zoom and trackpad zoom work across the whole site. Image and video lightboxes support zooming regardless of this setting." />
+    <Switch v-model="settings.confirm_external_links" class="reversed" label="Confirm off-site links" hint="When enabled, clicking a link in user content that leads off Hivecom asks you to confirm before opening it." />
 
     <Divider class="my-l" />
 

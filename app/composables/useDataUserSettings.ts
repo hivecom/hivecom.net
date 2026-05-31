@@ -25,6 +25,7 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     show_user_banners: true,
     allow_custom_css: false,
     allow_browser_zoom: false,
+    confirm_external_links: true,
     admin_mini_sidebar: false,
     admin_expanded_layout: false,
     admin_asset_view_mode: 'table',

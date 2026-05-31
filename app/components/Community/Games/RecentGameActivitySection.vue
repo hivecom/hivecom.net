@@ -133,7 +133,9 @@ let observer: IntersectionObserver | null = null
 // Full sorted entry list for the sheet, built from 90d history once loaded,
 // falling back to the 14d prop until then
 const allEntriesSheet = computed<PlayingEntry[]>(() => {
-  const history = sheetHistory.value.length ? sheetHistory.value : (props.metricsHistory ?? [])
+  const history = sheetHistory.value.length
+    ? [...(props.metricsHistory ?? []), ...sheetHistory.value]
+    : (props.metricsHistory ?? [])
   if (!history.length || !props.isLoggedIn)
     return [...nowPlaying.value]
 

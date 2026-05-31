@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Flex, Tooltip } from '@dolanske/vui'
+import { Badge, Card, Flex, Tooltip } from '@dolanske/vui'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import { useEventTiming } from '@/composables/useEventTiming'
+import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { humanizeRrule } from '@/lib/utils/rrule'
 import CountdownTimer from './CountdownTimer.vue'
@@ -46,6 +47,7 @@ function updateTime() {
 const isBelowSmall = useBreakpoint('<s')
 const isBelowMedium = useBreakpoint('<m')
 const { hasEventEnded } = useEventTiming(() => props.data)
+const { handleContentClick } = useExternalLinkGuard()
 
 useIntervalFn(updateTime, 1000, { immediate: true })
 updateTime()
@@ -76,30 +78,30 @@ onBeforeMount(() => {
   <NuxtLink :to="`/events/${data.id}`">
     <GlowCard>
       <Card class="event-large" :class="{ 'event-large--highlight': props.isHighlight }">
-        <div class="event-large__container">
+        <div class="event-large__container p-m">
           <!-- Left: content -->
           <div class="event-large__content">
             <!-- Title row: title + link button + badge -->
-            <Flex x-between y-center gap="xs" :class="isBelowMedium ? 'mb-xl' : 'mb-xs'">
+            <Flex x-between y-center gap="xs" :class="isBelowMedium ? 'mb-s' : 'mb-xs'">
               <strong class="event-large__title" :class="{ 'event-large__title--highlight': props.isHighlight }">
                 {{ props.data.title }}
               </strong>
               <Flex gap="xs" y-center shrink="0">
-                <Tooltip v-if="props.data.link">
-                  <Button
-                    square
-                    outline
-                    plain
-                    size="s"
+                <Tooltip v-if="props.data.link" placement="top">
+                  <a
+                    :href="props.data.link"
                     target="_blank"
                     rel="noopener noreferrer"
-                    :href="props.data.link"
+                    class="event-large__link"
+                    @click.stop="handleContentClick"
                   >
+                    <Badge variant="neutral">
+                      <Icon name="ph:arrow-square-out" />
+                    </Badge>
                     <span class="visually-hidden">Visit Event Link</span>
-                    <Icon name="ph:arrow-square-out" size="14" />
-                  </Button>
+                  </a>
                   <template #tooltip>
-                    <p>Visit website</p>
+                    <p>Website</p>
                   </template>
                 </Tooltip>
                 <Badge :variant="props.data.is_official ? 'accent' : 'neutral'" :filled="!props.data.is_official">
@@ -166,14 +168,13 @@ onBeforeMount(() => {
                 :is-ongoing="props.isOngoing ?? false"
                 :created-at="props.data.created_at"
                 :simple="!props.isHighlight"
-              />
+              >
+                <Badge v-if="props.data.recurrence_rule" variant="neutral" size="s">
+                  <Icon name="ph:arrows-clockwise" />
+                  {{ humanizeRrule(props.data.recurrence_rule) }}
+                </Badge>
+              </CountdownTimer>
             </div>
-
-            <!-- Recurrence badge below countdown on mobile -->
-            <Badge v-if="isBelowMedium && props.data.recurrence_rule" variant="neutral" size="s" class="mt-xs">
-              <Icon name="ph:arrows-clockwise" />
-              {{ humanizeRrule(props.data.recurrence_rule) }}
-            </Badge>
           </div>
 
           <!-- Right: countdown on desktop -->
@@ -225,7 +226,7 @@ onBeforeMount(() => {
   &__title {
     @include line-clamp(2);
     display: block;
-    font-size: var(--font-size-l);
+    font-size: var(--font-size-xl);
     font-weight: var(--font-weight-bold);
     white-space: normal;
     color: var(--color-text);
@@ -277,6 +278,10 @@ onBeforeMount(() => {
       -webkit-line-clamp: unset;
       line-clamp: unset;
       display: block;
+
+      &:not(.event-large__title--highlight) {
+        font-size: var(--font-size-xl);
+      }
     }
 
     &__description {
@@ -292,9 +297,9 @@ onBeforeMount(() => {
         justify-content: center;
       }
 
-      // title row: stack title above badge on mobile
+      // title row: stack badge above title on mobile
       > .vui-flex:first-child {
-        flex-direction: column;
+        flex-direction: column-reverse;
         align-items: center;
         gap: var(--space-xs);
       }
@@ -312,6 +317,11 @@ onBeforeMount(() => {
 
   &__note-badge {
     cursor: help;
+  }
+
+  &__link {
+    display: inline-flex;
+    cursor: pointer;
   }
 
   &__tooltip-content {

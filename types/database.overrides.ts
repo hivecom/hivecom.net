@@ -94,6 +94,7 @@ interface TableColumnOverrides {
       strip_image_metadata: boolean
       allow_custom_css: boolean
       allow_browser_zoom: boolean
+      confirm_external_links: boolean
       admin_mini_sidebar: boolean
       admin_expanded_layout: boolean
       admin_asset_view_mode: 'table' | 'grid'

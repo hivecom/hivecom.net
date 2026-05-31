@@ -4,6 +4,7 @@ import { nextTick, onMounted, onUnmounted } from 'vue'
 import SharedLinkEmbed from '@/components/LinkEmbed/index.vue'
 import ProseImg from '@/components/Shared/ProseImg.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
+import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { groupImagesAST } from '@/lib/imageGrouping'
 import { transformLinkEmbeds } from '@/lib/linkEmbedAST'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
@@ -40,6 +41,8 @@ const container = useTemplateRef('container')
 
 const mentionIds = computed(() => extractMentionIds(props.md))
 useBulkDataUser(mentionIds)
+
+const { handleContentClick } = useExternalLinkGuard()
 
 const processedMarkdown = computed(() => processMarkdown(props.md))
 
@@ -117,7 +120,7 @@ watch(processedMarkdown, (val) => {
 </script>
 
 <template>
-  <div ref="container" class="md-renderer-inner">
+  <div ref="container" class="md-renderer-inner" @click="handleContentClick">
     <MDCRenderer
       v-if="parsed?.body"
       :body="parsed.body"

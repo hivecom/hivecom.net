@@ -28,6 +28,7 @@ import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, compressImageToFit, convertImageToWebP, stripImageMetadata } from '@/lib/storage'
 import { BUCKET_SIZE_LIMITS, formatBytes, FORUMS_BUCKET_ID } from '@/lib/storageAssets'
+import EditorContextMenu from './EditorContextMenu.vue'
 import EditorMathModal from './EditorMathModal.vue'
 import EditorTableMenu from './EditorTableMenu.vue'
 import EditorVideoModal from './EditorVideoModal.vue'
@@ -291,7 +292,11 @@ const noHtmlMarked = marked.use({
 const editor = useEditor({
   content: content.value,
   extensions: [
-    StarterKit,
+    StarterKit.configure({
+      // Links should not open on a plain click inside the editor - it's
+      // disruptive while editing. Opening is handled via the context menu.
+      link: { openOnClick: false },
+    }),
     // @tiptap/markdown vendors its own copy of marked; the two instances have
     // incompatible internal types even though their runtime API is identical.
     // eslint-disable-next-line ts/no-explicit-any
@@ -1403,7 +1408,10 @@ onBeforeRouteLeave(() => {
 
         <div v-show="editorMode === 'rich'" class="editor-rich-wrapper">
           <span v-if="editorIsEmpty && props.placeholder" class="editor-placeholder">{{ props.placeholder }}</span>
-          <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
+          <EditorContextMenu v-if="editor" :editor="editor">
+            <EditorContent :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
+          </EditorContextMenu>
+          <EditorContent v-else :id="elementId" :editor="editor" class="typeset" @keydown.enter.stop />
         </div>
         <textarea
           v-show="editorMode === 'plain'"
