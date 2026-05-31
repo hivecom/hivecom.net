@@ -42,10 +42,10 @@ const { pastEvents, pastTotalCount, pastPage, loadingPast, setPage } = useDataEv
 const pastPagination = computed(() => paginate(pastTotalCount.value, pastPage.value, pageSize.value))
 
 const hasLoadedOnce = ref(false)
-watch(loadingPast, (loading) => {
-  if (!loading)
+watch(pastEvents, (events) => {
+  if (events && events.length > 0)
     hasLoadedOnce.value = true
-})
+}, { immediate: true })
 
 const isPaging = computed(() => loadingPast.value && hasLoadedOnce.value)
 const isInitialLoad = computed(() => loadingPast.value && !hasLoadedOnce.value)

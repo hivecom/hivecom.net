@@ -3,11 +3,13 @@ import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex, Tooltip } from '@dolanske/vui'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
+import { useDataGames } from '@/composables/useDataGames'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { humanizeRrule } from '@/lib/utils/rrule'
 import CountdownTimer from './CountdownTimer.vue'
+import EventGames from './EventGames.vue'
 
 const props = defineProps<{
   data: Tables<'events'>
@@ -48,6 +50,9 @@ const isBelowSmall = useBreakpoint('<s')
 const isBelowMedium = useBreakpoint('<m')
 const { hasEventEnded } = useEventTiming(() => props.data)
 const { handleContentClick } = useExternalLinkGuard()
+
+const { getByIds } = useDataGames()
+const games = computed(() => props.data.games ? getByIds(props.data.games as number[]) : [])
 
 useIntervalFn(updateTime, 1000, { immediate: true })
 updateTime()
@@ -116,10 +121,10 @@ onBeforeMount(() => {
             </p>
 
             <!-- Meta row: attendees left, badges right -->
-            <Flex x-between y-center gap="xs">
-              <Flex v-if="rsvpCount > 0" x-start class="event-large__people">
+            <Flex x-between :y-center="!isBelowMedium" :y-start="isBelowMedium" gap="xs" :wrap="isBelowMedium">
+              <Flex y-center gap="s" x-start class="event-large__people">
                 <BulkAvatarDisplay
-                  v-if="user"
+                  v-if="user && rsvpCount > 0"
                   :user-ids="rsvpUserIds"
                   :max-users="6"
                   :avatar-size="isBelowMedium ? (props.isHighlight ? 'l' : 'm') : 's'"
@@ -128,13 +133,13 @@ onBeforeMount(() => {
                   cluster
                   :show-names="false"
                 />
-                <Badge v-else :variant="hasEventEnded ? 'neutral' : 'accent'">
+                <Badge v-else-if="rsvpCount > 0" :variant="hasEventEnded ? 'neutral' : 'accent'">
                   <Icon name="ph:users" />
                   {{ rsvpCount }} {{ hasEventEnded ? 'Went' : 'Going' }}
                 </Badge>
               </Flex>
-              <div v-else />
-              <Flex wrap gap="xs" x-end>
+              <Flex wrap gap="xs" :x-end="!isBelowMedium" :x-center="isBelowMedium" :expand="isBelowMedium">
+                <EventGames v-if="games.length > 0" :games="games" :show-label="false" />
                 <Badge v-if="props.data.recurrence_rule && !isBelowMedium" variant="neutral">
                   <Icon name="ph:arrows-clockwise" />
                   {{ humanizeRrule(props.data.recurrence_rule) }}

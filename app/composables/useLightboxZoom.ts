@@ -24,11 +24,13 @@ interface UseLightboxZoomOptions {
   onPrev: () => void
   canNext: () => boolean
   canPrev: () => boolean
+  onClose?: () => void
 }
 
 const MIN_SCALE = 1
 const MAX_SCALE = 5
 const SWIPE_THRESHOLD = 60
+const SWIPE_DOWN_THRESHOLD = 80
 const MOVE_THRESHOLD = 8
 const DOUBLE_TAP_SCALE = 2.5
 const DOUBLE_TAP_DELAY = 300
@@ -42,7 +44,9 @@ export function useLightboxZoom(
   const offsetX = ref(0)
   const offsetY = ref(0)
   const navOffset = ref(0)
+  const dismissOffset = ref(0)
   const isSwiping = ref(false)
+  const isDismissing = ref(false)
   const isInteracting = ref(false)
   const isPanning = ref(false)
 
@@ -50,7 +54,7 @@ export function useLightboxZoom(
 
   // Active pointers, keyed by pointerId, for pan + pinch tracking.
   const pointers = new Map<number, { x: number, y: number }>()
-  let mode: 'none' | 'pan' | 'swipe' | 'pinch' = 'none'
+  let mode: 'none' | 'pan' | 'swipe' | 'swipe-down' | 'pinch' = 'none'
   let startX = 0
   let startY = 0
   let lastX = 0
@@ -68,7 +72,9 @@ export function useLightboxZoom(
     offsetX.value = 0
     offsetY.value = 0
     navOffset.value = 0
+    dismissOffset.value = 0
     isSwiping.value = false
+    isDismissing.value = false
     isInteracting.value = false
     isPanning.value = false
     mode = 'none'
@@ -172,6 +178,11 @@ export function useLightboxZoom(
         isSwiping.value = true
         container.value?.setPointerCapture?.(e.pointerId)
       }
+      else if (options.onClose && Math.abs(dy) > MOVE_THRESHOLD && dy > 0 && Math.abs(dy) > Math.abs(dx)) {
+        mode = 'swipe-down'
+        isDismissing.value = true
+        container.value?.setPointerCapture?.(e.pointerId)
+      }
       else {
         return
       }
@@ -192,6 +203,11 @@ export function useLightboxZoom(
       navOffset.value = raw
       e.preventDefault()
     }
+    else if (mode === 'swipe-down') {
+      // Only allow downward movement
+      dismissOffset.value = Math.max(0, dy)
+      e.preventDefault()
+    }
 
     lastX = e.clientX
     lastY = e.clientY
@@ -210,6 +226,14 @@ export function useLightboxZoom(
         options.onPrev()
       navOffset.value = 0
       isSwiping.value = false
+    }
+
+    if (mode === 'swipe-down') {
+      const dy = e.clientY - startY
+      if (dy >= SWIPE_DOWN_THRESHOLD && options.onClose)
+        options.onClose()
+      dismissOffset.value = 0
+      isDismissing.value = false
     }
 
     if (mode === 'pinch' && pointers.size < 2) {
@@ -299,9 +323,23 @@ export function useLightboxZoom(
     cursor: isZoomed.value ? (isPanning.value ? 'grabbing' : 'grab') : '',
   }))
 
-  const navStyle = computed(() => isSwiping.value
-    ? { transform: `translateX(${navOffset.value}px)`, transition: 'none' }
-    : {})
+  const slideStyle = computed(() => {
+    if (isSwiping.value)
+      return { transform: `translateX(${navOffset.value}px)`, transition: 'none' }
+    if (isDismissing.value) {
+      const progress = Math.min(dismissOffset.value / SWIPE_DOWN_THRESHOLD, 1)
+      const opacity = 1 - progress * 0.5
+      return {
+        transform: `translateY(${dismissOffset.value}px)`,
+        opacity: String(opacity),
+        transition: 'none',
+      }
+    }
+    return {}
+  })
 
-  return { scale, isZoomed, contentStyle, navStyle, isSwiping, reset }
+  // Keep navStyle as an alias for backward compatibility
+  const navStyle = slideStyle
+
+  return { scale, isZoomed, contentStyle, navStyle, slideStyle, isSwiping, isDismissing, reset }
 }

@@ -9,6 +9,7 @@ import { groupImagesAST } from '@/lib/imageGrouping'
 import { transformLinkEmbeds } from '@/lib/linkEmbedAST'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
 import { wrapTablesAST } from '@/lib/tableWrapping'
+import { isExternalUrl } from '@/lib/utils/externalLink'
 import MarkdownLightbox from './MarkdownLightbox.vue'
 import SharedUserMention from './UserMention.global.vue'
 
@@ -82,6 +83,7 @@ async function runParse(val: string) {
   emit('parsed')
   await nextTick()
   setupVideoErrorHandlers()
+  setupExternalLinkTargets()
 }
 
 function setupVideoErrorHandlers() {
@@ -95,6 +97,19 @@ function setupVideoErrorHandlers() {
       return
     }
     el.addEventListener('error', () => markVideoMissing(el), { once: true })
+  })
+}
+
+function setupExternalLinkTargets() {
+  if (!container.value)
+    return
+  container.value.querySelectorAll('a[href]').forEach((el) => {
+    const anchor = el as HTMLAnchorElement
+    const href = anchor.getAttribute('href')
+    if (href && isExternalUrl(href)) {
+      anchor.setAttribute('target', '_blank')
+      anchor.setAttribute('rel', 'noopener noreferrer')
+    }
   })
 }
 

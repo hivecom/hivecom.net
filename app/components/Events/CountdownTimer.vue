@@ -158,6 +158,10 @@ const timeProgressPercentage = computed(() => {
   width: 100%;
   min-height: 100px;
 
+  @media (min-width: $breakpoint-s) {
+    min-width: 380px;
+  }
+
   &--simple {
     display: flex;
     flex-direction: column;
@@ -181,6 +185,13 @@ const timeProgressPercentage = computed(() => {
     align-items: center;
     justify-content: center;
     height: 80px;
+  }
+
+  &--past {
+    .countdown-timer__number {
+      color: var(--color-text) !important;
+      animation: none;
+    }
   }
 
   &__now-text {
@@ -212,10 +223,6 @@ const timeProgressPercentage = computed(() => {
     // border-right: 1px solid var(--color-border-strong);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     min-width: 80px;
-
-    &:hover {
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    }
 
     &:last-of-type {
       border-right: none;

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { Button, Card, Flex, Modal, Switch } from '@dolanske/vui'
+import { Button, Card, Drawer, Flex, Modal, Switch } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const { open, pendingUrl, confirm, cancel } = useExternalLinkGuard()
-const isBelowSmall = useBreakpoint('<xs')
+const isMobile = useBreakpoint('<xs')
 
 const dontAskAgain = ref(false)
 
@@ -29,39 +29,77 @@ const displayHost = computed(() => {
 </script>
 
 <template>
+  <!-- Mobile: bottom drawer -->
+  <Drawer v-if="isMobile" :open="open" @close="cancel">
+    <Flex column gap="m">
+      <Flex column gap="s">
+        <h4>Leaving Hivecom</h4>
+        <p>This link will take you to an external site. Only continue if you trust it.</p>
+      </Flex>
+
+      <Card>
+        <Flex y-center gap="s">
+          <Icon name="ph:arrow-square-out" class="text-color-lighter" />
+          <Flex column :gap="0" class="external-link-modal__url">
+            <strong>{{ displayHost }}</strong>
+            <span class="text-xs text-color-lighter">{{ pendingUrl }}</span>
+          </Flex>
+        </Flex>
+      </Card>
+
+      <Flex column gap="l" expand>
+        <Switch v-model="dontAskAgain" class="reversed" label="Don't ask me again" />
+        <Flex gap="xs" expand>
+          <Button expand @click="cancel">
+            Cancel
+          </Button>
+          <Button expand variant="fill" @click="confirm(dontAskAgain)">
+            Continue
+          </Button>
+        </Flex>
+      </Flex>
+    </Flex>
+  </Drawer>
+
+  <!-- Desktop: modal -->
   <Modal
+    v-else
     :open="open"
     centered
     :card="{ footerSeparator: true }"
     :can-dismiss="false"
-    :size="isBelowSmall ? 'screen' : 's'"
+    size="s"
     @close="cancel"
   >
     <template #header>
       <Flex column gap="s">
         <h4>Leaving Hivecom</h4>
-        <p>This link will take you to an external site. Only continue if you trust it.</p>
       </Flex>
     </template>
+    <Flex column>
+      <p class="text-s">
+        This link will take you to an external site. Only continue if you trust it.
+      </p>
 
-    <Card>
-      <Flex y-center gap="s">
-        <Icon name="ph:arrow-square-out" class="text-color-lighter" />
-        <Flex column :gap="0" class="external-link-modal__url">
-          <strong>{{ displayHost }}</strong>
-          <span class="text-xs text-color-lighter">{{ pendingUrl }}</span>
+      <Card>
+        <Flex y-center gap="s">
+          <Icon name="ph:arrow-square-out" class="text-color-lighter" />
+          <Flex column :gap="0" class="external-link-modal__url">
+            <strong>{{ displayHost }}</strong>
+            <span class="text-xs text-color-lighter">{{ pendingUrl }}</span>
+          </Flex>
         </Flex>
-      </Flex>
-    </Card>
+      </Card>
+    </Flex>
 
     <template #footer>
       <Flex expand y-center x-between gap="m" wrap>
         <Switch v-model="dontAskAgain" class="reversed" label="Don't ask me again" />
-        <Flex gap="xs" :expand="isBelowSmall" x-end>
-          <Button :expand="isBelowSmall" @click="cancel">
+        <Flex gap="xs" x-end expand>
+          <Button expand @click="cancel">
             Cancel
           </Button>
-          <Button :expand="isBelowSmall" variant="fill" @click="confirm(dontAskAgain)">
+          <Button expand variant="fill" @click="confirm(dontAskAgain)">
             Continue
           </Button>
         </Flex>

@@ -111,6 +111,7 @@ const zoomTarget = useTemplateRef('zoomTarget')
 const { contentStyle, navStyle, reset: resetZoom } = useLightboxZoom(imageWrap, zoomTarget, {
   onNext: next,
   onPrev: prev,
+  onClose: close,
   canNext: () => hasNext.value,
   canPrev: () => hasPrev.value,
 })
