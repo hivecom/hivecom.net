@@ -1,6 +1,7 @@
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { pushToast } from '@dolanske/vui'
+import { useMfaStatus } from '@/composables/useMfaStatus'
 import { isNil } from '@/lib/utils/common'
 
 // Module-level flag so the auto-save watcher is only ever registered once,
@@ -47,6 +48,14 @@ export function useDataUserSettings() {
   const settingsError = ref<Error | null>(null)
   const supabase = useSupabaseClient<Database>()
   const user = useUserId()
+  const mfaStatus = useMfaStatus()
+
+  // MFA-enrolled users on an aal1 session cannot pass the is_aal2_if_mfa() RLS
+  // check, so any write to user_settings would fail. The mfa-guard redirects
+  // them to the authenticator challenge; until they finish, skip writes so we
+  // don't surface a confusing row-level-security error.
+  const mfaStepUpPending = () =>
+    mfaStatus.value.nextLevel === 'aal2' && mfaStatus.value.currentLevel !== 'aal2'
 
   const fetchSettings = async (): Promise<Error | null> => {
     if (hasFetched.value)
@@ -83,6 +92,10 @@ export function useDataUserSettings() {
 
   const updateSettings = async (newSettings: Tables<'user_settings'>['data']) => {
     if (isNil(user.value)) {
+      return
+    }
+
+    if (mfaStepUpPending()) {
       return
     }
 

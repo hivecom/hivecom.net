@@ -54,6 +54,24 @@ export interface ComputedBadge extends BadgeBase {
 
 export type BadgeCatalogEntry = ManualBadge | FlagBadge | ComputedBadge
 
+/**
+ * Resolve the "member since" date for a badge's "since" description.
+ *
+ * For computed date badges (e.g. `one_of_us`) the DB stores the user's actual
+ * join date in `metadata.member_since`. The row's `earned_at` is just when the
+ * badge was (re)computed, so it must NOT be used as the join date. Falls back
+ * to `earned_at` only when no member_since is present.
+ */
+export function getBadgeMemberSince(
+  metadata: Record<string, unknown> | null | undefined,
+  earnedAt: string | null | undefined,
+): string | null {
+  const memberSince = metadata?.member_since
+  if (typeof memberSince === 'string' && memberSince.trim() !== '')
+    return memberSince
+  return earnedAt ?? null
+}
+
 // ---------------------------------------------------------------------------
 // The catalog
 // ---------------------------------------------------------------------------

@@ -143,21 +143,34 @@ onMounted(async () => {
                 If you're interested in the latest news, want to support the community, create your own events or RSVP to the latest ones, feel free to sign up.
               </p>
 
-              <Alert v-if="user" variant="success" filled>
-                <template #icon>
-                  <Icon name="ph:users-three" />
-                </template>
-                Thanks for being a part of the community!
-              </Alert>
-
-              <NuxtLink v-else to="/auth/sign-up">
-                <Button variant="accent">
-                  <template #start>
-                    <Icon name="ph:user-plus" />
+              <ClientOnly>
+                <Alert v-if="user" variant="success" filled>
+                  <template #icon>
+                    <Icon name="ph:users-three" />
                   </template>
-                  Sign up
-                </Button>
-              </NuxtLink>
+                  Thanks for being a part of the community!
+                </Alert>
+
+                <NuxtLink v-else to="/auth/sign-up">
+                  <Button variant="accent">
+                    <template #start>
+                      <Icon name="ph:user-plus" />
+                    </template>
+                    Sign up
+                  </Button>
+                </NuxtLink>
+
+                <template #fallback>
+                  <NuxtLink to="/auth/sign-up">
+                    <Button variant="accent">
+                      <template #start>
+                        <Icon name="ph:user-plus" />
+                      </template>
+                      Sign up
+                    </Button>
+                  </NuxtLink>
+                </template>
+              </ClientOnly>
             </div>
 
             <Card class="join-section__platforms">

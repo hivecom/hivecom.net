@@ -215,6 +215,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
             </template>
 
             <NuxtLink
+              v-if="!user"
               to="/themes"
               class="navigation__mobile-menu-item"
               active-class=""

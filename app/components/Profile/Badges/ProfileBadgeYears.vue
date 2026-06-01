@@ -34,6 +34,7 @@ const formattedSince = computed(() => {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
+    timeZone: 'UTC',
   }).format(date)
 })
 

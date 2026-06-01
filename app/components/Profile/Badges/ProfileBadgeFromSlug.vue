@@ -61,6 +61,7 @@ const description = computed(() => {
             month: 'long',
             day: 'numeric',
             year: 'numeric',
+            timeZone: 'UTC',
           }).format(date)
           return `User for ${yearWord} (since ${formatted})`
         }
