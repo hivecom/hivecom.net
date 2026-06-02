@@ -103,6 +103,12 @@ export function useDataDiscussionReplies(
   // pages before them, preserving chronological order.
   const _realtimeAppended = ref<RawComment[]>([])
 
+  // Incremented each time navigateToComment resets gap/tailBlock state.
+  // loadGapFromTop and loadGapFromBottom capture this before their async
+  // fetch and bail if it has changed by the time the fetch returns, preventing
+  // a stale gap-page insert from landing in the wrong position.
+  let _gapGeneration = 0
+
   const gap = ref<ReplyGap | null>(null)
   const loadingGapTop = ref(false)
   const loadingGapBottom = ref(false)
@@ -356,6 +362,7 @@ export function useDataDiscussionReplies(
     gap.value = null
     _tailBlock.value = []
     _realtimeAppended.value = []
+    _gapGeneration++
 
     try {
       const fetchOpts = { ascending: ascending.value, pageSize: pageSize.value, hash: props.hash, rootOnly: false }
@@ -522,10 +529,15 @@ export function useDataDiscussionReplies(
         hash: props.hash,
         rootOnly: rootOnly.value,
       }
+      const myGeneration = _gapGeneration
 
       const forwardPage = await repliesCache.fetchPage(discussionId, { ...fetchOpts, cursor: gap.value.cursor })
 
       if (forwardPage == null)
+        return
+
+      // navigateToComment reset state during our fetch - discard stale result.
+      if (_gapGeneration !== myGeneration)
         return
 
       const firstTailId = _tailBlock.value[0]?.id
@@ -590,6 +602,7 @@ export function useDataDiscussionReplies(
         hash: props.hash,
         rootOnly: rootOnly.value,
       }
+      const myGeneration = _gapGeneration
 
       const bottomPage = await repliesCache.fetchPage(discussionId, {
         ...fetchOpts,
@@ -598,6 +611,10 @@ export function useDataDiscussionReplies(
       })
 
       if (bottomPage == null)
+        return
+
+      // navigateToComment reset state during our fetch - discard stale result.
+      if (_gapGeneration !== myGeneration)
         return
 
       // Bottom page arrives in reverse order - flip back to ascending.

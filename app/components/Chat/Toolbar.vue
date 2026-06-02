@@ -7,6 +7,8 @@ import ChatStateBadge from './StateBadge.vue'
 defineProps<{
   // Shows the "expand to full page" link (used inside the navbar sheet).
   expandable?: boolean
+  // Compact surfaces drop sidebar controls from the menubar.
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{ collapse: [] }>()
@@ -16,7 +18,7 @@ const settingsOpen = ref(false)
 
 <template>
   <Flex y-center x-between expand gap="s" class="chat-toolbar">
-    <ChatMenubar />
+    <ChatMenubar :compact="compact" />
     <Flex y-center gap="s">
       <ChatStateBadge />
       <Tooltip>

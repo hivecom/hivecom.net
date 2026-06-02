@@ -109,7 +109,7 @@ onBeforeMount(() => {
                     <p>Website</p>
                   </template>
                 </Tooltip>
-                <Badge :variant="props.data.is_official ? 'accent' : 'neutral'" :filled="!props.data.is_official">
+                <Badge v-if="user" :variant="props.data.is_official ? 'accent' : 'neutral'" :filled="!props.data.is_official">
                   {{ props.data.is_official ? 'Official' : 'Community' }}
                 </Badge>
               </Flex>

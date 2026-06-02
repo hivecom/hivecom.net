@@ -1,20 +1,35 @@
 <script setup lang="ts">
 import { Badge, Button, Flex, Input, Tooltip } from '@dolanske/vui'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useIrcChat } from '@/composables/useIrcChat'
+import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 
 defineProps<{
   // Horizontal strip layout for the compact navbar sheet.
   horizontal?: boolean
 }>()
 
-const { buffers, activeName, setActive, closeBuffer, joinChannel } = useIrcChat()
+const { buffers, activeName, setActive, closeBuffer, joinChannel, channelBrowserOpen } = useIrcChat()
+
+const { resolved, resolve } = useIrcNickResolver()
+
+watch(buffers, (bufs) => {
+  const pmNicks = bufs.filter(b => b.kind === 'pm').map(b => b.name.toLowerCase())
+  if (pmNicks.length)
+    resolve(pmNicks)
+}, { immediate: true })
+
+function resolvedUserId(name: string): string | null {
+  return resolved.value.get(name.toLowerCase())?.id ?? null
+}
 
 const joinInput = ref('')
 
 function bufferLabel(name: string, kind: string) {
   if (kind === 'server')
     return 'Server'
-  return name
+  return name.replace(/^#/, '')
 }
 
 function bufferIcon(kind: string) {
@@ -45,6 +60,9 @@ function onJoin() {
   >
     <Flex v-if="!horizontal" expand y-center x-between class="chat-channels__header">
       <span class="chat-channels__title">Channels</span>
+      <Button square plain size="s" aria-label="Browse channels" class="chat-channels__browse" @click="channelBrowserOpen = true">
+        <Icon name="ph:compass" size="13" />
+      </Button>
     </Flex>
 
     <component
@@ -64,8 +82,18 @@ function onJoin() {
           class="chat-channels__item"
           :class="{ 'chat-channels__item--active': buf.name.toLowerCase() === activeName.toLowerCase() }"
           @click="setActive(buf.name)"
+          @mousedown.middle.prevent
+          @mouseup.middle.prevent="closeBuffer(buf.name)"
         >
-          <Icon :name="bufferIcon(buf.kind)" size="13" class="chat-channels__icon" />
+          <template v-if="buf.kind === 'pm'">
+            <UserAvatar v-if="resolvedUserId(buf.name)" :user-id="resolvedUserId(buf.name)!" :size="14" class="chat-channels__icon" />
+            <AvatarMedia v-else :size="14" :alt="buf.name" class="chat-channels__icon">
+              <template #default>
+                {{ buf.name.charAt(0).toUpperCase() }}
+              </template>
+            </AvatarMedia>
+          </template>
+          <Icon v-else :name="bufferIcon(buf.kind)" size="13" class="chat-channels__icon" />
           <span class="chat-channels__name">{{ bufferLabel(buf.name, buf.kind) }}</span>
           <Badge v-if="buf.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
             {{ buf.mentions }}
@@ -123,8 +151,12 @@ function onJoin() {
   }
 
   &__header {
-    padding: var(--space-xs) var(--space-s);
+    padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-s);
     border-bottom: 1px solid var(--color-border-weak);
+  }
+
+  &__browse {
+    flex-shrink: 0;
   }
 
   &__title {

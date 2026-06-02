@@ -1,10 +1,22 @@
 <script setup lang="ts">
 import { Button, Flex, Tooltip } from '@dolanske/vui'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { channelRole, nickColor, useIrcChat } from '@/composables/useIrcChat'
+import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 
 const { users, nick, inputMessage, openPm } = useIrcChat()
 const { settings } = useDataUserSettings()
+const { resolved, resolve } = useIrcNickResolver()
+
+watch(users, (newUsers) => {
+  resolve(newUsers.map(u => u.name.toLowerCase()))
+}, { immediate: true })
+
+function resolvedUserId(name: string): string | null {
+  return resolved.value.get(name.toLowerCase())?.id ?? null
+}
 
 const displayUsers = computed(() =>
   users.value.map(user => ({ ...user, role: channelRole(user.prefix) })),
@@ -37,19 +49,31 @@ function userStyle(name: string) {
         class="chat-users__row"
         :class="{ 'chat-users__row--self': user.name === nick }"
       >
+        <span class="chat-users__indicator">
+          <Tooltip v-if="user.role">
+            <Icon name="ph:circle-fill" size="8" :style="{ color: user.role.color }" />
+            <template #tooltip>
+              {{ user.role.label }}
+            </template>
+          </Tooltip>
+        </span>
+        <UserAvatar
+          v-if="resolvedUserId(user.name)"
+          :user-id="resolvedUserId(user.name)!"
+          size="s"
+          show-preview
+          class="chat-users__avatar"
+        />
+        <AvatarMedia v-else :size="28" :alt="user.name" class="chat-users__avatar">
+          <template #default>
+            {{ user.name.charAt(0).toUpperCase() }}
+          </template>
+        </AvatarMedia>
         <button
           class="chat-users__item"
           type="button"
           @click="mention(user.name)"
         >
-          <span class="chat-users__indicator">
-            <Tooltip v-if="user.role">
-              <Icon name="ph:circle-fill" size="8" :style="{ color: user.role.color }" />
-              <template #tooltip>
-                {{ user.role.label }}
-              </template>
-            </Tooltip>
-          </span>
           <span class="chat-users__name" :style="userStyle(user.name)">{{ user.name }}</span>
         </button>
         <Button
@@ -76,7 +100,7 @@ function userStyle(name: string) {
   min-height: 0;
 
   &__header {
-    padding: var(--space-xs) var(--space-s);
+    padding: var(--space-xs) var(--space-s) var(--space-m) var(--space-s);
     border-bottom: 1px solid var(--color-border-weak);
   }
 
@@ -145,6 +169,30 @@ function userStyle(name: string) {
     justify-content: center;
     width: 8px;
     flex-shrink: 0;
+    margin-left: var(--space-xs);
+  }
+
+  &__avatar {
+    flex-shrink: 0;
+    margin-left: var(--space-xxs);
+
+    width: 14px !important;
+    height: 14px !important;
+
+    :deep(.vui-avatar) {
+      width: 16px;
+      height: 16px;
+    }
+
+    :deep(.user-avatar__media-wrap) {
+      width: 16px;
+      height: 16px;
+
+      img {
+        width: 16px;
+        height: 16px;
+      }
+    }
   }
 
   &__pm {

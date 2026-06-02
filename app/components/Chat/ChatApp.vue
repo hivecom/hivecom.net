@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Button, Flex, Resizable, Spinner } from '@dolanske/vui'
+import { Button, Flex, Resizable } from '@dolanske/vui'
+import SharedErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
 import ChatChannelList from './ChannelList.vue'
 import ChatComposer from './Composer.vue'
 import ChatConnectForm from './ConnectForm.vue'
+import ChatConnecting from './Connecting.vue'
 import ChatMessageLog from './MessageLog.vue'
 import ChatToolbar from './Toolbar.vue'
 import ChatUserList from './UserList.vue'
@@ -30,7 +32,12 @@ const userId = useUserId()
 const { user } = useDataUser(userId)
 const { settings } = useDataUserSettings()
 
-const { connState, isConnected, disconnect, ensureNick, activeBuffer } = useIrcChat()
+const { connState, isConnected, ensureNick, activeBuffer, sidebarHidden, buffers, connect, disconnect } = useIrcChat()
+
+const lastConnError = computed(() => {
+  const serverBuf = buffers.value.find(b => b.kind === 'server')
+  return [...(serverBuf?.messages ?? [])].reverse().find(m => m.type === 'error')?.text ?? ''
+})
 
 const isServerBuffer = computed(() => activeBuffer.value?.kind === 'server')
 const chatFontStyle = computed(() => ({ '--chat-font-size': `${settings.value.chat_font_size}px` }))
@@ -46,53 +53,72 @@ watch(user, u => ensureNick(u?.username ?? fallbackNick), { immediate: true })
     </header>
 
     <Flex column y-stretch class="chat-app__body">
-      <!-- Connecting -->
-      <Flex v-if="connState === 'connecting'" y-center x-center gap="s" class="chat-app__status">
-        <Spinner />
-        <span>Connecting...</span>
-      </Flex>
+      <Transition name="chat-state" mode="out-in">
+        <!-- Connecting -->
+        <div v-if="connState === 'connecting'" class="chat-app__status">
+          <ChatConnecting />
+        </div>
 
-      <!-- Not connected: show connect form centered -->
-      <Flex v-else-if="!isConnected" y-center x-center class="chat-app__connect">
-        <ChatConnectForm />
-      </Flex>
-
-      <!-- Connected: split layout (sidebar + chat) on the full page -->
-      <Resizable
-        v-else-if="!props.compact"
-        :storage-key="LAYOUT_KEY"
-        class="chat-app__layout"
-      >
-        <Flex column y-stretch class="chat-app__sidebar" expand>
-          <Flex class="chat-app__channels">
-            <ChatChannelList />
-          </Flex>
-          <Flex v-if="!isServerBuffer" class="chat-app__users">
-            <ChatUserList />
+        <!-- Error: connection failed -->
+        <Flex v-else-if="connState === 'error'" key="error" y-center x-center class="chat-app__connect">
+          <Flex column gap="m" expand>
+            <SharedErrorAlert standalone message="Failed to connect to the chat server." :error="lastConnError" />
+            <Flex x-center gap="s">
+              <Button variant="gray" @click="disconnect()">
+                <template #start>
+                  <Icon name="ph:arrow-left" />
+                </template>
+                Go back
+              </Button>
+              <Button variant="accent" @click="connect()">
+                <template #start>
+                  <Icon name="ph:arrows-clockwise" />
+                </template>
+                Retry
+              </Button>
+            </Flex>
           </Flex>
         </Flex>
-        <Flex column gap="s" class="chat-app__main">
-          <ChatMessageLog />
+
+        <!-- Not connected: show connect form centered -->
+        <Flex v-else-if="!isConnected" key="disconnected" y-center x-center class="chat-app__connect">
+          <ChatConnectForm />
+        </Flex>
+
+        <!-- Connected: split layout (sidebar + chat) on the full page -->
+        <Resizable
+          v-else-if="!props.compact && !sidebarHidden"
+          key="connected-full"
+          :storage-key="LAYOUT_KEY"
+          class="chat-app__layout"
+        >
+          <Flex column y-stretch class="chat-app__sidebar" expand>
+            <Flex class="chat-app__channels">
+              <ChatChannelList />
+            </Flex>
+            <Flex v-if="!isServerBuffer" class="chat-app__users">
+              <ChatUserList />
+            </Flex>
+          </Flex>
+          <Flex column gap="s" class="chat-app__main">
+            <ChatMessageLog :compact="props.compact" />
+            <ChatComposer />
+          </Flex>
+        </Resizable>
+
+        <!-- Connected: full page, sidebar hidden -->
+        <Flex v-else-if="!props.compact" key="connected-nosidebar" column gap="s" class="chat-app__main">
+          <ChatMessageLog :compact="props.compact" />
           <ChatComposer />
         </Flex>
-      </Resizable>
 
-      <!-- Connected: stacked layout for the compact sheet -->
-      <Flex v-else column gap="s" class="chat-app__main">
-        <ChatChannelList horizontal />
-        <ChatMessageLog />
-        <ChatComposer />
-      </Flex>
-    </Flex>
-
-    <Flex v-if="isConnected" y-center x-between gap="s" class="chat-app__footer">
-      <span class="chat-app__hint">Right-click a message for actions</span>
-      <Button variant="danger" plain size="s" @click="disconnect">
-        <template #icon>
-          <Icon name="ph:plugs" />
-        </template>
-        Disconnect
-      </Button>
+        <!-- Connected: stacked layout for the compact sheet -->
+        <Flex v-else key="connected-compact" column gap="s" class="chat-app__main">
+          <ChatChannelList horizontal />
+          <ChatMessageLog :compact="props.compact" />
+          <ChatComposer />
+        </Flex>
+      </Transition>
     </Flex>
   </section>
 </template>
@@ -125,6 +151,7 @@ watch(user, u => ensureNick(u?.username ?? fallbackNick), { immediate: true })
   }
 
   &__status {
+    position: relative;
     flex: 1;
     min-height: 0;
   }
@@ -170,23 +197,18 @@ watch(user, u => ensureNick(u?.username ?? fallbackNick), { immediate: true })
     padding: var(--space-s) var(--space-m) var(--space-m);
   }
 
+  .chat-state-enter-active,
+  .chat-state-leave-active {
+    transition: opacity var(--transition);
+  }
+
+  .chat-state-enter-from,
+  .chat-state-leave-to {
+    opacity: 0;
+  }
+
   &--compact &__main {
     padding: 0;
-  }
-
-  &__footer {
-    padding: var(--space-xs) var(--space-m);
-    border-top: 1px solid var(--color-border);
-  }
-
-  &--compact &__footer {
-    padding: var(--space-s) 0 0;
-    border-top: none;
-  }
-
-  &__hint {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
   }
 }
 </style>

@@ -5,13 +5,6 @@ import { useDataEventsPaged } from '@/composables/useDataEventsPaged'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import EventSmall from './EventSmall.vue'
 
-interface Props {
-  search?: string
-  officialFilter?: boolean | null
-  recurringFilter?: boolean | null
-  gameFilter?: number[]
-}
-
 const props = withDefaults(defineProps<Props>(), {
   search: '',
   officialFilter: null,
@@ -19,10 +12,22 @@ const props = withDefaults(defineProps<Props>(), {
   gameFilter: () => [],
 })
 
+const user = useSupabaseUser()
+
+interface Props {
+  search?: string
+  officialFilter?: boolean | null
+  recurringFilter?: boolean | null
+  gameFilter?: number[]
+}
+
 const searchRef = computed(() => props.search)
 const officialFilterRef = computed(() => props.officialFilter)
 const recurringFilterRef = computed(() => props.recurringFilter)
 const gameFilterRef = computed(() => props.gameFilter ?? [])
+
+// Anon users may only see official past events - community events are members-only
+const effectiveOfficialFilter = computed(() => !user.value ? true : officialFilterRef.value)
 
 const isMobile = useBreakpoint('<s')
 const isTablet = useBreakpoint('<m')
@@ -37,7 +42,7 @@ const columns = computed(() => {
 
 const pageSize = computed(() => isMobile.value ? 4 : 6)
 
-const { pastEvents, pastTotalCount, pastPage, loadingPast, setPage } = useDataEventsPaged(pageSize, searchRef, officialFilterRef, recurringFilterRef, gameFilterRef)
+const { pastEvents, pastTotalCount, pastPage, loadingPast, setPage } = useDataEventsPaged(pageSize, searchRef, effectiveOfficialFilter, recurringFilterRef, gameFilterRef)
 
 const pastPagination = computed(() => paginate(pastTotalCount.value, pastPage.value, pageSize.value))
 

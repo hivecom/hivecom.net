@@ -13,7 +13,7 @@ const variant = computed(() => ({
 
 const label = computed(() => ({
   disconnected: 'Disconnected',
-  connecting: 'Connecting...',
+  connecting: 'Connecting',
   connected: 'Connected',
   error: 'Error',
 }[connState.value]))

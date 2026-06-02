@@ -74,6 +74,12 @@ export interface ChatBuffer {
   topic?: string
 }
 
+export interface ChannelListEntry {
+  name: string
+  userCount: number
+  topic: string
+}
+
 /** A channel member together with their current IRC mode prefixes. */
 export interface ChatUser {
   name: string
@@ -105,6 +111,12 @@ const account = ref('')
 const buffers = ref<ChatBuffer[]>([])
 const activeName = ref<string>(SERVER_BUFFER)
 const msgCounter = ref(0)
+const sidebarHidden = ref(false)
+
+// --- Channel list (populated by LIST/322/323) --------------------------------
+const channelList = ref<ChannelListEntry[]>([])
+const channelListLoading = ref(false)
+const channelBrowserOpen = ref(false)
 
 // Whether the chat entry point should be revealed in the navbar. Persisted so it
 // survives reloads once the user has connected through the /chat page.
@@ -179,9 +191,17 @@ let chatHistorySupported = false
 const backlogBatches = new Set<string>()
 
 // --- Buffers helpers ---------------------------------------------------------
+function listChannels() {
+  channelList.value = []
+  channelListLoading.value = true
+  send('LIST')
+}
+
 function resetBuffers() {
   buffers.value = [{ name: SERVER_BUFFER, kind: 'server', messages: [], users: [], unread: 0, mentions: 0, joined: true }]
   activeName.value = SERVER_BUFFER
+  channelList.value = []
+  channelListLoading.value = false
 }
 
 function findBuffer(name: string) {
@@ -567,10 +587,15 @@ function handleMessage(raw: string) {
       const buf = findBuffer(channel)
       if (buf)
         buf.users = buf.users.filter(u => u.name !== stripPrefix(nickFrom))
-      if (nickFrom === nick.value)
-        addToBuffer(channel, 'channel', { type: 'part', channel, text: `You left ${channel}` }, { ts })
-      else
+      if (nickFrom === nick.value) {
+        // Only show the message if the buffer still exists; if closeBuffer() already
+        // removed it, skip so we don't resurrect the buffer with a stale message.
+        if (buf)
+          addToBuffer(channel, 'channel', { type: 'part', channel, text: `You left ${channel}` }, { ts })
+      }
+      else {
         addToBuffer(channel, 'channel', { type: 'part', channel, text: `${nickFrom} left` }, { ts, backlog })
+      }
       break
     }
 
@@ -647,6 +672,19 @@ function handleMessage(raw: string) {
     case '372': // RPL_MOTD
     case '376': // RPL_ENDOFMOTD
       addServer({ type: 'system', text: params[params.length - 1] ?? '' }, { ts })
+      break
+
+    case '322': { // RPL_LIST
+      const name = params[1] ?? ''
+      const userCount = Number.parseInt(params[2] ?? '0', 10)
+      const topic = params[3] ?? ''
+      if (name)
+        channelList.value.push({ name, userCount, topic })
+      break
+    }
+
+    case '323': // RPL_LISTEND
+      channelListLoading.value = false
       break
 
     case '332': { // RPL_TOPIC
@@ -763,6 +801,7 @@ function disconnect() {
     ws.close()
   }
   resetBuffers()
+  connState.value = 'disconnected'
 }
 
 // --- User actions ------------------------------------------------------------
@@ -925,6 +964,10 @@ export function useIrcChat() {
   const mentionCount = computed(() => buffers.value.reduce((sum, b) => sum + b.mentions, 0))
   const hasMention = computed(() => mentionCount.value > 0)
 
+  function toggleSidebar() {
+    sidebarHidden.value = !sidebarHidden.value
+  }
+
   return {
     // config
     WS_URL,
@@ -949,7 +992,11 @@ export function useIrcChat() {
     inputNick,
     inputChannel,
     inputMessage,
+    // sidebar
+    sidebarHidden,
+    toggleSidebar,
     // actions
+    send,
     connect,
     connectAsAnon,
     disconnect,
@@ -960,6 +1007,11 @@ export function useIrcChat() {
     openPm,
     closeBuffer,
     ensureNick,
+    // channel browser
+    channelList,
+    channelListLoading,
+    channelBrowserOpen,
+    listChannels,
     // identity seam
     registerIdentityProvider,
     setMentionKeywords,

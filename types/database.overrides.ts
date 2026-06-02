@@ -105,6 +105,9 @@ interface TableColumnOverrides {
       chat_show_inline_embeds: boolean
       chat_font_size: number
       chat_mention_keywords: string[]
+      chat_show_timestamps: boolean
+      chat_timestamp_format: string
+      chat_display_mode: 'irc' | 'modern'
     }
   }
 

@@ -63,7 +63,7 @@ onBeforeMount(async () => {
           <span class="event-date">
             {{ formatTimeAgo(props.data.date) }}
           </span>
-          <Badge :variant="props.data.is_official ? 'accent' : 'neutral'">
+          <Badge v-if="user" :variant="props.data.is_official ? 'accent' : 'neutral'">
             {{ props.data.is_official ? 'Official' : 'Community' }}
           </Badge>
         </Flex>

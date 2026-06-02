@@ -36,104 +36,116 @@ function onSignedOutConnect() {
 </script>
 
 <template>
-  <Flex column gap="m" expand>
-    <!-- Signed in, normal auth path -->
-    <template v-if="user && !anonMode">
-      <Flex column gap="xs">
-        <h4 class="chat-connect__title">
-          Connect to chat
-        </h4>
-        <p class="chat-connect__hint">
-          You'll join as <strong>{{ user.username }}</strong> using your Hivecom account.
-        </p>
-      </Flex>
-      <Flex y-center gap="s" wrap>
-        <Button variant="accent" :loading="connecting" @click="connect()">
-          <template #icon>
-            <Icon name="ph:plugs-connected" />
-          </template>
-          Connect as {{ user.username }}
-        </Button>
-        <Button variant="gray" plain :disabled="connecting" @click="enterAnonMode">
-          Continue as anon
-        </Button>
-      </Flex>
-      <span class="chat-connect__server">{{ WS_URL }}</span>
-    </template>
-
-    <!-- Signed in, anon path: pick a nick -->
-    <template v-else-if="user && anonMode">
-      <Flex column gap="xs">
-        <h4 class="chat-connect__title">
-          Connect as anon
-        </h4>
-        <p class="chat-connect__hint">
-          Choose a nickname - you won't be verified.
-        </p>
-      </Flex>
-      <Flex gap="s" wrap expand>
-        <Flex column gap="xs" class="chat-connect__field">
-          <label class="chat-connect__label">Nickname</label>
-          <Input
-            v-model="anonNick"
-            expand
-            placeholder="anon-xxxxx"
-            @keydown.enter="onAnonConnect"
-          />
+  <Flex column expand>
+    <Transition name="connect-state" mode="out-in">
+      <!-- Signed in, normal auth path -->
+      <Flex v-if="user && !anonMode" key="auth" column gap="m" expand>
+        <Flex column gap="xs">
+          <h4 class="chat-connect__title">
+            Connect to chat
+          </h4>
+          <p class="chat-connect__hint">
+            You'll join as <strong>{{ user.username }}</strong> using your Hivecom account.
+          </p>
         </Flex>
-        <Flex column gap="xs" class="chat-connect__field">
-          <label class="chat-connect__label">Channel</label>
-          <Input v-model="inputChannel" expand placeholder="#general" @keydown.enter="onAnonConnect" />
+        <Flex y-center gap="s" wrap>
+          <Button variant="accent" :loading="connecting" @click="connect()">
+            <template #icon>
+              <Icon name="ph:plugs-connected" />
+            </template>
+            Connect as {{ user.username }}
+          </Button>
+          <Button variant="gray" plain :disabled="connecting" @click="enterAnonMode">
+            Continue as anon
+          </Button>
         </Flex>
-      </Flex>
-      <Flex y-center gap="s" wrap>
-        <Button
-          variant="accent"
-          :loading="connecting"
-          :disabled="!anonNick.trim() || !inputChannel.trim()"
-          @click="onAnonConnect"
-        >
-          Connect
-        </Button>
-        <Button variant="gray" plain :disabled="connecting" @click="anonMode = false">
-          Back
-        </Button>
-      </Flex>
-      <span class="chat-connect__server">{{ WS_URL }}</span>
-    </template>
-
-    <!-- Signed out: classic nick + channel form -->
-    <template v-else>
-      <Flex gap="s" wrap expand>
-        <Flex column gap="xs" class="chat-connect__field">
-          <label class="chat-connect__label">Nickname</label>
-          <Input v-model="inputNick" expand placeholder="your-nick" @keydown.enter="onSignedOutConnect" />
-        </Flex>
-        <Flex column gap="xs" class="chat-connect__field">
-          <label class="chat-connect__label">Channel</label>
-          <Input v-model="inputChannel" expand placeholder="#general" @keydown.enter="onSignedOutConnect" />
-        </Flex>
-      </Flex>
-      <Flex y-center gap="s" wrap>
-        <Button
-          variant="accent"
-          :loading="connecting"
-          :disabled="!inputNick.trim() || !inputChannel.trim()"
-          @click="onSignedOutConnect"
-        >
-          Connect
-        </Button>
         <span class="chat-connect__server">{{ WS_URL }}</span>
       </Flex>
-      <Divider />
-      <p class="chat-connect__hint">
-        Sign in to a Hivecom account to chat with a verified identity.
-      </p>
-    </template>
+
+      <!-- Signed in, anon path: pick a nick -->
+      <Flex v-else-if="user && anonMode" key="anon" column gap="m" expand>
+        <Flex column gap="xs">
+          <h4 class="chat-connect__title">
+            Connect as anon
+          </h4>
+          <p class="chat-connect__hint">
+            Choose a nickname - you won't be verified.
+          </p>
+        </Flex>
+        <Flex gap="s" wrap expand>
+          <Flex column gap="xs" class="chat-connect__field">
+            <label class="chat-connect__label">Nickname</label>
+            <Input
+              v-model="anonNick"
+              expand
+              placeholder="anon-xxxxx"
+              @keydown.enter="onAnonConnect"
+            />
+          </Flex>
+          <Flex column gap="xs" class="chat-connect__field">
+            <label class="chat-connect__label">Channel</label>
+            <Input v-model="inputChannel" expand placeholder="#general" @keydown.enter="onAnonConnect" />
+          </Flex>
+        </Flex>
+        <Flex y-center gap="s" wrap>
+          <Button
+            variant="accent"
+            :loading="connecting"
+            :disabled="!anonNick.trim() || !inputChannel.trim()"
+            @click="onAnonConnect"
+          >
+            Connect
+          </Button>
+          <Button variant="gray" plain :disabled="connecting" @click="anonMode = false">
+            Back
+          </Button>
+        </Flex>
+        <span class="chat-connect__server">{{ WS_URL }}</span>
+      </Flex>
+
+      <!-- Signed out: classic nick + channel form -->
+      <Flex v-else key="signedout" column gap="m" expand>
+        <Flex gap="s" wrap expand>
+          <Flex column gap="xs" class="chat-connect__field">
+            <label class="chat-connect__label">Nickname</label>
+            <Input v-model="inputNick" expand placeholder="your-nick" @keydown.enter="onSignedOutConnect" />
+          </Flex>
+          <Flex column gap="xs" class="chat-connect__field">
+            <label class="chat-connect__label">Channel</label>
+            <Input v-model="inputChannel" expand placeholder="#general" @keydown.enter="onSignedOutConnect" />
+          </Flex>
+        </Flex>
+        <Flex y-center gap="s" wrap>
+          <Button
+            variant="accent"
+            :loading="connecting"
+            :disabled="!inputNick.trim() || !inputChannel.trim()"
+            @click="onSignedOutConnect"
+          >
+            Connect
+          </Button>
+          <span class="chat-connect__server">{{ WS_URL }}</span>
+        </Flex>
+        <Divider />
+        <p class="chat-connect__hint">
+          Sign in to a Hivecom account to chat with a verified identity.
+        </p>
+      </Flex>
+    </Transition>
   </Flex>
 </template>
 
 <style lang="scss" scoped>
+.connect-state-enter-active,
+.connect-state-leave-active {
+  transition: opacity var(--transition);
+}
+
+.connect-state-enter-from,
+.connect-state-leave-to {
+  opacity: 0;
+}
+
 .chat-connect {
   &__field {
     flex: 1;

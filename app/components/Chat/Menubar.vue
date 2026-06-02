@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import { Button, DropdownItem, DropdownTitle, Menubar, MenuItem } from '@dolanske/vui'
+import { ref } from 'vue'
 import { useIrcChat } from '@/composables/useIrcChat'
+import ChatNickChangeModal from './NickChangeModal.vue'
 
-const { WS_URL, isConnected, connState, connect, disconnect, clearMessages } = useIrcChat()
+defineProps<{
+  // Compact surfaces (the navbar sheet) have no sidebar, so hide its toggle.
+  compact?: boolean
+}>()
+
+const { WS_URL, isConnected, connState, connect, disconnect, clearMessages, sidebarHidden, toggleSidebar, account, channelBrowserOpen } = useIrcChat()
+
+const nickChangeOpen = ref(false)
 
 function closeMenu() {
   if (import.meta.client)
@@ -17,29 +26,35 @@ function run(action: () => void) {
 
 <template>
   <Menubar class="chat-menubar">
-    <MenuItem>
+    <MenuItem v-if="isConnected">
       <Button size="s" plain>
         Connection
       </Button>
       <template #menu>
         <div class="vui-dropdown">
-          <DropdownItem :disabled="connState === 'connecting'" @click="run(connect)">
+          <DropdownItem v-if="!isConnected" :disabled="connState === 'connecting'" @click="run(connect)">
             <template #icon>
-              <Icon :name="isConnected ? 'ph:arrows-clockwise' : 'ph:plugs-connected'" />
+              <Icon name="ph:plugs-connected" />
             </template>
-            {{ isConnected ? 'Reconnect' : 'Connect' }}
+            Connect
           </DropdownItem>
-          <DropdownItem :disabled="!isConnected" @click="run(disconnect)">
+          <DropdownItem v-if="isConnected" @click="run(disconnect)">
             <template #icon>
               <Icon name="ph:plugs" />
             </template>
             Disconnect
           </DropdownItem>
+          <DropdownItem v-if="account && isConnected" @click="run(() => nickChangeOpen = true)">
+            <template #icon>
+              <Icon name="ph:identification-badge" />
+            </template>
+            Change nick
+          </DropdownItem>
         </div>
       </template>
     </MenuItem>
 
-    <MenuItem>
+    <MenuItem v-if="isConnected">
       <Button size="s" plain>
         View
       </Button>
@@ -51,17 +66,33 @@ function run(action: () => void) {
             </template>
             Clear log
           </DropdownItem>
+          <DropdownItem v-if="!compact" @click="run(toggleSidebar)">
+            <template #icon>
+              <Icon :name="sidebarHidden ? 'ph:sidebar-simple' : 'ph:sidebar'" />
+            </template>
+            {{ sidebarHidden ? 'Show sidebar' : 'Hide sidebar' }}
+          </DropdownItem>
+          <DropdownItem :disabled="!isConnected" @click="run(() => channelBrowserOpen = true)">
+            <template #icon>
+              <Icon name="ph:compass" />
+            </template>
+            Browse channels
+          </DropdownItem>
         </div>
       </template>
     </MenuItem>
 
     <MenuItem>
       <Button size="s" plain>
-        Help
+        About
       </Button>
       <template #menu>
-        <div class="vui-dropdown chat-menubar__help">
+        <div class="vui-dropdown chat-menubar__about">
           <DropdownTitle>Server</DropdownTitle>
+          <p class="chat-menubar__server">
+            irc.hivecom.net:6697
+          </p>
+          <DropdownTitle>WebSocket</DropdownTitle>
           <p class="chat-menubar__server">
             {{ WS_URL }}
           </p>
@@ -69,11 +100,13 @@ function run(action: () => void) {
       </template>
     </MenuItem>
   </Menubar>
+
+  <ChatNickChangeModal :open="nickChangeOpen" @close="nickChangeOpen = false" />
 </template>
 
 <style lang="scss" scoped>
 .chat-menubar {
-  &__help {
+  &__about {
     min-width: 220px;
   }
 

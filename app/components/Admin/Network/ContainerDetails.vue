@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Alert, Badge, Flex, Sheet } from '@dolanske/vui'
+import { Alert, Badge, Button, Flex, Sheet } from '@dolanske/vui'
 
 import constants from '~~/constants.json'
 
@@ -79,6 +79,7 @@ const containerStatus = computed(() => {
   const isDockerControlEnabled = props.container.server?.docker_control === true
   const isControlOffline = isDockerControlEnabled
     && (props.container.server?.accessible === false || !props.container.reported_at)
+  const isRestarting = !!props.actionLoading[props.container.name]?.restart
 
   return isDockerControlEnabled
     ? getContainerStatus(
@@ -86,6 +87,7 @@ const containerStatus = computed(() => {
         props.container.running,
         props.container.healthy,
         isControlOffline,
+        isRestarting,
       )
     : 'unknown'
 })
@@ -126,18 +128,27 @@ const logsVisible = computed(() =>
             {{ container.name }}
           </span>
         </Flex>
-        <ContainerActions
-          v-if="container"
-          v-model="containerAction"
-          :container="container"
-          :status="containerStatus"
-          :show-labels="!isMobile"
-          :size="isMobile ? 'm' : undefined"
-          :is-loading="(action) => {
-            if (!container) return false
-            return !!props.actionLoading[container.name]?.[action]
-          }"
-        />
+        <Flex v-if="container" y-center gap="xs">
+          <Button
+            square
+            variant="gray"
+            :loading="refreshContainer"
+            @click="refreshContainer = true"
+          >
+            <Icon name="ph:arrows-clockwise" />
+          </Button>
+          <ContainerActions
+            v-model="containerAction"
+            :container="container"
+            :status="containerStatus"
+            :show-labels="!isMobile"
+            :size="isMobile ? 'm' : undefined"
+            :is-loading="(action) => {
+              if (!container) return false
+              return !!props.actionLoading[container.name]?.[action]
+            }"
+          />
+        </Flex>
       </Flex>
     </template>
 

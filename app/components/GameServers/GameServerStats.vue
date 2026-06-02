@@ -156,6 +156,7 @@ onMounted(async () => {
     :color="accentColor"
     :initial-period="currentPlayerCount ? '24h' : '14d'"
     :initial-window="clickedWindow"
+    :server-id="props.id"
   >
     <template v-if="hasPlayerList" #above-chart>
       <Grid :columns="isMobile ? 2 : 3" gap="s" expand class="player-grid">

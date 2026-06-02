@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, DropdownItem, Flex, Kbd, KbdGroup, Popout, Sheet, Skeleton, Tooltip } from '@dolanske/vui'
+import ChatChannelBrowserModal from '@/components/Chat/ChannelBrowserModal.vue'
 import SharedLogo from '@/components/Shared/Logo.vue'
 import { useCommand } from '@/composables/useCommand'
 import { useIrcChat } from '@/composables/useIrcChat'
@@ -23,7 +24,7 @@ const isDev = import.meta.dev
 // point stays hidden until the user has connected at least once via /chat. The
 // revealed flag is read from localStorage, so we only trust it after mount to
 // avoid an SSR hydration mismatch.
-const { revealed: chatRevealed } = useIrcChat()
+const { revealed: chatRevealed, channelBrowserOpen } = useIrcChat()
 const mounted = ref(false)
 const showChat = computed(() => isDev || (mounted.value && chatRevealed.value))
 
@@ -285,6 +286,8 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
       </div>
     </div>
   </nav>
+
+  <ChatChannelBrowserModal :open="channelBrowserOpen" @close="channelBrowserOpen = false" />
 </template>
 
 <style lang="scss">

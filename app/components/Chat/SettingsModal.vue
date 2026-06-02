@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge, Button, Flex, Input, Modal, Slider, Switch } from '@dolanske/vui'
+import { Badge, Button, ButtonGroup, Flex, Input, Modal, Slider, Switch } from '@dolanske/vui'
 import { ref } from 'vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 
@@ -45,16 +45,36 @@ const options = [
     label: 'Show inline embeds',
     description: 'Render images and links inline in the message log.',
   },
+  {
+    key: 'chat_show_timestamps',
+    label: 'Show timestamps',
+    description: 'Display the time each message was sent. Hidden automatically in compact mode.',
+  },
 ] as const
 </script>
 
 <template>
-  <Modal :open="open" size="s" @close="emit('close')">
+  <Modal :open="open" size="m" @close="emit('close')">
     <template #header>
       <h4>Chat settings</h4>
     </template>
 
     <Flex column gap="m" expand>
+      <Flex y-center x-between expand>
+        <Flex column gap="xxs" class="chat-settings__text">
+          <span class="chat-settings__label">Display mode</span>
+          <span class="chat-settings__desc">IRC shows plain text. Modern resolves nicks to Hivecom profiles.</span>
+        </Flex>
+        <ButtonGroup>
+          <Button :variant="settings.chat_display_mode === 'irc' ? 'accent' : 'gray'" @click="settings.chat_display_mode = 'irc'">
+            IRC
+          </Button>
+          <Button :variant="settings.chat_display_mode === 'modern' ? 'accent' : 'gray'" @click="settings.chat_display_mode = 'modern'">
+            Modern
+          </Button>
+        </ButtonGroup>
+      </Flex>
+
       <Flex
         v-for="option in options"
         :key="option.key"
@@ -79,6 +99,16 @@ const options = [
           <span class="chat-settings__value">{{ settings.chat_font_size }}px</span>
         </Flex>
         <Slider v-model="settings.chat_font_size" :min="10" :max="20" :step="1" />
+      </Flex>
+
+      <Flex column gap="xs" expand>
+        <Flex y-center x-between expand>
+          <Flex column gap="xxs" class="chat-settings__text">
+            <span class="chat-settings__label">Timestamp format</span>
+            <span class="chat-settings__desc">Standard dayjs format string, e.g. HH:mm:ss or DD/MM/YYYY HH:mm.</span>
+          </Flex>
+        </Flex>
+        <Input v-model="settings.chat_timestamp_format" expand placeholder="HH:mm:ss" :disabled="!settings.chat_show_timestamps" />
       </Flex>
 
       <Flex column gap="xs" expand>

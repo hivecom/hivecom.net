@@ -61,13 +61,13 @@ watch(() => route.fullPath, () => {
     <Sheet
       :open="open"
       position="right"
-      :size="520"
+      size="640"
       :card="{ separators: true }"
       class="chat-sheet__panel"
       @close="open = false"
     >
       <template #header>
-        <ChatToolbar expandable @collapse="open = false" />
+        <ChatToolbar expandable compact @collapse="open = false" />
       </template>
 
       <ChatApp compact />

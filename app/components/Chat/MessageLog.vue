@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import type { ChatMessage } from '@/composables/useIrcChat'
 import { ContextMenu, DropdownItem, Flex, pushToast } from '@dolanske/vui'
+import dayjs from 'dayjs'
 import LinkEmbed from '@/components/LinkEmbed/index.vue'
+import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { parseInternalUrl } from '@/composables/useDataLinkPreview'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { mentionsSelf, nickColor, useIrcChat } from '@/composables/useIrcChat'
+import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
+
+const props = defineProps<{ compact?: boolean }>()
 
 const { messages, nick, inputMessage, clearMessages } = useIrcChat()
 const { settings } = useDataUserSettings()
@@ -17,8 +23,75 @@ const activeMessage = ref<ChatMessage | null>(null)
 const URL_RE = /(https?:\/\/\S+)/g
 const IMAGE_RE = /\.(?:png|jpe?g|gif|webp|avif|svg)(?:\?\S*)?$/i
 
-function fmtTime(d: Date) {
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+const showTimestamps = computed(() => !props.compact && settings.value.chat_show_timestamps)
+
+// --- Modern mode -------------------------------------------------------
+interface MessageGroup {
+  id: number
+  from: string | null
+  nickLower: string | null
+  messages: [ChatMessage, ...ChatMessage[]]
+  isSystem: boolean
+  isOwnGroup: boolean
+}
+
+const { resolved, resolve } = useIrcNickResolver()
+
+const groupedMessages = computed((): MessageGroup[] => {
+  if (settings.value.chat_display_mode !== 'modern')
+    return []
+  const groups: MessageGroup[] = []
+  for (const msg of messages.value) {
+    const isSystemMsg = msg.type !== 'chat'
+    if (isSystemMsg) {
+      groups.push({
+        id: msg.id,
+        from: msg.from ?? null,
+        nickLower: null,
+        messages: [msg],
+        isSystem: true,
+        isOwnGroup: false,
+      })
+      continue
+    }
+    const last = groups[groups.length - 1]
+    if (last && !last.isSystem && last.from === msg.from) {
+      last.messages.push(msg)
+    }
+    else {
+      groups.push({
+        id: msg.id,
+        from: msg.from ?? null,
+        nickLower: msg.from?.toLowerCase() ?? null,
+        messages: [msg],
+        isSystem: false,
+        isOwnGroup: isOwn(msg),
+      })
+    }
+  }
+  return groups
+})
+
+watch(groupedMessages, (groups) => {
+  const nicks = [...new Set(groups.filter(g => !g.isSystem && g.nickLower).map(g => g.nickLower!))]
+  if (nicks.length)
+    resolve(nicks)
+})
+
+function resolvedUser(nickLower: string | null) {
+  if (!nickLower)
+    return null
+  return resolved.value.get(nickLower) ?? null
+}
+
+function groupNickStyle(from: string | null) {
+  if (from && settings.value.chat_colored_nicks && from !== nick.value)
+    return { color: nickColor(cleanNick(from)) }
+  return undefined
+}
+
+function fmtTime(d: Date): string {
+  return dayjs(d).format(settings.value.chat_timestamp_format || 'HH:mm:ss')
 }
 
 function msgClass(msg: ChatMessage) {
@@ -385,59 +458,131 @@ onBeforeUnmount(stop)
 <template>
   <ContextMenu class="chat-log">
     <div ref="logEl" class="chat-log__scroll" @contextmenu="onContextMenu" @click="handleContentClick">
-      <Flex
-        v-for="msg in messages"
-        :key="msg.id"
-        wrap
-        gap="xs"
-        class="chat-log__msg"
-        :class="[msgClass(msg), {
-          'chat-log__msg--own': isOwn(msg),
-          'chat-log__msg--mention': isMention(msg),
-          'chat-log__msg--backlog': msg.backlog,
-        }]"
-        :data-msg-id="msg.id"
-      >
-        <span class="chat-log__ts">{{ fmtTime(msg.ts) }}</span>
-        <span v-if="msg.from" class="chat-log__nick" :style="nickStyle(msg)">{{ msg.from }}</span>
-        <span class="chat-log__text">
-          <template v-for="(seg, i) in segments(msg.text)" :key="i">
+      <template v-if="settings.chat_display_mode !== 'modern'">
+        <Flex
+          v-for="msg in messages"
+          :key="msg.id"
+          wrap
+          gap="xs"
+          class="chat-log__msg"
+          :class="[msgClass(msg), {
+            'chat-log__msg--own': isOwn(msg),
+            'chat-log__msg--mention': isMention(msg),
+            'chat-log__msg--backlog': msg.backlog,
+          }]"
+          :data-msg-id="msg.id"
+        >
+          <span v-if="showTimestamps" class="chat-log__ts">{{ fmtTime(msg.ts) }}</span>
+          <span v-if="msg.from" class="chat-log__nick" :style="nickStyle(msg)">{{ msg.from }}</span>
+          <span class="chat-log__text">
+            <template v-for="(seg, i) in segments(msg.text)" :key="i">
+              <a
+                v-if="seg.type === 'link'"
+                :href="seg.value"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="chat-log__link"
+                :style="segStyle(seg)"
+              >{{ seg.value }}</a>
+              <span
+                v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline"
+                :style="segStyle(seg)"
+              >{{ seg.value }}</span>
+              <template v-else>{{ seg.value }}</template>
+            </template>
+          </span>
+          <Flex v-if="imageUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
             <a
-              v-if="seg.type === 'link'"
-              :href="seg.value"
+              v-for="url in imageUrls(msg.text)"
+              :key="url"
+              :href="url"
               target="_blank"
               rel="noopener noreferrer"
-              class="chat-log__link"
-              :style="segStyle(seg)"
-            >{{ seg.value }}</a>
-            <span
-              v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline"
-              :style="segStyle(seg)"
-            >{{ seg.value }}</span>
-            <template v-else>{{ seg.value }}</template>
+              class="chat-log__embed"
+            >
+              <img :src="url" alt="" loading="lazy">
+            </a>
+          </Flex>
+          <template v-if="previewUrls(msg.text).length">
+            <LinkEmbed
+              v-for="url in previewUrls(msg.text)"
+              :key="url"
+              :url="url"
+              class="chat-log__link-preview"
+            />
           </template>
-        </span>
-        <Flex v-if="imageUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
-          <a
-            v-for="url in imageUrls(msg.text)"
-            :key="url"
-            :href="url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="chat-log__embed"
-          >
-            <img :src="url" alt="" loading="lazy">
-          </a>
         </Flex>
-        <template v-if="previewUrls(msg.text).length">
-          <LinkEmbed
-            v-for="url in previewUrls(msg.text)"
-            :key="url"
-            :url="url"
-            class="chat-log__link-preview"
-          />
+      </template>
+      <template v-else>
+        <template v-for="group in groupedMessages" :key="group.id">
+          <!-- System / event one-liners (join, part, error, etc.) -->
+          <Flex
+            v-if="group.isSystem"
+            wrap
+            gap="xs"
+            class="chat-log__msg"
+            :class="[msgClass(group.messages[0]), { 'chat-log__msg--backlog': group.messages[0].backlog }]"
+            :data-msg-id="group.messages[0].id"
+          >
+            <span v-if="showTimestamps" class="chat-log__ts">{{ fmtTime(group.messages[0].ts) }}</span>
+            <span v-if="group.messages[0].from" class="chat-log__nick">{{ group.messages[0].from }}</span>
+            <span class="chat-log__text">
+              <template v-for="(seg, i) in segments(group.messages[0].text)" :key="i">
+                <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
+                <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                <template v-else>{{ seg.value }}</template>
+              </template>
+            </span>
+          </Flex>
+
+          <!-- Grouped chat messages (Discord-style) -->
+          <div
+            v-else
+            class="chat-log__group"
+            :class="{ 'chat-log__msg--backlog': group.messages[0].backlog }"
+          >
+            <div class="chat-log__group-avatar">
+              <UserAvatar v-if="resolvedUser(group.nickLower)" :user-id="resolvedUser(group.nickLower)!.id" :size="32" show-preview />
+              <AvatarMedia v-else :size="32" :alt="group.from ?? ''">
+                <template #default>
+                  {{ (group.from ?? '?').charAt(0).toUpperCase() }}
+                </template>
+              </AvatarMedia>
+            </div>
+            <div class="chat-log__group-body">
+              <div class="chat-log__group-header">
+                <span class="chat-log__nick" :style="groupNickStyle(group.from)">
+                  {{ resolvedUser(group.nickLower)?.username ?? group.from }}
+                </span>
+                <span v-if="showTimestamps" class="chat-log__ts chat-log__ts--inline">{{ fmtTime(group.messages[0].ts) }}</span>
+              </div>
+              <div
+                v-for="msg in group.messages"
+                :key="msg.id"
+                class="chat-log__modern-line"
+                :class="{ 'chat-log__modern-line--mention': isMention(msg) }"
+                :data-msg-id="msg.id"
+              >
+                <span class="chat-log__text">
+                  <template v-for="(seg, i) in segments(msg.text)" :key="i">
+                    <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
+                    <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                    <template v-else>{{ seg.value }}</template>
+                  </template>
+                </span>
+                <Flex v-if="imageUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                  <a v-for="url in imageUrls(msg.text)" :key="url" :href="url" target="_blank" rel="noopener noreferrer" class="chat-log__embed">
+                    <img :src="url" alt="" loading="lazy">
+                  </a>
+                </Flex>
+                <template v-if="previewUrls(msg.text).length">
+                  <LinkEmbed v-for="url in previewUrls(msg.text)" :key="url" :url="url" class="chat-log__link-preview" />
+                </template>
+              </div>
+            </div>
+          </div>
         </template>
-      </Flex>
+      </template>
       <Flex v-if="messages.length === 0" y-center x-center class="chat-log__empty" expand>
         No messages yet.
       </Flex>
@@ -606,6 +751,58 @@ onBeforeUnmount(stop)
   &__link-preview {
     width: 100%;
     margin-top: var(--space-xxs);
+  }
+
+  &__group {
+    display: flex;
+    gap: var(--space-s);
+    padding: var(--space-xxs) var(--space-xs);
+    border-radius: var(--border-radius-s);
+    transition: background-color var(--transition-fast);
+
+    &:hover {
+      background: var(--color-bg-medium);
+    }
+  }
+
+  &__group-avatar {
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
+  &__group-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__group-header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-xs);
+  }
+
+  &__ts--inline {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lightest);
+  }
+
+  &__modern-line {
+    font-size: var(--chat-font-size, var(--font-size-s));
+    color: var(--color-text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.4;
+
+    &--mention {
+      background: var(--color-bg-accent-lowered);
+      box-shadow: inset 2px 0 0 var(--color-accent);
+      padding: 1px var(--space-xs);
+      margin: 0 calc(-1 * var(--space-xs));
+      border-radius: var(--border-radius-xs);
+    }
   }
 }
 </style>

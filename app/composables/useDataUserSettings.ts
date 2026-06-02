@@ -35,8 +35,11 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     chat_notify_only_mentions: true,
     chat_autoconnect: false,
     chat_show_inline_embeds: true,
-    chat_font_size: 14,
+    chat_font_size: 13,
     chat_mention_keywords: [],
+    chat_show_timestamps: true,
+    chat_timestamp_format: 'HH:mm:ss',
+    chat_display_mode: 'irc',
   }
 }
 
@@ -86,6 +89,11 @@ export function useDataUserSettings() {
     }
 
     hasFetched.value = true
+    // Defer clearing isFetching until the next tick so the deep settings watcher
+    // (which is also deferred) still sees isFetching=true and skips the auto-save.
+    // Without this, the watcher fires after isFetching is already false and
+    // attempts a write that RLS blocks when MFA step-up is pending.
+    await nextTick()
     isFetching.value = false
     return null
   }

@@ -3,7 +3,7 @@ import type { QueryData } from '@supabase/supabase-js'
 
 import type { Ref } from 'vue'
 
-import { Alert, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, inject, ref, watch } from 'vue'
 
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
@@ -109,6 +109,7 @@ const containersQuery = supabase.from('network_containers').select(`
 
 // Data states
 const loading = ref(true)
+const initialLoad = ref(true)
 const errorMessage = ref('')
 const containers = ref<QueryData<typeof containersQuery>>([])
 const search = ref('')
@@ -349,6 +350,7 @@ async function fetchContainers() {
     errorMessage.value = error instanceof Error ? error.message : 'An error occurred while loading containers'
   }
   finally {
+    initialLoad.value = false
     loading.value = false
   }
 }
@@ -584,7 +586,7 @@ onBeforeMount(fetchContainers)
     </Alert>
 
     <!-- Loading state -->
-    <template v-else-if="loading">
+    <template v-else-if="initialLoad">
       <Flex gap="s" column expand>
         <!-- Search and Filters -->
         <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
@@ -607,6 +609,9 @@ onBeforeMount(fetchContainers)
             :x-start="isBelowMedium"
             :expand="isBelowMedium"
           >
+            <Button size="s" square variant="gray" :loading="loading" @click="fetchContainers()">
+              <Icon name="ph:arrows-clockwise" />
+            </Button>
             <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">Total -</span>
           </Flex>
         </Flex>
@@ -643,53 +648,58 @@ onBeforeMount(fetchContainers)
           :expand="isBelowMedium"
           :column-reverse="isBelowMedium"
         >
+          <Button size="s" square variant="gray" :loading="loading" @click="fetchContainers()">
+            <Icon name="ph:arrows-clockwise" />
+          </Button>
           <span class="text-color-lighter text-s" :class="{ 'text-center': isBelowMedium }">
             {{ isFiltered ? `Filtered ${filteredCount}` : `Total ${totalCount}` }}
           </span>
         </Flex>
       </Flex>
 
-      <TableContainer>
-        <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
-          <template #header>
-            <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
-            <Table.Head
-              v-if="canManageResource"
-              key="actions" :header="{ label: 'Actions',
-                                       sortToggle: () => {} }"
-            />
-          </template>
+      <div class="table-loading-wrapper" :class="{ 'table-loading': loading && !initialLoad }">
+        <TableContainer>
+          <Table.Root v-if="rows && rows.length > 0" separate-cells class="mb-l">
+            <template #header>
+              <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+              <Table.Head
+                v-if="canManageResource"
+                key="actions" :header="{ label: 'Actions',
+                                         sortToggle: () => {} }"
+              />
+            </template>
 
-          <template #body>
-            <tr v-for="container in rows" :key="container._original.name" class="clickable-row" @click="viewContainer(container._original)">
-              <Table.Cell>{{ container.Name }}</Table.Cell>
-              <Table.Cell>{{ container.Server }}</Table.Cell>
-              <Table.Cell>
-                <ContainerStatusIndicator :status="container.Status" show-label />
-              </Table.Cell>
-              <Table.Cell>
-                <TimestampDate v-if="container.Started" :date="container.Started" />
-                <span v-else class="text-color-lighter text-s">Not started</span>
-              </Table.Cell>
-              <Table.Cell>
-                <ElapsedTimeIndicator :date="container['Last Report']" :active-label="null" />
-              </Table.Cell>
-              <Table.Cell v-if="canManageResource" @click.stop>
-                <ContainerActions
-                  v-model="containerAction"
-                  :container="container._original"
-                  :status="container.Status"
-                  :is-loading="(action) => isActionLoading(container._original.name, action)"
-                />
-              </Table.Cell>
-            </tr>
-          </template>
+            <template #body>
+              <tr v-for="container in rows" :key="container._original.name" class="clickable-row" @click="viewContainer(container._original)">
+                <Table.Cell>{{ container.Name }}</Table.Cell>
+                <Table.Cell>{{ container.Server }}</Table.Cell>
+                <Table.Cell>
+                  <ContainerStatusIndicator :status="container.Status" show-label />
+                </Table.Cell>
+                <Table.Cell>
+                  <TimestampDate v-if="container.Started" :date="container.Started" />
+                  <span v-else class="text-color-lighter text-s">Not started</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <ElapsedTimeIndicator :date="container['Last Report']" :active-label="null" />
+                </Table.Cell>
+                <Table.Cell v-if="canManageResource" @click.stop>
+                  <ContainerActions
+                    v-model="containerAction"
+                    :container="container._original"
+                    :status="container.Status"
+                    :is-loading="(action) => isActionLoading(container._original.name, action)"
+                  />
+                </Table.Cell>
+              </tr>
+            </template>
 
-          <template v-if="filteredData.length > adminTablePerPage" #pagination>
-            <Pagination :pagination="pagination" @change="setPage" />
-          </template>
-        </Table.Root>
-      </TableContainer>
+            <template v-if="filteredData.length > adminTablePerPage" #pagination>
+              <Pagination :pagination="pagination" @change="setPage" />
+            </template>
+          </Table.Root>
+        </TableContainer>
+      </div>
 
       <!-- No results message -->
       <Flex v-if="!loading && (!rows || rows.length === 0)" expand>
@@ -731,5 +741,16 @@ td {
     cursor: pointer;
     background-color: var(--color-bg-raised);
   }
+}
+
+.table-loading-wrapper {
+  width: 100%;
+  overflow: hidden;
+  transition: opacity var(--transition-slow);
+}
+
+.table-loading {
+  opacity: 0.4;
+  pointer-events: none;
 }
 </style>
