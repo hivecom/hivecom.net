@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.types'
 import { Marquee } from '@dolanske/vui'
 import EventSmall from '@/components/Events/EventSmall.vue'
+import LandingHero from '@/components/Landing/LandingHero.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
@@ -42,11 +43,16 @@ onBeforeMount(() => {
 
 <template>
   <div class="home-page">
+    <!-- TODO: needs to be decoupled -->
+    <LandingHero />
+
     <GlowGroup>
       <div class="container-m">
         <section class="hero ">
           <GlowCard>
             <div class="home-card centered home-card--about typeset">
+              <span class="corner-text">##########</span>
+              <span class="corner-text right">DLN // ZLS</span>
               <h2>
                 About us
               </h2>
@@ -68,8 +74,6 @@ onBeforeMount(() => {
               </p>
             </div>
           </GlowCard>
-
-        <!-- <LandingHeroBackground /> -->
         </section>
       </div>
 
@@ -106,7 +110,6 @@ onBeforeMount(() => {
       <div class="container-s">
         <h2>Join us</h2>
         <p>Join us but also dont have to but it’d be cool if you did ust thinkig about it ok ill sit down for a sec dont let me disturb you just ponder it for a second.</p>
-
         <NuxtLink to="/sign-up">
           Sign Up
         </NuxtLink>
@@ -122,7 +125,7 @@ onBeforeMount(() => {
   display: flex !important;
   flex-direction: column;
   gap: 128px;
-  padding-top: max(10vh, 256px);
+  /* padding-top: max(10vh, 256px); */
   width: 100%;
 }
 
@@ -280,6 +283,26 @@ onBeforeMount(() => {
   padding-inline: var(--space-xxxl);
   padding-top: 96px;
   padding-bottom: 128px;
+  position: relative;
+
+  .corner-text {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    font-size: var(--font-size-s);
+    color: var(--color-text-lightest);
+    text-transform: uppercase;
+    font-weight: var(--font-weight-semibold);
+
+    &.right {
+      left: unset;
+      right: 16px;
+    }
+  }
+
+  p {
+    font-size: 1.6rem;
+  }
 
   p:first-of-type {
     display: flex;

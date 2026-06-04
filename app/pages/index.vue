@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import type { MetricsSnapshot } from '@/types/metrics'
-import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
+import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import EventSmall from '@/components/Events/EventSmall.vue'
 import LandingHero from '@/components/Landing/LandingHero.vue'
@@ -14,9 +13,8 @@ definePageMeta({
 
 // Fetch data from database
 const user = useSupabaseUser()
-const { fetchMetrics, metrics: cachedMetrics } = useDataMetrics()
-const loading = ref(true)
-const errorMessage = ref('')
+// Convert platforms object to array for easier v-for iteration
+const platforms = ref(Object.values(constants.PLATFORMS))
 
 // Events via shared cache - no dedicated fetch needed here
 const { events: allEvents } = useDataEvents()
@@ -50,52 +48,11 @@ const events = computed<Tables<'events'>[]>(() => {
       : new Date(a.date).getTime() - new Date(b.date).getTime()
   }).slice(0, 3)
 })
-
-const communityStats = ref({
-  users: 100,
-  usersAccurate: false,
-  gameservers: 5,
-  age: new Date().getFullYear() - 2013,
-  projects: 10,
-  forumPosts: 1000,
-})
-
-function applyMetrics(snapshot: MetricsSnapshot): void {
-  const users = snapshot.users.total
-  communityStats.value.usersAccurate = users > 0
-  communityStats.value.users = users > 0 ? users : 100
-  communityStats.value.gameservers = snapshot.gameservers.total
-  communityStats.value.projects = snapshot.community.projects
-  communityStats.value.forumPosts = snapshot.discussions.total
-}
-
-// Pre-populate from cache synchronously - avoids placeholder numbers on warm visits
-if (cachedMetrics.value !== null)
-  applyMetrics(cachedMetrics.value)
-
-// Convert platforms object to array for easier v-for iteration
-const platforms = ref(Object.values(constants.PLATFORMS))
-
-// Fetch real data on component mount
-onMounted(async () => {
-  try {
-    const metricsSnapshot = await fetchMetrics()
-    if (metricsSnapshot != null)
-      applyMetrics(metricsSnapshot)
-  }
-  catch (error: unknown) {
-    console.error('Error fetching data:', error)
-    errorMessage.value = (error as Error).message || 'Failed to fetch data'
-  }
-  finally {
-    loading.value = false
-  }
-})
 </script>
 
 <template>
   <div style="display:contents;">
-    <LandingHero :community-stats="communityStats" :loading="loading" />
+    <LandingHero />
 
     <div class="container-l">
       <div class="page-landing container-m">
@@ -229,21 +186,7 @@ onMounted(async () => {
             Events
           </h2>
 
-          <Grid v-if="loading" class="events-list" :columns="3" gap="m">
-            <!-- Loading state -->
-            <Card v-for="i in 3" :key="i">
-              <Skeleton height="1.5rem" width="80%" class="mb-s" />
-              <Skeleton height="1rem" width="60%" />
-            </Card>
-          </Grid>
-          <div v-else-if="errorMessage" class="events-section__error">
-            <Card>
-              <p class="events-section__error-text">
-                Failed to load events: {{ errorMessage }}
-              </p>
-            </Card>
-          </div>
-          <div v-else-if="events.length === 0" class="events-section__empty">
+          <div v-if="events.length === 0" class="events-section__empty">
             <Card>
               <p>No events scheduled.</p>
             </Card>

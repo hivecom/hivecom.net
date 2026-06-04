@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MetricsSnapshot } from '@/types/metrics'
 import { defineAsyncComponent, onBeforeUnmount } from 'vue'
 import constants from '~~/constants.json'
 import LandingHeroActions from '@/components/Landing/LandingHeroActions.vue'
@@ -15,10 +16,48 @@ interface CommunityStats {
   forumPosts: number
 }
 
-defineProps<{
-  communityStats: CommunityStats
-  loading: boolean
-}>()
+const loading = ref(true)
+const errorMessage = ref('')
+
+const { fetchMetrics, metrics: cachedMetrics } = useDataMetrics()
+
+const communityStats = ref<CommunityStats>({
+  users: 100,
+  usersAccurate: false,
+  gameservers: 5,
+  age: new Date().getFullYear() - 2013,
+  projects: 10,
+  forumPosts: 1000,
+})
+
+function applyMetrics(snapshot: MetricsSnapshot): void {
+  const users = snapshot.users.total
+  communityStats.value.usersAccurate = users > 0
+  communityStats.value.users = users > 0 ? users : 100
+  communityStats.value.gameservers = snapshot.gameservers.total
+  communityStats.value.projects = snapshot.community.projects
+  communityStats.value.forumPosts = snapshot.discussions.total
+}
+
+// Pre-populate from cache synchronously - avoids placeholder numbers on warm visits
+if (cachedMetrics.value !== null)
+  applyMetrics(cachedMetrics.value)
+
+// Fetch real data on component mount
+onBeforeMount(async () => {
+  try {
+    const metricsSnapshot = await fetchMetrics()
+    if (metricsSnapshot != null)
+      applyMetrics(metricsSnapshot)
+  }
+  catch (error: unknown) {
+    console.error('Error fetching data:', error)
+    errorMessage.value = (error as Error).message || 'Failed to fetch data'
+  }
+  finally {
+    loading.value = false
+  }
+})
 
 const LandingHeroGlobe = defineAsyncComponent(() => import('@/components/Landing/LandingHeroGlobe.vue'))
 
