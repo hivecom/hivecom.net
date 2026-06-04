@@ -18,15 +18,9 @@ const { editorActive } = useThemeEditorState()
 const { openCommand } = useCommand()
 
 const isMac = import.meta.client && /Mac/i.test(navigator.platform)
-const isDev = import.meta.dev
 
-// Chat is an experimental feature. Outside of local development its navbar entry
-// point stays hidden until the user has connected at least once via /chat. The
-// revealed flag is read from localStorage, so we only trust it after mount to
-// avoid an SSR hydration mismatch.
-const { revealed: chatRevealed, channelBrowserOpen } = useIrcChat()
-const mounted = ref(false)
-const showChat = computed(() => isDev || (mounted.value && chatRevealed.value))
+const { channelBrowserOpen } = useIrcChat()
+const showChat = true
 
 const { signInPath } = useAuthRedirect()
 
@@ -63,10 +57,6 @@ watch(
 onBeforeMount(async () => {
   await waitForSessionReady()
   authReady.value = true
-})
-
-onMounted(() => {
-  mounted.value = true
 })
 
 // Track an animated background blob when user is hovering over the navbar links
@@ -242,7 +232,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
         <div v-else-if="user && !needsMfaChallenge" class="navigation__user">
           <SearchButton v-if="!isMobile" />
-          <ChatSheet v-if="showChat" :mobile="isMobile" />
+          <ChatSheet v-if="showChat" :mobile="isMobile" :disabled="route.path === '/chat'" />
           <!-- Custom margin, since visually the pfp appears closer than the distance between search & notif icons -->
           <NotificationSheet style="margin-right:6px" />
           <UserSheet v-if="isMobile" />
@@ -253,7 +243,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
           <div class="navigation__auth-buttons">
             <SearchButton />
 
-            <ChatSheet v-if="showChat" />
+            <ChatSheet v-if="showChat" :disabled="route.path === '/chat'" />
 
             <Tooltip :disabled="isMobile">
               <NuxtLink to="/themes">
@@ -277,7 +267,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
           <!-- On mobile we just have a little user icon -->
           <div class="navigation__auth-mobile-button">
-            <ChatSheet v-if="showChat" mobile />
+            <ChatSheet v-if="showChat" mobile :disabled="route.path === '/chat'" />
             <Button square aria-label="Sign in" @click="$router.push(signInPath())">
               <Icon name="ph:sign-in" />
             </Button>

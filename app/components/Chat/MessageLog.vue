@@ -1,29 +1,61 @@
 <script setup lang="ts">
+import type { MediaItem } from '@/components/Shared/Lightbox.vue'
 import type { ChatMessage } from '@/composables/useIrcChat'
-import { ContextMenu, DropdownItem, Flex, pushToast } from '@dolanske/vui'
+import { ContextMenu, DropdownItem, Flex, pushToast, Sheet } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import LinkEmbed from '@/components/LinkEmbed/index.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
+import Lightbox from '@/components/Shared/Lightbox.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { parseInternalUrl } from '@/composables/useDataLinkPreview'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { mentionsSelf, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{ compact?: boolean }>()
 
-const { messages, nick, inputMessage, clearMessages } = useIrcChat()
+const { messages, nick, inputMessage, clearMessages, activeBuffer, openPm } = useIrcChat()
 const { settings } = useDataUserSettings()
 const { handleContentClick } = useExternalLinkGuard()
 
+const isMobile = useBreakpoint('<s')
+const mobileMenuOpen = ref(false)
+
 const logEl = ref<HTMLElement | null>(null)
 const activeMessage = ref<ChatMessage | null>(null)
+const lightboxRef = useTemplateRef('lightboxRef')
+
+const nickColWidth = useLocalStorage(props.compact ? 'chat-irc-nick-col-width-compact' : 'chat-irc-nick-col-width', 160)
+const isDragging = ref(false)
+let dragStartX = 0
+let dragStartWidth = 0
+
+function startDrag(event: MouseEvent) {
+  isDragging.value = true
+  dragStartX = event.clientX
+  dragStartWidth = nickColWidth.value
+}
+
+useEventListener('mousemove', (event: MouseEvent) => {
+  if (!isDragging.value)
+    return
+  const delta = event.clientX - dragStartX
+  nickColWidth.value = Math.max(60, Math.min(300, dragStartWidth + delta))
+})
+
+useEventListener('mouseup', () => {
+  isDragging.value = false
+})
 
 const URL_RE = /(https?:\/\/\S+)/g
 const IMAGE_RE = /\.(?:png|jpe?g|gif|webp|avif|svg)(?:\?\S*)?$/i
+const VIDEO_RE = /\.(?:mp4|webm|mov|m4v)(?:\?\S*)?$/i
 
-const showTimestamps = computed(() => !props.compact && settings.value.chat_show_timestamps)
+const showTimestamps = computed(() => !props.compact && !isMobile.value && settings.value.chat_show_timestamps)
+const isModernMode = computed(() => (isMobile.value || settings.value.chat_display_mode === 'modern') && activeBuffer.value?.kind !== 'server')
+const isServerBuffer = computed(() => activeBuffer.value?.kind === 'server')
 
 // --- Modern mode -------------------------------------------------------
 interface MessageGroup {
@@ -38,7 +70,7 @@ interface MessageGroup {
 const { resolved, resolve } = useIrcNickResolver()
 
 const groupedMessages = computed((): MessageGroup[] => {
-  if (settings.value.chat_display_mode !== 'modern')
+  if (!isModernMode.value)
     return []
   const groups: MessageGroup[] = []
   for (const msg of messages.value) {
@@ -94,6 +126,12 @@ function fmtTime(d: Date): string {
   return dayjs(d).format(settings.value.chat_timestamp_format || 'HH:mm:ss')
 }
 
+const SERVICE_NICKS = new Set(['histserv', 'nickserv', 'chanserv'])
+
+function isServiceNick(from?: string | null): boolean {
+  return from != null && SERVICE_NICKS.has(from.toLowerCase())
+}
+
 function msgClass(msg: ChatMessage) {
   return {
     error: 'chat-log__msg--error',
@@ -109,15 +147,43 @@ function isOwn(msg: ChatMessage) {
 }
 
 function isMention(msg: ChatMessage) {
-  return msg.type === 'chat' && msg.from != null && msg.from !== nick.value && mentionsSelf(msg.text)
+  if (msg.type !== 'chat' || msg.from == null || msg.from === nick.value || !mentionsSelf(msg.text))
+    return false
+  // Replayed history that was already seen shouldn't keep screaming at you. A
+  // backlog mention only counts as a fresh ping when it lands past the read line.
+  if (msg.backlog) {
+    const readLineTs = activeBuffer.value?.readLineTs
+    return readLineTs != null && msg.ts.getTime() > readLineTs
+  }
+  // Live mentions are always genuine pings.
+  return true
 }
+
+// Read line - marks the boundary between already-seen and new messages.
+const readLineFirstMsgId = computed<number | null>(() => {
+  const readLineTs = activeBuffer.value?.readLineTs
+  if (!readLineTs)
+    return null
+  return messages.value.find(m => m.ts.getTime() > readLineTs)?.id ?? null
+})
+
+const readLineFirstGroupId = computed<number | null>(() => {
+  const readLineTs = activeBuffer.value?.readLineTs
+  if (!readLineTs)
+    return null
+  for (const group of groupedMessages.value) {
+    if (group.messages.some(m => m.ts.getTime() > readLineTs))
+      return group.id
+  }
+  return null
+})
 
 function cleanNick(name: string) {
   return name.replace(/^\*\s*/, '')
 }
 
 function nickStyle(msg: ChatMessage) {
-  if (msg.type === 'chat' && msg.from && settings.value.chat_colored_nicks && msg.from !== nick.value)
+  if (msg.type === 'chat' && msg.from && settings.value.chat_colored_nicks && msg.from !== nick.value && !isServiceNick(msg.from))
     return { color: nickColor(cleanNick(msg.from)) }
   return undefined
 }
@@ -375,9 +441,15 @@ function segments(text: string): Segment[] {
 }
 
 function imageUrls(text: string): string[] {
-  if (!settings.value.chat_show_inline_embeds)
+  if (!settings.value.chat_show_previews)
     return []
   return (text.match(URL_RE) ?? []).filter(u => IMAGE_RE.test(u))
+}
+
+function videoUrls(text: string): string[] {
+  if (!settings.value.chat_show_previews)
+    return []
+  return (text.match(URL_RE) ?? []).filter(u => VIDEO_RE.test(u))
 }
 
 function previewUrls(text: string): string[] {
@@ -399,10 +471,39 @@ function previewUrls(text: string): string[] {
   return out
 }
 
+const chatMediaItems = computed((): MediaItem[] => {
+  const items: MediaItem[] = []
+  for (const msg of messages.value) {
+    for (const url of (msg.text.match(URL_RE) ?? []).filter(u => IMAGE_RE.test(u)))
+      items.push({ type: 'image', url })
+    for (const url of (msg.text.match(URL_RE) ?? []).filter(u => VIDEO_RE.test(u)))
+      items.push({ type: 'video', url })
+  }
+  return items
+})
+
+function openLightbox(url: string, type: 'image' | 'video') {
+  const index = chatMediaItems.value.findIndex(m => m.type === type && m.url === url)
+  if (index !== -1)
+    lightboxRef.value?.open(index)
+}
+
+function handleIrcLinkClick(event: MouseEvent, url: string) {
+  if (!IMAGE_RE.test(url) && !VIDEO_RE.test(url))
+    return
+  event.preventDefault()
+  event.stopPropagation()
+  openLightbox(url, IMAGE_RE.test(url) ? 'image' : 'video')
+}
+
 function onContextMenu(event: MouseEvent) {
   const el = (event.target as HTMLElement | null)?.closest('[data-msg-id]') as HTMLElement | null
   const id = el?.dataset.msgId
   activeMessage.value = id ? messages.value.find(m => m.id === Number(id)) ?? null : null
+  if (isMobile.value) {
+    event.stopPropagation()
+    mobileMenuOpen.value = true
+  }
 }
 
 // The VUI ContextMenu only closes on an outside pointerdown or Escape, so we
@@ -423,16 +524,24 @@ async function copyText(text: string, label: string) {
   closeMenu()
 }
 
+function messagePm(name: string) {
+  openPm(cleanNick(name))
+  closeMenu()
+  mobileMenuOpen.value = false
+}
+
 function mention(name: string) {
   const clean = cleanNick(name)
   const current = inputMessage.value.trim()
   inputMessage.value = current ? `${current} ${clean}: ` : `${clean}: `
   closeMenu()
+  mobileMenuOpen.value = false
 }
 
 function clear() {
   clearMessages()
   closeMenu()
+  mobileMenuOpen.value = false
 }
 
 const stop = watch(
@@ -458,139 +567,196 @@ onBeforeUnmount(stop)
 <template>
   <ContextMenu class="chat-log">
     <div ref="logEl" class="chat-log__scroll" @contextmenu="onContextMenu" @click="handleContentClick">
-      <template v-if="settings.chat_display_mode !== 'modern'">
-        <Flex
-          v-for="msg in messages"
-          :key="msg.id"
-          wrap
-          gap="xs"
-          class="chat-log__msg"
-          :class="[msgClass(msg), {
-            'chat-log__msg--own': isOwn(msg),
-            'chat-log__msg--mention': isMention(msg),
-            'chat-log__msg--backlog': msg.backlog,
-          }]"
-          :data-msg-id="msg.id"
-        >
-          <span v-if="showTimestamps" class="chat-log__ts">{{ fmtTime(msg.ts) }}</span>
-          <span v-if="msg.from" class="chat-log__nick" :style="nickStyle(msg)">{{ msg.from }}</span>
-          <span class="chat-log__text">
-            <template v-for="(seg, i) in segments(msg.text)" :key="i">
-              <a
-                v-if="seg.type === 'link'"
-                :href="seg.value"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="chat-log__link"
-                :style="segStyle(seg)"
-              >{{ seg.value }}</a>
-              <span
-                v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline"
-                :style="segStyle(seg)"
-              >{{ seg.value }}</span>
-              <template v-else>{{ seg.value }}</template>
-            </template>
-          </span>
-          <Flex v-if="imageUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
-            <a
-              v-for="url in imageUrls(msg.text)"
-              :key="url"
-              :href="url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="chat-log__embed"
-            >
-              <img :src="url" alt="" loading="lazy">
-            </a>
-          </Flex>
-          <template v-if="previewUrls(msg.text).length">
-            <LinkEmbed
-              v-for="url in previewUrls(msg.text)"
-              :key="url"
-              :url="url"
-              class="chat-log__link-preview"
-            />
-          </template>
-        </Flex>
-      </template>
-      <template v-else>
-        <template v-for="group in groupedMessages" :key="group.id">
-          <!-- System / event one-liners (join, part, error, etc.) -->
-          <Flex
-            v-if="group.isSystem"
-            wrap
-            gap="xs"
-            class="chat-log__msg"
-            :class="[msgClass(group.messages[0]), { 'chat-log__msg--backlog': group.messages[0].backlog }]"
-            :data-msg-id="group.messages[0].id"
-          >
-            <span v-if="showTimestamps" class="chat-log__ts">{{ fmtTime(group.messages[0].ts) }}</span>
-            <span v-if="group.messages[0].from" class="chat-log__nick">{{ group.messages[0].from }}</span>
-            <span class="chat-log__text">
-              <template v-for="(seg, i) in segments(group.messages[0].text)" :key="i">
-                <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
-                <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
-                <template v-else>{{ seg.value }}</template>
-              </template>
-            </span>
-          </Flex>
-
-          <!-- Grouped chat messages (Discord-style) -->
-          <div
-            v-else
-            class="chat-log__group"
-            :class="{ 'chat-log__msg--backlog': group.messages[0].backlog }"
-          >
-            <div class="chat-log__group-avatar">
-              <UserAvatar v-if="resolvedUser(group.nickLower)" :user-id="resolvedUser(group.nickLower)!.id" :size="32" show-preview />
-              <AvatarMedia v-else :size="32" :alt="group.from ?? ''">
-                <template #default>
-                  {{ (group.from ?? '?').charAt(0).toUpperCase() }}
-                </template>
-              </AvatarMedia>
+      <div
+        class="chat-log__messages"
+        :class="{ 'chat-log__messages--server': isServerBuffer }"
+        :style="!isModernMode ? { '--irc-nick-col': `${nickColWidth}px` } : {}"
+      >
+        <template v-if="!isModernMode">
+          <template v-for="msg in messages" :key="msg.id">
+            <div v-if="msg.id === readLineFirstMsgId" class="chat-log__new-divider" aria-label="New messages">
+              <span>new messages</span>
             </div>
-            <div class="chat-log__group-body">
-              <div class="chat-log__group-header">
-                <span class="chat-log__nick" :style="groupNickStyle(group.from)">
-                  {{ resolvedUser(group.nickLower)?.username ?? group.from }}
+            <div
+              class="chat-log__msg chat-log__msg--irc"
+              :class="[isServiceNick(msg.from) ? undefined : msgClass(msg), {
+                'chat-log__msg--own': isOwn(msg),
+                'chat-log__msg--mention': isMention(msg) && !isServiceNick(msg.from),
+                'chat-log__msg--backlog': msg.backlog && !isServiceNick(msg.from),
+                'chat-log__msg--service': isServiceNick(msg.from),
+              }]"
+              :data-msg-id="msg.id"
+            >
+              <span class="chat-log__nick-cell">
+                <span v-if="showTimestamps" class="chat-log__ts">{{ fmtTime(msg.ts) }}</span>
+                <span v-if="msg.from" class="chat-log__nick" :style="nickStyle(msg)">{{ msg.from }}</span>
+              </span>
+              <div class="chat-log__msg-cell">
+                <span class="chat-log__text">
+                  <template v-for="(seg, i) in segments(msg.text)" :key="i">
+                    <a
+                      v-if="seg.type === 'link'"
+                      :href="seg.value"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="chat-log__link"
+                      :style="segStyle(seg)"
+                      @click="handleIrcLinkClick($event, seg.value)"
+                    >{{ seg.value }}</a>
+                    <span
+                      v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline"
+                      :style="segStyle(seg)"
+                    >{{ seg.value }}</span>
+                    <template v-else>{{ seg.value }}</template>
+                  </template>
                 </span>
-                <span v-if="showTimestamps" class="chat-log__ts chat-log__ts--inline">{{ fmtTime(group.messages[0].ts) }}</span>
+                <Flex v-if="imageUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                  <img
+                    v-for="url in imageUrls(msg.text)"
+                    :key="url"
+                    :src="url"
+                    alt=""
+                    loading="lazy"
+                    class="chat-log__embed"
+                    @click="openLightbox(url, 'image')"
+                  >
+                </Flex>
+                <Flex v-if="videoUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                  <video
+                    v-for="url in videoUrls(msg.text)"
+                    :key="url"
+                    :src="url"
+                    preload="metadata"
+                    class="chat-log__embed-video"
+                    @click="openLightbox(url, 'video')"
+                  />
+                </Flex>
+                <template v-if="previewUrls(msg.text).length">
+                  <LinkEmbed
+                    v-for="url in previewUrls(msg.text)"
+                    :key="url"
+                    :url="url"
+                    class="chat-log__link-preview"
+                  />
+                </template>
               </div>
+            </div>
+          </template>
+        </template>
+        <template v-else>
+          <template v-for="group in groupedMessages" :key="group.id">
+            <div v-if="group.id === readLineFirstGroupId" class="chat-log__new-divider" aria-label="New messages">
+              <span>new messages</span>
+            </div>
+            <!-- HistServ chat announcement dividers (one per message in the group) -->
+            <template v-if="!group.isSystem && group.from === 'HistServ'">
               <div
                 v-for="msg in group.messages"
                 :key="msg.id"
-                class="chat-log__modern-line"
-                :class="{ 'chat-log__modern-line--mention': isMention(msg) }"
+                class="chat-log__histserv-divider"
                 :data-msg-id="msg.id"
               >
-                <span class="chat-log__text">
+                <span class="chat-log__histserv-divider__text">
                   <template v-for="(seg, i) in segments(msg.text)" :key="i">
                     <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
                     <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
                     <template v-else>{{ seg.value }}</template>
                   </template>
                 </span>
-                <Flex v-if="imageUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
-                  <a v-for="url in imageUrls(msg.text)" :key="url" :href="url" target="_blank" rel="noopener noreferrer" class="chat-log__embed">
-                    <img :src="url" alt="" loading="lazy">
-                  </a>
-                </Flex>
-                <template v-if="previewUrls(msg.text).length">
-                  <LinkEmbed v-for="url in previewUrls(msg.text)" :key="url" :url="url" class="chat-log__link-preview" />
+              </div>
+            </template>
+
+            <!-- System events as dividers in modern mode -->
+            <div
+              v-else-if="group.isSystem"
+              class="chat-log__histserv-divider"
+              :data-msg-id="group.messages[0].id"
+            >
+              <span class="chat-log__histserv-divider__text">
+                <template v-for="(seg, i) in segments(group.messages[0].text)" :key="i">
+                  <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
+                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                  <template v-else>{{ seg.value }}</template>
                 </template>
+              </span>
+            </div>
+
+            <!-- Grouped chat messages (Discord-style) -->
+            <div
+              v-else
+              class="chat-log__group"
+              :class="{ 'chat-log__msg--backlog': group.messages[0].backlog }"
+            >
+              <div class="chat-log__group-avatar">
+                <UserAvatar v-if="resolvedUser(group.nickLower)" :user-id="resolvedUser(group.nickLower)!.id" :size="32" show-preview />
+                <AvatarMedia v-else :size="32" :alt="group.from ?? ''">
+                  <template #default>
+                    {{ (group.from ?? '?').charAt(0).toUpperCase() }}
+                  </template>
+                </AvatarMedia>
+              </div>
+              <div class="chat-log__group-body">
+                <div class="chat-log__group-header">
+                  <span class="chat-log__nick" :style="groupNickStyle(group.from)">
+                    {{ resolvedUser(group.nickLower)?.username ?? group.from }}
+                  </span>
+                  <span v-if="showTimestamps" class="chat-log__ts chat-log__ts--inline">{{ fmtTime(group.messages[0].ts) }}</span>
+                </div>
+                <div
+                  v-for="msg in group.messages"
+                  :key="msg.id"
+                  class="chat-log__modern-line"
+                  :class="{ 'chat-log__modern-line--mention': isMention(msg) }"
+                  :data-msg-id="msg.id"
+                >
+                  <span class="chat-log__text">
+                    <template v-for="(seg, i) in segments(msg.text)" :key="i">
+                      <template v-if="seg.type === 'link'">
+                        <a v-if="!imageUrls(msg.text).includes(seg.value) && !videoUrls(msg.text).includes(seg.value) && !previewUrls(msg.text).includes(seg.value)" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
+                      </template>
+                      <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                      <template v-else>{{ seg.value }}</template>
+                    </template>
+                  </span>
+                  <Flex v-if="imageUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                    <img v-for="url in imageUrls(msg.text)" :key="url" :src="url" alt="" loading="lazy" class="chat-log__embed" @click="openLightbox(url, 'image')">
+                  </Flex>
+                  <Flex v-if="videoUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                    <video v-for="url in videoUrls(msg.text)" :key="url" :src="url" preload="metadata" class="chat-log__embed-video" @click="openLightbox(url, 'video')" />
+                  </Flex>
+                  <template v-if="previewUrls(msg.text).length">
+                    <LinkEmbed v-for="url in previewUrls(msg.text)" :key="url" :url="url" class="chat-log__link-preview" />
+                  </template>
+                </div>
               </div>
             </div>
-          </div>
+          </template>
         </template>
-      </template>
-      <Flex v-if="messages.length === 0" y-center x-center class="chat-log__empty" expand>
-        No messages yet.
-      </Flex>
+        <Flex v-if="messages.length === 0" y-center x-center class="chat-log__empty" expand>
+          No messages yet.
+        </Flex>
+        <div
+          v-if="!isModernMode && !isServerBuffer"
+          class="chat-log__nick-divider"
+          :class="{ 'chat-log__nick-divider--dragging': isDragging }"
+          @mousedown.prevent="startDrag"
+        />
+      </div>
     </div>
+    <Lightbox ref="lightboxRef" :items="chatMediaItems" />
 
     <template #menu>
       <div class="vui-dropdown chat-log__menu">
         <template v-if="activeMessage">
+          <DropdownItem
+            v-if="activeMessage.from"
+            @click="messagePm(activeMessage.from)"
+          >
+            <template #icon>
+              <Icon name="ph:chat-text" />
+            </template>
+            Message {{ cleanNick(activeMessage.from) }}
+          </DropdownItem>
           <DropdownItem
             v-if="activeMessage.from"
             @click="mention(activeMessage.from)"
@@ -625,6 +791,64 @@ onBeforeUnmount(stop)
       </div>
     </template>
   </ContextMenu>
+
+  <Sheet
+    :open="mobileMenuOpen"
+    position="bottom"
+    :card="{ separators: true,
+             padding: false }"
+    @close="mobileMenuOpen = false"
+  >
+    <template v-if="activeMessage" #header>
+      <Flex y-center x-between expand>
+        <span class="chat-log__drawer-nick">{{ activeMessage.from ? cleanNick(activeMessage.from) : '' }}</span>
+        <span class="chat-log__drawer-ts">{{ fmtTime(activeMessage.ts) }}</span>
+      </Flex>
+    </template>
+    <div class="vui-dropdown chat-log__menu">
+      <template v-if="activeMessage">
+        <DropdownItem
+          v-if="activeMessage.from"
+          @click="messagePm(activeMessage.from)"
+        >
+          <template #icon>
+            <Icon name="ph:chat-text" />
+          </template>
+          Message {{ cleanNick(activeMessage.from) }}
+        </DropdownItem>
+        <DropdownItem
+          v-if="activeMessage.from"
+          @click="mention(activeMessage.from)"
+        >
+          <template #icon>
+            <Icon name="ph:at" />
+          </template>
+          Mention {{ cleanNick(activeMessage.from) }}
+        </DropdownItem>
+        <DropdownItem
+          v-if="activeMessage.from"
+          @click="copyText(cleanNick(activeMessage.from), 'Nickname')"
+        >
+          <template #icon>
+            <Icon name="ph:user" />
+          </template>
+          Copy nickname
+        </DropdownItem>
+        <DropdownItem @click="copyText(activeMessage.text, 'Message')">
+          <template #icon>
+            <Icon name="ph:copy" />
+          </template>
+          Copy message
+        </DropdownItem>
+      </template>
+      <DropdownItem @click="clear">
+        <template #icon>
+          <Icon name="ph:trash" />
+        </template>
+        Clear log
+      </DropdownItem>
+    </div>
+  </Sheet>
 </template>
 
 <style lang="scss" scoped>
@@ -633,6 +857,18 @@ onBeforeUnmount(stop)
   flex: 1;
   min-height: 0;
   width: 100%;
+
+  &__drawer-nick {
+    font-size: var(--font-size-s);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+  }
+
+  &__drawer-ts {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    font-family: monospace;
+  }
 
   &__scroll {
     flex: 1;
@@ -646,8 +882,25 @@ onBeforeUnmount(stop)
     font-size: var(--chat-font-size, var(--font-size-s));
     display: flex;
     flex-direction: column;
-    gap: 2px;
     scroll-behavior: smooth;
+  }
+
+  &__messages {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    position: relative;
+
+    &--server {
+      .chat-log__msg--irc {
+        grid-template-columns: 1fr;
+      }
+
+      .chat-log__nick-cell {
+        display: none;
+      }
+    }
   }
 
   &__empty {
@@ -675,11 +928,67 @@ onBeforeUnmount(stop)
     &--backlog {
       opacity: 0.7;
     }
+
+    &--irc {
+      display: grid;
+      grid-template-columns: var(--irc-nick-col, 120px) 1fr;
+      align-items: start;
+      padding: 1px 0;
+    }
+  }
+
+  &__nick-cell {
+    display: flex;
+    justify-content: flex-end;
+    align-items: baseline;
+    gap: var(--space-xxs);
+    overflow: hidden;
+    min-width: 0;
+    font-size: inherit;
+    padding-right: var(--space-xs);
+  }
+
+  &__msg-cell {
+    min-width: 0;
+    font-size: inherit;
+  }
+
+  &__nick-divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--irc-nick-col, 120px);
+    width: 8px;
+    margin-left: -4px;
+    cursor: col-resize;
+    z-index: var(--z-active);
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: calc(50% - 0.5px);
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--color-border);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    &:hover::before {
+      opacity: 1;
+    }
+
+    &--dragging::before {
+      opacity: 1;
+      background: var(--color-accent);
+    }
   }
 
   &__ts {
     color: var(--color-text-lightest);
     flex-shrink: 0;
+    margin-right: auto;
     user-select: none;
     font-size: inherit;
   }
@@ -711,7 +1020,6 @@ onBeforeUnmount(stop)
   }
 
   &__embeds {
-    width: 100%;
     padding-top: var(--space-xxs);
   }
 
@@ -722,13 +1030,32 @@ onBeforeUnmount(stop)
     border-radius: var(--border-radius-s);
     overflow: hidden;
     border: 1px solid var(--color-border-weak);
+    object-fit: cover;
+    cursor: pointer;
+  }
 
-    img {
-      display: block;
-      max-width: 100%;
-      max-height: 180px;
-      object-fit: cover;
-    }
+  &__embed-video {
+    display: block;
+    max-width: 320px;
+    max-height: 200px;
+    border-radius: var(--border-radius-s);
+    border: 1px solid var(--color-border-weak);
+    cursor: pointer;
+  }
+
+  span {
+    font-size: var(--chat-font-size, var(--font-size-s));
+  }
+
+  // IRC mode: compact inline thumbnails
+  &__msg &__embed {
+    max-width: 72px;
+    max-height: 48px;
+  }
+
+  &__msg &__embed-video {
+    max-width: 80px;
+    max-height: 48px;
   }
 
   &__msg--system &__text {
@@ -738,6 +1065,27 @@ onBeforeUnmount(stop)
 
   &__msg--error &__text {
     color: var(--color-text-red);
+  }
+
+  &__msg--service {
+    background: transparent;
+    opacity: 1;
+
+    &.chat-log__nick {
+      color: var(--color-text-lightest);
+    }
+
+    .chat-log__nick {
+      color: var(--color-text-lightest);
+    }
+
+    .chat-log__text {
+      color: var(--color-text-lightest);
+
+      span {
+        font-size: var(--chat-font-size, var(--font-size-s));
+      }
+    }
   }
 
   &__msg--join &__text {
@@ -787,6 +1135,54 @@ onBeforeUnmount(stop)
   &__ts--inline {
     font-size: var(--font-size-xs);
     color: var(--color-text-lightest);
+  }
+
+  &__new-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    padding: var(--space-xs) var(--space-xs);
+    color: var(--color-accent);
+
+    span {
+      font-size: var(--chat-font-size, var(--font-size-s));
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    &::before,
+    &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--color-accent);
+      opacity: 0.4;
+    }
+  }
+
+  &__histserv-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    padding: var(--space-xs) var(--space-xs);
+    color: var(--color-text-lighter);
+    font-size: var(--chat-font-size, var(--font-size-s));
+
+    &::before,
+    &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--color-border-weak);
+    }
+
+    &__text {
+      white-space: normal;
+      flex-shrink: 1;
+      min-width: 0;
+      font-size: var(--chat-font-size, var(--font-size-s));
+    }
   }
 
   &__modern-line {

@@ -25,12 +25,31 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const WS_URL = 'wss://irc.hivecom.net:8097'
-const DEFAULT_CHANNEL = '#playground'
+const DEFAULT_CHANNEL_DEV = '#playground'
+const DEFAULT_CHANNEL_ANON = '#public'
+const DEFAULT_CHANNEL_AUTH = '#lounge'
+
+function defaultChannel(anon: boolean): string {
+  if (import.meta.dev)
+    return DEFAULT_CHANNEL_DEV
+  return anon ? DEFAULT_CHANNEL_ANON : DEFAULT_CHANNEL_AUTH
+}
 const STORAGE_NICK = 'hivecom.chat.nick'
 const STORAGE_CHANNEL = 'hivecom.chat.channel'
-// Set once the user has successfully connected at least once. Used to reveal the
-// navbar chat icon, which is hidden by default outside of local development.
-const STORAGE_REVEALED = 'hivecom.chat.revealed'
+// Timestamp (ms) of the most recent live message we've seen. Used as the lower
+// bound for CHATHISTORY TARGETS / LATEST on reconnect so we only pull missed DMs.
+const STORAGE_LASTSEEN = 'hivecom.chat.lastseen'
+// Map of lowercased DM nick -> timestamp (ms) when the user closed that query.
+// Suppresses auto-reopening closed DMs unless newer activity exists.
+const STORAGE_CLOSED_DMS = 'hivecom.chat.closeddms'
+// Map of lowercased channel/pm name -> timestamp (ms) when the user last read it.
+const STORAGE_READ_POSITIONS = 'hivecom.chat.readpos'
+// How far back to look for missed DMs when there is no stored cursor.
+const DEFAULT_HISTORY_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000
+// Clock-skew fuzz applied to history bound timestamps.
+const HISTORY_FUZZ_MS = 5000
+// Max messages / targets per CHATHISTORY request.
+const HISTORY_LIMIT = 50
 
 // Synthetic buffer that holds connection-level/system output before any channel
 // is joined. Never sent to the server.
@@ -72,6 +91,8 @@ export interface ChatBuffer {
   mentions: number
   joined: boolean
   topic?: string
+  /** Timestamp (ms) of the last-read boundary. Messages with ts > this are "new". */
+  readLineTs?: number
 }
 
 export interface ChannelListEntry {
@@ -96,6 +117,9 @@ export type IdentityProvider = () => Promise<ChatIdentity | null> | ChatIdentity
 
 const MODE_PREFIX_RE = /^[~&@%+]+/
 
+// IRC service bots whose messages should never generate mention notifications.
+const SERVICE_NICKS = new Set(['histserv', 'nickserv', 'chanserv'])
+
 // IRC channel-membership prefixes ordered from highest to lowest privilege.
 const PREFIX_ORDER = '~&@%+'
 // Channel mode chars that map onto a membership prefix.
@@ -112,19 +136,19 @@ const buffers = ref<ChatBuffer[]>([])
 const activeName = ref<string>(SERVER_BUFFER)
 const msgCounter = ref(0)
 const sidebarHidden = ref(false)
+// null = not yet checked; '' = confirmed absent (unclaimed); string = email present (claimed)
+const accountEmail = ref<string | null>(null)
+// null = not yet determined; true/false parsed from NickServ INFO Flags line
+const accountAlwaysOn = ref<boolean | null>(null)
 
 // --- Channel list (populated by LIST/322/323) --------------------------------
 const channelList = ref<ChannelListEntry[]>([])
 const channelListLoading = ref(false)
 const channelBrowserOpen = ref(false)
 
-// Whether the chat entry point should be revealed in the navbar. Persisted so it
-// survives reloads once the user has connected through the /chat page.
-const revealed = ref(false)
-
 // Form / draft state, shared so both surfaces edit the same values.
 const inputNick = ref('')
-const inputChannel = ref(DEFAULT_CHANNEL)
+const inputChannel = ref('')
 const inputMessage = ref('')
 
 // Extra words (besides the current nick) that count as a mention. Sourced from
@@ -137,8 +161,40 @@ export function setMentionKeywords(words: string[]) {
   mentionKeywords.value = words.map(w => w.trim()).filter(w => w.length > 0)
 }
 
+// Whether to fire browser Notifications on mentions. Sourced from user settings.
+const browserNotificationsEnabled = ref(false)
+
+/** Sync the browser-notification preference from user settings. */
+export function setBrowserNotificationsEnabled(enabled: boolean) {
+  browserNotificationsEnabled.value = enabled
+}
+
+// Per-channel last-read timestamps, keyed by lowercased channel/pm name.
+let readPositions: Record<string, number> = {}
+
+function saveReadPosition(name: string, ts: number) {
+  const key = name.toLowerCase()
+  // Monotonic - the read marker only ever advances. Replayed history can land in
+  // the buffer after a newer system line (e.g. "You joined"), so guard against
+  // regressing the cursor backwards.
+  if ((readPositions[key] ?? 0) >= ts)
+    return
+  readPositions[key] = ts
+  if (import.meta.client)
+    localStorage.setItem(STORAGE_READ_POSITIONS, JSON.stringify(readPositions))
+}
+
 let ws: WebSocket | null = null
 let initialised = false
+let _readWatcherRegistered = false
+// Whether any chat UI surface (sheet or full page) is currently visible to the
+// user. The read watcher only clears unread/mentions when this is true.
+const isChatVisible = ref(false)
+let _autoPmTimer: ReturnType<typeof setTimeout> | null = null
+// Most recent live message timestamp (ms); persisted as the CHATHISTORY cursor.
+let lastSeenTs = 0
+// Lowercased DM nick -> timestamp (ms) when user closed that query.
+let closedDms: Record<string, number> = {}
 
 // --- Latency tracking -------------------------------------------------------
 const latencyMs = ref<number | null>(null)
@@ -186,7 +242,11 @@ let capLs: string[] = []
 let saslMech: 'PLAIN' | 'ANONYMOUS' | null = null
 let authCreds: ChatIdentity | null = null
 let useAnonymous = false
+let saslFailed = false
 let chatHistorySupported = false
+let probingNickServInfo = false
+let probeTimer: ReturnType<typeof setTimeout> | null = null
+let suppressingNickServOp = false
 // Active CHATHISTORY batch ids, so replayed lines can be flagged as backlog.
 const backlogBatches = new Set<string>()
 
@@ -240,21 +300,65 @@ function addToBuffer(
   opts: { ts?: Date, backlog?: boolean } = {},
 ) {
   const buf = getBuffer(name, kind)
+  const ts = opts.ts ?? new Date()
   buf.messages.push({
     ...msg,
     id: msgCounter.value++,
-    ts: opts.ts ?? new Date(),
+    ts,
     backlog: opts.backlog,
   })
 
-  if (opts.backlog)
+  // Track the newest live chat message so DM history fetches know where we left off.
+  if (!opts.backlog && msg.type === 'chat')
+    noteSeen(ts.getTime())
+
+  // Only chat messages from other people affect unread/mention/notification state.
+  // Service bots (HistServ, NickServ, ChanServ) are metadata - never badge.
+  if (msg.type !== 'chat' || msg.from == null || msg.from === nick.value || SERVICE_NICKS.has(msg.from.toLowerCase()))
     return
 
-  if (buf.name.toLowerCase() !== activeName.value.toLowerCase()) {
-    buf.unread += 1
-    if (msg.type === 'chat' && msg.from != null && msg.from !== nick.value && mentionsSelf(msg.text))
-      buf.mentions += 1
+  const isPing = kind === 'pm'
+    ? !SERVICE_NICKS.has(msg.from.toLowerCase())
+    : !SERVICE_NICKS.has(msg.from.toLowerCase()) && mentionsSelf(msg.text)
+
+  const isActive = buf.name.toLowerCase() === activeName.value.toLowerCase()
+  // Capture the marker BEFORE pinning so notification/already-read logic compares
+  // against the previously-read position, not this very message.
+  const readTs = readPositions[name.toLowerCase()]
+  // The read marker is the single source of truth. A message is already read when
+  // it's no newer than the marker - this holds for both live and replayed lines, so
+  // it does NOT matter whether the server flagged the history as a backlog batch (an
+  // unreliable signal). This is the core guard against re-counting seen messages.
+  const alreadyRead = readTs != null && ts.getTime() <= readTs
+  // Pin the active buffer's marker forward as each message arrives (monotonic), so
+  // the channel you're viewing is robustly recorded as read without depending on the
+  // watcher's flush timing.
+  if (isActive && isChatVisible.value)
+    saveReadPosition(name, ts.getTime())
+
+  // Browser notification: genuinely-new pings only, never replayed history, and not
+  // while the user is reading this exact channel live.
+  if (!opts.backlog && isPing && !alreadyRead && browserNotificationsEnabled.value
+    && typeof Notification !== 'undefined' && Notification.permission === 'granted'
+    && (!isActive || document.hidden)) {
+    // eslint-disable-next-line no-new
+    new Notification(`${msg.from} mentioned you in ${buf.name}`, { body: msg.text, tag: `chat-mention-${buf.name}` })
   }
+
+  // Don't badge what you're looking at or have already read.
+  // isActive only suppresses the badge when the chat UI is actually visible.
+  if ((isActive && isChatVisible.value) || alreadyRead)
+    return
+  // First-ever visit to a channel (no marker): don't badge its replayed history;
+  // only genuine live activity. DMs are exempt - a replayed DM is a real new message.
+  if (readTs == null && opts.backlog && kind !== 'pm')
+    return
+
+  buf.unread += 1
+  if (isPing)
+    buf.mentions += 1
+  // Read line sits at the boundary between the last-read message and the new ones.
+  buf.readLineTs ??= readTs ?? ts.getTime() - 1
 }
 
 /** Connection-level/system output that has no channel context. */
@@ -361,19 +465,60 @@ function loadPersisted() {
   if (!import.meta.client)
     return
   inputNick.value = localStorage.getItem(STORAGE_NICK) ?? ''
-  inputChannel.value = localStorage.getItem(STORAGE_CHANNEL) ?? DEFAULT_CHANNEL
-  revealed.value = localStorage.getItem(STORAGE_REVEALED) === 'true'
+  inputChannel.value = localStorage.getItem(STORAGE_CHANNEL) ?? ''
+  lastSeenTs = Number(localStorage.getItem(STORAGE_LASTSEEN)) || 0
+  try {
+    closedDms = JSON.parse(localStorage.getItem(STORAGE_CLOSED_DMS) ?? '{}') as Record<string, number>
+  }
+  catch {
+    closedDms = {}
+  }
+  try {
+    readPositions = JSON.parse(localStorage.getItem(STORAGE_READ_POSITIONS) ?? '{}') as Record<string, number>
+  }
+  catch {
+    readPositions = {}
+  }
 }
 
-function markRevealed() {
-  revealed.value = true
+/** Advance and persist the last-seen cursor when a live message is newer. */
+function noteSeen(ts: number) {
+  if (ts <= lastSeenTs)
+    return
+  lastSeenTs = ts
   if (import.meta.client)
-    localStorage.setItem(STORAGE_REVEALED, 'true')
+    localStorage.setItem(STORAGE_LASTSEEN, String(ts))
+}
+
+function persistClosedDms() {
+  if (import.meta.client)
+    localStorage.setItem(STORAGE_CLOSED_DMS, JSON.stringify(closedDms))
+}
+
+/** Record a closed DM so reconnect won't reopen it unless newer activity exists. */
+function rememberClosedDm(name: string, buf: ChatBuffer) {
+  const last = buf.messages[buf.messages.length - 1]
+  closedDms[name.toLowerCase()] = last?.ts ? last.ts.getTime() : Date.now()
+  persistClosedDms()
+}
+
+/** Remove a DM's closed marker (reopened manually, or has fresh activity). */
+function forgetClosedDm(name: string) {
+  if (closedDms[name.toLowerCase()] == null)
+    return
+  delete closedDms[name.toLowerCase()]
+  persistClosedDms()
 }
 
 function persistNick(value: string) {
   if (import.meta.client && value)
     localStorage.setItem(STORAGE_NICK, value)
+}
+
+function clearInputNick() {
+  inputNick.value = ''
+  if (import.meta.client)
+    localStorage.removeItem(STORAGE_NICK)
 }
 
 function persistChannel(value: string) {
@@ -385,6 +530,82 @@ function persistChannel(value: string) {
 function send(line: string) {
   if (ws && ws.readyState === WebSocket.OPEN)
     ws.send(`${line}\r\n`)
+}
+
+/**
+ * Send a silent background NS INFO probe. NickServ's reply is parsed for
+ * the email line but suppressed from visible buffers so no tab opens.
+ * Safe to call any time we are connected and authenticated.
+ */
+function queryNickServInfo() {
+  if (!account.value)
+    return
+  probingNickServInfo = true
+  if (probeTimer !== null)
+    clearTimeout(probeTimer)
+  send('PRIVMSG NickServ :INFO')
+  send('PRIVMSG NickServ :GET always-on')
+  probeTimer = setTimeout(() => {
+    probingNickServInfo = false
+    probeTimer = null
+    accountEmail.value ??= ''
+    accountAlwaysOn.value ??= false
+  }, 5000)
+}
+
+/**
+ * Tell NickServ to enable always-on, suppressing its reply notices from
+ * visible buffers. Sets accountAlwaysOn optimistically on send.
+ */
+function enableAlwaysOn() {
+  if (!account.value)
+    return
+  accountAlwaysOn.value = true
+  suppressingNickServOp = true
+  send('PRIVMSG NickServ :SET always-on true')
+  setTimeout(() => {
+    suppressingNickServOp = false
+  }, 3000)
+}
+
+function disableAlwaysOn() {
+  if (!account.value)
+    return
+  accountAlwaysOn.value = false
+  suppressingNickServOp = true
+  send('PRIVMSG NickServ :SET always-on false')
+  setTimeout(() => {
+    suppressingNickServOp = false
+  }, 3000)
+}
+
+/**
+ * Send SET EMAIL to NickServ with suppression so NickServ's reply does not
+ * open a visible query buffer.
+ */
+function claimEmail(email: string) {
+  if (!account.value)
+    return
+  suppressingNickServOp = true
+  send(`PRIVMSG NickServ :SET EMAIL ${email}`)
+  setTimeout(() => {
+    suppressingNickServOp = false
+  }, 3000)
+}
+
+/**
+ * Send VERIFYEMAIL to NickServ with suppression, then probe INFO after a
+ * short delay so accountEmail is updated without opening a visible query.
+ */
+function verifyClaimCode(code: string) {
+  if (!account.value)
+    return
+  suppressingNickServOp = true
+  send(`PRIVMSG NickServ :VERIFYEMAIL ${code}`)
+  setTimeout(queryNickServInfo, 1500)
+  setTimeout(() => {
+    suppressingNickServOp = false
+  }, 3000)
 }
 
 function b64(value: string) {
@@ -469,9 +690,41 @@ function finishCap() {
   send('CAP END')
 }
 
-function requestHistory(channel: string) {
-  if (chatHistorySupported)
-    send(`CHATHISTORY LATEST ${channel} * 50`)
+/**
+ * Request the latest history for a target. When `since` (ms epoch) is given
+ * only messages after that point are returned; otherwise the most recent
+ * HISTORY_LIMIT messages are fetched for context.
+ */
+function requestHistory(target: string, since?: number) {
+  if (!chatHistorySupported)
+    return
+  const selector = since != null && since > 0
+    ? `timestamp=${new Date(since).toISOString()}`
+    : '*'
+  send(`CHATHISTORY LATEST ${target} ${selector} ${HISTORY_LIMIT}`)
+}
+
+/**
+ * Lower bound (ms) shared by TARGETS discovery and per-DM LATEST fetches.
+ * Uses the last-seen cursor so we only pull what arrived while away, minus fuzz
+ * to absorb clock skew. Falls back to a 7-day window on the first connect.
+ */
+function historyLowerBound() {
+  const base = lastSeenTs > 0 ? lastSeenTs : Date.now() - DEFAULT_HISTORY_LOOKBACK_MS
+  return base - HISTORY_FUZZ_MS
+}
+
+/**
+ * Ask the server for all conversations (DMs) with activity since we last saw a
+ * message. Ergo replies with a `draft/chathistory-targets` batch whose lines
+ * are parsed in the CHATHISTORY case below.
+ */
+function requestHistoryTargets() {
+  if (!chatHistorySupported)
+    return
+  const lower = historyLowerBound()
+  const upper = Date.now() + HISTORY_FUZZ_MS
+  send(`CHATHISTORY TARGETS timestamp=${new Date(upper).toISOString()} timestamp=${new Date(lower).toISOString()} ${HISTORY_LIMIT}`)
 }
 
 function handleMessage(raw: string) {
@@ -539,6 +792,9 @@ function handleMessage(raw: string) {
     case '903': // RPL_SASLSUCCESS
       addServer({ type: 'system', text: account.value ? `Authenticated as ${account.value}` : 'Authenticated' })
       finishCap()
+      // Silently probe NickServ for claim status after CAP exchange completes.
+      if (account.value)
+        setTimeout(queryNickServInfo, 500)
       break
 
     case '902': // ERR_NICKLOCKED
@@ -546,21 +802,29 @@ function handleMessage(raw: string) {
     case '905': // ERR_SASLTOOLONG
     case '906': // ERR_SASLABORTED
     case '907': // ERR_SASLALREADY
+      saslFailed = true
       addServer({ type: 'error', text: 'Authentication failed - continuing without a verified account.' })
       finishCap()
       break
 
     case '001': // RPL_WELCOME
       connState.value = 'connected'
-      markRevealed()
       nick.value = params[0] ?? inputNick.value
       addServer({ type: 'system', text: `Connected as ${nick.value}` })
       if (inputChannel.value)
         send(`JOIN ${inputChannel.value}`)
       _startPinging()
+      // Discover DMs with activity since we were last online.
+      requestHistoryTargets()
       break
 
     case '433': // ERR_NICKNAMEINUSE
+      // During pre-registration, SASL auth may still resolve the nick - Ergo
+      // will ghost the occupant once the authenticated account claims ownership.
+      // Only skip the error if SASL hasn't already failed; a failed SASL means
+      // we have no account claim and the nick collision is genuinely fatal.
+      if (connState.value === 'connecting' && authCreds && !saslFailed)
+        break
       addServer({ type: 'error', text: `Nickname ${params[1]} is already in use. Try a different one.` })
       connState.value = 'error'
       ws?.close()
@@ -571,7 +835,16 @@ function handleMessage(raw: string) {
       const buf = getBuffer(channel, 'channel')
       if (nickFrom === nick.value) {
         buf.joined = true
-        setActive(channel)
+        // Only steal focus for the channel we actually intend to land on. The server
+        // can auto-join several channels on reconnect; flipping the active buffer
+        // through each one would let the read watcher mark them all as read. When no
+        // channel is persisted, land on the first one we join.
+        const want = inputChannel.value.toLowerCase()
+        const shouldFocus = want
+          ? channel.toLowerCase() === want
+          : activeName.value === SERVER_BUFFER
+        if (shouldFocus)
+          setActive(channel)
         addToBuffer(channel, 'channel', { type: 'join', channel, text: `You joined ${channel}` }, { ts, backlog })
         requestHistory(channel)
       }
@@ -619,9 +892,12 @@ function handleMessage(raw: string) {
           addUser(buf, existing.prefix + newNick)
         }
       }
-      if (nickFrom === nick.value)
+      const isOwnNick = oldName === nick.value
+      if (isOwnNick)
         nick.value = newNick
-      addServer({ type: 'system', text: `${nickFrom} is now known as ${newNick}` }, { ts })
+      addServer({ type: 'system', text: `${oldName} is now known as ${newNick}` }, { ts })
+      if (isOwnNick && activeName.value !== SERVER_BUFFER)
+        addToBuffer(activeName.value, findBuffer(activeName.value)?.kind ?? 'channel', { type: 'system', text: `You are now known as ${newNick}` }, { ts })
       break
     }
 
@@ -631,11 +907,25 @@ function handleMessage(raw: string) {
       const isAction = text.startsWith('\x01ACTION ') && text.endsWith('\x01')
       const body = isAction ? text.slice(8, -1) : text
       const from = isAction ? `* ${nickFrom}` : nickFrom
-      // A message addressed to our nick is a PM; bucket it by the sender.
-      const isPm = target.toLowerCase() === nick.value.toLowerCase()
-      const bufferName = isPm ? nickFrom : target
-      const kind: BufferKind = isPm ? 'pm' : 'channel'
+      // Channel targets are prefixed; anything else is a DM. DM buffers are
+      // keyed by the other party: sender for incoming, target for our own
+      // outgoing messages (which appear in replayed DM history).
+      const isChannel = target.startsWith('#') || target.startsWith('&')
+      const isSelf = nickFrom === nick.value
+      const bufferName = isChannel ? target : (isSelf ? target : nickFrom)
+      const kind: BufferKind = isChannel ? 'channel' : 'pm'
       addToBuffer(bufferName, kind, { type: 'chat', from, channel: target, text: body }, { ts, backlog })
+      // When a missed DM is replayed from history (backlog), auto-navigate to
+      // the conversation. Debounced so the most-recent sender wins if several arrive.
+      if (!isChannel && !isSelf && backlog) {
+        if (_autoPmTimer !== null)
+          clearTimeout(_autoPmTimer)
+        _autoPmTimer = setTimeout(() => {
+          _autoPmTimer = null
+          if (findBuffer(activeName.value)?.kind !== 'pm')
+            setActive(bufferName)
+        }, 300)
+      }
       break
     }
 
@@ -651,6 +941,28 @@ function handleMessage(raw: string) {
         backlogBatches.add(id)
       else if (ref.startsWith('-'))
         backlogBatches.delete(id)
+      break
+    }
+
+    case 'CHATHISTORY': {
+      // Reply to `CHATHISTORY TARGETS`: one line per conversation as
+      // `CHATHISTORY TARGETS <target> <timestamp>`. Only act on DM targets -
+      // channels are replayed on JOIN. If the user previously closed this DM,
+      // skip unless the server reports newer activity than when it was closed.
+      if (params[0] === 'TARGETS') {
+        const target = params[1] ?? ''
+        if (target && !target.startsWith('#') && !target.startsWith('&')) {
+          const closedAt = closedDms[target.toLowerCase()]
+          const latestTs = Date.parse(params[2] ?? '')
+          if (closedAt != null && !(Number.isFinite(latestTs) && latestTs > closedAt))
+            break
+          if (closedAt != null)
+            forgetClosedDm(target)
+          // The replayed PRIVMSGs materialise the buffer; no eager getBuffer so
+          // an unexpectedly empty fetch leaves no stray DM in the sidebar.
+          requestHistory(target, historyLowerBound())
+        }
+      }
       break
     }
 
@@ -694,9 +1006,40 @@ function handleMessage(raw: string) {
       break
     }
 
-    case 'NOTICE':
-      addServer({ type: 'system', from: nickFrom.length > 0 ? nickFrom : undefined, text: params[params.length - 1] ?? '' }, { ts })
+    case 'NOTICE': {
+      const noticeTgt = params[0] ?? ''
+      const noticeText = params[params.length - 1] ?? ''
+      const isAddressedToUs = noticeTgt.toLowerCase() === nick.value.toLowerCase()
+      const fromNickServ = nickFrom.toLowerCase() === 'nickserv'
+
+      // Always extract the email claim and always-on flag regardless of whether we show the message.
+      if (fromNickServ && isAddressedToUs) {
+        const emailMatch = /^Email address:(.+)$/.exec(noticeText)
+        if (emailMatch)
+          accountEmail.value = emailMatch[1]?.trim() ?? ''
+        // Parse always-on from the explicit GET response or INFO flags.
+        const alwaysOnMatch = /stored always-on setting is:\s*(\w+)/i.exec(noticeText)
+        if (alwaysOnMatch)
+          accountAlwaysOn.value = alwaysOnMatch[1]?.toLowerCase() === 'enabled'
+        else if (/^Flags:.*\balways-on\b/i.test(noticeText))
+          accountAlwaysOn.value = true
+      }
+
+      // Swallow NickServ output during the silent background probe or a suppressed SET op.
+      if (fromNickServ && isAddressedToUs && (probingNickServInfo || suppressingNickServOp))
+        break
+
+      if (isAddressedToUs && nickFrom) {
+        addToBuffer(nickFrom, 'pm', { type: 'system', from: nickFrom, text: noticeText }, { ts })
+      }
+      else if (noticeTgt.startsWith('#') || noticeTgt.startsWith('&')) {
+        addToBuffer(noticeTgt, 'channel', { type: 'system', from: nickFrom, text: noticeText }, { ts })
+      }
+      else {
+        addServer({ type: 'system', from: nickFrom.length > 0 ? nickFrom : undefined, text: noticeText }, { ts })
+      }
       break
+    }
 
     default:
       if (!/^\d+$/.test(command))
@@ -715,10 +1058,17 @@ function openSocket() {
 
   capLs = []
   saslMech = null
+  saslFailed = false
+  probingNickServInfo = false
+  if (probeTimer !== null) {
+    clearTimeout(probeTimer)
+    probeTimer = null
+  }
   backlogBatches.clear()
   chatHistorySupported = false
   resetBuffers()
   account.value = ''
+  accountEmail.value = null
   connState.value = 'connecting'
   addServer({ type: 'system', text: `Connecting to ${WS_URL}...` })
 
@@ -773,6 +1123,8 @@ function openSocket() {
 async function connect() {
   authCreds = null
   useAnonymous = false
+  if (!localStorage.getItem(STORAGE_CHANNEL))
+    inputChannel.value = defaultChannel(false)
   if (identityProvider) {
     try {
       const creds = await identityProvider()
@@ -792,6 +1144,8 @@ async function connect() {
 function connectAsAnon() {
   authCreds = null
   useAnonymous = true
+  if (!localStorage.getItem(STORAGE_CHANNEL))
+    inputChannel.value = defaultChannel(true)
   openSocket()
 }
 
@@ -806,11 +1160,22 @@ function disconnect() {
 
 // --- User actions ------------------------------------------------------------
 function setActive(name: string) {
+  // Clear the read line on the buffer we're leaving so it's recomputed fresh on
+  // return. Marking the channel read (marker + unread reset) is owned by the read
+  // watcher, which keeps whatever buffer the user is actually viewing reconciled.
+  const prev = activeName.value
+  if (prev && prev.toLowerCase() !== name.toLowerCase()) {
+    const prevBuf = findBuffer(prev)
+    if (prevBuf)
+      prevBuf.readLineTs = undefined
+  }
+
   activeName.value = name
   const buf = findBuffer(name)
-  if (buf) {
-    buf.unread = 0
-    buf.mentions = 0
+  // Persist the last active channel so the next connect auto-joins and lands here.
+  if (buf?.kind === 'channel') {
+    inputChannel.value = name
+    persistChannel(name)
   }
 }
 
@@ -823,7 +1188,17 @@ function joinChannel(name: string) {
 
 function openPm(target: string) {
   getBuffer(target, 'pm')
+  forgetClosedDm(target)
   setActive(target)
+}
+
+function sendPm(target: string, text: string) {
+  const trimmed = text.trim()
+  if (!trimmed)
+    return
+  openPm(target)
+  send(`PRIVMSG ${target} :${trimmed}`)
+  addToBuffer(target, 'pm', { type: 'chat', from: nick.value, channel: target, text: trimmed })
 }
 
 function closeBuffer(name: string) {
@@ -832,6 +1207,8 @@ function closeBuffer(name: string) {
     return
   if (buf.kind === 'channel' && buf.joined)
     send(`PART ${buf.name}`)
+  else if (buf.kind === 'pm')
+    rememberClosedDm(name, buf)
   buffers.value = buffers.value.filter(b => b !== buf)
   if (activeName.value.toLowerCase() === name.toLowerCase())
     setActive(buffers.value[0]?.name ?? SERVER_BUFFER)
@@ -960,9 +1337,63 @@ export function useIrcChat() {
   const users = computed(() => activeBuffer.value?.users ?? [])
   const canChat = computed(() => isConnected.value && activeBuffer.value != null)
 
+  // Whichever buffer the user is actually viewing is, by definition, read. Keep its
+  // persisted read marker pinned to the newest message and its unread/mention counts
+  // cleared. This is the single authority for "this channel is read" - it self-heals
+  // after the reconnect race (where activeName flips as channels auto-join) by simply
+  // reconciling whatever channel the user lands on once its history has settled. It
+  // intentionally leaves readLineTs alone so the "new messages" line stays visible
+  // while reading and is only cleared on leave (setActive).
+  if (import.meta.client && !_readWatcherRegistered) {
+    _readWatcherRegistered = true
+    watch(
+      () => {
+        const b = activeBuffer.value
+        const last = b?.messages[b.messages.length - 1]
+        return `${activeName.value}|${b?.messages.length ?? 0}|${last?.ts.getTime() ?? 0}`
+      },
+      () => {
+        if (!isChatVisible.value)
+          return
+        const b = activeBuffer.value
+        if (!b || b.kind === 'server')
+          return
+        const last = b.messages[b.messages.length - 1]
+        if (last)
+          saveReadPosition(b.name, last.ts.getTime())
+        b.unread = 0
+        b.mentions = 0
+      },
+      { flush: 'post' },
+    )
+  }
+
   const hasUnread = computed(() => buffers.value.some(b => b.unread > 0))
   const mentionCount = computed(() => buffers.value.reduce((sum, b) => sum + b.mentions, 0))
   const hasMention = computed(() => mentionCount.value > 0)
+
+  function setChatVisible(visible: boolean) {
+    isChatVisible.value = visible
+    if (!visible) {
+      // Clear the read line on the active buffer so the next open correctly
+      // shows a "new messages" line for anything that arrived while closed.
+      const buf = activeBuffer.value
+      if (buf)
+        buf.readLineTs = undefined
+    }
+    else {
+      // When the UI becomes visible, immediately mark the active buffer as read
+      // so the channel tab badge clears.
+      const b = activeBuffer.value
+      if (b && b.kind !== 'server') {
+        const last = b.messages[b.messages.length - 1]
+        if (last)
+          saveReadPosition(b.name, last.ts.getTime())
+        b.unread = 0
+        b.mentions = 0
+      }
+    }
+  }
 
   function toggleSidebar() {
     sidebarHidden.value = !sidebarHidden.value
@@ -976,7 +1407,6 @@ export function useIrcChat() {
     isConnected,
     canChat,
     latencyMs,
-    revealed,
     nick,
     account,
     // buffers
@@ -1005,6 +1435,7 @@ export function useIrcChat() {
     setActive,
     joinChannel,
     openPm,
+    sendPm,
     closeBuffer,
     ensureNick,
     // channel browser
@@ -1012,8 +1443,19 @@ export function useIrcChat() {
     channelListLoading,
     channelBrowserOpen,
     listChannels,
+    // account claim state
+    accountEmail,
+    accountAlwaysOn,
+    queryNickServInfo,
+    enableAlwaysOn,
+    disableAlwaysOn,
+    claimEmail,
+    verifyClaimCode,
     // identity seam
     registerIdentityProvider,
     setMentionKeywords,
+    clearInputNick,
+    defaultChannel,
+    setChatVisible,
   }
 }

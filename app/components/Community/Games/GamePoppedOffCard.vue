@@ -107,71 +107,73 @@ watchEffect(() => {
 <template>
   <Skeleton v-if="loading" :height="120" :radius="8" />
 
-  <GlowCard v-if="poppedOff" :halo="true" :class="{ 'popped-off-card--live': props.live }">
-    <component
-      :is="linkedEvent ? NuxtLink : 'div'"
-      class="popped-off-card__link"
-      v-bind="linkedEvent ? { to: `/events/${linkedEvent.id}` } : {}"
-    >
-      <Card class="popped-off-card" :padding="false">
-        <!-- Background art -->
-        <div
-          class="popped-off-card__bg"
-          :class="{ 'popped-off-card__bg--loaded': bgLoaded }"
-          :style="backgroundUrl
-            ? { backgroundImage: `url(${backgroundUrl})` }
-            : coverUrl
-              ? { backgroundImage: `url(${coverUrl})` }
-              : {}"
-        />
+  <GameDetailsModalTrigger v-if="poppedOff" v-slot="{ open }" :game-id="poppedOff.game.id">
+    <GlowCard :halo="true" :class="{ 'popped-off-card--live': props.live }">
+      <component
+        :is="linkedEvent ? NuxtLink : 'div'"
+        class="popped-off-card__link"
+        :class="{ 'popped-off-card__link--clickable': !linkedEvent }"
+        v-bind="linkedEvent ? { to: `/events/${linkedEvent.id}` } : {}"
+        @click="!linkedEvent ? open() : undefined"
+      >
+        <Card class="popped-off-card" :padding="false">
+          <!-- Background art -->
+          <div
+            class="popped-off-card__bg"
+            :class="{ 'popped-off-card__bg--loaded': bgLoaded }"
+            :style="backgroundUrl
+              ? { backgroundImage: `url(${backgroundUrl})` }
+              : coverUrl
+                ? { backgroundImage: `url(${coverUrl})` }
+                : {}"
+          />
 
-        <div class="popped-off-card__content">
-          <Flex column gap="xs" class="popped-off-card__left">
-            <!-- Label -->
-            <span class="text-xs text-bold popped-off-card__label" :class="{ 'popped-off-card__label--live': props.live }">
-              <template v-if="props.live">
-                <span class="popped-off-card__live-dot" />
-                This is popping off right now
-              </template>
-              <template v-else-if="linkedEvent">
-                <span class="popped-off-card__label-desktop">This recently popped off during an event</span>
-                <span class="popped-off-card__label-mobile">Recently popped off during an event</span>
-              </template>
-              <template v-else>
-                <span class="popped-off-card__label-desktop">This recently popped off</span>
-                <span class="popped-off-card__label-mobile">Recently popped off</span>
-              </template>
-            </span>
-            <!-- Game identity -->
-            <Flex y-center gap="s" class="popped-off-card__game-row">
-              <GameDetailsModalTrigger v-slot="{ open }" :game-id="poppedOff.game.id">
+          <div class="popped-off-card__content">
+            <Flex column gap="xs" class="popped-off-card__left">
+              <!-- Label -->
+              <span class="text-xs text-bold popped-off-card__label" :class="{ 'popped-off-card__label--live': props.live }">
+                <template v-if="props.live">
+                  <span class="popped-off-card__live-dot" />
+                  This is popping off right now
+                </template>
+                <template v-else-if="linkedEvent">
+                  <span class="popped-off-card__label-desktop">This recently popped off during an event</span>
+                  <span class="popped-off-card__label-mobile">Recently popped off during an event</span>
+                </template>
+                <template v-else>
+                  <span class="popped-off-card__label-desktop">This recently popped off</span>
+                  <span class="popped-off-card__label-mobile">Recently popped off</span>
+                </template>
+              </span>
+              <!-- Game identity -->
+              <Flex y-center gap="s" class="popped-off-card__game-row">
                 <span class="popped-off-card__icon-trigger" @click.prevent.stop="open">
                   <GameIcon :game="poppedOff.game" size="m" />
                 </span>
-              </GameDetailsModalTrigger>
-              <span class="text-xxl text-bold popped-off-card__game-name">{{ poppedOff.game.name }}</span>
-            </Flex>
-            <!-- Peak stat -->
-            <div class="popped-off-card__bottom mt-xs">
-              <Flex y-center gap="xs" class="popped-off-card__peak">
-                <Icon name="ph:fire" size="16" class="text-color-lighter" />
-                <span class="text-s text-color-lighter">
-                  {{ poppedOff.peakCount }} {{ poppedOff.peakCount === 1 ? 'person' : 'people' }} at peak - {{ peakDateLabel }}
-                </span>
+                <span class="text-xxl text-bold popped-off-card__game-name">{{ poppedOff.game.name }}</span>
               </Flex>
-              <GlowCard v-if="linkedEvent" halo class="popped-off-card__cta-wrap">
-                <span class="popped-off-card__event-cta">
-                  <Icon name="ph:calendar-check" size="18" class="text-color-lighter" />
-                  <span class="text-s text-bold popped-off-card__event-title">{{ linkedEvent.title }}</span>
-                  <Icon name="ph:arrow-right" size="14" class="text-color-lighter popped-off-card__event-cta-arrow" />
-                </span>
-              </GlowCard>
-            </div>
-          </Flex>
-        </div>
-      </Card>
-    </component>
-  </GlowCard>
+              <!-- Peak stat -->
+              <div class="popped-off-card__bottom mt-xs">
+                <Flex y-center gap="xs" class="popped-off-card__peak">
+                  <Icon name="ph:fire" size="16" class="text-color-lighter" />
+                  <span class="text-s text-color-lighter">
+                    {{ poppedOff.peakCount }} {{ poppedOff.peakCount === 1 ? 'person' : 'people' }} at peak - {{ peakDateLabel }}
+                  </span>
+                </Flex>
+                <GlowCard v-if="linkedEvent" halo class="popped-off-card__cta-wrap">
+                  <span class="popped-off-card__event-cta">
+                    <Icon name="ph:calendar-check" size="18" class="text-color-lighter" />
+                    <span class="text-s text-bold popped-off-card__event-title">{{ linkedEvent.title }}</span>
+                    <Icon name="ph:arrow-right" size="14" class="text-color-lighter popped-off-card__event-cta-arrow" />
+                  </span>
+                </GlowCard>
+              </div>
+            </Flex>
+          </div>
+        </Card>
+      </component>
+    </GlowCard>
+  </GameDetailsModalTrigger>
 </template>
 
 <style scoped lang="scss">
@@ -253,6 +255,10 @@ watchEffect(() => {
     display: block;
     color: inherit;
     text-decoration: none;
+
+    &--clickable {
+      cursor: pointer;
+    }
   }
 
   &__icon-trigger {

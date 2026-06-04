@@ -579,14 +579,12 @@ onMounted(() => {
                   </Flex>
                 </template>
               </Input>
-              <Alert v-if="usernameError" variant="danger" filled>
-                <span class="text-s">
-                  {{ usernameError }}
-                </span>
-              </Alert>
               <Button expand variant="accent" :loading="usernameLoading" :disabled="!username" @click="submitUsername">
                 Continue
               </Button>
+            </Flex>
+            <Flex v-if="usernameError" class="mt-xxl" expand>
+              <ErrorAlert :message="usernameError" />
             </Flex>
           </div>
         </div>

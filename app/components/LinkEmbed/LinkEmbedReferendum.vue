@@ -4,7 +4,7 @@ import type { Database } from '@/types/database.types'
 import { Badge, Button, Flex } from '@dolanske/vui'
 import { useIntervalFn } from '@vueuse/core'
 import { resolveComponent } from 'vue'
-import { useBreakpoint } from '@/lib/mediaQuery'
+import { useContainerBreakpoint } from '@/composables/useContainerBreakpoint'
 import { formatDuration } from '@/lib/utils/duration'
 
 type VoteData = NonNullable<ReturnType<typeof useDataLinkPreview>['data']['value']> & { type: 'vote' }
@@ -14,8 +14,8 @@ const props = defineProps<{
 }>()
 
 const NuxtLink = resolveComponent('NuxtLink')
-
-const isMobile = useBreakpoint('<s')
+const el = ref<HTMLElement | null>(null)
+const isMobile = useContainerBreakpoint(el, 400)
 
 const now = ref(new Date())
 useIntervalFn(() => {
@@ -176,6 +176,7 @@ async function removeVote() {
 <template>
   <component
     :is="data.status === 'concluded' ? NuxtLink : 'div'"
+    ref="el"
     class="link-embed link-embed--vote"
     v-bind="data.status === 'concluded' ? { href: data.href } : {}"
   >

@@ -13,6 +13,7 @@ interface Props {
   isOngoing?: boolean
   createdAt: string
   simple?: boolean
+  compact?: boolean
 }
 
 const props = defineProps<Props>()
@@ -89,6 +90,7 @@ const timeProgressPercentage = computed(() => {
     :class="{
       'countdown-timer--ongoing': shouldShowNow,
       'countdown-timer--simple': props.simple,
+      'countdown-timer--compact': props.compact,
     }"
 
     :style="{ '--time-progress': `${timeProgressPercentage}%` }"
@@ -103,14 +105,14 @@ const timeProgressPercentage = computed(() => {
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.days" class="countdown-timer__number">{{ countdown.days.toString().padStart(2, '0') }}</span>
           </div>
-          <span class="countdown-timer__label">days</span>
+          <span class="countdown-timer__label">{{ compact ? 'd' : 'days' }}</span>
         </Flex>
         <Divider vertical :height="props.simple ? 40 : 64" />
         <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="hours">
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.hours" class="countdown-timer__number">{{ countdown.hours.toString().padStart(2, '0') }}</span>
           </div>
-          <span class="countdown-timer__label">hours</span>
+          <span class="countdown-timer__label">{{ compact ? 'h' : 'hours' }}</span>
         </Flex>
         <Divider vertical :height="props.simple ? 40 : 64" />
 
@@ -118,7 +120,7 @@ const timeProgressPercentage = computed(() => {
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.minutes" class="countdown-timer__number">{{ countdown.minutes.toString().padStart(2, '0') }}</span>
           </div>
-          <span class="countdown-timer__label">minutes</span>
+          <span class="countdown-timer__label">{{ compact ? 'm' : 'minutes' }}</span>
         </Flex>
         <Divider vertical :height="props.simple ? 40 : 64" />
 
@@ -126,7 +128,7 @@ const timeProgressPercentage = computed(() => {
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.seconds" class="countdown-timer__number">{{ countdown.seconds.toString().padStart(2, '0') }}</span>
           </div>
-          <span class="countdown-timer__label">seconds</span>
+          <span class="countdown-timer__label">{{ compact ? 's' : 'seconds' }}</span>
         </Flex>
       </Flex>
 
@@ -158,8 +160,10 @@ const timeProgressPercentage = computed(() => {
   width: 100%;
   min-height: 100px;
 
-  @media (min-width: $breakpoint-s) {
-    min-width: 380px;
+  &--compact {
+    .countdown-timer__item {
+      padding: var(--space-xs);
+    }
   }
 
   &--simple {
@@ -228,9 +232,7 @@ const timeProgressPercentage = computed(() => {
       border-right: none;
     }
 
-    @media (max-width: $breakpoint-s) {
-      min-width: auto;
-    }
+    min-width: auto;
 
     @media (max-width: $breakpoint-xs) {
       padding: 6px;

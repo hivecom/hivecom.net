@@ -1,9 +1,20 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import ChatApp from '@/components/Chat/ChatApp.vue'
+import { useIrcChat } from '@/composables/useIrcChat'
+import { useBreakpoint } from '@/lib/mediaQuery'
+
+const isMobile = useBreakpoint('<s')
+const { setChatVisible } = useIrcChat()
+onMounted(() => setChatVisible(true))
+onUnmounted(() => setChatVisible(false))
 </script>
 
 <template>
-  <div class="chat-page container-l">
+  <div
+    class="chat-page" :class="{ 'container-l': !isMobile,
+                                'chat-page--mobile': isMobile }"
+  >
     <ChatApp />
   </div>
 </template>
@@ -17,5 +28,10 @@ import ChatApp from '@/components/Chat/ChatApp.vue'
   display: flex;
   flex-direction: column;
   min-height: 0;
+
+  &--mobile {
+    padding-top: var(--navbar-offset);
+    padding-bottom: 0;
+  }
 }
 </style>

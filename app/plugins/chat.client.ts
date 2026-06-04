@@ -12,7 +12,7 @@
  */
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
-import { useIrcChat } from '@/composables/useIrcChat'
+import { setBrowserNotificationsEnabled, useIrcChat } from '@/composables/useIrcChat'
 
 export default defineNuxtPlugin(() => {
   const supabase = useSupabaseClient()
@@ -35,6 +35,12 @@ export default defineNuxtPlugin(() => {
     () => settings.value.chat_mention_keywords,
     keywords => setMentionKeywords(Array.isArray(keywords) ? keywords : []),
     { immediate: true, deep: true },
+  )
+
+  watch(
+    () => settings.value.chat_browser_notifications,
+    enabled => setBrowserNotificationsEnabled(enabled === true),
+    { immediate: true },
   )
 
   registerIdentityProvider(async () => {

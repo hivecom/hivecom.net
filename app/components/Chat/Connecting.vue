@@ -144,9 +144,12 @@ function drawArc(ctx: CanvasRenderingContext2D, arc: Arc) {
     pts.push(project(sp))
   }
 
+  // Only draw up to where the dot currently sits.
+  const headSeg = arc.t < 1 ? Math.floor(arc.t * ARC_SEGMENTS) : ARC_SEGMENTS
+
   ctx.lineWidth = 1.4
   ctx.lineCap = 'round'
-  for (let s = 0; s < ARC_SEGMENTS; s++) {
+  for (let s = 0; s < headSeg; s++) {
     const p0 = pts[s]!
     const p1 = pts[s + 1]!
     const depthAvg = (p0.depth + p1.depth) / 2
@@ -160,9 +163,10 @@ function drawArc(ctx: CanvasRenderingContext2D, arc: Arc) {
     ctx.stroke()
   }
 
-  // Traveling data packet.
-  if (arc.t < 1) {
-    const idx = arc.t * ARC_SEGMENTS
+  // Traveling data packet - stops at destination then fades with arc.life.
+  {
+    const t = Math.min(arc.t, 1)
+    const idx = t * ARC_SEGMENTS
     const i0 = Math.floor(idx)
     const frac = idx - i0
     const p0 = pts[i0]!
@@ -173,18 +177,17 @@ function drawArc(ctx: CanvasRenderingContext2D, arc: Arc) {
     if (depth > -0.2) {
       const a = Math.max(0, Math.min(1, depth + 0.4))
       ctx.beginPath()
-      ctx.fillStyle = `rgba(${accentRgb}, ${0.18 * a})`
+      ctx.fillStyle = `rgba(${accentRgb}, ${0.18 * a * arc.life})`
       ctx.arc(px, py, 5, 0, Math.PI * 2)
       ctx.fill()
       ctx.beginPath()
-      ctx.fillStyle = `rgba(${accentRgb}, ${0.95 * a})`
+      ctx.fillStyle = `rgba(${accentRgb}, ${0.95 * a * arc.life})`
       ctx.arc(px, py, 1.8, 0, Math.PI * 2)
       ctx.fill()
     }
   }
 
   drawNodeMarker(ctx, project(arc.a), arc.life)
-  drawNodeMarker(ctx, project(arc.b), arc.life)
 }
 
 // A ping is a geodesic circle (constant angular distance from its origin)

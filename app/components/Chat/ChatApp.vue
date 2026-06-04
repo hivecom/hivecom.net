@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Button, Flex, Resizable } from '@dolanske/vui'
+import { computed, watch } from 'vue'
 import SharedErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import ChatChannelList from './ChannelList.vue'
 import ChatComposer from './Composer.vue'
 import ChatConnectForm from './ConnectForm.vue'
@@ -32,22 +34,35 @@ const userId = useUserId()
 const { user } = useDataUser(userId)
 const { settings } = useDataUserSettings()
 
-const { connState, isConnected, ensureNick, activeBuffer, sidebarHidden, buffers, connect, disconnect } = useIrcChat()
+const isMobile = useBreakpoint('<s')
+
+const { connState, isConnected, ensureNick, clearInputNick, activeBuffer, sidebarHidden, buffers, connect, disconnect } = useIrcChat()
+
+const isCompactLayout = computed(() => props.compact || isMobile.value || sidebarHidden.value)
 
 const lastConnError = computed(() => {
   const serverBuf = buffers.value.find(b => b.kind === 'server')
   return [...(serverBuf?.messages ?? [])].reverse().find(m => m.type === 'error')?.text ?? ''
 })
 
-const isServerBuffer = computed(() => activeBuffer.value?.kind === 'server')
-const chatFontStyle = computed(() => ({ '--chat-font-size': `${settings.value.chat_font_size}px` }))
+const isChannelBuffer = computed(() => activeBuffer.value?.kind === 'channel')
+const chatFontStyle = computed(() => ({ '--chat-font-size': `${isMobile.value ? settings.value.chat_mobile_font_size : settings.value.chat_font_size}px` }))
 
 const fallbackNick = `anon-${Math.random().toString(36).slice(2, 7)}`
-watch(user, u => ensureNick(u?.username ?? fallbackNick), { immediate: true })
+watch(user, (u, prev) => {
+  if (!u && prev) {
+    // User signed out - disconnect and clear persisted nick
+    if (isConnected.value)
+      disconnect()
+    clearInputNick()
+    return
+  }
+  ensureNick(u?.username ?? fallbackNick)
+}, { immediate: true })
 </script>
 
 <template>
-  <section class="chat-app" :class="{ 'chat-app--compact': props.compact }" :style="chatFontStyle">
+  <section class="chat-app" :class="{ 'chat-app--compact': props.compact || isMobile }" :style="chatFontStyle">
     <header v-if="!props.compact" class="chat-app__bar">
       <ChatToolbar />
     </header>
@@ -87,35 +102,35 @@ watch(user, u => ensureNick(u?.username ?? fallbackNick), { immediate: true })
 
         <!-- Connected: split layout (sidebar + chat) on the full page -->
         <Resizable
-          v-else-if="!props.compact && !sidebarHidden"
+          v-else-if="!isCompactLayout && !sidebarHidden"
           key="connected-full"
           :storage-key="LAYOUT_KEY"
           class="chat-app__layout"
         >
           <Flex column y-stretch class="chat-app__sidebar" expand>
-            <Flex class="chat-app__channels">
+            <Flex class="chat-app__channels" :class="{ 'chat-app__channels--expanded': !isChannelBuffer }">
               <ChatChannelList />
             </Flex>
-            <Flex v-if="!isServerBuffer" class="chat-app__users">
+            <Flex v-if="isChannelBuffer" class="chat-app__users">
               <ChatUserList />
             </Flex>
           </Flex>
           <Flex column gap="s" class="chat-app__main">
-            <ChatMessageLog :compact="props.compact" />
+            <ChatMessageLog :compact="isCompactLayout" />
             <ChatComposer />
           </Flex>
         </Resizable>
 
         <!-- Connected: full page, sidebar hidden -->
-        <Flex v-else-if="!props.compact" key="connected-nosidebar" column gap="s" class="chat-app__main">
-          <ChatMessageLog :compact="props.compact" />
+        <Flex v-else-if="!isCompactLayout" key="connected-nosidebar" column gap="s" class="chat-app__main">
+          <ChatMessageLog :compact="isCompactLayout" />
           <ChatComposer />
         </Flex>
 
         <!-- Connected: stacked layout for the compact sheet -->
         <Flex v-else key="connected-compact" column gap="s" class="chat-app__main">
           <ChatChannelList horizontal />
-          <ChatMessageLog :compact="props.compact" />
+          <ChatMessageLog :compact="isCompactLayout" />
           <ChatComposer />
         </Flex>
       </Transition>
@@ -183,6 +198,12 @@ watch(user, u => ensureNick(u?.username ?? fallbackNick), { immediate: true })
     max-height: 50%;
     min-height: 0;
     border-bottom: 1px solid var(--color-border);
+
+    &--expanded {
+      flex: 1;
+      max-height: 100%;
+      border-bottom: none;
+    }
   }
 
   &__users {

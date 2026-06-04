@@ -38,11 +38,11 @@ const displayHost = computed(() => {
       </Flex>
 
       <Card>
-        <Flex y-center gap="s">
+        <Flex gap="s">
           <Icon name="ph:arrow-square-out" class="text-color-lighter" />
           <Flex column :gap="0" class="external-link-modal__url">
-            <strong>{{ displayHost }}</strong>
-            <span class="text-xs text-color-lighter">{{ pendingUrl }}</span>
+            <strong class="external-link-modal__host">{{ displayHost }}</strong>
+            <span class="text-xs text-color-lighter external-link-modal__full">{{ pendingUrl }}</span>
           </Flex>
         </Flex>
       </Card>
@@ -82,11 +82,11 @@ const displayHost = computed(() => {
       </p>
 
       <Card>
-        <Flex y-center gap="s">
+        <Flex gap="s">
           <Icon name="ph:arrow-square-out" class="text-color-lighter" />
           <Flex column :gap="0" class="external-link-modal__url">
-            <strong>{{ displayHost }}</strong>
-            <span class="text-xs text-color-lighter">{{ pendingUrl }}</span>
+            <strong class="external-link-modal__host">{{ displayHost }}</strong>
+            <span class="text-xs text-color-lighter external-link-modal__full">{{ pendingUrl }}</span>
           </Flex>
         </Flex>
       </Card>
@@ -111,12 +111,20 @@ const displayHost = computed(() => {
 <style scoped lang="scss">
 @use '@/assets/mixins.scss' as *;
 
-// Allow the host/URL lines to ellipsis inside the flex row.
+// Constrain the host/URL lines inside the flex row so long links wrap
+// instead of overflowing.
 .external-link-modal__url {
   min-width: 0;
+}
 
-  > * {
-    @include truncate;
-  }
+// Host fits on a single line (full URL is shown below).
+.external-link-modal__host {
+  @include truncate;
+}
+
+// Show the full URL, wrapping long links so the user can vet them.
+.external-link-modal__full {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 </style>

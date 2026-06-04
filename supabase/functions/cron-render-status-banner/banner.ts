@@ -49,7 +49,7 @@ const CARD_H = (BANNER_HEIGHT - FOOTER_HEIGHT - GRID_PADDING * 2 - GRID_GAP) /
 
 const TEXT = "rgb(240, 240, 240)"; // white
 const ACCENT = "rgb(167, 252, 47)"; // green  - website
-const STEAM_BLUE = "rgb(59, 130, 246)"; // blue   - steam
+const PLAYING_BLUE = "rgb(59, 130, 246)"; // blue   - playing
 const GAME_YELLOW = "rgb(234, 179, 8)"; // yellow - servers
 const LIVE = "rgb(239, 68, 68)"; // red    - live event
 
@@ -167,7 +167,7 @@ export function buildScene(
   nextEventCountdown: string | null,
   eventOngoing = false,
 ) {
-  const steamPlayers = Object.values(metrics.users.bySteamGame).reduce(
+  const players = Object.values(metrics.users.bySteamGame).reduce(
     (a, b) => a + b,
     0,
   );
@@ -229,7 +229,7 @@ export function buildScene(
                   gap: GRID_GAP,
                 },
                 children: [
-                  kpiCard("In-game Steam", steamPlayers, STEAM_BLUE),
+                  kpiCard("In-game", players, PLAYING_BLUE),
                   kpiCard(
                     "Game Server Players",
                     metrics.gameservers.players,

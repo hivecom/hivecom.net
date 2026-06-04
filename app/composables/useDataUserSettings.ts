@@ -8,6 +8,8 @@ import { isNil } from '@/lib/utils/common'
 // regardless of how many components call useDataUserSettings().
 let _autoSaveWatcherRegistered = false
 
+const GUEST_SETTINGS_KEY = 'hivecom.guest.settings'
+
 // Single source of truth for user settings
 export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
   return {
@@ -35,11 +37,14 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     chat_notify_only_mentions: true,
     chat_autoconnect: false,
     chat_show_inline_embeds: true,
+    chat_show_previews: true,
     chat_font_size: 13,
+    chat_mobile_font_size: 14,
     chat_mention_keywords: [],
+    chat_browser_notifications: false,
     chat_show_timestamps: true,
     chat_timestamp_format: 'HH:mm:ss',
-    chat_display_mode: 'irc',
+    chat_display_mode: 'modern',
   }
 }
 
@@ -66,6 +71,26 @@ export function useDataUserSettings() {
 
     settingsLoading.value = true
     isFetching.value = true
+
+    // Guest path: restore persisted settings from localStorage.
+    if (isNil(user.value)) {
+      if (import.meta.client) {
+        const stored = localStorage.getItem(GUEST_SETTINGS_KEY)
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored) as Partial<Tables<'user_settings'>['data']>
+            const nonNilValues = Object.fromEntries(Object.entries(parsed).filter(([, v]) => !isNil(v)))
+            Object.assign(settings.value, nonNilValues)
+          }
+          catch {}
+        }
+      }
+      hasFetched.value = true
+      settingsLoading.value = false
+      await nextTick()
+      isFetching.value = false
+      return null
+    }
 
     const { data, error } = await supabase
       .from('user_settings')
@@ -123,7 +148,11 @@ export function useDataUserSettings() {
   if (import.meta.client && !_autoSaveWatcherRegistered) {
     _autoSaveWatcherRegistered = true
     watch(settings, async (newSettings) => {
-      if (isNil(user.value) || isFetching.value) {
+      if (isFetching.value)
+        return
+
+      if (isNil(user.value)) {
+        localStorage.setItem(GUEST_SETTINGS_KEY, JSON.stringify(newSettings))
         return
       }
 
@@ -138,6 +167,21 @@ export function useDataUserSettings() {
   watch(user, async (newUser) => {
     if (isNil(newUser)) {
       hasFetched.value = false
+      isFetching.value = true
+      // Reset to defaults then restore any persisted guest settings.
+      const merged = { ...getDefaultUserSettings() }
+      const stored = localStorage.getItem(GUEST_SETTINGS_KEY)
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as Partial<Tables<'user_settings'>['data']>
+          const nonNilValues = Object.fromEntries(Object.entries(parsed).filter(([, v]) => !isNil(v)))
+          Object.assign(merged, nonNilValues)
+        }
+        catch {}
+      }
+      Object.assign(settings.value, merged)
+      await nextTick()
+      isFetching.value = false
       return
     }
 

@@ -97,8 +97,6 @@ function userStyle(name: string) {
 
 <style lang="scss" scoped>
 .chat-users {
-  min-height: 0;
-
   &__header {
     padding: var(--space-xs) var(--space-s) var(--space-m) var(--space-s);
     border-bottom: 1px solid var(--color-border-weak);
@@ -118,9 +116,6 @@ function userStyle(name: string) {
   }
 
   &__list {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
     padding: var(--space-xxs);
     width: 100%;
   }

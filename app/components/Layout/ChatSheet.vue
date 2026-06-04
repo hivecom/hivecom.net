@@ -1,18 +1,27 @@
 <script setup lang="ts">
 import { Button, Sheet, Tooltip } from '@dolanske/vui'
+import { computed, ref, watch } from 'vue'
 import ChatApp from '@/components/Chat/ChatApp.vue'
 import ChatToolbar from '@/components/Chat/Toolbar.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   // When true, render a plain (mobile) trigger instead of the tooltip button.
   mobile?: boolean
+  // When true, the trigger button is disabled and the sheet cannot be opened.
+  disabled?: boolean
 }>()
 
+const isMobile = useBreakpoint('<s')
+const sheetSize = computed(() => isMobile.value ? '100%' : 640)
+
 const open = ref(false)
-const { isConnected, hasUnread, hasMention } = useIrcChat()
+const { isConnected, hasUnread, hasMention, setChatVisible } = useIrcChat()
 const { settings } = useDataUserSettings()
+
+watch(open, val => setChatVisible(val))
 
 // Honor the "only notify on mentions" preference for the navbar dot. When the
 // sheet is open the user is actively reading, so suppress the dot entirely.
@@ -36,6 +45,7 @@ watch(() => route.fullPath, () => {
         plain
         aria-label="Chat"
         class="vui-button-accent-weak vui-button-rounded"
+        :disabled="props.disabled"
         @click="open = true"
       >
         <Icon name="ph:chats" size="20" />
@@ -52,6 +62,7 @@ watch(() => route.fullPath, () => {
       plain
       aria-label="Chat"
       class="vui-button-accent-weak vui-button-rounded"
+      :disabled="props.disabled"
       @click="open = true"
     >
       <Icon name="ph:chats" size="20" />
@@ -61,7 +72,7 @@ watch(() => route.fullPath, () => {
     <Sheet
       :open="open"
       position="right"
-      size="640"
+      :size="sheetSize"
       :card="{ separators: true }"
       class="chat-sheet__panel"
       @close="open = false"

@@ -3,7 +3,7 @@ import { Button, Divider, Flex, Input } from '@dolanske/vui'
 import { useDataUser } from '@/composables/useDataUser'
 import { useIrcChat } from '@/composables/useIrcChat'
 
-const { WS_URL, connState, inputNick, inputChannel, connect, connectAsAnon } = useIrcChat()
+const { connState, inputNick, inputChannel, connect, connectAsAnon, defaultChannel } = useIrcChat()
 
 const userId = useUserId()
 const { user } = useDataUser(userId)
@@ -16,6 +16,7 @@ const anonNick = ref('')
 
 function enterAnonMode() {
   anonNick.value = `anon-${Math.random().toString(36).slice(2, 7)}`
+  inputChannel.value = defaultChannel(true)
   anonMode.value = true
 }
 
@@ -59,7 +60,6 @@ function onSignedOutConnect() {
             Continue as anon
           </Button>
         </Flex>
-        <span class="chat-connect__server">{{ WS_URL }}</span>
       </Flex>
 
       <!-- Signed in, anon path: pick a nick -->
@@ -100,7 +100,6 @@ function onSignedOutConnect() {
             Back
           </Button>
         </Flex>
-        <span class="chat-connect__server">{{ WS_URL }}</span>
       </Flex>
 
       <!-- Signed out: classic nick + channel form -->
@@ -124,7 +123,6 @@ function onSignedOutConnect() {
           >
             Connect
           </Button>
-          <span class="chat-connect__server">{{ WS_URL }}</span>
         </Flex>
         <Divider />
         <p class="chat-connect__hint">

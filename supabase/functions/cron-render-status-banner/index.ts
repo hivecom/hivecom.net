@@ -39,39 +39,50 @@ Deno.serve(async (req: Request) => {
     // Load latest metrics snapshot + live info in parallel
     // -----------------------------------------------------------------------
     const now = new Date().toISOString();
-    const [snapshotResult, eventResult, gameResult, nextEventResult] =
-      await Promise.all([
-        supabaseClient.storage.from(METRICS_BUCKET).download(METRICS_OBJECT),
-        // Active official event: started and not yet finished (for footer)
-        supabaseClient
-          .from("events")
-          .select("title, duration_minutes")
-          .eq("is_official", true)
-          .lte("date", now)
-          .gt("date", new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString())
-          .not("duration_minutes", "is", null)
-          .order("date", { ascending: false })
-          .limit(5),
-        // Top currently-played Steam game (mirrors cron-metrics-fetch logic)
-        supabaseClient
-          .from("presences_steam")
-          .select(
-            "current_app_name, profile:profiles!presences_steam_profile_id_fkey(rich_presence_enabled)",
-          )
-          .not("current_app_name", "is", null),
-        // Next upcoming official event (for countdown KPI)
-        supabaseClient
-          .from("events")
-          .select("date")
-          .eq("is_official", true)
-          .gt("date", now)
-          .order("date", { ascending: true })
-          .limit(1),
-      ]);
+    const [
+      snapshotResult,
+      eventResult,
+      gameResult,
+      nextEventResult,
+      gamesResult,
+    ] = await Promise.all([
+      supabaseClient.storage.from(METRICS_BUCKET).download(METRICS_OBJECT),
+      // Active official event: started and not yet finished (for footer)
+      supabaseClient
+        .from("events")
+        .select("title, duration_minutes")
+        .eq("is_official", true)
+        .lte("date", now)
+        .gt("date", new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString())
+        .not("duration_minutes", "is", null)
+        .order("date", { ascending: false })
+        .limit(5),
+      // Top currently-played Steam game (mirrors cron-metrics-fetch logic)
+      supabaseClient
+        .from("presences_steam")
+        .select(
+          "current_app_id, current_app_name, profile:profiles!presences_steam_profile_id_fkey(rich_presence_enabled)",
+        )
+        .not("current_app_name", "is", null),
+      // Next upcoming official event (for countdown KPI)
+      supabaseClient
+        .from("events")
+        .select("date")
+        .eq("is_official", true)
+        .gt("date", now)
+        .order("date", { ascending: true })
+        .limit(1),
+      // Known games - only show games tracked in our games table
+      supabaseClient
+        .from("games")
+        .select("steam_id")
+        .not("steam_id", "is", null),
+    ]);
 
     if (snapshotResult.error || !snapshotResult.data) {
       throw new Error(
-        `Failed to load metrics snapshot: ${snapshotResult.error?.message ?? "no data"
+        `Failed to load metrics snapshot: ${
+          snapshotResult.error?.message ?? "no data"
         }`,
       );
     }
@@ -94,13 +105,23 @@ Deno.serve(async (req: Request) => {
     });
     const eventOngoing = Boolean(activeEvent);
 
-    // Count occurrences of each game name
+    // Build a set of known steam IDs from our games table
+    const knownSteamIds = new Set(
+      (gamesResult.data ?? []).map((g) =>
+        (g as unknown as { steam_id: number }).steam_id
+      ),
+    );
+
+    // Count occurrences of each game name, only for games in our games table
     const counts: Record<string, number> = {};
     for (const row of gameResult.data ?? []) {
       const profile = row.profile as
         | { rich_presence_enabled: boolean }
         | null;
       if (!profile?.rich_presence_enabled) continue;
+      const appId =
+        (row as unknown as { current_app_id: number | null }).current_app_id;
+      if (!appId || !knownSteamIds.has(appId)) continue;
       const name = row.current_app_name;
       if (name) counts[name] = (counts[name] ?? 0) + 1;
     }
