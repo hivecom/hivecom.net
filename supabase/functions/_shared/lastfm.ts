@@ -115,7 +115,8 @@ export async function fetchLastfmAuthSession(
 
   if (data.error || !data.session) {
     throw new Error(
-      `Last.fm auth.getSession error ${data.error ?? "unknown"}: ${data.message ?? "no session returned"
+      `Last.fm auth.getSession error ${data.error ?? "unknown"}: ${
+        data.message ?? "no session returned"
       }`,
     );
   }
@@ -158,17 +159,14 @@ export async function fetchRecentTrack(
   if (!trackData) return null;
 
   // The API returns an array, but collapses to an object when there is only 1 result
-  const track: RawTrack = Array.isArray(trackData)
-    ? trackData[0]
-    : trackData;
+  const track: RawTrack = Array.isArray(trackData) ? trackData[0] : trackData;
 
   if (!track) return null;
 
   const nowPlaying = track["@attr"]?.nowplaying === "true";
-  const playedAt =
-    !nowPlaying && track.date?.uts
-      ? new Date(parseInt(track.date.uts, 10) * 1000)
-      : null;
+  const playedAt = !nowPlaying && track.date?.uts
+    ? new Date(parseInt(track.date.uts, 10) * 1000)
+    : null;
 
   return {
     name: track.name,

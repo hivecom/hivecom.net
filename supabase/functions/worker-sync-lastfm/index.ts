@@ -205,7 +205,8 @@ async function processMessage(
   }
 
   console.log(
-    `Synced Last.fm presence for ${profile_id} (${lastfm_username}): ${track.nowPlaying ? "now playing" : "last played"
+    `Synced Last.fm presence for ${profile_id} (${lastfm_username}): ${
+      track.nowPlaying ? "now playing" : "last played"
     } "${track.name}" by ${track.artist}`,
   );
 

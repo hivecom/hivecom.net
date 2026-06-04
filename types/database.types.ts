@@ -387,6 +387,7 @@ export type Database = {
           is_archived: boolean
           is_locked: boolean
           last_activity_at: string
+          last_activity_by: string | null
           modified_at: string
           modified_by: string | null
           name: string
@@ -405,6 +406,7 @@ export type Database = {
           is_archived?: boolean
           is_locked?: boolean
           last_activity_at?: string
+          last_activity_by?: string | null
           modified_at?: string
           modified_by?: string | null
           name: string
@@ -423,6 +425,7 @@ export type Database = {
           is_archived?: boolean
           is_locked?: boolean
           last_activity_at?: string
+          last_activity_by?: string | null
           modified_at?: string
           modified_by?: string | null
           name?: string
@@ -437,6 +440,13 @@ export type Database = {
           {
             foreignKeyName: "discussion_topics_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discussion_topics_last_activity_by_fkey"
+            columns: ["last_activity_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -473,6 +483,7 @@ export type Database = {
           is_nsfw: boolean
           is_sticky: boolean
           last_activity_at: string
+          last_activity_by: string | null
           markdown: string | null
           modified_at: string
           modified_by: string | null
@@ -502,6 +513,7 @@ export type Database = {
           is_nsfw?: boolean
           is_sticky?: boolean
           last_activity_at?: string
+          last_activity_by?: string | null
           markdown?: string | null
           modified_at?: string
           modified_by?: string | null
@@ -531,6 +543,7 @@ export type Database = {
           is_nsfw?: boolean
           is_sticky?: boolean
           last_activity_at?: string
+          last_activity_by?: string | null
           markdown?: string | null
           modified_at?: string
           modified_by?: string | null
@@ -586,6 +599,13 @@ export type Database = {
             columns: ["gameserver_id"]
             isOneToOne: false
             referencedRelation: "network_gameservers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discussions_last_activity_by_fkey"
+            columns: ["last_activity_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -2666,6 +2686,7 @@ export type Database = {
           is_confirmed: boolean
           is_supporter: boolean
           last_seen: string
+          lastfm_username: string
           markdown: string
           modified_at: string
           modified_by: string
@@ -3217,6 +3238,10 @@ export type Database = {
         Args: { p_profile_id: string }
         Returns: undefined
       }
+      recompute_celebrity_badge: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
       recompute_chatterbox_badge: {
         Args: { p_profile_id: string }
         Returns: undefined
@@ -3281,7 +3306,7 @@ export type Database = {
         Returns: Json
       }
       unique_discussion_slug: { Args: { base_slug: string }; Returns: string }
-      update_user_last_seen: { Args: { user_id?: string }; Returns: undefined }
+      update_user_last_seen: { Args: never; Returns: undefined }
       validate_github_repo: { Args: { github_repo: string }; Returns: boolean }
       validate_tag_format: { Args: { tag: string }; Returns: boolean }
       validate_tags_array: { Args: { tags: string[] }; Returns: boolean }

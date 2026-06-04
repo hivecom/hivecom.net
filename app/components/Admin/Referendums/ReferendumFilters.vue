@@ -72,7 +72,7 @@ const hasActiveFilters = computed(() =>
       v-model="statusFilter"
       :options="props.statusOptions"
       placeholder="Filter by status"
-      :expand="isBelowMedium"
+      :class="{ 'w-100': isBelowMedium }"
       show-clear
       :single="false"
     />
@@ -82,7 +82,7 @@ const hasActiveFilters = computed(() =>
       v-model="typeFilter"
       :options="props.typeOptions"
       placeholder="Filter by type"
-      :expand="isBelowMedium"
+      :class="{ 'w-100': isBelowMedium }"
       show-clear
       :single="false"
     />
@@ -92,7 +92,7 @@ const hasActiveFilters = computed(() =>
       v-model="visibilityFilter"
       :options="props.visibilityOptions"
       placeholder="Filter by visibility"
-      :expand="isBelowMedium"
+      :class="{ 'w-100': isBelowMedium }"
       show-clear
       :single="false"
     />

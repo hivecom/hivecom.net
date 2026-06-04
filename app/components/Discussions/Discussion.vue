@@ -69,6 +69,12 @@ interface Props extends Partial<DiscussionSettings> {
    * Sets the input placeholder
    */
   placeholder?: string
+  /**
+   * Additional scroll offset in px added on top of the default navbar offset.
+   * Use this when a page has an extra sticky element (e.g. a fixed post header)
+   * that would otherwise obscure the scrolled-to comment.
+   */
+  additionalScrollOffset?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -404,7 +410,7 @@ async function handleGoToPinnedReply() {
   router.replace({ query: { ...route.query, comment: pinned.id } })
   await nextTick()
   await waitForLayoutStability()
-  scrollToId(`#comment-${pinned.id}`, 'center', true)
+  scrollToId(`#comment-${pinned.id}`, 'center', true, props.additionalScrollOffset)
 }
 
 // Keep in sync if the global setting changes (e.g. user visits settings page
@@ -863,7 +869,7 @@ async function handleTimelineNavigate(date: Date) {
       //    (lazy images, markdown renders) that occur after the initial settle.
       await nextTick()
       await waitForLayoutStability(5000)
-      await scrollToIdWhenStable(`#comment-${replyId}`, 'start', 3000, 150)
+      await scrollToIdWhenStable(`#comment-${replyId}`, 'start', 3000, 150, props.additionalScrollOffset)
     }
   }
   finally {
@@ -887,6 +893,7 @@ async function handleTimelineNavigateToEnd() {
   navigating.value = true
   try {
     // Floor semantics: navigate to the last reply at or before the discussion end.
+    // This loads the final page if it isn't already in memory.
     const replyId = await navigateToDate(new Date(timelineEnd.value), { findFirst: false })
     if (replyId != null) {
       const target = modelledComments.value.find(c => c.id === replyId)
@@ -896,8 +903,13 @@ async function handleTimelineNavigateToEnd() {
       }
       await nextTick()
       await waitForLayoutStability(5000)
-      // Snap to the very bottom so the final reply is fully visible.
-      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })
+      // The date-navigated reply can be one short of the true last reply (the
+      // floor lands on the last reply at/before the bucket end). Scroll to the
+      // actual last loaded reply so "go to end" always lands on the newest one.
+      const lastReplyId = modelledComments.value.at(-1)?.id ?? replyId
+      // Use a long stability window so the re-anchoring loop keeps correcting
+      // as lazy-loaded images above the target load in and shift the layout.
+      await scrollToIdWhenStable(`#comment-${lastReplyId}`, 'start', 6000, 500, props.additionalScrollOffset)
     }
   }
   finally {

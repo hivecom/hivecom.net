@@ -3,7 +3,7 @@ import { Button, Card, Flex, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
 import ProfileBadgeFromSlug from '@/components/Profile/Badges/ProfileBadgeFromSlug.vue'
 import { useDataProfileBadges } from '@/composables/useDataProfileBadges'
-import { BADGE_CATALOG } from '@/lib/badges/catalog'
+import { BADGE_CATALOG, getBadgeMemberSince } from '@/lib/badges/catalog'
 
 interface Props {
   profileId: string
@@ -75,7 +75,7 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
           :slug="badge.slug"
           :tier="badge.tier"
           :progress="badge.progress ?? undefined"
-          :earned-at="badge.earned_at"
+          :earned-at="getBadgeMemberSince(badge.metadata, badge.earned_at)"
           compact
         />
       </Flex>

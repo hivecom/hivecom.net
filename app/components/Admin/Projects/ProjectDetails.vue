@@ -11,6 +11,7 @@ import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 
 const props = defineProps<{
   project: Tables<'projects'> | null
@@ -24,6 +25,8 @@ const emit = defineEmits<{
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+const { handleContentClick } = useExternalLinkGuard()
 
 const { bannerUrl: projectBannerUrl } = useDataProjectBanner(
   computed(() => props.project?.id ?? null),
@@ -101,7 +104,7 @@ function handleDelete(project: Tables<'projects'>) {
           </DetailRow>
 
           <DetailRow label="Link" :hidden="!props.project.link">
-            <NuxtLink external :href="props.project.link ?? ''" target="_blank" class="color-accent text-s">
+            <NuxtLink external :href="props.project.link ?? ''" target="_blank" class="color-accent text-s" @click="handleContentClick">
               {{ props.project.link }}
             </NuxtLink>
           </DetailRow>

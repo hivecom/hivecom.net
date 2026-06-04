@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Button, Flex, Input, Select, Sheet, Textarea, Tooltip } from '@dolanske/vui'
+import { Button, Flex, Input, Sheet, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
 import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
 import { CMS_BUCKET_ID } from '@/lib/storageAssets'
@@ -355,7 +356,7 @@ onMounted(() => {
           placeholder="Enter game server name"
         />
 
-        <Select
+        <ExpandableSelect
           v-model="selectedRegionComputed"
           expand
           name="region"
@@ -387,7 +388,7 @@ onMounted(() => {
             />
           </Flex>
 
-          <Select
+          <ExpandableSelect
             v-model="selectedContainerComputed"
             search
             expand
@@ -425,7 +426,7 @@ onMounted(() => {
 
         <!-- Third row: Query Protocol and Query Port -->
         <Flex gap="m" wrap expand>
-          <Select
+          <ExpandableSelect
             v-model="selectedQueryProtocolComputed"
             expand
             name="query_protocol"

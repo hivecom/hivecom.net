@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IgdbGameDetails, IgdbSearchResult } from '@/composables/useIgdb'
-import { Button, ButtonGroup, Flex, Input, Modal, Skeleton } from '@dolanske/vui'
+import { Button, ButtonGroup, Flex, Input, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { ref, watch } from 'vue'
 import { useIgdb } from '@/composables/useIgdb'
 
@@ -144,9 +144,10 @@ async function applyResult(result: IgdbSearchResult, overwrite: boolean) {
 
       <!-- Results -->
       <Flex v-else-if="results.length" column gap="xs">
-        <div
+        <Flex
           v-for="result in results"
           :key="result.igdb_id"
+          expand
           class="igdb-modal__result"
         >
           <!-- Cover thumb -->
@@ -178,25 +179,37 @@ async function applyResult(result: IgdbSearchResult, overwrite: boolean) {
 
           <!-- Action buttons -->
           <ButtonGroup class="igdb-modal__actions">
-            <Button
-              variant="accent"
-              size="s"
-              :loading="applying && selectedId === result.igdb_id"
-              :disabled="applying"
-              @click="applyResult(result, false)"
-            >
-              Fill empty
-            </Button>
-            <Button
-              size="s"
-              :loading="applying && selectedId === result.igdb_id"
-              :disabled="applying"
-              @click="applyResult(result, true)"
-            >
-              Overwrite
-            </Button>
+            <Tooltip>
+              <Button
+                variant="accent"
+                size="s"
+                square
+                :loading="applying && selectedId === result.igdb_id"
+                :disabled="applying"
+                @click="applyResult(result, false)"
+              >
+                <Icon name="ph:plus" />
+              </Button>
+              <template #tooltip>
+                <p>Fill empty</p>
+              </template>
+            </Tooltip>
+            <Tooltip>
+              <Button
+                size="s"
+                square
+                :loading="applying && selectedId === result.igdb_id"
+                :disabled="applying"
+                @click="applyResult(result, true)"
+              >
+                <Icon name="ph:arrows-clockwise" />
+              </Button>
+              <template #tooltip>
+                <p>Overwrite</p>
+              </template>
+            </Tooltip>
           </ButtonGroup>
-        </div>
+        </Flex>
       </Flex>
     </Flex>
   </Modal>

@@ -35,7 +35,10 @@ async function getAccessToken(): Promise<string> {
       throw new Error("Failed to obtain Twitch access token");
     }
 
-    const data = await res.json() as { access_token: string; expires_in: number };
+    const data = await res.json() as {
+      access_token: string;
+      expires_in: number;
+    };
     cachedToken = {
       token: data.access_token,
       expiresAt: now + data.expires_in * 1000,
@@ -85,7 +88,9 @@ interface IgdbRawGame {
     onlinecoopmax?: number;
     onlinemax?: number;
   }>;
-  websites?: Array<{ url: string; category: number }>;
+  external_games?: Array<{ uid?: string; url?: string }>;
+  alternative_names?: Array<{ name?: string; comment?: string }>;
+  websites?: Array<{ url: string; type: number }>;
   artworks?: Array<{ image_id: string }>;
   screenshots?: Array<{ image_id: string }>;
 }
@@ -101,11 +106,14 @@ interface SearchResult {
 
 interface GameDetails {
   igdb_id: number;
+  igdb_url: string | null;
   name: string;
   summary: string | null;
   storyline: string | null;
   release_date: string | null;
   website: string | null;
+  steam_id: string | null;
+  acronym: string | null;
   genre_tags: string[];
   multiplayer_modes: string[];
   cover_url: string | null;
@@ -120,7 +128,8 @@ function coverUrl(imageId: string | undefined): string | null {
 }
 
 function backgroundUrl(game: IgdbRawGame): string | null {
-  const imageId = game.artworks?.[0]?.image_id ?? game.screenshots?.[0]?.image_id;
+  const imageId = game.artworks?.[0]?.image_id ??
+    game.screenshots?.[0]?.image_id;
   if (!imageId) return null;
   return `${IGDB_IMAGE_BASE}/t_1080p/${imageId}.jpg`;
 }
@@ -136,8 +145,23 @@ function releaseDate(timestamp: number | undefined): string | null {
 }
 
 function officialWebsite(game: IgdbRawGame): string | null {
-  const official = game.websites?.find((w) => w.category === 1);
+  const official = game.websites?.find((w) => w.type === 1);
   return official?.url ?? null;
+}
+
+function steamAppId(game: IgdbRawGame): string | null {
+  const steam = game.external_games?.find((e) =>
+    !!e.uid && /^\d+$/.test(e.uid) &&
+    (e.url?.startsWith("https://store.steampowered.com/app/") ?? false)
+  );
+  return steam?.uid ?? null;
+}
+
+function acronym(game: IgdbRawGame): string | null {
+  const entry = game.alternative_names?.find((a) =>
+    a.comment?.toLowerCase() === "acronym" && !!a.name?.trim()
+  );
+  return entry?.name?.trim() ?? null;
 }
 
 function genreTags(game: IgdbRawGame): string[] {
@@ -204,11 +228,14 @@ function normaliseSearchResult(raw: IgdbRawGame): SearchResult {
 function normaliseDetails(raw: IgdbRawGame): GameDetails {
   return {
     igdb_id: raw.id,
+    igdb_url: raw.url ?? null,
     name: raw.name ?? "",
     summary: raw.summary ?? null,
     storyline: raw.storyline ?? null,
     release_date: releaseDate(raw.first_release_date),
     website: officialWebsite(raw),
+    steam_id: steamAppId(raw),
+    acronym: acronym(raw),
     genre_tags: genreTags(raw),
     multiplayer_modes: multiplayerModes(raw),
     cover_url: coverUrl(raw.cover?.image_id),
@@ -232,12 +259,15 @@ async function handleSearch(params: URLSearchParams): Promise<Response> {
   let query: string;
 
   if (q) {
-    query = `search "${q.replace(/"/g, "")}"; fields id,name,first_release_date,cover.image_id,genres.name,summary; limit 10;`;
+    query = `search "${
+      q.replace(/"/g, "")
+    }"; fields id,name,first_release_date,cover.image_id,genres.name,summary; limit 10;`;
   } else if (steamId) {
     if (!/^\d+$/.test(steamId)) {
       return jsonResponse({ success: false, error: "Invalid steam_id" }, 400);
     }
-    query = `fields id,name,first_release_date,cover.image_id,genres.name,summary; where external_games.uid = "${steamId}" & external_games.category = 1; limit 1;`;
+    query =
+      `fields id,name,first_release_date,cover.image_id,genres.name,summary; where external_games.uid = "${steamId}" & external_games.category = 1; limit 1;`;
   } else {
     return jsonResponse(
       { success: false, error: "mode=search requires either q or steam_id" },
@@ -246,17 +276,24 @@ async function handleSearch(params: URLSearchParams): Promise<Response> {
   }
 
   const raw = await igdbPost(query) as IgdbRawGame[];
-  return jsonResponse({ success: true, results: raw.map(normaliseSearchResult) });
+  return jsonResponse({
+    success: true,
+    results: raw.map(normaliseSearchResult),
+  });
 }
 
 async function handleDetails(params: URLSearchParams): Promise<Response> {
   const id = params.get("id");
 
   if (!id || !/^\d+$/.test(id)) {
-    return jsonResponse({ success: false, error: "mode=details requires a valid numeric id" }, 400);
+    return jsonResponse({
+      success: false,
+      error: "mode=details requires a valid numeric id",
+    }, 400);
   }
 
-  const query = `fields id,name,summary,storyline,first_release_date,url,websites.url,websites.category,genres.name,themes.name,game_modes.name,multiplayer_modes.*,cover.image_id,artworks.image_id,screenshots.image_id; where id = ${id}; limit 1;`;
+  const query =
+    `fields id,name,summary,storyline,first_release_date,url,websites.url,websites.type,external_games.uid,external_games.url,alternative_names.name,alternative_names.comment,genres.name,themes.name,game_modes.name,multiplayer_modes.*,cover.image_id,artworks.image_id,screenshots.image_id; where id = ${id}; limit 1;`;
 
   const raw = await igdbPost(query) as IgdbRawGame[];
 
@@ -285,7 +322,10 @@ Deno.serve(async (req: Request) => {
 
   if (!IGDB_CLIENT_ID || !IGDB_CLIENT_SECRET) {
     console.error("IGDB_CLIENT_ID or IGDB_CLIENT_SECRET not configured");
-    return jsonResponse({ success: false, error: "IGDB credentials not configured" }, 500);
+    return jsonResponse({
+      success: false,
+      error: "IGDB credentials not configured",
+    }, 500);
   }
 
   const url = new URL(req.url);
@@ -298,13 +338,20 @@ Deno.serve(async (req: Request) => {
       return await handleDetails(url.searchParams);
     } else {
       return jsonResponse(
-        { success: false, error: "Missing or invalid mode param. Use mode=search or mode=details" },
+        {
+          success: false,
+          error:
+            "Missing or invalid mode param. Use mode=search or mode=details",
+        },
         400,
       );
     }
   } catch (err) {
     const error = err as Error;
     console.error("Error in admin-igdb-search:", error);
-    return jsonResponse({ success: false, error: "Internal server error" }, 500);
+    return jsonResponse(
+      { success: false, error: "Internal server error" },
+      500,
+    );
   }
 });

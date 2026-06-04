@@ -39,7 +39,7 @@ withDefaults(defineProps<Props>(), {
             type="button"
             class="event-games__icon"
             :aria-label="`Open details for ${game.name ?? 'game'}`"
-            @click.stop="open"
+            @click.stop.prevent="open"
           >
             <GameIcon :game="game" :size="size" />
           </button>

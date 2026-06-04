@@ -10,8 +10,8 @@ import { useGlobeBase } from '@/composables/useGlobeBase'
 import { useGlobePerf } from '@/composables/useGlobePerf'
 import {
   getHexBaseColor,
+  getHexHoverColor,
   getHighlightColor,
-  getTextColor,
 } from '@/lib/globe/GlobeTheme'
 import { getCountryEmoji } from '@/lib/utils/country'
 
@@ -168,9 +168,7 @@ onMounted(async () => {
           const hasUsers = mode.value === 'all'
             ? (allMap.value.get(isoUpper) ?? 0) > 0
             : (onlineMap.value.get(isoUpper) ?? 0) > 0
-          const [tr, tg, tb] = parseHex(getTextColor())
-          const alpha = hasUsers ? 1.0 : 0.15
-          return `rgba(${tr},${tg},${tb},${alpha})`
+          return hasUsers ? getHighlightColor() : getHexHoverColor()
         }
         if (mode.value === 'all') {
           const count = allMap.value.get(iso.toUpperCase()) ?? 0

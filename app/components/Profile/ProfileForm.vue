@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, Calendar, Flex, Input, Modal, Select, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
+import { Alert, Button, Calendar, Flex, Input, Modal, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, nextTick, ref, watch } from 'vue'
 import BannerEditor from '@/components/Profile/Banner/BannerEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import { normalizeWebsiteUrl, useUserFormValidation } from '@/composables/useUserFormValidation'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -457,6 +458,12 @@ watch(
   { immediate: true },
 )
 
+const usernameChanged = computed(() =>
+  props.profile != null
+  && profileForm.value.username.trim() !== ''
+  && profileForm.value.username.trim() !== props.profile.username,
+)
+
 // Clear submission error when username changes
 watch(() => profileForm.value.username, () => {
   if (props.submissionError) {
@@ -666,6 +673,12 @@ async function confirmAvatarDelete() {
               :errors="usernameValidation.error ? [usernameValidation.error] : undefined"
             />
           </Flex>
+          <Alert v-if="usernameChanged" variant="warning" title="IRC identity migration required">
+            <p class="text-s">
+              Before saving, run this command on IRC to transfer your NickServ account to the new username - otherwise your IRC identity will be lost:
+            </p>
+            <code class="profile-edit-form__irc-command">/msg NickServ RENAME {{ props.profile?.username }} {{ profileForm.username.trim() }}</code>
+          </Alert>
           <Flex expand class="profile-edit-form__website-container">
             <Input
               v-model="profileForm.website"
@@ -722,9 +735,8 @@ async function confirmAvatarDelete() {
           </span>
         </Flex>
         <Flex expand class="profile-edit-form__country-container">
-          <Select
+          <ExpandableSelect
             v-model="countrySelectModel"
-            expand
             name="country"
             label="Country"
             placeholder="Select your country (optional)"
@@ -1139,6 +1151,17 @@ async function confirmAvatarDelete() {
   &__banner-error {
     font-size: var(--font-size-xs);
     color: var(--color-text-red);
+  }
+
+  &__irc-command {
+    display: block;
+    margin-top: var(--space-xs);
+    padding: var(--space-xs) var(--space-s);
+    background: var(--color-bg-lowered);
+    border-radius: var(--border-radius-s);
+    border: 1px solid var(--color-border);
+    font-size: var(--font-size-xs);
+    word-break: break-all;
   }
 
   &__import-input {

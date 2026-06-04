@@ -7,6 +7,7 @@ import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
+import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { formatCurrency } from '@/lib/utils/currency'
 import { calculateDurationBetweenDates } from '@/lib/utils/duration'
 
@@ -34,6 +35,8 @@ const emit = defineEmits<{
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+const { handleContentClick } = useExternalLinkGuard()
 
 // Handle closing the sheet
 function handleClose() {
@@ -110,7 +113,7 @@ function handleDelete(expense: Tables<'funding_expenses'>) {
           <TimestampDate :date="props.expense.ended_at!" />
         </DetailRow>
         <DetailRow label="URL" :hidden="!props.expense.url">
-          <a :href="props.expense.url!" target="_blank" rel="noopener noreferrer" class="link">
+          <a :href="props.expense.url!" target="_blank" rel="noopener noreferrer" class="link" @click="handleContentClick">
             {{ props.expense.url }}
             <Icon name="ph:arrow-square-out" />
           </a>

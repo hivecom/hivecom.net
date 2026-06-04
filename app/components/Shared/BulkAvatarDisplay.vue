@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import type { Sizes } from '@dolanske/vui'
 import type { UserDisplayData } from '@/composables/useDataUser'
-import { Flex, Indicator, Skeleton, Tooltip } from '@dolanske/vui'
+import { Badge, Flex, Indicator, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
@@ -8,10 +9,12 @@ import { useBulkDataUser } from '@/composables/useDataUser'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { shuffleArray } from '@/lib/utils/random'
 
+// TODO: use AvatarGroup from vui
+
 interface Props {
   userIds: string[]
   maxUsers?: number
-  avatarSize?: number
+  avatarSize?: Sizes | number
   showNames?: boolean
   random?: boolean
   gap?: number
@@ -274,7 +277,6 @@ defineExpose({
 
       <div
         v-if="displayedRemainingCount > 0"
-        class="bulk-avatar-display__avatar bulk-avatar-display__remaining"
         :style="avatarStyleVars"
         :role="cluster ? undefined : 'button'"
         :tabindex="cluster ? undefined : 0"
@@ -282,9 +284,9 @@ defineExpose({
         @keydown.enter="!cluster && emit('remainingClick')"
         @keydown.space.prevent="!cluster && emit('remainingClick')"
       >
-        <div class="bulk-avatar-display__remaining-count">
+        <Badge circle size="m" :style="{ '--vui-badge-height': '28px' }">
           +{{ displayedRemainingCount }}
-        </div>
+        </Badge>
       </div>
     </Flex>
   </Flex>
@@ -292,6 +294,13 @@ defineExpose({
 
 <style lang="scss" scoped>
 .bulk-avatar-display {
+  &--cluster {
+    .bulk-avatar-display__avatar:not(:first-child),
+    .vui-badge {
+      margin-left: calc(var(--space-s, 0px) * -1);
+    }
+  }
+
   &__list {
     display: flex;
     flex-wrap: wrap;

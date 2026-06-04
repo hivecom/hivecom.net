@@ -2,8 +2,6 @@
 import type { Tables } from '@/types/database.overrides'
 import { ref } from 'vue'
 import GameCover from '@/components/Shared/GameCover.vue'
-import GlowCard from '@/components/Shared/GlowCard.vue'
-import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import Marquee from '@/components/Shared/Marquee.vue'
 
 const props = withDefaults(defineProps<{
@@ -56,19 +54,15 @@ function onGameClick(gameId: number) {
       @dragstart="onDragStart"
       @dragend="onDragEnd"
     >
-      <GlowGroup>
-        <div
-          v-for="game in games"
-          :key="game.id"
-          class="marquee-item"
-          :class="{ 'marquee-item--clickable': props.interactive }"
-          @click="onGameClick(game.id)"
-        >
-          <GlowCard :no-borders="!props.interactive">
-            <GameCover :game="game" size="xl" aspect-ratio="card" :show-fallback="false" />
-          </GlowCard>
-        </div>
-      </GlowGroup>
+      <div
+        v-for="game in games"
+        :key="game.id"
+        class="marquee-item"
+        :class="{ 'marquee-item--clickable': props.interactive }"
+        @click="onGameClick(game.id)"
+      >
+        <GameCover :game="game" size="xl" aspect-ratio="card" :show-fallback="false" />
+      </div>
     </Marquee>
   </section>
 </template>
@@ -111,7 +105,6 @@ function onGameClick(gameId: number) {
   &--clickable {
     cursor: pointer;
 
-    :deep(.glow-card:hover .game-cover),
     &:hover :deep(.game-cover) {
       filter: saturate(1);
       opacity: 1;

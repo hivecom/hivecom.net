@@ -499,8 +499,17 @@ function handleReplySubmitted(newReplyCount: number, discussionId: string) {
 }
 
 const pageTitle = useTemplateRef('page-title')
+const scrollHeader = useTemplateRef<HTMLElement>('scroll-header')
 const scrollHeaderReady = ref(false)
 const isPageTitleVisible = useElementVisibility(pageTitle)
+
+// When the sticky scroll header is visible, pass its height as an additional
+// scroll offset to Discussion so navigated-to comments land below the header.
+const stickyScrollOffset = computed(() => {
+  if (!scrollHeaderReady.value || isPageTitleVisible.value)
+    return 0
+  return scrollHeader.value?.offsetHeight ?? 0
+})
 
 watch(isPageTitleVisible, () => {
   scrollHeaderReady.value = true
@@ -602,7 +611,7 @@ function revealNsfw() {
       <template v-else-if="post">
         <!-- Floating header when scrolling down -->
         <Transition name="fade">
-          <section v-if="scrollHeaderReady && !isPageTitleVisible" class="forum-post__scroll">
+          <section v-if="scrollHeaderReady && !isPageTitleVisible" ref="scroll-header" class="forum-post__scroll">
             <div class="container-m">
               <UserDisplay
                 v-if="isMobile"
@@ -897,6 +906,7 @@ function revealNsfw() {
           :key="String(post.id)"
           type="discussion"
           model="forum"
+          :additional-scroll-offset="stickyScrollOffset"
           placeholder="Write your reply to this thread..."
           @reply-submitted="handleReplySubmitted"
         />
@@ -1022,7 +1032,7 @@ function revealNsfw() {
   padding-block: var(--space-s);
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
-  z-index: var(--z-active);
+  z-index: var(--z-nav);
 
   > div {
     display: flex;

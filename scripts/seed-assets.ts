@@ -18,11 +18,22 @@
  *   {username}.{ext}  -> {userId}/avatar.{ext}
  *   (username is looked up against the local DB to resolve the user ID)
  *
+ * Metrics snapshot (metrics/latest.json in hivecom-content-static) is seeded
+ * from the latest row in the local `metrics` table, normalized to the current
+ * MetricsSnapshot schema in types/metrics.ts (legacy field names like
+ * `members` are mapped to `users`, missing fields padded with empty defaults).
+ * Typing here is enforced so schema drift in MetricsSnapshot is caught at
+ * lint time rather than at runtime.
+ *
  * Run via: npm run reset  (db reset + this script)
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../types/database.types.ts'
+import type { MetricsServerDetail, MetricsSnapshot, MetricsStorageBucket } from '../types/metrics.ts'
 import { Buffer } from 'node:buffer'
 import { readdir, readFile } from 'node:fs/promises'
+
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
@@ -34,13 +45,13 @@ const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 const STATIC_BUCKET = 'hivecom-content-static'
 const USERS_BUCKET = 'hivecom-content-users'
 
-const ASSET_TYPE_MAP = {
+const ASSET_TYPE_MAP: Record<string, string> = {
   card: 'cover',
   hero: 'background',
   icon: 'icon',
 }
 
-const MIME_MAP = {
+const MIME_MAP: Record<string, string> = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.png': 'image/png',
@@ -52,10 +63,25 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const GAMESERVERS_DIR = join(__dirname, '..', 'private', 'gameservers')
 const PROFILE_DIR = join(__dirname, '..', 'private', 'profile')
 
+type Supabase = SupabaseClient<Database>
+
+interface TaskResult {
+  success: number
+  fail: number
+}
+
 // ── Game assets ───────────────────────────────────────────────────────────────
 
-async function uploadGameAssets(supabase) {
-  let files
+interface GameAssetUpload {
+  filename: string
+  shorthand: string
+  assetType: string
+  ext: string
+  mimeType: string
+}
+
+async function uploadGameAssets(supabase: Supabase): Promise<TaskResult> {
+  let files: string[]
   try {
     files = await readdir(GAMESERVERS_DIR)
   }
@@ -64,8 +90,8 @@ async function uploadGameAssets(supabase) {
     return { success: 0, fail: 0 }
   }
 
-  const uploads = files
-    .map((filename) => {
+  const uploads: GameAssetUpload[] = files
+    .map((filename): GameAssetUpload | null => {
       const ext = extname(filename).toLowerCase()
       const stem = filename.slice(0, -ext.length)
 
@@ -89,7 +115,7 @@ async function uploadGameAssets(supabase) {
 
       return { filename, shorthand, assetType, ext, mimeType }
     })
-    .filter(Boolean)
+    .filter((u): u is GameAssetUpload => u !== null)
 
   if (uploads.length === 0) {
     console.log('No game assets found to upload.')
@@ -123,7 +149,7 @@ async function uploadGameAssets(supabase) {
       }
     }
     catch (err) {
-      console.log(`FAIL (${err.message})`)
+      console.log(`FAIL (${(err as Error).message})`)
       fail++
     }
   }
@@ -133,8 +159,15 @@ async function uploadGameAssets(supabase) {
 
 // ── User avatars ──────────────────────────────────────────────────────────────
 
-async function uploadUserAvatars(supabase) {
-  let files
+interface AvatarCandidate {
+  filename: string
+  username: string
+  ext: string
+  mimeType: string
+}
+
+async function uploadUserAvatars(supabase: Supabase): Promise<TaskResult> {
+  let files: string[]
   try {
     files = await readdir(PROFILE_DIR)
   }
@@ -143,8 +176,8 @@ async function uploadUserAvatars(supabase) {
     return { success: 0, fail: 0 }
   }
 
-  const candidates = files
-    .map((filename) => {
+  const candidates: AvatarCandidate[] = files
+    .map((filename): AvatarCandidate | null => {
       const ext = extname(filename).toLowerCase()
       const username = filename.slice(0, -ext.length)
       const mimeType = MIME_MAP[ext]
@@ -156,7 +189,7 @@ async function uploadUserAvatars(supabase) {
 
       return { filename, username, ext, mimeType }
     })
-    .filter(Boolean)
+    .filter((c): c is AvatarCandidate => c !== null)
 
   if (candidates.length === 0) {
     console.log('No user avatars found to upload.')
@@ -175,7 +208,7 @@ async function uploadUserAvatars(supabase) {
     return { success: 0, fail: candidates.length }
   }
 
-  const usernameToId = Object.fromEntries(
+  const usernameToId: Record<string, string> = Object.fromEntries(
     (profiles ?? []).map(p => [p.username.toLowerCase(), p.id]),
   )
 
@@ -213,7 +246,7 @@ async function uploadUserAvatars(supabase) {
       }
     }
     catch (err) {
-      console.log(`FAIL (${err.message})`)
+      console.log(`FAIL (${(err as Error).message})`)
       fail++
     }
   }
@@ -223,7 +256,71 @@ async function uploadUserAvatars(supabase) {
 
 // ── Metrics latest.json ──────────────────────────────────────────────────────
 
-async function uploadMetricsLatest(supabase) {
+/**
+ * Normalizes a metrics row payload from the local DB into the current
+ * `MetricsSnapshot` shape defined in `types/metrics.ts`. Older seeded rows
+ * may use legacy field names (e.g. `members` instead of `users`) or be
+ * missing newer fields - we map and pad them here so the seeded
+ * `metrics/latest.json` is always shape-correct for consumers like the
+ * status banner renderer.
+ *
+ * The return type is `MetricsSnapshot`, so any drift in that interface will
+ * surface here at typecheck time.
+ */
+function asObj(v: unknown): Record<string, unknown> {
+  return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {}
+}
+function asNum(v: unknown): number {
+  return typeof v === 'number' ? v : 0
+}
+function asRecord<T>(v: unknown): Record<string, T> {
+  return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, T>) : {}
+}
+
+function normalizeMetricsPayload(raw: unknown): MetricsSnapshot {
+  const src = asObj(raw)
+  // Legacy snapshots used `members`. Current schema uses `users`.
+  const usersSrc = asObj(src.users ?? src.members)
+  const teamspeakSrc = asObj(src.teamspeak)
+  const gameserversSrc = asObj(src.gameservers)
+  const discussionsSrc = asObj(src.discussions)
+  const communitySrc = asObj(src.community)
+  const storageSrc = asObj(src.storage)
+
+  return {
+    collectedAt: typeof src.collectedAt === 'string' && src.collectedAt ? src.collectedAt : new Date().toISOString(),
+    users: {
+      total: asNum(usersSrc.total),
+      online: asNum(usersSrc.online),
+      byCountry: asRecord<number>(usersSrc.byCountry),
+      byGame: asRecord<number>(usersSrc.byGame),
+      bySteamGame: asRecord<number>(usersSrc.bySteamGame),
+    },
+    community: {
+      projects: asNum(communitySrc.projects),
+    },
+    discussions: {
+      total: asNum(discussionsSrc.total),
+      replies: asNum(discussionsSrc.replies),
+      newTotal: asNum(discussionsSrc.newTotal),
+      newReplies: asNum(discussionsSrc.newReplies),
+    },
+    teamspeak: {
+      online: asNum(teamspeakSrc.online),
+      byServer: asRecord<number>(teamspeakSrc.byServer),
+    },
+    gameservers: {
+      total: asNum(gameserversSrc.total),
+      players: asNum(gameserversSrc.players),
+      byServer: asRecord<MetricsServerDetail>(gameserversSrc.byServer),
+    },
+    storage: {
+      buckets: asRecord<MetricsStorageBucket>(storageSrc.buckets),
+    },
+  }
+}
+
+async function uploadMetricsLatest(supabase: Supabase): Promise<TaskResult> {
   const { data, error: fetchError } = await supabase
     .from('metrics')
     .select('data')
@@ -231,17 +328,19 @@ async function uploadMetricsLatest(supabase) {
     .limit(1)
     .single()
 
-  if (fetchError || !data) {
+  if (fetchError !== null || data === null) {
     console.log(`Skipping metrics/latest.json - could not fetch latest metrics row: ${fetchError?.message ?? 'no data'}`)
     return { success: 0, fail: 1 }
   }
+
+  const snapshot = normalizeMetricsPayload(data.data)
 
   process.stdout.write(`Uploading metrics/latest.json to "${STATIC_BUCKET}" ... `)
 
   try {
     const { error } = await supabase.storage
       .from(STATIC_BUCKET)
-      .upload('metrics/latest.json', Buffer.from(JSON.stringify(data.data, null, 2)), {
+      .upload('metrics/latest.json', Buffer.from(JSON.stringify(snapshot, null, 2)), {
         contentType: 'application/json',
         upsert: true,
         cacheControl: '1800',
@@ -256,7 +355,7 @@ async function uploadMetricsLatest(supabase) {
     return { success: 1, fail: 0 }
   }
   catch (err) {
-    console.log(`FAIL (${err.message})`)
+    console.log(`FAIL (${(err as Error).message})`)
     return { success: 0, fail: 1 }
   }
 }
@@ -264,7 +363,7 @@ async function uploadMetricsLatest(supabase) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+  const supabase = createClient<Database>(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
   })
 
@@ -295,4 +394,4 @@ async function main() {
     process.exit(1)
 }
 
-main()
+void main()

@@ -2,7 +2,7 @@
 import type { Ref } from 'vue'
 
 import type { StorageAsset as CmsAsset, FlatSortColumn, StorageBucketId } from '@/lib/storageAssets'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, CopyClipboard, defineTable, Flex, Grid, Input, paginate, Pagination, pushToast, Select, Skeleton, Table, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, CopyClipboard, defineTable, Flex, Grid, Input, paginate, Pagination, pushToast, Skeleton, Table, Tooltip } from '@dolanske/vui'
 
 import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
@@ -12,6 +12,7 @@ import AssetRenameModal from '@/components/Admin/Assets/AssetRenameModal.vue'
 import AssetUpload from '@/components/Admin/Assets/AssetUpload.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { CMS_BUCKET_ID, formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, listStorageObjectsFlat, normalizePrefix } from '@/lib/storageAssets'
@@ -645,7 +646,7 @@ onBeforeMount(fetchAssets)
             </template>
           </Input>
 
-          <Select
+          <ExpandableSelect
             v-model="typeFilterModel"
             :options="typeFilterOptions"
             placeholder="Filter by type"
@@ -654,7 +655,7 @@ onBeforeMount(fetchAssets)
             :expand="isBelowMedium"
           />
 
-          <Select
+          <ExpandableSelect
             v-if="viewMode === 'grid' && !flatView"
             v-model="sortOptionModel"
             :options="sortSelectOptions"
@@ -663,7 +664,7 @@ onBeforeMount(fetchAssets)
             :expand="isBelowMedium"
           />
 
-          <Select
+          <ExpandableSelect
             v-if="flatView"
             v-model="flatSortOptionModel"
             :options="flatSortSelectOptions"
@@ -806,8 +807,8 @@ onBeforeMount(fetchAssets)
                 <Table.Cell>
                   <Flex gap="xs" y-center>
                     <Icon :name="row._original.type === 'folder' ? 'ph:folder-simple' : 'ph:file'" />
-                    <Tooltip v-if="flatView" :disabled="!row._original.path">
-                      <span class="text-s">{{ row._original.name }}</span>
+                    <Tooltip v-if="flatView" disabled>
+                      <span class="text-s">{{ row._original.path }}</span>
                       <template #tooltip>
                         <p>{{ row._original.path }}</p>
                       </template>

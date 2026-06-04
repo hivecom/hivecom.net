@@ -97,6 +97,14 @@ const currentAppUrl = computed(() => {
 
 const gameIconIndex = ref(0)
 
+// Lazy-load fade-in for the game icon (mirrors GameIcon.vue behaviour)
+const gameIconReady = ref(false)
+const gameIconRef = ref<HTMLImageElement | null>(null)
+
+function handleGameIconLoad() {
+  gameIconReady.value = true
+}
+
 const gameIconSources = computed(() => {
   if (!presence.value?.current_app_id)
     return []
@@ -135,6 +143,8 @@ const gameIconUrl = computed(() => {
 })
 
 function onGameIconError() {
+  gameIconReady.value = false
+
   if (gameIconIndex.value < gameIconSources.value.length - 1) {
     gameIconIndex.value += 1
     return
@@ -145,6 +155,17 @@ function onGameIconError() {
 
 watch(() => presence.value?.current_app_id, () => {
   gameIconIndex.value = 0
+  gameIconReady.value = false
+})
+
+// Handle cached images: if the browser already has the asset, the @load event
+// may fire before Vue attaches the listener. Check `complete` after DOM updates.
+watch(gameIconUrl, async () => {
+  gameIconReady.value = false
+  await nextTick()
+  const el = gameIconRef.value
+  if (el && el.complete && el.naturalWidth > 0)
+    gameIconReady.value = true
 })
 
 // Request a refresh of Steam data (called automatically)
@@ -301,11 +322,15 @@ watch(() => props.profileId, () => {
             >
               <img
                 :key="gameIconUrl"
+                ref="gameIconRef"
                 :src="gameIconUrl"
                 :alt="`${presence.current_app_name} icon`"
                 width="32"
                 height="32"
+                loading="lazy"
                 class="activity-item__game-icon"
+                :class="{ 'activity-item__game-icon--ready': gameIconReady }"
+                @load="handleGameIconLoad"
                 @error="onGameIconError"
               >
             </a>
@@ -344,8 +369,17 @@ watch(() => props.profileId, () => {
 }
 
 .activity-item__game-icon {
+  width: 32px;
+  height: 32px;
   border-radius: var(--border-radius-s);
+  background: var(--color-bg-raised);
   object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--transition-slow);
+
+  &--ready {
+    opacity: 1;
+  }
 }
 
 .activity-item__title {

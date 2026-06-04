@@ -17,6 +17,7 @@ import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
+import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = withDefaults(defineProps<Props>(), {
@@ -42,6 +43,7 @@ const { getGameCoverUrl, getGameBackgroundUrl } = useDataGameAssets()
 const { gameservers } = useDataGameservers()
 const { metrics, fetchMetricsHistoryIsolated, fetchMetricsWindowIsolated } = useDataMetrics()
 const { currentPlayersForSteamId } = useDataSteamPresences()
+const { handleContentClick } = useExternalLinkGuard()
 const supabase = useSupabaseClient<Database>()
 const user = useSupabaseUser()
 
@@ -94,6 +96,7 @@ const heroImageReady = ref(false)
 watch(heroImageUrl, () => {
   heroImageReady.value = false
 })
+const gameColor = computed(() => currentDetails.value?.game.color ?? null)
 const steamUrl = computed(() => {
   const steamId = currentDetails.value?.game.steam_id
   return steamId ? `https://store.steampowered.com/app/${steamId}` : null
@@ -474,6 +477,16 @@ watch(
                     </Badge>
                     <TimestampDate v-if="currentDetails.game.release_date" :date="currentDetails.game.release_date" format="YYYY" size="xs" />
                   </Flex>
+                  <Flex v-if="steamUrl || websiteUrl" wrap gap="xs" y-center>
+                    <a v-if="steamUrl" :href="steamUrl" target="_blank" rel="noopener noreferrer" class="game-details-modal__meta-link" @click="handleContentClick">
+                      <Icon name="ph:steam-logo" size="14" />
+                      Steam
+                    </a>
+                    <a v-if="websiteUrl" :href="websiteUrl" target="_blank" rel="noopener noreferrer" class="game-details-modal__meta-link" @click="handleContentClick">
+                      <Icon name="ph:globe" size="14" />
+                      Website
+                    </a>
+                  </Flex>
                 </Flex>
               </Flex>
             </div>
@@ -560,7 +573,7 @@ watch(
           </NuxtLink>
         </div>
         <div v-if="hadActivity" class="game-details-modal__chart">
-          <ChartActivityHistogramControls :series="['usersGameActivity']" :game-id="gameId ?? undefined" @change="handleChartChange">
+          <ChartActivityHistogramControls :series="['usersGameActivity']" :game-id="gameId ?? undefined" :color="gameColor ?? undefined" @change="handleChartChange">
             <template #default="{ period, window, utc, color }">
               <ChartGameActivity :period :window :utc :color :game-id="gameId ?? undefined" hide-title :skeleton-height="180" />
             </template>
@@ -671,39 +684,11 @@ watch(
           class="game-details-modal__link"
           @click="handleClose"
         >
-          <Button :expand="isBelowSmall">
-            <template #start>
-              <Icon name="ph:chats" />
-            </template>
-            Forum Topic
-          </Button>
-        </NuxtLink>
-        <NuxtLink
-          v-if="websiteUrl"
-          :to="websiteUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="game-details-modal__link"
-        >
-          <Button :expand="isBelowSmall">
-            <template #start>
-              <Icon name="ph:globe" />
-            </template>
-            Visit Website
-          </Button>
-        </NuxtLink>
-        <NuxtLink
-          v-if="steamUrl"
-          :to="steamUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="game-details-modal__link"
-        >
           <Button variant="accent" :expand="isBelowSmall">
-            <template #start>
-              <Icon name="ph:steam-logo" />
-            </template>
-            View on Steam
+            <Flex gap="xs" y-center>
+              <Icon name="ph:chats" />
+              Forum Topic
+            </Flex>
           </Button>
         </NuxtLink>
         <Button variant="gray" :expand="isBelowSmall" @click="handleClose">
@@ -773,8 +758,15 @@ watch(
     position: absolute;
     bottom: var(--space-xs);
     right: var(--space-s);
-    color: var(--color-text-lighter);
-    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--border-radius-m);
+    background: rgba(0, 0, 0, 0.55);
+    color: var(--color-text);
+    z-index: 1;
   }
 
   &__media-img--ready {
@@ -882,6 +874,7 @@ watch(
 
   &__event-card {
     display: block;
+    height: 100%;
     padding: var(--space-s);
     border-radius: var(--border-radius-s);
     border: 1px solid var(--color-border);
@@ -931,6 +924,20 @@ watch(
   &__meta-text {
     flex: 1;
     min-width: 0;
+  }
+
+  &__meta-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xxs);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+
+    &:hover {
+      color: var(--color-text);
+    }
   }
 
   &__meta-cover {

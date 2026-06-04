@@ -9,6 +9,14 @@ const route = useRoute()
 const status = ref<'loading' | 'success' | 'error'>('loading')
 const errorMessage = ref('')
 
+// PKCE failures surface as "code verifier not found in storage". These are
+// recoverable: the user is already authenticated (linking requires it), so we
+// can still try to sync via the service-role edge function before giving up.
+const PKCE_ERROR_RE = /code verifier/i
+const LINK_SESSION_EXPIRED_MESSAGE = 'Your Discord connection session expired or was started in a different browser. Please return to Settings and try connecting again.'
+const LINK_ALREADY_USED_MESSAGE = 'That Discord account is already linked to another profile.'
+const GENERIC_LINK_ERROR_MESSAGE = 'Failed to connect Discord account.'
+
 const redirectTarget = computed(() => {
   const redirectParam = route.query.redirect
   if (typeof redirectParam === 'string' && redirectParam.startsWith('/'))
@@ -16,12 +24,60 @@ const redirectTarget = computed(() => {
   return '/profile/settings'
 })
 
+function errorMessageOf(error: unknown): string {
+  if (error instanceof Error)
+    return error.message
+  if (typeof error === 'string')
+    return error
+  return ''
+}
+
+function isRecoverablePkceError(error: unknown): boolean {
+  return PKCE_ERROR_RE.test(errorMessageOf(error))
+}
+
+function friendlyLinkError(error: unknown): string {
+  const message = errorMessageOf(error)
+  if (PKCE_ERROR_RE.test(message))
+    return LINK_SESSION_EXPIRED_MESSAGE
+  if (/already linked|duplicate|23505/i.test(message))
+    return LINK_ALREADY_USED_MESSAGE
+  return message || GENERIC_LINK_ERROR_MESSAGE
+}
+
+// Persist the Discord id through the service-role edge function rather than a
+// direct profiles update. The direct update is bound by RLS (including the
+// is_aal2_if_mfa() AAL2 requirement), so MFA-enrolled users on an aal1 session
+// could not complete linking; the edge function bypasses RLS safely.
+async function syncDiscordId(): Promise<'linked' | 'not-linked'> {
+  const { data, error } = await supabase.functions.invoke('user-link-discord')
+  if (error)
+    throw error
+
+  if (data?.success)
+    return 'linked'
+
+  if (data?.error === 'Discord identity not linked')
+    return 'not-linked'
+
+  throw new Error(friendlyLinkError(data?.error))
+}
+
 async function finishLinking() {
   if (typeof window === 'undefined')
     return
 
   try {
-    await resolveOAuthSession()
+    try {
+      await resolveOAuthSession()
+    }
+    catch (sessionError) {
+      // A failed PKCE exchange does not necessarily mean linking is impossible:
+      // the identity may already be attached from a prior attempt. Defer the
+      // verdict to syncDiscordId() and only re-throw unrecoverable errors.
+      if (!isRecoverablePkceError(sessionError))
+        throw sessionError
+    }
 
     cleanOAuthParams()
 
@@ -29,37 +85,11 @@ async function finishLinking() {
     if (userError)
       throw userError
     if (!user)
-      throw new Error('No active session found after Discord sign-in.')
+      throw new Error('No active session found. Please sign in and try linking Discord again.')
 
-    const discordIdentity = user.identities?.find(identity => identity.provider === 'discord')
-    if (!discordIdentity)
-      throw new Error('Discord identity not found in session.')
-
-    const identityData = discordIdentity.identity_data as Record<string, unknown> | null
-    const getField = (key: string) => {
-      const value = identityData?.[key]
-      return typeof value === 'string' ? value : undefined
-    }
-
-    const discordId = getField('id')
-      || getField('user_id')
-      || getField('sub')
-      || getField('provider_id')
-
-    if (!discordId)
-      throw new Error('Unable to determine Discord user ID.')
-
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ discord_id: discordId })
-      .eq('id', user.id)
-
-    if (updateError) {
-      if (updateError.code === '23505') {
-        throw new Error('That Discord account is already linked to another profile.')
-      }
-      throw updateError
-    }
+    const result = await syncDiscordId()
+    if (result === 'not-linked')
+      throw new Error(LINK_SESSION_EXPIRED_MESSAGE)
 
     status.value = 'success'
 
@@ -70,7 +100,7 @@ async function finishLinking() {
   catch (err) {
     console.error('Discord link callback error:', err)
     status.value = 'error'
-    errorMessage.value = err instanceof Error ? err.message : 'Failed to connect Discord account.'
+    errorMessage.value = friendlyLinkError(err)
   }
 }
 
@@ -119,10 +149,10 @@ async function resolveOAuthSession() {
     })
     if (error)
       throw error
-    return
   }
 
-  throw new Error('Missing OAuth callback parameters. Please restart the Discord link.')
+  // No callback params. The user may already be linked from a prior attempt;
+  // let syncDiscordId() make the final determination instead of hard-failing.
 }
 
 function parseFragmentSession(fragment: string): FragmentSessionTokens | null {

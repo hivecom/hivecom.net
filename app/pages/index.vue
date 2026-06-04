@@ -3,7 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import type { MetricsSnapshot } from '@/types/metrics'
 import { Alert, Button, Card, Divider, Dropdown, DropdownItem, Flex, Grid, Skeleton, Tooltip } from '@dolanske/vui'
 import constants from '~~/constants.json'
-import EventCardLanding from '@/components/Events/EventCardLanding.vue'
+import EventSmall from '@/components/Events/EventSmall.vue'
 import LandingHero from '@/components/Landing/LandingHero.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataEvents } from '@/composables/useDataEvents'
@@ -143,21 +143,34 @@ onMounted(async () => {
                 If you're interested in the latest news, want to support the community, create your own events or RSVP to the latest ones, feel free to sign up.
               </p>
 
-              <Alert v-if="user" variant="success" filled>
-                <template #icon>
-                  <Icon name="ph:users-three" />
-                </template>
-                Thanks for being a part of the community!
-              </Alert>
-
-              <NuxtLink v-else to="/auth/sign-up">
-                <Button variant="accent">
-                  <template #start>
-                    <Icon name="ph:user-plus" />
+              <ClientOnly>
+                <Alert v-if="user" variant="success" filled>
+                  <template #icon>
+                    <Icon name="ph:users-three" />
                   </template>
-                  Sign up
-                </Button>
-              </NuxtLink>
+                  Thanks for being a part of the community!
+                </Alert>
+
+                <NuxtLink v-else to="/auth/sign-up">
+                  <Button variant="accent">
+                    <template #start>
+                      <Icon name="ph:user-plus" />
+                    </template>
+                    Sign up
+                  </Button>
+                </NuxtLink>
+
+                <template #fallback>
+                  <NuxtLink to="/auth/sign-up">
+                    <Button variant="accent">
+                      <template #start>
+                        <Icon name="ph:user-plus" />
+                      </template>
+                      Sign up
+                    </Button>
+                  </NuxtLink>
+                </template>
+              </ClientOnly>
             </div>
 
             <Card class="join-section__platforms">
@@ -238,10 +251,10 @@ onMounted(async () => {
           <div v-else>
             <GlowGroup>
               <Grid :columns="3" gap="m" expand y-stretch class="events-list">
-                <EventCardLanding
+                <EventSmall
                   v-for="event in events"
                   :key="event.id"
-                  :event="event"
+                  :data="event"
                   compact
                 />
               </Grid>

@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "build": "nuxi build --preset github_pages",
-    "reset": "npx supabase db reset && node scripts/seed-assets.js",
+    "reset": "npx supabase db reset && node scripts/seed-assets.ts",
     "dev": "npx supabase start && nuxi dev",
     "dev:staging": "nuxi dev --dotenv .env.production",
     "dev:staging:host": "nuxi dev --dotenv .env.production --host",
@@ -14,13 +14,13 @@
     "postinstall": "nuxi prepare",
     "supabase": "npx supabase",
     "types": "npx supabase gen types typescript --local --schema public,private > types/database.types.ts",
-    "lint": "eslint . && nuxi typecheck",
-    "lint:fix": "eslint . --fix && nuxi typecheck --fix",
+    "lint": "eslint . && nuxi typecheck && tsc --noEmit -p scripts/tsconfig.json",
+    "lint:fix": "eslint . --fix && nuxi typecheck --fix && tsc --noEmit -p scripts/tsconfig.json",
     "analyze": "nuxi analyze"
   },
   "dependencies": {
     "@dolanske/v-valid": "^2.1.1",
-    "@dolanske/vui": "^1.15.0",
+    "@dolanske/vui": "^1.15.1",
     "@iconify-json/material-symbols-light": "^1.2.74",
     "@iconify-json/mdi": "^1.2.3",
     "@iconify-json/ph": "^1.2.2",
@@ -83,6 +83,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "^9.0.0",
     "@olrtg/emmet-language-server": "^2.8.0",
+    "@types/node": "^25.9.1",
     "@types/three": "^0.184.1",
     "@webgpu/types": "^0.1.70",
     "eslint": "^10.4.0",

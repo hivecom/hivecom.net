@@ -72,6 +72,38 @@ function scheduleProfileRedirect() {
   }, 1500)
 }
 
+const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
+
+// OAuth sign-ins (e.g. Discord) always produce an aal1 session. If the user has
+// a verified MFA factor enrolled, the self-owned write RLS policies require aal2
+// (see is_aal2_if_mfa()), so we must route them through the authenticator
+// challenge on the sign-in page before sending them on to their destination.
+async function redirectForMfaStepUpIfRequired() {
+  if (!hasMfaSupport.value)
+    return false
+
+  try {
+    const { data, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aalError)
+      throw aalError
+
+    const needsAal2 = data?.nextLevel === 'aal2' && data?.currentLevel !== 'aal2'
+    if (!needsAal2)
+      return false
+
+    const target = postConfirmRedirect.value ?? '/profile'
+    await navigateTo({
+      path: '/auth/sign-in',
+      query: { mfa: '1', redirect: target },
+    })
+    return true
+  }
+  catch (err) {
+    console.error('Unable to determine MFA step-up requirement:', err)
+    return false
+  }
+}
+
 function applyDebugOptions() {
   if (!isDev)
     return
@@ -426,6 +458,11 @@ async function checkUsernameStatus() {
     if (!user.value)
       throw new Error('User not found')
 
+    // MFA-enrolled users arriving via OAuth must finish the authenticator
+    // challenge (step up to aal2) before they can use self-owned write actions.
+    if (await redirectForMfaStepUpIfRequired())
+      return
+
     await ensureDiscordIdentity()
 
     const { data: profileData, error: profileError } = await supabase
@@ -542,14 +579,12 @@ onMounted(() => {
                   </Flex>
                 </template>
               </Input>
-              <Alert v-if="usernameError" variant="danger" filled>
-                <span class="text-s">
-                  {{ usernameError }}
-                </span>
-              </Alert>
               <Button expand variant="accent" :loading="usernameLoading" :disabled="!username" @click="submitUsername">
                 Continue
               </Button>
+            </Flex>
+            <Flex v-if="usernameError" class="mt-xxl" expand>
+              <ErrorAlert :message="usernameError" />
             </Flex>
           </div>
         </div>

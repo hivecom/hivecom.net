@@ -115,6 +115,23 @@ Deno.serve(async (req) => {
 
     if (updateError) {
       console.error("Error updating Discord ID:", updateError);
+
+      // Unique violation: this Discord account is already linked elsewhere.
+      // Returned as 200 so functions.invoke() exposes the message body to the
+      // client (non-2xx responses surface as an opaque FunctionsHttpError).
+      if (updateError.code === "23505") {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "That Discord account is already linked to another profile.",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          },
+        );
+      }
+
       return new Response(
         JSON.stringify({ success: false, error: "Failed to update profile" }),
         {

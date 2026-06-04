@@ -2,10 +2,12 @@
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Divider, Flex, Tooltip } from '@dolanske/vui'
 import EventGames from '@/components/Events/EventGames.vue'
+import Reactions from '@/components/Reactions/Reactions.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useCache } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
+import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { useRealtimeRsvp } from '@/composables/useRealtimeRsvp'
 import { useRsvpBus } from '@/composables/useRsvpBus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
@@ -20,6 +22,8 @@ import RSVPButton from './RSVPButton.vue'
 interface Props {
   event: Tables<'events'>
   games?: Tables<'games'>[]
+  discussionId?: string | null
+  discussionReactions?: unknown
   isUpcoming: boolean
   isOngoing?: boolean
   countdown?: {
@@ -35,6 +39,18 @@ interface Props {
 // when clicked scrolls down to the comments
 
 const props = defineProps<Props>()
+
+const { handleContentClick } = useExternalLinkGuard()
+
+// Parse timeAgo string (e.g. "3 days ago") into number + label parts
+const timeAgoParts = computed(() => {
+  if (!props.timeAgo)
+    return null
+  const match = props.timeAgo.match(/^(\d+) ([a-z]+) ago$/i)
+  if (!match)
+    return { number: props.timeAgo, label: '' }
+  return { number: match[1], label: match[2] }
+})
 
 const isBelowSmall = useBreakpoint('<s')
 
@@ -180,11 +196,6 @@ onMounted(() => {
         <p v-if="event.description" class="event-header__description">
           {{ props.event.description }}
         </p>
-        <!-- Organizer -->
-        <Flex v-if="showOrganizer" y-center gap="xs" class="event-header__organizer">
-          <span class="event-header__organizer-label">Organized by</span>
-          <UserDisplay :user-id="event.created_by" size="s" :show-profile-preview="true" :hide-avatar="false" />
-        </Flex>
         <!-- Games Section -->
         <template v-if="games && games.length > 0">
           <EventGames :games="games" :show-label="false" />
@@ -206,48 +217,77 @@ onMounted(() => {
           :countdown="countdown"
           :is-ongoing="isOngoing"
           :created-at="props.event.created_at"
-        />
+        >
+          <Flex column y-center gap="xxs" class="event-header__countdown-date">
+            <Flex y-center gap="xxs">
+              <TimestampDate size="xxs" :date="displayDate" format="dddd, MMMM D, YYYY [at] HH:mm" />
+              <span v-if="props.event.duration_minutes" class="text-xxs">
+                for {{ formatDurationFromMinutes(props.event.duration_minutes) }}
+              </span>
+            </Flex>
+            <Flex v-if="props.event.recurrence_rule && isBelowSmall" y-center gap="xs" class="event-header__countdown-series">
+              <Icon name="ph:arrows-clockwise" size="12" />
+              <span class="text-xxs">
+                Series from <TimestampDate :date="props.event.date" format="MMM D, YYYY" size="xxs" class="inline" />
+                <template v-if="seriesUntilDate">
+                  to <TimestampDate :date="seriesUntilDate" format="MMM D, YYYY" size="xxs" class="inline" />
+                </template>
+                <template v-else-if="seriesStillActive">
+                  - ongoing
+                </template>
+              </span>
+            </Flex>
+          </Flex>
+        </CountdownTimer>
 
-        <!-- Time ago for past events -->
-        <div v-else-if="!isUpcoming && !isOngoing && timeAgo" class="event-header__time-ago-compact">
-          <span class="event-header__time-ago-text">{{ timeAgo }}</span>
+        <!-- Time ago for past events - styled like CountdownTimer -->
+        <div v-else-if="!isUpcoming && !isOngoing && timeAgo" class="countdown-timer countdown-timer--past">
+          <Flex gap="s" y-center x-center>
+            <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
+              <div class="countdown-timer__number-wrapper">
+                <span class="countdown-timer__number">{{ timeAgoParts?.number }}</span>
+              </div>
+              <span class="countdown-timer__label">{{ timeAgoParts?.label }} ago</span>
+            </Flex>
+          </Flex>
+          <Flex x-center class="mt-xs">
+            <Flex column y-center gap="xxs" class="event-header__countdown-date">
+              <Flex y-center gap="xxs">
+                <TimestampDate size="xxs" :date="displayDate" format="dddd, MMMM D, YYYY [at] HH:mm" />
+                <span v-if="props.event.duration_minutes" class="text-xxs">
+                  for {{ formatDurationFromMinutes(props.event.duration_minutes) }}
+                </span>
+              </Flex>
+              <Flex v-if="props.event.recurrence_rule && isBelowSmall" y-center gap="xs" class="event-header__countdown-series">
+                <Icon name="ph:arrows-clockwise" size="12" />
+                <span class="text-xxs">
+                  Series from <TimestampDate :date="props.event.date" format="MMM D, YYYY" size="xxs" class="inline" />
+                  <template v-if="seriesUntilDate">
+                    to <TimestampDate :date="seriesUntilDate" format="MMM D, YYYY" size="xxs" class="inline" />
+                  </template>
+                  <template v-else-if="seriesStillActive">
+                    - ongoing
+                  </template>
+                </span>
+              </Flex>
+            </Flex>
+          </Flex>
         </div>
-
-        <!-- Event date display -->
-        <Flex
-          y-center
-          :x-center="isBelowSmall"
-          :x-end="!isBelowSmall"
-          class="event-header__date-display text-color-light"
-        >
-          <TimestampDate size="xxs" :date="displayDate" class="event-header__date-time" format="dddd, MMMM D, YYYY [at] HH:mm" />
-          <!-- Duration display -->
-          <div v-if="props.event.duration_minutes" class="text-xxs event-header__duration">
-            for {{ formatDurationFromMinutes(props.event.duration_minutes) }}
-          </div>
-        </Flex>
-
-        <!-- Series date range -->
-        <Flex
-          v-if="props.event.recurrence_rule"
-          y-center
-          :x-center="isBelowSmall"
-          :x-end="!isBelowSmall"
-          gap="xs"
-          class="event-header__series-range text-color-lighter"
-        >
-          <Icon name="ph:arrows-clockwise" size="12" />
-          <span class="text-xxs">
-            Series from <TimestampDate :date="props.event.date" format="MMM D, YYYY" size="xxs" class="inline" />
-            <template v-if="seriesUntilDate">
-              to <TimestampDate :date="seriesUntilDate" format="MMM D, YYYY" size="xxs" class="inline" />
-            </template>
-            <template v-else-if="seriesStillActive">
-              - ongoing
-            </template>
-          </span>
-        </Flex>
       </Flex>
+    </Flex>
+
+    <!-- Organizer and reactions -->
+    <Flex v-if="showOrganizer || discussionId" expand x-between y-center gap="m" class="event-header__organizer">
+      <Flex v-if="showOrganizer" y-center gap="xs">
+        <span class="event-header__organizer-label">Organized by</span>
+        <UserDisplay :user-id="event.created_by" size="s" :show-profile-preview="true" :hide-avatar="false" />
+      </Flex>
+      <Reactions
+        v-if="discussionId"
+        table="discussions"
+        :row-id="discussionId"
+        :reactions="discussionReactions"
+      />
     </Flex>
 
     <Divider />
@@ -281,7 +321,24 @@ onMounted(() => {
           {{ props.event.note }}
         </Badge>
 
-        <Badge v-if="props.event.recurrence_rule" variant="neutral">
+        <Tooltip v-if="props.event.recurrence_rule && !isBelowSmall" placement="bottom">
+          <template #tooltip>
+            <span class="text-xxs">
+              Series from <TimestampDate :date="props.event.date" format="MMM D, YYYY" size="xxs" class="inline" />
+              <template v-if="seriesUntilDate">
+                to <TimestampDate :date="seriesUntilDate" format="MMM D, YYYY" size="xxs" class="inline" />
+              </template>
+              <template v-else-if="seriesStillActive">
+                - ongoing
+              </template>
+            </span>
+          </template>
+          <Badge variant="neutral" class="event-header__note-badge">
+            <Icon name="ph:arrows-clockwise" />
+            {{ humanizeRrule(props.event.recurrence_rule) }}
+          </Badge>
+        </Tooltip>
+        <Badge v-else-if="props.event.recurrence_rule" variant="neutral">
           <Icon name="ph:arrows-clockwise" />
           {{ humanizeRrule(props.event.recurrence_rule) }}
         </Badge>
@@ -312,6 +369,7 @@ onMounted(() => {
           :to="event.link"
           target="_blank"
           rel="noopener noreferrer"
+          @click="handleContentClick"
         >
           <Button :size="isBelowSmall ? 'm' : 's'">
             <template #start>
@@ -378,35 +436,16 @@ onMounted(() => {
     min-width: fit-content;
   }
 
-  &__date-display {
-    gap: 0.5rem !important;
-  }
-
-  &__date-time {
-    font-size: var(--font-size-m);
+  &__countdown-date {
+    font-size: var(--font-size-s);
     font-weight: var(--font-weight-semibold);
-    color: var(--color-text);
+    color: var(--color-text-light);
+    gap: 0.35rem !important;
   }
 
-  &__series-range {
-    opacity: 0.7;
-  }
-
-  &__duration {
-    font-size: var(--font-size-m);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text);
-
-    @media (max-width: $breakpoint-s) {
-      font-size: var(--font-size-xxs);
-    }
-  }
-
-  &__time-ago-compact {
-    .event-header__time-ago-text {
-      font-size: var(--font-size-xxl);
-      font-weight: var(--font-weight-semibold);
-    }
+  &__countdown-series {
+    color: var(--color-text-lighter);
+    opacity: 0.8;
   }
 
   &__badges-section {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Session } from '@supabase/supabase-js'
-import { Alert, Button, Card, Flex, Input, OTP, OTPItem, Select, Tab, Tabs } from '@dolanske/vui'
+import { Alert, Button, Card, Flex, Input, OTP, OTPItem, Tab, Tabs } from '@dolanske/vui'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import MetaballContainer from '@/components/Shared/MetaballContainer.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
 import { useMfaStatus } from '@/composables/useMfaStatus'
@@ -548,12 +549,11 @@ onBeforeUnmount(() => {
               </span>
             </Flex>
             <Flex v-if="mfaDeviceOptions.length > 1" column gap="xs" expand>
-              <Select
+              <ExpandableSelect
                 v-model="mfaDeviceSelection"
                 :options="mfaDeviceOptions"
                 placeholder="Select MFA device"
                 :disabled="mfaVerifying"
-                expand
               />
             </Flex>
             <Flex column gap="xs" expand x-center>

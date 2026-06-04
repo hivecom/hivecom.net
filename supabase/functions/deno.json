@@ -25,6 +25,7 @@
     "./cron-docker-control-container-fetch",
     "./cron-metrics-fetch",
     "./cron-patreon-fetch",
+    "./cron-render-status-banner",
     "./cron-teamspeak-sync",
     "./lastfm-verify-confirm",
     "./lastfm-verify-request",

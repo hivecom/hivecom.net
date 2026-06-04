@@ -14,7 +14,7 @@ import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useCachedFetch } from '@/composables/useCache'
 import { useDataProfileBadges } from '@/composables/useDataProfileBadges'
-import { BADGE_CATALOG } from '@/lib/badges/catalog'
+import { BADGE_CATALOG, getBadgeMemberSince } from '@/lib/badges/catalog'
 import { isBanActive } from '@/lib/banStatus'
 import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -577,7 +577,7 @@ defineExpose({ refreshBadges })
                 :slug="badge.slug"
                 :tier="badge.tier"
                 :progress="badge.progress ?? undefined"
-                :earned-at="badge.earned_at"
+                :earned-at="getBadgeMemberSince(badge.metadata, badge.earned_at)"
                 compact
               />
             </div>

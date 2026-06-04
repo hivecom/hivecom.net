@@ -14,6 +14,8 @@ interface Props {
   aspectRatio?: number
   /** Output image max dimension in pixels */
   outputSize?: number
+  /** Original filename to preserve in the output File */
+  originalName?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -112,7 +114,10 @@ async function handleConfirm() {
       return
 
     const ext = outputMime === 'image/png' ? 'png' : 'webp'
-    const file = new File([blob], `cropped.${ext}`, { type: outputMime })
+    const baseName = props.originalName
+      ? props.originalName.replace(/\.[^.]+$/, '')
+      : 'asset'
+    const file = new File([blob], `${baseName}.${ext}`, { type: outputMime })
     emit('confirm', file)
   }
   finally {

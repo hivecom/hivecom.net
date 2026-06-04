@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Flex, Grid, Input, Select } from '@dolanske/vui'
 import { computed } from 'vue'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface SelectOption {
@@ -94,12 +95,12 @@ function clearFilters() {
       </template>
     </Input>
     <Grid v-if="isBelowMedium" :columns="2" gap="s" expand>
-      <Select v-model="roleSelectModel" :options="props.roleOptions" placeholder="Role" expand show-clear />
-      <Select v-model="statusSelectModel" :options="props.statusOptions" placeholder="Status" expand show-clear />
-      <Select v-model="providerSelectModel" :options="props.providerOptions" placeholder="Auth provider" expand show-clear />
-      <Select v-model="platformSelectModel" :options="props.platformOptions" placeholder="Platform" expand show-clear />
-      <Select v-model="supporterSelectModel" :options="supporterOptions" placeholder="Supporter" expand show-clear />
-      <Select v-model="countrySelectModel" :options="props.countryOptions" placeholder="Country" expand show-clear searchable />
+      <ExpandableSelect v-model="roleSelectModel" :options="props.roleOptions" placeholder="Role" expand show-clear />
+      <ExpandableSelect v-model="statusSelectModel" :options="props.statusOptions" placeholder="Status" expand show-clear />
+      <ExpandableSelect v-model="providerSelectModel" :options="props.providerOptions" placeholder="Auth provider" expand show-clear />
+      <ExpandableSelect v-model="platformSelectModel" :options="props.platformOptions" placeholder="Platform" expand show-clear />
+      <ExpandableSelect v-model="supporterSelectModel" :options="supporterOptions" placeholder="Supporter" expand show-clear />
+      <ExpandableSelect v-model="countrySelectModel" :options="props.countryOptions" placeholder="Country" expand show-clear searchable />
     </Grid>
     <template v-else>
       <Select v-model="roleSelectModel" :options="props.roleOptions" placeholder="Role" show-clear />

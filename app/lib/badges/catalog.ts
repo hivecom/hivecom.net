@@ -44,7 +44,7 @@ export interface ComputedBadge extends BadgeBase {
    * Tiers not listed are not awarded for this badge.
    */
   tiers: Partial<Record<BadgeVariant, number>>
-  unit: 'years' | 'rsvps' | 'discussions' | 'replies'
+  unit: 'years' | 'rsvps' | 'discussions' | 'replies' | 'replies_received'
   /**
    * When true, the numeric `progress` value is rendered inside the badge hex
    * instead of the default icon (e.g. the "One of Us" years badge).
@@ -53,6 +53,24 @@ export interface ComputedBadge extends BadgeBase {
 }
 
 export type BadgeCatalogEntry = ManualBadge | FlagBadge | ComputedBadge
+
+/**
+ * Resolve the "member since" date for a badge's "since" description.
+ *
+ * For computed date badges (e.g. `one_of_us`) the DB stores the user's actual
+ * join date in `metadata.member_since`. The row's `earned_at` is just when the
+ * badge was (re)computed, so it must NOT be used as the join date. Falls back
+ * to `earned_at` only when no member_since is present.
+ */
+export function getBadgeMemberSince(
+  metadata: Record<string, unknown> | null | undefined,
+  earnedAt: string | null | undefined,
+): string | null {
+  const memberSince = metadata?.member_since
+  if (typeof memberSince === 'string' && memberSince.trim() !== '')
+    return memberSince
+  return earnedAt ?? null
+}
 
 // ---------------------------------------------------------------------------
 // The catalog
@@ -145,6 +163,15 @@ export const BADGE_CATALOG = {
     tiers: { gold: 10000, silver: 1000, bronze: 100 },
     unit: 'replies',
     sortOrder: 9,
+  },
+  celebrity: {
+    kind: 'computed',
+    label: 'Celebrity',
+    icon: 'ph:star-bold',
+    description: 'Received replies from others on their profile wall',
+    tiers: { gold: 1000, silver: 100, bronze: 10 },
+    unit: 'replies_received',
+    sortOrder: 10,
   },
 } as const satisfies Record<string, BadgeCatalogEntry>
 

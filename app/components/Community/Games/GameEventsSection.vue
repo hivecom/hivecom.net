@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.overrides'
 import { Grid, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
-import EventCardLanding from '@/components/Events/EventCardLanding.vue'
+import GameEventCard from '@/components/Community/Games/GameEventCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -60,7 +60,7 @@ const gameEvents = computed(() => {
   <template v-else>
     <GlowGroup>
       <Grid :columns="isMobile ? 1 : 3" gap="m" align="stretch" class="game-events-grid">
-        <EventCardLanding
+        <GameEventCard
           v-for="event in gameEvents"
           :key="event.id"
           :event="event"

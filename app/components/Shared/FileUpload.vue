@@ -56,6 +56,7 @@ const internalError = ref<string | null>(null)
 const cropModalOpen = ref(false)
 const cropSrc = ref<string | null>(null)
 const cropMime = ref<string | null>(null)
+const cropOriginalName = ref<string | null>(null)
 
 // Computed properties
 const maxSizeBytes = computed(() => props.maxSizeMB * 1024 * 1024)
@@ -189,6 +190,7 @@ function processFile(file: File) {
       URL.revokeObjectURL(cropSrc.value)
     cropSrc.value = URL.createObjectURL(file)
     cropMime.value = file.type
+    cropOriginalName.value = file.name
     cropModalOpen.value = true
     return
   }
@@ -318,6 +320,7 @@ onUnmounted(() => {
     :open="cropModalOpen"
     :image-src="cropSrc"
     :image-mime="cropMime"
+    :original-name="cropOriginalName ?? undefined"
     :circular="isAvatarVariant"
     :aspect-ratio="!isAvatarVariant ? props.aspectRatio : undefined"
     @confirm="handleCropConfirm"

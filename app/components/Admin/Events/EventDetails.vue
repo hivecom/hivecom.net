@@ -12,6 +12,7 @@ import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataGames } from '@/composables/useDataGames'
+import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
 import { humanizeRrule, nextOccurrenceDate } from '@/lib/utils/rrule'
 
@@ -27,6 +28,8 @@ const emit = defineEmits<{
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+const { handleContentClick } = useExternalLinkGuard()
 
 // RSVP modal state
 const showRSVPModal = ref(false)
@@ -155,7 +158,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
           </DetailRow>
 
           <DetailRow label="Link" :hidden="!props.event.link">
-            <NuxtLink v-if="props.event.link" external :href="props.event.link" target="_blank" rel="noopener noreferrer" class="link text-m">
+            <NuxtLink v-if="props.event.link" external :href="props.event.link" target="_blank" rel="noopener noreferrer" class="link text-m" @click="handleContentClick">
               {{ props.event.link }}
               <Icon name="ph:arrow-square-out" />
             </NuxtLink>

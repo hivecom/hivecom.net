@@ -8,6 +8,7 @@ import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
 import { useCachedFetch } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
+import { getAnonymousUsername } from '@/lib/anonymousUsernames'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { getCountryInfo } from '@/lib/utils/country'
 import ActivityLastfm from '../Profile/Activity/ActivityLastfm.vue'
@@ -75,6 +76,8 @@ const introductionText = computed(() => {
 
 const hasCustomIntroduction = computed(() => Boolean(user.value?.introduction?.trim()))
 
+const currentUser = useSupabaseUser()
+
 const memberSince = computed(() => {
   const createdAt = user.value?.created_at
   if (!createdAt)
@@ -98,12 +101,14 @@ function handleRetry() {
   void refetch()
 }
 
-const currentUser = useSupabaseUser()
-
 // When unauthenticated, a missing profile is expected (RLS only returns public
 // profiles to anon). Show a sign-in prompt instead of an error.
 const isUnauthenticatedHidden = computed(() =>
   !currentUser.value && !loading.value && (!!error.value || !user.value) && !!props.userId,
+)
+
+const anonymousUsername = computed(() =>
+  props.userId ? getAnonymousUsername(props.userId) : null,
 )
 
 // Activity data
@@ -115,7 +120,7 @@ const {
   rich_presence_enabled: boolean | null
   lastfm_username: string | null
 }>(
-  () => props.userId
+  () => props.userId && currentUser.value
     ? {
         table: 'profiles',
         select: 'steam_id,teamspeak_identities,rich_presence_enabled,lastfm_username',
@@ -124,7 +129,7 @@ const {
       }
     : null,
   {
-    enabled: computed(() => !!props.userId),
+    enabled: computed(() => !!props.userId && !!currentUser.value),
   },
 )
 </script>
@@ -172,12 +177,13 @@ const {
       <Flex column y-center x-center gap="s" class="user-preview-card__locked">
         <Flex column y-center x-center gap="xs">
           <Avatar :size="props.avatarSize" class="user-preview-card__locked-avatar" />
-          <span class="user-preview-card__locked-name">Private User</span>
+          <span class="user-preview-card__locked-name">{{ anonymousUsername }}</span>
+          <span class="user-preview-card__locked-badge text-xs">Private User</span>
         </Flex>
         <Divider class="my-xs" />
         <Flex column y-center expand x-center gap="l" class="user-preview-card__locked-cta">
           <p class="user-preview-card__locked-text text-s">
-            Sign in to see this user's profile.
+            This is an anonymous alias shown for consistency. Sign in to see this user's real profile and name.
           </p>
           <NuxtLink to="/auth/sign-in" class="user-preview-card__locked-link">
             <Button size="s" expand variant="accent">
@@ -353,6 +359,12 @@ const {
     font-size: var(--font-size-l);
     font-weight: var(--font-weight-semibold);
     color: var(--color-text-lighter);
+  }
+
+  &__locked-badge {
+    color: var(--color-text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   &__locked-cta {

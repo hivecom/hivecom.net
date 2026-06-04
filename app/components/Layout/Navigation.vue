@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { Button, DropdownItem, Flex, Kbd, KbdGroup, Popout, Sheet, Skeleton, Tooltip } from '@dolanske/vui'
+import ChatChannelBrowserModal from '@/components/Chat/ChannelBrowserModal.vue'
 import SharedLogo from '@/components/Shared/Logo.vue'
-import SharedThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useCommand } from '@/composables/useCommand'
+import { useIrcChat } from '@/composables/useIrcChat'
 import { useMfaStatus } from '@/composables/useMfaStatus'
 import { useSessionReady } from '@/composables/useSessionReady'
 import { navigationLinks } from '@/config/navigation'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import ChatSheet from './ChatSheet.vue'
 import NavEventBadge from './NavEventBadge.vue'
 import NotificationSheet from './NotificationSheet.vue'
 import UserDropdown from './UserDropdown.vue'
@@ -16,6 +18,9 @@ const { editorActive } = useThemeEditorState()
 const { openCommand } = useCommand()
 
 const isMac = import.meta.client && /Mac/i.test(navigator.platform)
+
+const { channelBrowserOpen } = useIrcChat()
+const showChat = true
 
 const { signInPath } = useAuthRedirect()
 
@@ -199,6 +204,18 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
                 </a>
               </div>
             </template>
+
+            <NuxtLink
+              v-if="!user"
+              to="/themes"
+              class="navigation__mobile-menu-item"
+              active-class=""
+              :class="{ 'router-link-active': $route.path.startsWith('/themes') }"
+              @click="closeMobileMenu"
+            >
+              <Icon name="ph:paint-brush" />
+              Themes
+            </NuxtLink>
           </div>
         </Sheet>
 
@@ -215,6 +232,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
         <div v-else-if="user && !needsMfaChallenge" class="navigation__user">
           <SearchButton v-if="!isMobile" />
+          <ChatSheet v-if="showChat" :mobile="isMobile" :disabled="route.path === '/chat'" />
           <!-- Custom margin, since visually the pfp appears closer than the distance between search & notif icons -->
           <NotificationSheet style="margin-right:6px" />
           <UserSheet v-if="isMobile" />
@@ -225,7 +243,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
           <div class="navigation__auth-buttons">
             <SearchButton />
 
-            <SharedThemeToggle button no-text plain accent-weak rounded :disable-tooltip="isMobile" />
+            <ChatSheet v-if="showChat" :disabled="route.path === '/chat'" />
 
             <Tooltip :disabled="isMobile">
               <NuxtLink to="/themes">
@@ -249,17 +267,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
           <!-- On mobile we just have a little user icon -->
           <div class="navigation__auth-mobile-button">
-            <SharedThemeToggle button no-text plain accent-weak rounded disable-tooltip />
-            <Tooltip :disabled="isMobile">
-              <NuxtLink to="/themes">
-                <Button square plain aria-label="Themes" class="vui-button-accent-weak vui-button-rounded">
-                  <Icon name="ph:paint-brush" />
-                </Button>
-              </NuxtLink>
-              <template #tooltip>
-                <p>Themes</p>
-              </template>
-            </Tooltip>
+            <ChatSheet v-if="showChat" mobile :disabled="route.path === '/chat'" />
             <Button square aria-label="Sign in" @click="$router.push(signInPath())">
               <Icon name="ph:sign-in" />
             </Button>
@@ -268,6 +276,8 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
       </div>
     </div>
   </nav>
+
+  <ChatChannelBrowserModal :open="channelBrowserOpen" @close="channelBrowserOpen = false" />
 </template>
 
 <style lang="scss">
@@ -447,7 +457,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
     top: 50%;
     left: 0;
     transform: translate3D(-50%, -50%, 0);
-    background-color: var(--color-bg-accent-lowered);
+    background-color: var(--color-bg-accent-raised);
     will-change: left, width;
     z-index: -1;
     opacity: 0;
@@ -457,7 +467,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
     pointer-events: none;
 
     &.active {
-      opacity: 0.4;
+      opacity: 0.6;
     }
   }
 

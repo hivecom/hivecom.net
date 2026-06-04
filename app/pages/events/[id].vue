@@ -10,6 +10,7 @@ import DetailStates from '@/components/Shared/DetailStates.vue'
 import { useCachedFetch } from '@/composables/useCache'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
 import { useDataGames } from '@/composables/useDataGames'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -73,6 +74,19 @@ const effectiveEventForTiming = computed(() => {
 
 const { isUpcoming, isOngoing, timeAgo, countdown } = useEventTiming(effectiveEventForTiming)
 const forumUnread = useDataForumUnread()
+
+// Fetch the associated discussion to show reactions
+const discussionCache = useDiscussionCache()
+const associatedDiscussion = ref<import('@/types/database.overrides').Tables<'discussions'> | null>(null)
+watch(
+  () => event.value?.id,
+  async (id) => {
+    if (!id)
+      return
+    associatedDiscussion.value = await discussionCache.fetchByEntity('event', String(id))
+  },
+  { immediate: true },
+)
 
 function handleReplySubmitted(newReplyCount: number, discussionId: string) {
   forumUnread.markDiscussionSeen(discussionId, newReplyCount)
@@ -186,6 +200,8 @@ useHead({
             <EventHeader
               :event="effectiveEventForTiming!"
               :games="games"
+              :discussion-id="associatedDiscussion?.id ?? null"
+              :discussion-reactions="associatedDiscussion?.reactions"
               :is-upcoming="isUpcoming"
               :is-ongoing="isOngoing"
               :countdown="countdown"

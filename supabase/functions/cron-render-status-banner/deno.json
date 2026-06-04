@@ -1,0 +1,12 @@
+{
+  "name": "cron-render-status-banner",
+  "imports": {
+    "constants": "../../../constants.json",
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
+    "database-types": "../../../types/database.types.ts",
+    "metrics-types": "../../../types/metrics.ts",
+    "@takumi-rs/wasm": "npm:@takumi-rs/wasm@1.6.0",
+    "@takumi-rs/helpers": "npm:@takumi-rs/helpers@1.6.0"
+  },
+  "exports": {}
+}

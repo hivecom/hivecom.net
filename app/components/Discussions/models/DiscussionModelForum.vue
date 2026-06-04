@@ -827,7 +827,14 @@ const editedAtFormatted = computed(() => {
   &__reply {
     margin-bottom: var(--space-m);
     cursor: pointer;
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
+
+    // VUI Alert content is `flex: 1` without `min-width: 0`, so long unbreakable
+    // strings (e.g. URLs) force the flex item past the container and overflow.
+    :deep(.vui-alert-content),
+    :deep(.vui-alert-default-content) {
+      min-width: 0;
+    }
 
     &:hover {
       background-color: var(--color-bg-raised);

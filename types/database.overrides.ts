@@ -93,10 +93,24 @@ interface TableColumnOverrides {
       editor_floating: boolean
       strip_image_metadata: boolean
       allow_custom_css: boolean
+      allow_browser_zoom: boolean
+      confirm_external_links: boolean
       admin_mini_sidebar: boolean
       admin_expanded_layout: boolean
       admin_asset_view_mode: 'table' | 'grid'
       admin_asset_flat_view: boolean
+      chat_colored_nicks: boolean
+      chat_notify_only_mentions: boolean
+      chat_autoconnect: boolean
+      chat_show_inline_embeds: boolean
+      chat_show_previews: boolean
+      chat_font_size: number
+      chat_mobile_font_size: number
+      chat_mention_keywords: string[]
+      chat_browser_notifications: boolean
+      chat_show_timestamps: boolean
+      chat_timestamp_format: string
+      chat_display_mode: 'irc' | 'modern'
     }
   }
 

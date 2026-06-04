@@ -13,6 +13,7 @@ interface Props {
   isOngoing?: boolean
   createdAt: string
   simple?: boolean
+  compact?: boolean
 }
 
 const props = defineProps<Props>()
@@ -78,6 +79,9 @@ const timeProgressPercentage = computed(() => {
     <div v-if="!props.simple" class="countdown-timer__progress-wrapper">
       <Skeleton width="100%" height="4px" />
     </div>
+    <Flex v-if="$slots.default" x-center class="mt-xs">
+      <slot />
+    </Flex>
   </div>
   <!-- Actual countdown when data is available -->
   <div
@@ -86,6 +90,7 @@ const timeProgressPercentage = computed(() => {
     :class="{
       'countdown-timer--ongoing': shouldShowNow,
       'countdown-timer--simple': props.simple,
+      'countdown-timer--compact': props.compact,
     }"
 
     :style="{ '--time-progress': `${timeProgressPercentage}%` }"
@@ -100,14 +105,14 @@ const timeProgressPercentage = computed(() => {
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.days" class="countdown-timer__number">{{ countdown.days.toString().padStart(2, '0') }}</span>
           </div>
-          <span class="countdown-timer__label">days</span>
+          <span class="countdown-timer__label">{{ compact ? 'd' : 'days' }}</span>
         </Flex>
         <Divider vertical :height="props.simple ? 40 : 64" />
         <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="hours">
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.hours" class="countdown-timer__number">{{ countdown.hours.toString().padStart(2, '0') }}</span>
           </div>
-          <span class="countdown-timer__label">hours</span>
+          <span class="countdown-timer__label">{{ compact ? 'h' : 'hours' }}</span>
         </Flex>
         <Divider vertical :height="props.simple ? 40 : 64" />
 
@@ -115,7 +120,7 @@ const timeProgressPercentage = computed(() => {
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.minutes" class="countdown-timer__number">{{ countdown.minutes.toString().padStart(2, '0') }}</span>
           </div>
-          <span class="countdown-timer__label">minutes</span>
+          <span class="countdown-timer__label">{{ compact ? 'm' : 'minutes' }}</span>
         </Flex>
         <Divider vertical :height="props.simple ? 40 : 64" />
 
@@ -123,7 +128,7 @@ const timeProgressPercentage = computed(() => {
           <div class="countdown-timer__number-wrapper">
             <span :key="countdown.seconds" class="countdown-timer__number">{{ countdown.seconds.toString().padStart(2, '0') }}</span>
           </div>
-          <span class="countdown-timer__label">seconds</span>
+          <span class="countdown-timer__label">{{ compact ? 's' : 'seconds' }}</span>
         </Flex>
       </Flex>
 
@@ -136,6 +141,10 @@ const timeProgressPercentage = computed(() => {
         </template>
       </Tooltip>
     </template>
+
+    <Flex v-if="$slots.default" x-center class="mt-xs">
+      <slot />
+    </Flex>
   </div>
 </template>
 
@@ -149,8 +158,19 @@ const timeProgressPercentage = computed(() => {
   border-radius: var(--border-radius-m);
   overflow: hidden;
   width: 100%;
+  min-height: 100px;
+
+  &--compact {
+    .countdown-timer__item {
+      padding: var(--space-xs);
+    }
+  }
 
   &--simple {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
     .countdown-timer {
       &__item {
         padding: var(--space-xs);
@@ -169,6 +189,13 @@ const timeProgressPercentage = computed(() => {
     align-items: center;
     justify-content: center;
     height: 80px;
+  }
+
+  &--past {
+    .countdown-timer__number {
+      color: var(--color-text) !important;
+      animation: none;
+    }
   }
 
   &__now-text {
@@ -201,17 +228,11 @@ const timeProgressPercentage = computed(() => {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     min-width: 80px;
 
-    &:hover {
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    }
-
     &:last-of-type {
       border-right: none;
     }
 
-    @media (max-width: $breakpoint-s) {
-      min-width: auto;
-    }
+    min-width: auto;
 
     @media (max-width: $breakpoint-xs) {
       padding: 6px;

@@ -67,10 +67,7 @@
 
   // Dark (default) theme colors
   --dark-color-bg: #111111;
-  --dark-color-fg: #0a0a0a;
   --dark-color-accent: #a7fc2f;
-  --dark-color-bg-accent-raised: #69b103;
-  --dark-color-bg-accent-lowered: #4e8502;
 
   --dark-color-text: #ffffff;
   --dark-color-text-lighter: rgb(110, 110, 110);
@@ -78,10 +75,7 @@
 
   // Light theme colors
   --light-color-bg: #eeeeee;
-  --light-color-fg: #dddddd;
   --light-color-accent: #69883e;
-  --light-color-bg-accent-raised: #7ea34a;
-  --light-color-bg-accent-lowered: #93be57;
   --light-color-text: #000000;
   --light-color-bg-medium: rgb(231, 231, 231);
 
@@ -203,6 +197,15 @@ body {
   scrollbar-width: thin;
 }
 
+// Disable the browser's pinch-zoom and double-tap-to-zoom gestures when the
+// user hasn't opted into browser zoom (the default). Scrolling/panning is still
+// allowed; lightboxes opt back into zoom via their own gesture handling (their
+// containers set `touch-action: none`). Toggled by `useZoomPreference`.
+html.disable-zoom,
+html.disable-zoom body {
+  touch-action: pan-x pan-y;
+}
+
 // VUI's reset rule `span { font-size: var(--font-size-m) }` fires on any span,
 // including spans nested inside a [data-text-size] size mark. This means the
 // font-size set by the outer size span never reaches inner color/font spans.
@@ -267,11 +270,11 @@ table td {
   pointer-events: none;
 }
 
-.vui-button-accent-weak {
-  &:hover {
-    background-color: color-mix(in srgb, var(--color-accent) 25%, transparent) !important;
-  }
-}
+// .vui-button-accent-weak {
+//   &:hover {
+//     background-color: color-mix(in srgb, var(--color-accent) 25%, transparent) !important;
+//   }
+// }
 
 .vui-button-rounded {
   border-radius: var(--border-radius-pill);

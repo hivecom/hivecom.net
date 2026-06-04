@@ -258,6 +258,9 @@ export function useGlobeBase() {
       wheelCleanup = null
 
       globeInstance?.pauseAnimation?.()
+      // Free the WebGL renderer/context. Without this every mount leaks a
+      // context and browsers cap live contexts, eventually breaking the globe.
+      globeInstance?._destructor?.()
       globeInstance = null
       globeMaterial = null
     }
@@ -285,6 +288,9 @@ export function useGlobeBase() {
     themeObserver = null
 
     globeInstance?.pauseAnimation?.()
+    // Free the WebGL renderer/context. Without this every mount leaks a
+    // context and browsers cap live contexts, eventually breaking the globe.
+    globeInstance?._destructor?.()
     globeInstance = null
     globeMaterial = null
   }

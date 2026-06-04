@@ -28,9 +28,9 @@ export function useInitialUserPreferences() {
       await supabase.auth.getSession()
     }
 
-    // For guests, still attempt to restore a cached theme from localStorage.
+    // For guests, restore persisted settings and theme from localStorage.
     if (userId.value == null) {
-      await fetchAndApply()
+      await Promise.all([fetchSettings(), fetchAndApply()])
       return
     }
 

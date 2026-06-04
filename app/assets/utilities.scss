@@ -5,6 +5,21 @@
 //   width: 100% !important;
 // }
 
+// VUI's `Select` has no `expand` prop (unlike `Input`/`Button`). Adding `w-100`
+// stretches the outer `.vui-select` container, but the trigger is a flex
+// `<button>` that stays content-width, so the control still looks unexpanded.
+// Force the whole trigger chain to fill whenever `w-100` is on a Select. The
+// triple-class selector also guarantees the container beats VUI's default
+// `.vui-select { width: auto }` / `.vui-input-container { width: 224px }`.
+.vui-input-container.vui-select.w-100 {
+  width: 100%;
+
+  .vui-select-trigger-content,
+  .vui-select-trigger-container {
+    width: 100%;
+  }
+}
+
 @keyframes shinyHueRotate {
   0% {
     filter: hue-rotate(0deg);

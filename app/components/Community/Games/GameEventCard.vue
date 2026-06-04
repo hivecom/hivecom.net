@@ -4,12 +4,12 @@ import { Badge, Card, Flex, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { computed, useTemplateRef } from 'vue'
+import EventRSVPCount from '@/components/Events/EventRSVPCount.vue'
 import GameDetailsModalTrigger from '@/components/Shared/GameDetailsModalTrigger.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { truncate } from '@/lib/utils/formatting'
-import EventRSVPCount from './EventRSVPCount.vue'
 
 const props = defineProps<Props>()
 
@@ -83,7 +83,7 @@ const isBelowSmall = useBreakpoint('<m')
               >
                 <Tooltip placement="top">
                   <span style="cursor: pointer" @click.prevent.stop="open">
-                    <GameIcon :game="g" size="xs" />
+                    <GameIcon :game="g" size="s" />
                   </span>
                   <template #tooltip>
                     <p>{{ g.name }}</p>

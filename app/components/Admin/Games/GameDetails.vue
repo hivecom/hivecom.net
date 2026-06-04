@@ -10,6 +10,7 @@ import CopyValue from '@/components/Shared/CopyValue.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
+import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 
 const props = defineProps<{
   game: Tables<'games'> | null
@@ -25,6 +26,8 @@ const ChartGameActivity = defineAsyncComponent(() => import('@/components/Shared
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+const { handleContentClick } = useExternalLinkGuard()
 
 // Handle closing the sheet
 function handleClose() {
@@ -214,6 +217,7 @@ watchEffect(async () => {
             class="game-details__link"
             target="_blank"
             rel="noopener noreferrer"
+            @click="handleContentClick"
           >
             {{ props.game.website }}
           </NuxtLink>
@@ -342,7 +346,7 @@ watchEffect(async () => {
         </template>
         <ChartActivityHistogramControls :series="['usersGameActivity']" :game-id="props.game.id">
           <template #default="{ period, window, utc, color }">
-            <ChartGameActivity :period :window :utc :color :game-id="props.game.id" compact />
+            <ChartGameActivity :period :window :utc :color="props.game.color ?? color" :game-id="props.game.id" compact />
           </template>
         </ChartActivityHistogramControls>
       </Card>

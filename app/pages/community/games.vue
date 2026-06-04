@@ -12,6 +12,7 @@ import GameTopCard from '@/components/Community/Games/GameTopCard.vue'
 import RecentGameActivitySection from '@/components/Community/Games/RecentGameActivitySection.vue'
 import GameServerModal from '@/components/GameServers/GameServerModal.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
+import MetricsRefreshCountdown from '@/components/Shared/Charts/MetricsRefreshCountdown.vue'
 import GameDetailsModal from '@/components/Shared/GameDetailsModal.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
@@ -289,6 +290,17 @@ const totalCurrentPlayers = computed<number | null>(() => {
     total += players.length
   return total
 })
+
+// For anon users: sum active players from the latest metrics snapshot (byGame = Hivecom tracking, no auth required)
+const metricsGameTotal = computed<number | null>(() => {
+  const byGame = metrics.value?.users.byGame
+  if (!byGame)
+    return null
+  return Object.values(byGame).reduce((a, b) => a + b, 0)
+})
+
+// Whichever count is appropriate for the current auth state
+const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value : metricsGameTotal.value)
 </script>
 
 <template>
@@ -296,7 +308,7 @@ const totalCurrentPlayers = computed<number | null>(() => {
     <section class="page-title">
       <Flex y-center x-between expand>
         <h1>Games</h1>
-        <PopoutHover :disabled="!totalCurrentPlayers || totalCurrentPlayers <= 0" placement="bottom-end">
+        <PopoutHover v-if="user" :disabled="!totalCurrentPlayers || totalCurrentPlayers <= 0" placement="bottom-end">
           <template #trigger>
             <OnlineBadge
               :count="totalCurrentPlayers"
@@ -315,6 +327,13 @@ const totalCurrentPlayers = computed<number | null>(() => {
             />
           </Flex>
         </PopoutHover>
+        <OnlineBadge
+          v-else
+          :count="metricsGameTotal"
+          label="Playing"
+          :clickable="!!metricsGameTotal && metricsGameTotal > 0"
+          @click="metricsGameTotal && metricsGameTotal > 0 && (activityModalOpen = true)"
+        />
       </Flex>
       <p>Something new something old - join the crowd!</p>
     </section>
@@ -379,10 +398,11 @@ const totalCurrentPlayers = computed<number | null>(() => {
           :show-y-axis="true"
           hide-title
           hide-untracked
-        />
-        <p class="chart-section__subtitle text-color-lighter text-xxs">
-          Last 14 days of game activity
-        </p>
+        >
+          <p class="chart-section__subtitle text-color-lighter text-xxs">
+            Last 14 days of game activity
+          </p>
+        </ChartGameActivity>
       </section>
 
       <!-- Recent games -->
@@ -439,10 +459,13 @@ const totalCurrentPlayers = computed<number | null>(() => {
       </section>
 
       <GameSteamCallout class="mt-m" />
+      <Flex x-end class="mt-s">
+        <MetricsRefreshCountdown />
+      </Flex>
       <ChartActivityHistogramModal
         v-model:open="activityModalOpen"
         title="Game Activity"
-        :count="totalCurrentPlayers"
+        :count="displayPlayerCount"
         count-label="Playing"
         count-singular="Playing"
         :series="['usersGameActivity']"

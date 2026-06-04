@@ -53,6 +53,9 @@ export interface LinkPreviewEvent {
   date: string | null
   durationMinutes: number | null
   location: string | null
+  recurrenceRule: string | null
+  /** True when the event could not be fetched because the user is not authenticated. */
+  requiresAuth?: boolean
 }
 
 export interface LinkPreviewVote {
@@ -343,7 +346,7 @@ export function useDataLinkPreview(url: string) {
   async function fetchEvent(id: number, href: string) {
     const { data: row, error: fetchError } = await supabase
       .from('events')
-      .select('id, title, description, date, duration_minutes, location')
+      .select('id, title, description, date, duration_minutes, location, recurrence_rule')
       .eq('id', id)
       .maybeSingle()
 
@@ -351,6 +354,24 @@ export function useDataLinkPreview(url: string) {
       throw new Error(fetchError.message)
 
     if (!row) {
+      const user = useSupabaseUser()
+      // Unauthenticated users may be blocked by RLS (e.g. recurring events require
+      // sign-in). Return an auth-gated stub so the embed renders a sign-in nudge
+      // instead of a bare URL fallback.
+      if (!user.value) {
+        data.value = {
+          type: 'event',
+          href,
+          title: '',
+          description: null,
+          date: null,
+          durationMinutes: null,
+          location: null,
+          recurrenceRule: null,
+          requiresAuth: true,
+        } satisfies LinkPreviewEvent
+        return
+      }
       data.value = { type: 'unknown', href, label: href }
       return
     }
@@ -363,6 +384,7 @@ export function useDataLinkPreview(url: string) {
       date: row.date ?? null,
       durationMinutes: row.duration_minutes ?? null,
       location: row.location ?? null,
+      recurrenceRule: row.recurrence_rule ?? null,
     } satisfies LinkPreviewEvent
   }
 

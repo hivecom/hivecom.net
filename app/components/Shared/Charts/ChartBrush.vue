@@ -494,13 +494,13 @@ defineExpose({ setBrush })
       <Flex gap="xs" y-center>
         <ButtonGroup>
           <Button
-            :variant="!useUtc ? 'accent' : 'gray'"
+            :variant="!useUtc ? 'fill' : 'gray'"
             @click="useUtc = false"
           >
             Local
           </Button>
           <Button
-            :variant="useUtc ? 'accent' : 'gray'"
+            :variant="useUtc ? 'fill' : 'gray'"
             @click="useUtc = true"
           >
             UTC
@@ -511,7 +511,7 @@ defineExpose({ setBrush })
           <Dropdown placement="bottom-end">
             <template #trigger="{ toggle, isOpen: dropdownOpen }">
               <Button
-                :variant="selectionMode === 'period' ? 'accent' : 'gray'"
+                :variant="selectionMode === 'period' ? 'fill' : 'gray'"
                 @click="toggle"
               >
                 {{ selectionMode === 'calendar' || selectionMode === 'brush' ? 'Custom' : (matchedPeriod ? METRICS_PERIOD_OPTIONS.find(o => o.value === matchedPeriod)?.label : 'Custom') }}
@@ -535,10 +535,11 @@ defineExpose({ setBrush })
             :range="true"
             :enable-time-picker="true"
             :max-date="new Date()"
+            :teleport="true"
           >
             <template #trigger>
               <Tooltip placement="top">
-                <Button square :variant="selectionMode === 'calendar' ? 'accent' : 'gray'">
+                <Button square :variant="selectionMode === 'calendar' ? 'fill' : 'gray'">
                   <Icon name="ph:calendar-dots" />
                 </Button>
                 <template #tooltip>

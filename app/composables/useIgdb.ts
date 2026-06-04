@@ -13,11 +13,14 @@ export interface IgdbSearchResult {
 // Full normalised game data (from mode=details)
 export interface IgdbGameDetails {
   igdb_id: number
+  igdb_url: string | null
   name: string
   summary: string | null
   storyline: string | null
   release_date: string | null // ISO date YYYY-MM-DD
   website: string | null
+  steam_id: string | null
+  acronym: string | null
   genre_tags: string[]
   multiplayer_modes: string[]
   cover_url: string | null

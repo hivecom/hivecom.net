@@ -6,8 +6,8 @@ import { useSupabaseUser } from '#imports'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 
 import UserRole from '@/components/Shared/UserRole.vue'
+import { useContainerBreakpoint } from '@/composables/useContainerBreakpoint'
 import { getAnonymousUsername } from '@/lib/anonymousUsernames'
-import { useBreakpoint } from '@/lib/mediaQuery'
 
 type LinkPreviewData = NonNullable<ReturnType<typeof useDataLinkPreview>['data']['value']>
 type ProfileData = LinkPreviewData & { type: 'profile' }
@@ -17,7 +17,8 @@ const props = defineProps<{
 }>()
 
 const NuxtLink = resolveComponent('NuxtLink')
-const isMobile = useBreakpoint('<s')
+const el = ref<HTMLElement | null>(null)
+const isMobile = useContainerBreakpoint(el, 400)
 const user = useSupabaseUser()
 
 // Show real data when the profile is public, or when the user is signed in.
@@ -27,6 +28,7 @@ const showRealData = computed(() => props.data.isPublic || !!user.value)
 <template>
   <component
     :is="showRealData ? NuxtLink : 'div'"
+    ref="el"
     class="link-embed link-embed--profile"
     v-bind="showRealData ? { href: props.data.href } : {}"
   >

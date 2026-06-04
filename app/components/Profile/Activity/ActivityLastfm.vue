@@ -55,6 +55,28 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 const isNowPlaying = computed(() => presence.value?.now_playing === true)
 
+// Lazy-load fade-in for the album art (mirrors GameIcon.vue behaviour)
+const albumArtReady = ref(false)
+const albumArtRef = ref<HTMLImageElement | null>(null)
+
+function handleAlbumArtLoad() {
+  albumArtReady.value = true
+}
+
+// Handle cached images: if the browser already has the asset, the @load event
+// may fire before Vue attaches the listener. Check `complete` after DOM updates.
+async function syncAlbumArtReady() {
+  albumArtReady.value = false
+  await nextTick()
+  const el = albumArtRef.value
+  if (el && el.complete && el.naturalWidth > 0)
+    albumArtReady.value = true
+}
+
+watch(() => presence.value?.album_art_url, () => {
+  void syncAlbumArtReady()
+})
+
 const playedAtFormatted = computed(() => {
   const p = presence.value?.played_at
   if (!p)
@@ -214,11 +236,15 @@ watch(() => props.profileId, () => {
               class="activity-item__art-link"
             >
               <img
+                ref="albumArtRef"
                 :src="presence.album_art_url"
                 :alt="presence.album_name ? `${presence.album_name} cover` : 'Album art'"
                 width="32"
                 height="32"
+                loading="lazy"
                 class="activity-item__art"
+                :class="{ 'activity-item__art--ready': albumArtReady }"
+                @load="handleAlbumArtLoad"
               >
             </a>
           </template>
@@ -284,8 +310,17 @@ watch(() => props.profileId, () => {
 }
 
 .activity-item__art {
+  width: 32px;
+  height: 32px;
   border-radius: var(--border-radius-s);
+  background: var(--color-bg-raised);
   object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--transition-slow);
+
+  &--ready {
+    opacity: 1;
+  }
 }
 
 .activity-item__title {
