@@ -12,6 +12,7 @@ interface Props {
   hideAvatar?: boolean
   hideUsername?: boolean
   centered?: boolean
+  inline?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
@@ -24,7 +25,7 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-  <div class="user-display">
+  <div class="user-display" :class="{ 'user-display--inline': inline }">
     <Flex gap="s" y-center x-center class="user-display__header" inline>
       <!-- Avatar -->
       <template v-if="!hideAvatar">
@@ -64,6 +65,10 @@ withDefaults(defineProps<Props>(), {
 
 <style lang="scss" scoped>
 .user-display {
+  &--inline {
+    display: inline-block;
+  }
+
   &__info {
     display: flex;
     align-items: center;

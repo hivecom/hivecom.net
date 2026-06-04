@@ -1,12 +1,18 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.types'
 import { Marquee } from '@dolanske/vui'
-import LandingHeroBackground from '@/components/Landing/LandingHeroBackground.vue'
+import EventSmall from '@/components/Events/EventSmall.vue'
+import GlowCard from '@/components/Shared/GlowCard.vue'
+import GlowGroup from '@/components/Shared/GlowGroup.vue'
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
 // Fetch the latest 6 forum posts and their title & description
 const supabase = useSupabaseClient()
 const maruqeeItems = ref<{ id: number, title: string, description: string | null }[]>([])
 
 const MARQUEE_SPEED = 20
+
+const events = ref<Tables<'events'>[]>([])
 
 onBeforeMount(() => {
   supabase.from('discussions')
@@ -19,65 +25,214 @@ onBeforeMount(() => {
         maruqeeItems.value = data
       }
     })
+
+  // Get the 3 most upcoming events
+  supabase.from('events')
+    .select('*')
+    .eq('is_official', true)
+    .order('date', { ascending: false })
+    .limit(3)
+    .then(({ data }) => {
+      if (data) {
+        events.value = data
+      }
+    })
 })
 </script>
 
 <template>
   <div class="home-page">
-    <section class="hero mb-xxl">
+    <GlowGroup>
       <div class="container-m">
-        <div class="home-card centered home-card--about typeset">
-          <h2>
-            About us
-          </h2>
-          <p>
-            The community was originally created by <b>Catlinman (now zealsprince), Jokler and Trif.</b>
-          </p>
-          <p>
-            We started hosting a server back in 2013 on an in-home Raspberry Pi but the growing demand for a better connection
-            and 24/7 uptime made us reconsider this small hosting plan. We later that year went over to actually acquiring
-            a dedicated TeamSpeak server from Fragnet but later on switched to what is now a server entirely run and managed by
-            Hivecom itself.
-          </p>
-          <p>
-            Hivecom has come a long way since then and wouldn't be anything without those that make up its community. We're incredibly thankful
-            for what we have now considering this all started with three friends getting together to chat and hang out.
-          </p>
-          <p>
-            <b>We are always happy to welcome anyone willing to join us for this journey.</b>
-          </p>
-        </div>
+        <section class="hero ">
+          <GlowCard>
+            <div class="home-card centered home-card--about typeset">
+              <h2>
+                About us
+              </h2>
+              <p>
+                The community was originally created by <UserDisplay size="s" inline user-id="c57fa854-f33a-40ee-a326-33f18760a4a3" /> <UserDisplay size="s" inline user-id="c8285417-e04c-4028-b02d-59711552bc4c" />  <UserDisplay size="s" inline user-id="363f4c51-6ae9-4115-b8eb-01b9760fb6d0" />
+              </p>
+              <p>
+                We started hosting a server back in 2013 on an in-home Raspberry Pi but the growing demand for a better connection
+                and 24/7 uptime made us reconsider this small hosting plan. We later that year went over to actually acquiring
+                a dedicated TeamSpeak server from Fragnet but later on switched to what is now a server entirely run and managed by
+                Hivecom itself.
+              </p>
+              <p>
+                Hivecom has come a long way since then and wouldn't be anything without those that make up its community. We're incredibly thankful
+                for what we have now considering this all started with three friends getting together to chat and hang out.
+              </p>
+              <p>
+                <b>We are always happy to welcome anyone willing to join us for this journey.</b>
+              </p>
+            </div>
+          </GlowCard>
+
+        <!-- <LandingHeroBackground /> -->
+        </section>
       </div>
 
-      <LandingHeroBackground />
-    </section>
+      <div class="container-m ">
+        <section class="home-events">
+          <EventSmall v-for="event in events" :key="event.id" :data="event" :no-glow="false" />
+        </section>
+      </div>
 
-    <div class="container-m">
-      <section>
-        <div class="home-card home-card--forum">
-          <Marquee :speed="MARQUEE_SPEED" direction="left">
-            <p>
-              <NuxtLink to="/forum">
-                LATEST FORUM POSTS LATEST FORUM POSTS LATEST FORUM POSTS
-              </NuxtLink>
-            </p>
-          </Marquee>
-          <Marquee v-for="(item, index) in maruqeeItems" :key="item.id" :speed="MARQUEE_SPEED" :direction="index % 2 === 0 ? 'right' : 'left'">
-            <p>
-              <NuxtLink :to="`/forum/${item.id}`">
-                {{ item.title }}{{ item.description ? `: ${item.description}` : '' }}
-              </NuxtLink>
-            </p>
-          </Marquee>
+      <section class="">
+        <div class="container-m">
+          <GlowCard>
+            <div class="home-card home-card--forum">
+              <Marquee :speed="MARQUEE_SPEED" direction="left">
+                <p>
+                  <NuxtLink to="/forum">
+                    LATEST FORUM POSTS LATEST FORUM POSTS LATEST FORUM POSTS
+                  </NuxtLink>
+                </p>
+              </Marquee>
+              <Marquee v-for="(item, index) in maruqeeItems" :key="item.id" :speed="MARQUEE_SPEED" :direction="index % 2 === 0 ? 'right' : 'left'">
+                <p>
+                  <NuxtLink :to="`/forum/${item.id}`">
+                    {{ item.title }}{{ item.description ? `: ${item.description}` : '' }}
+                  </NuxtLink>
+                </p>
+              </Marquee>
+            </div>
+          </GlowCard>
         </div>
       </section>
+    </GlowGroup>
+    <div class="home-join">
+      <div class="container-s">
+        <h2>Join us</h2>
+        <p>Join us but also dont have to but it’d be cool if you did ust thinkig about it ok ill sit down for a sec dont let me disturb you just ponder it for a second.</p>
+
+        <NuxtLink to="/sign-up">
+          Sign Up
+        </NuxtLink>
+      </div>
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/mixins' as *;
+
 .home-page {
-  padding-block: max(10vh, 256px);
+  display: flex !important;
+  flex-direction: column;
+  gap: 128px;
+  padding-top: max(10vh, 256px);
+  width: 100%;
+}
+
+.home-join {
+  text-align: center;
+  word-wrap: balanced;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  padding-bottom: 680px;
+
+  &:after {
+    content: '';
+    position: absolute;
+    width: 3063px;
+    height: 1297px;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: -1000px;
+    background-color: var(--color-accent);
+    border-radius: 100%;
+  }
+
+  h2 {
+    margin-bottom: var(--space-m);
+  }
+
+  p {
+    margin-bottom: var(--space-xl);
+  }
+
+  a {
+    display: flex;
+    height: 40px;
+    justify-content: center;
+    align-items: center;
+    border-radius: var(--border-radius-pill);
+    background-color: var(--color-text);
+    color: var(--color-text-invert);
+    width: min(100%, 324px);
+    margin: auto;
+    font-weight: var(--font-weight-semibold);
+
+    &:hover {
+      background-color: color-mix(in srgb, var(--color-text) 90%, transparent);
+    }
+  }
+
+  .container-s {
+    --container-s: 472px;
+  }
+}
+
+.home-events {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  grid-template: 'main sideA' 'main sideB';
+  gap: var(--space-m);
+
+  a {
+    position: relative;
+    /* z-index: 2; */
+
+    &:before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-color: var(--color-bg-card);
+      border-radius: var(--border-radius-l);
+      z-index: -1;
+      opacity: 0.85;
+    }
+
+    &:nth-child(1) {
+      grid-area: main;
+
+      :deep(.event-small) {
+        .event-date {
+          font-size: var(--font-size-l);
+        }
+
+        .event-title {
+          font-size: var(--font-size-xxxl);
+          margin-bottom: var(--space-s);
+        }
+
+        .event-description {
+          font-size: var(--font-size-l);
+          @include line-clamp(5);
+          margin-bottom: var(--space-m);
+          flex: unset;
+        }
+      }
+    }
+
+    &:nth-child(2) {
+      grid-area: sideA;
+    }
+
+    &:nth-child(3) {
+      grid-area: sideB;
+    }
+
+    :deep(.event-small) {
+      position: relative;
+      corner-shape: squircle;
+      border-radius: var(--border-radius-l);
+      --vui-card-background-color: transparent;
+    }
+  }
 }
 
 .home-card {
@@ -87,20 +242,19 @@ onBeforeMount(() => {
   padding: var(--space-l);
   z-index: 2;
   position: relative;
-  backdrop-filter: blur(50px);
 
   &.centered {
     text-align: center;
   }
 
-  &::before {
+  &:before {
     content: '';
     position: absolute;
     inset: 0;
     background-color: var(--color-bg-card);
     border-radius: var(--border-radius-l);
     z-index: -1;
-    opacity: 0.8;
+    opacity: 0.85;
   }
 
   h2 {
@@ -112,7 +266,7 @@ onBeforeMount(() => {
   p {
     color: var(--color-text-light);
     text-wrap: balance;
-    font-size: var(--font-size-l);
+    font-size: var(--font-size-m);
 
     b {
       color: var(--color-text);
@@ -127,15 +281,22 @@ onBeforeMount(() => {
   padding-top: 96px;
   padding-bottom: 128px;
 
+  p:first-of-type {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-s);
+  }
+
   &:after {
     content: '';
     position: absolute;
     bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
-    background-image: url("data:image/svg+xml,%3Csvg width='128' height='17' viewBox='0 0 128 17' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 0H0V24H4V0Z' fill='%23A2F330'/%3E%3Cpath d='M8 0H6V24H8V0Z' fill='%23A2F330'/%3E%3Cpath d='M14 0H12V24H14V0Z' fill='%23A2F330'/%3E%3Cpath d='M24 0H22V24H24V0Z' fill='%23A2F330'/%3E%3Cpath d='M30 0H28V24H30V0Z' fill='%23A2F330'/%3E%3Cpath d='M42 0H38V24H42V0Z' fill='%23A2F330'/%3E%3Cpath d='M46 0H44V24H46V0Z' fill='%23A2F330'/%3E%3Cpath d='M52 0H50V24H52V0Z' fill='%23A2F330'/%3E%3Cpath d='M64 0H56V24H64V0Z' fill='%23A2F330'/%3E%3Cpath d='M68 0H66V24H68V0Z' fill='%23A2F330'/%3E%3Cpath d='M74 0H70V24H74V0Z' fill='%23A2F330'/%3E%3Cpath d='M80 0H78V24H80V0Z' fill='%23A2F330'/%3E%3Cpath d='M90 0H88V24H90V0Z' fill='%23A2F330'/%3E%3Cpath d='M96 0H94V24H96V0Z' fill='%23A2F330'/%3E%3Cpath d='M102 0H98V24H102V0Z' fill='%23A2F330'/%3E%3Cpath d='M112 0H110V24H112V0Z' fill='%23A2F330'/%3E%3Cpath d='M122 0H120V24H122V0Z' fill='%23A2F330'/%3E%3Cpath d='M130 0H126V24H130V0Z' fill='%23A2F330'/%3E%3Cpath d='M134 0H132V24H134V0Z' fill='%23A2F330'/%3E%3Cpath d='M144 0H140V24H144V0Z' fill='%23A2F330'/%3E%3Cpath d='M150 0H148V24H150V0Z' fill='%23A2F330'/%3E%3Cpath d='M158 0H154V24H158V0Z' fill='%23A2F330'/%3E%3Cpath d='M170 0H164V24H170V0Z' fill='%23A2F330'/%3E%3Cpath d='M174 0H172V24H174V0Z' fill='%23A2F330'/%3E%3Cpath d='M180 0H176V24H180V0Z' fill='%23A2F330'/%3E%3C/svg%3E%0A");
+    background-image: url("data:image/svg+xml,%3Csvg width='128' height='12' viewBox='0 0 128 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 0H0V24H4V0Z' fill='%23A2F330'/%3E%3Cpath d='M8 0H6V24H8V0Z' fill='%23A2F330'/%3E%3Cpath d='M14 0H12V24H14V0Z' fill='%23A2F330'/%3E%3Cpath d='M24 0H22V24H24V0Z' fill='%23A2F330'/%3E%3Cpath d='M30 0H28V24H30V0Z' fill='%23A2F330'/%3E%3Cpath d='M42 0H38V24H42V0Z' fill='%23A2F330'/%3E%3Cpath d='M46 0H44V24H46V0Z' fill='%23A2F330'/%3E%3Cpath d='M52 0H50V24H52V0Z' fill='%23A2F330'/%3E%3Cpath d='M64 0H56V24H64V0Z' fill='%23A2F330'/%3E%3Cpath d='M68 0H66V24H68V0Z' fill='%23A2F330'/%3E%3Cpath d='M74 0H70V24H74V0Z' fill='%23A2F330'/%3E%3Cpath d='M80 0H78V24H80V0Z' fill='%23A2F330'/%3E%3Cpath d='M90 0H88V24H90V0Z' fill='%23A2F330'/%3E%3Cpath d='M96 0H94V24H96V0Z' fill='%23A2F330'/%3E%3Cpath d='M102 0H98V24H102V0Z' fill='%23A2F330'/%3E%3Cpath d='M112 0H110V24H112V0Z' fill='%23A2F330'/%3E%3Cpath d='M122 0H120V24H122V0Z' fill='%23A2F330'/%3E%3Cpath d='M130 0H126V24H130V0Z' fill='%23A2F330'/%3E%3Cpath d='M134 0H132V24H134V0Z' fill='%23A2F330'/%3E%3Cpath d='M144 0H140V24H144V0Z' fill='%23A2F330'/%3E%3Cpath d='M150 0H148V24H150V0Z' fill='%23A2F330'/%3E%3Cpath d='M158 0H154V24H158V0Z' fill='%23A2F330'/%3E%3Cpath d='M170 0H164V24H170V0Z' fill='%23A2F330'/%3E%3Cpath d='M174 0H172V24H174V0Z' fill='%23A2F330'/%3E%3Cpath d='M180 0H176V24H180V0Z' fill='%23A2F330'/%3E%3C/svg%3E%0A");
     width: 128px;
-    height: 17px;
+    height: 12px;
   }
 }
 

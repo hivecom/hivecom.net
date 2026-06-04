@@ -75,98 +75,98 @@
         { "code_action": "source.fixAll.eslint" }
       ]
     }
-  },
-  "lsp": {
-    "deno": {
-      "settings": {
-        "deno": {
-          "enable": true,
-          "enablePaths": ["supabase/functions"],
-          "config": "./supabase/functions/deno.json"
-        }
-      }
-    },
-    "emmet-language-server": {
-      "binary": {
-        "path": "node_modules/.bin/emmet-language-server",
-        "arguments": ["--stdio"]
-      }
-    },
-    "some-sass-lsp": {
-      "settings": {
-        "somesass": {
-          "diagnostics": {
-            "enabled": false
-          }
-        }
-      }
-    },
-    "vscode-css-language-server": {
-      "binary": {
-        "path": "node_modules/.bin/vscode-css-language-server",
-        "arguments": ["--stdio"]
-      },
-      "settings": {
-        "css": {
-          "lint": {
-            "compatibleVendorPrefixes": "warning",
-            "duplicateProperties": "warning",
-            "emptyRules": "warning",
-            "importStatement": "warning",
-            "unknownProperties": "warning",
-            "unknownVendorSpecificProperties": "warning",
-            "propertyIgnoredDueToDisplay": "warning",
-            "ieHack": "warning",
-            "zeroUnits": "warning",
-            "fontFaceProperties": "warning",
-            "hexColorLength": "warning",
-            "unknownAtRules": "warning"
-          },
-          "validate": true
-        },
-        "scss": {
-          "lint": {
-            "compatibleVendorPrefixes": "warning",
-            "duplicateProperties": "warning",
-            "emptyRules": "warning",
-            "importStatement": "warning",
-            "unknownProperties": "warning",
-            "unknownVendorSpecificProperties": "warning",
-            "propertyIgnoredDueToDisplay": "warning",
-            "ieHack": "warning",
-            "zeroUnits": "warning",
-            "fontFaceProperties": "warning",
-            "hexColorLength": "warning",
-            "unknownAtRules": "warning"
-          },
-          "validate": true
-        }
-      }
-    },
-    "eslint": {
-      "settings": {
-        "workingDirectory": {
-          "mode": "auto"
-        },
-        "validate": "on",
-        "warnIgnored": false,
-        "experimental": {
-          "useFlatConfig": false
-        },
-        "probe": [
-          "javascript",
-          "javascriptreact",
-          "typescript",
-          "typescriptreact",
-          "vue",
-          "html",
-          "markdown",
-          "json",
-          "jsonc",
-          "css",
-          "scss"
-        ]
-      }
-    }
   }
+  // "lsp": {
+  //   "deno": {
+  //     "settings": {
+  //       "deno": {
+  //         "enable": true,
+  //         "enablePaths": ["supabase/functions"],
+  //         "config": "./supabase/functions/deno.json"
+  //       }
+  //     }
+  //   },
+  //   "emmet-language-server": {
+  //     "binary": {
+  //       "path": "node_modules/.bin/emmet-language-server",
+  //       "arguments": ["--stdio"]
+  //     }
+  //   },
+  //   "some-sass-lsp": {
+  //     "settings": {
+  //       "somesass": {
+  //         "diagnostics": {
+  //           "enabled": false
+  //         }
+  //       }
+  //     }
+  //   },
+  //   "vscode-css-language-server": {
+  //     "binary": {
+  //       "path": "node_modules/.bin/vscode-css-language-server",
+  //       "arguments": ["--stdio"]
+  //     },
+  //     "settings": {
+  //       "css": {
+  //         "lint": {
+  //           "compatibleVendorPrefixes": "warning",
+  //           "duplicateProperties": "warning",
+  //           "emptyRules": "warning",
+  //           "importStatement": "warning",
+  //           "unknownProperties": "warning",
+  //           "unknownVendorSpecificProperties": "warning",
+  //           "propertyIgnoredDueToDisplay": "warning",
+  //           "ieHack": "warning",
+  //           "zeroUnits": "warning",
+  //           "fontFaceProperties": "warning",
+  //           "hexColorLength": "warning",
+  //           "unknownAtRules": "warning"
+  //         },
+  //         "validate": true
+  //       },
+  //       "scss": {
+  //         "lint": {
+  //           "compatibleVendorPrefixes": "warning",
+  //           "duplicateProperties": "warning",
+  //           "emptyRules": "warning",
+  //           "importStatement": "warning",
+  //           "unknownProperties": "warning",
+  //           "unknownVendorSpecificProperties": "warning",
+  //           "propertyIgnoredDueToDisplay": "warning",
+  //           "ieHack": "warning",
+  //           "zeroUnits": "warning",
+  //           "fontFaceProperties": "warning",
+  //           "hexColorLength": "warning",
+  //           "unknownAtRules": "warning"
+  //         },
+  //         "validate": true
+  //       }
+  //     }
+  //   },
+  //   "eslint": {
+  //     "settings": {
+  //       "workingDirectory": {
+  //         "mode": "auto"
+  //       },
+  //       "validate": "on",
+  //       "warnIgnored": false,
+  //       "experimental": {
+  //         "useFlatConfig": false
+  //       },
+  //       "probe": [
+  //         "javascript",
+  //         "javascriptreact",
+  //         "typescript",
+  //         "typescriptreact",
+  //         "vue",
+  //         "html",
+  //         "markdown",
+  //         "json",
+  //         "jsonc",
+  //         "css",
+  //         "scss"
+  //       ]
+  //     }
+  //   }
+  // }
 }
