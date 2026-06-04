@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge, Button, Flex, Input, Modal, Skeleton, Tooltip } from '@dolanske/vui'
+import { Badge, Button, ButtonGroup, Flex, Input, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -12,13 +12,23 @@ const { channelList, channelListLoading, listChannels, joinChannel } = useIrcCha
 
 const search = ref('')
 
+type SortBy = 'name' | 'users'
+const sortBy = ref<SortBy>('name')
+const sortAsc = ref(true)
+
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  if (!q)
-    return channelList.value
-  return channelList.value.filter(
-    c => c.name.toLowerCase().includes(q) || c.topic.toLowerCase().includes(q),
-  )
+  const list = q
+    ? channelList.value.filter(
+        c => c.name.toLowerCase().includes(q) || c.topic.toLowerCase().includes(q),
+      )
+    : channelList.value
+  return [...list].sort((a, b) => {
+    const cmp = sortBy.value === 'name'
+      ? a.name.localeCompare(b.name)
+      : a.userCount - b.userCount
+    return sortAsc.value ? cmp : -cmp
+  })
 })
 
 // IRC channel names: no spaces, commas, or bell; starts with # (or we prefix it)
@@ -61,19 +71,31 @@ function join(name: string) {
     <template #header>
       <Flex y-center x-between expand>
         <h4>Browse channels</h4>
-        <Button square plain size="s" aria-label="Refresh channel list" :disabled="channelListLoading" @click="listChannels">
-          <Icon name="ph:arrows-clockwise" size="16" />
-        </Button>
+        <Flex gap="xxs" y-center>
+          <ButtonGroup>
+            <Button :variant="sortBy === 'name' ? 'fill' : 'gray'" size="s" @click="sortBy = 'name'">
+              Name
+            </Button>
+            <Button :variant="sortBy === 'users' ? 'fill' : 'gray'" size="s" @click="sortBy = 'users'">
+              Users
+            </Button>
+          </ButtonGroup>
+          <Button square plain size="s" :aria-label="sortAsc ? 'Sort descending' : 'Sort ascending'" @click="sortAsc = !sortAsc">
+            <Icon :name="sortAsc ? 'ph:sort-ascending' : 'ph:sort-descending'" size="13" />
+          </Button>
+        </Flex>
       </Flex>
     </template>
 
     <Flex column gap="s" expand>
-      <Flex y-center gap="xs" expand>
+      <Flex y-center gap="xxs" expand>
+        <Button square outline aria-label="Refresh channel list" :disabled="channelListLoading" @click="listChannels">
+          <Icon name="ph:arrows-clockwise" size="16" />
+        </Button>
         <Input v-model="search" expand placeholder="Search or enter a channel name..." @keydown.enter="canConnect && connectToInput()" />
         <Tooltip>
           <Button
             square
-            plain
             aria-label="Connect to channel"
             :disabled="!canConnect"
             :class="canConnect ? 'vui-button-accent' : 'vui-button-accent-weak'"
@@ -171,7 +193,6 @@ function join(name: string) {
     gap: var(--space-xxs);
     width: 100%;
     min-width: 0;
-    overflow: hidden;
     padding: var(--space-xs) var(--space-s);
     border: none;
     background: transparent;

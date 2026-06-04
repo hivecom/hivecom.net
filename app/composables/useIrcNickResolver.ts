@@ -1,19 +1,23 @@
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
+import { useCache } from '@/composables/useCache'
 
 export interface ResolvedNick {
   id: string
   username: string
 }
 
-// Module-level singletons - nick lookups persist for the session and are shared
+const NICK_TTL = 5 * 60 * 1000 // 5 minutes
+
+// Module-level singletons - reactive state and in-flight dedup are shared
 // across all components that call useIrcNickResolver().
-const _cache = new Map<string, ResolvedNick | null>()
 const _pending = new Set<string>()
 const _resolved = ref<Map<string, ResolvedNick | null>>(new Map())
 
 export function useIrcNickResolver() {
   const supabase = useSupabaseClient<Database>()
+  // Per-instance cache handle; all instances share the same localStorage keys.
+  const cache = useCache({ storagePrefix: 'hivecom:cache:irc:' })
 
   async function resolve(nicks: string[]) {
     if (!nicks.length)
@@ -21,26 +25,25 @@ export function useIrcNickResolver() {
 
     const normalized = [...new Set(nicks.map(n => n.toLowerCase()).filter(Boolean))]
 
-    // Sync any already-cached entries into the reactive ref immediately.
+    // Seed from localStorage cache before hitting the network.
     let changed = false
     const next = new Map(_resolved.value)
     for (const n of normalized) {
-      if (_cache.has(n) && !next.has(n)) {
-        next.set(n, _cache.get(n) ?? null)
+      if (!next.has(n) && cache.has(`nick:${n}`)) {
+        next.set(n, cache.get<ResolvedNick>(`nick:${n}`))
         changed = true
       }
     }
     if (changed)
       _resolved.value = next
 
-    const toFetch = normalized.filter(n => !_cache.has(n) && !_pending.has(n))
+    const toFetch = normalized.filter(n => !_resolved.value.has(n) && !_pending.has(n))
     if (!toFetch.length)
       return
 
     toFetch.forEach(n => _pending.add(n))
 
     try {
-      // Use ilike (no wildcards) for case-insensitive exact username matching.
       const orFilter = toFetch.map(n => `username.ilike.${n}`).join(',')
       const { data, error } = await supabase
         .from('profiles')
@@ -59,7 +62,9 @@ export function useIrcNickResolver() {
       const final = new Map(_resolved.value)
       for (const nick of toFetch) {
         const entry = found.get(nick) ?? null
-        _cache.set(nick, entry)
+        // Persist result (including null misses) so subsequent page loads skip
+        // the network round-trip.
+        cache.set(`nick:${nick}`, entry, NICK_TTL)
         final.set(nick, entry)
         _pending.delete(nick)
       }

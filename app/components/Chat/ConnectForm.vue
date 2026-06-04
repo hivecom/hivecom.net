@@ -46,7 +46,7 @@ function onSignedOutConnect() {
             Connect to chat
           </h4>
           <p class="chat-connect__hint">
-            You'll join as <strong>{{ user.username }}</strong> using your Hivecom account.
+            You'll join <strong class="text-s">{{ inputChannel }}</strong> as <strong class="text-s">{{ user.username }}</strong> using your Hivecom account.
           </p>
         </Flex>
         <Flex y-center gap="s" wrap>

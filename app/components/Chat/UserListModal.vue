@@ -71,7 +71,9 @@ function handlePm(name: string) {
         expand
         gap="xs"
         class="user-list-modal__row"
-        :class="{ 'user-list-modal__row--self': user.name === nick }"
+        :class="{ 'user-list-modal__row--self': user.name === nick,
+                  'user-list-modal__row--clickable': user.name !== nick }"
+        @click="user.name !== nick && handlePm(user.name)"
       >
         <!-- Role dot -->
         <span class="user-list-modal__role-dot">
@@ -101,7 +103,7 @@ function handlePm(name: string) {
         </Flex>
 
         <!-- Actions -->
-        <Flex gap="xxs" class="user-list-modal__actions" :class="{ 'user-list-modal__actions--visible': isMobile }">
+        <Flex gap="xxs" class="user-list-modal__actions" :class="{ 'user-list-modal__actions--visible': isMobile }" @click.stop>
           <NuxtLink
             v-if="resolvedUser(user.name)"
             :to="`/profile/${resolvedUser(user.name)!.username}`"
@@ -154,6 +156,10 @@ function handlePm(name: string) {
     padding: var(--space-xs) var(--space-s);
     border-radius: var(--border-radius-s);
     transition: background-color var(--transition-fast);
+
+    &--clickable {
+      cursor: pointer;
+    }
 
     &:hover {
       background: var(--color-bg-medium);

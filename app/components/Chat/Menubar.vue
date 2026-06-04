@@ -3,7 +3,6 @@ import { Button, DropdownItem, DropdownTitle, Flex, Menubar, MenuItem, Sheet } f
 import { computed, ref } from 'vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import ChatUserListModal from './UserListModal.vue'
 
 defineProps<{
   // Compact surfaces (the navbar sheet) have no sidebar, so hide its toggle.
@@ -15,7 +14,6 @@ const { isConnected, connState, connect, disconnect, clearMessages, sidebarHidde
 const isMobile = useBreakpoint('<s')
 
 const connectionDrawerOpen = ref(false)
-const usersModalOpen = ref(false)
 
 const latencyLabel = computed(() => {
   if (latencyMs.value == null)
@@ -85,12 +83,6 @@ function run(action: () => void) {
             </template>
             Browse channels
           </DropdownItem>
-          <DropdownItem @click="() => { usersModalOpen = true; connectionDrawerOpen = false }">
-            <template #icon>
-              <Icon name="ph:users" />
-            </template>
-            Users
-          </DropdownItem>
         </template>
 
         <DropdownTitle>About</DropdownTitle>
@@ -153,12 +145,6 @@ function run(action: () => void) {
                 </template>
                 Browse channels
               </DropdownItem>
-              <DropdownItem @click="run(() => usersModalOpen = true)">
-                <template #icon>
-                  <Icon name="ph:users" />
-                </template>
-                Users
-              </DropdownItem>
             </template>
 
             <DropdownTitle>About</DropdownTitle>
@@ -176,8 +162,6 @@ function run(action: () => void) {
       </MenuItem>
     </Menubar>
   </Flex>
-
-  <ChatUserListModal :open="usersModalOpen" @close="usersModalOpen = false" />
 </template>
 
 <style lang="scss" scoped>

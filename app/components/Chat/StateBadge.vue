@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Badge, BadgeGroup, Tooltip } from '@dolanske/vui'
 import { useIrcChat } from '@/composables/useIrcChat'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const { connState, latencyMs } = useIrcChat()
+const isMobile = useBreakpoint('<s')
 
 const variant = computed(() => ({
   disconnected: 'neutral' as const,
@@ -26,7 +28,7 @@ const latencyLabel = computed(() => {
 </script>
 
 <template>
-  <Tooltip :disabled="connState !== 'connected' || latencyLabel == null">
+  <Tooltip :disabled="isMobile || connState !== 'connected' || latencyLabel == null">
     <BadgeGroup :gap="0">
       <Badge size="s" :variant="variant">
         {{ label }}

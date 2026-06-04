@@ -72,6 +72,9 @@ const layoutName = computed(() => {
   if (route.path === '/')
     return 'landing'
 
+  if (route.path.startsWith('/chat'))
+    return 'no-footer'
+
   return 'default'
 })
 

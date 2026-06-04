@@ -8,6 +8,7 @@ defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 const isMobile = useBreakpoint('<s')
+const isDev = import.meta.dev
 const { settings } = useDataUserSettings()
 
 const keywordDraft = ref('')
@@ -58,6 +59,7 @@ const options = [
     description: 'Display the time each message was sent. Hidden automatically in compact mode.',
     hideOnMobile: true,
   },
+
 ] as const
 
 async function toggleBrowserNotifications(value: boolean) {
@@ -107,6 +109,24 @@ async function toggleBrowserNotifications(value: boolean) {
           <span class="chat-settings__desc">{{ option.description }}</span>
         </Flex>
         <Switch v-model="settings[option.key]" />
+      </Flex>
+
+      <Flex v-if="isDev" y-center x-between expand>
+        <Flex column gap="xxs" class="chat-settings__text">
+          <span class="chat-settings__label">Tag message display</span>
+          <span class="chat-settings__desc">Control which IRCv3 TAGMSG events appear in the message log. Known events (typing, reactions) are always hidden.</span>
+        </Flex>
+        <ButtonGroup>
+          <Button :variant="settings.chat_show_tag_messages === 'none' ? 'accent' : 'gray'" @click="settings.chat_show_tag_messages = 'none'">
+            None
+          </Button>
+          <Button :variant="settings.chat_show_tag_messages === 'unknown' ? 'accent' : 'gray'" @click="settings.chat_show_tag_messages = 'unknown'">
+            Unknown
+          </Button>
+          <Button :variant="settings.chat_show_tag_messages === 'all' ? 'accent' : 'gray'" @click="settings.chat_show_tag_messages = 'all'">
+            All
+          </Button>
+        </ButtonGroup>
       </Flex>
 
       <Flex y-center x-between gap="m" expand>

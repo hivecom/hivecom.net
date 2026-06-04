@@ -1,10 +1,37 @@
 <script setup lang="ts">
-import { Button, Flex, Input } from '@dolanske/vui'
+import { Button, Flex, Input, Modal } from '@dolanske/vui'
+import ChatUserListModal from '@/components/Chat/UserListModal.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { nickColor, useIrcChat } from '@/composables/useIrcChat'
 
-const { inputMessage, activeName, activeBuffer, canChat, users, nick, sendMessage } = useIrcChat()
+const props = defineProps<{
+  compact?: boolean
+}>()
+
+const { inputMessage, activeName, activeBuffer, canChat, users, nick, sendMessage, replyTarget, clearReply } = useIrcChat()
 const { settings } = useDataUserSettings()
+
+const infoOpen = ref(false)
+const usersOpen = ref(false)
+
+const URL_RE = /(https?:\/\/\S+)/g
+
+interface TopicSegment { type: 'text' | 'link', value: string }
+
+function topicSegments(topic: string): TopicSegment[] {
+  const out: TopicSegment[] = []
+  let last = 0
+  for (const m of topic.matchAll(new RegExp(URL_RE.source, 'g'))) {
+    const idx = m.index ?? 0
+    if (idx > last)
+      out.push({ type: 'text', value: topic.slice(last, idx) })
+    out.push({ type: 'link', value: m[0] })
+    last = idx + m[0].length
+  }
+  if (last < topic.length)
+    out.push({ type: 'text', value: topic.slice(last) })
+  return out
+}
 
 const placeholder = computed(() => {
   if (!canChat.value)
@@ -131,7 +158,7 @@ function accept(item: Suggestion) {
   else {
     // Address the user with a colon when the mention is the whole message.
     const isStandalone = before.trim() === '' && after.trim() === ''
-    insert = isStandalone ? `${item.value}: ` : `${item.value} `
+    insert = isStandalone ? `@${item.value}: ` : `@${item.value} `
   }
 
   inputMessage.value = before + insert + after
@@ -145,6 +172,27 @@ function accept(item: Suggestion) {
       input.setSelectionRange(nextCaret, nextCaret)
     }
   })
+}
+
+// --- command history (up/down navigation) ----------------------------------
+
+const messageHistory = ref<string[]>([])
+const historyIndex = ref(-1)
+const draftBuffer = ref('')
+
+function pushHistory(msg: string) {
+  if (msg && msg !== messageHistory.value[messageHistory.value.length - 1])
+    messageHistory.value.push(msg)
+  historyIndex.value = -1
+  draftBuffer.value = ''
+}
+
+function sendWithHistory() {
+  const msg = inputMessage.value.trim()
+  if (msg)
+    pushHistory(msg)
+  sendMessage()
+  historyIndex.value = -1
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -170,8 +218,32 @@ function onKeydown(event: KeyboardEvent) {
     }
   }
 
-  if (event.key === 'Enter')
-    sendMessage()
+  if (event.key === 'Enter') {
+    sendWithHistory()
+    return
+  }
+
+  if (event.key === 'ArrowUp') {
+    const hist = messageHistory.value
+    if (!hist.length)
+      return
+    event.preventDefault()
+    if (historyIndex.value === -1)
+      draftBuffer.value = inputMessage.value
+    historyIndex.value = Math.min(historyIndex.value + 1, hist.length - 1)
+    inputMessage.value = hist[hist.length - 1 - historyIndex.value]!
+    return
+  }
+
+  if (event.key === 'ArrowDown') {
+    if (historyIndex.value === -1)
+      return
+    event.preventDefault()
+    historyIndex.value--
+    inputMessage.value = historyIndex.value === -1
+      ? draftBuffer.value
+      : messageHistory.value[messageHistory.value.length - 1 - historyIndex.value]!
+  }
 }
 
 function userStyle(name: string) {
@@ -181,12 +253,25 @@ function userStyle(name: string) {
 }
 
 // Close the popup when switching buffers so stale entries never linger.
-watch(activeName, closeSuggestions)
+watch(activeName, () => {
+  closeSuggestions()
+  historyIndex.value = -1
+  draftBuffer.value = ''
+})
+watch(activeName, clearReply)
 </script>
 
 <template>
-  <Flex gap="s" expand y-stretch class="chat-composer">
-    <div class="chat-composer__field">
+  <Flex class="chat-composer" expand :gap="0">
+    <Flex v-if="props.compact" :gap="0" class="chat-composer__compact-actions">
+      <Button square :disabled="!activeBuffer?.topic" aria-label="Channel info" class="chat-composer__compact-btn" @click="infoOpen = true">
+        <Icon name="ph:info" size="16" />
+      </Button>
+      <Button square :disabled="activeBuffer?.kind !== 'channel'" aria-label="Users" class="chat-composer__compact-btn" @click="usersOpen = true">
+        <Icon name="ph:users" size="16" />
+      </Button>
+    </Flex>
+    <Flex class="chat-composer__field" expand column :gap="0">
       <ul v-if="open" class="chat-composer__suggestions">
         <li v-for="(item, index) in suggestions" :key="item.value">
           <button
@@ -202,26 +287,95 @@ watch(activeName, closeSuggestions)
           </button>
         </li>
       </ul>
-      <Input
-        ref="inputComp"
-        v-model="inputMessage"
-        expand
-        class="chat-composer__input"
-        :disabled="!canChat"
-        :placeholder="placeholder"
-        @input="onInput"
-        @keydown="onKeydown"
-        @focusout="closeSuggestions"
-      />
-    </div>
-    <Button variant="accent" :disabled="disabled" @click="sendMessage">
-      Send
-    </Button>
+      <Flex v-if="replyTarget" y-center gap="xs" class="chat-composer__reply" expand>
+        <Icon name="ph:arrow-bend-up-left" size="13" class="chat-composer__reply-icon" />
+        <span class="chat-composer__reply-label">
+          <span v-if="replyTarget.from" class="chat-composer__reply-nick text-s">{{ replyTarget.from }}</span>
+          <span class="chat-composer__reply-text text-s">{{ replyTarget.text }}</span>
+        </span>
+        <Button plain square class="chat-composer__reply-dismiss" @click="clearReply">
+          <Icon name="ph:x" size="13" />
+        </Button>
+      </Flex>
+      <Flex :gap="0" y-stretch class="chat-composer__input-row" expand>
+        <Input
+          ref="inputComp"
+          v-model="inputMessage"
+          expand
+          :disabled="!canChat"
+          :placeholder="placeholder"
+          class="text-s chat-composer__input"
+          @input="onInput"
+          @keydown="onKeydown"
+          @focusout="closeSuggestions"
+        />
+        <Button square :disabled="disabled" class="chat-composer__send" @click="sendWithHistory">
+          <Icon name="ph:paper-plane-tilt" size="16" />
+        </Button>
+      </Flex>
+    </Flex>
   </Flex>
+
+  <ChatUserListModal v-if="props.compact" :open="usersOpen" @close="usersOpen = false" />
+
+  <Modal v-if="props.compact && activeBuffer?.kind === 'channel'" :open="infoOpen" size="m" @close="infoOpen = false">
+    <template #header>
+      <h4>{{ activeBuffer.name }}</h4>
+    </template>
+    <p v-if="activeBuffer.topic" class="chat-composer__modal-topic text-s">
+      <template v-for="(seg, i) in topicSegments(activeBuffer.topic)" :key="i">
+        <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-composer__modal-link">{{ seg.value }}</a>
+        <template v-else>
+          {{ seg.value }}
+        </template>
+      </template>
+    </p>
+    <p v-else class="text-color-lighter">
+      No topic set.
+    </p>
+  </Modal>
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .chat-composer {
+  &__compact-actions {
+    align-self: stretch;
+    border-right: 1px solid var(--color-border);
+  }
+
+  &__compact-btn {
+    flex: 1;
+    width: var(--interactive-el-height);
+    border-radius: 0;
+  }
+
+  &__modal-topic {
+    line-height: 1.6;
+    word-break: break-word;
+  }
+
+  &__modal-link {
+    color: var(--color-accent);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  &__input-row {
+    :deep(.vui-input) {
+      border-radius: var(--border-radius-s) 0 0 var(--border-radius-s);
+    }
+  }
+
+  &__send {
+    border-left: none;
+    border-radius: 0 var(--border-radius-s) var(--border-radius-s) 0;
+  }
+
   &__field {
     position: relative;
     flex: 1;
@@ -229,7 +383,57 @@ watch(activeName, closeSuggestions)
   }
 
   &__input {
-    width: 100%;
+    :deep(.vui-input-style) {
+      border-left: 0px;
+      border-radius: 0;
+    }
+  }
+
+  @media (max-width: #{$breakpoint-s - 1}) {
+    &__input {
+      height: 64px;
+    }
+  }
+
+  &__reply {
+    padding: var(--space-xxs) var(--space-xs);
+    background: var(--color-bg-medium);
+    border: 1px solid var(--color-border);
+    border-bottom: none;
+    border-radius: var(--border-radius-s) var(--border-radius-s) 0 0;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-light);
+  }
+
+  &__reply-icon {
+    flex-shrink: 0;
+    color: var(--color-text-lighter);
+  }
+
+  &__reply-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &__reply-nick {
+    font-weight: 600;
+    margin-right: var(--space-xxs);
+  }
+
+  &__reply-text {
+    color: var(--color-text-lighter);
+  }
+
+  &__reply-dismiss {
+    flex-shrink: 0;
+    color: var(--color-text-lighter);
+
+    &:hover {
+      color: var(--color-text);
+    }
   }
 
   &__suggestions {

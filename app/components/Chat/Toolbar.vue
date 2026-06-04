@@ -42,7 +42,7 @@ const identityHasIssues = computed(() => {
     <ChatMenubar :compact="compact" />
     <Flex y-center gap="s">
       <ChatStateBadge v-if="!isMobile" />
-      <Tooltip v-if="userId">
+      <Tooltip v-if="userId" :disabled="isMobile">
         <div class="chat-toolbar__identity-btn">
           <Button square plain aria-label="Identity" class="vui-button-accent-weak vui-button-rounded" @click="identityOpen = true">
             <Icon name="ph:identification-card" size="18" />
@@ -53,7 +53,7 @@ const identityHasIssues = computed(() => {
           <p>Identity</p>
         </template>
       </Tooltip>
-      <Tooltip>
+      <Tooltip :disabled="isMobile">
         <Button square plain aria-label="Chat settings" class="vui-button-accent-weak vui-button-rounded" @click="settingsOpen = true">
           <Icon name="ph:gear-six" size="18" />
         </Button>
@@ -61,7 +61,7 @@ const identityHasIssues = computed(() => {
           <p>Chat settings</p>
         </template>
       </Tooltip>
-      <Tooltip v-if="expandable">
+      <Tooltip v-if="expandable" :disabled="isMobile">
         <NuxtLink to="/chat" @click="emit('collapse')">
           <Button square plain aria-label="Expand chat" class="vui-button-accent-weak vui-button-rounded">
             <Icon name="ph:arrows-out" size="18" />
