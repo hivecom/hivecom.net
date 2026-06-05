@@ -48,7 +48,7 @@ const stars = shallowRef<CSSProperties[]>([])
 
 const { y } = useWindowScroll()
 
-onMounted(() => {
+onBeforeMount(() => {
   const _stars = []
   for (let i = 0; i < STAR_COUNT; i++) {
     const size = Math.random() * 2 + 0.5
@@ -80,7 +80,7 @@ onMounted(() => {
     <GlowGroup>
       <div class="container-m">
         <section class="hero ">
-          <GlowCard>
+          <GlowCard class="glow-card-home">
             <div class="home-card centered home-card--about typeset">
               <span class="corner-text">##########</span>
               <span class="corner-text right">DLN // ZLS</span>
@@ -118,13 +118,15 @@ onMounted(() => {
 
       <div class="container-m ">
         <section class="home-events">
-          <EventSmall v-for="event in events" :key="event.id" :data="event" :no-glow="false" />
+          <EventSmall v-for="event in events" :key="event.id" :data="event" :no-glow="false" class="glow-card-home" />
+          <div class="card-pointer top-right" data-text="Coming up" />
+          <div class="card-pointer bottom-left" data-text="What we're up to" />
         </section>
       </div>
 
       <section class="">
-        <div class="container-m">
-          <GlowCard>
+        <div class="container-m relative">
+          <GlowCard class="glow-card-home">
             <div class="home-card home-card--forum">
               <Marquee :speed="MARQUEE_SPEED" direction="left">
                 <p>
@@ -145,6 +147,7 @@ onMounted(() => {
               </Marquee>
             </div>
           </GlowCard>
+          <div class="card-pointer bottom-right" data-text="Forum" />
         </div>
       </section>
     </GlowGroup>
@@ -173,6 +176,88 @@ onMounted(() => {
 <style lang="scss" scoped>
 @use '@/assets/mixins' as *;
 
+.glow-card-home {
+  corner-shape: squircle;
+  border-radius: var(--border-radius-l);
+
+  // In case it's nested like in EventSmall
+  :deep(.glow-card) {
+    corner-shape: squircle;
+    border-radius: var(--border-radius-l);
+  }
+}
+
+.card-pointer {
+  position: absolute;
+  width: 317px;
+  height: 99px;
+
+  &:after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg width='317' height='99' viewBox='0 0 317 99' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M298.353 5.70707H93.3525L0.352539 97.9556M305.352 5.70709L310.352 10.7071L315.352 5.70709L310.352 0.707092L305.352 5.70709Z' stroke='%23282828'/%3E%3C/svg%3E");
+  }
+
+  &:before {
+    content: attr(data-text);
+    position: absolute;
+    font-size: var(--font-size-xxl);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+    font-size: var(--font-size-m);
+    text-transform: uppercase;
+    color: var(--color-text-lightest);
+    line-height: 16px;
+    height: 16px;
+  }
+
+  &.top-right {
+    left: 100%;
+    bottom: 100%;
+
+    &:before {
+      transform-origin: top left;
+      right: 0;
+      transform: translateX(100%) translateY(50%) rotate(90deg);
+      top: 16px;
+    }
+  }
+
+  &.bottom-left {
+    top: 100%;
+    right: 100%;
+
+    &:after {
+      transform: scale(-1);
+    }
+
+    &:before {
+      transform-origin: bottom left;
+      left: 0;
+      transform: translateX(14px) rotate(-90deg);
+      bottom: 24px;
+    }
+  }
+
+  &.bottom-right {
+    top: 100%;
+    left: 100%;
+
+    &:after {
+      transform: scaleY(-1);
+    }
+
+    &:before {
+      transform-origin: bottom right;
+      right: 0;
+      transform: translateX(-14px) rotate(90deg);
+      bottom: 24px;
+    }
+  }
+}
+
 .star {
   --star-animation-offset: 0ms;
   --star-animation-duration: 2000ms;
@@ -188,6 +273,7 @@ onMounted(() => {
   animation: star-flicker 2000ms infinite linear;
   animation-delay: var(--star-animation-offset);
   animation-duration: var(--star-animation-duration);
+  z-index: -1;
 }
 
 @keyframes star-flicker {
@@ -198,7 +284,7 @@ onMounted(() => {
   75%,
   100% {
     opacity: calc(var(--star-base-opacity) * 1);
-    background: rgb(255, 255, 255);
+    background: white;
     filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
   }
 
@@ -244,6 +330,10 @@ onMounted(() => {
   flex-direction: column;
   gap: 128px;
   width: 100%;
+
+  * {
+    user-select: none;
+  }
 }
 
 .home-join {
@@ -303,6 +393,7 @@ onMounted(() => {
   grid-template: 'main sideA' 'main sideB';
   gap: var(--space-m);
   z-index: 2;
+  position: relative;
 
   &:hover a {
     background-color: var(--color-bg-medium);
@@ -491,4 +582,8 @@ onMounted(() => {
     z-index: -1;
   }
 }
+
+// .div {
+
+// }
 </style>
