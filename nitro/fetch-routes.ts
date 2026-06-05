@@ -161,7 +161,7 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
     ),
 
     fetchIds<{ id: number, created_at: string, modified_at: string | null }>(
-      'gameservers',
+      'network_gameservers',
       'id,created_at,modified_at',
       item => ({
         route: `/servers/gameservers/${item.id}`,
