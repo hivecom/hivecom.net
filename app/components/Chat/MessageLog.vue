@@ -735,7 +735,7 @@ function lastReactableMsg(msgs: ChatMessage[]): ChatMessage | null {
 function mention(name: string) {
   const clean = cleanNick(name)
   const current = inputMessage.value.trim()
-  inputMessage.value = current ? `${current} ${clean}: ` : `${clean}: `
+  inputMessage.value = current ? `${current} @${clean} ` : `@${clean}: `
   closeMenu()
   mobileMenuOpen.value = false
 }

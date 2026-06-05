@@ -26,7 +26,7 @@ const displayUsers = computed(() =>
 
 function mention(name: string) {
   const current = inputMessage.value.trim()
-  inputMessage.value = current ? `${current} ${name}: ` : `${name}: `
+  inputMessage.value = current ? `${current} @${name} ` : `@${name}: `
 }
 
 function userStyle(name: string) {

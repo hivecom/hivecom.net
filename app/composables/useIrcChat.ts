@@ -121,6 +121,8 @@ export interface ChatBuffer {
   historyAnchorMsgid?: string
   /** Timestamp (ISO) to anchor the next BEFORE request on when no msgid is available. */
   historyAnchorTs?: string
+  /** Active channel mode flags (e.g. 'k' = password, 'i' = invite-only, 'm' = moderated). */
+  modes?: Set<string>
 }
 
 export interface ChannelListEntry {
@@ -179,6 +181,10 @@ const accountAlwaysOn = ref<boolean | null>(null)
 const channelList = ref<ChannelListEntry[]>([])
 const channelListLoading = ref(false)
 const channelBrowserOpen = ref(false)
+// When non-null, a password-protected channel denied our JOIN and we need a key.
+const channelKeyPrompt = ref<string | null>(null)
+// True when the most recent key attempt was rejected (475).
+const channelKeyError = ref(false)
 
 // Form / draft state, shared so both surfaces edit the same values.
 const inputNick = ref('')
@@ -330,7 +336,7 @@ function getBuffer(name: string, kind: BufferKind): ChatBuffer {
   const existing = findBuffer(name)
   if (existing)
     return existing
-  const buf: ChatBuffer = { name, kind, messages: [], users: [], unread: 0, mentions: 0, joined: false, topic: '' }
+  const buf: ChatBuffer = { name, kind, messages: [], users: [], unread: 0, mentions: 0, joined: false, topic: '', modes: new Set() }
   buffers.value = [...buffers.value, buf]
   return buf
 }
@@ -535,6 +541,10 @@ function addUser(buf: ChatBuffer, raw: string) {
   buf.users = [...buf.users, { name, prefix }].sort(sortUsers)
 }
 
+// List modes that have a param but represent a list entry (ban, exception, invite-exception).
+// These are tracked per-entry elsewhere and should not be stored as a boolean channel flag.
+const LIST_MODES = new Set(['b', 'e', 'I'])
+
 /** Apply a MODE change's prefix mutations to the matching channel members. */
 function applyModeChanges(buf: ChatBuffer, args: string[]) {
   const modeStr = args[0]
@@ -543,6 +553,8 @@ function applyModeChanges(buf: ChatBuffer, args: string[]) {
   let adding = true
   let paramIdx = 1
   let changed = false
+  let modesChanged = false
+  buf.modes ??= new Set()
   for (const ch of modeStr) {
     if (ch === '+') {
       adding = true
@@ -568,12 +580,29 @@ function applyModeChanges(buf: ChatBuffer, args: string[]) {
       user.prefix = normalizePrefix([...set].join(''))
       changed = true
     }
+    else if (LIST_MODES.has(ch)) {
+      paramIdx++
+    }
     else if (PARAM_MODES_ALWAYS.has(ch) || (adding && PARAM_MODES_ON_SET.has(ch))) {
       paramIdx++
+      if (adding)
+        buf.modes.add(ch)
+      else
+        buf.modes.delete(ch)
+      modesChanged = true
+    }
+    else {
+      if (adding)
+        buf.modes.add(ch)
+      else
+        buf.modes.delete(ch)
+      modesChanged = true
     }
   }
   if (changed)
     buf.users = [...buf.users].sort(sortUsers)
+  if (modesChanged)
+    buf.modes = new Set(buf.modes)
 }
 
 function removeUserEverywhere(name: string) {
@@ -1028,6 +1057,10 @@ function handleMessage(raw: string) {
       const buf = getBuffer(channel, 'channel')
       if (nickFrom === nick.value) {
         buf.joined = true
+        if (channelKeyPrompt.value?.toLowerCase() === channel.toLowerCase()) {
+          channelKeyPrompt.value = null
+          channelKeyError.value = false
+        }
         // Only steal focus for the channel we actually intend to land on. The server
         // can auto-join several channels on reconnect; flipping the active buffer
         // through each one would let the read watcher mark them all as read. When no
@@ -1340,6 +1373,14 @@ function handleMessage(raw: string) {
     case '333': // RPL_TOPICWHOTIME - topic setter + timestamp; silently consumed
       break
 
+    case 'TOPIC': { // live topic change
+      const channel = params[0] ?? SERVER_BUFFER
+      const buf = findBuffer(channel)
+      if (buf)
+        buf.topic = params[1] ?? ''
+      break
+    }
+
     case 'NOTICE': {
       const noticeTgt = params[0] ?? ''
       const noticeText = params[params.length - 1] ?? ''
@@ -1508,6 +1549,25 @@ function handleMessage(raw: string) {
       break
     }
 
+    case '473': { // ERR_INVITEONLYCHAN - channel is invite-only
+      const invChannel = params[1] ?? ''
+      if (invChannel) {
+        closeBuffer(invChannel)
+        addServer({ type: 'error', text: `Cannot join ${invChannel} - invite only. You need to be invited by a channel operator.` })
+      }
+      break
+    }
+
+    case '475': { // ERR_BADCHANNELKEY - channel requires a key
+      const keyChannel = params[1] ?? ''
+      if (keyChannel) {
+        closeBuffer(keyChannel)
+        channelKeyError.value = channelKeyPrompt.value !== null
+        channelKeyPrompt.value = keyChannel
+      }
+      break
+    }
+
     default:
       if (/^\d+$/.test(command)) {
         // Unhandled numeric reply - show the text portion in the active buffer.
@@ -1657,9 +1717,9 @@ function setActive(name: string) {
   }
 }
 
-function joinChannel(name: string) {
+function joinChannel(name: string, key?: string) {
   const channel = name.startsWith('#') ? name : `#${name}`
-  send(`JOIN ${channel}`)
+  send(key ? `JOIN ${channel} ${key}` : `JOIN ${channel}`)
   getBuffer(channel, 'channel')
   setActive(channel)
 }
@@ -1698,8 +1758,10 @@ function handleCommand(line: string) {
   switch ((cmd ?? '').toLowerCase()) {
     case 'join':
     case 'j':
-      if (arg)
-        joinChannel(arg.split(' ')[0] ?? '')
+      if (arg) {
+        const parts = arg.split(' ')
+        joinChannel(parts[0] ?? '', parts[1])
+      }
       break
     case 'part':
     case 'leave':
@@ -1730,6 +1792,84 @@ function handleCommand(line: string) {
       if (arg)
         send(`NICK ${arg.split(' ')[0]}`)
       break
+    case 'topic': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      if (arg)
+        send(`TOPIC ${channel} :${arg}`)
+      else
+        send(`TOPIC ${channel}`)
+      break
+    }
+    case 'op': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      const target = rest[0] ?? nick.value
+      send(`MODE ${channel} +o ${target}`)
+      break
+    }
+    case 'deop': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      const target = rest[0] ?? nick.value
+      send(`MODE ${channel} -o ${target}`)
+      break
+    }
+    case 'voice': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      const target = rest[0] ?? nick.value
+      send(`MODE ${channel} +v ${target}`)
+      break
+    }
+    case 'devoice': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      const target = rest[0] ?? nick.value
+      send(`MODE ${channel} -v ${target}`)
+      break
+    }
+    case 'kick': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      const target = rest[0]
+      if (!target)
+        break
+      const reason = rest.slice(1).join(' ')
+      send(reason ? `KICK ${channel} ${target} :${reason}` : `KICK ${channel} ${target}`)
+      break
+    }
+    case 'invite': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      const target = rest[0]
+      if (!target)
+        break
+      send(`INVITE ${target} ${channel}`)
+      break
+    }
+    case 'mode': {
+      // If the first arg is already a channel or nick target, forward as-is.
+      // Otherwise inject the active channel so `/mode +m` works in-context.
+      const firstArg = rest[0] ?? ''
+      if (firstArg.startsWith('#') || firstArg.startsWith('&') || !firstArg) {
+        if (arg)
+          send(`MODE ${arg}`)
+      }
+      else {
+        const channel = activeName.value
+        if (channel && findBuffer(channel)?.kind === 'channel')
+          send(`MODE ${channel} ${arg}`)
+      }
+      break
+    }
     default:
       // Forward unknown commands directly to the server (e.g. /whois, /mode, /oper, etc.)
       if (cmd)
@@ -1970,6 +2110,8 @@ export function useIrcChat() {
     channelList,
     channelListLoading,
     channelBrowserOpen,
+    channelKeyPrompt,
+    channelKeyError,
     listChannels,
     // account claim state
     accountEmail,

@@ -8,6 +8,7 @@ import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import ChatChannelHeader from './ChannelHeader.vue'
 import ChatChannelList from './ChannelList.vue'
+import ChatChannelPasswordModal from './ChannelPasswordModal.vue'
 import ChatComposer from './Composer.vue'
 import ChatConnectForm from './ConnectForm.vue'
 import ChatConnecting from './Connecting.vue'
@@ -42,7 +43,7 @@ const { settings } = useDataUserSettings()
 
 const isMobile = useBreakpoint('<s')
 
-const { connState, isConnected, ensureNick, clearInputNick, activeBuffer, sidebarHidden, buffers, connect, disconnect } = useIrcChat()
+const { connState, isConnected, ensureNick, clearInputNick, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt } = useIrcChat()
 
 const isCompactLayout = computed(() => props.compact || isMobile.value || sidebarHidden.value)
 
@@ -151,6 +152,8 @@ watch(user, (u, prev) => {
         </Flex>
       </Transition>
     </Flex>
+
+    <ChatChannelPasswordModal :channel="channelKeyPrompt" @close="channelKeyPrompt = null" />
   </section>
 </template>
 

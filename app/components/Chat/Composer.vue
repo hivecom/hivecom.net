@@ -8,7 +8,7 @@ const props = defineProps<{
   compact?: boolean
 }>()
 
-const { inputMessage, activeName, activeBuffer, canChat, users, nick, sendMessage, replyTarget, clearReply } = useIrcChat()
+const { inputMessage, activeName, activeBuffer, canChat, users, buffers, nick, sendMessage, replyTarget, clearReply } = useIrcChat()
 const { settings } = useDataUserSettings()
 
 const infoOpen = ref(false)
@@ -54,11 +54,19 @@ interface CommandSpec {
 }
 
 const COMMANDS: CommandSpec[] = [
-  { name: 'join', usage: '/join #channel', hint: 'Join a channel' },
+  { name: 'join', usage: '/join #channel [key]', hint: 'Join a channel' },
   { name: 'part', usage: '/part [#channel]', hint: 'Leave the current or named channel' },
   { name: 'query', usage: '/query <nick>', hint: 'Open a private message' },
   { name: 'me', usage: '/me <action>', hint: 'Send an action message' },
   { name: 'nick', usage: '/nick <name>', hint: 'Change your nickname' },
+  { name: 'topic', usage: '/topic [text]', hint: 'Set or view the channel topic' },
+  { name: 'op', usage: '/op [nick]', hint: 'Grant operator status to a user' },
+  { name: 'deop', usage: '/deop [nick]', hint: 'Remove operator status from a user' },
+  { name: 'voice', usage: '/voice [nick]', hint: 'Grant voice to a user' },
+  { name: 'devoice', usage: '/devoice [nick]', hint: 'Remove voice from a user' },
+  { name: 'kick', usage: '/kick <nick> [reason]', hint: 'Kick a user from the channel' },
+  { name: 'invite', usage: '/invite <nick>', hint: 'Invite a user to the channel' },
+  { name: 'mode', usage: '/mode [+/-flags] [args]', hint: 'Set modes on the current channel' },
 ]
 
 interface Suggestion {
@@ -68,7 +76,7 @@ interface Suggestion {
   colored: boolean
 }
 
-type TriggerMode = 'mention' | 'command'
+type TriggerMode = 'mention' | 'command' | 'channel'
 
 const inputComp = ref<InstanceType<typeof Input>>()
 const mode = ref<TriggerMode | null>(null)
@@ -88,6 +96,12 @@ const suggestions = computed<Suggestion[]>(() => {
       .slice(0, MAX_SUGGESTIONS)
       .map(u => ({ value: u.name, label: u.name, colored: true }))
   }
+  if (mode.value === 'channel') {
+    return buffers.value
+      .filter(b => b.kind === 'channel' && b.name.toLowerCase().startsWith(`#${q}`))
+      .slice(0, MAX_SUGGESTIONS)
+      .map(b => ({ value: b.name, label: b.name, hint: b.topic, colored: false }))
+  }
   if (mode.value === 'command') {
     return COMMANDS
       .filter(c => c.name.startsWith(q))
@@ -99,7 +113,13 @@ const suggestions = computed<Suggestion[]>(() => {
 
 const open = computed(() => mode.value !== null && suggestions.value.length > 0)
 
-const triggerIcon = computed(() => (mode.value === 'command' ? 'ph:terminal-window' : 'ph:at'))
+const triggerIcon = computed(() => {
+  if (mode.value === 'command')
+    return 'ph:terminal-window'
+  if (mode.value === 'channel')
+    return 'ph:hash'
+  return 'ph:at'
+})
 
 // Decide which (if any) autocomplete trigger sits immediately left of the caret.
 function detectTrigger(value: string, caret: number) {
@@ -112,13 +132,13 @@ function detectTrigger(value: string, caret: number) {
     return
   }
 
-  // `@mention` is valid at the start or after whitespace, with no inner spaces.
+  // `@mention` and `#channel` are valid at the start or after whitespace, with no inner spaces.
   let i = caret - 1
   while (i >= 0 && !/\s/.test(value[i]!)) {
-    if (value[i] === '@') {
+    if (value[i] === '@' || value[i] === '#') {
       const before = value[i - 1]
       if (i === 0 || (before && /\s/.test(before))) {
-        mode.value = 'mention'
+        mode.value = value[i] === '@' ? 'mention' : 'channel'
         triggerStart.value = i
         query.value = value.slice(i + 1, caret)
         activeIndex.value = 0
@@ -155,6 +175,9 @@ function accept(item: Suggestion) {
   if (mode.value === 'command') {
     insert = `/${item.value} `
   }
+  else if (mode.value === 'channel') {
+    insert = `${item.value} `
+  }
   else {
     // Address the user with a colon when the mention is the whole message.
     const isStandalone = before.trim() === '' && after.trim() === ''
@@ -163,6 +186,79 @@ function accept(item: Suggestion) {
 
   inputMessage.value = before + insert + after
   closeSuggestions()
+
+  const nextCaret = before.length + insert.length
+  nextTick(() => {
+    const input = nativeInput()
+    if (input) {
+      input.focus()
+      input.setSelectionRange(nextCaret, nextCaret)
+    }
+  })
+}
+
+// --- IRC-style tab completion --------------------------------------------
+
+interface TabCycle {
+  matches: string[]
+  index: number
+  wordStart: number
+  wordEnd: number
+  hasAt: boolean
+  hasHash: boolean
+}
+
+let tabCycle: TabCycle | null = null
+
+function tabComplete(event: KeyboardEvent) {
+  event.preventDefault()
+  const el = nativeInput()
+  const value = inputMessage.value
+  const caret = el?.selectionStart ?? value.length
+
+  if (tabCycle) {
+    // Cycle to the next match.
+    tabCycle.index = (tabCycle.index + 1) % tabCycle.matches.length
+  }
+  else {
+    // Find the word immediately before the caret (no spaces).
+    const wordEnd = caret
+    let wordStart = caret
+    while (wordStart > 0 && !/\s/.test(value[wordStart - 1]!)) wordStart--
+    const hasAt = value[wordStart] === '@'
+    const hasHash = value[wordStart] === '#'
+    const partial = value.slice(wordStart, wordEnd).replace(/^[@#]/, '').toLowerCase()
+    if (!partial)
+      return
+    const matches = hasHash
+      ? buffers.value
+          .filter(b => b.kind === 'channel' && b.name.toLowerCase().slice(1).startsWith(partial))
+          .map(b => b.name)
+      : users.value
+          .filter(u => u.name.toLowerCase().startsWith(partial))
+          .map(u => u.name)
+    if (!matches.length)
+      return
+    tabCycle = { matches, index: 0, wordStart, wordEnd, hasAt, hasHash }
+  }
+
+  const { matches, index, wordStart, wordEnd, hasAt, hasHash } = tabCycle
+  const match = matches[index]!
+  const before = value.slice(0, wordStart)
+  const after = value.slice(wordEnd)
+  let insert: string
+  if (hasHash) {
+    // Channels: value already includes `#`, no colon convention.
+    insert = `${match} `
+  }
+  else {
+    // Standalone (only token) gets `: `, mid-message gets ` `.
+    const isStandalone = before.trim() === '' && after.trim() === ''
+    const prefix = hasAt ? '@' : ''
+    insert = isStandalone ? `${prefix}${match}: ` : `${prefix}${match} `
+  }
+  inputMessage.value = before + insert + after
+  tabCycle.wordEnd = wordStart + insert.length
 
   const nextCaret = before.length + insert.length
   nextTick(() => {
@@ -196,6 +292,9 @@ function sendWithHistory() {
 }
 
 function onKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Tab')
+    tabCycle = null
+
   if (open.value) {
     switch (event.key) {
       case 'ArrowDown':
@@ -218,12 +317,24 @@ function onKeydown(event: KeyboardEvent) {
     }
   }
 
+  if (event.key === 'Tab') {
+    tabComplete(event)
+    return
+  }
+
   if (event.key === 'Enter') {
     sendWithHistory()
     return
   }
 
   if (event.key === 'ArrowUp') {
+    const el = nativeInput()
+    const caret = el?.selectionStart ?? 0
+    if (caret !== 0) {
+      event.preventDefault()
+      el?.setSelectionRange(0, 0)
+      return
+    }
     const hist = messageHistory.value
     if (!hist.length)
       return
@@ -236,6 +347,13 @@ function onKeydown(event: KeyboardEvent) {
   }
 
   if (event.key === 'ArrowDown') {
+    const el = nativeInput()
+    const caret = el?.selectionStart ?? inputMessage.value.length
+    if (caret !== inputMessage.value.length) {
+      event.preventDefault()
+      el?.setSelectionRange(inputMessage.value.length, inputMessage.value.length)
+      return
+    }
     if (historyIndex.value === -1)
       return
     event.preventDefault()

@@ -6,7 +6,7 @@ import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 
-const { activeBuffer } = useIrcChat()
+const { activeBuffer, joinChannel, openPm } = useIrcChat()
 const { resolved: resolvedNicks, resolve: resolveNick } = useIrcNickResolver()
 
 watch(activeBuffer, (buf) => {
@@ -22,19 +22,25 @@ const pmUserId = computed(() => {
 
 const infoOpen = ref(false)
 
-const URL_RE = /(https?:\/\/\S+)/g
+const TOPIC_RE = /(https?:\/\/\S+|#[^\s,]+|@\S+)/g
 
-interface TopicSegment { type: 'text' | 'link', value: string }
+interface TopicSegment { type: 'text' | 'link' | 'channel' | 'mention', value: string }
 
 function topicSegments(topic: string): TopicSegment[] {
   const out: TopicSegment[] = []
   let last = 0
-  for (const m of topic.matchAll(new RegExp(URL_RE.source, 'g'))) {
+  for (const m of topic.matchAll(TOPIC_RE)) {
     const idx = m.index ?? 0
     if (idx > last)
       out.push({ type: 'text', value: topic.slice(last, idx) })
-    out.push({ type: 'link', value: m[0] })
-    last = idx + m[0].length
+    const val = m[0]
+    if (val.startsWith('#'))
+      out.push({ type: 'channel', value: val })
+    else if (val.startsWith('@'))
+      out.push({ type: 'mention', value: val })
+    else
+      out.push({ type: 'link', value: val })
+    last = idx + val.length
   }
   if (last < topic.length)
     out.push({ type: 'text', value: topic.slice(last) })
@@ -52,6 +58,8 @@ function topicSegments(topic: string): TopicSegment[] {
           <span v-if="activeBuffer.topic" class="channel-header__topic">
             <template v-for="(seg, i) in topicSegments(activeBuffer.topic)" :key="i">
               <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="channel-header__link">{{ seg.value }}</a>
+              <span v-else-if="seg.type === 'channel'" class="channel-header__channel-ref text-s" @click="joinChannel(seg.value)">{{ seg.value }}</span>
+              <span v-else-if="seg.type === 'mention'" class="channel-header__mention text-s" @click="openPm(seg.value.slice(1))">{{ seg.value }}</span>
               <template v-else>{{ seg.value }}</template>
             </template>
           </span>
@@ -87,6 +95,8 @@ function topicSegments(topic: string): TopicSegment[] {
     <p v-if="activeBuffer.topic" class="channel-header__modal-topic text-s">
       <template v-for="(seg, i) in topicSegments(activeBuffer.topic)" :key="i">
         <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="channel-header__link">{{ seg.value }}</a>
+        <span v-else-if="seg.type === 'channel'" class="channel-header__channel-ref text-s" @click="joinChannel(seg.value)">{{ seg.value }}</span>
+        <span v-else-if="seg.type === 'mention'" class="channel-header__mention text-s" @click="openPm(seg.value.slice(1))">{{ seg.value }}</span>
         <template v-else>
           {{ seg.value }}
         </template>
@@ -126,6 +136,15 @@ function topicSegments(topic: string): TopicSegment[] {
   &__link {
     color: var(--color-accent);
     text-decoration: none;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  &__channel-ref,
+  &__mention {
+    color: var(--color-accent);
+    cursor: pointer;
     &:hover {
       text-decoration: underline;
     }

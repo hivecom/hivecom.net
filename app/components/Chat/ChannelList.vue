@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import type { ChatBuffer } from '@/composables/useIrcChat'
-import { Badge, Button, ButtonGroup, Flex, Input, Overflow, Tooltip } from '@dolanske/vui'
+import type { ChannelGroupNode, ChannelItemNode, ChannelTreeNode } from '@/components/Chat/ChannelTreeItem.vue'
+import { Badge, Button, Flex, Input, Overflow, Tooltip } from '@dolanske/vui'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
+import ChannelTreeItem from '@/components/Chat/ChannelTreeItem.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useIrcChat } from '@/composables/useIrcChat'
@@ -16,18 +18,12 @@ const props = defineProps<{
 
 const { buffers, activeName, setActive, closeBuffer, joinChannel, channelBrowserOpen } = useIrcChat()
 
-type SortBy = 'name' | 'users'
-const sortBy = ref<SortBy>('name')
-const sortAsc = ref(true)
-
 const sortedBuffers = computed(() => {
   const server = buffers.value.filter(b => b.kind === 'server')
   const rest = buffers.value.filter(b => b.kind !== 'server')
   const sorted = [...rest].sort((a, b) => {
-    const cmp = sortBy.value === 'name'
-      ? a.name.localeCompare(b.name)
-      : a.users.length - b.users.length
-    return sortAsc.value ? cmp : -cmp
+    const cmp = a.name.localeCompare(b.name)
+    return cmp
   })
   return [...server, ...sorted]
 })
@@ -123,92 +119,75 @@ function onJoin() {
 // ---- Channel tree (vertical sidebar only) ----
 // Slash notation is a client-side rendering convention per the Orbit spec.
 // #dev/frontend renders as group "dev" > child "frontend"; the IRC server
-// sees flat channel names as always.
-
-// parentBuffer: the flat channel that shares the group prefix (e.g. #playground
-// when #playground/new exists). Rendered as the parent item in the tree.
-// null means no matching flat channel exists - a virtual label is shown instead.
-interface ChannelGroupNode {
-  type: 'group'
-  name: string
-  parentBuffer: ChatBuffer | null
-  children: ChatBuffer[]
-}
-
-interface ChannelItemNode {
-  type: 'channel'
-  buffer: ChatBuffer
-}
-
-type ChannelTreeNode = ChannelItemNode | ChannelGroupNode
+// sees flat channel names as-is.
 
 const channelTree = computed<ChannelTreeNode[]>(() => {
-  // Pass 1: collect all slash-channels into groups and mark their names.
-  interface GroupData { children: ChatBuffer[] }
-  const groupMap = new Map<string, GroupData>()
-  const childNames = new Set<string>()
+  const groupByPath = new Map<string, ChannelGroupNode>()
 
-  for (const buf of buffers.value) {
-    if (buf.kind !== 'channel')
-      continue
-    // Collapse consecutive slashes, discard leading/trailing empty segments.
-    const segments = buf.name.replace(/^#/, '').split('/').filter(Boolean)
-    if (segments.length <= 1)
-      continue
-    const groupName = segments[0]!
-    if (!groupMap.has(groupName))
-      groupMap.set(groupName, { children: [] })
-    groupMap.get(groupName)!.children.push(buf)
-    childNames.add(buf.name.toLowerCase())
+  function getOrCreateGroup(list: ChannelTreeNode[], fullPath: string, name: string): ChannelGroupNode {
+    const existing = groupByPath.get(fullPath)
+    if (existing)
+      return existing
+
+    const node: ChannelGroupNode = { type: 'group', name, fullPath, parentBuffer: null, children: [] }
+    groupByPath.set(fullPath, node)
+
+    // If a matching leaf is already at this level, replace it in-place (preserves sort order)
+    const leafIdx = list.findIndex(
+      n => n.type === 'channel' && n.buffer.kind === 'channel' && n.buffer.name.replace(/^#/, '') === fullPath,
+    )
+    if (leafIdx !== -1) {
+      node.parentBuffer = (list[leafIdx] as ChannelItemNode).buffer
+      list.splice(leafIdx, 1, node)
+    }
+    else {
+      list.push(node)
+    }
+    return node
   }
 
-  // Pass 2: iterate buffers in order, emitting groups where they belong.
-  const result: ChannelTreeNode[] = []
-  const emittedGroups = new Set<string>()
+  const root: ChannelTreeNode[] = []
 
-  for (const buf of buffers.value) {
-    const lower = buf.name.toLowerCase()
+  for (const buf of sortedBuffers.value) {
+    if (buf.kind !== 'channel') {
+      const displayName = buf.kind === 'server' ? 'Server' : buf.name
+      root.push({ type: 'channel', buffer: buf, displayName })
+      continue
+    }
 
-    // Child buffer: emit its group node here if not yet emitted, then skip.
-    if (childNames.has(lower)) {
-      const groupName = buf.name.replace(/^#/, '').split('/').filter(Boolean)[0]!
-      if (!emittedGroups.has(groupName)) {
-        emittedGroups.add(groupName)
-        result.push({ type: 'group', name: groupName, parentBuffer: null, children: groupMap.get(groupName)!.children })
+    const rawName = buf.name.replace(/^#/, '')
+    const segments = rawName.split('/').filter(Boolean)
+
+    if (segments.length <= 1) {
+      // Check if a group with this path was already created (child came first in sort order)
+      const existingGroup = groupByPath.get(rawName)
+      if (existingGroup) {
+        existingGroup.parentBuffer = buf
+      }
+      else {
+        root.push({ type: 'channel', buffer: buf, displayName: rawName })
       }
       continue
     }
 
-    // Non-channel (server, pm): always flat.
-    if (buf.kind !== 'channel') {
-      result.push({ type: 'channel', buffer: buf })
-      continue
+    // Multi-segment: navigate/create groups for all but the last segment
+    let currentList: ChannelTreeNode[] = root
+    for (let i = 0; i < segments.length - 1; i++) {
+      const groupPath = segments.slice(0, i + 1).join('/')
+      const group = getOrCreateGroup(currentList, groupPath, segments[i]!)
+      currentList = group.children
     }
 
-    // Flat channel that matches a group prefix: becomes the parent node.
-    const rawName = buf.name.replace(/^#/, '')
-    if (groupMap.has(rawName) && !emittedGroups.has(rawName)) {
-      emittedGroups.add(rawName)
-      result.push({ type: 'group', name: rawName, parentBuffer: buf, children: groupMap.get(rawName)!.children })
-      continue
-    }
-
-    result.push({ type: 'channel', buffer: buf })
+    const lastSegment = segments[segments.length - 1]!
+    currentList.push({ type: 'channel', buffer: buf, displayName: lastSegment })
   }
 
-  return result
+  return root
 })
-
-// Returns the display label for a channel within a group: strips the group prefix.
-// #dev/frontend -> "frontend", #dev/backend/api -> "backend/api"
-function childLabel(name: string): string {
-  const segs = name.replace(/^#/, '').split('/').filter(Boolean)
-  return segs.slice(1).join('/') || name
-}
 
 function treeNodeKey(node: ChannelTreeNode): string {
   if (node.type === 'group')
-    return node.parentBuffer !== null ? `parent:${node.parentBuffer.name}` : `group:${node.name}`
+    return `group:${node.fullPath}`
   return node.buffer.name
 }
 </script>
@@ -224,22 +203,9 @@ function treeNodeKey(node: ChannelTreeNode): string {
   >
     <Flex v-if="!horizontal" expand y-center x-between class="chat-channels__header">
       <span class="chat-channels__title">Channels</span>
-      <Flex gap="xxs" y-center>
-        <ButtonGroup>
-          <Button :variant="sortBy === 'name' ? 'accent' : 'gray'" size="s" @click="sortBy = 'name'">
-            Name
-          </Button>
-          <Button :variant="sortBy === 'users' ? 'accent' : 'gray'" size="s" @click="sortBy = 'users'">
-            Users
-          </Button>
-        </ButtonGroup>
-        <Button square plain size="s" :aria-label="sortAsc ? 'Sort descending' : 'Sort ascending'" @click="sortAsc = !sortAsc">
-          <Icon :name="sortAsc ? 'ph:sort-ascending' : 'ph:sort-descending'" size="13" />
-        </Button>
-        <Button square plain size="s" aria-label="Browse channels" class="chat-channels__browse" @click="channelBrowserOpen = true">
-          <Icon name="ph:compass" size="13" />
-        </Button>
-      </Flex>
+      <Button square plain size="s" aria-label="Browse channels" class="chat-channels__browse" @click="channelBrowserOpen = true">
+        <Icon name="ph:compass" size="13" />
+      </Button>
     </Flex>
 
     <Overflow
@@ -293,6 +259,7 @@ function treeNodeKey(node: ChannelTreeNode): string {
                 v-if="!(isMobile && buf.kind === 'server')"
                 class="chat-channels__name chat-channels__name--compact"
               >{{ bufferLabel(buf.name, buf.kind) }}</span>
+              <ChannelModeBadges v-if="buf.kind === 'channel'" :buffer="buf" />
               <Badge v-if="buf.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
                 {{ buf.mentions }}
               </Badge>
@@ -327,152 +294,7 @@ function treeNodeKey(node: ChannelTreeNode): string {
         <!-- Vertical mode: tree rendering with collapsible groups -->
         <template v-else>
           <template v-for="node in channelTree" :key="treeNodeKey(node)">
-            <!-- Group node -->
-            <template v-if="node.type === 'group'">
-              <!-- Real parent channel: rendered as a normal item -->
-              <Tooltip
-                v-if="node.parentBuffer !== null"
-                placement="right"
-                :disabled="isMobile || (!node.parentBuffer.topic && node.parentBuffer.users.length === 0)"
-              >
-                <button
-                  type="button"
-                  class="chat-channels__item"
-                  :class="{ 'chat-channels__item--active': node.parentBuffer.name.toLowerCase() === activeName.toLowerCase() }"
-                  @click="setActive(node.parentBuffer.name)"
-                  @mousedown.middle.prevent
-                  @mouseup.middle.prevent="closeBuffer(node.parentBuffer.name)"
-                >
-                  <Icon name="ph:hash" size="13" class="chat-channels__icon" />
-                  <span class="chat-channels__name">{{ bufferLabel(node.parentBuffer.name, node.parentBuffer.kind) }}</span>
-                  <Badge v-if="node.parentBuffer.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
-                    {{ node.parentBuffer.mentions }}
-                  </Badge>
-                  <Badge v-else-if="node.parentBuffer.unread > 0" size="s" round variant="neutral" class="chat-channels__badge">
-                    {{ node.parentBuffer.unread }}
-                  </Badge>
-                  <Button square plain size="s" aria-label="Close" class="chat-channels__close" @click.stop="closeBuffer(node.parentBuffer.name)">
-                    <Icon name="ph:x" size="12" />
-                  </Button>
-                </button>
-                <template #tooltip>
-                  <Flex column gap="xxs">
-                    <p v-if="node.parentBuffer.topic" class="chat-channels__topic">
-                      {{ node.parentBuffer.topic }}
-                    </p>
-                    <span v-if="node.parentBuffer.users.length" class="chat-channels__count">
-                      {{ node.parentBuffer.users.length }} {{ node.parentBuffer.users.length === 1 ? 'user' : 'users' }}
-                    </span>
-                  </Flex>
-                </template>
-              </Tooltip>
-              <!-- Virtual group: no matching channel, show a plain label -->
-              <span v-else class="chat-channels__group-label">{{ node.name }}</span>
-              <div class="chat-channels__children">
-                <div
-                  v-for="buf in node.children"
-                  :key="buf.name"
-                  class="chat-channels__child-item"
-                >
-                  <Tooltip
-                    placement="right"
-                    :disabled="isMobile || (!buf.topic && buf.users.length === 0)"
-                  >
-                    <button
-                      type="button"
-                      class="chat-channels__item"
-                      :class="{ 'chat-channels__item--active': buf.name.toLowerCase() === activeName.toLowerCase() }"
-                      @click="setActive(buf.name)"
-                      @mousedown.middle.prevent
-                      @mouseup.middle.prevent="closeBuffer(buf.name)"
-                    >
-                      <Icon :name="bufferIcon(buf.kind)" size="13" class="chat-channels__icon" />
-                      <span class="chat-channels__name">{{ childLabel(buf.name) }}</span>
-                      <Badge v-if="buf.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
-                        {{ buf.mentions }}
-                      </Badge>
-                      <Badge v-else-if="buf.unread > 0" size="s" round variant="neutral" class="chat-channels__badge">
-                        {{ buf.unread }}
-                      </Badge>
-                      <Button
-                        square
-                        plain
-                        size="s"
-                        aria-label="Close"
-                        class="chat-channels__close"
-                        @click.stop="closeBuffer(buf.name)"
-                      >
-                        <Icon name="ph:x" size="12" />
-                      </Button>
-                    </button>
-                    <template #tooltip>
-                      <Flex column gap="xxs">
-                        <p v-if="buf.topic" class="chat-channels__topic">
-                          {{ buf.topic }}
-                        </p>
-                        <span v-if="buf.users.length" class="chat-channels__count">
-                          {{ buf.users.length }} {{ buf.users.length === 1 ? 'user' : 'users' }}
-                        </span>
-                      </Flex>
-                    </template>
-                  </Tooltip>
-                </div>
-              </div>
-            </template>
-
-            <!-- Flat channel, server, or pm buffer -->
-            <Tooltip
-              v-else
-              placement="right"
-              :disabled="isMobile || (!node.buffer.topic && node.buffer.users.length === 0)"
-            >
-              <button
-                type="button"
-                class="chat-channels__item"
-                :class="{ 'chat-channels__item--active': node.buffer.name.toLowerCase() === activeName.toLowerCase() }"
-                @click="setActive(node.buffer.name)"
-                @mousedown.middle.prevent
-                @mouseup.middle.prevent="closeBuffer(node.buffer.name)"
-              >
-                <template v-if="node.buffer.kind === 'pm'">
-                  <UserAvatar v-if="resolvedUserId(node.buffer.name)" :user-id="resolvedUserId(node.buffer.name)!" :size="14" show-preview class="chat-channels__icon" />
-                  <AvatarMedia v-else :size="14" :alt="node.buffer.name" class="chat-channels__icon">
-                    <template #default>
-                      {{ node.buffer.name.charAt(0).toUpperCase() }}
-                    </template>
-                  </AvatarMedia>
-                </template>
-                <Icon v-else :name="bufferIcon(node.buffer.kind)" size="13" class="chat-channels__icon" />
-                <span class="chat-channels__name">{{ bufferLabel(node.buffer.name, node.buffer.kind) }}</span>
-                <Badge v-if="node.buffer.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
-                  {{ node.buffer.mentions }}
-                </Badge>
-                <Badge v-else-if="node.buffer.unread > 0" size="s" round variant="neutral" class="chat-channels__badge">
-                  {{ node.buffer.unread }}
-                </Badge>
-                <Button
-                  v-if="node.buffer.kind !== 'server'"
-                  square
-                  plain
-                  size="s"
-                  aria-label="Close"
-                  class="chat-channels__close"
-                  @click.stop="closeBuffer(node.buffer.name)"
-                >
-                  <Icon name="ph:x" size="12" />
-                </Button>
-              </button>
-              <template #tooltip>
-                <Flex column gap="xxs">
-                  <p v-if="node.buffer.topic" class="chat-channels__topic">
-                    {{ node.buffer.topic }}
-                  </p>
-                  <span v-if="node.buffer.users.length" class="chat-channels__count">
-                    {{ node.buffer.users.length }} {{ node.buffer.users.length === 1 ? 'user' : 'users' }}
-                  </span>
-                </Flex>
-              </template>
-            </Tooltip>
+            <ChannelTreeItem :node="node" :depth="0" />
           </template>
         </template>
       </Flex>
@@ -535,84 +357,7 @@ function treeNodeKey(node: ChannelTreeNode): string {
     }
   }
 
-  &__group-label {
-    display: block;
-    padding: var(--space-xxs) var(--space-xs);
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-text-lighter);
-  }
-
-  &__children {
-    width: 100%;
-    padding-left: 34px;
-    display: flex;
-    flex-direction: column;
-  }
-
-  &__child-item {
-    position: relative;
-    width: 100%;
-
-    &:not(:first-child)::after {
-      height: 40px;
-    }
-
-    &::before {
-      content: '';
-      position: absolute;
-      width: 16px;
-      height: 16px;
-      left: -21px;
-      top: 0;
-      border: 2px solid var(--color-border);
-      clip-path: inset(8px 8px 0 0);
-      border-radius: var(--border-radius-pill);
-    }
-
-    &::after {
-      content: '';
-      position: absolute;
-      border-left: 2px solid var(--color-border);
-      left: -21px;
-      bottom: 22px;
-      height: 18px;
-    }
-  }
-
-  &__item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    width: 100%;
-    min-height: 34px;
-    padding: var(--space-xxs) var(--space-xs);
-    border: none;
-    background: transparent;
-    border-radius: var(--border-radius-s);
-    font-size: var(--font-size-s);
-    color: var(--color-text-light);
-    cursor: pointer;
-    text-align: left;
-    transition: background-color var(--transition-fast);
-
-    &:hover {
-      background: var(--color-bg-medium);
-
-      .chat-channels__close {
-        opacity: 1;
-      }
-    }
-
-    &--active {
-      background: var(--color-bg-accent-lowered);
-      color: var(--color-text);
-    }
-  }
-
-  &__list--horizontal &__item {
+  &__list--horizontal :deep(.chat-channels__item) {
     width: auto;
     white-space: nowrap;
     flex: 0 0 auto;
@@ -624,45 +369,124 @@ function treeNodeKey(node: ChannelTreeNode): string {
     justify-content: center;
   }
 
-  &__icon {
+  &__join {
+    padding: var(--space-xs);
+    border-top: 1px solid var(--color-border-weak);
+  }
+
+  // These classes are rendered inside ChannelTreeItem (child component),
+  // so :deep() is required to pierce the scoped boundary.
+  :deep(.chat-channels__group-label) {
+    display: block;
+    padding: var(--space-xxs) var(--space-xs);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-lighter);
+  }
+
+  :deep(.chat-channels__children) {
+    width: 100%;
+    padding-left: 28px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  :deep(.chat-channels__child-item) {
+    position: relative;
+    width: 100%;
+  }
+
+  // L-curve: vertical line from top of item down to its midpoint, then a horizontal elbow.
+  // Last children show only this, giving the └ shape.
+  :deep(.chat-channels__child-item::before) {
+    content: '';
+    position: absolute;
+    left: -16px;
+    top: 0;
+    width: 12px;
+    height: 17px;
+    border-left: 2px solid var(--color-border);
+    border-bottom: 2px solid var(--color-border);
+    border-bottom-left-radius: var(--border-radius-s);
+  }
+
+  // Branch extension: vertical line from the item midpoint to its bottom edge.
+  // Connects to the next sibling's ::before, spanning groups at any depth.
+  :deep(.chat-channels__child-item:not(:last-child)::after) {
+    content: '';
+    position: absolute;
+    left: -16px;
+    top: 17px;
+    bottom: 0;
+    width: 2px;
+    background: var(--color-border);
+  }
+
+  :deep(.chat-channels__item) {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-height: 34px;
+    padding: var(--space-xxs) var(--space-xs);
+    border: none;
+    background: transparent;
+    border-radius: var(--border-radius-s);
+    font-size: var(--font-size-s);
+    color: var(--color-text-light);
+    cursor: pointer;
+    text-align: left;
+    transition: background-color var(--transition-fast);
+  }
+
+  :deep(.chat-channels__item:hover) {
+    background: var(--color-bg-medium);
+  }
+
+  :deep(.chat-channels__item:hover .chat-channels__close) {
+    opacity: 1;
+  }
+
+  :deep(.chat-channels__item--active) {
+    background: var(--color-bg-accent-lowered);
+    color: var(--color-text);
+  }
+
+  :deep(.chat-channels__icon) {
     flex-shrink: 0;
     color: var(--color-text-lighter);
   }
 
-  &__name {
+  :deep(.chat-channels__name) {
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-
-    &--compact {
-      font-size: var(--font-size-xs);
-    }
   }
 
-  &__badge {
+  :deep(.chat-channels__name--compact) {
+    font-size: var(--font-size-xs);
+  }
+
+  :deep(.chat-channels__badge) {
     flex-shrink: 0;
   }
 
-  &__close {
+  :deep(.chat-channels__close) {
     flex-shrink: 0;
     opacity: 0;
     transition: opacity var(--transition-fast);
   }
 
-  &__topic {
+  :deep(.chat-channels__topic) {
     margin: 0;
     font-size: var(--font-size-s);
   }
 
-  &__count {
+  :deep(.chat-channels__count) {
     font-size: var(--font-size-xs);
     color: var(--color-text-light);
-  }
-
-  &__join {
-    padding: var(--space-xs);
-    border-top: 1px solid var(--color-border-weak);
   }
 }
 </style>
