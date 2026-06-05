@@ -2,6 +2,7 @@
 import type { CSSProperties } from 'vue'
 import type { Tables } from '@/types/database.types'
 import { Marquee } from '@dolanske/vui'
+import constants from '~~/constants.json'
 import EventSmall from '@/components/Events/EventSmall.vue'
 import LandingHero from '@/components/Landing/LandingHero.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
@@ -70,6 +71,13 @@ onBeforeMount(() => {
 
   stars.value = _stars
 })
+
+const sunStyle = computed(() => {
+  const offset = y.value * -0.1
+  return {
+    '--sun-translate': `translateY(${offset}px)`,
+  }
+})
 </script>
 
 <template>
@@ -119,7 +127,7 @@ onBeforeMount(() => {
       <div class="container-m ">
         <section class="home-events">
           <EventSmall v-for="event in events" :key="event.id" :data="event" :no-glow="false" class="glow-card-home" />
-          <div class="card-pointer top-right" data-text="Coming up" />
+          <div class="card-pointer top-right" data-text="Upcoming events" />
           <div class="card-pointer bottom-left" data-text="What we're up to" />
         </section>
       </div>
@@ -158,9 +166,21 @@ onBeforeMount(() => {
           Join us but also dont have to but it’d be cool if you did just thinkig about it, ok i'll sit down for a sec don't
           let me disturb you just ponder on it for a second.
         </p>
-        <NuxtLink to="/sign-up">
+        <NuxtLink to="/sign-up" class="join-button">
           Sign Up
         </NuxtLink>
+
+        <p>Or you can visit...</p>
+      </div>
+
+      <div class="constellation">
+        <a v-for="link in constants.LINKS" :key="link.name" target="_blank" rel="noreferer noopener" :href="link.url">
+          {{ link.name }}
+        </a>
+
+        <svg width="857" height="112" viewBox="0 0 857 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M34.624 100.214L237.624 66.214M274.707 61.7071L456.707 53.2192M498.707 50.2071L669.207 11.2955M710.99 11.2955L829.707 83.7071M0.707031 102.192L9.19231 93.7071L17.6776 102.192L9.19231 110.678L0.707031 102.192ZM838.707 92.1924L847.192 83.7071L855.678 92.1924L847.192 100.678L838.707 92.1924ZM247.707 63.1924L256.192 54.7071L264.678 63.1924L256.192 71.6777L247.707 63.1924ZM684.707 9.19239L693.192 0.707108L701.678 9.19239L693.192 17.6777L684.707 9.19239ZM468.707 52.1924L477.192 43.7071L485.678 52.1924L477.192 60.6777L468.707 52.1924Z" stroke="white" stroke-opacity="0.25" stroke-dasharray="2 2" />
+        </svg>
       </div>
     </div>
 
@@ -342,7 +362,7 @@ onBeforeMount(() => {
   width: 100%;
   position: relative;
   overflow: hidden;
-  padding-bottom: 680px;
+  padding-bottom: 420px;
 
   &:after {
     content: '';
@@ -362,9 +382,15 @@ onBeforeMount(() => {
 
   p {
     margin-bottom: var(--space-xl);
+
+    &:last-child {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-lighter);
+      margin-top: var(--space-m);
+    }
   }
 
-  a {
+  .join-button {
     display: flex;
     height: 40px;
     justify-content: center;
@@ -384,6 +410,58 @@ onBeforeMount(() => {
 
   .container-s {
     --container-s: 472px;
+  }
+
+  .constellation {
+    display: inline-block;
+    margin: auto;
+    position: relative;
+    margin-top: 164px;
+
+    a {
+      display: block;
+      position: absolute;
+      padding: var(--space-l);
+      padding-bottom: 56px;
+      color: var(--color-text);
+      background-color: transparent;
+      transform-origin: center center;
+      text-transform: uppercase;
+      font-size: var(--font-size-s);
+      text-align: center;
+
+      &:hover {
+        color: var(--color-accent);
+      }
+
+      &:nth-child(1) {
+        top: 34%;
+        left: -5.2%;
+      }
+
+      &:nth-child(2) {
+        top: 5%;
+        left: 24.3%;
+      }
+
+      &:nth-child(3) {
+        top: 20%;
+        left: 47%;
+        padding: var(--space-l);
+        padding-bottom: var(--space-l);
+        padding-top: 56px;
+      }
+
+      &:nth-child(4) {
+        top: -45%;
+        left: 75.4%;
+      }
+
+      &:nth-child(5) {
+        top: 80%;
+        left: 93%;
+      }
+    }
   }
 }
 
@@ -492,8 +570,6 @@ onBeforeMount(() => {
   }
 }
 
-//
-// Home card variations (not nested for readability)
 .home-card--about {
   padding-inline: var(--space-xxxl);
   padding-top: 96px;
@@ -582,8 +658,4 @@ onBeforeMount(() => {
     z-index: -1;
   }
 }
-
-// .div {
-
-// }
 </style>
