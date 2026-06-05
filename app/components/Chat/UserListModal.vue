@@ -99,7 +99,7 @@ function handlePm(name: string) {
         <!-- Name + role label -->
         <Flex column :gap="0" class="user-list-modal__info">
           <span class="user-list-modal__name" :style="userStyle(user.name)">{{ user.name }}</span>
-          <span v-if="user.role" class="user-list-modal__role-label">{{ user.role.label }}</span>
+          <span v-if="user.role" class="text-xs text-color-lighter">{{ user.role.label }}</span>
         </Flex>
 
         <!-- Actions -->
@@ -200,11 +200,6 @@ function handlePm(name: string) {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  &__role-label {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
   }
 
   &__actions {

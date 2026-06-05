@@ -56,6 +56,7 @@ function capitalize(s: string): string {
   <div
     v-if="data"
     class="relative flex flex-col w-full h-full bg-[#111111] text-white font-sans py-12 px-16 gap-4 box-border"
+    style="font-family: 'Inter', 'Noto Sans SC', sans-serif"
   >
     <!-- Background light leak -->
     <img

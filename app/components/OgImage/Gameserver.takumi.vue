@@ -28,7 +28,7 @@ const firstAddress = Array.isArray(data?.addresses) && data.addresses.length > 0
 </script>
 
 <template>
-  <div class="relative flex flex-col w-full h-full bg-[#111111] text-white font-sans py-12 px-16 gap-4 box-border">
+  <div class="relative flex flex-col w-full h-full bg-[#111111] text-white font-sans py-12 px-16 gap-4 box-border" style="font-family: 'Inter', 'Noto Sans SC', sans-serif">
     <!-- Background light leak -->
     <img
       src="/leak.png"

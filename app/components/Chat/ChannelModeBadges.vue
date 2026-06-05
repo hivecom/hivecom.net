@@ -36,7 +36,7 @@ const activeBadges = computed(() => {
       placement="top"
     >
       <Badge size="s" outline>
-        <Icon :name="badge.icon" size="12" class="chat-channels__mode-icon" />
+        <Icon :name="badge.icon" size="12" class="text-color-lighter" />
       </Badge>
       <template #tooltip>
         <p>{{ badge.label }}</p>
@@ -44,9 +44,3 @@ const activeBadges = computed(() => {
     </Tooltip>
   </Flex>
 </template>
-
-<style lang="scss" scoped>
-.chat-channels__mode-icon {
-  color: var(--color-text-lighter);
-}
-</style>

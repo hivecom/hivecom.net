@@ -19,15 +19,75 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{ compact?: boolean }>()
 
-const { messages: allMessages, nick, inputMessage, clearMessages, activeBuffer, openPm, setReply, joinChannel, fetchOlderHistory, toggleReaction } = useIrcChat()
+const { messages: allMessages, nick, users, inputMessage, clearMessages, activeBuffer, openPm, setReply, joinChannel, fetchOlderHistory, toggleReaction, chatHistorySupported } = useIrcChat()
 const { settings } = useDataUserSettings()
 
 // Unknown TAGMSG events are kept in the buffer but only rendered when the user
 // opts in. Filtering here (not at ingestion) makes the toggle instant and also
 // retroactively hides messages already in scrollback.
-const messages = computed(() => settings.value.chat_show_tag_messages
-  ? allMessages.value
-  : allMessages.value.filter(m => m.type !== 'tagmsg'))
+
+/** Max nicks spelled out individually before "and N others" in join/part summaries. */
+const JOINPART_MAX_NAMES = 3
+
+function fmtNickList(nicks: string[], verb: string): string {
+  if (nicks.length <= JOINPART_MAX_NAMES)
+    return `${nicks.join(', ')} ${verb}`
+  const shown = nicks.slice(0, JOINPART_MAX_NAMES - 1).join(', ')
+  const rest = nicks.length - (JOINPART_MAX_NAMES - 1)
+  return `${shown} and ${rest} ${rest === 1 ? 'other' : 'others'} ${verb}`
+}
+
+/**
+ * Collapse consecutive runs of 2+ backlog join/part messages into a single
+ * summary line per type (joins and parts are summarised separately so colours
+ * and styling are preserved). Single events and live activity are left intact.
+ */
+function collapseBacklogJoinParts(msgs: ChatMessage[]): ChatMessage[] {
+  const out: ChatMessage[] = []
+  let i = 0
+  while (i < msgs.length) {
+    const msg = msgs[i]!
+    if (!msg.backlog || (msg.type !== 'join' && msg.type !== 'part')) {
+      out.push(msg)
+      i++
+      continue
+    }
+    // Collect the full contiguous run of backlog join/part messages.
+    const runStart = i
+    const joinNicks: string[] = []
+    const partNicks: string[] = []
+    while (i < msgs.length && msgs[i]!.backlog && (msgs[i]!.type === 'join' || msgs[i]!.type === 'part')) {
+      const m = msgs[i]!
+      if (m.type === 'join')
+        joinNicks.push(m.text.replace(/ joined$/, ''))
+      else
+        partNicks.push(m.text.replace(/ left$/, ''))
+      i++
+    }
+    const anchor = msgs[runStart]!
+    if (i - runStart === 1) {
+      // Single message - nothing to collapse.
+      out.push(anchor)
+    }
+    else {
+      // Deduplicate nicks within each category (same user reconnecting counts once).
+      const joins = [...new Set(joinNicks)]
+      const parts = [...new Set(partNicks)]
+      if (joins.length)
+        out.push({ ...anchor, type: 'join', text: fmtNickList(joins, 'joined') })
+      if (parts.length)
+        out.push({ ...anchor, type: 'part', text: fmtNickList(parts, 'left') })
+    }
+  }
+  return out
+}
+
+const messages = computed((): ChatMessage[] => {
+  const raw = settings.value.chat_show_tag_messages
+    ? allMessages.value
+    : allMessages.value.filter(m => m.type !== 'tagmsg')
+  return collapseBacklogJoinParts(raw)
+})
 const { handleContentClick } = useExternalLinkGuard()
 
 const isMobile = useBreakpoint('<s')
@@ -70,6 +130,16 @@ const showTimestamps = computed(() => settings.value.chat_show_timestamps)
 const isModernMode = computed(() => (isMobile.value || settings.value.chat_display_mode === 'modern') && activeBuffer.value?.kind !== 'server')
 const isServerBuffer = computed(() => activeBuffer.value?.kind === 'server')
 const isServiceQuery = computed(() => activeBuffer.value?.kind === 'pm' && SERVICE_NICKS.has((activeBuffer.value?.name ?? '').toLowerCase()))
+
+// True while we're waiting for the first CHATHISTORY LATEST batch to complete.
+// Drives skeleton placeholders so the viewport isn't blank on initial load.
+const isLoadingInitialHistory = computed(() =>
+  chatHistorySupported.value
+  && !!activeBuffer.value
+  && activeBuffer.value.kind !== 'server'
+  && !isServiceQuery.value
+  && !activeBuffer.value.historyReady,
+)
 
 // --- Modern mode -------------------------------------------------------
 interface MessageGroup {
@@ -149,6 +219,12 @@ function resolvedUser(nickLower: string | null) {
   return resolved.value.get(nickLower) ?? null
 }
 
+function isNickBot(nickLower: string | null): boolean {
+  if (!nickLower)
+    return false
+  return users.value.some(u => u.name.toLowerCase() === nickLower && u.bot === true)
+}
+
 function groupNickStyle(from: string | null) {
   if (from && settings.value.chat_colored_nicks && from !== nick.value)
     return { color: nickColor(cleanNick(from)) }
@@ -179,16 +255,7 @@ function isOwn(msg: ChatMessage) {
 }
 
 function isMention(msg: ChatMessage) {
-  if (msg.type !== 'chat' || msg.from == null || msg.from === nick.value || !mentionsSelf(msg.text))
-    return false
-  // Replayed history that was already seen shouldn't keep screaming at you. A
-  // backlog mention only counts as a fresh ping when it lands past the read line.
-  if (msg.backlog) {
-    const readLineTs = activeBuffer.value?.readLineTs
-    return readLineTs != null && msg.ts.getTime() > readLineTs
-  }
-  // Live mentions are always genuine pings.
-  return true
+  return msg.type === 'chat' && msg.from != null && msg.from !== nick.value && mentionsSelf(msg.text)
 }
 
 // Read line - marks the boundary between already-seen and new messages.
@@ -808,69 +875,83 @@ function onTouchMove(event: TouchEvent) {
 const SCROLL_BOTTOM_THRESHOLD = 80
 const SCROLL_TOP_THRESHOLD = 120
 const isAtBottom = ref(true)
-let savedScrollHeight = 0
+
+// Native scroll anchoring (overflow-anchor) keeps the viewport steady as
+// images/embeds load in. But it's suppressed when the scroll offset is 0,
+// which is exactly where we are when older history loads. So we also restore
+// the position explicitly after a scroll-triggered prepend, anchored to the
+// first visible message element rather than scroll arithmetic. This is immune
+// to any UI chrome (spinner, history-start) appearing or disappearing at the
+// top, which would throw off distance-from-bottom calculations.
+let anchorMsgEl: HTMLElement | null = null
+let anchorMsgVisualTop = 0
+let pendingPrependRestore = false
 
 function updateScrollState() {
   if (!logEl.value)
     return
   const { scrollTop, scrollHeight, clientHeight } = logEl.value
   isAtBottom.value = scrollHeight - scrollTop - clientHeight <= SCROLL_BOTTOM_THRESHOLD
-  // Scroll-position fallback for lazy history loading. The IntersectionObserver
-  // on the top sentinel can miss the first fire (root sizing/timing inside the
-  // surrounding Transition/Resizable), so drive it from the scroll handler too.
-  // fetchOlderHistory() is idempotent (guards exhausted/in-flight/not-ready).
+  // Scroll-position fallback for lazy history loading; the IntersectionObserver
+  // on the top sentinel can miss the first fire. triggerHistoryLoad() is
+  // idempotent (guards exhausted / in-flight / not-ready).
   if (scrollTop <= SCROLL_TOP_THRESHOLD)
     triggerHistoryLoad()
 }
 
 function scrollToBottom() {
-  nextTick(() => {
-    if (logEl.value)
-      logEl.value.scrollTo({ top: logEl.value.scrollHeight, behavior: 'instant' })
-  })
+  if (logEl.value)
+    logEl.value.scrollTo({ top: logEl.value.scrollHeight, behavior: 'instant' })
 }
 
 function triggerHistoryLoad() {
-  // Bail while a request is in-flight so repeated scroll events don't clobber
-  // savedScrollHeight (needed to restore the viewport after prepending).
   if (!activeBuffer.value || activeBuffer.value.loadingOlderHistory)
     return
-  savedScrollHeight = logEl.value?.scrollHeight ?? 0
+  // Find the first visible message element and record its visual position.
+  // Only user-scroll loads come through here, so the flag keeps the
+  // initial-load auto-fetch path (fetchOlderHistory called directly) from
+  // triggering a restore.
+  if (logEl.value) {
+    const logRect = logEl.value.getBoundingClientRect()
+    const msgs = logEl.value.querySelectorAll<HTMLElement>('[data-msg-id]')
+    for (const msg of msgs) {
+      if (msg.getBoundingClientRect().bottom > logRect.top) {
+        anchorMsgEl = msg
+        anchorMsgVisualTop = msg.getBoundingClientRect().top - logRect.top
+        pendingPrependRestore = true
+        break
+      }
+    }
+  }
   fetchOlderHistory(activeBuffer.value.name)
 }
 
-// Restore scroll position after older messages are prepended so the viewport
-// doesn't jump to the top.
+// After older history is prepended, restore the viewport to the content the
+// user was looking at (runs in nextTick, before paint, so there's no flash).
 watch(
   () => activeBuffer.value?.loadingOlderHistory,
   (loading, wasLoading) => {
-    if (wasLoading && !loading && savedScrollHeight > 0) {
+    if (wasLoading && !loading && pendingPrependRestore) {
+      pendingPrependRestore = false
       nextTick(() => {
-        if (logEl.value) {
-          const delta = logEl.value.scrollHeight - savedScrollHeight
-          logEl.value.scrollTo({ top: logEl.value.scrollTop + delta, behavior: 'instant' })
+        if (logEl.value && anchorMsgEl?.isConnected) {
+          const logRect = logEl.value.getBoundingClientRect()
+          const delta = anchorMsgEl.getBoundingClientRect().top - logRect.top - anchorMsgVisualTop
+          logEl.value.scrollTop += delta
         }
-        savedScrollHeight = 0
+        anchorMsgEl = null
       })
     }
   },
 )
 
-// Only auto-scroll on new messages when the user is already at the bottom.
-const stopMessages = watch(
-  () => messages.value.length,
-  () => {
-    if (isAtBottom.value)
-      scrollToBottom()
-  },
-)
-
-// When switching buffers, clamp to the bottom of the new buffer.
+// When switching buffers, jump to the bottom of the new buffer. The content
+// observer below keeps it pinned while the new buffer's content settles.
 watch(
   () => activeBuffer.value?.name,
   () => {
     isAtBottom.value = true
-    scrollToBottom()
+    nextTick(scrollToBottom)
   },
 )
 
@@ -912,15 +993,36 @@ watch(
   },
 )
 
+// Keep the view pinned to the bottom while content settles (initial load,
+// images / link-previews loading, and new messages) whenever the user is
+// already at the bottom. A ResizeObserver fires exactly when the rendered
+// height changes, so there's no polling and no fighting native anchoring:
+// content added below the anchor (new lines, growing embeds) doesn't move the
+// anchor, so we're free to re-pin to the bottom.
+let contentObserver: ResizeObserver | null = null
+
+function setupContentObserver() {
+  contentObserver?.disconnect()
+  const content = logEl.value?.querySelector('.chat-log__messages')
+  if (!content)
+    return
+  contentObserver = new ResizeObserver(() => {
+    if (isAtBottom.value)
+      scrollToBottom()
+  })
+  contentObserver.observe(content)
+}
+
 onMounted(() => {
   setupSentinelObserver()
-  scrollToBottom()
+  setupContentObserver()
+  nextTick(scrollToBottom)
 })
-onActivated(scrollToBottom)
+onActivated(() => nextTick(scrollToBottom))
 
 onBeforeUnmount(() => {
   sentinelObserver?.disconnect()
-  stopMessages()
+  contentObserver?.disconnect()
 })
 </script>
 
@@ -1162,12 +1264,15 @@ onBeforeUnmount(() => {
                 <UserAvatar v-if="resolvedUser(group.nickLower)" :user-id="resolvedUser(group.nickLower)!.id" :size="32" show-preview linked show-online-indicator />
                 <AvatarMedia v-else :size="32" :alt="group.from ?? ''">
                   <template #default>
-                    {{ (group.from ?? '?').charAt(0).toUpperCase() }}
+                    <Icon v-if="isNickBot(group.nickLower)" name="ph:robot" :size="16" />
+                    <template v-else>
+                      {{ (group.from ?? '?').charAt(0).toUpperCase() }}
+                    </template>
                   </template>
                 </AvatarMedia>
               </div>
               <div class="chat-log__group-body">
-                <div class="chat-log__group-header">
+                <Flex y-center gap="xs" class="chat-log__group-header">
                   <NuxtLink
                     v-if="resolvedUser(group.nickLower)"
                     :to="`/profile/${resolvedUser(group.nickLower)!.username}`"
@@ -1184,7 +1289,7 @@ onBeforeUnmount(() => {
                   <div v-if="lastReactableMsg(group.messages)" class="chat-log__group-react">
                     <ReactionsSelect @reaction="(emote) => { const m = lastReactableMsg(group.messages); if (m) toggleReaction(m, emote) }" />
                   </div>
-                </div>
+                </Flex>
                 <template v-for="item in groupRenderItems(group.messages)" :key="item.kind === 'msg' ? item.msg.id : `g-${item.id}`">
                   <div
                     v-if="item.kind === 'msg'"
@@ -1241,8 +1346,12 @@ onBeforeUnmount(() => {
             </div>
           </template>
         </template>
-        <Flex v-if="messages.length === 0" y-center x-center class="chat-log__empty" expand>
+        <Flex v-if="messages.length === 0 && !isLoadingInitialHistory" y-center x-center class="chat-log__empty" expand>
           No messages yet.
+        </Flex>
+
+        <Flex v-if="isLoadingInitialHistory" y-center x-center class="chat-log__loading" expand>
+          <Spinner />
         </Flex>
 
         <div
@@ -1253,10 +1362,6 @@ onBeforeUnmount(() => {
         />
       </div>
     </div>
-
-    <Transition name="history-overlay">
-      <div v-if="activeBuffer?.loadingOlderHistory" class="chat-log__loading-overlay" />
-    </Transition>
 
     <Lightbox ref="lightboxRef" :items="chatMediaItems" />
 
@@ -1447,6 +1552,9 @@ onBeforeUnmount(() => {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    // Native scroll anchoring keeps the viewport steady when older history is
+    // prepended at the top, including as images/embeds load in afterwards.
+    overflow-anchor: auto;
     background: var(--color-bg-lowered);
     border-radius: var(--border-radius-s);
     border: 1px solid var(--color-border-weak);
@@ -1455,7 +1563,6 @@ onBeforeUnmount(() => {
     font-size: var(--chat-font-size, var(--font-size-s));
     display: flex;
     flex-direction: column;
-    scroll-behavior: smooth;
   }
 
   &__messages {
@@ -1496,27 +1603,13 @@ onBeforeUnmount(() => {
     flex-shrink: 0;
   }
 
-  &__loading-overlay {
-    position: absolute;
-    inset: 0;
-    background: color-mix(in srgb, var(--color-bg-lowered) 85%, transparent);
-    backdrop-filter: blur(2px);
-    z-index: var(--z-active);
-  }
-
-  .history-overlay-enter-active,
-  .history-overlay-leave-active {
-    transition: opacity var(--transition);
-  }
-
-  .history-overlay-enter-from,
-  .history-overlay-leave-to {
-    opacity: 0;
-  }
-
   &__empty {
     color: var(--color-text-lighter);
     font-style: italic;
+    flex: 1;
+  }
+
+  &__loading {
     flex: 1;
   }
 
@@ -1840,12 +1933,6 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     gap: 2px;
-  }
-
-  &__group-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
   }
 
   &__group-react {

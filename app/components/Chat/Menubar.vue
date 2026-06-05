@@ -9,7 +9,7 @@ defineProps<{
   compact?: boolean
 }>()
 
-const { isConnected, connState, connect, disconnect, clearMessages, sidebarHidden, toggleSidebar, channelBrowserOpen, latencyMs } = useIrcChat()
+const { isConnected, connState, connect, disconnect, sidebarHidden, toggleSidebar, latencyMs } = useIrcChat()
 
 const isMobile = useBreakpoint('<s')
 
@@ -68,23 +68,6 @@ function run(action: () => void) {
           </template>
           Disconnect
         </DropdownItem>
-        <DropdownItem @click="() => { clearMessages(); connectionDrawerOpen = false }">
-          <template #icon>
-            <Icon name="ph:trash" />
-          </template>
-          Clear log
-        </DropdownItem>
-
-        <template v-if="isConnected">
-          <DropdownTitle>View</DropdownTitle>
-          <DropdownItem @click="() => { channelBrowserOpen = true; connectionDrawerOpen = false }">
-            <template #icon>
-              <Icon name="ph:compass" />
-            </template>
-            Browse channels
-          </DropdownItem>
-        </template>
-
         <DropdownTitle>About</DropdownTitle>
         <p class="chat-menubar__server">
           irc.hivecom.net:6697
@@ -130,33 +113,10 @@ function run(action: () => void) {
               </template>
               Disconnect
             </DropdownItem>
-            <DropdownItem @click="run(clearMessages)">
-              <template #icon>
-                <Icon name="ph:trash" />
-              </template>
-              Clear log
-            </DropdownItem>
-
-            <template v-if="isConnected">
-              <DropdownTitle>View</DropdownTitle>
-              <DropdownItem @click="run(() => channelBrowserOpen = true)">
-                <template #icon>
-                  <Icon name="ph:compass" />
-                </template>
-                Browse channels
-              </DropdownItem>
-            </template>
-
             <DropdownTitle>About</DropdownTitle>
             <p class="chat-menubar__server">
               irc.hivecom.net:6697
             </p>
-            <template v-if="connState === 'connected' && latencyLabel">
-              <DropdownTitle>Latency</DropdownTitle>
-              <p class="chat-menubar__server chat-menubar__latency">
-                {{ latencyLabel }}
-              </p>
-            </template>
           </div>
         </template>
       </MenuItem>

@@ -40,7 +40,7 @@ function userStyle(name: string) {
   <Flex column :gap="0" class="chat-users" expand>
     <Flex y-center x-between class="chat-users__header" expand>
       <span class="chat-users__title">Users</span>
-      <span class="chat-users__count">{{ users.length }}</span>
+      <span class="text-xs text-color-lighter">{{ users.length }}</span>
     </Flex>
     <Overflow class="chat-users__list">
       <Flex
@@ -105,11 +105,6 @@ function userStyle(name: string) {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--color-text-light);
-  }
-
-  &__count {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
   }
 
   &__list {

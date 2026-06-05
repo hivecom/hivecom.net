@@ -46,6 +46,7 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     chat_timestamp_format: 'HH:mm:ss',
     chat_display_mode: 'modern',
     chat_show_tag_messages: 'none' as const,
+    chat_typing_indicators: false,
   }
 }
 

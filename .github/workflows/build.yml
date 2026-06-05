@@ -40,6 +40,16 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Cache Nuxt build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.cache/nuxt-fonts
+            node_modules/.cache/nuxt-seo
+          key: nuxt-caches-${{ runner.os }}-${{ hashFiles('nuxt.config.ts') }}
+          restore-keys: |
+            nuxt-caches-${{ runner.os }}-
+
       - name: Lint and typecheck
         run: npm run lint
 

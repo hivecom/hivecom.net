@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex, Resizable } from '@dolanske/vui'
-import { computed, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import SharedErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
@@ -44,6 +44,40 @@ const { settings } = useDataUserSettings()
 const isMobile = useBreakpoint('<s')
 
 const { connState, isConnected, ensureNick, clearInputNick, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt } = useIrcChat()
+
+// Auto-reconnect when the browser comes back from sleep or phone background.
+// Track whether a connection was ever established so we only auto-reconnect
+// after an unexpected drop, not after the user intentionally clicked "Go back".
+const hadConnection = ref(false)
+watch(isConnected, (connected) => {
+  if (connected)
+    hadConnection.value = true
+})
+
+function handleDisconnect() {
+  hadConnection.value = false
+  disconnect()
+}
+
+function tryReconnect() {
+  if (document.visibilityState !== 'visible')
+    return
+  if (!hadConnection.value)
+    return
+  if (connState.value === 'connecting' || connState.value === 'connected')
+    return
+  connect()
+}
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', tryReconnect)
+  window.addEventListener('online', tryReconnect)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', tryReconnect)
+  window.removeEventListener('online', tryReconnect)
+})
 
 const isCompactLayout = computed(() => props.compact || isMobile.value || sidebarHidden.value)
 
@@ -89,7 +123,7 @@ watch(user, (u, prev) => {
           <Flex column gap="m" expand>
             <SharedErrorAlert standalone message="Failed to connect to the chat server." :error="lastConnError" />
             <Flex x-center gap="s">
-              <Button variant="gray" @click="disconnect()">
+              <Button variant="gray" @click="handleDisconnect()">
                 <template #start>
                   <Icon name="ph:arrow-left" />
                 </template>

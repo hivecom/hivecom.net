@@ -81,10 +81,10 @@ function bufferIcon(kind: string) {
       </button>
       <template #tooltip>
         <Flex column gap="xxs">
-          <p v-if="node.parentBuffer.topic" class="chat-channels__topic">
+          <p v-if="node.parentBuffer.topic" class="text-xs" style="margin:0">
             {{ node.parentBuffer.topic }}
           </p>
-          <span v-if="node.parentBuffer.users.length" class="chat-channels__count">
+          <span v-if="node.parentBuffer.users.length" class="text-xxs text-color-light">
             {{ node.parentBuffer.users.length }} {{ node.parentBuffer.users.length === 1 ? 'user' : 'users' }}
           </span>
         </Flex>
@@ -149,10 +149,10 @@ function bufferIcon(kind: string) {
     </button>
     <template #tooltip>
       <Flex column gap="xxs">
-        <p v-if="node.buffer.topic" class="chat-channels__topic">
+        <p v-if="node.buffer.topic" class="text-xs" style="margin:0">
           {{ node.buffer.topic }}
         </p>
-        <span v-if="node.buffer.users.length" class="chat-channels__count">
+        <span v-if="node.buffer.users.length" class="text-xxs text-color-light">
           {{ node.buffer.users.length }} {{ node.buffer.users.length === 1 ? 'user' : 'users' }}
         </span>
       </Flex>

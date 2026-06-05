@@ -42,7 +42,7 @@ function cancel() {
     </template>
 
     <Flex column gap="m">
-      <p class="channel-password-modal__desc">
+      <p class="text-s text-color-light" style="margin:0">
         <strong>{{ channel }}</strong> is password protected. Enter the channel key to join.
       </p>
       <Input
@@ -67,13 +67,3 @@ function cancel() {
     </template>
   </Modal>
 </template>
-
-<style lang="scss" scoped>
-.channel-password-modal {
-  &__desc {
-    margin: 0;
-    font-size: var(--font-size-s);
-    color: var(--color-text-light);
-  }
-}
-</style>

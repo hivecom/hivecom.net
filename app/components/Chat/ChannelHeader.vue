@@ -72,7 +72,7 @@ function topicSegments(topic: string): TopicSegment[] {
 
     <!-- PM -->
     <template v-else-if="activeBuffer.kind === 'pm'">
-      <UserAvatar v-if="pmUserId" :user-id="pmUserId" size="s" show-online-indicator />
+      <UserAvatar v-if="pmUserId" :user-id="pmUserId" size="s" show-online-indicator show-preview linked />
       <AvatarMedia v-else :size="28" :alt="activeBuffer.name">
         <template #default>
           {{ activeBuffer.name.charAt(0).toUpperCase() }}

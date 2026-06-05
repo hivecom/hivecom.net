@@ -235,7 +235,7 @@ function treeNodeKey(node: ChannelTreeNode): string {
           <Tooltip
             v-for="buf in sortedBuffers"
             :key="buf.name"
-            placement="right"
+            placement="bottom"
             :disabled="isMobile || (!buf.topic && buf.users.length === 0)"
           >
             <button
@@ -282,10 +282,10 @@ function treeNodeKey(node: ChannelTreeNode): string {
             </button>
             <template #tooltip>
               <Flex column gap="xxs">
-                <p v-if="buf.topic" class="chat-channels__topic">
+                <p v-if="buf.topic" class="text-xs" style="margin:0">
                   {{ buf.topic }}
                 </p>
-                <span v-if="buf.users.length" class="chat-channels__count">
+                <span v-if="buf.users.length" class="text-xxs text-color-light">
                   {{ buf.users.length }} {{ buf.users.length === 1 ? 'user' : 'users' }}
                 </span>
               </Flex>
@@ -484,16 +484,6 @@ function treeNodeKey(node: ChannelTreeNode): string {
     flex-shrink: 0;
     opacity: 0;
     transition: opacity var(--transition-fast);
-  }
-
-  :deep(.chat-channels__topic) {
-    margin: 0;
-    font-size: var(--font-size-s);
-  }
-
-  :deep(.chat-channels__count) {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-light);
   }
 }
 </style>

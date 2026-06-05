@@ -172,6 +172,7 @@ export default defineNuxtConfig({
     typeCheck: false,
   },
   modules: [
+    '@nuxt/fonts',
     '@nuxtjs/supabase',
     '@nuxtjs/sitemap',
     '@nuxtjs/robots',
@@ -465,11 +466,34 @@ export default defineNuxtConfig({
       }
     },
   },
+  fonts: {
+    families: [
+      // Inter is the primary Latin font for the OG image templates.
+      { name: 'Inter', weights: [400, 700], provider: 'google' },
+      // Noto Sans SC covers Chinese (simplified + traditional) and other Unicode
+      // scripts not covered by Inter, giving OG image templates CJK fallback support.
+      { name: 'Noto Sans SC', weights: [400, 700], provider: 'google' },
+      //
+      // No `global: true`: nuxt-og-image auto-detects these families from the
+      // font-family declared in the OG image components and resolves them via
+      // @nuxt/fonts at render time. Setting global would inject a ~200 kB
+      // nuxt-fonts-global.css of @font-face rules into every app page.
+    ],
+    experimental: {
+      // Don't generate metric-adjusted local fallback @font-face rules for the
+      // font-family declarations found in app/VUI CSS; those overrides change the
+      // app's system fonts. We only want the OG image renderer to use this font.
+      disableLocalFallbacks: true,
+    },
+  },
   ogImage: {
     // This is a fully prerendered static site (github-pages), so all OG images
     // are generated at build time. Zero runtime mode removes all renderer code
     // from the Nitro output and eliminates the "Unknown Nitro preset" warning.
     zeroRuntime: true,
+    // Cache rendered OG images to disk so CI builds skip re-rendering unchanged images.
+    // Stored in node_modules/.cache/nuxt-seo/og-image/ and preserved by the cache action.
+    buildCache: true,
   },
   nitro: {
     // Explicitly set static: true so nuxt-og-image's resolveOgImagePreset()

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Flex, Input, Modal } from '@dolanske/vui'
-import ChatUserListModal from '@/components/Chat/UserListModal.vue'
+import ChatTypingIndicator from '@/components/Chat/TypingIndicator.vue'
+import UserListModal from '@/components/Chat/UserListModal.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { nickColor, useIrcChat } from '@/composables/useIrcChat'
 
@@ -8,7 +9,7 @@ const props = defineProps<{
   compact?: boolean
 }>()
 
-const { inputMessage, activeName, activeBuffer, canChat, users, buffers, nick, sendMessage, replyTarget, clearReply } = useIrcChat()
+const { inputMessage, activeName, activeBuffer, canChat, users, buffers, nick, sendMessage, replyTarget, clearReply, sendTyping } = useIrcChat()
 const { settings } = useDataUserSettings()
 
 const infoOpen = ref(false)
@@ -276,6 +277,73 @@ const messageHistory = ref<string[]>([])
 const historyIndex = ref(-1)
 const draftBuffer = ref('')
 
+// --- Typing indicator state machine -----------------------------------------
+// 500ms debounce before the first 'active' send in each burst; prevents sending
+// for quick corrections the user immediately deletes.
+let _activeDebounceTimer: ReturnType<typeof setTimeout> | null = null
+// 4s idle timer that sends 'paused' after the user stops typing.
+let _pauseTimer: ReturnType<typeof setTimeout> | null = null
+// True once 'active' has been sent for the current burst. Lets subsequent
+// keystrokes go straight to the composable's 3s throttle without re-debouncing.
+let _typingSessionActive = false
+// Set true just before sendMessage() clears the input so the watcher below
+// doesn't mistake the programmatic clear for the user wiping the field.
+let _skipTypingDone = false
+
+function clearTypingTimers() {
+  if (_activeDebounceTimer !== null) {
+    clearTimeout(_activeDebounceTimer)
+    _activeDebounceTimer = null
+  }
+  if (_pauseTimer !== null) {
+    clearTimeout(_pauseTimer)
+    _pauseTimer = null
+  }
+  _typingSessionActive = false
+}
+
+watch(inputMessage, (newVal, oldVal) => {
+  if (!newVal) {
+    if (oldVal && !_skipTypingDone && settings.value.chat_typing_indicators)
+      sendTyping('done')
+    _skipTypingDone = false
+    clearTypingTimers()
+    return
+  }
+  _skipTypingDone = false
+  // Slash commands are not user messages - don't advertise typing.
+  if (!settings.value.chat_typing_indicators || newVal.startsWith('/')) {
+    clearTypingTimers()
+    return
+  }
+  // Reset the 4s idle timer on every keystroke.
+  if (_pauseTimer !== null) {
+    clearTimeout(_pauseTimer)
+    _pauseTimer = null
+  }
+  _pauseTimer = setTimeout(() => {
+    _pauseTimer = null
+    _typingSessionActive = false
+    if (inputMessage.value && !inputMessage.value.startsWith('/') && settings.value.chat_typing_indicators)
+      sendTyping('paused')
+  }, 4000)
+  if (_typingSessionActive) {
+    // Already inside a burst - let the composable's 3s throttle gate re-sends.
+    sendTyping('active')
+  }
+  else if (_activeDebounceTimer === null) {
+    // New burst: wait 500ms before advertising typing to avoid noise from
+    // quick corrections the user immediately deletes.
+    _activeDebounceTimer = setTimeout(() => {
+      _activeDebounceTimer = null
+      if (!inputMessage.value || inputMessage.value.startsWith('/') || !settings.value.chat_typing_indicators)
+        return
+      _typingSessionActive = true
+      sendTyping('active')
+    }, 500)
+  }
+})
+
 function pushHistory(msg: string) {
   if (msg && msg !== messageHistory.value[messageHistory.value.length - 1])
     messageHistory.value.push(msg)
@@ -284,6 +352,8 @@ function pushHistory(msg: string) {
 }
 
 function sendWithHistory() {
+  _skipTypingDone = true
+  clearTypingTimers()
   const msg = inputMessage.value.trim()
   if (msg)
     pushHistory(msg)
@@ -372,6 +442,7 @@ function userStyle(name: string) {
 
 // Close the popup when switching buffers so stale entries never linger.
 watch(activeName, () => {
+  clearTypingTimers()
   closeSuggestions()
   historyIndex.value = -1
   draftBuffer.value = ''
@@ -380,78 +451,81 @@ watch(activeName, clearReply)
 </script>
 
 <template>
-  <Flex class="chat-composer" expand :gap="0">
-    <Flex v-if="props.compact" :gap="0" class="chat-composer__compact-actions">
-      <Button square :disabled="!activeBuffer?.topic" aria-label="Channel info" class="chat-composer__compact-btn" @click="infoOpen = true">
-        <Icon name="ph:info" size="16" />
-      </Button>
-      <Button square :disabled="activeBuffer?.kind !== 'channel'" aria-label="Users" class="chat-composer__compact-btn" @click="usersOpen = true">
-        <Icon name="ph:users" size="16" />
-      </Button>
-    </Flex>
-    <Flex class="chat-composer__field" expand column :gap="0">
-      <ul v-if="open" class="chat-composer__suggestions">
-        <li v-for="(item, index) in suggestions" :key="item.value">
-          <button
-            type="button"
-            class="chat-composer__suggestion"
-            :class="{ 'chat-composer__suggestion--active': index === activeIndex }"
-            @mousedown.prevent="accept(item)"
-            @mouseenter="activeIndex = index"
-          >
-            <Icon :name="triggerIcon" size="13" class="chat-composer__suggestion-icon" />
-            <span class="chat-composer__suggestion-label" :style="item.colored ? userStyle(item.value) : undefined">{{ item.label }}</span>
-            <span v-if="item.hint" class="chat-composer__suggestion-hint">{{ item.hint }}</span>
-          </button>
-        </li>
-      </ul>
-      <Flex v-if="replyTarget" y-center gap="xs" class="chat-composer__reply" expand>
-        <Icon name="ph:arrow-bend-up-left" size="13" class="chat-composer__reply-icon" />
-        <span class="chat-composer__reply-label">
-          <span v-if="replyTarget.from" class="chat-composer__reply-nick text-s">{{ replyTarget.from }}</span>
-          <span class="chat-composer__reply-text text-s">{{ replyTarget.text }}</span>
-        </span>
-        <Button plain square class="chat-composer__reply-dismiss" @click="clearReply">
-          <Icon name="ph:x" size="13" />
+  <Flex class="chat-composer" column expand :gap="0">
+    <ChatTypingIndicator />
+    <Flex expand :gap="0">
+      <Flex v-if="props.compact" :gap="0" class="chat-composer__compact-actions">
+        <Button square :disabled="!activeBuffer?.topic" aria-label="Channel info" class="chat-composer__compact-btn" @click="infoOpen = true">
+          <Icon name="ph:info" size="16" />
+        </Button>
+        <Button square :disabled="activeBuffer?.kind !== 'channel'" aria-label="Users" class="chat-composer__compact-btn" @click="usersOpen = true">
+          <Icon name="ph:users" size="16" />
         </Button>
       </Flex>
-      <Flex :gap="0" y-stretch class="chat-composer__input-row" expand>
-        <Input
-          ref="inputComp"
-          v-model="inputMessage"
-          expand
-          :disabled="!canChat"
-          :placeholder="placeholder"
-          class="text-s chat-composer__input"
-          @input="onInput"
-          @keydown="onKeydown"
-          @focusout="closeSuggestions"
-        />
-        <Button square :disabled="disabled" class="chat-composer__send" @click="sendWithHistory">
-          <Icon name="ph:paper-plane-tilt" size="16" />
-        </Button>
+      <Flex class="chat-composer__field" expand column :gap="0">
+        <ul v-if="open" class="chat-composer__suggestions">
+          <li v-for="(item, index) in suggestions" :key="item.value">
+            <button
+              type="button"
+              class="chat-composer__suggestion"
+              :class="{ 'chat-composer__suggestion--active': index === activeIndex }"
+              @mousedown.prevent="accept(item)"
+              @mouseenter="activeIndex = index"
+            >
+              <Icon :name="triggerIcon" size="13" class="chat-composer__suggestion-icon" />
+              <span class="chat-composer__suggestion-label" :style="item.colored ? userStyle(item.value) : undefined">{{ item.label }}</span>
+              <span v-if="item.hint" class="chat-composer__suggestion-hint">{{ item.hint }}</span>
+            </button>
+          </li>
+        </ul>
+        <Flex v-if="replyTarget" y-center gap="xs" class="chat-composer__reply" expand>
+          <Icon name="ph:arrow-bend-up-left" size="13" class="chat-composer__reply-icon" />
+          <span class="chat-composer__reply-label">
+            <span v-if="replyTarget.from" class="chat-composer__reply-nick text-s">{{ replyTarget.from }}</span>
+            <span class="chat-composer__reply-text text-s">{{ replyTarget.text }}</span>
+          </span>
+          <Button plain square class="chat-composer__reply-dismiss" @click="clearReply">
+            <Icon name="ph:x" size="13" />
+          </Button>
+        </Flex>
+        <Flex :gap="0" y-stretch class="chat-composer__input-row" expand>
+          <Input
+            ref="inputComp"
+            v-model="inputMessage"
+            expand
+            :disabled="!canChat"
+            :placeholder="placeholder"
+            class="text-s chat-composer__input"
+            @input="onInput"
+            @keydown="onKeydown"
+            @focusout="closeSuggestions"
+          />
+          <Button square :disabled="disabled" class="chat-composer__send" @click="sendWithHistory">
+            <Icon name="ph:paper-plane-tilt" size="16" />
+          </Button>
+        </Flex>
       </Flex>
     </Flex>
-  </Flex>
 
-  <ChatUserListModal v-if="props.compact" :open="usersOpen" @close="usersOpen = false" />
+    <UserListModal v-if="props.compact" :open="usersOpen" @close="usersOpen = false" />
 
-  <Modal v-if="props.compact && activeBuffer?.kind === 'channel'" :open="infoOpen" size="m" @close="infoOpen = false">
-    <template #header>
-      <h4>{{ activeBuffer.name }}</h4>
-    </template>
-    <p v-if="activeBuffer.topic" class="chat-composer__modal-topic text-s">
-      <template v-for="(seg, i) in topicSegments(activeBuffer.topic)" :key="i">
-        <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-composer__modal-link">{{ seg.value }}</a>
-        <template v-else>
-          {{ seg.value }}
-        </template>
+    <Modal v-if="props.compact && activeBuffer?.kind === 'channel'" :open="infoOpen" size="m" @close="infoOpen = false">
+      <template #header>
+        <h4>{{ activeBuffer.name }}</h4>
       </template>
-    </p>
-    <p v-else class="text-color-lighter">
-      No topic set.
-    </p>
-  </Modal>
+      <p v-if="activeBuffer.topic" class="chat-composer__modal-topic text-s">
+        <template v-for="(seg, i) in topicSegments(activeBuffer.topic)" :key="i">
+          <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-composer__modal-link">{{ seg.value }}</a>
+          <template v-else>
+            {{ seg.value }}
+          </template>
+        </template>
+      </p>
+      <p v-else class="text-color-lighter">
+        No topic set.
+      </p>
+    </Modal>
+  </Flex>
 </template>
 
 <style lang="scss" scoped>
@@ -539,10 +613,6 @@ watch(activeName, clearReply)
   &__reply-nick {
     font-weight: 600;
     margin-right: var(--space-xxs);
-  }
-
-  &__reply-text {
-    color: var(--color-text-lighter);
   }
 
   &__reply-dismiss {
