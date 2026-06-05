@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Badge, Button, ButtonGroup, Flex, Input, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -8,7 +9,11 @@ const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 const isMobile = useBreakpoint('<s')
-const { channelList, channelListLoading, listChannels, joinChannel } = useIrcChat()
+const { buffers, channelList, channelListLoading, listChannels, joinChannel } = useIrcChat()
+
+function channelModes(name: string): Set<string> | undefined {
+  return buffers.value.find(b => b.name.toLowerCase() === name.toLowerCase())?.modes
+}
 
 const search = ref('')
 
@@ -141,7 +146,10 @@ function join(name: string) {
         >
           <Flex y-center gap="xs">
             <Icon name="ph:hash" size="14" class="chat-channel-browser__icon" />
-            <span class="chat-channel-browser__name">{{ entry.name.replace(/^#/, '') }}</span>
+            <Flex y-center gap="xxs" class="chat-channel-browser__name-wrap">
+              <span class="chat-channel-browser__name">{{ entry.name.replace(/^#/, '') }}</span>
+              <ChannelModeBadges :modes="channelModes(entry.name)" />
+            </Flex>
             <Badge variant="neutral" size="s" class="chat-channel-browser__count">
               {{ entry.userCount }}
             </Badge>
@@ -212,10 +220,21 @@ function join(name: string) {
     color: var(--color-text-lighter);
   }
 
-  &__name {
+  &__name-wrap {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+  }
+
+  &__name {
     font-size: var(--font-size-s);
     font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
   }
 
   &__count {

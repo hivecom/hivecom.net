@@ -1074,6 +1074,9 @@ function handleMessage(raw: string) {
         // Defer the "You joined" marker until the channel's CHATHISTORY LATEST
         // batch has been appended, so replayed history sits above the marker
         // (newest) instead of below it. Without history support, add it now.
+        // Request current channel modes so mode badges are always accurate,
+        // regardless of whether a live MODE event was sent during the join burst.
+        send(`MODE ${channel}`)
         if (chatHistorySupported) {
           pendingJoinMarkers.add(channel.toLowerCase())
           requestHistory(channel)
@@ -1360,6 +1363,14 @@ function handleMessage(raw: string) {
     case '323': // RPL_LISTEND
       channelListLoading.value = false
       break
+
+    case '324': { // RPL_CHANNELMODEIS - response to MODE #channel query
+      const modeChannel = params[1] ?? ''
+      const modeBuf = findBuffer(modeChannel)
+      if (modeBuf)
+        applyModeChanges(modeBuf, params.slice(2))
+      break
+    }
 
     case '329': // RPL_CREATIONTIME - channel creation timestamp; silently consumed
       break
@@ -1963,9 +1974,9 @@ export interface ChannelRole {
 
 const ROLE_BY_PREFIX: Record<string, ChannelRole> = {
   '~': { symbol: '~', label: 'Owner', color: 'var(--color-text-red)' },
-  '&': { symbol: '&', label: 'Admin', color: 'var(--color-text-purple)' },
-  '@': { symbol: '@', label: 'Operator', color: 'var(--color-text-green)' },
-  '%': { symbol: '%', label: 'Half-operator', color: 'var(--color-text-blue)' },
+  '&': { symbol: '&', label: 'Admin', color: 'var(--color-text-red)' },
+  '@': { symbol: '@', label: 'Operator', color: 'var(--color-text-blue)' },
+  '%': { symbol: '%', label: 'Half-operator', color: 'var(--color-text-purple)' },
   '+': { symbol: '+', label: 'Voiced', color: 'var(--color-text-yellow)' },
 }
 

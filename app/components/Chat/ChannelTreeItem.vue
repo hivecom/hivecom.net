@@ -65,8 +65,10 @@ function bufferIcon(kind: string) {
         @mouseup.middle.prevent="closeBuffer(node.parentBuffer.name)"
       >
         <Icon name="ph:hash" size="13" class="chat-channels__icon" />
-        <span class="chat-channels__name">{{ node.name }}</span>
-        <ChannelModeBadges :buffer="node.parentBuffer" />
+        <Flex y-center gap="s" class="chat-channels__name-wrap">
+          <span class="chat-channels__name">{{ node.name }}</span>
+          <ChannelModeBadges :modes="node.parentBuffer.modes" />
+        </Flex>
         <Badge v-if="node.parentBuffer.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
           {{ node.parentBuffer.mentions }}
         </Badge>
@@ -123,8 +125,10 @@ function bufferIcon(kind: string) {
         </AvatarMedia>
       </template>
       <Icon v-else :name="bufferIcon(node.buffer.kind)" size="13" class="chat-channels__icon" />
-      <span class="chat-channels__name">{{ node.displayName }}</span>
-      <ChannelModeBadges v-if="node.buffer.kind === 'channel'" :buffer="node.buffer" />
+      <Flex y-center gap="s" class="chat-channels__name-wrap">
+        <span class="chat-channels__name">{{ node.displayName }}</span>
+        <ChannelModeBadges v-if="node.buffer.kind === 'channel'" :modes="node.buffer.modes" />
+      </Flex>
       <Badge v-if="node.buffer.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
         {{ node.buffer.mentions }}
       </Badge>

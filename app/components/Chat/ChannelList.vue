@@ -255,11 +255,13 @@ function treeNodeKey(node: ChannelTreeNode): string {
                 </AvatarMedia>
               </template>
               <Icon v-else :name="bufferIcon(buf.kind)" size="13" class="chat-channels__icon" />
-              <span
-                v-if="!(isMobile && buf.kind === 'server')"
-                class="chat-channels__name chat-channels__name--compact"
-              >{{ bufferLabel(buf.name, buf.kind) }}</span>
-              <ChannelModeBadges v-if="buf.kind === 'channel'" :buffer="buf" />
+              <Flex y-center gap="s" class="chat-channels__name-wrap">
+                <span
+                  v-if="!(isMobile && buf.kind === 'server')"
+                  class="chat-channels__name chat-channels__name--compact"
+                >{{ bufferLabel(buf.name, buf.kind) }}</span>
+                <ChannelModeBadges v-if="buf.kind === 'channel'" :modes="buf.modes" />
+              </Flex>
               <Badge v-if="buf.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
                 {{ buf.mentions }}
               </Badge>
@@ -458,11 +460,16 @@ function treeNodeKey(node: ChannelTreeNode): string {
     color: var(--color-text-lighter);
   }
 
-  :deep(.chat-channels__name) {
+  :deep(.chat-channels__name-wrap) {
     flex: 1;
+    min-width: 0;
+  }
+
+  :deep(.chat-channels__name) {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
   }
 
   :deep(.chat-channels__name--compact) {

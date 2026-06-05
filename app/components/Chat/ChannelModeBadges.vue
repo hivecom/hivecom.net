@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import type { ChatBuffer } from '@/composables/useIrcChat'
-import { Tooltip } from '@dolanske/vui'
+import { Badge, Flex, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
 
 const props = defineProps<{
-  buffer: ChatBuffer
+  modes: Set<string> | undefined
 }>()
 
 interface ModeBadge {
@@ -22,7 +21,7 @@ const MODE_BADGES: ModeBadge[] = [
 ]
 
 const activeBadges = computed(() => {
-  const modes = props.buffer.modes
+  const modes = props.modes
   if (!modes || modes.size === 0)
     return []
   return MODE_BADGES.filter(b => modes.has(b.mode))
@@ -30,21 +29,24 @@ const activeBadges = computed(() => {
 </script>
 
 <template>
-  <Tooltip
-    v-for="badge in activeBadges"
-    :key="badge.mode"
-    placement="top"
-  >
-    <Icon :name="badge.icon" size="10" class="chat-channels__mode-icon" />
-    <template #tooltip>
-      <p>{{ badge.label }}</p>
-    </template>
-  </Tooltip>
+  <Flex y-center gap="xxs">
+    <Tooltip
+      v-for="badge in activeBadges"
+      :key="badge.mode"
+      placement="top"
+    >
+      <Badge size="s" outline>
+        <Icon :name="badge.icon" size="12" class="chat-channels__mode-icon" />
+      </Badge>
+      <template #tooltip>
+        <p>{{ badge.label }}</p>
+      </template>
+    </Tooltip>
+  </Flex>
 </template>
 
 <style lang="scss" scoped>
 .chat-channels__mode-icon {
-  flex-shrink: 0;
   color: var(--color-text-lighter);
 }
 </style>
