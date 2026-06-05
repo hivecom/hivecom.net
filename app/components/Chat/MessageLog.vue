@@ -8,6 +8,7 @@ import LinkEmbed from '@/components/LinkEmbed/index.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import Lightbox from '@/components/Shared/Lightbox.vue'
+import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { parseInternalUrl } from '@/composables/useDataLinkPreview'
@@ -1068,7 +1069,12 @@ onBeforeUnmount(() => {
               :data-msg-id="msg.id"
             >
               <span class="chat-log__nick-cell">
-                <span v-if="showTimestamps" class="chat-log__ts">{{ fmtTime(msg.ts) }}</span>
+                <TimestampDate
+                  v-if="showTimestamps"
+                  class="chat-log__ts"
+                  :date="msg.ts.toISOString()"
+                  :format="settings.chat_timestamp_format || 'HH:mm:ss'"
+                />
                 <template v-if="msg.action">
                   <span class="chat-log__action-star">*</span>
                 </template>
@@ -1285,7 +1291,12 @@ onBeforeUnmount(() => {
                   <span v-else class="chat-log__nick" :style="groupNickStyle(group.from)">
                     {{ group.from }}
                   </span>
-                  <span v-if="showTimestamps" class="chat-log__ts chat-log__ts--inline">{{ fmtTime(group.messages[0].ts) }}</span>
+                  <TimestampDate
+                    v-if="showTimestamps"
+                    class="chat-log__ts chat-log__ts--inline"
+                    :date="group.messages[0].ts.toISOString()"
+                    relative
+                  />
                   <div v-if="lastReactableMsg(group.messages)" class="chat-log__group-react">
                     <ReactionsSelect @reaction="(emote) => { const m = lastReactableMsg(group.messages); if (m) toggleReaction(m, emote) }" />
                   </div>
@@ -1689,7 +1700,7 @@ onBeforeUnmount(() => {
     }
   }
 
-  &__ts {
+  :deep(.chat-log__ts) {
     color: var(--color-text-lightest);
     flex-shrink: 0;
     margin-right: auto;
@@ -1966,7 +1977,7 @@ onBeforeUnmount(() => {
     }
   }
 
-  &__ts--inline {
+  :deep(.chat-log__ts--inline) {
     font-size: var(--font-size-xs);
     color: var(--color-text-lightest);
   }

@@ -328,6 +328,13 @@ interface BacklogBatchInfo {
 }
 // Active CHATHISTORY batch ids mapped to metadata, so replayed lines are flagged as backlog.
 const backlogBatches = new Map<string, BacklogBatchInfo>()
+// Reactions (react/unreact) that arrived before their parent message existed in
+// the buffer. Keyed by buffer name (lowercased) -> parent msgid -> queued ops.
+// The common case is reacting to (or receiving reactions on) our own message
+// before its echo delivers the server-assigned msgid; without this, the parent
+// lookup in applyReaction fails and the reaction is silently dropped until a
+// reload re-fetches the message and its reactions together via CHATHISTORY.
+const pendingReactions = new Map<string, Map<string, Array<{ reaction: string, who: string, remove: boolean }>>>()
 // Targets for which a CHATHISTORY BEFORE request is pending (lowercased).
 const pendingBeforeTargets = new Set<string>()
 // Targets for which a time-bounded CHATHISTORY LATEST request is pending (lowercased).
@@ -428,6 +435,13 @@ function addToBuffer(
     buf.messages.push(newMsg)
   }
 
+  // A message just landed in buf.messages - apply any reactions that arrived
+  // before it (e.g. reactions on our own message that preceded its echo). The
+  // staged-prepend path above doesn't splice yet, so skip it there; the BATCH
+  // end handler drains staged msgids after the bulk splice.
+  if (!opts.prepend && newMsg.msgid != null)
+    drainPendingReactions(buf, newMsg.msgid)
+
   // Track the newest live chat message so DM history fetches know where we left off.
   if (!opts.backlog && msg.type === 'chat')
     noteSeen(ts.getTime())
@@ -514,8 +528,17 @@ function applyReaction(buf: ChatBuffer, parentMsgid: string, reaction: string, w
   // not yet spliced into buf.messages, so fall back to searching the staging array.
   const parent = buf.messages.find(m => m.msgid === parentMsgid)
     ?? extra?.find(m => m.msgid === parentMsgid)
-  if (!parent)
+  if (!parent) {
+    // The parent message isn't in the buffer (nor the current batch's staging)
+    // yet. Two cases, both handled by stashing and replaying when it appears:
+    //  - Live: our own just-sent message awaiting its echo with the server msgid.
+    //  - Backlog: CHATHISTORY replays a reaction at its own (newer) timestamp,
+    //    but the parent it targets was sent earlier and lands in an OLDER batch
+    //    that is fetched in a later page. Without queueing, only reactions whose
+    //    parent shares the same batch survive pagination.
+    queuePendingReaction(buf.name, parentMsgid, reaction, who, remove)
     return
+  }
   const reactions: Record<string, string[]> = { ...(parent.reactions ?? {}) }
   const list = reactions[reaction] ? [...reactions[reaction]] : []
   const idx = list.indexOf(who)
@@ -531,6 +554,30 @@ function applyReaction(buf: ChatBuffer, parentMsgid: string, reaction: string, w
   else
     delete reactions[reaction]
   parent.reactions = Object.keys(reactions).length ? reactions : undefined
+}
+
+/** Stash a reaction whose parent message isn't in the buffer yet. */
+function queuePendingReaction(bufName: string, parentMsgid: string, reaction: string, who: string, remove: boolean) {
+  const lc = bufName.toLowerCase()
+  let byMsgid = pendingReactions.get(lc)
+  if (!byMsgid) {
+    byMsgid = new Map()
+    pendingReactions.set(lc, byMsgid)
+  }
+  const list = byMsgid.get(parentMsgid) ?? []
+  list.push({ reaction, who, remove })
+  byMsgid.set(parentMsgid, list)
+}
+
+/** Apply (and clear) any reactions queued for `msgid`, now that its parent exists. */
+function drainPendingReactions(buf: ChatBuffer, msgid: string) {
+  const byMsgid = pendingReactions.get(buf.name.toLowerCase())
+  const queued = byMsgid?.get(msgid)
+  if (!byMsgid || !queued)
+    return
+  byMsgid.delete(msgid)
+  for (const op of queued)
+    applyReaction(buf, msgid, op.reaction, op.who, op.remove)
 }
 
 function stripPrefix(name: string) {
@@ -1345,8 +1392,16 @@ function handleMessage(raw: string) {
             // reactive array only updates once (no per-message layout shift).
             // Server delivers messages oldest-first, staging preserves that
             // order, so splice(0,0,...) inserts them chronologically.
-            if (info.isPrepend && info.staging != null && info.staging.length > 0)
+            if (info.isPrepend && info.staging != null && info.staging.length > 0) {
               batchBuf.messages.splice(0, 0, ...info.staging)
+              // Now that these older messages exist in the buffer, apply any
+              // reactions that were replayed in a newer batch but targeted them
+              // (their parent only just arrived in this older page).
+              for (const staged of info.staging) {
+                if (staged.msgid != null)
+                  drainPendingReactions(batchBuf, staged.msgid)
+              }
+            }
 
             // Advance the pagination anchor to the oldest line delivered in this
             // batch, even if that line never entered the buffer (reaction
@@ -1750,6 +1805,7 @@ function openSocket() {
     probeTimer = null
   }
   backlogBatches.clear()
+  pendingReactions.clear()
   pendingJoinMarkers.clear()
   explicitJoinIntents.clear()
   pendingBeforeTargets.clear()

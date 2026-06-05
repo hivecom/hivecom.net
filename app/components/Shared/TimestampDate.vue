@@ -2,6 +2,7 @@
 import { Tooltip } from '@dolanske/vui'
 
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 
 import { computed } from 'vue'
 import { dateFormat } from '@/lib/utils/date'
@@ -12,6 +13,9 @@ const props = withDefaults(defineProps<{
   date: string | null
   // Optional format to use (will use dateFormat.default if not provided)
   format?: string
+  // Render a human-readable relative time (e.g. "5 minutes ago") instead of a
+  // formatted date. The tooltip still shows the precise timestamp.
+  relative?: boolean
   // Enable tooltip with detailed information on hover
   tooltip?: boolean
   // Text to show if date is null
@@ -22,16 +26,21 @@ const props = withDefaults(defineProps<{
   size?: 'xxs' | 'xs' | 's' | 'm' | 'l' | 'xl' | 'xxl' | 'xxxl'
 }>(), {
   format: dateFormat.default,
+  relative: false,
   tooltip: true,
   fallback: 'N/A',
   placement: 'top',
   size: 's',
 })
 
+dayjs.extend(relativeTime)
+
 // Format the date for display using either the provided format or default
 const formattedDate = computed(() => {
   if (!props.date)
     return props.fallback
+  if (props.relative)
+    return dayjs(props.date).fromNow()
   return dayjs(props.date).format(props.format)
 })
 
