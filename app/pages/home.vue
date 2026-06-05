@@ -133,29 +133,31 @@ const sunStyle = computed(() => {
       </div>
 
       <section class="">
-        <div class="container-m relative">
-          <GlowCard class="glow-card-home">
-            <div class="home-card home-card--forum">
-              <Marquee :speed="MARQUEE_SPEED" direction="left">
-                <p>
-                  <NuxtLink to="/forum">
-                    LATEST FORUM POSTS LATEST FORUM POSTS LATEST FORUM POSTS
-                  </NuxtLink>
-                </p>
-              </Marquee>
-              <Marquee
-                v-for="(item, index) in maruqeeItems" :key="item.id" :speed="MARQUEE_SPEED"
-                :direction="index % 2 === 0 ? 'right' : 'left'"
-              >
-                <p>
-                  <NuxtLink :to="`/forum/${item.id}`">
-                    {{ item.title }}{{ item.description ? `: ${item.description}` : '' }}
-                  </NuxtLink>
-                </p>
-              </Marquee>
-            </div>
-          </GlowCard>
-          <div class="card-pointer bottom-right" data-text="Forum" />
+        <div class="container-m">
+          <div class="relative">
+            <GlowCard class="glow-card-home">
+              <div class="home-card home-card--forum">
+                <Marquee :speed="MARQUEE_SPEED" direction="left">
+                  <p>
+                    <NuxtLink to="/forum">
+                      LATEST FORUM POSTS LATEST FORUM POSTS LATEST FORUM POSTS
+                    </NuxtLink>
+                  </p>
+                </Marquee>
+                <Marquee
+                  v-for="(item, index) in maruqeeItems" :key="item.id" :speed="MARQUEE_SPEED"
+                  :direction="index % 2 === 0 ? 'right' : 'left'"
+                >
+                  <p>
+                    <NuxtLink :to="`/forum/${item.id}`">
+                      {{ item.title }}{{ item.description ? `: ${item.description}` : '' }}
+                    </NuxtLink>
+                  </p>
+                </Marquee>
+              </div>
+            </GlowCard>
+            <div class="card-pointer bottom-right" data-text="Forum" />
+          </div>
         </div>
       </section>
     </GlowGroup>
@@ -374,6 +376,7 @@ const sunStyle = computed(() => {
     bottom: -1000px;
     background-color: var(--color-accent);
     border-radius: 100%;
+    // TRANSFORM HERE
   }
 
   h2 {
