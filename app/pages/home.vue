@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { CSSProperties } from 'vue'
 import type { Tables } from '@/types/database.types'
 import { Marquee } from '@dolanske/vui'
 import EventSmall from '@/components/Events/EventSmall.vue'
@@ -39,6 +40,36 @@ onBeforeMount(() => {
       }
     })
 })
+
+// Randomly generate 100 stars
+const STAR_COUNT = 75
+const STAR_TRANSFORM_THRESHOLD = 0.4
+const stars = shallowRef<CSSProperties[]>([])
+
+const { y } = useWindowScroll()
+
+onMounted(() => {
+  const _stars = []
+  for (let i = 0; i < STAR_COUNT; i++) {
+    const size = Math.random() * 2 + 0.5
+    const verticalRandom = Math.random()
+    const baseOpacity = Math.random() * 0.45 + 0.55
+
+    _stars.push({
+      'left': `${Math.random() * window.innerWidth}px`,
+      'top': `${Math.random() * window.innerHeight}px`,
+      'width': `${size}px`,
+      'height': `${size}px`,
+      '--star-animation-offset': `${Math.random() * 10000}ms`,
+      '--star-animation-duration': `${Math.random() * 2000 + 2000}ms`,
+      '--star-base-opacity': `${baseOpacity}`,
+      '--vertical-random-multiplier': `${verticalRandom < STAR_TRANSFORM_THRESHOLD ? 0 : (verticalRandom - STAR_TRANSFORM_THRESHOLD) * 1.5}`,
+      '--vertical-offset': 0,
+    })
+  }
+
+  stars.value = _stars
+})
 </script>
 
 <template>
@@ -57,17 +88,25 @@ onBeforeMount(() => {
                 About us
               </h2>
               <p>
-                The community was originally created by <UserDisplay size="s" inline user-id="c57fa854-f33a-40ee-a326-33f18760a4a3" /> <UserDisplay size="s" inline user-id="c8285417-e04c-4028-b02d-59711552bc4c" />  <UserDisplay size="s" inline user-id="363f4c51-6ae9-4115-b8eb-01b9760fb6d0" />
+                The community was originally created by
+                <UserDisplay size="s" inline user-id="c57fa854-f33a-40ee-a326-33f18760a4a3" />
+                <UserDisplay size="s" inline user-id="c8285417-e04c-4028-b02d-59711552bc4c" />
+                <UserDisplay size="s" inline user-id="363f4c51-6ae9-4115-b8eb-01b9760fb6d0" />
               </p>
               <p>
-                We started hosting a server back in 2013 on an in-home Raspberry Pi but the growing demand for a better connection
-                and 24/7 uptime made us reconsider this small hosting plan. We later that year went over to actually acquiring
-                a dedicated TeamSpeak server from Fragnet but later on switched to what is now a server entirely run and managed by
+                We started hosting a server back in 2013 on an in-home Raspberry Pi but the growing demand for a better
+                connection
+                and 24/7 uptime made us reconsider this small hosting plan. We later that year went over to actually
+                acquiring
+                a dedicated TeamSpeak server from Fragnet but later on switched to what is now a server entirely run and
+                managed by
                 Hivecom itself.
               </p>
               <p>
-                Hivecom has come a long way since then and wouldn't be anything without those that make up its community. We're incredibly thankful
-                for what we have now considering this all started with three friends getting together to chat and hang out.
+                Hivecom has come a long way since then and wouldn't be anything without those that make up its
+                community. We're incredibly thankful
+                for what we have now considering this all started with three friends getting together to chat and hang
+                out.
               </p>
               <p>
                 <b>We are always happy to welcome anyone willing to join us for this journey.</b>
@@ -94,7 +133,10 @@ onBeforeMount(() => {
                   </NuxtLink>
                 </p>
               </Marquee>
-              <Marquee v-for="(item, index) in maruqeeItems" :key="item.id" :speed="MARQUEE_SPEED" :direction="index % 2 === 0 ? 'right' : 'left'">
+              <Marquee
+                v-for="(item, index) in maruqeeItems" :key="item.id" :speed="MARQUEE_SPEED"
+                :direction="index % 2 === 0 ? 'right' : 'left'"
+              >
                 <p>
                   <NuxtLink :to="`/forum/${item.id}`">
                     {{ item.title }}{{ item.description ? `: ${item.description}` : '' }}
@@ -109,23 +151,98 @@ onBeforeMount(() => {
     <div class="home-join">
       <div class="container-s">
         <h2>Join us</h2>
-        <p>Join us but also dont have to but it’d be cool if you did ust thinkig about it ok ill sit down for a sec dont let me disturb you just ponder it for a second.</p>
+        <p>
+          Join us but also dont have to but it’d be cool if you did just thinkig about it, ok i'll sit down for a sec don't
+          let me disturb you just ponder on it for a second.
+        </p>
         <NuxtLink to="/sign-up">
           Sign Up
         </NuxtLink>
       </div>
     </div>
+
+    <div
+      v-for="star in stars"
+      :key="`${star.left} + ${star.top}`" class="star"
+      :style="{ ...star,
+                '--vertical-offset': `${y * -0.05}px` }"
+    />
   </div>
 </template>
 
 <style lang="scss" scoped>
 @use '@/assets/mixins' as *;
 
+.star {
+  --star-animation-offset: 0ms;
+  --star-animation-duration: 2000ms;
+  --star-base-opacity: 1;
+  --vertical-random-multiplier: 0;
+  --vertical-offset: 0px;
+
+  transform: translateY(calc(var(--vertical-offset) * var(--vertical-random-multiplier)));
+
+  position: fixed;
+  background-color: var(--color-text);
+  border-radius: 50%;
+  animation: star-flicker 2000ms infinite linear;
+  animation-delay: var(--star-animation-offset);
+  animation-duration: var(--star-animation-duration);
+}
+
+@keyframes star-flicker {
+  0%,
+  15%,
+  35%,
+  55%,
+  75%,
+  100% {
+    opacity: calc(var(--star-base-opacity) * 1);
+    background: rgb(255, 255, 255);
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+  }
+
+  10% {
+    opacity: calc(var(--star-base-opacity) * 0.75);
+  }
+
+  20% {
+    opacity: calc(var(--star-base-opacity) * 0.85);
+    background: rgb(160, 210, 255);
+    filter: drop-shadow(0 0 8px rgba(120, 190, 255, 1));
+  }
+
+  25% {
+    opacity: calc(var(--star-base-opacity) * 1);
+    background: white;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+  }
+
+  45% {
+    opacity: calc(var(--star-base-opacity) * 0.7);
+  }
+
+  60% {
+    opacity: calc(var(--star-base-opacity) * 0.85);
+    background: rgb(255, 190, 190);
+    filter: drop-shadow(0 0 8px rgba(255, 120, 120, 1));
+  }
+
+  65% {
+    opacity: calc(var(--star-base-opacity) * 1);
+    background: white;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+  }
+
+  85% {
+    opacity: calc(var(--star-base-opacity) * 0.8);
+  }
+}
+
 .home-page {
   display: flex !important;
   flex-direction: column;
   gap: 128px;
-  /* padding-top: max(10vh, 256px); */
   width: 100%;
 }
 
@@ -168,9 +285,10 @@ onBeforeMount(() => {
     width: min(100%, 324px);
     margin: auto;
     font-weight: var(--font-weight-semibold);
+    transition: background-color var(--transition-fast);
 
     &:hover {
-      background-color: color-mix(in srgb, var(--color-text) 90%, transparent);
+      background-color: var(--color-accent);
     }
   }
 
@@ -184,10 +302,16 @@ onBeforeMount(() => {
   grid-template-columns: 3fr 2fr;
   grid-template: 'main sideA' 'main sideB';
   gap: var(--space-m);
+  z-index: 2;
+
+  &:hover a {
+    background-color: var(--color-bg-medium);
+  }
 
   a {
     position: relative;
-    /* z-index: 2; */
+    background-color: color-mix(in srgb, var(--color-bg-medium) 85%, transparent);
+    transition: background-color var(--transition-slow);
 
     &:before {
       content: '';
