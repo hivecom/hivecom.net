@@ -167,7 +167,7 @@ async function toggleBrowserNotifications(value: boolean) {
       <Flex v-if="!isMobile" column gap="xs" expand>
         <Flex y-center x-between expand>
           <Flex column gap="xxs" class="chat-settings__text">
-            <span class="text-s">Timestamp format</span>
+            <span class="text-s">IRC Mode Timestamp format</span>
             <span class="text-xs text-color-lighter">Standard dayjs format string, e.g. HH:mm:ss or DD/MM/YYYY HH:mm.</span>
           </Flex>
         </Flex>
