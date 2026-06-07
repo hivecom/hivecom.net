@@ -118,7 +118,12 @@ watch(user, (u, prev) => {
           <ChatConnecting />
         </div>
 
-        <!-- Error: connection failed -->
+        <!-- Offline: failed all reconnect attempts -->
+        <div v-else-if="connState === 'offline'" class="chat-app__status">
+          <ChatConnecting offline @retry="connect()" @go-back="handleDisconnect" />
+        </div>
+
+        <!-- Error: unexpected connection failure (fallback) -->
         <Flex v-else-if="connState === 'error'" key="error" y-center x-center class="chat-app__connect">
           <Flex column gap="m" expand>
             <SharedErrorAlert standalone message="Failed to connect to the chat server." :error="lastConnError" />

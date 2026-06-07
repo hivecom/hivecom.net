@@ -77,7 +77,7 @@ const WANTED_CAPS = [
   'draft/event-playback',
 ]
 
-export type ConnState = 'disconnected' | 'connecting' | 'connected' | 'error'
+export type ConnState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'offline'
 
 export interface ChatMessage {
   id: number
@@ -240,6 +240,10 @@ function saveReadPosition(name: string, ts: number) {
 let ws: WebSocket | null = null
 let initialised = false
 let _readWatcherRegistered = false
+let _intentionalDisconnect = false
+let _reconnectAttempts = 0
+const MAX_RECONNECT_ATTEMPTS = 3
+let _reconnectTimer: ReturnType<typeof setTimeout> | null = null
 // Whether any chat UI surface (sheet or full page) is currently visible to the
 // user. The read watcher only clears unread/mentions when this is true.
 const isChatVisible = ref(false)
@@ -1788,6 +1792,25 @@ function handleMessage(raw: string) {
 }
 
 // --- Connection lifecycle ----------------------------------------------------
+function _scheduleReconnect() {
+  if (_intentionalDisconnect) {
+    connState.value = 'disconnected'
+    return
+  }
+  if (_reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    connState.value = 'offline'
+    return
+  }
+  _reconnectAttempts++
+  const delay = _reconnectAttempts * 2000
+  connState.value = 'connecting'
+  addServer({ type: 'system', text: `Reconnecting in ${delay / 1000}s (attempt ${_reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...` })
+  _reconnectTimer = setTimeout(() => {
+    _reconnectTimer = null
+    openSocket()
+  }, delay)
+}
+
 function openSocket() {
   if (!import.meta.client)
     return
@@ -1827,8 +1850,8 @@ function openSocket() {
     ws = new WebSocket(WS_URL, ['binary'])
   }
   catch (e) {
-    connState.value = 'error'
     addServer({ type: 'error', text: `Failed to open WebSocket: ${String(e)}` })
+    _scheduleReconnect()
     return
   }
 
@@ -1853,14 +1876,11 @@ function openSocket() {
   }
 
   ws.onerror = () => {
-    connState.value = 'error'
     _stopPinging()
     addServer({ type: 'error', text: 'WebSocket error - check console for details.' })
   }
 
   ws.onclose = (evt) => {
-    if (connState.value !== 'error')
-      connState.value = 'disconnected'
     _stopPinging()
     addServer({ type: 'system', text: `Disconnected (code ${evt.code})` })
     for (const timer of typingTimers.values())
@@ -1872,6 +1892,7 @@ function openSocket() {
       buf.typing = []
     }
     ws = null
+    _scheduleReconnect()
   }
 }
 
@@ -1881,6 +1902,12 @@ function openSocket() {
  * plain registration if the server has no auth bridge yet.
  */
 async function connect() {
+  _intentionalDisconnect = false
+  _reconnectAttempts = 0
+  if (_reconnectTimer !== null) {
+    clearTimeout(_reconnectTimer)
+    _reconnectTimer = null
+  }
   authCreds = null
   useAnonymous = false
   if (!inputChannel.value)
@@ -1902,6 +1929,12 @@ async function connect() {
 
 /** Connect as an anonymous guest via SASL ANONYMOUS (no account, no JWT). */
 function connectAsAnon() {
+  _intentionalDisconnect = false
+  _reconnectAttempts = 0
+  if (_reconnectTimer !== null) {
+    clearTimeout(_reconnectTimer)
+    _reconnectTimer = null
+  }
   authCreds = null
   useAnonymous = true
   if (!localStorage.getItem(STORAGE_CHANNEL))
@@ -1910,6 +1943,12 @@ function connectAsAnon() {
 }
 
 function disconnect() {
+  _intentionalDisconnect = true
+  _reconnectAttempts = 0
+  if (_reconnectTimer !== null) {
+    clearTimeout(_reconnectTimer)
+    _reconnectTimer = null
+  }
   if (ws) {
     send('QUIT :Leaving')
     ws.close()
