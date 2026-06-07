@@ -130,15 +130,17 @@ async function signUpWithGoogle() {
                 </Flex>
               </Button>
             </Flex>
-            <Divider class="my-m">
-              or
+            <Divider class="my-m text-s">
+              Or sign-up via E-mail
             </Divider>
             <Input v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
             <Button expand variant="fill" :loading="loading" :disabled="!email" @click="signInWithOtp">
               Sign up
             </Button>
             <p class="text-xxs text-color-lighter text-center">
-              By signing up you agree to our <NuxtLink to="/legal/terms">
+              By signing up you agree to our
+              <br>
+              <NuxtLink to="/legal/terms">
                 Terms of Service
               </NuxtLink> &amp; <NuxtLink to="/legal/privacy">
                 Privacy Policy

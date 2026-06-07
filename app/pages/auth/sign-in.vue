@@ -625,7 +625,7 @@ onBeforeUnmount(() => {
             </Flex>
             <Tabs v-model="tab" variant="filled" expand>
               <Tab value="Password" />
-              <Tab value="E-mail" />
+              <Tab value="Magic Link" />
             </Tabs>
             <Input ref="email-input" v-model="email" expand placeholder="user@example.com" label="Email" type="email" />
             <Input v-if="tab === 'Password'" v-model="password" expand placeholder="●●●●●●●●●●●●●" label="Password" type="password" />

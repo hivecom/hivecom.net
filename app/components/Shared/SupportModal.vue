@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Button, Card, CopyClipboard, Divider, Flex, Modal, Tooltip } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import constants from '~~/constants.json'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -30,8 +30,6 @@ const ircChannel = supportDetails.IRC_CHANNEL ?? '#staff'
 const admins = ref<Tables<'profiles'>[]>([])
 const adminsLoading = ref(false)
 const adminsError = ref('')
-const user = useSupabaseUser()
-const canViewAdmins = computed(() => Boolean(user.value))
 
 const discordUrl = constants.LINKS?.DISCORD?.url
   ?? constants.PLATFORMS?.DISCORD?.urls?.[0]?.url
@@ -44,13 +42,6 @@ const { isConnected, joinChannel, seedChannel } = useIrcChat()
 const supabase = useSupabaseClient()
 
 async function loadAdmins() {
-  if (!canViewAdmins.value) {
-    admins.value = []
-    adminsError.value = ''
-    adminsLoading.value = false
-    return
-  }
-
   adminsLoading.value = true
   adminsError.value = ''
 
@@ -72,8 +63,9 @@ async function loadAdmins() {
 
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, username')
+      .select('id, username, public')
       .in('id', adminIds)
+      .eq('public', true)
 
     if (profilesError)
       throw profilesError
@@ -89,24 +81,11 @@ async function loadAdmins() {
   }
 }
 
-// Only load admins when the modal is first opened - not on every mount
+// Load admins when modal opens
 watch(isOpen, (opened) => {
   if (opened && admins.value.length === 0 && !adminsLoading.value)
     loadAdmins()
 }, { once: false })
-
-watch(user, (newUser) => {
-  if (newUser) {
-    // Re-load if modal is already open when user signs in
-    if (isOpen.value)
-      loadAdmins()
-  }
-  else {
-    admins.value = []
-    adminsError.value = ''
-    adminsLoading.value = false
-  }
-})
 
 function handleClose() {
   isOpen.value = false
@@ -119,6 +98,17 @@ async function goToChat() {
   }
   else {
     seedChannel(ircChannel)
+  }
+  handleClose()
+  await navigateTo('/chat')
+}
+
+async function goToStaffChannel() {
+  if (isConnected.value) {
+    joinChannel('#staff')
+  }
+  else {
+    seedChannel('#staff')
   }
   handleClose()
   await navigateTo('/chat')
@@ -140,79 +130,78 @@ async function goToChat() {
         {{ props.message }}
       </p>
 
+      <Card class="card-bg">
+        <h4 class="mb-xs">
+          Contact us
+        </h4>
+        <div class="support-modal__button-list">
+          <CopyClipboard :text="supportEmail" confirm class="w-100">
+            <Button expand>
+              <template #start>
+                <Icon name="ph:envelope" />
+              </template>
+              Email
+            </Button>
+          </CopyClipboard>
+          <Tooltip>
+            <Button :expand="isBelowSmall" @click="goToChat">
+              <template #start>
+                <Icon name="ph:chats-circle" />
+              </template>
+              Join Chat
+            </Button>
+            <template #tooltip>
+              <p>{{ isConnected ? 'Open' : 'Connect to' }} {{ ircChannel }}</p>
+            </template>
+          </Tooltip>
+          <NuxtLink
+            v-if="discordUrl" :to="discordUrl" target="_blank" rel="noopener noreferrer"
+            class="support-modal__link"
+          >
+            <Button :expand="isBelowSmall">
+              <template #start>
+                <Icon name="ph:discord-logo" />
+              </template>
+              Discord
+            </Button>
+          </NuxtLink>
+          <NuxtLink
+            v-if="teamspeakUrl" :to="teamspeakUrl" target="_blank" rel="noopener noreferrer"
+            class="support-modal__link"
+          >
+            <Button :expand="isBelowSmall">
+              <template #start>
+                <Icon name="mdi:teamspeak" />
+              </template>
+              TeamSpeak
+            </Button>
+          </NuxtLink>
+        </div>
+      </Card>
+
       <Card class="support-modal__section card-bg mb-m">
         <h4 class="mb-xs">
           Admins
         </h4>
-        <p class="text-color-light">
-          Reach out to any of the admins below on Discord or TeamSpeak if that works better for you.
+        <p class="text-color-light text-m support-modal__description">
+          Reach out to the admins below directly in <button class="support-modal__link-button" @click="goToChat">
+            chat
+          </button> or generally on <button class="support-modal__link-button" @click="goToStaffChannel">
+            #staff
+          </button>.
         </p>
         <Divider class="my-m" />
-        <div v-if="!canViewAdmins" class="support-modal__admin-placeholder">
-          Sign in to view the current admin roster.
+        <div v-if="adminsLoading" class="support-modal__admin-loading">
+          Loading admin list...
         </div>
-        <template v-else>
-          <div v-if="adminsLoading" class="support-modal__admin-loading">
-            Loading admin list...
-          </div>
-          <div v-else-if="adminsError" class="support-modal__admin-error">
-            {{ adminsError }}
-          </div>
-          <div v-else class="support-modal__admin-list">
-            <UserDisplay v-for="admin in admins" :key="admin.id" :user-id="admin.id" size="s" />
-          </div>
-        </template>
+        <div v-else-if="adminsError" class="support-modal__admin-error">
+          {{ adminsError }}
+        </div>
+        <div v-else class="support-modal__admin-list">
+          <UserDisplay v-for="admin in admins" :key="admin.id" :user-id="admin.id" size="s" />
+        </div>
       </Card>
     </div>
-
-    <Card class="card-bg">
-      <h4 class="mb-xs">
-        Contact us
-      </h4>
-      <div class="support-modal__button-list">
-        <CopyClipboard :text="supportEmail" confirm class="w-100">
-          <Button expand>
-            <template #start>
-              <Icon name="ph:envelope" />
-            </template>
-            Email
-          </Button>
-        </CopyClipboard>
-        <Tooltip>
-          <Button :expand="isBelowSmall" @click="goToChat">
-            <template #start>
-              <Icon name="ph:chats-circle" />
-            </template>
-            Join Chat
-          </Button>
-          <template #tooltip>
-            <p>{{ isConnected ? 'Open' : 'Connect to' }} {{ ircChannel }}</p>
-          </template>
-        </Tooltip>
-        <NuxtLink
-          v-if="discordUrl" :to="discordUrl" target="_blank" rel="noopener noreferrer"
-          class="support-modal__link"
-        >
-          <Button :expand="isBelowSmall">
-            <template #start>
-              <Icon name="ph:discord-logo" />
-            </template>
-            Discord
-          </Button>
-        </NuxtLink>
-        <NuxtLink
-          v-if="teamspeakUrl" :to="teamspeakUrl" target="_blank" rel="noopener noreferrer"
-          class="support-modal__link"
-        >
-          <Button :expand="isBelowSmall">
-            <template #start>
-              <Icon name="mdi:teamspeak" />
-            </template>
-            TeamSpeak
-          </Button>
-        </NuxtLink>
-      </div>
-    </Card>
 
     <template #footer>
       <Flex gap="s" wrap class="support-modal__actions" align="center" expand>
@@ -284,6 +273,28 @@ async function goToChat() {
 
   &__link {
     display: contents;
+  }
+
+  &__description {
+    margin: 0;
+  }
+
+  &__link-button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--color-accent);
+    cursor: pointer;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:active {
+      opacity: 0.8;
+    }
   }
 }
 </style>

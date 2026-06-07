@@ -71,13 +71,6 @@ onBeforeMount(() => {
 
   stars.value = _stars
 })
-
-const sunStyle = computed(() => {
-  const offset = y.value * -0.1
-  return {
-    '--sun-translate': `translateY(${offset}px)`,
-  }
-})
 </script>
 
 <template>
@@ -168,7 +161,7 @@ const sunStyle = computed(() => {
           Join us but also dont have to but it’d be cool if you did just thinkig about it, ok i'll sit down for a sec don't
           let me disturb you just ponder on it for a second.
         </p>
-        <NuxtLink to="/sign-up" class="join-button">
+        <NuxtLink to="/auth/sign-up" class="join-button">
           Sign Up
         </NuxtLink>
 

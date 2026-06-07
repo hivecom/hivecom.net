@@ -75,7 +75,7 @@
         { "code_action": "source.fixAll.eslint" }
       ]
     }
-  }
+  },
   "lsp": {
     "deno": {
       "settings": {
