@@ -11,6 +11,7 @@ const variant = computed(() => ({
   connecting: 'info' as const,
   connected: 'accent' as const,
   error: 'danger' as const,
+  offline: 'danger' as const,
 }[connState.value]))
 
 const label = computed(() => ({
@@ -18,6 +19,7 @@ const label = computed(() => ({
   connecting: 'Connecting',
   connected: 'Connected',
   error: 'Error',
+  offline: 'Offline',
 }[connState.value]))
 
 const latencyLabel = computed(() => {
