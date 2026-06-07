@@ -58,13 +58,23 @@ const SERVER_BUFFER = '*'
 // IRCv3 capabilities we request when the server advertises them.
 const WANTED_CAPS = [
   'sasl',
+  'batch',
   'message-tags',
+  'message-ids',
+  'echo-message',
   'server-time',
   'multi-prefix',
   'account-tag',
   'account-notify',
   'extended-join',
   'draft/chathistory',
+  // Required for Ergo to replay stored TAGMSGs (reactions) as real TAGMSG lines
+  // with their client tags intact. Without it, Ergo degrades reaction history to
+  // a data-less HistServ "<nick> sent a TAGMSG" PRIVMSG placeholder (see #1676),
+  // which we can't turn back into a reaction. It also makes JOIN/PART/QUIT/NICK/
+  // MODE replayable as real events inside history batches - those handlers below
+  // guard against `backlog` so replayed events never mutate live state.
+  'draft/event-playback',
 ]
 
 export type ConnState = 'disconnected' | 'connecting' | 'connected' | 'error'
@@ -72,12 +82,25 @@ export type ConnState = 'disconnected' | 'connecting' | 'connected' | 'error'
 export interface ChatMessage {
   id: number
   ts: Date
-  type: 'chat' | 'system' | 'error' | 'join' | 'part'
+  type: 'chat' | 'system' | 'error' | 'join' | 'part' | 'tagmsg'
   from?: string
   channel?: string
   text: string
+  /** Server-assigned message ID (from message-ids cap). */
+  msgid?: string
+  /** msgid of the message this is replying to (+reply tag). */
+  replyTo?: string
   /** True for messages replayed from server-side history (CHATHISTORY batch). */
   backlog?: boolean
+  /** True for CTCP ACTION messages (/me). */
+  action?: boolean
+  /** IRCv3 tag key(s) from an unknown TAGMSG, comma-separated. */
+  tag?: string
+  /**
+   * Emoji reactions on this message (IRCv3 +draft/react), keyed by reaction
+   * value to the nicks who reacted. Empty values are pruned on the last unreact.
+   */
+  reactions?: Record<string, string[]>
 }
 
 export type BufferKind = 'server' | 'channel' | 'pm'
@@ -90,9 +113,25 @@ export interface ChatBuffer {
   unread: number
   mentions: number
   joined: boolean
+  /** Nicks currently showing a typing indicator in this buffer (transient, client-only). */
+  typing?: string[]
   topic?: string
   /** Timestamp (ms) of the last-read boundary. Messages with ts > this are "new". */
   readLineTs?: number
+  /** True after the first CHATHISTORY LATEST batch has completed for this buffer. */
+  historyReady?: boolean
+  /** True once a CHATHISTORY response returned fewer than HISTORY_LIMIT messages. */
+  historyExhausted?: boolean
+  /** True while a CHATHISTORY BEFORE request is in-flight for this buffer. */
+  loadingOlderHistory?: boolean
+  /** Number of consecutive auto-fetch retries after sparse batches. Capped to prevent runaway loops. */
+  autoFetchRetries?: number
+  /** msgid to anchor the next BEFORE request on. Tracks the oldest delivered line, even lines not stored in the buffer (reactions, suppressed relays). */
+  historyAnchorMsgid?: string
+  /** Timestamp (ISO) to anchor the next BEFORE request on when no msgid is available. */
+  historyAnchorTs?: string
+  /** Active channel mode flags (e.g. 'k' = password, 'i' = invite-only, 'm' = moderated). */
+  modes?: Set<string>
 }
 
 export interface ChannelListEntry {
@@ -106,6 +145,8 @@ export interface ChatUser {
   name: string
   /** Mode prefix chars, highest privilege first (e.g. "@", "+", "~@"). Empty when none. */
   prefix: string
+  /** True when the server reports this user as a bot (WHO flag B / user mode +B). */
+  bot?: boolean
 }
 
 /** Identity supplied by the host app (the website's Supabase session). */
@@ -133,9 +174,16 @@ const connState = ref<ConnState>('disconnected')
 const nick = ref('')
 const account = ref('')
 const buffers = ref<ChatBuffer[]>([])
+// Internal sink for service-bot (NickServ/ChanServ/HistServ) chatter. Reactive so
+// it's inspectable while debugging, but deliberately kept out of the buffer/tab
+// system so it is never rendered to the user.
+const serviceLog = ref<ChatMessage[]>([])
 const activeName = ref<string>(SERVER_BUFFER)
 const msgCounter = ref(0)
-const sidebarHidden = ref(false)
+const SIDEBAR_HIDDEN_KEY = 'hivecom.chat.sidebar-hidden'
+const sidebarHidden = ref(
+  import.meta.client && localStorage.getItem(SIDEBAR_HIDDEN_KEY) === 'true',
+)
 // null = not yet checked; '' = confirmed absent (unclaimed); string = email present (claimed)
 const accountEmail = ref<string | null>(null)
 // null = not yet determined; true/false parsed from NickServ INFO Flags line
@@ -145,11 +193,16 @@ const accountAlwaysOn = ref<boolean | null>(null)
 const channelList = ref<ChannelListEntry[]>([])
 const channelListLoading = ref(false)
 const channelBrowserOpen = ref(false)
+// When non-null, a password-protected channel denied our JOIN and we need a key.
+const channelKeyPrompt = ref<string | null>(null)
+// True when the most recent key attempt was rejected (475).
+const channelKeyError = ref(false)
 
 // Form / draft state, shared so both surfaces edit the same values.
 const inputNick = ref('')
 const inputChannel = ref('')
 const inputMessage = ref('')
+const replyTarget = ref<ChatMessage | null>(null)
 
 // Extra words (besides the current nick) that count as a mention. Sourced from
 // user settings and pushed in via `setMentionKeywords` so this module-level
@@ -190,7 +243,7 @@ let _readWatcherRegistered = false
 // Whether any chat UI surface (sheet or full page) is currently visible to the
 // user. The read watcher only clears unread/mentions when this is true.
 const isChatVisible = ref(false)
-let _autoPmTimer: ReturnType<typeof setTimeout> | null = null
+
 // Most recent live message timestamp (ms); persisted as the CHATHISTORY cursor.
 let lastSeenTs = 0
 // Lowercased DM nick -> timestamp (ms) when user closed that query.
@@ -243,12 +296,61 @@ let saslMech: 'PLAIN' | 'ANONYMOUS' | null = null
 let authCreds: ChatIdentity | null = null
 let useAnonymous = false
 let saslFailed = false
-let chatHistorySupported = false
+const chatHistorySupported = ref(false)
+let echoMessageActive = false
 let probingNickServInfo = false
 let probeTimer: ReturnType<typeof setTimeout> | null = null
 let suppressingNickServOp = false
-// Active CHATHISTORY batch ids, so replayed lines can be flagged as backlog.
-const backlogBatches = new Set<string>()
+let messageTagsActive = false
+// Per-target timestamp (ms) of the last typing notification we sent, for throttling.
+const lastTypingSent = new Map<string, number>()
+// Expiry timers keyed by `${bufName.toLowerCase()}|${nick.toLowerCase()}`.
+const typingTimers = new Map<string, ReturnType<typeof setTimeout>>()
+interface BacklogBatchInfo {
+  /** IRC target this batch belongs to (channel or nick). */
+  target: string
+  /** Number of raw IRC lines counted so far in this batch. */
+  count: number
+  /** True when this is a CHATHISTORY BEFORE response - messages should be prepended. */
+  isPrepend: boolean
+  /** Staged messages for BEFORE batches; spliced into the buffer in one shot at BATCH end. */
+  staging?: ChatMessage[]
+  /** Oldest msgid delivered in this batch (any type, including applied reactions). */
+  oldestMsgid?: string
+  /** Oldest timestamp (ms) delivered in this batch. */
+  oldestTs?: number
+  /**
+   * True when this is a CHATHISTORY LATEST with a `since` timestamp selector.
+   * A sparse result (count < HISTORY_LIMIT) does NOT mean all history is exhausted
+   * in this case - there may be older messages before the bound.
+   */
+  hasSinceBound?: boolean
+}
+// Active CHATHISTORY batch ids mapped to metadata, so replayed lines are flagged as backlog.
+const backlogBatches = new Map<string, BacklogBatchInfo>()
+// Reactions (react/unreact) that arrived before their parent message existed in
+// the buffer. Keyed by buffer name (lowercased) -> parent msgid -> queued ops.
+// The common case is reacting to (or receiving reactions on) our own message
+// before its echo delivers the server-assigned msgid; without this, the parent
+// lookup in applyReaction fails and the reaction is silently dropped until a
+// reload re-fetches the message and its reactions together via CHATHISTORY.
+const pendingReactions = new Map<string, Map<string, Array<{ reaction: string, who: string, remove: boolean }>>>()
+// Targets for which a CHATHISTORY BEFORE request is pending (lowercased).
+const pendingBeforeTargets = new Set<string>()
+// Targets for which a time-bounded CHATHISTORY LATEST request is pending (lowercased).
+// A sparse result from these should NOT set historyExhausted.
+const pendingTimeBoundTargets = new Set<string>()
+// Channels whose "You joined" marker is deferred until their CHATHISTORY LATEST
+// batch completes, so the marker lands below replayed history (lowercased).
+const pendingJoinMarkers = new Set<string>()
+// Channels the user actively asked to join this session via joinChannel() (the
+// channel browser, /join box, channel links, etc.), lowercased. Only these get a
+// "You joined" marker - the entry is consumed when the matching self-JOIN lands.
+// Connect-time landing joins and server-pushed auto-joins (always-on accounts the
+// server keeps joined) never populate this set, so they stay silent.
+const explicitJoinIntents = new Set<string>()
+// Channels for which WHO was sent internally (for bot detection). Responses are silenced.
+const internalWhoChannels = new Set<string>()
 
 // --- Buffers helpers ---------------------------------------------------------
 function listChannels() {
@@ -258,6 +360,10 @@ function listChannels() {
 }
 
 function resetBuffers() {
+  for (const timer of typingTimers.values())
+    clearTimeout(timer)
+  typingTimers.clear()
+  lastTypingSent.clear()
   buffers.value = [{ name: SERVER_BUFFER, kind: 'server', messages: [], users: [], unread: 0, mentions: 0, joined: true }]
   activeName.value = SERVER_BUFFER
   channelList.value = []
@@ -273,7 +379,7 @@ function getBuffer(name: string, kind: BufferKind): ChatBuffer {
   const existing = findBuffer(name)
   if (existing)
     return existing
-  const buf: ChatBuffer = { name, kind, messages: [], users: [], unread: 0, mentions: 0, joined: false, topic: '' }
+  const buf: ChatBuffer = { name, kind, messages: [], users: [], unread: 0, mentions: 0, joined: false, topic: '', modes: new Set() }
   buffers.value = [...buffers.value, buf]
   return buf
 }
@@ -297,16 +403,44 @@ function addToBuffer(
   name: string,
   kind: BufferKind,
   msg: Omit<ChatMessage, 'id' | 'ts'>,
-  opts: { ts?: Date, backlog?: boolean } = {},
+  opts: { ts?: Date, backlog?: boolean, prepend?: boolean, batchTag?: string } = {},
 ) {
   const buf = getBuffer(name, kind)
   const ts = opts.ts ?? new Date()
-  buf.messages.push({
+  const newMsg: ChatMessage = {
     ...msg,
     id: msgCounter.value++,
     ts,
     backlog: opts.backlog,
-  })
+  }
+  if (opts.prepend) {
+    // For BEFORE batches, push to the staging array instead of directly into
+    // buf.messages. All staged messages are spliced in as one bulk operation at
+    // BATCH end, producing a single DOM update instead of 50 individual ones.
+    const bi = opts.batchTag != null ? backlogBatches.get(opts.batchTag) : undefined
+    if (bi?.staging != null) {
+      // Dedup within the staging array.
+      if (newMsg.msgid == null || !bi.staging.some(m => m.msgid === newMsg.msgid))
+        bi.staging.push(newMsg)
+      // Don't add to buf.messages yet - fall through so badge/read logic still runs.
+    }
+    else {
+      // Fallback for prepend calls outside a staged batch.
+      if (newMsg.msgid != null && buf.messages.some(m => m.msgid === newMsg.msgid))
+        return
+      buf.messages.unshift(newMsg)
+    }
+  }
+  else {
+    buf.messages.push(newMsg)
+  }
+
+  // A message just landed in buf.messages - apply any reactions that arrived
+  // before it (e.g. reactions on our own message that preceded its echo). The
+  // staged-prepend path above doesn't splice yet, so skip it there; the BATCH
+  // end handler drains staged msgids after the bulk splice.
+  if (!opts.prepend && newMsg.msgid != null)
+    drainPendingReactions(buf, newMsg.msgid)
 
   // Track the newest live chat message so DM history fetches know where we left off.
   if (!opts.backlog && msg.type === 'chat')
@@ -366,6 +500,86 @@ function addServer(msg: Omit<ChatMessage, 'id' | 'ts'>, opts: { ts?: Date } = {}
   addToBuffer(SERVER_BUFFER, 'server', msg, opts)
 }
 
+/** Append to the internal service-bot log. Never surfaced as a visible buffer. */
+function addServiceLog(msg: Omit<ChatMessage, 'id' | 'ts'>, opts: { ts?: Date } = {}) {
+  serviceLog.value.push({ ...msg, id: msgCounter.value++, ts: opts.ts ?? new Date() })
+}
+
+/** Show output in whatever buffer the user is currently viewing (falls back to server buffer). */
+function addToActive(msg: Omit<ChatMessage, 'id' | 'ts'>, opts: { ts?: Date } = {}) {
+  const name = activeName.value
+  const buf = findBuffer(name)
+  if (buf)
+    addToBuffer(name, buf.kind, msg, opts)
+  else
+    addServer(msg, opts)
+}
+
+/**
+ * Apply an IRCv3 react/unreact to the parent message identified by `parentMsgid`
+ * within `buf`. Idempotent: adding a reactor that's already present (or removing
+ * an absent one) is a no-op, so optimistic updates and echoed TAGMSGs converge.
+ * Reassigns `reactions` to a fresh object so Vue tracks the change.
+ */
+function applyReaction(buf: ChatBuffer, parentMsgid: string, reaction: string, who: string, remove: boolean, extra?: ChatMessage[]) {
+  if (!parentMsgid || !reaction)
+    return
+  // In a BEFORE (prepend) pagination batch the parent message is still staged and
+  // not yet spliced into buf.messages, so fall back to searching the staging array.
+  const parent = buf.messages.find(m => m.msgid === parentMsgid)
+    ?? extra?.find(m => m.msgid === parentMsgid)
+  if (!parent) {
+    // The parent message isn't in the buffer (nor the current batch's staging)
+    // yet. Two cases, both handled by stashing and replaying when it appears:
+    //  - Live: our own just-sent message awaiting its echo with the server msgid.
+    //  - Backlog: CHATHISTORY replays a reaction at its own (newer) timestamp,
+    //    but the parent it targets was sent earlier and lands in an OLDER batch
+    //    that is fetched in a later page. Without queueing, only reactions whose
+    //    parent shares the same batch survive pagination.
+    queuePendingReaction(buf.name, parentMsgid, reaction, who, remove)
+    return
+  }
+  const reactions: Record<string, string[]> = { ...(parent.reactions ?? {}) }
+  const list = reactions[reaction] ? [...reactions[reaction]] : []
+  const idx = list.indexOf(who)
+  if (remove) {
+    if (idx !== -1)
+      list.splice(idx, 1)
+  }
+  else if (idx === -1) {
+    list.push(who)
+  }
+  if (list.length)
+    reactions[reaction] = list
+  else
+    delete reactions[reaction]
+  parent.reactions = Object.keys(reactions).length ? reactions : undefined
+}
+
+/** Stash a reaction whose parent message isn't in the buffer yet. */
+function queuePendingReaction(bufName: string, parentMsgid: string, reaction: string, who: string, remove: boolean) {
+  const lc = bufName.toLowerCase()
+  let byMsgid = pendingReactions.get(lc)
+  if (!byMsgid) {
+    byMsgid = new Map()
+    pendingReactions.set(lc, byMsgid)
+  }
+  const list = byMsgid.get(parentMsgid) ?? []
+  list.push({ reaction, who, remove })
+  byMsgid.set(parentMsgid, list)
+}
+
+/** Apply (and clear) any reactions queued for `msgid`, now that its parent exists. */
+function drainPendingReactions(buf: ChatBuffer, msgid: string) {
+  const byMsgid = pendingReactions.get(buf.name.toLowerCase())
+  const queued = byMsgid?.get(msgid)
+  if (!byMsgid || !queued)
+    return
+  byMsgid.delete(msgid)
+  for (const op of queued)
+    applyReaction(buf, msgid, op.reaction, op.who, op.remove)
+}
+
 function stripPrefix(name: string) {
   return name.replace(MODE_PREFIX_RE, '')
 }
@@ -413,6 +627,10 @@ function addUser(buf: ChatBuffer, raw: string) {
   buf.users = [...buf.users, { name, prefix }].sort(sortUsers)
 }
 
+// List modes that have a param but represent a list entry (ban, exception, invite-exception).
+// These are tracked per-entry elsewhere and should not be stored as a boolean channel flag.
+const LIST_MODES = new Set(['b', 'e', 'I'])
+
 /** Apply a MODE change's prefix mutations to the matching channel members. */
 function applyModeChanges(buf: ChatBuffer, args: string[]) {
   const modeStr = args[0]
@@ -421,6 +639,8 @@ function applyModeChanges(buf: ChatBuffer, args: string[]) {
   let adding = true
   let paramIdx = 1
   let changed = false
+  let modesChanged = false
+  buf.modes ??= new Set()
   for (const ch of modeStr) {
     if (ch === '+') {
       adding = true
@@ -446,18 +666,67 @@ function applyModeChanges(buf: ChatBuffer, args: string[]) {
       user.prefix = normalizePrefix([...set].join(''))
       changed = true
     }
+    else if (LIST_MODES.has(ch)) {
+      paramIdx++
+    }
     else if (PARAM_MODES_ALWAYS.has(ch) || (adding && PARAM_MODES_ON_SET.has(ch))) {
       paramIdx++
+      if (adding)
+        buf.modes.add(ch)
+      else
+        buf.modes.delete(ch)
+      modesChanged = true
+    }
+    else {
+      if (adding)
+        buf.modes.add(ch)
+      else
+        buf.modes.delete(ch)
+      modesChanged = true
     }
   }
   if (changed)
     buf.users = [...buf.users].sort(sortUsers)
+  if (modesChanged)
+    buf.modes = new Set(buf.modes)
 }
 
 function removeUserEverywhere(name: string) {
   const clean = stripPrefix(name)
   for (const buf of buffers.value)
     buf.users = buf.users.filter(u => u.name !== clean)
+}
+
+function clearTyping(bufName: string, typingNick: string) {
+  const key = `${bufName.toLowerCase()}|${typingNick.toLowerCase()}`
+  const timer = typingTimers.get(key)
+  if (timer !== undefined)
+    clearTimeout(timer)
+  typingTimers.delete(key)
+  const buf = findBuffer(bufName)
+  if (!buf?.typing?.length)
+    return
+  const lc = typingNick.toLowerCase()
+  buf.typing = buf.typing.filter(n => n.toLowerCase() !== lc)
+}
+
+function setTyping(bufName: string, typingNick: string, expiryMs: number) {
+  const buf = findBuffer(bufName)
+  if (!buf)
+    return
+  const key = `${bufName.toLowerCase()}|${typingNick.toLowerCase()}`
+  const existing = typingTimers.get(key)
+  if (existing !== undefined)
+    clearTimeout(existing)
+  buf.typing ??= []
+  const lc = typingNick.toLowerCase()
+  buf.typing = [...buf.typing.filter(n => n.toLowerCase() !== lc), typingNick]
+  typingTimers.set(key, setTimeout(clearTyping, expiryMs, bufName, typingNick))
+}
+
+function clearTypingEverywhere(typingNick: string) {
+  for (const buf of buffers.value)
+    clearTyping(buf.name, typingNick)
 }
 
 // --- Persistence -------------------------------------------------------------
@@ -622,6 +891,17 @@ function unescapeTag(value: string) {
     .replace(/\\\\/g, '\\')
 }
 
+/** Inverse of unescapeTag - encode a value for the IRCv3 message-tags wire format. */
+function escapeTagValue(value: string) {
+  return value
+    .replace(/\0/g, '') // null bytes cannot be encoded in IRC tag values - strip them
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\:')
+    .replace(/ /g, '\\s')
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+}
+
 interface ParsedIrc {
   tags: Record<string, string>
   command: string
@@ -691,17 +971,62 @@ function finishCap() {
 }
 
 /**
+ * Fetch older messages for a buffer by sending CHATHISTORY BEFORE anchored on
+ * the oldest message currently in the buffer. Marks the buffer as loading so
+ * the UI can show a spinner and avoid duplicate requests.
+ */
+function fetchOlderHistory(target: string) {
+  if (!chatHistorySupported.value)
+    return
+  const buf = findBuffer(target)
+  if (!buf || buf.historyExhausted || buf.loadingOlderHistory)
+    return
+  // Only trigger once initial history has settled.
+  if (!buf.historyReady)
+    return
+  // Anchor the BEFORE request on the oldest line we've *seen* in history, not
+  // just the oldest line stored in the buffer. A prior batch may have delivered
+  // older lines that were never stored (reaction TAGMSGs, suppressed HistServ
+  // relays); anchoring on those lets pagination advance past them. Falls back
+  // to the oldest stored message on the first fetch (before any anchor exists).
+  let anchor: string | null = null
+  if (buf.historyAnchorMsgid != null) {
+    anchor = `msgid=${buf.historyAnchorMsgid}`
+  }
+  else if (buf.historyAnchorTs != null) {
+    anchor = `timestamp=${buf.historyAnchorTs}`
+  }
+  else {
+    // System messages (join/part) added live carry a bogus "now" ts, so they're
+    // skipped as timestamp anchors.
+    const anchorMsg = buf.messages.find(m => m.msgid != null)
+      ?? buf.messages.find(m => m.type === 'chat')
+    if (anchorMsg == null)
+      return
+    anchor = anchorMsg.msgid != null
+      ? `msgid=${anchorMsg.msgid}`
+      : `timestamp=${anchorMsg.ts.toISOString()}`
+  }
+  buf.loadingOlderHistory = true
+  pendingBeforeTargets.add(target.toLowerCase())
+  send(`CHATHISTORY BEFORE ${target} ${anchor} ${HISTORY_LIMIT}`)
+}
+
+/**
  * Request the latest history for a target. When `since` (ms epoch) is given
  * only messages after that point are returned; otherwise the most recent
  * HISTORY_LIMIT messages are fetched for context.
  */
 function requestHistory(target: string, since?: number) {
-  if (!chatHistorySupported)
+  if (!chatHistorySupported.value)
     return
-  const selector = since != null && since > 0
-    ? `timestamp=${new Date(since).toISOString()}`
-    : '*'
-  send(`CHATHISTORY LATEST ${target} ${selector} ${HISTORY_LIMIT}`)
+  if (since != null && since > 0) {
+    pendingTimeBoundTargets.add(target.toLowerCase())
+    send(`CHATHISTORY LATEST ${target} timestamp=${new Date(since).toISOString()} ${HISTORY_LIMIT}`)
+  }
+  else {
+    send(`CHATHISTORY LATEST ${target} * ${HISTORY_LIMIT}`)
+  }
 }
 
 /**
@@ -720,7 +1045,7 @@ function historyLowerBound() {
  * are parsed in the CHATHISTORY case below.
  */
 function requestHistoryTargets() {
-  if (!chatHistorySupported)
+  if (!chatHistorySupported.value)
     return
   const lower = historyLowerBound()
   const upper = Date.now() + HISTORY_FUZZ_MS
@@ -733,6 +1058,28 @@ function handleMessage(raw: string) {
   const ts = timeTag != null && timeTag !== '' ? new Date(timeTag) : undefined
   const batchTag = tags.batch
   const backlog = batchTag != null && backlogBatches.has(batchTag)
+  // Whether replayed lines in this batch should be prepended (CHATHISTORY BEFORE)
+  // rather than appended. Every handler that stores a backlog line (PRIVMSG, JOIN,
+  // PART) must honour this, otherwise BEFORE-batch lines land at the bottom of the
+  // buffer (newest) instead of their correct chronological position at the top.
+  const isPrependBatch = (batchTag != null ? backlogBatches.get(batchTag)?.isPrepend : false) ?? false
+  // Count every replayed line against its batch budget, regardless of type.
+  // Ergo counts all message types (JOIN, PART, PRIVMSG, etc.) toward the limit.
+  // Also track the oldest line delivered (by ts) so BEFORE pagination can
+  // advance past lines that never enter the buffer (e.g. reaction TAGMSGs,
+  // suppressed HistServ relays); otherwise the anchor never moves and we
+  // re-request the same window forever.
+  if (backlog && batchTag) {
+    const _bi = backlogBatches.get(batchTag)
+    if (_bi) {
+      _bi.count++
+      const lineTs = ts?.getTime()
+      if (lineTs != null && (_bi.oldestTs == null || lineTs < _bi.oldestTs)) {
+        _bi.oldestTs = lineTs
+        _bi.oldestMsgid = tags.msgid
+      }
+    }
+  }
 
   switch (command) {
     case 'PING':
@@ -758,7 +1105,7 @@ function handleMessage(raw: string) {
         // `CAP * LS * :...` indicates a continuation line is coming.
         if (params[2] === '*')
           break
-        chatHistorySupported = capLs.includes('draft/chathistory')
+        chatHistorySupported.value = capLs.includes('draft/chathistory')
         const wanted = WANTED_CAPS.filter(c => capLs.includes(c))
         if (wanted.length)
           send(`CAP REQ :${wanted.join(' ')}`)
@@ -766,6 +1113,10 @@ function handleMessage(raw: string) {
           finishCap()
       }
       else if (sub === 'ACK') {
+        if (list.includes('echo-message'))
+          echoMessageActive = true
+        if (list.includes('message-tags'))
+          messageTagsActive = true
         if (list.includes('sasl') && (authCreds || useAnonymous)) {
           saslMech = useAnonymous ? 'ANONYMOUS' : 'PLAIN'
           send(`AUTHENTICATE ${saslMech}`)
@@ -833,8 +1184,20 @@ function handleMessage(raw: string) {
     case 'JOIN': {
       const channel = params[0] ?? inputChannel.value
       const buf = getBuffer(channel, 'channel')
+      // Replayed JOINs (event-playback history) must not touch live presence,
+      // re-request history, or steal focus. Only render other users' historical
+      // join lines; our own replayed join is covered by the deferred marker.
+      if (backlog) {
+        if (nickFrom !== nick.value)
+          addToBuffer(channel, 'channel', { type: 'join', channel, text: `${nickFrom} joined` }, { ts, backlog, prepend: isPrependBatch, batchTag: batchTag ?? undefined })
+        break
+      }
       if (nickFrom === nick.value) {
         buf.joined = true
+        if (channelKeyPrompt.value?.toLowerCase() === channel.toLowerCase()) {
+          channelKeyPrompt.value = null
+          channelKeyError.value = false
+        }
         // Only steal focus for the channel we actually intend to land on. The server
         // can auto-join several channels on reconnect; flipping the active buffer
         // through each one would let the read watcher mark them all as read. When no
@@ -845,8 +1208,26 @@ function handleMessage(raw: string) {
           : activeName.value === SERVER_BUFFER
         if (shouldFocus)
           setActive(channel)
-        addToBuffer(channel, 'channel', { type: 'join', channel, text: `You joined ${channel}` }, { ts, backlog })
-        requestHistory(channel)
+        // Defer the "You joined" marker until the channel's CHATHISTORY LATEST
+        // batch has been appended, so replayed history sits above the marker
+        // (newest) instead of below it. Without history support, add it now.
+        // Request current channel modes so mode badges are always accurate,
+        // regardless of whether a live MODE event was sent during the join burst.
+        send(`MODE ${channel}`)
+        // Only render "You joined" when the user actively asked to join this
+        // channel this session (joinChannel). Connect-time landing joins and
+        // server-pushed auto-joins (always-on accounts the server keeps joined)
+        // aren't in the intent set, so they stay silent. Consume the intent so a
+        // later JOIN echo for the same channel doesn't re-trigger the marker.
+        const isExplicitJoin = explicitJoinIntents.delete(channel.toLowerCase())
+        if (chatHistorySupported.value) {
+          if (isExplicitJoin)
+            pendingJoinMarkers.add(channel.toLowerCase())
+          requestHistory(channel)
+        }
+        else if (isExplicitJoin) {
+          addToBuffer(channel, 'channel', { type: 'join', channel, text: `You joined ${channel}` }, { ts })
+        }
       }
       else {
         addUser(buf, nickFrom)
@@ -858,9 +1239,19 @@ function handleMessage(raw: string) {
     case 'PART': {
       const channel = params[0] ?? ''
       const buf = findBuffer(channel)
+      // Replayed PARTs must not evict currently-present users; just render the
+      // historical line for other users.
+      if (backlog) {
+        if (buf && nickFrom !== nick.value)
+          addToBuffer(channel, 'channel', { type: 'part', channel, text: `${nickFrom} left` }, { ts, backlog, prepend: isPrependBatch, batchTag: batchTag ?? undefined })
+        break
+      }
       if (buf)
         buf.users = buf.users.filter(u => u.name !== stripPrefix(nickFrom))
+      clearTyping(channel, stripPrefix(nickFrom))
       if (nickFrom === nick.value) {
+        // Clear any stale join intent so a future deliberate re-join is honoured.
+        explicitJoinIntents.delete(channel.toLowerCase())
         // Only show the message if the buffer still exists; if closeBuffer() already
         // removed it, skip so we don't resurrect the buffer with a stale message.
         if (buf)
@@ -873,18 +1264,39 @@ function handleMessage(raw: string) {
     }
 
     case 'MODE': {
+      // Replayed MODE history must not rewrite current channel modes or user
+      // prefixes; live MODE events and the explicit MODE query keep state accurate.
+      if (backlog)
+        break
       const target = params[0] ?? ''
       if (target.startsWith('#') || target.startsWith('&')) {
         const buf = findBuffer(target)
         if (buf)
           applyModeChanges(buf, params.slice(1))
       }
+      else {
+        // User mode change - track bot flag (+B/-B)
+        const modeStr = params[1] ?? ''
+        const setBot = /\+[^-]*B/.test(modeStr)
+        const unsetBot = /-[^+]*B/.test(modeStr)
+        if (setBot || unsetBot) {
+          for (const buf of buffers.value) {
+            const user = buf.users.find(u => u.name === target)
+            if (user)
+              user.bot = setBot
+          }
+        }
+      }
       break
     }
 
     case 'NICK': {
+      // Replayed NICK history must not rename currently-present users.
+      if (backlog)
+        break
       const newNick = params[0] ?? ''
       const oldName = stripPrefix(nickFrom)
+      clearTypingEverywhere(oldName)
       for (const buf of buffers.value) {
         const existing = buf.users.find(u => u.name === oldName)
         if (existing) {
@@ -906,7 +1318,7 @@ function handleMessage(raw: string) {
       const text = params[1] ?? ''
       const isAction = text.startsWith('\x01ACTION ') && text.endsWith('\x01')
       const body = isAction ? text.slice(8, -1) : text
-      const from = isAction ? `* ${nickFrom}` : nickFrom
+      const from = nickFrom
       // Channel targets are prefixed; anything else is a DM. DM buffers are
       // keyed by the other party: sender for incoming, target for our own
       // outgoing messages (which appear in replayed DM history).
@@ -914,33 +1326,123 @@ function handleMessage(raw: string) {
       const isSelf = nickFrom === nick.value
       const bufferName = isChannel ? target : (isSelf ? target : nickFrom)
       const kind: BufferKind = isChannel ? 'channel' : 'pm'
-      addToBuffer(bufferName, kind, { type: 'chat', from, channel: target, text: body }, { ts, backlog })
-      // When a missed DM is replayed from history (backlog), auto-navigate to
-      // the conversation. Debounced so the most-recent sender wins if several arrive.
-      if (!isChannel && !isSelf && backlog) {
-        if (_autoPmTimer !== null)
-          clearTimeout(_autoPmTimer)
-        _autoPmTimer = setTimeout(() => {
-          _autoPmTimer = null
-          if (findBuffer(activeName.value)?.kind !== 'pm')
-            setActive(bufferName)
-        }, 300)
+      const msgid = tags.msgid ?? undefined
+      const replyTo = tags['+reply'] ?? undefined
+      // Service bots (NickServ/ChanServ/HistServ) are identity plumbing unless the
+      // user has explicitly opened a conversation with them. Surface traffic only
+      // inside such an open query; our own probe/SET commands (and their echoes)
+      // and replayed history have no open query and stay in the internal log.
+      if (kind === 'pm' && SERVICE_NICKS.has(bufferName.toLowerCase())) {
+        const hasOpenQuery = findBuffer(bufferName)?.kind === 'pm'
+        if (!hasOpenQuery || backlog || probingNickServInfo || suppressingNickServOp) {
+          addServiceLog({ type: 'system', from, text: isAction ? `* ${body}` : body }, { ts })
+          break
+        }
+        // Otherwise fall through to normal PM handling for the open conversation.
       }
+      // If this PRIVMSG belongs to a BEFORE batch, prepend it so older messages
+      // appear at the top of the buffer.
+      // Suppress HistServ's human-readable TAGMSG relay notices (e.g. "Jokler sent a TAGMSG").
+      // The TAGMSG command itself provides full tag context via the TAGMSG handler.
+      if (nickFrom.toLowerCase() === 'histserv' && /\bsent a TAGMSG\b/i.test(body))
+        break
+      addToBuffer(bufferName, kind, { type: 'chat', from, channel: target, text: body, msgid, replyTo, ...(isAction && { action: true }) }, { ts, backlog, prepend: isPrependBatch, batchTag: batchTag ?? undefined })
+      // Receiving a message clears the sender's typing indicator.
+      if (!backlog)
+        clearTyping(bufferName, from)
+
       break
     }
 
     case 'QUIT':
+      // Replayed QUIT history would evict currently-present users and clutter the
+      // server log; ignore it entirely. Live quits update presence as normal.
+      if (backlog)
+        break
       removeUserEverywhere(nickFrom)
+      clearTypingEverywhere(stripPrefix(nickFrom))
       addServer({ type: 'part', text: `${nickFrom} quit: ${params[0] ?? ''}` }, { ts })
       break
 
     case 'BATCH': {
       const ref = params[0] ?? ''
       const id = ref.slice(1)
-      if (ref.startsWith('+') && params[1] === 'chathistory')
-        backlogBatches.add(id)
-      else if (ref.startsWith('-'))
-        backlogBatches.delete(id)
+      if (ref.startsWith('+') && params[1] === 'chathistory') {
+        const batchTarget = params[2] ?? ''
+        const isPrepend = pendingBeforeTargets.delete(batchTarget.toLowerCase())
+        const hasSinceBound = pendingTimeBoundTargets.delete(batchTarget.toLowerCase())
+        backlogBatches.set(id, { target: batchTarget, count: 0, isPrepend, hasSinceBound, staging: isPrepend ? [] : undefined })
+      }
+      else if (ref.startsWith('-')) {
+        const info = backlogBatches.get(id)
+        if (info) {
+          const batchBuf = findBuffer(info.target)
+          if (batchBuf) {
+            // Always clear loading state - covers both LATEST and BEFORE completions.
+            batchBuf.loadingOlderHistory = false
+            // Mark ready after the first batch (LATEST) completes so lazy-load
+            // won't fire before initial history has settled.
+            batchBuf.historyReady = true
+            // Fewer messages than the limit means no more history - unless this was
+            // a time-bounded LATEST fetch (hasSinceBound), in which case a sparse
+            // result only means no activity in that window, not that all history is gone.
+            if (info.count < HISTORY_LIMIT && !info.hasSinceBound)
+              batchBuf.historyExhausted = true
+            // Bulk-insert staged BEFORE messages in one splice so the Vue
+            // reactive array only updates once (no per-message layout shift).
+            // Server delivers messages oldest-first, staging preserves that
+            // order, so splice(0,0,...) inserts them chronologically.
+            if (info.isPrepend && info.staging != null && info.staging.length > 0) {
+              batchBuf.messages.splice(0, 0, ...info.staging)
+              // Now that these older messages exist in the buffer, apply any
+              // reactions that were replayed in a newer batch but targeted them
+              // (their parent only just arrived in this older page).
+              for (const staged of info.staging) {
+                if (staged.msgid != null)
+                  drainPendingReactions(batchBuf, staged.msgid)
+              }
+            }
+
+            // Advance the pagination anchor to the oldest line delivered in this
+            // batch, even if that line never entered the buffer (reaction
+            // TAGMSGs and suppressed HistServ relays aren't stored). Without
+            // this, batches full of reactions leave the buffer's oldest stored
+            // message unchanged, so the next BEFORE re-requests the same window
+            // forever and pagination can never reach older real messages. Only
+            // move the anchor backwards in time so re-fetches/LATEST can't reset
+            // it to a newer position.
+            if (info.oldestTs != null) {
+              const currentAnchorTs = batchBuf.historyAnchorTs != null ? Date.parse(batchBuf.historyAnchorTs) : Number.POSITIVE_INFINITY
+              if (info.oldestTs < currentAnchorTs) {
+                batchBuf.historyAnchorMsgid = info.oldestMsgid
+                batchBuf.historyAnchorTs = new Date(info.oldestTs).toISOString()
+              }
+            }
+
+            // A batch may add few (or zero) visible messages when it's dominated
+            // by reactions/suppressed relays. Since the anchor now advances
+            // regardless, keep fetching until we have a screen's worth of
+            // visible content or history is exhausted. Cap retries as a safety
+            // valve against pathological histories.
+            if (!batchBuf.historyExhausted && (batchBuf.autoFetchRetries ?? 0) < 20) {
+              const visibleCount = batchBuf.messages.filter(m => m.type !== 'tagmsg').length
+              if (visibleCount < HISTORY_LIMIT) {
+                batchBuf.autoFetchRetries = (batchBuf.autoFetchRetries ?? 0) + 1
+                fetchOlderHistory(info.target)
+              }
+              else {
+                batchBuf.autoFetchRetries = 0
+              }
+            }
+          }
+          // Emit the deferred "You joined" marker now that replayed history has
+          // been appended, so the marker lands at the bottom (newest).
+          if (pendingJoinMarkers.delete(info.target.toLowerCase())) {
+            addToBuffer(info.target, 'channel', { type: 'join', channel: info.target, text: `You joined ${info.target}` })
+          }
+          backlogBatches.delete(id)
+        }
+      }
       break
     }
 
@@ -951,15 +1453,19 @@ function handleMessage(raw: string) {
       // skip unless the server reports newer activity than when it was closed.
       if (params[0] === 'TARGETS') {
         const target = params[1] ?? ''
-        if (target && !target.startsWith('#') && !target.startsWith('&')) {
+        // Skip service bots - replaying our NickServ/ChanServ command history is
+        // noise and would otherwise materialise a hidden service DM buffer.
+        if (target && !target.startsWith('#') && !target.startsWith('&') && !SERVICE_NICKS.has(target.toLowerCase())) {
           const closedAt = closedDms[target.toLowerCase()]
           const latestTs = Date.parse(params[2] ?? '')
           if (closedAt != null && !(Number.isFinite(latestTs) && latestTs > closedAt))
             break
           if (closedAt != null)
             forgetClosedDm(target)
-          // The replayed PRIVMSGs materialise the buffer; no eager getBuffer so
-          // an unexpectedly empty fetch leaves no stray DM in the sidebar.
+          // Eagerly create the buffer so the DM appears in the sidebar
+          // immediately rather than popping in when the first replayed message
+          // arrives mid-load.
+          getBuffer(target, 'pm')
           requestHistory(target, historyLowerBound())
         }
       }
@@ -977,8 +1483,38 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '366': // RPL_ENDOFNAMES
+    case '366': { // RPL_ENDOFNAMES
+      // Send WHO to discover bot flags for all channel members.
+      const whoChannel = params[1] ?? params[0] ?? ''
+      if (whoChannel && (whoChannel.startsWith('#') || whoChannel.startsWith('&'))) {
+        internalWhoChannels.add(whoChannel.toLowerCase())
+        send(`WHO ${whoChannel}`)
+      }
       break
+    }
+
+    case '315': { // RPL_ENDOFWHO
+      const whoMask = params[1] ?? ''
+      if (internalWhoChannels.delete(whoMask.toLowerCase()))
+        break // silently consumed - internal bot-detection WHO
+      addToActive({ type: 'system', text: params[params.length - 1] ?? '' }, { ts })
+      break
+    }
+
+    case '352': { // RPL_WHOREPLY - <client> <channel> <user> <host> <server> <nick> <flags> :<hop> <realname>
+      const whoReplyChannel = params[1] ?? ''
+      const whoNick = params[5] ?? ''
+      const whoFlags = params[6] ?? ''
+      if (whoReplyChannel && whoNick && whoFlags.includes('B')) {
+        const buf = findBuffer(whoReplyChannel)
+        if (buf) {
+          const user = buf.users.find(u => u.name === whoNick)
+          if (user)
+            user.bot = true
+        }
+      }
+      break
+    }
 
     case '375': // RPL_MOTDSTART
     case '372': // RPL_MOTD
@@ -999,10 +1535,31 @@ function handleMessage(raw: string) {
       channelListLoading.value = false
       break
 
+    case '324': { // RPL_CHANNELMODEIS - response to MODE #channel query
+      const modeChannel = params[1] ?? ''
+      const modeBuf = findBuffer(modeChannel)
+      if (modeBuf)
+        applyModeChanges(modeBuf, params.slice(2))
+      break
+    }
+
+    case '329': // RPL_CREATIONTIME - channel creation timestamp; silently consumed
+      break
+
     case '332': { // RPL_TOPIC
       const channel = params[1] ?? SERVER_BUFFER
       getBuffer(channel, 'channel').topic = params[2] ?? ''
-      addToBuffer(channel, 'channel', { type: 'system', text: `Topic: ${params[2] ?? ''}` }, { ts })
+      break
+    }
+
+    case '333': // RPL_TOPICWHOTIME - topic setter + timestamp; silently consumed
+      break
+
+    case 'TOPIC': { // live topic change
+      const channel = params[0] ?? SERVER_BUFFER
+      const buf = findBuffer(channel)
+      if (buf)
+        buf.topic = params[1] ?? ''
       break
     }
 
@@ -1029,10 +1586,25 @@ function handleMessage(raw: string) {
       if (fromNickServ && isAddressedToUs && (probingNickServInfo || suppressingNickServOp))
         break
 
+      // Surface NickServ replies only when the user has an open conversation with
+      // it. Unsolicited notices (login banners, etc.) and background plumbing have
+      // no open query and go to the internal service log instead of a visible tab.
+      if (fromNickServ && isAddressedToUs) {
+        if (findBuffer(nickFrom)?.kind === 'pm')
+          addToBuffer(nickFrom, 'pm', { type: 'system', from: nickFrom, text: noticeText }, { ts })
+        else
+          addServiceLog({ type: 'system', from: nickFrom, text: noticeText }, { ts })
+        break
+      }
+
       if (isAddressedToUs && nickFrom) {
         addToBuffer(nickFrom, 'pm', { type: 'system', from: nickFrom, text: noticeText }, { ts })
       }
       else if (noticeTgt.startsWith('#') || noticeTgt.startsWith('&')) {
+        // Suppress server-generated TAGMSG relay notices - the TAGMSG command
+        // itself provides full tag context via the TAGMSG case.
+        if (/\bsent a TAGMSG\b/i.test(noticeText))
+          break
         addToBuffer(noticeTgt, 'channel', { type: 'system', from: nickFrom, text: noticeText }, { ts })
       }
       else {
@@ -1041,9 +1613,177 @@ function handleMessage(raw: string) {
       break
     }
 
+    // WHOIS numerics - formatted and shown in the active buffer.
+    case '301': { // RPL_AWAY
+      const [, awayNick, awayMsg] = params
+      if (awayNick)
+        addToActive({ type: 'system', text: `[${awayNick}] is away: ${awayMsg ?? ''}` }, { ts })
+      break
+    }
+
+    case '311': { // RPL_WHOISUSER: nick user host * :realname
+      const [, wNick, wUser, wHost,, wReal] = params
+      if (wNick)
+        addToActive({ type: 'system', text: `[${wNick}] (${wUser ?? ''}@${wHost ?? ''}): ${wReal ?? ''}` }, { ts })
+      break
+    }
+
+    case '312': { // RPL_WHOISSERVER: nick server :serverinfo
+      const [, wNick, wServer, wInfo] = params
+      if (wNick)
+        addToActive({ type: 'system', text: `[${wNick}] ${wServer ?? ''} (${wInfo ?? ''})` }, { ts })
+      break
+    }
+
+    case '313': { // RPL_WHOISOPERATOR
+      const [, wNick, wMsg] = params
+      if (wNick)
+        addToActive({ type: 'system', text: `[${wNick}] ${wMsg ?? ''}` }, { ts })
+      break
+    }
+
+    case '317': { // RPL_WHOISIDLE: nick idlesecs signonts :message
+      const [, wNick, wIdle, wSignon] = params
+      if (wNick) {
+        const idleSecs = Number.parseInt(wIdle ?? '0', 10)
+        const h = Math.floor(idleSecs / 3600)
+        const m = Math.floor((idleSecs % 3600) / 60)
+        const s = idleSecs % 60
+        const idleFmt = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+        const signonTs = wSignon ? new Date(Number.parseInt(wSignon, 10) * 1000).toLocaleString() : ''
+        addToActive({ type: 'system', text: `[${wNick}] idle ${idleFmt}${signonTs ? `, signon: ${signonTs}` : ''}` }, { ts })
+      }
+      break
+    }
+
+    case '318': { // RPL_ENDOFWHOIS
+      const [, wNick, wMsg] = params
+      if (wNick)
+        addToActive({ type: 'system', text: `[${wNick}] ${wMsg ?? ''}` }, { ts })
+      break
+    }
+
+    case '319': { // RPL_WHOISCHANNELS
+      const [, wNick, wChans] = params
+      if (wNick)
+        addToActive({ type: 'system', text: `[${wNick}] ${wChans ?? ''}` }, { ts })
+      break
+    }
+
+    case '330': { // RPL_WHOISACCOUNT: nick account :message
+      const [, wNick, wAccount, wMsg] = params
+      if (wNick)
+        addToActive({ type: 'system', text: `[${wNick}] ${wMsg ?? 'is logged in as'} ${wAccount ?? ''}` }, { ts })
+      break
+    }
+
+    case '338': { // RPL_WHOISACTUALLY (UnrealIRCd actual host)
+      const [, wNick,, wMsg] = params
+      if (wNick)
+        addToActive({ type: 'system', text: `[${wNick}] ${wMsg ?? params[params.length - 1] ?? ''}` }, { ts })
+      break
+    }
+
+    case '671': { // RPL_WHOISSECURE (UnrealIRCd TLS)
+      const [, wNick, wMsg] = params
+      if (wNick)
+        addToActive({ type: 'system', text: `[${wNick}] ${wMsg ?? ''}` }, { ts })
+      break
+    }
+
+    case 'TAGMSG': {
+      if (!nickFrom)
+        break
+      const tagTarget = params[0] ?? ''
+
+      // IRCv3 react/unreact client tags (https://ircv3.net/specs/client-tags/react).
+      // Always paired with +reply pointing at the parent message's msgid. We accept
+      // both the work-in-progress `+draft/` names and the eventual unprefixed names.
+      const reactValue = tags['+draft/react'] ?? tags['+react']
+      const unreactValue = tags['+draft/unreact'] ?? tags['+unreact']
+      const reactReplyTo = tags['+reply']
+      if (reactReplyTo && (reactValue || unreactValue)) {
+        const isReactChannel = tagTarget.startsWith('#') || tagTarget.startsWith('&')
+        const isSelf = nickFrom === nick.value
+        const reactBufName = isReactChannel ? tagTarget : (isSelf ? tagTarget : nickFrom)
+        const reactBuf = findBuffer(reactBufName)
+        if (reactBuf) {
+          const staged = batchTag != null ? backlogBatches.get(batchTag)?.staging : undefined
+          applyReaction(reactBuf, reactReplyTo, (reactValue ?? unreactValue)!, nickFrom, unreactValue != null, staged)
+        }
+        break
+      }
+
+      // IRCv3 typing notification (https://ircv3.net/specs/client-tags/typing)
+      const typingState = tags['+typing'] ?? tags['draft/typing']
+      if (typingState) {
+        if (!backlog && nickFrom !== nick.value) {
+          const isTypingChannel = tagTarget.startsWith('#') || tagTarget.startsWith('&')
+          const typingBufName = isTypingChannel ? tagTarget : nickFrom
+          if (typingState === 'active')
+            setTyping(typingBufName, nickFrom, 6000)
+          else if (typingState === 'paused')
+            setTyping(typingBufName, nickFrom, 30000)
+          else if (typingState === 'done')
+            clearTyping(typingBufName, nickFrom)
+        }
+        break
+      }
+
+      // Tags that are protocol metadata - never user-meaningful.
+      const META_TAGS = new Set(['time', 'batch', 'msgid', 'label', 'account'])
+      // Tags we recognise and silently handle (or intentionally ignore).
+      const KNOWN_TAGS = new Set(['+typing', 'draft/typing', '+react', '+draft/react', '+unreact', '+draft/unreact', 'draft/react', '+icon'])
+      const unknownTags = Object.keys(tags).filter(k => !META_TAGS.has(k) && !KNOWN_TAGS.has(k))
+      if (!unknownTags.length)
+        break
+      const isTagChannel = tagTarget.startsWith('#') || tagTarget.startsWith('&')
+      const tagBufName = isTagChannel ? tagTarget : nickFrom
+      const tagBufKind: BufferKind = isTagChannel ? 'channel' : 'pm'
+      const tagStr = unknownTags.join(', ')
+      addToBuffer(tagBufName, tagBufKind, {
+        type: 'tagmsg',
+        text: `${nickFrom} sent an unknown tag: ${tagStr}`,
+        tag: tagStr,
+      }, { ts })
+      break
+    }
+
+    case '473': { // ERR_INVITEONLYCHAN - channel is invite-only
+      const invChannel = params[1] ?? ''
+      if (invChannel) {
+        closeBuffer(invChannel)
+        addServer({ type: 'error', text: `Cannot join ${invChannel} - invite only. You need to be invited by a channel operator.` })
+      }
+      break
+    }
+
+    case '475': { // ERR_BADCHANNELKEY - channel requires a key
+      const keyChannel = params[1] ?? ''
+      if (keyChannel) {
+        closeBuffer(keyChannel)
+        channelKeyError.value = channelKeyPrompt.value !== null
+        channelKeyPrompt.value = keyChannel
+      }
+      break
+    }
+
+    case '400': // ERR_UNKNOWNERROR - Ergo sends this when it can't assemble an outgoing
+      // message (e.g. bad content in stored history). Route to the server buffer so it
+      // doesn't clutter an active channel conversation.
+      addServer({ type: 'error', text: params[params.length - 1] ?? raw }, { ts })
+      break
+
     default:
-      if (!/^\d+$/.test(command))
+      if (/^\d+$/.test(command)) {
+        // Unhandled numeric reply - show the text portion in the active buffer.
+        const numText = params[params.length - 1] ?? ''
+        if (numText)
+          addToActive({ type: 'system', text: numText }, { ts })
+      }
+      else {
         addServer({ type: 'system', text: raw }, { ts })
+      }
   }
 }
 
@@ -1065,7 +1805,15 @@ function openSocket() {
     probeTimer = null
   }
   backlogBatches.clear()
-  chatHistorySupported = false
+  pendingReactions.clear()
+  pendingJoinMarkers.clear()
+  explicitJoinIntents.clear()
+  pendingBeforeTargets.clear()
+  pendingTimeBoundTargets.clear()
+  serviceLog.value = []
+  chatHistorySupported.value = false
+  echoMessageActive = false
+  messageTagsActive = false
   resetBuffers()
   account.value = ''
   accountEmail.value = null
@@ -1092,8 +1840,16 @@ function openSocket() {
   }
 
   ws.onmessage = (evt) => {
-    const text: string = typeof evt.data === 'string' ? evt.data : ''
-    text.split('\r\n').filter(Boolean).forEach(handleMessage)
+    if (typeof evt.data !== 'string')
+      return
+    // Ergo's WebSocket gateway delivers one IRC message per frame, but a frame
+    // may carry several messages and may or may not include the trailing CRLF.
+    // Split tolerantly on \n (dropping any \r) so no line is lost or merged.
+    evt.data.split('\n').forEach((line) => {
+      const trimmed = line.endsWith('\r') ? line.slice(0, -1) : line
+      if (trimmed)
+        handleMessage(trimmed)
+    })
   }
 
   ws.onerror = () => {
@@ -1107,9 +1863,13 @@ function openSocket() {
       connState.value = 'disconnected'
     _stopPinging()
     addServer({ type: 'system', text: `Disconnected (code ${evt.code})` })
+    for (const timer of typingTimers.values())
+      clearTimeout(timer)
+    typingTimers.clear()
     for (const buf of buffers.value) {
       buf.users = []
       buf.joined = false
+      buf.typing = []
     }
     ws = null
   }
@@ -1123,7 +1883,7 @@ function openSocket() {
 async function connect() {
   authCreds = null
   useAnonymous = false
-  if (!localStorage.getItem(STORAGE_CHANNEL))
+  if (!inputChannel.value)
     inputChannel.value = defaultChannel(false)
   if (identityProvider) {
     try {
@@ -1179,17 +1939,25 @@ function setActive(name: string) {
   }
 }
 
-function joinChannel(name: string) {
+function joinChannel(name: string, key?: string) {
   const channel = name.startsWith('#') ? name : `#${name}`
-  send(`JOIN ${channel}`)
+  // Mark this as a deliberate, user-initiated join so the self-JOIN handler
+  // renders the "You joined" marker (server auto-joins never set this).
+  explicitJoinIntents.add(channel.toLowerCase())
+  send(key ? `JOIN ${channel} ${key}` : `JOIN ${channel}`)
   getBuffer(channel, 'channel')
   setActive(channel)
 }
 
 function openPm(target: string) {
-  getBuffer(target, 'pm')
+  const buf = getBuffer(target, 'pm')
   forgetClosedDm(target)
   setActive(target)
+  // Load history the first time this DM is opened. Skipped if the buffer was
+  // already populated via CHATHISTORY TARGETS on connect (historyReady is set
+  // when the first chathistory batch closes).
+  if (chatHistorySupported.value && !buf.historyReady)
+    requestHistory(target)
 }
 
 function sendPm(target: string, text: string) {
@@ -1220,8 +1988,10 @@ function handleCommand(line: string) {
   switch ((cmd ?? '').toLowerCase()) {
     case 'join':
     case 'j':
-      if (arg)
-        joinChannel(arg.split(' ')[0] ?? '')
+      if (arg) {
+        const parts = arg.split(' ')
+        joinChannel(parts[0] ?? '', parts[1])
+      }
       break
     case 'part':
     case 'leave':
@@ -1244,7 +2014,7 @@ function handleCommand(line: string) {
       const target = activeName.value
       if (arg && target !== SERVER_BUFFER) {
         send(`PRIVMSG ${target} :\x01ACTION ${arg}\x01`)
-        addToBuffer(target, findBuffer(target)?.kind ?? 'channel', { type: 'chat', from: `* ${nick.value}`, channel: target, text: arg })
+        addToBuffer(target, findBuffer(target)?.kind ?? 'channel', { type: 'chat', from: nick.value, channel: target, text: arg, action: true })
       }
       break
     }
@@ -1252,13 +2022,121 @@ function handleCommand(line: string) {
       if (arg)
         send(`NICK ${arg.split(' ')[0]}`)
       break
+    case 'topic': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      if (arg)
+        send(`TOPIC ${channel} :${arg}`)
+      else
+        send(`TOPIC ${channel}`)
+      break
+    }
+    case 'op': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      const target = rest[0] ?? nick.value
+      send(`MODE ${channel} +o ${target}`)
+      break
+    }
+    case 'deop': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      const target = rest[0] ?? nick.value
+      send(`MODE ${channel} -o ${target}`)
+      break
+    }
+    case 'voice': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      const target = rest[0] ?? nick.value
+      send(`MODE ${channel} +v ${target}`)
+      break
+    }
+    case 'devoice': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      const target = rest[0] ?? nick.value
+      send(`MODE ${channel} -v ${target}`)
+      break
+    }
+    case 'kick': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      const target = rest[0]
+      if (!target)
+        break
+      const reason = rest.slice(1).join(' ')
+      send(reason ? `KICK ${channel} ${target} :${reason}` : `KICK ${channel} ${target}`)
+      break
+    }
+    case 'invite': {
+      const channel = activeName.value
+      if (!channel || findBuffer(channel)?.kind !== 'channel')
+        break
+      const target = rest[0]
+      if (!target)
+        break
+      send(`INVITE ${target} ${channel}`)
+      break
+    }
+    case 'mode': {
+      // If the first arg is already a channel or nick target, forward as-is.
+      // Otherwise inject the active channel so `/mode +m` works in-context.
+      const firstArg = rest[0] ?? ''
+      if (firstArg.startsWith('#') || firstArg.startsWith('&') || !firstArg) {
+        if (arg)
+          send(`MODE ${arg}`)
+      }
+      else {
+        const channel = activeName.value
+        if (channel && findBuffer(channel)?.kind === 'channel')
+          send(`MODE ${channel} ${arg}`)
+      }
+      break
+    }
     default:
-      addServer({ type: 'error', text: `Unknown command: /${cmd}` })
+      // Forward unknown commands directly to the server (e.g. /whois, /mode, /oper, etc.)
+      if (cmd)
+        send(`${cmd.toUpperCase()} ${arg}`.trim())
   }
 }
 
+function setReply(msg: ChatMessage) {
+  replyTarget.value = msg
+}
+
+function clearReply() {
+  replyTarget.value = null
+}
+
+/**
+ * Toggle an emoji reaction on `parent` within the active buffer (IRCv3 react).
+ * Sends a +reply-tagged +draft/react or +draft/unreact TAGMSG, then applies the
+ * change optimistically. The optimistic write is idempotent, so an echoed TAGMSG
+ * (when echo-message is active) reconciles to the same state.
+ */
+function toggleReaction(parent: ChatMessage, reaction: string) {
+  if (!parent.msgid || !reaction)
+    return
+  const target = activeName.value
+  const buf = findBuffer(target)
+  if (!buf || buf.kind === 'server')
+    return
+  const mine = (parent.reactions?.[reaction] ?? []).includes(nick.value)
+  const tag = mine ? '+draft/unreact' : '+draft/react'
+  send(`@+reply=${escapeTagValue(parent.msgid)};${tag}=${escapeTagValue(reaction)} TAGMSG ${target}`)
+  applyReaction(buf, parent.msgid, reaction, nick.value, mine)
+}
+
 function sendMessage() {
-  const text = inputMessage.value.trim()
+  // Strip characters that are illegal in IRC lines and cannot be escaped.
+  const text = inputMessage.value.trim().replace(/\0/g, '')
   if (!text)
     return
 
@@ -1276,9 +2154,47 @@ function sendMessage() {
     return
   }
 
-  send(`PRIVMSG ${target} :${text}`)
-  addToBuffer(target, buf.kind, { type: 'chat', from: nick.value, channel: target, text })
+  const replyMsgid = replyTarget.value?.msgid
+  // escapeTagValue is required: msgid is stored unescaped (via unescapeTag) and
+  // must be re-encoded before embedding in the wire tag string.
+  const tagPrefix = replyMsgid ? `@+reply=${escapeTagValue(replyMsgid)} ` : ''
+  send(`${tagPrefix}PRIVMSG ${target} :${text}`)
+
+  // When echo-message is active the server echoes our message back with a
+  // server-assigned msgid, so skip the local optimistic add to avoid duplicates.
+  if (!echoMessageActive) {
+    addToBuffer(target, buf.kind, { type: 'chat', from: nick.value, channel: target, text, replyTo: replyMsgid })
+  }
+
+  clearReply()
   inputMessage.value = ''
+}
+
+/**
+ * Send an IRCv3 typing notification to the active buffer target.
+ * - `active`: user is actively typing (throttled to once per 3 s per target).
+ * - `paused`: user stopped typing but has not cleared the input.
+ * - `done`:   user cleared the input without sending (bypasses throttle).
+ * Requires the `message-tags` capability to be active.
+ */
+function sendTyping(state: 'active' | 'paused' | 'done') {
+  if (!messageTagsActive || connState.value !== 'connected')
+    return
+  const target = activeName.value
+  if (!target || target === SERVER_BUFFER)
+    return
+  const buf = findBuffer(target)
+  if (!buf || buf.kind === 'server')
+    return
+  // Per spec: no typing notification within 3 s of the previous for this target.
+  // 'done' is a one-shot terminal event and bypasses the throttle.
+  if (state !== 'done') {
+    const last = lastTypingSent.get(target) ?? 0
+    if (Date.now() - last < 3000)
+      return
+  }
+  lastTypingSent.set(target, Date.now())
+  send(`@+typing=${state} TAGMSG ${target}`)
 }
 
 function clearMessages() {
@@ -1307,9 +2223,9 @@ export interface ChannelRole {
 
 const ROLE_BY_PREFIX: Record<string, ChannelRole> = {
   '~': { symbol: '~', label: 'Owner', color: 'var(--color-text-red)' },
-  '&': { symbol: '&', label: 'Admin', color: 'var(--color-text-purple)' },
-  '@': { symbol: '@', label: 'Operator', color: 'var(--color-text-green)' },
-  '%': { symbol: '%', label: 'Half-operator', color: 'var(--color-text-blue)' },
+  '&': { symbol: '&', label: 'Admin', color: 'var(--color-text-red)' },
+  '@': { symbol: '@', label: 'Operator', color: 'var(--color-text-blue)' },
+  '%': { symbol: '%', label: 'Half-operator', color: 'var(--color-text-purple)' },
   '+': { symbol: '+', label: 'Voiced', color: 'var(--color-text-yellow)' },
 }
 
@@ -1397,11 +2313,27 @@ export function useIrcChat() {
 
   function toggleSidebar() {
     sidebarHidden.value = !sidebarHidden.value
+    if (import.meta.client)
+      localStorage.setItem(SIDEBAR_HIDDEN_KEY, String(sidebarHidden.value))
+  }
+
+  /** Pre-seed the channel to connect to and persist it so connect() won't override it. */
+  function seedChannel(channel: string) {
+    inputChannel.value = channel
+    persistChannel(channel)
   }
 
   return {
     // config
     WS_URL,
+    // reply
+    replyTarget,
+    setReply,
+    clearReply,
+    // reactions
+    toggleReaction,
+    // typing
+    sendTyping,
     // connection
     connState,
     isConnected,
@@ -1410,6 +2342,7 @@ export function useIrcChat() {
     nick,
     account,
     // buffers
+    chatHistorySupported,
     buffers,
     activeName,
     activeBuffer,
@@ -1442,6 +2375,8 @@ export function useIrcChat() {
     channelList,
     channelListLoading,
     channelBrowserOpen,
+    channelKeyPrompt,
+    channelKeyError,
     listChannels,
     // account claim state
     accountEmail,
@@ -1457,5 +2392,7 @@ export function useIrcChat() {
     clearInputNick,
     defaultChannel,
     setChatVisible,
+    seedChannel,
+    fetchOlderHistory,
   }
 }

@@ -73,7 +73,8 @@ watch(() => route.fullPath, () => {
       :open="open"
       position="right"
       :size="sheetSize"
-      :card="{ separators: true }"
+      :card="{ separators: true,
+               padding: false }"
       class="chat-sheet__panel"
       @close="open = false"
     >
@@ -81,7 +82,7 @@ watch(() => route.fullPath, () => {
         <ChatToolbar expandable compact @collapse="open = false" />
       </template>
 
-      <ChatApp compact />
+      <ChatApp compact menu-padding />
     </Sheet>
   </div>
 </template>
@@ -115,5 +116,11 @@ watch(() => route.fullPath, () => {
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+// Restore header padding-x removed by card padding: false, matching the
+// menu-padding signal passed to ChatApp.
+.vui-card.no-padding.chat-sheet__panel > .vui-card-header {
+  padding-inline: var(--space-s) !important;
 }
 </style>

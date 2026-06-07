@@ -135,7 +135,7 @@ const attrs = useAttrs()
             <p>{{ activityStatus.lastSeenText }}</p>
           </template>
           <Indicator
-            :variant="activityStatus.isActive ? 'online' : 'away'"
+            :variant="activityStatus.isActive ? 'online' : activityStatus.isAway ? 'away' : 'offline'"
             :size="indicatorSize"
             class="user-avatar__online-indicator"
             outline
@@ -164,7 +164,7 @@ const attrs = useAttrs()
           <p>{{ activityStatus.lastSeenText }}</p>
         </template>
         <Indicator
-          :variant="activityStatus.isActive ? 'online' : 'away'"
+          :variant="activityStatus.isActive ? 'online' : activityStatus.isAway ? 'away' : 'offline'"
           :size="indicatorSize"
           class="user-avatar__online-indicator"
           outline
@@ -193,7 +193,7 @@ const attrs = useAttrs()
           <p>{{ activityStatus.lastSeenText }}</p>
         </template>
         <Indicator
-          :variant="activityStatus.isActive ? 'online' : 'away'"
+          :variant="activityStatus.isActive ? 'online' : activityStatus.isAway ? 'away' : 'offline'"
           :size="indicatorSize"
           class="user-avatar__online-indicator"
           outline
@@ -216,7 +216,7 @@ const attrs = useAttrs()
         <p>{{ activityStatus.lastSeenText }}</p>
       </template>
       <Indicator
-        :variant="activityStatus.isActive ? 'online' : 'away'"
+        :variant="activityStatus.isActive ? 'online' : activityStatus.isAway ? 'away' : 'offline'"
         :size="indicatorSize"
         class="user-avatar__online-indicator"
         outline

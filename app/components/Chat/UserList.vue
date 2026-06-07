@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { Button, Flex, Tooltip } from '@dolanske/vui'
+import { Flex, Overflow, Tooltip } from '@dolanske/vui'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { channelRole, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const { users, nick, inputMessage, openPm } = useIrcChat()
 const { settings } = useDataUserSettings()
 const { resolved, resolve } = useIrcNickResolver()
+const isMobile = useBreakpoint('<s')
 
 watch(users, (newUsers) => {
   resolve(newUsers.map(u => u.name.toLowerCase()))
@@ -24,7 +26,7 @@ const displayUsers = computed(() =>
 
 function mention(name: string) {
   const current = inputMessage.value.trim()
-  inputMessage.value = current ? `${current} ${name}: ` : `${name}: `
+  inputMessage.value = current ? `${current} @${name} ` : `@${name}: `
 }
 
 function userStyle(name: string) {
@@ -38,9 +40,9 @@ function userStyle(name: string) {
   <Flex column :gap="0" class="chat-users" expand>
     <Flex y-center x-between class="chat-users__header" expand>
       <span class="chat-users__title">Users</span>
-      <span class="chat-users__count">{{ users.length }}</span>
+      <span class="text-xs text-color-lighter">{{ users.length }}</span>
     </Flex>
-    <div class="chat-users__list">
+    <Overflow class="chat-users__list">
       <Flex
         v-for="user in displayUsers"
         :key="user.name"
@@ -50,7 +52,7 @@ function userStyle(name: string) {
         :class="{ 'chat-users__row--self': user.name === nick }"
       >
         <span class="chat-users__indicator">
-          <Tooltip v-if="user.role">
+          <Tooltip v-if="user.role" :disabled="isMobile">
             <Icon name="ph:circle-fill" size="8" :style="{ color: user.role.color }" />
             <template #tooltip>
               {{ user.role.label }}
@@ -72,26 +74,21 @@ function userStyle(name: string) {
         <button
           class="chat-users__item"
           type="button"
-          @click="mention(user.name)"
+          @click="user.name !== nick ? openPm(user.name) : mention(user.name)"
         >
           <span class="chat-users__name" :style="userStyle(user.name)">{{ user.name }}</span>
+          <Tooltip v-if="user.bot" :disabled="isMobile">
+            <Icon name="ph:robot" size="12" class="chat-users__bot-icon" />
+            <template #tooltip>
+              Bot
+            </template>
+          </Tooltip>
         </button>
-        <Button
-          v-if="user.name !== nick"
-          square
-          plain
-          size="s"
-          aria-label="Message"
-          class="chat-users__pm"
-          @click="openPm(user.name)"
-        >
-          <Icon name="ph:chat-circle" size="13" />
-        </Button>
       </Flex>
       <p v-if="displayUsers.length === 0" class="chat-users__empty">
         No users.
       </p>
-    </div>
+    </Overflow>
   </Flex>
 </template>
 
@@ -110,14 +107,16 @@ function userStyle(name: string) {
     color: var(--color-text-light);
   }
 
-  &__count {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
-  }
-
   &__list {
+    flex: 1;
+    min-height: 0;
     padding: var(--space-xxs);
     width: 100%;
+
+    :deep(.overflow-track),
+    :deep(.overflow-content) {
+      height: 100%;
+    }
   }
 
   &__row {
@@ -125,16 +124,17 @@ function userStyle(name: string) {
 
     &:hover {
       background: var(--color-bg-medium);
-
-      .chat-users__pm {
-        opacity: 1;
-      }
     }
 
     &--self {
       color: var(--color-accent);
       font-weight: var(--font-weight-semibold);
     }
+  }
+
+  &__bot-icon {
+    flex-shrink: 0;
+    color: var(--color-text-lighter);
   }
 
   &__item {
@@ -188,12 +188,6 @@ function userStyle(name: string) {
         height: 16px;
       }
     }
-  }
-
-  &__pm {
-    flex-shrink: 0;
-    opacity: 0;
-    transition: opacity var(--transition-fast);
   }
 
   &__empty {

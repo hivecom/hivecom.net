@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { Button, Flex, Resizable } from '@dolanske/vui'
-import { computed, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import SharedErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import ChatChannelHeader from './ChannelHeader.vue'
 import ChatChannelList from './ChannelList.vue'
+import ChatChannelPasswordModal from './ChannelPasswordModal.vue'
 import ChatComposer from './Composer.vue'
 import ChatConnectForm from './ConnectForm.vue'
 import ChatConnecting from './Connecting.vue'
 import ChatMessageLog from './MessageLog.vue'
+import ChatSidebarSplit from './SidebarSplit.vue'
 import ChatToolbar from './Toolbar.vue'
 import ChatUserList from './UserList.vue'
 
@@ -18,9 +21,13 @@ const props = defineProps<{
   // Compact surfaces (the navbar sheet) drop the sidebar and their own header,
   // since the surrounding sheet provides the header chrome instead.
   compact?: boolean
+  // When true, signals that the surrounding menu/sheet removed card padding and
+  // the associated header should receive padding-x: space-s to compensate.
+  menuPadding?: boolean
 }>()
 
 const LAYOUT_KEY = 'hivecom.chat.layout'
+const SIDEBAR_KEY = 'hivecom.chat.sidebar'
 
 // Seed a sensible initial split (narrow sidebar) before Resizable mounts.
 if (import.meta.client && !localStorage.getItem(LAYOUT_KEY)) {
@@ -36,7 +43,41 @@ const { settings } = useDataUserSettings()
 
 const isMobile = useBreakpoint('<s')
 
-const { connState, isConnected, ensureNick, clearInputNick, activeBuffer, sidebarHidden, buffers, connect, disconnect } = useIrcChat()
+const { connState, isConnected, ensureNick, clearInputNick, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt } = useIrcChat()
+
+// Auto-reconnect when the browser comes back from sleep or phone background.
+// Track whether a connection was ever established so we only auto-reconnect
+// after an unexpected drop, not after the user intentionally clicked "Go back".
+const hadConnection = ref(false)
+watch(isConnected, (connected) => {
+  if (connected)
+    hadConnection.value = true
+})
+
+function handleDisconnect() {
+  hadConnection.value = false
+  disconnect()
+}
+
+function tryReconnect() {
+  if (document.visibilityState !== 'visible')
+    return
+  if (!hadConnection.value)
+    return
+  if (connState.value === 'connecting' || connState.value === 'connected')
+    return
+  connect()
+}
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', tryReconnect)
+  window.addEventListener('online', tryReconnect)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', tryReconnect)
+  window.removeEventListener('online', tryReconnect)
+})
 
 const isCompactLayout = computed(() => props.compact || isMobile.value || sidebarHidden.value)
 
@@ -62,7 +103,10 @@ watch(user, (u, prev) => {
 </script>
 
 <template>
-  <section class="chat-app" :class="{ 'chat-app--compact': props.compact || isMobile }" :style="chatFontStyle">
+  <section
+    class="chat-app" :class="{ 'chat-app--compact': props.compact || isMobile,
+                               'chat-app--menu-padding': props.menuPadding }" :style="chatFontStyle"
+  >
     <header v-if="!props.compact" class="chat-app__bar">
       <ChatToolbar />
     </header>
@@ -79,7 +123,7 @@ watch(user, (u, prev) => {
           <Flex column gap="m" expand>
             <SharedErrorAlert standalone message="Failed to connect to the chat server." :error="lastConnError" />
             <Flex x-center gap="s">
-              <Button variant="gray" @click="disconnect()">
+              <Button variant="gray" @click="handleDisconnect()">
                 <template #start>
                   <Icon name="ph:arrow-left" />
                 </template>
@@ -108,33 +152,42 @@ watch(user, (u, prev) => {
           class="chat-app__layout"
         >
           <Flex column y-stretch class="chat-app__sidebar" expand>
-            <Flex class="chat-app__channels" :class="{ 'chat-app__channels--expanded': !isChannelBuffer }">
+            <ChatSidebarSplit v-if="isChannelBuffer" :storage-key="SIDEBAR_KEY" class="chat-app__sidebar-split">
+              <template #top>
+                <ChatChannelList />
+              </template>
+              <template #bottom>
+                <ChatUserList />
+              </template>
+            </ChatSidebarSplit>
+            <Flex v-else column y-stretch expand class="chat-app__channels">
               <ChatChannelList />
             </Flex>
-            <Flex v-if="isChannelBuffer" class="chat-app__users">
-              <ChatUserList />
-            </Flex>
           </Flex>
-          <Flex column gap="s" class="chat-app__main">
+          <Flex column :gap="0" class="chat-app__main">
+            <ChatChannelHeader />
             <ChatMessageLog :compact="isCompactLayout" />
             <ChatComposer />
           </Flex>
         </Resizable>
 
         <!-- Connected: full page, sidebar hidden -->
-        <Flex v-else-if="!isCompactLayout" key="connected-nosidebar" column gap="s" class="chat-app__main">
+        <Flex v-else-if="!isCompactLayout" key="connected-nosidebar" column :gap="0" class="chat-app__main">
+          <ChatChannelHeader />
           <ChatMessageLog :compact="isCompactLayout" />
           <ChatComposer />
         </Flex>
 
         <!-- Connected: stacked layout for the compact sheet -->
-        <Flex v-else key="connected-compact" column gap="s" class="chat-app__main">
+        <Flex v-else key="connected-compact" column :gap="0" class="chat-app__main">
           <ChatChannelList horizontal />
           <ChatMessageLog :compact="isCompactLayout" />
-          <ChatComposer />
+          <ChatComposer compact />
         </Flex>
       </Transition>
     </Flex>
+
+    <ChatChannelPasswordModal :channel="channelKeyPrompt" @close="channelKeyPrompt = null" />
   </section>
 </template>
 
@@ -143,7 +196,12 @@ watch(user, (u, prev) => {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
+  // Fill the parent via flex rather than height: 100%. Both surfaces (.chat-page
+  // and the sheet's .vui-card-content) are flex columns; a percentage height
+  // doesn't resolve against the sheet's flex-derived height, which let content
+  // overflow the card-content (VUI makes it overflow-y: auto) instead of the
+  // inner .chat-log__scroll - breaking scroll-to-load and autoscroll there.
+  flex: 1;
   min-height: 0;
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-l);
@@ -192,22 +250,17 @@ watch(user, (u, prev) => {
     border-right: 1px solid var(--color-border);
   }
 
+  &__sidebar-split {
+    flex: 1;
+    min-height: 0;
+  }
+
   &__channels {
     width: 100%;
-    flex: 0 0 auto;
-    max-height: 50%;
     min-height: 0;
-    border-bottom: 1px solid var(--color-border);
-
-    &--expanded {
-      flex: 1;
-      max-height: 100%;
-      border-bottom: none;
-    }
   }
 
   &__users {
-    flex: 1;
     min-height: 0;
   }
 
@@ -215,7 +268,6 @@ watch(user, (u, prev) => {
     flex: 1;
     min-height: 0;
     height: 100%;
-    padding: var(--space-s) var(--space-m) var(--space-m);
   }
 
   .chat-state-enter-active,

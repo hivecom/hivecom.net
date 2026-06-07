@@ -8,6 +8,7 @@ defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 const isMobile = useBreakpoint('<s')
+const isDev = import.meta.dev
 const { settings } = useDataUserSettings()
 
 const keywordDraft = ref('')
@@ -27,6 +28,11 @@ function removeKeyword(index: number) {
 }
 
 const options = [
+  {
+    key: 'chat_typing_indicators',
+    label: 'Typing indicators',
+    description: 'Show when others are typing, and let them see when you are. Disable for more privacy.',
+  },
   {
     key: 'chat_colored_nicks',
     label: 'Colored nicknames',
@@ -58,6 +64,7 @@ const options = [
     description: 'Display the time each message was sent. Hidden automatically in compact mode.',
     hideOnMobile: true,
   },
+
 ] as const
 
 async function toggleBrowserNotifications(value: boolean) {
@@ -80,8 +87,8 @@ async function toggleBrowserNotifications(value: boolean) {
     <Flex column gap="m" expand>
       <Flex v-if="!isMobile" y-center x-between expand>
         <Flex column gap="xxs" class="chat-settings__text">
-          <span class="chat-settings__label">Display mode</span>
-          <span class="chat-settings__desc">IRC shows plain text. Modern resolves nicks to Hivecom profiles.</span>
+          <span class="text-s">Display mode</span>
+          <span class="text-xs text-color-lighter">IRC shows plain text. Modern resolves nicks to Hivecom profiles.</span>
         </Flex>
         <ButtonGroup>
           <Button :variant="settings.chat_display_mode === 'irc' ? 'accent' : 'gray'" @click="settings.chat_display_mode = 'irc'">
@@ -103,16 +110,34 @@ async function toggleBrowserNotifications(value: boolean) {
         expand
       >
         <Flex column gap="xxs" class="chat-settings__text">
-          <span class="chat-settings__label">{{ option.label }}</span>
-          <span class="chat-settings__desc">{{ option.description }}</span>
+          <span class="text-s">{{ option.label }}</span>
+          <span class="text-xs text-color-lighter">{{ option.description }}</span>
         </Flex>
         <Switch v-model="settings[option.key]" />
       </Flex>
 
+      <Flex v-if="isDev" y-center x-between expand>
+        <Flex column gap="xxs" class="chat-settings__text">
+          <span class="text-s">Tag message display</span>
+          <span class="text-xs text-color-lighter">Control which IRCv3 TAGMSG events appear in the message log. Known events (typing, reactions) are always hidden.</span>
+        </Flex>
+        <ButtonGroup>
+          <Button :variant="settings.chat_show_tag_messages === 'none' ? 'accent' : 'gray'" @click="settings.chat_show_tag_messages = 'none'">
+            None
+          </Button>
+          <Button :variant="settings.chat_show_tag_messages === 'unknown' ? 'accent' : 'gray'" @click="settings.chat_show_tag_messages = 'unknown'">
+            Unknown
+          </Button>
+          <Button :variant="settings.chat_show_tag_messages === 'all' ? 'accent' : 'gray'" @click="settings.chat_show_tag_messages = 'all'">
+            All
+          </Button>
+        </ButtonGroup>
+      </Flex>
+
       <Flex y-center x-between gap="m" expand>
         <Flex column gap="xxs" class="chat-settings__text">
-          <span class="chat-settings__label">Browser notifications</span>
-          <span class="chat-settings__desc">Show a system notification when you are mentioned while the tab is in the background.</span>
+          <span class="text-s">Browser notifications</span>
+          <span class="text-xs text-color-lighter">Show a system notification when you are mentioned while the tab is in the background.</span>
         </Flex>
         <Switch :model-value="settings.chat_browser_notifications" @update:model-value="toggleBrowserNotifications" />
       </Flex>
@@ -120,10 +145,10 @@ async function toggleBrowserNotifications(value: boolean) {
       <Flex v-if="!isMobile" column gap="xs" expand>
         <Flex y-center x-between expand>
           <Flex column gap="xxs" class="chat-settings__text">
-            <span class="chat-settings__label">Message font size</span>
-            <span class="chat-settings__desc">Adjust the size of text in the message log.</span>
+            <span class="text-s">Message font size</span>
+            <span class="text-xs text-color-lighter">Adjust the size of text in the message log.</span>
           </Flex>
-          <span class="chat-settings__value">{{ settings.chat_font_size }}px</span>
+          <span class="chat-settings__value text-s text-color-light">{{ settings.chat_font_size }}px</span>
         </Flex>
         <Slider v-model="settings.chat_font_size" :min="10" :max="20" :step="1" />
       </Flex>
@@ -131,10 +156,10 @@ async function toggleBrowserNotifications(value: boolean) {
       <Flex v-if="isMobile" column gap="xs" expand>
         <Flex y-center x-between expand>
           <Flex column gap="xxs" class="chat-settings__text">
-            <span class="chat-settings__label">Message font size</span>
-            <span class="chat-settings__desc">Adjust the size of text in the message log.</span>
+            <span class="text-s">Message font size</span>
+            <span class="text-xs text-color-lighter">Adjust the size of text in the message log.</span>
           </Flex>
-          <span class="chat-settings__value">{{ settings.chat_mobile_font_size }}px</span>
+          <span class="chat-settings__value text-s text-color-light">{{ settings.chat_mobile_font_size }}px</span>
         </Flex>
         <Slider v-model="settings.chat_mobile_font_size" :min="10" :max="24" :step="1" />
       </Flex>
@@ -142,8 +167,8 @@ async function toggleBrowserNotifications(value: boolean) {
       <Flex v-if="!isMobile" column gap="xs" expand>
         <Flex y-center x-between expand>
           <Flex column gap="xxs" class="chat-settings__text">
-            <span class="chat-settings__label">Timestamp format</span>
-            <span class="chat-settings__desc">Standard dayjs format string, e.g. HH:mm:ss or DD/MM/YYYY HH:mm.</span>
+            <span class="text-s">IRC Mode Timestamp format</span>
+            <span class="text-xs text-color-lighter">Standard dayjs format string, e.g. HH:mm:ss or DD/MM/YYYY HH:mm.</span>
           </Flex>
         </Flex>
         <Input v-model="settings.chat_timestamp_format" expand placeholder="HH:mm:ss" :disabled="!settings.chat_show_timestamps" />
@@ -151,8 +176,8 @@ async function toggleBrowserNotifications(value: boolean) {
 
       <Flex column gap="xs" expand>
         <Flex column gap="xxs" class="chat-settings__text">
-          <span class="chat-settings__label">Mention keywords</span>
-          <span class="chat-settings__desc">Highlight messages containing any of these words, in addition to your nickname.</span>
+          <span class="text-s">Mention keywords</span>
+          <span class="text-xs text-color-lighter">Highlight messages containing any of these words, in addition to your nickname.</span>
         </Flex>
         <Flex gap="xs" expand>
           <Input
@@ -193,19 +218,7 @@ async function toggleBrowserNotifications(value: boolean) {
     flex: 1;
   }
 
-  &__label {
-    font-size: var(--font-size-s);
-    color: var(--color-text);
-  }
-
-  &__desc {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
-  }
-
   &__value {
-    font-size: var(--font-size-s);
-    color: var(--color-text-light);
     flex-shrink: 0;
   }
 

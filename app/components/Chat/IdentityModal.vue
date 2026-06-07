@@ -39,6 +39,11 @@ const isEmailMismatch = computed(() => {
   return !!userEmail && email !== userEmail
 })
 
+// Registered Supabase user with no IRC email linked yet
+const isRegisteredNoEmail = computed(() => {
+  return !!supabaseUser.value && accountEmail.value === ''
+})
+
 function startClaim() {
   emailInput.value = (supabaseUser.value as Record<string, unknown> | null)?.email as string ?? ''
   codeInput.value = ''
@@ -129,7 +134,7 @@ function handleClose() {
           <Flex column gap="xxs" expand>
             <Flex y-center gap="xs">
               <Icon
-                :name="isClaimed ? 'ph:check-circle' : isEmailMismatch ? 'ph:warning-circle' : 'ph:warning'"
+                :name="isClaimed ? 'ph:check-circle' : isEmailMismatch ? 'ph:warning-circle' : isRegisteredNoEmail ? 'ph:link' : 'ph:warning'"
                 :class="isClaimed ? 'text-color-green' : isEmailMismatch ? 'text-color-red' : 'text-color-yellow'"
               />
               <span class="text-s font-weight-medium">Account email</span>
@@ -140,12 +145,18 @@ function handleClose() {
             <span v-else-if="isEmailMismatch" class="text-xs text-color-lighter">
               Chat identity uses <strong class="text-xs">{{ accountEmail }}</strong>, but signed in as <strong class="text-xs">{{ supabaseUser?.email }}</strong>. Re-claim to sync.
             </span>
+            <span v-else-if="isRegisteredNoEmail" class="text-xs text-color-lighter">
+              Your chat identity has no email linked. Link your Hivecom account to keep both identities in sync.
+            </span>
             <span v-else class="text-xs text-color-lighter">
               No email set. Chat and Hivecom have separate identity systems - claim to sign in on any IRC client.
             </span>
           </Flex>
           <Button v-if="(!isClaimed || isEmailMismatch) && claimStep === 'idle'" variant="accent" size="s" @click="startClaim">
-            Set up
+            {{ isRegisteredNoEmail ? 'Link' : 'Set up' }}
+          </Button>
+          <Button v-else-if="isClaimed && claimStep === 'idle'" variant="gray" size="s" @click="startClaim">
+            Change
           </Button>
         </Flex>
 

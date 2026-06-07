@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Alert, Button, Flex } from '@dolanske/vui'
 import { ref } from 'vue'
-import constants from '~~/constants.json'
+
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
+import SupportModal from '@/components/Shared/SupportModal.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps({
@@ -26,6 +27,7 @@ const isXs = useBreakpoint('<xs')
 const user = useSupabaseUser()
 
 const complaintsOpen = ref(false)
+const supportOpen = ref(false)
 const route = useRoute()
 
 const ERROR_INTROS = [
@@ -105,14 +107,12 @@ function buildComplaintMessage() {
             </template>
             Report Issue
           </Button>
-          <NuxtLink :to="`mailto:${constants.SUPPORT.EMAIL}`" :class="{ 'w-100': isXs }">
-            <Button :expand="isXs" :variant="isXs ? 'gray' : 'link'" size="s">
-              <template #start>
-                <Icon name="ph:envelope-simple" />
-              </template>
-              Contact Support
-            </Button>
-          </NuxtLink>
+          <Button :expand="isXs" :variant="isXs ? 'gray' : 'link'" size="s" @click="supportOpen = true">
+            <template #start>
+              <Icon name="ph:envelope-simple" />
+            </template>
+            Contact Support
+          </Button>
         </Flex>
       </Flex>
     </Alert>
@@ -132,14 +132,12 @@ function buildComplaintMessage() {
           </template>
           Report Issue
         </Button>
-        <NuxtLink :to="`mailto:${constants.SUPPORT.EMAIL}`">
-          <Button variant="link" size="s">
-            <template #start>
-              <Icon name="ph:envelope-simple" />
-            </template>
-            Contact Support
-          </Button>
-        </NuxtLink>
+        <Button variant="link" size="s" @click="supportOpen = true">
+          <template #start>
+            <Icon name="ph:envelope-simple" />
+          </template>
+          Contact Support
+        </Button>
       </Flex>
       <CopyValue v-if="props.error" :text="props.error" hide-icon wrap danger class="error-alert-code" />
     </Flex>
@@ -156,20 +154,19 @@ function buildComplaintMessage() {
           </template>
           Report Issue
         </Button>
-        <NuxtLink :to="`mailto:${constants.SUPPORT.EMAIL}`">
-          <Button variant="link" size="s">
-            <template #start>
-              <Icon name="ph:envelope-simple" />
-            </template>
-            Contact Support
-          </Button>
-        </NuxtLink>
+        <Button variant="link" size="s" @click="supportOpen = true">
+          <template #start>
+            <Icon name="ph:envelope-simple" />
+          </template>
+          Contact Support
+        </Button>
       </Flex>
     </Flex>
     <CopyValue v-if="props.error" :text="props.error" hide-icon wrap danger class="error-alert-code" />
   </Alert>
 
   <ComplaintsManager v-model:open="complaintsOpen" start-with-submit :initial-message="props.error ? buildComplaintMessage() : undefined" />
+  <SupportModal v-model:open="supportOpen" />
 </template>
 
 <style scoped>

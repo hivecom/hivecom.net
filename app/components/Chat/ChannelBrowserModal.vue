@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Badge, Button, Flex, Input, Modal, Skeleton, Tooltip } from '@dolanske/vui'
+import { Badge, Button, ButtonGroup, Flex, Input, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -8,17 +9,31 @@ const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 const isMobile = useBreakpoint('<s')
-const { channelList, channelListLoading, listChannels, joinChannel } = useIrcChat()
+const { buffers, channelList, channelListLoading, listChannels, joinChannel } = useIrcChat()
+
+function channelModes(name: string): Set<string> | undefined {
+  return buffers.value.find(b => b.name.toLowerCase() === name.toLowerCase())?.modes
+}
 
 const search = ref('')
 
+type SortBy = 'name' | 'users'
+const sortBy = ref<SortBy>('name')
+const sortAsc = ref(true)
+
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  if (!q)
-    return channelList.value
-  return channelList.value.filter(
-    c => c.name.toLowerCase().includes(q) || c.topic.toLowerCase().includes(q),
-  )
+  const list = q
+    ? channelList.value.filter(
+        c => c.name.toLowerCase().includes(q) || c.topic.toLowerCase().includes(q),
+      )
+    : channelList.value
+  return [...list].sort((a, b) => {
+    const cmp = sortBy.value === 'name'
+      ? a.name.localeCompare(b.name)
+      : a.userCount - b.userCount
+    return sortAsc.value ? cmp : -cmp
+  })
 })
 
 // IRC channel names: no spaces, commas, or bell; starts with # (or we prefix it)
@@ -61,19 +76,31 @@ function join(name: string) {
     <template #header>
       <Flex y-center x-between expand>
         <h4>Browse channels</h4>
-        <Button square plain size="s" aria-label="Refresh channel list" :disabled="channelListLoading" @click="listChannels">
-          <Icon name="ph:arrows-clockwise" size="16" />
-        </Button>
+        <Flex gap="xxs" y-center>
+          <ButtonGroup>
+            <Button :variant="sortBy === 'name' ? 'fill' : 'gray'" size="s" @click="sortBy = 'name'">
+              Name
+            </Button>
+            <Button :variant="sortBy === 'users' ? 'fill' : 'gray'" size="s" @click="sortBy = 'users'">
+              Users
+            </Button>
+          </ButtonGroup>
+          <Button square plain size="s" :aria-label="sortAsc ? 'Sort descending' : 'Sort ascending'" @click="sortAsc = !sortAsc">
+            <Icon :name="sortAsc ? 'ph:sort-ascending' : 'ph:sort-descending'" size="13" />
+          </Button>
+        </Flex>
       </Flex>
     </template>
 
     <Flex column gap="s" expand>
-      <Flex y-center gap="xs" expand>
+      <Flex y-center gap="xxs" expand>
+        <Button square outline aria-label="Refresh channel list" :disabled="channelListLoading" @click="listChannels">
+          <Icon name="ph:arrows-clockwise" size="16" />
+        </Button>
         <Input v-model="search" expand placeholder="Search or enter a channel name..." @keydown.enter="canConnect && connectToInput()" />
         <Tooltip>
           <Button
             square
-            plain
             aria-label="Connect to channel"
             :disabled="!canConnect"
             :class="canConnect ? 'vui-button-accent' : 'vui-button-accent-weak'"
@@ -119,7 +146,10 @@ function join(name: string) {
         >
           <Flex y-center gap="xs">
             <Icon name="ph:hash" size="14" class="chat-channel-browser__icon" />
-            <span class="chat-channel-browser__name">{{ entry.name.replace(/^#/, '') }}</span>
+            <Flex y-center gap="xxs" class="chat-channel-browser__name-wrap">
+              <span class="chat-channel-browser__name">{{ entry.name.replace(/^#/, '') }}</span>
+              <ChannelModeBadges :modes="channelModes(entry.name)" />
+            </Flex>
             <Badge variant="neutral" size="s" class="chat-channel-browser__count">
               {{ entry.userCount }}
             </Badge>
@@ -171,7 +201,6 @@ function join(name: string) {
     gap: var(--space-xxs);
     width: 100%;
     min-width: 0;
-    overflow: hidden;
     padding: var(--space-xs) var(--space-s);
     border: none;
     background: transparent;
@@ -191,10 +220,21 @@ function join(name: string) {
     color: var(--color-text-lighter);
   }
 
-  &__name {
+  &__name-wrap {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+  }
+
+  &__name {
     font-size: var(--font-size-s);
     font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
   }
 
   &__count {

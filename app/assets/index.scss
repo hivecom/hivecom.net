@@ -51,8 +51,11 @@
   --text-color-text-lightest: var(--color-text-lightest);
   --text-color-text: var(--color-text);
 
+  // Extend VUI's --font stack with Noto Sans SC for CJK character fallback.
+  --font: 'Inter', 'Noto Sans SC', sans-serif;
+
   // Font family palette - system-safe stacks, no web fonts required.
-  --text-font-sans: ui-sans-serif, system-ui, sans-serif;
+  --text-font-sans: ui-sans-serif, system-ui, 'Noto Sans SC', sans-serif;
   --text-font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --text-font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
   --text-font-cursive: 'Comic Sans MS', 'Comic Sans', Chalkboard, cursive;

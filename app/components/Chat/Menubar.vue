@@ -3,19 +3,17 @@ import { Button, DropdownItem, DropdownTitle, Flex, Menubar, MenuItem, Sheet } f
 import { computed, ref } from 'vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import ChatUserListModal from './UserListModal.vue'
 
 defineProps<{
   // Compact surfaces (the navbar sheet) have no sidebar, so hide its toggle.
   compact?: boolean
 }>()
 
-const { isConnected, connState, connect, disconnect, clearMessages, sidebarHidden, toggleSidebar, channelBrowserOpen, latencyMs } = useIrcChat()
+const { isConnected, connState, connect, disconnect, sidebarHidden, toggleSidebar, latencyMs } = useIrcChat()
 
 const isMobile = useBreakpoint('<s')
 
 const connectionDrawerOpen = ref(false)
-const usersModalOpen = ref(false)
 
 const latencyLabel = computed(() => {
   if (latencyMs.value == null)
@@ -70,29 +68,6 @@ function run(action: () => void) {
           </template>
           Disconnect
         </DropdownItem>
-        <DropdownItem @click="() => { clearMessages(); connectionDrawerOpen = false }">
-          <template #icon>
-            <Icon name="ph:trash" />
-          </template>
-          Clear log
-        </DropdownItem>
-
-        <template v-if="isConnected">
-          <DropdownTitle>View</DropdownTitle>
-          <DropdownItem @click="() => { channelBrowserOpen = true; connectionDrawerOpen = false }">
-            <template #icon>
-              <Icon name="ph:compass" />
-            </template>
-            Browse channels
-          </DropdownItem>
-          <DropdownItem @click="() => { usersModalOpen = true; connectionDrawerOpen = false }">
-            <template #icon>
-              <Icon name="ph:users" />
-            </template>
-            Users
-          </DropdownItem>
-        </template>
-
         <DropdownTitle>About</DropdownTitle>
         <p class="chat-menubar__server">
           irc.hivecom.net:6697
@@ -138,46 +113,15 @@ function run(action: () => void) {
               </template>
               Disconnect
             </DropdownItem>
-            <DropdownItem @click="run(clearMessages)">
-              <template #icon>
-                <Icon name="ph:trash" />
-              </template>
-              Clear log
-            </DropdownItem>
-
-            <template v-if="isConnected">
-              <DropdownTitle>View</DropdownTitle>
-              <DropdownItem @click="run(() => channelBrowserOpen = true)">
-                <template #icon>
-                  <Icon name="ph:compass" />
-                </template>
-                Browse channels
-              </DropdownItem>
-              <DropdownItem @click="run(() => usersModalOpen = true)">
-                <template #icon>
-                  <Icon name="ph:users" />
-                </template>
-                Users
-              </DropdownItem>
-            </template>
-
             <DropdownTitle>About</DropdownTitle>
             <p class="chat-menubar__server">
               irc.hivecom.net:6697
             </p>
-            <template v-if="connState === 'connected' && latencyLabel">
-              <DropdownTitle>Latency</DropdownTitle>
-              <p class="chat-menubar__server chat-menubar__latency">
-                {{ latencyLabel }}
-              </p>
-            </template>
           </div>
         </template>
       </MenuItem>
     </Menubar>
   </Flex>
-
-  <ChatUserListModal :open="usersModalOpen" @close="usersModalOpen = false" />
 </template>
 
 <style lang="scss" scoped>

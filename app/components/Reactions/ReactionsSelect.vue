@@ -4,6 +4,8 @@ import { createReusableTemplate } from '@vueuse/core'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { HIVECOM_EMOTE_GROUPS } from '@/lib/reactions'
 
+defineOptions({ inheritAttrs: false })
+
 const emit = defineEmits<{
   (e: 'reaction', reaction: string): void
 }>()
@@ -45,7 +47,7 @@ function selectEmote(emote: string) {
     </div>
   </DefinePickerContent>
 
-  <div ref="anchor" class="inline-block" :class="{ 'reactions-anchor-active': open }">
+  <div ref="anchor" v-bind="$attrs" class="inline-block" :class="{ 'reactions-anchor-active': open }">
     <slot :toggle="toggle">
       <div role="button" class="reactions__button" @click="toggle">
         <Icon name="ph:smiley" :size="20" class="text-color-lighter" />

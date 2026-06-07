@@ -73,7 +73,7 @@ function handleEdit() {
         <!-- Basic info -->
         <DetailTable>
           <template #header>
-            <Icon name="ph:server" />
+            <Icon name="ph:hard-drives" />
             <h6>Overview</h6>
           </template>
           <DetailRow label="ID">

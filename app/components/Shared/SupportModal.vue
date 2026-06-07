@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Button, Card, CopyClipboard, Divider, Flex, Modal, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import constants from '~~/constants.json'
+import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import UserDisplay from './UserDisplay.vue'
 
@@ -26,7 +27,6 @@ const isBelowSmall = useBreakpoint('<xs')
 const supportDetails = constants.SUPPORT ?? {}
 const supportEmail = supportDetails.EMAIL ?? 'contact@hivecom.net'
 const ircChannel = supportDetails.IRC_CHANNEL ?? '#staff'
-const ircUrl = supportDetails.IRC_URL ?? 'irc://irc.hivecom.net:6697/#staff'
 const admins = ref<Tables<'profiles'>[]>([])
 const adminsLoading = ref(false)
 const adminsError = ref('')
@@ -38,6 +38,8 @@ const discordUrl = constants.LINKS?.DISCORD?.url
   ?? 'https://discord.gg/2xsJcSuUhW'
 const teamspeakUrl = constants.PLATFORMS?.TEAMSPEAK?.urls?.[0]?.url
   ?? 'ts3server://eu.ts.hivecom.net'
+
+const { isConnected, joinChannel, seedChannel } = useIrcChat()
 
 const supabase = useSupabaseClient()
 
@@ -110,6 +112,17 @@ function handleClose() {
   isOpen.value = false
   emit('close')
 }
+
+async function goToChat() {
+  if (isConnected.value) {
+    joinChannel(ircChannel)
+  }
+  else {
+    seedChannel(ircChannel)
+  }
+  handleClose()
+  await navigateTo('/chat')
+}
 </script>
 
 <template>
@@ -165,19 +178,17 @@ function handleClose() {
             Email
           </Button>
         </CopyClipboard>
-        <a :href="ircUrl" target="_blank" rel="noopener noreferrer" class="support-modal__link">
-          <Tooltip>
-            <Button :expand="isBelowSmall">
-              <template #start>
-                <Icon name="ph:chats-circle" />
-              </template>
-              Join IRC
-            </Button>
-            <template #tooltip>
-              <p>Join the {{ ircChannel }} channel</p>
+        <Tooltip>
+          <Button :expand="isBelowSmall" @click="goToChat">
+            <template #start>
+              <Icon name="ph:chats-circle" />
             </template>
-          </Tooltip>
-        </a>
+            Join Chat
+          </Button>
+          <template #tooltip>
+            <p>{{ isConnected ? 'Open' : 'Connect to' }} {{ ircChannel }}</p>
+          </template>
+        </Tooltip>
         <NuxtLink
           v-if="discordUrl" :to="discordUrl" target="_blank" rel="noopener noreferrer"
           class="support-modal__link"

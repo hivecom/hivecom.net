@@ -11,7 +11,7 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <div class="relative flex h-full w-full bg-[#111] text-white items-center justify-center overflow-hidden">
+  <div class="relative flex h-full w-full bg-[#111] text-white items-center justify-center overflow-hidden" style="font-family: 'Inter', 'Noto Sans SC', sans-serif">
     <!-- Background light leak effect -->
     <img
       src="/leak.png"

@@ -111,6 +111,8 @@ interface TableColumnOverrides {
       chat_show_timestamps: boolean
       chat_timestamp_format: string
       chat_display_mode: 'irc' | 'modern'
+      chat_show_tag_messages: 'none' | 'unknown' | 'all'
+      chat_typing_indicators: boolean
     }
   }
 
