@@ -22,6 +22,7 @@ onBeforeMount(() => {
     .select('id, title, description')
     .eq('is_draft', false)
     .not('discussion_topic_id', 'is', null)
+    .order('created_at', { ascending: false })
     .limit(5)
     .then(({ data }) => {
       if (data) {
