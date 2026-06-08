@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, Flex } from '@dolanske/vui'
+import { Button, Card, Divider, Flex } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+
 import { useDataProjectBanner } from '@/composables/useDataProjectBanner'
 import { useDataProjects } from '@/composables/useDataProjects'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -99,7 +100,7 @@ defineOgImage('Project', {
 
 <template>
   <div class="page">
-    <div :class="!isMobile && 'container-m'">
+    <div class="container-m">
       <DetailStates
         :loading="loading"
         :error="displayError"
@@ -140,10 +141,14 @@ defineOgImage('Project', {
           </div>
 
           <div class="mt-s">
-            <Flex column gap="m" expand :y-center="isMobile">
-              <h1 class="project-header__title">
-                {{ project.title }}
-              </h1>
+            <Flex column gap="xs" expand :y-center="isMobile">
+              <Flex x-between y-center expand>
+                <h1 class="m-0">
+                  {{ project.title }}
+                </h1>
+
+                <UserDisplay :user-id="project.owner" />
+              </Flex>
 
               <p v-if="project.description" class="project-header__description">
                 {{ project.description }}
@@ -151,11 +156,7 @@ defineOgImage('Project', {
 
               <!-- Meta information -->
               <Flex :column="isMobile" :gap="isMobile ? 's' : 'l'" :x-between="!isMobile" :x-center="isMobile" y-center wrap expand>
-                <Flex v-if="project.owner" y-center gap="xs">
-                  <span class="text-s text-color-light">Project by</span>
-                  <UserDisplay :user-id="project.owner" size="s" :show-profile-preview="true" :hide-avatar="false" />
-                </Flex>
-                <Flex gap="s" :column="isMobile" :expand="isMobile" class="project-header__actions">
+                <Flex gap="xs" :expand="isMobile" class="project-header__actions">
                   <Button
                     v-if="project.link"
                     class="project-header__action"
@@ -167,7 +168,7 @@ defineOgImage('Project', {
                     <template #start>
                       <Icon name="ph:arrow-square-out" />
                     </template>
-                    Open Link
+                    Visit
                   </Button>
                   <Button
                     v-if="project.github"
@@ -180,22 +181,20 @@ defineOgImage('Project', {
                     <template #start>
                       <Icon name="ph:github-logo" />
                     </template>
-                    View on GitHub
+                    Source
                   </Button>
                 </Flex>
               </Flex>
             </Flex>
           </div>
+
+          <Divider class="project-divider" />
+
+          <!-- Project Content (Markdown) -->
+          <MarkdownRenderer :md="project.markdown" />
         </Card>
 
         <Flex column>
-          <!-- Project Content (Markdown) -->
-          <Card class="project-content card-bg">
-            <div class="project-content__markdown">
-              <MarkdownRenderer :md="project.markdown" />
-            </div>
-          </Card>
-
           <!-- Project Metadata -->
           <MetadataCard
             :tags="project.tags"
@@ -221,7 +220,13 @@ defineOgImage('Project', {
 .page-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-l);
+  gap: var(--space-m);
+}
+
+.project-divider {
+  width: auto;
+  margin-inline: calc(-1 * var(--space-m));
+  margin-block: var(--space-m);
 }
 
 .project-header {
@@ -237,7 +242,7 @@ defineOgImage('Project', {
   overflow: hidden;
   background: transparent;
   border-bottom: 1px solid var(--color-border);
-  border-radius: var(--border-radius-s) var(--border-radius-s) 0 0;
+  border-radius: var(--border-radius-m);
 }
 
 .project-header__banner-surface {
@@ -253,30 +258,16 @@ defineOgImage('Project', {
   transform: var(--banner-placeholder-transform, scale(1)) scale(1.05);
 }
 
-.project-header__title {
-  text-align: center;
-  font-size: var(--font-size-xxxxl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text);
-  margin: 0;
-  line-height: 1.2;
-}
-
 .project-header__description {
   font-size: var(--font-size-l);
   color: var(--color-text-light);
-  margin: 0;
-  line-height: 1.6;
+  line-height: var(--line-height-loose);
+  margin-bottom: var(--space-m);
+  text-align: left !important;
 }
 
 .project-header__action {
   white-space: nowrap;
-}
-
-.project-content {
-  &__markdown {
-    padding-bottom: var(--space-m);
-  }
 }
 
 @media (max-width: 768px) {

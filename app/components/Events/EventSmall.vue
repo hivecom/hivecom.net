@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Card, Flex, Skeleton } from '@dolanske/vui'
+import { Badge, Card, Divider, Flex, Skeleton } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import { useCache } from '@/composables/useCache'
@@ -9,9 +9,11 @@ import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { formatTimeAgo } from '@/lib/utils/date.js'
 import { truncate } from '@/lib/utils/formatting'
 import BulkAvatarDisplay from '../Shared/BulkAvatarDisplay.vue'
+import EventGames from './EventGames.vue'
 
 const props = defineProps<{
   data: Tables<'events'>
+  games?: Tables<'games'>[]
 }>()
 
 const isUpcoming = computed(() => {
@@ -53,6 +55,14 @@ onBeforeMount(async () => {
   if (user.value)
     userIds.value = ids
 })
+
+const linkedGames = computed(() => {
+  if (!props.games || !props.data.games?.length)
+    return []
+  return props.data.games
+    .map(id => props.games!.find(g => g.id === id))
+    .filter((g): g is Tables<'games'> => g != null)
+})
 </script>
 
 <template>
@@ -76,12 +86,17 @@ onBeforeMount(async () => {
         <Flex v-if="loadingRsvps" x-start class="event-people">
           <Skeleton :height="28" :width="80" :radius="4" />
         </Flex>
-        <Flex v-else-if="rsvpCount > 0" x-start class="event-people">
+        <Flex v-else-if="rsvpCount > 0" x-start class="event-people" y-center>
           <BulkAvatarDisplay v-if="user" :user-ids :max-users="4" avatar-size="s" :expand="false" :gap="6" cluster />
           <Badge v-else :variant="hasEventEnded ? 'neutral' : 'accent'">
             <Icon name="ph:users" />
             {{ rsvpCount }} {{ hasEventEnded ? 'Went' : 'Going' }}
           </Badge>
+
+          <template v-if="linkedGames.length > 0">
+            <Divider vertical :height="16" />
+            <EventGames :games="linkedGames" :show-label="false" :max-visible="4" />
+          </template>
         </Flex>
       </Card>
     </GlowCard>
@@ -151,6 +166,7 @@ onBeforeMount(async () => {
     text-align: left;
     @include line-clamp(2);
     flex: 1;
+    margin-bottom: var(--space-xs);
   }
 }
 </style>

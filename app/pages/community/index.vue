@@ -355,7 +355,7 @@ watch(user, () => {
           </Flex>
           <NuxtLink to="/community/games" :class="isMobile ? 'w-100' : ''">
             <Button :expand="isMobile" size="s" outline>
-              All Game Activity
+              Details
               <template #end>
                 <Icon name="ph:arrow-right" />
               </template>

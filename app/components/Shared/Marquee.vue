@@ -14,7 +14,7 @@ interface DragEndPayload {
 
 const props = withDefaults(defineProps<Props>(), {
   speed: 40,
-  direction: 'left',
+  direction: 'right',
   pauseOnHover: true,
   draggable: true,
 })

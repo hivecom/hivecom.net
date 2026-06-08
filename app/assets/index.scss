@@ -141,6 +141,10 @@
   }
 }
 
+[role='button'] {
+  cursor: pointer;
+}
+
 .vui-badge {
   // --vui-badge-padding-block: 6px;
 
@@ -429,6 +433,15 @@ code {
     span {
       font-size: var(--font-size-s) !important;
     }
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin-top: var(--space-xl);
   }
 
   details {

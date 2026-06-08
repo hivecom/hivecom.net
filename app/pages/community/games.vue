@@ -340,7 +340,7 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
 
     <ClientOnly>
       <!-- Top 3 games this week -->
-      <section>
+      <section class="mb-xl">
         <!-- Loading -->
         <template v-if="loadingHistory || gamesLoading">
           <Skeleton :height="isMobile ? 160 : 220" :radius="8" class="mb-m" />
@@ -388,6 +388,17 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
         </template>
       </section>
 
+      <!-- Recent games -->
+      <section class="mt-m">
+        <RecentGameActivitySection
+          :current-players-by-steam-id="currentPlayersBySteamId"
+          :games="games"
+          :is-logged-in="!!user"
+          :loading="presencesLoading"
+          :metrics-history="metricsHistory"
+        />
+      </section>
+
       <!-- Game activity chart (no controls, always 14d) -->
       <section class="mt-m chart-section">
         <ChartGameActivity
@@ -405,22 +416,11 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
         </ChartGameActivity>
       </section>
 
-      <!-- Recent games -->
-      <section class="mt-m">
-        <RecentGameActivitySection
-          :current-players-by-steam-id="currentPlayersBySteamId"
-          :games="games"
-          :is-logged-in="!!user"
-          :loading="presencesLoading"
-          :metrics-history="metricsHistory"
-        />
-      </section>
-
       <!-- Marquee: game covers -->
-      <GameMarquee v-if="marqueeGames.length > 0" :games="marqueeGames" :speed="marqueeSpeed" class="mt-m" @select="openDetailsModalById" />
+      <GameMarquee v-if="marqueeGames.length > 0" :games="marqueeGames" :speed="marqueeSpeed" class="mb-xl" @select="openDetailsModalById" />
 
       <!-- Popped off (live) - rendered above events when an ongoing event features the game -->
-      <section v-if="isPoppedOffLive && (poppedOffGameId !== null || loadingHistory30d)" class="mt-m">
+      <section v-if="isPoppedOffLive && (poppedOffGameId !== null || loadingHistory30d)">
         <GamePoppedOffCard
           :metrics-history30d="metricsHistory30d"
           :loading="loadingHistory30d"
