@@ -144,6 +144,10 @@
 .vui-badge {
   // --vui-badge-padding-block: 6px;
 
+  &.vui-badge-size-m {
+    --vui-badge-height: 28px;
+  }
+
   &.vui-badge-size-s:not(.circle) {
     --vui-badge-padding-inline: var(--space-xxs) !important;
   }

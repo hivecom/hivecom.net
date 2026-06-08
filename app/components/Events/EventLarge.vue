@@ -5,11 +5,10 @@ import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useEventTiming } from '@/composables/useEventTiming'
-import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { humanizeRrule } from '@/lib/utils/rrule'
+import GameIcon from '../Shared/GameIcon.vue'
 import CountdownTimer from './CountdownTimer.vue'
-import EventGames from './EventGames.vue'
 
 const props = defineProps<{
   data: Tables<'events'>
@@ -46,10 +45,8 @@ function updateTime() {
   }
 }
 
-const isBelowSmall = useBreakpoint('<s')
 const isBelowMedium = useBreakpoint('<m')
 const { hasEventEnded } = useEventTiming(() => props.data)
-const { handleContentClick } = useExternalLinkGuard()
 
 const { getByIds } = useDataGames()
 const games = computed(() => props.data.games ? getByIds(props.data.games as number[]) : [])
@@ -91,28 +88,9 @@ onBeforeMount(() => {
               <strong class="event-large__title" :class="{ 'event-large__title--highlight': props.isHighlight }">
                 {{ props.data.title }}
               </strong>
-              <Flex gap="xs" y-center shrink="0">
-                <Tooltip v-if="props.data.link" placement="top">
-                  <a
-                    :href="props.data.link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="event-large__link"
-                    @click.stop="handleContentClick"
-                  >
-                    <Badge variant="neutral">
-                      <Icon name="ph:arrow-square-out" />
-                    </Badge>
-                    <span class="visually-hidden">Visit Event Link</span>
-                  </a>
-                  <template #tooltip>
-                    <p>Website</p>
-                  </template>
-                </Tooltip>
-                <Badge v-if="user" :variant="props.data.is_official ? 'accent' : 'neutral'" :filled="!props.data.is_official">
-                  {{ props.data.is_official ? 'Official' : 'Community' }}
-                </Badge>
-              </Flex>
+              <Badge v-if="user" :variant="props.data.is_official ? 'accent' : 'neutral'" :filled="!props.data.is_official">
+                {{ props.data.is_official ? 'Official' : 'Community' }}
+              </Badge>
             </Flex>
 
             <!-- Description -->
@@ -122,7 +100,7 @@ onBeforeMount(() => {
 
             <!-- Meta row: attendees left, badges right -->
             <Flex x-between :y-center="!isBelowMedium" :y-start="isBelowMedium" gap="xs" :wrap="isBelowMedium">
-              <Flex y-center gap="s" x-start class="event-large__people">
+              <Flex y-center gap="s" x-start class="event-large__people" wrap>
                 <BulkAvatarDisplay
                   v-if="user && rsvpCount > 0"
                   :user-ids="rsvpUserIds"
@@ -137,31 +115,36 @@ onBeforeMount(() => {
                   <Icon name="ph:users" />
                   {{ rsvpCount }} {{ hasEventEnded ? 'Went' : 'Going' }}
                 </Badge>
-              </Flex>
-              <Flex wrap gap="xs" :x-end="!isBelowMedium" :x-center="isBelowMedium" :expand="isBelowMedium">
-                <EventGames v-if="games.length > 0" :games="games" :show-label="false" />
-                <Badge v-if="props.data.recurrence_rule && !isBelowMedium" variant="neutral">
-                  <Icon name="ph:arrows-clockwise" />
-                  {{ humanizeRrule(props.data.recurrence_rule) }}
-                </Badge>
-                <Badge v-if="props.data.location" variant="neutral">
+
+                <Tooltip v-if="games.length > 0">
+                  <Badge outline>
+                    {{ games.length }} Game{{ games.length > 1 ? 's' : '' }}
+                  </Badge>
+                  <template #tooltip>
+                    <Flex column>
+                      <Flex v-for="game in games" :key="game.id" y-center x-start>
+                        <GameIcon :game="game" size="s" />
+                        {{ game.name }}
+                      </Flex>
+                    </Flex>
+                  </template>
+                </Tooltip>
+
+                <Tooltip v-if="props.data.recurrence_rule && !isBelowMedium">
+                  <Badge outline>
+                    <Icon name="ph:arrows-clockwise" />
+                    Recurring
+                  </Badge>
+                  <template #tooltip>
+                    <p>
+                      {{ humanizeRrule(props.data.recurrence_rule) }}
+                    </p>
+                  </template>
+                </Tooltip>
+
+                <Badge v-if="props.data.location" outline>
                   <Icon name="ph:map-pin-fill" />
                   {{ props.data.location }}
-                </Badge>
-                <Tooltip v-if="props.data.note && !isBelowSmall" placement="left">
-                  <template #tooltip>
-                    <div class="event-large__tooltip-content">
-                      {{ props.data.note }}
-                    </div>
-                  </template>
-                  <Badge variant="neutral" class="event-large__note-badge">
-                    <Icon name="ph:note" />
-                    Note
-                  </Badge>
-                </Tooltip>
-                <Badge v-else-if="props.data.note" variant="neutral">
-                  <Icon name="ph:note" />
-                  {{ props.data.note }}
                 </Badge>
               </Flex>
             </Flex>
