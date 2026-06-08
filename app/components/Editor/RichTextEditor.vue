@@ -95,6 +95,11 @@ interface Props {
   showAttachmentButton?: boolean
   showExpandButton?: boolean
   alwaysShowExpandButton?: boolean
+  /**
+   * When true, automatically opens the fullscreen editor modal on mobile
+   * breakpoints. Useful inside modals where the small editor is impractical.
+   */
+  fullscreenOnMobile?: boolean
   showSubmitOptions?: boolean
   /**
    * External loading state - when true, disables the editor and shows spinner
@@ -1123,6 +1128,16 @@ function handleVideoConfirm(url: string) {
     return
   editor.value.commands.insertVideo({ src: url.trim() })
 }
+
+// Auto-open fullscreen editor on mobile when requested
+watch(
+  [isMobile, () => props.fullscreenOnMobile],
+  ([mobile, fullscreenProp]) => {
+    if (mobile && fullscreenProp)
+      expandedOpen.value = true
+  },
+  { immediate: true },
+)
 
 // If content is changed externally, make sure mentions are hydrated
 watch(() => editor.value, (value) => {

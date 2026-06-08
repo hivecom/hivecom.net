@@ -703,7 +703,15 @@ export function useCachedFetch<T = unknown>(
         return { data: result, error: null }
       })
       .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : 'Failed to fetch data'
+        // PostgrestError is a plain object (not an Error subclass), so
+        // instanceof Error is false. Fall back to checking for a message
+        // property before giving up with a generic string.
+        const message
+          = err instanceof Error
+            ? err.message
+            : (err !== null && typeof err === 'object' && 'message' in err && typeof (err as Record<string, unknown>).message === 'string')
+                ? (err as Record<string, unknown>).message as string
+                : 'Failed to fetch data'
         error.value = message
         data.value = null
         return { data: null, error: message }

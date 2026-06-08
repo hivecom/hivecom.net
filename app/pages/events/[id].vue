@@ -7,12 +7,14 @@ import EventHeader from '@/components/Events/EventHeader.vue'
 import EventMarkdown from '@/components/Events/EventMarkdown.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
+import { useAuthRedirect } from '@/composables/useAuthRedirect'
 import { useCachedFetch } from '@/composables/useCache'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useEventTiming } from '@/composables/useEventTiming'
+import { useSessionReady } from '@/composables/useSessionReady'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { expandRecurringEvent, nextOccurrenceDate } from '@/lib/utils/rrule'
 
@@ -92,9 +94,80 @@ function handleReplySubmitted(newReplyCount: number, discussionId: string) {
   forumUnread.markDiscussionSeen(discussionId, newReplyCount)
 }
 
+// Auth state - resolved on mount to avoid race conditions on hard reload
+// (useSupabaseUser starts as null while the session is still being restored)
+const { waitForSessionReady } = useSessionReady()
+const { navigateToSignIn } = useAuthRedirect()
+const authReady = ref(false)
+const sessionUser = ref<import('@supabase/supabase-js').User | null>(null)
+
+onMounted(async () => {
+  await waitForSessionReady()
+  const result = await supabase.auth.getSession().catch(() => null)
+  sessionUser.value = result?.data?.session?.user ?? null
+  authReady.value = true
+})
+
 // Edit permissions
 const userId = useUserId()
 const { isAdminOrMod: isPrivileged } = useEffectiveRole()
+
+// True once auth has settled; uses both the reactive user and the resolved
+// session to avoid false negatives during the session-restore window.
+const isAuthenticated = computed(() => !!(userId.value ?? sessionUser.value))
+
+// Matches the PostgREST "zero rows returned for .single()" error regardless
+// of PostgREST version (message wording changed between versions).
+function isNoRowsError(msg: string): boolean {
+  return (
+    msg.includes('Cannot coerce the result to a single JSON object')
+    || msg.includes('JSON object requested, multiple (or no) rows returned')
+  )
+}
+
+// User-friendly error message derived from the raw error and auth state.
+// The "no rows" error from .single() fires for both missing events and
+// events hidden by RLS from unauthenticated users.
+const displayError = computed(() => {
+  if (loading.value || !error.value)
+    return null
+
+  if (isNoRowsError(error.value)) {
+    if (isAuthenticated.value)
+      return 'This event was not found. It may have been removed or the link may be incorrect.'
+    return 'This event could not be loaded. It may be a private community event - sign in to view it.'
+  }
+
+  return 'We are unable to load event details at this time. Please try again later.'
+})
+
+// Raw error shown as a copyable technical detail only for unexpected errors,
+// not for the common "not found" / RLS-block case.
+const displayErrorDetail = computed(() => {
+  if (!error.value)
+    return undefined
+  if (isNoRowsError(error.value))
+    return undefined
+  return error.value
+})
+
+// Redirect unauthenticated users to sign-in when an event can't be loaded -
+// it is likely hidden by RLS (community/private event). After signing in they
+// are returned here; if the event still isn't found they see the not-found
+// message above.
+watch(
+  [error, userId, authReady, sessionUser],
+  ([eventError, , isAuthReady]) => {
+    if (!isAuthReady)
+      return
+    if (!eventError)
+      return
+
+    if (!isAuthenticated.value && isNoRowsError(eventError))
+      navigateToSignIn()
+  },
+  { immediate: true },
+)
 
 const canEdit = computed(() => {
   if (!event.value || !userId.value)
@@ -153,10 +226,10 @@ useHead({
         <!-- Loading and Error States -->
         <DetailStates
           :loading="loading"
-          :error="error"
+          :error="displayError"
           back-to="/events"
           back-label="Events"
-          error-message="We are unable to load event details at this time. Please try again later."
+          :error-message="displayErrorDetail"
         />
 
         <!-- Event Content -->

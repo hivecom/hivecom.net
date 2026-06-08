@@ -4,6 +4,7 @@ import type { ChatMessage } from '@/composables/useIrcChat'
 import { Button, ContextMenu, Divider, DropdownItem, Flex, pushToast, Sheet, Spinner } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import ChatMessageReactions from '@/components/Chat/MessageReactions.vue'
+import YouTubeEmbed from '@/components/Chat/YouTubeEmbed.vue'
 import LinkEmbed from '@/components/LinkEmbed/index.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
@@ -123,8 +124,9 @@ useEventListener('mouseup', () => {
 
 const SERVICE_NICKS = new Set(['histserv', 'nickserv', 'chanserv'])
 const URL_RE = /(https?:\/\/\S+)/g
-const IMAGE_RE = /\.(?:png|jpe?g|gif|webp|avif|svg)(?:\?\S*)?$/i
+const IMAGE_RE = /[./](?:png|jpe?g|gif|webp|avif|svg)(?:[?#]\S*)?$/i
 const VIDEO_RE = /\.(?:mp4|webm|mov|m4v)(?:\?\S*)?$/i
+const YOUTUBE_RE = /^https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([-\w]{11})/i
 const MENTION_RE = /@([a-z\d][\w-]{0,31})/gi
 
 const showTimestamps = computed(() => settings.value.chat_show_timestamps)
@@ -234,6 +236,10 @@ function groupNickStyle(from: string | null) {
 
 function fmtTime(d: Date): string {
   return dayjs(d).format(settings.value.chat_timestamp_format || 'HH:mm:ss')
+}
+
+function fmtDateTime(d: Date): string {
+  return `${dayjs(d).format('MMM D, YYYY')} at ${fmtTime(d)}`
 }
 
 function isServiceNick(from?: string | null): boolean {
@@ -634,12 +640,16 @@ function isImageOnlyMessage(text: string): boolean {
 
 interface GalleryEntry { url: string, msgId: number }
 interface RenderMsg { kind: 'msg', msg: ChatMessage }
+// Message with both text and images: text rendered separately, images go into gallery
+interface RenderMsgText { kind: 'msg-text', msg: ChatMessage }
 interface RenderGallery { kind: 'gallery', rows: GalleryEntry[][], id: number }
-type RenderItem = RenderMsg | RenderGallery
+type RenderItem = RenderMsg | RenderMsgText | RenderGallery
 
 function groupRenderItems(msgs: readonly ChatMessage[]): RenderItem[] {
   const items: RenderItem[] = []
   let msgRun: ChatMessage[] = []
+  // Track messages whose text has already been rendered as 'msg-text'
+  const textRendered = new Set<number>()
 
   function flush() {
     if (msgRun.length === 0)
@@ -647,10 +657,12 @@ function groupRenderItems(msgs: readonly ChatMessage[]): RenderItem[] {
     const allEntries: GalleryEntry[] = msgRun.flatMap(m =>
       imageUrls(m.text).map(url => ({ url, msgId: m.id })),
     )
-    if (allEntries.length <= 1) {
+    // Fall back to individual msg items only when there's <=1 image and no
+    // mixed messages (whose text was already rendered separately)
+    if (allEntries.length <= 1 && msgRun.every(m => !textRendered.has(m.id))) {
       for (const m of msgRun) items.push({ kind: 'msg', msg: m })
     }
-    else {
+    else if (allEntries.length > 0) {
       const rows: GalleryEntry[][] = []
       for (let k = 0; k < allEntries.length; k += 3)
         rows.push(allEntries.slice(k, k + 3))
@@ -663,6 +675,14 @@ function groupRenderItems(msgs: readonly ChatMessage[]): RenderItem[] {
     if (isImageOnlyMessage(msg.text)) {
       msgRun.push(msg)
     }
+    else if (imageUrls(msg.text).length > 0) {
+      // Message has text + images: flush current run, emit text only, then
+      // add this message's images to a new gallery run.
+      flush()
+      items.push({ kind: 'msg-text', msg })
+      textRendered.add(msg.id)
+      msgRun.push(msg)
+    }
     else {
       flush()
       items.push({ kind: 'msg', msg })
@@ -672,6 +692,17 @@ function groupRenderItems(msgs: readonly ChatMessage[]): RenderItem[] {
   return items
 }
 
+function youtubeVideoId(url: string): string | null {
+  const m = url.match(YOUTUBE_RE)
+  return m?.[1] ?? null
+}
+
+function youtubeUrls(text: string): string[] {
+  if (!settings.value.chat_show_previews)
+    return []
+  return (text.match(URL_RE) ?? []).filter(u => youtubeVideoId(u) !== null)
+}
+
 function videoUrls(text: string): string[] {
   if (!settings.value.chat_show_previews)
     return []
@@ -679,6 +710,10 @@ function videoUrls(text: string): string[] {
 }
 
 const videoShortUrls = reactive(new Set<string>())
+const brokenImages = reactive(new Set<string>())
+function onImageError(url: string) {
+  brokenImages.add(url)
+}
 
 function onVideoMetadata(event: Event, url: string) {
   const video = event.target as HTMLVideoElement
@@ -792,13 +827,16 @@ function replySource(msg: ChatMessage): ChatMessage | null {
   return messages.value.find(m => m.msgid === msg.replyTo) ?? null
 }
 
-/** Last message in a group that has a server-assigned msgid (required for reactions). */
-function lastReactableMsg(msgs: ChatMessage[]): ChatMessage | null {
-  for (let i = msgs.length - 1; i >= 0; i--) {
-    if (msgs[i]!.msgid)
-      return msgs[i]!
-  }
-  return null
+function scrollToReplySource(msg: ChatMessage) {
+  const source = replySource(msg)
+  if (!source || !logEl.value)
+    return
+  const el = logEl.value.querySelector<HTMLElement>(`[data-msg-id="${source.id}"]`)
+  if (!el)
+    return
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  el.classList.add('chat-log__msg--jump-highlight')
+  setTimeout(() => el.classList.remove('chat-log__msg--jump-highlight'), 1500)
 }
 
 function mention(name: string) {
@@ -1081,7 +1119,12 @@ onBeforeUnmount(() => {
                 <span v-else-if="msg.from" class="chat-log__nick" :style="nickStyle(msg)">{{ msg.from }}</span>
               </span>
               <div class="chat-log__msg-cell">
-                <div v-if="msg.replyTo" class="chat-log__reply-quote">
+                <div
+                  v-if="msg.replyTo"
+                  class="chat-log__reply-quote"
+                  :class="{ 'chat-log__reply-quote--clickable': replySource(msg) }"
+                  @click.stop="replySource(msg) && scrollToReplySource(msg)"
+                >
                   <template v-if="replySource(msg)">
                     <span class="chat-log__reply-nick">{{ replySource(msg)!.from }}</span>
                     <span class="chat-log__reply-text">{{ replySource(msg)!.text }}</span>
@@ -1122,16 +1165,20 @@ onBeforeUnmount(() => {
                     <template v-else>{{ seg.value }}</template>
                   </template>
                 </span>
-                <Flex v-if="imageUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                <Flex v-if="imageUrls(msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
                   <img
-                    v-for="url in imageUrls(msg.text)"
+                    v-for="url in imageUrls(msg.text).filter(u => !brokenImages.has(u))"
                     :key="url"
                     :src="url"
                     alt=""
                     loading="lazy"
                     class="chat-log__embed"
+                    @error="onImageError(url)"
                     @click="openLightbox(url, 'image')"
                   >
+                </Flex>
+                <Flex v-if="youtubeUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                  <YouTubeEmbed v-for="url in youtubeUrls(msg.text)" :key="url" :url="url" small />
                 </Flex>
                 <Flex v-if="videoUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
                   <video
@@ -1155,6 +1202,10 @@ onBeforeUnmount(() => {
                     class="chat-log__link-preview"
                   />
                 </template>
+                <ChatMessageReactions v-if="msg.reactions && settings.chat_irc_reactions" :message="msg" />
+              </div>
+              <div v-if="msg.msgid && settings.chat_irc_reactions" class="chat-log__line-react">
+                <ReactionsSelect @reaction="(emote) => toggleReaction(msg, emote)" />
               </div>
             </div>
           </template>
@@ -1297,18 +1348,20 @@ onBeforeUnmount(() => {
                     :date="group.messages[0].ts.toISOString()"
                     relative
                   />
-                  <div v-if="lastReactableMsg(group.messages)" class="chat-log__group-react">
-                    <ReactionsSelect @reaction="(emote) => { const m = lastReactableMsg(group.messages); if (m) toggleReaction(m, emote) }" />
-                  </div>
                 </Flex>
-                <template v-for="item in groupRenderItems(group.messages)" :key="item.kind === 'msg' ? item.msg.id : `g-${item.id}`">
+                <template v-for="item in groupRenderItems(group.messages)" :key="item.kind === 'gallery' ? `g-${item.id}` : item.msg.id">
                   <div
-                    v-if="item.kind === 'msg'"
+                    v-if="item.kind === 'msg' || item.kind === 'msg-text'"
                     class="chat-log__modern-line"
                     :class="{ 'chat-log__modern-line--mention': isMention(item.msg) }"
                     :data-msg-id="item.msg.id"
                   >
-                    <div v-if="item.msg.replyTo" class="chat-log__reply-quote">
+                    <div
+                      v-if="item.msg.replyTo"
+                      class="chat-log__reply-quote"
+                      :class="{ 'chat-log__reply-quote--clickable': replySource(item.msg) }"
+                      @click.stop="replySource(item.msg) && scrollToReplySource(item.msg)"
+                    >
                       <template v-if="replySource(item.msg)">
                         <span class="chat-log__reply-nick">{{ replySource(item.msg)!.from }}</span>
                         <span class="chat-log__reply-text">{{ replySource(item.msg)!.text }}</span>
@@ -1318,7 +1371,7 @@ onBeforeUnmount(() => {
                     <span class="chat-log__text">
                       <template v-for="(seg, i) in segments(item.msg.text)" :key="i">
                         <template v-if="seg.type === 'link'">
-                          <a v-if="!imageUrls(item.msg.text).includes(seg.value) && !videoUrls(item.msg.text).includes(seg.value) && !previewUrls(item.msg.text).includes(seg.value)" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
+                          <a v-if="!imageUrls(item.msg.text).includes(seg.value) && !videoUrls(item.msg.text).includes(seg.value) && !previewUrls(item.msg.text).includes(seg.value) && !youtubeUrls(item.msg.text).includes(seg.value)" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
                         </template>
                         <span v-else-if="seg.type === 'channel'" class="chat-log__channel-link" :style="segStyle(seg)" @click="joinChannel(seg.value)">{{ seg.value }}</span>
                         <template v-else-if="seg.type === 'mention'">
@@ -1331,8 +1384,11 @@ onBeforeUnmount(() => {
                         <template v-else>{{ seg.value }}</template>
                       </template>
                     </span>
-                    <Flex v-if="imageUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
-                      <img v-for="url in imageUrls(item.msg.text)" :key="url" :src="url" alt="" loading="lazy" class="chat-log__embed" @click="openLightbox(url, 'image')">
+                    <Flex v-if="item.kind === 'msg' && imageUrls(item.msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
+                      <img v-for="url in imageUrls(item.msg.text).filter(u => !brokenImages.has(u))" :key="url" :src="url" alt="" loading="lazy" class="chat-log__embed" @error="onImageError(url)" @click="openLightbox(url, 'image')">
+                    </Flex>
+                    <Flex v-if="item.kind === 'msg' && youtubeUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                      <YouTubeEmbed v-for="url in youtubeUrls(item.msg.text)" :key="url" :url="url" />
                     </Flex>
                     <Flex v-if="videoUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
                       <video v-for="url in videoUrls(item.msg.text)" :key="url" :src="url" muted playsinline preload="metadata" :loop="videoShortUrls.has(url)" class="chat-log__embed-video" @loadedmetadata="onVideoMetadata($event, url)" @click="openLightbox(url, 'video')" />
@@ -1341,15 +1397,40 @@ onBeforeUnmount(() => {
                       <LinkEmbed v-for="url in previewUrls(item.msg.text)" :key="url" :url="url" class="chat-log__link-preview" />
                     </template>
                     <ChatMessageReactions v-if="item.msg.reactions" :message="item.msg" />
+                    <div v-if="item.msg.msgid" class="chat-log__line-react">
+                      <ReactionsSelect @reaction="(emote) => toggleReaction(item.msg, emote)" />
+                    </div>
                   </div>
                   <template v-else>
                     <template v-for="(row, ri) in item.rows" :key="ri">
-                      <div v-if="row.length === 1" class="chat-log__embeds">
-                        <img :src="row[0]!.url" :data-msg-id="row[0]!.msgId" alt="" loading="lazy" class="chat-log__embed" @click="openLightbox(row[0]!.url, 'image')">
-                      </div>
-                      <div v-else class="chat-log__image-group">
-                        <img v-for="entry in row" :key="entry.url" :src="entry.url" :data-msg-id="entry.msgId" alt="" loading="lazy" class="chat-log__embed" @click="openLightbox(entry.url, 'image')">
-                      </div>
+                      <template v-if="row.filter(e => !brokenImages.has(e.url)).length">
+                        <div v-if="row.filter(e => !brokenImages.has(e.url)).length === 1" class="chat-log__embeds">
+                          <img
+                            v-for="entry in row.filter(e => !brokenImages.has(e.url))"
+                            :key="entry.url"
+                            :src="entry.url"
+                            :data-msg-id="entry.msgId"
+                            alt=""
+                            loading="lazy"
+                            class="chat-log__embed"
+                            @error="onImageError(entry.url)"
+                            @click="openLightbox(entry.url, 'image')"
+                          >
+                        </div>
+                        <div v-else class="chat-log__image-group">
+                          <img
+                            v-for="entry in row.filter(e => !brokenImages.has(e.url))"
+                            :key="entry.url"
+                            :src="entry.url"
+                            :data-msg-id="entry.msgId"
+                            alt=""
+                            loading="lazy"
+                            class="chat-log__embed"
+                            @error="onImageError(entry.url)"
+                            @click="openLightbox(entry.url, 'image')"
+                          >
+                        </div>
+                      </template>
                     </template>
                   </template>
                 </template>
@@ -1451,7 +1532,7 @@ onBeforeUnmount(() => {
     <template v-if="activeMessage" #header>
       <Flex y-center x-between expand>
         <span class="chat-log__drawer-nick">{{ activeMessage.from ? cleanNick(activeMessage.from) : '' }}</span>
-        <span class="chat-log__drawer-ts">{{ fmtTime(activeMessage.ts) }}</span>
+        <span class="chat-log__drawer-ts">{{ fmtDateTime(activeMessage.ts) }}</span>
       </Flex>
     </template>
     <Flex v-if="activeMessage?.msgid && activeMessage.type === 'chat'" x-between y-center style="padding: var(--space-s) var(--space-m)">
@@ -1625,6 +1706,7 @@ onBeforeUnmount(() => {
   }
 
   &__msg {
+    position: relative;
     line-height: 1.4;
     word-break: break-word;
     padding: 1px var(--space-xs);
@@ -1638,10 +1720,6 @@ onBeforeUnmount(() => {
     &--mention {
       background: var(--color-bg-accent-lowered);
       box-shadow: inset 2px 0 0 var(--color-accent);
-    }
-
-    &--backlog {
-      opacity: 0.7;
     }
 
     &--irc {
@@ -1946,6 +2024,40 @@ onBeforeUnmount(() => {
     gap: 2px;
   }
 
+  &__line-react {
+    position: absolute;
+    right: 0;
+    top: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast);
+    background: var(--color-bg-medium);
+    border-radius: var(--border-radius-xs);
+
+    &:has(.reactions-anchor-active) {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    @media (pointer: fine) {
+      .chat-log__modern-line:hover &,
+      .chat-log__msg:hover & {
+        opacity: 1;
+        pointer-events: auto;
+      }
+    }
+
+    @media (pointer: coarse) {
+      display: none;
+    }
+
+    :deep(.reactions__button) {
+      height: 22px;
+      width: 22px;
+      color: var(--color-text-lighter);
+    }
+  }
+
   &__group-react {
     opacity: 0;
     pointer-events: none;
@@ -2031,11 +2143,21 @@ onBeforeUnmount(() => {
   }
 
   &__modern-line {
+    position: relative;
     font-size: var(--chat-font-size, var(--font-size-s));
     color: var(--color-text);
     white-space: pre-wrap;
     word-break: break-word;
     line-height: 1.4;
+
+    // reactions__list uses display:contents globally so its children bleed
+    // inline into the text. Override it here so reactions form their own row.
+    :deep(.reactions__list) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-xxs);
+      margin-top: var(--space-xxs);
+    }
 
     &--mention {
       background: var(--color-bg-accent-lowered);
@@ -2058,6 +2180,34 @@ onBeforeUnmount(() => {
     overflow: hidden;
     white-space: nowrap;
     cursor: default;
+    border-radius: var(--border-radius-xs);
+    transition:
+      background var(--transition-fast),
+      color var(--transition-fast);
+
+    &--clickable {
+      cursor: pointer;
+
+      &:hover {
+        background: var(--color-bg-raised);
+        color: var(--color-text-light);
+      }
+    }
+  }
+
+  @keyframes chat-jump-highlight {
+    0% {
+      background-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  &__msg--jump-highlight,
+  &__modern-line--jump-highlight {
+    animation: chat-jump-highlight 1.5s ease-out forwards;
+    border-radius: var(--border-radius-xs);
   }
 
   &__reply-nick {
@@ -2075,7 +2225,8 @@ onBeforeUnmount(() => {
   // Prevent text selection during long-press on touch devices only.
   @media (pointer: coarse) {
     &__msg,
-    &__modern-line {
+    &__modern-line,
+    &__group {
       -webkit-user-select: none;
       user-select: none;
     }

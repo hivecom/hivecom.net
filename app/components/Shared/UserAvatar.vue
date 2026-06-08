@@ -76,7 +76,18 @@ const showSkeleton = computed(() =>
 )
 
 const activityStatus = computed(() => {
-  if (!props.showOnlineIndicator || !userData.value?.last_seen)
+  if (!props.showOnlineIndicator)
+    return null
+  // Always show the current user as online - no need to wait for DB data.
+  if (props.userId && currentUser.value?.id === props.userId) {
+    return {
+      isActive: true,
+      isAway: false,
+      lastSeenText: 'Online',
+      lastSeenTimestamp: new Date(),
+    }
+  }
+  if (!userData.value?.last_seen)
     return null
   return getUserActivityStatus(userData.value.last_seen)
 })

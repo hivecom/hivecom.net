@@ -47,6 +47,7 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     chat_display_mode: 'modern',
     chat_show_tag_messages: 'none' as const,
     chat_typing_indicators: false,
+    chat_irc_reactions: true,
   }
 }
 

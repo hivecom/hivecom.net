@@ -264,21 +264,22 @@ function onPointerDown(event: PointerEvent) {
 function onPointerUp(event: PointerEvent) {
   if (event.pointerType !== 'touch')
     return
-  if (prefersReducedMotion())
-    return
 
-  isTiltActive.value = false
-  tilt.targetX = 0
-  tilt.targetY = 0
-  tilt.targetScale = 1
-  tilt.targetZ = 0
-  ensureTicking()
+  // Only animate tilt back if reduced motion is not preferred
+  if (!prefersReducedMotion()) {
+    isTiltActive.value = false
+    tilt.targetX = 0
+    tilt.targetY = 0
+    tilt.targetScale = 1
+    tilt.targetZ = 0
+    ensureTicking()
+  }
 
-  // Treat as a tap if finger didn't travel more than 8px - toggle tooltip
+  // Treat as a tap if finger didn't travel more than 10px - toggle tooltip
   if (props.description) {
     const dx = event.clientX - touchStartX
     const dy = event.clientY - touchStartY
-    if (Math.sqrt(dx * dx + dy * dy) < 8)
+    if (Math.sqrt(dx * dx + dy * dy) < 10)
       isTouchTooltipOpen.value = !isTouchTooltipOpen.value
   }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge, Button, ButtonGroup, Flex, Input, Modal, Slider, Switch } from '@dolanske/vui'
+import { Badge, Button, ButtonGroup, Divider, Flex, Input, Modal, Slider, Switch } from '@dolanske/vui'
 import { ref } from 'vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -64,7 +64,6 @@ const options = [
     description: 'Display the time each message was sent. Hidden automatically in compact mode.',
     hideOnMobile: true,
   },
-
 ] as const
 
 async function toggleBrowserNotifications(value: boolean) {
@@ -85,6 +84,9 @@ async function toggleBrowserNotifications(value: boolean) {
     </template>
 
     <Flex column gap="m" expand>
+      <!-- Display & Behavior -->
+      <strong class="text-color-lighter text-s block">Display &amp; Behavior</strong>
+
       <Flex v-if="!isMobile" y-center x-between expand>
         <Flex column gap="xxs" class="chat-settings__text">
           <span class="text-s">Display mode</span>
@@ -98,6 +100,28 @@ async function toggleBrowserNotifications(value: boolean) {
             Modern
           </Button>
         </ButtonGroup>
+      </Flex>
+
+      <Flex v-if="!isMobile" column gap="xs" expand>
+        <Flex y-center x-between expand>
+          <Flex column gap="xxs" class="chat-settings__text">
+            <span class="text-s">Message font size</span>
+            <span class="text-xs text-color-lighter">Adjust the size of text in the message log.</span>
+          </Flex>
+          <span class="chat-settings__value text-s text-color-light">{{ settings.chat_font_size }}px</span>
+        </Flex>
+        <Slider v-model="settings.chat_font_size" :min="10" :max="20" :step="1" />
+      </Flex>
+
+      <Flex v-if="isMobile" column gap="xs" expand>
+        <Flex y-center x-between expand>
+          <Flex column gap="xxs" class="chat-settings__text">
+            <span class="text-s">Message font size</span>
+            <span class="text-xs text-color-lighter">Adjust the size of text in the message log.</span>
+          </Flex>
+          <span class="chat-settings__value text-s text-color-light">{{ settings.chat_mobile_font_size }}px</span>
+        </Flex>
+        <Slider v-model="settings.chat_mobile_font_size" :min="10" :max="24" :step="1" />
       </Flex>
 
       <Flex
@@ -134,44 +158,17 @@ async function toggleBrowserNotifications(value: boolean) {
         </ButtonGroup>
       </Flex>
 
+      <Divider />
+
+      <!-- Notifications -->
+      <strong class="text-color-lighter text-s block">Notifications</strong>
+
       <Flex y-center x-between gap="m" expand>
         <Flex column gap="xxs" class="chat-settings__text">
           <span class="text-s">Browser notifications</span>
           <span class="text-xs text-color-lighter">Show a system notification when you are mentioned while the tab is in the background.</span>
         </Flex>
         <Switch :model-value="settings.chat_browser_notifications" @update:model-value="toggleBrowserNotifications" />
-      </Flex>
-
-      <Flex v-if="!isMobile" column gap="xs" expand>
-        <Flex y-center x-between expand>
-          <Flex column gap="xxs" class="chat-settings__text">
-            <span class="text-s">Message font size</span>
-            <span class="text-xs text-color-lighter">Adjust the size of text in the message log.</span>
-          </Flex>
-          <span class="chat-settings__value text-s text-color-light">{{ settings.chat_font_size }}px</span>
-        </Flex>
-        <Slider v-model="settings.chat_font_size" :min="10" :max="20" :step="1" />
-      </Flex>
-
-      <Flex v-if="isMobile" column gap="xs" expand>
-        <Flex y-center x-between expand>
-          <Flex column gap="xxs" class="chat-settings__text">
-            <span class="text-s">Message font size</span>
-            <span class="text-xs text-color-lighter">Adjust the size of text in the message log.</span>
-          </Flex>
-          <span class="chat-settings__value text-s text-color-light">{{ settings.chat_mobile_font_size }}px</span>
-        </Flex>
-        <Slider v-model="settings.chat_mobile_font_size" :min="10" :max="24" :step="1" />
-      </Flex>
-
-      <Flex v-if="!isMobile" column gap="xs" expand>
-        <Flex y-center x-between expand>
-          <Flex column gap="xxs" class="chat-settings__text">
-            <span class="text-s">IRC Mode Timestamp format</span>
-            <span class="text-xs text-color-lighter">Standard dayjs format string, e.g. HH:mm:ss or DD/MM/YYYY HH:mm.</span>
-          </Flex>
-        </Flex>
-        <Input v-model="settings.chat_timestamp_format" expand placeholder="HH:mm:ss" :disabled="!settings.chat_show_timestamps" />
       </Flex>
 
       <Flex column gap="xs" expand>
@@ -208,6 +205,31 @@ async function toggleBrowserNotifications(value: boolean) {
           </Badge>
         </Flex>
       </Flex>
+
+      <!-- IRC Mode - desktop only, shown at the bottom so switching modes only extends downward -->
+      <template v-if="!isMobile && settings.chat_display_mode === 'irc'">
+        <Divider />
+
+        <strong class="text-color-lighter text-s block">IRC Mode</strong>
+
+        <Flex column gap="xs" expand>
+          <Flex y-center x-between expand>
+            <Flex column gap="xxs" class="chat-settings__text">
+              <span class="text-s">Timestamp format</span>
+              <span class="text-xs text-color-lighter">Standard dayjs format string, e.g. HH:mm:ss or DD/MM/YYYY HH:mm.</span>
+            </Flex>
+          </Flex>
+          <Input v-model="settings.chat_timestamp_format" expand placeholder="HH:mm:ss" :disabled="!settings.chat_show_timestamps" />
+        </Flex>
+
+        <Flex y-center x-between gap="m" expand>
+          <Flex column gap="xxs" class="chat-settings__text">
+            <span class="text-s">Show reactions</span>
+            <span class="text-xs text-color-lighter">Show reaction buttons and counts inline after messages.</span>
+          </Flex>
+          <Switch v-model="settings.chat_irc_reactions" />
+        </Flex>
+      </template>
     </Flex>
   </Modal>
 </template>

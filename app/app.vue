@@ -108,7 +108,7 @@ const icon = useFavicon()
 
 watch(() => unreadCount.value > 0 || realtimeActivityWhileHidden.value, (isActive) => {
   icon.value = isActive ? 'icon-alert.svg' : 'icon.svg'
-})
+}, { immediate: true })
 
 // Load and apply the user's custom theme (if any) from their profile
 const { pendingTheme, confirmPendingTheme, confirmPendingThemeWithoutCss, pendingCssChange, confirmCssChange, dismissCssChange, pendingPreviewTheme, confirmPendingPreviewTheme, cancelPendingPreviewTheme } = useUserTheme()

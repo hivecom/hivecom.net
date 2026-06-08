@@ -159,6 +159,7 @@ watch(processedMarkdown, (val) => {
   > p,
   > img,
   > .prose-img-skeleton,
+  > .prose-img-missing,
   > div.md-video-embed {
     min-width: 0;
     margin: 0;
@@ -166,8 +167,10 @@ watch(processedMarkdown, (val) => {
 
   > p > img,
   > p > .prose-img-skeleton,
+  > p > .prose-img-missing,
   > img,
-  > .prose-img-skeleton {
+  > .prose-img-skeleton,
+  > .prose-img-missing {
     width: 100%;
     max-height: 240px;
     max-width: none;
@@ -236,6 +239,7 @@ watch(processedMarkdown, (val) => {
     > p,
     > img,
     > .prose-img-skeleton,
+    > .prose-img-missing,
     > div.md-video-embed {
       grid-column: span 2;
     }
@@ -259,6 +263,7 @@ watch(processedMarkdown, (val) => {
       > p,
       > img,
       > .prose-img-skeleton,
+      > .prose-img-missing,
       > div.md-video-embed {
         grid-column: unset;
       }
@@ -270,8 +275,10 @@ watch(processedMarkdown, (val) => {
 
     > p > img,
     > p > .prose-img-skeleton,
+    > p > .prose-img-missing,
     > img,
     > .prose-img-skeleton,
+    > .prose-img-missing,
     > div.md-video-embed {
       max-height: 40vh;
       aspect-ratio: 4 / 3;
@@ -282,7 +289,8 @@ watch(processedMarkdown, (val) => {
       grid-column: 1 / -1;
 
       > img,
-      img {
+      img,
+      > .prose-img-missing {
         aspect-ratio: 16 / 9;
         max-height: 30vh;
       }

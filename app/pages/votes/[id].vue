@@ -9,9 +9,11 @@ import VoteChoices from '@/components/Votes/VoteChoices.vue'
 import VoteHeader from '@/components/Votes/VoteHeader.vue'
 import VoteLoadingSkeleton from '@/components/Votes/VoteLoadingSkeleton.vue'
 import VoteResults from '@/components/Votes/VoteResults.vue'
+import { useAuthRedirect } from '@/composables/useAuthRedirect'
 import { useCachedFetch } from '@/composables/useCache'
 import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useRealtimeReferendumVotes } from '@/composables/useRealtimeReferendumVotes'
+import { useSessionReady } from '@/composables/useSessionReady'
 
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDuration, formatTimeAgo } from '@/lib/utils/duration'
@@ -23,6 +25,35 @@ const route = useRoute()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
+
+// Resolve the session once on mount so we know whether the visitor is truly
+// unauthenticated before redirecting. Without this, a hard reload causes
+// useSupabaseUser() to be null while the session is still being restored.
+const { waitForSessionReady } = useSessionReady()
+const { navigateToSignIn } = useAuthRedirect()
+const authReady = ref(false)
+const sessionUser = ref<import('@supabase/supabase-js').User | null>(null)
+
+onMounted(async () => {
+  await waitForSessionReady()
+  const result = await supabase.auth.getSession().catch(() => null)
+  sessionUser.value = result?.data?.session?.user ?? null
+  authReady.value = true
+})
+
+const isAuthenticated = computed(() => !!(userId.value ?? sessionUser.value))
+
+// Votes are members-only - redirect unauthenticated visitors to sign-in.
+watch(
+  [authReady, userId, sessionUser],
+  ([isAuthReady]) => {
+    if (!isAuthReady)
+      return
+    if (!isAuthenticated.value)
+      navigateToSignIn()
+  },
+  { immediate: true },
+)
 
 const referendumId = computed(() => Number(route.params.id))
 
@@ -415,7 +446,9 @@ function handleChoiceClick(index: number) {
     <div :class="!isMobile && 'container-m'">
       <ClientOnly>
         <!-- Loading state: show skeleton while auth is unresolved OR data is loading -->
-        <VoteLoadingSkeleton v-if="loadingReferendum || !user" />
+        <!-- Show skeleton while auth is unresolved, user is unauthenticated
+             (redirect is in flight), or data is still loading -->
+        <VoteLoadingSkeleton v-if="loadingReferendum || !authReady || !isAuthenticated" />
 
         <!-- Referendum not found -->
         <Flex v-else-if="!referendum" column class="text-center p-xl" x-center y-center>

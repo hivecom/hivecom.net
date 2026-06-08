@@ -1053,7 +1053,11 @@ function requestHistoryTargets() {
     return
   const lower = historyLowerBound()
   const upper = Date.now() + HISTORY_FUZZ_MS
-  send(`CHATHISTORY TARGETS timestamp=${new Date(upper).toISOString()} timestamp=${new Date(lower).toISOString()} ${HISTORY_LIMIT}`)
+  // IRCv3 draft/chathistory TARGETS takes <after_timestamp> <before_timestamp> <limit>:
+  // the first timestamp is the older lower bound (after which we want results)
+  // and the second is the newer upper bound (before which we want results).
+  // Swapping them would produce an inverted range, causing Ergo to return all targets.
+  send(`CHATHISTORY TARGETS timestamp=${new Date(lower).toISOString()} timestamp=${new Date(upper).toISOString()} ${HISTORY_LIMIT}`)
 }
 
 function handleMessage(raw: string) {
@@ -1960,8 +1964,7 @@ function disconnect() {
 // --- User actions ------------------------------------------------------------
 function setActive(name: string) {
   // Clear the read line on the buffer we're leaving so it's recomputed fresh on
-  // return. Marking the channel read (marker + unread reset) is owned by the read
-  // watcher, which keeps whatever buffer the user is actually viewing reconciled.
+  // return.
   const prev = activeName.value
   if (prev && prev.toLowerCase() !== name.toLowerCase()) {
     const prevBuf = findBuffer(prev)
@@ -1971,6 +1974,20 @@ function setActive(name: string) {
 
   activeName.value = name
   const buf = findBuffer(name)
+
+  // Eagerly mark the incoming buffer as read. The read watcher handles ongoing
+  // monitoring, but it guards behind isChatVisible - which may not be true yet
+  // (e.g. setActive fires during the initial connect before onMounted sets it,
+  // or during the brief transition from the compact sheet to the full page).
+  // Clearing here makes channel-switching reliable regardless of timing.
+  if (buf && buf.kind !== 'server') {
+    const last = buf.messages[buf.messages.length - 1]
+    if (last)
+      saveReadPosition(buf.name, last.ts.getTime())
+    buf.unread = 0
+    buf.mentions = 0
+  }
+
   // Persist the last active channel so the next connect auto-joins and lands here.
   if (buf?.kind === 'channel') {
     inputChannel.value = name
@@ -2012,10 +2029,20 @@ function closeBuffer(name: string) {
   const buf = findBuffer(name)
   if (!buf || buf.kind === 'server')
     return
-  if (buf.kind === 'channel' && buf.joined)
+  if (buf.kind === 'channel' && buf.joined) {
     send(`PART ${buf.name}`)
-  else if (buf.kind === 'pm')
+    // Clear the persisted auto-join channel so the next connect() doesn't
+    // immediately re-JOIN a channel the user explicitly left. setActive() below
+    // will repopulate inputChannel if another channel becomes active.
+    if (inputChannel.value.toLowerCase() === buf.name.toLowerCase()) {
+      inputChannel.value = ''
+      if (import.meta.client)
+        localStorage.removeItem(STORAGE_CHANNEL)
+    }
+  }
+  else if (buf.kind === 'pm') {
     rememberClosedDm(name, buf)
+  }
   buffers.value = buffers.value.filter(b => b !== buf)
   if (activeName.value.toLowerCase() === name.toLowerCase())
     setActive(buffers.value[0]?.name ?? SERVER_BUFFER)

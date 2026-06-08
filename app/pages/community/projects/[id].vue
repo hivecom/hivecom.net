@@ -61,6 +61,24 @@ watch(projectsError, (err) => {
     error.value = err
 })
 
+// User-friendly error message; raw errors are demoted to technical detail.
+const displayError = computed(() => {
+  if (loading.value)
+    return null
+  if (error.value === 'Project not found')
+    return 'This project was not found. It may have been removed or never existed.'
+  if (error.value)
+    return 'Unable to load project details. Please try again later.'
+  return null
+})
+
+// Raw error shown as copyable technical detail only for unexpected fetch errors.
+const displayErrorDetail = computed(() => {
+  if (error.value === 'Project not found')
+    return undefined
+  return error.value ?? undefined
+})
+
 // SEO and page metadata
 useSeoMeta({
   title: computed(() => project.value ? `${project.value.title} | Community Projects` : 'Project Details'),
@@ -84,10 +102,10 @@ defineOgImage('Project', {
     <div :class="!isMobile && 'container-m'">
       <DetailStates
         :loading="loading"
-        :error="error"
+        :error="displayError"
         back-to="/community/projects"
         back-label="Projects"
-        error-message="The project you're looking for might have been removed or doesn't exist."
+        :error-message="displayErrorDetail"
       />
 
       <!-- Project Content -->

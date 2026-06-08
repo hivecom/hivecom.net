@@ -120,7 +120,16 @@ export function useCacheModule(config: CacheConfig = {}) {
         return result
       })
       .catch((err: unknown) => {
-        error.value = err instanceof Error ? err.message : `Failed to fetch ${key}`
+        // PostgrestError is a plain object (not an Error subclass), so
+        // instanceof Error is false. Fall back to checking for a message
+        // property before giving up with a generic string.
+        const message
+          = err instanceof Error
+            ? err.message
+            : (err !== null && typeof err === 'object' && 'message' in err && typeof (err as Record<string, unknown>).message === 'string')
+                ? (err as Record<string, unknown>).message as string
+                : `Failed to fetch ${key}`
+        error.value = message
         return null
       })
       .finally(() => {

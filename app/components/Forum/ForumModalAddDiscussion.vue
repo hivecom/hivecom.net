@@ -600,6 +600,7 @@ function confirmPublish() {
         placeholder="This is the main body of your discussion"
         show-attachment-button
         show-expand-button
+        fullscreen-on-mobile
       />
 
       <Card class="card-bg">
