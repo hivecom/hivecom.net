@@ -290,28 +290,6 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
 // overriden by responsive layout options though.
 const calendarRowCount = ref(1)
 
-// NOTE (@dolanske): Adding more rows to the calendar would require changing the
-// column logic some more and it's a little too complicated. We can implement it
-// as a nice-to-have at some point later
-
-// const calendarRowOptions = [{
-//   label: '3 months',
-//   value: 1,
-// }, {
-//   label: '6 months',
-//   value: 2,
-// }, {
-//   label: '12 months',
-//   value: 4,
-// }]
-
-// const dropdown = useTemplateRef('dropdownRef')
-
-// function setCalendarRowCount(count: number) {
-//   calendarRowCount.value = count
-//   dropdown.value?.close()
-// }
-
 // Format events so that we get a list of events for the next 3 months
 // Uses the `date` ref (start of current month) as the reference point
 
@@ -446,25 +424,6 @@ const pageTitle = computed(() => {
         size="s"
       />
     </Flex>
-
-    <!-- <Dropdown ref="dropdownRef">
-      <template #trigger="{ toggle }">
-        <Button size="s" plain outline @click="toggle">
-          {{ calendarRowOptions.find(({ value }) => value === calendarRowCount)?.label }}
-          <template #end>
-            <Icon name="ph:caret-down" />
-          </template>
-        </Button>
-      </template>
-      <DropdownItem
-        v-for="option in calendarRowOptions"
-        :key="option.value"
-        :class="{ 'event-calendar__active-option': option.value === calendarRowCount }"
-        @click="setCalendarRowCount(option.value)"
-      >
-        {{ option.label }}
-      </DropdownItem>
-    </Dropdown> -->
   </Flex>
 
   <div class="events-calendar">
@@ -576,7 +535,9 @@ const pageTitle = computed(() => {
   }
 
   &__title {
-    margin-bottom: 1.5rem;
+    margin-top: var(--space-xl);
+    margin-bottom: var(--space-m);
+    // margin-bottom: 1.5rem;
 
     h2 {
       color: var(--color-text);
