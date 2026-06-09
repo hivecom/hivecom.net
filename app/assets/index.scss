@@ -200,6 +200,17 @@
   }
 }
 
+dl {
+  grid-template-columns: max-content 1fr;
+  row-gap: var(--space-m);
+  width: 100%;
+
+  dd,
+  dt {
+    margin-bottom: 0;
+  }
+}
+
 html,
 body {
   font-size: 63.5%;

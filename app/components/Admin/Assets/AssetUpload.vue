@@ -236,15 +236,17 @@ function updateFileName(id: string, value: string) {
             </template>
           </Input>
 
-          <span class="text-xxs text-color-light">
-            Bucket: <strong>{{ bucketLabel }}</strong>
-          </span>
-          <span v-if="bucketDescription" class="text-xxs text-color-light">
-            {{ bucketDescription }}
-          </span>
-          <span class="text-xxs text-color-light">
-            Current path: <strong>{{ resolvedFolderLabel }}</strong>
-          </span>
+          <dl>
+            <dt>Bucket</dt>
+            <dd>
+              <span>{{ bucketLabel }}</span>
+              <p v-if="bucketDescription" class="block text-color-lighter text-xs">
+                {{ bucketDescription }}
+              </p>
+            </dd>
+            <dt>Path</dt>
+            <dd>{{ resolvedFolderLabel }}</dd>
+          </dl>
         </Flex>
       </Card>
 
@@ -321,13 +323,7 @@ function updateFileName(id: string, value: string) {
 
     <template #footer>
       <Flex x-between y-center class="upload-drawer__footer">
-        <Flex gap="s" y-center>
-          <Switch v-model="replaceExisting" :disabled="uploading" />
-          <div>
-            <strong class="text-xs">Replace existing files</strong>
-          </div>
-        </Flex>
-
+        <Switch v-model="replaceExisting" :disabled="uploading" label="Replace existing files" />
         <Flex gap="s">
           <Button variant="gray" :disabled="uploading" @click="closeDrawer">
             Cancel
@@ -338,9 +334,6 @@ function updateFileName(id: string, value: string) {
             :disabled="!canSubmit"
             @click="handleUpload"
           >
-            <template #start>
-              <Icon name="ph:cloud-arrow-up" />
-            </template>
             Upload {{ fileQueue.length ? `(${fileQueue.length})` : '' }}
           </Button>
         </Flex>

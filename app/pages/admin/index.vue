@@ -36,7 +36,7 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
 
 <template>
   <Flex column gap="s" expand>
-    <Flex column gap="xs">
+    <Flex column gap="xs" class="mb-xxl">
       <h1 style="margin: 0;">
         Dashboard
       </h1>
