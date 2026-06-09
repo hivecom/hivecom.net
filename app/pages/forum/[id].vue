@@ -1048,7 +1048,7 @@ function revealNsfw() {
   padding-block: var(--space-s);
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
-  z-index: var(--z-nav);
+  z-index: var(--z-active);
 
   > div {
     display: flex;

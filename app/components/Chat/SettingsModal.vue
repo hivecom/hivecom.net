@@ -229,6 +229,22 @@ async function toggleBrowserNotifications(value: boolean) {
           </Flex>
           <Switch v-model="settings.chat_irc_reactions" />
         </Flex>
+
+        <Flex y-center x-between gap="m" expand>
+          <Flex column gap="xxs" class="chat-settings__text">
+            <span class="text-s">Hide embedded links</span>
+            <span class="text-xs text-color-lighter">Hide link text when the URL renders as an image, video, or embed.</span>
+          </Flex>
+          <Switch v-model="settings.chat_irc_hide_embedded_links" />
+        </Flex>
+
+        <Flex y-center x-between gap="m" expand>
+          <Flex column gap="xxs" class="chat-settings__text">
+            <span class="text-s">Inline media</span>
+            <span class="text-xs text-color-lighter">Show media at font height inline with text. Off shows them like modern mode.</span>
+          </Flex>
+          <Switch v-model="settings.chat_irc_inline_images" />
+        </Flex>
       </template>
     </Flex>
   </Modal>

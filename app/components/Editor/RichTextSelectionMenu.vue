@@ -522,8 +522,10 @@ useEventListener(document, 'mousedown', (e) => {
               v-model="linkUrl"
               size="s"
               placeholder="https://..."
-              @keydown.enter="plainText ? insertLinkMarkdown() : applyLink()"
-              @keydown.escape="linkPickerOpen = false"
+              @keydown="(e: KeyboardEvent) => {
+                if (e.key === 'Enter') { plainText ? insertLinkMarkdown() : applyLink() }
+                else if (e.key === 'Escape') { linkPickerOpen = false }
+              }"
             />
             <Flex gap="xxs" x-end style="margin-top: var(--space-xxs)">
               <Button

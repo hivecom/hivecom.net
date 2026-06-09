@@ -10,6 +10,7 @@ import { transformLinkEmbeds } from '@/lib/linkEmbedAST'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
 import { wrapTablesAST } from '@/lib/tableWrapping'
 import { isExternalUrl } from '@/lib/utils/externalLink'
+import SharedChannelMention from './ChannelMention.global.vue'
 import MarkdownLightbox from './MarkdownLightbox.vue'
 import SharedUserMention from './UserMention.global.vue'
 
@@ -36,7 +37,7 @@ const emit = defineEmits<{
 // while keeping the actual runtime value as the component object.
 // 'img' key matches the AST node tag so MDCRenderer uses ProseImg for every
 // markdown image, giving us lazy loading and a fade-in without DOM post-processing.
-const mdcComponents = { SharedUserMention, SharedLinkEmbed, img: ProseImg } as unknown as Record<string, string>
+const mdcComponents = { SharedUserMention, SharedChannelMention, SharedLinkEmbed, img: ProseImg } as unknown as Record<string, string>
 
 const container = useTemplateRef('container')
 

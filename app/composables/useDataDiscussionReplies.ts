@@ -109,6 +109,12 @@ export function useDataDiscussionReplies(
   // a stale gap-page insert from landing in the wrong position.
   let _gapGeneration = 0
 
+  // Incremented each time the comment list is reset (loadFirstPage or navigateToComment).
+  // loadMore captures this before its async fetch and discards the result if it has
+  // changed - prevents a stale page from being appended after a navigation reset,
+  // which would insert old items after the tail block and break chronological order.
+  let _listGeneration = 0
+
   const gap = ref<ReplyGap | null>(null)
   const loadingGapTop = ref(false)
   const loadingGapBottom = ref(false)
@@ -151,6 +157,7 @@ export function useDataDiscussionReplies(
     gap.value = null
     _tailBlock.value = []
     _realtimeAppended.value = []
+    _listGeneration++
 
     const page = await repliesCache.fetchPage(discussionId, {
       ascending: ascending.value,
@@ -240,6 +247,7 @@ export function useDataDiscussionReplies(
       return
 
     loadingMore.value = true
+    const myGeneration = _listGeneration
 
     try {
       const page = await repliesCache.fetchPage(
@@ -254,6 +262,12 @@ export function useDataDiscussionReplies(
       )
 
       if (page == null)
+        return
+
+      // Discard result if the list was reset (navigateToComment or loadFirstPage
+      // ran while we were waiting) - appending a stale page would place older
+      // items after the tail block and break chronological order.
+      if (_listGeneration !== myGeneration)
         return
 
       applyPage(page, false)
@@ -363,6 +377,7 @@ export function useDataDiscussionReplies(
     _tailBlock.value = []
     _realtimeAppended.value = []
     _gapGeneration++
+    _listGeneration++
 
     try {
       const fetchOpts = { ascending: ascending.value, pageSize: pageSize.value, hash: props.hash, rootOnly: false }

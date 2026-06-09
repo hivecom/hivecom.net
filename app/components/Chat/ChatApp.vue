@@ -9,6 +9,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import ChatChannelHeader from './ChannelHeader.vue'
 import ChatChannelList from './ChannelList.vue'
 import ChatChannelPasswordModal from './ChannelPasswordModal.vue'
+import ChatChannelSettingsModal from './ChannelSettingsModal.vue'
 import ChatComposer from './Composer.vue'
 import ChatConnectForm from './ConnectForm.vue'
 import ChatConnecting from './Connecting.vue'
@@ -43,7 +44,7 @@ const { settings } = useDataUserSettings()
 
 const isMobile = useBreakpoint('<s')
 
-const { connState, isConnected, ensureNick, clearInputNick, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt } = useIrcChat()
+const { connState, isConnected, ensureNick, clearInputNick, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt, channelSettingsOpen } = useIrcChat()
 
 // Auto-reconnect when the browser comes back from sleep or phone background.
 // Track whether a connection was ever established so we only auto-reconnect
@@ -193,6 +194,7 @@ watch(user, (u, prev) => {
     </Flex>
 
     <ChatChannelPasswordModal :channel="channelKeyPrompt" @close="channelKeyPrompt = null" />
+    <ChatChannelSettingsModal :channel="channelSettingsOpen" @close="channelSettingsOpen = null" />
   </section>
 </template>
 

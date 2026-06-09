@@ -3,7 +3,9 @@ import { Badge, Flex, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
 
 const props = defineProps<{
-  modes: Set<string> | undefined
+  modes?: Set<string> | undefined
+  isBot?: boolean
+  isService?: boolean
 }>()
 
 interface ModeBadge {
@@ -18,6 +20,7 @@ const MODE_BADGES: ModeBadge[] = [
   { mode: 'm', icon: 'ph:microphone-slash', label: 'Moderated' },
   { mode: 's', icon: 'ph:eye-slash', label: 'Hidden from channel list' },
   { mode: 'r', icon: 'ph:seal-check', label: 'Registered users only' },
+  { mode: 'u', icon: 'ph:megaphone', label: 'Auditorium' },
 ]
 
 const activeBadges = computed(() => {
@@ -30,6 +33,22 @@ const activeBadges = computed(() => {
 
 <template>
   <Flex y-center gap="xxs">
+    <Tooltip v-if="isService" placement="top">
+      <Badge size="s" outline>
+        <Icon name="ph:shield-check" size="12" class="text-color-lighter" />
+      </Badge>
+      <template #tooltip>
+        <p>IRC Service</p>
+      </template>
+    </Tooltip>
+    <Tooltip v-else-if="isBot" placement="top">
+      <Badge size="s" outline>
+        <Icon name="ph:robot" size="12" class="text-color-lighter" />
+      </Badge>
+      <template #tooltip>
+        <p>Bot</p>
+      </template>
+    </Tooltip>
     <Tooltip
       v-for="badge in activeBadges"
       :key="badge.mode"

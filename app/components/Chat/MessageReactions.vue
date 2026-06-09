@@ -44,6 +44,8 @@ function onToggle(emote: string, _provider: string) {
 
 <style lang="scss" scoped>
 .chat-reactions {
-  margin-top: var(--space-xxs);
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: var(--space-xs);
 }
 </style>

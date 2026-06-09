@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ValidationError } from '@dolanske/v-valid'
-import type { ComponentExposed } from 'vue-component-type-helpers'
 import type { Comment, DiscussionSettings, RawComment, ThreadNode } from './Discussion.types'
 import type { TimelineBucket } from './DiscussionTimeline.vue'
 import type { SubscriptionRow } from '@/composables/useDiscussionSubscriptionsCache'
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { paginate, Pagination, Skeleton } from '@dolanske/vui'
+import { useTemplateRef } from 'vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import { useDataDiscussionReplies } from '@/composables/useDataDiscussionReplies'
 import { useBulkDataUser } from '@/composables/useDataUser'
@@ -576,7 +576,7 @@ const timelineSpanMs = computed(() => {
   return new Date(d.last_activity_at).getTime() - new Date(d.created_at).getTime()
 })
 
-const timelineRef = ref<ComponentExposed<typeof DiscussionTimeline> | null>(null)
+const timelineRef = useTemplateRef<typeof DiscussionTimeline>('timelineRef')
 
 const showTimeline = computed(() => {
   if (props.model !== 'forum')
