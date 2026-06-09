@@ -108,7 +108,7 @@ watchEffect(() => {
   <Skeleton v-if="loading" :height="120" :radius="8" />
 
   <GameDetailsModalTrigger v-if="poppedOff" v-slot="{ open }" :game-id="poppedOff.game.id">
-    <GlowCard :halo="true" :class="{ 'popped-off-card--live': props.live }">
+    <GlowCard :class="{ 'popped-off-card--live': props.live }">
       <component
         :is="linkedEvent ? NuxtLink : 'div'"
         class="popped-off-card__link"
@@ -134,15 +134,13 @@ watchEffect(() => {
               <span class="text-xs text-bold popped-off-card__label" :class="{ 'popped-off-card__label--live': props.live }">
                 <template v-if="props.live">
                   <span class="popped-off-card__live-dot" />
-                  This is popping off right now
+                  Popping off
                 </template>
                 <template v-else-if="linkedEvent">
-                  <span class="popped-off-card__label-desktop">This recently popped off during an event</span>
-                  <span class="popped-off-card__label-mobile">Recently popped off during an event</span>
+                  Recently popped off during an event
                 </template>
                 <template v-else>
-                  <span class="popped-off-card__label-desktop">This recently popped off</span>
-                  <span class="popped-off-card__label-mobile">Recently popped off</span>
+                  Recently popped off
                 </template>
               </span>
               <!-- Game identity -->
@@ -181,6 +179,7 @@ watchEffect(() => {
   position: relative;
   overflow: hidden;
   padding: 0;
+  --vui-card-background-color: transparent;
 
   :deep(.vui-card-content) {
     position: relative;
@@ -190,14 +189,14 @@ watchEffect(() => {
   &__bg {
     position: absolute;
     inset: 0;
-    z-index: 0;
+    z-index: -1;
     background-size: cover;
     background-position: center;
     opacity: 0;
     filter: blur(3px);
     scale: 1.05;
     pointer-events: none;
-    transition: opacity var(--transition-slow);
+    transition: opacity var(--transition);
 
     &--loaded {
       opacity: 0.12;
@@ -237,19 +236,19 @@ watchEffect(() => {
     }
   }
 
-  &__label-desktop {
-    @media (max-width: 480px) {
-      display: none;
-    }
-  }
+  // &__label-desktop {
+  //   @media (max-width: 480px) {
+  //     display: none;
+  //   }
+  // }
 
-  &__label-mobile {
-    display: none;
+  // &__label-mobile {
+  //   display: none;
 
-    @media (max-width: 480px) {
-      display: inline;
-    }
-  }
+  //   @media (max-width: 480px) {
+  //     display: inline;
+  //   }
+  // }
 
   &__link {
     display: block;

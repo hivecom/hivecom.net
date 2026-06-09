@@ -67,7 +67,7 @@ const linkedGames = computed(() => {
 
 <template>
   <NuxtLink :to="`/events/${props.data.id}`" :draggable="false">
-    <GlowCard no-glow>
+    <GlowCard>
       <Card class="event-small" :class="{ upcoming: isUpcoming }">
         <Flex x-between y-center class="mb-m">
           <span class="event-date">
