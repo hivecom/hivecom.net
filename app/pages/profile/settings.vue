@@ -124,29 +124,35 @@ const sectionVisibility = reactive<Record<SectionId, boolean>>(
   Object.fromEntries(sections.map(({ id }) => [id, false])) as Record<SectionId, boolean>,
 )
 
-onMounted(() => {
-  for (const { id } of sections) {
-    const el = document
-      .getElementById(id)
-      ?.querySelector('h4')
+// This function is passed via `ref` to a child component. WHen that component
+// is first mounted, this function calls and we can register the intersection
+// observer. This way we do not need separate logic from the template
+function registerScrollListener() {
+  nextTick(() => {
+    for (const { id } of sections) {
+      const el = document
+        .getElementById(id)
+        ?.querySelector('h4')
 
-    if (!el)
-      continue
+      if (!el)
+        continue
 
-    useIntersectionObserver(
-      el,
-      ([entry]) => {
-        if (!entry)
-          return
-        sectionVisibility[id] = entry.isIntersecting
-        const firstVisible = sections.find(s => sectionVisibility[s.id])?.id
-        if (firstVisible)
-          activeSection.value = firstVisible
-      },
-      { threshold: 0, rootMargin: '0px 0px -70% 0px' },
-    )
-  }
-})
+      useIntersectionObserver(
+        el,
+        ([entry]) => {
+          if (!entry)
+            return
+
+          sectionVisibility[id] = entry.isIntersecting
+          const firstVisible = sections.find(s => sectionVisibility[s.id])?.id
+          if (firstVisible)
+            activeSection.value = firstVisible
+        },
+        { threshold: 0, rootMargin: '0px 0px -70% 0px' },
+      )
+    }
+  })
+}
 </script>
 
 <template>
@@ -184,7 +190,7 @@ onMounted(() => {
     </template>
 
     <template v-else>
-      <section class="page-title">
+      <section :ref="registerScrollListener" class="page-title">
         <h1>Settings</h1>
         <p>Manage your account settings and connections.</p>
       </section>
