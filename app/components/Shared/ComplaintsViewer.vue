@@ -186,7 +186,7 @@ onMounted(() => {
 <template>
   <Modal :open="open" :size="isBelowSmall ? 'screen' : undefined" :card="{ footerSeparator: true }" @close="handleClose">
     <template #header>
-      <h3>Your Complaints</h3>
+      <h4>Your Complaints</h4>
     </template>
 
     <div class="complaints-viewer">
@@ -219,7 +219,7 @@ onMounted(() => {
       </Card>
 
       <Flex v-else column gap="m">
-        <div class="complaints-list">
+        <div class="complaints-list w-100">
           <Card
             v-for="complaint in complaints"
             :key="complaint.id"
@@ -240,7 +240,7 @@ onMounted(() => {
                   </Badge>
                 </div>
                 <Flex y-center gap="xs">
-                  <Icon name="ph:clock" size="12" />
+                  <Icon name="ph:clock" :size="16" />
                   <Tooltip>
                     <template #tooltip>
                       <p class="text-xs">
@@ -253,6 +253,7 @@ onMounted(() => {
                   </Tooltip>
                   <Button
                     size="s"
+                    square
                     variant="danger"
                     :disabled="isDeleting(complaint.id)"
                     :loading="isDeleting(complaint.id)"

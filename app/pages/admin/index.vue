@@ -168,7 +168,7 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
   &__charts-body {
     .chart-container {
       border: none;
-      border-radius: 0;
+      // border-radius: 0;
     }
   }
 
