@@ -58,7 +58,7 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
 
     <ClientOnly>
       <!-- Loading state -->
-      <section v-if="isLoading" class="mt-xl">
+      <section v-if="isLoading">
         <Flex column gap="xxs">
           <!-- Supporters card -->
           <Skeleton :height="180" :radius="8" />
@@ -97,14 +97,14 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
       </section>
 
       <!-- Error state -->
-      <section v-else-if="combinedError" class="mt-xl">
+      <section v-else-if="combinedError">
         <ErrorAlert message="Failed to load funding data" :error="combinedError" standalone />
       </section>
 
       <!-- Main content -->
       <Flex v-else column expand>
         <!-- Our Supporters -->
-        <Card v-if="user && supporters.length > 0" class="supporters-card pb-l mt-l" expand>
+        <Card v-if="user && supporters.length > 0" class="supporters-card pb-l" expand>
           <div class="supporters-card__sheen gold-surface" aria-hidden="true" />
           <Flex column gap="m" x-center y-center class="supporters-card__content">
             <Flex y-center gap="m" x-center expand>

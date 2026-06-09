@@ -278,7 +278,7 @@ function clearFilters() {
     </section>
 
     <!-- Tabs Navigation -->
-    <Tabs v-model="activeTab" class="my-m">
+    <Tabs v-model="activeTab" class="mb-m">
       <Tab value="library">
         Library
       </Tab>
@@ -353,9 +353,3 @@ function clearFilters() {
     </ChartActivityHistogramModal>
   </div>
 </template>
-
-<style scoped lang="scss">
-.page-title {
-  margin-bottom: var(--space-m);
-}
-</style>

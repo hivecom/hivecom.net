@@ -7,8 +7,8 @@ import { computed } from 'vue'
 
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 
-import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { formatDuration } from '@/lib/utils/duration'
+import GlowCard from './GlowCard.vue'
 
 type ReferendumStatus = 'active' | 'upcoming' | 'concluded'
 
@@ -60,7 +60,7 @@ const statusText = computed(() => {
     return getTimeRemaining(props.referendum.date_end)
   if (props.status === 'upcoming')
     return 'Upcoming'
-  return 'Concluded'
+  return null
 })
 
 // Navigate to vote detail
@@ -70,60 +70,58 @@ function goToReferendum() {
 </script>
 
 <template>
-  <Card
-    class="referendum-card card-bg"
-    :class="{ 'referendum-card--private': isPrivate }"
-    role="button"
-    @click="goToReferendum"
-  >
-    <Flex column gap="m" expand>
-      <Flex x-between y-start expand gap="l" class="referendum-card__title">
-        <h2 class="text-xxl">
+  <GlowCard>
+    <Card
+      class="referendum-card card-bg"
+      :class="{ 'referendum-card--private': isPrivate }"
+      role="button"
+      @click="goToReferendum"
+    >
+      <Flex column gap="m" expand>
+        <h2 class="text-xxl referendum-card__title">
           {{ referendum.title }}
         </h2>
-        <Flex y-center gap="s" class="flex-shrink-0">
-          <Icon v-if="isPrivate" name="ph:lock-simple" class="referendum-card__lock-icon" />
-          <UserDisplay :user-id="referendum.created_by" size="s" />
-        </Flex>
-      </Flex>
 
-      <p v-if="referendum.description" class="text-color-light text-m mb-l line-clamp-3">
-        {{ referendum.description }}
-      </p>
+        <p v-if="referendum.description" class="text-color-light text-m line-clamp-3">
+          {{ referendum.description }}
+        </p>
 
-      <Flex x-start y-center expand>
-        <Flex column gap="xs">
-          <Flex gap="xs" wrap>
-            <Badge :variant="statusVariant">
-              {{ statusText }}
-            </Badge>
+        <Flex x-start y-center expand>
+          <Flex column gap="xs">
+            <Flex gap="xs" wrap>
+              <Badge v-if="hasVoted" variant="accent" outline>
+                <Icon name="ph:check" />
+                Voted
+              </Badge>
 
-            <Badge v-if="hasVoted" variant="accent" outline>
-              <Icon name="ph:check" />
-              Voted
-            </Badge>
-            <Badge v-if="referendum.multiple_choice" variant="neutral">
-              Multiple choice
-            </Badge>
-            <Badge v-else variant="neutral">
-              Single choice
-            </Badge>
+              <Badge v-if="statusText" :variant="statusVariant" outline>
+                {{ statusText }}
+              </Badge>
+
+              <Badge v-if="referendum.multiple_choice" variant="neutral" outline>
+                Multiple choice
+              </Badge>
+              <Badge v-else variant="neutral" outline>
+                Single choice
+              </Badge>
+            </Flex>
+          </Flex>
+
+          <Flex gap="xs" y-center x-center>
+            <BulkAvatarDisplay
+              v-if="voterIds && voterIds.length > 0"
+              :user-ids="voterIds"
+              :max-users="5"
+              :avatar-size="24"
+              :random="true"
+              :gap="4"
+              cluster
+            />
           </Flex>
         </Flex>
-
-        <Flex gap="xs" y-center x-center>
-          <BulkAvatarDisplay
-            v-if="voterIds && voterIds.length > 0"
-            :user-ids="voterIds"
-            :max-users="3"
-            :avatar-size="24"
-            :random="true"
-            :gap="4"
-          />
-        </Flex>
       </Flex>
-    </Flex>
-  </Card>
+    </Card>
+  </GlowCard>
 </template>
 
 <style lang="scss" scoped>
@@ -135,18 +133,23 @@ function goToReferendum() {
   container-type: inline-size; // We monitor the inline size (horizontal)
   container-name: card; // We name the container to specifically select it
 
+  :deep(.vui-card-content) {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+
+    & > .vui-flex {
+      flex: 1;
+    }
+
+    p {
+      flex: 1;
+    }
+  }
+
   &:hover {
     background-color: var(--color-bg-lowered);
     box-shadow: var(--shadow-m);
-  }
-
-  &--private {
-    border-color: var(--color-border-weak);
-    opacity: 0.85;
-
-    &:hover {
-      opacity: 1;
-    }
   }
 
   &__lock-icon {

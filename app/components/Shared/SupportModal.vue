@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, CopyClipboard, Divider, Flex, Modal, Tooltip } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Divider, Modal, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import constants from '~~/constants.json'
 import { useIrcChat } from '@/composables/useIrcChat'
@@ -213,15 +213,6 @@ async function goToChat() {
         </NuxtLink>
       </div>
     </Card>
-
-    <template #footer>
-      <Flex gap="s" wrap class="support-modal__actions" align="center" expand>
-        <div class="flex-1" />
-        <Button variant="gray" :expand="isBelowSmall" @click="handleClose">
-          Close
-        </Button>
-      </Flex>
-    </template>
   </Modal>
 </template>
 

@@ -54,6 +54,7 @@ const newChoiceInput = ref('')
 const saveLoading = ref(false)
 const showDeleteConfirm = ref(false)
 const deleteLoading = ref(false)
+const calendarTouched = ref(false)
 
 function resetForm() {
   form.value = {
@@ -371,12 +372,13 @@ const isMobile = useBreakpoint('<s')
             enable-minutes
             is24
             format="yyyy-MM-dd HH:mm"
+            @click="calendarTouched = true"
           >
             <template #trigger>
               <Button
                 expand
                 outline
-                :class="{ error: form.date_end == null || !validation.dateRange || !validation.startBeforeEnd }"
+                :class="{ error: (form.date_end == null || !validation.dateRange || !validation.startBeforeEnd) && calendarTouched }"
               >
                 {{ form.date_end ? form.date_end.toLocaleString(undefined, {
                   year: 'numeric',

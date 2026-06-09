@@ -178,7 +178,7 @@ defineOgImage('Default', {
 
     <ClientOnly>
       <!-- Tabs Navigation -->
-      <Tabs v-model="activeTab" class="my-m">
+      <Tabs v-model="activeTab" class="mb-m">
         <Tab value="list">
           List
         </Tab>

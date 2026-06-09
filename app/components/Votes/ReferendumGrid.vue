@@ -4,6 +4,7 @@ import { Grid, Skeleton } from '@dolanske/vui'
 
 import ReferendumCard from '@/components/Shared/ReferendumCard.vue'
 import { getReferendumStatus } from '@/lib/referendums'
+import GlowGroup from '../Shared/GlowGroup.vue'
 
 const props = defineProps<{
   referendums: Tables<'referendums'>[]
@@ -31,18 +32,20 @@ const props = defineProps<{
     </p>
   </div>
 
-  <Grid v-else expand gap="m" class="referendum-cards-grid">
-    <ReferendumCard
-      v-for="referendum in props.referendums"
-      :key="referendum.id"
-      :referendum="referendum"
-      :vote-count="props.getVoteCount(referendum.id)"
-      :voter-ids="props.getVoterIds(referendum.id)"
-      :status="getReferendumStatus(referendum)"
-      :is-private="!referendum.is_public"
-      :has-voted="props.hasVoted(referendum.id)"
-    />
-  </Grid>
+  <GlowGroup v-else>
+    <Grid expand gap="m" class="referendum-cards-grid">
+      <ReferendumCard
+        v-for="referendum in props.referendums"
+        :key="referendum.id"
+        :referendum="referendum"
+        :vote-count="props.getVoteCount(referendum.id)"
+        :voter-ids="props.getVoterIds(referendum.id)"
+        :status="getReferendumStatus(referendum)"
+        :is-private="!referendum.is_public"
+        :has-voted="props.hasVoted(referendum.id)"
+      />
+    </Grid>
+  </GlowGroup>
 </template>
 
 <style lang="scss" scoped>

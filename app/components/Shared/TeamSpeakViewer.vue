@@ -869,10 +869,7 @@ function _openRawSnapshot() {
             <Grid gap="xs" columns="auto 1fr" class="ts-viewer__info-tooltip">
               <template v-if="selectedServer.serverInfo?.platform">
                 <span class="text-xs text-color-light">Platform</span>
-                <Flex gap="xxs" y-center>
-                  <Icon name="ph:desktop" size="12" />
-                  <span class="text-xs">{{ selectedServer.serverInfo?.platform }}</span>
-                </Flex>
+                <span class="text-xs">{{ selectedServer.serverInfo?.platform }}</span>
               </template>
               <template v-if="selectedServer.serverInfo?.version">
                 <span class="text-xs text-color-light">Version</span>
@@ -908,9 +905,6 @@ function _openRawSnapshot() {
             :href="teamspeakConnectUrl"
             aria-label="Connect to TeamSpeak"
           >
-            <template #start>
-              <Icon name="mdi:phone-outgoing" size="16" />
-            </template>
             Connect
           </Button>
         </Flex>

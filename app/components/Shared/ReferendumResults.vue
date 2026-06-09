@@ -138,9 +138,9 @@ const isBelowSmall = useBreakpoint('<s')
                 :max-users="3"
                 :avatar-size="24"
                 :random="true"
-                :gap="4"
                 :expand="false"
                 no-empty-state
+                cluster
               />
               <span v-if="result.count === 0" class="result-item__count">{{ result.count }} votes</span>
               <Icon :name="`ph:caret-${isOpen ? 'up' : 'down'}`" />
@@ -150,7 +150,7 @@ const isBelowSmall = useBreakpoint('<s')
               class="result-item__indicator"
               :style="{
                 width: `${result.percentage}%`,
-                opacity: Math.min(Math.max(0.1, result.percentage / 200), 0.8),
+                opacity: Math.min(Math.max(0.15, result.percentage / 100), 0.8),
               }"
             />
           </button>
@@ -252,7 +252,7 @@ const isBelowSmall = useBreakpoint('<s')
     display: block;
     inset: 0;
     right: unset;
-    background-color: var(--color-bg-accent-lowered);
+    background-color: var(--color-bg-accent-raised);
     z-index: -1;
     border-radius: var(--border-radius-m);
   }

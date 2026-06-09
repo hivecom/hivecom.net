@@ -174,9 +174,6 @@ function scrollToSupport() {
                   <Icon :name="isOnFundingPage ? 'ph:heart-straight' : 'ph:info'" />
                   {{ isOnFundingPage ? "Support Us" : "Learn More" }}
                 </Flex>
-                <template #end>
-                  <Icon name="ph:caret-right" />
-                </template>
               </Button>
             </div>
           </Flex>
