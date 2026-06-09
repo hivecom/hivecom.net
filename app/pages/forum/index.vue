@@ -1180,7 +1180,7 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
       />
 
       <Flex x-start y-center class="mb-m" :gap="isMobile ? 'xxs' : 'xs'">
-        <Button :disabled="!activeTopicId" size="s" :square="!isMobile" outline @click="setActiveTopicById(activeTopicPath.at(-2)?.parent_id ?? null)" @click.middle.prevent="() => {}">
+        <Button :disabled="!activeTopicId" size="s" :square="!isMobile" outline @click="(e: MouseEvent) => { if (e.button === 1) { e.preventDefault(); return } setActiveTopicById(activeTopicPath.at(-2)?.parent_id ?? null) }">
           <template v-if="isMobile" #start>
             <Icon :name="!activeTopicId ? 'ph:house' : 'ph:arrow-left'" />
           </template>

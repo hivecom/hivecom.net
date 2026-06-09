@@ -18,6 +18,7 @@ const COLON_COMPONENT_RE = /(^|[ \t\n]):([A-Z][A-Z0-9-]*)/gim
 const WORD_ONLY_RE = /^\w+$/
 const DETAILS_WORD_AFTER_RE = /^(\w*)/
 const DATAFILE_DIRECTIVE_RE = /:::dataFile(?:\s+\{([^}]*)\})?\s*:::/g
+const CHANNEL_MENTION_RE = /(?<![`\w#])#([a-z][\w-]*)/gi
 // Matches a bare currency dollar sign: $ followed by a digit (e.g. $3, $10).
 // These must be escaped before remark-math sees them so they are not treated
 // as inline math delimiters.
@@ -557,7 +558,13 @@ export function processMarkdown(markdown: string): string {
       return `:shared-user-mention{user-id="${id}"}`
     })
 
-  return resolvedMarkdown
+  // Convert #channelname mentions into inline channel mention components,
+  // but only outside backtick-fenced code spans (the lookbehind in the regex
+  // guards against `` `#channel` `` inline code; fenced blocks are a best-effort
+  // exclusion matching the same approach used for user mentions above).
+  return resolvedMarkdown.replace(CHANNEL_MENTION_RE, (_match, name: string) => {
+    return `:shared-channel-mention{channel="${name}"}`
+  })
 }
 
 /**

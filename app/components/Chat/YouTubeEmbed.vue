@@ -5,6 +5,8 @@ const props = defineProps<{
   url: string
   /** Constrain thumbnail to IRC-mode image dimensions (72x48px) */
   small?: boolean
+  /** Render thumbnail inline at 1em height, matching IRC inline image mode */
+  inline?: boolean
 }>()
 
 // Extract video ID from any supported YouTube URL format
@@ -51,9 +53,15 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="videoId" class="yt-embed">
+  <component
+    :is="inline ? 'span' : 'div'"
+    v-if="videoId"
+    class="yt-embed"
+    :class="{ 'yt-embed--inline': inline,
+              'yt-embed--small-row': small }"
+  >
     <!-- Thumbnail state: the img sizes naturally like any other chat image embed -->
-    <div v-if="!playing" class="yt-embed__preview" @click="playing = true">
+    <component :is="inline ? 'span' : 'div'" v-if="!playing" class="yt-embed__preview" @click="playing = true">
       <div v-if="thumbError" class="yt-embed__thumb-fallback">
         <Icon name="ph:youtube-logo" size="32" />
       </div>
@@ -61,13 +69,15 @@ onMounted(async () => {
         v-else
         :src="thumbnailUrl!"
         alt=""
-        class="yt-embed__thumb" :class="[{ 'yt-embed__thumb--small': small }]"
+        class="yt-embed__thumb"
+        :class="{ 'yt-embed__thumb--small': small,
+                  'yt-embed__thumb--inline': inline }"
         @error="thumbError = true"
       >
-      <div class="yt-embed__play-btn">
+      <span class="yt-embed__play-btn">
         <Icon name="ph:play-fill" size="20" />
-      </div>
-    </div>
+      </span>
+    </component>
     <iframe
       v-else
       :src="embedUrl!"
@@ -76,10 +86,10 @@ onMounted(async () => {
       allowfullscreen
       allow="autoplay; encrypted-media; picture-in-picture"
     />
-    <div v-if="title && !playing && !small" class="yt-embed__title">
+    <div v-if="title && !playing" class="yt-embed__title" @click="playing = true">
       {{ title }}
     </div>
-  </div>
+  </component>
 </template>
 
 <style scoped lang="scss">
@@ -88,8 +98,26 @@ onMounted(async () => {
   flex-direction: column;
   gap: var(--space-xxs);
 
+  &--small-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    max-width: 100%;
+  }
+
+  &--inline {
+    display: inline-block;
+    vertical-align: middle;
+    height: 1em;
+
+    .yt-embed__preview {
+      height: 100%;
+      width: auto;
+      line-height: 0;
+    }
+  }
+
   &__preview {
-    // No fixed size - container wraps the image naturally, just like <img> embeds do
     position: relative;
     display: inline-block;
     line-height: 0;
@@ -112,7 +140,14 @@ onMounted(async () => {
 
     &--small {
       max-width: 72px;
-      max-height: 48px;
+      max-height: 1.5em;
+    }
+
+    &--inline {
+      height: 100%;
+      width: auto;
+      max-width: none;
+      max-height: none;
     }
   }
 
@@ -145,12 +180,18 @@ onMounted(async () => {
   }
 
   &__title {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-light);
-    max-width: 240px;
+    font-size: inherit;
+    color: var(--color-text-lightest);
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+
+    &:hover {
+      color: var(--color-text-light);
+    }
   }
 }
 </style>

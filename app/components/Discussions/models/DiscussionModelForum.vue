@@ -645,7 +645,7 @@ const editedAtFormatted = computed(() => {
     </ConfirmModal>
 
     <!-- Edit Modal -->
-    <Modal :open="editing" centered scrollable size="l" :can-dismiss="false" @close="editing = false" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit">
+    <Modal :open="editing" centered scrollable size="l" :can-dismiss="false" @close="editing = false" @keydown.enter="(e: KeyboardEvent) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); submit() } }">
       <template #header>
         <h3>Edit post</h3>
       </template>

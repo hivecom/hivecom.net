@@ -21,7 +21,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{ compact?: boolean }>()
 
-const { messages: allMessages, nick, users, inputMessage, clearMessages, activeBuffer, openPm, setReply, joinChannel, fetchOlderHistory, toggleReaction, chatHistorySupported } = useIrcChat()
+const { messages: allMessages, nick, users, inputMessage, clearMessages, activeBuffer, openPm, setReply, joinChannel, fetchOlderHistory, toggleReaction, chatHistorySupported, isChatVisible } = useIrcChat()
 const { settings } = useDataUserSettings()
 
 // Unknown TAGMSG events are kept in the buffer but only rendered when the user
@@ -402,7 +402,7 @@ function mircColor(n: number): string | undefined {
 }
 
 interface Segment {
-  type: 'text' | 'link' | 'channel' | 'mention'
+  type: 'text' | 'link' | 'channel' | 'mention' | 'inline-image' | 'inline-video' | 'inline-youtube'
   value: string
   fg?: string
   bg?: string
@@ -768,6 +768,82 @@ function handleIrcLinkClick(event: MouseEvent, url: string) {
   openLightbox(url, IMAGE_RE.test(url) ? 'image' : 'video')
 }
 
+// Returns true when `url` (already stripped of IRC codes by segments()) will
+// render as an inline embed, so the raw link text can be hidden.
+function isEmbeddedLink(msgText: string, url: string): boolean {
+  if (settings.value.chat_show_previews) {
+    if (IMAGE_RE.test(url) || VIDEO_RE.test(url) || youtubeVideoId(url) !== null)
+      return true
+  }
+  if (settings.value.chat_show_inline_embeds) {
+    if (previewUrls(msgText).includes(url))
+      return true
+  }
+  return false
+}
+
+function ircSegments(msg: ChatMessage): Segment[] {
+  const segs = segments(msg.text)
+  const hideLinks = settings.value.chat_irc_hide_embedded_links
+  const inlineImages = settings.value.chat_irc_inline_images
+  const showPreviews = settings.value.chat_show_previews
+
+  // Two separate sets:
+  // - inlineMediaIndices: links replaced by an inline media element (no trimming around them)
+  // - removedLinkIndices: links that produce nothing (trim surrounding whitespace)
+  const inlineMediaIndices = new Set<number>()
+  const removedLinkIndices = new Set<number>()
+  for (let i = 0; i < segs.length; i++) {
+    const seg = segs[i]!
+    if (seg.type !== 'link')
+      continue
+    if (inlineImages && showPreviews && (IMAGE_RE.test(seg.value) || VIDEO_RE.test(seg.value) || youtubeVideoId(seg.value) !== null))
+      inlineMediaIndices.add(i)
+    else if (hideLinks && isEmbeddedLink(msg.text, seg.value))
+      removedLinkIndices.add(i)
+  }
+
+  const out: Segment[] = []
+  for (let i = 0; i < segs.length; i++) {
+    const seg = segs[i]!
+
+    if (seg.type === 'link') {
+      if (inlineMediaIndices.has(i)) {
+        // If hide-links is off, show the link text first, then the media inline after it
+        if (!hideLinks)
+          out.push(seg)
+        const type = VIDEO_RE.test(seg.value) ? 'inline-video' : youtubeVideoId(seg.value) !== null ? 'inline-youtube' : 'inline-image'
+        out.push({ type, value: seg.value })
+        continue
+      }
+      // Non-media embed with hide-links on: produce nothing
+      if (removedLinkIndices.has(i))
+        continue
+      out.push(seg)
+      continue
+    }
+
+    // Trim whitespace only around truly-removed links, not inline media
+    if (seg.type === 'text') {
+      const prevRemoved = i > 0 && removedLinkIndices.has(i - 1)
+      const nextRemoved = i < segs.length - 1 && removedLinkIndices.has(i + 1)
+      const val = prevRemoved && nextRemoved
+        ? seg.value.trim()
+        : prevRemoved
+          ? seg.value.trimStart()
+          : nextRemoved
+            ? seg.value.trimEnd()
+            : seg.value
+      if (val)
+        out.push({ ...seg, value: val })
+      continue
+    }
+
+    out.push(seg)
+  }
+  return out
+}
+
 function onContextMenu(event: MouseEvent) {
   const el = (event.target as HTMLElement | null)?.closest('[data-msg-id]') as HTMLElement | null
   const id = el?.dataset.msgId
@@ -984,6 +1060,15 @@ watch(
   },
 )
 
+// When the chat surface becomes visible (sheet opened), scroll to bottom so
+// messages that arrived while closed are immediately visible.
+watch(isChatVisible, (visible) => {
+  if (visible) {
+    isAtBottom.value = true
+    nextTick(scrollToBottom)
+  }
+})
+
 // When switching buffers, jump to the bottom of the new buffer. The content
 // observer below keeps it pinned while the new buffer's content settles.
 watch(
@@ -1043,13 +1128,18 @@ let contentObserver: ResizeObserver | null = null
 function setupContentObserver() {
   contentObserver?.disconnect()
   const content = logEl.value?.querySelector('.chat-log__messages')
-  if (!content)
+  if (!content || !logEl.value)
     return
   contentObserver = new ResizeObserver(() => {
     if (isAtBottom.value)
       scrollToBottom()
   })
+  // Observe both the message content (new lines / growing embeds) and the
+  // scroll container itself. The container grows during the sheet open
+  // animation; without observing it, isAtBottom goes stale-false by the time
+  // images load and the ResizeObserver on content fires.
   contentObserver.observe(content)
+  contentObserver.observe(logEl.value)
 }
 
 onMounted(() => {
@@ -1132,8 +1222,8 @@ onBeforeUnmount(() => {
                   <span v-else class="chat-log__reply-text">&#x21A9; Reply to a previous message</span>
                 </div>
                 <span v-if="msg.action" class="chat-log__nick chat-log__nick--action" :style="nickStyle(msg)">{{ msg.from }}</span>
-                <span class="chat-log__text">
-                  <template v-for="(seg, i) in segments(msg.text)" :key="i">
+                <div class="chat-log__text">
+                  <template v-for="(seg, i) in ircSegments(msg)" :key="i">
                     <a
                       v-if="seg.type === 'link'"
                       :href="seg.value"
@@ -1154,18 +1244,50 @@ onBeforeUnmount(() => {
                         <NuxtLink
                           :to="`/profile/${resolvedUser(seg.value.toLowerCase())!.username}`"
                           class="chat-log__mention-link"
-                        >@{{ resolvedUser(seg.value.toLowerCase())!.username }}</NuxtLink>
+                        >
+                          @{{ resolvedUser(seg.value.toLowerCase())!.username }}
+                        </NuxtLink>
                       </UserPreviewHover>
-                      <template v-else>@{{ seg.value }}</template>
+                      <template v-else>
+                        @{{ seg.value }}
+                      </template>
                     </template>
                     <span
                       v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline"
                       :style="segStyle(seg)"
                     >{{ seg.value }}</span>
-                    <template v-else>{{ seg.value }}</template>
+                    <img
+                      v-else-if="seg.type === 'inline-image'"
+                      :src="seg.value"
+                      alt=""
+                      loading="lazy"
+                      class="chat-log__embed chat-log__embed--inline"
+                      @error="onImageError(seg.value)"
+                      @click="openLightbox(seg.value, 'image')"
+                    >
+                    <YouTubeEmbed
+                      v-else-if="seg.type === 'inline-youtube'"
+                      :url="seg.value"
+                      small
+                    />
+                    <video
+                      v-else-if="seg.type === 'inline-video'"
+                      :src="seg.value"
+                      muted
+                      playsinline
+                      preload="metadata"
+                      :loop="videoShortUrls.has(seg.value)"
+                      class="chat-log__embed chat-log__embed--inline"
+                      @loadedmetadata="onVideoMetadata($event, seg.value)"
+                      @click="openLightbox(seg.value, 'video')"
+                    />
+                    <template v-else>
+                      {{ seg.value }}
+                    </template>
                   </template>
-                </span>
-                <Flex v-if="imageUrls(msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
+                  <ChatMessageReactions v-if="msg.reactions && settings.chat_irc_reactions" :message="msg" />
+                </div>
+                <Flex v-if="!settings.chat_irc_inline_images && imageUrls(msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
                   <img
                     v-for="url in imageUrls(msg.text).filter(u => !brokenImages.has(u))"
                     :key="url"
@@ -1177,10 +1299,10 @@ onBeforeUnmount(() => {
                     @click="openLightbox(url, 'image')"
                   >
                 </Flex>
-                <Flex v-if="youtubeUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
-                  <YouTubeEmbed v-for="url in youtubeUrls(msg.text)" :key="url" :url="url" small />
+                <Flex v-if="!settings.chat_irc_inline_images && youtubeUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                  <YouTubeEmbed v-for="url in youtubeUrls(msg.text)" :key="url" :url="url" />
                 </Flex>
-                <Flex v-if="videoUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                <Flex v-if="!settings.chat_irc_inline_images && videoUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
                   <video
                     v-for="url in videoUrls(msg.text)"
                     :key="url"
@@ -1202,7 +1324,6 @@ onBeforeUnmount(() => {
                     class="chat-log__link-preview"
                   />
                 </template>
-                <ChatMessageReactions v-if="msg.reactions && settings.chat_irc_reactions" :message="msg" />
               </div>
               <div v-if="msg.msgid && settings.chat_irc_reactions" class="chat-log__line-react">
                 <ReactionsSelect @reaction="(emote) => toggleReaction(msg, emote)" />
@@ -1710,7 +1831,6 @@ onBeforeUnmount(() => {
     line-height: 1.4;
     word-break: break-word;
     padding: 1px var(--space-xs);
-    border-radius: var(--border-radius-xs);
     transition: background-color var(--transition-fast);
 
     &:hover {
@@ -1885,10 +2005,17 @@ onBeforeUnmount(() => {
     font-size: var(--chat-font-size, var(--font-size-s));
   }
 
-  // IRC mode: compact inline thumbnails
-  &__msg &__embed {
-    max-width: 72px;
-    max-height: 48px;
+  // IRC mode: images inline with text at font height
+  &__embed--inline {
+    display: inline;
+    margin-left: var(--space-xxs);
+    height: 1em;
+    width: auto;
+    max-width: none;
+    max-height: none;
+    vertical-align: middle;
+    border: none;
+    border-radius: 0;
   }
 
   &__msg &__embed-video {
@@ -1935,6 +2062,7 @@ onBeforeUnmount(() => {
   }
 
   &__msg--action &__text {
+    display: inline;
     font-style: italic;
     color: var(--color-text-light);
   }
@@ -2029,6 +2157,7 @@ onBeforeUnmount(() => {
     right: 0;
     top: 0;
     opacity: 0;
+    height: var(--chat-font-size, var(--font-size-s));
     pointer-events: none;
     transition: opacity var(--transition-fast);
     background: var(--color-bg-medium);
@@ -2052,8 +2181,8 @@ onBeforeUnmount(() => {
     }
 
     :deep(.reactions__button) {
-      height: 22px;
-      width: 22px;
+      height: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
+      width: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
       color: var(--color-text-lighter);
     }
   }
@@ -2164,7 +2293,6 @@ onBeforeUnmount(() => {
       box-shadow: inset 2px 0 0 var(--color-accent);
       padding: 1px var(--space-xs);
       margin: 0 calc(-1 * var(--space-xs));
-      border-radius: var(--border-radius-xs);
     }
   }
 

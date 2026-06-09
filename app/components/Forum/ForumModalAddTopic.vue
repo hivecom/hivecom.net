@@ -344,7 +344,7 @@ async function submitForm() {
 </script>
 
 <template>
-  <Modal v-bind="props" size="s" :card="{ footerSeparator: true }" :can-dismiss="false" @close="emit('close')" @keydown.ctrl.enter.prevent="submitForm" @keydown.meta.enter.prevent="submitForm">
+  <Modal v-bind="props" size="s" :card="{ footerSeparator: true }" :can-dismiss="false" @close="emit('close')" @keydown.enter="(e: KeyboardEvent) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); submitForm() } }">
     <template #header>
       <h3>{{ isEditing ? 'Edit' : 'Create' }} topic</h3>
     </template>

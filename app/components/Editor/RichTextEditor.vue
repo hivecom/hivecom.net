@@ -17,6 +17,7 @@ import Youtube from '@tiptap/extension-youtube'
 import { CharacterCount } from '@tiptap/extensions'
 import { Markdown } from '@tiptap/markdown'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { marked } from 'marked'
@@ -440,6 +441,37 @@ const editor = useEditor({
     TableRow,
     TableHeader,
     TableCell,
+    // Decorate #channel mentions so they are visually distinct while editing.
+    // This is purely cosmetic - the stored markdown remains plain #channelname text.
+    Extension.create({
+      name: 'channelMentionDecoration',
+      addProseMirrorPlugins() {
+        const CHANNEL_RE = /(?<![`\w#])#[a-z][\w-]*/gi
+        return [
+          new Plugin({
+            key: new PluginKey('channelMentionDecoration'),
+            props: {
+              decorations(state) {
+                const decorations: Decoration[] = []
+                state.doc.descendants((node, pos) => {
+                  if (!node.isText || !node.text)
+                    return
+                  CHANNEL_RE.lastIndex = 0
+                  let match: RegExpExecArray | null
+                  // eslint-disable-next-line no-cond-assign
+                  while ((match = CHANNEL_RE.exec(node.text)) !== null) {
+                    const from = pos + match.index
+                    const to = from + match[0].length
+                    decorations.push(Decoration.inline(from, to, { class: 'channel-mention' }))
+                  }
+                })
+                return DecorationSet.create(state.doc, decorations)
+              },
+            },
+          }),
+        ]
+      },
+    }),
   ],
   contentType: 'markdown',
   onCreate: () => {
@@ -2076,7 +2108,8 @@ onBeforeRouteLeave(() => {
     }
   }
 
-  .mention {
+  .mention,
+  .channel-mention {
     background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 20%, transparent);
     border-radius: var(--border-radius-m);
     box-decoration-break: clone;
