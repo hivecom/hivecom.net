@@ -649,7 +649,7 @@ defineExpose({ refresh: fetchUsers })
                       v-if="(user.steam_id == null || user.steam_id === '') && (user.discord_id == null || user.discord_id === '') && (user.patreon_id == null || user.patreon_id === '') && !user.has_teamspeak && (user.lastfm_username == null || user.lastfm_username === '')"
                       class="text-color-lightest text-s"
                     >
-                      No connections
+                      None
                     </span>
                   </Flex>
                 </Table.Cell>
@@ -909,6 +909,10 @@ defineExpose({ refresh: fetchUsers })
   text-align: center;
   padding: var(--space-xl);
   color: var(--color-text-light);
+}
+
+:deep(.vui-table-container table th .vui-table-th-content) {
+  white-space: nowrap;
 }
 
 .clickable-row:hover {

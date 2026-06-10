@@ -51,10 +51,7 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
           <span v-if="!loading" class="counter">{{ sortedBadges.length }}</span>
         </Flex>
 
-        <Button size="s" variant="gray" aria-label="See all community badges" plain @click="goToBadgeDirectory">
-          <template #start>
-            <Icon name="ph:hexagon" />
-          </template>
+        <Button size="s" variant="gray" aria-label="See all community badges" plain style="--color-text: var(--color-text-light)" @click="goToBadgeDirectory">
           Preview All
         </Button>
       </Flex>

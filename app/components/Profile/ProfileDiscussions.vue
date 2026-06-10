@@ -347,11 +347,8 @@ watch(() => props.profileId, () => {
         <Flex y-center gap="xs">
           <h4>Forum Activity</h4>
         </Flex>
-        <Button v-if="hasActivity && !loading" size="s" plain @click="sheetOpen = true">
+        <Button v-if="hasActivity && !loading" size="s" plain style="--color-text: var(--color-text-light)" @click="sheetOpen = true">
           View all
-          <template #start>
-            <Icon name="ph:chat" />
-          </template>
         </Button>
       </Flex>
     </template>

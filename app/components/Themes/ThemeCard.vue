@@ -100,7 +100,7 @@ onClickOutside(self, () => {
       </Badge>
 
       <ButtonGroup :gap="2" class="theme-menu__card--context" :class="{ persist: persistHover }">
-        <Button size="s" :variant="isPreviewing ? 'accent' : 'gray'" @click.prevent.stop="handleApplyClick">
+        <Button size="s" :variant="isPreviewing ? 'accent' : 'fill'" @click.prevent.stop="handleApplyClick">
           <template #start>
             <Icon :name="isActive ? 'ph:paint-brush' : 'ph:paint-brush-fill'" :size="16" />
           </template>
@@ -266,8 +266,7 @@ onClickOutside(self, () => {
   }
 
   &.active {
-    border-color: var(--color-bg-accent-lowered);
-    // border-color: var(--color-text-lightest);
+    border-color: var(--color-bg-accent-raised);
   }
 
   &:has(.vui-button.active),

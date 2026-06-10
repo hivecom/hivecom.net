@@ -90,10 +90,7 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
               {{ friends.length }}
             </span>
           </Flex>
-          <Button v-if="isLoggedIn" variant="gray" size="s" plain @click="emit('openFriendsModal')">
-            <template #start>
-              <Icon name="ph:users" />
-            </template>
+          <Button v-if="isLoggedIn" variant="gray" size="s" plain style="--color-text: var(--color-text-light)" @click="emit('openFriendsModal')">
             View All
           </Button>
         </template>

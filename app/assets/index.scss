@@ -381,17 +381,21 @@ blockquote {
   }
 }
 
+.vui-switch.checked .vui-switch-icon {
+  background-color: var(--color-bg-accent-lowered);
+
+  .vui-switch-indicator {
+    background-color: var(--color-accent);
+  }
+}
+
 :root.light {
   .vui-popout {
     box-shadow: 0 4px 12px 8px rgba(8, 8, 8, 0.125);
   }
-}
 
-.vui-switch.checked .vui-switch-icon {
-  background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 25%, transparent) !important;
-
-  .vui-switch-indicator {
-    background-color: var(--color-accent);
+  .vui-switch.checked .vui-switch-icon {
+    background-color: var(--color-bg-accent-raised);
   }
 }
 
