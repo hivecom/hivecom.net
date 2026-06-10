@@ -2770,6 +2770,13 @@ export type Database = {
           reply_count: number
         }[]
       }
+      get_discussion_reply_counts: {
+        Args: { p_discussion_id: string }
+        Returns: {
+          comment_id: string
+          descendant_count: number
+        }[]
+      }
       get_discussion_reply_nearest_to_date:
         | {
             Args: {
@@ -3160,6 +3167,7 @@ export type Database = {
           id: string
         }[]
       }
+      has_agreed_content_rules: { Args: never; Returns: boolean }
       has_permission: {
         Args: { permission_name: Database["public"]["Enums"]["app_permission"] }
         Returns: boolean
@@ -3626,4 +3634,3 @@ export const Constants = {
     },
   },
 } as const
-

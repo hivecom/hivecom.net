@@ -194,7 +194,6 @@ function join(name: string) {
     width: 100%;
     overflow-x: hidden;
     overflow-y: auto;
-    max-height: 360px;
     display: flex;
     flex-direction: column;
     gap: var(--space-xxs);

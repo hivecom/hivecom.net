@@ -1,6 +1,7 @@
 import type { Comment, RawComment, ThreadNode } from '@/components/Discussions/Discussion.types'
 import type { PageCursor, ReplyPage } from '@/composables/useDiscussionRepliesCache'
 import type { Tables } from '@/types/database.overrides'
+import type { Database } from '@/types/database.types'
 import { useDataNotifications } from '@/composables/useDataNotifications'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { PAGE_SIZE_COMMENT, PAGE_SIZE_FORUM, useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCache'
@@ -49,7 +50,7 @@ export function useDataDiscussionReplies(
   onLoaded: (discussionId: string) => void,
   onDeleted?: (id: string) => void,
 ) {
-  const supabase = useSupabaseClient()
+  const supabase = useSupabaseClient<Database>()
   const discussionCache = useDiscussionCache()
   const repliesCache = useDiscussionRepliesCache()
   const subscriptionsCache = useDiscussionSubscriptionsCache()
@@ -505,7 +506,7 @@ export function useDataDiscussionReplies(
       p_discussion_id: discussion.value.id,
       p_target_time: date.toISOString(),
       p_ascending: ascending.value,
-      p_hash: props.hash ?? null,
+      p_hash: props.hash ?? undefined,
       p_root_only: false,
       p_find_first: findFirst,
     })) as { data: Array<{ id: string }> | null, error: { message: string } | null }
@@ -717,23 +718,15 @@ export function useDataDiscussionReplies(
   }
 
   async function fetchReplyCountMap(discussionId: string): Promise<void> {
-    const { data } = await supabase
-      .from('discussion_replies')
-      .select('reply_to_id')
-      .eq('discussion_id', discussionId)
-      .not('reply_to_id', 'is', null)
-      .eq('is_deleted', false)
+    const { data, error } = await supabase
+      .rpc('get_discussion_reply_counts', { p_discussion_id: discussionId })
 
-    if (data == null)
+    if (error != null || data == null)
       return
 
-    const rows = data as Array<{ reply_to_id: string | null }>
     const map = new Map<string, number>()
-    for (const row of rows) {
-      const parentId = row.reply_to_id
-      if (parentId != null)
-        map.set(parentId, (map.get(parentId) ?? 0) + 1)
-    }
+    for (const row of data)
+      map.set(row.comment_id, row.descendant_count)
     replyCountMap.value = map
   }
 
@@ -1021,15 +1014,8 @@ export function useDataDiscussionReplies(
       throw new Error(res.error.message)
     }
 
-    // Update the reply count map for the parent
-    const deletedComment = comments.value.find(c => c.id === id)
-    if (deletedComment?.reply_to_id != null) {
-      const prev = replyCountMap.value.get(deletedComment.reply_to_id) ?? 0
-      if (prev > 1)
-        replyCountMap.value.set(deletedComment.reply_to_id, prev - 1)
-      else
-        replyCountMap.value.delete(deletedComment.reply_to_id)
-    }
+    if (discussion.value != null)
+      void fetchReplyCountMap(discussion.value.id)
 
     const comment = comments.value.find(c => c.id === id)
     if (comment) {
@@ -1061,15 +1047,8 @@ export function useDataDiscussionReplies(
       throw new Error(res.error.message)
     }
 
-    // Update the reply count map for the parent
-    const forceDeletedComment = comments.value.find(c => c.id === id)
-    if (forceDeletedComment?.reply_to_id != null) {
-      const prev = replyCountMap.value.get(forceDeletedComment.reply_to_id) ?? 0
-      if (prev > 1)
-        replyCountMap.value.set(forceDeletedComment.reply_to_id, prev - 1)
-      else
-        replyCountMap.value.delete(forceDeletedComment.reply_to_id)
-    }
+    if (discussion.value != null)
+      void fetchReplyCountMap(discussion.value.id)
 
     comments.value = comments.value.filter(c => c.id !== id)
 

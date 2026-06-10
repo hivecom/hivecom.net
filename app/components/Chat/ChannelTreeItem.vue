@@ -9,6 +9,14 @@ import { SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
+export interface ChannelGhostNode {
+  type: 'ghost'
+  name: string
+  /** Full IRC channel name including prefix, e.g. "#playground/general" */
+  fullChannelName: string
+  displayName: string
+}
+
 export interface ChannelGroupNode {
   type: 'group'
   name: string
@@ -25,14 +33,14 @@ export interface ChannelItemNode {
   displayName: string
 }
 
-export type ChannelTreeNode = ChannelGroupNode | ChannelItemNode
+export type ChannelTreeNode = ChannelGroupNode | ChannelItemNode | ChannelGhostNode
 
 const { node, depth } = defineProps<{
   node: ChannelTreeNode
   depth: number
 }>()
 
-const { activeName, buffers, setActive, closeBuffer, isUnauthorizedSubchannel } = useIrcChat()
+const { activeName, buffers, setActive, closeBuffer, joinChannel, isUnauthorizedSubchannel, channelMetaCache } = useIrcChat()
 const { resolved } = useIrcNickResolver()
 const isMobile = useBreakpoint('<s')
 
@@ -113,11 +121,24 @@ function bufferIcon(kind: string) {
 
     <!-- Children -->
     <div class="chat-channels__children">
-      <div v-for="child in node.children" :key="child.type === 'group' ? `group:${child.fullPath}` : child.buffer.name" class="chat-channels__child-item">
+      <div v-for="child in node.children" :key="child.type === 'group' ? `group:${child.fullPath}` : child.type === 'ghost' ? `ghost:${child.fullChannelName}` : child.buffer.name" class="chat-channels__child-item">
         <ChannelTreeItem :node="child" :depth="depth + 1" />
       </div>
     </div>
   </template>
+
+  <!-- Ghost node (unjoined subchannel known from parent metadata) -->
+  <button
+    v-else-if="node.type === 'ghost'"
+    type="button"
+    class="chat-channels__item chat-channels__item--ghost w-100"
+    @click="joinChannel(node.fullChannelName)"
+  >
+    <Icon name="ph:hash" size="13" class="chat-channels__icon" />
+    <span class="chat-channels__name">
+      {{ channelMetaCache.get(node.fullChannelName.toLowerCase())?.get('display-name') ?? node.displayName }}
+    </span>
+  </button>
 
   <!-- Leaf node -->
   <Tooltip

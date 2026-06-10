@@ -9,7 +9,7 @@ defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 const isMobile = useBreakpoint('<s')
-const { account, accountEmail, accountAlwaysOn, enableAlwaysOn, disableAlwaysOn, claimEmail, verifyClaimCode } = useIrcChat()
+const { account, accountEmail, accountAlwaysOn, accountInfoFetched, enableAlwaysOn, disableAlwaysOn, claimEmail, verifyClaimCode } = useIrcChat()
 
 // --- Claim flow ---
 
@@ -24,6 +24,8 @@ let verifyTimer: ReturnType<typeof setTimeout> | null = null
 const supabaseUser = useSupabaseUser()
 
 const isClaimed = computed(() => {
+  if (!accountInfoFetched.value)
+    return false
   const email = accountEmail.value
   if (!email)
     return false
@@ -32,6 +34,8 @@ const isClaimed = computed(() => {
 })
 
 const isEmailMismatch = computed(() => {
+  if (!accountInfoFetched.value)
+    return false
   const email = accountEmail.value
   if (!email)
     return false
@@ -41,7 +45,7 @@ const isEmailMismatch = computed(() => {
 
 // Registered Supabase user with no IRC email linked yet
 const isRegisteredNoEmail = computed(() => {
-  return !!supabaseUser.value && accountEmail.value === ''
+  return accountInfoFetched.value && !!supabaseUser.value && accountEmail.value === ''
 })
 
 function startClaim() {
@@ -102,12 +106,15 @@ function handleClose() {
         <Flex column gap="xxs" expand>
           <Flex y-center gap="xs">
             <Icon
-              :name="accountAlwaysOn === true ? 'ph:check-circle' : accountAlwaysOn === false ? 'ph:warning' : 'ph:info'"
-              :class="accountAlwaysOn === true ? 'text-color-green' : accountAlwaysOn === false ? 'text-color-yellow' : 'text-color-lighter'"
+              :name="!accountInfoFetched ? 'ph:hourglass' : accountAlwaysOn === true ? 'ph:check-circle' : accountAlwaysOn === false ? 'ph:warning' : 'ph:info'"
+              :class="!accountInfoFetched ? 'text-color-lighter' : accountAlwaysOn === true ? 'text-color-green' : accountAlwaysOn === false ? 'text-color-yellow' : 'text-color-lighter'"
             />
             <span class="text-s font-weight-medium">Always-on</span>
           </Flex>
-          <span v-if="accountAlwaysOn === true" class="text-xs text-color-lighter">
+          <span v-if="!accountInfoFetched" class="text-xs text-color-lighter">
+            Checking status...
+          </span>
+          <span v-else-if="accountAlwaysOn === true" class="text-xs text-color-lighter">
             Your account stays joined to channels and accepts direct messages even when you're offline.
           </span>
           <span v-else-if="accountAlwaysOn === false" class="text-xs text-color-lighter">
@@ -117,10 +124,10 @@ function handleClose() {
             Checking status...
           </span>
         </Flex>
-        <Button v-if="accountAlwaysOn === false" variant="accent" size="s" @click="enableAlwaysOn">
+        <Button v-if="accountInfoFetched && accountAlwaysOn === false" variant="accent" size="s" @click="enableAlwaysOn">
           Enable
         </Button>
-        <Button v-else-if="accountAlwaysOn === true" variant="gray" size="s" @click="disableAlwaysOn">
+        <Button v-else-if="accountInfoFetched && accountAlwaysOn === true" variant="gray" size="s" @click="disableAlwaysOn">
           Disable
         </Button>
       </Flex>
@@ -134,12 +141,15 @@ function handleClose() {
           <Flex column gap="xxs" expand>
             <Flex y-center gap="xs">
               <Icon
-                :name="isClaimed ? 'ph:check-circle' : isEmailMismatch ? 'ph:warning-circle' : isRegisteredNoEmail ? 'ph:link' : 'ph:warning'"
-                :class="isClaimed ? 'text-color-green' : isEmailMismatch ? 'text-color-red' : 'text-color-yellow'"
+                :name="!accountInfoFetched ? 'ph:hourglass' : isClaimed ? 'ph:check-circle' : isEmailMismatch ? 'ph:warning-circle' : isRegisteredNoEmail ? 'ph:link' : 'ph:warning'"
+                :class="!accountInfoFetched ? 'text-color-lighter' : isClaimed ? 'text-color-green' : isEmailMismatch ? 'text-color-red' : 'text-color-yellow'"
               />
               <span class="text-s font-weight-medium">Account email</span>
             </Flex>
-            <span v-if="isClaimed" class="text-xs text-color-lighter">
+            <span v-if="!accountInfoFetched" class="text-xs text-color-lighter">
+              Checking status...
+            </span>
+            <span v-else-if="isClaimed" class="text-xs text-color-lighter">
               Verified as <strong class="text-xs">{{ accountEmail }}</strong>. Chat and Hivecom identities are in sync.
             </span>
             <span v-else-if="isEmailMismatch" class="text-xs text-color-lighter">
@@ -152,10 +162,10 @@ function handleClose() {
               No email set. Chat and Hivecom have separate identity systems - claim to sign in on any IRC client.
             </span>
           </Flex>
-          <Button v-if="(!isClaimed || isEmailMismatch) && claimStep === 'idle'" variant="accent" size="s" @click="startClaim">
+          <Button v-if="accountInfoFetched && (!isClaimed || isEmailMismatch) && claimStep === 'idle'" variant="accent" size="s" @click="startClaim">
             {{ isRegisteredNoEmail ? 'Link' : 'Set up' }}
           </Button>
-          <Button v-else-if="isClaimed && claimStep === 'idle'" variant="gray" size="s" @click="startClaim">
+          <Button v-else-if="accountInfoFetched && isClaimed && claimStep === 'idle'" variant="gray" size="s" @click="startClaim">
             Change
           </Button>
         </Flex>

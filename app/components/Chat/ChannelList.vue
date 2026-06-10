@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import type { ChannelGroupNode, ChannelItemNode, ChannelTreeNode } from '@/components/Chat/ChannelTreeItem.vue'
+import type { ChannelGhostNode, ChannelGroupNode, ChannelItemNode, ChannelTreeNode } from '@/components/Chat/ChannelTreeItem.vue'
 import type { ChatBuffer } from '@/composables/useIrcChat'
 import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, Input, Overflow, pushToast, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
@@ -20,7 +20,7 @@ const props = defineProps<{
   horizontal?: boolean
 }>()
 
-const { buffers, activeName, setActive, closeBuffer, joinChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, requestChannelMetadata, isUnauthorizedSubchannel } = useIrcChat()
+const { buffers, activeName, setActive, closeBuffer, joinChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, channelMetaResolved, requestChannelMetadata, isUnauthorizedSubchannel } = useIrcChat()
 
 // Proactively fetch metadata for every implied parent path so slash-nesting can
 // be verified and the parent displayed even when we haven't joined it.
@@ -183,8 +183,12 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
 
   // Resolve a channel's metadata from its open buffer, falling back to the
   // metadata cache (covers parents we've fetched but not joined).
+  // Cache keys include the channel prefix (e.g. "#playground"), so try both
+  // "#path" and bare "path" to handle # and & channels.
   function channelMeta(path: string): Map<string, string> | undefined {
-    return findChannelBuffer(path)?.metadata ?? channelMetaCache.value.get(path.toLowerCase())
+    return findChannelBuffer(path)?.metadata
+      ?? channelMetaCache.value.get(`#${path}`.toLowerCase())
+      ?? channelMetaCache.value.get(path.toLowerCase())
   }
 
   // A parent authorizes a direct child leaf when its `subchannels` metadata
@@ -192,6 +196,12 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
   // metadata, so the parent's allowlist is the authority - a squatter cannot
   // make #playground claim their #playground/2.
   function parentAuthorizes(parentPath: string, childSegment: string): boolean {
+    const resolvedKey1 = `#${parentPath}`.toLowerCase()
+    const resolvedKey2 = parentPath.toLowerCase()
+    const meta = channelMeta(parentPath)
+    // Metadata not yet received (joined or not) - assume authorized (pending).
+    if (!meta && !channelMetaResolved.value.has(resolvedKey1) && !channelMetaResolved.value.has(resolvedKey2))
+      return true
     const raw = channelMeta(parentPath)?.get('subchannels')
     if (!raw)
       return false
@@ -255,12 +265,79 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
     currentList.push({ type: 'channel', buffer: buf, displayName: lastSegment })
   }
 
-  return root
+  // Inject ghost children for unjoined subchannels listed in parent metadata.
+  // Also promotes leaf channel nodes with subchannel metadata into groups.
+  function getSubchannelSegments(meta: Map<string, string> | undefined | null): string[] {
+    const raw = meta?.get('subchannels')
+    if (!raw)
+      return []
+    return raw.split(',').map(s => s.trim()).filter(Boolean)
+  }
+
+  function injectGhosts(nodes: ChannelTreeNode[]): ChannelTreeNode[] {
+    const result: ChannelTreeNode[] = []
+    for (const node of nodes) {
+      if (node.type === 'group') {
+        const meta = node.meta ?? node.parentBuffer?.metadata
+        const subs = getSubchannelSegments(meta)
+        const existingNames = new Set(node.children.map((c) => {
+          if (c.type === 'group')
+            return c.name.toLowerCase()
+          if (c.type === 'channel')
+            return c.displayName.toLowerCase()
+          return (c as ChannelGhostNode).name.toLowerCase()
+        }))
+        for (const seg of subs) {
+          if (!existingNames.has(seg.toLowerCase())) {
+            node.children.push({
+              type: 'ghost',
+              name: seg,
+              fullChannelName: `#${node.fullPath}/${seg}`,
+              displayName: seg,
+            })
+          }
+        }
+        node.children = injectGhosts(node.children)
+        result.push(node)
+      }
+      else if (node.type === 'channel' && node.buffer.kind === 'channel') {
+        const subs = getSubchannelSegments(node.buffer.metadata)
+        if (subs.length > 0) {
+          const rawName = node.buffer.name.replace(/^#/, '')
+          const group: ChannelGroupNode = {
+            type: 'group',
+            name: node.displayName,
+            fullPath: rawName,
+            parentBuffer: node.buffer,
+            meta: node.buffer.metadata ?? null,
+            children: subs.map(seg => ({
+              type: 'ghost' as const,
+              name: seg,
+              fullChannelName: `#${rawName}/${seg}`,
+              displayName: seg,
+            })),
+          }
+          result.push(group)
+        }
+        else {
+          result.push(node)
+        }
+      }
+      else {
+        result.push(node)
+      }
+    }
+    return result
+  }
+
+  return injectGhosts(root)
 })
 
 function treeNodeKey(node: ChannelTreeNode): string {
   if (node.type === 'group')
     return `group:${node.fullPath}`
+  if (node.type === 'ghost')
+    return `ghost:${node.fullChannelName}`
   return node.buffer.name
 }
 
@@ -829,6 +906,15 @@ function openChannelInfo(buf: ChatBuffer) {
   :deep(.chat-channels__item--active) {
     background: var(--color-bg-accent-lowered);
     color: var(--color-text);
+  }
+
+  :deep(.chat-channels__item--ghost) {
+    opacity: 0.5;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 0.75;
+    }
   }
 
   :deep(.chat-channels__icon) {

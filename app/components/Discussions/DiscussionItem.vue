@@ -18,6 +18,7 @@ const {
   showOfftopic = false,
   staggerIndex,
   idPrefix = 'comment',
+  forceInlineExpand = false,
 } = defineProps<Props>()
 
 const loadChildren = inject(DISCUSSION_KEYS.loadChildren)
@@ -38,6 +39,10 @@ interface Props {
   depth?: number
   showOfftopic?: boolean
   staggerIndex?: number
+  // When true (propagated from a flat-mode inline expansion), this item
+  // auto-expands inline and passes the flag to its own children so the
+  // whole subtree opens without manual clicks.
+  forceInlineExpand?: boolean
 }
 
 const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
@@ -138,6 +143,9 @@ const hasReplies = computed(() =>
 
 // Flat mode: sheet always starts closed - only opens on explicit user click.
 const repliesExpanded = ref(false)
+const flatInlineExpanded = ref(false)
+
+const INLINE_EXPAND_THRESHOLD = 10
 
 // When the flat-mode sheet opens, lazily load children if not yet fetched.
 watch(repliesExpanded, (open) => {
@@ -149,19 +157,44 @@ watch(repliesExpanded, (open) => {
 
 // Threaded mode: whether this node's sub-tree is folded closed.
 // - Root replies (depth 0): driven by the showThreadReplies setting.
-// - Sub-replies (depth > 0): auto-expanded unless they have more than 5 replies,
-//   in which case they follow the same setting as roots.
+// - Sub-replies (depth > 0): always start expanded so clicking a root toggle
+//   reveals the full thread without needing additional clicks per level.
 function computeThreadCollapsed() {
   if (viewMode.value !== 'threaded')
     return false
-  if (depth > 0) {
-    const count = replyCountMap?.value?.get(data.id) ?? 0
-    return count > 5 ? !showThreadRepliesInjected.value : false
-  }
+  if (depth > 0)
+    return false
   return !showThreadRepliesInjected.value
 }
 
 const threadCollapsed = ref(computeThreadCollapsed())
+
+function onOpenReplies() {
+  const count = replyCountMap?.value?.get(data.id) ?? visibleChildren.value.length
+  if (count <= INLINE_EXPAND_THRESHOLD) {
+    threadCollapsed.value = false
+    flatInlineExpanded.value = true
+    if (!childrenRequested.value && loadChildren != null) {
+      childrenRequested.value = true
+      void loadChildren(data.id)
+    }
+  }
+  else {
+    repliesExpanded.value = true
+  }
+}
+
+// When forceInlineExpand is propagated from a parent's flat inline expansion,
+// auto-expand this item and load its children.
+watch(() => forceInlineExpand, (force) => {
+  if (force && !flatInlineExpanded.value && hasReplies.value) {
+    flatInlineExpanded.value = true
+    if (!childrenRequested.value && loadChildren != null) {
+      childrenRequested.value = true
+      void loadChildren(data.id)
+    }
+  }
+}, { immediate: true })
 
 // Re-evaluate collapsed state whenever the view mode or the expand-threads setting
 // changes. The IIFE only ran once at setup, so items mounted in flat mode (or while
@@ -185,8 +218,12 @@ async function toggleThreadCollapsed() {
       childrenRequested.value = true
       await loadChildren(data.id)
     }
+    threadCollapsed.value = false
   }
-  threadCollapsed.value = !threadCollapsed.value
+  else {
+    threadCollapsed.value = true
+    flatInlineExpanded.value = false
+  }
 }
 
 // ── Lazy child loading (threaded mode) ────────────────────────────────────────
@@ -256,7 +293,7 @@ function stripReplyData(entry: Comment) {
                 'discussion-comment--pinned': isPinned }"
       @copy-link="copyLink"
       @scroll-reply="scrollReply"
-      @open-replies="repliesExpanded = true"
+      @open-replies="onOpenReplies"
     />
     <DiscussionModelForum
       v-else
@@ -267,7 +304,7 @@ function stripReplyData(entry: Comment) {
                 'discussion-forum--pinned': isPinned }"
       @copy-link="copyLink"
       @scroll-reply="scrollReply"
-      @open-replies="repliesExpanded = true"
+      @open-replies="onOpenReplies"
     />
 
     <!-- Flat mode: sheet for thread replies (triggered from within the model components) -->
@@ -314,7 +351,7 @@ function stripReplyData(entry: Comment) {
     <!-- Threaded mode: recursively render children as full DiscussionItems -->
     <!-- v-show keeps nested DiscussionItems mounted across mode switches so -->
     <!-- MarkdownRenderer never re-suspends and the skeleton/fade-in flash doesn't appear. -->
-    <div v-show="viewMode === 'threaded' && hasReplies">
+    <div v-show="(viewMode === 'threaded' && hasReplies) || (viewMode === 'flat' && flatInlineExpanded)">
       <!-- Collapsed summary pill -->
       <DiscussionThreadToggle
         v-if="threadCollapsed"
@@ -343,6 +380,7 @@ function stripReplyData(entry: Comment) {
           :children="child.children"
           :depth="depth + 1"
           :show-offtopic
+          :force-inline-expand="flatInlineExpanded"
         />
       </div>
     </div>

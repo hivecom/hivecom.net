@@ -85,7 +85,7 @@ async function toggleBrowserNotifications(value: boolean) {
       <Flex v-if="!isMobile" y-center x-between expand>
         <Flex column gap="xxs" class="chat-settings__text">
           <span class="text-s">Display mode</span>
-          <span class="text-xs text-color-lighter">IRC shows plain text. Modern resolves nicks to Hivecom profiles.</span>
+          <span class="text-xs text-color-lighter">Modern has padding, avatars, icons, full previews. IRC is compact, text focused.</span>
         </Flex>
         <ButtonGroup>
           <Button :variant="settings.chat_display_mode === 'modern' ? 'accent' : 'gray'" @click="settings.chat_display_mode = 'modern'">

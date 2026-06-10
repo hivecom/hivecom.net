@@ -70,7 +70,6 @@ const hasInfo = computed(() => {
     || buf.metadata?.get('markdown')
     || buf.metadata?.get('homepage')
     || buf.metadata?.get('avatar')
-    || (buf.modes && buf.modes.size > 0)
   )
 })
 
@@ -124,20 +123,22 @@ function topicSegments(topic: string): TopicSegment[] {
   <Modal v-if="displayChannelBuffer" :open="open" size="m" @close="emit('close')">
     <template #header>
       <Flex x-between y-center gap="s">
-        <img
-          v-if="displayChannelBuffer.metadata?.get('avatar')"
-          :src="displayChannelBuffer.metadata.get('avatar')"
-          class="chat-info-modal__avatar"
-          :alt="displayChannelBuffer.name"
-        >
-        <Flex column :gap="0">
-          <Flex y-center gap="xs">
-            <h4 style="margin:0">
-              {{ displayChannelBuffer.metadata?.get('display-name') ?? displayChannelBuffer.name }}
-            </h4>
-            <ChannelModeBadges v-if="displayChannelBuffer.modes?.size" :modes="displayChannelBuffer.modes" />
+        <Flex>
+          <img
+            v-if="displayChannelBuffer.metadata?.get('avatar')"
+            :src="displayChannelBuffer.metadata.get('avatar')"
+            class="chat-info-modal__avatar"
+            :alt="displayChannelBuffer.name"
+          >
+          <Flex column :gap="0">
+            <Flex y-center gap="xs">
+              <h4 style="margin:0">
+                {{ displayChannelBuffer.metadata?.get('display-name') ?? displayChannelBuffer.name }}
+              </h4>
+              <ChannelModeBadges v-if="displayChannelBuffer.modes?.size" :modes="displayChannelBuffer.modes" />
+            </Flex>
+            <span v-if="displayChannelBuffer.metadata?.get('display-name')" class="text-xs text-color-lighter">{{ displayChannelBuffer.name }}</span>
           </Flex>
-          <span v-if="displayChannelBuffer.metadata?.get('display-name')" class="text-xs text-color-lighter">{{ displayChannelBuffer.name }}</span>
         </Flex>
         <template v-if="canEdit">
           <Button plain square @click="emit('close'); channelSettingsOpen = displayChannelBuffer!.name">

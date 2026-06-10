@@ -12,6 +12,7 @@ import {
   getHexBaseColor,
   getHexHoverColor,
   getHighlightColor,
+  parseColor,
 } from '@/lib/globe/GlobeTheme'
 import { getCountryEmoji } from '@/lib/utils/country'
 
@@ -143,17 +144,8 @@ onMounted(async () => {
     globeInstance = baseResult.globeInstance
     globeBaseDestroy = baseResult.destroy
 
-    const parseHex = (color: string): [number, number, number] => {
-      const hex = color.replace(/^#/, '')
-      return [
-        Number.parseInt(hex.slice(0, 2), 16),
-        Number.parseInt(hex.slice(2, 4), 16),
-        Number.parseInt(hex.slice(4, 6), 16),
-      ]
-    }
-
     const refreshHexColors = () => {
-      const [r, g, b] = parseHex(getHighlightColor())
+      const [r, g, b] = parseColor(getHighlightColor())
       const allMaxCount = Math.max(1, ...Array.from(allMap.value.values()))
       const onlineMaxCount = Math.max(1, ...Array.from(onlineMap.value.values()))
 

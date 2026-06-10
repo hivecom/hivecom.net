@@ -32,7 +32,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const { nick: currentNick, openPm, send, activeName, inputMessage, myChannelRole } = useIrcChat()
+const { nick: currentNick, openPm, send, activeName, inputMessage, myChannelRole, sendMemberMode } = useIrcChat()
 const { settings } = useDataUserSettings()
 
 const isSelf = computed(() => props.nick === currentNick.value)
@@ -79,28 +79,28 @@ function doMention() {
 function doOp() {
   const ch = activeName.value
   if (ch)
-    send(`MODE ${ch} +o ${props.nick}`)
+    sendMemberMode(ch, '+o', props.nick)
   emit('close')
 }
 
 function doDeop() {
   const ch = activeName.value
   if (ch)
-    send(`MODE ${ch} -o ${props.nick}`)
+    sendMemberMode(ch, '-o', props.nick)
   emit('close')
 }
 
 function doVoice() {
   const ch = activeName.value
   if (ch)
-    send(`MODE ${ch} +v ${props.nick}`)
+    sendMemberMode(ch, '+v', props.nick)
   emit('close')
 }
 
 function doDevoice() {
   const ch = activeName.value
   if (ch)
-    send(`MODE ${ch} -v ${props.nick}`)
+    sendMemberMode(ch, '-v', props.nick)
   emit('close')
 }
 

@@ -44,6 +44,13 @@ const STORAGE_LASTSEEN = 'hivecom.chat.lastseen'
 const STORAGE_CLOSED_DMS = 'hivecom.chat.closeddms'
 // Map of lowercased channel/pm name -> timestamp (ms) when the user last read it.
 const STORAGE_READ_POSITIONS = 'hivecom.chat.readpos'
+// Cached NickServ identity state to avoid indicator flash on reconnect.
+const STORAGE_IDENTITY_EMAIL = 'hivecom.chat.identity-email'
+const STORAGE_IDENTITY_ALWAYS_ON = 'hivecom.chat.identity-always-on'
+// Cached channel appearance metadata (display-name, avatar, color, homepage) for
+// instant display before the IRC connection delivers METADATA responses.
+const STORAGE_CHANNEL_META = 'hivecom.chat.channel-meta'
+const APPEARANCE_KEYS: ReadonlySet<string> = new Set(['display-name', 'avatar', 'color', 'homepage'])
 // How far back to look for missed DMs when there is no stored cursor.
 const DEFAULT_HISTORY_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000
 // Clock-skew fuzz applied to history bound timestamps.
@@ -265,6 +272,9 @@ const channelMetaCache = ref<Map<string, Map<string, string>>>(new Map())
 // Channels we've issued a background METADATA LIST for: dedupes probes and lets
 // us swallow the resulting FAILs (a missing or permission-denied parent is normal).
 const _backgroundMetaTargets = new Set<string>()
+// Channels for which a background METADATA LIST response has been received
+// (either data or FAIL). Lets consumers distinguish "pending" from "no data".
+const channelMetaResolved = ref<Set<string>>(new Set())
 const channelListLoading = ref(false)
 const channelBrowserOpen = ref(false)
 // When non-null, a password-protected channel denied our JOIN and we need a key.
@@ -301,6 +311,8 @@ export function setBrowserNotificationsEnabled(enabled: boolean) {
 
 // Per-channel last-read timestamps, keyed by lowercased channel/pm name.
 let readPositions: Record<string, number> = {}
+// Set when draft/read-marker CAP is negotiated successfully.
+let readMarkerActive = false
 
 function saveReadPosition(name: string, ts: number) {
   const key = name.toLowerCase()
@@ -312,6 +324,9 @@ function saveReadPosition(name: string, ts: number) {
   readPositions[key] = ts
   if (import.meta.client)
     localStorage.setItem(STORAGE_READ_POSITIONS, JSON.stringify(readPositions))
+  // Sync to server so other clients (and fresh loads) get the correct marker.
+  if (readMarkerActive)
+    send(`MARKREAD ${name} timestamp=${new Date(ts).toISOString()}`)
 }
 
 let ws: WebSocket | null = null
@@ -383,6 +398,8 @@ let saslFailed = false
 const chatHistorySupported = ref(false)
 let echoMessageActive = false
 let probingNickServInfo = false
+// True once the NickServ INFO probe for the current session has resolved (or timed out).
+const accountInfoFetched = ref(false)
 let probeTimer: ReturnType<typeof setTimeout> | null = null
 let suppressingNickServOp = false
 // ChanServ INFO probes keyed by lowercase channel name.
@@ -443,12 +460,50 @@ const pendingJoinMarkers = new Set<string>()
 const explicitJoinIntents = new Set<string>()
 // Channels for which WHO was sent internally (for bot detection). Responses are silenced.
 const internalWhoChannels = new Set<string>()
+// DM targets from CHATHISTORY TARGETS awaiting a MARKREAD reply before deciding
+// whether to open a buffer. Maps lowercased nick -> latestTs (ms) from TARGETS.
+const pendingDmTargets = new Map<string, number>()
 
 // --- Buffers helpers ---------------------------------------------------------
 function listChannels() {
   channelList.value = []
   channelListLoading.value = true
   send('LIST')
+}
+
+function loadChannelMetaFromStorage(): Map<string, Map<string, string>> {
+  if (!import.meta.client)
+    return new Map()
+  try {
+    const raw = localStorage.getItem(STORAGE_CHANNEL_META)
+    if (!raw)
+      return new Map()
+    const parsed = JSON.parse(raw) as Record<string, Record<string, string>>
+    const result = new Map<string, Map<string, string>>()
+    for (const [ch, keys] of Object.entries(parsed))
+      result.set(ch, new Map(Object.entries(keys)))
+    return result
+  }
+  catch {
+    return new Map()
+  }
+}
+
+function persistChannelMetaToStorage() {
+  if (!import.meta.client)
+    return
+  const out: Record<string, Record<string, string>> = {}
+  for (const [ch, meta] of channelMetaCache.value) {
+    const filtered: Record<string, string> = {}
+    for (const key of APPEARANCE_KEYS) {
+      const val = meta.get(key)
+      if (val)
+        filtered[key] = val
+    }
+    if (Object.keys(filtered).length)
+      out[ch] = filtered
+  }
+  localStorage.setItem(STORAGE_CHANNEL_META, JSON.stringify(out))
 }
 
 function resetBuffers() {
@@ -460,8 +515,11 @@ function resetBuffers() {
   activeName.value = SERVER_BUFFER
   channelList.value = []
   channelListLoading.value = false
-  channelMetaCache.value = new Map()
+  // Pre-populate from stored appearance cache so channels display correctly while
+  // the IRC connection re-establishes and delivers METADATA responses.
+  channelMetaCache.value = loadChannelMetaFromStorage()
   _backgroundMetaTargets.clear()
+  channelMetaResolved.value = new Set(channelMetaCache.value.keys())
 }
 
 function findBuffer(name: string) {
@@ -474,6 +532,13 @@ function getBuffer(name: string, kind: BufferKind): ChatBuffer {
   if (existing)
     return existing
   const buf: ChatBuffer = { name, kind, messages: [], users: [], unread: 0, mentions: 0, joined: false, topic: '', modes: new Set() }
+  // Seed appearance metadata from cache so display-name/avatar/color are
+  // visible immediately on join before the METADATA LIST response arrives.
+  if (kind === 'channel') {
+    const cached = channelMetaCache.value.get(name.toLowerCase())
+    if (cached?.size)
+      buf.metadata = new Map(cached)
+  }
   buffers.value = [...buffers.value, buf]
   return buf
 }
@@ -536,8 +601,10 @@ function addToBuffer(
   if (!opts.prepend && newMsg.msgid != null)
     drainPendingReactions(buf, newMsg.msgid)
 
-  // Track the newest live chat message so DM history fetches know where we left off.
-  if (!opts.backlog && msg.type === 'chat')
+  // Track the newest chat message so DM history fetches know where we left off.
+  // Backlog messages count too - without this, sessions with no live messages never
+  // advance the cursor and replay the same history on every fresh load.
+  if (msg.type === 'chat')
     noteSeen(ts.getTime())
 
   // Only chat messages from other people affect unread/mention/notification state.
@@ -838,6 +905,12 @@ function loadPersisted() {
     return
   inputNick.value = localStorage.getItem(STORAGE_NICK) ?? ''
   inputChannel.value = localStorage.getItem(STORAGE_CHANNEL) ?? ''
+  channelMetaCache.value = loadChannelMetaFromStorage()
+  channelMetaResolved.value = new Set(channelMetaCache.value.keys())
+  const cachedEmail = localStorage.getItem(STORAGE_IDENTITY_EMAIL)
+  accountEmail.value = cachedEmail
+  const cachedAlwaysOn = localStorage.getItem(STORAGE_IDENTITY_ALWAYS_ON)
+  accountAlwaysOn.value = cachedAlwaysOn === null ? null : cachedAlwaysOn === 'true'
   lastSeenTs = Number(localStorage.getItem(STORAGE_LASTSEEN)) || 0
   try {
     closedDms = JSON.parse(localStorage.getItem(STORAGE_CLOSED_DMS) ?? '{}') as Record<string, number>
@@ -928,8 +1001,17 @@ function queryNickServInfo() {
   probeTimer = setTimeout(() => {
     probingNickServInfo = false
     probeTimer = null
-    accountEmail.value ??= ''
-    accountAlwaysOn.value ??= false
+    if (accountEmail.value === null) {
+      accountEmail.value = ''
+      if (import.meta.client)
+        localStorage.setItem(STORAGE_IDENTITY_EMAIL, '')
+    }
+    if (accountAlwaysOn.value === null) {
+      accountAlwaysOn.value = false
+      if (import.meta.client)
+        localStorage.setItem(STORAGE_IDENTITY_ALWAYS_ON, 'false')
+    }
+    accountInfoFetched.value = true
   }, 5000)
 }
 
@@ -941,6 +1023,8 @@ function enableAlwaysOn() {
   if (!account.value)
     return
   accountAlwaysOn.value = true
+  if (import.meta.client)
+    localStorage.setItem(STORAGE_IDENTITY_ALWAYS_ON, 'true')
   suppressingNickServOp = true
   send('PRIVMSG NickServ :SET always-on true')
   setTimeout(() => {
@@ -952,6 +1036,8 @@ function disableAlwaysOn() {
   if (!account.value)
     return
   accountAlwaysOn.value = false
+  if (import.meta.client)
+    localStorage.setItem(STORAGE_IDENTITY_ALWAYS_ON, 'false')
   suppressingNickServOp = true
   send('PRIVMSG NickServ :SET always-on false')
   setTimeout(() => {
@@ -1232,6 +1318,8 @@ function handleMessage(raw: string) {
           echoMessageActive = true
         if (list.includes('message-tags'))
           messageTagsActive = true
+        if (list.includes('draft/read-marker'))
+          readMarkerActive = true
         if (list.includes('sasl') && (authCreds || useAnonymous)) {
           saslMech = useAnonymous ? 'ANONYMOUS' : 'PLAIN'
           send(`AUTHENTICATE ${saslMech}`)
@@ -1595,11 +1683,44 @@ function handleMessage(raw: string) {
             break
           if (closedAt != null)
             forgetClosedDm(target)
-          // Eagerly create the buffer so the DM appears in the sidebar
-          // immediately rather than popping in when the first replayed message
-          // arrives mid-load.
-          getBuffer(target, 'pm')
-          requestHistory(target, historyLowerBound())
+          if (readMarkerActive) {
+            // Defer buffer creation until the MARKREAD reply arrives so we can
+            // skip opening DMs that have no new activity since last read.
+            pendingDmTargets.set(target.toLowerCase(), latestTs)
+            send(`MARKREAD ${target}`)
+          }
+          else {
+            // No read-marker cap: fall back to eager buffer creation.
+            getBuffer(target, 'pm')
+            requestHistory(target, historyLowerBound())
+          }
+        }
+      }
+      break
+    }
+
+    case 'MARKREAD': {
+      const mrTarget = params[0] ?? ''
+      const mrTs = params[1] ?? ''
+      const mrParsed = mrTs && mrTs !== '*'
+        ? Date.parse(mrTs.startsWith('timestamp=') ? mrTs.slice('timestamp='.length) : mrTs)
+        : Number.NaN
+
+      // Seed readPositions from the server marker before any history replay runs.
+      if (mrTarget && Number.isFinite(mrParsed))
+        saveReadPosition(mrTarget, mrParsed)
+
+      // Resolve a deferred DM target from CHATHISTORY TARGETS. Only open the
+      // buffer and fetch history if the conversation has activity newer than the
+      // read marker - otherwise skip it entirely so stale DMs don't clutter the
+      // sidebar on fresh connects.
+      const pendingLatestTs = pendingDmTargets.get(mrTarget.toLowerCase())
+      if (pendingLatestTs != null) {
+        pendingDmTargets.delete(mrTarget.toLowerCase())
+        const readTs = Number.isFinite(mrParsed) ? mrParsed : (readPositions[mrTarget.toLowerCase()] ?? 0)
+        if (pendingLatestTs > readTs) {
+          getBuffer(mrTarget, 'pm')
+          requestHistory(mrTarget, historyLowerBound())
         }
       }
       break
@@ -1822,14 +1943,25 @@ function handleMessage(raw: string) {
       // Always extract the email claim and always-on flag regardless of whether we show the message.
       if (fromNickServ && isAddressedToUs) {
         const emailMatch = /^Email address:(.+)$/.exec(noticeText)
-        if (emailMatch)
+        if (emailMatch) {
           accountEmail.value = emailMatch[1]?.trim() ?? ''
+          if (import.meta.client)
+            localStorage.setItem(STORAGE_IDENTITY_EMAIL, accountEmail.value)
+        }
         // Parse always-on from the explicit GET response or INFO flags.
         const alwaysOnMatch = /stored always-on setting is:\s*(\w+)/i.exec(noticeText)
-        if (alwaysOnMatch)
+        if (alwaysOnMatch) {
           accountAlwaysOn.value = alwaysOnMatch[1]?.toLowerCase() === 'enabled'
-        else if (/^Flags:.*\balways-on\b/i.test(noticeText))
+          if (import.meta.client)
+            localStorage.setItem(STORAGE_IDENTITY_ALWAYS_ON, String(accountAlwaysOn.value))
+          accountInfoFetched.value = true
+        }
+        else if (/^Flags:.*\balways-on\b/i.test(noticeText)) {
           accountAlwaysOn.value = true
+          if (import.meta.client)
+            localStorage.setItem(STORAGE_IDENTITY_ALWAYS_ON, 'true')
+          accountInfoFetched.value = true
+        }
       }
 
       // Swallow NickServ output during the silent background probe or a suppressed SET op.
@@ -2129,7 +2261,13 @@ function handleMessage(raw: string) {
         setUserMeta(metaTarget, metaKey, metaValue || null)
       break
     }
-    case '762': // RPL_METADATAEND - silently consumed
+    case '762': { // RPL_METADATAEND - metadata list complete for target
+      const endTarget = params[1]?.toLowerCase()
+      if (endTarget && endTarget !== '*' && !channelMetaResolved.value.has(endTarget)) {
+        channelMetaResolved.value = new Set(channelMetaResolved.value).add(endTarget)
+      }
+      break
+    }
     case '766': // RPL_NOMATCHINGKEY - silently consumed
       break
 
@@ -2185,7 +2323,16 @@ function handleMessage(raw: string) {
         // Background parent-metadata probes legitimately fail (channel missing or
         // permission denied) - swallow those instead of surfacing a server error.
         const isBackgroundProbe = params.some(p => _backgroundMetaTargets.has(p.toLowerCase()))
-        if (!isBackgroundProbe) {
+        if (isBackgroundProbe) {
+          // Mark probed targets as resolved so pending-state logic can unblock.
+          const probed = params.filter(p => _backgroundMetaTargets.has(p.toLowerCase()))
+          if (probed.length) {
+            const next = new Set(channelMetaResolved.value)
+            for (const t of probed) next.add(t.toLowerCase())
+            channelMetaResolved.value = next
+          }
+        }
+        else {
           const desc = params[params.length - 1] ?? 'Metadata error'
           addServer({ type: 'error', text: `Metadata: ${desc}` }, { ts })
         }
@@ -2248,13 +2395,18 @@ function openSocket() {
   explicitJoinIntents.clear()
   pendingBeforeTargets.clear()
   pendingTimeBoundTargets.clear()
+  pendingDmTargets.clear()
   serviceLog.value = []
   chatHistorySupported.value = false
   echoMessageActive = false
   messageTagsActive = false
+  readMarkerActive = false
   resetBuffers()
   account.value = ''
-  accountEmail.value = null
+  accountEmail.value = import.meta.client ? localStorage.getItem(STORAGE_IDENTITY_EMAIL) : null
+  const _cachedAlwaysOn = import.meta.client ? localStorage.getItem(STORAGE_IDENTITY_ALWAYS_ON) : null
+  accountAlwaysOn.value = _cachedAlwaysOn === null ? null : _cachedAlwaysOn === 'true'
+  accountInfoFetched.value = false
   connState.value = 'connecting'
   addServer({ type: 'system', text: `Connecting to ${WS_URL}...` })
 
@@ -2520,7 +2672,7 @@ function handleCommand(line: string) {
       if (!channel || findBuffer(channel)?.kind !== 'channel')
         break
       const target = rest[0] ?? nick.value
-      send(`MODE ${channel} +o ${target}`)
+      sendMemberMode(channel, '+o', target)
       break
     }
     case 'deop': {
@@ -2528,7 +2680,7 @@ function handleCommand(line: string) {
       if (!channel || findBuffer(channel)?.kind !== 'channel')
         break
       const target = rest[0] ?? nick.value
-      send(`MODE ${channel} -o ${target}`)
+      sendMemberMode(channel, '-o', target)
       break
     }
     case 'voice': {
@@ -2536,7 +2688,7 @@ function handleCommand(line: string) {
       if (!channel || findBuffer(channel)?.kind !== 'channel')
         break
       const target = rest[0] ?? nick.value
-      send(`MODE ${channel} +v ${target}`)
+      sendMemberMode(channel, '+v', target)
       break
     }
     case 'devoice': {
@@ -2544,7 +2696,7 @@ function handleCommand(line: string) {
       if (!channel || findBuffer(channel)?.kind !== 'channel')
         break
       const target = rest[0] ?? nick.value
-      send(`MODE ${channel} -v ${target}`)
+      sendMemberMode(channel, '-v', target)
       break
     }
     case 'kick': {
@@ -2794,7 +2946,11 @@ function isUnauthorizedSubchannel(channelName: string): boolean {
     return false
   for (let i = 1; i < segments.length; i++) {
     const parentName = `${prefix}${segments.slice(0, i).join('/')}`
-    const meta = findBuffer(parentName)?.metadata ?? channelMetaCache.value.get(parentName.toLowerCase())
+    const lc = parentName.toLowerCase()
+    const meta = findBuffer(parentName)?.metadata ?? channelMetaCache.value.get(lc)
+    // Parent metadata not yet received (joined or not) - assume authorized (pending).
+    if (!meta && !channelMetaResolved.value.has(lc))
+      continue
     const allowlist = meta?.get('subchannels')
     if (!allowlist)
       return true
@@ -2816,6 +2972,12 @@ function cacheChannelMeta(target: string, key: string, value: string | null) {
     entry.set(key, value)
   next.set(lc, entry)
   channelMetaCache.value = next
+  // Mark as resolved on first data receipt.
+  if (!channelMetaResolved.value.has(lc))
+    channelMetaResolved.value = new Set(channelMetaResolved.value).add(lc)
+  // Persist appearance keys so they survive page reload.
+  if (APPEARANCE_KEYS.has(key))
+    persistChannelMetaToStorage()
 }
 
 /**
@@ -2843,6 +3005,19 @@ function setChannelMetadata(channel: string, key: string, value: string) {
 /** Remove a metadata key from a channel (METADATA SET with no value = delete). */
 function deleteChannelMetadata(channel: string, key: string) {
   send(`METADATA ${channel} SET ${key}`)
+}
+
+/**
+ * Send a membership mode change (+o/-o/+v/-v) for a channel member.
+ * Uses ChanServ AMODE when the channel is registered so the change persists
+ * across reconnects; falls back to a plain MODE for unregistered channels.
+ */
+function sendMemberMode(channel: string, modeStr: string, targetNick: string) {
+  const buf = findBuffer(channel)
+  if (buf?.registered)
+    send(`PRIVMSG ChanServ :AMODE ${channel} ${modeStr} ${targetNick}`)
+  else
+    send(`MODE ${channel} ${modeStr} ${targetNick}`)
 }
 
 /** Return the calling user's role in a channel, or null if not a member / no privilege. */
@@ -3032,6 +3207,7 @@ export function useIrcChat() {
     // account claim state
     accountEmail,
     accountAlwaysOn,
+    accountInfoFetched,
     queryNickServInfo,
     enableAlwaysOn,
     disableAlwaysOn,
@@ -3051,9 +3227,11 @@ export function useIrcChat() {
     setChannelMetadata,
     deleteChannelMetadata,
     channelMetaCache,
+    channelMetaResolved,
     requestChannelMetadata,
     userMetaStore,
     isUnauthorizedSubchannel,
+    sendMemberMode,
     myChannelRole,
     fetchListModes,
     queryChanServInfo,

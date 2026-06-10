@@ -31,6 +31,8 @@ const userId = useUserId()
 const identityHasIssues = computed(() => {
   if (!isConnected.value || !account.value)
     return false
+  if (accountEmail.value === null || accountAlwaysOn.value === null)
+    return false
   const unclaimed = accountEmail.value === ''
   const notAlwaysOn = accountAlwaysOn.value === false
   return unclaimed || notAlwaysOn
