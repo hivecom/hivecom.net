@@ -23,7 +23,23 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{ compact?: boolean }>()
 
-const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, toggleReaction, chatHistorySupported, isChatVisible } = useIrcChat()
+const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, toggleReaction, chatHistorySupported, isChatVisible, userMetaStore } = useIrcChat()
+
+function ircMeta(nickLower: string | null | undefined) {
+  if (!nickLower)
+    return undefined
+  return userMetaStore.value.get(nickLower)
+}
+
+function ircDisplayName(from: string | null | undefined): string {
+  if (!from)
+    return ''
+  return ircMeta(from.toLowerCase())?.get('display-name') ?? from
+}
+
+function ircAvatarUrl(nickLower: string | null | undefined): string | undefined {
+  return ircMeta(nickLower)?.get('avatar') || undefined
+}
 const { settings } = useDataUserSettings()
 
 // Unknown TAGMSG events are kept in the buffer but only rendered when the user
@@ -1440,6 +1456,7 @@ onBeforeUnmount(() => {
             >
               <div class="chat-log__group-avatar">
                 <UserAvatar v-if="resolvedUser(group.nickLower)" :user-id="resolvedUser(group.nickLower)!.id" :size="32" show-preview linked show-online-indicator />
+                <AvatarMedia v-else-if="ircAvatarUrl(group.nickLower)" :size="32" :url="ircAvatarUrl(group.nickLower)" :alt="group.from ?? ''" />
                 <AvatarMedia v-else :size="32" :alt="group.from ?? ''">
                   <template #default>
                     <Icon v-if="isNickBot(group.nickLower)" name="ph:robot" :size="16" />
@@ -1461,7 +1478,7 @@ onBeforeUnmount(() => {
                     </span>
                   </NuxtLink>
                   <span v-else class="chat-log__nick" :style="groupNickStyle(group.from)">
-                    {{ group.from }}
+                    {{ ircDisplayName(group.from) }}
                   </span>
                   <TimestampDate
                     v-if="showTimestamps"

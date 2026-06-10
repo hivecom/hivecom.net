@@ -61,12 +61,21 @@ const WANTED_CAPS = [
   'batch',
   'message-tags',
   'message-ids',
+  'labeled-response',
   'echo-message',
   'server-time',
   'multi-prefix',
   'account-tag',
   'account-notify',
   'extended-join',
+  // away-notify: real-time AWAY/online presence updates in the user list
+  'away-notify',
+  // draft/pre-away: smooth presence transitions before disconnect
+  'draft/pre-away',
+  // draft/read-marker: server-side read position sync across sessions
+  'draft/read-marker',
+  // setname: display-name fallback for servers without draft/metadata-2
+  'setname',
   'draft/chathistory',
   // Required for Ergo to replay stored TAGMSGs (reactions) as real TAGMSG lines
   // with their client tags intact. Without it, Ergo degrades reaction history to
@@ -206,6 +215,24 @@ const sidebarHidden = ref(
 const accountEmail = ref<string | null>(null)
 // null = not yet determined; true/false parsed from NickServ INFO Flags line
 const accountAlwaysOn = ref<boolean | null>(null)
+
+// Per-nick metadata store populated from draft/metadata-2 METADATA notifications.
+// Keyed by lowercased nick. Used to surface avatar, display-name, and orbit.status
+// in the user list and message log without requiring an open PM buffer per user.
+const userMetaStore = ref(new Map<string, Map<string, string>>())
+
+function setUserMeta(targetNick: string, key: string, value: string | null) {
+  const lc = targetNick.toLowerCase()
+  const existing = userMetaStore.value.get(lc)
+  const entry = new Map(existing)
+  if (value == null || value === '')
+    entry.delete(key)
+  else
+    entry.set(key, value)
+  const store = new Map(userMetaStore.value)
+  store.set(lc, entry)
+  userMetaStore.value = store
+}
 
 // --- WHOIS structured results -----------------------------------------------
 export interface WhoisData {
@@ -1253,6 +1280,14 @@ function handleMessage(raw: string) {
       if (inputChannel.value)
         send(`JOIN ${inputChannel.value}`)
       _startPinging()
+      // Subscribe to Orbit baseline metadata keys (draft/metadata-2).
+      // Ergo pushes live METADATA notifications for subscribed keys whenever
+      // any user visible to this client updates them. Without this subscription
+      // the server only delivers metadata in response to explicit METADATA GET/LIST
+      // requests; the per-channel METADATA LIST on JOIN is a fallback, not a
+      // substitute for the live subscription feed.
+      if (capLs.includes('draft/metadata-2'))
+        send('METADATA * SUB avatar display-name orbit.status')
       // Discover DMs with activity since we were last online.
       requestHistoryTargets()
       break
@@ -1396,6 +1431,15 @@ function handleMessage(raw: string) {
       const isOwnNick = oldName === nick.value
       if (isOwnNick)
         nick.value = newNick
+      // Migrate user metadata to the new nick so avatars and display names survive a rename.
+      const oldMetaLc = oldName.toLowerCase()
+      const metaEntry = userMetaStore.value.get(oldMetaLc)
+      if (metaEntry) {
+        const store = new Map(userMetaStore.value)
+        store.delete(oldMetaLc)
+        store.set(newNick.toLowerCase(), metaEntry)
+        userMetaStore.value = store
+      }
       addServer({ type: 'system', text: `${oldName} is now known as ${newNick}` }, { ts })
       if (isOwnNick && activeName.value !== SERVER_BUFFER)
         addToBuffer(activeName.value, findBuffer(activeName.value)?.kind ?? 'channel', { type: 'system', text: `You are now known as ${newNick}` }, { ts })
@@ -2080,6 +2124,9 @@ function handleMessage(raw: string) {
       // Mirror channel metadata into the cache so unjoined parents are covered.
       if (metaKey && (metaTarget.startsWith('#') || metaTarget.startsWith('&')))
         cacheChannelMeta(metaTarget, metaKey, metaValue)
+      // Per-user metadata: store in userMetaStore for nick targets.
+      else if (metaKey && metaTarget && metaTarget !== '*')
+        setUserMeta(metaTarget, metaKey, metaValue || null)
       break
     }
     case '762': // RPL_METADATAEND - silently consumed
@@ -2126,6 +2173,9 @@ function handleMessage(raw: string) {
       // Mirror channel metadata into the cache (empty value = key deleted).
       if (metaKey && (metaTarget.startsWith('#') || metaTarget.startsWith('&')))
         cacheChannelMeta(metaTarget, metaKey, metaValue || null)
+      // Per-user metadata: live push for nick targets.
+      else if (metaKey && metaTarget)
+        setUserMeta(metaTarget, metaKey, metaValue || null)
       break
     }
 
@@ -3002,6 +3052,7 @@ export function useIrcChat() {
     deleteChannelMetadata,
     channelMetaCache,
     requestChannelMetadata,
+    userMetaStore,
     isUnauthorizedSubchannel,
     myChannelRole,
     fetchListModes,

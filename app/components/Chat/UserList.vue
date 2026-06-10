@@ -12,7 +12,11 @@ import { channelRole, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-const { users, nick, inputMessage, openPm } = useIrcChat()
+const { users, nick, inputMessage, openPm, userMetaStore } = useIrcChat()
+
+function ircMeta(name: string) {
+  return userMetaStore.value.get(name.toLowerCase())
+}
 const { settings } = useDataUserSettings()
 const { resolved, resolve } = useIrcNickResolver()
 const isMobile = useBreakpoint('<s')
@@ -40,6 +44,18 @@ function userStyle(name: string) {
   if (name !== nick.value && settings.value.chat_colored_nicks)
     return { color: nickColor(name) }
   return undefined
+}
+
+function ircDisplayName(name: string): string {
+  return ircMeta(name)?.get('display-name') ?? name
+}
+
+function ircAvatarUrl(name: string): string | undefined {
+  return ircMeta(name)?.get('avatar') || undefined
+}
+
+function ircStatus(name: string): string | undefined {
+  return ircMeta(name)?.get('orbit.status') || undefined
 }
 
 // ---- Context menu ----
@@ -114,6 +130,7 @@ const menuUserData = computed(() =>
               show-preview
               class="chat-users__avatar"
             />
+            <AvatarMedia v-else-if="ircAvatarUrl(user.name)" :size="28" :url="ircAvatarUrl(user.name)" :alt="user.name" class="chat-users__avatar" />
             <AvatarMedia v-else :size="28" :alt="user.name" class="chat-users__avatar">
               <template #default>
                 {{ user.name.charAt(0).toUpperCase() }}
@@ -124,7 +141,8 @@ const menuUserData = computed(() =>
               type="button"
               @click="user.name !== nick ? openPm(user.name) : mention(user.name)"
             >
-              <span class="chat-users__name" :style="userStyle(user.name)">{{ user.name }}</span>
+              <span class="chat-users__name" :style="userStyle(user.name)">{{ ircDisplayName(user.name) }}</span>
+              <span v-if="ircStatus(user.name)" class="chat-users__status">{{ ircStatus(user.name) }}</span>
               <Tooltip v-if="user.bot" :disabled="isMobile">
                 <Icon name="ph:robot" size="12" class="chat-users__bot-icon" />
                 <template #tooltip>
@@ -284,6 +302,15 @@ const menuUserData = computed(() =>
         height: 16px;
       }
     }
+  }
+
+  &__status {
+    font-size: var(--font-size-xxs);
+    color: var(--color-text-lighter);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 1;
   }
 
   &__empty {
