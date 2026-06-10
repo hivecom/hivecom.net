@@ -453,8 +453,6 @@ function openFriendsModal() {
 
         <!-- (Right) -->
         <Flex column gap="m" class="profile-sidebar-col">
-          <ProfileTheme v-if="profile.theme_id" :theme-id="profile.theme_id" />
-
           <!-- Activity section -->
           <ProfileActivity
             v-if="profile.steam_id !== null || profile.teamspeak_identities?.toString() !== ''"
@@ -462,6 +460,8 @@ function openFriendsModal() {
             :is-own-profile="isOwnProfile"
             :is-logged-in="isLoggedIn"
           />
+
+          <ProfileTheme v-if="profile.theme_id" :theme-id="profile.theme_id" />
 
           <!-- Recent Discussions -->
           <ProfileDiscussions :profile-id="profile.id" :username="profile.username" />
