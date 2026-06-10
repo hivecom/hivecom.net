@@ -1341,8 +1341,11 @@ onBeforeUnmount(() => {
                   />
                 </template>
               </div>
-              <div v-if="msg.msgid && settings.chat_irc_reactions" class="chat-log__line-react">
-                <ReactionsSelect @reaction="(emote) => toggleReaction(msg, emote)" />
+              <div v-if="msg.msgid && msg.type === 'chat'" class="chat-log__line-react">
+                <button v-if="msg.from" class="chat-log__line-reply-btn" @click="reply(msg)">
+                  <Icon name="ph:arrow-bend-up-left" size="16" class="text-color-lighter" />
+                </button>
+                <ReactionsSelect v-if="settings.chat_irc_reactions" @reaction="(emote) => toggleReaction(msg, emote)" />
               </div>
             </div>
           </template>
@@ -1536,6 +1539,9 @@ onBeforeUnmount(() => {
                     </template>
                     <ChatMessageReactions v-if="item.msg.reactions" :message="item.msg" />
                     <div v-if="item.msg.msgid" class="chat-log__line-react">
+                      <button class="chat-log__line-reply-btn" @click="reply(item.msg)">
+                        <Icon name="ph:arrow-bend-up-left" :size="16" class="text-color-lighter" />
+                      </button>
                       <ReactionsSelect @reaction="(emote) => toggleReaction(item.msg, emote)" />
                     </div>
                   </div>
@@ -1987,7 +1993,7 @@ onBeforeUnmount(() => {
     margin-left: var(--space-xxs);
     height: 1em;
     width: auto;
-    max-width: none;
+    max-width: 2em;
     max-height: none;
     vertical-align: middle;
     border: none;
@@ -2133,7 +2139,9 @@ onBeforeUnmount(() => {
     right: 0;
     top: 0;
     opacity: 0;
-    height: var(--chat-font-size, var(--font-size-s));
+    display: flex;
+    align-items: center;
+    height: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
     pointer-events: none;
     transition: opacity var(--transition-fast);
     background: var(--color-bg-medium);
@@ -2156,10 +2164,23 @@ onBeforeUnmount(() => {
       display: none;
     }
 
-    :deep(.reactions__button) {
+    :deep(.reactions__button),
+    .chat-log__line-reply-btn {
       height: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
       width: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
       color: var(--color-text-lighter);
+      font-size: var(--chat-font-size, var(--font-size-s));
+    }
+
+    .chat-log__line-reply-btn {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: var(--border-radius-m);
+
+      &:hover {
+        background-color: var(--color-button-gray-hover);
+      }
     }
   }
 

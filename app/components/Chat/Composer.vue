@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex, Input, Modal, Spinner } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import ChatInfoModal from '@/components/Chat/ChannelInfoModal.vue'
 import IrcWhoisCard from '@/components/Chat/IrcWhoisCard.vue'
 import ChatTypingIndicator from '@/components/Chat/TypingIndicator.vue'
@@ -14,9 +14,13 @@ const props = defineProps<{
   compact?: boolean
 }>()
 
-const { inputMessage, activeName, activeBuffer, canChat, users, buffers, nick, sendMessage, replyTarget, clearReply, sendTyping, requestWhois, markBufferRead } = useIrcChat()
+const { inputMessage, activeName, activeBuffer, canChat, users, buffers, nick, sendMessage, replyTarget, clearReply, sendTyping, requestWhois, markBufferRead, channelList, listChannels, channelListLoading, registerComposerFocus } = useIrcChat()
 const { settings } = useDataUserSettings()
 const { resolved: resolvedNicks, resolve: resolveNick } = useIrcNickResolver()
+
+onMounted(() => {
+  registerComposerFocus(() => nativeInput()?.focus())
+})
 
 watch(activeBuffer, (buf) => {
   if (buf?.kind === 'pm')
@@ -106,10 +110,39 @@ const suggestions = computed<Suggestion[]>(() => {
       .map(u => ({ value: u.name, label: u.name, colored: true }))
   }
   if (mode.value === 'channel') {
-    return buffers.value
-      .filter(b => b.kind === 'channel' && b.name.toLowerCase().startsWith(`#${q}`))
-      .slice(0, MAX_SUGGESTIONS)
-      .map(b => ({ value: b.name, label: b.name, hint: b.topic, colored: false }))
+    const prefix = `#${q}`
+    const isJoinCmd = /^\/j(?:oin)? /i.test(inputMessage.value)
+    if (isJoinCmd) {
+      // Fetch channel list on demand if not yet loaded.
+      if (!channelList.value.length && !channelListLoading.value)
+        listChannels()
+      const joinedNames = new Set(buffers.value.filter(b => b.kind === 'channel' && b.joined).map(b => b.name.toLowerCase()))
+      // Prefer channel list (from browser) if populated; otherwise fall back to all buffered channels.
+      if (channelList.value.length) {
+        return channelList.value
+          .filter(e => !joinedNames.has(e.name.toLowerCase()) && e.name.toLowerCase().startsWith(prefix))
+          .slice(0, MAX_SUGGESTIONS)
+          .map(e => ({ value: e.name, label: e.name, hint: e.topic, colored: false }))
+      }
+      return buffers.value
+        .filter(b => b.kind === 'channel' && b.name.toLowerCase().startsWith(prefix))
+        .slice(0, MAX_SUGGESTIONS)
+        .map(b => ({ value: b.name, label: b.name, hint: b.topic, colored: false }))
+    }
+    // General #channel reference: merge buffers + channelList, dedupe, sort alphabetically.
+    const seen = new Set<string>()
+    const merged: Suggestion[] = []
+    for (const b of buffers.value) {
+      if (b.kind === 'channel' && b.name.toLowerCase().startsWith(prefix)) {
+        seen.add(b.name.toLowerCase())
+        merged.push({ value: b.name, label: b.name, hint: b.topic, colored: false })
+      }
+    }
+    for (const e of channelList.value) {
+      if (!seen.has(e.name.toLowerCase()) && e.name.toLowerCase().startsWith(prefix))
+        merged.push({ value: e.name, label: e.name, hint: e.topic, colored: false })
+    }
+    return merged.sort((a, b) => a.value.localeCompare(b.value)).slice(0, MAX_SUGGESTIONS)
   }
   if (mode.value === 'command') {
     return COMMANDS

@@ -2,7 +2,7 @@
 import type { ComponentPublicInstance } from 'vue'
 import type { ChannelGhostNode, ChannelGroupNode, ChannelItemNode, ChannelTreeNode } from '@/components/Chat/ChannelTreeItem.vue'
 import type { ChatBuffer } from '@/composables/useIrcChat'
-import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, Input, Overflow, pushToast, Sheet, Tooltip } from '@dolanske/vui'
+import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, Input, Modal, Overflow, pushToast, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import ChannelInfoModal from '@/components/Chat/ChannelInfoModal.vue'
 import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
@@ -20,7 +20,7 @@ const props = defineProps<{
   horizontal?: boolean
 }>()
 
-const { buffers, activeName, setActive, closeBuffer, joinChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, channelMetaResolved, requestChannelMetadata, isUnauthorizedSubchannel } = useIrcChat()
+const { buffers, activeName, setActive, closeBuffer, joinChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, channelMetaResolved, requestChannelMetadata, isUnauthorizedSubchannel, setChannelMetadata } = useIrcChat()
 
 // Proactively fetch metadata for every implied parent path so slash-nesting can
 // be verified and the parent displayed even when we haven't joined it.
@@ -430,6 +430,33 @@ function openChannelInfo(buf: ChatBuffer) {
   channelInfoOpen.value = true
   closeMenu()
 }
+
+const createSubchannelTarget = ref<ChatBuffer | null>(null)
+const createSubchannelInput = ref('')
+
+function openCreateSubchannel(buf: ChatBuffer) {
+  createSubchannelTarget.value = buf
+  createSubchannelInput.value = ''
+  closeMenu()
+}
+
+function confirmCreateSubchannel() {
+  const parent = createSubchannelTarget.value
+  const slug = createSubchannelInput.value.trim().replace(/^[#&/]+/, '').replace(/\//g, '-')
+  if (!parent || !slug)
+    return
+  const fullName = `${parent.name}/${slug}`
+  // Update parent subchannels metadata.
+  const existing = parent.metadata?.get('subchannels') ?? channelMetaCache.value.get(parent.name.toLowerCase())?.get('subchannels') ?? ''
+  const list = existing ? existing.split(',').map(s => s.trim()).filter(Boolean) : []
+  if (!list.map(s => s.toLowerCase()).includes(slug.toLowerCase())) {
+    list.push(slug)
+    setChannelMetadata(parent.name, 'subchannels', list.join(','))
+  }
+  joinChannel(fullName)
+  createSubchannelTarget.value = null
+  createSubchannelInput.value = ''
+}
 </script>
 
 <template>
@@ -605,6 +632,12 @@ function openChannelInfo(buf: ChatBuffer) {
                 </template>
                 Channel settings
               </DropdownItem>
+              <DropdownItem v-if="canEditBuffer(menuBuffer)" @click="openCreateSubchannel(menuBuffer)">
+                <template #icon>
+                  <Icon name="ph:git-branch" />
+                </template>
+                Create sub-channel
+              </DropdownItem>
               <Divider />
               <DropdownItem @click="closeBuffer(menuBuffer.name)">
                 <template #icon>
@@ -694,6 +727,12 @@ function openChannelInfo(buf: ChatBuffer) {
               </template>
               Channel settings
             </DropdownItem>
+            <DropdownItem v-if="canEditBuffer(menuBuffer)" @click="openCreateSubchannel(menuBuffer)">
+              <template #icon>
+                <Icon name="ph:git-branch" />
+              </template>
+              Create sub-channel
+            </DropdownItem>
             <Divider />
             <DropdownItem @click="closeBuffer(menuBuffer.name)">
               <template #icon>
@@ -756,6 +795,33 @@ function openChannelInfo(buf: ChatBuffer) {
   </Flex>
   <IrcWhoisModal :nick="whoisModalNick" :open="whoisModalOpen" @close="whoisModalOpen = false" />
   <ChannelInfoModal :channel-name="menuBuffer?.kind === 'channel' ? menuBuffer.name : undefined" :open="channelInfoOpen" @close="channelInfoOpen = false" />
+  <Modal :open="createSubchannelTarget !== null" size="s" @close="createSubchannelTarget = null">
+    <template #header>
+      <h4>Create sub-channel</h4>
+    </template>
+    <Flex column gap="m">
+      <p class="text-s text-color-light" style="margin:0">
+        Sub-channel of <strong class="text-s">{{ createSubchannelTarget?.name }}</strong>. Enter a name for the new sub-channel.
+      </p>
+      <Input
+        v-model="createSubchannelInput"
+        expand
+        placeholder="sub-channel-name"
+        autofocus
+        @keydown.enter="confirmCreateSubchannel"
+      />
+    </Flex>
+    <template #footer>
+      <Flex gap="xs" x-end>
+        <Button variant="gray" @click="createSubchannelTarget = null">
+          Cancel
+        </Button>
+        <Button variant="fill" :disabled="!createSubchannelInput.trim()" @click="confirmCreateSubchannel">
+          Create
+        </Button>
+      </Flex>
+    </template>
+  </Modal>
 </template>
 
 <style lang="scss" scoped>

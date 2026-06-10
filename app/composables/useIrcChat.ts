@@ -290,6 +290,7 @@ const inputNick = ref('')
 const inputChannel = ref('')
 const inputMessage = ref('')
 const replyTarget = ref<ChatMessage | null>(null)
+let focusComposerFn: (() => void) | null = null
 
 // Extra words (besides the current nick) that count as a mention. Sourced from
 // user settings and pushed in via `setMentionKeywords` so this module-level
@@ -2156,6 +2157,18 @@ function handleMessage(raw: string) {
       break
     }
 
+    case '379': { // RPL_WHOISMODES (UnrealIRCd user modes)
+      const [, wNick] = params
+      if (wNick) {
+        const key = wNick.toLowerCase()
+        // Silently consume if this is a tracked WHOIS response; the modes
+        // text is informational and not surfaced in the modal UI yet.
+        if (!_whoisStore.value.has(key))
+          addToActive({ type: 'system', text: `[${wNick}] ${params[params.length - 1] ?? ''}` }, { ts })
+      }
+      break
+    }
+
     case 'TAGMSG': {
       if (!nickFrom)
         break
@@ -2197,21 +2210,10 @@ function handleMessage(raw: string) {
       }
 
       // Tags that are protocol metadata - never user-meaningful.
-      const META_TAGS = new Set(['time', 'batch', 'msgid', 'label', 'account'])
+      const _META_TAGS = new Set(['time', 'batch', 'msgid', 'label', 'account'])
       // Tags we recognise and silently handle (or intentionally ignore).
-      const KNOWN_TAGS = new Set(['+typing', 'draft/typing', '+react', '+draft/react', '+unreact', '+draft/unreact', 'draft/react', '+icon', '+reply', 'draft/reply', '+draft/reply'])
-      const unknownTags = Object.keys(tags).filter(k => !META_TAGS.has(k) && !KNOWN_TAGS.has(k))
-      if (!unknownTags.length)
-        break
-      const isTagChannel = tagTarget.startsWith('#') || tagTarget.startsWith('&')
-      const tagBufName = isTagChannel ? tagTarget : nickFrom
-      const tagBufKind: BufferKind = isTagChannel ? 'channel' : 'pm'
-      const tagStr = unknownTags.join(', ')
-      addToBuffer(tagBufName, tagBufKind, {
-        type: 'tagmsg',
-        text: `${nickFrom} sent an unknown tag: ${tagStr}`,
-        tag: tagStr,
-      }, { ts })
+      const _KNOWN_TAGS = new Set(['+typing', 'draft/typing', '+react', '+draft/react', '+unreact', '+draft/unreact', 'draft/react', '+icon', '+reply', 'draft/reply', '+draft/reply'])
+      // Unknown tags - silently discard. Nothing user-meaningful to display.
       break
     }
 
@@ -2268,6 +2270,8 @@ function handleMessage(raw: string) {
       }
       break
     }
+    case '770': // RPL_METADATASUBOK - subscription confirmed, no display needed
+      break
     case '766': // RPL_NOMATCHINGKEY - silently consumed
       break
 
@@ -2624,7 +2628,26 @@ function handleCommand(line: string) {
     case 'j':
       if (arg) {
         const parts = arg.split(' ')
-        joinChannel(parts[0] ?? '', parts[1])
+        const channelArg = parts[0] ?? ''
+        joinChannel(channelArg, parts[1])
+        // Auto-register as subchannel if user is OP on the parent.
+        const fullName = channelArg.startsWith('#') || channelArg.startsWith('&') ? channelArg : `#${channelArg}`
+        const pfx = fullName[0]!
+        const rawSegs = fullName.slice(1).split('/').filter(Boolean)
+        if (rawSegs.length > 1) {
+          const parentName = `${pfx}${rawSegs.slice(0, -1).join('/')}`
+          const subSlug = rawSegs[rawSegs.length - 1]!
+          const role = myChannelRole(parentName)
+          if (role && ['~', '&', '@'].includes(role.symbol)) {
+            const parentBuf = findBuffer(parentName)
+            const existing = parentBuf?.metadata?.get('subchannels') ?? channelMetaCache.value.get(parentName.toLowerCase())?.get('subchannels') ?? ''
+            const list = existing ? existing.split(',').map(s => s.trim()).filter(Boolean) : []
+            if (!list.map(s => s.toLowerCase()).includes(subSlug.toLowerCase())) {
+              list.push(subSlug)
+              setChannelMetadata(parentName, 'subchannels', list.join(','))
+            }
+          }
+        }
       }
       break
     case 'part':
@@ -2744,6 +2767,11 @@ function handleCommand(line: string) {
 
 function setReply(msg: ChatMessage) {
   replyTarget.value = msg
+  focusComposerFn?.()
+}
+
+function registerComposerFocus(fn: () => void) {
+  focusComposerFn = fn
 }
 
 function clearReply() {
@@ -3157,6 +3185,7 @@ export function useIrcChat() {
     replyTarget,
     setReply,
     clearReply,
+    registerComposerFocus,
     // reactions
     toggleReaction,
     // typing

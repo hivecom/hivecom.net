@@ -8,7 +8,7 @@ import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 
-const { activeBuffer, buffers, joinChannel, openPm, requestWhois, isUnauthorizedSubchannel } = useIrcChat()
+const { activeBuffer, buffers, joinChannel, openPm, requestWhois, isUnauthorizedSubchannel, myChannelRole } = useIrcChat()
 const { resolved: resolvedNicks, resolve: resolveNick } = useIrcNickResolver()
 
 watch(activeBuffer, (buf) => {
@@ -36,6 +36,15 @@ const pmIsService = computed(() => {
 })
 
 const hasPmInfo = computed(() => activeBuffer.value?.kind === 'pm')
+
+const channelNeedsRegistration = computed(() => {
+  if (activeBuffer.value?.kind !== 'channel')
+    return false
+  if (activeBuffer.value.registered !== false)
+    return false
+  const role = myChannelRole(activeBuffer.value.name)
+  return role !== null && ['~', '&', '@'].includes(role.symbol)
+})
 
 const infoOpen = ref(false)
 
@@ -106,9 +115,17 @@ function topicSegments(topic: string): TopicSegment[] {
             </template>
           </span>
         </Flex>
-        <Button square plain aria-label="Channel info" @click="infoOpen = true">
-          <Icon name="ph:info" size="14" />
-        </Button>
+        <div class="channel-header__info-wrap">
+          <Tooltip v-if="channelNeedsRegistration" placement="bottom-end">
+            <span class="channel-header__info-dot" />
+            <template #tooltip>
+              <p>Channel not registered - open info to register with ChanServ.</p>
+            </template>
+          </Tooltip>
+          <Button square plain aria-label="Channel info" @click="infoOpen = true">
+            <Icon name="ph:info" size="14" />
+          </Button>
+        </div>
       </Flex>
     </template>
 
@@ -177,6 +194,22 @@ function topicSegments(topic: string): TopicSegment[] {
     -webkit-box-orient: vertical;
     overflow: hidden;
     min-width: 0;
+  }
+
+  &__info-wrap {
+    position: relative;
+  }
+
+  &__info-dot {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-text-yellow);
+    pointer-events: none;
+    z-index: 1;
   }
 
   &__link {

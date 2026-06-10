@@ -712,7 +712,7 @@ function save() {
         <Flex column expand>
           <Flex y-center x-between expand class="channel-settings__flag-row">
             <Flex column :gap="0">
-              <span class="channel-settings__label">Channel persistence registration</span>
+              <span class="channel-settings__label">Channel Persistence</span>
             </Flex>
             <Flex y-center gap="xs">
               <Spinner v-if="buf?.registered === undefined" size="s" />
