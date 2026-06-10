@@ -284,12 +284,12 @@ function clearFilters() {
               </Flex>
             </Table.Cell>
             <Table.Cell>
-              <Flex v-if="project.Tags && project.Tags.length > 0" expand class="tags-cell">
+              <Flex v-if="project.Tags && project.Tags.length > 0" expand gap="xxs">
                 <Badge
                   v-for="tag in project.Tags"
                   :key="tag"
-                  size="s"
                   variant="neutral"
+                  outline
                   class="table-tag"
                 >
                   {{ tag }}
@@ -356,16 +356,6 @@ td {
   td {
     cursor: pointer;
     background-color: var(--color-bg-raised);
-  }
-}
-.tags-cell {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-
-  .table-tag {
-    font-size: var(--font-size-xxs);
-    white-space: nowrap;
   }
 }
 </style>

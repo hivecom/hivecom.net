@@ -49,9 +49,10 @@ const columns = computed(() => props.split === 'equal' ? 2 : '1fr 2fr')
 
 <style scoped lang="scss">
 .detail-row {
-  height: calc(var(--interactive-el-height) + var(--space-s) * 2);
+  min-height: calc(var(--interactive-el-height) * 1.5);
   align-items: center;
-  padding: 0 var(--space-m);
+  padding-inline: var(--space-m);
+  padding-block: var(--space-xs);
 
   &__label {
     color: var(--color-text-light);

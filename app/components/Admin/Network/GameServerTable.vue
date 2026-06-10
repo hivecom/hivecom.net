@@ -430,7 +430,7 @@ function clearFilters() {
               <span v-else class="text-color-lighter text-xs">No query</span>
             </Table.Cell>
             <Table.Cell>
-              <Badge v-if="gameserver.Container" variant="neutral" outline size="s">
+              <Badge v-if="gameserver.Container" variant="neutral" outline>
                 {{ gameserver.Container }}
               </Badge>
               <span v-else>-</span>

@@ -364,6 +364,7 @@ onBeforeMount(async () => {
   </Flex>
 
   <ThemeDetails
+    v-if="selectedTheme"
     v-model:is-open="showThemeDetails"
     :theme="selectedTheme"
     @delete="(item) => handleThemeDelete(item.id)"

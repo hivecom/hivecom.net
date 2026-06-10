@@ -268,3 +268,11 @@ onBeforeMount(fetchEntries)
     @save="handleSave"
   />
 </template>
+
+<style scoped>
+td {
+  &:nth-child(3) {
+    word-break: break-all;
+  }
+}
+</style>
