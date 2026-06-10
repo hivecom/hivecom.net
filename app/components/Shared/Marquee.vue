@@ -14,7 +14,7 @@ interface DragEndPayload {
 
 const props = withDefaults(defineProps<Props>(), {
   speed: 40,
-  direction: 'right',
+  direction: 'left',
   pauseOnHover: true,
   draggable: true,
 })
@@ -72,14 +72,13 @@ function normalizeOffset() {
   const w = contentWidth.value
   if (w <= 0)
     return
-  if (props.direction === 'left') {
-    // Keep in range [-w, 0)
-    offset.value = ((offset.value % w) - w) % w
-  }
-  else {
-    // Keep in range [0, w)
-    offset.value = ((offset.value % w) + w) % w
-  }
+  // Keep offset in (-w, 0] for BOTH directions. The track lays out two
+  // identical copies at [0, w] and [w, 2w], so the viewport is only guaranteed
+  // to be covered while offset <= 0 (a positive offset exposes a blank gap on
+  // the left). Direction only flips the velocity sign (see targetVelocity);
+  // subtracting whole multiples of w here never shifts the visible image
+  // because the two copies are identical and adjacent.
+  offset.value = ((offset.value % w) - w) % w
 }
 
 function loop(timestamp: number) {
