@@ -4,10 +4,13 @@ import type { ChannelGroupNode, ChannelItemNode, ChannelTreeNode } from '@/compo
 import type { ChatBuffer } from '@/composables/useIrcChat'
 import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, Input, Overflow, pushToast, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import ChannelInfoModal from '@/components/Chat/ChannelInfoModal.vue'
 import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
 import ChannelTreeItem from '@/components/Chat/ChannelTreeItem.vue'
+import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
+import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -17,7 +20,21 @@ const props = defineProps<{
   horizontal?: boolean
 }>()
 
-const { buffers, activeName, setActive, closeBuffer, joinChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole } = useIrcChat()
+const { buffers, activeName, setActive, closeBuffer, joinChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, requestChannelMetadata, isUnauthorizedSubchannel } = useIrcChat()
+
+// Proactively fetch metadata for every implied parent path so slash-nesting can
+// be verified and the parent displayed even when we haven't joined it.
+// draft/metadata-2 allows METADATA LIST on any channel target.
+watch(buffers, () => {
+  for (const buf of buffers.value) {
+    if (buf.kind !== 'channel')
+      continue
+    const prefix = buf.name[0] ?? '#'
+    const segments = buf.name.replace(/^[#&]/, '').split('/').filter(Boolean)
+    for (let i = 1; i < segments.length; i++)
+      requestChannelMetadata(`${prefix}${segments.slice(0, i).join('/')}`)
+  }
+}, { immediate: true })
 
 const sortedBuffers = computed(() => {
   const server = buffers.value.filter(b => b.kind === 'server')
@@ -139,7 +156,7 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
     if (existing)
       return existing
 
-    const node: ChannelGroupNode = { type: 'group', name, fullPath, parentBuffer: null, children: [] }
+    const node: ChannelGroupNode = { type: 'group', name, fullPath, parentBuffer: null, meta: channelMeta(fullPath) ?? null, children: [] }
     groupByPath.set(fullPath, node)
 
     // If a matching leaf is already at this level, replace it in-place (preserves sort order)
@@ -154,6 +171,45 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
       list.push(node)
     }
     return node
+  }
+
+  // Locate an open channel buffer by its slash path (case-insensitive, no #).
+  function findChannelBuffer(path: string): ChatBuffer | undefined {
+    const target = path.toLowerCase()
+    return sortedBuffers.value.find(
+      b => b.kind === 'channel' && b.name.replace(/^#/, '').toLowerCase() === target,
+    )
+  }
+
+  // Resolve a channel's metadata from its open buffer, falling back to the
+  // metadata cache (covers parents we've fetched but not joined).
+  function channelMeta(path: string): Map<string, string> | undefined {
+    return findChannelBuffer(path)?.metadata ?? channelMetaCache.value.get(path.toLowerCase())
+  }
+
+  // A parent authorizes a direct child leaf when its `subchannels` metadata
+  // (comma-separated) lists that leaf. Only ops/founder can set channel
+  // metadata, so the parent's allowlist is the authority - a squatter cannot
+  // make #playground claim their #playground/2.
+  function parentAuthorizes(parentPath: string, childSegment: string): boolean {
+    const raw = channelMeta(parentPath)?.get('subchannels')
+    if (!raw)
+      return false
+    return raw
+      .split(',')
+      .map(s => s.trim().toLowerCase())
+      .filter(Boolean)
+      .includes(childSegment.toLowerCase())
+  }
+
+  // Nesting is all-or-nothing: every parent->child link in the chain must be
+  // authorized, otherwise the channel renders flat at the top level.
+  function isChainAuthorized(segments: string[]): boolean {
+    for (let i = 1; i < segments.length; i++) {
+      if (!parentAuthorizes(segments.slice(0, i).join('/'), segments[i]!))
+        return false
+    }
+    return true
   }
 
   const root: ChannelTreeNode[] = []
@@ -177,6 +233,13 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
       else {
         root.push({ type: 'channel', buffer: buf, displayName: rawName })
       }
+      continue
+    }
+
+    // Unverified nesting: render flat at the top level using the full path so
+    // an unauthorized child can't masquerade as belonging to the parent.
+    if (!isChainAuthorized(segments)) {
+      root.push({ type: 'channel', buffer: buf, displayName: rawName })
       continue
     }
 
@@ -220,8 +283,8 @@ function onContextMenu(event: MouseEvent) {
     document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
   }
 
-  // No channel/PM under the cursor (empty space) - suppress the menu entirely.
-  if (!menuBuffer.value) {
+  // No channel/PM under the cursor (empty space or server) - suppress the menu entirely.
+  if (!menuBuffer.value || menuBuffer.value.kind === 'server') {
     event.stopPropagation()
     return
   }
@@ -270,6 +333,24 @@ function canEditBuffer(buf: ChatBuffer): boolean {
 
 function openSettings(buf: ChatBuffer) {
   channelSettingsOpen.value = buf.name
+  closeMenu()
+}
+
+const { settings } = useDataUserSettings()
+const whoisModalNick = ref<string | null>(null)
+const whoisModalOpen = ref(false)
+
+function openWhois(name: string) {
+  whoisModalNick.value = name
+  whoisModalOpen.value = true
+  closeMenu()
+}
+
+const channelInfoOpen = ref(false)
+
+function openChannelInfo(buf: ChatBuffer) {
+  menuBuffer.value = buf
+  channelInfoOpen.value = true
   closeMenu()
 }
 </script>
@@ -359,8 +440,16 @@ function openSettings(buf: ChatBuffer) {
                     v-if="!(isMobile && buf.kind === 'server')"
                     class="chat-channels__name chat-channels__name--compact"
                   >{{ bufferLabel(buf) }}</span>
-                  <ChannelModeBadges v-if="buf.kind === 'channel'" :modes="buf.modes" />
-                  <ChannelModeBadges v-if="buf.kind === 'pm'" :is-service="isPmService(buf.name)" :is-bot="isPmBot(buf.name)" />
+                  <ChannelModeBadges v-if="buf.kind === 'channel'" :modes="buf.modes" compact />
+                  <ChannelModeBadges v-if="buf.kind === 'pm'" :is-service="isPmService(buf.name)" :is-bot="isPmBot(buf.name)" compact />
+                  <Tooltip v-if="buf.kind === 'channel' && isUnauthorizedSubchannel(buf.name)" placement="bottom">
+                    <Badge variant="warning" size="s" outline class="chat-channels__unverified-badge">
+                      <Icon name="ph:warning" size="10" />
+                    </Badge>
+                    <template #tooltip>
+                      <p>Unverified subchannel - the parent channel has not authorized this.</p>
+                    </template>
+                  </Tooltip>
                 </Flex>
                 <Badge v-if="buf.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
                   {{ buf.mentions }}
@@ -407,6 +496,13 @@ function openSettings(buf: ChatBuffer) {
           <template v-if="menuBuffer">
             <!-- Channel actions -->
             <template v-if="menuBuffer.kind === 'channel'">
+              <DropdownItem @click="openChannelInfo(menuBuffer)">
+                <template #icon>
+                  <Icon name="ph:info" />
+                </template>
+                About
+              </DropdownItem>
+              <Divider />
               <DropdownItem @click="copyText(buildChannelLink(menuBuffer.name), 'Channel link')">
                 <template #icon>
                   <Icon name="ph:link" />
@@ -443,6 +539,18 @@ function openSettings(buf: ChatBuffer) {
 
             <!-- PM actions -->
             <template v-else-if="menuBuffer.kind === 'pm'">
+              <DropdownItem v-if="!isPmService(menuBuffer.name)" @click="openWhois(menuBuffer.name)">
+                <template #icon>
+                  <Icon name="ph:info" />
+                </template>
+                <template v-if="settings.chat_irc_native_modes">
+                  WHOIS
+                </template>
+                <template v-else>
+                  About
+                </template>
+              </DropdownItem>
+              <Divider v-if="!isPmService(menuBuffer.name)" />
               <DropdownItem @click="copyText(menuBuffer.name, 'Nickname')">
                 <template #icon>
                   <Icon name="ph:user" />
@@ -477,6 +585,13 @@ function openSettings(buf: ChatBuffer) {
       <div class="vui-dropdown chat-channels__menu" @click="closeMenu">
         <template v-if="menuBuffer">
           <template v-if="menuBuffer.kind === 'channel'">
+            <DropdownItem @click="openChannelInfo(menuBuffer)">
+              <template #icon>
+                <Icon name="ph:info" />
+              </template>
+              About
+            </DropdownItem>
+            <Divider />
             <DropdownItem @click="copyText(buildChannelLink(menuBuffer.name), 'Channel link')">
               <template #icon>
                 <Icon name="ph:link" />
@@ -512,6 +627,18 @@ function openSettings(buf: ChatBuffer) {
           </template>
 
           <template v-else-if="menuBuffer.kind === 'pm'">
+            <DropdownItem v-if="!isPmService(menuBuffer.name)" @click="openWhois(menuBuffer.name)">
+              <template #icon>
+                <Icon name="ph:info" />
+              </template>
+              <template v-if="settings.chat_irc_native_modes">
+                WHOIS
+              </template>
+              <template v-else>
+                About
+              </template>
+            </DropdownItem>
+            <Divider v-if="!isPmService(menuBuffer.name)" />
             <DropdownItem @click="copyText(menuBuffer.name, 'Nickname')">
               <template #icon>
                 <Icon name="ph:user" />
@@ -550,6 +677,8 @@ function openSettings(buf: ChatBuffer) {
       </Button>
     </Flex>
   </Flex>
+  <IrcWhoisModal :nick="whoisModalNick" :open="whoisModalOpen" @close="whoisModalOpen = false" />
+  <ChannelInfoModal :channel-name="menuBuffer?.kind === 'channel' ? menuBuffer.name : undefined" :open="channelInfoOpen" @close="channelInfoOpen = false" />
 </template>
 
 <style lang="scss" scoped>

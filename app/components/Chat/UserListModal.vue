@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Divider, Dropdown, DropdownItem, Flex, Input, Modal, pushToast, Sheet } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import UserRoleBadge from '@/components/Chat/UserRoleBadge.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
@@ -171,14 +172,8 @@ function devoiceUser(name: string) {
                   'user-list-modal__row--clickable': user.name !== nick }"
         @click="user.name !== nick && handlePm(user.name)"
       >
-        <!-- Role dot -->
-        <span class="user-list-modal__role-dot">
-          <span
-            v-if="user.role"
-            class="user-list-modal__dot"
-            :style="{ background: user.role.color }"
-          />
-        </span>
+        <!-- Role indicator -->
+        <UserRoleBadge :role="user.role" class="user-list-modal__role-indicator" />
 
         <!-- Avatar -->
         <UserAvatar
@@ -416,19 +411,12 @@ function devoiceUser(name: string) {
     }
   }
 
-  &__role-dot {
+  &__role-indicator {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 10px;
+    width: 20px;
     flex-shrink: 0;
-  }
-
-  &__dot {
-    width: 7px;
-    height: 7px;
-    border-radius: var(--border-radius-pill);
-    display: block;
   }
 
   &__avatar {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, Divider, Flex, Input } from '@dolanske/vui'
+import { onMounted } from 'vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useIrcChat } from '@/composables/useIrcChat'
 
@@ -11,6 +12,12 @@ const hintChannel = computed(() => inputChannel.value || defaultChannel(false))
 
 const userId = useUserId()
 const { user } = useDataUser(userId)
+
+// Prefill #public for anon/signed-out users who have no persisted channel.
+onMounted(() => {
+  if (!user.value && !inputChannel.value)
+    inputChannel.value = defaultChannel(true)
+})
 
 const connecting = computed(() => connState.value === 'connecting')
 

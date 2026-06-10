@@ -14,6 +14,8 @@ export interface ChannelGroupNode {
   name: string
   fullPath: string
   parentBuffer: ChatBuffer | null
+  /** Cached metadata for an unjoined parent (used to render its display-name). */
+  meta?: Map<string, string> | null
   children: ChannelTreeNode[]
 }
 
@@ -30,7 +32,7 @@ const { node, depth } = defineProps<{
   depth: number
 }>()
 
-const { activeName, buffers, setActive, closeBuffer } = useIrcChat()
+const { activeName, buffers, setActive, closeBuffer, isUnauthorizedSubchannel } = useIrcChat()
 const { resolved } = useIrcNickResolver()
 const isMobile = useBreakpoint('<s')
 
@@ -83,7 +85,7 @@ function bufferIcon(kind: string) {
         <Icon v-else name="ph:hash" size="13" class="chat-channels__icon" />
         <Flex y-center gap="s" class="chat-channels__name-wrap">
           <span class="chat-channels__name">{{ node.parentBuffer.metadata?.get('display-name') ?? node.name }}</span>
-          <ChannelModeBadges :modes="node.parentBuffer.modes" />
+          <ChannelModeBadges :modes="node.parentBuffer.modes" shortform />
         </Flex>
         <Badge v-if="node.parentBuffer.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
           {{ node.parentBuffer.mentions }}
@@ -106,8 +108,8 @@ function bufferIcon(kind: string) {
         </Flex>
       </template>
     </Tooltip>
-    <!-- No parent buffer: virtual label -->
-    <span v-else class="chat-channels__group-label">{{ node.name }}</span>
+    <!-- No parent buffer: virtual label (uses cached display-name if known) -->
+    <span v-else class="chat-channels__group-label">{{ node.meta?.get('display-name') ?? node.name }}</span>
 
     <!-- Children -->
     <div class="chat-channels__children">
@@ -152,8 +154,16 @@ function bufferIcon(kind: string) {
       <Icon v-else :name="bufferIcon(node.buffer.kind)" size="13" class="chat-channels__icon" />
       <Flex y-center gap="s" class="chat-channels__name-wrap">
         <span class="chat-channels__name">{{ node.buffer.metadata?.get('display-name') ?? node.displayName }}</span>
-        <ChannelModeBadges v-if="node.buffer.kind === 'channel'" :modes="node.buffer.modes" />
-        <ChannelModeBadges v-if="node.buffer.kind === 'pm'" :is-service="isPmService(node.buffer.name)" :is-bot="isPmBot(node.buffer.name)" />
+        <ChannelModeBadges v-if="node.buffer.kind === 'channel'" :modes="node.buffer.modes" shortform />
+        <ChannelModeBadges v-if="node.buffer.kind === 'pm'" :is-service="isPmService(node.buffer.name)" :is-bot="isPmBot(node.buffer.name)" compact />
+        <Tooltip v-if="node.buffer.kind === 'channel' && isUnauthorizedSubchannel(node.buffer.name)" placement="top">
+          <Badge variant="warning" size="s" outline class="chat-channels__unverified-badge">
+            <Icon name="ph:warning" size="10" />
+          </Badge>
+          <template #tooltip>
+            <p>Unverified subchannel - the parent channel has not authorized this.</p>
+          </template>
+        </Tooltip>
       </Flex>
       <Badge v-if="node.buffer.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
         {{ node.buffer.mentions }}

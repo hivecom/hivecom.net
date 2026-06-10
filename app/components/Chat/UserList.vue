@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { Button, ContextMenu, Divider, DropdownItem, Flex, Overflow, Sheet, Tooltip, pushToast } from '@dolanske/vui' // eslint-disable-line perfectionist/sort-named-imports
+import { Button, ContextMenu, Flex, Overflow, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
+import UserActionMenu from '@/components/Chat/UserActionMenu.vue'
 import UserListModal from '@/components/Chat/UserListModal.vue'
+import UserRoleBadge from '@/components/Chat/UserRoleBadge.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
@@ -9,7 +12,7 @@ import { channelRole, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-const { users, nick, inputMessage, openPm, send, activeName, myChannelRole } = useIrcChat()
+const { users, nick, inputMessage, openPm } = useIrcChat()
 const { settings } = useDataUserSettings()
 const { resolved, resolve } = useIrcNickResolver()
 const isMobile = useBreakpoint('<s')
@@ -42,6 +45,13 @@ function userStyle(name: string) {
 // ---- Context menu ----
 
 const menuUser = ref<string | null>(null)
+const whoisModalOpen = ref(false)
+
+function openWhois(name: string) {
+  menuUser.value = name
+  whoisModalOpen.value = true
+  closeMenu()
+}
 const mobileMenuOpen = ref(false)
 
 function onContextMenu(event: MouseEvent) {
@@ -64,97 +74,9 @@ function closeMenu() {
   }, 0)
 }
 
-async function copyNick(name: string) {
-  try {
-    await navigator.clipboard.writeText(name)
-    pushToast('Nickname copied')
-  }
-  catch {
-    pushToast('Could not copy to clipboard')
-  }
-  closeMenu()
-}
-
-function doOpenPm(name: string) {
-  openPm(name)
-  closeMenu()
-}
-
-function doMention(name: string) {
-  mention(name)
-  closeMenu()
-}
-
 const menuUserData = computed(() =>
   menuUser.value ? (displayUsers.value.find(u => u.name === menuUser.value) ?? null) : null,
 )
-
-// Mod actions - require op or higher on the active channel
-
-const MOD_SYMBOLS = new Set(['~', '&', '@'])
-
-const canModerate = computed(() => {
-  const ch = activeName.value
-  if (!ch)
-    return false
-  const r = myChannelRole(ch)
-  return r !== null && MOD_SYMBOLS.has(r.symbol)
-})
-
-function activeChannel(): string {
-  return activeName.value ?? ''
-}
-
-function kickUser(name: string) {
-  const ch = activeChannel()
-  if (ch)
-    send(`KICK ${ch} ${name}`)
-  closeMenu()
-}
-
-function banUser(name: string) {
-  const ch = activeChannel()
-  if (ch)
-    send(`MODE ${ch} +b ${name}!*@*`)
-  closeMenu()
-}
-
-function kickBanUser(name: string) {
-  const ch = activeChannel()
-  if (ch) {
-    send(`MODE ${ch} +b ${name}!*@*`)
-    send(`KICK ${ch} ${name}`)
-  }
-  closeMenu()
-}
-
-function opUser(name: string) {
-  const ch = activeChannel()
-  if (ch)
-    send(`MODE ${ch} +o ${name}`)
-  closeMenu()
-}
-
-function deopUser(name: string) {
-  const ch = activeChannel()
-  if (ch)
-    send(`MODE ${ch} -o ${name}`)
-  closeMenu()
-}
-
-function voiceUser(name: string) {
-  const ch = activeChannel()
-  if (ch)
-    send(`MODE ${ch} +v ${name}`)
-  closeMenu()
-}
-
-function devoiceUser(name: string) {
-  const ch = activeChannel()
-  if (ch)
-    send(`MODE ${ch} -v ${name}`)
-  closeMenu()
-}
 </script>
 
 <template>
@@ -183,12 +105,7 @@ function devoiceUser(name: string) {
             :data-user-name="user.name"
           >
             <span class="chat-users__indicator">
-              <Tooltip v-if="user.role" :disabled="isMobile">
-                <Icon name="ph:circle-fill" size="8" :style="{ color: user.role.color }" />
-                <template #tooltip>
-                  {{ user.role.label }}
-                </template>
-              </Tooltip>
+              <UserRoleBadge :role="user.role" icon />
             </span>
             <UserAvatar
               v-if="resolvedUserId(user.name)"
@@ -224,74 +141,14 @@ function devoiceUser(name: string) {
 
       <template #menu>
         <div class="vui-dropdown chat-users__menu" @click="closeMenu">
-          <template v-if="menuUser">
-            <DropdownItem @click="copyNick(menuUser)">
-              <template #icon>
-                <Icon name="ph:user" />
-              </template>
-              Copy nickname
-            </DropdownItem>
-            <template v-if="menuUser !== nick">
-              <DropdownItem @click="doOpenPm(menuUser)">
-                <template #icon>
-                  <Icon name="ph:chat-teardrop" />
-                </template>
-                Message
-              </DropdownItem>
-              <DropdownItem @click="doMention(menuUser)">
-                <template #icon>
-                  <Icon name="ph:at" />
-                </template>
-                Mention
-              </DropdownItem>
-              <template v-if="canModerate">
-                <Divider />
-                <DropdownItem v-if="!menuUserData?.prefix.includes('@')" @click="opUser(menuUser)">
-                  <template #icon>
-                    <Icon name="ph:shield-check" />
-                  </template>
-                  Op
-                </DropdownItem>
-                <DropdownItem v-if="menuUserData?.prefix.includes('@')" @click="deopUser(menuUser)">
-                  <template #icon>
-                    <Icon name="ph:shield-slash" />
-                  </template>
-                  Deop
-                </DropdownItem>
-                <DropdownItem v-if="!menuUserData?.prefix.includes('+')" @click="voiceUser(menuUser)">
-                  <template #icon>
-                    <Icon name="ph:microphone" />
-                  </template>
-                  Voice
-                </DropdownItem>
-                <DropdownItem v-if="menuUserData?.prefix.includes('+')" @click="devoiceUser(menuUser)">
-                  <template #icon>
-                    <Icon name="ph:microphone-slash" />
-                  </template>
-                  Devoice
-                </DropdownItem>
-                <Divider />
-                <DropdownItem @click="kickUser(menuUser)">
-                  <template #icon>
-                    <Icon name="ph:boot" class="text-color-yellow" />
-                  </template>
-                  Kick
-                </DropdownItem>
-                <DropdownItem @click="banUser(menuUser)">
-                  <template #icon>
-                    <Icon name="ph:prohibit" class="text-color-red" />
-                  </template>
-                  Ban
-                </DropdownItem>
-                <DropdownItem @click="kickBanUser(menuUser)">
-                  <template #icon>
-                    <Icon name="ph:prohibit" class="text-color-red" />
-                  </template>
-                  Kick &amp; ban
-                </DropdownItem>
-              </template>
-            </template>
-          </template>
+          <UserActionMenu
+            v-if="menuUser"
+            :nick="menuUser"
+            :prefix="menuUserData?.prefix"
+            show-mod-actions
+            @close="closeMenu"
+            @open-whois="openWhois"
+          />
         </div>
       </template>
     </ContextMenu>
@@ -302,78 +159,19 @@ function devoiceUser(name: string) {
         <h4>{{ menuUser }}</h4>
       </template>
       <div class="vui-dropdown chat-users__menu" @click="closeMenu">
-        <template v-if="menuUser">
-          <DropdownItem @click="copyNick(menuUser)">
-            <template #icon>
-              <Icon name="ph:user" />
-            </template>
-            Copy nickname
-          </DropdownItem>
-          <template v-if="menuUser !== nick">
-            <DropdownItem @click="doOpenPm(menuUser)">
-              <template #icon>
-                <Icon name="ph:chat-teardrop" />
-              </template>
-              Message
-            </DropdownItem>
-            <DropdownItem @click="doMention(menuUser)">
-              <template #icon>
-                <Icon name="ph:at" />
-              </template>
-              Mention
-            </DropdownItem>
-            <template v-if="canModerate">
-              <Divider />
-              <DropdownItem v-if="!menuUserData?.prefix.includes('@')" @click="opUser(menuUser)">
-                <template #icon>
-                  <Icon name="ph:shield-check" />
-                </template>
-                Op
-              </DropdownItem>
-              <DropdownItem v-if="menuUserData?.prefix.includes('@')" @click="deopUser(menuUser)">
-                <template #icon>
-                  <Icon name="ph:shield-slash" />
-                </template>
-                Deop
-              </DropdownItem>
-              <DropdownItem v-if="!menuUserData?.prefix.includes('+')" @click="voiceUser(menuUser)">
-                <template #icon>
-                  <Icon name="ph:microphone" />
-                </template>
-                Voice
-              </DropdownItem>
-              <DropdownItem v-if="menuUserData?.prefix.includes('+')" @click="devoiceUser(menuUser)">
-                <template #icon>
-                  <Icon name="ph:microphone-slash" />
-                </template>
-                Devoice
-              </DropdownItem>
-              <Divider />
-              <DropdownItem @click="kickUser(menuUser)">
-                <template #icon>
-                  <Icon name="ph:boot" class="text-color-yellow" />
-                </template>
-                Kick
-              </DropdownItem>
-              <DropdownItem @click="banUser(menuUser)">
-                <template #icon>
-                  <Icon name="ph:prohibit" class="text-color-red" />
-                </template>
-                Ban
-              </DropdownItem>
-              <DropdownItem @click="kickBanUser(menuUser)">
-                <template #icon>
-                  <Icon name="ph:prohibit" class="text-color-red" />
-                </template>
-                Kick &amp; ban
-              </DropdownItem>
-            </template>
-          </template>
-        </template>
+        <UserActionMenu
+          v-if="menuUser"
+          :nick="menuUser"
+          :prefix="menuUserData?.prefix"
+          show-mod-actions
+          @close="closeMenu"
+          @open-whois="openWhois"
+        />
       </div>
     </Sheet>
   </Flex>
   <UserListModal :open="userListOpen" @close="userListOpen = false" />
+  <IrcWhoisModal :nick="menuUser" :open="whoisModalOpen" @close="whoisModalOpen = false" />
 </template>
 
 <style lang="scss" scoped>
@@ -460,7 +258,7 @@ function devoiceUser(name: string) {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 8px;
+    width: 12px;
     flex-shrink: 0;
     margin-left: var(--space-xs);
   }

@@ -154,6 +154,7 @@ export interface ChannelListEntry {
   name: string
   userCount: number
   topic: string
+  modes?: Set<string>
 }
 
 /** A channel member together with their current IRC mode prefixes. */
@@ -195,6 +196,7 @@ const buffers = ref<ChatBuffer[]>([])
 // system so it is never rendered to the user.
 const serviceLog = ref<ChatMessage[]>([])
 const activeName = ref<string>(SERVER_BUFFER)
+const previousActiveName = ref<string>(SERVER_BUFFER)
 const msgCounter = ref(0)
 const SIDEBAR_HIDDEN_KEY = 'hivecom.chat.sidebar-hidden'
 const sidebarHidden = ref(
@@ -228,6 +230,14 @@ export const whoisStore = _whoisStore
 
 // --- Channel list (populated by LIST/322/323) --------------------------------
 const channelList = ref<ChannelListEntry[]>([])
+// Channel metadata cache keyed by lowercase channel name. Unlike buffer
+// metadata, this also holds metadata for channels we are NOT joined to (e.g.
+// parent channels in the slash-nesting tree). draft/metadata-2 permits GET/LIST
+// on any channel target, so a parent can be verified/displayed without joining.
+const channelMetaCache = ref<Map<string, Map<string, string>>>(new Map())
+// Channels we've issued a background METADATA LIST for: dedupes probes and lets
+// us swallow the resulting FAILs (a missing or permission-denied parent is normal).
+const _backgroundMetaTargets = new Set<string>()
 const channelListLoading = ref(false)
 const channelBrowserOpen = ref(false)
 // When non-null, a password-protected channel denied our JOIN and we need a key.
@@ -235,6 +245,8 @@ const channelKeyPrompt = ref<string | null>(null)
 // True when the most recent key attempt was rejected (475).
 const channelKeyError = ref(false)
 const channelSettingsOpen = ref<string | null>(null)
+// When non-null, a join was blocked by the server (e.g. registration required). Holds channel name + reason.
+const channelJoinBlocked = ref<{ channel: string, reason: string } | null>(null)
 
 // Form / draft state, shared so both surfaces edit the same values.
 const inputNick = ref('')
@@ -349,6 +361,8 @@ let suppressingNickServOp = false
 // ChanServ INFO probes keyed by lowercase channel name.
 const _probingChanServChannels = new Set<string>()
 const _chanServProbeTimers = new Map<string, ReturnType<typeof setTimeout>>()
+// Channels awaiting ChanServ DROP confirmation code (two-step flow).
+const _pendingDropChannels = new Set<string>()
 let messageTagsActive = false
 // Per-target timestamp (ms) of the last typing notification we sent, for throttling.
 const lastTypingSent = new Map<string, number>()
@@ -419,6 +433,8 @@ function resetBuffers() {
   activeName.value = SERVER_BUFFER
   channelList.value = []
   channelListLoading.value = false
+  channelMetaCache.value = new Map()
+  _backgroundMetaTargets.clear()
 }
 
 function findBuffer(name: string) {
@@ -518,7 +534,7 @@ function addToBuffer(
   // Pin the active buffer's marker forward as each message arrives (monotonic), so
   // the channel you're viewing is robustly recorded as read without depending on the
   // watcher's flush timing.
-  if (isActive && isChatVisible.value)
+  if (isActive && isChatVisible.value && !document.hidden)
     saveReadPosition(name, ts.getTime())
 
   // Browser notification: genuinely-new pings only, never replayed history, and not
@@ -531,8 +547,8 @@ function addToBuffer(
   }
 
   // Don't badge what you're looking at or have already read.
-  // isActive only suppresses the badge when the chat UI is actually visible.
-  if ((isActive && isChatVisible.value) || alreadyRead)
+  // isActive only suppresses the badge when the chat UI is actually visible AND the tab is in the foreground.
+  if ((isActive && isChatVisible.value && !document.hidden) || alreadyRead)
     return
   // First-ever visit to a channel (no marker): don't badge its replayed history;
   // only genuine live activity. DMs are exempt - a replayed DM is a real new message.
@@ -1604,15 +1620,30 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '323': // RPL_LISTEND
+    case '323': { // RPL_LISTEND
       channelListLoading.value = false
+      // Request modes for channels not already in a joined buffer so the browser
+      // can show indicators (e.g. registration-required warning) for unjoined channels.
+      for (const entry of channelList.value) {
+        if (!findBuffer(entry.name))
+          send(`MODE ${entry.name}`)
+      }
       break
+    }
 
     case '324': { // RPL_CHANNELMODEIS - response to MODE #channel query
       const modeChannel = params[1] ?? ''
       const modeBuf = findBuffer(modeChannel)
       if (modeBuf)
         applyModeChanges(modeBuf, params.slice(2))
+      // Also store modes on the channelList entry for the browser (unjoined channels).
+      const modeStr = params[2] ?? ''
+      const modeLetters = new Set([...modeStr].filter(c => c !== '+' && c !== '-'))
+      if (modeLetters.size) {
+        const listEntry = channelList.value.find(e => e.name.toLowerCase() === modeChannel.toLowerCase())
+        if (listEntry)
+          listEntry.modes = modeLetters
+      }
       break
     }
 
@@ -1718,12 +1749,24 @@ function handleMessage(raw: string) {
           if (b)
             b.registered = true
         }
-        // "Channel #channel has been dropped"
-        const dropMatch = /channel (#\S+) has been dropped/i.exec(noticeText)
+        // "Channel #channel has been dropped" / "Channel #channel is now unregistered"
+        const dropMatch = /channel (#\S+) (?:has been dropped|is now unregistered)/i.exec(noticeText)
         if (dropMatch) {
           const b = findBuffer(dropMatch[1] ?? '')
           if (b)
             b.registered = false
+          _pendingDropChannels.delete((dropMatch[1] ?? '').toLowerCase())
+        }
+        // Auto-confirm two-step DROP: "To confirm, run this command: /CS UNREGISTER #ch code"
+        const dropConfirmMatch = /\/CS UNREGISTER (#\S+) (\S+)/i.exec(noticeText)
+        if (dropConfirmMatch) {
+          const chKey = (dropConfirmMatch[1] ?? '').toLowerCase()
+          if (_pendingDropChannels.has(chKey)) {
+            _pendingDropChannels.delete(chKey)
+            suppressChanServResponse(dropConfirmMatch[1] ?? '')
+            send(`PRIVMSG ChanServ :UNREGISTER ${dropConfirmMatch[1]} ${dropConfirmMatch[2]}`)
+            break
+          }
         }
         // Suppress all ChanServ output while any probe is in flight.
         // The probe timer is the only cleanup path - this avoids partial suppression
@@ -2000,7 +2043,16 @@ function handleMessage(raw: string) {
       const invChannel = params[1] ?? ''
       if (invChannel) {
         closeBuffer(invChannel)
-        addServer({ type: 'error', text: `Cannot join ${invChannel} - invite only. You need to be invited by a channel operator.` })
+        channelJoinBlocked.value = { channel: invChannel, reason: 'This channel is invite-only. You need to be invited by a channel operator.' }
+      }
+      break
+    }
+
+    case '477': { // ERR_NEEDREGGEDNICK - channel requires a registered account
+      const regChannel = params[1] ?? ''
+      if (regChannel) {
+        closeBuffer(regChannel)
+        channelJoinBlocked.value = { channel: regChannel, reason: 'This channel requires a registered account. Sign in to join.' }
       }
       break
     }
@@ -2025,6 +2077,9 @@ function handleMessage(raw: string) {
         metaBuf.metadata.set(metaKey, metaValue)
         metaBuf.metadata = new Map(metaBuf.metadata)
       }
+      // Mirror channel metadata into the cache so unjoined parents are covered.
+      if (metaKey && (metaTarget.startsWith('#') || metaTarget.startsWith('&')))
+        cacheChannelMeta(metaTarget, metaKey, metaValue)
       break
     }
     case '762': // RPL_METADATAEND - silently consumed
@@ -2068,14 +2123,22 @@ function handleMessage(raw: string) {
           metaBuf.metadata.delete(metaKey)
         metaBuf.metadata = new Map(metaBuf.metadata)
       }
+      // Mirror channel metadata into the cache (empty value = key deleted).
+      if (metaKey && (metaTarget.startsWith('#') || metaTarget.startsWith('&')))
+        cacheChannelMeta(metaTarget, metaKey, metaValue || null)
       break
     }
 
     case 'FAIL': {
       const failCmd = params[0]?.toUpperCase() ?? ''
       if (failCmd === 'METADATA') {
-        const desc = params[params.length - 1] ?? 'Metadata error'
-        addServer({ type: 'error', text: `Metadata: ${desc}` }, { ts })
+        // Background parent-metadata probes legitimately fail (channel missing or
+        // permission denied) - swallow those instead of surfacing a server error.
+        const isBackgroundProbe = params.some(p => _backgroundMetaTargets.has(p.toLowerCase()))
+        if (!isBackgroundProbe) {
+          const desc = params[params.length - 1] ?? 'Metadata error'
+          addServer({ type: 'error', text: `Metadata: ${desc}` }, { ts })
+        }
       }
       break
     }
@@ -2268,6 +2331,7 @@ function setActive(name: string) {
     const prevBuf = findBuffer(prev)
     if (prevBuf)
       prevBuf.readLineTs = undefined
+    previousActiveName.value = prev
   }
 
   activeName.value = name
@@ -2342,8 +2406,12 @@ function closeBuffer(name: string) {
     rememberClosedDm(name, buf)
   }
   buffers.value = buffers.value.filter(b => b !== buf)
-  if (activeName.value.toLowerCase() === name.toLowerCase())
-    setActive(buffers.value[0]?.name ?? SERVER_BUFFER)
+  if (activeName.value.toLowerCase() === name.toLowerCase()) {
+    // Navigate to previous buffer if it still exists, else fall back to server.
+    const prev = previousActiveName.value
+    const prevStillOpen = prev.toLowerCase() !== name.toLowerCase() && buffers.value.some(b => b.name.toLowerCase() === prev.toLowerCase())
+    setActive(prevStillOpen ? prev : (buffers.value[0]?.name ?? SERVER_BUFFER))
+  }
 }
 
 function handleCommand(line: string) {
@@ -2600,6 +2668,16 @@ export function channelRole(prefix: string): ChannelRole | null {
 }
 
 /**
+ * Initiate a ChanServ DROP (UNREGISTER) for a channel.
+ * Adds the channel to the pending-drop set so the auto-confirm handler fires
+ * when ChanServ replies with the verification code.
+ */
+function initiateDrop(channel: string) {
+  _pendingDropChannels.add(channel.toLowerCase())
+  send(`PRIVMSG ChanServ :DROP ${channel}`)
+}
+
+/**
  * Add a channel to the ChanServ probe suppression set without sending an INFO query.
  * Use this when sending REGISTER/DROP so the response notice is swallowed.
  */
@@ -2649,6 +2727,62 @@ function fetchListModes(channel: string) {
   send(`MODE ${channel} b`)
   send(`MODE ${channel} e`)
   send(`MODE ${channel} I`)
+}
+
+/**
+ * Returns true when a channel uses slash notation but its parent chain has not
+ * authorized it via `subchannels` metadata. Used to show an "unverified"
+ * indicator in the channel list and header.
+ */
+function isUnauthorizedSubchannel(channelName: string): boolean {
+  if (!channelName.startsWith('#') && !channelName.startsWith('&'))
+    return false
+  const prefix = channelName[0]!
+  const raw = channelName.slice(1)
+  const segments = raw.split('/').filter(Boolean)
+  if (segments.length <= 1)
+    return false
+  for (let i = 1; i < segments.length; i++) {
+    const parentName = `${prefix}${segments.slice(0, i).join('/')}`
+    const meta = findBuffer(parentName)?.metadata ?? channelMetaCache.value.get(parentName.toLowerCase())
+    const allowlist = meta?.get('subchannels')
+    if (!allowlist)
+      return true
+    const allowed = allowlist.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+    if (!allowed.includes(segments[i]!.toLowerCase()))
+      return true
+  }
+  return false
+}
+
+/** Write a channel metadata key into the cache (reassigns maps for reactivity). */
+function cacheChannelMeta(target: string, key: string, value: string | null) {
+  const lc = target.toLowerCase()
+  const next = new Map(channelMetaCache.value)
+  const entry = new Map(next.get(lc) ?? [])
+  if (value == null || value === '')
+    entry.delete(key)
+  else
+    entry.set(key, value)
+  next.set(lc, entry)
+  channelMetaCache.value = next
+}
+
+/**
+ * Fetch a channel's metadata without joining it, for slash-nesting verification
+ * and display of unjoined parents. Deduped; skips channels we already have a
+ * buffer for (their metadata arrives via the join burst).
+ */
+function requestChannelMetadata(channel: string) {
+  const lc = channel.toLowerCase()
+  if (_backgroundMetaTargets.has(lc) || findBuffer(channel))
+    return
+  // Only mark as probed once the request actually leaves; otherwise a pre-connect
+  // call would dedupe forever without ever sending (send no-ops while closed).
+  if (!ws || ws.readyState !== WebSocket.OPEN)
+    return
+  _backgroundMetaTargets.add(lc)
+  send(`METADATA ${channel} LIST`)
 }
 
 /** Set a metadata key on a channel via METADATA SET. */
@@ -2719,7 +2853,7 @@ export function useIrcChat() {
         return `${activeName.value}|${b?.messages.length ?? 0}|${last?.ts.getTime() ?? 0}`
       },
       () => {
-        if (!isChatVisible.value)
+        if (!isChatVisible.value || document.hidden)
           return
         const b = activeBuffer.value
         if (!b || b.kind === 'server')
@@ -2732,6 +2866,22 @@ export function useIrcChat() {
       },
       { flush: 'post' },
     )
+
+    // When the user returns to the tab, immediately clear unread state for
+    // whatever buffer is active so the badge and read watcher stay in sync.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden || !isChatVisible.value)
+        return
+      const b = activeBuffer.value
+      if (!b || b.kind === 'server')
+        return
+      const last = b.messages[b.messages.length - 1]
+      if (last)
+        saveReadPosition(b.name, last.ts.getTime())
+      b.unread = 0
+      b.mentions = 0
+      b.readLineTs = undefined
+    })
   }
 
   const hasUnread = computed(() => buffers.value.some(b => b.unread > 0))
@@ -2850,12 +3000,17 @@ export function useIrcChat() {
     // metadata
     setChannelMetadata,
     deleteChannelMetadata,
+    channelMetaCache,
+    requestChannelMetadata,
+    isUnauthorizedSubchannel,
     myChannelRole,
     fetchListModes,
     queryChanServInfo,
     suppressChanServResponse,
+    initiateDrop,
     markBufferRead,
     channelSettingsOpen,
+    channelJoinBlocked,
     requestWhois,
   }
 }

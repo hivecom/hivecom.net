@@ -12,7 +12,11 @@ const isMobile = useBreakpoint('<s')
 const { buffers, channelList, channelListLoading, listChannels, joinChannel } = useIrcChat()
 
 function channelModes(name: string): Set<string> | undefined {
-  return buffers.value.find(b => b.name.toLowerCase() === name.toLowerCase())?.modes
+  const lower = name.toLowerCase()
+  return (
+    buffers.value.find(b => b.name.toLowerCase() === lower)?.modes
+    ?? channelList.value.find(e => e.name.toLowerCase() === lower)?.modes
+  )
 }
 
 const search = ref('')
@@ -121,10 +125,12 @@ function join(name: string) {
 
       <div v-if="channelListLoading" class="chat-channel-browser__list">
         <div v-for="i in 5" :key="i" class="chat-channel-browser__skeleton-item">
-          <Flex y-center gap="xs">
+          <Flex y-center gap="xs" expand>
             <Skeleton :width="14" :height="14" :radius="2" />
-            <Skeleton :height="13" width="40%" :radius="3" />
-            <Skeleton :width="26" :height="18" :radius="10" />
+            <Flex expand x-between y-center>
+              <Skeleton :height="13" width="40%" :radius="3" />
+              <Skeleton :width="26" :height="18" :radius="10" />
+            </Flex>
           </Flex>
           <Skeleton v-if="i % 2 !== 0" :height="11" width="60%" :radius="3" class="chat-channel-browser__skeleton-topic" />
         </div>
@@ -148,7 +154,7 @@ function join(name: string) {
             <Icon name="ph:hash" size="14" class="chat-channel-browser__icon" />
             <Flex y-center gap="xxs" class="chat-channel-browser__name-wrap">
               <span class="chat-channel-browser__name">{{ entry.name.replace(/^#/, '') }}</span>
-              <ChannelModeBadges :modes="channelModes(entry.name)" />
+              <ChannelModeBadges :modes="channelModes(entry.name)" shortform />
             </Flex>
             <Badge variant="neutral" size="s" class="chat-channel-browser__count">
               {{ entry.userCount }}

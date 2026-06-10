@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import { Button, Flex, Modal } from '@dolanske/vui'
+import { Badge, Button, Flex, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import ChatInfoModal from '@/components/Chat/ChannelInfoModal.vue'
 import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
-import IrcWhoisCard from '@/components/Chat/IrcWhoisCard.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
-import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
-import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
-import { SERVICE_NICKS, useIrcChat, whoisStore } from '@/composables/useIrcChat'
+import { SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 
-const { activeBuffer, buffers, joinChannel, openPm, myChannelRole, channelSettingsOpen, requestWhois } = useIrcChat()
+const { activeBuffer, buffers, joinChannel, openPm, requestWhois, isUnauthorizedSubchannel } = useIrcChat()
 const { resolved: resolvedNicks, resolve: resolveNick } = useIrcNickResolver()
 
 watch(activeBuffer, (buf) => {
@@ -37,37 +35,9 @@ const pmIsService = computed(() => {
   return SERVICE_NICKS.has(activeBuffer.value.name.toLowerCase())
 })
 
-const OP_PREFIXES = new Set(['~', '&', '@'])
-const canEdit = computed(() => {
-  if (activeBuffer.value?.kind !== 'channel')
-    return false
-  const r = myChannelRole(activeBuffer.value.name)
-  return r !== null && OP_PREFIXES.has(r.symbol)
-})
-
 const hasPmInfo = computed(() => activeBuffer.value?.kind === 'pm')
 
-// Info button is enabled when there's anything worth showing.
-const hasInfo = computed(() => {
-  const buf = activeBuffer.value
-  if (!buf || buf.kind !== 'channel')
-    return false
-  return !!(
-    buf.topic
-    || buf.metadata?.get('hivecom.net/markdown')
-    || buf.metadata?.get('homepage')
-    || buf.metadata?.get('avatar')
-    || (buf.modes && buf.modes.size > 0)
-  )
-})
-
 const infoOpen = ref(false)
-
-const pmWhois = computed(() => {
-  if (activeBuffer.value?.kind !== 'pm')
-    return null
-  return whoisStore.value.get(activeBuffer.value.name.toLowerCase()) ?? null
-})
 
 function openPmInfo() {
   if (activeBuffer.value?.kind === 'pm')
@@ -117,6 +87,14 @@ function topicSegments(topic: string): TopicSegment[] {
             class="channel-header__name"
             :style="activeBuffer.metadata?.get('color') ? { color: activeBuffer.metadata.get('color') } : undefined"
           >{{ activeBuffer.metadata?.get('display-name') ?? activeBuffer.name }}</span>
+          <Tooltip v-if="isUnauthorizedSubchannel(activeBuffer.name)" placement="bottom">
+            <Badge variant="warning" size="s" outline>
+              <Icon name="ph:warning" size="11" />
+            </Badge>
+            <template #tooltip>
+              <p>Unverified subchannel - the parent channel has not authorized this. It may not be associated with it.</p>
+            </template>
+          </Tooltip>
           <span v-if="activeBuffer.topic" class="channel-header__topic">
             <template v-for="(seg, i) in topicSegments(activeBuffer.topic)" :key="i">
               <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="channel-header__link">{{ seg.value }}</a>
@@ -128,7 +106,7 @@ function topicSegments(topic: string): TopicSegment[] {
             </template>
           </span>
         </Flex>
-        <Button :disabled="!hasInfo" square plain aria-label="Channel info" @click="infoOpen = true">
+        <Button square plain aria-label="Channel info" @click="infoOpen = true">
           <Icon name="ph:info" size="14" />
         </Button>
       </Flex>
@@ -160,82 +138,7 @@ function topicSegments(topic: string): TopicSegment[] {
     </template>
   </Flex>
 
-  <Modal v-if="activeBuffer?.kind === 'pm'" :open="infoOpen" size="s" @close="infoOpen = false">
-    <template #header>
-      <h4 style="margin:0">
-        {{ activeBuffer.name }}
-      </h4>
-    </template>
-    <Flex column :gap="0">
-      <UserPreviewCard v-if="pmUserId" :user-id="pmUserId" class="channel-header__pm-preview" />
-      <IrcWhoisCard v-if="pmWhois" :whois="pmWhois" :standalone="!pmUserId" :irc-only="!pmUserId" :is-service="pmIsService" :is-bot="pmIsBot" />
-    </Flex>
-  </Modal>
-
-  <Modal v-if="activeBuffer?.kind === 'channel'" :open="infoOpen" size="m" @close="infoOpen = false">
-    <template #header>
-      <Flex x-between y-center gap="s">
-        <img
-          v-if="activeBuffer.metadata?.get('avatar')"
-          :src="activeBuffer.metadata.get('avatar')"
-          class="channel-header__modal-avatar"
-          :alt="activeBuffer.name"
-        >
-        <Flex column :gap="0">
-          <Flex y-center gap="xs">
-            <h4 style="margin:0">
-              {{ activeBuffer.metadata?.get('display-name') ?? activeBuffer.name }}
-            </h4>
-            <ChannelModeBadges v-if="activeBuffer.modes?.size" :modes="activeBuffer.modes" />
-          </Flex>
-          <span v-if="activeBuffer.metadata?.get('display-name')" class="text-xs text-color-lighter">{{ activeBuffer.name }}</span>
-        </Flex>
-        <template v-if="canEdit">
-          <Button plain square @click="infoOpen = false; channelSettingsOpen = activeBuffer!.name">
-            <Icon name="ph:gear" size="14" />
-          </Button>
-        </template>
-      </Flex>
-    </template>
-
-    <Flex column gap="m">
-      <!-- Topic -->
-      <Flex v-if="activeBuffer.topic" column gap="xxs">
-        <span class="channel-header__modal-section-label">Topic</span>
-        <p class="channel-header__modal-topic text-s">
-          <template v-for="(seg, i) in topicSegments(activeBuffer.topic)" :key="i">
-            <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="channel-header__link">{{ seg.value }}</a>
-            <span v-else-if="seg.type === 'channel'" class="channel-header__channel-ref text-s" @click="joinChannel(seg.value)">{{ seg.value }}</span>
-            <span v-else-if="seg.type === 'mention'" class="channel-header__mention text-s" @click="openPm(seg.value.slice(1))">{{ seg.value }}</span>
-            <template v-else>
-              {{ seg.value }}
-            </template>
-          </template>
-        </p>
-      </Flex>
-
-      <!-- Homepage -->
-      <Flex v-if="activeBuffer.metadata?.get('homepage')" column gap="xxs">
-        <span class="channel-header__modal-section-label">Homepage</span>
-        <a
-          :href="activeBuffer.metadata.get('homepage')"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="channel-header__link text-s"
-        >{{ activeBuffer.metadata.get('homepage') }}</a>
-      </Flex>
-
-      <!-- Markdown description -->
-      <Flex v-if="activeBuffer.metadata?.get('hivecom.net/markdown')" column gap="xxs">
-        <span class="channel-header__modal-section-label">About</span>
-        <MarkdownRenderer :md="activeBuffer.metadata.get('hivecom.net/markdown')!" skeleton-height="60px" />
-      </Flex>
-
-      <p v-if="!hasInfo" class="text-color-lighter text-s" style="margin:0">
-        No information available.
-      </p>
-    </Flex>
-  </Modal>
+  <ChatInfoModal :open="infoOpen" @close="infoOpen = false" />
 </template>
 
 <style lang="scss" scoped>
@@ -291,34 +194,6 @@ function topicSegments(topic: string): TopicSegment[] {
     &:hover {
       text-decoration: underline;
     }
-  }
-
-  &__modal-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: var(--border-radius-s);
-    object-fit: cover;
-    flex-shrink: 0;
-  }
-
-  &__modal-section-label {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text-lighter);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  &__pm-preview {
-    width: 100%;
-    max-width: 100%;
-    padding: 0;
-  }
-
-  &__modal-topic {
-    line-height: 1.6;
-    word-break: break-word;
-    margin: 0;
   }
 }
 </style>

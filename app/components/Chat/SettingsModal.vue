@@ -39,11 +39,6 @@ const options = [
     description: 'Give each nickname a consistent color in the message log.',
   },
   {
-    key: 'chat_notify_only_mentions',
-    label: 'Only notify on mentions',
-    description: 'Show the navbar chat dot only when you are mentioned, not for all activity.',
-  },
-  {
     key: 'chat_autoconnect',
     label: 'Auto-connect on site open',
     description: 'Connect to chat automatically once you are signed in.',
@@ -93,11 +88,11 @@ async function toggleBrowserNotifications(value: boolean) {
           <span class="text-xs text-color-lighter">IRC shows plain text. Modern resolves nicks to Hivecom profiles.</span>
         </Flex>
         <ButtonGroup>
-          <Button :variant="settings.chat_display_mode === 'irc' ? 'accent' : 'gray'" @click="settings.chat_display_mode = 'irc'">
-            IRC
-          </Button>
           <Button :variant="settings.chat_display_mode === 'modern' ? 'accent' : 'gray'" @click="settings.chat_display_mode = 'modern'">
             Modern
+          </Button>
+          <Button :variant="settings.chat_display_mode === 'irc' ? 'accent' : 'gray'" @click="settings.chat_display_mode = 'irc'">
+            IRC
           </Button>
         </ButtonGroup>
       </Flex>
@@ -140,6 +135,14 @@ async function toggleBrowserNotifications(value: boolean) {
         <Switch v-model="settings[option.key]" />
       </Flex>
 
+      <Flex y-center x-between gap="m" expand>
+        <Flex column gap="xxs" class="chat-settings__text">
+          <span class="text-s">IRC native modes</span>
+          <span class="text-xs text-color-lighter">Show raw IRC mode symbols (~, &amp;, @, %, +) alongside role badges in user lists and menus.</span>
+        </Flex>
+        <Switch v-model="settings.chat_irc_native_modes" />
+      </Flex>
+
       <Flex v-if="isDev" y-center x-between expand>
         <Flex column gap="xxs" class="chat-settings__text">
           <span class="text-s">Tag message display</span>
@@ -169,6 +172,14 @@ async function toggleBrowserNotifications(value: boolean) {
           <span class="text-xs text-color-lighter">Show a system notification when you are mentioned while the tab is in the background.</span>
         </Flex>
         <Switch :model-value="settings.chat_browser_notifications" @update:model-value="toggleBrowserNotifications" />
+      </Flex>
+
+      <Flex y-center x-between gap="m" expand>
+        <Flex column gap="xxs" class="chat-settings__text">
+          <span class="text-s">Only notify on mentions</span>
+          <span class="text-xs text-color-lighter">Show the navbar chat dot only when you are mentioned, not for all activity.</span>
+        </Flex>
+        <Switch v-model="settings.chat_notify_only_mentions" />
       </Flex>
 
       <Flex column gap="xs" expand>
@@ -211,16 +222,6 @@ async function toggleBrowserNotifications(value: boolean) {
         <Divider />
 
         <strong class="text-color-lighter text-s block">IRC Mode</strong>
-
-        <Flex column gap="xs" expand>
-          <Flex y-center x-between expand>
-            <Flex column gap="xxs" class="chat-settings__text">
-              <span class="text-s">Timestamp format</span>
-              <span class="text-xs text-color-lighter">Standard dayjs format string, e.g. HH:mm:ss or DD/MM/YYYY HH:mm.</span>
-            </Flex>
-          </Flex>
-          <Input v-model="settings.chat_timestamp_format" expand placeholder="HH:mm:ss" :disabled="!settings.chat_show_timestamps" />
-        </Flex>
 
         <Flex y-center x-between gap="m" expand>
           <Flex column gap="xxs" class="chat-settings__text">

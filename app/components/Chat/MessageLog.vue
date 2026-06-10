@@ -3,7 +3,9 @@ import type { MediaItem } from '@/components/Shared/Lightbox.vue'
 import type { ChatMessage } from '@/composables/useIrcChat'
 import { Button, ContextMenu, Divider, DropdownItem, Flex, pushToast, Sheet, Spinner } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import ChatMessageReactions from '@/components/Chat/MessageReactions.vue'
+import UserActionMenu from '@/components/Chat/UserActionMenu.vue'
 import YouTubeEmbed from '@/components/Chat/YouTubeEmbed.vue'
 import LinkEmbed from '@/components/LinkEmbed/index.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
@@ -21,7 +23,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{ compact?: boolean }>()
 
-const { messages: allMessages, nick, users, inputMessage, clearMessages, activeBuffer, openPm, setReply, joinChannel, fetchOlderHistory, toggleReaction, chatHistorySupported, isChatVisible } = useIrcChat()
+const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, toggleReaction, chatHistorySupported, isChatVisible } = useIrcChat()
 const { settings } = useDataUserSettings()
 
 // Unknown TAGMSG events are kept in the buffer but only rendered when the user
@@ -859,6 +861,7 @@ function onContextMenu(event: MouseEvent) {
 function closeMenu() {
   if (!import.meta.client)
     return
+  mobileMenuOpen.value = false
   setTimeout(() => {
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
     document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -876,17 +879,28 @@ async function copyText(text: string, label: string) {
   closeMenu()
 }
 
-function messagePm(name: string) {
-  openPm(cleanNick(name))
-  closeMenu()
-  mobileMenuOpen.value = false
-}
-
 function viewProfile(name: string) {
   const user = resolvedUser(name.toLowerCase())
   if (!user)
     return
   navigateTo(`/profile/${user.username}`)
+  closeMenu()
+  mobileMenuOpen.value = false
+}
+
+function activeMessagePrefix(): string | undefined {
+  if (!activeMessage.value?.from)
+    return undefined
+  const lower = cleanNick(activeMessage.value.from).toLowerCase()
+  return users.value.find(u => u.name.toLowerCase() === lower)?.prefix
+}
+
+const whoisModalNick = ref<string | null>(null)
+const whoisModalOpen = ref(false)
+
+function openWhois(name: string) {
+  whoisModalNick.value = cleanNick(name)
+  whoisModalOpen.value = true
   closeMenu()
   mobileMenuOpen.value = false
 }
@@ -913,20 +927,6 @@ function scrollToReplySource(msg: ChatMessage) {
   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   el.classList.add('chat-log__msg--jump-highlight')
   setTimeout(() => el.classList.remove('chat-log__msg--jump-highlight'), 1500)
-}
-
-function mention(name: string) {
-  const clean = cleanNick(name)
-  const current = inputMessage.value.trim()
-  inputMessage.value = current ? `${current} @${clean} ` : `@${clean}: `
-  closeMenu()
-  mobileMenuOpen.value = false
-}
-
-function clear() {
-  clearMessages()
-  closeMenu()
-  mobileMenuOpen.value = false
 }
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🔥']
@@ -1581,51 +1581,36 @@ onBeforeUnmount(() => {
     <template #menu>
       <div class="vui-dropdown chat-log__menu" @click="closeMenu">
         <template v-if="activeMessage">
-          <DropdownItem
-            v-if="activeMessage.msgid && activeMessage.type === 'chat'"
-            @click="reply(activeMessage)"
-          >
-            <template #icon>
-              <Icon name="ph:arrow-bend-up-left" />
-            </template>
-            Reply
-          </DropdownItem>
-          <DropdownItem
-            v-if="activeMessage.from && resolvedUser(activeMessage.from.toLowerCase())"
-            @click="viewProfile(activeMessage.from)"
-          >
-            <template #icon>
-              <Icon name="ph:user-circle" />
-            </template>
-            View profile
-          </DropdownItem>
-          <DropdownItem
+          <UserActionMenu
             v-if="activeMessage.from"
-            @click="messagePm(activeMessage.from)"
+            :nick="cleanNick(activeMessage.from)"
+            :prefix="activeMessagePrefix()"
+            show-mod-actions
+            @close="closeMenu"
+            @open-whois="openWhois"
           >
-            <template #icon>
-              <Icon name="ph:chat-text" />
+            <template #middle>
+              <DropdownItem
+                v-if="activeMessage.msgid && activeMessage.type === 'chat'"
+                @click="reply(activeMessage)"
+              >
+                <template #icon>
+                  <Icon name="ph:arrow-bend-up-left" />
+                </template>
+                Reply
+              </DropdownItem>
+              <DropdownItem
+                v-if="resolvedUser(activeMessage.from.toLowerCase())"
+                @click="viewProfile(activeMessage.from)"
+              >
+                <template #icon>
+                  <Icon name="ph:user-circle" />
+                </template>
+                View profile
+              </DropdownItem>
             </template>
-            Message {{ cleanNick(activeMessage.from) }}
-          </DropdownItem>
-          <DropdownItem
-            v-if="activeMessage.from"
-            @click="mention(activeMessage.from)"
-          >
-            <template #icon>
-              <Icon name="ph:at" />
-            </template>
-            Mention {{ cleanNick(activeMessage.from) }}
-          </DropdownItem>
-          <DropdownItem
-            v-if="activeMessage.from"
-            @click="copyText(cleanNick(activeMessage.from), 'Nickname')"
-          >
-            <template #icon>
-              <Icon name="ph:user" />
-            </template>
-            Copy nickname
-          </DropdownItem>
+          </UserActionMenu>
+          <Divider />
           <DropdownItem @click="copyText(activeMessage.text, 'Message')">
             <template #icon>
               <Icon name="ph:copy" />
@@ -1633,12 +1618,6 @@ onBeforeUnmount(() => {
             Copy message
           </DropdownItem>
         </template>
-        <DropdownItem @click="clear">
-          <template #icon>
-            <Icon name="ph:trash" />
-          </template>
-          Clear log
-        </DropdownItem>
       </div>
     </template>
   </ContextMenu>
@@ -1678,51 +1657,36 @@ onBeforeUnmount(() => {
     <Divider />
     <div class="vui-dropdown chat-log__menu">
       <template v-if="activeMessage">
-        <DropdownItem
-          v-if="activeMessage.msgid && activeMessage.type === 'chat'"
-          @click="reply(activeMessage)"
-        >
-          <template #icon>
-            <Icon name="ph:arrow-bend-up-left" />
-          </template>
-          Reply
-        </DropdownItem>
-        <DropdownItem
-          v-if="activeMessage.from && resolvedUser(activeMessage.from.toLowerCase())"
-          @click="viewProfile(activeMessage.from)"
-        >
-          <template #icon>
-            <Icon name="ph:user-circle" />
-          </template>
-          View profile
-        </DropdownItem>
-        <DropdownItem
+        <UserActionMenu
           v-if="activeMessage.from"
-          @click="messagePm(activeMessage.from)"
+          :nick="cleanNick(activeMessage.from)"
+          :prefix="activeMessagePrefix()"
+          show-mod-actions
+          @close="closeMenu"
+          @open-whois="openWhois"
         >
-          <template #icon>
-            <Icon name="ph:chat-text" />
+          <template #middle>
+            <DropdownItem
+              v-if="activeMessage.msgid && activeMessage.type === 'chat'"
+              @click="reply(activeMessage)"
+            >
+              <template #icon>
+                <Icon name="ph:arrow-bend-up-left" />
+              </template>
+              Reply
+            </DropdownItem>
+            <DropdownItem
+              v-if="resolvedUser(activeMessage.from.toLowerCase())"
+              @click="viewProfile(activeMessage.from)"
+            >
+              <template #icon>
+                <Icon name="ph:user-circle" />
+              </template>
+              View profile
+            </DropdownItem>
           </template>
-          Message {{ cleanNick(activeMessage.from) }}
-        </DropdownItem>
-        <DropdownItem
-          v-if="activeMessage.from"
-          @click="mention(activeMessage.from)"
-        >
-          <template #icon>
-            <Icon name="ph:at" />
-          </template>
-          Mention {{ cleanNick(activeMessage.from) }}
-        </DropdownItem>
-        <DropdownItem
-          v-if="activeMessage.from"
-          @click="copyText(cleanNick(activeMessage.from), 'Nickname')"
-        >
-          <template #icon>
-            <Icon name="ph:user" />
-          </template>
-          Copy nickname
-        </DropdownItem>
+        </UserActionMenu>
+        <Divider />
         <DropdownItem @click="copyText(activeMessage.text, 'Message')">
           <template #icon>
             <Icon name="ph:copy" />
@@ -1730,14 +1694,9 @@ onBeforeUnmount(() => {
           Copy message
         </DropdownItem>
       </template>
-      <DropdownItem @click="clear">
-        <template #icon>
-          <Icon name="ph:trash" />
-        </template>
-        Clear log
-      </DropdownItem>
     </div>
   </Sheet>
+  <IrcWhoisModal :nick="whoisModalNick" :open="whoisModalOpen" @close="whoisModalOpen = false" />
 </template>
 
 <style lang="scss" scoped>

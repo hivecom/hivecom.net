@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { Badge, Button, Divider, Flex, Input, Modal, pushToast, Spinner, Switch, Tab, Tabs } from '@dolanske/vui'
+import { Badge, Button, Divider, Dropdown, DropdownItem, Flex, Input, Modal, pushToast, Sheet, Spinner, Switch, Tab, Tabs } from '@dolanske/vui'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
+import UserRoleBadge from '@/components/Chat/UserRoleBadge.vue'
 import ColorPicker from '@/components/Shared/ColorPicker.vue'
+import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { channelRole, useIrcChat } from '@/composables/useIrcChat'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{ channel: string | null }>()
 
@@ -10,7 +14,9 @@ const emit = defineEmits<{ close: [] }>()
 
 const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
-const { buffers, send, setChannelMetadata, deleteChannelMetadata, myChannelRole, fetchListModes, queryChanServInfo, suppressChanServResponse, nick } = useIrcChat()
+const { buffers, send, setChannelMetadata, deleteChannelMetadata, myChannelRole, fetchListModes, queryChanServInfo, suppressChanServResponse, initiateDrop, nick, channelMetaCache } = useIrcChat()
+const isMobile = useBreakpoint('<s')
+const { settings } = useDataUserSettings()
 
 const buf = computed(() => {
   if (!props.channel)
@@ -24,6 +30,53 @@ const OP_PREFIXES = new Set(['~', '&', '@'])
 const HALFOP_PREFIXES = new Set(['~', '&', '@', '%'])
 
 const canEdit = computed(() => OP_PREFIXES.has(role.value?.symbol ?? ''))
+
+// Subchannel parent authorization
+const isSubchannel = computed(() => {
+  if (!props.channel)
+    return false
+  return props.channel.replace(/^[#&]/, '').split('/').filter(Boolean).length > 1
+})
+
+const parentChannelName = computed(() => {
+  if (!isSubchannel.value || !props.channel)
+    return null
+  const prefix = props.channel[0]!
+  const segments = props.channel.slice(1).split('/').filter(Boolean)
+  return `${prefix}${segments.slice(0, -1).join('/')}`
+})
+
+const leafSegment = computed(() => {
+  if (!isSubchannel.value || !props.channel)
+    return null
+  const segments = props.channel.slice(1).split('/').filter(Boolean)
+  return segments[segments.length - 1]!
+})
+
+const isAuthorizedByParent = computed(() => {
+  if (!parentChannelName.value || !leafSegment.value)
+    return false
+  const lc = parentChannelName.value.toLowerCase()
+  const meta = buffers.value.find(b => b.name.toLowerCase() === lc)?.metadata ?? channelMetaCache.value.get(lc)
+  return (meta?.get('subchannels') ?? '')
+    .split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(leafSegment.value.toLowerCase())
+})
+
+function registerWithParent() {
+  if (!parentChannelName.value || !leafSegment.value)
+    return
+  const lc = parentChannelName.value.toLowerCase()
+  const meta = buffers.value.find(b => b.name.toLowerCase() === lc)?.metadata ?? channelMetaCache.value.get(lc)
+  const existing = meta?.get('subchannels') ?? ''
+  const list = existing.split(',').map(s => s.trim()).filter(Boolean)
+  if (!list.map(s => s.toLowerCase()).includes(leafSegment.value.toLowerCase()))
+    list.push(leafSegment.value)
+  setChannelMetadata(parentChannelName.value, 'subchannels', list.join(', '))
+  pushToast(`Added ${leafSegment.value} to ${parentChannelName.value} subchannels`)
+}
 const canHalfOp = computed(() => HALFOP_PREFIXES.has(role.value?.symbol ?? ''))
 const canEditTopic = computed(() => {
   if (!canHalfOp.value)
@@ -64,6 +117,7 @@ const draftPassword = ref('')
 const draftPasswordEnabled = ref(false)
 const draftLimit = ref('')
 const draftForward = ref('')
+const draftSubchannels = ref('')
 
 function populateDraft() {
   if (!buf.value)
@@ -73,7 +127,7 @@ function populateDraft() {
   draftAvatar.value = buf.value.metadata?.get('avatar') ?? ''
   draftColor.value = buf.value.metadata?.get('color') ?? ''
   draftHomepage.value = buf.value.metadata?.get('homepage') ?? ''
-  draftMarkdown.value = buf.value.metadata?.get('hivecom.net/markdown') ?? ''
+  draftMarkdown.value = buf.value.metadata?.get('markdown') ?? ''
   draftFlags.value = {
     i: buf.value.modes?.has('i') ?? false,
     m: buf.value.modes?.has('m') ?? false,
@@ -90,6 +144,7 @@ function populateDraft() {
   draftPasswordEnabled.value = buf.value.modes?.has('k') ?? false
   draftLimit.value = ''
   draftForward.value = buf.value.modeParams?.get('f') ?? ''
+  draftSubchannels.value = buf.value.metadata?.get('subchannels') ?? ''
 }
 
 watch(() => props.channel, (val) => {
@@ -149,6 +204,20 @@ function hasOp(prefix: string) {
   return prefix.includes('@')
 }
 
+// Members sheet (mobile)
+interface MemberUser { name: string, prefix: string }
+const memberSheetUser = ref<MemberUser | null>(null)
+const memberSheetOpen = ref(false)
+
+function openMemberSheet(user: MemberUser) {
+  memberSheetUser.value = user
+  memberSheetOpen.value = true
+}
+
+function closeMemberSheet() {
+  memberSheetOpen.value = false
+}
+
 function kickUser(targetNick: string) {
   if (!props.channel)
     return
@@ -187,9 +256,8 @@ function registerChannel() {
 function dropChannel() {
   if (!props.channel || !buf.value)
     return
-  buf.value.registered = false
-  suppressChanServResponse(props.channel)
-  send(`PRIVMSG ChanServ :DROP ${props.channel}`)
+  buf.value.registered = undefined
+  initiateDrop(props.channel)
 }
 
 function unban(mask: string) {
@@ -280,7 +348,8 @@ function save() {
       ['avatar', draftAvatar.value.trim()],
       ['color', draftColor.value.trim()],
       ['homepage', draftHomepage.value.trim()],
-      ['hivecom.net/markdown', draftMarkdown.value],
+      ['markdown', draftMarkdown.value],
+      ['subchannels', draftSubchannels.value.trim()],
     ]
 
     for (const [key, value] of metaFields) {
@@ -306,7 +375,7 @@ function save() {
         <h4>
           {{ channel }}
         </h4>
-        <span v-if="buf?.modes?.size" class="channel-settings__mode-string">+{{ [...buf.modes].sort().join('') }}</span>
+        <ChannelModeBadges v-if="buf?.modes?.size" :modes="buf.modes" />
       </Flex>
     </template>
 
@@ -328,26 +397,43 @@ function save() {
 
       <!-- Channel tab -->
       <template v-if="activeTab === 'channel'">
-        <!-- Registration -->
-        <Flex y-center x-between expand class="channel-settings__flag-row">
-          <Flex column :gap="0">
-            <span class="channel-settings__label">Channel persistence registration</span>
+        <Flex column expand>
+          <!-- Registration -->
+          <Flex y-center x-between expand class="channel-settings__flag-row">
+            <Flex column :gap="0">
+              <span class="channel-settings__label">Channel persistence registration</span>
+            </Flex>
+            <Flex y-center gap="xs">
+              <Spinner v-if="buf?.registered === undefined" size="s" />
+              <Badge v-else-if="buf.registered" variant="success" outline size="s">
+                Registered
+              </Badge>
+              <Badge v-else variant="neutral" outline size="s">
+                Not registered
+              </Badge>
+              <Button v-if="canEdit && buf?.registered === false" size="s" variant="accent" @click="registerChannel">
+                Register
+              </Button>
+              <Button v-if="canEdit && buf?.registered === true" size="s" variant="danger" @click="dropChannel">
+                Drop
+              </Button>
+            </Flex>
           </Flex>
-          <Flex y-center gap="xs">
-            <Spinner v-if="buf?.registered === undefined" size="s" />
-            <Badge v-else-if="buf.registered" variant="success" outline size="s">
-              Registered
-            </Badge>
-            <Badge v-else variant="neutral" outline size="s">
-              Not registered
-            </Badge>
-            <Button v-if="canEdit && buf?.registered === false" size="s" variant="accent" @click="registerChannel">
-              Register
-            </Button>
-            <Button v-if="canEdit && buf?.registered === true" size="s" variant="danger" plain @click="dropChannel">
-              Drop
-            </Button>
-          </Flex>
+          <!-- Subchannel parent authorization (only when registered) -->
+          <template v-if="isSubchannel && buf?.registered">
+            <Flex y-center x-between expand class="channel-settings__flag-row">
+              <Flex column :gap="0">
+                <span class="text-s">Parent channel</span>
+                <span class="text-xxs text-color-lighter">{{ isAuthorizedByParent ? `This channel is listed as a subchannel of ${parentChannelName}` : `Not yet authorized from parent - requires operator privileges on ${parentChannelName}` }}</span>
+              </Flex>
+              <Badge v-if="isAuthorizedByParent" variant="success" outline size="s">
+                Authorized
+              </Badge>
+              <Button v-else size="s" variant="accent" @click="registerWithParent">
+                Add to parent
+              </Button>
+            </Flex>
+          </template>
         </Flex>
 
         <Divider />
@@ -447,6 +533,21 @@ function save() {
             />
             <p class="text-xxs text-color-lighter channel-settings__hint">
               Users banned or blocked from joining are forwarded here. Leave empty to disable.
+            </p>
+          </Flex>
+
+          <Divider />
+
+          <!-- Authorized subchannels (nesting allowlist) -->
+          <Flex column gap="xs" expand>
+            <label class="channel-settings__label">Subchannels</label>
+            <Input
+              v-model="draftSubchannels"
+              expand
+              placeholder="e.g. dev, staging, 2"
+            />
+            <p class="text-xxs text-color-lighter channel-settings__hint">
+              Comma-separated leaf names this channel authorizes to nest beneath it. Listing "sub-channel" lets the channel {{ channel }}/sub-channel appear as a child here. Unlisted slash-channels stay top-level, preventing impersonation.
             </p>
           </Flex>
         </template>
@@ -556,7 +657,7 @@ function save() {
       <template v-if="activeTab === 'members'">
         <Flex column gap="xs" expand>
           <Flex
-            v-for="user in buf?.users"
+            v-for="user in buf?.users.filter(u => channelRole(u.prefix))"
             :key="user.name"
             y-center
             x-between
@@ -565,30 +666,52 @@ function save() {
             class="channel-settings__member-row"
           >
             <Flex y-center gap="xs">
-              <span
-                v-if="channelRole(user.prefix)"
-                class="channel-settings__role-symbol"
-                :style="{ color: channelRole(user.prefix)?.color }"
-              >{{ channelRole(user.prefix)?.symbol }}</span>
+              <UserRoleBadge :role="channelRole(user.prefix)" />
               <span class="text-s" :class="{ 'text-color-lighter': user.name.toLowerCase() === nick.toLowerCase() }">
                 {{ user.name }}
               </span>
-              <Badge v-if="channelRole(user.prefix)" size="s" variant="neutral" outline>
-                {{ channelRole(user.prefix)?.label }}
-              </Badge>
             </Flex>
             <Flex v-if="canActionUser(user.prefix)" gap="xs">
-              <Button size="s" variant="gray" plain @click="toggleVoice(user.name, user.prefix)">
-                {{ hasVoice(user.prefix) ? '-v' : '+v' }}
-              </Button>
-              <Button size="s" variant="gray" plain @click="toggleOp(user.name, user.prefix)">
-                {{ hasOp(user.prefix) ? '-o' : '+o' }}
-              </Button>
-              <Button size="s" variant="gray" plain @click="kickUser(user.name)">
-                Kick
-              </Button>
-              <Button size="s" variant="danger" plain @click="banKickUser(user.name)">
-                Ban
+              <Dropdown v-if="!isMobile" placement="bottom-end">
+                <template #trigger="{ toggle }">
+                  <Button square plain size="s" aria-label="Manage user" @click.stop="toggle">
+                    <Icon name="ph:dots-three" size="14" />
+                  </Button>
+                </template>
+                <template #default="{ close }">
+                  <DropdownItem @click="toggleVoice(user.name, user.prefix); close()">
+                    <template #icon>
+                      <Icon :name="hasVoice(user.prefix) ? 'ph:microphone-slash' : 'ph:microphone'" />
+                    </template>
+                    <template v-if="settings.chat_irc_native_modes">
+                      {{ hasVoice(user.prefix) ? 'MODE -v' : 'MODE +v' }}
+                    </template>{{ hasVoice(user.prefix) ? 'Devoice' : 'Voice' }}
+                  </DropdownItem>
+                  <DropdownItem @click="toggleOp(user.name, user.prefix); close()">
+                    <template #icon>
+                      <Icon :name="hasOp(user.prefix) ? 'ph:shield-slash' : 'ph:shield-check'" />
+                    </template>
+                    <template v-if="settings.chat_irc_native_modes">
+                      {{ hasOp(user.prefix) ? 'MODE -o' : 'MODE +o' }}
+                    </template>{{ hasOp(user.prefix) ? 'Deop' : 'Op' }}
+                  </DropdownItem>
+                  <Divider />
+                  <DropdownItem @click="kickUser(user.name); close()">
+                    <template #icon>
+                      <Icon name="ph:boot" class="text-color-yellow" />
+                    </template>
+                    Kick
+                  </DropdownItem>
+                  <DropdownItem @click="banKickUser(user.name); close()">
+                    <template #icon>
+                      <Icon name="ph:prohibit" class="text-color-red" />
+                    </template>
+                    Kick &amp; ban
+                  </DropdownItem>
+                </template>
+              </Dropdown>
+              <Button v-else square plain size="s" aria-label="Manage user" @click.stop="openMemberSheet(user)">
+                <Icon name="ph:dots-three" size="14" />
               </Button>
             </Flex>
           </Flex>
@@ -671,16 +794,47 @@ function save() {
       </Flex>
     </template>
   </Modal>
+
+  <Sheet :open="memberSheetOpen" position="bottom" @close="closeMemberSheet">
+    <template v-if="memberSheetUser" #header>
+      <h4>{{ memberSheetUser.name }}</h4>
+    </template>
+    <div v-if="memberSheetUser" class="vui-dropdown channel-settings__sheet-menu">
+      <DropdownItem @click="toggleVoice(memberSheetUser.name, memberSheetUser.prefix); closeMemberSheet()">
+        <template #icon>
+          <Icon :name="hasVoice(memberSheetUser.prefix) ? 'ph:microphone-slash' : 'ph:microphone'" />
+        </template>
+        <template v-if="settings.chat_irc_native_modes">
+          {{ hasVoice(memberSheetUser.prefix) ? 'MODE -v' : 'MODE +v' }}
+        </template>{{ hasVoice(memberSheetUser.prefix) ? 'Devoice' : 'Voice' }}
+      </DropdownItem>
+      <DropdownItem @click="toggleOp(memberSheetUser.name, memberSheetUser.prefix); closeMemberSheet()">
+        <template #icon>
+          <Icon :name="hasOp(memberSheetUser.prefix) ? 'ph:shield-slash' : 'ph:shield-check'" />
+        </template>
+        <template v-if="settings.chat_irc_native_modes">
+          {{ hasOp(memberSheetUser.prefix) ? 'MODE -o' : 'MODE +o' }}
+        </template>{{ hasOp(memberSheetUser.prefix) ? 'Deop' : 'Op' }}
+      </DropdownItem>
+      <Divider />
+      <DropdownItem @click="kickUser(memberSheetUser.name); closeMemberSheet()">
+        <template #icon>
+          <Icon name="ph:boot" class="text-color-yellow" />
+        </template>
+        Kick
+      </DropdownItem>
+      <DropdownItem @click="banKickUser(memberSheetUser.name); closeMemberSheet()">
+        <template #icon>
+          <Icon name="ph:prohibit" class="text-color-red" />
+        </template>
+        Kick &amp; ban
+      </DropdownItem>
+    </div>
+  </Sheet>
 </template>
 
 <style lang="scss" scoped>
 .channel-settings {
-  &__mode-string {
-    font-family: monospace;
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
-  }
-
   &__label {
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
@@ -728,11 +882,8 @@ function save() {
     }
   }
 
-  &__role-symbol {
-    font-weight: var(--font-weight-semibold);
-    width: 12px;
-    text-align: center;
-    flex-shrink: 0;
+  &__sheet-menu {
+    min-width: 180px;
   }
 }
 </style>
