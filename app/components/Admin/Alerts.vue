@@ -217,10 +217,10 @@ onBeforeMount(() => {
 }
 
 .alerts-empty {
-  padding: var(--space-xxl);
+  // padding: var(--space-xxl);
   color: var(--color-text-light);
   font-size: var(--font-size-s);
-  padding-bottom: 44px;
+  padding-block: 32px;
 }
 
 .alerts-card {

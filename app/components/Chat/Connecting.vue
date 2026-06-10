@@ -1,5 +1,15 @@
 <script setup lang="ts">
+import { Button, Flex } from '@dolanske/vui'
 import { onMounted, onUnmounted, ref } from 'vue'
+
+const props = defineProps<{
+  offline?: boolean
+}>()
+
+const emit = defineEmits<{
+  retry: []
+  goBack: []
+}>()
 
 interface Vec3 {
   x: number
@@ -38,6 +48,8 @@ let cy = 0
 let radius = 0
 
 let accentRgb = '99, 102, 241'
+// Resolved separately for offline (red) mode.
+let offlineRgb = '239, 68, 68'
 
 // Base viewing tilt, so we look at the globe from slightly above.
 const TILT = -0.42
@@ -292,7 +304,8 @@ function loop(now: number) {
   }
 
   // Spawn, advance, retire, and draw the connection arcs.
-  if (now - lastSpawn > spawnDelay && arcs.length < MAX_ARCS) {
+  // Stop spawning new arcs in offline mode so the globe empties out.
+  if (now - lastSpawn > spawnDelay && arcs.length < MAX_ARCS && !props.offline) {
     spawnArc()
     lastSpawn = now
     spawnDelay = 600 + Math.random() * 1100
@@ -314,7 +327,13 @@ function loop(now: number) {
 }
 
 onMounted(() => {
-  accentRgb = resolveRgb('--color-accent', '99, 102, 241')
+  if (props.offline) {
+    offlineRgb = resolveRgb('--color-text-red', '239, 68, 68')
+    accentRgb = offlineRgb
+  }
+  else {
+    accentRgb = resolveRgb('--color-accent', '99, 102, 241')
+  }
   resize()
   ro = new ResizeObserver(resize)
   ro.observe(canvas.value!.parentElement!)
@@ -328,18 +347,33 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="chat-connecting">
+  <div class="chat-connecting" :class="{ 'chat-connecting--offline': props.offline }">
     <div class="chat-connecting__viz">
       <canvas ref="canvas" class="chat-connecting__canvas" />
       <div class="chat-connecting__label">
-        <span class="chat-connecting__word">Connecting</span>
-        <span class="chat-connecting__dots" aria-hidden="true">
+        <span class="chat-connecting__word">{{ props.offline ? 'Offline' : 'Connecting' }}</span>
+        <span v-if="props.offline" class="chat-connecting__subtext">Server may be offline or no internet connection</span>
+        <span v-else class="chat-connecting__dots" aria-hidden="true">
           <i />
           <i />
           <i />
         </span>
       </div>
     </div>
+    <Flex v-if="props.offline" x-center gap="s" class="chat-connecting__actions">
+      <Button variant="gray" @click="emit('goBack')">
+        <template #start>
+          <Icon name="ph:arrow-left" />
+        </template>
+        Go back
+      </Button>
+      <Button variant="accent" @click="emit('retry')">
+        <template #start>
+          <Icon name="ph:arrows-clockwise" />
+        </template>
+        Retry
+      </Button>
+    </Flex>
   </div>
 </template>
 
@@ -348,8 +382,10 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--space-m);
   overflow: hidden;
 
   &__viz {
@@ -385,6 +421,22 @@ onUnmounted(() => {
     text-shadow:
       0 0 8px var(--color-bg),
       0 0 6px var(--color-bg);
+  }
+
+  &__subtext {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
+    text-align: center;
+    max-width: 200px;
+    text-shadow:
+      0 0 8px var(--color-bg),
+      0 0 6px var(--color-bg);
+  }
+
+  &--offline {
+    .chat-connecting__word {
+      color: var(--color-text-red);
+    }
   }
 
   &__dots {

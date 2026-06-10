@@ -48,9 +48,9 @@ watchEffect(() => {
 </script>
 
 <template>
-  <GlowCard halo style="cursor: pointer" @click="emit('openDetails', game)">
+  <GlowCard role="button" @click="emit('openDetails', game)">
     <Card class="top-game-hero" :padding="false">
-      <div class="top-game-hero__info">
+      <!-- <div class="top-game-hero__info">
         <Tooltip placement="top">
           <span v-if="isMobile" class="text-xxs text-color-lighter info-text">Most played over 2 weeks</span>
           <Badge v-else variant="neutral" size="s" circle>
@@ -60,7 +60,7 @@ watchEffect(() => {
             <p>Most activity over the last 2 weeks</p>
           </template>
         </Tooltip>
-      </div>
+      </div> -->
       <div
         class="top-game-hero__bg"
         :class="{ 'top-game-hero__bg--loaded': bgLoaded }"
@@ -73,7 +73,7 @@ watchEffect(() => {
       <div class="top-game-hero__inner">
         <Flex expand x-between gap="l" :column="isMobile">
           <Flex column gap="s" class="top-game-hero__text">
-            <span class="text-xs text-bold text-color-lighter top-game-hero__rank">#{{ rank }}</span>
+            <span class="text-xs text-bold text-color-lighter top-game-hero__rank">#{{ rank }} - Most active recently</span>
             <Flex y-center gap="s" class="top-game-hero__name-row">
               <GameIcon :game="game" size="l" />
               <h2 class="text-bold" :class="isMobile ? 'text-xxl' : 'text-xxxxl'">
@@ -134,6 +134,7 @@ watchEffect(() => {
   position: relative;
   overflow: hidden;
   padding: 0;
+  user-select: none;
 
   :deep(.vui-card-content) {
     position: relative;
@@ -197,13 +198,6 @@ watchEffect(() => {
   &__rank {
     text-transform: uppercase;
     letter-spacing: 0.1em;
-  }
-
-  &__name-row {
-    &:hover h2 {
-      text-decoration: underline;
-      text-underline-offset: 3px;
-    }
   }
 
   &__cover {

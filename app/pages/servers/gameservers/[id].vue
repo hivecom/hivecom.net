@@ -140,6 +140,24 @@ watch(game, async (newGame) => {
   }
 }, { immediate: true })
 
+// User-friendly error message; raw errors are demoted to technical detail.
+const displayError = computed(() => {
+  if (loading.value)
+    return null
+  if (error.value === 'Gameserver not found')
+    return 'This game server was not found. It may have been removed or never existed.'
+  if (error.value)
+    return 'Unable to load game server details. Please try again later.'
+  return null
+})
+
+// Raw error shown as copyable technical detail only for unexpected fetch errors.
+const displayErrorDetail = computed(() => {
+  if (error.value === 'Gameserver not found')
+    return undefined
+  return error.value ?? undefined
+})
+
 // SEO and page metadata
 useSeoMeta({
   title: computed(() => gameserver.value ? `${gameserver.value.name} | Game Servers` : 'Game Server Details'),
@@ -162,10 +180,10 @@ useHead({
   <div class="page container-m">
     <DetailStates
       :loading="loading"
-      :error="error"
+      :error="displayError"
       :back-to="goBack"
       back-label="Game Servers"
-      error-message="The game server you're looking for might have been removed or doesn't exist."
+      :error-message="displayErrorDetail"
     />
 
     <!-- Gameserver Content -->

@@ -67,8 +67,7 @@ function handleCardClick() {
     :tabindex="isClickable ? 0 : undefined"
     :role="isClickable ? 'link' : undefined"
     @click="handleCardClick"
-    @keydown.enter.prevent="handleCardClick"
-    @keydown.space.prevent="handleCardClick"
+    @keydown="(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick() } }"
   >
     <template #footer />
     <div class="notification-card__row">

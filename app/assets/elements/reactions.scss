@@ -59,6 +59,19 @@
 
   &__list {
     display: contents;
+
+    &--small {
+      .reactions__button {
+        height: 22px;
+        min-width: 22px;
+        width: 22px;
+        font-size: var(--font-size-s);
+
+        &:has(.reactions__counter) {
+          width: auto;
+        }
+      }
+    }
   }
 
   &__button-wrapper {

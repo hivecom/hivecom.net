@@ -18,20 +18,16 @@ const props = defineProps<{
 
 <template>
   <section class="mb-l">
-    <Flex y-start x-between gap="xl" expand>
-      <h1>
+    <Flex y-center x-between gap="m" expand class="mb-m">
+      <h1 class="m-0">
         {{ props.referendum.title }}
       </h1>
+      <UserDisplay :user-id="referendum.created_by" size="m" :show-profile-preview="true" :hide-avatar="false" />
     </Flex>
 
-    <p v-if="props.referendum.description" class="text-xl text-color-light mb-m">
+    <p v-if="props.referendum.description" class="text-l text-color-light mb-m">
       {{ props.referendum.description }}
     </p>
-
-    <Flex y-center gap="xs" class="vote-header__organizer mb-xl">
-      <span class="vote-header__organizer-label">Created by</span>
-      <UserDisplay :user-id="referendum.created_by" size="s" :show-profile-preview="true" :hide-avatar="false" />
-    </Flex>
 
     <Flex x-between y-center expand class="mt-m" wrap>
       <Flex gap="xs" wrap>
@@ -79,6 +75,10 @@ const props = defineProps<{
 </template>
 
 <style scoped lang="scss">
+h1 {
+  font-size: var(--font-size-xxxl);
+}
+
 .vote-header {
   &__organizer {
     &-label {

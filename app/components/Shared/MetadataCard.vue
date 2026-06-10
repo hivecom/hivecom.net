@@ -22,16 +22,18 @@ defineProps<Props>()
           <Icon name="ph:info" />
           Metadata
         </h3>
-        <div v-if="tags && tags.length > 0" class="metadata-card__tags">
+        <Flex v-if="tags && tags.length > 0" wrap x-end gap="xs">
           <Badge
             v-for="tag in tags"
             :key="tag"
-            size="s"
             variant="neutral"
+            outline
           >
-            {{ tag }}
+            <span class="text-color-light text-xs">
+              {{ tag }}
+            </span>
           </Badge>
-        </div>
+        </Flex>
       </Flex>
     </template>
     <Flex column gap="l">
@@ -67,12 +69,5 @@ defineProps<Props>()
   svg {
     color: var(--color-accent);
   }
-}
-
-.metadata-card__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  justify-content: flex-end;
 }
 </style>

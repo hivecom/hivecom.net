@@ -9,7 +9,6 @@ import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
 import AssetGrid from '@/components/Admin/Assets/AssetGrid.vue'
 import AssetRenameModal from '@/components/Admin/Assets/AssetRenameModal.vue'
-import AssetUpload from '@/components/Admin/Assets/AssetUpload.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
@@ -32,19 +31,11 @@ type BadgeVariant = 'success' | 'warning' | 'danger' | 'neutral' | 'info' | 'acc
 
 const props = defineProps<Props>()
 
-const { canCreateAssets, canDeleteAssets } = useAdminPermissions()
-const canUpload = computed(() => canCreateAssets.value)
+const { canDeleteAssets } = useAdminPermissions()
 const canDelete = computed(() => canDeleteAssets.value)
 
 const supabase = useSupabaseClient()
-const runtimeConfig = useRuntimeConfig()
 const resolvedBucketId = computed(() => props.bucketId ?? CMS_BUCKET_ID)
-const storageConsoleUrl = computed(() => {
-  const projectRef = runtimeConfig.public?.supabaseProjectRef
-  if (typeof projectRef !== 'string' || projectRef.length === 0)
-    return ''
-  return `https://supabase.com/dashboard/project/${projectRef}/storage/buckets/${resolvedBucketId.value}`
-})
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 const loading = ref(true)
@@ -114,7 +105,6 @@ const assetGridColumns = computed(() => {
 
 const actionLoading = ref<Record<string, Partial<Record<AssetActionKey, boolean>>>>({})
 
-const showUploadDrawer = ref(false)
 const showDetailsDrawer = ref(false)
 const selectedAsset = ref<CmsAsset | null>(null)
 const skipNextRefresh = ref(false)
@@ -500,13 +490,6 @@ function handleRowClick(asset: CmsAsset) {
     openDetails(asset)
 }
 
-function handleUploadSuccess(paths: string[]) {
-  if (paths.length)
-    pushToast(`${paths.length} file${paths.length > 1 ? 's' : ''} uploaded`)
-  fetchAssets()
-  notifyPeers()
-}
-
 function notifyPeers() {
   skipNextRefresh.value = true
   refreshSignal.value = (refreshSignal.value || 0) + 1
@@ -690,78 +673,39 @@ onBeforeMount(fetchAssets)
           <Flex gap="xs" :expand="isBelowMedium" :x-between="isBelowMedium">
             <ButtonGroup :expand="isBelowMedium">
               <Button
+                size="s"
                 :variant="viewMode === 'table' ? 'accent' : 'gray'"
                 :square="!isBelowMedium"
                 :expand="isBelowMedium"
                 @click="viewMode = 'table'"
               >
-                <Icon name="ph:list" size="18" />
+                <Icon name="ph:list" />
               </Button>
               <Button
+                size="s"
                 :variant="viewMode === 'grid' ? 'accent' : 'gray'"
                 :square="!isBelowMedium"
                 :expand="isBelowMedium"
                 @click="viewMode = 'grid'"
               >
-                <Icon name="ph:squares-four" size="18" />
+                <Icon name="ph:squares-four" />
               </Button>
             </ButtonGroup>
 
             <Tooltip>
               <Button
+                size="s"
                 :variant="flatView ? 'accent' : 'gray'"
                 :square="!isBelowMedium"
                 :expand="isBelowMedium"
                 @click="flatView = !flatView"
               >
-                <Icon name="ph:rows" size="18" />
+                <Icon name="ph:rows" />
               </Button>
               <template #tooltip>
                 <p>{{ flatView ? 'Flat view - all files' : 'Switch to flat view' }}</p>
               </template>
             </Tooltip>
-          </Flex>
-
-          <Flex
-            gap="xs"
-            class="asset-manager__toolbar-actions"
-            wrap
-            :x-end="!isBelowMedium"
-            :expand="isBelowMedium"
-          >
-            <Flex :expand="isBelowMedium" gap="xs">
-              <!-- <Button variant="gray" :expand="isBelowMedium" @click="fetchAssets">
-                <template #start>
-                  <Icon name="ph:arrow-clockwise" />
-                </template>
-                Refresh
-              </Button> -->
-              <Button
-                v-if="storageConsoleUrl"
-                variant="gray"
-                :disabled="!storageConsoleUrl"
-                :expand="isBelowMedium"
-                :href="storageConsoleUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Supabase
-                <template #end>
-                  <Icon name="ph:arrow-square-out" />
-                </template>
-              </Button>
-            </Flex>
-            <Button
-              v-if="canUpload"
-              variant="accent"
-              :expand="isBelowMedium"
-              @click="showUploadDrawer = true"
-            >
-              <template #start>
-                <Icon name="ph:upload" />
-              </template>
-              Upload
-            </Button>
           </Flex>
         </Flex>
       </Flex>
@@ -910,14 +854,6 @@ onBeforeMount(fetchAssets)
       </Flex>
     </Flex>
 
-    <AssetUpload
-      v-model:is-open="showUploadDrawer"
-      :can-upload="canUpload"
-      :current-prefix="currentPrefix"
-      :bucket-id="resolvedBucketId"
-      @uploaded="handleUploadSuccess"
-    />
-
     <AssetDetails
       v-model:is-open="showDetailsDrawer"
       :asset="selectedAsset"
@@ -953,10 +889,6 @@ onBeforeMount(fetchAssets)
       opacity: 0.4;
       pointer-events: none;
     }
-  }
-
-  &__toolbar-actions {
-    gap: var(--space-xxs);
   }
 
   &__row {

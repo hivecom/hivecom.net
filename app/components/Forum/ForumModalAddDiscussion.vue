@@ -517,7 +517,7 @@ function confirmPublish() {
 </script>
 
 <template>
-  <Modal v-bind="props" size="l" :card="{ footerSeparator: true }" :can-dismiss="false" @close="emit('close')" @keydown.ctrl.enter.prevent="submitForm()" @keydown.meta.enter.prevent="submitForm()">
+  <Modal v-bind="props" size="l" :card="{ footerSeparator: true }" :can-dismiss="false" @close="emit('close')" @keydown.enter="(e: KeyboardEvent) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); submitForm() } }">
     <template #header>
       <h3>{{ isEditing ? 'Edit' : 'New' }}  discussion</h3>
     </template>
@@ -600,6 +600,7 @@ function confirmPublish() {
         placeholder="This is the main body of your discussion"
         show-attachment-button
         show-expand-button
+        fullscreen-on-mobile
       />
 
       <Card class="card-bg">

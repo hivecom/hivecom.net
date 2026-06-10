@@ -10,6 +10,7 @@ import { transformLinkEmbeds } from '@/lib/linkEmbedAST'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
 import { wrapTablesAST } from '@/lib/tableWrapping'
 import { isExternalUrl } from '@/lib/utils/externalLink'
+import SharedChannelMention from './ChannelMention.global.vue'
 import MarkdownLightbox from './MarkdownLightbox.vue'
 import SharedUserMention from './UserMention.global.vue'
 
@@ -36,7 +37,7 @@ const emit = defineEmits<{
 // while keeping the actual runtime value as the component object.
 // 'img' key matches the AST node tag so MDCRenderer uses ProseImg for every
 // markdown image, giving us lazy loading and a fade-in without DOM post-processing.
-const mdcComponents = { SharedUserMention, SharedLinkEmbed, img: ProseImg } as unknown as Record<string, string>
+const mdcComponents = { SharedUserMention, SharedChannelMention, SharedLinkEmbed, img: ProseImg } as unknown as Record<string, string>
 
 const container = useTemplateRef('container')
 
@@ -159,6 +160,7 @@ watch(processedMarkdown, (val) => {
   > p,
   > img,
   > .prose-img-skeleton,
+  > .prose-img-missing,
   > div.md-video-embed {
     min-width: 0;
     margin: 0;
@@ -166,8 +168,10 @@ watch(processedMarkdown, (val) => {
 
   > p > img,
   > p > .prose-img-skeleton,
+  > p > .prose-img-missing,
   > img,
-  > .prose-img-skeleton {
+  > .prose-img-skeleton,
+  > .prose-img-missing {
     width: 100%;
     max-height: 240px;
     max-width: none;
@@ -236,6 +240,7 @@ watch(processedMarkdown, (val) => {
     > p,
     > img,
     > .prose-img-skeleton,
+    > .prose-img-missing,
     > div.md-video-embed {
       grid-column: span 2;
     }
@@ -259,6 +264,7 @@ watch(processedMarkdown, (val) => {
       > p,
       > img,
       > .prose-img-skeleton,
+      > .prose-img-missing,
       > div.md-video-embed {
         grid-column: unset;
       }
@@ -270,8 +276,10 @@ watch(processedMarkdown, (val) => {
 
     > p > img,
     > p > .prose-img-skeleton,
+    > p > .prose-img-missing,
     > img,
     > .prose-img-skeleton,
+    > .prose-img-missing,
     > div.md-video-embed {
       max-height: 40vh;
       aspect-ratio: 4 / 3;
@@ -282,7 +290,8 @@ watch(processedMarkdown, (val) => {
       grid-column: 1 / -1;
 
       > img,
-      img {
+      img,
+      > .prose-img-missing {
         aspect-ratio: 16 / 9;
         max-height: 30vh;
       }

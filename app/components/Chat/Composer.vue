@@ -1,37 +1,44 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Modal } from '@dolanske/vui'
+import { Button, Flex, Input, Modal, Spinner } from '@dolanske/vui'
+import { computed, ref, watch } from 'vue'
+import ChatInfoModal from '@/components/Chat/ChannelInfoModal.vue'
+import IrcWhoisCard from '@/components/Chat/IrcWhoisCard.vue'
 import ChatTypingIndicator from '@/components/Chat/TypingIndicator.vue'
 import UserListModal from '@/components/Chat/UserListModal.vue'
+import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
-import { nickColor, useIrcChat } from '@/composables/useIrcChat'
+import { nickColor, useIrcChat, whoisStore } from '@/composables/useIrcChat'
+import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 
 const props = defineProps<{
   compact?: boolean
 }>()
 
-const { inputMessage, activeName, activeBuffer, canChat, users, buffers, nick, sendMessage, replyTarget, clearReply, sendTyping } = useIrcChat()
+const { inputMessage, activeName, activeBuffer, canChat, users, buffers, nick, sendMessage, replyTarget, clearReply, sendTyping, requestWhois, markBufferRead } = useIrcChat()
 const { settings } = useDataUserSettings()
+const { resolved: resolvedNicks, resolve: resolveNick } = useIrcNickResolver()
+
+watch(activeBuffer, (buf) => {
+  if (buf?.kind === 'pm')
+    resolveNick([buf.name.toLowerCase()])
+}, { immediate: true })
 
 const infoOpen = ref(false)
 const usersOpen = ref(false)
 
-const URL_RE = /(https?:\/\/\S+)/g
+// /whois modal - independent of the active PM buffer
+const whoisModalNick = ref<string | null>(null)
+const whoisModalData = computed(() =>
+  whoisModalNick.value ? (whoisStore.value.get(whoisModalNick.value.toLowerCase()) ?? null) : null,
+)
+const whoisModalUserId = computed(() =>
+  whoisModalNick.value ? (resolvedNicks.value.get(whoisModalNick.value.toLowerCase())?.id ?? null) : null,
+)
 
-interface TopicSegment { type: 'text' | 'link', value: string }
-
-function topicSegments(topic: string): TopicSegment[] {
-  const out: TopicSegment[] = []
-  let last = 0
-  for (const m of topic.matchAll(new RegExp(URL_RE.source, 'g'))) {
-    const idx = m.index ?? 0
-    if (idx > last)
-      out.push({ type: 'text', value: topic.slice(last, idx) })
-    out.push({ type: 'link', value: m[0] })
-    last = idx + m[0].length
-  }
-  if (last < topic.length)
-    out.push({ type: 'text', value: topic.slice(last) })
-  return out
+function openPmInfo() {
+  if (activeBuffer.value?.kind === 'pm')
+    requestWhois(activeBuffer.value.name)
+  infoOpen.value = true
 }
 
 const placeholder = computed(() => {
@@ -68,6 +75,7 @@ const COMMANDS: CommandSpec[] = [
   { name: 'kick', usage: '/kick <nick> [reason]', hint: 'Kick a user from the channel' },
   { name: 'invite', usage: '/invite <nick>', hint: 'Invite a user to the channel' },
   { name: 'mode', usage: '/mode [+/-flags] [args]', hint: 'Set modes on the current channel' },
+  { name: 'whois', usage: '/whois <nick>', hint: 'Look up info about a user' },
 ]
 
 interface Suggestion {
@@ -303,6 +311,10 @@ function clearTypingTimers() {
 }
 
 watch(inputMessage, (newVal, oldVal) => {
+  // Clear read markers when the user starts typing - they're actively engaged.
+  if (newVal && !oldVal?.trim())
+    markBufferRead(activeName.value)
+
   if (!newVal) {
     if (oldVal && !_skipTypingDone && settings.value.chat_typing_indicators)
       sendTyping('done')
@@ -355,6 +367,18 @@ function sendWithHistory() {
   _skipTypingDone = true
   clearTypingTimers()
   const msg = inputMessage.value.trim()
+
+  const whoisMatch = msg.match(/^\/whois\s+(\S+)/i)
+  if (whoisMatch) {
+    const targetNick = whoisMatch[1]!
+    requestWhois(targetNick)
+    resolveNick([targetNick.toLowerCase()])
+    whoisModalNick.value = targetNick
+    inputMessage.value = ''
+    historyIndex.value = -1
+    return
+  }
+
   if (msg)
     pushHistory(msg)
   sendMessage()
@@ -455,10 +479,10 @@ watch(activeName, clearReply)
     <ChatTypingIndicator />
     <Flex expand :gap="0">
       <Flex v-if="props.compact" :gap="0" class="chat-composer__compact-actions">
-        <Button square :disabled="!activeBuffer?.topic" aria-label="Channel info" class="chat-composer__compact-btn" @click="infoOpen = true">
+        <Button square aria-label="Channel info" class="chat-composer__compact-btn" @click="activeBuffer?.kind === 'pm' ? openPmInfo() : (infoOpen = true)">
           <Icon name="ph:info" size="16" />
         </Button>
-        <Button square :disabled="activeBuffer?.kind !== 'channel'" aria-label="Users" class="chat-composer__compact-btn" @click="usersOpen = true">
+        <Button v-if="activeBuffer?.kind === 'channel'" square aria-label="Users" class="chat-composer__compact-btn" @click="usersOpen = true">
           <Icon name="ph:users" size="16" />
         </Button>
       </Flex>
@@ -509,21 +533,20 @@ watch(activeName, clearReply)
 
     <UserListModal v-if="props.compact" :open="usersOpen" @close="usersOpen = false" />
 
-    <Modal v-if="props.compact && activeBuffer?.kind === 'channel'" :open="infoOpen" size="m" @close="infoOpen = false">
+    <ChatInfoModal v-if="props.compact" :open="infoOpen" @close="infoOpen = false" />
+
+    <Modal :open="!!whoisModalNick" size="s" @close="whoisModalNick = null">
       <template #header>
-        <h4>{{ activeBuffer.name }}</h4>
+        <h4>{{ whoisModalNick }}</h4>
       </template>
-      <p v-if="activeBuffer.topic" class="chat-composer__modal-topic text-s">
-        <template v-for="(seg, i) in topicSegments(activeBuffer.topic)" :key="i">
-          <a v-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-composer__modal-link">{{ seg.value }}</a>
-          <template v-else>
-            {{ seg.value }}
-          </template>
-        </template>
-      </p>
-      <p v-else class="text-color-lighter">
-        No topic set.
-      </p>
+      <Flex column :gap="0">
+        <UserPreviewCard v-if="whoisModalUserId" :user-id="whoisModalUserId" class="chat-composer__pm-preview" />
+        <IrcWhoisCard v-if="whoisModalData" :whois="whoisModalData" :standalone="!whoisModalUserId" :irc-only="!whoisModalUserId" />
+        <Flex v-else-if="whoisModalNick" y-center gap="xs" class="text-s text-color-lighter chat-composer__whois-loading">
+          <Spinner size="s" />
+          <span>Fetching WHOIS...</span>
+        </Flex>
+      </Flex>
     </Modal>
   </Flex>
 </template>
@@ -543,18 +566,8 @@ watch(activeName, clearReply)
     border-radius: 0;
   }
 
-  &__modal-topic {
-    line-height: 1.6;
-    word-break: break-word;
-  }
-
-  &__modal-link {
-    color: var(--color-accent);
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
+  &__whois-loading {
+    padding: var(--space-s) 0;
   }
 
   &__input-row {

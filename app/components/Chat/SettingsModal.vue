@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge, Button, ButtonGroup, Flex, Input, Modal, Slider, Switch } from '@dolanske/vui'
+import { Badge, Button, ButtonGroup, Divider, Flex, Input, Modal, Slider, Switch } from '@dolanske/vui'
 import { ref } from 'vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -39,11 +39,6 @@ const options = [
     description: 'Give each nickname a consistent color in the message log.',
   },
   {
-    key: 'chat_notify_only_mentions',
-    label: 'Only notify on mentions',
-    description: 'Show the navbar chat dot only when you are mentioned, not for all activity.',
-  },
-  {
     key: 'chat_autoconnect',
     label: 'Auto-connect on site open',
     description: 'Connect to chat automatically once you are signed in.',
@@ -64,7 +59,6 @@ const options = [
     description: 'Display the time each message was sent. Hidden automatically in compact mode.',
     hideOnMobile: true,
   },
-
 ] as const
 
 async function toggleBrowserNotifications(value: boolean) {
@@ -85,61 +79,22 @@ async function toggleBrowserNotifications(value: boolean) {
     </template>
 
     <Flex column gap="m" expand>
+      <!-- Display & Behavior -->
+      <strong class="text-color-lighter text-s block">Display &amp; Behavior</strong>
+
       <Flex v-if="!isMobile" y-center x-between expand>
         <Flex column gap="xxs" class="chat-settings__text">
           <span class="text-s">Display mode</span>
           <span class="text-xs text-color-lighter">IRC shows plain text. Modern resolves nicks to Hivecom profiles.</span>
         </Flex>
         <ButtonGroup>
-          <Button :variant="settings.chat_display_mode === 'irc' ? 'accent' : 'gray'" @click="settings.chat_display_mode = 'irc'">
-            IRC
-          </Button>
           <Button :variant="settings.chat_display_mode === 'modern' ? 'accent' : 'gray'" @click="settings.chat_display_mode = 'modern'">
             Modern
           </Button>
-        </ButtonGroup>
-      </Flex>
-
-      <Flex
-        v-for="option in options"
-        v-show="!('hideOnMobile' in option && option.hideOnMobile && isMobile)"
-        :key="option.key"
-        y-center
-        x-between
-        gap="m"
-        expand
-      >
-        <Flex column gap="xxs" class="chat-settings__text">
-          <span class="text-s">{{ option.label }}</span>
-          <span class="text-xs text-color-lighter">{{ option.description }}</span>
-        </Flex>
-        <Switch v-model="settings[option.key]" />
-      </Flex>
-
-      <Flex v-if="isDev" y-center x-between expand>
-        <Flex column gap="xxs" class="chat-settings__text">
-          <span class="text-s">Tag message display</span>
-          <span class="text-xs text-color-lighter">Control which IRCv3 TAGMSG events appear in the message log. Known events (typing, reactions) are always hidden.</span>
-        </Flex>
-        <ButtonGroup>
-          <Button :variant="settings.chat_show_tag_messages === 'none' ? 'accent' : 'gray'" @click="settings.chat_show_tag_messages = 'none'">
-            None
-          </Button>
-          <Button :variant="settings.chat_show_tag_messages === 'unknown' ? 'accent' : 'gray'" @click="settings.chat_show_tag_messages = 'unknown'">
-            Unknown
-          </Button>
-          <Button :variant="settings.chat_show_tag_messages === 'all' ? 'accent' : 'gray'" @click="settings.chat_show_tag_messages = 'all'">
-            All
+          <Button :variant="settings.chat_display_mode === 'irc' ? 'accent' : 'gray'" @click="settings.chat_display_mode = 'irc'">
+            IRC
           </Button>
         </ButtonGroup>
-      </Flex>
-
-      <Flex y-center x-between gap="m" expand>
-        <Flex column gap="xxs" class="chat-settings__text">
-          <span class="text-s">Browser notifications</span>
-          <span class="text-xs text-color-lighter">Show a system notification when you are mentioned while the tab is in the background.</span>
-        </Flex>
-        <Switch :model-value="settings.chat_browser_notifications" @update:model-value="toggleBrowserNotifications" />
       </Flex>
 
       <Flex v-if="!isMobile" column gap="xs" expand>
@@ -164,14 +119,67 @@ async function toggleBrowserNotifications(value: boolean) {
         <Slider v-model="settings.chat_mobile_font_size" :min="10" :max="24" :step="1" />
       </Flex>
 
-      <Flex v-if="!isMobile" column gap="xs" expand>
-        <Flex y-center x-between expand>
-          <Flex column gap="xxs" class="chat-settings__text">
-            <span class="text-s">IRC Mode Timestamp format</span>
-            <span class="text-xs text-color-lighter">Standard dayjs format string, e.g. HH:mm:ss or DD/MM/YYYY HH:mm.</span>
-          </Flex>
+      <Flex
+        v-for="option in options"
+        v-show="!('hideOnMobile' in option && option.hideOnMobile && isMobile)"
+        :key="option.key"
+        y-center
+        x-between
+        gap="m"
+        expand
+      >
+        <Flex column gap="xxs" class="chat-settings__text">
+          <span class="text-s">{{ option.label }}</span>
+          <span class="text-xs text-color-lighter">{{ option.description }}</span>
         </Flex>
-        <Input v-model="settings.chat_timestamp_format" expand placeholder="HH:mm:ss" :disabled="!settings.chat_show_timestamps" />
+        <Switch v-model="settings[option.key]" />
+      </Flex>
+
+      <Flex y-center x-between gap="m" expand>
+        <Flex column gap="xxs" class="chat-settings__text">
+          <span class="text-s">IRC native modes</span>
+          <span class="text-xs text-color-lighter">Show raw IRC mode symbols (~, &amp;, @, %, +) alongside role badges in user lists and menus.</span>
+        </Flex>
+        <Switch v-model="settings.chat_irc_native_modes" />
+      </Flex>
+
+      <Flex v-if="isDev" y-center x-between expand>
+        <Flex column gap="xxs" class="chat-settings__text">
+          <span class="text-s">Tag message display</span>
+          <span class="text-xs text-color-lighter">Control which IRCv3 TAGMSG events appear in the message log. Known events (typing, reactions) are always hidden.</span>
+        </Flex>
+        <ButtonGroup>
+          <Button :variant="settings.chat_show_tag_messages === 'none' ? 'accent' : 'gray'" @click="settings.chat_show_tag_messages = 'none'">
+            None
+          </Button>
+          <Button :variant="settings.chat_show_tag_messages === 'unknown' ? 'accent' : 'gray'" @click="settings.chat_show_tag_messages = 'unknown'">
+            Unknown
+          </Button>
+          <Button :variant="settings.chat_show_tag_messages === 'all' ? 'accent' : 'gray'" @click="settings.chat_show_tag_messages = 'all'">
+            All
+          </Button>
+        </ButtonGroup>
+      </Flex>
+
+      <Divider />
+
+      <!-- Notifications -->
+      <strong class="text-color-lighter text-s block">Notifications</strong>
+
+      <Flex y-center x-between gap="m" expand>
+        <Flex column gap="xxs" class="chat-settings__text">
+          <span class="text-s">Browser notifications</span>
+          <span class="text-xs text-color-lighter">Show a system notification when you are mentioned while the tab is in the background.</span>
+        </Flex>
+        <Switch :model-value="settings.chat_browser_notifications" @update:model-value="toggleBrowserNotifications" />
+      </Flex>
+
+      <Flex y-center x-between gap="m" expand>
+        <Flex column gap="xxs" class="chat-settings__text">
+          <span class="text-s">Only notify on mentions</span>
+          <span class="text-xs text-color-lighter">Show the navbar chat dot only when you are mentioned, not for all activity.</span>
+        </Flex>
+        <Switch v-model="settings.chat_notify_only_mentions" />
       </Flex>
 
       <Flex column gap="xs" expand>
@@ -208,6 +216,37 @@ async function toggleBrowserNotifications(value: boolean) {
           </Badge>
         </Flex>
       </Flex>
+
+      <!-- IRC Mode - desktop only, shown at the bottom so switching modes only extends downward -->
+      <template v-if="!isMobile && settings.chat_display_mode === 'irc'">
+        <Divider />
+
+        <strong class="text-color-lighter text-s block">IRC Mode</strong>
+
+        <Flex y-center x-between gap="m" expand>
+          <Flex column gap="xxs" class="chat-settings__text">
+            <span class="text-s">Show reactions</span>
+            <span class="text-xs text-color-lighter">Show reaction buttons and counts inline after messages.</span>
+          </Flex>
+          <Switch v-model="settings.chat_irc_reactions" />
+        </Flex>
+
+        <Flex y-center x-between gap="m" expand>
+          <Flex column gap="xxs" class="chat-settings__text">
+            <span class="text-s">Hide embedded links</span>
+            <span class="text-xs text-color-lighter">Hide link text when the URL renders as an image, video, or embed.</span>
+          </Flex>
+          <Switch v-model="settings.chat_irc_hide_embedded_links" />
+        </Flex>
+
+        <Flex y-center x-between gap="m" expand>
+          <Flex column gap="xxs" class="chat-settings__text">
+            <span class="text-s">Inline media</span>
+            <span class="text-xs text-color-lighter">Show media at font height inline with text. Off shows them like modern mode.</span>
+          </Flex>
+          <Switch v-model="settings.chat_irc_inline_images" />
+        </Flex>
+      </template>
     </Flex>
   </Modal>
 </template>

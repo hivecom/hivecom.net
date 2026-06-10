@@ -306,7 +306,6 @@ watch(user, () => {
             :gap="12"
             :supporter-highlight="true"
             show-online-indicator
-            cluster
           />
           <OnlineBadge :count="onlineCount" clickable @click="showOnlineModal = true" />
           <CommunityBirthdays
@@ -355,7 +354,7 @@ watch(user, () => {
           </Flex>
           <NuxtLink to="/community/games" :class="isMobile ? 'w-100' : ''">
             <Button :expand="isMobile" size="s" outline>
-              All Game Activity
+              Details
               <template #end>
                 <Icon name="ph:arrow-right" />
               </template>
@@ -433,6 +432,8 @@ watch(user, () => {
   border: none;
   position: relative;
   overflow: hidden;
+  max-width: 90%;
+  margin-inline: auto;
 }
 
 .signin-prompt {

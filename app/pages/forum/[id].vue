@@ -280,8 +280,20 @@ function handlePostUpdate(updated: Tables<'discussions'> | Tables<'discussion_to
   post.value = post.value ? { ...post.value, ...updated } : { ...updated }
 }
 
+let loadingTimer: ReturnType<typeof setTimeout> | null = null
+
 onBeforeMount(async () => {
   loading.value = true
+
+  // Safety valve: if data hasn't arrived after 10 seconds, stop showing the
+  // skeleton so the user isn't trapped indefinitely on slow connections.
+  loadingTimer = setTimeout(() => {
+    if (loading.value) {
+      loading.value = false
+      if (!post.value && !errorMessage.value)
+        errorMessage.value = 'Loading timed out - please try refreshing the page.'
+    }
+  }, 10_000)
 
   // Fast-path: use the cached discussion row if it's still within TTL.
   // The cache stores the enriched DiscussionWithContext shape (extra join fields
@@ -569,6 +581,10 @@ function handleScrollOverlayLeave() {
 }
 
 onUnmounted(() => {
+  if (loadingTimer) {
+    clearTimeout(loadingTimer)
+    loadingTimer = null
+  }
   if (import.meta.client) {
     window.removeEventListener('wheel', preventScroll)
     window.removeEventListener('touchmove', preventScroll)
@@ -1032,7 +1048,7 @@ function revealNsfw() {
   padding-block: var(--space-s);
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
-  z-index: var(--z-nav);
+  z-index: var(--z-active);
 
   > div {
     display: flex;

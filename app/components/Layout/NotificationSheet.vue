@@ -83,7 +83,8 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
     <Sheet
       :open="open"
       position="right"
-      :card="{ separators: true }"
+      :card="{ separators: true,
+               headerAlign: 'start' }"
       :size="472"
       @close="open = false"
     >

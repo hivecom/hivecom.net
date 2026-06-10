@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button, Sheet, Tooltip } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import ChatApp from '@/components/Chat/ChatApp.vue'
 import ChatToolbar from '@/components/Chat/Toolbar.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
@@ -17,8 +17,7 @@ const props = defineProps<{
 const isMobile = useBreakpoint('<s')
 const sheetSize = computed(() => isMobile.value ? '100%' : 640)
 
-const open = ref(false)
-const { isConnected, hasUnread, hasMention, setChatVisible } = useIrcChat()
+const { isConnected, hasUnread, hasMention, setChatVisible, chatSheetOpen: open } = useIrcChat()
 const { settings } = useDataUserSettings()
 
 watch(open, val => setChatVisible(val))

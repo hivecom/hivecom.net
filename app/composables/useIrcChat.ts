@@ -75,9 +75,10 @@ const WANTED_CAPS = [
   // MODE replayable as real events inside history batches - those handlers below
   // guard against `backlog` so replayed events never mutate live state.
   'draft/event-playback',
+  'draft/metadata-2',
 ]
 
-export type ConnState = 'disconnected' | 'connecting' | 'connected' | 'error'
+export type ConnState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'offline'
 
 export interface ChatMessage {
   id: number
@@ -132,12 +133,28 @@ export interface ChatBuffer {
   historyAnchorTs?: string
   /** Active channel mode flags (e.g. 'k' = password, 'i' = invite-only, 'm' = moderated). */
   modes?: Set<string>
+  /** Metadata key-value pairs received via IRCv3 draft/metadata-2. */
+  metadata?: Map<string, string>
+  /** Parameter values for parameterized modes (e.g. 'H' => '100:7d', 'f' => '#fallback'). */
+  modeParams?: Map<string, string>
+  /** Ban list entries fetched via MODE +b. */
+  banList?: Array<{ mask: string, setBy: string, ts: number }>
+  /** Ban exception list (+e). */
+  exceptList?: Array<{ mask: string, setBy: string, ts: number }>
+  /** Invite exception list (+I). */
+  inviteList?: Array<{ mask: string, setBy: string, ts: number }>
+  banListReady?: boolean
+  exceptListReady?: boolean
+  inviteListReady?: boolean
+  /** Whether the channel is registered with ChanServ. undefined = not yet queried. */
+  registered?: boolean
 }
 
 export interface ChannelListEntry {
   name: string
   userCount: number
   topic: string
+  modes?: Set<string>
 }
 
 /** A channel member together with their current IRC mode prefixes. */
@@ -159,7 +176,7 @@ export type IdentityProvider = () => Promise<ChatIdentity | null> | ChatIdentity
 const MODE_PREFIX_RE = /^[~&@%+]+/
 
 // IRC service bots whose messages should never generate mention notifications.
-const SERVICE_NICKS = new Set(['histserv', 'nickserv', 'chanserv'])
+export const SERVICE_NICKS = new Set(['histserv', 'nickserv', 'chanserv'])
 
 // IRC channel-membership prefixes ordered from highest to lowest privilege.
 const PREFIX_ORDER = '~&@%+'
@@ -179,6 +196,7 @@ const buffers = ref<ChatBuffer[]>([])
 // system so it is never rendered to the user.
 const serviceLog = ref<ChatMessage[]>([])
 const activeName = ref<string>(SERVER_BUFFER)
+const previousActiveName = ref<string>(SERVER_BUFFER)
 const msgCounter = ref(0)
 const SIDEBAR_HIDDEN_KEY = 'hivecom.chat.sidebar-hidden'
 const sidebarHidden = ref(
@@ -189,14 +207,46 @@ const accountEmail = ref<string | null>(null)
 // null = not yet determined; true/false parsed from NickServ INFO Flags line
 const accountAlwaysOn = ref<boolean | null>(null)
 
+// --- WHOIS structured results -----------------------------------------------
+export interface WhoisData {
+  nick: string
+  user?: string
+  host?: string
+  realname?: string
+  server?: string
+  serverInfo?: string
+  idleFmt?: string
+  signonTs?: string
+  channels?: string
+  account?: string
+  away?: string
+  isOper?: boolean
+  secure?: boolean
+  loading: boolean
+  notFound?: boolean
+}
+const _whoisStore = ref<Map<string, WhoisData>>(new Map())
+export const whoisStore = _whoisStore
+
 // --- Channel list (populated by LIST/322/323) --------------------------------
 const channelList = ref<ChannelListEntry[]>([])
+// Channel metadata cache keyed by lowercase channel name. Unlike buffer
+// metadata, this also holds metadata for channels we are NOT joined to (e.g.
+// parent channels in the slash-nesting tree). draft/metadata-2 permits GET/LIST
+// on any channel target, so a parent can be verified/displayed without joining.
+const channelMetaCache = ref<Map<string, Map<string, string>>>(new Map())
+// Channels we've issued a background METADATA LIST for: dedupes probes and lets
+// us swallow the resulting FAILs (a missing or permission-denied parent is normal).
+const _backgroundMetaTargets = new Set<string>()
 const channelListLoading = ref(false)
 const channelBrowserOpen = ref(false)
 // When non-null, a password-protected channel denied our JOIN and we need a key.
 const channelKeyPrompt = ref<string | null>(null)
 // True when the most recent key attempt was rejected (475).
 const channelKeyError = ref(false)
+const channelSettingsOpen = ref<string | null>(null)
+// When non-null, a join was blocked by the server (e.g. registration required). Holds channel name + reason.
+const channelJoinBlocked = ref<{ channel: string, reason: string } | null>(null)
 
 // Form / draft state, shared so both surfaces edit the same values.
 const inputNick = ref('')
@@ -240,9 +290,16 @@ function saveReadPosition(name: string, ts: number) {
 let ws: WebSocket | null = null
 let initialised = false
 let _readWatcherRegistered = false
+let _intentionalDisconnect = false
+let _reconnectAttempts = 0
+const MAX_RECONNECT_ATTEMPTS = 3
+let _reconnectTimer: ReturnType<typeof setTimeout> | null = null
 // Whether any chat UI surface (sheet or full page) is currently visible to the
 // user. The read watcher only clears unread/mentions when this is true.
 const isChatVisible = ref(false)
+// Programmatic open signal for the chat sheet. Components that want to open the
+// chat sheet (e.g. channel mention links) set this to true.
+const chatSheetOpen = ref(false)
 
 // Most recent live message timestamp (ms); persisted as the CHATHISTORY cursor.
 let lastSeenTs = 0
@@ -301,6 +358,11 @@ let echoMessageActive = false
 let probingNickServInfo = false
 let probeTimer: ReturnType<typeof setTimeout> | null = null
 let suppressingNickServOp = false
+// ChanServ INFO probes keyed by lowercase channel name.
+const _probingChanServChannels = new Set<string>()
+const _chanServProbeTimers = new Map<string, ReturnType<typeof setTimeout>>()
+// Channels awaiting ChanServ DROP confirmation code (two-step flow).
+const _pendingDropChannels = new Set<string>()
 let messageTagsActive = false
 // Per-target timestamp (ms) of the last typing notification we sent, for throttling.
 const lastTypingSent = new Map<string, number>()
@@ -335,6 +397,9 @@ const backlogBatches = new Map<string, BacklogBatchInfo>()
 // lookup in applyReaction fails and the reaction is silently dropped until a
 // reload re-fetches the message and its reactions together via CHATHISTORY.
 const pendingReactions = new Map<string, Map<string, Array<{ reaction: string, who: string, remove: boolean }>>>()
+// Matches a single emoji (including ZWJ sequences, variation selectors, flags,
+// skin-tone modifiers). Rejects plain text reactions.
+const EMOJI_RE = /^\p{Extended_Pictographic}(?:[\uFE0F\u20E3\p{Emoji_Modifier}]|\u200D\p{Extended_Pictographic})*$/u
 // Targets for which a CHATHISTORY BEFORE request is pending (lowercased).
 const pendingBeforeTargets = new Set<string>()
 // Targets for which a time-bounded CHATHISTORY LATEST request is pending (lowercased).
@@ -368,6 +433,8 @@ function resetBuffers() {
   activeName.value = SERVER_BUFFER
   channelList.value = []
   channelListLoading.value = false
+  channelMetaCache.value = new Map()
+  _backgroundMetaTargets.clear()
 }
 
 function findBuffer(name: string) {
@@ -467,7 +534,7 @@ function addToBuffer(
   // Pin the active buffer's marker forward as each message arrives (monotonic), so
   // the channel you're viewing is robustly recorded as read without depending on the
   // watcher's flush timing.
-  if (isActive && isChatVisible.value)
+  if (isActive && isChatVisible.value && !document.hidden)
     saveReadPosition(name, ts.getTime())
 
   // Browser notification: genuinely-new pings only, never replayed history, and not
@@ -480,8 +547,8 @@ function addToBuffer(
   }
 
   // Don't badge what you're looking at or have already read.
-  // isActive only suppresses the badge when the chat UI is actually visible.
-  if ((isActive && isChatVisible.value) || alreadyRead)
+  // isActive only suppresses the badge when the chat UI is actually visible AND the tab is in the foreground.
+  if ((isActive && isChatVisible.value && !document.hidden) || alreadyRead)
     return
   // First-ever visit to a channel (no marker): don't badge its replayed history;
   // only genuine live activity. DMs are exempt - a replayed DM is a real new message.
@@ -670,18 +737,27 @@ function applyModeChanges(buf: ChatBuffer, args: string[]) {
       paramIdx++
     }
     else if (PARAM_MODES_ALWAYS.has(ch) || (adding && PARAM_MODES_ON_SET.has(ch))) {
-      paramIdx++
-      if (adding)
+      buf.modeParams ??= new Map()
+      const paramVal = args[paramIdx++]
+      if (adding) {
         buf.modes.add(ch)
-      else
+        if (!LIST_MODES.has(ch) && paramVal)
+          buf.modeParams.set(ch, paramVal)
+      }
+      else {
         buf.modes.delete(ch)
+        buf.modeParams.delete(ch)
+      }
       modesChanged = true
     }
     else {
-      if (adding)
+      if (adding) {
         buf.modes.add(ch)
-      else
+      }
+      else {
         buf.modes.delete(ch)
+        buf.modeParams?.delete(ch)
+      }
       modesChanged = true
     }
   }
@@ -799,6 +875,14 @@ function persistChannel(value: string) {
 function send(line: string) {
   if (ws && ws.readyState === WebSocket.OPEN)
     ws.send(`${line}\r\n`)
+}
+
+function requestWhois(targetNick: string) {
+  const key = targetNick.toLowerCase()
+  const next = new Map(_whoisStore.value)
+  next.set(key, { nick: targetNick, loading: true })
+  _whoisStore.value = next
+  send(`WHOIS ${targetNick} ${targetNick}`)
 }
 
 /**
@@ -1049,7 +1133,11 @@ function requestHistoryTargets() {
     return
   const lower = historyLowerBound()
   const upper = Date.now() + HISTORY_FUZZ_MS
-  send(`CHATHISTORY TARGETS timestamp=${new Date(upper).toISOString()} timestamp=${new Date(lower).toISOString()} ${HISTORY_LIMIT}`)
+  // IRCv3 draft/chathistory TARGETS takes <after_timestamp> <before_timestamp> <limit>:
+  // the first timestamp is the older lower bound (after which we want results)
+  // and the second is the newer upper bound (before which we want results).
+  // Swapping them would produce an inverted range, causing Ergo to return all targets.
+  send(`CHATHISTORY TARGETS timestamp=${new Date(lower).toISOString()} timestamp=${new Date(upper).toISOString()} ${HISTORY_LIMIT}`)
 }
 
 function handleMessage(raw: string) {
@@ -1214,6 +1302,7 @@ function handleMessage(raw: string) {
         // Request current channel modes so mode badges are always accurate,
         // regardless of whether a live MODE event was sent during the join burst.
         send(`MODE ${channel}`)
+        send(`METADATA ${channel} LIST`)
         // Only render "You joined" when the user actively asked to join this
         // channel this session (joinChannel). Connect-time landing joins and
         // server-pushed auto-joins (always-on accounts the server keeps joined)
@@ -1531,20 +1620,86 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '323': // RPL_LISTEND
+    case '323': { // RPL_LISTEND
       channelListLoading.value = false
+      // Request modes for channels not already in a joined buffer so the browser
+      // can show indicators (e.g. registration-required warning) for unjoined channels.
+      for (const entry of channelList.value) {
+        if (!findBuffer(entry.name))
+          send(`MODE ${entry.name}`)
+      }
       break
+    }
 
     case '324': { // RPL_CHANNELMODEIS - response to MODE #channel query
       const modeChannel = params[1] ?? ''
       const modeBuf = findBuffer(modeChannel)
       if (modeBuf)
         applyModeChanges(modeBuf, params.slice(2))
+      // Also store modes on the channelList entry for the browser (unjoined channels).
+      const modeStr = params[2] ?? ''
+      const modeLetters = new Set([...modeStr].filter(c => c !== '+' && c !== '-'))
+      if (modeLetters.size) {
+        const listEntry = channelList.value.find(e => e.name.toLowerCase() === modeChannel.toLowerCase())
+        if (listEntry)
+          listEntry.modes = modeLetters
+      }
       break
     }
 
     case '329': // RPL_CREATIONTIME - channel creation timestamp; silently consumed
       break
+
+    case '346': { // RPL_INVITELIST
+      const ch346 = params[1] ?? ''
+      const buf346 = findBuffer(ch346)
+      if (buf346) {
+        buf346.inviteList ??= []
+        buf346.inviteList.push({ mask: params[2] ?? '', setBy: params[3] ?? '', ts: Number(params[4] ?? '0') * 1000 })
+      }
+      break
+    }
+
+    case '347': { // RPL_ENDOFINVITELIST
+      const buf347 = findBuffer(params[1] ?? '')
+      if (buf347)
+        buf347.inviteListReady = true
+      break
+    }
+
+    case '348': { // RPL_EXCEPTLIST
+      const ch348 = params[1] ?? ''
+      const buf348 = findBuffer(ch348)
+      if (buf348) {
+        buf348.exceptList ??= []
+        buf348.exceptList.push({ mask: params[2] ?? '', setBy: params[3] ?? '', ts: Number(params[4] ?? '0') * 1000 })
+      }
+      break
+    }
+
+    case '349': { // RPL_ENDOFEXCEPTLIST
+      const buf349 = findBuffer(params[1] ?? '')
+      if (buf349)
+        buf349.exceptListReady = true
+      break
+    }
+
+    case '367': { // RPL_BANLIST
+      const ch367 = params[1] ?? ''
+      const buf367 = findBuffer(ch367)
+      if (buf367) {
+        buf367.banList ??= []
+        buf367.banList.push({ mask: params[2] ?? '', setBy: params[3] ?? '', ts: Number(params[4] ?? '0') * 1000 })
+      }
+      break
+    }
+
+    case '368': { // RPL_ENDOFBANLIST
+      const buf368 = findBuffer(params[1] ?? '')
+      if (buf368)
+        buf368.banListReady = true
+      break
+    }
 
     case '332': { // RPL_TOPIC
       const channel = params[1] ?? SERVER_BUFFER
@@ -1568,6 +1723,57 @@ function handleMessage(raw: string) {
       const noticeText = params[params.length - 1] ?? ''
       const isAddressedToUs = noticeTgt.toLowerCase() === nick.value.toLowerCase()
       const fromNickServ = nickFrom.toLowerCase() === 'nickserv'
+
+      const fromChanServ = nickFrom.toLowerCase() === 'chanserv'
+
+      // Parse ChanServ registration status from background INFO probes or live responses.
+      if (fromChanServ && isAddressedToUs) {
+        // "Information on #channel:" - first line of a successful INFO response
+        const infoMatch = /^Information on (#\S+):/i.exec(noticeText)
+        if (infoMatch) {
+          const b = findBuffer(infoMatch[1] ?? '')
+          if (b)
+            b.registered = true
+        }
+        // "No channel registration found for #channel."
+        const noRegMatch = /no channel registration found for (#\S+)/i.exec(noticeText)
+        if (noRegMatch) {
+          const b = findBuffer(noRegMatch[1] ?? '')
+          if (b)
+            b.registered = false
+        }
+        // "Channel #channel is registered" / "Channel #channel is now registered"
+        const regMatch = /channel (#\S+) is (?:now )?registered/i.exec(noticeText)
+        if (regMatch) {
+          const b = findBuffer(regMatch[1] ?? '')
+          if (b)
+            b.registered = true
+        }
+        // "Channel #channel has been dropped" / "Channel #channel is now unregistered"
+        const dropMatch = /channel (#\S+) (?:has been dropped|is now unregistered)/i.exec(noticeText)
+        if (dropMatch) {
+          const b = findBuffer(dropMatch[1] ?? '')
+          if (b)
+            b.registered = false
+          _pendingDropChannels.delete((dropMatch[1] ?? '').toLowerCase())
+        }
+        // Auto-confirm two-step DROP: "To confirm, run this command: /CS UNREGISTER #ch code"
+        const dropConfirmMatch = /\/CS UNREGISTER (#\S+) (\S+)/i.exec(noticeText)
+        if (dropConfirmMatch) {
+          const chKey = (dropConfirmMatch[1] ?? '').toLowerCase()
+          if (_pendingDropChannels.has(chKey)) {
+            _pendingDropChannels.delete(chKey)
+            suppressChanServResponse(dropConfirmMatch[1] ?? '')
+            send(`PRIVMSG ChanServ :UNREGISTER ${dropConfirmMatch[1]} ${dropConfirmMatch[2]}`)
+            break
+          }
+        }
+        // Suppress all ChanServ output while any probe is in flight.
+        // The probe timer is the only cleanup path - this avoids partial suppression
+        // on multi-line responses (e.g. Founder/Registered-at lines after the header).
+        if (_probingChanServChannels.size > 0)
+          break
+      }
 
       // Always extract the email claim and always-on flag regardless of whether we show the message.
       if (fromNickServ && isAddressedToUs) {
@@ -1613,32 +1819,68 @@ function handleMessage(raw: string) {
       break
     }
 
-    // WHOIS numerics - formatted and shown in the active buffer.
+    // WHOIS numerics - populate structured store when tracked, else show in buffer.
     case '301': { // RPL_AWAY
       const [, awayNick, awayMsg] = params
-      if (awayNick)
-        addToActive({ type: 'system', text: `[${awayNick}] is away: ${awayMsg ?? ''}` }, { ts })
+      if (awayNick) {
+        const key = awayNick.toLowerCase()
+        if (_whoisStore.value.has(key)) {
+          const next = new Map(_whoisStore.value)
+          next.set(key, { ...next.get(key)!, away: awayMsg ?? '' })
+          _whoisStore.value = next
+        }
+        else {
+          addToActive({ type: 'system', text: `[${awayNick}] is away: ${awayMsg ?? ''}` }, { ts })
+        }
+      }
       break
     }
 
     case '311': { // RPL_WHOISUSER: nick user host * :realname
       const [, wNick, wUser, wHost,, wReal] = params
-      if (wNick)
-        addToActive({ type: 'system', text: `[${wNick}] (${wUser ?? ''}@${wHost ?? ''}): ${wReal ?? ''}` }, { ts })
+      if (wNick) {
+        const key = wNick.toLowerCase()
+        if (_whoisStore.value.has(key)) {
+          const next = new Map(_whoisStore.value)
+          next.set(key, { ...next.get(key)!, user: wUser ?? '', host: wHost ?? '', realname: wReal ?? '', loading: true })
+          _whoisStore.value = next
+        }
+        else {
+          addToActive({ type: 'system', text: `[${wNick}] (${wUser ?? ''}@${wHost ?? ''}): ${wReal ?? ''}` }, { ts })
+        }
+      }
       break
     }
 
     case '312': { // RPL_WHOISSERVER: nick server :serverinfo
       const [, wNick, wServer, wInfo] = params
-      if (wNick)
-        addToActive({ type: 'system', text: `[${wNick}] ${wServer ?? ''} (${wInfo ?? ''})` }, { ts })
+      if (wNick) {
+        const key = wNick.toLowerCase()
+        if (_whoisStore.value.has(key)) {
+          const next = new Map(_whoisStore.value)
+          next.set(key, { ...next.get(key)!, server: wServer ?? '', serverInfo: wInfo ?? '' })
+          _whoisStore.value = next
+        }
+        else {
+          addToActive({ type: 'system', text: `[${wNick}] ${wServer ?? ''} (${wInfo ?? ''})` }, { ts })
+        }
+      }
       break
     }
 
     case '313': { // RPL_WHOISOPERATOR
       const [, wNick, wMsg] = params
-      if (wNick)
-        addToActive({ type: 'system', text: `[${wNick}] ${wMsg ?? ''}` }, { ts })
+      if (wNick) {
+        const key = wNick.toLowerCase()
+        if (_whoisStore.value.has(key)) {
+          const next = new Map(_whoisStore.value)
+          next.set(key, { ...next.get(key)!, isOper: true })
+          _whoisStore.value = next
+        }
+        else {
+          addToActive({ type: 'system', text: `[${wNick}] ${wMsg ?? ''}` }, { ts })
+        }
+      }
       break
     }
 
@@ -1651,43 +1893,90 @@ function handleMessage(raw: string) {
         const s = idleSecs % 60
         const idleFmt = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
         const signonTs = wSignon ? new Date(Number.parseInt(wSignon, 10) * 1000).toLocaleString() : ''
-        addToActive({ type: 'system', text: `[${wNick}] idle ${idleFmt}${signonTs ? `, signon: ${signonTs}` : ''}` }, { ts })
+        const key = wNick.toLowerCase()
+        if (_whoisStore.value.has(key)) {
+          const next = new Map(_whoisStore.value)
+          next.set(key, { ...next.get(key)!, idleFmt, signonTs })
+          _whoisStore.value = next
+        }
+        else {
+          addToActive({ type: 'system', text: `[${wNick}] idle ${idleFmt}${signonTs ? `, signon: ${signonTs}` : ''}` }, { ts })
+        }
       }
       break
     }
 
-    case '318': { // RPL_ENDOFWHOIS
-      const [, wNick, wMsg] = params
-      if (wNick)
-        addToActive({ type: 'system', text: `[${wNick}] ${wMsg ?? ''}` }, { ts })
+    case '318': { // RPL_ENDOFWHOIS - mark loading done
+      const [, wNick] = params
+      if (wNick) {
+        const key = wNick.toLowerCase()
+        if (_whoisStore.value.has(key)) {
+          const next = new Map(_whoisStore.value)
+          next.set(key, { ...next.get(key)!, loading: false })
+          _whoisStore.value = next
+        }
+        else {
+          addToActive({ type: 'system', text: `[${wNick}] End of /WHOIS list` }, { ts })
+        }
+      }
       break
     }
 
     case '319': { // RPL_WHOISCHANNELS
       const [, wNick, wChans] = params
-      if (wNick)
-        addToActive({ type: 'system', text: `[${wNick}] ${wChans ?? ''}` }, { ts })
+      if (wNick) {
+        const key = wNick.toLowerCase()
+        if (_whoisStore.value.has(key)) {
+          const next = new Map(_whoisStore.value)
+          next.set(key, { ...next.get(key)!, channels: wChans ?? '' })
+          _whoisStore.value = next
+        }
+        else {
+          addToActive({ type: 'system', text: `[${wNick}] ${wChans ?? ''}` }, { ts })
+        }
+      }
       break
     }
 
     case '330': { // RPL_WHOISACCOUNT: nick account :message
-      const [, wNick, wAccount, wMsg] = params
-      if (wNick)
-        addToActive({ type: 'system', text: `[${wNick}] ${wMsg ?? 'is logged in as'} ${wAccount ?? ''}` }, { ts })
+      const [, wNick, wAccount] = params
+      if (wNick) {
+        const key = wNick.toLowerCase()
+        if (_whoisStore.value.has(key)) {
+          const next = new Map(_whoisStore.value)
+          next.set(key, { ...next.get(key)!, account: wAccount ?? '' })
+          _whoisStore.value = next
+        }
+        else {
+          addToActive({ type: 'system', text: `[${wNick}] is logged in as ${wAccount ?? ''}` }, { ts })
+        }
+      }
       break
     }
 
     case '338': { // RPL_WHOISACTUALLY (UnrealIRCd actual host)
       const [, wNick,, wMsg] = params
-      if (wNick)
-        addToActive({ type: 'system', text: `[${wNick}] ${wMsg ?? params[params.length - 1] ?? ''}` }, { ts })
+      if (wNick) {
+        const key = wNick.toLowerCase()
+        if (!_whoisStore.value.has(key))
+          addToActive({ type: 'system', text: `[${wNick}] ${wMsg ?? params[params.length - 1] ?? ''}` }, { ts })
+      }
       break
     }
 
     case '671': { // RPL_WHOISSECURE (UnrealIRCd TLS)
-      const [, wNick, wMsg] = params
-      if (wNick)
-        addToActive({ type: 'system', text: `[${wNick}] ${wMsg ?? ''}` }, { ts })
+      const [, wNick] = params
+      if (wNick) {
+        const key = wNick.toLowerCase()
+        if (_whoisStore.value.has(key)) {
+          const next = new Map(_whoisStore.value)
+          next.set(key, { ...next.get(key)!, secure: true })
+          _whoisStore.value = next
+        }
+        else {
+          addToActive({ type: 'system', text: `[${wNick}] is using a secure connection` }, { ts })
+        }
+      }
       break
     }
 
@@ -1702,14 +1991,15 @@ function handleMessage(raw: string) {
       const reactValue = tags['+draft/react'] ?? tags['+react']
       const unreactValue = tags['+draft/unreact'] ?? tags['+unreact']
       const reactReplyTo = tags['+reply']
-      if (reactReplyTo && (reactValue || unreactValue)) {
+      const reactEmote = reactValue ?? unreactValue
+      if (reactReplyTo && reactEmote) {
         const isReactChannel = tagTarget.startsWith('#') || tagTarget.startsWith('&')
         const isSelf = nickFrom === nick.value
         const reactBufName = isReactChannel ? tagTarget : (isSelf ? tagTarget : nickFrom)
         const reactBuf = findBuffer(reactBufName)
-        if (reactBuf) {
+        if (reactBuf && EMOJI_RE.test(reactEmote)) {
           const staged = batchTag != null ? backlogBatches.get(batchTag)?.staging : undefined
-          applyReaction(reactBuf, reactReplyTo, (reactValue ?? unreactValue)!, nickFrom, unreactValue != null, staged)
+          applyReaction(reactBuf, reactReplyTo, reactEmote, nickFrom, unreactValue != null, staged)
         }
         break
       }
@@ -1733,7 +2023,7 @@ function handleMessage(raw: string) {
       // Tags that are protocol metadata - never user-meaningful.
       const META_TAGS = new Set(['time', 'batch', 'msgid', 'label', 'account'])
       // Tags we recognise and silently handle (or intentionally ignore).
-      const KNOWN_TAGS = new Set(['+typing', 'draft/typing', '+react', '+draft/react', '+unreact', '+draft/unreact', 'draft/react', '+icon'])
+      const KNOWN_TAGS = new Set(['+typing', 'draft/typing', '+react', '+draft/react', '+unreact', '+draft/unreact', 'draft/react', '+icon', '+reply', 'draft/reply', '+draft/reply'])
       const unknownTags = Object.keys(tags).filter(k => !META_TAGS.has(k) && !KNOWN_TAGS.has(k))
       if (!unknownTags.length)
         break
@@ -1753,7 +2043,16 @@ function handleMessage(raw: string) {
       const invChannel = params[1] ?? ''
       if (invChannel) {
         closeBuffer(invChannel)
-        addServer({ type: 'error', text: `Cannot join ${invChannel} - invite only. You need to be invited by a channel operator.` })
+        channelJoinBlocked.value = { channel: invChannel, reason: 'This channel is invite-only. You need to be invited by a channel operator.' }
+      }
+      break
+    }
+
+    case '477': { // ERR_NEEDREGGEDNICK - channel requires a registered account
+      const regChannel = params[1] ?? ''
+      if (regChannel) {
+        closeBuffer(regChannel)
+        channelJoinBlocked.value = { channel: regChannel, reason: 'This channel requires a registered account. Sign in to join.' }
       }
       break
     }
@@ -1768,11 +2067,81 @@ function handleMessage(raw: string) {
       break
     }
 
+    case '761': { // RPL_KEYVALUE - metadata key/value (draft/metadata-2)
+      const metaTarget = params[1] ?? ''
+      const metaKey = params[2] ?? ''
+      const metaValue = params[params.length - 1] ?? ''
+      const metaBuf = findBuffer(metaTarget)
+      if (metaBuf && metaKey) {
+        metaBuf.metadata ??= new Map()
+        metaBuf.metadata.set(metaKey, metaValue)
+        metaBuf.metadata = new Map(metaBuf.metadata)
+      }
+      // Mirror channel metadata into the cache so unjoined parents are covered.
+      if (metaKey && (metaTarget.startsWith('#') || metaTarget.startsWith('&')))
+        cacheChannelMeta(metaTarget, metaKey, metaValue)
+      break
+    }
+    case '762': // RPL_METADATAEND - silently consumed
+    case '766': // RPL_NOMATCHINGKEY - silently consumed
+      break
+
+    case '401': { // ERR_NOSUCHNICK
+      const [, badNick] = params
+      if (badNick) {
+        const key = badNick.toLowerCase()
+        if (_whoisStore.value.has(key)) {
+          const next = new Map(_whoisStore.value)
+          next.set(key, { ...next.get(key)!, loading: false, notFound: true })
+          _whoisStore.value = next
+          break
+        }
+      }
+      addToActive({ type: 'system', text: params[params.length - 1] ?? raw }, { ts })
+      break
+    }
+
     case '400': // ERR_UNKNOWNERROR - Ergo sends this when it can't assemble an outgoing
       // message (e.g. bad content in stored history). Route to the server buffer so it
       // doesn't clutter an active channel conversation.
       addServer({ type: 'error', text: params[params.length - 1] ?? raw }, { ts })
       break
+
+    case 'METADATA': {
+      // Server-pushed metadata change notification
+      // :server METADATA <target> <key> <visibility> :<value>
+      const metaTarget = params[0] ?? ''
+      const metaKey = params[1] ?? ''
+      // Value is the trailing (last) param; empty string means key was deleted
+      const metaValue = params.length >= 4 ? (params[3] ?? '') : ''
+      const metaBuf = findBuffer(metaTarget)
+      if (metaBuf && metaKey) {
+        metaBuf.metadata ??= new Map()
+        if (metaValue)
+          metaBuf.metadata.set(metaKey, metaValue)
+        else
+          metaBuf.metadata.delete(metaKey)
+        metaBuf.metadata = new Map(metaBuf.metadata)
+      }
+      // Mirror channel metadata into the cache (empty value = key deleted).
+      if (metaKey && (metaTarget.startsWith('#') || metaTarget.startsWith('&')))
+        cacheChannelMeta(metaTarget, metaKey, metaValue || null)
+      break
+    }
+
+    case 'FAIL': {
+      const failCmd = params[0]?.toUpperCase() ?? ''
+      if (failCmd === 'METADATA') {
+        // Background parent-metadata probes legitimately fail (channel missing or
+        // permission denied) - swallow those instead of surfacing a server error.
+        const isBackgroundProbe = params.some(p => _backgroundMetaTargets.has(p.toLowerCase()))
+        if (!isBackgroundProbe) {
+          const desc = params[params.length - 1] ?? 'Metadata error'
+          addServer({ type: 'error', text: `Metadata: ${desc}` }, { ts })
+        }
+      }
+      break
+    }
 
     default:
       if (/^\d+$/.test(command)) {
@@ -1788,6 +2157,25 @@ function handleMessage(raw: string) {
 }
 
 // --- Connection lifecycle ----------------------------------------------------
+function _scheduleReconnect() {
+  if (_intentionalDisconnect) {
+    connState.value = 'disconnected'
+    return
+  }
+  if (_reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    connState.value = 'offline'
+    return
+  }
+  _reconnectAttempts++
+  const delay = _reconnectAttempts * 2000
+  connState.value = 'connecting'
+  addServer({ type: 'system', text: `Reconnecting in ${delay / 1000}s (attempt ${_reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...` })
+  _reconnectTimer = setTimeout(() => {
+    _reconnectTimer = null
+    openSocket()
+  }, delay)
+}
+
 function openSocket() {
   if (!import.meta.client)
     return
@@ -1827,8 +2215,8 @@ function openSocket() {
     ws = new WebSocket(WS_URL, ['binary'])
   }
   catch (e) {
-    connState.value = 'error'
     addServer({ type: 'error', text: `Failed to open WebSocket: ${String(e)}` })
+    _scheduleReconnect()
     return
   }
 
@@ -1853,14 +2241,11 @@ function openSocket() {
   }
 
   ws.onerror = () => {
-    connState.value = 'error'
     _stopPinging()
     addServer({ type: 'error', text: 'WebSocket error - check console for details.' })
   }
 
   ws.onclose = (evt) => {
-    if (connState.value !== 'error')
-      connState.value = 'disconnected'
     _stopPinging()
     addServer({ type: 'system', text: `Disconnected (code ${evt.code})` })
     for (const timer of typingTimers.values())
@@ -1872,6 +2257,7 @@ function openSocket() {
       buf.typing = []
     }
     ws = null
+    _scheduleReconnect()
   }
 }
 
@@ -1881,6 +2267,12 @@ function openSocket() {
  * plain registration if the server has no auth bridge yet.
  */
 async function connect() {
+  _intentionalDisconnect = false
+  _reconnectAttempts = 0
+  if (_reconnectTimer !== null) {
+    clearTimeout(_reconnectTimer)
+    _reconnectTimer = null
+  }
   authCreds = null
   useAnonymous = false
   if (!inputChannel.value)
@@ -1902,6 +2294,12 @@ async function connect() {
 
 /** Connect as an anonymous guest via SASL ANONYMOUS (no account, no JWT). */
 function connectAsAnon() {
+  _intentionalDisconnect = false
+  _reconnectAttempts = 0
+  if (_reconnectTimer !== null) {
+    clearTimeout(_reconnectTimer)
+    _reconnectTimer = null
+  }
   authCreds = null
   useAnonymous = true
   if (!localStorage.getItem(STORAGE_CHANNEL))
@@ -1910,6 +2308,12 @@ function connectAsAnon() {
 }
 
 function disconnect() {
+  _intentionalDisconnect = true
+  _reconnectAttempts = 0
+  if (_reconnectTimer !== null) {
+    clearTimeout(_reconnectTimer)
+    _reconnectTimer = null
+  }
   if (ws) {
     send('QUIT :Leaving')
     ws.close()
@@ -1921,17 +2325,31 @@ function disconnect() {
 // --- User actions ------------------------------------------------------------
 function setActive(name: string) {
   // Clear the read line on the buffer we're leaving so it's recomputed fresh on
-  // return. Marking the channel read (marker + unread reset) is owned by the read
-  // watcher, which keeps whatever buffer the user is actually viewing reconciled.
+  // return.
   const prev = activeName.value
   if (prev && prev.toLowerCase() !== name.toLowerCase()) {
     const prevBuf = findBuffer(prev)
     if (prevBuf)
       prevBuf.readLineTs = undefined
+    previousActiveName.value = prev
   }
 
   activeName.value = name
   const buf = findBuffer(name)
+
+  // Eagerly mark the incoming buffer as read. The read watcher handles ongoing
+  // monitoring, but it guards behind isChatVisible - which may not be true yet
+  // (e.g. setActive fires during the initial connect before onMounted sets it,
+  // or during the brief transition from the compact sheet to the full page).
+  // Clearing here makes channel-switching reliable regardless of timing.
+  if (buf && buf.kind !== 'server') {
+    const last = buf.messages[buf.messages.length - 1]
+    if (last)
+      saveReadPosition(buf.name, last.ts.getTime())
+    buf.unread = 0
+    buf.mentions = 0
+  }
+
   // Persist the last active channel so the next connect auto-joins and lands here.
   if (buf?.kind === 'channel') {
     inputChannel.value = name
@@ -1973,13 +2391,27 @@ function closeBuffer(name: string) {
   const buf = findBuffer(name)
   if (!buf || buf.kind === 'server')
     return
-  if (buf.kind === 'channel' && buf.joined)
+  if (buf.kind === 'channel' && buf.joined) {
     send(`PART ${buf.name}`)
-  else if (buf.kind === 'pm')
+    // Clear the persisted auto-join channel so the next connect() doesn't
+    // immediately re-JOIN a channel the user explicitly left. setActive() below
+    // will repopulate inputChannel if another channel becomes active.
+    if (inputChannel.value.toLowerCase() === buf.name.toLowerCase()) {
+      inputChannel.value = ''
+      if (import.meta.client)
+        localStorage.removeItem(STORAGE_CHANNEL)
+    }
+  }
+  else if (buf.kind === 'pm') {
     rememberClosedDm(name, buf)
+  }
   buffers.value = buffers.value.filter(b => b !== buf)
-  if (activeName.value.toLowerCase() === name.toLowerCase())
-    setActive(buffers.value[0]?.name ?? SERVER_BUFFER)
+  if (activeName.value.toLowerCase() === name.toLowerCase()) {
+    // Navigate to previous buffer if it still exists, else fall back to server.
+    const prev = previousActiveName.value
+    const prevStillOpen = prev.toLowerCase() !== name.toLowerCase() && buffers.value.some(b => b.name.toLowerCase() === prev.toLowerCase())
+    setActive(prevStillOpen ? prev : (buffers.value[0]?.name ?? SERVER_BUFFER))
+  }
 }
 
 function handleCommand(line: string) {
@@ -2014,7 +2446,8 @@ function handleCommand(line: string) {
       const target = activeName.value
       if (arg && target !== SERVER_BUFFER) {
         send(`PRIVMSG ${target} :\x01ACTION ${arg}\x01`)
-        addToBuffer(target, findBuffer(target)?.kind ?? 'channel', { type: 'chat', from: nick.value, channel: target, text: arg, action: true })
+        if (!echoMessageActive)
+          addToBuffer(target, findBuffer(target)?.kind ?? 'channel', { type: 'chat', from: nick.value, channel: target, text: arg, action: true })
       }
       break
     }
@@ -2122,7 +2555,7 @@ function clearReply() {
  * (when echo-message is active) reconciles to the same state.
  */
 function toggleReaction(parent: ChatMessage, reaction: string) {
-  if (!parent.msgid || !reaction)
+  if (!parent.msgid || !reaction || !EMOJI_RE.test(reaction))
     return
   const target = activeName.value
   const buf = findBuffer(target)
@@ -2234,6 +2667,157 @@ export function channelRole(prefix: string): ChannelRole | null {
   return ROLE_BY_PREFIX[prefix[0] ?? ''] ?? null
 }
 
+/**
+ * Initiate a ChanServ DROP (UNREGISTER) for a channel.
+ * Adds the channel to the pending-drop set so the auto-confirm handler fires
+ * when ChanServ replies with the verification code.
+ */
+function initiateDrop(channel: string) {
+  _pendingDropChannels.add(channel.toLowerCase())
+  send(`PRIVMSG ChanServ :DROP ${channel}`)
+}
+
+/**
+ * Add a channel to the ChanServ probe suppression set without sending an INFO query.
+ * Use this when sending REGISTER/DROP so the response notice is swallowed.
+ */
+function suppressChanServResponse(channel: string) {
+  const key = channel.toLowerCase()
+  _probingChanServChannels.add(key)
+  const existing = _chanServProbeTimers.get(key)
+  if (existing != null)
+    clearTimeout(existing)
+  const t = setTimeout(() => {
+    _probingChanServChannels.delete(key)
+    _chanServProbeTimers.delete(key)
+  }, 6000)
+  _chanServProbeTimers.set(key, t)
+}
+
+/** Query ChanServ for a channel's registration status. Suppresses the response from visible buffers. */
+function queryChanServInfo(channel: string) {
+  const key = channel.toLowerCase()
+  _probingChanServChannels.add(key)
+  const existing = _chanServProbeTimers.get(key)
+  if (existing != null)
+    clearTimeout(existing)
+  const t = setTimeout(() => {
+    _probingChanServChannels.delete(key)
+    _chanServProbeTimers.delete(key)
+    // Fallback: if no answer arrived, mark as unknown-but-not-spinning
+    const b = findBuffer(channel)
+    if (b && b.registered === undefined)
+      b.registered = false
+  }, 6000)
+  _chanServProbeTimers.set(key, t)
+  send(`PRIVMSG ChanServ :INFO ${channel}`)
+}
+
+/** Fetch the ban (+b), exception (+e), and invite (+I) lists for a channel. */
+function fetchListModes(channel: string) {
+  const buf = findBuffer(channel)
+  if (!buf)
+    return
+  buf.banList = []
+  buf.exceptList = []
+  buf.inviteList = []
+  buf.banListReady = false
+  buf.exceptListReady = false
+  buf.inviteListReady = false
+  send(`MODE ${channel} b`)
+  send(`MODE ${channel} e`)
+  send(`MODE ${channel} I`)
+}
+
+/**
+ * Returns true when a channel uses slash notation but its parent chain has not
+ * authorized it via `subchannels` metadata. Used to show an "unverified"
+ * indicator in the channel list and header.
+ */
+function isUnauthorizedSubchannel(channelName: string): boolean {
+  if (!channelName.startsWith('#') && !channelName.startsWith('&'))
+    return false
+  const prefix = channelName[0]!
+  const raw = channelName.slice(1)
+  const segments = raw.split('/').filter(Boolean)
+  if (segments.length <= 1)
+    return false
+  for (let i = 1; i < segments.length; i++) {
+    const parentName = `${prefix}${segments.slice(0, i).join('/')}`
+    const meta = findBuffer(parentName)?.metadata ?? channelMetaCache.value.get(parentName.toLowerCase())
+    const allowlist = meta?.get('subchannels')
+    if (!allowlist)
+      return true
+    const allowed = allowlist.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+    if (!allowed.includes(segments[i]!.toLowerCase()))
+      return true
+  }
+  return false
+}
+
+/** Write a channel metadata key into the cache (reassigns maps for reactivity). */
+function cacheChannelMeta(target: string, key: string, value: string | null) {
+  const lc = target.toLowerCase()
+  const next = new Map(channelMetaCache.value)
+  const entry = new Map(next.get(lc) ?? [])
+  if (value == null || value === '')
+    entry.delete(key)
+  else
+    entry.set(key, value)
+  next.set(lc, entry)
+  channelMetaCache.value = next
+}
+
+/**
+ * Fetch a channel's metadata without joining it, for slash-nesting verification
+ * and display of unjoined parents. Deduped; skips channels we already have a
+ * buffer for (their metadata arrives via the join burst).
+ */
+function requestChannelMetadata(channel: string) {
+  const lc = channel.toLowerCase()
+  if (_backgroundMetaTargets.has(lc) || findBuffer(channel))
+    return
+  // Only mark as probed once the request actually leaves; otherwise a pre-connect
+  // call would dedupe forever without ever sending (send no-ops while closed).
+  if (!ws || ws.readyState !== WebSocket.OPEN)
+    return
+  _backgroundMetaTargets.add(lc)
+  send(`METADATA ${channel} LIST`)
+}
+
+/** Set a metadata key on a channel via METADATA SET. */
+function setChannelMetadata(channel: string, key: string, value: string) {
+  send(`METADATA ${channel} SET ${key} :${value}`)
+}
+
+/** Remove a metadata key from a channel (METADATA SET with no value = delete). */
+function deleteChannelMetadata(channel: string, key: string) {
+  send(`METADATA ${channel} SET ${key}`)
+}
+
+/** Return the calling user's role in a channel, or null if not a member / no privilege. */
+function myChannelRole(channelName: string): ChannelRole | null {
+  const buf = findBuffer(channelName)
+  if (!buf)
+    return null
+  const self = buf.users.find(u => u.name.toLowerCase() === nick.value.toLowerCase())
+  if (!self)
+    return null
+  return channelRole(self.prefix)
+}
+
+/** Clear unread/mention counters and save the read position for a buffer. */
+function markBufferRead(name: string) {
+  const buf = findBuffer(name)
+  if (!buf)
+    return
+  const last = buf.messages[buf.messages.length - 1]
+  if (last)
+    saveReadPosition(buf.name, last.ts.getTime())
+  buf.unread = 0
+  buf.mentions = 0
+}
+
 export function useIrcChat() {
   if (!initialised && import.meta.client) {
     initialised = true
@@ -2269,7 +2853,7 @@ export function useIrcChat() {
         return `${activeName.value}|${b?.messages.length ?? 0}|${last?.ts.getTime() ?? 0}`
       },
       () => {
-        if (!isChatVisible.value)
+        if (!isChatVisible.value || document.hidden)
           return
         const b = activeBuffer.value
         if (!b || b.kind === 'server')
@@ -2282,6 +2866,22 @@ export function useIrcChat() {
       },
       { flush: 'post' },
     )
+
+    // When the user returns to the tab, immediately clear unread state for
+    // whatever buffer is active so the badge and read watcher stay in sync.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden || !isChatVisible.value)
+        return
+      const b = activeBuffer.value
+      if (!b || b.kind === 'server')
+        return
+      const last = b.messages[b.messages.length - 1]
+      if (last)
+        saveReadPosition(b.name, last.ts.getTime())
+      b.unread = 0
+      b.mentions = 0
+      b.readLineTs = undefined
+    })
   }
 
   const hasUnread = computed(() => buffers.value.some(b => b.unread > 0))
@@ -2326,6 +2926,8 @@ export function useIrcChat() {
   return {
     // config
     WS_URL,
+    // raw send
+    send,
     // reply
     replyTarget,
     setReply,
@@ -2359,7 +2961,6 @@ export function useIrcChat() {
     sidebarHidden,
     toggleSidebar,
     // actions
-    send,
     connect,
     connectAsAnon,
     disconnect,
@@ -2391,8 +2992,25 @@ export function useIrcChat() {
     setMentionKeywords,
     clearInputNick,
     defaultChannel,
+    isChatVisible,
     setChatVisible,
+    chatSheetOpen,
     seedChannel,
     fetchOlderHistory,
+    // metadata
+    setChannelMetadata,
+    deleteChannelMetadata,
+    channelMetaCache,
+    requestChannelMetadata,
+    isUnauthorizedSubchannel,
+    myChannelRole,
+    fetchListModes,
+    queryChanServInfo,
+    suppressChanServResponse,
+    initiateDrop,
+    markBufferRead,
+    channelSettingsOpen,
+    channelJoinBlocked,
+    requestWhois,
   }
 }

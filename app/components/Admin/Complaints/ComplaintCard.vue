@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Button, Card, Flex } from '@dolanske/vui'
+import { Badge, Button, Card, Divider, Flex } from '@dolanske/vui'
 import { computed, onMounted, ref } from 'vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   complaint: Tables<'complaints'>
@@ -75,7 +76,7 @@ const statusConfig = computed(() => {
 
 // Truncate message for preview
 const truncatedMessage = computed(() => {
-  const maxLength = 150
+  const maxLength = 132
   if (props.complaint.message.length <= maxLength) {
     return props.complaint.message
   }
@@ -105,6 +106,8 @@ function handleAcknowledge(event: Event) {
   event.stopPropagation() // Prevent card selection
   emit('acknowledge', props.complaint.id)
 }
+
+const isMobile = useBreakpoint('<s')
 </script>
 
 <template>
@@ -117,7 +120,8 @@ function handleAcknowledge(event: Event) {
   >
     <!-- Header with status and date -->
     <template #header>
-      <Flex y-center :gap="0" class="complaint-card__header" expand>
+      <Flex y-center gap="s" class="complaint-card__header" expand>
+        <div class="complaint-status" />
         <Flex gap="xs" x-between y-center expand>
           <Flex gap="xs" column x-start>
             <span class="complaint-card__id">Complaint #{{ complaint.id }}</span>
@@ -136,35 +140,28 @@ function handleAcknowledge(event: Event) {
       </Flex>
     </template>
 
-    <!-- User info -->
-    <Flex class="complaint-card__user">
-      <UserDisplay
-        :user-id="complaint.created_by"
-        size="s"
-        show-role
-      />
-    </Flex>
-
     <!-- Message preview -->
     <div class="complaint-card__message">
-      <p>{{ truncatedMessage }}</p>
-    </div>
-
-    <!-- Spacer pushes footer to bottom -->
-    <div class="complaint-card__spacer" />
-
-    <!-- Response indicator -->
-    <template #footer>
-      <!-- Actions -->
-      <Flex gap="xs" x-between y-center>
+      <div class="message-details">
+        <span>Description</span>
+        <p>{{ truncatedMessage }}</p>
+        <UserDisplay
+          :user-id="complaint.created_by"
+          size="s"
+          show-role
+        />
+      </div>
+      <Divider v-if="isMobile" type="dashed" />
+      <Divider v-else type="dashed" vertical height="100%" />
+      <div class="message-details">
+        <span>Subject</span>
         <Flex gap="xs" y-center>
           <template v-if="contextType">
-            <Icon :name="contextType.icon" class="text-color-light" size="14" />
             <UserDisplay
               v-if="contextType.userId"
               :user-id="contextType.userId"
               size="s"
-              hide-avatar
+              style="display:inherit;"
             />
             <span v-else-if="contextType.isServer" class="complaint-card__context-label">
               {{ contextGameserverName ?? `#${complaint.context_gameserver}` }}
@@ -173,48 +170,62 @@ function handleAcknowledge(event: Event) {
           </template>
           <span v-else class="complaint-card__context-label text-color-lighter">No context</span>
         </Flex>
-        <Flex gap="xs" y-center>
-          <div v-if="complaint.response" class="complaint-card__response-indicator">
-            <Flex gap="xs" y-center>
-              <Icon name="ph:arrow-bend-down-left" class="text-color-light" />
-              <span class="text-s text-color-light">Response provided</span>
-              <TimestampDate
-                v-if="complaint.responded_at"
-                :date="complaint.responded_at"
-                relative
-                size="s"
-              />
-            </Flex>
-          </div>
-          <div v-else-if="complaint.acknowledged" class="complaint-card__response-indicator">
-            <Flex gap="xs" y-center>
-              <Icon name="ph:arrow-bend-up-right" class="text-color-light" />
-              <span class="text-s text-color-light">No response yet</span>
-            </Flex>
-          </div>
-          <Button
-            v-if="status === 'pending'"
-            size="s"
-            variant="accent"
-            @click="handleAcknowledge"
-          >
-            <template #start>
-              <Icon name="ph:check" />
-            </template>
-            Acknowledge
-          </Button>
-        </Flex>
+      </div>
+    </div>
+
+    <!-- Response indicator -->
+    <template #footer>
+      <!-- Actions -->
+      <Flex gap="xs" y-center expand :x-end="!isMobile">
+        <div v-if="complaint.response" class="complaint-card__response-indicator">
+          <Flex gap="xs" y-center>
+            <Icon name="ph:arrow-bend-down-left" class="text-color-light" />
+            <span class="text-s text-color-light">Response provided</span>
+            <TimestampDate
+              v-if="complaint.responded_at"
+              :date="complaint.responded_at"
+              relative
+              size="s"
+            />
+            <span class="text-s text-color-light">by</span>
+            <UserDisplay
+              v-if="complaint.responded_by"
+              :user-id="complaint.responded_by"
+              size="s"
+              hide-avatar
+              style="display:inherit;"
+            />
+          </Flex>
+        </div>
+        <div v-else-if="complaint.acknowledged" class="complaint-card__response-indicator">
+          <Flex gap="xs" y-center>
+            <Icon name="ph:arrow-bend-up-right" class="text-color-light" />
+            <span class="text-s text-color-light">No response yet</span>
+          </Flex>
+        </div>
+        <Button
+          v-if="status === 'pending'"
+          size="s"
+          variant="accent"
+          @click="handleAcknowledge"
+        >
+          <template #start>
+            <Icon name="ph:check" />
+          </template>
+          Acknowledge
+        </Button>
       </Flex>
     </template>
   </Card>
 </template>
 
 <style scoped lang="scss">
+@use '@/assets/breakpoints.scss' as *;
+
 .complaint-card {
   cursor: pointer;
   transition: var(--transition-fast);
   position: relative;
-  border-left: 4px solid var(--color-border);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -248,16 +259,22 @@ function handleAcknowledge(event: Event) {
   color: var(--color-accent);
 }
 
-.complaint-card--pending {
-  border-left-color: var(--color-text-yellow);
+.complaint-status {
+  width: 5px;
+  height: 32px;
+  border-radius: var(--border-radius-pill);
 }
 
-.complaint-card--acknowledged {
-  border-left-color: var(--color-text-blue);
+.complaint-card--pending .complaint-status {
+  background-color: var(--color-text-yellow);
 }
 
-.complaint-card--responded {
-  border-left-color: var(--color-text-green);
+.complaint-card--acknowledged .complaint-status {
+  background-color: var(--color-text-blue);
+}
+
+.complaint-card--responded .complaint-status {
+  background-color: var(--color-text-green);
 }
 
 .complaint-card__id {
@@ -266,34 +283,49 @@ function handleAcknowledge(event: Event) {
   font-size: var(--font-size-m);
 }
 
-.complaint-card__user {
-  margin-bottom: var(--space-m);
-}
-
 .complaint-card__message {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  gap: var(--space-l);
+  align-items: stretch;
+  height: 100%;
+
+  .message-details {
+    & > span {
+      display: block;
+      font-size: var(--font-size-xs);
+      color: var(--color-text-lighter);
+      margin-bottom: var(--space-s);
+    }
+
+    p {
+      display: block;
+      font-size: var(--font-size-m);
+      margin-bottom: var(--space-m);
+    }
+  }
 }
 
-.complaint-card__spacer {
-  flex: 1;
-}
+@media screen and (max-width: $breakpoint-s) {
+  .complaint-card__message {
+    grid-template-columns: 1fr;
+    gap: var(--space-m);
 
-.complaint-card__message p {
-  margin: 0;
-  line-height: 1.5;
-  color: var(--color-text);
+    // .message-details {
+    //   &:nth-child(2) {
+    //     display: none;
+    //   }
+    //
+  }
 }
 
 .complaint-card__response-indicator {
-  padding: var(--space-xs) var(--space-s);
-  background-color: var(--color-bg-subtle);
+  padding-block: var(--space-xxs);
   border-radius: var(--border-radius-s);
 }
 
 .complaint-card__context-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-lighter);
+  font-size: var(--font-size-s);
 }
 
 .complaint-card__click-indicator {

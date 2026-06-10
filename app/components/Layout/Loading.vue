@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex } from '@dolanske/vui'
 import SharedLogo from '@/components/Shared/Logo.vue'
-import SharedSupportModal from '@/components/Shared/SupportModal.vue'
 import { useInitialUserPreferences } from '@/composables/useInitialUserPreferences'
 import { useSessionReady } from '@/composables/useSessionReady'
 
@@ -10,7 +9,6 @@ const isLoading = ref(true)
 const isFadingOut = ref(false)
 const isContentReady = ref(false)
 const showEscapeHatch = ref(false)
-const supportOpen = ref(false)
 let escapeHatchTimer: ReturnType<typeof setTimeout> | null = null
 
 const { applyUserPreferences } = useInitialUserPreferences()
@@ -72,17 +70,12 @@ onMounted(async () => {
           <Button variant="gray" size="s" @click="() => { isLoading = false }">
             Dismiss
           </Button>
-          <Button variant="link" size="s" @click="supportOpen = true">
+          <Button variant="link" size="s" as="a" href="mailto:contact@hivecom.net">
             Contact Support
           </Button>
         </Flex>
       </Flex>
     </Transition>
-    <SharedSupportModal
-      v-model:open="supportOpen"
-      title="Loading issue?"
-      message="If the app is stuck loading, there may be a temporary issue. Reach out and we'll help."
-    />
   </Flex>
 </template>
 

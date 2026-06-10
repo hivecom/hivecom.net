@@ -141,8 +141,16 @@
   }
 }
 
+[role='button'] {
+  cursor: pointer;
+}
+
 .vui-badge {
   // --vui-badge-padding-block: 6px;
+
+  &.vui-badge-size-m {
+    --vui-badge-height: 28px;
+  }
 
   &.vui-badge-size-s:not(.circle) {
     --vui-badge-padding-inline: var(--space-xxs) !important;
@@ -189,6 +197,17 @@
   :root.light &.vui-badge-variant-accent.filled .iconify,
   :root.light &.vui-badge-variant-warning.filled .iconify {
     color: var(--color-text);
+  }
+}
+
+dl {
+  grid-template-columns: max-content 1fr;
+  row-gap: var(--space-m);
+  width: 100%;
+
+  dd,
+  dt {
+    margin-bottom: 0;
   }
 }
 
@@ -425,6 +444,15 @@ code {
     span {
       font-size: var(--font-size-s) !important;
     }
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin-top: var(--space-xl);
   }
 
   details {

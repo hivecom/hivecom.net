@@ -178,7 +178,7 @@ export function useLightboxZoom(
         isSwiping.value = true
         container.value?.setPointerCapture?.(e.pointerId)
       }
-      else if (options.onClose && Math.abs(dy) > MOVE_THRESHOLD && dy > 0 && Math.abs(dy) > Math.abs(dx)) {
+      else if (options.onClose && Math.abs(dy) > MOVE_THRESHOLD && Math.abs(dy) > Math.abs(dx)) {
         mode = 'swipe-down'
         isDismissing.value = true
         container.value?.setPointerCapture?.(e.pointerId)
@@ -204,8 +204,7 @@ export function useLightboxZoom(
       e.preventDefault()
     }
     else if (mode === 'swipe-down') {
-      // Only allow downward movement
-      dismissOffset.value = Math.max(0, dy)
+      dismissOffset.value = dy
       e.preventDefault()
     }
 
@@ -230,7 +229,7 @@ export function useLightboxZoom(
 
     if (mode === 'swipe-down') {
       const dy = e.clientY - startY
-      if (dy >= SWIPE_DOWN_THRESHOLD && options.onClose)
+      if (Math.abs(dy) >= SWIPE_DOWN_THRESHOLD && options.onClose)
         options.onClose()
       dismissOffset.value = 0
       isDismissing.value = false
@@ -327,7 +326,7 @@ export function useLightboxZoom(
     if (isSwiping.value)
       return { transform: `translateX(${navOffset.value}px)`, transition: 'none' }
     if (isDismissing.value) {
-      const progress = Math.min(dismissOffset.value / SWIPE_DOWN_THRESHOLD, 1)
+      const progress = Math.min(Math.abs(dismissOffset.value) / SWIPE_DOWN_THRESHOLD, 1)
       const opacity = 1 - progress * 0.5
       return {
         transform: `translateY(${dismissOffset.value}px)`,

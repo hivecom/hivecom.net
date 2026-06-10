@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.overrides'
 import { Grid, Skeleton } from '@dolanske/vui'
 import { computed } from 'vue'
-import GameEventCard from '@/components/Community/Games/GameEventCard.vue'
+import EventSmall from '@/components/Events/EventSmall.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -59,28 +59,14 @@ const gameEvents = computed(() => {
   <!-- Events grid -->
   <template v-else>
     <GlowGroup>
-      <Grid :columns="isMobile ? 1 : 3" gap="m" align="stretch" class="game-events-grid">
-        <GameEventCard
+      <Grid :columns="isMobile ? 1 : 3" gap="m" y-stretch>
+        <EventSmall
           v-for="event in gameEvents"
           :key="event.id"
-          :event="event"
+          :data="event"
           :games="games"
-          hide-description
         />
       </Grid>
     </GlowGroup>
   </template>
 </template>
-
-<style lang="scss" scoped>
-.game-events-grid {
-  // All cards stretch to the height of the tallest
-  :deep(.vui-grid) {
-    align-items: stretch;
-  }
-
-  :deep(.event-card) {
-    height: 100%;
-  }
-}
-</style>

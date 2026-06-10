@@ -44,7 +44,7 @@ watchEffect(() => {
 </script>
 
 <template>
-  <GlowCard halo style="cursor: pointer" @click="emit('openDetails', game)">
+  <GlowCard role="button" @click="emit('openDetails', game)">
     <Card class="top-game-card" :padding="false">
       <div
         class="top-game-card__bg"
@@ -85,12 +85,12 @@ watchEffect(() => {
             <Badge
               variant="neutral"
               size="m"
-              circle
               class="server-badge"
+              outline
               @click.stop="emit('openServerModal', game)"
             >
-              <Icon name="ph:hard-drives" size="14" />
               {{ serverCount }}
+              Server{{ serverCount > 1 ? 's' : '' }}
             </Badge>
             <template #tooltip>
               <p>
@@ -149,13 +149,6 @@ watchEffect(() => {
   &__rank {
     text-transform: uppercase;
     letter-spacing: 0.1em;
-  }
-
-  &__name-row {
-    &:hover span {
-      text-decoration: underline;
-      text-underline-offset: 3px;
-    }
   }
 
   &__bottom {

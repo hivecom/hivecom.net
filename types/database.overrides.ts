@@ -113,6 +113,10 @@ interface TableColumnOverrides {
       chat_display_mode: 'irc' | 'modern'
       chat_show_tag_messages: 'none' | 'unknown' | 'all'
       chat_typing_indicators: boolean
+      chat_irc_reactions: boolean
+      chat_irc_hide_embedded_links: boolean
+      chat_irc_inline_images: boolean
+      chat_irc_native_modes: boolean
     }
   }
 

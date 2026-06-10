@@ -2,7 +2,6 @@
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex } from '@dolanske/vui'
 import { computed, ref, watchEffect } from 'vue'
-import GitHubLink from '@/components/Shared/GitHubLink.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataProjectBanner } from '@/composables/useDataProjectBanner'
@@ -123,15 +122,6 @@ const bannerSurfaceStyle = computed(() => {
               <h3 v-else class="project-card__title">
                 {{ project.title }}
               </h3>
-
-              <Flex v-if="!compact" x-end>
-                <TimestampDate
-                  :date="project.created_at"
-                  format="MMM D, YYYY"
-                  class="project-card__date"
-                />
-                <Icon name="ph:folder-fill" />
-              </Flex>
             </Flex>
 
             <!-- Project description -->
@@ -141,17 +131,12 @@ const bannerSurfaceStyle = computed(() => {
           </div>
 
           <!-- Project tags and metadata row -->
-          <Flex v-if="((project.tags && project.tags.length > 0) || project.github) && !compact" gap="s" x-between y-center class="project-card__tags-row">
-            <Flex gap="s" y-center class="project-card__tags-left">
-              <span v-if="project.github" class="project-card__github-indicator">
-                <GitHubLink :github="project.github" :show-icon="true" :hide-repo="true" small />
+          <Flex v-if="((project.tags && project.tags.length > 0) || project.github) && !compact" gap="xs" x-start y-center class="project-card__tags-row">
+            <Badge v-for="tag in project.tags" :key="tag" outline>
+              <span class="text-color-light text-xs">
+                {{ tag }}
               </span>
-              <div v-if="project.tags && project.tags.length > 0" class="project-card__tags">
-                <Badge v-for="tag in project.tags" :key="tag" size="s">
-                  {{ tag }}
-                </Badge>
-              </div>
-            </Flex>
+            </Badge>
           </Flex>
         </div>
       </div>
@@ -256,7 +241,7 @@ const bannerSurfaceStyle = computed(() => {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-xxs);
+  gap: var(--space-m);
   flex: 1;
   justify-content: space-between;
 }
@@ -384,12 +369,6 @@ const bannerSurfaceStyle = computed(() => {
 .project-card__tags-left {
   flex: 1;
   min-width: 0; // Allow content to shrink
-}
-
-.project-card__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
 }
 
 .project-card__description {

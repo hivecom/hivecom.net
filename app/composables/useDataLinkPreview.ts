@@ -200,7 +200,6 @@ export function parseInternalUrl(raw: string): ParsedInternalUrl | null {
  */
 export function useDataLinkPreview(url: string) {
   const supabase = useSupabaseClient<Database>()
-
   const data = ref<LinkPreviewData | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -498,19 +497,19 @@ export function useDataLinkPreview(url: string) {
     error.value = null
 
     try {
-      if (parsed.type === 'forum-discussion') {
+      if (parsed?.type === 'forum-discussion') {
         await fetchDiscussion(parsed.slug, parsed.commentId, parsed.href)
       }
-      else if (parsed.type === 'profile') {
+      else if (parsed?.type === 'profile') {
         await fetchProfile(parsed)
       }
-      else if (parsed.type === 'gameserver') {
+      else if (parsed?.type === 'gameserver') {
         await fetchGameserver(parsed.id, parsed.href)
       }
-      else if (parsed.type === 'event') {
+      else if (parsed?.type === 'event') {
         await fetchEvent(parsed.id, parsed.href)
       }
-      else if (parsed.type === 'vote') {
+      else if (parsed?.type === 'vote') {
         await fetchVote(parsed.id, parsed.href)
       }
     }

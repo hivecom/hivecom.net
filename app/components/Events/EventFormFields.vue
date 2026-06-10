@@ -277,6 +277,7 @@ const mediaContext = computed(() =>
       placeholder="Additional event details (optional)"
       min-height="144px"
       show-expand-button
+      fullscreen-on-mobile
       :media-context="mediaContext"
       :media-bucket-id="mediaBucketId"
       :show-attachment-button="!!eventId && isEditMode"

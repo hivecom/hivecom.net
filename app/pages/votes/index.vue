@@ -220,7 +220,7 @@ const currentReferendums = computed(() => {
     </section>
 
     <ClientOnly>
-      <Flex x-between y-center class="my-m">
+      <Flex x-between y-center class="mb-m">
         <Tabs v-model="tab">
           <Tab value="Active" />
           <Tab value="Concluded" />
@@ -241,8 +241,7 @@ const currentReferendums = computed(() => {
             <Icon name="ph:magnifying-glass" />
           </template>
         </Input>
-        <span v-if="isLoading" class="text-s text-color-lighter">Loading...</span>
-        <span v-else class="text-s text-color-lighter">
+        <span class="text-s text-color-lighter">
           {{ currentReferendums.length }} result{{ currentReferendums.length !== 1 ? 's' : '' }}
         </span>
       </Flex>

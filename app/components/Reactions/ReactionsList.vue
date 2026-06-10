@@ -9,6 +9,10 @@ const props = defineProps<{
   reactions: DisplayReaction[]
   capped?: ReadonlySet<string>
   disabled?: boolean
+  /** Render chips at a smaller size (e.g. for dense chat contexts). */
+  small?: boolean
+  /** When true, reactors are IRC nicks rather than user UUIDs - renders plain labels instead of avatars. */
+  nickReactors?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -111,7 +115,7 @@ function closeDrawer() {
 </script>
 
 <template>
-  <div class="reactions__list">
+  <div class="reactions__list" :class="{ 'reactions__list--small': props.small }">
     <div
       v-for="reaction in props.reactions"
       :key="getKey(reaction)"
@@ -149,14 +153,19 @@ function closeDrawer() {
         @mouseleave="handleLeave(getKey(reaction))"
       >
         <Flex wrap y-center class="reactions__popout">
-          <UserAvatar
-            v-for="userId in reaction.reactors"
-            :key="userId"
-            :user-id="userId"
-            size="s"
-            :show-preview="true"
-            :linked="true"
-          />
+          <template v-if="props.nickReactors">
+            <span v-for="n in reaction.reactors" :key="n" class="reactions__nick-label">{{ n }}</span>
+          </template>
+          <template v-else>
+            <UserAvatar
+              v-for="userId in reaction.reactors"
+              :key="userId"
+              :user-id="userId"
+              size="s"
+              :show-preview="true"
+              :linked="true"
+            />
+          </template>
         </Flex>
       </Popout>
     </div>
@@ -177,14 +186,19 @@ function closeDrawer() {
         Reacted by
       </p>
       <Flex wrap gap="s" class="reactions__drawer-avatars">
-        <UserAvatar
-          v-for="userId in drawerReaction?.reactors ?? []"
-          :key="userId"
-          :user-id="userId"
-          size="m"
-          :show-preview="false"
-          :linked="true"
-        />
+        <template v-if="props.nickReactors">
+          <span v-for="n in drawerReaction?.reactors ?? []" :key="n" class="reactions__nick-label">{{ n }}</span>
+        </template>
+        <template v-else>
+          <UserAvatar
+            v-for="userId in drawerReaction?.reactors ?? []"
+            :key="userId"
+            :user-id="userId"
+            size="m"
+            :show-preview="false"
+            :linked="true"
+          />
+        </template>
       </Flex>
     </Flex>
   </Drawer>
@@ -217,5 +231,13 @@ function closeDrawer() {
   &-avatars {
     padding-bottom: var(--space-s);
   }
+}
+
+.reactions__nick-label {
+  font-size: var(--font-size-s);
+  background: var(--color-bg-raised);
+  border-radius: var(--border-radius-s);
+  padding: 2px var(--space-xs);
+  color: var(--color-text);
 }
 </style>

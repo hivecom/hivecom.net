@@ -17,6 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const open = defineModel<boolean>('open')
+const fullscreen = ref(false)
 
 // Form state
 const eventForm = ref<FormState>({
@@ -119,6 +120,7 @@ watch(open, (val) => {
   }
   else {
     resetForm()
+    fullscreen.value = false
   }
 })
 
@@ -308,17 +310,28 @@ async function handleDelete() {
 <template>
   <Modal
     :open="open"
-    size="l"
+    :size="fullscreen ? 'screen' : 'l'"
+    scrollable
     :card="{ separators: true }"
     :can-dismiss="false"
     @close="handleClose"
   >
     <template #header>
-      <Flex column :gap="0">
-        <h4>{{ isEditMode ? 'Edit Event' : 'Create Event' }}</h4>
-        <p class="text-color-light text-xs">
-          {{ isEditMode ? props.event?.title : 'Submit a community event' }}
-        </p>
+      <Flex x-between y-center expand>
+        <Flex column :gap="0">
+          <h4>{{ isEditMode ? 'Edit Event' : 'Create Event' }}</h4>
+          <p class="text-color-light text-xs">
+            {{ isEditMode ? props.event?.title : 'Submit a community event' }}
+          </p>
+        </Flex>
+        <Tooltip>
+          <Button plain square size="s" @click="fullscreen = !fullscreen">
+            <Icon :name="fullscreen ? 'ph:arrows-in' : 'ph:arrows-out'" />
+          </Button>
+          <template #tooltip>
+            <p>{{ fullscreen ? 'Collapse' : 'Expand' }}</p>
+          </template>
+        </Tooltip>
       </Flex>
     </template>
 

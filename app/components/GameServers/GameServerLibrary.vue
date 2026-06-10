@@ -188,8 +188,6 @@ function isCoverLoading(gameId: number): boolean {
             <TransitionGroup name="card-fade" tag="div" class="game-grid-container" appear>
               <GlowCard
                 v-for="(game, index) in filteredGames" :key="game.id"
-                no-glow
-                halo
               >
                 <button
                   class="game-card"

@@ -129,7 +129,7 @@ defineOgImage('Default', {
 
       <!-- Loading skeletons -->
       <Flex v-if="isLoading" column gap="l" class="projects__loading" expand>
-        <Flex gap="s" x-start class="projects__filters" y-center wrap expand>
+        <Flex gap="s" x-start y-center wrap expand>
           <Skeleton width="100%" :height="36" :radius="8" />
           <Skeleton width="100%" :height="36" :radius="8" />
         </Flex>
@@ -144,7 +144,7 @@ defineOgImage('Default', {
 
       <template v-if="!isLoading && !error">
         <!-- Filters -->
-        <Flex gap="s" x-start class="projects__filters" y-center wrap expand>
+        <Flex gap="s" x-start y-center wrap expand>
           <Input v-model="search" placeholder="Search projects" :expand="isBelowExtraSmall">
             <template #start>
               <Icon name="ph:magnifying-glass" />
@@ -207,10 +207,6 @@ defineOgImage('Default', {
 </template>
 
 <style lang="scss" scoped>
-.projects__filters {
-  margin-bottom: var(--space-s);
-}
-
 .projects__featured {
   width: 100%;
   margin-bottom: var(--space-l);

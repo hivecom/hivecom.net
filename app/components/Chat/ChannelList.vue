@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
 import type { ChannelGroupNode, ChannelItemNode, ChannelTreeNode } from '@/components/Chat/ChannelTreeItem.vue'
-import { Badge, Button, Flex, Input, Overflow, Tooltip } from '@dolanske/vui'
+import type { ChatBuffer } from '@/composables/useIrcChat'
+import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, Input, Overflow, pushToast, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import ChannelInfoModal from '@/components/Chat/ChannelInfoModal.vue'
 import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
 import ChannelTreeItem from '@/components/Chat/ChannelTreeItem.vue'
+import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
-import { useIrcChat } from '@/composables/useIrcChat'
+import { useDataUserSettings } from '@/composables/useDataUserSettings'
+import { SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -16,7 +20,21 @@ const props = defineProps<{
   horizontal?: boolean
 }>()
 
-const { buffers, activeName, setActive, closeBuffer, joinChannel, channelBrowserOpen } = useIrcChat()
+const { buffers, activeName, setActive, closeBuffer, joinChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, requestChannelMetadata, isUnauthorizedSubchannel } = useIrcChat()
+
+// Proactively fetch metadata for every implied parent path so slash-nesting can
+// be verified and the parent displayed even when we haven't joined it.
+// draft/metadata-2 allows METADATA LIST on any channel target.
+watch(buffers, () => {
+  for (const buf of buffers.value) {
+    if (buf.kind !== 'channel')
+      continue
+    const prefix = buf.name[0] ?? '#'
+    const segments = buf.name.replace(/^[#&]/, '').split('/').filter(Boolean)
+    for (let i = 1; i < segments.length; i++)
+      requestChannelMetadata(`${prefix}${segments.slice(0, i).join('/')}`)
+  }
+}, { immediate: true })
 
 const sortedBuffers = computed(() => {
   const server = buffers.value.filter(b => b.kind === 'server')
@@ -94,10 +112,19 @@ function resolvedUserId(name: string): string | null {
 
 const joinInput = ref('')
 
-function bufferLabel(name: string, kind: string) {
-  if (kind === 'server')
+function bufferLabel(buf: ChatBuffer) {
+  if (buf.kind === 'server')
     return 'Server'
-  return name.replace(/^#/, '')
+  return buf.metadata?.get('display-name') ?? buf.name.replace(/^#/, '')
+}
+
+function isPmBot(name: string): boolean {
+  const lower = name.toLowerCase()
+  return buffers.value.some(b => b.users?.some(u => u.name.toLowerCase() === lower && u.bot))
+}
+
+function isPmService(name: string): boolean {
+  return SERVICE_NICKS.has(name.toLowerCase())
 }
 
 function bufferIcon(kind: string) {
@@ -129,7 +156,7 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
     if (existing)
       return existing
 
-    const node: ChannelGroupNode = { type: 'group', name, fullPath, parentBuffer: null, children: [] }
+    const node: ChannelGroupNode = { type: 'group', name, fullPath, parentBuffer: null, meta: channelMeta(fullPath) ?? null, children: [] }
     groupByPath.set(fullPath, node)
 
     // If a matching leaf is already at this level, replace it in-place (preserves sort order)
@@ -144,6 +171,45 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
       list.push(node)
     }
     return node
+  }
+
+  // Locate an open channel buffer by its slash path (case-insensitive, no #).
+  function findChannelBuffer(path: string): ChatBuffer | undefined {
+    const target = path.toLowerCase()
+    return sortedBuffers.value.find(
+      b => b.kind === 'channel' && b.name.replace(/^#/, '').toLowerCase() === target,
+    )
+  }
+
+  // Resolve a channel's metadata from its open buffer, falling back to the
+  // metadata cache (covers parents we've fetched but not joined).
+  function channelMeta(path: string): Map<string, string> | undefined {
+    return findChannelBuffer(path)?.metadata ?? channelMetaCache.value.get(path.toLowerCase())
+  }
+
+  // A parent authorizes a direct child leaf when its `subchannels` metadata
+  // (comma-separated) lists that leaf. Only ops/founder can set channel
+  // metadata, so the parent's allowlist is the authority - a squatter cannot
+  // make #playground claim their #playground/2.
+  function parentAuthorizes(parentPath: string, childSegment: string): boolean {
+    const raw = channelMeta(parentPath)?.get('subchannels')
+    if (!raw)
+      return false
+    return raw
+      .split(',')
+      .map(s => s.trim().toLowerCase())
+      .filter(Boolean)
+      .includes(childSegment.toLowerCase())
+  }
+
+  // Nesting is all-or-nothing: every parent->child link in the chain must be
+  // authorized, otherwise the channel renders flat at the top level.
+  function isChainAuthorized(segments: string[]): boolean {
+    for (let i = 1; i < segments.length; i++) {
+      if (!parentAuthorizes(segments.slice(0, i).join('/'), segments[i]!))
+        return false
+    }
+    return true
   }
 
   const root: ChannelTreeNode[] = []
@@ -170,6 +236,13 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
       continue
     }
 
+    // Unverified nesting: render flat at the top level using the full path so
+    // an unauthorized child can't masquerade as belonging to the parent.
+    if (!isChainAuthorized(segments)) {
+      root.push({ type: 'channel', buffer: buf, displayName: rawName })
+      continue
+    }
+
     // Multi-segment: navigate/create groups for all but the last segment
     let currentList: ChannelTreeNode[] = root
     for (let i = 0; i < segments.length - 1; i++) {
@@ -190,6 +263,96 @@ function treeNodeKey(node: ChannelTreeNode): string {
     return `group:${node.fullPath}`
   return node.buffer.name
 }
+
+// ---- Context menu ----
+
+const menuBuffer = ref<ChatBuffer | null>(null)
+const mobileMenuOpen = ref(false)
+
+function onContextMenu(event: MouseEvent) {
+  const el = (event.target as HTMLElement | null)?.closest('[data-channel-name]') as HTMLElement | null
+  const name = el?.dataset.channelName ?? null
+  menuBuffer.value = name ? (buffers.value.find(b => b.name === name) ?? null) : null
+
+  // Force-close any other open VUI ContextMenu (user list, message log) and our
+  // own stale popout before this one opens. VUI ContextMenu only closes on an
+  // outside pointerdown, and a right-click inside its own anchor doesn't count -
+  // so sibling menus and empty-space clicks leave stale menus open (see VUI issue).
+  if (import.meta.client) {
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  }
+
+  // No channel/PM under the cursor (empty space or server) - suppress the menu entirely.
+  if (!menuBuffer.value || menuBuffer.value.kind === 'server') {
+    event.stopPropagation()
+    return
+  }
+
+  if (isMobile.value) {
+    event.stopPropagation()
+    mobileMenuOpen.value = true
+  }
+}
+
+// VUI ContextMenu closes on outside pointerdown + click. Defer via setTimeout
+// so the dispatch runs after the current event cycle finishes.
+function closeMenu() {
+  if (!import.meta.client)
+    return
+  mobileMenuOpen.value = false
+  setTimeout(() => {
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  }, 0)
+}
+
+function buildChannelLink(bufName: string): string {
+  const clean = bufName.replace(/^#/, '')
+  const origin = import.meta.client ? window.location.origin : ''
+  return `${origin}/chat?channel=${encodeURIComponent(clean)}`
+}
+
+async function copyText(text: string, label: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    pushToast(`${label} copied`)
+  }
+  catch {
+    pushToast('Could not copy to clipboard')
+  }
+  closeMenu()
+}
+
+function canEditBuffer(buf: ChatBuffer): boolean {
+  if (buf.kind !== 'channel')
+    return false
+  const r = myChannelRole(buf.name)
+  return r !== null && ['~', '&', '@'].includes(r.symbol)
+}
+
+function openSettings(buf: ChatBuffer) {
+  channelSettingsOpen.value = buf.name
+  closeMenu()
+}
+
+const { settings } = useDataUserSettings()
+const whoisModalNick = ref<string | null>(null)
+const whoisModalOpen = ref(false)
+
+function openWhois(name: string) {
+  whoisModalNick.value = name
+  whoisModalOpen.value = true
+  closeMenu()
+}
+
+const channelInfoOpen = ref(false)
+
+function openChannelInfo(buf: ChatBuffer) {
+  menuBuffer.value = buf
+  channelInfoOpen.value = true
+  closeMenu()
+}
 </script>
 
 <template>
@@ -208,99 +371,298 @@ function treeNodeKey(node: ChannelTreeNode): string {
       </Button>
     </Flex>
 
-    <Overflow
-      ref="listRef"
-      :horizontal="horizontal || undefined"
-      :hide-scrollbar="horizontal || undefined"
-      :style="overflowStyle"
-      class="chat-channels__list"
-      :class="{ 'chat-channels__list--horizontal': horizontal }"
-      @wheel="onWheel"
-    >
-      <Flex :gap="horizontal ? 'xxs' : 0" :column="!horizontal" :expand="!horizontal">
-        <!-- Horizontal mode: flat list, no grouping -->
-        <template v-if="horizontal">
-          <Tooltip placement="bottom" :disabled="isMobile">
-            <button
-              type="button"
-              class="chat-channels__item chat-channels__item--browse"
-              @click="channelBrowserOpen = true"
-            >
-              <Icon name="ph:compass" size="13" class="chat-channels__icon" />
-            </button>
-            <template #tooltip>
-              <p>Browse channels</p>
-            </template>
-          </Tooltip>
-          <Tooltip
-            v-for="buf in sortedBuffers"
-            :key="buf.name"
-            placement="bottom"
-            :disabled="isMobile || (!buf.topic && buf.users.length === 0)"
-          >
-            <button
-              type="button"
-              class="chat-channels__item"
-              :class="{ 'chat-channels__item--active': buf.name.toLowerCase() === activeName.toLowerCase() }"
-              @click="setActive(buf.name)"
-              @mousedown.middle.prevent
-              @mouseup.middle.prevent="closeBuffer(buf.name)"
-            >
-              <template v-if="buf.kind === 'pm'">
-                <UserAvatar v-if="resolvedUserId(buf.name)" :user-id="resolvedUserId(buf.name)!" :size="14" show-preview class="chat-channels__icon" />
-                <AvatarMedia v-else :size="14" :alt="buf.name" class="chat-channels__icon">
-                  <template #default>
-                    {{ buf.name.charAt(0).toUpperCase() }}
-                  </template>
-                </AvatarMedia>
-              </template>
-              <Icon v-else :name="bufferIcon(buf.kind)" size="13" class="chat-channels__icon" />
-              <Flex y-center gap="s" class="chat-channels__name-wrap">
-                <span
-                  v-if="!(isMobile && buf.kind === 'server')"
-                  class="chat-channels__name chat-channels__name--compact"
-                >{{ bufferLabel(buf.name, buf.kind) }}</span>
-                <ChannelModeBadges v-if="buf.kind === 'channel'" :modes="buf.modes" />
-              </Flex>
-              <Badge v-if="buf.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
-                {{ buf.mentions }}
-              </Badge>
-              <Badge v-else-if="buf.unread > 0" size="s" round variant="neutral" class="chat-channels__badge">
-                {{ buf.unread }}
-              </Badge>
-              <Button
-                v-if="buf.kind !== 'server'"
-                square
-                plain
-                size="s"
-                aria-label="Close"
-                class="chat-channels__close"
-                @click.stop="closeBuffer(buf.name)"
+    <ContextMenu class="chat-channels__context">
+      <Overflow
+        ref="listRef"
+        :horizontal="horizontal || undefined"
+        :hide-scrollbar="horizontal || undefined"
+        :style="overflowStyle"
+        class="chat-channels__list"
+        :class="{ 'chat-channels__list--horizontal': horizontal }"
+        @wheel="onWheel"
+      >
+        <Flex :gap="horizontal ? 'xxs' : 0" :column="!horizontal" :expand="!horizontal" @contextmenu.prevent="onContextMenu">
+          <!-- Horizontal mode: flat list, no grouping -->
+          <template v-if="horizontal">
+            <Tooltip placement="bottom" :disabled="isMobile">
+              <button
+                type="button"
+                class="chat-channels__item chat-channels__item--browse"
+                @click="channelBrowserOpen = true"
               >
-                <Icon name="ph:x" size="12" />
-              </Button>
-            </button>
-            <template #tooltip>
-              <Flex column gap="xxs">
-                <p v-if="buf.topic" class="text-xs" style="margin:0">
-                  {{ buf.topic }}
-                </p>
-                <span v-if="buf.users.length" class="text-xxs text-color-light">
-                  {{ buf.users.length }} {{ buf.users.length === 1 ? 'user' : 'users' }}
-                </span>
-              </Flex>
-            </template>
-          </Tooltip>
-        </template>
+                <Icon name="ph:compass" size="13" class="chat-channels__icon" />
+              </button>
+              <template #tooltip>
+                <p>Browse channels</p>
+              </template>
+            </Tooltip>
+            <Tooltip
+              v-for="buf in sortedBuffers"
+              :key="buf.name"
+              placement="bottom"
+              :disabled="isMobile || (!buf.topic && buf.users.length === 0)"
+            >
+              <button
+                type="button"
+                class="chat-channels__item"
+                :class="{ 'chat-channels__item--active': buf.name.toLowerCase() === activeName.toLowerCase() }"
+                :data-channel-name="buf.name"
+                @click="setActive(buf.name)"
+                @mousedown.middle.prevent
+                @mouseup.middle.prevent="closeBuffer(buf.name)"
+              >
+                <template v-if="buf.kind === 'pm'">
+                  <UserAvatar v-if="resolvedUserId(buf.name)" :user-id="resolvedUserId(buf.name)!" :size="14" show-preview class="chat-channels__icon" />
+                  <AvatarMedia v-else :size="14" :alt="buf.name" class="chat-channels__icon">
+                    <template #default>
+                      {{ buf.name.charAt(0).toUpperCase() }}
+                    </template>
+                  </AvatarMedia>
+                </template>
+                <template v-else-if="buf.kind === 'channel'">
+                  <img
+                    v-if="buf.metadata?.get('avatar')"
+                    :src="buf.metadata.get('avatar')"
+                    class="chat-channels__icon chat-channels__icon--avatar"
+                    :alt="buf.name"
+                  >
+                  <Icon
+                    v-else
+                    :name="bufferIcon(buf.kind)"
+                    size="13"
+                    class="chat-channels__icon"
+                    :style="buf.metadata?.get('color') ? { color: buf.metadata.get('color') } : undefined"
+                  />
+                </template>
+                <Icon v-else :name="bufferIcon(buf.kind)" size="13" class="chat-channels__icon" />
+                <Flex y-center gap="s" class="chat-channels__name-wrap">
+                  <span
+                    v-if="!(isMobile && buf.kind === 'server')"
+                    class="chat-channels__name chat-channels__name--compact"
+                  >{{ bufferLabel(buf) }}</span>
+                  <ChannelModeBadges v-if="buf.kind === 'channel'" :modes="buf.modes" compact />
+                  <ChannelModeBadges v-if="buf.kind === 'pm'" :is-service="isPmService(buf.name)" :is-bot="isPmBot(buf.name)" compact />
+                  <Tooltip v-if="buf.kind === 'channel' && isUnauthorizedSubchannel(buf.name)" placement="bottom">
+                    <Badge variant="warning" size="s" outline class="chat-channels__unverified-badge">
+                      <Icon name="ph:warning" size="10" />
+                    </Badge>
+                    <template #tooltip>
+                      <p>Unverified subchannel - the parent channel has not authorized this.</p>
+                    </template>
+                  </Tooltip>
+                </Flex>
+                <Badge v-if="buf.mentions > 0" size="s" round variant="accent" class="chat-channels__badge">
+                  {{ buf.mentions }}
+                </Badge>
+                <Badge v-else-if="buf.unread > 0" size="s" round variant="neutral" class="chat-channels__badge">
+                  {{ buf.unread }}
+                </Badge>
+                <Button
+                  v-if="buf.kind !== 'server'"
+                  square
+                  plain
+                  size="s"
+                  aria-label="Close"
+                  class="chat-channels__close"
+                  @click.stop="closeBuffer(buf.name)"
+                >
+                  <Icon name="ph:x" size="12" />
+                </Button>
+              </button>
+              <template #tooltip>
+                <Flex column gap="xxs">
+                  <p v-if="buf.topic" class="text-xs" style="margin:0">
+                    {{ buf.topic }}
+                  </p>
+                  <span v-if="buf.users.length" class="text-xxs text-color-light">
+                    {{ buf.users.length }} {{ buf.users.length === 1 ? 'user' : 'users' }}
+                  </span>
+                </Flex>
+              </template>
+            </Tooltip>
+          </template>
 
-        <!-- Vertical mode: tree rendering with collapsible groups -->
-        <template v-else>
-          <template v-for="node in channelTree" :key="treeNodeKey(node)">
-            <ChannelTreeItem :node="node" :depth="0" />
+          <!-- Vertical mode: tree rendering with collapsible groups -->
+          <template v-else>
+            <template v-for="node in channelTree" :key="treeNodeKey(node)">
+              <ChannelTreeItem :node="node" :depth="0" />
+            </template>
+          </template>
+        </Flex>
+      </Overflow>
+
+      <template #menu>
+        <div class="vui-dropdown chat-channels__menu" @click="closeMenu">
+          <template v-if="menuBuffer">
+            <!-- Channel actions -->
+            <template v-if="menuBuffer.kind === 'channel'">
+              <DropdownItem @click="openChannelInfo(menuBuffer)">
+                <template #icon>
+                  <Icon name="ph:info" />
+                </template>
+                About
+              </DropdownItem>
+              <Divider />
+              <DropdownItem @click="copyText(buildChannelLink(menuBuffer.name), 'Channel link')">
+                <template #icon>
+                  <Icon name="ph:link" />
+                </template>
+                Copy link
+              </DropdownItem>
+              <DropdownItem @click="copyText(menuBuffer.name, 'Channel name')">
+                <template #icon>
+                  <Icon name="ph:hash" />
+                </template>
+                Copy name
+              </DropdownItem>
+              <Divider />
+              <DropdownItem v-if="menuBuffer.unread > 0 || menuBuffer.mentions > 0" @click="markBufferRead(menuBuffer.name)">
+                <template #icon>
+                  <Icon name="ph:check-circle" />
+                </template>
+                Mark as read
+              </DropdownItem>
+              <DropdownItem v-if="canEditBuffer(menuBuffer)" @click="openSettings(menuBuffer)">
+                <template #icon>
+                  <Icon name="ph:gear" />
+                </template>
+                Channel settings
+              </DropdownItem>
+              <Divider />
+              <DropdownItem @click="closeBuffer(menuBuffer.name)">
+                <template #icon>
+                  <Icon name="ph:sign-out" class="text-color-red" />
+                </template>
+                Leave channel
+              </DropdownItem>
+            </template>
+
+            <!-- PM actions -->
+            <template v-else-if="menuBuffer.kind === 'pm'">
+              <DropdownItem v-if="!isPmService(menuBuffer.name)" @click="openWhois(menuBuffer.name)">
+                <template #icon>
+                  <Icon name="ph:info" />
+                </template>
+                <template v-if="settings.chat_irc_native_modes">
+                  WHOIS
+                </template>
+                <template v-else>
+                  About
+                </template>
+              </DropdownItem>
+              <Divider v-if="!isPmService(menuBuffer.name)" />
+              <DropdownItem @click="copyText(menuBuffer.name, 'Nickname')">
+                <template #icon>
+                  <Icon name="ph:user" />
+                </template>
+                Copy nickname
+              </DropdownItem>
+              <Divider />
+              <DropdownItem v-if="menuBuffer.unread > 0 || menuBuffer.mentions > 0" @click="markBufferRead(menuBuffer.name)">
+                <template #icon>
+                  <Icon name="ph:check-circle" />
+                </template>
+                Mark as read
+              </DropdownItem>
+              <Divider />
+              <DropdownItem @click="closeBuffer(menuBuffer.name)">
+                <template #icon>
+                  <Icon name="ph:x" class="text-color-red" />
+                </template>
+                Close
+              </DropdownItem>
+            </template>
+          </template>
+        </div>
+      </template>
+    </ContextMenu>
+
+    <!-- Mobile sheet -->
+    <Sheet :open="mobileMenuOpen" @close="mobileMenuOpen = false">
+      <template v-if="menuBuffer" #header>
+        <h4>{{ menuBuffer.metadata?.get('display-name') ?? menuBuffer.name }}</h4>
+      </template>
+      <div class="vui-dropdown chat-channels__menu" @click="closeMenu">
+        <template v-if="menuBuffer">
+          <template v-if="menuBuffer.kind === 'channel'">
+            <DropdownItem @click="openChannelInfo(menuBuffer)">
+              <template #icon>
+                <Icon name="ph:info" />
+              </template>
+              About
+            </DropdownItem>
+            <Divider />
+            <DropdownItem @click="copyText(buildChannelLink(menuBuffer.name), 'Channel link')">
+              <template #icon>
+                <Icon name="ph:link" />
+              </template>
+              Copy link
+            </DropdownItem>
+            <DropdownItem @click="copyText(menuBuffer.name, 'Channel name')">
+              <template #icon>
+                <Icon name="ph:hash" />
+              </template>
+              Copy name
+            </DropdownItem>
+            <Divider />
+            <DropdownItem v-if="menuBuffer.unread > 0 || menuBuffer.mentions > 0" @click="markBufferRead(menuBuffer.name)">
+              <template #icon>
+                <Icon name="ph:check-circle" />
+              </template>
+              Mark as read
+            </DropdownItem>
+            <DropdownItem v-if="canEditBuffer(menuBuffer)" @click="openSettings(menuBuffer)">
+              <template #icon>
+                <Icon name="ph:gear" />
+              </template>
+              Channel settings
+            </DropdownItem>
+            <Divider />
+            <DropdownItem @click="closeBuffer(menuBuffer.name)">
+              <template #icon>
+                <Icon name="ph:sign-out" class="text-color-red" />
+              </template>
+              Leave channel
+            </DropdownItem>
+          </template>
+
+          <template v-else-if="menuBuffer.kind === 'pm'">
+            <DropdownItem v-if="!isPmService(menuBuffer.name)" @click="openWhois(menuBuffer.name)">
+              <template #icon>
+                <Icon name="ph:info" />
+              </template>
+              <template v-if="settings.chat_irc_native_modes">
+                WHOIS
+              </template>
+              <template v-else>
+                About
+              </template>
+            </DropdownItem>
+            <Divider v-if="!isPmService(menuBuffer.name)" />
+            <DropdownItem @click="copyText(menuBuffer.name, 'Nickname')">
+              <template #icon>
+                <Icon name="ph:user" />
+              </template>
+              Copy nickname
+            </DropdownItem>
+            <Divider />
+            <DropdownItem v-if="menuBuffer.unread > 0 || menuBuffer.mentions > 0" @click="markBufferRead(menuBuffer.name)">
+              <template #icon>
+                <Icon name="ph:check-circle" />
+              </template>
+              Mark as read
+            </DropdownItem>
+            <Divider />
+            <DropdownItem @click="closeBuffer(menuBuffer.name)">
+              <template #icon>
+                <Icon name="ph:x" class="text-color-red" />
+              </template>
+              Close
+            </DropdownItem>
           </template>
         </template>
-      </Flex>
-    </Overflow>
+      </div>
+    </Sheet>
 
     <Flex v-if="!horizontal" gap="xs" class="chat-channels__join" expand>
       <Input
@@ -315,6 +677,8 @@ function treeNodeKey(node: ChannelTreeNode): string {
       </Button>
     </Flex>
   </Flex>
+  <IrcWhoisModal :nick="whoisModalNick" :open="whoisModalOpen" @close="whoisModalOpen = false" />
+  <ChannelInfoModal :channel-name="menuBuffer?.kind === 'channel' ? menuBuffer.name : undefined" :open="channelInfoOpen" @close="channelInfoOpen = false" />
 </template>
 
 <style lang="scss" scoped>
@@ -341,6 +705,14 @@ function treeNodeKey(node: ChannelTreeNode): string {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--color-text-light);
+  }
+
+  &__context {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
   }
 
   &__list {
@@ -374,6 +746,10 @@ function treeNodeKey(node: ChannelTreeNode): string {
   &__join {
     padding: var(--space-xs);
     border-top: 1px solid var(--color-border-weak);
+  }
+
+  &__menu {
+    min-width: 180px;
   }
 
   // These classes are rendered inside ChannelTreeItem (child component),
@@ -460,6 +836,14 @@ function treeNodeKey(node: ChannelTreeNode): string {
     color: var(--color-text-lighter);
   }
 
+  :deep(.chat-channels__icon--avatar) {
+    width: 14px;
+    height: 14px;
+    border-radius: var(--border-radius-xs);
+    object-fit: cover;
+    color: unset;
+  }
+
   :deep(.chat-channels__name-wrap) {
     flex: 1;
     min-width: 0;
@@ -474,6 +858,11 @@ function treeNodeKey(node: ChannelTreeNode): string {
 
   :deep(.chat-channels__name--compact) {
     font-size: var(--font-size-xs);
+  }
+
+  :deep(.chat-channels__bot-icon) {
+    flex-shrink: 0;
+    color: var(--color-text-lighter);
   }
 
   :deep(.chat-channels__badge) {

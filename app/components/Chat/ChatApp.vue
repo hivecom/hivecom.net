@@ -6,9 +6,11 @@ import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import ChatChannelHeader from './ChannelHeader.vue'
+import ChatChannelJoinBlockedModal from './ChannelJoinBlockedModal.vue'
 import ChatChannelList from './ChannelList.vue'
 import ChatChannelPasswordModal from './ChannelPasswordModal.vue'
+import ChatChannelSettingsModal from './ChannelSettingsModal.vue'
+import ChatChannelHeader from './ChatHeader.vue'
 import ChatComposer from './Composer.vue'
 import ChatConnectForm from './ConnectForm.vue'
 import ChatConnecting from './Connecting.vue'
@@ -43,7 +45,7 @@ const { settings } = useDataUserSettings()
 
 const isMobile = useBreakpoint('<s')
 
-const { connState, isConnected, ensureNick, clearInputNick, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt } = useIrcChat()
+const { connState, isConnected, ensureNick, clearInputNick, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt, channelSettingsOpen, channelJoinBlocked } = useIrcChat()
 
 // Auto-reconnect when the browser comes back from sleep or phone background.
 // Track whether a connection was ever established so we only auto-reconnect
@@ -118,7 +120,12 @@ watch(user, (u, prev) => {
           <ChatConnecting />
         </div>
 
-        <!-- Error: connection failed -->
+        <!-- Offline: failed all reconnect attempts -->
+        <div v-else-if="connState === 'offline'" class="chat-app__status">
+          <ChatConnecting offline @retry="connect()" @go-back="handleDisconnect" />
+        </div>
+
+        <!-- Error: unexpected connection failure (fallback) -->
         <Flex v-else-if="connState === 'error'" key="error" y-center x-center class="chat-app__connect">
           <Flex column gap="m" expand>
             <SharedErrorAlert standalone message="Failed to connect to the chat server." :error="lastConnError" />
@@ -188,6 +195,8 @@ watch(user, (u, prev) => {
     </Flex>
 
     <ChatChannelPasswordModal :channel="channelKeyPrompt" @close="channelKeyPrompt = null" />
+    <ChatChannelSettingsModal :channel="channelSettingsOpen" @close="channelSettingsOpen = null" />
+    <ChatChannelJoinBlockedModal :blocked="channelJoinBlocked" @close="channelJoinBlocked = null" />
   </section>
 </template>
 
