@@ -182,8 +182,16 @@ function openAddGameForm() {
   showGameForm.value = true
 }
 
-function openEditGameForm(game: Tables<'games'>) {
-  selectedGame.value = game
+async function openEditGameForm(game: RpcGame | Tables<'games'>) {
+  const { data, error } = await supabase
+    .from('games')
+    .select('*')
+    .eq('id', game.id)
+    .single()
+
+  if (!error && data)
+    selectedGame.value = data
+
   isEditMode.value = true
   showGameForm.value = true
 }
@@ -506,7 +514,7 @@ onBeforeMount(async () => {
                     resource-type="games"
                     :item="game as unknown as Record<string, unknown>"
                     button-size="s"
-                    @edit="(item) => openEditGameForm(item as unknown as Tables<'games'>)"
+                    @edit="(item) => openEditGameForm(item as unknown as RpcGame)"
                     @delete="(item) => handleGameDelete((item as unknown as RpcGame).id)"
                   />
                 </Table.Cell>
