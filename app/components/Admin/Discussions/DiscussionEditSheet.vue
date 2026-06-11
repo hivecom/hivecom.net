@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Button, Card, Flex, Input, pushToast, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import Metadata from '@/components/Shared/Metadata.vue'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
@@ -24,6 +24,7 @@ type DiscussionRecord = Tables<'discussions'>
 const isOpen = defineModel<boolean>('isOpen')
 
 const supabase = useSupabaseClient()
+const userId = useUserId()
 const discussionCache = useDiscussionCache()
 const { hasPermission } = useAdminPermissions()
 
@@ -40,6 +41,7 @@ const saveLoading = ref(false)
 const deleteLoading = ref(false)
 const showDeleteConfirm = ref(false)
 const markdownLoading = ref(false)
+const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
 watch(
   () => props.discussion?.id,
@@ -95,6 +97,13 @@ async function handleSave() {
   saveLoading.value = true
 
   try {
+    // Upload any pending blob-placeholder media before reading the markdown,
+    // otherwise blob: URLs get persisted and render as missing media. The editor
+    // surfaces its own error toast on failure, so we just abort here.
+    const uploaded = await markdownEditor.value?.flushPendingUploads()
+    if (uploaded === false)
+      return
+
     const { data, error } = await supabase
       .from('discussions')
       .update({
@@ -219,10 +228,11 @@ async function handleDelete() {
         <h5>Content</h5>
 
         <RichTextEditor
+          ref="markdownEditor"
           v-model="markdown"
           placeholder="Discussion body (optional)"
           min-height="200px"
-          :media-context="props.discussion.id ? `forums/${props.discussion.id}/markdown/media` : undefined"
+          :media-context="props.discussion.id && userId ? `${props.discussion.id}/${userId}` : undefined"
           :media-bucket-id="FORUMS_BUCKET_ID"
           :show-attachment-button="!!props.discussion.id"
           show-expand-button

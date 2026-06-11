@@ -4,7 +4,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Avatar, Badge, Button, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import ModalDeleteReply from '@/components/Discussions/ModalDeleteReply.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
@@ -41,6 +41,8 @@ const emit = defineEmits<{
 }>()
 
 const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
+
+const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
 dayjs.extend(relativeTime)
 
@@ -261,6 +263,15 @@ useIntervalFn(() => {
 async function submit() {
   if (editedContent.value.length > 0) {
     editLoading.value = true
+
+    // Upload any pending blob-placeholder media before reading the markdown,
+    // otherwise blob: URLs get persisted and render as missing media. The editor
+    // surfaces its own error toast on failure, so we just abort here.
+    const uploaded = await markdownEditor.value?.flushPendingUploads()
+    if (uploaded === false) {
+      editLoading.value = false
+      return
+    }
 
     // Resolve any plain-text @username mentions that were typed in plain-text
     // mode - the RichTextEditor's handleSubmit does this automatically, but the
@@ -591,7 +602,7 @@ const editedAtFormatted = computed(() => {
               </template>
             </span>
             <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
-              <CountDisplay :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+              <CountDisplay class="text-xs" :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
             </button>
           </p>
 
@@ -607,7 +618,7 @@ const editedAtFormatted = computed(() => {
       <div v-if="!data.is_deleted && isMobile && ((threadReplyCount && threadReplyCount > 0) || displayReactions.length > 0 || (userId && !showNSFWWarning))" class="discussion-forum__mobile-footer">
         <div class="discussion-forum__mobile-footer-row">
           <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
-            <CountDisplay :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+            <CountDisplay class="text-xs" :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
           </button>
           <!-- Empty div makes sure reactions are forced to flex end -->
           <div v-else />
@@ -651,6 +662,7 @@ const editedAtFormatted = computed(() => {
       </template>
 
       <RichTextEditor
+        ref="markdownEditor"
         v-model="editedContent"
         :errors="editError"
         :media-context="currentUserData ? `${data.discussion_id}/${currentUserData.id}` : undefined"

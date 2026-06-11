@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { Comment, ProvidedDiscussion, ThreadNode } from './Discussion.types'
-import { Flex, pushToast, Sheet } from '@dolanske/vui'
+import { Button, Flex, pushToast, Sheet } from '@dolanske/vui'
+import { nextTick } from 'vue'
 import { scrollToId, scrollToIdWhenStable } from '@/lib/utils/common'
 import UserAvatar from '../Shared/UserAvatar.vue'
 import UserName from '../Shared/UserName.vue'
 import { DISCUSSION_KEYS } from './Discussion.keys'
+import DiscussionThreadedScope from './DiscussionThreadedScope.vue'
 import DiscussionThreadToggle from './DiscussionThreadToggle.vue'
 import DiscussionModelComment from './models/DiscussionModelComment.vue'
 import DiscussionModelForum from './models/DiscussionModelForum.vue'
@@ -170,6 +172,10 @@ function computeThreadCollapsed() {
 const threadCollapsed = ref(computeThreadCollapsed())
 
 function onOpenReplies() {
+  if (viewMode.value === 'flat') {
+    repliesExpanded.value = true
+    return
+  }
   const count = replyCountMap?.value?.get(data.id) ?? visibleChildren.value.length
   if (count <= INLINE_EXPAND_THRESHOLD) {
     threadCollapsed.value = false
@@ -268,11 +274,29 @@ watch(
 
 // ── Showing replies in a sheet ───────────────────────────────────
 
-function stripReplyData(entry: Comment) {
-  return {
-    ...entry,
-    reply: null,
+const openThreadSheetId = inject(DISCUSSION_KEYS.openThreadSheet, ref(null))
+const supabase = useSupabaseClient()
+
+// When another item signals this ID, open the sheet.
+watch(openThreadSheetId, (id) => {
+  if (id === data.id) {
+    repliesExpanded.value = true
+    openThreadSheetId.value = null
   }
+})
+
+async function openFullThread() {
+  const { data: rootId, error } = await supabase.rpc('get_thread_root', { p_reply_id: data.id })
+  if (error || !rootId)
+    return
+  repliesExpanded.value = false
+  // Ensure the root item is loaded (may be on a different page) before signalling.
+  // nextTick lets Vue mount the newly loaded DiscussionItem components so their
+  // watch is set up before we write the signal.
+  if (navigateToComment)
+    await navigateToComment(rootId as string)
+  await nextTick()
+  openThreadSheetId.value = rootId as string
 }
 </script>
 
@@ -316,36 +340,30 @@ function stripReplyData(entry: Comment) {
             <h4>
               <UserName inherit :user-id="data.created_by" />'s thread
             </h4>
-            <p class="text-color-lighter">
-              {{ replyCountMap?.get(data.id) ?? visibleChildren.length }} {{ (replyCountMap?.get(data.id) ?? visibleChildren.length) === 1 ? 'reply' : 'replies' }}
-            </p>
+            <Flex gap="s" y-center>
+              <p class="text-color-lighter">
+                {{ replyCountMap?.get(data.id) ?? visibleChildren.length }} {{ (replyCountMap?.get(data.id) ?? visibleChildren.length) === 1 ? 'reply' : 'replies' }}
+              </p>
+              <Button v-if="data.reply_to_id" size="s" plain @click="openFullThread">
+                Full thread
+              </Button>
+            </Flex>
           </Flex>
         </Flex>
       </template>
 
-      <Flex column gap="s" expand>
-        <template v-if="model === 'forum'">
-          <DiscussionModelForum
+      <DiscussionThreadedScope>
+        <div class="discussion-comment-wrapper__children" :style="{ '--nest-depth': 1 }">
+          <DiscussionItem
             v-for="item in visibleChildren"
             :key="item.comment.id"
-            ref="self"
-            :data="stripReplyData(item.comment)"
-            @copy-link="copyLinkForComment(item.comment.id)"
-            @interact="repliesExpanded = false"
+            :data="item.comment"
+            model="comment"
+            :depth="1"
+            :show-offtopic
           />
-        </template>
-        <template v-else>
-          <DiscussionModelComment
-            v-for="item in visibleChildren"
-            :key="item.comment.id"
-            ref="self"
-            class="w-100"
-            :data="stripReplyData(item.comment)"
-            @copy-link="copyLinkForComment(item.comment.id)"
-            @interact="repliesExpanded = false"
-          />
-        </template>
-      </Flex>
+        </div>
+      </DiscussionThreadedScope>
     </Sheet>
 
     <!-- Threaded mode: recursively render children as full DiscussionItems -->

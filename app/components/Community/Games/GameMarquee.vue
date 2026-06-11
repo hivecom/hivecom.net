@@ -47,6 +47,7 @@ function onGameClick(gameId: number) {
     }"
   >
     <Marquee
+      direction="right"
       :speed="speed ?? 30"
       :pause-on-hover="interactive"
       :draggable="props.draggable ?? interactive"

@@ -4,7 +4,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import ModalDeleteReply from '@/components/Discussions/ModalDeleteReply.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
@@ -34,6 +34,8 @@ const emit = defineEmits<{
 }>()
 
 const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
+
+const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
 dayjs.extend(relativeTime)
 
@@ -175,6 +177,15 @@ async function submitEdit() {
   }
 
   editLoading.value = true
+
+  // Upload any pending blob-placeholder media before reading the markdown,
+  // otherwise blob: URLs get persisted and render as missing media. The editor
+  // surfaces its own error toast on failure, so we just abort here.
+  const uploaded = await markdownEditor.value?.flushPendingUploads()
+  if (uploaded === false) {
+    editLoading.value = false
+    return
+  }
 
   // Resolve any plain-text @username mentions that were typed in plain-text
   // mode - the RichTextEditor's handleSubmit does this automatically, but the
@@ -469,6 +480,7 @@ watch(
       </Alert>
 
       <RichTextEditor
+        ref="markdownEditor"
         v-model="editedContent"
         :errors="editError"
         :media-context="currentUserData ? `${data.discussion_id}/${currentUserData.id}` : undefined"

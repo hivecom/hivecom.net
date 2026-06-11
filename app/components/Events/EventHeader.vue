@@ -35,10 +35,12 @@ interface Props {
   timeAgo?: string
 }
 
+const props = defineProps<Props>()
+
 // TODO: would be nice to show how many comments there are and add a badge that
 // when clicked scrolls down to the comments
 
-const props = defineProps<Props>()
+const isMobile = useBreakpoint('<s')
 
 const { handleContentClick } = useExternalLinkGuard()
 
@@ -277,13 +279,14 @@ onMounted(() => {
     </Flex>
 
     <!-- Organizer and reactions -->
-    <Flex v-if="showOrganizer || discussionId" expand x-between y-center gap="m" class="event-header__organizer">
+    <Flex v-if="showOrganizer || discussionId" expand :x-between="!isMobile" y-center gap="m" class="event-header__organizer" :column="isMobile">
       <Flex v-if="showOrganizer" y-center gap="xs">
         <span class="event-header__organizer-label">Organized by</span>
         <UserDisplay :user-id="event.created_by" size="s" :show-profile-preview="true" :hide-avatar="false" />
       </Flex>
       <Reactions
         v-if="discussionId"
+        style="justify-content: center; margin-left: 0px"
         table="discussions"
         :row-id="discussionId"
         :reactions="discussionReactions"

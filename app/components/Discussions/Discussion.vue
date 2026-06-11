@@ -295,6 +295,9 @@ provide(DISCUSSION_KEYS.childrenMap, childrenMap)
 provide(DISCUSSION_KEYS.navigateToComment, navigateToComment)
 provide(DISCUSSION_KEYS.replyCountMap, replyCountMap)
 
+const openThreadSheetId = ref<string | null>(null)
+provide(DISCUSSION_KEYS.openThreadSheet, openThreadSheetId)
+
 const pinnedComment = computed((): Comment | null => {
   const pinnedId = discussion.value?.pinned_reply_id
   if (pinnedId == null)

@@ -220,6 +220,10 @@ const videoModalOpen = ref(false)
 
 // Pending blobs: blobUrl -> File. Plain Map (not ref) - only mutated imperatively.
 const pendingBlobs = new Map<string, File>()
+// In-flight background conversions (processPendingFile). flushPendingUploads must
+// await these before snapshotting pendingBlobs - otherwise a conversion that
+// swaps a node's blob src mid-upload would leave the placeholder blob in the doc.
+const pendingConversions = new Set<Promise<void>>()
 // Per-blob upload progress 0-100. ref so template can react.
 const uploadProgress = ref(new Map<string, number>())
 // True only while flushPendingUploads is running - drives shimmer animation.
@@ -953,70 +957,112 @@ function handleFileUpload(files: File[] | null, pos?: number) {
   uploadProgress.value = new Map(uploadProgress.value)
 
   // Fire-and-forget conversion. Each call independently updates pendingBlobs
-  // and the editor node when its optimised bytes are ready.
-  for (const item of queue)
-    void processPendingFile(item.originalFile, item.blobUrl, item.isVideo)
+  // and the editor node when its optimised bytes are ready. We track each
+  // promise so flushPendingUploads can await any in-flight conversions before
+  // snapshotting pendingBlobs (otherwise it may upload against a stale blob URL
+  // that the conversion has since swapped out, leaving a blob: src in the doc).
+  for (const item of queue) {
+    const conversion = processPendingFile(item.originalFile, item.blobUrl, item.isVideo)
+      .finally(() => pendingConversions.delete(conversion))
+    pendingConversions.add(conversion)
+  }
 }
 
 // Converts the FileList from @input event into a File[]
 
 async function flushPendingUploads(): Promise<boolean> {
+  // Wait for any background conversions to finish so pendingBlobs and the
+  // editor node srcs are stable before we snapshot and upload.
+  if (pendingConversions.size > 0)
+    await Promise.allSettled([...pendingConversions])
+
   if (pendingBlobs.size === 0)
     return true
 
   isUploading.value = true
-  const entries = [...pendingBlobs.entries()]
-  const results = await Promise.all(
-    entries.map(async ([blobUrl, file]) => {
-      const format = file.type.split('/')[1]
-      const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${format}`
 
-      const { error } = await supabase.storage
-        .from(resolvedMediaBucketId.value)
-        .upload(fileUrl, file, { contentType: file.type, metadata: { uploadedBy: user.value?.id ?? 'anonymous' } })
+  // Freeze the document while uploading. pointer-events: none only blocks the
+  // mouse - a focused ProseMirror still accepts keyboard input - so without this
+  // a concurrent edit could swap a node's blob src out from under us mid-upload
+  // (the same class of race as the background-conversion bug). Disabling editing
+  // guarantees node srcs still match their blob URLs when we do the final swap.
+  const editorRef = editor.value
+  const wasEditable = editorRef?.isEditable ?? true
+  editorRef?.setEditable(false)
 
-      if (error) {
-        const limit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
-        pushToast('Error uploading media', {
-          description: `${error.message} (file is ${formatBytes(file.size)}, limit is ${formatBytes(limit)})`,
+  try {
+    const entries = [...pendingBlobs.entries()]
+
+    // Phase 1: upload every pending blob in parallel. The doc is NOT touched
+    // here - we only collect the resulting public URL keyed by its blob URL.
+    const results = await Promise.all(
+      entries.map(async ([blobUrl, file]) => {
+        const format = file.type.split('/')[1]
+        const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${format}`
+
+        const { error } = await supabase.storage
+          .from(resolvedMediaBucketId.value)
+          .upload(fileUrl, file, { contentType: file.type, metadata: { uploadedBy: user.value?.id ?? 'anonymous' } })
+
+        if (error) {
+          const limit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
+          pushToast('Error uploading media', {
+            description: `${error.message} (file is ${formatBytes(file.size)}, limit is ${formatBytes(limit)})`,
+          })
+          return { blobUrl, publicUrl: null as string | null }
+        }
+
+        // Set progress to 100 on success (no onUploadProgress in this storage-js version)
+        uploadProgress.value.set(blobUrl, 100)
+        uploadProgress.value = new Map(uploadProgress.value)
+
+        const { data } = supabase.storage.from(resolvedMediaBucketId.value).getPublicUrl(fileUrl)
+        return { blobUrl, publicUrl: data.publicUrl }
+      }),
+    )
+
+    // Phase 2: swap every successfully-uploaded blob src to its public URL in a
+    // single synchronous transaction, after all network is done. Editing is
+    // disabled, so node srcs are guaranteed to still match their blob URLs.
+    const urlMap = new Map(
+      results
+        .filter((r): r is { blobUrl: string, publicUrl: string } => r.publicUrl !== null)
+        .map(r => [r.blobUrl, r.publicUrl]),
+    )
+    if (editorRef && urlMap.size > 0) {
+      editorRef
+        .chain()
+        .command(({ tr }) => {
+          tr.doc.descendants((node, nodePos) => {
+            const isMedia = node.type.name === 'image' || node.type.name === 'video'
+            if (isMedia && typeof node.attrs.src === 'string') {
+              const publicUrl = urlMap.get(node.attrs.src)
+              if (publicUrl)
+                tr.setNodeAttribute(nodePos, 'src', publicUrl)
+            }
+          })
+          return true
         })
-        return false
+        .run()
+    }
+
+    // Clean up pending state for successful uploads.
+    for (const r of results) {
+      if (r.publicUrl !== null) {
+        URL.revokeObjectURL(r.blobUrl)
+        pendingBlobs.delete(r.blobUrl)
+        uploadProgress.value.delete(r.blobUrl)
       }
+    }
+    uploadProgress.value = new Map(uploadProgress.value)
 
-      // Set progress to 100 on success (no onUploadProgress in this storage-js version)
-      uploadProgress.value.set(blobUrl, 100)
-      uploadProgress.value = new Map(uploadProgress.value)
-
-      const { data } = supabase.storage.from(resolvedMediaBucketId.value).getPublicUrl(fileUrl)
-
-      // Swap blob -> public URL in doc
-      const editorRef = editor.value
-      if (editorRef) {
-        editorRef.state.doc.descendants((node, nodePos) => {
-          const isMedia = node.type.name === 'image' || node.type.name === 'video'
-          if (isMedia && node.attrs.src === blobUrl) {
-            editorRef
-              .chain()
-              .setNodeSelection(nodePos)
-              .updateAttributes(node.type.name, { src: data.publicUrl })
-              .setTextSelection(nodePos + node.nodeSize)
-              .focus()
-              .run()
-            return false
-          }
-        })
-      }
-
-      URL.revokeObjectURL(blobUrl)
-      pendingBlobs.delete(blobUrl)
-      uploadProgress.value.delete(blobUrl)
-      uploadProgress.value = new Map(uploadProgress.value)
-      return true
-    }),
-  )
-
-  isUploading.value = false
-  return results.every(Boolean)
+    return results.every(r => r.publicUrl !== null)
+  }
+  finally {
+    if (wasEditable)
+      editorRef?.setEditable(true)
+    isUploading.value = false
+  }
 }
 
 function handleReplacePendingBlob(oldBlobUrl: string, newFile: File) {
@@ -1286,6 +1332,12 @@ function handleContentRulesConfirmed() {
 // Expose some methods for refs
 defineExpose({
   focus: () => editor.value?.commands.focus('end'),
+  // Upload any blob-placeholder media to storage and swap the doc srcs to their
+  // public URLs. Consumers that drive their own submit (i.e. don't use the
+  // editor's built-in submit button) MUST await this before reading the model,
+  // otherwise blob: URLs get persisted and render as "Missing or Deleted Media".
+  flushPendingUploads,
+  hasPendingUploads,
 })
 
 async function handleEditorModeSwitch() {

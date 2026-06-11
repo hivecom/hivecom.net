@@ -50,6 +50,8 @@ const emit = defineEmits<{
 
 const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
+const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
+
 // Interface for Select options
 interface SelectOption {
   label: string
@@ -340,8 +342,15 @@ function handleClose() {
 }
 
 // Handle form submission
-function handleSubmit() {
+async function handleSubmit() {
   if (!isValid.value)
+    return
+
+  // Upload any pending blob-placeholder media before reading the markdown,
+  // otherwise blob: URLs get persisted and render as missing media. The editor
+  // surfaces its own error toast on failure, so we just abort here.
+  const uploaded = await markdownEditor.value?.flushPendingUploads()
+  if (uploaded === false)
     return
 
   // Prepare the data to save with HTML sanitization
@@ -680,6 +689,7 @@ function clearBirthday() {
         />
 
         <RichTextEditor
+          ref="markdownEditor"
           v-model="userForm.markdown"
           label="Content"
           hint="You can use markdown and add media by drag-and-drop"

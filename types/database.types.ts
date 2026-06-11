@@ -3154,6 +3154,7 @@ export type Database = {
           total_size: number
         }[]
       }
+      get_thread_root: { Args: { p_reply_id: string }; Returns: string }
       get_user_emails: {
         Args: never
         Returns: {
@@ -3634,3 +3635,4 @@ export const Constants = {
     },
   },
 } as const
+

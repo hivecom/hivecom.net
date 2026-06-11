@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Badge, Button, ButtonGroup, Card, Dropdown, DropdownTitle, Flex, Grid, Input, Modal, pushToast, searchString, Switch, Tab, Tabs, Tooltip } from '@dolanske/vui'
+import { ref } from 'vue'
 import { FORUM_KEYS } from '@/components/Forum/Forum.keys'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
@@ -34,6 +35,8 @@ interface Props {
   defaultTopicId?: string | null
   startOnDrafts?: boolean
 }
+
+const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
 const isMobile = useBreakpoint('<s')
 
@@ -251,6 +254,15 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
   loading.value = true
 
   try {
+    // Upload any pending blob-placeholder media before reading the markdown,
+    // otherwise blob: URLs get persisted and render as missing media. The editor
+    // surfaces its own error toast on failure, so we just abort here.
+    const uploaded = await markdownEditor.value?.flushPendingUploads()
+    if (uploaded === false) {
+      loading.value = false
+      return
+    }
+
     await validate()
 
     const trimmedSlug = form.slug.trim()
@@ -589,6 +601,7 @@ function confirmPublish() {
       <Input v-model="form.slug" :errors="normalizeErrors(errors.slug)" label="URL slug (optional)" expand placeholder="e.g. my-discussion-title" hint="A custom URL-friendly identifier for this discussion. Leave blank to generate one automatically." />
       <Input v-model="form.description" :errors="normalizeErrors(errors.description)" label="Description / Subtitle" expand placeholder="Short summary for the discussion" hint="" />
       <RichTextEditor
+        ref="markdownEditor"
         v-model="form.markdown"
         :errors="normalizeErrors(errors.markdown)"
         :media-context="editedDiscussion && userId ? `${editedDiscussion.id}/${userId}` : 'staging'"
