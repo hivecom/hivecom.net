@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
+import { getAuthenticatedUserId } from "../_shared/auth.ts";
 import { fetchRecentTrack, resolveAlbumArt } from "../_shared/lastfm.ts";
 
 // Convenience alias - used for queries against tables/columns not yet in
@@ -38,16 +39,9 @@ Deno.serve(async (req: Request) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Unauthorized" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
+    const auth = await getAuthenticatedUserId(supabase, authHeader);
+    if ("response" in auth) return auth.response;
+    const user = { id: auth.userId };
 
     const apiKey = Deno.env.get("LASTFM_API_KEY");
     if (!apiKey) {

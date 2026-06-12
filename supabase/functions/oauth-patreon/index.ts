@@ -1,6 +1,7 @@
 import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
+import { getAuthenticatedUserId } from "../_shared/auth.ts";
 import type { Database, Tables } from "database-types";
 
 const patreonClientId = Deno.env.get("PATREON_CLIENT_ID") || "";
@@ -63,7 +64,6 @@ Deno.serve(async (req) => {
         },
       );
     }
-    const token = authHeader.replace("Bearer ", "");
 
     // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient(
@@ -80,19 +80,9 @@ Deno.serve(async (req) => {
     );
 
     // Get user information from the token
-    const {
-      data: { user },
-    } = await supabaseClient.auth.getUser(token);
-
-    if (!user) {
-      return new Response(
-        JSON.stringify({ error: "User not found or invalid token" }),
-        {
-          status: 401,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        },
-      );
-    }
+    const auth = await getAuthenticatedUserId(supabaseClient, authHeader);
+    if ("response" in auth) return auth.response;
+    const user = { id: auth.userId };
 
     const PATREON_CLIENT_ID = Deno.env.get("PATREON_CLIENT_ID");
     const PATREON_CLIENT_SECRET = Deno.env.get("PATREON_CLIENT_SECRET");

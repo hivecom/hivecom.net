@@ -94,8 +94,8 @@ watch(() => route.fullPath, () => {
     position: absolute;
     top: 4px;
     right: 4px;
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     border-radius: var(--border-radius-pill);
     background-color: var(--color-text-green);
     border: 2px solid var(--color-bg);

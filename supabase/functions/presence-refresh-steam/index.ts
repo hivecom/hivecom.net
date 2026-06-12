@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
+import { getAuthenticatedUserId } from "../_shared/auth.ts";
 
 // Rate limit: one refresh per 1 minute per user
 const RATE_LIMIT_SECONDS = 60;
@@ -37,20 +38,9 @@ Deno.serve(async (req: Request) => {
     });
 
     // Get the authenticated user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Unauthorized" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
+    const auth = await getAuthenticatedUserId(supabase, authHeader);
+    if ("response" in auth) return auth.response;
+    const user = { id: auth.userId };
 
     // Get the user's profile to check if they have a Steam ID and rich presence enabled
     const { data: profile, error: profileError } = await supabase

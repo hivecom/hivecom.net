@@ -64,14 +64,16 @@ Deno.serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth
-      .getUser(token);
+    const { data: claimsData, error: userError } = await supabaseClient.auth
+      .getClaims(token);
 
     if (userError) {
       throw userError;
     }
 
-    const user = userData.user;
+    const claims = claimsData?.claims;
+    const userEmail = typeof claims?.email === "string" ? claims.email : null;
+    const user = claims?.sub ? { id: claims.sub, email: userEmail } : null;
     if (!user || !user.email) {
       return new Response(
         JSON.stringify({ error: "Unable to resolve current user" }),

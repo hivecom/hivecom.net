@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
+import { getAuthenticatedUserId } from "../_shared/auth.ts";
 import type { Database } from "database-types";
 
 /**
@@ -80,8 +81,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      const token = authHeader.replace("Bearer ", "");
-
       const supabaseClient = createClient<Database>(
         Deno.env.get("SUPABASE_URL") ?? "",
         Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -92,18 +91,9 @@ Deno.serve(async (req) => {
         },
       );
 
-      const { data: { user }, error: userError } = await supabaseClient.auth
-        .getUser(token);
-
-      if (userError || !user) {
-        return new Response(
-          JSON.stringify({ success: false, error: "not_authenticated" }),
-          {
-            status: 401,
-            headers: { "Content-Type": "application/json", ...corsHeaders },
-          },
-        );
-      }
+      const auth = await getAuthenticatedUserId(supabaseClient, authHeader);
+      if ("response" in auth) return auth.response;
+      const user = { id: auth.userId };
 
       // Update profile with Steam ID
       const { error: updateError } = await supabaseClient

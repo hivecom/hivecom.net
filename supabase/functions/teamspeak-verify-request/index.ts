@@ -1,5 +1,5 @@
 import * as constants from "constants" with { type: "json" };
-import { createClient, type User } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import type { Tables } from "database-types";
 import type { TeamSpeakIdentityRecord } from "../../../types/teamspeak.ts";
 import { TeamSpeakClient } from "node-ts/lib/node-ts.js";
@@ -215,7 +215,9 @@ function sanitizeUniqueId(value?: string): string {
   return trimmed;
 }
 
-async function requireAuthenticatedUser(req: Request): Promise<User> {
+async function requireAuthenticatedUser(
+  req: Request,
+): Promise<{ id: string; email: string | null }> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
     throw new HttpError(401, "Authentication required");
@@ -236,8 +238,12 @@ async function requireAuthenticatedUser(req: Request): Promise<User> {
     },
   );
 
-  const { data, error } = await supabaseClient.auth.getUser(token);
-  if (error || !data?.user) {
+  const { data, error } = await supabaseClient.auth.getClaims(token);
+  const userId = data?.claims?.sub;
+  const userEmail = typeof data?.claims?.email === "string"
+    ? data.claims.email
+    : null;
+  if (error || !userId) {
     console.warn("TeamSpeak verify auth failed", error);
     throw new HttpError(401, "Authentication required");
   }
@@ -250,7 +256,7 @@ async function requireAuthenticatedUser(req: Request): Promise<User> {
     );
   }
 
-  return data.user;
+  return { id: userId, email: userEmail };
 }
 
 async function fetchProfile(
