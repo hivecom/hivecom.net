@@ -8,7 +8,6 @@ import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { createArray } from '@/lib/utils/common'
-import { dateFormat } from '@/lib/utils/date'
 import { expandRecurringEvent } from '@/lib/utils/rrule'
 import EventCalendarColumnList from './EventCalendarColumnList.vue'
 
@@ -222,7 +221,7 @@ function formatEventDuration(event: Tables<'events'>) {
   const eventEnd = eventStart.add(event.duration_minutes, 'minute')
 
   // If it spans multiple days, show the date range
-  if (eventEnd.format(dateFormat.calendarDefault) !== eventStart.format(dateFormat.calendarDefault)) {
+  if (eventEnd.format('YYYY-MM-DD') !== eventStart.format('YYYY-MM-DD')) {
     const daysDiff = Math.ceil(eventEnd.diff(eventStart, 'day', true))
     return `${daysDiff} day${daysDiff > 1 ? 's' : ''}`
   }
@@ -283,7 +282,7 @@ function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
   // For multi-day events, only show time on the start day
   // Parse the dayTitle to get the date (format is like "Monday, Jun 16, 2025")
   const dayDate = dayjs(dayTitle)
-  return dayDate.format(dateFormat.calendarDefault) === eventStart.format(dateFormat.calendarDefault)
+  return dayDate.format('YYYY-MM-DD') === eventStart.format('YYYY-MM-DD')
 }
 
 // Dropdown to select how many months to display in calendar. This option is

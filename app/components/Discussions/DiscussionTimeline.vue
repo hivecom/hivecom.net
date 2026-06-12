@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Calendar, Flex, Modal } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { displayDateTime, fullDate, fullDateTime } from '@/lib/utils/date'
 
 export interface TimelineBucket {
   bucketStart: string
@@ -299,8 +300,8 @@ function onSegmentClick(seg: BucketSegment) {
 function formatLabel(isoDate: string): string {
   const d = new Date(isoDate)
   if (props.bucketIntervalMs <= 60 * 60 * 1000)
-    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    return displayDateTime(d)
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(d)
 }
 
 function navigateToStart() {
@@ -315,8 +316,8 @@ function navigateToEnd() {
 
 function formatTooltip(date: Date): string {
   if (props.bucketIntervalMs <= 60 * 60 * 1000)
-    return date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    return fullDateTime(date)
+  return fullDate(date)
 }
 
 /** Always true when hovering - any click will find the nearest segment. */

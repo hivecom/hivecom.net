@@ -3,7 +3,7 @@ import type { Database } from '@/types/database.types'
 import { Badge, Button, Card, Flex, Modal, paginate, Pagination, Spinner, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { formatDateWithTime } from '@/lib/utils/date'
+import { fullDateTime } from '@/lib/utils/date'
 import ConfirmModal from './ConfirmModal.vue'
 import GameServerLink from './GameServerLink.vue'
 import UserDisplay from './UserDisplay.vue'
@@ -244,11 +244,11 @@ onMounted(() => {
                   <Tooltip>
                     <template #tooltip>
                       <p class="text-xs">
-                        Complaint made: {{ formatDateWithTime(complaint.created_at) }}
+                        Complaint made: {{ fullDateTime(complaint.created_at) }}
                       </p>
                     </template>
                     <span class="text-s">
-                      {{ formatDateWithTime(complaint.response ? complaint.responded_at || complaint.created_at : complaint.created_at) }}
+                      {{ fullDateTime(complaint.response ? complaint.responded_at || complaint.created_at : complaint.created_at) }}
                     </span>
                   </Tooltip>
                   <Button

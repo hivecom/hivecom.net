@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Flex } from '@dolanske/vui'
-import dayjs from 'dayjs'
+import { formatTime } from '@/lib/utils/date'
 
 interface Props {
   events: Tables<'events'>[]
@@ -13,7 +13,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 function formatEventTime(event: Tables<'events'>): string {
-  return dayjs(event.date).format('HH:mm')
+  return formatTime(event.date)
 }
 
 function formatEventDuration(event: Tables<'events'>): string {

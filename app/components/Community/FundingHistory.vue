@@ -3,6 +3,8 @@ import type { Tables } from '@/types/database.overrides'
 import { Alert, Card, defineTable, Flex, Select, Table } from '@dolanske/vui'
 import GrowthBadge from '@/components/Shared/GrowthBadge.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
+import { formatCurrencyUnits } from '@/lib/utils/currency'
+import { fullMonth } from '@/lib/utils/date'
 
 interface SelectOption { value: number, label: string }
 
@@ -68,8 +70,8 @@ const historicalData = computed(() => {
 
     return {
       ...funding,
-      monthName: month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
-      shortMonthName: month.toLocaleDateString(undefined, { month: 'short', year: 'numeric' }),
+      monthName: fullMonth(month),
+      shortMonthName: new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric' }).format(month),
       totalMonthly,
       totalLifetime,
       patreonMonthly: funding.patreon_month_amount_cents || 0,
@@ -186,7 +188,7 @@ function getGrowthFromPrevious(currentAmount: number, index: number) {
                   <span class="text-s text-bold">{{ formatCurrency(funding['Monthly Total']) }}</span>
                 </Table.Cell>
                 <Table.Cell>
-                  <GrowthBadge :growth="funding.Growth" :value="funding['Growth Value']" prefix="€" show-icon />
+                  <GrowthBadge :growth="funding.Growth" :value="funding['Growth Value'] !== null ? (funding['Growth Value'] > 0 ? `+${formatCurrencyUnits(funding['Growth Value'])}` : formatCurrencyUnits(funding['Growth Value'])) : null" show-icon />
                   <span v-if="funding.Growth === null" class="text-xs text-color-light">-</span>
                 </Table.Cell>
                 <Table.Cell>

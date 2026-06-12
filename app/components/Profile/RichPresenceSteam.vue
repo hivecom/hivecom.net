@@ -2,6 +2,7 @@
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Flex, Popout } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import { fullDateTime } from '@/lib/utils/date'
 
 type SteamPresence = Omit<Tables<'presences_steam'>, 'details'> & {
   details?: unknown | null
@@ -91,7 +92,7 @@ const lastOnlineFormatted = computed(() => {
   if (Number.isNaN(date.getTime()))
     return null
 
-  return date.toLocaleString()
+  return fullDateTime(date)
 })
 
 function getDetailString(details: unknown, key: 'game_icon_url' | 'game_icon' | 'game_icon_hash') {

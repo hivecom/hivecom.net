@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex } from '@dolanske/vui'
 import { formatCurrency } from '@/lib/utils/currency'
-import { formatDateLong } from '@/lib/utils/date'
+import { fullDateLong } from '@/lib/utils/date'
 import { isPlannedExpense } from '@/lib/utils/expenses'
 
 interface Props {
@@ -59,9 +59,9 @@ const expenseStatus = computed(() => {
 
       <!-- Date range -->
       <Flex x-between y-center>
-        <span v-if="planned" class="text-xs text-color-lightest">Starts {{ formatDateLong(expense.started_at) }}</span>
-        <span v-else class="text-xs text-color-lightest">Since {{ formatDateLong(expense.started_at) }}</span>
-        <span v-if="expense.ended_at" class="text-xs text-color-lightest">Ended {{ formatDateLong(expense.ended_at) }}</span>
+        <span v-if="planned" class="text-xs text-color-lightest">Starts {{ fullDateLong(expense.started_at) }}</span>
+        <span v-else class="text-xs text-color-lightest">Since {{ fullDateLong(expense.started_at) }}</span>
+        <span v-if="expense.ended_at" class="text-xs text-color-lightest">Ended {{ fullDateLong(expense.ended_at) }}</span>
       </Flex>
 
       <!-- External link if available -->

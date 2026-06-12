@@ -15,7 +15,7 @@ import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import ThemeSampleUI from '@/components/Themes/ThemeSampleUI.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { DEFAULT_THEME, themeToScopedProperties } from '@/lib/theme'
-import { formatTimeAgo } from '@/lib/utils/date'
+import { fromNow } from '@/lib/utils/date'
 
 const route = useRoute()
 const router = useRouter()
@@ -251,12 +251,12 @@ const isMobile = useBreakpoint('<s')
               <Flex x-between y-center expand class="theme-details__meta-item">
                 <span>Published</span>
                 <TimestampDate :date="data.created_at">
-                  <span>{{ formatTimeAgo(data.created_at) }}</span>
+                  <span>{{ fromNow(data.created_at) }}</span>
                 </TimestampDate>
               </Flex>
               <Flex v-if="data.modified_at" x-between y-center expand class="theme-details__meta-item">
                 <span>Updated</span>
-                <span>{{ formatTimeAgo(data.modified_at) }}</span>
+                <span>{{ fromNow(data.modified_at) }}</span>
               </Flex>
               <Flex v-if="userId" x-between y-center expand class="theme-details__meta-item">
                 <span>Users</span>

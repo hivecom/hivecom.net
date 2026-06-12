@@ -2,8 +2,6 @@
 import type { Comment, ProvidedDiscussion } from '../Discussion.types'
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Avatar, Badge, Button, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
 import { defineAsyncComponent, ref } from 'vue'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import ModalDeleteReply from '@/components/Discussions/ModalDeleteReply.vue'
@@ -29,6 +27,7 @@ import { extractMentionIds } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { getCountryInfo } from '@/lib/utils/country'
+import { fromNow, fullDateTime, fullMonth } from '@/lib/utils/date'
 import { DISCUSSION_KEYS } from '../Discussion.keys'
 
 const props = defineProps<Props>()
@@ -43,8 +42,6 @@ const emit = defineEmits<{
 const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
 const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
-
-dayjs.extend(relativeTime)
 
 interface Props {
   data: Comment
@@ -294,7 +291,7 @@ async function submit() {
 
       data.value.markdown = resolvedMarkdown
       data.value.is_nsfw = editedIsNsfw.value
-      data.value.modified_at = dayjs().toISOString()
+      data.value.modified_at = new Date().toISOString()
       data.value.modified_by = currentUser.value?.id ?? null
       // Re-apply the NSFW warning if the user toggled it back on
       _showNSFWWarning.value = editedIsNsfw.value
@@ -325,11 +322,11 @@ const { displayReactions, toggleReaction } = useReactions({
 })
 
 // Formatted timestamps for the toolbar sheet
-const postedAtFormatted = computed(() => dayjs(data.value.created_at).fromNow())
+const postedAtFormatted = computed(() => fromNow(data.value.created_at))
 const editedAtFormatted = computed(() => {
   if (data.value.modified_at === data.value.created_at)
     return null
-  return dayjs(data.value.modified_at).fromNow()
+  return fromNow(data.value.modified_at)
 })
 </script>
 
@@ -379,7 +376,7 @@ const editedAtFormatted = computed(() => {
             {{ country.emoji }}
           </p>
           <p v-if="user?.created_at" class="author-meta">
-            Joined {{ dayjs(user.created_at).format('MMMM YYYY') }}
+            Joined {{ fullMonth(user.created_at) }}
           </p>
         </Flex>
         <p class="author-meta mt-xs text-color-lightest">
@@ -585,16 +582,16 @@ const editedAtFormatted = computed(() => {
         <Flex :key="timestampUpdateKey" wrap y-end x-between class="discussion-forum__bottom-row">
           <p class="discussion-forum__timestamp">
             <Tooltip :delay="500">
-              <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
+              <span>Posted {{ fromNow(data.created_at) }}</span>
               <template #tooltip>
-                <p>{{ dayjs(data.created_at).format('MMM D, YYYY [at] h:mm A') }}</p>
+                <p>{{ fullDateTime(data.created_at) }}</p>
               </template>
             </Tooltip>
             <span v-if="data.modified_at !== data.created_at">
               <Tooltip :delay="500">
-                <span>{{ `Edited ${dayjs(data.modified_at).fromNow()}` }}</span>
+                <span>{{ `Edited ${fromNow(data.modified_at)}` }}</span>
                 <template #tooltip>
-                  <p>{{ dayjs(data.modified_at).format('MMM D, YYYY [at] h:mm A') }}</p>
+                  <p>{{ fullDateTime(data.modified_at) }}</p>
                 </template>
               </Tooltip>
               <template v-if="modifierId && modifierUser">

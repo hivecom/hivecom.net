@@ -6,7 +6,7 @@ import GlowCard from '@/components/Shared/GlowCard.vue'
 import { useCache } from '@/composables/useCache'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
-import { formatTimeAgo } from '@/lib/utils/date.js'
+import { fromNow } from '@/lib/utils/date'
 import { truncate } from '@/lib/utils/formatting'
 import BulkAvatarDisplay from '../Shared/BulkAvatarDisplay.vue'
 import EventGames from './EventGames.vue'
@@ -71,7 +71,7 @@ const linkedGames = computed(() => {
       <Card class="event-small" :class="{ upcoming: isUpcoming }">
         <Flex x-between y-center class="mb-m">
           <span class="event-date">
-            {{ formatTimeAgo(props.data.date) }}
+            {{ fromNow(props.data.date) }}
           </span>
           <Badge v-if="user" :variant="props.data.is_official ? 'accent' : 'neutral'">
             {{ props.data.is_official ? 'Official' : 'Community' }}

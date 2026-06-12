@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { StorageAsset } from '@/lib/storageAssets'
-import { Button, Card, CopyClipboard, Flex, Input, Sheet, Spinner } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Flex, Input, Sheet, Spinner, Tooltip } from '@dolanske/vui'
 
 import { computed, ref, watch } from 'vue'
 import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
@@ -8,8 +8,8 @@ import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
 import MarkdownLightbox from '@/components/Shared/MarkdownLightbox.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { useBreakpoint } from '@/lib/mediaQuery'
-import { formatBytes, isImageAsset, isTextAsset, isVideoAsset } from '@/lib/storageAssets'
+
+import { downloadAsset, formatBytes, isImageAsset, isTextAsset, isVideoAsset } from '@/lib/storageAssets'
 
 const props = defineProps<{
   asset: StorageAsset | null
@@ -55,10 +55,6 @@ const assetUrl = computed(() => props.asset?.publicUrl ?? '')
 const lightboxMarkdown = computed(() => assetUrl.value && !isVideo.value && !isText.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
 const markdownSnippet = computed(() => assetUrl.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
 
-const isMobile = useBreakpoint('<xs')
-const showActionLabels = computed(() => !isMobile.value)
-// const actionButtonSize = computed(() => showActionLabels.value ? 'm' as const : 's' as const)
-
 function closeDrawer() {
   isOpen.value = false
 }
@@ -66,6 +62,11 @@ function closeDrawer() {
 function openInNewTab() {
   if (assetUrl.value)
     window.open(assetUrl.value, '_blank', 'noopener')
+}
+
+function downloadCurrentAsset() {
+  if (props.asset)
+    downloadAsset(assetUrl.value, props.asset.name)
 }
 
 function requestDelete() {
@@ -103,34 +104,30 @@ function requestRename() {
           </p>
         </Flex>
         <Flex gap="xs" y-center>
-          <Button
-            v-if="canRename"
-            variant="gray"
-            :square="!showActionLabels"
-            @click="requestRename"
-          >
-            <template v-if="showActionLabels" #start>
+          <Tooltip v-if="assetUrl">
+            <Button variant="gray" square @click="downloadCurrentAsset">
+              <Icon name="ph:download-simple" />
+            </Button>
+            <template #tooltip>
+              <p>Download</p>
+            </template>
+          </Tooltip>
+          <Tooltip v-if="canRename">
+            <Button variant="gray" square @click="requestRename">
               <Icon name="ph:text-t" />
+            </Button>
+            <template #tooltip>
+              <p>Rename</p>
             </template>
-            <Icon v-if="!showActionLabels" name="ph:text-t" />
-            <template v-if="showActionLabels">
-              Rename
-            </template>
-          </Button>
-          <Button
-            v-if="canDelete"
-            variant="danger"
-            :square="!showActionLabels"
-            @click="requestDelete"
-          >
-            <template v-if="showActionLabels" #start>
+          </Tooltip>
+          <Tooltip v-if="canDelete">
+            <Button variant="danger" square @click="requestDelete">
               <Icon name="ph:trash" />
+            </Button>
+            <template #tooltip>
+              <p>Delete</p>
             </template>
-            <Icon v-if="!showActionLabels" name="ph:trash" />
-            <template v-if="showActionLabels">
-              Delete
-            </template>
-          </Button>
+          </Tooltip>
         </Flex>
       </Flex>
     </template>

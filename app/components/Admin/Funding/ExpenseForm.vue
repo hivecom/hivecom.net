@@ -2,6 +2,7 @@
 import { Button, Calendar, Flex, Input, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { displayDate } from '@/lib/utils/date'
 
 const props = defineProps<{
   expense: {
@@ -221,11 +222,7 @@ function confirmDelete() {
                   expand
                   :class="{ error: !validation.started_at }"
                 >
-                  {{ expenseForm.started_at ? expenseForm.started_at.toLocaleDateString(undefined, {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                  }) : 'Choose start date' }}
+                  {{ expenseForm.started_at ? displayDate(expenseForm.started_at) : 'Choose start date' }}
                   <template #end>
                     <Icon name="ph:calendar" />
                   </template>
@@ -253,11 +250,7 @@ function confirmDelete() {
                     expand
                     :class="{ error: !validation.ended_at }"
                   >
-                    {{ expenseForm.ended_at ? expenseForm.ended_at.toLocaleDateString(undefined, {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                    }) : 'Choose end date (optional)' }}
+                    {{ expenseForm.ended_at ? displayDate(expenseForm.ended_at) : 'Choose end date (optional)' }}
                     <template #end>
                       <Icon name="ph:calendar" />
                     </template>

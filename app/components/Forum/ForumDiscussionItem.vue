@@ -88,7 +88,7 @@ dayjs.extend(relativeTime)
         <Tooltip placement="top">
           <span>{{ dayjs(lastActivity ?? data.created_at).fromNow() }}</span>
           <template #tooltip>
-            <TimestampDate :date="lastActivity ?? data.created_at" :tooltip="false" format="YYYY-MM-DD HH:mm:ss" size="xs" />
+            <TimestampDate :date="lastActivity ?? data.created_at" :tooltip="false" type="displayDateTime" size="xs" />
           </template>
         </Tooltip>
       </div>

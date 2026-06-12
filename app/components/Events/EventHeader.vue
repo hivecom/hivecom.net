@@ -222,7 +222,7 @@ onMounted(() => {
         >
           <Flex column y-center gap="xxs" class="event-header__countdown-date">
             <Flex y-center gap="xxs">
-              <TimestampDate size="xxs" :date="displayDate" format="dddd, MMMM D, YYYY [at] HH:mm" />
+              <TimestampDate size="xxs" :date="displayDate" type="fullDateTimeWeekday" />
               <span v-if="props.event.duration_minutes" class="text-xxs">
                 for {{ formatDurationFromMinutes(props.event.duration_minutes) }}
               </span>
@@ -230,9 +230,9 @@ onMounted(() => {
             <Flex v-if="props.event.recurrence_rule && isBelowSmall" y-center gap="xs" class="event-header__countdown-series">
               <Icon name="ph:arrows-clockwise" size="12" />
               <span class="text-xxs">
-                Series from <TimestampDate :date="props.event.date" format="MMM D, YYYY" size="xxs" class="inline" />
+                Series from <TimestampDate :date="props.event.date" type="fullDate" size="xxs" class="inline" />
                 <template v-if="seriesUntilDate">
-                  to <TimestampDate :date="seriesUntilDate" format="MMM D, YYYY" size="xxs" class="inline" />
+                  to <TimestampDate :date="seriesUntilDate" type="fullDate" size="xxs" class="inline" />
                 </template>
                 <template v-else-if="seriesStillActive">
                   - ongoing
@@ -255,7 +255,7 @@ onMounted(() => {
           <Flex x-center class="mt-xs">
             <Flex column y-center gap="xxs" class="event-header__countdown-date">
               <Flex y-center gap="xxs">
-                <TimestampDate size="xxs" :date="displayDate" format="dddd, MMMM D, YYYY [at] HH:mm" />
+                <TimestampDate size="xxs" :date="displayDate" type="fullDateTimeWeekday" />
                 <span v-if="props.event.duration_minutes" class="text-xxs">
                   for {{ formatDurationFromMinutes(props.event.duration_minutes) }}
                 </span>
@@ -263,9 +263,9 @@ onMounted(() => {
               <Flex v-if="props.event.recurrence_rule && isBelowSmall" y-center gap="xs" class="event-header__countdown-series">
                 <Icon name="ph:arrows-clockwise" size="12" />
                 <span class="text-xxs">
-                  Series from <TimestampDate :date="props.event.date" format="MMM D, YYYY" size="xxs" class="inline" />
+                  Series from <TimestampDate :date="props.event.date" type="fullDate" size="xxs" class="inline" />
                   <template v-if="seriesUntilDate">
-                    to <TimestampDate :date="seriesUntilDate" format="MMM D, YYYY" size="xxs" class="inline" />
+                    to <TimestampDate :date="seriesUntilDate" type="fullDate" size="xxs" class="inline" />
                   </template>
                   <template v-else-if="seriesStillActive">
                     - ongoing
@@ -327,9 +327,9 @@ onMounted(() => {
         <Tooltip v-if="props.event.recurrence_rule && !isBelowSmall" placement="bottom">
           <template #tooltip>
             <span class="text-xxs">
-              Series from <TimestampDate :date="props.event.date" format="MMM D, YYYY" size="xxs" class="inline" />
+              Series from <TimestampDate :date="props.event.date" type="fullDate" size="xxs" class="inline" />
               <template v-if="seriesUntilDate">
-                to <TimestampDate :date="seriesUntilDate" format="MMM D, YYYY" size="xxs" class="inline" />
+                to <TimestampDate :date="seriesUntilDate" type="fullDate" size="xxs" class="inline" />
               </template>
               <template v-else-if="seriesStillActive">
                 - ongoing

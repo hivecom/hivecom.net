@@ -7,6 +7,7 @@ import RecurrenceBuilder from '@/components/Events/RecurrenceBuilder.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { displayDateTime } from '@/lib/utils/date'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -174,14 +175,7 @@ defineExpose({ flushPendingUploads })
               expand
               :class="{ error: !effectiveValidation.date }"
             >
-              {{ localDate ? localDate.toLocaleString(undefined, {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false,
-              }) : 'Choose date and time' }}
+              {{ localDate ? displayDateTime(localDate) : 'Choose date and time' }}
               <template #end>
                 <Icon name="ph:calendar" />
               </template>

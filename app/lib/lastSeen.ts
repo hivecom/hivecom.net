@@ -6,6 +6,7 @@ import type { User } from '@supabase/supabase-js'
 import type { WatchStopHandle } from 'vue'
 import { isRef, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useCache } from '@/composables/useCache'
+import { displayDate } from '@/lib/utils/date'
 
 export type LastSeenVariant = 'online' | 'fresh' | 'light' | 'lighter' | 'lightest'
 
@@ -102,7 +103,7 @@ export function getUserActivityStatus(lastSeen: string | Date): UserActivityStat
     lastSeenText = `Last online ${days} days ago`
   }
   else {
-    lastSeenText = `Last online on ${lastSeenDate.toLocaleDateString()}`
+    lastSeenText = `Last online on ${displayDate(lastSeenDate)}`
   }
 
   return {

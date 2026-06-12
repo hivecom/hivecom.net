@@ -6,6 +6,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import constants from '~~/constants.json'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { identityKey, normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
+import { fullDateTime } from '@/lib/utils/date'
 
 interface SelectOption {
   label: string
@@ -476,7 +477,7 @@ const modalTitle = computed(() => {
                   <Flex gap="xs" y-center>
                     <span class="text-xs text-color-lighter">{{ identity.serverId.toUpperCase() }}</span>
                     <span class="text-xs text-color-lighter">•</span>
-                    <span class="text-xs text-color-lighter">Linked {{ identity.linkedAt ? new Date(identity.linkedAt).toLocaleString() : 'time unknown' }}</span>
+                    <span class="text-xs text-color-lighter">Linked {{ identity.linkedAt ? fullDateTime(identity.linkedAt) : 'time unknown' }}</span>
                   </Flex>
                 </Flex>
               </li>

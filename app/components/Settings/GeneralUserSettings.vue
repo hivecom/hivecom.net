@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { Button, ButtonGroup, Card, Divider, Flex, Select, Switch } from '@dolanske/vui'
+import { Button, ButtonGroup, Card, Divider, Flex, Select, Slider, Switch } from '@dolanske/vui'
+import SoundChoicePicker from '@/components/Shared/SoundChoicePicker.vue'
+import { NONE_SOUND_ID } from '@/lib/notificationSound'
 
 const { settings, settingsError } = useDataUserSettings()
 const { setActiveTheme, themeOptions, selectedTheme, setVariant, selectedVariant, variantOptions } = useUserTheme()
@@ -31,6 +33,16 @@ const selectedVariantWithTransition = computed({
       void transitionTheme(() => setVariant(value[0]!.value), origin)
   },
 })
+
+async function toggleAppBrowserNotifications(value: boolean) {
+  if (value && typeof Notification !== 'undefined') {
+    const permission = await Notification.requestPermission()
+    settings.value.app_browser_notifications = permission === 'granted'
+  }
+  else {
+    settings.value.app_browser_notifications = false
+  }
+}
 </script>
 
 <template>
@@ -41,9 +53,10 @@ const selectedVariantWithTransition = computed({
       </h4>
     </template>
 
-    <strong class="text-color-lighter text-s block mb-m">
-      Appearance
-    </strong>
+    <Flex y-center gap="xs" class="text-color-lighter mb-m">
+      <Icon name="ph:palette" size="16" />
+      <strong class="text-s">Appearance</strong>
+    </Flex>
     <Flex class="mb-m" x-between y-center>
       <p>Current theme</p>
       <div
@@ -66,17 +79,58 @@ const selectedVariantWithTransition = computed({
 
     <Divider class="my-l" />
 
-    <strong class="text-color-lighter text-s block mb-m">
-      Accessibility
-    </strong>
+    <Flex y-center gap="xs" class="text-color-lighter mb-m">
+      <Icon name="ph:bell" size="16" />
+      <strong class="text-s">Notifications</strong>
+    </Flex>
+    <SoundChoicePicker
+      v-model="settings.notification_sound_choice"
+      v-model:url="settings.notification_sound_url"
+      v-model:design="settings.notification_sound_design"
+      label="Notification sound"
+      description="Play a sound when you receive a new notification, mention, or friend request."
+      :volume="settings.notification_sound_volume"
+      class="mb-m"
+    />
+    <Flex column gap="xs" expand class="mb-m">
+      <Flex y-center x-between expand>
+        <Flex column gap="xxs">
+          <span class="text-m">Volume</span>
+          <span class="text-xs text-color-lighter">Loudness of the notification sound.</span>
+        </Flex>
+        <span class="text-s text-color-light">{{ settings.notification_sound_volume }}%</span>
+      </Flex>
+      <Slider
+        v-model="settings.notification_sound_volume"
+        :min="0"
+        :max="100"
+        :step="5"
+        :disabled="settings.notification_sound_choice === NONE_SOUND_ID"
+      />
+    </Flex>
+    <Switch
+      :model-value="settings.app_browser_notifications"
+      class="reversed"
+      label="Background notifications"
+      hint="Show a system notification when you receive activity while this tab is in the background. Delivery may lag by a few minutes since we don't keep a live connection open when the tab is hidden."
+      @update:model-value="toggleAppBrowserNotifications"
+    />
+
+    <Divider class="my-l" />
+
+    <Flex y-center gap="xs" class="text-color-lighter mb-m">
+      <Icon name="ph:person-arms-spread" size="16" />
+      <strong class="text-s">Accessibility</strong>
+    </Flex>
     <Switch v-model="settings.allow_browser_zoom" class="reversed mb-m" label="Allow browser zoom" hint="When enabled, pinch-to-zoom and trackpad zoom work across the whole site. Image and video lightboxes support zooming regardless of this setting." />
     <Switch v-model="settings.confirm_external_links" class="reversed" label="Confirm off-site links" hint="When enabled, clicking a link in user content that leads off Hivecom asks you to confirm before opening it." />
 
     <Divider class="my-l" />
 
-    <strong class="text-color-lighter text-s block mb-m">
-      Discussions
-    </strong>
+    <Flex y-center gap="xs" class="text-color-lighter mb-m">
+      <Icon name="ph:chats-circle" size="16" />
+      <strong class="text-s">Discussions</strong>
+    </Flex>
     <Switch v-model="settings.show_nsfw_content" class="reversed mb-m" label="Show NSFW content" />
     <Switch v-model="settings.show_nsfw_warning" class="reversed mb-m" label="Show NSFW content warnings" :disabled="!settings.show_nsfw_content" hint="You will be warned before viewing content marked as NSFW each time." />
     <Switch v-model="settings.show_offtopic_replies" class="reversed mb-m" label="Show off-topic replies by default" hint="When enabled, replies marked as off-topic by the discussion author will be visible (but dimmed) by default." />
@@ -112,9 +166,10 @@ const selectedVariantWithTransition = computed({
 
     <Divider class="my-l" />
 
-    <strong class="text-color-lighter text-s block mb-m">
-      Forum
-    </strong>
+    <Flex y-center gap="xs" class="text-color-lighter mb-m">
+      <Icon name="ph:newspaper" size="16" />
+      <strong class="text-s">Forum</strong>
+    </Flex>
 
     <Switch v-model="settings.show_forum_updates" class="reversed mb-m" label="Show latest activity" />
     <Switch v-model="settings.show_forum_recently_visited" class="reversed mb-m" label="Show recently visited" />
@@ -122,9 +177,10 @@ const selectedVariantWithTransition = computed({
 
     <Divider class="my-l" />
 
-    <strong class="text-color-lighter text-s block mb-m">
-      Rich Text Editor
-    </strong>
+    <Flex y-center gap="xs" class="text-color-lighter mb-m">
+      <Icon name="ph:text-aa" size="16" />
+      <strong class="text-s">Rich Text Editor</strong>
+    </Flex>
 
     <Switch v-model="settings.editor_floating" class="reversed mb-m" label="Floating text editor" hint="If enabled, the text editor will stay at the bottom of the screen while scrolling through large forum posts." />
     <Switch v-model="settings.strip_image_metadata" class="reversed" label="Strip image metadata on upload" hint="Removes EXIF and other embedded metadata from images before uploading. Disable if you need to preserve location, camera, or other metadata." />
@@ -132,6 +188,11 @@ const selectedVariantWithTransition = computed({
 </template>
 
 <style lang="scss" scoped>
+:deep(.vui-slider.is-disabled) {
+  // Mute the fill so a disabled volume slider doesn't read as active accent.
+  --vui-slider-indicator: var(--color-border-strong);
+}
+
 :deep(.vui-switch) {
   &.disabled {
     filter: grayscale(100%) opacity(0.6);

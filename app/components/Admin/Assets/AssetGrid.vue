@@ -4,7 +4,7 @@ import { Button, Card, CopyClipboard, Flex, Grid, Modal, Tooltip } from '@dolans
 import { useEventListener } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import UserLink from '@/components/Shared/UserLink.vue'
-import { formatBytes, FORUMS_BUCKET_ID, isImageAsset, isVideoAsset } from '@/lib/storageAssets'
+import { downloadAsset, formatBytes, FORUMS_BUCKET_ID, isImageAsset, isVideoAsset } from '@/lib/storageAssets'
 
 const props = defineProps<{
   assets: StorageAsset[]
@@ -140,6 +140,10 @@ function handleOpenClick(asset: StorageAsset) {
     window.open(asset.publicUrl, '_blank', 'noopener')
 }
 
+function handleDownloadClick(asset: StorageAsset) {
+  downloadAsset(asset.publicUrl, asset.name)
+}
+
 function getUploaderId(asset: StorageAsset): string | null {
   const fromMeta = (asset.metadata as Record<string, unknown> | null)?.uploadedBy
   if (typeof fromMeta === 'string' && fromMeta.length > 0 && fromMeta !== 'unknown' && fromMeta !== 'anonymous')
@@ -224,11 +228,19 @@ function getUploaderId(asset: StorageAsset): string | null {
             </Tooltip>
           </CopyClipboard>
           <Tooltip v-if="asset.publicUrl">
-            <Button size="s" variant="gray" square @click="handleOpenClick(asset)">
+            <Button size="s" variant="gray" square @click="handleOpenClick(asset)" @auxclick.middle.prevent="handleOpenClick(asset)">
               <Icon name="ph:arrow-square-out" size="16" />
             </Button>
             <template #tooltip>
               <p>Open</p>
+            </template>
+          </Tooltip>
+          <Tooltip v-if="asset.publicUrl">
+            <Button size="s" variant="gray" square @click="handleDownloadClick(asset)">
+              <Icon name="ph:download-simple" size="16" />
+            </Button>
+            <template #tooltip>
+              <p>Download</p>
             </template>
           </Tooltip>
           <Button

@@ -5,6 +5,7 @@ import { Badge, Button, Flex, Popout } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
+import { fullDateTime } from '@/lib/utils/date'
 
 type PresenceRow = Tables<'presences_teamspeak'>
 
@@ -119,7 +120,7 @@ function formatLastSeen(lastSeenAt: string | null): string {
   const date = new Date(lastSeenAt)
   if (Number.isNaN(date.getTime()))
     return 'Unknown'
-  return date.toLocaleString()
+  return fullDateTime(date)
 }
 </script>
 

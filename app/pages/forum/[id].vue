@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
 import { DISCUSSION_KEYS } from '@/components/Discussions/Discussion.keys'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import ForumBreadcrumbs from '@/components/Forum/ForumBreadcrumbs.vue'
@@ -23,9 +21,7 @@ import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubs
 import { useBulkTopicIcons } from '@/composables/useTopicIcon'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { formatDate } from '@/lib/utils/date'
-
-dayjs.extend(relativeTime)
+import { fromNow, fullDateTime } from '@/lib/utils/date'
 
 definePageMeta({
   key: route => route.params.id as string,
@@ -846,17 +842,17 @@ function revealNsfw() {
             <UserDisplay :user-id="post.created_by" show-role />
             <Flex :key="timestampUpdateKey" y-center wrap :gap="4" class="forum-post__timestamps">
               <Tooltip :delay="500">
-                <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
+                <span>Posted {{ fromNow(post.created_at) }}</span>
                 <template #tooltip>
-                  Posted on {{ formatDate(post.created_at) }}
+                  Posted on {{ fullDateTime(post.created_at) }}
                 </template>
               </Tooltip>
               <template v-if="post.modified_at !== post.created_at">
                 <span aria-hidden="true">-</span>
                 <Tooltip :delay="500">
-                  <span>Edited {{ dayjs(post.modified_at).fromNow() }}</span>
+                  <span>Edited {{ fromNow(post.modified_at) }}</span>
                   <template #tooltip>
-                    Edited on {{ formatDate(post.modified_at) }}
+                    Edited on {{ fullDateTime(post.modified_at) }}
                   </template>
                 </Tooltip>
                 <template v-if="postModifierId && postModifierUser">

@@ -51,6 +51,28 @@ export function formatCurrencyWithDecimals(
 }
 
 /**
+ * Formats a monetary amount in whole currency units (euros, not cents) to a
+ * localized currency string. Use this when a value has already been divided
+ * from cents (e.g. chart diffs, growth values).
+ *
+ * @param amount - Amount in whole units (e.g. 15 for €15)
+ * @param options - Same options as {@link formatCurrency}
+ * @param options.showDecimals - Whether to always show decimals
+ * @param options.decimalPlaces - Number of decimal places
+ * @param options.locale - Locale used for formatting
+ */
+export function formatCurrencyUnits(
+  amount: number,
+  options: {
+    showDecimals?: boolean
+    decimalPlaces?: number
+    locale?: string
+  } = {},
+): string {
+  return formatCurrency(amount * 100, options)
+}
+
+/**
  * Get currency information from constants
  */
 export function getCurrencyInfo() {

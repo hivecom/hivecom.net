@@ -12,7 +12,7 @@
  */
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
-import { setBrowserNotificationsEnabled, useIrcChat } from '@/composables/useIrcChat'
+import { setBrowserNotificationsEnabled, setNotificationSounds, useIrcChat } from '@/composables/useIrcChat'
 
 export default defineNuxtPlugin(() => {
   const supabase = useSupabaseClient()
@@ -40,6 +40,28 @@ export default defineNuxtPlugin(() => {
   watch(
     () => settings.value.chat_browser_notifications,
     enabled => setBrowserNotificationsEnabled(enabled === true),
+    { immediate: true },
+  )
+
+  watch(
+    () => [
+      settings.value.chat_sound_mention_choice,
+      settings.value.chat_sound_message_choice,
+      settings.value.chat_sound_mention_url,
+      settings.value.chat_sound_message_url,
+      settings.value.chat_sound_mention_design,
+      settings.value.chat_sound_message_design,
+      settings.value.chat_sound_volume,
+    ] as const,
+    ([mentionChoice, messageChoice, mentionUrl, messageUrl, mentionDesign, messageDesign, volume]) => setNotificationSounds({
+      mentionChoice: mentionChoice ?? 'none',
+      messageChoice: messageChoice ?? 'none',
+      mentionUrl: mentionUrl ?? '',
+      messageUrl: messageUrl ?? '',
+      mentionDesign: mentionDesign ?? null,
+      messageDesign: messageDesign ?? null,
+      volume: typeof volume === 'number' ? volume / 100 : 1,
+    }),
     { immediate: true },
   )
 

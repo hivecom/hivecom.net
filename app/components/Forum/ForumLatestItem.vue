@@ -47,7 +47,7 @@ function handleClick(e: MouseEvent) {
       <Tooltip placement="top">
         <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
         <template #tooltip>
-          <TimestampDate :date="post.timestampRaw" :tooltip="false" format="YYYY-MM-DD HH:mm:ss" size="xs" />
+          <TimestampDate :date="post.timestampRaw" :tooltip="false" type="displayDateTime" size="xs" />
         </template>
       </Tooltip>
     </Flex>

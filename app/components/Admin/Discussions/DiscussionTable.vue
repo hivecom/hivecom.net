@@ -180,7 +180,7 @@ function getLastActiveText(discussion: RpcDiscussion): string {
   const status = getUserActivityStatus(timestamp)
   if (status.isActive)
     return 'Active now'
-  return status.lastSeenText.replace('Last seen', 'Last active')
+  return status.lastSeenText.replace('Last online', 'Last activity')
 }
 
 function getContextType(discussion: RpcDiscussion): string {

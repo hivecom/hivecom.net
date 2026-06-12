@@ -69,6 +69,7 @@
     "nuxt": "4.4.7",
     "nuxt-og-image": "^6.5.2",
     "nuxt-toc": "^2.7.2",
+    "ohash": "^2.0.11",
     "pinia": "^3.0.4",
     "rehype-katex": "^7.0.1",
     "rehype-sanitize": "^6.0.0",

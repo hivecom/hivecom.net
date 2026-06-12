@@ -28,7 +28,7 @@ defineProps<Props>()
           Event Date
         </h3>
         <div class="event-timing__date-display">
-          <TimestampDate :date="event.date" class="event-timing__date-time" format="full" />
+          <TimestampDate :date="event.date" class="event-timing__date-time" type="fullDateTime" />
         </div>
       </div>
 

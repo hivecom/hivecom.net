@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Accordion, Button, Card, Flex } from '@dolanske/vui'
+import { hash } from 'ohash'
 import { computed } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { md5 } from '@/lib/utils/hash'
+import { formatPercent } from '@/lib/utils/formatting'
 import Discussion from '../Discussions/Discussion.vue'
 import BulkAvatarDisplay from './BulkAvatarDisplay.vue'
 
@@ -130,7 +131,7 @@ const isBelowSmall = useBreakpoint('<s')
             @click="toggle()"
           >
             <Flex x-between y-center>
-              <span class="result-item__choice">{{ result.choice }} <span class="result-item__percentage">{{ `(${result.percentage.toFixed()}%)` }}</span></span>
+              <span class="result-item__choice">{{ result.choice }} <span class="result-item__percentage">{{ `(${formatPercent(result.percentage, 0)})` }}</span></span>
               <Icon name="ph:chat-circle-dots" class="result-item__comments-count" :size="18" />
               <BulkAvatarDisplay
                 v-if="result.users.length > 0"
@@ -160,7 +161,7 @@ const isBelowSmall = useBreakpoint('<s')
           <Discussion
             :id="String(props.referendum.id)"
             type="referendum"
-            :hash="md5(result.choice)"
+            :hash="hash(result.choice)"
           />
         </div>
       </Accordion>

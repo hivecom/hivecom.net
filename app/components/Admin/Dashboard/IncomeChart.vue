@@ -22,6 +22,8 @@ import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { getChartPalette, getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
+import { formatCurrency } from '@/lib/utils/currency'
+import { fullMonth } from '@/lib/utils/date'
 
 // Register Chart.js components
 ChartJS.register(
@@ -70,7 +72,7 @@ const chartData = computed(() => {
   })
 
   const labels = sortedData.map((funding) => {
-    return dayjs(funding.month).format('MMM YYYY')
+    return fullMonth(funding.month)
   })
 
   // Calculate monthly total income (Patreon + donations)
@@ -132,7 +134,7 @@ const localChartOptions: ChartOptions<'line'> = {
           }
 
           if (context.datasetIndex === 0) {
-            return `${label}: €${value.toFixed(2)}`
+            return `${label}: ${formatCurrency(value * 100, { showDecimals: true })}`
           }
 
           return `${label}: ${value}`

@@ -343,7 +343,7 @@ function confirmDeleteComplaint() {
                     </div>
                     <div v-if="complaint.context_gameserver">
                       <Flex gap="xs" y-center>
-                        <Icon name="ph:game-controller" class="text-color-light" />
+                        <Icon name="ph:hard-drives" class="text-color-light" />
                         <span class="text-s text-color-light">Game Server:</span>
                         <NuxtLink
                           class="text-s context-link"

@@ -8,7 +8,7 @@ import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCurrency } from '@/lib/utils/currency'
-import { formatDateShort } from '@/lib/utils/date'
+import { fullDate } from '@/lib/utils/date'
 import { calculateDurationBetweenDates } from '@/lib/utils/duration'
 import { getExpenseStatus } from '@/lib/utils/expenses'
 import ExpenseDetails from './ExpenseDetails.vue'
@@ -71,7 +71,7 @@ const {
     Name: expense.name || 'Unnamed Expense',
     Amount: formatCurrency(expense.amount_cents),
     Status: getExpenseStatus(expense.started_at, expense.ended_at),
-    Started: formatDateShort(expense.started_at),
+    Started: fullDate(expense.started_at),
     Duration: calculateDurationBetweenDates(expense.started_at, expense.ended_at),
   }),
   defaultSort: { column: 'Started', direction: 'desc' },

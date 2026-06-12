@@ -25,6 +25,7 @@
 
 import type { Database, Json } from './database.types'
 import type { MetricsSnapshot } from './metrics'
+import type { SoundDesign } from './sound'
 
 // Re-export pass-throughs so callers only need one import source.
 export type { Database, Json }
@@ -108,6 +109,18 @@ interface TableColumnOverrides {
       chat_mobile_font_size: number
       chat_mention_keywords: string[]
       chat_browser_notifications: boolean
+      chat_sound_mention_choice: string
+      chat_sound_message_choice: string
+      chat_sound_mention_url: string
+      chat_sound_message_url: string
+      chat_sound_mention_design: SoundDesign | null
+      chat_sound_message_design: SoundDesign | null
+      chat_sound_volume: number
+      app_browser_notifications: boolean
+      notification_sound_choice: string
+      notification_sound_url: string
+      notification_sound_design: SoundDesign | null
+      notification_sound_volume: number
       chat_show_timestamps: boolean
       chat_timestamp_format: string
       chat_display_mode: 'irc' | 'modern'

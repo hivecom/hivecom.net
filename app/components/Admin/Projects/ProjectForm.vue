@@ -8,7 +8,7 @@ import FileUpload from '@/components/Shared/FileUpload.vue'
 import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
 import TagInput from '@/components/Shared/TagInput.vue'
 import { deleteProjectBanner, getProjectBannerUrl, uploadProjectBanner } from '@/lib/storage'
-import { CMS_BUCKET_ID } from '@/lib/storageAssets'
+import { STATIC_BUCKET_ID } from '@/lib/storageAssets'
 
 const props = defineProps<{
   project: QueryProject | null
@@ -333,7 +333,7 @@ function confirmDelete() {
           min-height="216px"
           :errors="validation.markdown ? [] : ['Markdown content is required']"
           :media-context="props.project?.id ? `projects/${props.project.id}/markdown/media` : undefined"
-          :media-bucket-id="CMS_BUCKET_ID"
+          :media-bucket-id="STATIC_BUCKET_ID"
           :show-attachment-button="!!props.project?.id"
           show-expand-button
         />

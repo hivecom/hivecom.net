@@ -32,7 +32,6 @@ export default antfu({
     'package.json',
     'package-lock.json',
     '**/supabase/functions/**/*.ts',
-    '**/hash.js',
     'REFACTOR.md',
     '.you/**',
     // Fully generated file - never manually edited, will be overwritten

@@ -21,6 +21,7 @@ import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { mentionsSelf, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { fullDate } from '@/lib/utils/date'
 
 const props = defineProps<{ compact?: boolean }>()
 
@@ -262,7 +263,7 @@ function fmtTime(d: Date): string {
 }
 
 function fmtDateTime(d: Date): string {
-  return `${dayjs(d).format('MMM D, YYYY')} at ${fmtTime(d)}`
+  return `${fullDate(d)} at ${fmtTime(d)}`
 }
 
 function isServiceNick(from?: string | null): boolean {
@@ -1252,8 +1253,7 @@ onBeforeUnmount(() => {
                   v-if="showTimestamps"
                   class="chat-log__ts"
                   :date="msg.ts.toISOString()"
-                  :format="settings.chat_timestamp_format || 'HH:mm:ss'"
-                />
+                ><span class="chat-log__ts">{{ fmtTime(msg.ts) }}</span></TimestampDate>
                 <template v-if="msg.action">
                   <span class="chat-log__action-star">*</span>
                 </template>

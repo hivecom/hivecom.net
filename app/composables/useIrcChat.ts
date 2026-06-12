@@ -24,6 +24,9 @@
 // falls back to plain registration so the client keeps working today.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { SoundDesign } from '@/types/sound'
+import { NONE_SOUND_ID, playNotificationSound } from '@/lib/notificationSound'
+
 const WS_URL = 'wss://irc.hivecom.net:8097'
 const DEFAULT_CHANNEL_DEV = '#playground'
 const DEFAULT_CHANNEL_ANON = '#public'
@@ -319,6 +322,37 @@ const browserNotificationsEnabled = ref(false)
 /** Sync the browser-notification preference from user settings. */
 export function setBrowserNotificationsEnabled(enabled: boolean) {
   browserNotificationsEnabled.value = enabled
+}
+
+// Notification-sound preferences, sourced from user settings. A cue is disabled
+// when its choice is the `none` id; otherwise it's a preset id, `custom` (plays
+// the matching URL), or `design` (plays the matching tone sequence).
+const soundMentionChoice = ref(NONE_SOUND_ID)
+const soundMessageChoice = ref(NONE_SOUND_ID)
+const soundMentionUrl = ref('')
+const soundMessageUrl = ref('')
+const soundMentionDesign = ref<SoundDesign | null>(null)
+const soundMessageDesign = ref<SoundDesign | null>(null)
+// 0-1 fraction applied to every cue.
+const soundVolume = ref(1)
+
+/** Sync the notification-sound preferences from user settings. */
+export function setNotificationSounds(opts: {
+  mentionChoice: string
+  messageChoice: string
+  mentionUrl: string
+  messageUrl: string
+  mentionDesign: SoundDesign | null
+  messageDesign: SoundDesign | null
+  volume: number
+}) {
+  soundMentionChoice.value = opts.mentionChoice
+  soundMessageChoice.value = opts.messageChoice
+  soundMentionUrl.value = opts.mentionUrl
+  soundMessageUrl.value = opts.messageUrl
+  soundMentionDesign.value = opts.mentionDesign
+  soundMessageDesign.value = opts.messageDesign
+  soundVolume.value = opts.volume
 }
 
 // Per-channel last-read timestamps, keyed by lowercased channel/pm name.
@@ -652,6 +686,16 @@ function addToBuffer(
     && (!isActive || document.hidden)) {
     // eslint-disable-next-line no-new
     new Notification(`${msg.from} mentioned you in ${buf.name}`, { body: msg.text, tag: `chat-mention-${buf.name}` })
+  }
+
+  // Notification sound: same "genuinely new, not already read, not actively
+  // viewing this channel" gating as browser notifications. A mention chime takes
+  // priority over the general blip so a ping never fires both.
+  if (!opts.backlog && !alreadyRead && (!isActive || document.hidden)) {
+    if (isPing && soundMentionChoice.value !== NONE_SOUND_ID)
+      playNotificationSound(soundMentionChoice.value, soundMentionUrl.value, soundVolume.value, soundMentionDesign.value)
+    else if (soundMessageChoice.value !== NONE_SOUND_ID)
+      playNotificationSound(soundMessageChoice.value, soundMessageUrl.value, soundVolume.value, soundMessageDesign.value)
   }
 
   // Don't badge what you're looking at or have already read.

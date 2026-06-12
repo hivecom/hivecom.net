@@ -92,7 +92,7 @@ const contextType = computed(() => {
   if (props.complaint.context_user)
     return { label: null, icon: 'ph:user', userId: props.complaint.context_user as string, isServer: false }
   if (props.complaint.context_gameserver)
-    return { label: null, icon: 'ph:game-controller', userId: null, isServer: true }
+    return { label: null, icon: 'ph:hard-drives', userId: null, isServer: true }
   return null
 })
 
@@ -163,10 +163,13 @@ const isMobile = useBreakpoint('<s')
               size="s"
               style="display:inherit;"
             />
-            <span v-else-if="contextType.isServer" class="complaint-card__context-label">
-              {{ contextGameserverName ?? `#${complaint.context_gameserver}` }}
-            </span>
-            <span v-else class="complaint-card__context-label">{{ contextType.label }}</span>
+            <template v-else>
+              <Icon :name="contextType.icon" class="text-color-light" />
+              <span v-if="contextType.isServer" class="complaint-card__context-label">
+                {{ contextGameserverName ?? `#${complaint.context_gameserver}` }}
+              </span>
+              <span v-else class="complaint-card__context-label">{{ contextType.label }}</span>
+            </template>
           </template>
           <span v-else class="complaint-card__context-label text-color-lighter">No context</span>
         </Flex>

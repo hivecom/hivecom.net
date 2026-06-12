@@ -297,6 +297,26 @@ export function getPublicAssetUrl(
   return client.storage.from(bucketId).getPublicUrl(normalized).data.publicUrl
 }
 
+/**
+ * Triggers a browser download for a storage asset. Appends Supabase's
+ * `?download` query param so the response is served with a
+ * `Content-Disposition: attachment` header even when the asset is cross-origin.
+ */
+export function downloadAsset(publicUrl: string | null | undefined, fileName: string): void {
+  if (!import.meta.client || !publicUrl)
+    return
+
+  const url = new URL(publicUrl)
+  url.searchParams.set('download', fileName)
+
+  const anchor = document.createElement('a')
+  anchor.href = url.toString()
+  anchor.download = fileName
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+}
+
 export function getBucketLabel(bucketId: StorageBucketId): string {
   switch (bucketId) {
     case CMS_BUCKET_ID:

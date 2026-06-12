@@ -6,6 +6,7 @@ import RichPresenceTeamSpeak from '@/components/Profile/RichPresenceTeamSpeak.vu
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { useCachedFetch } from '@/composables/useCache'
 import { normalizeTeamSpeakIdentities } from '@/lib/teamspeak'
+import { displayDate } from '@/lib/utils/date'
 
 type TeamspeakPresenceData = Tables<'presences_teamspeak'>
 
@@ -148,7 +149,7 @@ function formatLastSeen(lastSeenAt: string | null): string {
   if (diffDays < 7)
     return `${diffDays}d ago`
 
-  return date.toLocaleDateString()
+  return displayDate(date)
 }
 
 // Last seen formatted for the most recent entry

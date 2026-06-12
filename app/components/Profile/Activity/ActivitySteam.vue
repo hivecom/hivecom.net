@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Flex, Tooltip } from '@dolanske/vui'
 import RichPresenceSteam from '@/components/Profile/RichPresenceSteam.vue'
 import { useCachedFetch } from '@/composables/useCache'
+import { displayDate } from '@/lib/utils/date'
 
 type SteamPresence = Omit<Tables<'presences_steam'>, 'details'> & {
   details?: unknown | null
@@ -216,7 +217,7 @@ const lastOnlineFormatted = computed(() => {
   if (diffDays < 7)
     return `${diffDays}d ago`
 
-  return date.toLocaleDateString()
+  return displayDate(date)
 })
 
 // Start auto-refresh timer

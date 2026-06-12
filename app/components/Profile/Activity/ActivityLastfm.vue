@@ -3,6 +3,7 @@ import type { Database } from '@/types/database.overrides'
 import { Flex, Tooltip } from '@dolanske/vui'
 import RichPresenceLastfm from '@/components/Profile/RichPresenceLastfm.vue'
 import { useCachedFetch } from '@/composables/useCache'
+import { displayDate } from '@/lib/utils/date'
 
 // Cast helper - table name won't be in the type until the migration runs and
 // database.types.ts is regenerated.
@@ -101,7 +102,7 @@ const playedAtFormatted = computed(() => {
   if (diffDays < 7)
     return `${diffDays}d ago`
 
-  return date.toLocaleDateString()
+  return displayDate(date)
 })
 
 async function refreshLastfmData() {

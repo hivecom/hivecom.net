@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Alert, Button, Divider, Flex, Tooltip } from '@dolanske/vui'
 import LegalDiffView from '@/components/Legal/DiffView.vue'
-import { formatDateLong } from '@/lib/utils/date'
+import { fullDateLong } from '@/lib/utils/date'
 
 const route = useRoute()
 const name = computed(() => (route.params.name as string[]).filter(Boolean).join('/'))
@@ -106,7 +106,7 @@ const diffToPath = computed(() => `/legal/${name.value}`)
 const diffFromLabel = computed(() => {
   if (!isRevisionPage.value) {
     const last = pastRevisions.value.at(-1)
-    return last ? formatDateLong(last) : ''
+    return last ? fullDateLong(last) : ''
   }
 
   const thisDate = content.value?.date
@@ -116,10 +116,10 @@ const diffFromLabel = computed(() => {
   const all = (parentContent.value?.revisions ?? []).toSorted((a, b) => new Date(a).getTime() - new Date(b).getTime())
 
   const idx = all.indexOf(thisDate)
-  return idx > 0 ? formatDateLong(all[idx - 1]) : ''
+  return idx > 0 ? fullDateLong(all[idx - 1]) : ''
 })
 
-const diffToLabel = computed(() => formatDateLong(content.value?.date ?? null))
+const diffToLabel = computed(() => fullDateLong(content.value?.date ?? null))
 
 const canDiff = computed(() => !!diffFromPath.value)
 
@@ -147,16 +147,16 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
             <div>
               <p class="legal-page__last-updated">
                 <template v-if="isFutureRevision">
-                  Effective on {{ formatDateLong(content.date) }}
+                  Effective on {{ fullDateLong(content.date) }}
                 </template>
                 <template v-else-if="isPastRevision">
-                  Previously effective from {{ formatDateLong(content.date) }} -
+                  Previously effective from {{ fullDateLong(content.date) }} -
                   <NuxtLink :to="`/legal/${baseName}`" class="legal-page__current-link">
                     Go to current
                   </NuxtLink>
                 </template>
                 <template v-else>
-                  Effective since {{ formatDateLong(content.date) }}
+                  Effective since {{ fullDateLong(content.date) }}
                 </template>
               </p>
             </div>
@@ -211,13 +211,13 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
             <NuxtLink :to="`/legal/${baseName}`">
               current version
             </NuxtLink>
-            on {{ formatDateLong(content.date) }}.
+            on {{ fullDateLong(content.date) }}.
           </Alert>
 
           <!-- Callout: current doc has upcoming changes -->
           <Alert v-else-if="!isRevisionPage && futureRevisions.length" variant="info" class="legal-page__callout">
             <template v-if="futureRevisions.length === 1">
-              Updated terms will take effect on {{ formatDateLong(futureRevisions[0]) }}.
+              Updated terms will take effect on {{ fullDateLong(futureRevisions[0]) }}.
               <NuxtLink :to="`/legal/${name}/${futureRevisions[0]}`">
                 Preview the upcoming version.
               </NuxtLink>
@@ -225,7 +225,7 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
             <template v-else>
               Updated terms are scheduled. Upcoming effective dates:
               <span v-for="(r, i) in futureRevisions" :key="r">
-                <NuxtLink :to="`/legal/${name}/${r}`">{{ formatDateLong(r) }}</NuxtLink><template v-if="i < futureRevisions.length - 1">, </template>
+                <NuxtLink :to="`/legal/${name}/${r}`">{{ fullDateLong(r) }}</NuxtLink><template v-if="i < futureRevisions.length - 1">, </template>
               </span>.
             </template>
           </Alert>
@@ -248,9 +248,9 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
                 <li v-for="revision in futureRevisions" :key="revision">
                   <NuxtLink
                     :to="`/legal/${name}/${revision}`"
-                    :aria-label="`View upcoming revision effective ${formatDateLong(revision)}`"
+                    :aria-label="`View upcoming revision effective ${fullDateLong(revision)}`"
                   >
-                    Effective {{ formatDateLong(revision) }}
+                    Effective {{ fullDateLong(revision) }}
                   </NuxtLink>
                 </li>
               </ul>
@@ -264,9 +264,9 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
                 <li v-for="revision in pastRevisions" :key="revision">
                   <NuxtLink
                     :to="`/legal/${name}/${revision}`"
-                    :aria-label="`View revision from ${formatDateLong(revision)}`"
+                    :aria-label="`View revision from ${fullDateLong(revision)}`"
                   >
-                    {{ formatDateLong(revision) }}
+                    {{ fullDateLong(revision) }}
                   </NuxtLink>
                 </li>
               </ul>

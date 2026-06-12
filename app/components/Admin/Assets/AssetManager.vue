@@ -15,6 +15,7 @@ import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { CMS_BUCKET_ID, formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, listStorageObjectsFlat, normalizePrefix } from '@/lib/storageAssets'
+import { fullDateTime } from '@/lib/utils/date'
 
 interface Props {
   bucketId?: StorageBucketId
@@ -402,7 +403,6 @@ function promptRenameAsset(asset: CmsAsset) {
     return
   assetPendingRename.value = asset
   showRenameModal.value = true
-  showDetailsDrawer.value = false
 }
 
 async function handleRenameSubmit(newName: string) {
@@ -428,7 +428,6 @@ async function handleRenameSubmit(newName: string) {
 
   showRenameModal.value = false
   assetPendingRename.value = null
-  showDetailsDrawer.value = false
 }
 
 async function renameFileAsset(asset: CmsAsset, newPathInput: string): Promise<string | null> {
@@ -768,7 +767,7 @@ onBeforeMount(fetchAssets)
                 <Table.Cell>
                   {{ row._original.type === 'folder' ? '-' : formatBytes(row._original.size) }}
                 </Table.Cell>
-                <Table.Cell>{{ row._original.updated_at ? new Date(row._original.updated_at).toLocaleString() : '-' }}</Table.Cell>
+                <Table.Cell>{{ row._original.updated_at ? fullDateTime(row._original.updated_at) : '-' }}</Table.Cell>
                 <Table.Cell @click.stop>
                   <Flex gap="xxs">
                     <CopyClipboard

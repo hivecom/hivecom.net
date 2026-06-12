@@ -19,6 +19,7 @@ import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
 import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { fullDate, fullMonth } from '@/lib/utils/date'
 
 const props = withDefaults(defineProps<Props>(), {
   gameId: null,
@@ -165,25 +166,6 @@ function formatMinutesPlayed(minutes: number): string {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function formatDate(dateStr: string): string {
-  try {
-    return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-  }
-  catch {
-    return dateStr
-  }
-}
-
-function formatTrackedSince(createdAt: string | null): string {
-  if (!createdAt)
-    return ''
-  try {
-    return new Date(createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
-  }
-  catch {
-    return ''
-  }
-}
 
 type ServerState = 'healthy' | 'running' | 'unhealthy' | 'offline' | 'unknown'
 
@@ -405,7 +387,7 @@ watch(
         </h3>
         <Tooltip v-if="currentDetails?.game.created_at" placement="top">
           <template #tooltip>
-            <p>Tracked since {{ formatTrackedSince(currentDetails.game.created_at) }}</p>
+            <p>Tracked since {{ fullMonth(currentDetails.game.created_at) }}</p>
           </template>
         </Tooltip>
       </Flex>
@@ -475,7 +457,7 @@ watch(
                     <Badge v-for="mode in currentDetails.game.multiplayer_modes" :key="mode" variant="info" size="s">
                       {{ mode }}
                     </Badge>
-                    <TimestampDate v-if="currentDetails.game.release_date" :date="currentDetails.game.release_date" format="YYYY" size="xs" />
+                    <TimestampDate v-if="currentDetails.game.release_date" :date="currentDetails.game.release_date" type="year" size="xs" />
                   </Flex>
                   <Flex v-if="steamUrl || websiteUrl" wrap gap="xs" y-center>
                     <a v-if="steamUrl" :href="steamUrl" target="_blank" rel="noopener noreferrer" class="game-details-modal__meta-link" @click="handleContentClick">
@@ -661,7 +643,7 @@ watch(
                     {{ getEventStatus(ev).label }}
                   </Badge>
                 </Flex>
-                <span class="text-xs text-color-lighter">{{ formatDate(ev.date) }}</span>
+                <span class="text-xs text-color-lighter">{{ fullDate(ev.date) }}</span>
               </Flex>
             </NuxtLink>
           </Grid>

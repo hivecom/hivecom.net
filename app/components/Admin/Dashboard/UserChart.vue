@@ -20,6 +20,7 @@ import { Line } from 'vue-chartjs'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { getChartPalette, getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
+import { fullMonth } from '@/lib/utils/date'
 
 // Register Chart.js components
 ChartJS.register(
@@ -115,7 +116,7 @@ const chartData = computed(() => {
   const sortedData = monthlyData.value
 
   const labels = sortedData.map((data) => {
-    return dayjs(data.month).format('MMM YYYY')
+    return fullMonth(data.month)
   })
 
   const totalUsersData = sortedData.map(data => data.totalUsers)

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Badge, Button, Divider, Flex, Popout } from '@dolanske/vui'
 import { computed, ref } from 'vue'
+import { displayDate } from '@/lib/utils/date'
 
 // Local type until migration is applied and database.types.ts is regenerated
 interface LastfmPresence {
@@ -59,7 +60,7 @@ const playedAtFormatted = computed(() => {
   if (diffDays < 7)
     return `${diffDays}d ago`
 
-  return date.toLocaleDateString()
+  return displayDate(date)
 })
 
 const lastfmProfileUrl = computed(() =>

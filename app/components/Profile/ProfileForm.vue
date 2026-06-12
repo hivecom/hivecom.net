@@ -11,7 +11,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/storage'
 import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
-import { formatDateOnly } from '@/lib/utils/date'
+import { formatDateOnly, fullDateLong } from '@/lib/utils/date'
 import { replaceMarkdownH1, stripHtmlTags } from '@/lib/utils/sanitize'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
 import FileUpload from '../Shared/FileUpload.vue'
@@ -389,11 +389,7 @@ const birthdayButtonLabel = computed(() => {
   if (!birthdayDateModel.value)
     return 'Choose birthday (optional)'
 
-  return birthdayDateModel.value.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
+  return fullDateLong(birthdayDateModel.value)
 })
 
 const hasBirthday = computed(() => !!profileForm.value.birthday)

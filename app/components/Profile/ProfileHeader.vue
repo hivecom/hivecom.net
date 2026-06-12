@@ -8,7 +8,7 @@ import { useDataUser } from '@/composables/useDataUser'
 import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
-import { isBirthdayDateToday } from '@/lib/utils/date'
+import { fullDateLong, fullDateTime, isBirthdayDateToday } from '@/lib/utils/date'
 import MarkdownRenderer from '../Shared/MarkdownRenderer.vue'
 
 interface Props {
@@ -96,7 +96,7 @@ const birthdayInfo = computed(() => {
     age = 0
 
   return {
-    formatted: parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+    formatted: fullDateLong(parsed),
     age,
     isToday: birthdayIsToday,
     isBornThisYear,
@@ -133,13 +133,7 @@ const joinedTooltip = computed(() => {
   if (Number.isNaN(created.getTime()))
     return ''
 
-  return created.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return fullDateTime(created)
 })
 
 // Generate profile URL for copying

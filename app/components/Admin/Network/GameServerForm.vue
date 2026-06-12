@@ -6,7 +6,7 @@ import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
 import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
-import { CMS_BUCKET_ID } from '@/lib/storageAssets'
+import { STATIC_BUCKET_ID } from '@/lib/storageAssets'
 
 const props = defineProps<{
   gameserver: QueryGameserver | null
@@ -521,7 +521,7 @@ onMounted(() => {
           min-height="216px"
           show-expand-button
           :media-context="props.gameserver?.id ? `gameservers/${props.gameserver.id}/markdown/media` : undefined"
-          :media-bucket-id="CMS_BUCKET_ID"
+          :media-bucket-id="STATIC_BUCKET_ID"
           :show-attachment-button="!!props.gameserver?.id"
         />
       </Flex>

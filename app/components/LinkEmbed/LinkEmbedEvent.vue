@@ -3,12 +3,11 @@ import type { useDataLinkPreview } from '@/composables/useDataLinkPreview'
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Flex } from '@dolanske/vui'
 import { useIntervalFn } from '@vueuse/core'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
 import { resolveComponent } from 'vue'
 import CountdownTimer from '@/components/Events/CountdownTimer.vue'
 import { useContainerBreakpoint } from '@/composables/useContainerBreakpoint'
 import { useEventTiming } from '@/composables/useEventTiming'
+import { fullDate } from '@/lib/utils/date'
 import { humanizeRrule, nextOccurrenceDate } from '@/lib/utils/rrule'
 
 type LinkPreviewData = NonNullable<ReturnType<typeof useDataLinkPreview>['data']['value']>
@@ -17,8 +16,6 @@ type EventData = LinkPreviewData & { type: 'event' }
 const props = defineProps<{
   data: EventData
 }>()
-
-dayjs.extend(relativeTime)
 
 const NuxtLink = resolveComponent('NuxtLink')
 const el = ref<HTMLElement | null>(null)
@@ -77,7 +74,7 @@ const eventStatus = computed(() => {
 function formatDate(date: string | null): string {
   if (date == null || date === '')
     return 'Unknown date'
-  return dayjs(date).format('MMM D, YYYY')
+  return fullDate(date)
 }
 </script>
 
