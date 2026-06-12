@@ -410,9 +410,14 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
           hide-title
           hide-untracked
         >
-          <p class="chart-section__subtitle text-color-lighter text-xxs">
-            Last 14 days of game activity
-          </p>
+          <Flex y-center x-between gap="s" expand>
+            <Flex class="chart-section__subtitle" gap="xxs" y-center @click="activityModalOpen = true">
+              <p class="text-color-lighter text-xxs">
+                Last 14 days of game activity
+              </p>
+              <Icon size="14" name="ph:arrows-out" class="text-color-lighter" />
+            </Flex>
+          </Flex>
         </ChartGameActivity>
       </section>
 
@@ -544,6 +549,7 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
   }
 
   &__subtitle {
+    cursor: pointer;
     position: absolute;
     bottom: var(--space-s);
     right: var(--space-m);

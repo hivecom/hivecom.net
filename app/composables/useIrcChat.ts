@@ -2626,7 +2626,13 @@ function openSocket() {
   markIdentityAuthed(authCreds != null)
 
   try {
-    ws = new WebSocket(WS_URL, ['binary'])
+    // IRCv3 defines the WebSocket subprotocols as `text.ircv3.net` / `binary.ircv3.net`.
+    // Chrome strictly fails the handshake if we send a `Sec-WebSocket-Protocol` request
+    // header and the server does not echo one back (Firefox/Safari are lenient). Ergo only
+    // recognises the two IRCv3 names, so requesting the bare `binary` token meant no header
+    // was echoed and Chrome aborted the connection. Request `text.ircv3.net` so Ergo echoes
+    // it and sends UTF-8 text frames, which is what the `onmessage` handler below expects.
+    ws = new WebSocket(WS_URL, ['text.ircv3.net'])
   }
   catch (e) {
     addServer({ type: 'error', text: `Failed to open WebSocket: ${String(e)}` })
