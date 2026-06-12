@@ -92,6 +92,11 @@ const WANTED_CAPS = [
   // guard against `backlog` so replayed events never mutate live state.
   'draft/event-playback',
   'draft/metadata-2',
+  // draft/channel-rename: rename a channel in place, preserving membership,
+  // modes, topic and lists, instead of part+join to a fresh channel.
+  'draft/channel-rename',
+  // draft/message-redaction: delete messages (own messages, or others' as op).
+  'draft/message-redaction',
 ]
 
 export type ConnState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'offline'
@@ -118,6 +123,12 @@ export interface ChatMessage {
    * value to the nicks who reacted. Empty values are pruned on the last unreact.
    */
   reactions?: Record<string, string[]>
+  /** True once the message has been deleted via IRCv3 draft/message-redaction. */
+  redacted?: boolean
+  /** Nick that performed the redaction (may be the author or a channel op). */
+  redactedBy?: string
+  /** Optional reason supplied with the REDACT command. */
+  redactedReason?: string
 }
 
 export type BufferKind = 'server' | 'channel' | 'pm'
@@ -397,6 +408,8 @@ let authCreds: ChatIdentity | null = null
 let useAnonymous = false
 let saslFailed = false
 const chatHistorySupported = ref(false)
+// True when the server ACKs draft/message-redaction, enabling the REDACT command.
+const redactionSupported = ref(false)
 let echoMessageActive = false
 let probingNickServInfo = false
 // True once the NickServ INFO probe for the current session has resolved (or timed out).
@@ -740,6 +753,26 @@ function drainPendingReactions(buf: ChatBuffer, msgid: string) {
   byMsgid.delete(msgid)
   for (const op of queued)
     applyReaction(buf, msgid, op.reaction, op.who, op.remove)
+}
+
+/**
+ * Apply an IRCv3 draft/message-redaction to the message identified by `msgid`
+ * within `buf`. Per spec, a REDACT referencing an unknown msgid MUST be ignored,
+ * so a missing target is a silent no-op. We keep the message in place (preserving
+ * authorship and ordering) and mark it redacted; the UI renders a placeholder and
+ * drops any embeds/reactions. Original content is discarded - redaction is
+ * cosmetic and we offer no "reveal" affordance.
+ */
+function applyRedaction(buf: ChatBuffer, msgid: string, by: string, reason: string) {
+  if (!msgid)
+    return
+  const target = buf.messages.find(m => m.msgid === msgid)
+  if (!target || target.redacted)
+    return
+  target.redacted = true
+  target.redactedBy = by
+  target.redactedReason = reason || undefined
+  target.reactions = undefined
 }
 
 function stripPrefix(name: string) {
@@ -1321,6 +1354,8 @@ function handleMessage(raw: string) {
           messageTagsActive = true
         if (list.includes('draft/read-marker'))
           readMarkerActive = true
+        if (list.includes('draft/message-redaction'))
+          redactionSupported.value = true
         if (list.includes('sasl') && (authCreds || useAnonymous)) {
           saslMech = useAnonymous ? 'ANONYMOUS' : 'PLAIN'
           send(`AUTHENTICATE ${saslMech}`)
@@ -1532,6 +1567,59 @@ function handleMessage(raw: string) {
       addServer({ type: 'system', text: `${oldName} is now known as ${newNick}` }, { ts })
       if (isOwnNick && activeName.value !== SERVER_BUFFER)
         addToBuffer(activeName.value, findBuffer(activeName.value)?.kind ?? 'channel', { type: 'system', text: `You are now known as ${newNick}` }, { ts })
+      break
+    }
+
+    case 'RENAME': {
+      // IRCv3 draft/channel-rename: :nick!user@host RENAME #old #new :reason
+      // The rename preserves all channel state, so we migrate the existing buffer
+      // in place rather than tearing it down and rebuilding it.
+      if (backlog)
+        break
+      const oldChannel = params[0] ?? ''
+      const newChannel = params[1] ?? ''
+      const renameReason = params[2] ?? ''
+      if (!oldChannel || !newChannel)
+        break
+      const buf = findBuffer(oldChannel)
+      const oldLc = oldChannel.toLowerCase()
+      const newLc = newChannel.toLowerCase()
+      if (buf) {
+        buf.name = newChannel
+        if (oldLc !== newLc) {
+          // Migrate the persisted read position to the new key.
+          if (readPositions[oldLc] !== undefined) {
+            readPositions[newLc] = readPositions[oldLc]!
+            delete readPositions[oldLc]
+            if (import.meta.client)
+              localStorage.setItem(STORAGE_READ_POSITIONS, JSON.stringify(readPositions))
+          }
+        }
+      }
+      // Migrate the channel metadata cache to the new key (covers unjoined parents too).
+      if (oldLc !== newLc) {
+        const metaEntry = channelMetaCache.value.get(oldLc)
+        if (metaEntry) {
+          const next = new Map(channelMetaCache.value)
+          next.delete(oldLc)
+          next.set(newLc, metaEntry)
+          channelMetaCache.value = next
+        }
+      }
+      // Keep the active/previous buffer pointers and persisted auto-join in sync.
+      if (activeName.value.toLowerCase() === oldLc)
+        activeName.value = newChannel
+      if (previousActiveName.value.toLowerCase() === oldLc)
+        previousActiveName.value = newChannel
+      if (inputChannel.value.toLowerCase() === oldLc) {
+        inputChannel.value = newChannel
+        persistChannel(newChannel)
+      }
+      if (channelSettingsOpen.value?.toLowerCase() === oldLc)
+        channelSettingsOpen.value = newChannel
+      const renamer = nickFrom === nick.value ? 'You' : (nickFrom || 'Someone')
+      const reasonSuffix = renameReason ? ` (${renameReason})` : ''
+      addToBuffer(newChannel, 'channel', { type: 'system', channel: newChannel, text: `${renamer} renamed ${oldChannel} to ${newChannel}${reasonSuffix}` }, { ts })
       break
     }
 
@@ -2217,6 +2305,25 @@ function handleMessage(raw: string) {
       break
     }
 
+    case 'REDACT': {
+      // IRCv3 draft/message-redaction: :redactor REDACT <target> <msgid> [:reason]
+      // Relayed both live and inside CHATHISTORY batches (backlog). The redactor
+      // may be the author or a channel op. We mark the target message redacted
+      // wherever it lives; an unknown msgid is ignored per spec.
+      if (!nickFrom)
+        break
+      const redactTarget = params[0] ?? ''
+      const redactMsgid = params[1] ?? ''
+      const redactReason = params.length > 2 ? (params[params.length - 1] ?? '') : ''
+      const isRedactChannel = redactTarget.startsWith('#') || redactTarget.startsWith('&')
+      const isSelfRedact = nickFrom === nick.value
+      const redactBufName = isRedactChannel ? redactTarget : (isSelfRedact ? redactTarget : nickFrom)
+      const redactBuf = findBuffer(redactBufName)
+      if (redactBuf && redactMsgid)
+        applyRedaction(redactBuf, redactMsgid, nickFrom, redactReason)
+      break
+    }
+
     case '473': { // ERR_INVITEONLYCHAN - channel is invite-only
       const invChannel = params[1] ?? ''
       if (invChannel) {
@@ -2340,6 +2447,16 @@ function handleMessage(raw: string) {
           const desc = params[params.length - 1] ?? 'Metadata error'
           addServer({ type: 'error', text: `Metadata: ${desc}` }, { ts })
         }
+      }
+      else if (failCmd === 'RENAME') {
+        // draft/channel-rename failures (CHANNEL_NAME_IN_USE, CANNOT_RENAME, ...).
+        const desc = params[params.length - 1] ?? 'The channel could not be renamed'
+        addServer({ type: 'error', text: `Rename failed: ${desc}` }, { ts })
+      }
+      else if (failCmd === 'REDACT') {
+        // draft/message-redaction failures (REDACT_FORBIDDEN, UNKNOWN_MSGID, ...).
+        const desc = params[params.length - 1] ?? 'The message could not be deleted'
+        addToActive({ type: 'error', text: `Delete failed: ${desc}` }, { ts })
       }
       break
     }
@@ -2573,6 +2690,24 @@ function joinChannel(name: string, key?: string) {
   setActive(channel)
 }
 
+/**
+ * Rename a channel in place via the IRCv3 draft/channel-rename RENAME command.
+ * The new name inherits the existing channel's prefix type (#/&) so the server
+ * doesn't reject a prefix-type change. The buffer is migrated when the server
+ * echoes the RENAME back (see the handler in handleMessage).
+ */
+function renameChannel(oldName: string, newName: string, reason?: string) {
+  const prefix = oldName[0] ?? '#'
+  const slug = newName.trim().replace(/^[#&]+/, '')
+  if (!slug)
+    return
+  const target = `${prefix}${slug}`
+  if (target === oldName)
+    return
+  const trimmedReason = reason?.trim()
+  send(trimmedReason ? `RENAME ${oldName} ${target} :${trimmedReason}` : `RENAME ${oldName} ${target}`)
+}
+
 function openPm(target: string) {
   const buf = getBuffer(target, 'pm')
   forgetClosedDm(target)
@@ -2795,6 +2930,48 @@ function toggleReaction(parent: ChatMessage, reaction: string) {
   const tag = mine ? '+draft/unreact' : '+draft/react'
   send(`@+reply=${escapeTagValue(parent.msgid)};${tag}=${escapeTagValue(reaction)} TAGMSG ${target}`)
   applyReaction(buf, parent.msgid, reaction, nick.value, mine)
+}
+
+/**
+ * Whether the current user may delete `message` in the active buffer. Allowed for
+ * the user's own messages, or for any message when the user holds an operator-tier
+ * role (halfop and above) in the channel. The server is the final authority and
+ * may still reject with FAIL REDACT; this only governs whether we offer the action.
+ */
+function canRedact(message: ChatMessage): boolean {
+  if (!redactionSupported.value || !message.msgid || message.redacted)
+    return false
+  if (message.type !== 'chat')
+    return false
+  const buf = findBuffer(activeName.value)
+  if (!buf || buf.kind === 'server')
+    return false
+  // Own messages are always offered (server confirms permission).
+  if (message.from && message.from.toLowerCase() === nick.value.toLowerCase())
+    return true
+  // Channel operators (halfop+) may redact other members' messages.
+  if (buf.kind === 'channel') {
+    const role = myChannelRole(buf.name)
+    if (role && ['~', '&', '@', '%'].includes(role.symbol))
+      return true
+  }
+  return false
+}
+
+/**
+ * Send an IRCv3 REDACT for `message` in the active buffer. The redaction is applied
+ * locally only when the server relays the REDACT back (live or in history), so a
+ * server-side rejection (FAIL REDACT) leaves the message untouched.
+ */
+function redactMessage(message: ChatMessage, reason?: string) {
+  if (!message.msgid)
+    return
+  const target = activeName.value
+  const buf = findBuffer(target)
+  if (!buf || buf.kind === 'server')
+    return
+  const trimmed = reason?.trim()
+  send(`REDACT ${target} ${message.msgid}${trimmed ? ` :${trimmed}` : ''}`)
 }
 
 function sendMessage() {
@@ -3188,6 +3365,10 @@ export function useIrcChat() {
     registerComposerFocus,
     // reactions
     toggleReaction,
+    // redaction (draft/message-redaction)
+    redactionSupported,
+    canRedact,
+    redactMessage,
     // typing
     sendTyping,
     // connection
@@ -3222,6 +3403,7 @@ export function useIrcChat() {
     clearMessages,
     setActive,
     joinChannel,
+    renameChannel,
     openPm,
     sendPm,
     closeBuffer,

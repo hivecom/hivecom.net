@@ -115,6 +115,7 @@ interface TableColumnOverrides {
       chat_typing_indicators: boolean
       chat_irc_reactions: boolean
       chat_irc_hide_embedded_links: boolean
+      chat_irc_hide_sidebar_timestamps: boolean
       chat_irc_inline_images: boolean
       chat_irc_native_modes: boolean
     }

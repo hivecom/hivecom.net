@@ -49,6 +49,7 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     chat_typing_indicators: false,
     chat_irc_reactions: true,
     chat_irc_hide_embedded_links: true,
+    chat_irc_hide_sidebar_timestamps: true,
     chat_irc_inline_images: true,
     chat_irc_native_modes: false,
   }

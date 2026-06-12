@@ -6,7 +6,7 @@ import { computed, ref, watch } from 'vue'
 import EventFormFields from '@/components/Events/EventFormFields.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useEffectiveRole } from '@/composables/useEffectiveRole'
-import { CMS_BUCKET_ID } from '@/lib/storageAssets'
+import { STATIC_BUCKET_ID } from '@/lib/storageAssets'
 import { expandRecurringEvent } from '@/lib/utils/rrule'
 
 const props = defineProps<{
@@ -360,7 +360,7 @@ async function handleDelete() {
       :is-privileged="isPrivileged"
       :is-edit-mode="isEditMode"
       :event-id="props.event?.id?.toString()"
-      :media-bucket-id="CMS_BUCKET_ID"
+      :media-bucket-id="STATIC_BUCKET_ID"
       :validation="validation"
     />
 

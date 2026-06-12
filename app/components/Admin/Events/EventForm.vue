@@ -5,7 +5,7 @@ import { Button, Flex, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import EventFormFields from '@/components/Events/EventFormFields.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { CMS_BUCKET_ID } from '@/lib/storageAssets'
+import { STATIC_BUCKET_ID } from '@/lib/storageAssets'
 import { expandRecurringEvent } from '@/lib/utils/rrule'
 
 const props = defineProps<{
@@ -282,7 +282,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
       :show-recurrence-builder="!props.event?.recurrence_parent_id"
       :show-recurrence-exception="props.isEditMode && !!props.event?.recurrence_parent_id"
       :validation="validation"
-      :media-bucket-id="CMS_BUCKET_ID"
+      :media-bucket-id="STATIC_BUCKET_ID"
     />
 
     <template #footer>

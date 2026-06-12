@@ -4,6 +4,7 @@ import { computed, defineAsyncComponent, h, ref, watch } from 'vue'
 import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
 import UserRoleBadge from '@/components/Chat/UserRoleBadge.vue'
 import ColorPicker from '@/components/Shared/ColorPicker.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import TagInput from '@/components/Shared/TagInput.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { channelRole, useIrcChat } from '@/composables/useIrcChat'
@@ -18,7 +19,7 @@ const RichTextEditor = defineAsyncComponent({
   loadingComponent: { render: () => h(Skeleton, { height: 120, radius: 8 }) },
 })
 
-const { buffers, send, setChannelMetadata, deleteChannelMetadata, myChannelRole, fetchListModes, queryChanServInfo, suppressChanServResponse, initiateDrop, nick, channelMetaCache } = useIrcChat()
+const { buffers, send, setChannelMetadata, deleteChannelMetadata, myChannelRole, fetchListModes, queryChanServInfo, suppressChanServResponse, initiateDrop, renameChannel, nick, channelMetaCache } = useIrcChat()
 const isMobile = useBreakpoint('<s')
 const { settings } = useDataUserSettings()
 
@@ -122,11 +123,13 @@ const draftPasswordEnabled = ref(false)
 const draftLimit = ref('')
 const draftForward = ref('')
 const draftSubchannels = ref<string[]>([])
+const draftRenameName = ref('')
 
 function populateDraft() {
   if (!buf.value)
     return
   draftTopic.value = buf.value.topic ?? ''
+  draftRenameName.value = buf.value.name.replace(/^[#&]/, '')
   draftDisplayName.value = buf.value.metadata?.get('display-name') ?? ''
   draftAvatar.value = buf.value.metadata?.get('avatar') ?? ''
   draftColor.value = buf.value.metadata?.get('color') ?? ''
@@ -269,6 +272,34 @@ function dropChannel() {
     return
   buf.value.registered = undefined
   initiateDrop(props.channel)
+}
+
+// Ergo refuses to rename channels with persistent history (i.e. registered
+// channels), so only offer the action once we know the channel is unregistered.
+const canRename = computed(() => canEdit.value && buf.value?.registered === false)
+
+const renameValid = computed(() => {
+  if (!props.channel)
+    return false
+  const slug = draftRenameName.value.trim().replace(/^[#&]+/, '')
+  if (!slug)
+    return false
+  return `${props.channel[0]}${slug}` !== props.channel
+})
+
+const renameConfirmOpen = ref(false)
+
+function promptRename() {
+  if (!canRename.value || !renameValid.value)
+    return
+  renameConfirmOpen.value = true
+}
+
+function renameChannelAction() {
+  if (!props.channel || !renameValid.value)
+    return
+  renameChannel(props.channel, draftRenameName.value)
+  renameConfirmOpen.value = false
 }
 
 function unban(mask: string) {
@@ -734,6 +765,37 @@ function save() {
 
         <Divider />
 
+        <!-- Rename -->
+        <Flex column gap="xs" expand>
+          <label class="channel-settings__label">Channel name</label>
+          <Flex y-center gap="xs" expand>
+            <Input
+              v-model="draftRenameName"
+              expand
+              placeholder="channel-name"
+              :disabled="!canRename"
+              @keydown.enter="promptRename"
+            >
+              <template #start>
+                <span class="text-color-lighter">{{ channel?.[0] ?? '#' }}</span>
+              </template>
+            </Input>
+            <Button variant="accent" :disabled="!canRename || !renameValid" @click="promptRename">
+              Rename
+            </Button>
+          </Flex>
+          <p class="text-xxs text-color-lighter channel-settings__hint">
+            <template v-if="canEdit && buf?.registered === true">
+              Registered channels with persistent history cannot be renamed. Drop the registration first to rename it.
+            </template>
+            <template v-else>
+              For a cosmetic change, set the display name above. Renaming wipes the channel's message history.
+            </template>
+          </p>
+        </Flex>
+
+        <Divider />
+
         <Flex column gap="m" expand>
           <!-- Topic -->
           <Flex column gap="xs" expand>
@@ -855,6 +917,16 @@ function save() {
       </DropdownItem>
     </div>
   </Sheet>
+
+  <ConfirmModal
+    v-model:open="renameConfirmOpen"
+    :confirm="renameChannelAction"
+    title="Rename this channel?"
+    description="Renaming wipes the channel's message history. For a simple, cosmetic change, set the display name above instead."
+    confirm-text="Rename"
+    cancel-text="Cancel"
+    :destructive="true"
+  />
 </template>
 
 <style lang="scss" scoped>

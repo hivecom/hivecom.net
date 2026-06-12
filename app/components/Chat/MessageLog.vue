@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MediaItem } from '@/components/Shared/Lightbox.vue'
 import type { ChatMessage } from '@/composables/useIrcChat'
-import { Button, ContextMenu, Divider, DropdownItem, Flex, pushToast, Sheet, Spinner } from '@dolanske/vui'
+import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, pushToast, Sheet, Spinner } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import ChatMessageReactions from '@/components/Chat/MessageReactions.vue'
@@ -10,6 +10,7 @@ import YouTubeEmbed from '@/components/Chat/YouTubeEmbed.vue'
 import LinkEmbed from '@/components/LinkEmbed/index.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import Lightbox from '@/components/Shared/Lightbox.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
@@ -23,7 +24,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{ compact?: boolean }>()
 
-const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, toggleReaction, chatHistorySupported, isChatVisible, userMetaStore } = useIrcChat()
+const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, toggleReaction, canRedact, redactMessage, chatHistorySupported, isChatVisible, userMetaStore } = useIrcChat()
 
 function ircMeta(nickLower: string | null | undefined) {
   if (!nickLower)
@@ -147,7 +148,11 @@ const VIDEO_RE = /\.(?:mp4|webm|mov|m4v)(?:\?\S*)?$/i
 const YOUTUBE_RE = /^https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([-\w]{11})/i
 const MENTION_RE = /@([a-z\d][\w-]{0,31})/gi
 
-const showTimestamps = computed(() => settings.value.chat_show_timestamps)
+const showTimestamps = computed(() => {
+  if (props.compact && settings.value.chat_display_mode === 'irc' && settings.value.chat_irc_hide_sidebar_timestamps)
+    return false
+  return settings.value.chat_show_timestamps
+})
 const isModernMode = computed(() => (isMobile.value || settings.value.chat_display_mode === 'modern') && activeBuffer.value?.kind !== 'server')
 const isServerBuffer = computed(() => activeBuffer.value?.kind === 'server')
 const isServiceQuery = computed(() => activeBuffer.value?.kind === 'pm' && SERVICE_NICKS.has((activeBuffer.value?.name ?? '').toLowerCase()))
@@ -927,6 +932,35 @@ function reply(msg: ChatMessage) {
   mobileMenuOpen.value = false
 }
 
+// Message deletion (IRCv3 draft/message-redaction). Confirmed via ConfirmModal
+// before the REDACT command is sent.
+const redactConfirmOpen = ref(false)
+const redactTargetMsg = ref<ChatMessage | null>(null)
+
+const redactIsOwn = computed(() =>
+  !!redactTargetMsg.value?.from && redactTargetMsg.value.from.toLowerCase() === nick.value.toLowerCase(),
+)
+
+function promptRedact(msg: ChatMessage) {
+  redactTargetMsg.value = msg
+  redactConfirmOpen.value = true
+  closeMenu()
+  mobileMenuOpen.value = false
+}
+
+function confirmRedact() {
+  if (redactTargetMsg.value)
+    redactMessage(redactTargetMsg.value)
+  redactTargetMsg.value = null
+}
+
+// Placeholder shown in place of a deleted message's content.
+function redactedLabel(msg: ChatMessage): string {
+  const byOther = msg.redactedBy && msg.from && msg.redactedBy.toLowerCase() !== msg.from.toLowerCase()
+  const base = byOther ? `Message deleted by ${msg.redactedBy}` : 'Message deleted'
+  return msg.redactedReason ? `${base}: ${msg.redactedReason}` : base
+}
+
 function replySource(msg: ChatMessage): ChatMessage | null {
   if (!msg.replyTo)
     return null
@@ -1186,7 +1220,8 @@ onBeforeUnmount(() => {
     >
       <div
         class="chat-log__messages"
-        :class="{ 'chat-log__messages--server': isServerBuffer }"
+        :class="{ 'chat-log__messages--server': isServerBuffer,
+                  'chat-log__messages--modern': isModernMode }"
         :style="!isModernMode ? { '--irc-nick-col': `${nickColWidth}px` } : {}"
       >
         <div ref="topSentinel" class="chat-log__history-sentinel" />
@@ -1232,14 +1267,18 @@ onBeforeUnmount(() => {
                   @click.stop="replySource(msg) && scrollToReplySource(msg)"
                 >
                   <template v-if="replySource(msg)">
-                    <span class="chat-log__reply-nick">{{ replySource(msg)!.from }}</span>
+                    <span class="chat-log__reply-nick">{{ replySource(msg)!.from }}:</span>
                     <span class="chat-log__reply-text">{{ replySource(msg)!.text }}</span>
                   </template>
                   <span v-else class="chat-log__reply-text">&#x21A9; Reply to a previous message</span>
                 </div>
                 <span v-if="msg.action" class="chat-log__nick chat-log__nick--action" :style="nickStyle(msg)">{{ msg.from }}</span>
                 <div class="chat-log__text">
-                  <template v-for="(seg, i) in ircSegments(msg)" :key="i">
+                  <span v-if="msg.redacted" class="chat-log__redacted">
+                    <Icon name="ph:prohibit" :size="14" />
+                    {{ redactedLabel(msg) }}
+                  </span>
+                  <template v-for="(seg, i) in (msg.redacted ? [] : ircSegments(msg))" :key="i">
                     <a
                       v-if="seg.type === 'link'"
                       :href="seg.value"
@@ -1298,9 +1337,9 @@ onBeforeUnmount(() => {
                       {{ seg.value }}
                     </template>
                   </template>
-                  <ChatMessageReactions v-if="msg.reactions && settings.chat_irc_reactions" :message="msg" />
+                  <ChatMessageReactions v-if="!msg.redacted && msg.reactions && settings.chat_irc_reactions" :message="msg" />
                 </div>
-                <Flex v-if="!settings.chat_irc_inline_images && imageUrls(msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
+                <Flex v-if="!msg.redacted && !settings.chat_irc_inline_images && imageUrls(msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
                   <img
                     v-for="url in imageUrls(msg.text).filter(u => !brokenImages.has(u))"
                     :key="url"
@@ -1312,10 +1351,10 @@ onBeforeUnmount(() => {
                     @click="openLightbox(url, 'image')"
                   >
                 </Flex>
-                <Flex v-if="!settings.chat_irc_inline_images && youtubeUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                <Flex v-if="!msg.redacted && !settings.chat_irc_inline_images && youtubeUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
                   <YouTubeEmbed v-for="url in youtubeUrls(msg.text)" :key="url" :url="url" />
                 </Flex>
-                <Flex v-if="!settings.chat_irc_inline_images && videoUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                <Flex v-if="!msg.redacted && !settings.chat_irc_inline_images && videoUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
                   <video
                     v-for="url in videoUrls(msg.text)"
                     :key="url"
@@ -1329,7 +1368,7 @@ onBeforeUnmount(() => {
                     @click="openLightbox(url, 'video')"
                   />
                 </Flex>
-                <template v-if="previewUrls(msg.text).length">
+                <template v-if="!msg.redacted && previewUrls(msg.text).length">
                   <LinkEmbed
                     v-for="url in previewUrls(msg.text)"
                     :key="url"
@@ -1338,11 +1377,14 @@ onBeforeUnmount(() => {
                   />
                 </template>
               </div>
-              <div v-if="msg.msgid && msg.type === 'chat'" class="chat-log__line-react">
+              <div v-if="msg.msgid && msg.type === 'chat' && !msg.redacted" class="chat-log__line-react">
                 <button v-if="msg.from" class="chat-log__line-reply-btn" @click="reply(msg)">
                   <Icon name="ph:arrow-bend-up-left" size="16" class="text-color-lighter" />
                 </button>
                 <ReactionsSelect v-if="settings.chat_irc_reactions" @reaction="(emote) => toggleReaction(msg, emote)" />
+                <button v-if="canRedact(msg)" class="chat-log__line-reply-btn" title="Delete message" @click="promptRedact(msg)">
+                  <Icon name="ph:trash" size="16" class="text-color-lighter" />
+                </button>
               </div>
             </div>
           </template>
@@ -1501,13 +1543,24 @@ onBeforeUnmount(() => {
                       @click.stop="replySource(item.msg) && scrollToReplySource(item.msg)"
                     >
                       <template v-if="replySource(item.msg)">
-                        <span class="chat-log__reply-nick">{{ replySource(item.msg)!.from }}</span>
+                        <Badge variant="neutral" class="chat-log__reply-source">
+                          <Flex y-center gap="xxs">
+                            <Icon name="ph:arrow-bend-down-right" :size="10" />
+                            <UserAvatar v-if="resolvedUser(replySource(item.msg)!.from?.toLowerCase() ?? null)" :user-id="resolvedUser(replySource(item.msg)!.from?.toLowerCase() ?? null)!.id" :size="12" />
+                            <AvatarMedia v-else-if="ircAvatarUrl(replySource(item.msg)!.from?.toLowerCase() ?? '')" :size="12" :url="ircAvatarUrl(replySource(item.msg)!.from?.toLowerCase() ?? '')" :alt="replySource(item.msg)!.from ?? ''" />
+                            <span>{{ replySource(item.msg)!.from }}</span>
+                          </Flex>
+                        </Badge>
                         <span class="chat-log__reply-text">{{ replySource(item.msg)!.text }}</span>
                       </template>
                       <span v-else class="chat-log__reply-text">&#x21A9; Reply to a previous message</span>
                     </div>
                     <span class="chat-log__text">
-                      <template v-for="(seg, i) in segments(item.msg.text)" :key="i">
+                      <span v-if="item.msg.redacted" class="chat-log__redacted">
+                        <Icon name="ph:prohibit" :size="14" />
+                        {{ redactedLabel(item.msg) }}
+                      </span>
+                      <template v-for="(seg, i) in (item.msg.redacted ? [] : segments(item.msg.text))" :key="i">
                         <template v-if="seg.type === 'link'">
                           <a v-if="!imageUrls(item.msg.text).includes(seg.value) && !videoUrls(item.msg.text).includes(seg.value) && !previewUrls(item.msg.text).includes(seg.value) && !youtubeUrls(item.msg.text).includes(seg.value)" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
                         </template>
@@ -1522,24 +1575,27 @@ onBeforeUnmount(() => {
                         <template v-else>{{ seg.value }}</template>
                       </template>
                     </span>
-                    <Flex v-if="item.kind === 'msg' && imageUrls(item.msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
+                    <Flex v-if="!item.msg.redacted && item.kind === 'msg' && imageUrls(item.msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
                       <img v-for="url in imageUrls(item.msg.text).filter(u => !brokenImages.has(u))" :key="url" :src="url" alt="" loading="lazy" class="chat-log__embed" @error="onImageError(url)" @click="openLightbox(url, 'image')">
                     </Flex>
-                    <Flex v-if="item.kind === 'msg' && youtubeUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                    <Flex v-if="!item.msg.redacted && item.kind === 'msg' && youtubeUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
                       <YouTubeEmbed v-for="url in youtubeUrls(item.msg.text)" :key="url" :url="url" />
                     </Flex>
-                    <Flex v-if="videoUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                    <Flex v-if="!item.msg.redacted && videoUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
                       <video v-for="url in videoUrls(item.msg.text)" :key="url" :src="url" muted playsinline preload="metadata" :loop="videoShortUrls.has(url)" class="chat-log__embed-video" @loadedmetadata="onVideoMetadata($event, url)" @click="openLightbox(url, 'video')" />
                     </Flex>
-                    <template v-if="previewUrls(item.msg.text).length">
+                    <template v-if="!item.msg.redacted && previewUrls(item.msg.text).length">
                       <LinkEmbed v-for="url in previewUrls(item.msg.text)" :key="url" :url="url" class="chat-log__link-preview" />
                     </template>
-                    <ChatMessageReactions v-if="item.msg.reactions" :message="item.msg" />
-                    <div v-if="item.msg.msgid" class="chat-log__line-react">
+                    <ChatMessageReactions v-if="!item.msg.redacted && item.msg.reactions" :message="item.msg" />
+                    <div v-if="item.msg.msgid && !item.msg.redacted" class="chat-log__line-react">
                       <button class="chat-log__line-reply-btn" @click="reply(item.msg)">
                         <Icon name="ph:arrow-bend-up-left" :size="16" class="text-color-lighter" />
                       </button>
                       <ReactionsSelect @reaction="(emote) => toggleReaction(item.msg, emote)" />
+                      <button v-if="canRedact(item.msg)" class="chat-log__line-reply-btn" title="Delete message" @click="promptRedact(item.msg)">
+                        <Icon name="ph:trash" :size="16" class="text-color-lighter" />
+                      </button>
                     </div>
                   </div>
                   <template v-else>
@@ -1637,6 +1693,12 @@ onBeforeUnmount(() => {
             </template>
             Copy message
           </DropdownItem>
+          <DropdownItem v-if="canRedact(activeMessage)" variant="danger" @click="promptRedact(activeMessage)">
+            <template #icon>
+              <Icon name="ph:trash" />
+            </template>
+            Delete message
+          </DropdownItem>
         </template>
       </div>
     </template>
@@ -1713,10 +1775,24 @@ onBeforeUnmount(() => {
           </template>
           Copy message
         </DropdownItem>
+        <DropdownItem v-if="canRedact(activeMessage)" variant="danger" @click="promptRedact(activeMessage)">
+          <template #icon>
+            <Icon name="ph:trash" />
+          </template>
+          Delete message
+        </DropdownItem>
       </template>
     </div>
   </Sheet>
   <IrcWhoisModal :nick="whoisModalNick" :open="whoisModalOpen" @close="whoisModalOpen = false" />
+  <ConfirmModal
+    v-model:open="redactConfirmOpen"
+    title="Delete message"
+    :description="redactIsOwn ? 'Delete your message for everyone? This cannot be undone.' : 'Delete this message for everyone? This cannot be undone.'"
+    confirm-text="Delete"
+    destructive
+    @confirm="confirmRedact"
+  />
 </template>
 
 <style lang="scss" scoped>
@@ -1759,6 +1835,10 @@ onBeforeUnmount(() => {
 
   &__messages {
     flex: 1;
+
+    &--modern {
+      font-family: var(--font);
+    }
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -1917,6 +1997,14 @@ onBeforeUnmount(() => {
     min-width: 0;
     font-size: inherit;
     white-space: pre-wrap;
+  }
+
+  &__redacted {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xxs);
+    font-style: italic;
+    color: var(--color-text-lighter);
   }
 
   &__link {
@@ -2292,17 +2380,20 @@ onBeforeUnmount(() => {
 
   &__reply-quote {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: var(--space-xxs);
     font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
+    color: var(--color-text-light);
     padding: var(--space-xxs) var(--space-xs);
     border-left: 2px solid var(--color-border-strong);
+
+    .chat-log__modern-line & {
+      border-left: none;
+    }
     margin-bottom: var(--space-xxs);
     overflow: hidden;
     white-space: nowrap;
     cursor: default;
-    border-radius: var(--border-radius-xs);
     transition:
       background var(--transition-fast),
       color var(--transition-fast);
@@ -2336,6 +2427,16 @@ onBeforeUnmount(() => {
     font-weight: 600;
     color: var(--color-text-light);
     flex-shrink: 0;
+  }
+
+  &__reply-source {
+    flex-shrink: 0;
+    font-size: var(--font-size-xxs);
+    line-height: 1;
+
+    :deep(.vui-avatar) {
+      border-radius: 50%;
+    }
   }
 
   &__reply-text {

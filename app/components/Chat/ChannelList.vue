@@ -9,6 +9,7 @@ import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
 import ChannelTreeItem from '@/components/Chat/ChannelTreeItem.vue'
 import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
@@ -20,7 +21,7 @@ const props = defineProps<{
   horizontal?: boolean
 }>()
 
-const { buffers, activeName, setActive, closeBuffer, joinChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, channelMetaResolved, requestChannelMetadata, isUnauthorizedSubchannel, setChannelMetadata } = useIrcChat()
+const { buffers, activeName, setActive, closeBuffer, joinChannel, renameChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, channelMetaResolved, requestChannelMetadata, isUnauthorizedSubchannel, setChannelMetadata, queryChanServInfo } = useIrcChat()
 
 // Proactively fetch metadata for every implied parent path so slash-nesting can
 // be verified and the parent displayed even when we haven't joined it.
@@ -366,6 +367,11 @@ function onContextMenu(event: MouseEvent) {
     return
   }
 
+  // Resolve registration status so the rename action can be shown/hidden (Ergo
+  // refuses to rename registered channels with persistent history).
+  if (menuBuffer.value.kind === 'channel' && menuBuffer.value.registered === undefined && canEditBuffer(menuBuffer.value))
+    queryChanServInfo(menuBuffer.value.name)
+
   if (isMobile.value) {
     event.stopPropagation()
     mobileMenuOpen.value = true
@@ -456,6 +462,41 @@ function confirmCreateSubchannel() {
   joinChannel(fullName)
   createSubchannelTarget.value = null
   createSubchannelInput.value = ''
+}
+
+const renameChannelTarget = ref<ChatBuffer | null>(null)
+const renameChannelInput = ref('')
+
+function openRenameChannel(buf: ChatBuffer) {
+  renameChannelTarget.value = buf
+  renameChannelInput.value = buf.name.replace(/^[#&]/, '')
+  closeMenu()
+}
+
+const renameChannelValid = computed(() => {
+  const target = renameChannelTarget.value
+  const slug = renameChannelInput.value.trim().replace(/^[#&]+/, '')
+  if (!target || !slug)
+    return false
+  return `${target.name[0]}${slug}` !== target.name
+})
+
+const renameConfirmOpen = ref(false)
+
+function confirmRenameChannel() {
+  if (!renameChannelTarget.value || !renameChannelValid.value)
+    return
+  renameConfirmOpen.value = true
+}
+
+function executeRenameChannel() {
+  const target = renameChannelTarget.value
+  if (!target || !renameChannelValid.value)
+    return
+  renameChannel(target.name, renameChannelInput.value)
+  renameConfirmOpen.value = false
+  renameChannelTarget.value = null
+  renameChannelInput.value = ''
 }
 </script>
 
@@ -638,6 +679,12 @@ function confirmCreateSubchannel() {
                 </template>
                 Create sub-channel
               </DropdownItem>
+              <DropdownItem v-if="canEditBuffer(menuBuffer) && menuBuffer.registered === false" @click="openRenameChannel(menuBuffer)">
+                <template #icon>
+                  <Icon name="ph:pencil-simple" />
+                </template>
+                Rename channel
+              </DropdownItem>
               <Divider />
               <DropdownItem @click="closeBuffer(menuBuffer.name)">
                 <template #icon>
@@ -733,6 +780,12 @@ function confirmCreateSubchannel() {
               </template>
               Create sub-channel
             </DropdownItem>
+            <DropdownItem v-if="canEditBuffer(menuBuffer) && menuBuffer.registered === false" @click="openRenameChannel(menuBuffer)">
+              <template #icon>
+                <Icon name="ph:pencil-simple" />
+              </template>
+              Rename channel
+            </DropdownItem>
             <Divider />
             <DropdownItem @click="closeBuffer(menuBuffer.name)">
               <template #icon>
@@ -822,6 +875,48 @@ function confirmCreateSubchannel() {
       </Flex>
     </template>
   </Modal>
+  <Modal :open="renameChannelTarget !== null" size="s" @close="renameChannelTarget = null">
+    <template #header>
+      <h4>Rename channel</h4>
+    </template>
+    <Flex column gap="m">
+      <p class="text-s text-color-light" style="margin:0">
+        Enter a new name for <strong class="text-s">{{ renameChannelTarget?.name }}</strong>.
+      </p>
+      <Flex column gap="xs" expand>
+        <Input
+          v-model="renameChannelInput"
+          expand
+          placeholder="new-channel-name"
+          autofocus
+          @keydown.enter="confirmRenameChannel"
+        >
+          <template #start>
+            <span class="text-color-lighter">{{ renameChannelTarget?.name[0] ?? '#' }}</span>
+          </template>
+        </Input>
+      </Flex>
+    </Flex>
+    <template #footer>
+      <Flex gap="xs" x-end>
+        <Button variant="gray" @click="renameChannelTarget = null">
+          Cancel
+        </Button>
+        <Button variant="fill" :disabled="!renameChannelValid" @click="confirmRenameChannel">
+          Rename
+        </Button>
+      </Flex>
+    </template>
+  </Modal>
+  <ConfirmModal
+    v-model:open="renameConfirmOpen"
+    :confirm="executeRenameChannel"
+    title="Rename this channel?"
+    description="Renaming wipes the channel's message history. For a simple, cosmetic change, set a display name in channel settings instead."
+    confirm-text="Rename"
+    cancel-text="Cancel"
+    :destructive="true"
+  />
 </template>
 
 <style lang="scss" scoped>

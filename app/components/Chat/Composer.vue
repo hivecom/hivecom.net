@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex, Input, Modal, Spinner } from '@dolanske/vui'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, watchEffect } from 'vue'
 import ChatInfoModal from '@/components/Chat/ChannelInfoModal.vue'
 import IrcWhoisCard from '@/components/Chat/IrcWhoisCard.vue'
 import ChatTypingIndicator from '@/components/Chat/TypingIndicator.vue'
@@ -9,6 +9,7 @@ import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { nickColor, useIrcChat, whoisStore } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
   compact?: boolean
@@ -17,9 +18,23 @@ const props = defineProps<{
 const { inputMessage, activeName, activeBuffer, canChat, users, buffers, nick, sendMessage, replyTarget, clearReply, sendTyping, requestWhois, markBufferRead, channelList, listChannels, channelListLoading, registerComposerFocus } = useIrcChat()
 const { settings } = useDataUserSettings()
 const { resolved: resolvedNicks, resolve: resolveNick } = useIrcNickResolver()
+const isMobile = useBreakpoint('<s')
+const isModernMode = computed(() => isMobile.value || settings.value.chat_display_mode === 'modern')
+
+const inputComp = ref<InstanceType<typeof Input>>()
 
 onMounted(() => {
   registerComposerFocus(() => nativeInput()?.focus())
+  watchEffect(() => {
+    const container = inputComp.value?.$el as HTMLElement | undefined
+    if (!container)
+      return
+    container.style.setProperty('--irc-input-size', 'var(--chat-font-size, var(--font-size-s))')
+    if (isModernMode.value)
+      container.style.removeProperty('--irc-input-font')
+    else
+      container.style.setProperty('--irc-input-font', 'monospace')
+  })
 })
 
 watch(activeBuffer, (buf) => {
@@ -91,7 +106,6 @@ interface Suggestion {
 
 type TriggerMode = 'mention' | 'command' | 'channel'
 
-const inputComp = ref<InstanceType<typeof Input>>()
 const mode = ref<TriggerMode | null>(null)
 const query = ref('')
 const triggerStart = ref(-1)
@@ -536,12 +550,12 @@ watch(activeName, clearReply)
           </li>
         </ul>
         <Flex v-if="replyTarget" y-center gap="xs" class="chat-composer__reply" expand>
-          <Icon name="ph:arrow-bend-up-left" size="13" class="chat-composer__reply-icon" />
+          <Icon name="ph:arrow-bend-down-right" size="13" class="chat-composer__reply-icon" />
           <span class="chat-composer__reply-label">
             <span v-if="replyTarget.from" class="chat-composer__reply-nick text-s">{{ replyTarget.from }}</span>
             <span class="chat-composer__reply-text text-s">{{ replyTarget.text }}</span>
           </span>
-          <Button plain square class="chat-composer__reply-dismiss" @click="clearReply">
+          <Button plain square size="s" class="chat-composer__reply-dismiss" @click="clearReply">
             <Icon name="ph:x" size="13" />
           </Button>
         </Flex>
@@ -634,7 +648,7 @@ watch(activeName, clearReply)
   }
 
   &__reply {
-    padding: var(--space-xxs) var(--space-xs);
+    padding: var(--space-xxxs) var(--space-xs);
     background: var(--color-bg-medium);
     border: 1px solid var(--color-border);
     border-bottom: none;
@@ -722,5 +736,13 @@ watch(activeName, clearReply)
     color: var(--color-text-lighter);
     font-size: var(--font-size-xs);
   }
+}
+</style>
+
+<style lang="scss">
+.chat-composer__input input,
+.chat-composer__input ::placeholder {
+  font-family: var(--irc-input-font, var(--font)) !important;
+  font-size: var(--irc-input-size, inherit) !important;
 }
 </style>

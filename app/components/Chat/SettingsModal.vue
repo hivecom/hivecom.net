@@ -241,6 +241,14 @@ async function toggleBrowserNotifications(value: boolean) {
 
         <Flex y-center x-between gap="m" expand>
           <Flex column gap="xxs" class="chat-settings__text">
+            <span class="text-s">Hide timestamps in sidebar</span>
+            <span class="text-xs text-color-lighter">Hide message timestamps in the channel sidebar list.</span>
+          </Flex>
+          <Switch v-model="settings.chat_irc_hide_sidebar_timestamps" />
+        </Flex>
+
+        <Flex y-center x-between gap="m" expand>
+          <Flex column gap="xxs" class="chat-settings__text">
             <span class="text-s">Inline media</span>
             <span class="text-xs text-color-lighter">Show media at font height inline with text. Off shows them like modern mode.</span>
           </Flex>
