@@ -1297,12 +1297,10 @@ onBeforeUnmount(() => {
                     <template v-else-if="seg.type === 'mention'">
                       <UserPreviewHover v-if="resolvedUser(seg.value.toLowerCase())" :user-id="resolvedUser(seg.value.toLowerCase())!.id">
                         <NuxtLink :to="`/profile/${resolvedUser(seg.value.toLowerCase())!.username}`" class="chat-log__mention-link">
-                          @{{ resolvedUser(seg.value.toLowerCase())!.username }}
+                          <span>@{{ resolvedUser(seg.value.toLowerCase())!.username }}</span>
                         </NuxtLink>
                       </UserPreviewHover>
-                      <template v-else>
-                        @{{ seg.value }}
-                      </template>
+                      <span v-else>@{{ seg.value }}</span>
                     </template>
                     <span
                       v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline"
