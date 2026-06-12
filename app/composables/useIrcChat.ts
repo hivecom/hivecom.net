@@ -39,6 +39,10 @@ function defaultChannel(anon: boolean): string {
 }
 const STORAGE_NICK = 'hivecom.chat.nick'
 const STORAGE_CHANNEL = 'hivecom.chat.channel'
+// '1' when the persisted nick/channel belong to a signed-in (authenticated)
+// session. Used to drop that identity when the app is loaded signed-out, so the
+// connect form doesn't pre-populate a registered nick that would fail to auth.
+const STORAGE_IDENTITY_AUTHED = 'hivecom.chat.identity-authed'
 // Timestamp (ms) of the most recent live message we've seen. Used as the lower
 // bound for CHATHISTORY TARGETS / LATEST on reconnect so we only pull missed DMs.
 const STORAGE_LASTSEEN = 'hivecom.chat.lastseen'
@@ -379,6 +383,11 @@ let ws: WebSocket | null = null
 let initialised = false
 let _readWatcherRegistered = false
 let _intentionalDisconnect = false
+// Set when a connection attempt fails fatally (e.g. nickname in use) and must
+// NOT auto-reconnect. Unlike _intentionalDisconnect, this preserves the 'error'
+// state so the UI keeps showing why the connection failed. Cleared on each
+// fresh openSocket().
+let _fatalError = false
 let _reconnectAttempts = 0
 const MAX_RECONNECT_ATTEMPTS = 3
 let _reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -1044,6 +1053,35 @@ function clearInputNick() {
     localStorage.removeItem(STORAGE_NICK)
 }
 
+/** Record whether the currently persisted identity belongs to a signed-in session. */
+function markIdentityAuthed(authed: boolean) {
+  if (!import.meta.client)
+    return
+  if (authed)
+    localStorage.setItem(STORAGE_IDENTITY_AUTHED, '1')
+  else
+    localStorage.removeItem(STORAGE_IDENTITY_AUTHED)
+}
+
+/**
+ * Drop a persisted nick/channel that belonged to a signed-in session. Called
+ * when the app loads (or transitions to) a signed-out state so the connect form
+ * doesn't pre-fill a registered nick/channel that would fail to authenticate.
+ * No-op when the persisted identity was anonymous, preserving a returning anon
+ * user's chosen nick.
+ */
+function clearAuthedIdentity() {
+  if (!import.meta.client)
+    return
+  if (localStorage.getItem(STORAGE_IDENTITY_AUTHED) !== '1')
+    return
+  inputNick.value = ''
+  inputChannel.value = ''
+  localStorage.removeItem(STORAGE_NICK)
+  localStorage.removeItem(STORAGE_CHANNEL)
+  localStorage.removeItem(STORAGE_IDENTITY_AUTHED)
+}
+
 function persistChannel(value: string) {
   if (import.meta.client && value)
     localStorage.setItem(STORAGE_CHANNEL, value)
@@ -1468,6 +1506,8 @@ function handleMessage(raw: string) {
       if (connState.value === 'connecting' && authCreds && !saslFailed)
         break
       addServer({ type: 'error', text: `Nickname ${params[1]} is already in use. Try a different one.` })
+      // Fatal: don't auto-reconnect with the same (taken) nick - that just loops.
+      _fatalError = true
       connState.value = 'error'
       ws?.close()
       break
@@ -2520,6 +2560,10 @@ function handleMessage(raw: string) {
 
 // --- Connection lifecycle ----------------------------------------------------
 function _scheduleReconnect() {
+  if (_fatalError) {
+    // Leave connState as 'error' so the failure reason stays on screen.
+    return
+  }
   if (_intentionalDisconnect) {
     connState.value = 'disconnected'
     return
@@ -2549,6 +2593,7 @@ function openSocket() {
   capLs = []
   saslMech = null
   saslFailed = false
+  _fatalError = false
   probingNickServInfo = false
   if (probeTimer !== null) {
     clearTimeout(probeTimer)
@@ -2577,6 +2622,8 @@ function openSocket() {
 
   persistNick(inputNick.value)
   persistChannel(inputChannel.value)
+  // Tag the persisted identity so a later signed-out load can discard it.
+  markIdentityAuthed(authCreds != null)
 
   try {
     ws = new WebSocket(WS_URL, ['binary'])
@@ -3472,6 +3519,7 @@ export function useIrcChat() {
     registerIdentityProvider,
     setMentionKeywords,
     clearInputNick,
+    clearAuthedIdentity,
     defaultChannel,
     isChatVisible,
     setChatVisible,

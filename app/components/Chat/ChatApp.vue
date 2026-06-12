@@ -45,7 +45,7 @@ const { settings } = useDataUserSettings()
 
 const isMobile = useBreakpoint('<s')
 
-const { connState, isConnected, ensureNick, clearInputNick, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt, channelSettingsOpen, channelJoinBlocked } = useIrcChat()
+const { connState, isConnected, ensureNick, clearAuthedIdentity, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt, channelSettingsOpen, channelJoinBlocked } = useIrcChat()
 
 // Auto-reconnect when the browser comes back from sleep or phone background.
 // Track whether a connection was ever established so we only auto-reconnect
@@ -93,14 +93,17 @@ const chatFontStyle = computed(() => ({ '--chat-font-size': `${isMobile.value ? 
 
 const fallbackNick = `anon-${Math.random().toString(36).slice(2, 7)}`
 watch(user, (u, prev) => {
-  if (!u && prev) {
-    // User signed out - disconnect and clear persisted nick
-    if (isConnected.value)
+  if (!u) {
+    // Signed out (either a live sign-out, or loaded without a session). Drop any
+    // persisted identity from a previous signed-in session so the connect form
+    // doesn't pre-fill that registered nick/channel - it would fail to auth.
+    if (prev && isConnected.value)
       disconnect()
-    clearInputNick()
+    clearAuthedIdentity()
+    ensureNick(fallbackNick)
     return
   }
-  ensureNick(u?.username ?? fallbackNick)
+  ensureNick(u.username ?? fallbackNick)
 }, { immediate: true })
 </script>
 
