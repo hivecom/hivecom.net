@@ -6,6 +6,7 @@ import GameServerConnectButton from '@/components/GameServers/GameServerConnectB
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { metricsMaxPlayers, metricsPlayerCount } from '@/types/metrics'
 
 type ContainerWithServer = Tables<'network_containers'> & {
   server?: {
@@ -56,19 +57,10 @@ const playerCounts = computed(() => {
   const detail = metrics.value?.gameservers.byServer[String(props.gameserver.id)]
   if (!detail?.data)
     return null
-  if (detail.protocol === 'minecraft') {
-    return {
-      current: detail.data.numPlayers ?? null,
-      max: detail.data.maxPlayers ?? null,
-    }
-  }
-  if (detail.protocol === 'source') {
-    return {
-      current: detail.data.players ?? null,
-      max: detail.data.maxPlayers ?? null,
-    }
-  }
-  return null
+  const current = metricsPlayerCount(detail)
+  if (current === null)
+    return null
+  return { current, max: metricsMaxPlayers(detail) }
 })
 </script>
 

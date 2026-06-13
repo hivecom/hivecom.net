@@ -3,6 +3,7 @@ import { Button, Flex, Sheet, Tab, Tabs } from '@dolanske/vui'
 import NotificationTabActive from '@/components/Notifications/NotificationTabActive.vue'
 import NotificationTabPast from '@/components/Notifications/NotificationTabPast.vue'
 import NotificationTabSubscriptions from '@/components/Notifications/NotificationTabSubscriptions.vue'
+import PushPrompt from '@/components/Notifications/PushPrompt.vue'
 import { useDataNotifications } from '@/composables/useDataNotifications'
 
 // FIXME: on mobile, the tabs are offset and show two horizontal lines - change minus margin to fix it
@@ -136,6 +137,7 @@ const showFooter = computed(() => showActiveFooter.value || showPastFooter.value
       </template>
 
       <Flex column class="notification-menu__body">
+        <PushPrompt v-if="hasUser" />
         <Flex expand>
           <NotificationTabActive
             v-if="activeTab === 'active'"

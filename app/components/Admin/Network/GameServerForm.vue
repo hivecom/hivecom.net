@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Button, Flex, Input, Sheet, Textarea, Tooltip } from '@dolanske/vui'
+import type { Json } from '@/types/database.types'
+import { Badge, Button, Flex, Input, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
@@ -37,6 +38,7 @@ interface QueryGameserver {
   port: string | null
   query_protocol: string | null
   query_port: number | null
+  query_options: Json | null
   region: 'eu' | 'na' | 'all' | null
 }
 
@@ -69,6 +71,14 @@ const gameserverForm = ref({
 
 // Address input for managing multiple addresses
 const newAddress = ref('')
+
+// Factorio query configuration. The RCON password is a secret stored in Vault
+// via the set/get_gameserver_query_secret RPCs - never persisted on the row -
+// while factorioUseLua is non-secret config kept in query_options.
+const factorioUseLua = ref(false)
+const querySecret = ref('')
+const querySecretExists = ref(false)
+const clearQuerySecret = ref(false)
 
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
@@ -124,6 +134,9 @@ const containers = ref<Tables<'network_containers'>[]>([])
 const queryProtocolOptions = [
   { label: 'Source (A2S)', value: 'source' },
   { label: 'Minecraft (Query)', value: 'minecraft' },
+  { label: 'GameSpy v1 (UT99/UT2004)', value: 'gamespy1' },
+  { label: 'Satisfactory (status only)', value: 'satisfactory' },
+  { label: 'Factorio (RCON)', value: 'factorio' },
 ]
 
 // Region options
@@ -185,6 +198,12 @@ const selectedQueryProtocolComputed = computed({
     // Clear query port when protocol is cleared
     if (!gameserverForm.value.query_protocol)
       gameserverForm.value.query_port = ''
+    // Factorio-only fields are meaningless for other protocols
+    if (gameserverForm.value.query_protocol !== 'factorio') {
+      factorioUseLua.value = false
+      querySecret.value = ''
+      clearQuerySecret.value = false
+    }
   },
 })
 
@@ -196,6 +215,23 @@ const validation = computed(() => ({
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
 // Fetch dropdown data
+// Check whether a Vault query secret exists for this gameserver (without
+// revealing it) so the form can show stored-state and the right placeholder.
+async function loadQuerySecretState(gameserverId: number) {
+  try {
+    const { data, error } = await supabase.rpc('has_gameserver_query_secret', {
+      p_gameserver_id: gameserverId,
+    })
+    if (error)
+      throw error
+    querySecretExists.value = data === true
+  }
+  catch (err) {
+    console.error('GameServerForm: failed to check query secret state', err)
+    querySecretExists.value = false
+  }
+}
+
 async function fetchDropdownData() {
   try {
     const { data: containersData, error: containersError } = await supabase
@@ -231,6 +267,14 @@ watch(
         container: newGameserver.container,
         administrator: newGameserver.administrator,
       }
+      // Reset Factorio fields, then hydrate from the row / Vault state.
+      const queryOptions = newGameserver.query_options as { factorioUseLua?: boolean } | null
+      factorioUseLua.value = queryOptions?.factorioUseLua ?? false
+      querySecret.value = ''
+      clearQuerySecret.value = false
+      querySecretExists.value = false
+      if (newGameserver.query_protocol === 'factorio')
+        void loadQuerySecretState(newGameserver.id)
     }
     else {
       // Reset form for new gameserver
@@ -247,6 +291,10 @@ watch(
         container: null,
         administrator: null,
       }
+      factorioUseLua.value = false
+      querySecret.value = ''
+      clearQuerySecret.value = false
+      querySecretExists.value = false
     }
   },
   { immediate: true },
@@ -302,13 +350,24 @@ async function handleSubmit() {
     port: gameserverForm.value.port || null,
     query_protocol: gameserverForm.value.query_protocol as TablesInsert<'network_gameservers'>['query_protocol'],
     query_port: gameserverForm.value.query_port ? Number(gameserverForm.value.query_port) : null,
+    query_options: gameserverForm.value.query_protocol === 'factorio'
+      ? { factorioUseLua: factorioUseLua.value }
+      : null,
     game: gameserverForm.value.game,
     container: gameserverForm.value.container,
     administrator: gameserverForm.value.administrator,
   }
 
+  // Secret handling is delegated to the parent (it owns insert/update and the
+  // resulting id). Only Factorio uses a secret today.
+  const trimmedSecret = querySecret.value.trim()
+  const secretPayload = {
+    secret: gameserverForm.value.query_protocol === 'factorio' && trimmedSecret ? trimmedSecret : null,
+    clear: gameserverForm.value.query_protocol === 'factorio' && clearQuerySecret.value,
+  }
+
   saveLoading.value = true
-  emit('save', gameserverData)
+  emit('save', gameserverData, secretPayload)
 }
 
 // Open confirmation modal for deletion
@@ -454,6 +513,26 @@ onMounted(() => {
             :disabled="!gameserverForm.query_protocol"
             type="number"
           />
+        </Flex>
+
+        <!-- Factorio RCON configuration. Query Port above should be the RCON port. -->
+        <Flex v-if="gameserverForm.query_protocol === 'factorio'" column gap="s" expand>
+          <Input
+            v-model="querySecret"
+            expand
+            type="password"
+            name="rcon_password"
+            label="RCON Password"
+            :disabled="clearQuerySecret"
+            :placeholder="querySecretExists ? 'Leave blank to keep current password' : 'Enter Factorio RCON password'"
+          />
+          <Flex y-center gap="s" wrap>
+            <Badge v-if="querySecretExists" variant="success">
+              Secret stored
+            </Badge>
+            <Switch v-if="querySecretExists" v-model="clearQuerySecret" label="Remove stored secret on save" />
+          </Flex>
+          <Switch v-model="factorioUseLua" label="Use Lua command (also fetch player names + max players; disables save achievements)" />
         </Flex>
       </Flex>
 

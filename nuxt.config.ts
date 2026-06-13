@@ -423,6 +423,8 @@ export default defineNuxtConfig({
       patreonClientId: process.env.NUXT_PUBLIC_AUTH_EXTERNAL_PATREON_CLIENT_ID ?? '',
       baseUrl: process.env.NUXT_PUBLIC_BASE_URL ?? 'https://hivecom.net',
       supabaseProjectRef: process.env.NUXT_PUBLIC_SUPABASE_PROJECT_REF ?? '',
+      // VAPID application server key (URL-safe base64) for Web Push subscriptions.
+      vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY ?? '',
     },
   },
   robots: {

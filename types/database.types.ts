@@ -1063,6 +1063,7 @@ export type Database = {
           modified_by: string | null
           name: string
           port: string | null
+          query_options: Json | null
           query_port: number | null
           query_protocol:
             | Database["public"]["Enums"]["game_query_protocol"]
@@ -1083,6 +1084,7 @@ export type Database = {
           modified_by?: string | null
           name?: string
           port?: string | null
+          query_options?: Json | null
           query_port?: number | null
           query_protocol?:
             | Database["public"]["Enums"]["game_query_protocol"]
@@ -1103,6 +1105,7 @@ export type Database = {
           modified_by?: string | null
           name?: string
           port?: string | null
+          query_options?: Json | null
           query_port?: number | null
           query_protocol?:
             | Database["public"]["Enums"]["game_query_protocol"]
@@ -2175,6 +2178,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          modified_at: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          modified_at?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          modified_at?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: number
@@ -2357,6 +2393,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["app_role"]
       }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      delete_gameserver_query_secret: {
+        Args: { p_gameserver_id: number }
+        Returns: undefined
+      }
       event_rsvp_window_open: {
         Args: { target_event_id: number }
         Returns: boolean
@@ -2886,6 +2926,10 @@ export type Database = {
         }
         Returns: number
       }
+      get_gameserver_query_secret: {
+        Args: { p_gameserver_id: number }
+        Returns: string
+      }
       get_metrics_bucketed: {
         Args: { p_bucket_interval: string; p_since: string; p_until: string }
         Returns: {
@@ -3169,6 +3213,10 @@ export type Database = {
         }[]
       }
       has_agreed_content_rules: { Args: never; Returns: boolean }
+      has_gameserver_query_secret: {
+        Args: { p_gameserver_id: number }
+        Returns: boolean
+      }
       has_permission: {
         Args: { permission_name: Database["public"]["Enums"]["app_permission"] }
         Returns: boolean
@@ -3304,6 +3352,10 @@ export type Database = {
           username: string
         }[]
       }
+      set_gameserver_query_secret: {
+        Args: { p_gameserver_id: number; p_secret: string }
+        Returns: undefined
+      }
       slugify: { Args: { input: string }; Returns: string }
       toggle_reaction: {
         Args: {
@@ -3392,7 +3444,12 @@ export type Database = {
       badge_tier: "bronze" | "silver" | "gold" | "shiny"
       events_rsvp_scope: "occurrence" | "series"
       events_rsvp_status: "yes" | "no" | "tentative"
-      game_query_protocol: "source" | "minecraft"
+      game_query_protocol:
+        | "source"
+        | "minecraft"
+        | "gamespy1"
+        | "satisfactory"
+        | "factorio"
       kvstore_type: "NUMBER" | "BOOLEAN" | "STRING" | "JSON"
       point_source:
         | "donation"
@@ -3612,7 +3669,13 @@ export const Constants = {
       badge_tier: ["bronze", "silver", "gold", "shiny"],
       events_rsvp_scope: ["occurrence", "series"],
       events_rsvp_status: ["yes", "no", "tentative"],
-      game_query_protocol: ["source", "minecraft"],
+      game_query_protocol: [
+        "source",
+        "minecraft",
+        "gamespy1",
+        "satisfactory",
+        "factorio",
+      ],
       kvstore_type: ["NUMBER", "BOOLEAN", "STRING", "JSON"],
       point_source: [
         "donation",

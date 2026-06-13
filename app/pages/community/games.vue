@@ -25,6 +25,7 @@ import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { metricsPlayerCount } from '@/types/metrics'
 
 const ChartGameActivity = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameActivity.vue'))
 
@@ -169,15 +170,7 @@ function gameserverPlayersForGame(gameId: number): number {
   const servers = gameservers.value.filter(gs => gs.game === gameId && gs.query_protocol != null)
   let total = 0
   for (const gs of servers) {
-    const detail = byServer[String(gs.id)]
-    if (!detail?.data)
-      continue
-    const count = detail.protocol === 'minecraft'
-      ? (detail.data as { numPlayers?: number }).numPlayers
-      : detail.protocol === 'source'
-        ? (detail.data as { players?: number }).players
-        : null
-    total += count ?? 0
+    total += metricsPlayerCount(byServer[String(gs.id)]) ?? 0
   }
   return total
 }

@@ -20,6 +20,7 @@ import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { barGapPlugin, getBarChartDefaults, getChartPalette } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
+import { metricsPlayerCount } from '@/types/metrics'
 
 interface ServerOption {
   label: string
@@ -101,7 +102,7 @@ const { activeTheme } = useUserTheme()
 const currentCount = computed(() => {
   if (props.serverId !== undefined) {
     const detail = metrics.value?.gameservers.byServer[String(props.serverId)]
-    const liveCount = detail?.protocol === 'minecraft' ? detail.data?.numPlayers : detail?.data?.players
+    const liveCount = metricsPlayerCount(detail) ?? undefined
     return liveCount
       ?? [...metricsHistory.value].reverse().find(e => e.gameserversByServer?.[String(props.serverId!)] !== undefined)?.gameserversByServer?.[String(props.serverId!)]
       ?? undefined

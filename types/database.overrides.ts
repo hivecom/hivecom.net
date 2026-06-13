@@ -52,6 +52,21 @@ export { Constants } from './database.types'
  */
 export type ReactionData = Record<string, Record<string, string[]>>
 
+/**
+ * Concrete type for the `network_gameservers.query_options` JSONB column.
+ *
+ * Non-secret, per-gameserver query configuration. Secrets (e.g. the Factorio
+ * RCON password) live in Vault, not here.
+ */
+export interface GameserverQueryOptions {
+  /**
+   * Factorio only: opt into the RCON `/silent-command` Lua mode that also
+   * returns player names and the configured max-player limit. Disables save
+   * achievements, so it is off by default.
+   */
+  factorioUseLua?: boolean
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Override map
 // ─────────────────────────────────────────────────────────────────────────────
@@ -117,6 +132,7 @@ interface TableColumnOverrides {
       chat_sound_message_design: SoundDesign | null
       chat_sound_volume: number
       app_browser_notifications: boolean
+      app_push_notifications: boolean
       notification_sound_choice: string
       notification_sound_url: string
       notification_sound_design: SoundDesign | null
@@ -136,6 +152,10 @@ interface TableColumnOverrides {
 
   metrics: {
     data: MetricsSnapshot
+  }
+
+  network_gameservers: {
+    query_options: GameserverQueryOptions | null
   }
 
 }

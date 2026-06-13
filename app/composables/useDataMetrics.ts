@@ -5,6 +5,7 @@ import type { MetricsSnapshot } from '@/types/metrics'
 import { onUnmounted, ref } from 'vue'
 import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
+import { metricsPlayerCount } from '@/types/metrics'
 
 export type MetricsPeriod = '6h' | '24h' | '7d' | '14d' | '30d' | '90d'
 
@@ -522,7 +523,7 @@ export function useDataMetrics() {
           gameserversPlayers: snapshot.gameservers.players,
           teamspeakByServer: snapshot.teamspeak.byServer,
           gameserversByServer: Object.fromEntries(
-            Object.entries(snapshot.gameservers.byServer).map(([k, v]) => [k, v.protocol === 'minecraft' ? (v.data?.numPlayers ?? 0) : (v.data?.players ?? 0)]),
+            Object.entries(snapshot.gameservers.byServer).map(([k, v]) => [k, metricsPlayerCount(v) ?? 0]),
           ),
           usersByGame: snapshot.users.byGame,
           usersBySteamGame: snapshot.users.bySteamGame,

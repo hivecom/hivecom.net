@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Button, ButtonGroup, Card, Divider, Flex, Select, Slider, Switch } from '@dolanske/vui'
+import { onMounted } from 'vue'
 import SoundChoicePicker from '@/components/Shared/SoundChoicePicker.vue'
+import { usePushNotifications } from '@/composables/usePushNotifications'
 import { NONE_SOUND_ID } from '@/lib/notificationSound'
 
 const { settings, settingsError } = useDataUserSettings()
@@ -42,6 +44,27 @@ async function toggleAppBrowserNotifications(value: boolean) {
   else {
     settings.value.app_browser_notifications = false
   }
+}
+
+const {
+  isSupported: pushSupported,
+  isStandalone: pushStandalone,
+  isSubscribed: pushSubscribed,
+  loading: pushLoading,
+  subscribe: subscribePush,
+  unsubscribe: unsubscribePush,
+  refresh: refreshPush,
+} = usePushNotifications()
+
+onMounted(() => {
+  void refreshPush()
+})
+
+async function togglePushNotifications(value: boolean) {
+  if (value)
+    await subscribePush()
+  else
+    await unsubscribePush()
 }
 </script>
 
@@ -110,10 +133,21 @@ async function toggleAppBrowserNotifications(value: boolean) {
     </Flex>
     <Switch
       :model-value="settings.app_browser_notifications"
-      class="reversed"
+      class="reversed mb-m"
       label="Background notifications"
       hint="Show a system notification when you receive activity while this tab is in the background. Delivery may lag by a few minutes since we don't keep a live connection open when the tab is hidden."
       @update:model-value="toggleAppBrowserNotifications"
+    />
+    <Switch
+      v-if="pushSupported"
+      :model-value="pushSubscribed"
+      :disabled="pushLoading"
+      class="reversed"
+      label="Push notifications"
+      :hint="pushStandalone
+        ? 'Deliver notifications to this device even when Hivecom is closed. Works on this installed app.'
+        : 'Deliver notifications to this device even when Hivecom is closed. On iOS, add Hivecom to your home screen first.'"
+      @update:model-value="togglePushNotifications"
     />
 
     <Divider class="my-l" />

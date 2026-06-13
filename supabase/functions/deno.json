@@ -9,7 +9,8 @@
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
     "node-ts": "npm:node-ts@8",
     "googleapis": "npm:googleapis@171",
-    "google-auth-library": "npm:google-auth-library@10"
+    "google-auth-library": "npm:google-auth-library@10",
+    "@negrel/webpush": "jsr:@negrel/webpush@0.5.0"
   },
   "workspace": [
     "./_shared",
@@ -35,6 +36,7 @@
     "./ping",
     "./presence-refresh-lastfm",
     "./presence-refresh-steam",
+    "./push-send",
     "./teamspeak-unlink",
     "./teamspeak-verify-confirm",
     "./teamspeak-verify-request",

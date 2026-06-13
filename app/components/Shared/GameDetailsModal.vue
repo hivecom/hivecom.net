@@ -20,6 +20,7 @@ import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
 import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { fullDate, fullMonth } from '@/lib/utils/date'
+import { metricsMaxPlayers, metricsPlayerCount } from '@/types/metrics'
 
 const props = withDefaults(defineProps<Props>(), {
   gameId: null,
@@ -126,15 +127,7 @@ const serverPlayerCount = computed(() => {
   for (const gs of gameServersForGame.value) {
     if (!gs.query_protocol)
       continue
-    const detail = byServer[String(gs.id)]
-    if (!detail?.data)
-      continue
-    const count = detail.protocol === 'minecraft'
-      ? (detail.data as { numPlayers?: number }).numPlayers
-      : detail.protocol === 'source'
-        ? (detail.data as { players?: number }).players
-        : null
-    total += count ?? 0
+    total += metricsPlayerCount(byServer[String(gs.id)]) ?? 0
   }
   return total
 })
@@ -197,19 +190,10 @@ function getServerPlayerCounts(gs: typeof gameServersForGame.value[0]): { curren
   const detail = metrics.value.gameservers.byServer[String(gs.id)]
   if (!detail?.data)
     return null
-  if (detail.protocol === 'minecraft') {
-    return {
-      current: (detail.data as { numPlayers?: number }).numPlayers ?? 0,
-      max: (detail.data as { maxPlayers?: number }).maxPlayers ?? null,
-    }
-  }
-  if (detail.protocol === 'source') {
-    return {
-      current: (detail.data as { players?: number }).players ?? 0,
-      max: (detail.data as { maxPlayers?: number }).maxPlayers ?? null,
-    }
-  }
-  return null
+  const current = metricsPlayerCount(detail)
+  if (current === null)
+    return null
+  return { current, max: metricsMaxPlayers(detail) }
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────

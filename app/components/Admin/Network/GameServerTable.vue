@@ -16,6 +16,7 @@ import { invalidateGameserversCache } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { metricsPlayerCount } from '@/types/metrics'
 import GameserverDetails from './GameServerDetails.vue'
 import GameserverFilters from './GameServerFilters.vue'
 import GameserverForm from './GameServerForm.vue'
@@ -145,14 +146,7 @@ function getServerPlayers(gameserverId: number): number | null {
   const byServer = latestMetrics.value?.gameservers?.byServer
   if (!byServer)
     return null
-  const detail = byServer[String(gameserverId)]
-  if (!detail || detail.protocol === null)
-    return null
-  if (detail.protocol === 'source')
-    return detail.data.players
-  if (detail.protocol === 'minecraft')
-    return detail.data.numPlayers
-  return null
+  return metricsPlayerCount(byServer[String(gameserverId)])
 }
 
 // Apply secondary filters on top of the composable's search-filtered rows
@@ -232,8 +226,41 @@ watch(
   { immediate: true },
 )
 
-async function handleGameserverSave(gameserverData: TablesInsert<'network_gameservers'> | TablesUpdate<'network_gameservers'>) {
+interface GameserverSecretPayload {
+  // New secret to store (Vault), or null to leave the existing one untouched.
+  secret: string | null
+  // Remove any stored secret.
+  clear: boolean
+}
+
+// Persist the per-gameserver query secret (e.g. Factorio RCON password) to
+// Vault via the dedicated RPCs. The plaintext never lives on the row.
+async function persistGameserverSecret(gameserverId: number, payload: GameserverSecretPayload) {
+  if (payload.clear) {
+    const { error } = await supabase.rpc('delete_gameserver_query_secret', {
+      p_gameserver_id: gameserverId,
+    })
+    if (error)
+      throw error
+    return
+  }
+  if (payload.secret) {
+    const { error } = await supabase.rpc('set_gameserver_query_secret', {
+      p_gameserver_id: gameserverId,
+      p_secret: payload.secret,
+    })
+    if (error)
+      throw error
+  }
+}
+
+async function handleGameserverSave(
+  gameserverData: TablesInsert<'network_gameservers'> | TablesUpdate<'network_gameservers'>,
+  secretPayload?: GameserverSecretPayload,
+) {
   try {
+    let gameserverId: number | null = null
+
     if (isEditMode.value && selectedGameserver.value) {
       const { error } = await supabase
         .from('network_gameservers')
@@ -245,9 +272,10 @@ async function handleGameserverSave(gameserverData: TablesInsert<'network_gamese
         .eq('id', selectedGameserver.value.id)
       if (error)
         throw error
+      gameserverId = selectedGameserver.value.id
     }
     else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('network_gameservers')
         .insert({
           ...gameserverData,
@@ -255,12 +283,18 @@ async function handleGameserverSave(gameserverData: TablesInsert<'network_gamese
           modified_by: userId.value ?? null,
           modified_at: new Date().toISOString(),
         } as TablesInsert<'network_gameservers'>)
+        .select('id')
+        .single()
       if (error)
         throw error
+      gameserverId = data?.id ?? null
 
       if (userId.value)
         subscriptionsCache.invalidateList(userId.value)
     }
+
+    if (secretPayload && gameserverId != null)
+      await persistGameserverSecret(gameserverId, secretPayload)
 
     showGameserverForm.value = false
     invalidateGameserversCache()

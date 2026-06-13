@@ -9,6 +9,7 @@ import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCSSVariable } from '@/lib/utils/common'
+import { metricsPlayerCount } from '@/types/metrics'
 
 const props = defineProps<Props>()
 
@@ -58,9 +59,7 @@ const currentPlayerCount = computed<number | null>(() => {
   const detail = metrics.value?.gameservers.byServer[String(props.id)]
   if (!detail?.data)
     return null
-  if (detail.protocol === 'minecraft')
-    return detail.data.numPlayers ?? 0
-  return detail.data.players ?? 0
+  return metricsPlayerCount(detail) ?? 0
 })
 
 const minecraftDetail = computed<MetricsServerDetailMinecraft | null>(() => {
