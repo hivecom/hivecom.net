@@ -1,36 +1,53 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import ChatApp from '@/components/Chat/ChatApp.vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const isMobile = useBreakpoint('<s')
-const { setChatVisible, joinChannel, setActive, isConnected } = useIrcChat()
+const { setChatVisible, joinChannel, setActive, seedChannel, isConnected } = useIrcChat()
 const route = useRoute()
 const router = useRouter()
 
 onMounted(() => setChatVisible(true))
 onUnmounted(() => setChatVisible(false))
 
-// Deep-link: ?channel=staff or ?channel=dev/frontend joins and focuses the channel,
-// then strips the param so the URL stays clean.
-function handleChannelParam(channelParam: unknown) {
+// Deep-link: ?channel=staff or ?channel=dev/frontend (e.g. from a push
+// notification tap) joins and focuses the channel. The channel is held pending
+// until the connection is up, since a cold open mounts this page before the
+// socket connects - seeding it also makes the post-connect auto-join land here.
+const pendingChannel = ref<string | null>(null)
+
+function applyPendingChannel() {
+  const name = pendingChannel.value
+  if (!name || !isConnected.value)
+    return
+  joinChannel(name)
+  setActive(name)
+  pendingChannel.value = null
+}
+
+function consumeChannelParam(channelParam: unknown) {
   if (!channelParam || typeof channelParam !== 'string')
     return
   const name = channelParam.startsWith('#') ? channelParam : `#${channelParam}`
-  joinChannel(name)
-  setActive(name)
+  pendingChannel.value = name
+  // Seed so a connect that fires after this still auto-joins the right channel.
+  seedChannel(name)
+  // Strip the param so the URL stays clean; the pending channel survives it.
   const { channel: _channel, ...rest } = route.query
   void router.replace({ query: rest })
+  applyPendingChannel()
 }
 
-// Run once on mount (initial page load with ?channel=)
-onMounted(() => handleChannelParam(route.query.channel))
+// Initial page load with ?channel=, and any later in-app navigation to it.
+onMounted(() => consumeChannelParam(route.query.channel))
+watch(() => route.query.channel, channelParam => consumeChannelParam(channelParam))
 
-// Also react if the connection comes up after the param was already read
+// Apply once the connection comes up (cold open mounts before connect).
 watch(isConnected, (connected) => {
   if (connected)
-    handleChannelParam(route.query.channel)
+    applyPendingChannel()
 })
 </script>
 

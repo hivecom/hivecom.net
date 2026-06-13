@@ -89,6 +89,14 @@ function buildNotification(line) {
   const title = isChannel ? target : (nick || 'Hivecom')
   const body = isChannel ? formatBody(nick, `${nick}: ${text}`) : formatBody(nick, text)
 
+  // Deep-link to the channel so tapping lands in the conversation that pinged,
+  // not the bare server tab. The chat page reads `?channel=` (without the `#`,
+  // which would otherwise be parsed as a URL fragment). DMs have no such route,
+  // so they fall back to the chat root.
+  const href = target.startsWith('#')
+    ? `/chat?channel=${encodeURIComponent(target.slice(1))}`
+    : '/chat'
+
   return {
     title,
     options: {
@@ -98,7 +106,7 @@ function buildNotification(line) {
       // Coalesce repeated pings from the same conversation.
       tag: tags.msgid || target || undefined,
       renotify: true,
-      data: { href: '/chat' },
+      data: { href },
     },
   }
 }

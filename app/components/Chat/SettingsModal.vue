@@ -16,8 +16,9 @@ const isDev = import.meta.dev
 const { settings } = useDataUserSettings()
 
 // Chat push notifications (Ergo draft/webpush). The server VAPID key only exists
-// once connected to a webpush-capable server, so the toggle is gated on it.
-const { vapidKey } = useIrcChat()
+// once connected to a webpush-capable server, and Ergo requires a logged-in
+// account, so the toggle is gated on both.
+const { vapidKey, account } = useIrcChat()
 const {
   isSupported: pushSupported,
   isSubscribed: pushSubscribed,
@@ -262,12 +263,14 @@ async function toggleBrowserNotifications(value: boolean) {
           <Flex column gap="xxs" class="chat-settings__text">
             <span class="text-s">Push notifications</span>
             <span class="text-xs text-color-lighter">
-              {{ vapidKey
-                ? 'Deliver chat mentions and messages to this device even when Hivecom is closed.'
-                : 'Connect to chat to enable push notifications on this device.' }}
+              {{ !vapidKey
+                ? 'Connect to chat to enable push notifications on this device.'
+                : !account
+                  ? 'Sign in to chat to enable push notifications on this device.'
+                  : 'Deliver chat mentions and messages to this device even when Hivecom is closed.' }}
             </span>
           </Flex>
-          <Switch :model-value="pushSubscribed" :disabled="pushLoading || !vapidKey" @update:model-value="toggleChatPush" />
+          <Switch :model-value="pushSubscribed" :disabled="pushLoading || !vapidKey || !account" @update:model-value="toggleChatPush" />
         </Flex>
 
         <Flex y-center x-between gap="m" expand>

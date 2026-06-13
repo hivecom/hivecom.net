@@ -76,6 +76,9 @@ export function useErgoPush() {
   const send = irc.send
   const isConnected = irc.isConnected
   const vapidKey = irc.vapidKey
+  // Ergo only accepts WEBPUSH REGISTER on a connection logged into an account
+  // (it rejects guests with "You must be logged in to receive push messages").
+  const account = irc.account
 
   function detect() {
     isSupported.value = import.meta.client
@@ -108,9 +111,10 @@ export function useErgoPush() {
 
   async function subscribe(): Promise<boolean> {
     detect()
-    // The key only arrives after connecting (005 ISUPPORT), so a subscription
-    // can't be created until we're connected to a webpush-capable server.
-    if (!isSupported.value || !vapidKey.value)
+    // The key only arrives after connecting (005 ISUPPORT), and Ergo requires an
+    // account, so a subscription can't be created until we're connected to a
+    // webpush-capable server while logged in.
+    if (!isSupported.value || !vapidKey.value || !account.value)
       return false
 
     loading.value = true
@@ -130,7 +134,7 @@ export function useErgoPush() {
         })
 
       localStorage.setItem(ENABLED_KEY, 'true')
-      if (isConnected.value)
+      if (isConnected.value && account.value)
         sendRegister(subscription)
       isSubscribed.value = true
       return true
@@ -170,12 +174,15 @@ export function useErgoPush() {
     _orchestratorRegistered = true
     detect()
 
-    watch([isConnected, vapidKey], async ([connected, key]) => {
+    watch([isConnected, vapidKey, account], async ([connected, key, acct]) => {
       if (!connected) {
         registeredEndpoint.value = null
         return
       }
-      if (!key || !wantsPush())
+      // Need the server key and a logged-in account before Ergo will accept the
+      // subscription. Both arrive shortly after connect (SASL + 005 ISUPPORT),
+      // and watching `account` covers a guest connection that later authenticates.
+      if (!key || !acct || !wantsPush())
         return
       const registration = await ergoRegistration()
       const subscription = await registration?.pushManager.getSubscription()
@@ -193,7 +200,7 @@ export function useErgoPush() {
         return
       // The worker rotated the subscription. Drop the old endpoint and register
       // the new one over IRC (best-effort; only possible while connected).
-      if (isConnected.value) {
+      if (isConnected.value && account.value) {
         if (data.oldEndpoint)
           send(`WEBPUSH UNREGISTER ${data.oldEndpoint}`)
         const next = data.subscription
