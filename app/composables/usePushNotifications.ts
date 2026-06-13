@@ -1,17 +1,17 @@
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
-import { useDataUserSettings } from '@/composables/useDataUserSettings'
 
 /**
  * Web Push subscription management for installed PWAs / supporting browsers.
  *
  * Handles the browser-side half of platform push notifications: feature
  * detection, permission, and (un)subscribing via the registered service
- * worker. Subscriptions are persisted to `user_push_subscriptions`; the
- * `push-send` edge function reads them to deliver pushes.
+ * worker.
  *
- * The opt-in preference itself lives in user settings
- * (`app_push_notifications`) so the edge function can honour it server-side.
+ * Consent is per-device: a row in `user_push_subscriptions` exists only because
+ * the user enabled push on that device, and unsubscribing removes it. The
+ * `trigger-notification-push-send` edge function delivers to whatever rows
+ * exist - there is no account-wide opt-in flag.
  */
 
 // Convert the URL-safe base64 VAPID application server key into the byte array
@@ -29,9 +29,8 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 export function usePushNotifications() {
   const supabase = useSupabaseClient<Database>()
   const userId = useUserId()
-  const { settings } = useDataUserSettings()
   const config = useRuntimeConfig()
-  const vapidPublicKey = config.public.vapidPublicKey as string
+  const vapidPublicKey = config.public.vapidPublicKey
 
   const isSupported = ref(false)
   const isStandalone = ref(false)
@@ -66,6 +65,62 @@ export function usePushNotifications() {
     isSubscribed.value = Boolean(subscription)
   }
 
+  // Persist a subscription JSON to the DB (idempotent on endpoint).
+  async function persist(json: PushSubscriptionJSON): Promise<boolean> {
+    const p256dh = json.keys?.p256dh
+    const auth = json.keys?.auth
+    if (!userId.value || !json.endpoint || !p256dh || !auth)
+      return false
+
+    const { error } = await supabase
+      .from('user_push_subscriptions')
+      .upsert({
+        user_id: userId.value,
+        endpoint: json.endpoint,
+        p256dh,
+        auth,
+        user_agent: navigator.userAgent,
+      }, { onConflict: 'endpoint' })
+
+    return !error
+  }
+
+  // Reconcile the DB with this device's live subscription. Handles browser
+  // subscription rotation: ensures the current endpoint is stored, and removes
+  // a rotated-away endpoint when we know it. Called on app open and in response
+  // to the SW's `pushsubscriptionchange` message.
+  async function reconcile(
+    changed?: PushSubscriptionJSON | null,
+    oldEndpoint?: string | null,
+  ): Promise<void> {
+    detect()
+    if (!isSupported.value || !userId.value)
+      return
+
+    let json = changed ?? null
+    if (!json) {
+      const registration = await navigator.serviceWorker.ready
+      const live = await registration.pushManager.getSubscription()
+      // No live subscription means this device isn't opted in - nothing to do.
+      if (!live)
+        return
+      json = live.toJSON()
+    }
+
+    const stored = await persist(json)
+    if (!stored)
+      return
+
+    if (oldEndpoint && oldEndpoint !== json.endpoint) {
+      await supabase
+        .from('user_push_subscriptions')
+        .delete()
+        .eq('endpoint', oldEndpoint)
+    }
+
+    isSubscribed.value = true
+  }
+
   async function subscribe(): Promise<boolean> {
     if (!isSupported.value || !vapidPublicKey || !userId.value)
       return false
@@ -84,27 +139,11 @@ export function usePushNotifications() {
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
         })
 
-      const json = subscription.toJSON()
-      const p256dh = json.keys?.p256dh
-      const auth = json.keys?.auth
-      if (!json.endpoint || !p256dh || !auth)
-        return false
-
-      const { error } = await supabase
-        .from('user_push_subscriptions')
-        .upsert({
-          user_id: userId.value,
-          endpoint: json.endpoint,
-          p256dh,
-          auth,
-          user_agent: navigator.userAgent,
-        }, { onConflict: 'endpoint' })
-
-      if (error)
+      const stored = await persist(subscription.toJSON())
+      if (!stored)
         return false
 
       isSubscribed.value = true
-      settings.value.app_push_notifications = true
       return true
     }
     finally {
@@ -128,7 +167,6 @@ export function usePushNotifications() {
         }
       }
       isSubscribed.value = false
-      settings.value.app_push_notifications = false
     }
     finally {
       loading.value = false
@@ -142,6 +180,7 @@ export function usePushNotifications() {
     isSubscribed,
     loading,
     refresh,
+    reconcile,
     subscribe,
     unsubscribe,
   }

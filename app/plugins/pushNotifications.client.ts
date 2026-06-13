@@ -12,6 +12,7 @@
  */
 import { watch } from 'vue'
 import { useDataNotifications } from '@/composables/useDataNotifications'
+import { usePushNotifications } from '@/composables/usePushNotifications'
 
 export default defineNuxtPlugin(() => {
   if (!import.meta.client || !('serviceWorker' in navigator))
@@ -25,11 +26,33 @@ export default defineNuxtPlugin(() => {
   })
 
   const router = useRouter()
+  const userId = useUserId()
+  const { reconcile } = usePushNotifications()
+
   navigator.serviceWorker.addEventListener('message', (event) => {
-    const data = event.data as { type?: string, href?: string } | null
-    if (data?.type === 'navigate' && typeof data.href === 'string')
+    const data = event.data as {
+      type?: string
+      href?: string
+      oldEndpoint?: string | null
+      subscription?: PushSubscriptionJSON | null
+    } | null
+
+    if (data?.type === 'navigate' && typeof data.href === 'string') {
       void router.push(data.href)
+    }
+    else if (data?.type === 'pushsubscriptionchange') {
+      // The SW rotated this device's subscription - persist the new endpoint.
+      void reconcile(data.subscription ?? null, data.oldEndpoint ?? null)
+    }
   })
+
+  // Reconcile on app open (and whenever the user becomes available): if the
+  // browser rotated the subscription while the app was closed, this re-stores
+  // the current endpoint. No-op when this device isn't subscribed.
+  watch(userId, (id) => {
+    if (id)
+      void reconcile()
+  }, { immediate: true })
 
   if ('setAppBadge' in navigator) {
     const { unreadCount } = useDataNotifications()

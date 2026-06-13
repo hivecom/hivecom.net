@@ -149,12 +149,15 @@ const VIDEO_RE = /\.(?:mp4|webm|mov|m4v)(?:\?\S*)?$/i
 const YOUTUBE_RE = /^https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([-\w]{11})/i
 const MENTION_RE = /@([a-z\d][\w-]{0,31})/gi
 
+const isModernMode = computed(() => (isMobile.value || settings.value.chat_display_mode === 'modern') && activeBuffer.value?.kind !== 'server')
 const showTimestamps = computed(() => {
-  if (props.compact && settings.value.chat_display_mode === 'irc' && settings.value.chat_irc_hide_sidebar_timestamps)
+  // The "hide sidebar timestamps" preference only applies to the classic IRC
+  // compact layout. Mobile (and modern mode) render the group-header timestamp
+  // instead, so the IRC-specific hide must not suppress it there.
+  if (!isModernMode.value && props.compact && settings.value.chat_display_mode === 'irc' && settings.value.chat_irc_hide_sidebar_timestamps)
     return false
   return settings.value.chat_show_timestamps
 })
-const isModernMode = computed(() => (isMobile.value || settings.value.chat_display_mode === 'modern') && activeBuffer.value?.kind !== 'server')
 const isServerBuffer = computed(() => activeBuffer.value?.kind === 'server')
 const isServiceQuery = computed(() => activeBuffer.value?.kind === 'pm' && SERVICE_NICKS.has((activeBuffer.value?.name ?? '').toLowerCase()))
 

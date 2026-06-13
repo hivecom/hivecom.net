@@ -3,7 +3,12 @@ import { Button, ButtonGroup, Card, Divider, Flex, Select, Slider, Switch } from
 import { onMounted } from 'vue'
 import SoundChoicePicker from '@/components/Shared/SoundChoicePicker.vue'
 import { usePushNotifications } from '@/composables/usePushNotifications'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { NONE_SOUND_ID } from '@/lib/notificationSound'
+
+// On mobile the device/OS volume governs playback, so the in-app volume slider
+// is hidden and notifications always play at full volume.
+const isMobile = useBreakpoint('<s')
 
 const { settings, settingsError } = useDataUserSettings()
 const { setActiveTheme, themeOptions, selectedTheme, setVariant, selectedVariant, variantOptions } = useUserTheme()
@@ -112,10 +117,10 @@ async function togglePushNotifications(value: boolean) {
       v-model:design="settings.notification_sound_design"
       label="Notification sound"
       description="Play a sound when you receive a new notification, mention, or friend request."
-      :volume="settings.notification_sound_volume"
+      :volume="isMobile ? 100 : settings.notification_sound_volume"
       class="mb-m"
     />
-    <Flex column gap="xs" expand class="mb-m">
+    <Flex v-if="!isMobile" column gap="xs" expand class="mb-m">
       <Flex y-center x-between expand>
         <Flex column gap="xxs">
           <span class="text-m">Volume</span>

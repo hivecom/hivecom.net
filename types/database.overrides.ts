@@ -132,7 +132,6 @@ interface TableColumnOverrides {
       chat_sound_message_design: SoundDesign | null
       chat_sound_volume: number
       app_browser_notifications: boolean
-      app_push_notifications: boolean
       notification_sound_choice: string
       notification_sound_url: string
       notification_sound_design: SoundDesign | null

@@ -402,7 +402,7 @@ Deno.serve(async (req: Request) => {
       ),
     );
 
-    function countNonBotClients(s: (typeof tsServers)[number]): number {
+    const countNonBotClients = (s: (typeof tsServers)[number]): number => {
       const cfg = tsServerCfgMap.get(s.id);
       const musicBotGroupId = cfg?.roleMusicBotGroupId;
       return s.clients.filter(
@@ -410,7 +410,7 @@ Deno.serve(async (req: Request) => {
           c.uniqueId !== "serveradmin" &&
           (!musicBotGroupId || !c.serverGroups.includes(musicBotGroupId)),
       ).length;
-    }
+    };
 
     const tsByServer: Record<string, number> = {};
     for (const s of tsServers) {

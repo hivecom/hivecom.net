@@ -7,6 +7,7 @@ import ToastBodyNotification from '@/components/Toast/ToastBodyNotification.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { usePageVisibility } from '@/composables/usePageVisibility'
+import { useMobileViewport } from '@/lib/mediaQuery'
 import { playNotificationSound } from '@/lib/notificationSound'
 
 const BACKGROUND_POLL_INTERVAL_MS = 5 * 60 * 1000
@@ -97,12 +98,16 @@ export function useDataNotifications() {
   const userRole = computed(() => (cachedUserData.value?.role ?? null) as Database['public']['Enums']['app_role'] | null)
   const { settings } = useDataUserSettings()
 
+  // On mobile the device/OS volume governs playback, so the in-app volume is
+  // bypassed and the cue always plays at full volume.
+  const isMobile = useMobileViewport()
+
   // Plays the user's configured notification cue. No-ops when set to "None".
   function playNotificationCue() {
     playNotificationSound(
       settings.value.notification_sound_choice,
       settings.value.notification_sound_url,
-      (settings.value.notification_sound_volume ?? 70) / 100,
+      isMobile.value ? 1 : (settings.value.notification_sound_volume ?? 70) / 100,
       settings.value.notification_sound_design,
     )
   }

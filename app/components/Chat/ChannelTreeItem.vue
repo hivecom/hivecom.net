@@ -116,8 +116,32 @@ function bufferIcon(kind: string) {
         </Flex>
       </template>
     </Tooltip>
-    <!-- No parent buffer: virtual label (uses cached display-name if known) -->
-    <span v-else class="chat-channels__group-label">{{ node.meta?.get('display-name') ?? node.name }}</span>
+    <!-- No parent buffer: ghost button to join the parent channel -->
+    <Tooltip
+      v-else
+      placement="right"
+      :disabled="isMobile || !node.meta?.get('topic')"
+    >
+      <button
+        type="button"
+        class="chat-channels__item chat-channels__item--ghost w-100"
+        @click="joinChannel(`#${node.fullPath}`)"
+      >
+        <img
+          v-if="node.meta?.get('avatar')"
+          :src="node.meta.get('avatar')!"
+          class="chat-channels__icon chat-channels__icon--avatar"
+          :alt="node.name"
+        >
+        <Icon v-else name="ph:hash" size="13" class="chat-channels__icon" />
+        <span class="chat-channels__name">{{ node.meta?.get('display-name') ?? node.name }}</span>
+      </button>
+      <template #tooltip>
+        <p v-if="node.meta?.get('topic')" class="text-xs" style="margin:0">
+          {{ node.meta.get('topic') }}
+        </p>
+      </template>
+    </Tooltip>
 
     <!-- Children -->
     <div class="chat-channels__children">

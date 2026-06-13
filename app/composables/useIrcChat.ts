@@ -24,7 +24,9 @@
 // falls back to plain registration so the client keeps working today.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { CachedChatBuffer } from '@/lib/chat/bufferCache'
 import type { SoundDesign } from '@/types/sound'
+import { loadChatBufferCache, saveChatBufferCache } from '@/lib/chat/bufferCache'
 import { NONE_SOUND_ID, playNotificationSound } from '@/lib/notificationSound'
 
 const WS_URL = 'wss://irc.hivecom.net:8097'
@@ -104,6 +106,10 @@ const WANTED_CAPS = [
   'draft/channel-rename',
   // draft/message-redaction: delete messages (own messages, or others' as op).
   'draft/message-redaction',
+  // draft/webpush: lets the server deliver Web Push notifications for messages of
+  // interest while we're disconnected. Enabling the cap makes Ergo advertise its
+  // VAPID public key in the `VAPID` ISUPPORT token (parsed below into `vapidKey`).
+  'draft/webpush',
 ]
 
 export type ConnState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'offline'
@@ -382,6 +388,16 @@ function saveReadPosition(name: string, ts: number) {
 let ws: WebSocket | null = null
 let initialised = false
 let _readWatcherRegistered = false
+// --- Local buffer cache (IndexedDB) ---
+// Max chat lines persisted per buffer. Bounds the cache and matches the size of
+// a typical CHATHISTORY LATEST window so the seeded set lines up with live replay.
+const MAX_CACHED_MESSAGES_PER_BUFFER = 100
+// Snapshot loaded from IndexedDB, seeded into the buffer list on (re)connect so
+// returning users see prior conversations instantly while live history streams in.
+let cachedBufferSnapshot: CachedChatBuffer[] | null = null
+let _cacheHydrating = false
+let _cacheWatcherRegistered = false
+let _cacheWriteTimer: ReturnType<typeof setTimeout> | null = null
 let _intentionalDisconnect = false
 // Set when a connection attempt fails fatally (e.g. nickname in use) and must
 // NOT auto-reconnect. Unlike _intentionalDisconnect, this preserves the 'error'
@@ -453,6 +469,9 @@ let saslFailed = false
 const chatHistorySupported = ref(false)
 // True when the server ACKs draft/message-redaction, enabling the REDACT command.
 const redactionSupported = ref(false)
+// Server VAPID public key (URL-safe base64) from the `VAPID` ISUPPORT token, used
+// to create the browser push subscription for draft/webpush. Null until 005 lands.
+const vapidKey = ref<string | null>(null)
 let echoMessageActive = false
 let probingNickServInfo = false
 // True once the NickServ INFO probe for the current session has resolved (or timed out).
@@ -577,6 +596,9 @@ function resetBuffers() {
   channelMetaCache.value = loadChannelMetaFromStorage()
   _backgroundMetaTargets.clear()
   channelMetaResolved.value = new Set(channelMetaCache.value.keys())
+  // Paint prior channel/DM conversations from the local cache (if loaded) so a
+  // (re)connect lands on populated buffers instead of an empty pane.
+  seedBuffersFromCache()
 }
 
 function findBuffer(name: string) {
@@ -648,6 +670,12 @@ function addToBuffer(
     }
   }
   else {
+    // Dedup live/replayed messages against ones already present - notably lines
+    // hydrated from the local cache that overlap a CHATHISTORY LATEST replay.
+    // msgid is the stable IRCv3 identifier; optimistic local sends carry no
+    // msgid so they're never wrongly suppressed here.
+    if (newMsg.msgid != null && buf.messages.some(m => m.msgid === newMsg.msgid))
+      return
     buf.messages.push(newMsg)
   }
 
@@ -1087,6 +1115,159 @@ function persistChannel(value: string) {
     localStorage.setItem(STORAGE_CHANNEL, value)
 }
 
+// --- Local buffer cache (IndexedDB) ------------------------------------------
+// Returning users get recent channel/DM history painted instantly from a local
+// IndexedDB snapshot while the socket connects and live CHATHISTORY streams in.
+// Live (replayed) messages dedupe against the seeded ones by msgid, and the
+// BEFORE pagination anchor tracks the oldest *delivered* line, so any gap
+// between the cache and the live window self-heals on scroll-up.
+
+/**
+ * First non-empty identity (nick) used as the per-user cache key. Empty strings
+ * fall through, so a signed-out load with no nick yields no key (no cache read/write).
+ */
+function cacheNickKey(): string {
+  const candidates = [nick.value, inputNick.value, import.meta.client ? localStorage.getItem(STORAGE_NICK) : null]
+  for (const candidate of candidates) {
+    if (candidate)
+      return candidate.toLowerCase()
+  }
+  return ''
+}
+
+/**
+ * Reconstruct ChatBuffer objects from the loaded snapshot and append any that
+ * aren't already present. Seeded messages are flagged `backlog` and bypass
+ * addToBuffer, so they never trigger notifications or unread counts.
+ */
+function seedBuffersFromCache() {
+  if (!cachedBufferSnapshot?.length)
+    return
+  const seeded: ChatBuffer[] = []
+  for (const cb of cachedBufferSnapshot) {
+    if (cb.kind !== 'channel' && cb.kind !== 'pm')
+      continue
+    if (!cb.messages.length || findBuffer(cb.name))
+      continue
+    // Respect a closed DM: don't resurrect it unless the cache holds activity
+    // newer than when the user closed it.
+    if (cb.kind === 'pm') {
+      const closedAt = closedDms[cb.name.toLowerCase()]
+      const newestTs = cb.messages[cb.messages.length - 1]?.ts ?? 0
+      if (closedAt != null && newestTs <= closedAt)
+        continue
+    }
+    const messages: ChatMessage[] = cb.messages.map(m => ({
+      id: msgCounter.value++,
+      ts: new Date(m.ts),
+      type: m.type,
+      from: m.from,
+      channel: m.channel,
+      text: m.text,
+      msgid: m.msgid,
+      replyTo: m.replyTo,
+      action: m.action,
+      tag: m.tag,
+      reactions: m.reactions,
+      backlog: true,
+    }))
+    const buf: ChatBuffer = {
+      name: cb.name,
+      kind: cb.kind,
+      messages,
+      users: [],
+      unread: 0,
+      mentions: 0,
+      joined: false,
+      topic: cb.topic ?? '',
+      readLineTs: cb.readLineTs,
+      modes: new Set(),
+    }
+    if (cb.kind === 'channel') {
+      const cached = channelMetaCache.value.get(cb.name.toLowerCase())
+      if (cached?.size)
+        buf.metadata = new Map(cached)
+    }
+    seeded.push(buf)
+  }
+  if (seeded.length)
+    buffers.value = [...buffers.value, ...seeded]
+}
+
+/**
+ * Load the cached buffer snapshot for the current nick from IndexedDB and seed
+ * it into the live buffer list. Best-effort; failures are swallowed.
+ */
+async function hydrateBufferCache() {
+  if (!import.meta.client || _cacheHydrating)
+    return
+  _cacheHydrating = true
+  try {
+    const cacheNick = cacheNickKey()
+    if (!cacheNick)
+      return
+    const cached = await loadChatBufferCache(cacheNick)
+    if (cached?.length) {
+      cachedBufferSnapshot = cached
+      seedBuffersFromCache()
+    }
+  }
+  catch {
+    // Cache is a best-effort UX optimisation; ignore failures.
+  }
+  finally {
+    _cacheHydrating = false
+  }
+}
+
+/**
+ * Persist the current channel/DM buffers (recent chat/tagmsg lines only) to
+ * IndexedDB so the next load can paint them instantly.
+ */
+async function persistBufferCache(): Promise<void> {
+  if (!import.meta.client)
+    return
+  const cacheNick = cacheNickKey()
+  if (!cacheNick)
+    return
+  const out: CachedChatBuffer[] = []
+  for (const b of buffers.value) {
+    if (b.kind !== 'channel' && b.kind !== 'pm')
+      continue
+    const messages = b.messages
+      .filter(m => (m.type === 'chat' || m.type === 'tagmsg') && !m.redacted)
+      .slice(-MAX_CACHED_MESSAGES_PER_BUFFER)
+      .map(m => ({
+        ts: m.ts.getTime(),
+        type: m.type as 'chat' | 'tagmsg',
+        from: m.from,
+        channel: m.channel,
+        text: m.text,
+        msgid: m.msgid,
+        replyTo: m.replyTo,
+        action: m.action,
+        tag: m.tag,
+        reactions: m.reactions,
+      }))
+    if (!messages.length)
+      continue
+    out.push({ name: b.name, kind: b.kind, topic: b.topic, readLineTs: b.readLineTs, messages })
+  }
+  await saveChatBufferCache(cacheNick, out)
+}
+
+/** Debounced wrapper around persistBufferCache to coalesce rapid message bursts. */
+function scheduleBufferCacheWrite() {
+  if (!import.meta.client)
+    return
+  if (_cacheWriteTimer !== null)
+    clearTimeout(_cacheWriteTimer)
+  _cacheWriteTimer = setTimeout(() => {
+    _cacheWriteTimer = null
+    void persistBufferCache()
+  }, 1000)
+}
+
 // --- IRC wire ----------------------------------------------------------------
 function send(line: string) {
   if (ws && ws.readyState === WebSocket.OPEN)
@@ -1496,6 +1677,24 @@ function handleMessage(raw: string) {
         send('METADATA * SUB avatar display-name orbit.status')
       // Discover DMs with activity since we were last online.
       requestHistoryTargets()
+      break
+
+    case '005': { // RPL_ISUPPORT
+      // Tokens sit between the leading nick (params[0]) and the trailing
+      // "are supported by this server" text. Capture the VAPID push key; this is
+      // the one we must use as the browser subscription's applicationServerKey so
+      // Ergo's push notifications validate against the subscription.
+      for (let i = 1; i < params.length - 1; i++) {
+        const tok = params[i] ?? ''
+        if (tok.startsWith('VAPID='))
+          vapidKey.value = tok.slice('VAPID='.length) || null
+      }
+      break
+    }
+
+    case 'WEBPUSH':
+      // Ack of a WEBPUSH REGISTER/UNREGISTER (`WEBPUSH <subcommand> <endpoint>`).
+      // Success needs no UI; failures arrive as `FAIL WEBPUSH ...` (handled below).
       break
 
     case '433': // ERR_NICKNAMEINUSE
@@ -2542,6 +2741,11 @@ function handleMessage(raw: string) {
         const desc = params[params.length - 1] ?? 'The message could not be deleted'
         addToActive({ type: 'error', text: `Delete failed: ${desc}` }, { ts })
       }
+      else if (failCmd === 'WEBPUSH') {
+        // draft/webpush failures (INVALID_PARAMS, INTERNAL_ERROR).
+        const desc = params[params.length - 1] ?? 'Push subscription failed'
+        addServer({ type: 'error', text: `Push notifications: ${desc}` }, { ts })
+      }
       break
     }
 
@@ -2608,6 +2812,7 @@ function openSocket() {
   pendingDmTargets.clear()
   serviceLog.value = []
   chatHistorySupported.value = false
+  vapidKey.value = null
   echoMessageActive = false
   messageTagsActive = false
   readMarkerActive = false
@@ -3350,6 +3555,7 @@ export function useIrcChat() {
     initialised = true
     loadPersisted()
     resetBuffers()
+    void hydrateBufferCache()
   }
 
   /** Seed the nickname field with a default (e.g. the signed-in username) when empty. */
@@ -3409,6 +3615,19 @@ export function useIrcChat() {
       b.mentions = 0
       b.readLineTs = undefined
     })
+  }
+
+  // Persist channel/DM buffers to IndexedDB (debounced) whenever a buffer is
+  // added/removed or a new message lands, so the next load paints instantly.
+  if (import.meta.client && !_cacheWatcherRegistered) {
+    _cacheWatcherRegistered = true
+    watch(
+      () => buffers.value.map((b) => {
+        const last = b.messages[b.messages.length - 1]
+        return `${b.name}:${b.kind}:${b.messages.length}:${last?.msgid ?? last?.ts.getTime() ?? 0}`
+      }).join('|'),
+      () => scheduleBufferCacheWrite(),
+    )
   }
 
   const hasUnread = computed(() => buffers.value.some(b => b.unread > 0))
@@ -3475,6 +3694,8 @@ export function useIrcChat() {
     latencyMs,
     nick,
     account,
+    // draft/webpush: server VAPID key for browser push subscriptions
+    vapidKey,
     // buffers
     chatHistorySupported,
     buffers,

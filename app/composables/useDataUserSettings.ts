@@ -50,7 +50,6 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     chat_sound_message_design: null,
     chat_sound_volume: 70,
     app_browser_notifications: false,
-    app_push_notifications: false,
     notification_sound_choice: 'none',
     notification_sound_url: '',
     notification_sound_design: null,

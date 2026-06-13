@@ -6,15 +6,15 @@
  * that's wanted later, consider migrating to a generated Workbox SW.
  */
 
-self.addEventListener('install', () => {
-  self.skipWaiting()
+globalThis.addEventListener('install', () => {
+  globalThis.skipWaiting()
 })
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
+globalThis.addEventListener('activate', (event) => {
+  event.waitUntil(globalThis.clients.claim())
 })
 
-self.addEventListener('push', (event) => {
+globalThis.addEventListener('push', (event) => {
   if (!event.data)
     return
 
@@ -37,16 +37,16 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil((async () => {
-    await self.registration.showNotification(title, options)
+    await globalThis.registration.showNotification(title, options)
 
     // Mirror the unread count onto the app icon badge when the platform
     // supports it (the page also does this while open).
-    if (typeof payload.unreadCount === 'number' && 'setAppBadge' in self.navigator) {
+    if (typeof payload.unreadCount === 'number' && 'setAppBadge' in globalThis.navigator) {
       try {
         if (payload.unreadCount > 0)
-          await self.navigator.setAppBadge(payload.unreadCount)
+          await globalThis.navigator.setAppBadge(payload.unreadCount)
         else
-          await self.navigator.clearAppBadge()
+          await globalThis.navigator.clearAppBadge()
       }
       catch {
         // Badging is best-effort.
@@ -55,13 +55,52 @@ self.addEventListener('push', (event) => {
   })())
 })
 
-self.addEventListener('notificationclick', (event) => {
+globalThis.addEventListener('pushsubscriptionchange', (event) => {
+  // The browser rotated this device's subscription. Re-subscribe immediately so
+  // pushes keep flowing, then ask any open client to persist the new endpoint
+  // (the page has the auth needed to write to the DB). If no client is open,
+  // the page reconciles on its next open by comparing the live subscription
+  // against the stored row.
+  event.waitUntil((async () => {
+    const oldSubscription = event.oldSubscription
+    let newSubscription = event.newSubscription
+
+    if (!newSubscription) {
+      const applicationServerKey = oldSubscription?.options?.applicationServerKey
+      if (applicationServerKey) {
+        try {
+          newSubscription = await globalThis.registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey,
+          })
+        }
+        catch {
+          // Couldn't re-subscribe; the stale endpoint will 410 and be pruned.
+        }
+      }
+    }
+
+    const clientList = await globalThis.clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true,
+    })
+    for (const client of clientList) {
+      client.postMessage({
+        type: 'pushsubscriptionchange',
+        oldEndpoint: oldSubscription?.endpoint ?? null,
+        subscription: newSubscription ? newSubscription.toJSON() : null,
+      })
+    }
+  })())
+})
+
+globalThis.addEventListener('notificationclick', (event) => {
   event.notification.close()
 
   const href = (event.notification.data && event.notification.data.href) || '/'
 
   event.waitUntil((async () => {
-    const clientList = await self.clients.matchAll({
+    const clientList = await globalThis.clients.matchAll({
       type: 'window',
       includeUncontrolled: true,
     })
@@ -69,7 +108,7 @@ self.addEventListener('notificationclick', (event) => {
     // Focus an existing Hivecom tab and navigate it, if one is open.
     for (const client of clientList) {
       const url = new URL(client.url)
-      if (url.origin === self.location.origin) {
+      if (url.origin === globalThis.location.origin) {
         await client.focus()
         if ('navigate' in client) {
           try {
@@ -88,6 +127,6 @@ self.addEventListener('notificationclick', (event) => {
     }
 
     // Otherwise open a fresh window.
-    await self.clients.openWindow(href)
+    await globalThis.clients.openWindow(href)
   })())
 })

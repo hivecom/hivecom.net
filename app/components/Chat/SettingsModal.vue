@@ -1,17 +1,45 @@
 <script setup lang="ts">
 import { Badge, Button, ButtonGroup, Divider, Flex, Input, Modal, Slider, Switch, Tab, Tabs } from '@dolanske/vui'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import SoundChoicePicker from '@/components/Shared/SoundChoicePicker.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
+import { useErgoPush } from '@/composables/useErgoPush'
+import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { NONE_SOUND_ID } from '@/lib/notificationSound'
 
-defineProps<{ open: boolean }>()
+const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 const isMobile = useBreakpoint('<s')
 const isDev = import.meta.dev
 const { settings } = useDataUserSettings()
+
+// Chat push notifications (Ergo draft/webpush). The server VAPID key only exists
+// once connected to a webpush-capable server, so the toggle is gated on it.
+const { vapidKey } = useIrcChat()
+const {
+  isSupported: pushSupported,
+  isSubscribed: pushSubscribed,
+  loading: pushLoading,
+  subscribe: subscribePush,
+  unsubscribe: unsubscribePush,
+  refresh: refreshPush,
+} = useErgoPush()
+
+// The modal stays mounted with an `open` prop, so reconcile push state each time
+// it opens rather than only once on mount.
+watch(() => props.open, (open) => {
+  if (open)
+    void refreshPush()
+})
+
+async function toggleChatPush(value: boolean) {
+  if (value)
+    await subscribePush()
+  else
+    await unsubscribePush()
+}
 
 const activeTab = ref<'display' | 'notifications'>('display')
 const keywordDraft = ref('')
@@ -230,6 +258,18 @@ async function toggleBrowserNotifications(value: boolean) {
           <Switch :model-value="settings.chat_browser_notifications" @update:model-value="toggleBrowserNotifications" />
         </Flex>
 
+        <Flex v-if="pushSupported" y-center x-between gap="m" expand>
+          <Flex column gap="xxs" class="chat-settings__text">
+            <span class="text-s">Push notifications</span>
+            <span class="text-xs text-color-lighter">
+              {{ vapidKey
+                ? 'Deliver chat mentions and messages to this device even when Hivecom is closed.'
+                : 'Connect to chat to enable push notifications on this device.' }}
+            </span>
+          </Flex>
+          <Switch :model-value="pushSubscribed" :disabled="pushLoading || !vapidKey" @update:model-value="toggleChatPush" />
+        </Flex>
+
         <Flex y-center x-between gap="m" expand>
           <Flex column gap="xxs" class="chat-settings__text">
             <span class="text-s">Only notify on mentions</span>
@@ -285,7 +325,7 @@ async function toggleBrowserNotifications(value: boolean) {
           label="Mention sound"
           label-size="s"
           description="Play a sound when you are mentioned or one of your keywords matches."
-          :volume="settings.chat_sound_volume"
+          :volume="isMobile ? 100 : settings.chat_sound_volume"
         />
 
         <SoundChoicePicker
@@ -295,10 +335,10 @@ async function toggleBrowserNotifications(value: boolean) {
           label="New message sound"
           label-size="s"
           description="Play a sound for any new message, not just mentions."
-          :volume="settings.chat_sound_volume"
+          :volume="isMobile ? 100 : settings.chat_sound_volume"
         />
 
-        <Flex column gap="xs" expand>
+        <Flex v-if="!isMobile" column gap="xs" expand>
           <Flex y-center x-between expand>
             <Flex column gap="xxs" class="chat-settings__text">
               <span class="text-s">Volume</span>

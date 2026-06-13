@@ -104,22 +104,9 @@ Deno.serve(async (req) => {
 
   const supabase = createPublicServiceRoleClient();
 
-  // Honour the user's opt-in preference. Settings are a JSON blob keyed by the
-  // user's profile id; skip delivery unless push is explicitly enabled.
-  const { data: settingsRow } = await supabase
-    .from("user_settings")
-    .select("data")
-    .eq("id", payload.userId)
-    .maybeSingle();
-
-  const settings = settingsRow?.data as
-    | { app_push_notifications?: boolean }
-    | null;
-
-  if (!settings?.app_push_notifications) {
-    return jsonResponse({ success: true, skipped: "push_disabled" });
-  }
-
+  // Consent is per-device: a subscription row exists only because the user
+  // enabled push on that device, and disabling removes it. So delivery is
+  // driven purely by the rows here - no account-wide opt-in gate.
   const { data: subscriptions, error: subsError } = await supabase
     .from("user_push_subscriptions")
     .select("endpoint, p256dh, auth")
@@ -153,6 +140,7 @@ Deno.serve(async (req) => {
 
   let sent = 0;
   const staleEndpoints: string[] = [];
+  const deliveredEndpoints: string[] = [];
 
   await Promise.all(
     (subscriptions as SubscriptionRow[]).map(async (sub) => {
@@ -163,6 +151,7 @@ Deno.serve(async (req) => {
         });
         await subscriber.pushTextMessage(message, {});
         sent += 1;
+        deliveredEndpoints.push(sub.endpoint);
       } catch (err) {
         // 404/410 mean the subscription is gone for good - prune it.
         const status = (err as { response?: { status?: number } })?.response
@@ -184,6 +173,14 @@ Deno.serve(async (req) => {
       .from("user_push_subscriptions")
       .delete()
       .in("endpoint", staleEndpoints);
+  }
+
+  // Bump liveness so the GC cron only retires genuinely silent subscriptions.
+  if (deliveredEndpoints.length > 0) {
+    await supabase
+      .from("user_push_subscriptions")
+      .update({ last_success_at: new Date().toISOString() })
+      .in("endpoint", deliveredEndpoints);
   }
 
   return jsonResponse({ success: true, sent, pruned: staleEndpoints.length });

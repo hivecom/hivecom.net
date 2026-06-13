@@ -415,6 +415,7 @@ export default defineNuxtConfig({
         'vue-chartjs',
         'chartjs-scale-timestack',
         'v-calendar',
+        '@unhead/schema-org/vue',
       ],
     },
   },
@@ -451,6 +452,27 @@ export default defineNuxtConfig({
     },
   },
   hooks: {
+    'vite:extendConfig': (config) => {
+      // `@` resolves to `./app`, but `@/types/*` files live at the repo root
+      // (`./types`). Nuxt registers the default `@` alias before any we add via
+      // `alias`, so Vite (and vite-node, used by the dev server) matches `@`
+      // first and fails to resolve runtime value imports of `@/types/*`.
+      // Prepend a more specific alias so it is matched first. Vite does not read
+      // tsconfig `paths`, so this must live in the Vite resolver explicitly.
+      const typesReplacement = `${fileURLToPath(new URL('./types', import.meta.url))}/`
+      const resolve = config.resolve
+      if (!resolve)
+        return
+      interface AliasEntry { find: string | RegExp, replacement: string }
+      const current = resolve.alias
+      const entries: AliasEntry[] = Array.isArray(current)
+        ? (current as AliasEntry[])
+        : Object.entries((current ?? {}) as Record<string, string>).map(([find, replacement]) => ({ find, replacement }))
+      resolve.alias = [
+        { find: /^@\/types\//, replacement: typesReplacement },
+        ...entries,
+      ]
+    },
     'nitro:build:before': (nitro) => {
       // Force-exit after Nitro fully closes (post-prerender) so the CI process
       // doesn't hang on open handles (native addons, etc.) in static builds.

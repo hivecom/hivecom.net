@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { Alert, Button, Flex } from '@dolanske/vui'
+import { Button, ButtonGroup, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref } from 'vue'
 import { usePushNotifications } from '@/composables/usePushNotifications'
+import NotificationCard from './NotificationCard.vue'
 
-// Persisted so we don't nag a user who chose to ignore the prompt.
+// Persisted so we don't nag a user who chose to dismiss the prompt.
 const DISMISS_KEY = 'hivecom.push-prompt.dismissed'
 
-const { isSupported, isStandalone, permission, isSubscribed, loading, subscribe, refresh } = usePushNotifications()
+const { isSupported, permission, isSubscribed, loading, subscribe, refresh } = usePushNotifications()
 
 const dismissed = ref(true)
 
@@ -15,11 +16,11 @@ onMounted(async () => {
   await refresh()
 })
 
-// Only nudge inside an installed PWA where push is actually useful and the
-// user hasn't already enabled, denied, or dismissed it.
+// Nudge whenever push is supported on this device but not yet enabled here,
+// unless the user denied permission or dismissed the callout. iOS Safari tabs
+// report unsupported (push only works once installed), so they stay hidden.
 const show = computed(() =>
   isSupported.value
-  && isStandalone.value
   && permission.value !== 'denied'
   && !isSubscribed.value
   && !dismissed.value,
@@ -39,26 +40,59 @@ async function enable() {
 </script>
 
 <template>
-  <Alert v-if="show" variant="info" class="push-prompt">
-    <Flex column gap="s" expand>
-      <Flex column gap="xxs">
-        <strong class="text-s">Enable push notifications</strong>
-        <span class="text-xs text-color-light">Get notified about replies, mentions, and events even when Hivecom is closed.</span>
-      </Flex>
-      <Flex gap="xs" y-center>
-        <Button size="s" variant="accent" :loading="loading" @click="enable">
-          Enable
-        </Button>
-        <Button size="s" variant="gray" :disabled="loading" @click="ignore">
-          Ignore
-        </Button>
-      </Flex>
-    </Flex>
-  </Alert>
+  <NotificationCard
+    v-if="show"
+    icon="ph:bell-ringing"
+    text="Enable push notifications"
+    class="push-prompt"
+  >
+    <template #below>
+      <p class="push-prompt__description text-xs text-color-lighter">
+        Get notified even when Hivecom is closed.
+      </p>
+    </template>
+
+    <template #actions>
+      <ButtonGroup :gap="2">
+        <Tooltip placement="top">
+          <Button
+            square
+            size="s"
+            variant="gray"
+            :disabled="loading"
+            aria-label="Ignore"
+            @click="ignore"
+          >
+            <Icon name="ph:x" />
+          </Button>
+          <template #tooltip>
+            <p>Ignore</p>
+          </template>
+        </Tooltip>
+        <Tooltip placement="top">
+          <Button
+            square
+            size="s"
+            variant="accent"
+            :loading="loading"
+            aria-label="Enable push notifications"
+            @click="enable"
+          >
+            <Icon name="ph:check" />
+          </Button>
+          <template #tooltip>
+            <p>Enable push notifications</p>
+          </template>
+        </Tooltip>
+      </ButtonGroup>
+    </template>
+  </NotificationCard>
 </template>
 
 <style lang="scss" scoped>
 .push-prompt {
-  margin: var(--space-s) var(--space-s) 0;
+  margin-bottom: var(--space-s);
+  // Accent border to set the call-to-action apart from regular notifications.
+  border-color: var(--color-accent);
 }
 </style>
