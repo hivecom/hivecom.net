@@ -9,7 +9,6 @@ import { useSessionReady } from '@/composables/useSessionReady'
 import { navigationLinks } from '@/config/navigation'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import InstallPWAButton from '../Shared/InstallPWAButton.vue'
-import ChatNavSheet from './ChatNavSheet.vue'
 import ChatSheet from './ChatSheet.vue'
 import NavEventBadge from './NavEventBadge.vue'
 import NotificationSheet from './NotificationSheet.vue'
@@ -127,7 +126,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
         <ul ref="navbarLinksRef" class="navigation__links" @mouseleave="hoveredElement = null">
           <template v-for="link in navigationLinks" :key="link.path">
             <li
-              v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)"
+              v-if="(!link.requiresAuth || (link.requiresAuth && authReady && user)) && !link.desktopHidden"
               @mouseenter="updateHoveredElement"
             >
               <NuxtLink
@@ -237,8 +236,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
         <div v-else-if="user && !needsMfaChallenge" class="navigation__user">
           <SearchButton v-if="!isMobile" />
-          <ChatNavSheet v-if="showChat && route.path === '/chat' && isMobile" :mobile="isMobile" />
-          <ChatSheet v-else-if="showChat" :mobile="isMobile" :disabled="route.path === '/chat'" />
+          <ChatSheet v-if="showChat && !(isMobile && route.path === '/chat')" :mobile="isMobile" :disabled="route.path === '/chat'" />
           <!-- Custom margin, since visually the pfp appears closer than the distance between search & notif icons -->
           <NotificationSheet style="margin-right:6px" />
           <UserSheet v-if="isMobile" />
@@ -249,8 +247,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
           <div class="navigation__auth-buttons">
             <SearchButton />
 
-            <ChatNavSheet v-if="showChat && route.path === '/chat' && isMobile" />
-            <ChatSheet v-else-if="showChat" :disabled="route.path === '/chat'" />
+            <ChatSheet v-if="showChat && !(isMobile && route.path === '/chat')" :disabled="route.path === '/chat'" />
 
             <Tooltip :disabled="isMobile">
               <NuxtLink to="/themes">
@@ -274,8 +271,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
           <!-- On mobile we just have a little user icon -->
           <div class="navigation__auth-mobile-button">
-            <ChatNavSheet v-if="showChat && route.path === '/chat' && isMobile" mobile />
-            <ChatSheet v-else-if="showChat" mobile :disabled="route.path === '/chat'" />
+            <ChatSheet v-if="showChat && route.path !== '/chat'" mobile />
             <Button square aria-label="Sign in" @click="$router.push(signInPath())">
               <Icon name="ph:sign-in" />
             </Button>

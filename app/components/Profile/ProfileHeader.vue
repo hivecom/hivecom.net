@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import type { ProfileFriendshipStatus } from '@/types/profile.ts'
 import { Badge, Button, Card, CopyClipboard, Flex, Grid, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
+import { useSupabaseUser } from '#imports'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
@@ -44,10 +45,19 @@ const userRole = computed(() => user.value?.role ?? null)
 
 const isTablet = useBreakpoint('<m')
 
+const currentUser = useSupabaseUser()
+
 const activityStatus = computed(() => {
   if (!props.profile?.last_seen)
     return null
-
+  if (currentUser.value?.id && props.profile.id === currentUser.value.id) {
+    return {
+      isActive: true,
+      isAway: false,
+      lastSeenText: 'Online',
+      lastSeenTimestamp: new Date(),
+    }
+  }
   return getUserActivityStatus(props.profile.last_seen)
 })
 

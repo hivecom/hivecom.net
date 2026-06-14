@@ -5,8 +5,10 @@ import ChatInfoModal from '@/components/Chat/ChannelInfoModal.vue'
 import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
+import { useChatNavSheet } from '@/composables/useChatNavSheet'
 import { SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 defineProps<{
   // Tighter padding/height for the mobile dedicated page.
@@ -14,6 +16,7 @@ defineProps<{
 }>()
 
 const { activeBuffer, buffers, joinChannel, openPm, requestWhois, isUnauthorizedSubchannel, myChannelRole } = useIrcChat()
+const { open: navSheetOpen } = useChatNavSheet()
 const { resolved: resolvedNicks, resolve: resolveNick } = useIrcNickResolver()
 
 watch(activeBuffer, (buf) => {
@@ -51,6 +54,7 @@ const channelNeedsRegistration = computed(() => {
   return role !== null && ['~', '&', '@'].includes(role.symbol)
 })
 
+const isMobile = useBreakpoint('<s')
 const infoOpen = ref(false)
 
 function openPmInfo() {
@@ -87,10 +91,13 @@ function topicSegments(topic: string): TopicSegment[] {
 
 <template>
   <Flex v-if="activeBuffer" y-center gap="s" class="channel-header" :class="{ 'channel-header--compact': compact }" expand>
+    <Button v-if="isMobile" square plain aria-label="Back" class="channel-header__back" @click="navSheetOpen = true">
+      <Icon name="ph:arrow-left" size="16" />
+    </Button>
     <!-- Channel -->
     <template v-if="activeBuffer.kind === 'channel'">
       <Flex x-between expand y-center>
-        <Flex y-center gap="xs" class="channel-header__left">
+        <Flex y-center gap="xs" class="channel-header__left" :class="{ 'channel-header__left--clickable': isMobile }" @click="isMobile && (infoOpen = true)">
           <img
             v-if="activeBuffer.metadata?.get('avatar')"
             :src="activeBuffer.metadata.get('avatar')"
@@ -137,7 +144,7 @@ function topicSegments(topic: string): TopicSegment[] {
     <!-- PM -->
     <template v-else-if="activeBuffer.kind === 'pm'">
       <Flex x-between expand y-center>
-        <Flex y-center gap="xs">
+        <Flex y-center gap="xs" :class="{ 'channel-header__left--clickable': isMobile }" @click="isMobile && openPmInfo()">
           <UserAvatar v-if="pmUserId" :user-id="pmUserId" size="s" show-online-indicator show-preview linked />
           <AvatarMedia v-else :size="28" :alt="activeBuffer.name">
             <template #default>
@@ -178,6 +185,10 @@ function topicSegments(topic: string): TopicSegment[] {
   &__left {
     min-width: 0;
     flex: 1;
+
+    &--clickable {
+      cursor: pointer;
+    }
   }
 
   &__avatar {
@@ -185,6 +196,10 @@ function topicSegments(topic: string): TopicSegment[] {
     height: 20px;
     border-radius: var(--border-radius-xs);
     object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  &__back {
     flex-shrink: 0;
   }
 

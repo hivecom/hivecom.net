@@ -60,6 +60,13 @@ export const navigationLinks = [
     path: '/',
     label: 'Home',
     icon: 'ph:house',
+    desktopHidden: true,
+  },
+  {
+    path: '/chat',
+    label: 'Chat',
+    icon: 'ph:chat',
+    desktopHidden: true,
   },
   {
     path: '/community',

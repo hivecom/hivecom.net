@@ -305,6 +305,7 @@ const menuUserData = computed(() =>
   }
 
   &__list {
+    user-select: none;
     flex: 1;
     min-height: 0;
     padding: var(--space-xxs);

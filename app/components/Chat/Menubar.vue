@@ -9,7 +9,11 @@ defineProps<{
   compact?: boolean
 }>()
 
-const { isConnected, connState, connect, disconnect, sidebarHidden, toggleSidebar, latencyMs } = useIrcChat()
+const route = useRoute()
+const router = useRouter()
+const isExclusive = computed(() => route.path === '/chat/exclusive')
+
+const { isConnected, connState, connect, disconnect, sidebarHidden, toggleSidebar, chatFullWidth, toggleFullWidth, latencyMs, setActive, activeName } = useIrcChat()
 
 const isMobile = useBreakpoint('<s')
 
@@ -68,6 +72,12 @@ function run(action: () => void) {
           </template>
           Disconnect
         </DropdownItem>
+        <DropdownItem v-if="isConnected" :class="{ 'vui-dropdown-item--active': activeName === '*' }" @click="() => { setActive('*'); connectionDrawerOpen = false }">
+          <template #icon>
+            <Icon name="ph:hard-drives" />
+          </template>
+          Server log
+        </DropdownItem>
         <DropdownTitle>About</DropdownTitle>
         <p class="chat-menubar__server">
           irc.hivecom.net:6697
@@ -82,18 +92,8 @@ function run(action: () => void) {
     </Sheet>
   </template>
 
-  <!-- Desktop: sidebar icon button + single merged Connection dropdown -->
+  <!-- Desktop: View + Connection menus -->
   <Flex v-else y-center :gap="0" class="chat-menubar">
-    <Button
-      v-if="!compact"
-      square
-      plain
-      :aria-label="sidebarHidden ? 'Show sidebar' : 'Hide sidebar'"
-      class="vui-button-accent-weak vui-button-rounded"
-      @click="run(toggleSidebar)"
-    >
-      <Icon :name="sidebarHidden ? 'ph:sidebar-simple' : 'ph:sidebar'" size="16" />
-    </Button>
     <Menubar>
       <MenuItem>
         <Button size="s" plain>
@@ -113,10 +113,49 @@ function run(action: () => void) {
               </template>
               Disconnect
             </DropdownItem>
+            <DropdownItem v-if="isConnected" :class="{ 'vui-dropdown-item--active': activeName === '*' }" @click="run(() => setActive('*'))">
+              <template #icon>
+                <Icon name="ph:hard-drives" />
+              </template>
+              Server log
+            </DropdownItem>
             <DropdownTitle>About</DropdownTitle>
             <p class="chat-menubar__server">
               irc.hivecom.net:6697
             </p>
+          </div>
+        </template>
+      </MenuItem>
+      <MenuItem v-if="!compact">
+        <Button size="s" plain>
+          View
+        </Button>
+        <template #menu>
+          <div class="vui-dropdown chat-menubar__merged">
+            <DropdownItem v-if="!isExclusive" @click="run(() => router.push('/chat/exclusive'))">
+              <template #icon>
+                <Icon name="ph:frame-corners" />
+              </template>
+              Exclusive mode
+            </DropdownItem>
+            <DropdownItem v-else @click="run(() => router.push('/chat'))">
+              <template #icon>
+                <Icon name="ph:frame-corners" />
+              </template>
+              Exit exclusive mode
+            </DropdownItem>
+            <DropdownItem @click="run(toggleSidebar)">
+              <template #icon>
+                <Icon :name="sidebarHidden ? 'ph:sidebar-simple' : 'ph:sidebar'" />
+              </template>
+              {{ sidebarHidden ? 'Show sidebar' : 'Hide sidebar' }}
+            </DropdownItem>
+            <DropdownItem v-if="!isExclusive" @click="run(toggleFullWidth)">
+              <template #icon>
+                <Icon :name="chatFullWidth ? 'ph:arrows-in-line-horizontal' : 'ph:arrows-out-line-horizontal'" />
+              </template>
+              {{ chatFullWidth ? 'Restore width' : 'Full width' }}
+            </DropdownItem>
           </div>
         </template>
       </MenuItem>

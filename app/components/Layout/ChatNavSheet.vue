@@ -6,6 +6,7 @@ import ChatIdentityModal from '@/components/Chat/IdentityModal.vue'
 import ChatSettingsModal from '@/components/Chat/SettingsModal.vue'
 import ChatStateBadge from '@/components/Chat/StateBadge.vue'
 import ChatUserList from '@/components/Chat/UserList.vue'
+import { useChatNavSheet } from '@/composables/useChatNavSheet'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useUserId } from '@/composables/useUserId'
@@ -14,6 +15,9 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 const props = defineProps<{
   // When true, render a plain (mobile) trigger instead of the tooltip button.
   mobile?: boolean
+  // When true, suppress the trigger button entirely (the surrounding page
+  // provides its own trigger, e.g. ChatHeader's back button on mobile).
+  noTrigger?: boolean
 }>()
 
 const isMobile = useBreakpoint('<s')
@@ -22,7 +26,7 @@ const sheetSize = computed(() => isMobile.value ? '100%' : 360)
 // Navigation drawer for the dedicated /chat page. Distinct from the global chat
 // sheet (chatSheetOpen) since the page itself is the chat surface; this only
 // surfaces channels, users, and the connection/identity/settings controls.
-const open = ref(false)
+const { open } = useChatNavSheet()
 const identityOpen = ref(false)
 const settingsOpen = ref(false)
 
@@ -52,7 +56,7 @@ watch(() => activeBuffer.value?.name, () => {
 
 <template>
   <div class="chat-nav-sheet">
-    <Tooltip v-if="!props.mobile">
+    <Tooltip v-if="!props.noTrigger && !props.mobile">
       <Button
         square
         plain
@@ -69,7 +73,7 @@ watch(() => activeBuffer.value?.name, () => {
     </Tooltip>
 
     <Button
-      v-else
+      v-else-if="!props.noTrigger"
       square
       plain
       aria-label="Chat"
@@ -105,19 +109,21 @@ watch(() => activeBuffer.value?.name, () => {
       </Flex>
 
       <template #footer>
-        <Flex gap="s" expand class="p-s">
-          <Button v-if="userId" expand variant="gray" @click="identityOpen = true">
-            <template #start>
-              <Icon name="ph:identification-card" />
-            </template>
-            Identity
-          </Button>
-          <Button expand variant="gray" @click="settingsOpen = true">
-            <template #start>
-              <Icon name="ph:gear-six" />
-            </template>
-            Settings
-          </Button>
+        <Flex column gap="s" expand class="p-s">
+          <Flex gap="s" expand>
+            <Button v-if="userId" expand variant="gray" @click="identityOpen = true">
+              <template #start>
+                <Icon name="ph:identification-card" />
+              </template>
+              Identity
+            </Button>
+            <Button expand variant="gray" @click="settingsOpen = true">
+              <template #start>
+                <Icon name="ph:gear-six" />
+              </template>
+              Settings
+            </Button>
+          </Flex>
           <Button v-if="isConnected" expand variant="danger" @click="disconnect">
             <template #start>
               <Icon name="ph:plugs" />

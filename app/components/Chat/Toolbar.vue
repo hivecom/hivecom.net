@@ -41,7 +41,9 @@ const identityHasIssues = computed(() => {
 
 <template>
   <Flex y-center x-between expand gap="s" class="chat-toolbar">
-    <ChatMenubar :compact="compact" />
+    <Flex y-center gap="s">
+      <ChatMenubar :compact="compact" />
+    </Flex>
     <Flex y-center gap="s">
       <ChatStateBadge v-if="!isMobile" />
       <Tooltip v-if="userId" :disabled="isMobile">

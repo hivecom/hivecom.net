@@ -43,13 +43,8 @@ watch(buffers, () => {
 }, { immediate: true })
 
 const sortedBuffers = computed(() => {
-  const server = buffers.value.filter(b => b.kind === 'server')
   const rest = buffers.value.filter(b => b.kind !== 'server')
-  const sorted = [...rest].sort((a, b) => {
-    const cmp = a.name.localeCompare(b.name)
-    return cmp
-  })
-  return [...server, ...sorted]
+  return [...rest].sort((a, b) => a.name.localeCompare(b.name))
 })
 
 const listRef = ref<ComponentPublicInstance | HTMLElement | null>(null)
@@ -1008,7 +1003,7 @@ function executeRenameChannel() {
     padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-s);
     border-bottom: 1px solid var(--color-border-weak);
 
-    @media (max-width: $breakpoint-s - 1) {
+    @media (max-width: $breakpoint-s) {
       padding: var(--space-m);
     }
   }
@@ -1034,6 +1029,7 @@ function executeRenameChannel() {
   }
 
   &__list {
+    user-select: none;
     flex: 1;
     min-height: 0;
     padding: var(--space-xxs);

@@ -3,6 +3,7 @@ import type { Sizes } from '@dolanske/vui'
 import type { UserDisplayData } from '@/composables/useDataUser'
 import { Badge, Flex, Indicator, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import { useSupabaseUser } from '#imports'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
@@ -155,9 +156,19 @@ const avatarStyleVars = computed(() => ({
 
 const isSupporter = (profile?: UserDisplayData | null) => Boolean(profile?.supporter_lifetime || profile?.supporter_patreon)
 
+const currentUser = useSupabaseUser()
+
 function getActivityStatus(profile?: UserDisplayData | null) {
   if (!profile?.last_seen)
     return null
+  if (currentUser.value?.id && profile.id === currentUser.value.id) {
+    return {
+      isActive: true,
+      isAway: false,
+      lastSeenText: 'Online',
+      lastSeenTimestamp: new Date(),
+    }
+  }
   return getUserActivityStatus(profile.last_seen)
 }
 

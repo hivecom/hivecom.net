@@ -645,7 +645,7 @@ watch(activeName, clearReply)
     }
   }
 
-  @media (max-width: #{$breakpoint-s - 1}) {
+  @media (max-width: #{$breakpoint-s}) {
     &__input {
       height: 64px;
     }

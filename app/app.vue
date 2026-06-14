@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Button, Flex, Modal, Toasts } from '@dolanske/vui'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import Command from '@/components/Command.vue'
 import LayoutLoading from '@/components/Layout/Loading.vue'
 import ExternalLinkModal from '@/components/Shared/ExternalLinkModal.vue'
 import ThemeEditorControls from '@/components/Themes/ThemeEditorControls.vue'
 import { useDataNotifications } from '@/composables/useDataNotifications'
+import { useIrcChat } from '@/composables/useIrcChat'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { useZoomPreference } from '@/composables/useZoomPreference'
 import { useLastSeenTracking } from '@/lib/lastSeen'
@@ -72,6 +73,9 @@ const layoutName = computed(() => {
   if (route.path === '/')
     return 'landing'
 
+  if (route.path === '/chat/exclusive')
+    return 'bare'
+
   if (route.path.startsWith('/chat'))
     return 'no-footer'
 
@@ -103,12 +107,28 @@ if (import.meta.client) {
   })
 }
 
-// Favicon alerting
+// Favicon - single source of truth for all favicon state
+const { hasMention, hasUnread } = useIrcChat()
 const icon = useFavicon()
 
-watch(() => unreadCount.value > 0 || realtimeActivityWhileHidden.value, (isActive) => {
-  icon.value = isActive ? 'icon-alert.svg' : 'icon.svg'
-}, { immediate: true })
+watch(() => ({
+  exclusive: route.path === '/chat/exclusive',
+  notification: unreadCount.value > 0 || realtimeActivityWhileHidden.value,
+  mention: hasMention.value,
+  unread: hasUnread.value,
+}), ({ exclusive, notification, mention, unread }) => {
+  if (exclusive) {
+    if (mention)
+      icon.value = '/favicon-chat-mention.ico'
+    else if (unread)
+      icon.value = '/favicon-chat-activity.ico'
+    else
+      icon.value = '/favicon-chat.ico'
+  }
+  else {
+    icon.value = notification ? '/favicon-notification.ico' : '/favicon.ico'
+  }
+}, { immediate: true, deep: false })
 
 // Load and apply the user's custom theme (if any) from their profile
 const { pendingTheme, confirmPendingTheme, confirmPendingThemeWithoutCss, pendingCssChange, confirmCssChange, dismissCssChange, pendingPreviewTheme, confirmPendingPreviewTheme, cancelPendingPreviewTheme } = useUserTheme()

@@ -257,6 +257,10 @@ const SIDEBAR_HIDDEN_KEY = 'hivecom.chat.sidebar-hidden'
 const sidebarHidden = ref(
   import.meta.client && localStorage.getItem(SIDEBAR_HIDDEN_KEY) === 'true',
 )
+const FULL_WIDTH_KEY = 'hivecom.chat.full-width'
+const chatFullWidth = ref(
+  import.meta.client && localStorage.getItem(FULL_WIDTH_KEY) === 'true',
+)
 // null = not yet checked; '' = confirmed absent (unclaimed); string = email present (claimed)
 const accountEmail = ref<string | null>(null)
 // null = not yet determined; true/false parsed from NickServ INFO Flags line
@@ -3009,6 +3013,14 @@ function openSocket() {
   messageTagsActive = false
   readMarkerActive = false
   resetBuffers()
+  // If we landed on the server buffer after the reset (first connect or no
+  // preserved buffers), but there's a persisted target channel, pre-create a
+  // stub buffer and switch to it immediately so the user never sees the server
+  // tab - they stay in the channel they're connecting to throughout.
+  if (activeName.value === SERVER_BUFFER && inputChannel.value) {
+    getBuffer(inputChannel.value, 'channel')
+    activeName.value = inputChannel.value
+  }
   account.value = ''
   accountEmail.value = import.meta.client ? localStorage.getItem(STORAGE_IDENTITY_EMAIL) : null
   const _cachedAlwaysOn = import.meta.client ? localStorage.getItem(STORAGE_IDENTITY_ALWAYS_ON) : null
@@ -3969,6 +3981,12 @@ export function useIrcChat() {
       localStorage.setItem(SIDEBAR_HIDDEN_KEY, String(sidebarHidden.value))
   }
 
+  function toggleFullWidth() {
+    chatFullWidth.value = !chatFullWidth.value
+    if (import.meta.client)
+      localStorage.setItem(FULL_WIDTH_KEY, String(chatFullWidth.value))
+  }
+
   /** Pre-seed the channel to connect to and persist it so connect() won't override it. */
   function seedChannel(channel: string) {
     inputChannel.value = channel
@@ -4019,6 +4037,9 @@ export function useIrcChat() {
     // sidebar
     sidebarHidden,
     toggleSidebar,
+    // layout
+    chatFullWidth,
+    toggleFullWidth,
     // actions
     connect,
     connectAsAnon,

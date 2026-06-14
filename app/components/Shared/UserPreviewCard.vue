@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
 import { Avatar, Button, Divider, Flex, Indicator, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, toRef } from 'vue'
+import { useSupabaseUser } from '#imports'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
@@ -51,9 +52,19 @@ const {
   avatarTtl: 30 * 60 * 1000,
 })
 
+const currentUser = useSupabaseUser()
+
 const activityStatus = computed(() => {
   if (!user.value?.last_seen)
     return null
+  if (currentUser.value?.id && user.value.id === currentUser.value.id) {
+    return {
+      isActive: true,
+      isAway: false,
+      lastSeenText: 'Online',
+      lastSeenTimestamp: new Date(),
+    }
+  }
   return getUserActivityStatus(user.value.last_seen)
 })
 
@@ -75,8 +86,6 @@ const introductionText = computed(() => {
 })
 
 const hasCustomIntroduction = computed(() => Boolean(user.value?.introduction?.trim()))
-
-const currentUser = useSupabaseUser()
 
 const memberSince = computed(() => {
   const createdAt = user.value?.created_at
