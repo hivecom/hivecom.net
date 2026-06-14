@@ -333,6 +333,7 @@ export async function getBufferStats(userKey: string): Promise<Array<{
   meta: StoredBufferMeta
   count: number
   estimatedBytes: number
+  earliestTs: number | null
 }>> {
   const metas = await loadAllBufferMeta(userKey)
   if (!metas.length)
@@ -341,21 +342,39 @@ export async function getBufferStats(userKey: string): Promise<Array<{
   if (!db)
     return []
 
-  const results: Array<{ meta: StoredBufferMeta, count: number, estimatedBytes: number }> = []
+  const results: Array<{ meta: StoredBufferMeta, count: number, estimatedBytes: number, earliestTs: number | null }> = []
   for (const meta of metas) {
+    const range = IDBKeyRange.bound([meta.key, 0], [meta.key, Number.MAX_SAFE_INTEGER])
+
     const count = await new Promise<number>((resolve) => {
       try {
         const tx = db.transaction(MSG_STORE, 'readonly')
         const index = tx.objectStore(MSG_STORE).index(MSG_INDEX)
-        const range = IDBKeyRange.bound([meta.key, 0], [meta.key, Number.MAX_SAFE_INTEGER])
         const req = index.count(range)
         req.onsuccess = () => resolve(req.result ?? 0)
         req.onerror = () => resolve(0)
       }
       catch { resolve(0) }
     })
-    if (count > 0)
-      results.push({ meta, count, estimatedBytes: count * 350 })
+
+    if (count === 0)
+      continue
+
+    const earliestTs = await new Promise<number | null>((resolve) => {
+      try {
+        const tx = db.transaction(MSG_STORE, 'readonly')
+        const index = tx.objectStore(MSG_STORE).index(MSG_INDEX)
+        const req = index.openCursor(range, 'next')
+        req.onsuccess = () => {
+          const cursor = req.result
+          resolve(cursor ? (cursor.value as StoredMessage).ts : null)
+        }
+        req.onerror = () => resolve(null)
+      }
+      catch { resolve(null) }
+    })
+
+    results.push({ meta, count, estimatedBytes: count * 350, earliestTs })
   }
   return results
 }

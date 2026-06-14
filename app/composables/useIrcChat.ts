@@ -59,7 +59,7 @@ const STORAGE_IDENTITY_ALWAYS_ON = 'hivecom.chat.identity-always-on'
 // Cached channel appearance metadata (display-name, avatar, color, homepage) for
 // instant display before the IRC connection delivers METADATA responses.
 const STORAGE_CHANNEL_META = 'hivecom.chat.channel-meta'
-const APPEARANCE_KEYS: ReadonlySet<string> = new Set(['display-name', 'avatar', 'color', 'homepage'])
+const APPEARANCE_KEYS: ReadonlySet<string> = new Set(['display-name', 'avatar', 'color', 'homepage', 'subchannels'])
 // How far back to look for missed DMs when there is no stored cursor.
 const DEFAULT_HISTORY_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000
 // Clock-skew fuzz applied to history bound timestamps.

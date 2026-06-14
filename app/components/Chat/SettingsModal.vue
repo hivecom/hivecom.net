@@ -55,6 +55,7 @@ interface BufferStat {
   meta: StoredBufferMeta
   count: number
   estimatedBytes: number
+  earliestTs: number | null
 }
 
 const storageStats = ref<BufferStat[]>([])
@@ -70,6 +71,10 @@ const bufferCount = computed(() => storageStats.value.length)
 const estimatedMaxBytes = computed(() =>
   settings.value.chat_cache_max_messages_per_buffer * Math.max(bufferCount.value, 1) * 350,
 )
+
+function formatEarliestTs(ts: number): string {
+  return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024)
@@ -624,6 +629,7 @@ async function toggleBrowserNotifications(value: boolean) {
                   {{ stat.count.toLocaleString() }} msgs
                 </Badge>
                 <span class="text-xs text-color-lighter">{{ formatBytes(stat.estimatedBytes) }}</span>
+                <span v-if="stat.earliestTs" class="text-xs text-color-lighter">since {{ formatEarliestTs(stat.earliestTs) }}</span>
               </Flex>
             </Flex>
             <Flex gap="xs">
