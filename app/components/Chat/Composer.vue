@@ -3,6 +3,7 @@ import { Button, Flex, Input, Modal, Spinner } from '@dolanske/vui'
 import { computed, onMounted, ref, watch, watchEffect } from 'vue'
 import ChatInfoModal from '@/components/Chat/ChannelInfoModal.vue'
 import IrcWhoisCard from '@/components/Chat/IrcWhoisCard.vue'
+import RelaySourceIcon from '@/components/Chat/RelaySourceIcon.vue'
 import ChatTypingIndicator from '@/components/Chat/TypingIndicator.vue'
 import UserListModal from '@/components/Chat/UserListModal.vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
@@ -15,7 +16,7 @@ const props = defineProps<{
   compact?: boolean
 }>()
 
-const { inputMessage, activeName, activeBuffer, canChat, users, buffers, nick, sendMessage, replyTarget, clearReply, sendTyping, requestWhois, markBufferRead, channelList, listChannels, channelListLoading, registerComposerFocus } = useIrcChat()
+const { inputMessage, activeName, activeBuffer, canChat, users, buffers, nick, sendMessage, replyTarget, clearReply, sendTyping, requestWhois, markBufferRead, channelList, listChannels, channelListLoading, registerComposerFocus, relaySeparator } = useIrcChat()
 const { settings } = useDataUserSettings()
 const { resolved: resolvedNicks, resolve: resolveNick } = useIrcNickResolver()
 const isMobile = useBreakpoint('<s')
@@ -552,8 +553,13 @@ watch(activeName, clearReply)
         <Flex v-if="replyTarget" y-center gap="xs" class="chat-composer__reply" expand>
           <Icon name="ph:arrow-bend-down-right" size="13" class="chat-composer__reply-icon" />
           <span class="chat-composer__reply-label">
-            <span v-if="replyTarget.from" class="chat-composer__reply-nick text-s">{{ replyTarget.from }}</span>
-            <span class="chat-composer__reply-text text-s">{{ replyTarget.text }}</span>
+            <template v-if="replyTarget.from">
+              <span v-if="relaySeparator && replyTarget.from.includes(relaySeparator)" class="chat-composer__reply-relay-icon">
+                <RelaySourceIcon :bridge="replyTarget.from.slice(replyTarget.from.indexOf(relaySeparator) + relaySeparator.length)" :size="11" />
+              </span>
+              <span class="chat-composer__reply-nick">{{ (isModernMode || !settings.chat_irc_pure_relay_nicks) && relaySeparator && replyTarget.from.includes(relaySeparator) ? replyTarget.from.slice(0, replyTarget.from.indexOf(relaySeparator)) : replyTarget.from }}</span>
+            </template>
+            <span class="chat-composer__reply-text">{{ replyTarget.text }}</span>
           </span>
           <Button plain square size="s" class="chat-composer__reply-dismiss" @click="clearReply">
             <Icon name="ph:x" size="13" />
@@ -599,8 +605,6 @@ watch(activeName, clearReply)
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .chat-composer {
   &__compact-actions {
     align-self: stretch;
@@ -653,8 +657,14 @@ watch(activeName, clearReply)
     border: 1px solid var(--color-border);
     border-bottom: none;
     border-radius: var(--border-radius-s) var(--border-radius-s) 0 0;
-    font-size: var(--font-size-xs);
+    font-size: calc(var(--chat-font-size, var(--font-size-s)) * 0.85);
     color: var(--color-text-light);
+
+    span,
+    strong,
+    p {
+      font-size: calc(var(--chat-font-size, var(--font-size-s)) * 0.85);
+    }
   }
 
   &__reply-icon {
@@ -663,11 +673,22 @@ watch(activeName, clearReply)
   }
 
   &__reply-label {
+    display: flex;
     flex: 1;
     min-width: 0;
+    align-items: center;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+
+  &__reply-relay-icon {
+    margin-right: var(--space-xxs);
+
+    :deep(.iconify) {
+      color: var(--color-text) !important;
+      font-size: 1em !important;
+    }
   }
 
   &__reply-nick {

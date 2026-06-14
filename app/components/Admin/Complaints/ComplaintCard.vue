@@ -223,8 +223,6 @@ const isMobile = useBreakpoint('<s')
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .complaint-card {
   cursor: pointer;
   transition: var(--transition-fast);

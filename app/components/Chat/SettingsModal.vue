@@ -431,6 +431,14 @@ async function toggleBrowserNotifications(value: boolean) {
             <Switch v-model="settings.chat_irc_inline_images" />
           </Flex>
 
+          <Flex y-center x-between gap="m" expand>
+            <Flex column gap="xxs" class="chat-settings__text">
+              <span class="text-s">Show pure relay nicks</span>
+              <span class="text-xs text-color-lighter">Show the full IRC relay nick (e.g. user/tele) instead of an icon indicating the bridge source.</span>
+            </Flex>
+            <Switch v-model="settings.chat_irc_pure_relay_nicks" />
+          </Flex>
+
           <Flex column gap="xs" expand>
             <Flex column gap="xxs" class="chat-settings__text">
               <span class="text-s">Timestamp format</span>

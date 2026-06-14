@@ -158,8 +158,6 @@ defineOgImage('Default', {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .badges-playground {
   display: flex;
   flex-direction: column;

@@ -265,8 +265,6 @@ defineOgImage('Default', {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .event-details {
   &__row {
     margin-bottom: var(--space-m);

@@ -263,8 +263,6 @@ const currentMap = computed<string | null>(() => {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .gameserver-header {
   &__title-container {
     margin-bottom: var(--space-m);

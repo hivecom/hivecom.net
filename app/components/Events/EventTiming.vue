@@ -87,8 +87,6 @@ defineProps<Props>()
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .event-timing {
   &__section-title {
     display: flex;

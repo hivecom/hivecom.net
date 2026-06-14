@@ -253,6 +253,11 @@ export default defineNuxtConfig({
         // Admin/Users/UserTable.vue provider + platform icons
         'ph:google-logo',
         'ph:discord-logo',
+
+        // Chat/MessageLog.vue bridgeInfo() - relay source icons (dynamic :name binding)
+        'ph:telegram-logo',
+        // ph:discord-logo already listed above
+        // ph:swap already scanned statically
         'ph:envelope-simple',
         'ph:identification-card',
         'ph:steam-logo',
@@ -347,6 +352,13 @@ export default defineNuxtConfig({
     },
   },
   vite: {
+    css: {
+      preprocessorOptions: {
+        scss: {
+          additionalData: `@use '@/assets/breakpoints.scss' as *;\n`,
+        },
+      },
+    },
     plugins: [
       monacoEditorPlugin({ languageWorkers: ['editorWorkerService', 'css'] }),
     ],

@@ -112,8 +112,6 @@ function openEditor(theme?: Parameters<typeof seedEditor>[0]) {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .theme-settings-card {
   background-color: var(--color-bg-card);
   margin-bottom: var(--space-xxl);

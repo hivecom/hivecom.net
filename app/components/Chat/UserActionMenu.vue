@@ -23,6 +23,14 @@ const props = defineProps<{
   /** When true, mod actions (Op/Deop/Voice/Devoice/Kick/Ban) are rendered
    *  for users with sufficient channel privileges. */
   showModActions?: boolean
+  /**
+   * Override the nick used in the mention action. Useful for relay nicks where
+   * the full IRC nick contains a bridge suffix (e.g. "user/cord") but the
+   * mention should only insert the user part ("user").
+   */
+  mentionNick?: string
+  /** When true, the "Message" (PM) and mod actions (Op/Voice/Kick/Ban) are hidden. Use for relay virtual nicks. */
+  hideMessage?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -71,8 +79,9 @@ function doOpenPm() {
 }
 
 function doMention() {
+  const target = props.mentionNick ?? props.nick
   const current = inputMessage.value.trim()
-  inputMessage.value = current ? `${current} @${props.nick} ` : `@${props.nick}: `
+  inputMessage.value = current ? `${current} @${target} ` : `@${target}: `
   emit('close')
 }
 
@@ -153,7 +162,7 @@ function doKickBan() {
   </DropdownItem>
 
   <template v-if="!isSelf">
-    <DropdownItem @click="doOpenPm">
+    <DropdownItem v-if="!hideMessage" @click="doOpenPm">
       <template #icon>
         <Icon name="ph:chat-teardrop" />
       </template>
@@ -163,10 +172,10 @@ function doKickBan() {
       <template #icon>
         <Icon name="ph:at" />
       </template>
-      Mention {{ nick }}
+      Mention {{ mentionNick ?? nick }}
     </DropdownItem>
 
-    <template v-if="showModActions && canModerate">
+    <template v-if="showModActions && canModerate && !hideMessage">
       <Divider />
       <DropdownItem v-if="!hasOp" @click="doOp">
         <template #icon>

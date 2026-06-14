@@ -194,8 +194,6 @@ function scrollToSupport() {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .funding-progress__complete {
   border: 1px solid var(--color-accent);
 }

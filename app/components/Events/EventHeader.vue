@@ -394,8 +394,6 @@ onMounted(() => {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .event-header {
   &--ongoing {
     background: linear-gradient(135deg, var(--color-accent-muted), transparent);

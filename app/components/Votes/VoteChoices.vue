@@ -122,8 +122,6 @@ const user = useSupabaseUser()
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .choices-voting {
   display: flex;
   flex-direction: column;

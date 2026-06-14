@@ -696,8 +696,6 @@ const editedAtFormatted = computed(() => {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .discussion-forum {
   display: grid;
   grid-template-columns: 212px 1fr;

@@ -18,7 +18,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const { activeBuffer, buffers, joinChannel, openPm, myChannelRole, channelSettingsOpen } = useIrcChat()
+const { activeBuffer, buffers, joinChannel, openPm, myChannelRole, channelSettingsOpen, closeBuffer } = useIrcChat()
 
 // When channelName is provided, resolve that buffer for the channel modal.
 const displayChannelBuffer = computed(() => {
@@ -120,7 +120,7 @@ function topicSegments(topic: string): TopicSegment[] {
   </Modal>
 
   <!-- Channel info modal -->
-  <Modal v-if="displayChannelBuffer" :open="open" size="m" @close="emit('close')">
+  <Modal v-if="displayChannelBuffer" :open="open" size="m" :card="{ separators: true }" @close="emit('close')">
     <template #header>
       <Flex x-between y-center gap="s">
         <Flex>
@@ -185,10 +185,71 @@ function topicSegments(topic: string): TopicSegment[] {
         No information available.
       </p>
     </Flex>
+
+    <template #footer>
+      <Flex x-between y-center class="chat-info-modal__footer">
+        <Flex gap="m" class="chat-info-modal__footer-meta">
+          <span v-if="displayChannelBuffer.founder" class="chat-info-modal__footer-item">
+            <span class="chat-info-modal__footer-label">Founded by</span>
+            {{ displayChannelBuffer.founder }}
+          </span>
+          <span v-if="displayChannelBuffer.createdAt" class="chat-info-modal__footer-item">
+            <span class="chat-info-modal__footer-label">Created</span>
+            {{ new Date(displayChannelBuffer.createdAt).toLocaleDateString(undefined, { year: 'numeric',
+                                                                                        month: 'short',
+                                                                                        day: 'numeric' }) }}
+          </span>
+        </Flex>
+        <div class="chat-info-modal__leave-footer">
+          <Button
+            expand
+            variant="danger"
+            @click="closeBuffer(displayChannelBuffer!.name); emit('close')"
+          >
+            Leave Channel
+          </Button>
+        </div>
+      </Flex>
+    </template>
   </Modal>
 </template>
 
 <style lang="scss" scoped>
+.chat-info-modal__footer {
+  width: 100%;
+}
+
+.chat-info-modal__footer-meta {
+  @media (max-width: $breakpoint-s) {
+    display: none;
+  }
+}
+
+.chat-info-modal__footer-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text);
+}
+
+.chat-info-modal__footer-label {
+  font-size: var(--font-size-xxs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-lighter);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chat-info-modal__leave-footer {
+  display: none;
+
+  @media (max-width: $breakpoint-s) {
+    display: flex;
+    width: 100%;
+  }
+}
+
 .chat-info-modal {
   &__pm-preview {
     width: 100%;

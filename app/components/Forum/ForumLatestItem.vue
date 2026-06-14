@@ -67,7 +67,6 @@ function handleClick(e: MouseEvent) {
 
 <style lang="scss" scoped>
 @use '@/assets/mixins.scss' as *;
-@use '@/assets/breakpoints.scss' as *;
 
 .forum__latest-item {
   display: inline-flex;

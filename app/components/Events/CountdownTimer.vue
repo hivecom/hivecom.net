@@ -150,8 +150,6 @@ const timeProgressPercentage = computed(() => {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .countdown-timer {
   position: relative;
   padding: var(--space-s);

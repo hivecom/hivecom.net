@@ -162,8 +162,6 @@ watch(tapped, (val) => {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .banner-display {
   // Prevent the section from collapsing into zero-height while the browser
   // is fetching the image. Banners are exactly 728x36 px.

@@ -19,8 +19,12 @@ import { usePwa } from '@/composables/usePwa'
 // Convert the URL-safe base64 VAPID application server key into the byte array
 // the Push API expects.
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  // Strip any whitespace/newlines first. Safari's `atob()` is stricter than
+  // Chromium's/Firefox's and throws `InvalidCharacterError` on stray whitespace,
+  // which commonly sneaks into the VAPID key via `.env` files or CI secrets.
+  const sanitized = base64String.trim().replace(/\s+/g, '')
+  const padding = '='.repeat((4 - (sanitized.length % 4)) % 4)
+  const base64 = (sanitized + padding).replace(/-/g, '+').replace(/_/g, '/')
   const raw = atob(base64)
   const output = new Uint8Array(raw.length)
   for (let i = 0; i < raw.length; i++)

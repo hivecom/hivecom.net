@@ -178,7 +178,7 @@ watch(user, (u, prev) => {
           </Flex>
           <Flex column :gap="0" class="chat-app__main">
             <ChatChannelHeader />
-            <ChatMessageLog :compact="isCompactLayout" />
+            <ChatMessageLog :compact="props.compact" />
             <ChatComposer />
           </Flex>
         </Resizable>
@@ -186,7 +186,7 @@ watch(user, (u, prev) => {
         <!-- Connected: full page, sidebar hidden -->
         <Flex v-else-if="!isCompactLayout" key="connected-nosidebar" column :gap="0" class="chat-app__main">
           <ChatChannelHeader />
-          <ChatMessageLog :compact="isCompactLayout" />
+          <ChatMessageLog :compact="props.compact" />
           <ChatComposer />
         </Flex>
 
@@ -195,14 +195,14 @@ watch(user, (u, prev) => {
              in-page channel strip to reclaim vertical space. -->
         <Flex v-else-if="isMobile && !props.compact" key="connected-mobile-page" column :gap="0" class="chat-app__main">
           <ChatChannelHeader compact />
-          <ChatMessageLog :compact="isCompactLayout" />
+          <ChatMessageLog :compact="props.compact" />
           <ChatComposer compact />
         </Flex>
 
         <!-- Connected: stacked layout for the compact navbar sheet -->
         <Flex v-else key="connected-compact" column :gap="0" class="chat-app__main">
           <ChatChannelList horizontal />
-          <ChatMessageLog :compact="isCompactLayout" />
+          <ChatMessageLog :compact="props.compact" />
           <ChatComposer compact />
         </Flex>
       </Transition>

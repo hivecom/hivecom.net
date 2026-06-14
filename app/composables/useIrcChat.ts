@@ -110,6 +110,9 @@ const WANTED_CAPS = [
   // interest while we're disconnected. Enabling the cap makes Ergo advertise its
   // VAPID public key in the `VAPID` ISUPPORT token (parsed below into `vapidKey`).
   'draft/webpush',
+  // draft/relaymsg: lets relay bots send messages with spoofed nicks; the tag
+  // tells us which bot actually sent the message so we can show a relay indicator.
+  'draft/relaymsg',
 ]
 
 export type ConnState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'offline'
@@ -142,6 +145,8 @@ export interface ChatMessage {
   redactedBy?: string
   /** Optional reason supplied with the REDACT command. */
   redactedReason?: string
+  /** When set, this message was relayed by a bridge bot; value is the real bot nick. */
+  relayedBy?: string
 }
 
 export type BufferKind = 'server' | 'channel' | 'pm'
@@ -188,6 +193,10 @@ export interface ChatBuffer {
   inviteListReady?: boolean
   /** Whether the channel is registered with ChanServ. undefined = not yet queried. */
   registered?: boolean
+  /** Founder nick reported by ChanServ INFO. */
+  founder?: string
+  /** Channel creation timestamp (Unix ms) from RPL_CREATIONTIME (329). */
+  createdAt?: number
   /** True once the local IndexedDB cache has no older messages for this buffer. Falls back to CHATHISTORY BEFORE when set. */
   cacheExhausted?: boolean
   /** True when the live buffer tail was trimmed during scroll-back. seekToPresent must re-seed from cache before scrolling to bottom. */
@@ -483,6 +492,8 @@ let saslFailed = false
 const chatHistorySupported = ref(false)
 // True when the server ACKs draft/message-redaction, enabling the REDACT command.
 const redactionSupported = ref(false)
+// Separator character(s) for draft/relaymsg spoofed nicks (e.g. "/" for "user/bridge").
+const relaySeparator = ref<string | null>(null)
 // Server VAPID public key (URL-safe base64) from the `VAPID` ISUPPORT token, used
 // to create the browser push subscription for draft/webpush. Null until 005 lands.
 const vapidKey = ref<string | null>(null)
@@ -1205,6 +1216,7 @@ function buildStoredMessage(bufferName: string, msg: ChatMessage): StoredMessage
       ? Object.fromEntries(Object.entries(msg.reactions).map(([emote, nicks]) => [emote, [...nicks]]))
       : undefined,
     redacted: msg.redacted,
+    relayedBy: msg.relayedBy,
   }
 }
 
@@ -1281,6 +1293,7 @@ async function hydrateBufferCache() {
         reactions: m.reactions ? { ...m.reactions } : undefined,
         backlog: true,
         redacted: m.redacted,
+        relayedBy: m.relayedBy,
       }))
       const readTs = readPositions[meta.name.toLowerCase()]
       const buf: ChatBuffer = {
@@ -1555,6 +1568,7 @@ async function fetchOlderHistory(target: string) {
           reactions: m.reactions ? { ...m.reactions } : undefined,
           backlog: true,
           redacted: m.redacted,
+          relayedBy: m.relayedBy,
         }))
       if (newMsgs.length) {
         buf.messages.splice(0, 0, ...newMsgs)
@@ -1701,8 +1715,16 @@ function handleMessage(raw: string) {
     case 'CAP': {
       const sub = params[1]
       const listRaw = params[params.length - 1] ?? ''
-      const list = listRaw.split(' ').filter(Boolean).map(c => (c.split('=')[0] ?? c))
+      const rawEntries = listRaw.split(' ').filter(Boolean)
+      const list = rawEntries.map(c => (c.split('=')[0] ?? c))
       if (sub === 'LS') {
+        // Capture the relaymsg separator character from the cap value (e.g. "draft/relaymsg=/" -> "/").
+        const relayEntry = rawEntries.find(c => c.startsWith('draft/relaymsg='))
+        if (relayEntry) {
+          const sep = relayEntry.slice('draft/relaymsg='.length)
+          if (sep)
+            relaySeparator.value = sep
+        }
         capLs.push(...list)
         // `CAP * LS * :...` indicates a continuation line is coming.
         if (params[2] === '*')
@@ -2042,6 +2064,7 @@ function handleMessage(raw: string) {
       const kind: BufferKind = isChannel ? 'channel' : 'pm'
       const msgid = tags.msgid ?? undefined
       const replyTo = tags['+reply'] ?? undefined
+      const relayedBy = tags['draft/relaymsg'] ?? undefined
       // Service bots (NickServ/ChanServ/HistServ) are identity plumbing unless the
       // user has explicitly opened a conversation with them. Surface traffic only
       // inside such an open query; our own probe/SET commands (and their echoes)
@@ -2060,7 +2083,7 @@ function handleMessage(raw: string) {
       // The TAGMSG command itself provides full tag context via the TAGMSG handler.
       if (nickFrom.toLowerCase() === 'histserv' && /\bsent a TAGMSG\b/i.test(body))
         break
-      addToBuffer(bufferName, kind, { type: 'chat', from, channel: target, text: body, msgid, replyTo, ...(isAction && { action: true }) }, { ts, backlog, prepend: isPrependBatch, batchTag: batchTag ?? undefined })
+      addToBuffer(bufferName, kind, { type: 'chat', from, channel: target, text: body, msgid, replyTo, relayedBy, ...(isAction && { action: true }) }, { ts, backlog, prepend: isPrependBatch, batchTag: batchTag ?? undefined })
       // Receiving a message clears the sender's typing indicator.
       if (!backlog)
         clearTyping(bufferName, from)
@@ -2316,8 +2339,16 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '329': // RPL_CREATIONTIME - channel creation timestamp; silently consumed
+    case '329': { // RPL_CREATIONTIME - channel creation timestamp
+      const ch329 = params[1] ?? ''
+      const ts329 = Number(params[2] ?? '')
+      if (ch329 && Number.isFinite(ts329) && ts329 > 0) {
+        const b329 = findBuffer(ch329)
+        if (b329)
+          b329.createdAt = ts329 * 1000
+      }
       break
+    }
 
     case '346': { // RPL_INVITELIST
       const ch346 = params[1] ?? ''
@@ -2425,6 +2456,32 @@ function handleMessage(raw: string) {
           if (b)
             b.registered = false
           _pendingDropChannels.delete((dropMatch[1] ?? '').toLowerCase())
+        }
+        // "Founder         : nick" from ChanServ INFO
+        const founderMatch = /^Founder[ \t]*:[ \t]*(\S+)/i.exec(noticeText)
+        if (founderMatch) {
+          // The channel name isn't in this line; find whichever channel is being probed
+          for (const probedCh of _probingChanServChannels) {
+            const b = findBuffer(probedCh)
+            if (b) {
+              b.founder = founderMatch[1]
+              break
+            }
+          }
+        }
+        // "Registered      : Sep 21 00:00:00 2019 UTC" from ChanServ INFO (fallback if 329 wasn't sent)
+        const registeredMatch = /^Registered[ \t]*:\s*(\S.*)/i.exec(noticeText)
+        if (registeredMatch) {
+          const parsedTs = Date.parse(registeredMatch[1]?.trim() ?? '')
+          if (Number.isFinite(parsedTs) && parsedTs > 0) {
+            for (const probedCh of _probingChanServChannels) {
+              const b = findBuffer(probedCh)
+              if (b && !b.createdAt) {
+                b.createdAt = parsedTs
+                break
+              }
+            }
+          }
         }
         // Auto-confirm two-step DROP: "To confirm, run this command: /CS UNREGISTER #ch code"
         const dropConfirmMatch = /\/CS UNREGISTER (#\S+) (\S+)/i.exec(noticeText)
@@ -2883,10 +2940,12 @@ function handleMessage(raw: string) {
 
     default:
       if (/^\d+$/.test(command)) {
-        // Unhandled numeric reply - show the text portion in the active buffer.
+        // Unhandled numeric reply - route to the server buffer so connection
+        // handshake numerics (002, 003, 004, 251-266, 221, etc.) don't bleed
+        // into whichever channel the user happens to be viewing.
         const numText = params[params.length - 1] ?? ''
         if (numText)
-          addToActive({ type: 'system', text: numText }, { ts })
+          addServer({ type: 'system', text: numText }, { ts })
       }
       else {
         addServer({ type: 'system', text: raw }, { ts })
@@ -2927,6 +2986,7 @@ function openSocket() {
   }
 
   capLs = []
+  relaySeparator.value = null
   saslMech = null
   saslFailed = false
   _fatalError = false
@@ -3717,6 +3777,7 @@ async function seekToPresent(target: string) {
       reactions: m.reactions ? { ...m.reactions } : undefined,
       backlog: true,
       redacted: m.redacted,
+      relayedBy: m.relayedBy,
     }))
     buf.cacheExhausted = rawMsgs.length < CACHE_SEED_COUNT
   }
@@ -3769,6 +3830,7 @@ async function fetchNewerFromCache(target: string) {
           reactions: m.reactions ? { ...m.reactions } : undefined,
           backlog: true,
           redacted: m.redacted,
+          relayedBy: m.relayedBy,
         }))
       if (newMsgs.length) {
         buf.messages.push(...newMsgs)
@@ -4020,5 +4082,7 @@ export function useIrcChat() {
     // cache
     setCacheCap,
     cacheNickKey,
+    // draft/relaymsg
+    relaySeparator,
   }
 }

@@ -227,7 +227,6 @@ onClickOutside(self, () => {
 
 <style lang="scss" scoped>
 @use '@/assets/mixins.scss' as *;
-@use '@/assets/breakpoints.scss' as *;
 
 .description-clamp {
   @include line-clamp(2);

@@ -2,7 +2,7 @@
 import type { ComponentPublicInstance } from 'vue'
 import type { ChannelGhostNode, ChannelGroupNode, ChannelItemNode, ChannelTreeNode } from '@/components/Chat/ChannelTreeItem.vue'
 import type { ChatBuffer } from '@/composables/useIrcChat'
-import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, Input, Modal, Overflow, pushToast, Sheet, Tooltip } from '@dolanske/vui'
+import { Badge, Button, ContextMenu, Divider, Drawer, DropdownItem, Flex, Input, Modal, Overflow, pushToast, Tooltip } from '@dolanske/vui'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import ChannelInfoModal from '@/components/Chat/ChannelInfoModal.vue'
 import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
@@ -352,6 +352,54 @@ function treeNodeKey(node: ChannelTreeNode): string {
 const menuBuffer = ref<ChatBuffer | null>(null)
 const mobileMenuOpen = ref(false)
 
+// Long-press detection for mobile - mirrors MessageLog.vue behaviour.
+let _longPressTimer: ReturnType<typeof setTimeout> | null = null
+let _touchStartX = 0
+let _touchStartY = 0
+const LONG_PRESS_MS = 500
+const LONG_PRESS_SLOP = 8 // px - cancel if finger drifts (user is scrolling)
+
+function onTouchStart(event: TouchEvent) {
+  const touch = event.touches[0]
+  if (!touch)
+    return
+  _touchStartX = touch.clientX
+  _touchStartY = touch.clientY
+
+  const el = (event.target as HTMLElement | null)?.closest('[data-channel-name]') as HTMLElement | null
+  const name = el?.dataset.channelName ?? null
+  const buf = name ? (buffers.value.find(b => b.name === name) ?? null) : null
+  if (!buf || buf.kind === 'server')
+    return
+
+  _longPressTimer = setTimeout(() => {
+    _longPressTimer = null
+    menuBuffer.value = buf
+    if (buf.kind === 'channel' && buf.registered === undefined && canEditBuffer(buf))
+      queryChanServInfo(buf.name)
+    mobileMenuOpen.value = true
+  }, LONG_PRESS_MS)
+}
+
+function cancelLongPress() {
+  if (_longPressTimer !== null) {
+    clearTimeout(_longPressTimer)
+    _longPressTimer = null
+  }
+}
+
+function onTouchMove(event: TouchEvent) {
+  if (_longPressTimer === null)
+    return
+  const touch = event.touches[0]
+  if (!touch)
+    return
+  if (Math.abs(touch.clientX - _touchStartX) > LONG_PRESS_SLOP
+    || Math.abs(touch.clientY - _touchStartY) > LONG_PRESS_SLOP) {
+    cancelLongPress()
+  }
+}
+
 function onContextMenu(event: MouseEvent) {
   const el = (event.target as HTMLElement | null)?.closest('[data-channel-name]') as HTMLElement | null
   const name = el?.dataset.channelName ?? null
@@ -533,7 +581,7 @@ function executeRenameChannel() {
         :class="{ 'chat-channels__list--horizontal': horizontal }"
         @wheel="onWheel"
       >
-        <Flex :gap="horizontal ? 'xxs' : 0" :column="!horizontal" :expand="!horizontal" @contextmenu.prevent="onContextMenu">
+        <Flex :gap="horizontal ? 'xxs' : 0" :column="!horizontal" :expand="!horizontal" @contextmenu.prevent="onContextMenu" @touchstart.passive="onTouchStart" @touchmove.passive="onTouchMove" @touchend="cancelLongPress" @touchcancel="cancelLongPress">
           <!-- Horizontal mode: flat list, no grouping -->
           <template v-if="horizontal">
             <Tooltip placement="bottom" :disabled="isMobile">
@@ -741,8 +789,8 @@ function executeRenameChannel() {
       </template>
     </ContextMenu>
 
-    <!-- Mobile sheet -->
-    <Sheet :open="mobileMenuOpen" @close="mobileMenuOpen = false">
+    <!-- Mobile drawer -->
+    <Drawer :open="mobileMenuOpen" @close="mobileMenuOpen = false">
       <template v-if="menuBuffer" #header>
         <h4>{{ menuBuffer.metadata?.get('display-name') ?? menuBuffer.name }}</h4>
       </template>
@@ -838,7 +886,7 @@ function executeRenameChannel() {
           </template>
         </template>
       </div>
-    </Sheet>
+    </Drawer>
 
     <Flex v-if="!horizontal" gap="xs" class="chat-channels__join" expand>
       <Input
@@ -927,8 +975,6 @@ function executeRenameChannel() {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .chat-channels {
   min-height: 0;
   width: 100%;

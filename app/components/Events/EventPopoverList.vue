@@ -76,8 +76,6 @@ function formatEventDuration(event: Tables<'events'>): string {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .event-popover {
   padding: 0;
   min-width: 288px;

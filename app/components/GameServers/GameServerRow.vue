@@ -131,8 +131,6 @@ const playerCounts = computed(() => {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .gameserver-row {
   width: 100% !important;
   display: block;

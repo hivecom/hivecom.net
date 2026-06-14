@@ -147,8 +147,6 @@ const isBelowSmall = useBreakpoint('<s')
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .discussion-toolbar__timeline-btn {
   @media screen and (min-width: $breakpoint-m) {
     display: none !important;

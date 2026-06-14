@@ -626,8 +626,6 @@ defineExpose({ openJumpModal })
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .timeline-jump-modal {
   height: 100%;
 

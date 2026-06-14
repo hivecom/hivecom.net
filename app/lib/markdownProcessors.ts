@@ -36,6 +36,26 @@ const STRIP_BLOCK_MATH_RE = /\$\$[\s\S]*?\$\$/g
 const STRIP_INLINE_MATH_RE = /\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/g
 const STRIP_HTML_TAGS_RE = /<[^>]*>/g
 const STRIP_NBSP_RE = /&nbsp;/g
+const STRIP_HTML_ENTITY_RE = /&([a-z]+|#x?[0-9a-f]+);/gi
+const HTML_ENTITY_MAP: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: '\'',
+}
+function decodeHtmlEntities(str: string): string {
+  return str.replace(STRIP_HTML_ENTITY_RE, (match, entity: string) => {
+    const lower = entity.toLowerCase()
+    if (lower in HTML_ENTITY_MAP)
+      return HTML_ENTITY_MAP[lower]!
+    if (lower.startsWith('#x'))
+      return String.fromCodePoint(Number.parseInt(entity.slice(2), 16))
+    if (lower.startsWith('#'))
+      return String.fromCodePoint(Number.parseInt(entity.slice(1), 10))
+    return match
+  })
+}
 const STRIP_HR_RE = /^---/gm
 const STRIP_HEADERS_RE = /^#+\s+/gm
 const STRIP_BLOCKQUOTE_RE = /^>\s*/gm
@@ -650,7 +670,8 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
   // Must run before the chain since it needs iterative application for nested directives.
   content = stripInlineDirectives(content)
 
-  return content
+  // Strip directives/math/tags, then decode HTML entities before further processing.
+  let stripped = content
     // 0a. Remove YouTube directives: :::youtube {src="..." ...} :::
     .replace(STRIP_YOUTUBE_RE, '')
     // 0b2. Remove video directives: :::video {src="..." ...} :::
@@ -663,6 +684,12 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
     .replace(STRIP_INLINE_MATH_RE, '')
     // 1. Remove HTML tags
     .replace(STRIP_HTML_TAGS_RE, '')
+
+  // 1b. Decode HTML entities left behind after tag removal
+  // (e.g. &gt; -> > from Tiptap-generated HTML stored in the DB)
+  stripped = decodeHtmlEntities(stripped)
+
+  return stripped
     // 2. Normalize non-breaking spaces
     .replace(STRIP_NBSP_RE, ' ')
     // 3. Remove horizontal rules

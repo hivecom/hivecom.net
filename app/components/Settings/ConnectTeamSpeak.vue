@@ -601,8 +601,6 @@ const modalTitle = computed(() => {
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .teamspeak-connect {
   display: flex;
   flex-direction: column;

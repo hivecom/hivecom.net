@@ -32,6 +32,7 @@ export interface StoredMessage {
   /** Must be a plain object (not a Vue reactive proxy) before passing in. */
   reactions?: Record<string, string[]>
   redacted?: boolean
+  relayedBy?: string
 }
 
 export interface StoredBufferMeta {

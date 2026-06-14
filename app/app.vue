@@ -276,8 +276,6 @@ function onConfirmPreviewTheme(withCss: boolean, close: () => void) {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 /* Custom page transitions that work better with data fetching */
 .page-enter-active {
   transition: var(--transition);

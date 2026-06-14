@@ -200,8 +200,6 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .supporters-card {
   background: linear-gradient(135deg, var(--color-bg-raised) 0%, var(--color-bg-medium) 100%);
   border: 1px solid var(--color-border);

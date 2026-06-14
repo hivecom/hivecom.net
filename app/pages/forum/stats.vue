@@ -704,8 +704,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 // ── Summary counters ─────────────────────────────────────────────────────────
 .stats-counters {
   display: grid;

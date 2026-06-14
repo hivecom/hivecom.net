@@ -522,8 +522,6 @@ const pageTitle = computed(() => {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .events-calendar {
   display: flex;
   align-items: center;

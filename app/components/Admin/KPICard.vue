@@ -100,8 +100,6 @@ const linkAttrs = computed(() => {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .kpi-card {
   padding: var(--space-m);
   height: 100%;

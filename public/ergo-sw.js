@@ -92,10 +92,12 @@ function buildNotification(line) {
   // Deep-link to the channel so tapping lands in the conversation that pinged,
   // not the bare server tab. The chat page reads `?channel=` (without the `#`,
   // which would otherwise be parsed as a URL fragment). DMs have no such route,
-  // so they fall back to the chat root.
+  // so they fall back to the chat root. `notify=1` tells the chat page this open
+  // came from a notification tap, so it connects immediately and skips the
+  // connect dialog.
   const href = target.startsWith('#')
-    ? `/chat?channel=${encodeURIComponent(target.slice(1))}`
-    : '/chat'
+    ? `/chat?channel=${encodeURIComponent(target.slice(1))}&notify=1`
+    : '/chat?notify=1'
 
   return {
     title,
@@ -132,7 +134,7 @@ globalThis.addEventListener('push', (event) => {
   if (!notification) {
     notification = {
       title: 'Hivecom chat',
-      options: { body: 'New activity', icon: '/apple-touch-icon.png', badge: '/apple-touch-icon.png', data: { href: '/chat' } },
+      options: { body: 'New activity', icon: '/apple-touch-icon.png', badge: '/apple-touch-icon.png', data: { href: '/chat?notify=1' } },
     }
   }
 
@@ -177,7 +179,7 @@ globalThis.addEventListener('pushsubscriptionchange', (event) => {
 globalThis.addEventListener('notificationclick', (event) => {
   event.notification.close()
 
-  const href = (event.notification.data && event.notification.data.href) || '/chat'
+  const href = (event.notification.data && event.notification.data.href) || '/chat?notify=1'
 
   event.waitUntil((async () => {
     const clientList = await globalThis.clients.matchAll({ type: 'window', includeUncontrolled: true })

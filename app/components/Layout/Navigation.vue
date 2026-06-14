@@ -289,8 +289,6 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 :deep(.counter) {
   color: var(--color-text-light);
   font-size: var(--font-size-xxs);

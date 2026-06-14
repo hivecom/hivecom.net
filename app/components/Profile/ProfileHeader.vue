@@ -662,8 +662,6 @@ onUnmounted(() => stopConfetti())
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .birthday-confetti-wrapper {
   position: relative;
   width: 100%;

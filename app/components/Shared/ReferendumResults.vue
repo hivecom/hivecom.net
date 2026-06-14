@@ -170,8 +170,6 @@ const isBelowSmall = useBreakpoint('<s')
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .results-list {
   display: flex;
   flex-direction: column;

@@ -236,8 +236,6 @@ useHead({
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 /* .gameserver-discussion {
   max-width: 728px;
 } */

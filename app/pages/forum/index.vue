@@ -1551,7 +1551,6 @@ function handleBreadcrumbMiddleClick(path: string = '/forum') {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
 @use '@/assets/mixins.scss' as *;
 
 :root.light .forum__category-post.pinned .forum__category-post--icon {

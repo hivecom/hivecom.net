@@ -286,7 +286,6 @@ function isCoverLoading(gameId: number): boolean {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
 .game-library {
   width: 100%;
 }

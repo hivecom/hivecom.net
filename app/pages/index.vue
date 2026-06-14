@@ -292,8 +292,6 @@ onMounted(async () => {
 </style>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 :root.dark {
   .join-section__platform-item img {
     filter: invert(1);

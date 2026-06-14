@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, ContextMenu, Flex, Overflow, Sheet, Tooltip } from '@dolanske/vui'
+import { Button, ContextMenu, Drawer, Flex, Overflow, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import UserActionMenu from '@/components/Chat/UserActionMenu.vue'
@@ -84,6 +84,51 @@ function openWhois(name: string) {
 }
 const mobileMenuOpen = ref(false)
 
+// Long-press detection for mobile - mirrors MessageLog.vue behaviour.
+let _longPressTimer: ReturnType<typeof setTimeout> | null = null
+let _touchStartX = 0
+let _touchStartY = 0
+const LONG_PRESS_MS = 500
+const LONG_PRESS_SLOP = 8 // px - cancel if finger drifts (user is scrolling)
+
+function onTouchStart(event: TouchEvent) {
+  const touch = event.touches[0]
+  if (!touch)
+    return
+  _touchStartX = touch.clientX
+  _touchStartY = touch.clientY
+
+  const el = (event.target as HTMLElement | null)?.closest('[data-user-name]') as HTMLElement | null
+  const name = el?.dataset.userName ?? null
+  if (!name)
+    return
+
+  _longPressTimer = setTimeout(() => {
+    _longPressTimer = null
+    menuUser.value = name
+    mobileMenuOpen.value = true
+  }, LONG_PRESS_MS)
+}
+
+function cancelLongPress() {
+  if (_longPressTimer !== null) {
+    clearTimeout(_longPressTimer)
+    _longPressTimer = null
+  }
+}
+
+function onTouchMove(event: TouchEvent) {
+  if (_longPressTimer === null)
+    return
+  const touch = event.touches[0]
+  if (!touch)
+    return
+  if (Math.abs(touch.clientX - _touchStartX) > LONG_PRESS_SLOP
+    || Math.abs(touch.clientY - _touchStartY) > LONG_PRESS_SLOP) {
+    cancelLongPress()
+  }
+}
+
 function onContextMenu(event: MouseEvent) {
   const el = (event.target as HTMLElement | null)?.closest('[data-user-name]') as HTMLElement | null
   const name = el?.dataset.userName ?? null
@@ -124,6 +169,10 @@ const menuUserData = computed(() =>
           column
           expand
           @contextmenu.prevent="onContextMenu"
+          @touchstart.passive="onTouchStart"
+          @touchmove.passive="onTouchMove"
+          @touchend="cancelLongPress"
+          @touchcancel="cancelLongPress"
         >
           <Flex
             v-for="user in visibleUsers"
@@ -188,8 +237,8 @@ const menuUserData = computed(() =>
       </template>
     </ContextMenu>
 
-    <!-- Mobile sheet -->
-    <Sheet :open="mobileMenuOpen" @close="mobileMenuOpen = false">
+    <!-- Mobile drawer -->
+    <Drawer :open="mobileMenuOpen" @close="mobileMenuOpen = false">
       <template v-if="menuUser" #header>
         <h4>{{ menuUser }}</h4>
       </template>
@@ -203,15 +252,13 @@ const menuUserData = computed(() =>
           @open-whois="openWhois"
         />
       </div>
-    </Sheet>
+    </Drawer>
   </Flex>
   <UserListModal :open="userListOpen" @close="userListOpen = false" />
   <IrcWhoisModal :nick="menuUser" :open="whoisModalOpen" @close="whoisModalOpen = false" />
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .chat-users {
   &__header {
     padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-s);

@@ -949,7 +949,6 @@ function revealNsfw() {
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
 @use '@/assets/mixins.scss' as *;
 
 .forum-post__nsfw-overlay {

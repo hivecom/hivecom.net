@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { Button, Divider, Flex, Input } from '@dolanske/vui'
+import { Button, Checkbox, Divider, Flex, Input } from '@dolanske/vui'
 import { onMounted } from 'vue'
 import { useDataUser } from '@/composables/useDataUser'
+import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
 
 const { connState, inputNick, inputChannel, connect, connectAsAnon, defaultChannel } = useIrcChat()
+// Auto-connect is a regular user setting (DB-backed, reactive, shared with the
+// chat settings switch and the app-wide auto-connect in plugins/chat.client.ts),
+// so toggling it here applies everywhere immediately.
+const { settings } = useDataUserSettings()
 
 // Show a resolved channel in the hint even before the user has a persisted
 // channel - falls back to the auth default so the hint is never blank.
@@ -83,6 +88,11 @@ function onSignedOutConnect() {
               Continue as anon
             </Button>
           </Flex>
+          <Checkbox
+            v-model="settings.chat_autoconnect"
+            accent
+            label="Connect automatically next time"
+          />
         </Flex>
 
         <!-- Signed in, anon path: pick a nick -->

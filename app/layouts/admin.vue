@@ -529,8 +529,6 @@ watch(() => route.path, () => {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .admin-layout {
   min-height: 100vh;
   display: flex;

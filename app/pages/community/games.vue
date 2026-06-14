@@ -513,8 +513,6 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 // ── Chart section ────────────────────────────────────────────────────────────
 .chart-section {
   position: relative;

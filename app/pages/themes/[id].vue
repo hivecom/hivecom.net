@@ -301,8 +301,6 @@ const isMobile = useBreakpoint('<s')
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .preview-panel {
   // Pull the panel out of the card's body padding so it fills edge-to-edge,
   // then re-apply padding inside so content still has breathing room.

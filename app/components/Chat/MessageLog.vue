@@ -5,6 +5,7 @@ import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, pushToast, She
 import dayjs from 'dayjs'
 import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import ChatMessageReactions from '@/components/Chat/MessageReactions.vue'
+import RelaySourceIcon from '@/components/Chat/RelaySourceIcon.vue'
 import UserActionMenu from '@/components/Chat/UserActionMenu.vue'
 import YouTubeEmbed from '@/components/Chat/YouTubeEmbed.vue'
 import LinkEmbed from '@/components/LinkEmbed/index.vue'
@@ -25,7 +26,7 @@ import { fullDate } from '@/lib/utils/date'
 
 const props = defineProps<{ compact?: boolean }>()
 
-const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, seekToPresent, fetchNewerFromCache, toggleReaction, canRedact, redactMessage, chatHistorySupported, isChatVisible, userMetaStore } = useIrcChat()
+const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, seekToPresent, fetchNewerFromCache, toggleReaction, canRedact, redactMessage, chatHistorySupported, isChatVisible, userMetaStore, relaySeparator } = useIrcChat()
 
 function ircMeta(nickLower: string | null | undefined) {
   if (!nickLower)
@@ -347,6 +348,36 @@ const readLineFirstGroupId = computed<number | null>(() => {
 
 function cleanNick(name: string) {
   return name.replace(/^\*\s*/, '')
+}
+
+/**
+ * Returns just the display username for a nick, stripping the relay bridge
+ * suffix when in modern mode or impure IRC mode.
+ */
+function displayNick(from: string | null | undefined): string {
+  if (!from)
+    return ''
+  if (isModernMode.value || !settings.value.chat_irc_pure_relay_nicks) {
+    const parts = relayNickParts(from)
+    if (parts)
+      return parts.user
+  }
+  return from
+}
+
+/**
+ * If the nick contains the relaymsg separator, returns { user, bridge }.
+ * Otherwise returns null (not a relayed nick).
+ */
+
+function relayNickParts(from: string | null | undefined): { user: string, bridge: string } | null {
+  if (!from || !relaySeparator.value)
+    return null
+  const sep = relaySeparator.value
+  const idx = from.indexOf(sep)
+  if (idx <= 0)
+    return null
+  return { user: from.slice(0, idx), bridge: from.slice(idx + sep.length) }
 }
 
 function nickStyle(msg: ChatMessage) {
@@ -955,10 +986,14 @@ function activeMessagePrefix(): string | undefined {
 }
 
 const whoisModalNick = ref<string | null>(null)
+const whoisModalRelayedBy = ref<string | null>(null)
 const whoisModalOpen = ref(false)
 
 function openWhois(name: string) {
   whoisModalNick.value = cleanNick(name)
+  // If this message was relayed, pass the actual bot nick so the modal can
+  // WHOIS the real IRC user rather than the spoofed virtual nick.
+  whoisModalRelayedBy.value = activeMessage.value?.relayedBy ?? null
   whoisModalOpen.value = true
   closeMenu()
   mobileMenuOpen.value = false
@@ -1190,12 +1225,18 @@ watch(isChatVisible, (visible) => {
 
 // When switching buffers, jump to the bottom of the new buffer. The content
 // observer below keeps it pinned while the new buffer's content settles.
+// Also re-check scroll/history state in case historyReady is already true
+// (returning to a previously-visited channel) and the sentinel observer won't
+// re-fire because the sentinel was already intersecting.
 watch(
   () => activeBuffer.value?.name,
   () => {
     wantBottom = true
     isAtBottom.value = true
-    nextTick(scrollToBottom)
+    nextTick(() => {
+      scrollToBottom()
+      updateScrollState()
+    })
   },
 )
 
@@ -1284,6 +1325,8 @@ function setupContentObserver() {
 }
 
 onMounted(() => {
+  wantBottom = true
+  isAtBottom.value = true
   setupSentinelObserver()
   setupContentObserver()
   nextTick(scrollToBottom)
@@ -1353,6 +1396,27 @@ onBeforeUnmount(() => {
                 <template v-if="msg.action">
                   <span class="chat-log__action-star">*</span>
                 </template>
+                <template v-else-if="msg.from && relayNickParts(msg.from)">
+                  <template v-if="settings.chat_irc_pure_relay_nicks">
+                    <span class="chat-log__nick" :style="nickStyle(msg)" :title="`Relayed via ${relayNickParts(msg.from)!.bridge}`">
+                      {{ relayNickParts(msg.from)!.user }}/{{ relayNickParts(msg.from)!.bridge }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    <RelaySourceIcon
+                      :bridge="relayNickParts(msg.from)!.bridge"
+                      :relayed-by="msg.relayedBy"
+                      :size="12"
+                    />
+                    <span class="chat-log__nick" :style="nickStyle(msg)">
+                      {{ relayNickParts(msg.from)!.user }}
+                    </span>
+                  </template>
+                </template>
+                <template v-else-if="msg.from && msg.relayedBy">
+                  <RelaySourceIcon :relayed-by="msg.relayedBy" :size="12" />
+                  <span class="chat-log__nick" :style="nickStyle(msg)">{{ msg.from }}</span>
+                </template>
                 <span v-else-if="msg.from" class="chat-log__nick" :style="nickStyle(msg)">{{ msg.from }}</span>
               </span>
               <div class="chat-log__msg-cell">
@@ -1363,7 +1427,8 @@ onBeforeUnmount(() => {
                   @click.stop="replySource(msg) && scrollToReplySource(msg)"
                 >
                   <template v-if="replySource(msg)">
-                    <span class="chat-log__reply-nick">{{ replySource(msg)!.from }}:</span>
+                    <RelaySourceIcon v-if="relayNickParts(replySource(msg)!.from)" :bridge="relayNickParts(replySource(msg)!.from)!.bridge" :size="11" />
+                    <span class="chat-log__reply-nick">{{ displayNick(replySource(msg)!.from) }}:</span>
                     <span class="chat-log__reply-text">{{ replySource(msg)!.text }}</span>
                   </template>
                   <span v-else class="chat-log__reply-text">&#x21A9; Reply to a previous message</span>
@@ -1613,9 +1678,19 @@ onBeforeUnmount(() => {
                       {{ resolvedUser(group.nickLower)!.username }}
                     </span>
                   </NuxtLink>
+                  <template v-else-if="relayNickParts(group.from)">
+                    <span class="chat-log__nick" :style="groupNickStyle(group.from)">
+                      {{ relayNickParts(group.from)!.user }}
+                    </span>
+                  </template>
                   <span v-else class="chat-log__nick" :style="groupNickStyle(group.from)">
                     {{ ircDisplayName(group.from) }}
                   </span>
+                  <RelaySourceIcon
+                    v-if="relayNickParts(group.from) || group.messages[0].relayedBy"
+                    :bridge="relayNickParts(group.from)?.bridge"
+                    :relayed-by="group.messages[0].relayedBy"
+                  />
                   <TimestampDate
                     v-if="showTimestamps"
                     class="chat-log__ts chat-log__ts--inline"
@@ -1642,7 +1717,8 @@ onBeforeUnmount(() => {
                             <Icon name="ph:arrow-bend-down-right" :size="10" />
                             <UserAvatar v-if="resolvedUser(replySource(item.msg)!.from?.toLowerCase() ?? null)" :user-id="resolvedUser(replySource(item.msg)!.from?.toLowerCase() ?? null)!.id" :size="12" />
                             <AvatarMedia v-else-if="ircAvatarUrl(replySource(item.msg)!.from?.toLowerCase() ?? '')" :size="12" :url="ircAvatarUrl(replySource(item.msg)!.from?.toLowerCase() ?? '')" :alt="replySource(item.msg)!.from ?? ''" />
-                            <span>{{ replySource(item.msg)!.from }}</span>
+                            <RelaySourceIcon v-if="relayNickParts(replySource(item.msg)!.from)" :bridge="relayNickParts(replySource(item.msg)!.from)!.bridge" :size="11" />
+                            <span>{{ displayNick(replySource(item.msg)!.from) }}</span>
                           </Flex>
                         </Badge>
                         <span class="chat-log__reply-text">{{ replySource(item.msg)!.text }}</span>
@@ -1761,6 +1837,8 @@ onBeforeUnmount(() => {
           <UserActionMenu
             v-if="activeMessage.from"
             :nick="cleanNick(activeMessage.from)"
+            :mention-nick="relayNickParts(activeMessage.from)?.user"
+            :hide-message="!!relayNickParts(activeMessage.from)"
             :prefix="activeMessagePrefix()"
             show-mod-actions
             @close="closeMenu"
@@ -1814,7 +1892,19 @@ onBeforeUnmount(() => {
   >
     <template v-if="activeMessage" #header>
       <Flex y-center x-between expand>
-        <span class="chat-log__drawer-nick">{{ activeMessage.from ? cleanNick(activeMessage.from) : '' }}</span>
+        <Flex y-center gap="xxs">
+          <span v-if="activeMessage.from && (relayNickParts(activeMessage.from) || activeMessage.relayedBy)" class="chat-log__drawer-relay-icon">
+            <RelaySourceIcon
+              :bridge="relayNickParts(activeMessage.from)?.bridge"
+              :relayed-by="activeMessage.relayedBy"
+              :size="16"
+            />
+          </span>
+          <span class="chat-log__drawer-nick">{{ activeMessage.from ? (relayNickParts(activeMessage.from)?.user ?? cleanNick(activeMessage.from)) : '' }}</span>
+          <span v-if="activeMessage.relayedBy" class="chat-log__drawer-bridge">
+            via {{ activeMessage.relayedBy }}
+          </span>
+        </Flex>
         <span class="chat-log__drawer-ts">{{ fmtDateTime(activeMessage.ts) }}</span>
       </Flex>
     </template>
@@ -1843,6 +1933,8 @@ onBeforeUnmount(() => {
         <UserActionMenu
           v-if="activeMessage.from"
           :nick="cleanNick(activeMessage.from)"
+          :mention-nick="relayNickParts(activeMessage.from)?.user"
+          :hide-message="!!relayNickParts(activeMessage.from)"
           :prefix="activeMessagePrefix()"
           show-mod-actions
           @close="closeMenu"
@@ -1885,7 +1977,7 @@ onBeforeUnmount(() => {
       </template>
     </div>
   </Sheet>
-  <IrcWhoisModal :nick="whoisModalNick" :open="whoisModalOpen" @close="whoisModalOpen = false" />
+  <IrcWhoisModal :nick="whoisModalNick" :relayed-by="whoisModalRelayedBy" :open="whoisModalOpen" @close="whoisModalOpen = false" />
   <ConfirmModal
     v-model:open="redactConfirmOpen"
     title="Delete message"
@@ -1905,10 +1997,24 @@ onBeforeUnmount(() => {
   position: relative;
 
   &__drawer-nick {
-    margin-left: var(--space-s);
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-semibold);
     color: var(--color-text);
+  }
+
+  &__drawer-relay-icon {
+    display: flex;
+    align-items: center;
+    margin-right: var(--space-xxs);
+
+    :deep(.iconify) {
+      color: var(--color-text) !important;
+    }
+  }
+
+  &__drawer-bridge {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
   }
 
   &__drawer-ts {
@@ -2013,12 +2119,16 @@ onBeforeUnmount(() => {
   &__nick-cell {
     display: flex;
     justify-content: flex-end;
-    align-items: baseline;
+    align-items: center;
     gap: var(--space-xxs);
     overflow: hidden;
     min-width: 0;
     font-size: inherit;
     padding-right: var(--space-xs);
+
+    :deep(.iconify) {
+      font-size: 1em !important;
+    }
   }
 
   &__msg-cell {
@@ -2075,6 +2185,14 @@ onBeforeUnmount(() => {
     &::after {
       content: ':';
       color: var(--color-text-lighter);
+    }
+  }
+
+  &__relay-badge {
+    font-size: var(--font-size-xxs);
+    opacity: 0.7;
+    :deep(.vui-badge) {
+      padding: 1px 4px;
     }
   }
 
@@ -2320,6 +2438,14 @@ onBeforeUnmount(() => {
     gap: 2px;
   }
 
+  &__group-header {
+    font-size: var(--chat-font-size, var(--font-size-s));
+
+    :deep(.iconify) {
+      font-size: 1em !important;
+    }
+  }
+
   &__line-react {
     position: absolute;
     right: 0;
@@ -2402,7 +2528,7 @@ onBeforeUnmount(() => {
   }
 
   :deep(.chat-log__ts--inline) {
-    font-size: var(--font-size-xs);
+    font-size: calc(var(--chat-font-size, var(--font-size-s)) * 0.85);
     color: var(--color-text-lightest);
   }
 
@@ -2532,11 +2658,16 @@ onBeforeUnmount(() => {
 
   &__reply-source {
     flex-shrink: 0;
-    font-size: var(--font-size-xxs);
+    font-size: calc(var(--chat-font-size, var(--font-size-s)) * 0.8);
     line-height: 1;
 
     :deep(.vui-avatar) {
       border-radius: 50%;
+    }
+
+    :deep(.iconify) {
+      color: var(--color-text) !important;
+      font-size: 1em !important;
     }
   }
 
