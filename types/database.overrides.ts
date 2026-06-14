@@ -146,6 +146,7 @@ interface TableColumnOverrides {
       chat_irc_hide_sidebar_timestamps: boolean
       chat_irc_inline_images: boolean
       chat_irc_native_modes: boolean
+      chat_cache_max_messages_per_buffer: number
     }
   }
 

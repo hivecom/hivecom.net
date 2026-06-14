@@ -98,7 +98,7 @@ export default defineNuxtPlugin(() => {
         return
       if (connState.value === 'disconnected') {
         autoConnected = true
-        void connect()
+        void connect(true)
       }
     },
     { immediate: true, deep: true },

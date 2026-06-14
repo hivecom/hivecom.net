@@ -47,7 +47,7 @@ watch(() => route.fullPath, () => {
         :disabled="props.disabled"
         @click="open = true"
       >
-        <Icon name="ph:chats" size="20" />
+        <Icon name="ph:chat" size="20" />
         <span v-if="showBadge" class="chat-sheet__badge" :class="{ 'chat-sheet__badge--mention': hasMention }" />
       </Button>
       <template #tooltip>
@@ -64,7 +64,7 @@ watch(() => route.fullPath, () => {
       :disabled="props.disabled"
       @click="open = true"
     >
-      <Icon name="ph:chats" size="20" />
+      <Icon name="ph:chat" size="20" />
       <span v-if="showBadge" class="chat-sheet__badge" :class="{ 'chat-sheet__badge--mention': hasMention }" />
     </Button>
 

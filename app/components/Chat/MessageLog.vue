@@ -25,7 +25,7 @@ import { fullDate } from '@/lib/utils/date'
 
 const props = defineProps<{ compact?: boolean }>()
 
-const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, toggleReaction, canRedact, redactMessage, chatHistorySupported, isChatVisible, userMetaStore } = useIrcChat()
+const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, seekToPresent, fetchNewerFromCache, toggleReaction, canRedact, redactMessage, chatHistorySupported, isChatVisible, userMetaStore } = useIrcChat()
 
 function ircMeta(nickLower: string | null | undefined) {
   if (!nickLower)
@@ -104,11 +104,43 @@ function collapseBacklogJoinParts(msgs: ChatMessage[]): ChatMessage[] {
   return out
 }
 
+// Incremental render: on channel switch expose the last RENDER_CHUNK messages
+// immediately, then add another chunk each animation frame until all messages
+// are visible. Each frame gives the browser a repaint opportunity, keeping the
+// UI responsive while the full history builds up behind the viewport.
+const RENDER_CHUNK = 25
+const phaseLimit = ref<number | null>(null)
+let _phaseRaf: number | null = null
+
+function expandPhase() {
+  if (phaseLimit.value === null)
+    return
+  const total = allMessages.value.length
+  const next = phaseLimit.value + RENDER_CHUNK
+  if (next >= total) {
+    phaseLimit.value = null
+  }
+  else {
+    phaseLimit.value = next
+    _phaseRaf = requestAnimationFrame(expandPhase)
+  }
+}
+
+watch(() => activeBuffer.value?.name, () => {
+  if (_phaseRaf !== null) {
+    cancelAnimationFrame(_phaseRaf)
+    _phaseRaf = null
+  }
+  phaseLimit.value = RENDER_CHUNK
+  _phaseRaf = requestAnimationFrame(expandPhase)
+})
+
 const messages = computed((): ChatMessage[] => {
   const raw = settings.value.chat_show_tag_messages
     ? allMessages.value
     : allMessages.value.filter(m => m.type !== 'tagmsg')
-  return collapseBacklogJoinParts(raw)
+  const collapsed = collapseBacklogJoinParts(raw)
+  return phaseLimit.value !== null ? collapsed.slice(-phaseLimit.value) : collapsed
 })
 const { handleContentClick } = useExternalLinkGuard()
 
@@ -161,14 +193,16 @@ const showTimestamps = computed(() => {
 const isServerBuffer = computed(() => activeBuffer.value?.kind === 'server')
 const isServiceQuery = computed(() => activeBuffer.value?.kind === 'pm' && SERVICE_NICKS.has((activeBuffer.value?.name ?? '').toLowerCase()))
 
-// True while we're waiting for the first CHATHISTORY LATEST batch to complete.
-// Drives skeleton placeholders so the viewport isn't blank on initial load.
+// Show the initial-load spinner only when there's genuinely nothing to show yet.
+// If the buffer was seeded from cache it already has messages, so skip the spinner
+// and let history settle silently in the background.
 const isLoadingInitialHistory = computed(() =>
   chatHistorySupported.value
   && !!activeBuffer.value
   && activeBuffer.value.kind !== 'server'
   && !isServiceQuery.value
-  && !activeBuffer.value.historyReady,
+  && !activeBuffer.value.historyReady
+  && activeBuffer.value.messages.length === 0,
 )
 
 // --- Modern mode -------------------------------------------------------
@@ -1055,22 +1089,46 @@ const isAtBottom = ref(true)
 let anchorMsgEl: HTMLElement | null = null
 let anchorMsgVisualTop = 0
 let pendingPrependRestore = false
+// Set whenever a buffer switch, visibility change, or activation wants to
+// land at the bottom. Cleared only when the user intentionally scrolls up
+// (scrollTop decreases). overflow-anchor bumps scrollTop UP, so they don't
+// clear this flag, letting late-loading media still re-pin to the bottom.
+let wantBottom = false
+let lastScrollTop = 0
 
 function updateScrollState() {
   if (!logEl.value)
     return
   const { scrollTop, scrollHeight, clientHeight } = logEl.value
-  isAtBottom.value = scrollHeight - scrollTop - clientHeight <= SCROLL_BOTTOM_THRESHOLD
+  const nowAtBottom = scrollHeight - scrollTop - clientHeight <= SCROLL_BOTTOM_THRESHOLD
+  const scrolledUp = scrollTop < lastScrollTop
+  lastScrollTop = scrollTop
+  if (!nowAtBottom && scrolledUp)
+    wantBottom = false
+  isAtBottom.value = nowAtBottom
   // Scroll-position fallback for lazy history loading; the IntersectionObserver
   // on the top sentinel can miss the first fire. triggerHistoryLoad() is
   // idempotent (guards exhausted / in-flight / not-ready).
   if (scrollTop <= SCROLL_TOP_THRESHOLD)
     triggerHistoryLoad()
+  // Forward-load the next page of newer messages when scrolling toward the
+  // bottom of a tail-trimmed buffer (window slid back into history).
+  if (isAtBottom.value && activeBuffer.value?.tailTrimmed)
+    void fetchNewerFromCache(activeBuffer.value.name)
 }
 
 function scrollToBottom() {
   if (logEl.value)
     logEl.value.scrollTo({ top: logEl.value.scrollHeight, behavior: 'instant' })
+}
+
+async function jumpToPresent() {
+  const buf = activeBuffer.value
+  if (!buf)
+    return
+  if (buf.tailTrimmed)
+    await seekToPresent(buf.name)
+  nextTick(scrollToBottom)
 }
 
 function triggerHistoryLoad() {
@@ -1103,7 +1161,13 @@ watch(
     if (wasLoading && !loading && pendingPrependRestore) {
       pendingPrependRestore = false
       nextTick(() => {
-        if (logEl.value && anchorMsgEl?.isConnected) {
+        // Buffer switches (and visibility/activate restores) set wantBottom.
+        // In that case skip anchor-restore and go straight to the bottom —
+        // anchor-restore would land us mid-history when scrollTop was 0.
+        if (wantBottom) {
+          scrollToBottom()
+        }
+        else if (logEl.value && anchorMsgEl?.isConnected) {
           const logRect = logEl.value.getBoundingClientRect()
           const delta = anchorMsgEl.getBoundingClientRect().top - logRect.top - anchorMsgVisualTop
           logEl.value.scrollTop += delta
@@ -1118,6 +1182,7 @@ watch(
 // messages that arrived while closed are immediately visible.
 watch(isChatVisible, (visible) => {
   if (visible) {
+    wantBottom = true
     isAtBottom.value = true
     nextTick(scrollToBottom)
   }
@@ -1128,6 +1193,7 @@ watch(isChatVisible, (visible) => {
 watch(
   () => activeBuffer.value?.name,
   () => {
+    wantBottom = true
     isAtBottom.value = true
     nextTick(scrollToBottom)
   },
@@ -1161,13 +1227,21 @@ function setupSentinelObserver() {
 }
 
 // When initial history settles (historyReady flips true), retry the load if
-// the sentinel is still visible - the observer won't re-fire on its own since
-// intersection state hasn't changed.
+// the sentinel is still visible OR if the scroll container has no overflow.
+// Two cases hit this:
+//  1. Content never filled the viewport - sentinel visible the whole time, but
+//     fetchOlderHistory returned early because historyReady was false then.
+//  2. CHATHISTORY LATEST pushed the sentinel just out of view, so sentinelVisible
+//     flipped false at the same moment historyReady became true - the observer
+//     won't re-fire and the sentinel check misses it.
+// Re-evaluating scroll state in nextTick covers both: if the container still
+// isn't scrollable (scrollTop === 0 <= SCROLL_TOP_THRESHOLD), updateScrollState
+// calls triggerHistoryLoad regardless of sentinel state.
 watch(
   () => activeBuffer.value?.historyReady,
   (ready) => {
-    if (ready && sentinelVisible.value)
-      triggerHistoryLoad()
+    if (ready)
+      nextTick(updateScrollState)
   },
 )
 
@@ -1185,7 +1259,20 @@ function setupContentObserver() {
   if (!content || !logEl.value)
     return
   contentObserver = new ResizeObserver(() => {
-    if (isAtBottom.value)
+    if (!logEl.value)
+      return
+    // wantBottom: set on buffer switch / visibility / activate, cleared only
+    // when the user intentionally scrolls up. Always re-pin while it's set so
+    // late-loading media (images, embeds) that expands content by more than
+    // SCROLL_BOTTOM_THRESHOLD doesn't leave us stranded mid-log.
+    if (wantBottom) {
+      scrollToBottom()
+      return
+    }
+    // For normal in-session use, re-read live rather than trusting
+    // isAtBottom.value which native overflow-anchor scroll events can dirty.
+    const { scrollTop, scrollHeight, clientHeight } = logEl.value
+    if (scrollHeight - scrollTop - clientHeight <= SCROLL_BOTTOM_THRESHOLD)
       scrollToBottom()
   })
   // Observe both the message content (new lines / growing embeds) and the
@@ -1201,11 +1288,17 @@ onMounted(() => {
   setupContentObserver()
   nextTick(scrollToBottom)
 })
-onActivated(() => nextTick(scrollToBottom))
+onActivated(() => {
+  wantBottom = true
+  isAtBottom.value = true
+  nextTick(scrollToBottom)
+})
 
 onBeforeUnmount(() => {
   sentinelObserver?.disconnect()
   contentObserver?.disconnect()
+  if (_phaseRaf !== null)
+    cancelAnimationFrame(_phaseRaf)
 })
 </script>
 
@@ -1652,6 +1745,13 @@ onBeforeUnmount(() => {
         />
       </div>
     </div>
+
+    <Transition name="chat-log-jump">
+      <button v-if="!isAtBottom" class="chat-log__jump-to-present" @click="jumpToPresent">
+        <Icon name="ph:arrow-down" size="14" />
+        Jump to present
+      </button>
+    </Transition>
 
     <Lightbox ref="lightboxRef" :items="chatMediaItems" />
 
@@ -2454,6 +2554,46 @@ onBeforeUnmount(() => {
       -webkit-user-select: none;
       user-select: none;
     }
+  }
+
+  &__jump-to-present {
+    position: absolute;
+    bottom: var(--space-s);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+    padding: var(--space-xxs) var(--space-s);
+    background: var(--color-bg-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-l);
+    color: var(--color-text-light);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+    white-space: nowrap;
+    z-index: var(--z-active);
+    transition:
+      background var(--transition),
+      color var(--transition);
+
+    &:hover {
+      background: var(--color-bg-medium);
+      color: var(--color-text);
+    }
+  }
+
+  .chat-log-jump-enter-active,
+  .chat-log-jump-leave-active {
+    transition:
+      opacity var(--transition),
+      transform var(--transition);
+  }
+
+  .chat-log-jump-enter-from,
+  .chat-log-jump-leave-to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
   }
 }
 </style>

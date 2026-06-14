@@ -8,6 +8,11 @@ import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 
+defineProps<{
+  // Tighter padding/height for the mobile dedicated page.
+  compact?: boolean
+}>()
+
 const { activeBuffer, buffers, joinChannel, openPm, requestWhois, isUnauthorizedSubchannel, myChannelRole } = useIrcChat()
 const { resolved: resolvedNicks, resolve: resolveNick } = useIrcNickResolver()
 
@@ -81,7 +86,7 @@ function topicSegments(topic: string): TopicSegment[] {
 </script>
 
 <template>
-  <Flex v-if="activeBuffer" y-center gap="s" class="channel-header" expand>
+  <Flex v-if="activeBuffer" y-center gap="s" class="channel-header" :class="{ 'channel-header--compact': compact }" expand>
     <!-- Channel -->
     <template v-if="activeBuffer.kind === 'channel'">
       <Flex x-between expand y-center>
@@ -164,6 +169,11 @@ function topicSegments(topic: string): TopicSegment[] {
   border-bottom: 1px solid var(--color-border-lighter);
   min-width: 0;
   min-height: 42px;
+
+  &--compact {
+    padding: 0 var(--space-s);
+    min-height: 34px;
+  }
 
   &__left {
     min-width: 0;

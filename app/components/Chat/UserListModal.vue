@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Divider, Dropdown, DropdownItem, Flex, Input, Modal, pushToast, Sheet } from '@dolanske/vui'
+import { Button, Divider, Dropdown, DropdownItem, Flex, Input, Modal, pushToast, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import UserRoleBadge from '@/components/Chat/UserRoleBadge.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
@@ -189,7 +189,15 @@ function devoiceUser(name: string) {
 
         <!-- Name + role label -->
         <Flex column :gap="0" class="user-list-modal__info">
-          <span class="user-list-modal__name" :style="userStyle(user.name)">{{ user.name }}</span>
+          <Flex y-center gap="xxs">
+            <span class="user-list-modal__name" :style="userStyle(user.name)">{{ user.name }}</span>
+            <Tooltip v-if="user.bot" :disabled="isMobile">
+              <Icon name="ph:robot" size="12" class="user-list-modal__bot-icon" />
+              <template #tooltip>
+                Bot
+              </template>
+            </Tooltip>
+          </Flex>
           <span v-if="user.role" class="text-xs text-color-lighter">{{ user.role.label }}</span>
         </Flex>
 
@@ -426,6 +434,11 @@ function devoiceUser(name: string) {
   &__info {
     flex: 1;
     min-width: 0;
+  }
+
+  &__bot-icon {
+    flex-shrink: 0;
+    color: var(--color-text-lighter);
   }
 
   &__name {

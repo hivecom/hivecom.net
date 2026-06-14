@@ -8,6 +8,8 @@ import { useMfaStatus } from '@/composables/useMfaStatus'
 import { useSessionReady } from '@/composables/useSessionReady'
 import { navigationLinks } from '@/config/navigation'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import InstallPWAButton from '../Shared/InstallPWAButton.vue'
+import ChatNavSheet from './ChatNavSheet.vue'
 import ChatSheet from './ChatSheet.vue'
 import NavEventBadge from './NavEventBadge.vue'
 import NotificationSheet from './NotificationSheet.vue'
@@ -217,6 +219,9 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
               Themes
             </NuxtLink>
           </div>
+          <template #footer>
+            <InstallPWAButton expand />
+          </template>
         </Sheet>
 
         <!-- User dropdown on right side -->
@@ -232,7 +237,8 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
         <div v-else-if="user && !needsMfaChallenge" class="navigation__user">
           <SearchButton v-if="!isMobile" />
-          <ChatSheet v-if="showChat" :mobile="isMobile" :disabled="route.path === '/chat'" />
+          <ChatNavSheet v-if="showChat && route.path === '/chat' && isMobile" :mobile="isMobile" />
+          <ChatSheet v-else-if="showChat" :mobile="isMobile" :disabled="route.path === '/chat'" />
           <!-- Custom margin, since visually the pfp appears closer than the distance between search & notif icons -->
           <NotificationSheet style="margin-right:6px" />
           <UserSheet v-if="isMobile" />
@@ -243,7 +249,8 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
           <div class="navigation__auth-buttons">
             <SearchButton />
 
-            <ChatSheet v-if="showChat" :disabled="route.path === '/chat'" />
+            <ChatNavSheet v-if="showChat && route.path === '/chat' && isMobile" />
+            <ChatSheet v-else-if="showChat" :disabled="route.path === '/chat'" />
 
             <Tooltip :disabled="isMobile">
               <NuxtLink to="/themes">
@@ -267,7 +274,8 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
           <!-- On mobile we just have a little user icon -->
           <div class="navigation__auth-mobile-button">
-            <ChatSheet v-if="showChat" mobile :disabled="route.path === '/chat'" />
+            <ChatNavSheet v-if="showChat && route.path === '/chat' && isMobile" mobile />
+            <ChatSheet v-else-if="showChat" mobile :disabled="route.path === '/chat'" />
             <Button square aria-label="Sign in" @click="$router.push(signInPath())">
               <Icon name="ph:sign-in" />
             </Button>

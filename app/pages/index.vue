@@ -6,6 +6,7 @@ import constants from '~~/constants.json'
 import EventSmall from '@/components/Events/EventSmall.vue'
 import LandingHero from '@/components/Landing/LandingHero.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
+import InstallPWAButton from '@/components/Shared/InstallPWAButton.vue'
 import { useDataEvents } from '@/composables/useDataEvents'
 
 definePageMeta({
@@ -144,11 +145,18 @@ onMounted(async () => {
               </p>
 
               <ClientOnly>
-                <Alert v-if="user" variant="success" filled>
+                <Alert v-if="user" filled>
                   <template #icon>
                     <Icon name="ph:users-three" />
                   </template>
-                  Thanks for being a part of the community!
+                  <Flex y-center x-between>
+                    <span>
+                      Thanks for being a part of the community!
+                    </span>
+                    <ClientOnly>
+                      <InstallPWAButton class="join-section__install" />
+                    </ClientOnly>
+                  </Flex>
                 </Alert>
 
                 <NuxtLink v-else to="/auth/sign-up">
@@ -349,6 +357,10 @@ h4 {
   &__text {
     text-align: left;
     margin-bottom: var(--space-l);
+  }
+
+  &__install {
+    margin-top: var(--space-s);
   }
 
   &__container {

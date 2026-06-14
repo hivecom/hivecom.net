@@ -525,7 +525,7 @@ watch(activeName, clearReply)
   <Flex class="chat-composer" column expand :gap="0">
     <ChatTypingIndicator />
     <Flex expand :gap="0">
-      <Flex v-if="props.compact" :gap="0" class="chat-composer__compact-actions">
+      <Flex v-if="props.compact && !isMobile" :gap="0" class="chat-composer__compact-actions">
         <Button square aria-label="Channel info" class="chat-composer__compact-btn" @click="activeBuffer?.kind === 'pm' ? openPmInfo() : (infoOpen = true)">
           <Icon name="ph:info" size="16" />
         </Button>

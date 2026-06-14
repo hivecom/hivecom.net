@@ -112,7 +112,9 @@ watch(user, (u, prev) => {
     class="chat-app" :class="{ 'chat-app--compact': props.compact || isMobile,
                                'chat-app--menu-padding': props.menuPadding }" :style="chatFontStyle"
   >
-    <header v-if="!props.compact" class="chat-app__bar">
+    <!-- On the mobile dedicated page the toolbar moves into the nav sheet
+         (ChatNavSheet), so the page chrome stays minimal. -->
+    <header v-if="!props.compact && !isMobile" class="chat-app__bar">
       <ChatToolbar />
     </header>
 
@@ -188,7 +190,16 @@ watch(user, (u, prev) => {
           <ChatComposer />
         </Flex>
 
-        <!-- Connected: stacked layout for the compact sheet -->
+        <!-- Connected: mobile dedicated page. Channels/users/settings live in
+             the nav sheet, so the page shows a compact header instead of the
+             in-page channel strip to reclaim vertical space. -->
+        <Flex v-else-if="isMobile && !props.compact" key="connected-mobile-page" column :gap="0" class="chat-app__main">
+          <ChatChannelHeader compact />
+          <ChatMessageLog :compact="isCompactLayout" />
+          <ChatComposer compact />
+        </Flex>
+
+        <!-- Connected: stacked layout for the compact navbar sheet -->
         <Flex v-else key="connected-compact" column :gap="0" class="chat-app__main">
           <ChatChannelList horizontal />
           <ChatMessageLog :compact="isCompactLayout" />

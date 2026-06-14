@@ -12,6 +12,12 @@ import { channelRole, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
+const props = defineProps<{
+  // When set, render a static (non-scrolling) list capped to this many users,
+  // with a "show all" button opening the full modal. Used in the mobile nav sheet.
+  limit?: number
+}>()
+
 const { users, nick, inputMessage, openPm, userMetaStore } = useIrcChat()
 
 function ircMeta(name: string) {
@@ -33,6 +39,14 @@ function resolvedUserId(name: string): string | null {
 
 const displayUsers = computed(() =>
   users.value.map(user => ({ ...user, role: channelRole(user.prefix) })),
+)
+
+const visibleUsers = computed(() =>
+  props.limit ? displayUsers.value.slice(0, props.limit) : displayUsers.value,
+)
+
+const hiddenCount = computed(() =>
+  props.limit ? Math.max(0, displayUsers.value.length - props.limit) : 0,
 )
 
 function mention(name: string) {
@@ -98,13 +112,13 @@ const menuUserData = computed(() =>
 <template>
   <Flex column :gap="0" class="chat-users" expand>
     <Flex y-center x-between class="chat-users__header" expand>
-      <span class="chat-users__title">Users</span>
+      <span class="chat-users__title">Channel Users</span>
       <Button square plain size="s" aria-label="User list" class="chat-users__list-btn" @click="userListOpen = true">
         <Icon name="ph:users" size="13" />
       </Button>
     </Flex>
-    <ContextMenu class="chat-users__context w-100">
-      <Overflow class="chat-users__list w-100">
+    <ContextMenu class="chat-users__context w-100" :class="{ 'chat-users__context--static': limit }">
+      <component :is="limit ? 'div' : Overflow" class="chat-users__list w-100">
         <Flex
           :gap="0"
           column
@@ -112,7 +126,7 @@ const menuUserData = computed(() =>
           @contextmenu.prevent="onContextMenu"
         >
           <Flex
-            v-for="user in displayUsers"
+            v-for="user in visibleUsers"
             :key="user.name"
             y-center
             expand
@@ -154,8 +168,11 @@ const menuUserData = computed(() =>
           <p v-if="displayUsers.length === 0" class="chat-users__empty">
             No users.
           </p>
+          <Button v-if="hiddenCount > 0" plain expand size="s" class="chat-users__show-all" @click="userListOpen = true">
+            Show all {{ displayUsers.length }} users
+          </Button>
         </Flex>
-      </Overflow>
+      </component>
 
       <template #menu>
         <div class="vui-dropdown chat-users__menu" @click="closeMenu">
@@ -193,10 +210,16 @@ const menuUserData = computed(() =>
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .chat-users {
   &__header {
     padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-s);
     border-bottom: 1px solid var(--color-border-weak);
+
+    @media (max-width: $breakpoint-s) {
+      padding: var(--space-m);
+    }
   }
 
   &__title {
@@ -218,6 +241,19 @@ const menuUserData = computed(() =>
       min-height: 0;
       display: flex;
       flex-direction: column;
+    }
+
+    &--static {
+      flex: 0 0 auto;
+
+      :deep(.vui-context-menu) {
+        flex: 0 0 auto;
+      }
+
+      .chat-users__list {
+        flex: 0 0 auto;
+        min-height: 0;
+      }
     }
   }
 
@@ -326,6 +362,10 @@ const menuUserData = computed(() =>
 
   &__list-btn {
     flex-shrink: 0;
+  }
+
+  &__show-all {
+    margin-top: var(--space-xxs);
   }
 }
 </style>

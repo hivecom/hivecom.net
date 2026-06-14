@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { Badge, Button, ButtonGroup, Divider, Flex, Input, Modal, Slider, Switch, Tab, Tabs } from '@dolanske/vui'
-import { ref, watch } from 'vue'
+import type { StoredBufferMeta, StoredMessage } from '@/lib/chat/bufferCache'
+import { Badge, Button, ButtonGroup, Divider, Flex, Input, Modal, Slider, Spinner, Switch, Tab, Tabs } from '@dolanske/vui'
+import { computed, ref, watch } from 'vue'
 import SoundChoicePicker from '@/components/Shared/SoundChoicePicker.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useErgoPush } from '@/composables/useErgoPush'
 import { useIrcChat } from '@/composables/useIrcChat'
+import { deleteBufferMessages, deleteBufferMeta, exportBufferMessages, getBufferStats, makeBufferKey, upsertBufferMeta, upsertMessages } from '@/lib/chat/bufferCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { NONE_SOUND_ID } from '@/lib/notificationSound'
 
@@ -18,7 +20,7 @@ const { settings } = useDataUserSettings()
 // Chat push notifications (Ergo draft/webpush). The server VAPID key only exists
 // once connected to a webpush-capable server, and Ergo requires a logged-in
 // account, so the toggle is gated on both.
-const { vapidKey, account } = useIrcChat()
+const { vapidKey, account, setCacheCap, cacheNickKey } = useIrcChat()
 const {
   isSupported: pushSupported,
   isSubscribed: pushSubscribed,
@@ -28,11 +30,16 @@ const {
   refresh: refreshPush,
 } = useErgoPush()
 
+const activeTab = ref<'display' | 'notifications' | 'storage'>('display')
+
 // The modal stays mounted with an `open` prop, so reconcile push state each time
 // it opens rather than only once on mount.
-watch(() => props.open, (open) => {
-  if (open)
+watch(() => props.open, async (open) => {
+  if (open) {
     void refreshPush()
+    if (activeTab.value === 'storage')
+      await refreshStorageStats()
+  }
 })
 
 async function toggleChatPush(value: boolean) {
@@ -42,7 +49,189 @@ async function toggleChatPush(value: boolean) {
     await unsubscribePush()
 }
 
-const activeTab = ref<'display' | 'notifications'>('display')
+// --- Storage tab ---
+
+interface BufferStat {
+  meta: StoredBufferMeta
+  count: number
+  estimatedBytes: number
+}
+
+const storageStats = ref<BufferStat[]>([])
+const storageLoading = ref(false)
+const exportingBuffer = ref<string | null>(null)
+const evictingBuffer = ref<string | null>(null)
+
+const totalMessages = computed(() => storageStats.value.reduce((s, b) => s + b.count, 0))
+const totalBytes = computed(() => storageStats.value.reduce((s, b) => s + b.estimatedBytes, 0))
+
+// Estimated max storage if every known buffer were filled to the current cap.
+const bufferCount = computed(() => storageStats.value.length)
+const estimatedMaxBytes = computed(() =>
+  settings.value.chat_cache_max_messages_per_buffer * Math.max(bufferCount.value, 1) * 350,
+)
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024)
+    return `${bytes} B`
+  if (bytes < 1024 * 1024)
+    return `${(bytes / 1024).toFixed(1)} KB`
+  return `${Math.round(bytes / (1024 * 1024))} MB`
+}
+
+async function refreshStorageStats() {
+  const userKey = cacheNickKey()
+  if (!userKey)
+    return
+  storageLoading.value = true
+  storageStats.value = await getBufferStats(userKey)
+  storageLoading.value = false
+}
+
+async function evictBuffer(stat: BufferStat) {
+  evictingBuffer.value = stat.meta.key
+  await deleteBufferMessages(stat.meta.key)
+  await deleteBufferMeta(stat.meta.key)
+  await refreshStorageStats()
+  evictingBuffer.value = null
+}
+
+async function evictAll() {
+  storageLoading.value = true
+  for (const stat of storageStats.value) {
+    await deleteBufferMessages(stat.meta.key)
+    await deleteBufferMeta(stat.meta.key)
+  }
+  storageStats.value = []
+  storageLoading.value = false
+}
+
+// Versioned envelope used for full-history exports and imports.
+interface ChatHistoryExport {
+  version: 1
+  exportedAt: string
+  buffers: Array<{
+    meta: { name: string, kind: 'channel' | 'pm', topic?: string }
+    messages: StoredMessage[]
+  }>
+}
+
+const exportingAll = ref(false)
+const importLoading = ref(false)
+const importError = ref<string | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+async function exportAll() {
+  const userKey = cacheNickKey()
+  if (!userKey || !storageStats.value.length)
+    return
+  exportingAll.value = true
+  const buffers: ChatHistoryExport['buffers'] = []
+  for (const stat of storageStats.value) {
+    const messages = await exportBufferMessages(stat.meta.key)
+    buffers.push({
+      meta: { name: stat.meta.name, kind: stat.meta.kind, topic: stat.meta.topic },
+      messages,
+    })
+  }
+  const payload: ChatHistoryExport = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    buffers,
+  }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `hivecom_chat_${new Date().toISOString().slice(0, 10)}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  exportingAll.value = false
+}
+
+function triggerImport() {
+  importError.value = null
+  fileInputRef.value?.click()
+}
+
+async function onImportFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file)
+    return
+  input.value = '' // allow re-selecting the same file
+  const userKey = cacheNickKey()
+  if (!userKey) {
+    importError.value = 'Not connected - connect to chat first.'
+    return
+  }
+  importLoading.value = true
+  importError.value = null
+  try {
+    const parsed: unknown = JSON.parse(await file.text())
+    let buffersToImport: ChatHistoryExport['buffers']
+    if (Array.isArray(parsed)) {
+      // Single-buffer export: bare StoredMessage[]
+      const messages = parsed as StoredMessage[]
+      if (!messages.length) {
+        importError.value = 'File contains no messages.'
+        importLoading.value = false
+        return
+      }
+      const firstKey = messages[0]?.bufferKey ?? ''
+      const colonIdx = firstKey.indexOf(':')
+      const bufferName = colonIdx >= 0 ? firstKey.slice(colonIdx + 1) : firstKey
+      const kind = bufferName.startsWith('#') ? 'channel' as const : 'pm' as const
+      buffersToImport = [{ meta: { name: bufferName, kind }, messages }]
+    }
+    else if (
+      parsed !== null
+      && typeof parsed === 'object'
+      && 'version' in parsed
+      && (parsed as ChatHistoryExport).version === 1
+      && Array.isArray((parsed as ChatHistoryExport).buffers)
+    ) {
+      buffersToImport = (parsed as ChatHistoryExport).buffers
+    }
+    else {
+      importError.value = 'Unrecognised file format.'
+      importLoading.value = false
+      return
+    }
+    for (const { meta, messages } of buffersToImport) {
+      const newKey = makeBufferKey(userKey, meta.name)
+      await upsertBufferMeta({ key: newKey, name: meta.name, kind: meta.kind, topic: meta.topic })
+      await upsertMessages(messages.map(m => ({ ...m, bufferKey: newKey })))
+    }
+    await refreshStorageStats()
+  }
+  catch {
+    importError.value = 'Failed to parse file - make sure it is a valid Hivecom chat export.'
+  }
+  importLoading.value = false
+}
+
+async function exportBuffer(stat: BufferStat) {
+  exportingBuffer.value = stat.meta.key
+  const messages = await exportBufferMessages(stat.meta.key)
+  const blob = new Blob([JSON.stringify(messages, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${stat.meta.name.replace(/[^a-z0-9]/gi, '_')}_history.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  exportingBuffer.value = null
+}
+
+watch(activeTab, async (tab) => {
+  if (tab === 'storage')
+    await refreshStorageStats()
+})
+
+watch(() => settings.value.chat_cache_max_messages_per_buffer, (cap) => {
+  setCacheCap(cap)
+}, { immediate: true })
 const keywordDraft = ref('')
 
 function addKeyword() {
@@ -117,6 +306,9 @@ async function toggleBrowserNotifications(value: boolean) {
         </Tab>
         <Tab value="notifications">
           Notifications
+        </Tab>
+        <Tab value="storage">
+          Storage
         </Tab>
       </Tabs>
 
@@ -358,6 +550,97 @@ async function toggleBrowserNotifications(value: boolean) {
           />
         </Flex>
       </template>
+
+      <!-- Storage -->
+      <template v-if="activeTab === 'storage'">
+        <Flex column gap="xs" expand>
+          <Flex y-center x-between expand>
+            <Flex column gap="xxs" class="chat-settings__text">
+              <span class="text-s">Message cache cap</span>
+              <span class="text-xs text-color-lighter">Maximum messages stored per buffer in the local cache. Older messages are pruned after each write.</span>
+            </Flex>
+            <span class="chat-settings__value text-s text-color-light">{{ settings.chat_cache_max_messages_per_buffer.toLocaleString() }}</span>
+          </Flex>
+          <Slider v-model="settings.chat_cache_max_messages_per_buffer" :min="5000" :max="100000" :steps="19" />
+          <span class="text-xs text-color-lighter">
+            Up to ~{{ formatBytes(estimatedMaxBytes) }} across {{ bufferCount || 1 }} {{ bufferCount === 1 ? 'buffer' : 'buffers' }}
+          </span>
+        </Flex>
+
+        <Divider />
+
+        <Flex y-center x-between expand>
+          <Flex column gap="xxs">
+            <span class="text-s">Cached buffers</span>
+            <span class="text-xs text-color-lighter">{{ totalMessages.toLocaleString() }} messages - {{ formatBytes(totalBytes) }} estimated</span>
+          </Flex>
+          <Flex gap="xs">
+            <Button variant="gray" :disabled="exportingAll || !storageStats.length" @click="exportAll">
+              Export all
+            </Button>
+            <Button variant="gray" :disabled="importLoading" @click="triggerImport">
+              Import
+            </Button>
+            <Button variant="danger" :disabled="storageLoading || !storageStats.length" @click="evictAll">
+              Evict all
+            </Button>
+          </Flex>
+        </Flex>
+
+        <input
+          ref="fileInputRef"
+          type="file"
+          accept="application/json"
+          class="chat-settings__file-input"
+          @change="onImportFile"
+        >
+
+        <span v-if="importError" class="text-xs chat-settings__import-error">{{ importError }}</span>
+
+        <Spinner v-if="storageLoading || importLoading" />
+
+        <template v-else-if="storageStats.length">
+          <Flex
+            v-for="stat in storageStats"
+            :key="stat.meta.key"
+            y-center
+            x-between
+            gap="m"
+            expand
+            class="chat-settings__buffer-row"
+          >
+            <Flex column gap="xxs" class="chat-settings__text">
+              <strong class="text-s">{{ stat.meta.name }}</strong>
+              <Flex gap="xs" y-center>
+                <Badge variant="neutral">
+                  {{ stat.count.toLocaleString() }} msgs
+                </Badge>
+                <span class="text-xs text-color-lighter">{{ formatBytes(stat.estimatedBytes) }}</span>
+              </Flex>
+            </Flex>
+            <Flex gap="xs">
+              <Button
+                variant="gray"
+                square
+                :disabled="exportingBuffer === stat.meta.key"
+                @click="exportBuffer(stat)"
+              >
+                <Icon name="ph:download-simple" />
+              </Button>
+              <Button
+                variant="danger"
+                square
+                :disabled="evictingBuffer === stat.meta.key"
+                @click="evictBuffer(stat)"
+              >
+                <Icon name="ph:trash" />
+              </Button>
+            </Flex>
+          </Flex>
+        </template>
+
+        <span v-else class="text-s text-color-lighter">No cached buffers.</span>
+      </template>
     </Flex>
   </Modal>
 </template>
@@ -381,6 +664,23 @@ async function toggleBrowserNotifications(value: boolean) {
     display: inline-flex;
     align-items: center;
     gap: var(--space-xxs);
+  }
+
+  &__file-input {
+    display: none;
+  }
+
+  &__import-error {
+    color: var(--color-text-red);
+  }
+
+  &__buffer-row {
+    padding: var(--space-xs) 0;
+    border-bottom: 1px solid var(--color-border-weak);
+
+    &:last-child {
+      border-bottom: none;
+    }
   }
 
   &__keyword-remove {

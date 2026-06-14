@@ -27,7 +27,8 @@ const anonNick = ref('')
 
 function enterAnonMode() {
   anonNick.value = `anon-${Math.random().toString(36).slice(2, 7)}`
-  inputChannel.value = defaultChannel(true)
+  if (!inputChannel.value)
+    inputChannel.value = defaultChannel(true)
   anonMode.value = true
 }
 

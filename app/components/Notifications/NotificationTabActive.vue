@@ -10,6 +10,7 @@ import NotificationCardEventRsvp from './NotificationCardEventRsvp.vue'
 import NotificationCardInvite from './NotificationCardInvite.vue'
 import NotificationCardLoading from './NotificationCardLoading.vue'
 import NotificationCardPendingComplaints from './NotificationCardPendingComplaints.vue'
+import PushPrompt from './PushPrompt.vue'
 
 const emit = defineEmits<{ (e: 'navigate'): void }>()
 
@@ -225,6 +226,8 @@ defineExpose({ markAllAsRead: onMarkAllAsRead, markAllLoading, hasAnyNotificatio
 
 <template>
   <Flex column gap="xs" expand>
+    <PushPrompt context="active" />
+
     <template v-if="(isDev && devFixtureLoading) || loading">
       <NotificationCardLoading :loading-count />
       <NotificationCardLoading v-if="isDev && devFixtureLoading && loadingCount === 0" />

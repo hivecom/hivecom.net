@@ -19,6 +19,11 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 const props = defineProps<{
   // Horizontal strip layout for the compact navbar sheet.
   horizontal?: boolean
+  // Move the create/join input above the list (used in the mobile nav sheet).
+  inputTop?: boolean
+  // Size the list to its content instead of filling/scrolling internally, so a
+  // parent surface can own the scroll (used in the mobile nav sheet).
+  noScroll?: boolean
 }>()
 
 const { buffers, activeName, setActive, closeBuffer, joinChannel, renameChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, channelMetaResolved, requestChannelMetadata, isUnauthorizedSubchannel, setChannelMetadata, queryChanServInfo } = useIrcChat()
@@ -506,7 +511,9 @@ function executeRenameChannel() {
     :gap="0"
     :wrap="horizontal"
     class="chat-channels"
-    :class="{ 'chat-channels--horizontal': horizontal }"
+    :class="{ 'chat-channels--horizontal': horizontal,
+              'chat-channels--input-top': inputTop && !horizontal,
+              'chat-channels--no-scroll': noScroll && !horizontal }"
     expand
   >
     <Flex v-if="!horizontal" expand y-center x-between class="chat-channels__header">
@@ -920,6 +927,8 @@ function executeRenameChannel() {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/breakpoints.scss' as *;
+
 .chat-channels {
   min-height: 0;
   width: 100%;
@@ -928,9 +937,34 @@ function executeRenameChannel() {
     border-bottom: 1px solid var(--color-border-weak);
   }
 
+  &--input-top &__header {
+    order: -2;
+  }
+
+  &--input-top &__join {
+    order: -1;
+    border-top: none;
+    border-bottom: 1px solid var(--color-border-weak);
+  }
+
+  // Content-height mode: let a parent surface own the scroll.
+  &--no-scroll &__context,
+  &--no-scroll &__list {
+    flex: 0 0 auto;
+  }
+
+  &--no-scroll &__list :deep(.overflow-track),
+  &--no-scroll &__list :deep(.overflow-content) {
+    height: auto;
+  }
+
   &__header {
     padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-s);
     border-bottom: 1px solid var(--color-border-weak);
+
+    @media (max-width: $breakpoint-s - 1) {
+      padding: var(--space-m);
+    }
   }
 
   &__browse {

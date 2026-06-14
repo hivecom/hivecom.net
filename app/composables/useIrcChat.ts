@@ -24,9 +24,9 @@
 // falls back to plain registration so the client keeps working today.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { CachedChatBuffer } from '@/lib/chat/bufferCache'
+import type { StoredBufferMeta, StoredMessage } from '@/lib/chat/bufferCache'
 import type { SoundDesign } from '@/types/sound'
-import { loadChatBufferCache, saveChatBufferCache } from '@/lib/chat/bufferCache'
+import { clearChatCache, deleteBufferMessages, deleteBufferMeta, loadAllBufferMeta, loadNewerMessages, loadOlderMessages, loadRecentMessages, makeBufferKey, pruneBuffer, upsertBufferMeta, upsertMessages } from '@/lib/chat/bufferCache'
 import { NONE_SOUND_ID, playNotificationSound } from '@/lib/notificationSound'
 
 const WS_URL = 'wss://irc.hivecom.net:8097'
@@ -188,6 +188,12 @@ export interface ChatBuffer {
   inviteListReady?: boolean
   /** Whether the channel is registered with ChanServ. undefined = not yet queried. */
   registered?: boolean
+  /** True once the local IndexedDB cache has no older messages for this buffer. Falls back to CHATHISTORY BEFORE when set. */
+  cacheExhausted?: boolean
+  /** True when the live buffer tail was trimmed during scroll-back. seekToPresent must re-seed from cache before scrolling to bottom. */
+  tailTrimmed?: boolean
+  /** True while a forward cache-load (fetchNewerFromCache) is in-flight. */
+  loadingNewerHistory?: boolean
 }
 
 export interface ChannelListEntry {
@@ -389,16 +395,24 @@ let ws: WebSocket | null = null
 let initialised = false
 let _readWatcherRegistered = false
 // --- Local buffer cache (IndexedDB) ---
-// Max chat lines persisted per buffer. Bounds the cache and matches the size of
-// a typical CHATHISTORY LATEST window so the seeded set lines up with live replay.
-const MAX_CACHED_MESSAGES_PER_BUFFER = 100
-// Snapshot loaded from IndexedDB, seeded into the buffer list on (re)connect so
-// returning users see prior conversations instantly while live history streams in.
-let cachedBufferSnapshot: CachedChatBuffer[] | null = null
+// Messages seeded into the live buffer on startup from the per-message IDB store.
+const CACHE_SEED_COUNT = 150
+// Page size for cache-first scroll-back loads.
+const CACHE_PAGE_SIZE = 25
+// Maximum messages kept in the live reactive buffer. Older messages are trimmed
+// from the tail (newest end) when older pages are prepended via scroll-back, so
+// the DOM node count stays bounded while IDB holds the full history.
+const MAX_LIVE_MESSAGES = 200
+// Per-buffer IDB message cap. Updated reactively from user settings via setCacheCap().
+let _cacheCap = 10000
+
 let _cacheHydrating = false
-let _cacheWatcherRegistered = false
-let _cacheWriteTimer: ReturnType<typeof setTimeout> | null = null
+// Pending per-message IDB writes, keyed by `${bufferKey}|${msgid}` so that
+// mutations (reactions, redactions) overwrite the previous version in the queue.
+const _pendingMsgWrites = new Map<string, StoredMessage>()
+let _msgFlushTimer: ReturnType<typeof setTimeout> | null = null
 let _intentionalDisconnect = false
+let _skipAutoJoin = false
 // Set when a connection attempt fails fatally (e.g. nickname in use) and must
 // NOT auto-reconnect. Unlike _intentionalDisconnect, this preserves the 'error'
 // state so the UI keeps showing why the connection failed. Cleared on each
@@ -587,8 +601,37 @@ function resetBuffers() {
     clearTimeout(timer)
   typingTimers.clear()
   lastTypingSent.clear()
-  buffers.value = [{ name: SERVER_BUFFER, kind: 'server', messages: [], users: [], unread: 0, mentions: 0, joined: true }]
-  activeName.value = SERVER_BUFFER
+  // Preserve channel/pm buffers across reconnects so the user never sees a blank
+  // screen. Only connection-volatile state is cleared: presence, join status,
+  // history cursor, and in-flight loading flags. Messages stay so cached content
+  // is visible immediately while the socket reconnects and CHATHISTORY replays.
+  const preserved: ChatBuffer[] = buffers.value
+    .filter(b => b.kind === 'channel' || b.kind === 'pm')
+    .map(b => ({
+      ...b,
+      users: [],
+      joined: false,
+      typing: undefined,
+      historyReady: undefined,
+      historyExhausted: undefined,
+      loadingOlderHistory: undefined,
+      autoFetchRetries: undefined,
+      historyAnchorMsgid: undefined,
+      historyAnchorTs: undefined,
+      banList: undefined,
+      banListReady: undefined,
+      exceptList: undefined,
+      exceptListReady: undefined,
+      inviteList: undefined,
+      inviteListReady: undefined,
+    }))
+  buffers.value = [
+    { name: SERVER_BUFFER, kind: 'server', messages: [], users: [], unread: 0, mentions: 0, joined: true },
+    ...preserved,
+  ]
+  // Stay on the current channel if it survived the reset; go to Server otherwise.
+  if (!preserved.some(b => b.name.toLowerCase() === activeName.value.toLowerCase()))
+    activeName.value = SERVER_BUFFER
   channelList.value = []
   channelListLoading.value = false
   // Pre-populate from stored appearance cache so channels display correctly while
@@ -596,9 +639,6 @@ function resetBuffers() {
   channelMetaCache.value = loadChannelMetaFromStorage()
   _backgroundMetaTargets.clear()
   channelMetaResolved.value = new Set(channelMetaCache.value.keys())
-  // Paint prior channel/DM conversations from the local cache (if loaded) so a
-  // (re)connect lands on populated buffers instead of an empty pane.
-  seedBuffersFromCache()
 }
 
 function findBuffer(name: string) {
@@ -677,6 +717,7 @@ function addToBuffer(
     if (newMsg.msgid != null && buf.messages.some(m => m.msgid === newMsg.msgid))
       return
     buf.messages.push(newMsg)
+    scheduleMsgWrite(name, newMsg)
   }
 
   // A message just landed in buf.messages - apply any reactions that arrived
@@ -810,6 +851,7 @@ function applyReaction(buf: ChatBuffer, parentMsgid: string, reaction: string, w
   else
     delete reactions[reaction]
   parent.reactions = Object.keys(reactions).length ? reactions : undefined
+  scheduleMsgWrite(buf.name, parent)
 }
 
 /** Stash a reaction whose parent message isn't in the buffer yet. */
@@ -854,6 +896,7 @@ function applyRedaction(buf: ChatBuffer, msgid: string, by: string, reason: stri
   target.redactedBy = by
   target.redactedReason = reason || undefined
   target.reactions = undefined
+  scheduleMsgWrite(buf.name, target)
 }
 
 function stripPrefix(name: string) {
@@ -1108,6 +1151,9 @@ function clearAuthedIdentity() {
   localStorage.removeItem(STORAGE_NICK)
   localStorage.removeItem(STORAGE_CHANNEL)
   localStorage.removeItem(STORAGE_IDENTITY_AUTHED)
+  const _signOutKey = cacheNickKey()
+  if (_signOutKey)
+    void clearChatCache(_signOutKey)
 }
 
 function persistChannel(value: string) {
@@ -1116,11 +1162,12 @@ function persistChannel(value: string) {
 }
 
 // --- Local buffer cache (IndexedDB) ------------------------------------------
-// Returning users get recent channel/DM history painted instantly from a local
-// IndexedDB snapshot while the socket connects and live CHATHISTORY streams in.
-// Live (replayed) messages dedupe against the seeded ones by msgid, and the
-// BEFORE pagination anchor tracks the oldest *delivered* line, so any gap
-// between the cache and the live window self-heals on scroll-up.
+// Per-message keyed store (DB v2). Every chat/tagmsg with a server-assigned msgid
+// is written incrementally; reactions/redactions mutate the stored row in-place.
+// On startup, the most recent CACHE_SEED_COUNT messages per buffer are loaded into
+// the live reactive array so the user sees content before the WebSocket connects.
+// Scroll-back (fetchOlderHistory) reads from IDB first; CHATHISTORY BEFORE is only
+// sent when the local cache is exhausted.
 
 /**
  * First non-empty identity (nick) used as the per-user cache key. Empty strings
@@ -1135,63 +1182,55 @@ function cacheNickKey(): string {
   return ''
 }
 
-/**
- * Reconstruct ChatBuffer objects from the loaded snapshot and append any that
- * aren't already present. Seeded messages are flagged `backlog` and bypass
- * addToBuffer, so they never trigger notifications or unread counts.
- */
-function seedBuffersFromCache() {
-  if (!cachedBufferSnapshot?.length)
-    return
-  const seeded: ChatBuffer[] = []
-  for (const cb of cachedBufferSnapshot) {
-    if (cb.kind !== 'channel' && cb.kind !== 'pm')
-      continue
-    if (!cb.messages.length || findBuffer(cb.name))
-      continue
-    // Respect a closed DM: don't resurrect it unless the cache holds activity
-    // newer than when the user closed it.
-    if (cb.kind === 'pm') {
-      const closedAt = closedDms[cb.name.toLowerCase()]
-      const newestTs = cb.messages[cb.messages.length - 1]?.ts ?? 0
-      if (closedAt != null && newestTs <= closedAt)
-        continue
-    }
-    const messages: ChatMessage[] = cb.messages.map(m => ({
-      id: msgCounter.value++,
-      ts: new Date(m.ts),
-      type: m.type,
-      from: m.from,
-      channel: m.channel,
-      text: m.text,
-      msgid: m.msgid,
-      replyTo: m.replyTo,
-      action: m.action,
-      tag: m.tag,
-      reactions: m.reactions,
-      backlog: true,
-    }))
-    const buf: ChatBuffer = {
-      name: cb.name,
-      kind: cb.kind,
-      messages,
-      users: [],
-      unread: 0,
-      mentions: 0,
-      joined: false,
-      topic: cb.topic ?? '',
-      readLineTs: cb.readLineTs,
-      modes: new Set(),
-    }
-    if (cb.kind === 'channel') {
-      const cached = channelMetaCache.value.get(cb.name.toLowerCase())
-      if (cached?.size)
-        buf.metadata = new Map(cached)
-    }
-    seeded.push(buf)
+/** Build a StoredMessage from a live ChatMessage for the given buffer name. Returns null when the message has no msgid (not worth caching). */
+function buildStoredMessage(bufferName: string, msg: ChatMessage): StoredMessage | null {
+  if (!msg.msgid || (msg.type !== 'chat' && msg.type !== 'tagmsg'))
+    return null
+  const userKey = cacheNickKey()
+  if (!userKey)
+    return null
+  return {
+    bufferKey: makeBufferKey(userKey, bufferName),
+    msgid: msg.msgid,
+    ts: msg.ts.getTime(),
+    type: msg.type,
+    from: msg.from,
+    channel: msg.channel,
+    text: msg.text ?? '',
+    replyTo: msg.replyTo,
+    action: msg.action,
+    tag: msg.tag,
+    // Deep-clone reactions off the reactive proxy so IDB's structured clone doesn't throw DataCloneError.
+    reactions: msg.reactions
+      ? Object.fromEntries(Object.entries(msg.reactions).map(([emote, nicks]) => [emote, [...nicks]]))
+      : undefined,
+    redacted: msg.redacted,
   }
-  if (seeded.length)
-    buffers.value = [...buffers.value, ...seeded]
+}
+
+/**
+ * Queue a message for the next debounced IDB batch flush.
+ * Later writes with the same (bufferKey, msgid) key overwrite earlier ones,
+ * so mutation chains (reactions, redactions) naturally converge.
+ */
+function scheduleMsgWrite(bufferName: string, msg: ChatMessage) {
+  if (!import.meta.client)
+    return
+  const stored = buildStoredMessage(bufferName, msg)
+  if (!stored)
+    return
+  _pendingMsgWrites.set(`${stored.bufferKey}|${stored.msgid}`, stored)
+  if (_msgFlushTimer !== null)
+    return
+  _msgFlushTimer = setTimeout(() => {
+    _msgFlushTimer = null
+    const batch = [..._pendingMsgWrites.values()]
+    _pendingMsgWrites.clear()
+    void upsertMessages(batch)
+    const seenKeys = new Set(batch.map(m => m.bufferKey))
+    for (const bk of seenKeys)
+      void pruneBuffer(bk, _cacheCap)
+  }, 500)
 }
 
 /**
@@ -1203,43 +1242,35 @@ async function hydrateBufferCache() {
     return
   _cacheHydrating = true
   try {
-    const cacheNick = cacheNickKey()
-    if (!cacheNick)
+    const userKey = cacheNickKey()
+    if (!userKey)
       return
-    const cached = await loadChatBufferCache(cacheNick)
-    if (cached?.length) {
-      cachedBufferSnapshot = cached
-      seedBuffersFromCache()
-    }
-  }
-  catch {
-    // Cache is a best-effort UX optimisation; ignore failures.
-  }
-  finally {
-    _cacheHydrating = false
-  }
-}
-
-/**
- * Persist the current channel/DM buffers (recent chat/tagmsg lines only) to
- * IndexedDB so the next load can paint them instantly.
- */
-async function persistBufferCache(): Promise<void> {
-  if (!import.meta.client)
-    return
-  const cacheNick = cacheNickKey()
-  if (!cacheNick)
-    return
-  const out: CachedChatBuffer[] = []
-  for (const b of buffers.value) {
-    if (b.kind !== 'channel' && b.kind !== 'pm')
-      continue
-    const messages = b.messages
-      .filter(m => (m.type === 'chat' || m.type === 'tagmsg') && !m.redacted)
-      .slice(-MAX_CACHED_MESSAGES_PER_BUFFER)
-      .map(m => ({
-        ts: m.ts.getTime(),
-        type: m.type as 'chat' | 'tagmsg',
+    const metas = await loadAllBufferMeta(userKey)
+    if (!metas.length)
+      return
+    const seeded: ChatBuffer[] = []
+    for (const meta of metas) {
+      // Skip buffers that are already in the live list (e.g. on reconnect).
+      if (findBuffer(meta.name))
+        continue
+      // Respect a closed DM: don't resurrect it unless the cache holds
+      // activity newer than when the user closed it.
+      if (meta.kind === 'pm') {
+        const closedAt = closedDms[meta.name.toLowerCase()]
+        if (closedAt != null) {
+          // We need to peek at the newest message ts to decide.
+          const peek = await loadRecentMessages(userKey, meta.name, 1)
+          if (!peek.length || peek[peek.length - 1]!.ts <= closedAt)
+            continue
+        }
+      }
+      const rawMsgs = await loadRecentMessages(userKey, meta.name, CACHE_SEED_COUNT)
+      if (!rawMsgs.length)
+        continue
+      const messages: ChatMessage[] = rawMsgs.map(m => ({
+        id: msgCounter.value++,
+        ts: new Date(m.ts),
+        type: m.type,
         from: m.from,
         channel: m.channel,
         text: m.text,
@@ -1247,25 +1278,40 @@ async function persistBufferCache(): Promise<void> {
         replyTo: m.replyTo,
         action: m.action,
         tag: m.tag,
-        reactions: m.reactions,
+        reactions: m.reactions ? { ...m.reactions } : undefined,
+        backlog: true,
+        redacted: m.redacted,
       }))
-    if (!messages.length)
-      continue
-    out.push({ name: b.name, kind: b.kind, topic: b.topic, readLineTs: b.readLineTs, messages })
+      const readTs = readPositions[meta.name.toLowerCase()]
+      const buf: ChatBuffer = {
+        name: meta.name,
+        kind: meta.kind,
+        messages,
+        users: [],
+        unread: 0,
+        mentions: 0,
+        joined: false,
+        topic: meta.topic ?? '',
+        readLineTs: readTs,
+        modes: new Set(),
+        cacheExhausted: rawMsgs.length < CACHE_SEED_COUNT,
+      }
+      if (meta.kind === 'channel') {
+        const cached = channelMetaCache.value.get(meta.name.toLowerCase())
+        if (cached?.size)
+          buf.metadata = new Map(cached)
+      }
+      seeded.push(buf)
+    }
+    if (seeded.length)
+      buffers.value = [...buffers.value, ...seeded]
   }
-  await saveChatBufferCache(cacheNick, out)
-}
-
-/** Debounced wrapper around persistBufferCache to coalesce rapid message bursts. */
-function scheduleBufferCacheWrite() {
-  if (!import.meta.client)
-    return
-  if (_cacheWriteTimer !== null)
-    clearTimeout(_cacheWriteTimer)
-  _cacheWriteTimer = setTimeout(() => {
-    _cacheWriteTimer = null
-    void persistBufferCache()
-  }, 1000)
+  catch {
+    // Cache is a best-effort UX optimisation; ignore failures.
+  }
+  finally {
+    _cacheHydrating = false
+  }
 }
 
 // --- IRC wire ----------------------------------------------------------------
@@ -1469,7 +1515,13 @@ function finishCap() {
  * the oldest message currently in the buffer. Marks the buffer as loading so
  * the UI can show a spinner and avoid duplicate requests.
  */
-function fetchOlderHistory(target: string) {
+/**
+ * Load older messages for a buffer. Checks the local IDB cache first so the user
+ * sees history without a server round-trip. Falls back to CHATHISTORY BEFORE once
+ * the cache is exhausted. Sets loadingOlderHistory throughout so the UI shows the
+ * correct spinner state regardless of source.
+ */
+async function fetchOlderHistory(target: string) {
   if (!chatHistorySupported.value)
     return
   const buf = findBuffer(target)
@@ -1478,11 +1530,62 @@ function fetchOlderHistory(target: string) {
   // Only trigger once initial history has settled.
   if (!buf.historyReady)
     return
-  // Anchor the BEFORE request on the oldest line we've *seen* in history, not
-  // just the oldest line stored in the buffer. A prior batch may have delivered
-  // older lines that were never stored (reaction TAGMSGs, suppressed HistServ
-  // relays); anchoring on those lets pagination advance past them. Falls back
-  // to the oldest stored message on the first fetch (before any anchor exists).
+  buf.loadingOlderHistory = true
+
+  // --- cache-first path ---
+  const userKey = cacheNickKey()
+  if (userKey && !buf.cacheExhausted) {
+    const oldestTs = buf.messages[0]?.ts.getTime() ?? Date.now()
+    const cached = await loadOlderMessages(userKey, target, oldestTs, CACHE_PAGE_SIZE)
+    if (cached.length > 0) {
+      const existingMsgids = new Set(buf.messages.filter(m => m.msgid).map(m => m.msgid))
+      const newMsgs: ChatMessage[] = cached
+        .filter(m => !existingMsgids.has(m.msgid))
+        .map(m => ({
+          id: msgCounter.value++,
+          ts: new Date(m.ts),
+          type: m.type,
+          from: m.from,
+          channel: m.channel,
+          text: m.text,
+          msgid: m.msgid,
+          replyTo: m.replyTo,
+          action: m.action,
+          tag: m.tag,
+          reactions: m.reactions ? { ...m.reactions } : undefined,
+          backlog: true,
+          redacted: m.redacted,
+        }))
+      if (newMsgs.length) {
+        buf.messages.splice(0, 0, ...newMsgs)
+        // Advance CHATHISTORY anchor so BEFORE pagination continues from the
+        // correct point once IDB is exhausted.
+        const oldest = newMsgs[0]!
+        if (oldest.msgid) {
+          buf.historyAnchorMsgid = oldest.msgid
+          buf.historyAnchorTs = oldest.ts.toISOString()
+        }
+        else {
+          buf.historyAnchorTs = oldest.ts.toISOString()
+        }
+        // Keep the live DOM node count bounded: trim newest messages from the
+        // tail. The user is scrolled to the top (trigger condition), so content
+        // below the viewport disappears silently.
+        if (buf.messages.length > MAX_LIVE_MESSAGES) {
+          buf.messages.splice(MAX_LIVE_MESSAGES)
+          buf.tailTrimmed = true
+        }
+      }
+      if (cached.length < CACHE_PAGE_SIZE)
+        buf.cacheExhausted = true
+      buf.loadingOlderHistory = false
+      return
+    }
+    buf.cacheExhausted = true
+  }
+
+  // --- CHATHISTORY BEFORE fallback ---
+  // loadingOlderHistory stays true until BATCH end clears it.
   let anchor: string | null = null
   if (buf.historyAnchorMsgid != null) {
     anchor = `msgid=${buf.historyAnchorMsgid}`
@@ -1495,13 +1598,14 @@ function fetchOlderHistory(target: string) {
     // skipped as timestamp anchors.
     const anchorMsg = buf.messages.find(m => m.msgid != null)
       ?? buf.messages.find(m => m.type === 'chat')
-    if (anchorMsg == null)
+    if (anchorMsg == null) {
+      buf.loadingOlderHistory = false
       return
+    }
     anchor = anchorMsg.msgid != null
       ? `msgid=${anchorMsg.msgid}`
       : `timestamp=${anchorMsg.ts.toISOString()}`
   }
-  buf.loadingOlderHistory = true
   pendingBeforeTargets.add(target.toLowerCase())
   send(`CHATHISTORY BEFORE ${target} ${anchor} ${HISTORY_LIMIT}`)
 }
@@ -1664,8 +1768,9 @@ function handleMessage(raw: string) {
       connState.value = 'connected'
       nick.value = params[0] ?? inputNick.value
       addServer({ type: 'system', text: `Connected as ${nick.value}` })
-      if (inputChannel.value)
+      if (!_skipAutoJoin && inputChannel.value)
         send(`JOIN ${inputChannel.value}`)
+      _skipAutoJoin = false
       _startPinging()
       // Subscribe to Orbit baseline metadata keys (draft/metadata-2).
       // Ergo pushes live METADATA notifications for subscribed keys whenever
@@ -1751,10 +1856,26 @@ function handleMessage(raw: string) {
         // aren't in the intent set, so they stay silent. Consume the intent so a
         // later JOIN echo for the same channel doesn't re-trigger the marker.
         const isExplicitJoin = explicitJoinIntents.delete(channel.toLowerCase())
+        // Persist buffer metadata so the next load can hydrate this channel
+        // from cache without waiting for a new JOIN.
+        const _joinUserKey = cacheNickKey()
+        if (_joinUserKey) {
+          void upsertBufferMeta({
+            key: makeBufferKey(_joinUserKey, channel),
+            name: buf.name,
+            kind: 'channel',
+            topic: buf.topic,
+          } satisfies StoredBufferMeta)
+        }
         if (chatHistorySupported.value) {
           if (isExplicitJoin)
             pendingJoinMarkers.add(channel.toLowerCase())
-          requestHistory(channel)
+          // If we seeded this buffer from cache, only fetch messages newer than
+          // the newest cached line so a quick reload shows nothing visibly loading.
+          const newestCachedTs = buf.messages.length > 0 && buf.messages[buf.messages.length - 1]?.backlog
+            ? buf.messages[buf.messages.length - 1]!.ts.getTime()
+            : 0
+          requestHistory(channel, newestCachedTs > 0 ? newestCachedTs : undefined)
         }
         else if (isExplicitJoin) {
           addToBuffer(channel, 'channel', { type: 'join', channel, text: `You joined ${channel}` }, { ts })
@@ -1995,6 +2116,17 @@ function handleMessage(raw: string) {
                   drainPendingReactions(batchBuf, staged.msgid)
               }
             }
+            // Trim the live buffer if loading older pages pushed it over the cap.
+            if (batchBuf.messages.length > MAX_LIVE_MESSAGES) {
+              batchBuf.messages.splice(MAX_LIVE_MESSAGES)
+              batchBuf.tailTrimmed = true
+            }
+            // Write CHATHISTORY-sourced pages to IDB so cache-first scroll-back
+            // can serve them on the next session.
+            if (info.isPrepend && info.staging != null) {
+              for (const m of info.staging)
+                scheduleMsgWrite(batchBuf.name, m)
+            }
 
             // Advance the pagination anchor to the oldest line delivered in this
             // batch, even if that line never entered the buffer (reaction
@@ -2021,7 +2153,7 @@ function handleMessage(raw: string) {
               const visibleCount = batchBuf.messages.filter(m => m.type !== 'tagmsg').length
               if (visibleCount < HISTORY_LIMIT) {
                 batchBuf.autoFetchRetries = (batchBuf.autoFetchRetries ?? 0) + 1
-                fetchOlderHistory(info.target)
+                void fetchOlderHistory(info.target)
               }
               else {
                 batchBuf.autoFetchRetries = 0
@@ -2891,7 +3023,8 @@ function openSocket() {
  * the nickname currently in the form. SASL auth is attempted and falls back to
  * plain registration if the server has no auth bridge yet.
  */
-async function connect() {
+async function connect(skipAutoJoin = false) {
+  _skipAutoJoin = skipAutoJoin
   _intentionalDisconnect = false
   _reconnectAttempts = 0
   if (_reconnectTimer !== null) {
@@ -2900,7 +3033,10 @@ async function connect() {
   }
   authCreds = null
   useAnonymous = false
-  if (!inputChannel.value)
+  // Only fall back to the default channel when the user has never configured
+  // one (key absent). An empty-string value means they explicitly left all
+  // channels and should not be auto-joined anywhere.
+  if (!inputChannel.value && (import.meta.client ? localStorage.getItem(STORAGE_CHANNEL) === null : true))
     inputChannel.value = defaultChannel(false)
   if (identityProvider) {
     try {
@@ -2927,7 +3063,7 @@ function connectAsAnon() {
   }
   authCreds = null
   useAnonymous = true
-  if (!localStorage.getItem(STORAGE_CHANNEL))
+  if (!inputChannel.value && localStorage.getItem(STORAGE_CHANNEL) === null)
     inputChannel.value = defaultChannel(true)
   openSocket()
 }
@@ -3012,6 +3148,14 @@ function renameChannel(oldName: string, newName: string, reason?: string) {
 
 function openPm(target: string) {
   const buf = getBuffer(target, 'pm')
+  const _pmUserKey = cacheNickKey()
+  if (_pmUserKey) {
+    void upsertBufferMeta({
+      key: makeBufferKey(_pmUserKey, target),
+      name: target,
+      kind: 'pm',
+    } satisfies StoredBufferMeta)
+  }
   forgetClosedDm(target)
   setActive(target)
   // Load history the first time this DM is opened. Skipped if the buffer was
@@ -3041,14 +3185,24 @@ function closeBuffer(name: string) {
     // will repopulate inputChannel if another channel becomes active.
     if (inputChannel.value.toLowerCase() === buf.name.toLowerCase()) {
       inputChannel.value = ''
+      // Use an empty string sentinel rather than removing the key entirely.
+      // removeItem() would make connect() treat the next load as a first-time
+      // visitor and auto-join the default channel, undoing the deliberate leave.
       if (import.meta.client)
-        localStorage.removeItem(STORAGE_CHANNEL)
+        localStorage.setItem(STORAGE_CHANNEL, '')
     }
   }
   else if (buf.kind === 'pm') {
     rememberClosedDm(name, buf)
   }
   buffers.value = buffers.value.filter(b => b !== buf)
+  // Remove this buffer's cache entries so it isn't resurrected on next load.
+  const _closeUserKey = cacheNickKey()
+  if (_closeUserKey) {
+    const _bk = makeBufferKey(_closeUserKey, name)
+    void deleteBufferMessages(_bk)
+    void deleteBufferMeta(_bk)
+  }
   if (activeName.value.toLowerCase() === name.toLowerCase()) {
     // Navigate to previous buffer if it still exists, else fall back to server.
     const prev = previousActiveName.value
@@ -3538,6 +3692,105 @@ function myChannelRole(channelName: string): ChannelRole | null {
   return channelRole(self.prefix)
 }
 
+/**
+ * Re-seed a buffer from its IDB cache and re-request CHATHISTORY LATEST so the
+ * user can scroll back to the present after loading older pages trimmed the tail.
+ */
+async function seekToPresent(target: string) {
+  const buf = findBuffer(target)
+  if (!buf)
+    return
+  const userKey = cacheNickKey()
+  if (userKey) {
+    const rawMsgs = await loadRecentMessages(userKey, target, CACHE_SEED_COUNT)
+    buf.messages = rawMsgs.map(m => ({
+      id: msgCounter.value++,
+      ts: new Date(m.ts),
+      type: m.type,
+      from: m.from,
+      channel: m.channel,
+      text: m.text,
+      msgid: m.msgid,
+      replyTo: m.replyTo,
+      action: m.action,
+      tag: m.tag,
+      reactions: m.reactions ? { ...m.reactions } : undefined,
+      backlog: true,
+      redacted: m.redacted,
+    }))
+    buf.cacheExhausted = rawMsgs.length < CACHE_SEED_COUNT
+  }
+  else {
+    buf.messages = []
+  }
+  buf.tailTrimmed = false
+  buf.historyReady = false
+  buf.historyExhausted = false
+  buf.historyAnchorMsgid = undefined
+  buf.historyAnchorTs = undefined
+  buf.autoFetchRetries = undefined
+  buf.loadingOlderHistory = undefined
+  requestHistory(target)
+}
+
+/**
+ * Append the next page of newer messages from IDB cache when the user scrolls
+ * toward the bottom of a tail-trimmed buffer. Slides the live window forward:
+ * appends CACHE_PAGE_SIZE newer lines, then trims the same count from the front
+ * (oldest) to keep the buffer at MAX_LIVE_MESSAGES. Clears tailTrimmed and
+ * top-ups from the server once IDB has no more newer lines.
+ */
+async function fetchNewerFromCache(target: string) {
+  const buf = findBuffer(target)
+  if (!buf || !buf.tailTrimmed || buf.loadingNewerHistory)
+    return
+  const userKey = cacheNickKey()
+  if (!userKey)
+    return
+  buf.loadingNewerHistory = true
+  try {
+    const newestTs = buf.messages[buf.messages.length - 1]?.ts.getTime() ?? 0
+    const newer = await loadNewerMessages(userKey, target, newestTs, CACHE_PAGE_SIZE)
+    if (newer.length > 0) {
+      const existingMsgids = new Set(buf.messages.filter(m => m.msgid).map(m => m.msgid))
+      const newMsgs: ChatMessage[] = newer
+        .filter(m => !existingMsgids.has(m.msgid))
+        .map(m => ({
+          id: msgCounter.value++,
+          ts: new Date(m.ts),
+          type: m.type,
+          from: m.from,
+          channel: m.channel,
+          text: m.text,
+          msgid: m.msgid,
+          replyTo: m.replyTo,
+          action: m.action,
+          tag: m.tag,
+          reactions: m.reactions ? { ...m.reactions } : undefined,
+          backlog: true,
+          redacted: m.redacted,
+        }))
+      if (newMsgs.length) {
+        buf.messages.push(...newMsgs)
+        // Slide window: trim from the front so DOM count stays bounded.
+        if (buf.messages.length > MAX_LIVE_MESSAGES) {
+          buf.messages.splice(0, buf.messages.length - MAX_LIVE_MESSAGES)
+          // Oldest messages were just removed - cache can serve them again on scroll-up.
+          buf.cacheExhausted = false
+        }
+      }
+    }
+    if (newer.length < CACHE_PAGE_SIZE) {
+      // Reached the live edge of the cache - catch up with the server.
+      buf.tailTrimmed = false
+      requestHistory(target)
+    }
+  }
+  finally {
+    buf.loadingNewerHistory = false
+  }
+}
+
 /** Clear unread/mention counters and save the read position for a buffer. */
 function markBufferRead(name: string) {
   const buf = findBuffer(name)
@@ -3548,6 +3801,10 @@ function markBufferRead(name: string) {
     saveReadPosition(buf.name, last.ts.getTime())
   buf.unread = 0
   buf.mentions = 0
+}
+
+export function setCacheCap(cap: number) {
+  _cacheCap = cap
 }
 
 export function useIrcChat() {
@@ -3615,19 +3872,6 @@ export function useIrcChat() {
       b.mentions = 0
       b.readLineTs = undefined
     })
-  }
-
-  // Persist channel/DM buffers to IndexedDB (debounced) whenever a buffer is
-  // added/removed or a new message lands, so the next load paints instantly.
-  if (import.meta.client && !_cacheWatcherRegistered) {
-    _cacheWatcherRegistered = true
-    watch(
-      () => buffers.value.map((b) => {
-        const last = b.messages[b.messages.length - 1]
-        return `${b.name}:${b.kind}:${b.messages.length}:${last?.msgid ?? last?.ts.getTime() ?? 0}`
-      }).join('|'),
-      () => scheduleBufferCacheWrite(),
-    )
   }
 
   const hasUnread = computed(() => buffers.value.some(b => b.unread > 0))
@@ -3753,6 +3997,8 @@ export function useIrcChat() {
     chatSheetOpen,
     seedChannel,
     fetchOlderHistory,
+    seekToPresent,
+    fetchNewerFromCache,
     // metadata
     setChannelMetadata,
     deleteChannelMetadata,
@@ -3771,5 +4017,8 @@ export function useIrcChat() {
     channelSettingsOpen,
     channelJoinBlocked,
     requestWhois,
+    // cache
+    setCacheCap,
+    cacheNickKey,
   }
 }
