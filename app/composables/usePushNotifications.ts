@@ -28,16 +28,46 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return output
 }
 
+// Wait for a registration's worker to reach the `activated` state.
+//
+// `pushManager.subscribe()` requires an ACTIVE service worker. On a freshly
+// launched iOS PWA the worker is frequently still `installing`/`waiting` when we
+// reach the subscribe call (we deliberately time out `serviceWorker.ready`
+// below, since WebKit can hang it forever). Subscribing against a
+// not-yet-activated worker throws `InvalidStateError`, which surfaced to the
+// user as "Something went wrong. Please try again." Give activation a bounded
+// window to complete before continuing.
+async function waitForActiveWorker(registration: ServiceWorkerRegistration): Promise<void> {
+  if (registration.active)
+    return
+
+  const worker = registration.installing ?? registration.waiting
+  if (!worker)
+    return
+
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, 5000)
+    worker.addEventListener('statechange', () => {
+      if (worker.state === 'activated') {
+        clearTimeout(timer)
+        resolve()
+      }
+    })
+  })
+}
+
 // Resolve the active service worker registration without hanging.
 //
 // On a freshly launched iOS PWA the page often isn't controlled by the SW yet,
 // and WebKit's `navigator.serviceWorker.ready` can then never resolve. Awaiting
 // it directly (as the subscribe/refresh flows did) left the UI spinner stuck
 // forever. We register `/sw.js` (idempotent) and race `ready` against a timeout,
-// falling back to whatever registration exists.
+// falling back to whatever registration exists, then wait for that worker to
+// activate so `pushManager.subscribe()` doesn't throw `InvalidStateError`.
 async function getRegistration(): Promise<ServiceWorkerRegistration | null> {
+  let registered: ServiceWorkerRegistration | null = null
   try {
-    await navigator.serviceWorker.register('/sw.js')
+    registered = await navigator.serviceWorker.register('/sw.js')
   }
   catch {
     // Registration failures are non-fatal; fall through to the lookups below.
@@ -47,11 +77,17 @@ async function getRegistration(): Promise<ServiceWorkerRegistration | null> {
     setTimeout(resolve, 5000, null)
   })
   const ready = await Promise.race([navigator.serviceWorker.ready, timeout])
-  if (ready)
-    return ready
 
-  // `ready` hung (iOS first-launch): use whatever registration exists instead.
-  return (await navigator.serviceWorker.getRegistration()) ?? null
+  // `ready` hung (iOS first-launch): use whatever registration we have instead.
+  const registration = ready
+    ?? registered
+    ?? (await navigator.serviceWorker.getRegistration())
+    ?? null
+
+  if (registration)
+    await waitForActiveWorker(registration)
+
+  return registration
 }
 
 // Reject after `ms` if the wrapped promise hasn't settled. `pushManager.subscribe`
@@ -204,10 +240,15 @@ export function usePushNotifications() {
       return true
     }
     catch (err) {
+      const isTimeout = err instanceof Error && err.message === 'push-subscribe-timeout'
+      // Surface the underlying error name (e.g. `InvalidStateError`,
+      // `NotAllowedError`, `AbortError`) so failures are diagnosable on devices
+      // where a console isn't readily available, like an installed iOS PWA.
+      const detail = err instanceof Error && err.name ? ` (${err.name})` : ''
       pushToast('Couldn\'t enable push notifications', {
-        description: err instanceof Error && err.message === 'push-subscribe-timeout'
+        description: isTimeout
           ? 'Couldn\'t reach the push service. Check that notifications aren\'t blocked by your browser, VPN, or network.'
-          : 'Something went wrong. Please try again.',
+          : `Something went wrong${detail}. Please try again.`,
       })
       return false
     }
