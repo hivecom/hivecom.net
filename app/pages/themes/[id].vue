@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Badge, Button, Card, Divider, Flex, Tab, Tabs, theme } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, Divider, Flex, Tab, Tabs, theme } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 

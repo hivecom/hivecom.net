@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Button, Card, Divider, Flex } from '@dolanske/vui'
+import { onMounted } from 'vue'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import MetadataCard from '@/components/Shared/MetadataCard.vue'
-import UserDisplay from '@/components/Shared/UserDisplay.vue'
 
+import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useDataProjectBanner } from '@/composables/useDataProjectBanner'
 import { useDataProjects } from '@/composables/useDataProjects'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -44,17 +45,27 @@ const heroBannerStyle = computed(() => {
   return style
 })
 
-// Resolve project from cache once loaded
-watch([projects, loading], () => {
-  const found = getById(projectId)
-  if (found != null) {
-    project.value = found
-  }
-  else if (!loading.value && projects.value.length > 0) {
-    // Only report not-found after the fetch has completed and returned data
-    error.value = 'Project not found'
-  }
-}, { immediate: true })
+// Resolve project from cache once loaded - deferred to onMounted to avoid
+// hydration mismatches caused by synchronous cache hits on the client.
+function resolveProject() {
+  watch([projects, loading], () => {
+    const found = getById(projectId)
+    if (found != null) {
+      project.value = found
+    }
+    else if (!loading.value && projects.value.length > 0) {
+      // Only report not-found after the fetch has completed and returned data
+      error.value = 'Project not found'
+    }
+  }, { immediate: true })
+}
+
+if (import.meta.server) {
+  resolveProject()
+}
+else {
+  onMounted(resolveProject)
+}
 
 // Propagate projects fetch error
 watch(projectsError, (err) => {

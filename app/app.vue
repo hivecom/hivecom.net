@@ -67,16 +67,20 @@ useSeoMeta({
 })
 
 const layoutName = computed(() => {
-  if (route.path.startsWith('/admin'))
+  // Normalize away any trailing slash so production hosts that append one
+  // (e.g. `/chat/exclusive/`) still match the exact-path checks below.
+  const path = route.path.replace(/\/+$/, '') || '/'
+
+  if (path.startsWith('/admin'))
     return 'admin'
 
-  if (route.path === '/')
+  if (path === '/')
     return 'landing'
 
-  if (route.path === '/chat/exclusive')
+  if (path === '/chat/exclusive')
     return 'bare'
 
-  if (route.path.startsWith('/chat'))
+  if (path.startsWith('/chat'))
     return 'no-footer'
 
   return 'default'
@@ -112,7 +116,7 @@ const { hasMention, hasUnread } = useIrcChat()
 const icon = useFavicon()
 
 watch(() => ({
-  exclusive: route.path === '/chat/exclusive',
+  exclusive: route.path.replace(/\/+$/, '') === '/chat/exclusive',
   notification: unreadCount.value > 0 || realtimeActivityWhileHidden.value,
   mention: hasMention.value,
   unread: hasUnread.value,

@@ -86,17 +86,21 @@ export function useDataProjectBanner(
     }
   }
 
-  watchEffect(() => {
-    const id = unref(projectId)
-    if (id === null || id === undefined || Number.isNaN(id)) {
-      bannerUrl.value = null
-      error.value = null
-      loading.value = false
-      return
-    }
+  if (import.meta.client) {
+    onMounted(() => {
+      watchEffect(() => {
+        const id = unref(projectId)
+        if (id === null || id === undefined || Number.isNaN(id)) {
+          bannerUrl.value = null
+          error.value = null
+          loading.value = false
+          return
+        }
 
-    void fetchBanner(id)
-  })
+        void fetchBanner(id)
+      })
+    })
+  }
 
   function refetch() {
     const id = unref(projectId)
