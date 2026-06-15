@@ -1,8 +1,9 @@
 /**
  * Date formatting utilities.
  *
- * All display functions use the browser's locale via the Intl APIs so output
+ * Display functions use the browser's locale via the Intl APIs so output
  * adapts automatically to the user's region and language settings.
+ * Exception: relative time strings (fromNow) are always English.
  *
  * Non-display helpers (formatDateOnly, getBirthdayPatterns, isBirthdayDateToday)
  * produce locale-independent strings for inputs or database values.
@@ -37,7 +38,7 @@ export function fromNow(date: string | Date | null | undefined): string {
   const diffSecs = Math.round(diffMs / 1000)
   const absSecs = Math.abs(diffSecs)
 
-  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
 
   if (absSecs < 60)
     return rtf.format(diffSecs, 'second')

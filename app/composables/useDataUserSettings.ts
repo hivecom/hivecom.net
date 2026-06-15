@@ -206,6 +206,7 @@ export function useDataUserSettings() {
       return
     }
 
+    hasFetched.value = false
     await fetchSettings()
   })
 

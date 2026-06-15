@@ -6,6 +6,8 @@ import ChatNavSheet from '@/components/Layout/ChatNavSheet.vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
+definePageMeta({ layout: 'bare' })
+
 const isMobile = useBreakpoint('<s')
 
 const { setChatVisible, channelBrowserOpen } = useIrcChat()

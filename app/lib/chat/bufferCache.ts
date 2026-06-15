@@ -20,9 +20,14 @@ const MSG_INDEX = 'by_buffer_ts'
 
 export interface StoredMessage {
   bufferKey: string
+  /**
+   * Compound-key id within a buffer. Chat/tagmsg lines use the server msgid;
+   * presence events (join/part) have none, so they're keyed on a synthetic
+   * `evt:...` id derived from their content + server-time (see buildStoredMessage).
+   */
   msgid: string
   ts: number
-  type: 'chat' | 'tagmsg'
+  type: 'chat' | 'tagmsg' | 'join' | 'part'
   from?: string
   channel?: string
   text: string
@@ -32,6 +37,7 @@ export interface StoredMessage {
   /** Must be a plain object (not a Vue reactive proxy) before passing in. */
   reactions?: Record<string, string[]>
   redacted?: boolean
+  edited?: boolean
   relayedBy?: string
 }
 

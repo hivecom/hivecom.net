@@ -68,8 +68,7 @@ const badgeEl = ref<HTMLElement | null>(null)
 const hexStackEl = ref<HTMLElement | null>(null)
 const isTiltActive = ref(false)
 const isTouchTooltipOpen = ref(false)
-let touchStartX = 0
-let touchStartY = 0
+const touchTooltipStyle = ref<Record<string, string>>({})
 
 let rafId: number | null = null
 let lastFrameTs = 0
@@ -251,14 +250,36 @@ function onPointerLeave(event: PointerEvent) {
   ensureTicking()
 }
 
+function positionTouchTooltip() {
+  const el = badgeEl.value
+  if (!el)
+    return
+
+  const rect = el.getBoundingClientRect()
+  const gap = 8
+  // Prefer placing below the badge; flip above when near the viewport bottom.
+  const estimatedHeight = 64
+  const placeBelow = rect.bottom + gap + estimatedHeight <= window.innerHeight
+
+  touchTooltipStyle.value = {
+    left: `${rect.left + rect.width / 2}px`,
+    top: placeBelow ? `${rect.bottom + gap}px` : `${rect.top - gap}px`,
+    transform: placeBelow ? 'translateX(-50%)' : 'translate(-50%, -100%)',
+  }
+}
+
 // Browsers apply implicit pointer capture on pointerdown for touch, which means
 // pointerleave may not fire on finger-lift if the touch moves outside the element.
 // pointerup / pointercancel are the reliable end-of-touch signals.
 function onPointerDown(event: PointerEvent) {
   if (event.pointerType !== 'touch')
     return
-  touchStartX = event.clientX
-  touchStartY = event.clientY
+
+  // Show the tooltip while the badge is being held down
+  if (props.description) {
+    positionTouchTooltip()
+    isTouchTooltipOpen.value = true
+  }
 }
 
 function onPointerUp(event: PointerEvent) {
@@ -275,13 +296,9 @@ function onPointerUp(event: PointerEvent) {
     ensureTicking()
   }
 
-  // Treat as a tap if finger didn't travel more than 10px - toggle tooltip
-  if (props.description) {
-    const dx = event.clientX - touchStartX
-    const dy = event.clientY - touchStartY
-    if (Math.sqrt(dx * dx + dy * dy) < 10)
-      isTouchTooltipOpen.value = !isTouchTooltipOpen.value
-  }
+  // Hide the tooltip once the finger lifts (end of hold)
+  if (props.description)
+    isTouchTooltipOpen.value = false
 }
 
 function onDocumentPointerDown(event: PointerEvent) {
@@ -389,17 +406,20 @@ onBeforeUnmount(() => {
       </div>
     </article>
 
-    <Transition name="touch-tooltip">
-      <div
-        v-if="props.description && isTouchTooltipOpen"
-        class="profile-badge__touch-tooltip"
-        role="tooltip"
-      >
-        <p :class="descriptionClasses" class="text-m">
-          {{ props.description }}
-        </p>
-      </div>
-    </Transition>
+    <Teleport to="body">
+      <Transition name="touch-tooltip">
+        <div
+          v-if="props.description && isTouchTooltipOpen"
+          class="profile-badge__touch-tooltip"
+          role="tooltip"
+          :style="touchTooltipStyle"
+        >
+          <p :class="descriptionClasses" class="text-m">
+            {{ props.description }}
+          </p>
+        </div>
+      </Transition>
+    </Teleport>
   </component>
 </template>
 
@@ -682,12 +702,11 @@ onBeforeUnmount(() => {
   max-width: 360px;
 }
 
+// Teleported to <body> and positioned via inline fixed coordinates so it is
+// never clipped by an ancestor's `overflow: hidden` (e.g. the badges card).
 .profile-badge__touch-tooltip {
-  position: absolute;
-  left: 50%;
-  top: calc(100% + var(--space-xs));
-  transform: translateX(-50%);
-  z-index: var(--z-popout);
+  position: fixed;
+  z-index: var(--z-toast);
   background-color: var(--color-bg-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
@@ -703,15 +722,12 @@ onBeforeUnmount(() => {
 
 .touch-tooltip-enter-active,
 .touch-tooltip-leave-active {
-  transition:
-    opacity var(--transition-fast),
-    transform var(--transition-fast);
+  transition: opacity var(--transition-fast);
 }
 
 .touch-tooltip-enter-from,
 .touch-tooltip-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(-4px);
 }
 
 .profile-badge__label {

@@ -145,6 +145,8 @@ export interface ChatMessage {
   redactedBy?: string
   /** Optional reason supplied with the REDACT command. */
   redactedReason?: string
+  /** True once the message has been edited (reserved for future edit support). */
+  edited?: boolean
   /** When set, this message was relayed by a bridge bot; value is the real bot nick. */
   relayedBy?: string
 }
@@ -696,6 +698,28 @@ function escapeRegExp(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/**
+ * True when `candidate` already exists in `list`. Lines carrying an IRCv3 msgid
+ * dedupe on that stable id. Lines without one (JOIN/PART/system, and any server
+ * that omits msgid on CHATHISTORY replay) fall back to an exact
+ * type+from+text+timestamp signature: replayed history preserves the original
+ * server-time, so a re-delivered event matches to the millisecond, while a
+ * genuinely new join/part (different ts) still passes through. This is the core
+ * guard against re-appending the whole log when CHATHISTORY LATEST is replayed
+ * more than once (duplicate JOIN echoes, reconnects, cache-tail catch-up).
+ */
+function messageExists(list: ChatMessage[], candidate: ChatMessage): boolean {
+  if (candidate.msgid != null)
+    return list.some(m => m.msgid === candidate.msgid)
+  const t = candidate.ts.getTime()
+  return list.some(m =>
+    m.msgid == null
+    && m.type === candidate.type
+    && m.from === candidate.from
+    && m.text === candidate.text
+    && m.ts.getTime() === t)
+}
+
 function addToBuffer(
   name: string,
   kind: BufferKind,
@@ -716,26 +740,47 @@ function addToBuffer(
     // BATCH end, producing a single DOM update instead of 50 individual ones.
     const bi = opts.batchTag != null ? backlogBatches.get(opts.batchTag) : undefined
     if (bi?.staging != null) {
-      // Dedup within the staging array.
-      if (newMsg.msgid == null || !bi.staging.some(m => m.msgid === newMsg.msgid))
+      // Dedup within the staging array AND against lines already in the buffer -
+      // a BEFORE page can overlap history we already hold.
+      if (!messageExists(bi.staging, newMsg) && !messageExists(buf.messages, newMsg))
         bi.staging.push(newMsg)
       // Don't add to buf.messages yet - fall through so badge/read logic still runs.
     }
     else {
       // Fallback for prepend calls outside a staged batch.
-      if (newMsg.msgid != null && buf.messages.some(m => m.msgid === newMsg.msgid))
+      if (messageExists(buf.messages, newMsg))
         return
       buf.messages.unshift(newMsg)
     }
   }
   else {
     // Dedup live/replayed messages against ones already present - notably lines
-    // hydrated from the local cache that overlap a CHATHISTORY LATEST replay.
-    // msgid is the stable IRCv3 identifier; optimistic local sends carry no
-    // msgid so they're never wrongly suppressed here.
-    if (newMsg.msgid != null && buf.messages.some(m => m.msgid === newMsg.msgid))
+    // hydrated from the local cache that overlap a CHATHISTORY LATEST replay, and
+    // msgid-less lines (JOIN/PART/system, or replays where the server omits
+    // msgid) that would otherwise re-append on every replay. Optimistic local
+    // sends carry no msgid and a fresh local ts, so they're never wrongly
+    // suppressed against the server echo (which has its own msgid).
+    if (messageExists(buf.messages, newMsg))
       return
-    buf.messages.push(newMsg)
+    // Most lines arrive newest-last, so the common case is a plain append. But
+    // some events are delivered live with an OLD server-time - notably Ergo's
+    // event-playback, which replays past JOIN/PART/QUIT lines outside any
+    // CHATHISTORY batch right after we join. Appending those at the bottom is
+    // wrong: they belong at their real position in the timeline. Insert by ts
+    // instead, and flag late join/part lines as backlog so contiguous runs
+    // collapse into a single summary (and don't masquerade as live activity).
+    const last = buf.messages[buf.messages.length - 1]
+    if (last != null && ts.getTime() < last.ts.getTime()) {
+      if (newMsg.type === 'join' || newMsg.type === 'part')
+        newMsg.backlog = true
+      let idx = buf.messages.length
+      while (idx > 0 && buf.messages[idx - 1]!.ts.getTime() > ts.getTime())
+        idx--
+      buf.messages.splice(idx, 0, newMsg)
+    }
+    else {
+      buf.messages.push(newMsg)
+    }
     scheduleMsgWrite(name, newMsg)
   }
 
@@ -1173,6 +1218,13 @@ function clearAuthedIdentity() {
   const _signOutKey = cacheNickKey()
   if (_signOutKey)
     void clearChatCache(_signOutKey)
+  // Wipe in-memory buffers from the previous signed-in session. resetBuffers()
+  // deliberately preserves channel/PM buffers across reconnects, so without this
+  // a follow-up anon connect would inherit channels the guest never joined.
+  buffers.value = [
+    { name: SERVER_BUFFER, kind: 'server', messages: [], users: [], unread: 0, mentions: 0, joined: true },
+  ]
+  activeName.value = SERVER_BUFFER
 }
 
 function persistChannel(value: string) {
@@ -1203,16 +1255,31 @@ function cacheNickKey(): string {
 
 /** Build a StoredMessage from a live ChatMessage for the given buffer name. Returns null when the message has no msgid (not worth caching). */
 function buildStoredMessage(bufferName: string, msg: ChatMessage): StoredMessage | null {
-  if (!msg.msgid || (msg.type !== 'chat' && msg.type !== 'tagmsg'))
-    return null
   const userKey = cacheNickKey()
   if (!userKey)
     return null
+  const isEvent = msg.type === 'join' || msg.type === 'part'
+  let msgid = msg.msgid
+  if (isEvent) {
+    // Don't persist session-scoped self markers ("You joined #x").
+    if (/^You (?:joined|left)\b/.test(msg.text))
+      return null
+    // Presence events carry no server msgid; key them on a stable synthetic id
+    // derived from content + server-time. The same event from any delivery path
+    // (live, LATEST, BEFORE) maps to one row, so re-delivery just overwrites.
+    msgid = `evt:${msg.type}:${msg.ts.getTime()}:${msg.text}`
+  }
+  // Only chat/tagmsg (with a server msgid) and join/part presence events persist.
+  if (msg.type !== 'chat' && msg.type !== 'tagmsg' && msg.type !== 'join' && msg.type !== 'part')
+    return null
+  if (!msgid)
+    return null
+  const type = msg.type
   return {
     bufferKey: makeBufferKey(userKey, bufferName),
-    msgid: msg.msgid,
+    msgid,
     ts: msg.ts.getTime(),
-    type: msg.type,
+    type,
     from: msg.from,
     channel: msg.channel,
     text: msg.text ?? '',
@@ -1224,7 +1291,33 @@ function buildStoredMessage(bufferName: string, msg: ChatMessage): StoredMessage
       ? Object.fromEntries(Object.entries(msg.reactions).map(([emote, nicks]) => [emote, [...nicks]]))
       : undefined,
     redacted: msg.redacted,
+    edited: msg.edited,
     relayedBy: msg.relayedBy,
+  }
+}
+
+/** Inflate a cached row into a live (backlog) ChatMessage. */
+function storedToMessage(m: StoredMessage): ChatMessage {
+  const isEvent = m.type === 'join' || m.type === 'part'
+  return {
+    id: msgCounter.value++,
+    ts: new Date(m.ts),
+    type: m.type,
+    from: m.from,
+    channel: m.channel,
+    text: m.text,
+    // Presence events are keyed on a synthetic id in the cache; never surface it
+    // as a real msgid - it isn't a server id, so it must not anchor CHATHISTORY
+    // requests, and buffer dedup falls back to the content+ts signature instead.
+    msgid: isEvent ? undefined : m.msgid,
+    replyTo: m.replyTo,
+    action: m.action,
+    tag: m.tag,
+    reactions: m.reactions ? { ...m.reactions } : undefined,
+    backlog: true,
+    redacted: m.redacted,
+    edited: m.edited,
+    relayedBy: m.relayedBy,
   }
 }
 
@@ -1287,22 +1380,7 @@ async function hydrateBufferCache() {
       const rawMsgs = await loadRecentMessages(userKey, meta.name, CACHE_SEED_COUNT)
       if (!rawMsgs.length)
         continue
-      const messages: ChatMessage[] = rawMsgs.map(m => ({
-        id: msgCounter.value++,
-        ts: new Date(m.ts),
-        type: m.type,
-        from: m.from,
-        channel: m.channel,
-        text: m.text,
-        msgid: m.msgid,
-        replyTo: m.replyTo,
-        action: m.action,
-        tag: m.tag,
-        reactions: m.reactions ? { ...m.reactions } : undefined,
-        backlog: true,
-        redacted: m.redacted,
-        relayedBy: m.relayedBy,
-      }))
+      const messages: ChatMessage[] = rawMsgs.map(storedToMessage)
       const readTs = readPositions[meta.name.toLowerCase()]
       const buf: ChatBuffer = {
         name: meta.name,
@@ -1322,6 +1400,12 @@ async function hydrateBufferCache() {
         if (cached?.size)
           buf.metadata = new Map(cached)
       }
+      // Re-check after the awaits above: a live JOIN can create this buffer
+      // while loadRecentMessages was in flight. Without this the seeded copy is
+      // appended alongside the live one, producing a duplicate buffer (and the
+      // appearance of a fully duplicated log when the active buffer flips).
+      if (findBuffer(meta.name))
+        continue
       seeded.push(buf)
     }
     if (seeded.length)
@@ -1559,25 +1643,11 @@ async function fetchOlderHistory(target: string) {
     const oldestTs = buf.messages[0]?.ts.getTime() ?? Date.now()
     const cached = await loadOlderMessages(userKey, target, oldestTs, CACHE_PAGE_SIZE)
     if (cached.length > 0) {
-      const existingMsgids = new Set(buf.messages.filter(m => m.msgid).map(m => m.msgid))
+      // messageExists dedups chat by msgid and presence events by their
+      // content+ts signature (events hold no real msgid once inflated).
       const newMsgs: ChatMessage[] = cached
-        .filter(m => !existingMsgids.has(m.msgid))
-        .map(m => ({
-          id: msgCounter.value++,
-          ts: new Date(m.ts),
-          type: m.type,
-          from: m.from,
-          channel: m.channel,
-          text: m.text,
-          msgid: m.msgid,
-          replyTo: m.replyTo,
-          action: m.action,
-          tag: m.tag,
-          reactions: m.reactions ? { ...m.reactions } : undefined,
-          backlog: true,
-          redacted: m.redacted,
-          relayedBy: m.relayedBy,
-        }))
+        .map(storedToMessage)
+        .filter(m => !messageExists(buf.messages, m))
       if (newMsgs.length) {
         buf.messages.splice(0, 0, ...newMsgs)
         // Advance CHATHISTORY anchor so BEFORE pagination continues from the
@@ -3792,22 +3862,7 @@ async function seekToPresent(target: string) {
   const userKey = cacheNickKey()
   if (userKey) {
     const rawMsgs = await loadRecentMessages(userKey, target, CACHE_SEED_COUNT)
-    buf.messages = rawMsgs.map(m => ({
-      id: msgCounter.value++,
-      ts: new Date(m.ts),
-      type: m.type,
-      from: m.from,
-      channel: m.channel,
-      text: m.text,
-      msgid: m.msgid,
-      replyTo: m.replyTo,
-      action: m.action,
-      tag: m.tag,
-      reactions: m.reactions ? { ...m.reactions } : undefined,
-      backlog: true,
-      redacted: m.redacted,
-      relayedBy: m.relayedBy,
-    }))
+    buf.messages = rawMsgs.map(storedToMessage)
     buf.cacheExhausted = rawMsgs.length < CACHE_SEED_COUNT
   }
   else {
@@ -3842,25 +3897,9 @@ async function fetchNewerFromCache(target: string) {
     const newestTs = buf.messages[buf.messages.length - 1]?.ts.getTime() ?? 0
     const newer = await loadNewerMessages(userKey, target, newestTs, CACHE_PAGE_SIZE)
     if (newer.length > 0) {
-      const existingMsgids = new Set(buf.messages.filter(m => m.msgid).map(m => m.msgid))
       const newMsgs: ChatMessage[] = newer
-        .filter(m => !existingMsgids.has(m.msgid))
-        .map(m => ({
-          id: msgCounter.value++,
-          ts: new Date(m.ts),
-          type: m.type,
-          from: m.from,
-          channel: m.channel,
-          text: m.text,
-          msgid: m.msgid,
-          replyTo: m.replyTo,
-          action: m.action,
-          tag: m.tag,
-          reactions: m.reactions ? { ...m.reactions } : undefined,
-          backlog: true,
-          redacted: m.redacted,
-          relayedBy: m.relayedBy,
-        }))
+        .map(storedToMessage)
+        .filter(m => !messageExists(buf.messages, m))
       if (newMsgs.length) {
         buf.messages.push(...newMsgs)
         // Slide window: trim from the front so DOM count stays bounded.
