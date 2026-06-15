@@ -13,7 +13,7 @@ const route = useRoute()
 const router = useRouter()
 const isExclusive = computed(() => route.path === '/chat/exclusive')
 
-const { isConnected, connState, connect, disconnect, sidebarHidden, toggleSidebar, chatFullWidth, toggleFullWidth, latencyMs, setActive, activeName } = useIrcChat()
+const { isConnected, connState, connect, disconnect, sidebarHidden, toggleSidebar, chatFullWidth, toggleFullWidth, latencyMs, activeName, activateServerLog } = useIrcChat()
 
 const isMobile = useBreakpoint('<s')
 
@@ -72,7 +72,7 @@ function run(action: () => void) {
           </template>
           Disconnect
         </DropdownItem>
-        <DropdownItem v-if="isConnected" :class="{ 'vui-dropdown-item--active': activeName === '*' }" @click="() => { setActive('*'); connectionDrawerOpen = false }">
+        <DropdownItem v-if="isConnected" :class="{ 'vui-dropdown-item--active': activeName === '*' }" @click="() => { activateServerLog(); connectionDrawerOpen = false }">
           <template #icon>
             <Icon name="ph:hard-drives" />
           </template>
@@ -113,7 +113,7 @@ function run(action: () => void) {
               </template>
               Disconnect
             </DropdownItem>
-            <DropdownItem v-if="isConnected" :class="{ 'vui-dropdown-item--active': activeName === '*' }" @click="run(() => setActive('*'))">
+            <DropdownItem v-if="isConnected" :class="{ 'vui-dropdown-item--active': activeName === '*' }" @click="run(activateServerLog)">
               <template #icon>
                 <Icon name="ph:hard-drives" />
               </template>

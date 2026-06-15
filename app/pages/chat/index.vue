@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
+
 import ChatApp from '@/components/Chat/ChatApp.vue'
 import ChatNavSheet from '@/components/Layout/ChatNavSheet.vue'
 import { useIrcChat } from '@/composables/useIrcChat'
@@ -7,6 +8,11 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 
 const isMobile = useBreakpoint('<s')
 const { setChatVisible, joinChannel, setActive, seedChannel, isConnected, connState, connect, chatFullWidth } = useIrcChat()
+const hasMounted = ref(false)
+onMounted(() => {
+  hasMounted.value = true
+})
+
 const route = useRoute()
 const router = useRouter()
 
@@ -73,11 +79,11 @@ watch(isConnected, (connected) => {
 
 <template>
   <div
-    class="chat-page" :class="{ 'container-l': !isMobile && !chatFullWidth,
+    class="chat-page" :class="{ 'container-l': !isMobile && !(hasMounted && chatFullWidth),
                                 'chat-page--mobile': isMobile }"
   >
     <ChatApp />
-    <ChatNavSheet v-if="isMobile" />
+    <ChatNavSheet v-if="isMobile" no-trigger />
   </div>
 </template>
 

@@ -283,6 +283,13 @@ label:is(.required):after {
   margin-bottom: 0;
 }
 
+// VUI offsets nested modals by --layer-position * 16px to create a stacking
+// effect, but screen-size modals use position:fixed;inset:0 and must not be
+// shifted - otherwise the layer offset creates a visible gap at the top.
+.vui-modal.vui-modal-size-screen {
+  transform: none;
+}
+
 table th,
 table td {
   font-size: var(--font-size-s);

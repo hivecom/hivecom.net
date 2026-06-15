@@ -6,7 +6,7 @@ import MetaballContainer from '@/components/Shared/MetaballContainer.vue'
 import SupportModal from '@/components/Shared/SupportModal.vue'
 import { useMfaStatus } from '@/composables/useMfaStatus'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { beginPasskeyAuthentication, completePasskeyAuthentication, PASSKEY_NOT_AVAILABLE } from '@/lib/passkey'
+import { isPasskeySupported, signInWithPasskey as runPasskeySignIn } from '@/lib/passkey'
 import { normalizeInternalRedirect } from '@/lib/utils/common'
 
 import '@/assets/elements/auth.scss'
@@ -58,7 +58,7 @@ const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?
 const requiresMfaChallenge = computed(() => Boolean(pendingMfa.factorId))
 const mfaPromptCopy = 'Finish verification to sign-in.'
 const isBelowS = useBreakpoint('<s')
-const isDev = import.meta.dev
+const passkeySupported = ref(false)
 const metaballHeight = computed(() => (isBelowS.value ? '100vh' : 'min(820px, 96vh)'))
 const metaballWidth = computed(() => (isBelowS.value ? '100%' : 'min(520px, 96vw)'))
 const postSignInRedirect = computed(() => normalizeInternalRedirect(route.query.redirect))
@@ -247,35 +247,15 @@ async function signInWithPasskey() {
   passkeyLoading.value = true
 
   try {
-    // TODO: read from useRuntimeConfig() once wiring up real fetch calls
-    const projectUrl = ''
-
-    // Step 1: get authentication options from server (no email needed - discoverable credentials)
-    const options = await beginPasskeyAuthentication(projectUrl)
-
-    // Step 2: browser WebAuthn prompt (requires @simplewebauthn/browser)
-    // TODO: import { startAuthentication } from '@simplewebauthn/browser'
-    // const credential = await startAuthentication(options)
-    const credential = options // placeholder - remove when wiring up
-
-    // Step 3: complete authentication on server, get session
-    const session = await completePasskeyAuthentication(projectUrl, credential)
-
-    // Step 4: set session in Supabase client and navigate
-    await supabase.auth.setSession({
-      access_token: session.access_token,
-      refresh_token: session.refresh_token,
-    })
-
+    // Runs the full WebAuthn ceremony; supabase-js stores the session on success.
+    await runPasskeySignIn(supabase)
     navigateTo(resolvedPostSignInRedirect.value)
   }
   catch (err) {
-    if (err === PASSKEY_NOT_AVAILABLE) {
-      errorMessage.value = 'Passkey sign-in is not yet available on the hosted project.'
-    }
-    else {
-      errorMessage.value = err instanceof Error ? err.message : 'Passkey sign-in failed.'
-    }
+    // A cancelled browser prompt surfaces as an abort/NotAllowed error - stay quiet.
+    if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError'))
+      return
+    errorMessage.value = err instanceof Error ? err.message : 'Passkey sign-in failed.'
   }
   finally {
     passkeyLoading.value = false
@@ -522,6 +502,8 @@ onMounted(() => {
 
   if (typeof window !== 'undefined')
     window.addEventListener('paste', handleGlobalOtpPaste)
+
+  passkeySupported.value = isPasskeySupported()
 })
 
 onBeforeUnmount(() => {
@@ -616,7 +598,7 @@ onBeforeUnmount(() => {
                   Continue with Google
                 </Flex>
               </Button>
-              <Button v-if="isDev" variant="gray" :loading="passkeyLoading" expand @click="signInWithPasskey">
+              <Button v-if="passkeySupported" variant="gray" :loading="passkeyLoading" expand @click="signInWithPasskey">
                 <Flex y-center gap="s" expand>
                   <Icon name="ph:fingerprint" />
                   Continue with passkey

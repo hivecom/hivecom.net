@@ -35,7 +35,7 @@ const DEFAULT_CHANNEL_ANON = '#public'
 const DEFAULT_CHANNEL_AUTH = '#lounge'
 
 function defaultChannel(anon: boolean): string {
-  if (import.meta.dev)
+  if (import.meta.dev && !anon)
     return DEFAULT_CHANNEL_DEV
   return anon ? DEFAULT_CHANNEL_ANON : DEFAULT_CHANNEL_AUTH
 }
@@ -252,6 +252,10 @@ const buffers = ref<ChatBuffer[]>([])
 const serviceLog = ref<ChatMessage[]>([])
 const activeName = ref<string>(SERVER_BUFFER)
 const previousActiveName = ref<string>(SERVER_BUFFER)
+// True only when the user has explicitly navigated to the server buffer via
+// setActive('*'). False on initial connect so the no-channels prompt shows
+// by default until the user deliberately opens the server log.
+const serverLogPinned = ref(false)
 const msgCounter = ref(0)
 const SIDEBAR_HIDDEN_KEY = 'hivecom.chat.sidebar-hidden'
 const sidebarHidden = ref(
@@ -3128,6 +3132,7 @@ async function connect(skipAutoJoin = false) {
 /** Connect as an anonymous guest via SASL ANONYMOUS (no account, no JWT). */
 function connectAsAnon() {
   _intentionalDisconnect = false
+  _skipAutoJoin = false
   _reconnectAttempts = 0
   if (_reconnectTimer !== null) {
     clearTimeout(_reconnectTimer)
@@ -3188,6 +3193,18 @@ function setActive(name: string) {
     inputChannel.value = name
     persistChannel(name)
   }
+}
+
+function activateServerLog() {
+  serverLogPinned.value = true
+  setActive(SERVER_BUFFER)
+}
+
+function closeServerLog() {
+  serverLogPinned.value = false
+  const first = buffers.value.find(b => b.kind === 'channel' || b.kind === 'pm')
+  if (first)
+    setActive(first.name)
 }
 
 function joinChannel(name: string, key?: string) {
@@ -4077,6 +4094,9 @@ export function useIrcChat() {
     defaultChannel,
     isChatVisible,
     setChatVisible,
+    serverLogPinned,
+    activateServerLog,
+    closeServerLog,
     chatSheetOpen,
     seedChannel,
     fetchOlderHistory,

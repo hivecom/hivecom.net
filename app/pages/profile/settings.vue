@@ -13,7 +13,6 @@ import RichPresencePromptModal from '@/components/Settings/RichPresencePromptMod
 import { useSessionReady } from '@/composables/useSessionReady'
 import { scrollToId } from '@/lib/utils/common'
 
-const isDev = import.meta.dev
 const route = useRoute()
 
 const richPresencePromptOpen = ref(false)
@@ -214,7 +213,7 @@ function registerScrollListener() {
             <Flex column gap="xl">
               <ChangePasswordCard />
               <MfaCard />
-              <PasskeyCard v-if="isDev" />
+              <PasskeyCard />
             </Flex>
           </div>
           <div id="account" class="w-100">

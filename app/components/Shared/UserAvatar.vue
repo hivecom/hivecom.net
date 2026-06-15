@@ -5,7 +5,8 @@ import { useSupabaseUser } from '#imports'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useDataUser } from '@/composables/useDataUser'
-import { getUserActivityStatus } from '@/lib/lastSeen'
+import { useUserActivityStatus } from '@/composables/useUserActivityStatus'
+import { useUserId } from '@/composables/useUserId'
 
 interface Props {
   userId?: string | null
@@ -26,6 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const currentUser = useSupabaseUser()
+const currentUserId = useUserId()
 
 const { user: userData, loading } = useDataUser(
   computed(() => props.userId ?? null),
@@ -56,7 +58,7 @@ const profileLink = computed(() => {
   if (!props.userId)
     return null
 
-  const isOwner = currentUser.value?.id === props.userId
+  const isOwner = !!currentUserId.value && currentUserId.value === props.userId
   const isSignedIn = !!currentUser.value
   if (!isOwner && !isSignedIn && !userData.value?.isPublic)
     return null
@@ -75,22 +77,14 @@ const showSkeleton = computed(() =>
   loading.value && !!props.userId,
 )
 
-const activityStatus = computed(() => {
-  if (!props.showOnlineIndicator)
-    return null
-  // Always show the current user as online - no need to wait for DB data.
-  if (props.userId && currentUser.value?.id === props.userId) {
-    return {
-      isActive: true,
-      isAway: false,
-      lastSeenText: 'Online',
-      lastSeenTimestamp: new Date(),
-    }
-  }
-  if (!userData.value?.last_seen)
-    return null
-  return getUserActivityStatus(userData.value.last_seen)
-})
+const resolvedActivityStatus = useUserActivityStatus(
+  () => props.userId ?? null,
+  () => userData.value?.last_seen ?? null,
+)
+
+const activityStatus = computed(() =>
+  props.showOnlineIndicator ? resolvedActivityStatus.value : null,
+)
 
 const indicatorSize = computed((): 's' | 'm' | 'l' => {
   if (props.size === 's')

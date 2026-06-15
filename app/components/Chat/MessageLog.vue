@@ -2418,11 +2418,6 @@ onBeforeUnmount(() => {
     gap: var(--space-s);
     padding: var(--space-xxs) var(--space-xs);
     border-radius: var(--border-radius-s);
-    transition: background-color var(--transition-fast);
-
-    &:hover {
-      background: var(--color-bg-medium);
-    }
   }
 
   &__group-avatar {
@@ -2587,6 +2582,12 @@ onBeforeUnmount(() => {
     white-space: pre-wrap;
     word-break: break-word;
     line-height: 1.4;
+    border-radius: var(--border-radius-xs);
+    transition: background-color var(--transition-fast);
+
+    &:hover {
+      background: var(--color-bg-medium);
+    }
 
     // reactions__list uses display:contents globally so its children bleed
     // inline into the text. Override it here so reactions form their own row.

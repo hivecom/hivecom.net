@@ -1,28 +1,17 @@
 <script setup lang="ts">
 import { Button, Checkbox, Divider, Flex, Input } from '@dolanske/vui'
-import { onMounted } from 'vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
 
-const { connState, inputNick, inputChannel, connect, connectAsAnon, defaultChannel } = useIrcChat()
+const { connState, inputNick, inputChannel, connect, connectAsAnon } = useIrcChat()
 // Auto-connect is a regular user setting (DB-backed, reactive, shared with the
 // chat settings switch and the app-wide auto-connect in plugins/chat.client.ts),
 // so toggling it here applies everywhere immediately.
 const { settings } = useDataUserSettings()
 
-// Show a resolved channel in the hint even before the user has a persisted
-// channel - falls back to the auth default so the hint is never blank.
-const hintChannel = computed(() => inputChannel.value || defaultChannel(false))
-
 const userId = useUserId()
 const { user } = useDataUser(userId)
-
-// Prefill #public for anon/signed-out users who have no persisted channel.
-onMounted(() => {
-  if (!user.value && !inputChannel.value)
-    inputChannel.value = defaultChannel(true)
-})
 
 const connecting = computed(() => connState.value === 'connecting')
 
@@ -32,13 +21,11 @@ const anonNick = ref('')
 
 function enterAnonMode() {
   anonNick.value = `anon-${Math.random().toString(36).slice(2, 7)}`
-  if (!inputChannel.value)
-    inputChannel.value = defaultChannel(true)
   anonMode.value = true
 }
 
 function onAnonConnect() {
-  if (!anonNick.value.trim() || !inputChannel.value.trim())
+  if (!anonNick.value.trim())
     return
   // Override the shared nick so openSocket uses the anon nick, not the
   // signed-in username that ensureNick may have seeded.
@@ -48,7 +35,7 @@ function onAnonConnect() {
 
 // For the signed-out form - channel input stays shared.
 function onSignedOutConnect() {
-  if (inputNick.value.trim() && inputChannel.value.trim())
+  if (inputNick.value.trim())
     connectAsAnon()
 }
 </script>
@@ -74,7 +61,9 @@ function onSignedOutConnect() {
               Connect to chat
             </h4>
             <p class="text-s text-color-light">
-              You'll join <strong class="text-s">{{ hintChannel }}</strong> as <strong class="text-s">{{ user.username }}</strong> using your Hivecom account.
+              You'll connect as <strong class="text-s">{{ user.username }}</strong> using your Hivecom account<template v-if="inputChannel">
+                , joining <strong class="text-s">{{ inputChannel }}</strong>
+              </template>.
             </p>
           </Flex>
           <Flex y-center gap="s" wrap>
@@ -116,7 +105,7 @@ function onSignedOutConnect() {
               />
             </Flex>
             <Flex column gap="xs" class="chat-connect__field">
-              <label class="text-s text-color-light">Channel</label>
+              <label class="text-s text-color-light">Channel <span class="text-color-lighter">(optional)</span></label>
               <Input v-model="inputChannel" expand placeholder="#public" @keydown.enter="onAnonConnect" />
             </Flex>
           </Flex>
@@ -124,7 +113,7 @@ function onSignedOutConnect() {
             <Button
               variant="accent"
               :loading="connecting"
-              :disabled="!anonNick.trim() || !inputChannel.trim()"
+              :disabled="!anonNick.trim()"
               @click="onAnonConnect"
             >
               Connect
@@ -143,7 +132,7 @@ function onSignedOutConnect() {
               <Input v-model="inputNick" expand placeholder="your-nick" @keydown.enter="onSignedOutConnect" />
             </Flex>
             <Flex column gap="xs" class="chat-connect__field">
-              <label class="text-s text-color-light">Channel</label>
+              <label class="text-s text-color-light">Channel <span class="text-color-lighter">(optional)</span></label>
               <Input v-model="inputChannel" expand placeholder="#public" @keydown.enter="onSignedOutConnect" />
             </Flex>
           </Flex>
@@ -151,7 +140,7 @@ function onSignedOutConnect() {
             <Button
               variant="accent"
               :loading="connecting"
-              :disabled="!inputNick.trim() || !inputChannel.trim()"
+              :disabled="!inputNick.trim()"
               @click="onSignedOutConnect"
             >
               Connect

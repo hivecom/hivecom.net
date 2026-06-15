@@ -15,6 +15,7 @@ import ChatComposer from './Composer.vue'
 import ChatConnectForm from './ConnectForm.vue'
 import ChatConnecting from './Connecting.vue'
 import ChatMessageLog from './MessageLog.vue'
+import ChatNoChannels from './NoChannels.vue'
 import ChatSidebarSplit from './SidebarSplit.vue'
 import ChatToolbar from './Toolbar.vue'
 import ChatUserList from './UserList.vue'
@@ -45,7 +46,7 @@ const { settings } = useDataUserSettings()
 
 const isMobile = useBreakpoint('<s')
 
-const { connState, isConnected, ensureNick, clearAuthedIdentity, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt, channelSettingsOpen, channelJoinBlocked } = useIrcChat()
+const { connState, isConnected, ensureNick, clearAuthedIdentity, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt, channelSettingsOpen, channelJoinBlocked, serverLogPinned } = useIrcChat()
 
 // Auto-reconnect when the browser comes back from sleep or phone background.
 // Track whether a connection was ever established so we only auto-reconnect
@@ -89,6 +90,7 @@ const lastConnError = computed(() => {
 })
 
 const isChannelBuffer = computed(() => activeBuffer.value?.kind === 'channel')
+const hasChannels = computed(() => buffers.value.some(b => b.kind === 'channel'))
 const chatFontStyle = computed(() => ({ '--chat-font-size': `${isMobile.value ? settings.value.chat_mobile_font_size : settings.value.chat_font_size}px` }))
 
 const fallbackNick = `anon-${Math.random().toString(36).slice(2, 7)}`
@@ -178,16 +180,18 @@ watch(user, (u, prev) => {
           </Flex>
           <Flex column :gap="0" class="chat-app__main">
             <ChatChannelHeader />
-            <ChatMessageLog :compact="props.compact" />
-            <ChatComposer />
+            <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
+            <ChatMessageLog v-else :compact="props.compact" />
+            <ChatComposer v-if="hasChannels || serverLogPinned" />
           </Flex>
         </Resizable>
 
         <!-- Connected: full page, sidebar hidden -->
         <Flex v-else-if="!isCompactLayout" key="connected-nosidebar" column :gap="0" class="chat-app__main">
           <ChatChannelHeader />
-          <ChatMessageLog :compact="props.compact" />
-          <ChatComposer />
+          <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
+          <ChatMessageLog v-else :compact="props.compact" />
+          <ChatComposer v-if="hasChannels || serverLogPinned" />
         </Flex>
 
         <!-- Connected: mobile dedicated page. Channels/users/settings live in
@@ -195,15 +199,17 @@ watch(user, (u, prev) => {
              in-page channel strip to reclaim vertical space. -->
         <Flex v-else-if="isMobile && !props.compact" key="connected-mobile-page" column :gap="0" class="chat-app__main">
           <ChatChannelHeader compact />
-          <ChatMessageLog :compact="props.compact" />
-          <ChatComposer compact />
+          <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
+          <ChatMessageLog v-else :compact="props.compact" />
+          <ChatComposer v-if="hasChannels || serverLogPinned" compact />
         </Flex>
 
         <!-- Connected: stacked layout for the compact navbar sheet -->
         <Flex v-else key="connected-compact" column :gap="0" class="chat-app__main">
           <ChatChannelList horizontal />
-          <ChatMessageLog :compact="props.compact" />
-          <ChatComposer compact />
+          <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
+          <ChatMessageLog v-else :compact="props.compact" />
+          <ChatComposer v-if="hasChannels || serverLogPinned" compact />
         </Flex>
       </Transition>
     </Flex>

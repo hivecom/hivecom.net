@@ -9,8 +9,8 @@ import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
 import { useCachedFetch } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
+import { useUserActivityStatus } from '@/composables/useUserActivityStatus'
 import { getAnonymousUsername } from '@/lib/anonymousUsernames'
-import { getUserActivityStatus } from '@/lib/lastSeen'
 import { getCountryInfo } from '@/lib/utils/country'
 import ActivityLastfm from '../Profile/Activity/ActivityLastfm.vue'
 import ActivitySteam from '../Profile/Activity/ActivitySteam.vue'
@@ -54,19 +54,10 @@ const {
 
 const currentUser = useSupabaseUser()
 
-const activityStatus = computed(() => {
-  if (!user.value?.last_seen)
-    return null
-  if (currentUser.value?.id && user.value.id === currentUser.value.id) {
-    return {
-      isActive: true,
-      isAway: false,
-      lastSeenText: 'Online',
-      lastSeenTimestamp: new Date(),
-    }
-  }
-  return getUserActivityStatus(user.value.last_seen)
-})
+const activityStatus = useUserActivityStatus(
+  () => user.value?.id ?? null,
+  () => user.value?.last_seen ?? null,
+)
 
 const profileLink = computed(() => {
   if (!user.value)

@@ -301,7 +301,9 @@ async function toggleBrowserNotifications(value: boolean) {
 <template>
   <Modal :open="open" :size="isMobile ? 'screen' : 'm'" @close="emit('close')">
     <template #header>
-      <h4>Chat settings</h4>
+      <h4 style="margin: 0">
+        Chat settings
+      </h4>
     </template>
 
     <Flex column gap="m" expand>

@@ -111,17 +111,17 @@ watch(() => activeBuffer.value?.name, () => {
       <template #footer>
         <Flex column gap="s" expand class="p-s">
           <Flex gap="s" expand>
-            <Button v-if="userId" expand variant="gray" @click="identityOpen = true">
-              <template #start>
-                <Icon name="ph:identification-card" />
-              </template>
-              Identity
-            </Button>
             <Button expand variant="gray" @click="settingsOpen = true">
               <template #start>
                 <Icon name="ph:gear-six" />
               </template>
               Settings
+            </Button>
+            <Button v-if="userId" expand variant="gray" @click="identityOpen = true">
+              <template #start>
+                <Icon name="ph:identification-card" />
+              </template>
+              Identity
             </Button>
           </Flex>
           <Button v-if="isConnected" expand variant="danger" @click="disconnect">

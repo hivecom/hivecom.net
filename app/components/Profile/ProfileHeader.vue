@@ -3,10 +3,10 @@ import type { Tables } from '@/types/database.overrides'
 import type { ProfileFriendshipStatus } from '@/types/profile.ts'
 import { Badge, Button, Card, CopyClipboard, Flex, Grid, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
-import { useSupabaseUser } from '#imports'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import { useDataUser } from '@/composables/useDataUser'
-import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
+import { useUserActivityStatus } from '@/composables/useUserActivityStatus'
+import { getLastSeenTextClass, getLastSeenVariant } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
 import { fullDateLong, fullDateTime, isBirthdayDateToday } from '@/lib/utils/date'
@@ -45,21 +45,10 @@ const userRole = computed(() => user.value?.role ?? null)
 
 const isTablet = useBreakpoint('<m')
 
-const currentUser = useSupabaseUser()
-
-const activityStatus = computed(() => {
-  if (!props.profile?.last_seen)
-    return null
-  if (currentUser.value?.id && props.profile.id === currentUser.value.id) {
-    return {
-      isActive: true,
-      isAway: false,
-      lastSeenText: 'Online',
-      lastSeenTimestamp: new Date(),
-    }
-  }
-  return getUserActivityStatus(props.profile.last_seen)
-})
+const activityStatus = useUserActivityStatus(
+  () => props.profile?.id ?? null,
+  () => props.profile?.last_seen ?? null,
+)
 
 const countryInfo = computed(() => getCountryInfo(props.profile?.country ?? null))
 // Treat YYYY-MM-DD birthdays as date-only values so timezone offsets do not shift the day

@@ -97,7 +97,9 @@ function handleClose() {
 <template>
   <Modal :open="open" :size="isMobile ? 'screen' : 'l'" @close="handleClose">
     <template #header>
-      <h4>Identity</h4>
+      <h4 style="margin: 0">
+        Identity
+      </h4>
     </template>
 
     <Flex column gap="l" expand>

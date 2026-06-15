@@ -42,13 +42,15 @@ async function handleClick() {
       Install app
     </Button>
 
-    <Modal :open="showIosHelp" size="s" @close="showIosHelp = false">
+    <Modal :open="showIosHelp" size="s" centered @close="showIosHelp = false">
       <template #header>
-        <h4>Install Hivecom</h4>
+        <h4 style="margin: 0">
+          Install Hivecom
+        </h4>
       </template>
 
-      <Flex column gap="m" expand>
-        <p class="text-color-light">
+      <Flex column gap="m">
+        <p class="text-color-light" style="margin: 0">
           Add Hivecom to your home screen to get an app icon and push notifications.
         </p>
         <Flex y-center gap="s">
@@ -67,7 +69,7 @@ async function handleClick() {
 
       <template #footer>
         <Flex expand x-end>
-          <Button variant="accent" @click="showIosHelp = false">
+          <Button expand variant="accent" @click="showIosHelp = false">
             Got it
           </Button>
         </Flex>

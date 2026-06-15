@@ -26,7 +26,7 @@ const props = defineProps<{
   noScroll?: boolean
 }>()
 
-const { buffers, activeName, setActive, closeBuffer, joinChannel, renameChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, channelMetaResolved, requestChannelMetadata, isUnauthorizedSubchannel, setChannelMetadata, queryChanServInfo } = useIrcChat()
+const { buffers, activeName, setActive, closeBuffer, joinChannel, renameChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, channelMetaResolved, requestChannelMetadata, isUnauthorizedSubchannel, setChannelMetadata, queryChanServInfo, serverLogPinned, activateServerLog, closeServerLog } = useIrcChat()
 
 // Proactively fetch metadata for every implied parent path so slash-nesting can
 // be verified and the parent displayed even when we haven't joined it.
@@ -591,6 +591,25 @@ function executeRenameChannel() {
                 <p>Browse channels</p>
               </template>
             </Tooltip>
+            <Tooltip v-if="serverLogPinned" placement="bottom" :disabled="isMobile">
+              <button
+                type="button"
+                class="chat-channels__item"
+                :class="{ 'chat-channels__item--active': activeName === '*' }"
+                @click="activateServerLog()"
+              >
+                <Icon name="ph:hard-drives" size="13" class="chat-channels__icon" />
+                <Flex y-center gap="s" class="chat-channels__name-wrap">
+                  <span class="chat-channels__name chat-channels__name--compact">Server Log</span>
+                </Flex>
+                <Button square plain size="s" aria-label="Close" class="chat-channels__close" @click.stop="closeServerLog()">
+                  <Icon name="ph:x" size="12" />
+                </Button>
+              </button>
+              <template #tooltip>
+                <p>Server Log</p>
+              </template>
+            </Tooltip>
             <Tooltip
               v-for="buf in sortedBuffers"
               :key="buf.name"
@@ -679,6 +698,25 @@ function executeRenameChannel() {
 
           <!-- Vertical mode: tree rendering with collapsible groups -->
           <template v-else>
+            <Flex expand>
+              <button
+                v-if="serverLogPinned"
+                type="button"
+                class="chat-channels__item chat-channels__item--server-log w-100"
+                :class="{ 'chat-channels__item--active': activeName === '*' }"
+                @click="activateServerLog()"
+              >
+                <Flex y-center x-between expand>
+                  <Flex y-center gap="xs">
+                    <Icon name="ph:hard-drives" size="13" class="chat-channels__icon" />
+                    <span class="chat-channels__name">Server Log</span>
+                  </Flex>
+                  <Button square plain size="s" aria-label="Close" class="chat-channels__close" @click.stop="closeServerLog()">
+                    <Icon name="ph:x" size="12" />
+                  </Button>
+                </Flex>
+              </button>
+            </Flex>
             <template v-for="node in channelTree" :key="treeNodeKey(node)">
               <ChannelTreeItem :node="node" :depth="0" />
             </template>

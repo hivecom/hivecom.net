@@ -15,7 +15,10 @@ defineProps<{
   compact?: boolean
 }>()
 
-const { activeBuffer, buffers, joinChannel, openPm, requestWhois, isUnauthorizedSubchannel, myChannelRole } = useIrcChat()
+const { activeBuffer, buffers, joinChannel, openPm, requestWhois, isUnauthorizedSubchannel, myChannelRole, serverLogPinned } = useIrcChat()
+
+const hasChannels = computed(() => buffers.value.some(b => b.kind === 'channel'))
+const showHeader = computed(() => hasChannels.value || serverLogPinned.value)
 const { open: navSheetOpen } = useChatNavSheet()
 const { resolved: resolvedNicks, resolve: resolveNick } = useIrcNickResolver()
 
@@ -90,7 +93,7 @@ function topicSegments(topic: string): TopicSegment[] {
 </script>
 
 <template>
-  <Flex v-if="activeBuffer" y-center gap="s" class="channel-header" :class="{ 'channel-header--compact': compact }" expand>
+  <Flex v-if="activeBuffer && showHeader" y-center gap="s" class="channel-header" :class="{ 'channel-header--compact': compact }" expand>
     <Button v-if="isMobile" square plain aria-label="Back" class="channel-header__back" @click="navSheetOpen = true">
       <Icon name="ph:arrow-left" size="16" />
     </Button>

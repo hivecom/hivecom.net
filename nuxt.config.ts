@@ -575,6 +575,12 @@ export default defineNuxtConfig({
       callback: '/auth/confirm',
     },
     // types: './types/database.types.ts',
+    clientOptions: {
+      auth: {
+        // Opt in to the experimental passkey (WebAuthn) API in supabase-js.
+        experimental: { passkey: true },
+      },
+    },
   },
   site: {
     url: process.env.NUXT_PUBLIC_BASE_URL ?? 'https://hivecom.net',
