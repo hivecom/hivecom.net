@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { KvEntry } from '@/lib/kvstore'
-import { Alert, Badge, Button, defineTable, Flex, Input, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, Button, defineTable, DropdownItem, Flex, Input, Pagination, Table } from '@dolanske/vui'
 import { computed, onBeforeMount, ref } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { renderKvValue } from '@/lib/kvstore'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -24,6 +26,7 @@ const isBelowMedium = useBreakpoint('<m')
 const showModal = ref(false)
 const isEditMode = ref(false)
 const selectedEntry = ref<KvEntry | null>(null)
+const showBulkDeleteConfirm = ref(false)
 
 const actionLoading = ref<Record<string, boolean>>({})
 
@@ -49,11 +52,11 @@ const displayRows = computed(() => filteredEntries.value.map((entry: KvEntry) =>
   _original: entry,
 })))
 
-const { headers, rows, pagination, setPage, setSort } = defineTable(displayRows, {
+const { headers, rows, selectedRows, deselectAllRows, pagination, setPage, setSort } = defineTable(displayRows, {
   pagination: {
     enabled: true,
   },
-  select: false,
+  select: true,
 })
 
 const shouldShowPagination = computed(() => {
@@ -136,14 +139,23 @@ async function handleSave(payload: { key: string, type: KvType, value: unknown }
   }
 }
 
-async function handleDelete(entry: KvEntry) {
+async function handleDelete(entryOrEntries: KvEntry | KvEntry[]) {
   errorMessage.value = ''
+  const entriesToDelete = Array.isArray(entryOrEntries) ? entryOrEntries : [entryOrEntries]
+  const keys = entriesToDelete.map(entry => entry.key)
+
+  if (keys.length === 0)
+    return
+
   try {
-    actionLoading.value[`${entry.key}-delete`] = true
+    keys.forEach((key) => {
+      actionLoading.value[`${key}-delete`] = true
+    })
+
     const { error } = await supabase
       .from('kvstore')
       .delete()
-      .eq('key', entry.key)
+      .in('key', keys)
 
     if (error)
       throw error
@@ -154,8 +166,23 @@ async function handleDelete(entry: KvEntry) {
     errorMessage.value = error instanceof Error ? error.message : 'Failed to delete entry'
   }
   finally {
-    actionLoading.value[`${entry.key}-delete`] = false
+    keys.forEach((key) => {
+      actionLoading.value[`${key}-delete`] = false
+    })
   }
+}
+
+async function handleBulkDelete() {
+  showBulkDeleteConfirm.value = false
+
+  const selectedEntries = Array.from(selectedRows.value)
+    .map(row => row._original as unknown as KvEntry)
+
+  if (selectedEntries.length === 0)
+    return
+
+  await handleDelete(selectedEntries)
+  deselectAllRows()
 }
 
 onBeforeMount(fetchEntries)
@@ -212,6 +239,7 @@ onBeforeMount(fetchEntries)
       <TableContainer>
         <Table.Root :loading="loading" separate-cells>
           <template #header>
+            <th class="vui-table-interactive-cell" />
             <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
             <Table.Head
               v-if="canManageResource"
@@ -223,6 +251,7 @@ onBeforeMount(fetchEntries)
 
           <template #body>
             <tr v-for="row in rows" :key="row._original.key">
+              <Table.SelectRow :row="row as any" />
               <Table.Cell>
                 <code>{{ row.Key }}</code>
               </Table.Cell>
@@ -258,6 +287,29 @@ onBeforeMount(fetchEntries)
       <Alert v-if="!loading && rows.length === 0" variant="info">
         No entries found
       </Alert>
+
+      <SelectedRowsActions
+        :selected-count="selectedRows.size"
+        @clear="deselectAllRows()"
+      >
+        <DropdownItem @click="showBulkDeleteConfirm = true">
+          <template #icon>
+            <Icon name="ph:trash" class="text-color-red" />
+          </template>
+          Delete
+        </DropdownItem>
+      </SelectedRowsActions>
+
+      <ConfirmModal
+        :open="showBulkDeleteConfirm"
+        :title="`Delete ${selectedRows.size} entries`"
+        :description="`Are you sure you want to delete ${selectedRows.size} KV entries? This action cannot be undone.`"
+        confirm-text="Delete"
+        cancel-text="Cancel"
+        :destructive="true"
+        @cancel="showBulkDeleteConfirm = false"
+        @confirm="handleBulkDelete"
+      />
     </template>
   </Flex>
 
@@ -271,7 +323,7 @@ onBeforeMount(fetchEntries)
 
 <style scoped>
 td {
-  &:nth-child(3) {
+  &:nth-child(4) {
     word-break: break-all;
   }
 }
