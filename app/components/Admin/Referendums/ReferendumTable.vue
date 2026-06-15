@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Alert, Badge, Button, defineTable, Flex, paginate, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, Button, defineTable, DropdownItem, Flex, paginate, Pagination, Table } from '@dolanske/vui'
 import { watchDebounced } from '@vueuse/core'
 import { capitalize, computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useTableActions } from '@/composables/useTableActions'
@@ -122,7 +124,7 @@ const isFiltered = computed(() =>
 
 // ─── VUI defineTable (for TableSelectionProvideSymbol context) ───────────────
 
-const { rows } = defineTable(items, { pagination: { enabled: false }, select: false })
+const { rows, selectedRows, deselectAllRows } = defineTable(items, { pagination: { enabled: false }, select: true })
 
 // ─── Sorting ─────────────────────────────────────────────────────────────────
 
@@ -258,22 +260,37 @@ async function handleReferendumSave(referendumData: TablesInsert<'referendums'> 
   }
 }
 
-async function handleReferendumDelete(referendumId: number) {
+async function handleReferendumsDelete(referendumIds: number[]) {
   try {
+    if (referendumIds.length === 0)
+      return
+
     const { error } = await supabase
       .from('referendums')
       .delete()
-      .eq('id', referendumId)
+      .in('id', referendumIds)
     if (error)
       throw error
 
     showReferendumDetails.value = false
     showReferendumForm.value = false
+    deselectAllRows()
     await fetchReferendums()
   }
   catch (err: unknown) {
     errorMessage.value = err instanceof Error ? err.message : 'An error occurred while deleting the referendum'
   }
+}
+
+const showBulkDeleteConfirm = ref(false)
+
+function handleBulkDelete() {
+  showBulkDeleteConfirm.value = false
+  const ids = [...selectedRows.value]
+    .map(row => row.id)
+    .filter((id): id is number => typeof id === 'number')
+
+  void handleReferendumsDelete(ids)
 }
 
 function clearFilters() {
@@ -457,6 +474,7 @@ onBeforeMount(async () => {
         <TableContainer>
           <Table.Root v-if="rows.length > 0" separate-cells class="mb-l">
             <template #header>
+              <th class="vui-table-interactive-cell" />
               <Table.Head class="sortable-head" @click="handleSort('Title')">
                 <Flex gap="xs" y-center>
                   Title
@@ -483,16 +501,12 @@ onBeforeMount(async () => {
             </template>
 
             <template #body>
-              <tr
-                v-for="referendum in items"
-                :key="referendum.id"
-                class="clickable-row"
-                @click="viewReferendum(referendum)"
-              >
-                <Table.Cell>
+              <tr v-for="referendum in rows" :key="referendum.id" class="clickable-row">
+                <Table.SelectRow :row="referendum as any" />
+                <Table.Cell @click="viewReferendum(referendum as RpcReferendum)">
                   <span class="text-s">{{ referendum.title }}</span>
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="viewReferendum(referendum as RpcReferendum)">
                   <Badge
                     size="m"
                     :variant="getReferendumStatusVariant(getReferendumStatus(referendum))"
@@ -500,16 +514,16 @@ onBeforeMount(async () => {
                     {{ capitalize(getReferendumStatus(referendum)) }}
                   </Badge>
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="viewReferendum(referendum as RpcReferendum)">
                   <CountDisplay :value="referendum.vote_count" class="text-s" />
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="viewReferendum(referendum as RpcReferendum)">
                   <Badge size="m" :variant="referendum.is_public ? 'success' : 'neutral'">
                     <Icon :name="referendum.is_public ? 'ph:globe' : 'ph:lock'" />
                     {{ referendum.is_public ? 'Public' : 'Private' }}
                   </Badge>
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="viewReferendum(referendum as RpcReferendum)">
                   <TimestampDate :date="referendum.date_start" />
                 </Table.Cell>
                 <Table.Cell v-if="canManageResource" @click.stop>
@@ -518,7 +532,7 @@ onBeforeMount(async () => {
                     :item="referendum as unknown as Record<string, unknown>"
                     button-size="s"
                     @edit="(item) => openEditReferendumForm(item as unknown as RpcReferendum)"
-                    @delete="(item) => handleReferendumDelete((item as unknown as RpcReferendum).id)"
+                    @delete="(item) => handleReferendumsDelete([item.id as number])"
                   />
                 </Table.Cell>
               </tr>
@@ -540,7 +554,7 @@ onBeforeMount(async () => {
       v-model:is-open="showReferendumDetails"
       :referendum="selectedReferendumAsTable"
       @edit="(item) => handleEditFromDetails(item as unknown as RpcReferendum)"
-      @delete="(item) => handleReferendumDelete((item as unknown as { id: number }).id)"
+      @delete="(item) => handleReferendumsDelete([item.id])"
     />
 
     <ReferendumForm
@@ -548,7 +562,30 @@ onBeforeMount(async () => {
       :referendum="selectedReferendumAsTable"
       :is-edit-mode="isEditMode"
       @save="handleReferendumSave"
-      @delete="handleReferendumDelete"
+      @delete="(referendumId) => handleReferendumsDelete([referendumId])"
+    />
+
+    <SelectedRowsActions
+      :selected-count="selectedRows.size"
+      @clear="deselectAllRows()"
+    >
+      <DropdownItem @click="showBulkDeleteConfirm = true">
+        <template #icon>
+          <Icon name="ph:trash" class="text-color-red" />
+        </template>
+        Delete
+      </DropdownItem>
+    </SelectedRowsActions>
+
+    <ConfirmModal
+      :open="showBulkDeleteConfirm"
+      :title="`Delete ${selectedRows.size} items`"
+      :description="`Are you sure you want to delete ${selectedRows.size} referendums? This action cannot be undone.`"
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      :destructive="true"
+      @cancel="showBulkDeleteConfirm = false"
+      @confirm="handleBulkDelete"
     />
   </Flex>
 </template>

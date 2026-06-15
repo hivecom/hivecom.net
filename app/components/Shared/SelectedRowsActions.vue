@@ -55,6 +55,10 @@ const emit = defineEmits<{
   border: 1px solid var(--color-border);
   background-color: var(--color-bg-raised);
   box-shadow: var(--box-shadow-strong);
+
+  p {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 .actions-enter-from,
