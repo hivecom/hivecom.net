@@ -46,7 +46,7 @@ const identityHasIssues = computed(() => {
     </Flex>
     <Flex y-center gap="s">
       <ChatStateBadge v-if="!isMobile" />
-      <Tooltip v-if="userId" :disabled="isMobile">
+      <Tooltip v-if="userId && account" :disabled="isMobile">
         <div class="chat-toolbar__identity-btn">
           <Button square plain aria-label="Identity" class="vui-button-accent-weak vui-button-rounded" @click="identityOpen = true">
             <Icon name="ph:identification-card" size="18" />

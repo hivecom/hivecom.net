@@ -20,7 +20,7 @@ const { settings } = useDataUserSettings()
 // Chat push notifications (Ergo draft/webpush). The server VAPID key only exists
 // once connected to a webpush-capable server, and Ergo requires a logged-in
 // account, so the toggle is gated on both.
-const { vapidKey, account, setCacheCap, cacheNickKey } = useIrcChat()
+const { vapidKey, account, accountAlwaysOn, setCacheCap, cacheNickKey } = useIrcChat()
 const {
   isSupported: pushSupported,
   isSubscribed: pushSubscribed,
@@ -474,10 +474,12 @@ async function toggleBrowserNotifications(value: boolean) {
                 ? 'Connect to chat to enable push notifications on this device.'
                 : !account
                   ? 'Sign in to chat to enable push notifications on this device.'
-                  : 'Deliver chat mentions and messages to this device even when Hivecom is closed.' }}
+                  : accountAlwaysOn !== true
+                    ? 'Enable always-on in Identity settings to use push notifications.'
+                    : 'Deliver chat mentions and messages to this device even when Hivecom is closed.' }}
             </span>
           </Flex>
-          <Switch :model-value="pushSubscribed" :disabled="pushLoading || !vapidKey || !account" @update:model-value="toggleChatPush" />
+          <Switch :model-value="pushSubscribed" :disabled="pushLoading || !vapidKey || !account || accountAlwaysOn !== true" @update:model-value="toggleChatPush" />
         </Flex>
 
         <Flex y-center x-between gap="m" expand>
