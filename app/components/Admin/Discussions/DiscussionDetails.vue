@@ -411,15 +411,6 @@ async function reassignToTopic(topicId: string) {
         </Flex>
 
         <Flex y-center gap="xs">
-          <DiscussionActions
-            v-if="props.discussion && canUpdate"
-            :discussion="props.discussion"
-            hide-pin-button
-            :show-labels="!isMobile"
-            :size="isMobile ? 'm' : undefined"
-            @updated="emit('updated', $event as DiscussionRecord)"
-          />
-
           <Button
             v-if="canUpdate && isMobile"
             variant="gray"
@@ -438,6 +429,16 @@ async function reassignToTopic(topicId: string) {
             </template>
             Edit
           </Button>
+
+          <DiscussionActions
+            v-if="props.discussion && canUpdate"
+            :discussion="props.discussion"
+            hide-pin-button
+            :show-labels="!isMobile"
+            :size="isMobile ? 'm' : undefined"
+            @updated="emit('updated', $event as DiscussionRecord)"
+            @deleted="handleClose"
+          />
         </Flex>
       </Flex>
     </template>

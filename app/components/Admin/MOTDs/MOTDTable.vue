@@ -154,10 +154,11 @@ async function handleDelete(ids: number[]) {
 // Bulk deletion
 const showBulkDeleteConfirm = ref(false)
 
-function handleBulkDelete() {
+async function handleBulkDelete() {
   showBulkDeleteConfirm.value = false
-  const ids = [...selectedRows.value].map(row => (row._original as unknown as Motd).id)
-  handleDelete(ids)
+  const ids = [...selectedRows.value].map(row => row._original.id)
+  await handleDelete(ids)
+  deselectAllRows()
 }
 </script>
 
@@ -261,7 +262,7 @@ function handleBulkDelete() {
   </Flex>
 
   <SelectedRowsActions
-    :selected-count="selectedRows.size"
+    :selected-count="selectedRows.length"
     @clear="deselectAllRows()"
   >
     <DropdownItem @click="showBulkDeleteConfirm = true">
@@ -282,8 +283,8 @@ function handleBulkDelete() {
   <!-- Bulk Delete Confirmation Modal -->
   <ConfirmModal
     :open="showBulkDeleteConfirm"
-    :title="`Delete ${selectedRows.size} items`"
-    :description="`Are you sure you want to delete ${selectedRows.size} MOTD items? This action cannot be undone.`"
+    :title="`Delete ${selectedRows.length} items`"
+    :description="`Are you sure you want to delete ${selectedRows.length} MOTD items? This action cannot be undone.`"
     confirm-text="Delete"
     cancel-text="Cancel"
     :destructive="true"

@@ -1,6 +1,7 @@
 import type { FileObject } from '@supabase/storage-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
+import JSZip from 'jszip'
 
 export const CMS_BUCKET_ID = 'hivecom-cms' as const
 export const FORUMS_BUCKET_ID = 'hivecom-content-forums' as const
@@ -309,12 +310,7 @@ export function downloadAsset(publicUrl: string | null | undefined, fileName: st
   const url = new URL(publicUrl)
   url.searchParams.set('download', fileName)
 
-  const anchor = document.createElement('a')
-  anchor.href = url.toString()
-  anchor.download = fileName
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
+  triggerDownload(url.toString(), fileName)
 }
 
 export function getBucketLabel(bucketId: StorageBucketId): string {
@@ -423,4 +419,39 @@ function parseNumericField(value: unknown): number | null {
       return parsed
   }
   return null
+}
+
+/**
+ * Given an array of public asset URLs, creates a ZIP archive and triggers a download in the browser.
+ *
+ */
+export async function zipAndDownloadAssets(publicPaths: string[], archiveName: string) {
+  const zip = new JSZip()
+
+  // Fetch all files and add them to the zip
+  await Promise.all(
+    publicPaths.map(async (path) => {
+      const fileBlob = await fetch(path).then(async res => res.blob())
+      const fileName = path.split('/').pop() ?? 'file'
+      zip.file(fileName, fileBlob)
+    }),
+  )
+
+  const mainBlob = await zip.generateAsync({ type: 'blob' })
+  const archiveHref = URL.createObjectURL(mainBlob)
+
+  triggerDownload(archiveHref, archiveName.endsWith('.zip') ? archiveName : `${archiveName}.zip`)
+}
+
+function triggerDownload(url: string, fileName: string) {
+  if (!import.meta.client)
+    return
+
+  const anchor = document.createElement('a')
+  anchor.classList.add('visually-hidden')
+  anchor.href = url
+  anchor.download = fileName
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
 }

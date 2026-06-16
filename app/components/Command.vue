@@ -495,7 +495,7 @@ useEventListener('keydown', (e: KeyboardEvent) => {
         :user-id="profileIdByUsername.get(command.title)"
         :size="22"
       />
-      <Icon v-else :name="iconForCommand(command)" size="15px" />
+      <Icon v-else :name="iconForCommand(command)" :size="18" />
     </template>
   </Commands>
 </template>

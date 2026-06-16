@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@dolanske/v-valid": "^2.1.1",
-    "@dolanske/vui": "^1.15.2",
+    "@dolanske/vui": "^1.15.5",
     "@iconify-json/material-symbols-light": "^1.2.78",
     "@iconify-json/mdi": "^1.2.3",
     "@iconify-json/ph": "^1.2.2",
@@ -62,6 +62,7 @@
     "diff": "^9.0.0",
     "diff2html": "^3.4.56",
     "globe.gl": "^2.46.1",
+    "jszip": "^3.10.1",
     "katex": "^0.16.47",
     "luxon": "^3.7.2",
     "marked": "^18.0.5",

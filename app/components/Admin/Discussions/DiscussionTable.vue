@@ -2,7 +2,7 @@
 import type { Ref } from 'vue'
 import type { Tables } from '@/types/database.overrides'
 
-import { Alert, Badge, Button, defineTable, Flex, paginate, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, Button, defineTable, DropdownItem, Flex, paginate, Pagination, pushToast, Table } from '@dolanske/vui'
 import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import DiscussionActions from '@/components/Admin/Discussions/DiscussionActions.vue'
@@ -11,9 +11,12 @@ import DiscussionDetails from '@/components/Admin/Discussions/DiscussionDetails.
 import DiscussionEditSheet from '@/components/Admin/Discussions/DiscussionEditSheet.vue'
 import DiscussionFilters from '@/components/Admin/Discussions/DiscussionFilters.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CountDisplay from '@/components/Shared/CountDisplay.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getRouteQueryString } from '@/lib/utils/common'
@@ -68,6 +71,7 @@ interface RpcDiscussion {
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 const supabase = useSupabaseClient()
+const discussionCache = useDiscussionCache()
 const route = useRoute()
 const router = useRouter()
 
@@ -148,7 +152,17 @@ const focusedDiscussionId = computed(() => getRouteQueryString(route.query.discu
 
 // ─── VUI defineTable (used only to provide TableSelectionProvideSymbol) ───────
 
-defineTable(discussions, { pagination: { enabled: false }, select: false })
+const { selectedRows, deselectAllRows } = defineTable(discussions, {
+  pagination: { enabled: false },
+  select: true,
+})
+
+const showBulkDeleteConfirm = ref(false)
+const bulkActionLoading = ref<Record<'archive' | 'lock' | 'delete', boolean>>({
+  archive: false,
+  lock: false,
+  delete: false,
+})
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
@@ -179,8 +193,8 @@ function getLastActiveText(discussion: RpcDiscussion): string {
     return 'Never'
   const status = getUserActivityStatus(timestamp)
   if (status.isActive)
-    return 'Active now'
-  return status.lastSeenText.replace('Last online', 'Last activity')
+    return 'No'
+  return status.lastSeenText.replace('Last online', '')
 }
 
 function getContextType(discussion: RpcDiscussion): string {
@@ -349,6 +363,105 @@ function clearFilters() {
   authorFilter.value = null
 }
 
+function canRunBulkAction(discussion: RpcDiscussion, action: 'archive' | 'lock' | 'delete'): boolean {
+  switch (action) {
+    case 'archive':
+      return discussion.is_archived !== true
+    case 'lock':
+      return discussion.is_locked !== true
+    case 'delete':
+      return true
+    default:
+      return false
+  }
+}
+
+const selectedArchiveCount = computed(() =>
+  selectedRows.value.filter(discussion => canRunBulkAction(discussion as RpcDiscussion, 'archive')).length,
+)
+
+const selectedLockCount = computed(() =>
+  selectedRows.value.filter(discussion => canRunBulkAction(discussion as RpcDiscussion, 'lock')).length,
+)
+
+const selectedDeleteCount = computed(() =>
+  selectedRows.value.filter(discussion => canRunBulkAction(discussion as RpcDiscussion, 'delete')).length,
+)
+
+async function handleBulkAction(action: 'archive' | 'lock' | 'delete') {
+  const targetDiscussions = selectedRows.value
+    .map(discussion => discussion as RpcDiscussion)
+    .filter(discussion => canRunBulkAction(discussion, action))
+  if (targetDiscussions.length === 0)
+    return
+
+  bulkActionLoading.value[action] = true
+
+  try {
+    const targetIds = targetDiscussions.map(discussion => discussion.id)
+
+    if (action === 'delete') {
+      const { error } = await supabase
+        .from('discussions')
+        .delete()
+        .in('id', targetIds)
+
+      if (error) {
+        throw error
+      }
+
+      targetDiscussions.forEach((discussion) => {
+        discussionCache.invalidate(discussion.id, discussion.slug)
+      })
+
+      if (selectedDiscussion.value && targetIds.includes(selectedDiscussion.value.id)) {
+        selectedDiscussion.value = null
+        showDiscussionDetails.value = false
+      }
+
+      pushToast(`Deleted ${targetDiscussions.length} discussion${targetDiscussions.length === 1 ? '' : 's'}`)
+    }
+    else {
+      const updatePayload = action === 'archive'
+        ? { is_archived: true }
+        : { is_locked: true }
+
+      const { error } = await supabase
+        .from('discussions')
+        .update(updatePayload)
+        .in('id', targetIds)
+
+      if (error) {
+        throw error
+      }
+
+      pushToast(
+        action === 'archive'
+          ? `Archived ${targetDiscussions.length} discussion${targetDiscussions.length === 1 ? '' : 's'}`
+          : `Locked ${targetDiscussions.length} discussion${targetDiscussions.length === 1 ? '' : 's'}`,
+      )
+    }
+
+    if (targetDiscussions.length === selectedRows.value.length)
+      deselectAllRows()
+
+    await fetchDiscussions()
+  }
+  catch (error) {
+    pushToast('Bulk action failed', {
+      description: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+  finally {
+    bulkActionLoading.value[action] = false
+  }
+}
+
+function handleBulkDelete() {
+  showBulkDeleteConfirm.value = false
+  handleBulkAction('delete')
+}
+
 // ─── Detail / edit handlers ───────────────────────────────────────────────────
 
 function openDiscussionDetails(discussion: RpcDiscussion) {
@@ -504,6 +617,8 @@ onBeforeMount(async () => {
         <TableContainer>
           <Table.Root v-if="discussions.length > 0" separate-cells class="mb-l">
             <template #header>
+              <th class="vui-table-interactive-cell" />
+
               <!-- Title -->
               <Table.Head class="sortable-head" @click="handleSort('Title')">
                 <Flex gap="xs" y-center>
@@ -561,20 +676,15 @@ onBeforeMount(async () => {
                 v-for="discussion in discussions"
                 :key="discussion.id"
                 class="clickable-row"
-                @click="openDiscussionDetails(discussion)"
               >
+                <Table.SelectRow :row="discussion" />
                 <!-- Title + description -->
-                <Table.Cell>
-                  <Flex column :gap="0">
-                    <span class="text-bold">{{ discussion.title || 'Untitled discussion' }}</span>
-                    <span v-if="discussion.description" class="text-color-lighter text-xs description-truncate">
-                      {{ discussion.description }}
-                    </span>
-                  </Flex>
+                <Table.Cell @click="openDiscussionDetails(discussion)">
+                  <span class="text-medium text-s">{{ discussion.title || 'Untitled' }}</span>
                 </Table.Cell>
 
                 <!-- Context -->
-                <Table.Cell>
+                <Table.Cell @click="openDiscussionDetails(discussion)">
                   <NuxtLink
                     v-if="getContextLink(discussion)"
                     :to="getContextLink(discussion)!"
@@ -589,17 +699,17 @@ onBeforeMount(async () => {
                 </Table.Cell>
 
                 <!-- Replies -->
-                <Table.Cell>
+                <Table.Cell @click="openDiscussionDetails(discussion)">
                   <CountDisplay :value="discussion.reply_count ?? 0" class="text-s" />
                 </Table.Cell>
 
                 <!-- Views -->
-                <Table.Cell>
+                <Table.Cell @click="openDiscussionDetails(discussion)">
                   <CountDisplay :value="discussion.view_count ?? 0" class="text-s" />
                 </Table.Cell>
 
                 <!-- Last Active -->
-                <Table.Cell>
+                <Table.Cell @click="openDiscussionDetails(discussion)">
                   <Flex column :gap="0">
                     <UserLink
                       :user-id="getLastReplierId(discussion)"
@@ -613,12 +723,12 @@ onBeforeMount(async () => {
                 </Table.Cell>
 
                 <!-- Author -->
-                <Table.Cell>
+                <Table.Cell @click="openDiscussionDetails(discussion)">
                   <UserLink :user-id="discussion.created_by" placeholder="Unknown" show-avatar />
                 </Table.Cell>
 
                 <!-- Status badges -->
-                <Table.Cell>
+                <Table.Cell @click="openDiscussionDetails(discussion)">
                   <Flex gap="xs" wrap>
                     <Badge :variant="discussion.is_locked ? 'danger' : 'success'">
                       {{ discussion.is_locked ? 'Locked' : 'Open' }}
@@ -638,13 +748,6 @@ onBeforeMount(async () => {
                 <!-- Actions -->
                 <Table.Cell v-if="canManageActions" @click.stop>
                   <Flex gap="xs">
-                    <DiscussionActions
-                      v-if="canUpdate"
-                      :discussion="toActionsProps(discussion)"
-                      size="s"
-                      hide-pin-button
-                      @updated="handleDiscussionUpdated"
-                    />
                     <Button
                       v-if="canUpdate"
                       size="s"
@@ -654,6 +757,14 @@ onBeforeMount(async () => {
                     >
                       <Icon name="ph:pencil-simple" />
                     </Button>
+                    <DiscussionActions
+                      v-if="canUpdate"
+                      :discussion="toActionsProps(discussion)"
+                      size="s"
+                      hide-pin-button
+                      @updated="handleDiscussionUpdated"
+                      @deleted="handleDiscussionDeleted(discussion.id)"
+                    />
                   </Flex>
                 </Table.Cell>
               </tr>
@@ -670,6 +781,62 @@ onBeforeMount(async () => {
         </TableContainer>
       </div>
     </Flex>
+
+    <SelectedRowsActions
+      :selected-count="selectedRows.length"
+      @clear="deselectAllRows()"
+    >
+      <DropdownItem
+        v-if="canUpdate && selectedArchiveCount > 0"
+        :disabled="bulkActionLoading.archive"
+        @click="handleBulkAction('archive')"
+      >
+        <template #icon>
+          <Icon name="ph:archive" />
+        </template>
+        Archive
+        <template #hint>
+          {{ selectedArchiveCount }}
+        </template>
+      </DropdownItem>
+      <DropdownItem
+        v-if="canUpdate && selectedLockCount > 0"
+        :disabled="bulkActionLoading.lock"
+        @click="handleBulkAction('lock')"
+      >
+        <template #icon>
+          <Icon name="ph:lock" class="text-color-red" />
+        </template>
+        Lock
+        <template #hint>
+          {{ selectedLockCount }}
+        </template>
+      </DropdownItem>
+      <DropdownItem
+        v-if="canDelete && selectedDeleteCount > 0"
+        :disabled="bulkActionLoading.delete"
+        @click="showBulkDeleteConfirm = true"
+      >
+        <template #icon>
+          <Icon name="ph:trash" class="text-color-red" />
+        </template>
+        Delete
+        <template #hint>
+          {{ selectedDeleteCount }}
+        </template>
+      </DropdownItem>
+    </SelectedRowsActions>
+
+    <ConfirmModal
+      :open="showBulkDeleteConfirm"
+      :title="`Delete ${selectedDeleteCount} discussions`"
+      :description="`Are you sure you want to delete ${selectedDeleteCount} discussions? This action cannot be undone.`"
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      :destructive="true"
+      @cancel="showBulkDeleteConfirm = false"
+      @confirm="handleBulkDelete"
+    />
 
     <DiscussionDetails
       v-model:is-open="showDiscussionDetails"

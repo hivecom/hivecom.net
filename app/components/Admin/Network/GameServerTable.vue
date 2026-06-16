@@ -2,14 +2,16 @@
 import type { QueryData } from '@supabase/supabase-js'
 import type { MetricsHistoryEntry } from '@/composables/useDataMetrics'
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, Button, defineTable, DropdownItem, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onMounted, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { invalidateGameserversCache } from '@/composables/useDataGameservers'
@@ -178,9 +180,9 @@ const filteredData = computed(() => {
 const filteredCount = computed(() => filteredData.value.length)
 const isFiltered = computed(() => filteredCount.value !== totalCount.value)
 
-const { headers, rows, pagination, setPage, setSort, options } = defineTable(filteredData, {
+const { headers, rows, pagination, setPage, setSort, options, selectedRows, deselectAllRows } = defineTable(filteredData, {
   pagination: { enabled: true, perPage: adminTablePerPage.value },
-  select: false,
+  select: true,
 })
 
 watch(adminTablePerPage, (perPage) => {
@@ -305,12 +307,12 @@ async function handleGameserverSave(
   }
 }
 
-async function handleGameserverDelete(gameserverId: number) {
+async function handleGameserversDelete(gameserverIds: number[]) {
   try {
     const { error } = await supabase
       .from('network_gameservers')
       .delete()
-      .eq('id', gameserverId)
+      .in('id', gameserverIds)
     if (error)
       throw error
 
@@ -327,6 +329,16 @@ function clearFilters() {
   search.value = ''
   regionFilter.value = undefined
   gameFilter.value = []
+}
+
+// Bulk deletion
+const showBulkDeleteConfirm = ref(false)
+
+async function handleBulkDelete() {
+  showBulkDeleteConfirm.value = false
+  const ids = [...selectedRows.value].map(row => row._original.id)
+  await handleGameserversDelete(ids)
+  deselectAllRows()
 }
 </script>
 
@@ -413,6 +425,7 @@ function clearFilters() {
     <TableContainer>
       <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
+          <th class="vui-table-interactive-cell" />
           <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
           <Table.Head
             v-if="canManageResource"
@@ -423,19 +436,22 @@ function clearFilters() {
         </template>
 
         <template #body>
-          <tr v-for="gameserver in rows" :key="gameserver._original.id" class="clickable-row" @click="viewGameserver(gameserver._original as QueryGameserver)">
-            <Table.Cell>{{ gameserver.Name }}</Table.Cell>
-            <Table.Cell>
+          <tr v-for="gameserver in rows" :key="gameserver._original.id" class="clickable-row">
+            <Table.SelectRow :row="gameserver as any" />
+            <Table.Cell @click="viewGameserver(gameserver._original as QueryGameserver)">
+              {{ gameserver.Name }}
+            </Table.Cell>
+            <Table.Cell @click="viewGameserver(gameserver._original as QueryGameserver)">
               <Flex v-if="(gameserver._original as QueryGameserver).game" gap="xs" y-center>
                 <GameIcon :game="(gameserver._original as QueryGameserver).game as Tables<'games'>" size="xs" />
                 <span class="text-s">{{ gameserver.Game }}</span>
               </Flex>
               <span v-else class="text-s">{{ gameserver.Game }}</span>
             </Table.Cell>
-            <Table.Cell>
+            <Table.Cell @click="viewGameserver(gameserver._original as QueryGameserver)">
               <RegionIndicator :region="gameserver._original.region" show-label />
             </Table.Cell>
-            <Table.Cell>
+            <Table.Cell @click="viewGameserver(gameserver._original as QueryGameserver)">
               <template v-if="(gameserver._original as QueryGameserver).query_protocol != null">
                 <Flex y-center gap="s" style="max-width: 260px">
                   <OnlineBadge
@@ -463,7 +479,7 @@ function clearFilters() {
               </template>
               <span v-else class="text-color-lighter text-xs">No query</span>
             </Table.Cell>
-            <Table.Cell>
+            <Table.Cell @click="viewGameserver(gameserver._original as QueryGameserver)">
               <Badge v-if="gameserver.Container" variant="neutral" outline>
                 {{ gameserver.Container }}
               </Badge>
@@ -483,7 +499,7 @@ function clearFilters() {
                   },
                 ]"
                 @edit="(item) => openEditGameserverForm(item as QueryGameserver)"
-                @delete="(item) => handleGameserverDelete((item as QueryGameserver).id)"
+                @delete="(item) => handleGameserversDelete([item.id as number])"
               />
             </Table.Cell>
           </tr>
@@ -506,7 +522,7 @@ function clearFilters() {
     v-model:is-open="showGameserverDetails"
     :gameserver="selectedGameserver"
     @edit="handleEditFromDetails"
-    @delete="handleGameserverDelete"
+    @delete="(id: number) => handleGameserversDelete([id])"
   />
 
   <GameserverForm
@@ -514,7 +530,31 @@ function clearFilters() {
     :gameserver="selectedGameserver"
     :is-edit-mode="isEditMode"
     @save="handleGameserverSave"
-    @delete="handleGameserverDelete"
+    @delete="(id: number) => handleGameserversDelete([id])"
+  />
+
+  <SelectedRowsActions
+    :selected-count="selectedRows.length"
+    @clear="deselectAllRows()"
+  >
+    <DropdownItem @click="showBulkDeleteConfirm = true">
+      <template #icon>
+        <Icon name="ph:trash" class="text-color-red" />
+      </template>
+      Delete
+    </DropdownItem>
+  </SelectedRowsActions>
+
+  <!-- Bulk Delete Confirmation Modal -->
+  <ConfirmModal
+    :open="showBulkDeleteConfirm"
+    :title="`Delete ${selectedRows.length} items`"
+    :description="`Are you sure you want to delete ${selectedRows.length} game servers? This action cannot be undone.`"
+    confirm-text="Delete"
+    cancel-text="Cancel"
+    :destructive="true"
+    @cancel="showBulkDeleteConfirm = false"
+    @confirm="handleBulkDelete"
   />
 </template>
 

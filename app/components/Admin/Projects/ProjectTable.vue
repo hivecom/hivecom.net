@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { QueryData } from '@supabase/supabase-js'
 import type { TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
-import { computed, watch } from 'vue'
+import { Alert, Badge, Button, defineTable, DropdownItem, Flex, Pagination, Table } from '@dolanske/vui'
+import { computed, ref, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import GitHubLink from '@/components/Shared/GitHubLink.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
@@ -105,9 +107,9 @@ const filteredData = computed(() => {
 const filteredCount = computed(() => filteredData.value.length)
 const isFiltered = computed(() => filteredCount.value !== totalCount.value)
 
-const { headers, rows, pagination, setPage, setSort, options } = defineTable(filteredData, {
+const { headers, rows, pagination, setPage, setSort, selectedRows, deselectAllRows, options } = defineTable(filteredData, {
   pagination: { enabled: true, perPage: adminTablePerPage.value },
-  select: false,
+  select: true,
 })
 
 watch(adminTablePerPage, (perPage) => {
@@ -156,12 +158,15 @@ async function handleProjectSave(projectData: TablesInsert<'projects'> | TablesU
   }
 }
 
-async function handleProjectDelete(projectId: number) {
+async function handleProjectsDelete(projectIds: number[]) {
   try {
+    if (projectIds.length === 0)
+      return
+
     const { error } = await supabase
       .from('projects')
       .delete()
-      .eq('id', projectId)
+      .in('id', projectIds)
     if (error)
       throw error
 
@@ -172,6 +177,15 @@ async function handleProjectDelete(projectId: number) {
   catch (err: unknown) {
     errorMessage.value = err instanceof Error ? err.message : 'An error occurred while deleting the project'
   }
+}
+
+const showBulkDeleteConfirm = ref(false)
+
+async function handleBulkDelete() {
+  showBulkDeleteConfirm.value = false
+  const ids = [...selectedRows.value].map(row => row._original.id)
+  await handleProjectsDelete(ids)
+  deselectAllRows()
 }
 
 function clearFilters() {
@@ -259,6 +273,7 @@ function clearFilters() {
     <TableContainer>
       <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
+          <th class="vui-table-interactive-cell" />
           <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
           <Table.Head
             v-if="canManageResource"
@@ -269,8 +284,9 @@ function clearFilters() {
         </template>
 
         <template #body>
-          <tr v-for="project in rows" :key="project._original.id" class="clickable-row" @click="viewProject(project._original as QueryProject)">
-            <Table.Cell>
+          <tr v-for="project in rows" :key="project._original.id" class="clickable-row">
+            <Table.SelectRow :row="project as any" />
+            <Table.Cell @click="viewProject(project._original as QueryProject)">
               <Flex gap="xs" y-center>
                 <span class="text-s">{{ project.Title }}</span>
                 <GitHubLink
@@ -283,7 +299,7 @@ function clearFilters() {
                 />
               </Flex>
             </Table.Cell>
-            <Table.Cell>
+            <Table.Cell @click="viewProject(project._original as QueryProject)">
               <Flex v-if="project.Tags && project.Tags.length > 0" expand gap="xxs">
                 <Badge
                   v-for="tag in project.Tags"
@@ -297,7 +313,7 @@ function clearFilters() {
               </Flex>
               <span v-else class="text-color-light text-s">No tags</span>
             </Table.Cell>
-            <Table.Cell>
+            <Table.Cell @click="viewProject(project._original as QueryProject)">
               <UserLink v-if="project.Owner" :user-id="project.Owner" class="text-s" />
               <span v-else class="text-color-light text-s">No owner</span>
             </Table.Cell>
@@ -307,7 +323,7 @@ function clearFilters() {
                 :item="project._original"
                 button-size="s"
                 @edit="(item) => openEditProjectForm(item as QueryProject)"
-                @delete="(item) => handleProjectDelete((item as QueryProject).id)"
+                @delete="(item) => handleProjectsDelete([(item as QueryProject).id])"
               />
             </Table.Cell>
           </tr>
@@ -330,7 +346,7 @@ function clearFilters() {
     v-model:is-open="showProjectDetails"
     :project="selectedProject"
     @edit="handleEditFromDetails"
-    @delete="(item) => handleProjectDelete(item.id)"
+    @delete="(item) => handleProjectsDelete([item.id])"
   />
 
   <ProjectForm
@@ -338,7 +354,30 @@ function clearFilters() {
     :project="selectedProject"
     :is-edit-mode="isEditMode"
     @save="handleProjectSave"
-    @delete="handleProjectDelete"
+    @delete="(projectId) => handleProjectsDelete([projectId])"
+  />
+
+  <SelectedRowsActions
+    :selected-count="selectedRows.length"
+    @clear="deselectAllRows()"
+  >
+    <DropdownItem @click="showBulkDeleteConfirm = true">
+      <template #icon>
+        <Icon name="ph:trash" class="text-color-red" />
+      </template>
+      Delete
+    </DropdownItem>
+  </SelectedRowsActions>
+
+  <ConfirmModal
+    :open="showBulkDeleteConfirm"
+    :title="`Delete ${selectedRows.length} items`"
+    :description="`Are you sure you want to delete ${selectedRows.length} projects? This action cannot be undone.`"
+    confirm-text="Delete"
+    cancel-text="Cancel"
+    :destructive="true"
+    @cancel="showBulkDeleteConfirm = false"
+    @confirm="handleBulkDelete"
   />
 </template>
 

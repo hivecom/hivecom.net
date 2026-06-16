@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
+import type { TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Badge, Button, Calendar, Checkbox, Flex, Input, Sheet, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -11,7 +12,10 @@ const props = defineProps<{
 }>()
 
 // Define emits
-const emit = defineEmits(['save', 'delete'])
+const emit = defineEmits<{
+  save: [referendumData: TablesInsert<'referendums'> | TablesUpdate<'referendums'>]
+  delete: [number]
+}>()
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')

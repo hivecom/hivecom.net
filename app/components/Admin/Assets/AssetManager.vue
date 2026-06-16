@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
-
 import type { StorageAsset as CmsAsset, FlatSortColumn, StorageBucketId } from '@/lib/storageAssets'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, CopyClipboard, defineTable, Flex, Grid, Input, paginate, Pagination, pushToast, Skeleton, Table, Tooltip } from '@dolanske/vui'
-
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, CopyClipboard, defineTable, DropdownItem, Flex, Grid, Input, paginate, Pagination, pushToast, Skeleton, Spinner, Table, Tooltip } from '@dolanske/vui'
 import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
@@ -12,10 +10,12 @@ import AssetRenameModal from '@/components/Admin/Assets/AssetRenameModal.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { CMS_BUCKET_ID, formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, listStorageObjectsFlat, normalizePrefix } from '@/lib/storageAssets'
+import { CMS_BUCKET_ID, formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, listStorageObjectsFlat, normalizePrefix, zipAndDownloadAssets } from '@/lib/storageAssets'
 import { fullDateTime } from '@/lib/utils/date'
+import { truncate } from '@/lib/utils/formatting'
 
 interface Props {
   bucketId?: StorageBucketId
@@ -49,6 +49,7 @@ const typeFilter = ref<TypeFilterValue>('all')
 const sortOption = ref<SortOptionValue>('name-asc')
 const viewMode = defineModel<'table' | 'grid'>('viewMode', { default: 'table' })
 const flatView = defineModel<boolean>('flatView', { default: false })
+const downloadLoading = ref(false)
 
 const isBelowMedium = useBreakpoint('<m')
 type AssetActionKey = 'delete' | 'rename'
@@ -114,6 +115,8 @@ const showDeleteConfirmModal = ref(false)
 const assetPendingRename = ref<CmsAsset | null>(null)
 const showRenameModal = ref(false)
 const renameLoading = ref(false)
+const showBulkDeleteConfirmModal = ref(false)
+const bulkDeleteLoading = ref(false)
 
 const typeFilterOptions: SelectOption<TypeFilterValue>[] = [
   { label: 'All types', value: 'all' },
@@ -198,6 +201,7 @@ const filteredAssets = computed(() => {
 })
 
 const tableData = computed(() => filteredAssets.value.map(asset => ({
+  'id': asset.id || asset.name,
   [flatView.value ? 'Path' : 'Name']: flatView.value ? asset.path : asset.name,
   'Type': getAssetTypeLabel(asset),
   'Size': asset.type === 'folder' ? 0 : asset.size,
@@ -210,11 +214,11 @@ const isFiltered = computed(() => filteredCount.value !== assets.value.length)
 
 const isForumsBucket = computed(() => resolvedBucketId.value === FORUMS_BUCKET_ID)
 
-const { headers, rows: tableRows, setSort } = defineTable(tableData, {
+const { headers, rows: tableRows, setSort, selectedRows, deselectAllRows } = defineTable(tableData, {
   pagination: {
     enabled: false,
   },
-  select: false,
+  select: true,
 })
 
 setSort('Name', 'asc')
@@ -347,26 +351,30 @@ function openDetails(asset: CmsAsset) {
   showDetailsDrawer.value = true
 }
 
-async function deleteAsset(asset: CmsAsset) {
-  setActionLoading(asset.path, 'delete', true)
-  try {
-    if (asset.type === 'folder') {
-      const files = await listCmsFilesRecursive(supabase, resolvedBucketId.value, asset.path)
-      if (files.length) {
-        const { error } = await supabase.storage
-          .from(resolvedBucketId.value)
-          .remove(files.map(file => file.path))
-        if (error)
-          throw error
-      }
-    }
-    else {
+async function performDeleteAsset(asset: CmsAsset) {
+  if (asset.type === 'folder') {
+    const files = await listCmsFilesRecursive(supabase, resolvedBucketId.value, asset.path)
+    if (files.length) {
       const { error } = await supabase.storage
         .from(resolvedBucketId.value)
-        .remove([asset.path])
+        .remove(files.map(file => file.path))
       if (error)
         throw error
     }
+  }
+  else {
+    const { error } = await supabase.storage
+      .from(resolvedBucketId.value)
+      .remove([asset.path])
+    if (error)
+      throw error
+  }
+}
+
+async function deleteAsset(asset: CmsAsset) {
+  setActionLoading(asset.path, 'delete', true)
+  try {
+    await performDeleteAsset(asset)
 
     pushToast(`${asset.type === 'folder' ? 'Folder' : 'File'} deleted`)
     await fetchAssets(true)
@@ -392,6 +400,53 @@ function confirmDeleteAsset() {
   deleteAsset(assetPendingDeletion.value)
   showDeleteConfirmModal.value = false
   assetPendingDeletion.value = null
+}
+
+async function handleBulkDeleteAssets() {
+  if (selectedRows.value.length === 0)
+    return
+
+  const targets = selectedRows.value.map(row => row._original)
+  bulkDeleteLoading.value = true
+
+  try {
+    for (const asset of targets)
+      await performDeleteAsset(asset)
+
+    pushToast(`Deleted ${targets.length} asset${targets.length === 1 ? '' : 's'}`)
+    showBulkDeleteConfirmModal.value = false
+    deselectAllRows()
+
+    if (selectedAsset.value && targets.some(asset => asset.path === selectedAsset.value?.path)) {
+      selectedAsset.value = null
+      showDetailsDrawer.value = false
+    }
+
+    await fetchAssets(true)
+    notifyPeers()
+  }
+  catch {
+    pushToast('Unable to delete selected assets')
+  }
+  finally {
+    bulkDeleteLoading.value = false
+  }
+}
+
+async function handleBulkDownload() {
+  downloadLoading.value = true
+
+  const paths = selectedRows.value
+    .map(row => row._original.publicUrl)
+    .filter(url => !!url) as string[]
+
+  await zipAndDownloadAssets(paths, `hivecom-assets-${Date.now()}`)
+
+  pushToast('Download complete', {
+    description: `Zip file containing ${paths.length} asset${paths.length === 1 ? '' : 's'} has been downloaded.`,
+  })
+
+  downloadLoading.value = false
 }
 
 function canRenameAsset(asset: CmsAsset): boolean {
@@ -727,8 +782,9 @@ onBeforeMount(fetchAssets)
         <TableContainer v-if="viewMode === 'table'">
           <Table.Root v-if="tableRows.length" separate-cells>
             <template #header>
+              <th class="vui-table-interactive-cell" />
               <Table.Head
-                v-for="header in headers.filter((header: { label: string }) => header.label !== '_original')"
+                v-for="header in headers.filter((header: { label: string }) => header.label !== '_original' && header.label !== 'id')"
                 :key="header.label"
                 :sort="!flatView"
                 :header="header"
@@ -745,29 +801,34 @@ onBeforeMount(fetchAssets)
                 v-for="row in tableRowsFolderFirst"
                 :key="row._original.path || row._original.name"
                 class="asset-manager__row"
-                @click="handleRowClick(row._original)"
               >
-                <Table.Cell>
-                  <Flex gap="xs" y-center>
+                <Table.SelectRow v-if="row._original.type === 'file'" :row="row" />
+                <td v-else class="vui-table-interactive-cell" />
+                <Table.Cell @click="handleRowClick(row._original)">
+                  <Flex gap="xs" y-center class="h-100">
                     <Icon :name="row._original.type === 'folder' ? 'ph:folder-simple' : 'ph:file'" />
-                    <Tooltip v-if="flatView" disabled>
-                      <span class="text-s">{{ row._original.path }}</span>
+                    <Tooltip v-if="flatView" :disabled="row._original.path.length <= 40">
+                      <span class="text-s">{{ truncate(row._original.path, 40) }}</span>
                       <template #tooltip>
-                        <p>{{ row._original.path }}</p>
+                        <p style="max-width: 512px" class="text-s">
+                          {{ row._original.path }}
+                        </p>
                       </template>
                     </Tooltip>
                     <span v-else class="text-s">{{ row._original.name }}</span>
                   </Flex>
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="handleRowClick(row._original)">
                   <Badge :variant="getAssetBadgeVariant(row._original)">
                     {{ getAssetTypeLabel(row._original) }}
                   </Badge>
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="handleRowClick(row._original)">
                   {{ row._original.type === 'folder' ? '-' : formatBytes(row._original.size) }}
                 </Table.Cell>
-                <Table.Cell>{{ row._original.updated_at ? fullDateTime(row._original.updated_at) : '-' }}</Table.Cell>
+                <Table.Cell @click="handleRowClick(row._original)">
+                  {{ row._original.updated_at ? fullDateTime(row._original.updated_at) : '-' }}
+                </Table.Cell>
                 <Table.Cell @click.stop>
                   <Flex gap="xxs">
                     <CopyClipboard
@@ -848,6 +909,41 @@ onBeforeMount(fetchAssets)
         </Flex>
       </Flex>
 
+      <SelectedRowsActions
+        v-if="viewMode === 'table'"
+        :selected-count="selectedRows.length"
+        @clear="deselectAllRows()"
+      >
+        <DropdownItem
+          :disabled="downloadLoading"
+          @click="handleBulkDownload"
+        >
+          <template #icon>
+            <Icon name="ph:download-simple" class="text-color-blue" />
+          </template>
+          Download
+          <template #iconEnd>
+            <Spinner v-if="downloadLoading" size="s" />
+          </template>
+          <template #hint>
+            {{ selectedRows.length }}
+          </template>
+        </DropdownItem>
+        <DropdownItem
+          v-if="canDelete"
+          :disabled="bulkDeleteLoading"
+          @click="showBulkDeleteConfirmModal = true"
+        >
+          <template #icon>
+            <Icon name="ph:trash" class="text-color-red" />
+          </template>
+          Delete
+          <template #hint>
+            {{ selectedRows.length }}
+          </template>
+        </DropdownItem>
+      </SelectedRowsActions>
+
       <Flex v-if="shouldShowPagination" x-center expand>
         <Pagination :pagination="paginationState" @change="setPage" />
       </Flex>
@@ -872,6 +968,17 @@ onBeforeMount(fetchAssets)
       :confirm="confirmDeleteAsset"
       :title="assetPendingDeletion?.type === 'folder' ? 'Delete Folder' : 'Delete File'"
       :description="assetPendingDeletion ? `Are you sure you want to delete '${assetPendingDeletion.name}'? This action cannot be undone.` : ''"
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      :destructive="true"
+    />
+
+    <ConfirmModal
+      v-model:open="showBulkDeleteConfirmModal"
+      :confirm="handleBulkDeleteAssets"
+      :confirm-loading="bulkDeleteLoading"
+      :title="`Delete ${selectedRows.length} assets`"
+      :description="`Are you sure you want to delete ${selectedRows.length} selected assets? This action cannot be undone.`"
       confirm-text="Delete"
       cancel-text="Cancel"
       :destructive="true"
