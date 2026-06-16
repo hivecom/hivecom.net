@@ -434,13 +434,13 @@ async function handleBulkDeleteAssets() {
   }
 }
 
-async function handleBulkDownload() {
-  // TODO: if we want to enabled this, will require JSzip
-  // for (const { _original } of selectedRows.value) {
-  //   downloadAsset(_original.publicUrl, _original.name)
-  //   await new Promise(resolve => setTimeout(resolve, 350))
-  // }
-}
+// TODO: if we want to enabled this, will require JSzip
+// async function handleBulkDownload() {
+// for (const { _original } of selectedRows.value) {
+//   downloadAsset(_original.publicUrl, _original.name)
+//   await new Promise(resolve => setTimeout(resolve, 350))
+// }
+// }
 
 function canRenameAsset(asset: CmsAsset): boolean {
   return canDelete.value && asset.type === 'file'
