@@ -482,7 +482,13 @@ function openDiscussionById(discussionId: string): boolean {
   return true
 }
 
-function handleDiscussionUpdated(_updated: Tables<'discussions'>) {
+function handleDiscussionUpdated(updated: Tables<'discussions'>) {
+  // Update the selected discussion so detail/action sheets reflect the change immediately
+  if (selectedDiscussion.value?.id === updated.id)
+    selectedDiscussion.value = { ...selectedDiscussion.value, ...updated }
+  if (editingDiscussion.value?.id === updated.id)
+    editingDiscussion.value = { ...editingDiscussion.value, ...updated }
+
   // Re-fetch the current page so server state is the source of truth
   void fetchDiscussions()
 }

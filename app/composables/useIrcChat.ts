@@ -762,26 +762,38 @@ function addToBuffer(
     // suppressed against the server echo (which has its own msgid).
     if (messageExists(buf.messages, newMsg))
       return
-    // Most lines arrive newest-last, so the common case is a plain append. But
-    // some events are delivered live with an OLD server-time - notably Ergo's
-    // event-playback, which replays past JOIN/PART/QUIT lines outside any
-    // CHATHISTORY batch right after we join. Appending those at the bottom is
-    // wrong: they belong at their real position in the timeline. Insert by ts
-    // instead, and flag late join/part lines as backlog so contiguous runs
-    // collapse into a single summary (and don't masquerade as live activity).
-    const last = buf.messages[buf.messages.length - 1]
-    if (last != null && ts.getTime() < last.ts.getTime()) {
+    // The cache is the sorted superset the live window slides over, so persist
+    // unconditionally. Whether the line also enters the live buffer depends on
+    // where its server-time falls relative to the currently-loaded window -
+    // splicing a line outside that range corrupts ordering and drops it at the
+    // wrong visual position (the bug behind event-playback presence spam landing
+    // mid-history). Out-of-window lines surface later via cache-backed paging.
+    scheduleMsgWrite(name, newMsg)
+
+    const tMs = ts.getTime()
+    const newest = buf.messages[buf.messages.length - 1]
+    const oldest = buf.messages[0]
+    if (buf.tailTrimmed) {
+      // Window is scrolled away from the live tip: don't disturb it. The line is
+      // cached and appears via fetchNewerFromCache when the user scrolls down.
+    }
+    else if (newest == null || tMs >= newest.ts.getTime()) {
+      // New tip - the common live case.
+      buf.messages.push(newMsg)
+    }
+    else if (oldest != null && tMs > oldest.ts.getTime()) {
+      // Out-of-order delivery (event-playback replays an old-stamped JOIN/PART
+      // live) landing inside the loaded window: insert at its server-time
+      // position so order is preserved. Flag presence runs as backlog so they
+      // collapse into a summary instead of masquerading as live activity.
       if (newMsg.type === 'join' || newMsg.type === 'part')
         newMsg.backlog = true
       let idx = buf.messages.length
-      while (idx > 0 && buf.messages[idx - 1]!.ts.getTime() > ts.getTime())
+      while (idx > 0 && buf.messages[idx - 1]!.ts.getTime() > tMs)
         idx--
       buf.messages.splice(idx, 0, newMsg)
     }
-    else {
-      buf.messages.push(newMsg)
-    }
-    scheduleMsgWrite(name, newMsg)
+    // else: older than everything loaded - belongs above the window; cache only.
   }
 
   // A message just landed in buf.messages - apply any reactions that arrived
@@ -3875,7 +3887,9 @@ async function seekToPresent(target: string) {
   buf.historyAnchorTs = undefined
   buf.autoFetchRetries = undefined
   buf.loadingOlderHistory = undefined
-  requestHistory(target)
+  // Catch up with a delta after the newest cached line, not a full LATEST * -
+  // a bare * re-replays the server's whole event-playback window every time.
+  requestHistory(target, buf.messages[buf.messages.length - 1]?.ts.getTime())
 }
 
 /**
@@ -3911,9 +3925,12 @@ async function fetchNewerFromCache(target: string) {
       }
     }
     if (newer.length < CACHE_PAGE_SIZE) {
-      // Reached the live edge of the cache - catch up with the server.
+      // Reached the live edge of the cache - catch up with the server. Request a
+      // delta after our newest known line, NOT a full LATEST *: a bare * re-runs
+      // the server's entire event-playback (a whole day of JOIN/PART spam) and
+      // re-injects it on every scroll-down.
       buf.tailTrimmed = false
-      requestHistory(target)
+      requestHistory(target, buf.messages[buf.messages.length - 1]?.ts.getTime())
     }
   }
   finally {

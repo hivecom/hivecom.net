@@ -30,7 +30,7 @@ const { open } = useChatNavSheet()
 const identityOpen = ref(false)
 const settingsOpen = ref(false)
 
-const { isConnected, connState, connect, disconnect, hasUnread, hasMention, activeBuffer } = useIrcChat()
+const { isConnected, connState, connect, disconnect, hasUnread, hasMention, activeBuffer, account } = useIrcChat()
 const { settings } = useDataUserSettings()
 const userId = useUserId()
 
@@ -117,7 +117,7 @@ watch(() => activeBuffer.value?.name, () => {
               </template>
               Settings
             </Button>
-            <Button v-if="userId" expand variant="gray" @click="identityOpen = true">
+            <Button v-if="userId && account" expand variant="gray" @click="identityOpen = true">
               <template #start>
                 <Icon name="ph:identification-card" />
               </template>

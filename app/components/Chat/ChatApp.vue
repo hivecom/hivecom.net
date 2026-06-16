@@ -14,8 +14,11 @@ import ChatChannelHeader from './ChatHeader.vue'
 import ChatComposer from './Composer.vue'
 import ChatConnectForm from './ConnectForm.vue'
 import ChatConnecting from './Connecting.vue'
+import ChatIdentityModal from './IdentityModal.vue'
 import ChatMessageLog from './MessageLog.vue'
 import ChatNoChannels from './NoChannels.vue'
+import ChatPushPromptBanner from './PushPromptBanner.vue'
+import ChatSetupBanner from './SetupBanner.vue'
 import ChatSidebarSplit from './SidebarSplit.vue'
 import ChatToolbar from './Toolbar.vue'
 import ChatUserList from './UserList.vue'
@@ -47,6 +50,8 @@ const { settings } = useDataUserSettings()
 const isMobile = useBreakpoint('<s')
 
 const { connState, isConnected, ensureNick, clearAuthedIdentity, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt, channelSettingsOpen, channelJoinBlocked, serverLogPinned } = useIrcChat()
+
+const identityOpen = ref(false)
 
 // Auto-reconnect when the browser comes back from sleep or phone background.
 // Track whether a connection was ever established so we only auto-reconnect
@@ -182,6 +187,8 @@ watch(user, (u, prev) => {
             <ChatChannelHeader />
             <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
             <ChatMessageLog v-else :compact="props.compact" />
+            <ChatSetupBanner @open-identity="identityOpen = true" />
+            <ChatPushPromptBanner />
             <ChatComposer v-if="hasChannels || serverLogPinned" />
           </Flex>
         </Resizable>
@@ -191,6 +198,8 @@ watch(user, (u, prev) => {
           <ChatChannelHeader />
           <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
           <ChatMessageLog v-else :compact="props.compact" />
+          <ChatSetupBanner @open-identity="identityOpen = true" />
+          <ChatPushPromptBanner />
           <ChatComposer v-if="hasChannels || serverLogPinned" />
         </Flex>
 
@@ -201,6 +210,8 @@ watch(user, (u, prev) => {
           <ChatChannelHeader compact />
           <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
           <ChatMessageLog v-else :compact="props.compact" />
+          <ChatSetupBanner @open-identity="identityOpen = true" />
+          <ChatPushPromptBanner />
           <ChatComposer v-if="hasChannels || serverLogPinned" compact />
         </Flex>
 
@@ -209,6 +220,8 @@ watch(user, (u, prev) => {
           <ChatChannelList horizontal />
           <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
           <ChatMessageLog v-else :compact="props.compact" />
+          <ChatSetupBanner @open-identity="identityOpen = true" />
+          <ChatPushPromptBanner />
           <ChatComposer v-if="hasChannels || serverLogPinned" compact />
         </Flex>
       </Transition>
@@ -217,6 +230,7 @@ watch(user, (u, prev) => {
     <ChatChannelPasswordModal :channel="channelKeyPrompt" @close="channelKeyPrompt = null" />
     <ChatChannelSettingsModal :channel="channelSettingsOpen" @close="channelSettingsOpen = null" />
     <ChatChannelJoinBlockedModal :blocked="channelJoinBlocked" @close="channelJoinBlocked = null" />
+    <ChatIdentityModal :open="identityOpen" @close="identityOpen = false" />
   </section>
 </template>
 
