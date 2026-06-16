@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
-
 import type { StorageAsset as CmsAsset, FlatSortColumn, StorageBucketId } from '@/lib/storageAssets'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, CopyClipboard, defineTable, DropdownItem, Flex, Grid, Input, paginate, Pagination, pushToast, Skeleton, Table, Tooltip } from '@dolanske/vui'
-
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, CopyClipboard, defineTable, DropdownItem, Flex, Grid, Input, paginate, Pagination, pushToast, Skeleton, Spinner, Table, Tooltip } from '@dolanske/vui'
 import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
@@ -15,7 +13,7 @@ import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { CMS_BUCKET_ID, formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, listStorageObjectsFlat, normalizePrefix } from '@/lib/storageAssets'
+import { CMS_BUCKET_ID, formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, listStorageObjectsFlat, normalizePrefix, zipAndDownloadAssets } from '@/lib/storageAssets'
 import { fullDateTime } from '@/lib/utils/date'
 import { truncate } from '@/lib/utils/formatting'
 
@@ -51,6 +49,7 @@ const typeFilter = ref<TypeFilterValue>('all')
 const sortOption = ref<SortOptionValue>('name-asc')
 const viewMode = defineModel<'table' | 'grid'>('viewMode', { default: 'table' })
 const flatView = defineModel<boolean>('flatView', { default: false })
+const downloadLoading = ref(false)
 
 const isBelowMedium = useBreakpoint('<m')
 type AssetActionKey = 'delete' | 'rename'
@@ -434,13 +433,17 @@ async function handleBulkDeleteAssets() {
   }
 }
 
-// TODO: if we want to enabled this, will require JSzip
-// async function handleBulkDownload() {
-// for (const { _original } of selectedRows.value) {
-//   downloadAsset(_original.publicUrl, _original.name)
-//   await new Promise(resolve => setTimeout(resolve, 350))
-// }
-// }
+async function handleBulkDownload() {
+  downloadLoading.value = true
+
+  const paths = selectedRows.value
+    .map(row => row._original.publicUrl)
+    .filter(url => !!url) as string[]
+
+  await zipAndDownloadAssets(paths, `hivecom-assets-${Date.now()}`)
+
+  downloadLoading.value = false
+}
 
 function canRenameAsset(asset: CmsAsset): boolean {
   return canDelete.value && asset.type === 'file'
@@ -795,7 +798,8 @@ onBeforeMount(fetchAssets)
                 :key="row._original.path || row._original.name"
                 class="asset-manager__row"
               >
-                <Table.SelectRow :row="row" />
+                <Table.SelectRow v-if="row._original.type === 'file'" :row="row" />
+                <td v-else class="vui-table-interactive-cell" />
                 <Table.Cell @click="handleRowClick(row._original)">
                   <Flex gap="xs" y-center class="h-100">
                     <Icon :name="row._original.type === 'folder' ? 'ph:folder-simple' : 'ph:file'" />
@@ -906,21 +910,23 @@ onBeforeMount(fetchAssets)
         :selected-count="selectedRows.length"
         @clear="deselectAllRows()"
       >
-        <!-- <DropdownItem
-          v-if="canDelete && selectedRows.length > 0"
-          :disabled="bulkDeleteLoading"
+        <DropdownItem
+          :disabled="downloadLoading"
           @click="handleBulkDownload"
         >
           <template #icon>
             <Icon name="ph:download-simple" class="text-color-blue" />
           </template>
           Download
+          <template #iconEnd>
+            <Spinner v-if="downloadLoading" size="s" />
+          </template>
           <template #hint>
             {{ selectedRows.length }}
           </template>
-        </DropdownItem> -->
+        </DropdownItem>
         <DropdownItem
-          v-if="canDelete && selectedRows.length > 0"
+          v-if="canDelete"
           :disabled="bulkDeleteLoading"
           @click="showBulkDeleteConfirmModal = true"
         >
