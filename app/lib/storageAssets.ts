@@ -310,12 +310,7 @@ export function downloadAsset(publicUrl: string | null | undefined, fileName: st
   const url = new URL(publicUrl)
   url.searchParams.set('download', fileName)
 
-  const anchor = document.createElement('a')
-  anchor.href = url.toString()
-  anchor.download = fileName
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
+  triggerDownload(url.toString(), fileName)
 }
 
 export function getBucketLabel(bucketId: StorageBucketId): string {
@@ -429,8 +424,6 @@ function parseNumericField(value: unknown): number | null {
 /**
  * Given an array of public asset URLs, creates a ZIP archive and triggers a download in the browser.
  *
- * @param publicPaths
- * @param archiveName
  */
 export async function zipAndDownloadAssets(publicPaths: string[], archiveName: string) {
   const zip = new JSZip()
@@ -447,10 +440,17 @@ export async function zipAndDownloadAssets(publicPaths: string[], archiveName: s
   const mainBlob = await zip.generateAsync({ type: 'blob' })
   const archiveHref = URL.createObjectURL(mainBlob)
 
+  triggerDownload(archiveHref, archiveName.endsWith('.zip') ? archiveName : `${archiveName}.zip`)
+}
+
+function triggerDownload(url: string, fileName: string) {
+  if (!import.meta.client)
+    return
+
   const anchor = document.createElement('a')
   anchor.classList.add('visually-hidden')
-  anchor.href = archiveHref
-  anchor.download = archiveName.endsWith('.zip') ? archiveName : `${archiveName}.zip`
+  anchor.href = url
+  anchor.download = fileName
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()
