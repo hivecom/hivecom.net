@@ -535,7 +535,7 @@ onBeforeMount(async () => {
 
             <template #body>
               <tr v-for="event in items" :key="event.id" class="clickable-row">
-                <Table.SelectRow :row="event as any" />
+                <Table.SelectRow :row="event" />
                 <Table.Cell @click="viewEventDetails(event)">
                   {{ event.title }}
                 </Table.Cell>
@@ -614,7 +614,7 @@ onBeforeMount(async () => {
       />
 
       <SelectedRowsActions
-        :selected-count="selectedRows.size"
+        :selected-count="selectedRows.length"
         @clear="deselectAllRows()"
       >
         <DropdownItem @click="showBulkDeleteConfirm = true">
@@ -627,8 +627,8 @@ onBeforeMount(async () => {
 
       <ConfirmModal
         :open="showBulkDeleteConfirm"
-        :title="`Delete ${selectedRows.size} items`"
-        :description="`Are you sure you want to delete ${selectedRows.size} events? This action cannot be undone.`"
+        :title="`Delete ${selectedRows.length} items`"
+        :description="`Are you sure you want to delete ${selectedRows.length} events? This action cannot be undone.`"
         confirm-text="Delete"
         cancel-text="Cancel"
         :destructive="true"

@@ -39,6 +39,7 @@ interface ContainerWithServer {
   }[] | null
 }
 interface TransformedContainer {
+  'id': string
   'Name': string
   'Server': string
   'Status': 'running' | 'healthy' | 'unhealthy' | 'stopped' | 'unknown' | 'stale' | 'control_offline' | 'restarting'
@@ -209,6 +210,7 @@ const filteredData = computed<TransformedContainer[]>(() => {
 
   // Transform the data into explicit key-value pairs
   return filtered.map((container: ContainerWithServer) => ({
+    'id': container.name,
     'Name': container.name,
     'Server': container.server ? container.server.address : 'Unknown',
     'Status': container.server?.docker_control
@@ -579,25 +581,22 @@ function canRunBulkAction(
   }
 }
 
-const selectedRowsArray = computed<TransformedContainer[]>(() =>
-  Array.from(selectedRows.value).map(row => row as unknown as TransformedContainer),
-)
-
 const selectedStartCount = computed(() =>
-  selectedRowsArray.value.filter(row => canRunBulkAction(row.Status, 'start')).length,
+  selectedRows.value.filter(row => canRunBulkAction((row as TransformedContainer).Status, 'start')).length,
 )
 const selectedStopCount = computed(() =>
-  selectedRowsArray.value.filter(row => canRunBulkAction(row.Status, 'stop')).length,
+  selectedRows.value.filter(row => canRunBulkAction((row as TransformedContainer).Status, 'stop')).length,
 )
 const selectedRestartCount = computed(() =>
-  selectedRowsArray.value.filter(row => canRunBulkAction(row.Status, 'restart')).length,
+  selectedRows.value.filter(row => canRunBulkAction((row as TransformedContainer).Status, 'restart')).length,
 )
 const selectedPruneCount = computed(() =>
-  selectedRowsArray.value.filter(row => canRunBulkAction(row.Status, 'prune')).length,
+  selectedRows.value.filter(row => canRunBulkAction((row as TransformedContainer).Status, 'prune')).length,
 )
 
 async function handleBulkAction(action: 'start' | 'stop' | 'restart' | 'prune') {
-  const filteredContainers = selectedRowsArray.value
+  const filteredContainers = selectedRows.value
+    .map(row => row as TransformedContainer)
     .filter(row => canRunBulkAction(row.Status, action))
     .map(row => row._original)
 
@@ -613,7 +612,7 @@ async function handleBulkAction(action: 'start' | 'stop' | 'restart' | 'prune') 
   }
 
   // Only deselect rows if all selected rows were affected by the action
-  if (filteredContainers.length === selectedRowsArray.value.length) {
+  if (filteredContainers.length === selectedRows.value.length) {
     deselectAllRows()
   }
 }
@@ -781,7 +780,7 @@ onBeforeMount(fetchContainers)
     </Flex>
 
     <SelectedRowsActions
-      :selected-count="selectedRows.size"
+      :selected-count="selectedRows.length"
       @clear="deselectAllRows()"
     >
       <DropdownItem v-if="selectedStartCount > 0" @click="handleBulkAction('start')">

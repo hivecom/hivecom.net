@@ -289,7 +289,7 @@ onBeforeMount(fetchEntries)
       </Alert>
 
       <SelectedRowsActions
-        :selected-count="selectedRows.size"
+        :selected-count="selectedRows.length"
         @clear="deselectAllRows()"
       >
         <DropdownItem @click="showBulkDeleteConfirm = true">
@@ -302,8 +302,8 @@ onBeforeMount(fetchEntries)
 
       <ConfirmModal
         :open="showBulkDeleteConfirm"
-        :title="`Delete ${selectedRows.size} entries`"
-        :description="`Are you sure you want to delete ${selectedRows.size} KV entries? This action cannot be undone.`"
+        :title="`Delete ${selectedRows.length} entries`"
+        :description="`Are you sure you want to delete ${selectedRows.length} KV entries? This action cannot be undone.`"
         confirm-text="Delete"
         cancel-text="Cancel"
         :destructive="true"

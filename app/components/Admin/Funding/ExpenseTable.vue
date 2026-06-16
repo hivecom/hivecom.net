@@ -23,6 +23,7 @@ type Expense = Tables<'funding_expenses'>
 type ExpenseStatus = 'Planned' | 'Active' | 'Ended'
 
 interface TransformedExpense extends Record<string, unknown> {
+  id: number
   Name: string
   Amount: string
   Status: ExpenseStatus
@@ -72,6 +73,7 @@ const {
     return (data as Expense[]) || []
   },
   transform: expense => ({
+    id: expense.id,
     Name: expense.name || 'Unnamed Expense',
     Amount: formatCurrency(expense.amount_cents),
     Status: getExpenseStatus(expense.started_at, expense.ended_at),
@@ -241,7 +243,7 @@ async function handleBulkDelete() {
 
         <template #body>
           <tr v-for="expense in rows" :key="expense._original.id" class="clickable-row">
-            <Table.SelectRow :row="expense as any" />
+            <Table.SelectRow :row="expense" />
             <Table.Cell @click="viewExpenseDetails(expense._original)">
               {{ expense.Name }}
             </Table.Cell>
@@ -299,7 +301,7 @@ async function handleBulkDelete() {
     />
 
     <SelectedRowsActions
-      :selected-count="selectedRows.size"
+      :selected-count="selectedRows.length"
       @clear="deselectAllRows()"
     >
       <DropdownItem @click="showBulkDeleteConfirm = true">
@@ -312,8 +314,8 @@ async function handleBulkDelete() {
 
     <ConfirmModal
       :open="showBulkDeleteConfirm"
-      :title="`Delete ${selectedRows.size} items`"
-      :description="`Are you sure you want to delete ${selectedRows.size} expenses? This action cannot be undone.`"
+      :title="`Delete ${selectedRows.length} items`"
+      :description="`Are you sure you want to delete ${selectedRows.length} expenses? This action cannot be undone.`"
       confirm-text="Delete"
       cancel-text="Cancel"
       :destructive="true"

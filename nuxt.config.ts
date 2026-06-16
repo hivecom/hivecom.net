@@ -294,6 +294,7 @@ export default defineNuxtConfig({
 
         // events
         'ph:arrows-vertical',
+        'ph:download-simple',
 
         // Notifications/NotificationTabSubscriptions.vue subscription entity icons
         'ph:desktop-tower',

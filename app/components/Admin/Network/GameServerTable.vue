@@ -534,7 +534,7 @@ async function handleBulkDelete() {
   />
 
   <SelectedRowsActions
-    :selected-count="selectedRows.size"
+    :selected-count="selectedRows.length"
     @clear="deselectAllRows()"
   >
     <DropdownItem @click="showBulkDeleteConfirm = true">
@@ -548,8 +548,8 @@ async function handleBulkDelete() {
   <!-- Bulk Delete Confirmation Modal -->
   <ConfirmModal
     :open="showBulkDeleteConfirm"
-    :title="`Delete ${selectedRows.size} items`"
-    :description="`Are you sure you want to delete ${selectedRows.size} game servers? This action cannot be undone.`"
+    :title="`Delete ${selectedRows.length} items`"
+    :description="`Are you sure you want to delete ${selectedRows.length} game servers? This action cannot be undone.`"
     confirm-text="Delete"
     cancel-text="Cancel"
     :destructive="true"

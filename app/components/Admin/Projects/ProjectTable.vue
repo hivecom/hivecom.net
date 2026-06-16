@@ -358,7 +358,7 @@ function clearFilters() {
   />
 
   <SelectedRowsActions
-    :selected-count="selectedRows.size"
+    :selected-count="selectedRows.length"
     @clear="deselectAllRows()"
   >
     <DropdownItem @click="showBulkDeleteConfirm = true">
@@ -371,8 +371,8 @@ function clearFilters() {
 
   <ConfirmModal
     :open="showBulkDeleteConfirm"
-    :title="`Delete ${selectedRows.size} items`"
-    :description="`Are you sure you want to delete ${selectedRows.size} projects? This action cannot be undone.`"
+    :title="`Delete ${selectedRows.length} items`"
+    :description="`Are you sure you want to delete ${selectedRows.length} projects? This action cannot be undone.`"
     confirm-text="Delete"
     cancel-text="Cancel"
     :destructive="true"
