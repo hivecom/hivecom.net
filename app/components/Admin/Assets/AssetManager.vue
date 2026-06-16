@@ -442,6 +442,10 @@ async function handleBulkDownload() {
 
   await zipAndDownloadAssets(paths, `hivecom-assets-${Date.now()}`)
 
+  pushToast('Download complete', {
+    description: `Zip file containing ${paths.length} asset${paths.length === 1 ? '' : 's'} has been downloaded.`,
+  })
+
   downloadLoading.value = false
 }
 
