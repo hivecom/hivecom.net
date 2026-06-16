@@ -334,10 +334,11 @@ function clearFilters() {
 // Bulk deletion
 const showBulkDeleteConfirm = ref(false)
 
-function handleBulkDelete() {
+async function handleBulkDelete() {
   showBulkDeleteConfirm.value = false
-  const ids = [...selectedRows.value].map(row => (row._original as unknown as QueryGameserver).id)
-  handleGameserversDelete(ids)
+  const ids = [...selectedRows.value].map(row => row._original.id)
+  await handleGameserversDelete(ids)
+  deselectAllRows()
 }
 </script>
 

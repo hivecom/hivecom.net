@@ -171,7 +171,6 @@ async function handleProjectsDelete(projectIds: number[]) {
       throw error
 
     showProjectForm.value = false
-    deselectAllRows()
     invalidateProjectsCache()
     await fetchProjects()
   }
@@ -182,10 +181,11 @@ async function handleProjectsDelete(projectIds: number[]) {
 
 const showBulkDeleteConfirm = ref(false)
 
-function handleBulkDelete() {
+async function handleBulkDelete() {
   showBulkDeleteConfirm.value = false
-  const ids = [...selectedRows.value].map(row => (row._original as QueryProject).id)
-  handleProjectsDelete(ids)
+  const ids = [...selectedRows.value].map(row => row._original.id)
+  await handleProjectsDelete(ids)
+  deselectAllRows()
 }
 
 function clearFilters() {

@@ -278,10 +278,10 @@ async function handleGamesDelete(gameIds: number[]) {
   }
 }
 
-function handleBulkDelete() {
+async function handleBulkDelete() {
   showBulkDeleteConfirm.value = false
-  const ids = [...selectedRows.value].map(row => (row as unknown as RpcGame).id)
-  void handleGamesDelete(ids)
+  const ids = [...selectedRows.value].map(row => row.id)
+  await handleGamesDelete(ids)
   deselectAllRows()
 }
 

@@ -284,13 +284,11 @@ async function handleReferendumsDelete(referendumIds: number[]) {
 
 const showBulkDeleteConfirm = ref(false)
 
-function handleBulkDelete() {
+async function handleBulkDelete() {
   showBulkDeleteConfirm.value = false
-  const ids = [...selectedRows.value]
-    .map(row => row.id)
-    .filter((id): id is number => typeof id === 'number')
-
-  void handleReferendumsDelete(ids)
+  const ids = [...selectedRows.value].map(row => row.id)
+  await handleReferendumsDelete(ids)
+  deselectAllRows()
 }
 
 function clearFilters() {

@@ -154,10 +154,11 @@ async function handleDelete(ids: number[]) {
 // Bulk deletion
 const showBulkDeleteConfirm = ref(false)
 
-function handleBulkDelete() {
+async function handleBulkDelete() {
   showBulkDeleteConfirm.value = false
-  const ids = [...selectedRows.value].map(row => (row._original as unknown as Motd).id)
-  handleDelete(ids)
+  const ids = [...selectedRows.value].map(row => row._original.id)
+  await handleDelete(ids)
+  deselectAllRows()
 }
 </script>
 
