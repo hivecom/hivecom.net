@@ -2,14 +2,16 @@
 import type { Ref } from 'vue'
 import type { MetricsHistoryEntry } from '@/composables/useDataMetrics'
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Button, defineTable, Flex, paginate, Pagination, Table } from '@dolanske/vui'
+import { Alert, Button, defineTable, DropdownItem, Flex, paginate, Pagination, Table } from '@dolanske/vui'
 import { computed, inject, onBeforeMount, onMounted, ref, watch } from 'vue'
 
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import SteamLink from '@/components/Shared/SteamLink.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -58,8 +60,11 @@ const errorMessage = ref('')
 const games = ref<RpcGame[]>([])
 const search = ref('')
 
-// Required to provide VUI's TableSelectionProvideSymbol context for Table.Root
-defineTable(games, { pagination: { enabled: false }, select: false })
+// Provides VUI selection context and bulk selection state for Table.Root
+const { selectedRows, deselectAllRows } = defineTable(games, {
+  pagination: { enabled: false },
+  select: true,
+})
 
 // ─── Pagination & sort ────────────────────────────────────────────────────────
 
@@ -79,6 +84,7 @@ const selectedGame = ref<Tables<'games'> | null>(null)
 const showGameDetails = ref(false)
 const showGameForm = ref(false)
 const isEditMode = ref(false)
+const showBulkDeleteConfirm = ref(false)
 
 const focusedGameId = computed(() => {
   const raw = getRouteQueryString(route.query.game)
@@ -251,12 +257,15 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
   }
 }
 
-async function handleGameDelete(gameId: number) {
+async function handleGamesDelete(gameIds: number[]) {
+  if (gameIds.length === 0)
+    return
+
   try {
     const { error } = await supabase
       .from('games')
       .delete()
-      .eq('id', gameId)
+      .in('id', gameIds)
     if (error)
       throw error
 
@@ -267,6 +276,13 @@ async function handleGameDelete(gameId: number) {
   catch (err: unknown) {
     errorMessage.value = err instanceof Error ? err.message : 'An error occurred while deleting the game'
   }
+}
+
+function handleBulkDelete() {
+  showBulkDeleteConfirm.value = false
+  const ids = [...selectedRows.value].map(row => (row as unknown as RpcGame).id)
+  void handleGamesDelete(ids)
+  deselectAllRows()
 }
 
 // ─── Activity (client-side) ───────────────────────────────────────────────────
@@ -438,6 +454,7 @@ onBeforeMount(async () => {
         <TableContainer>
           <Table.Root v-if="games.length > 0" separate-cells class="mb-l">
             <template #header>
+              <th class="vui-table-interactive-cell" />
               <Table.Head class="sortable-head" @click="handleSort('Name')">
                 <Flex gap="xs" y-center>
                   Name
@@ -466,22 +483,22 @@ onBeforeMount(async () => {
                 v-for="game in games"
                 :key="game.id"
                 class="clickable-row"
-                @click="openGameDetails(game)"
               >
-                <Table.Cell>
+                <Table.SelectRow :row="game as any" />
+                <Table.Cell @click="openGameDetails(game)">
                   <Flex gap="xs" y-center>
                     <GameIcon :game="game as unknown as Tables<'games'>" size="xs" />
                     <span class="text-s">{{ game.name }}</span>
                   </Flex>
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="openGameDetails(game)">
                   <code v-if="game.shorthand">{{ game.shorthand }}</code>
                   <span v-else class="text-color-lighter">-</span>
                 </Table.Cell>
                 <Table.Cell @click.stop>
                   <SteamLink :steam-id="game.steam_id" size="small" />
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="openGameDetails(game)">
                   <span v-if="game.steam_id === null" class="text-color-lighter text-s">Not a Steam game</span>
                   <Flex v-else y-center gap="s" style="max-width: 260px">
                     <OnlineBadge
@@ -506,7 +523,7 @@ onBeforeMount(async () => {
                     </ChartActivityHistogram>
                   </Flex>
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="openGameDetails(game)">
                   <TimestampDate :date="game.created_at" relative size="s" />
                 </Table.Cell>
                 <Table.Cell v-if="canManageResource" @click.stop>
@@ -515,7 +532,7 @@ onBeforeMount(async () => {
                     :item="game as unknown as Record<string, unknown>"
                     button-size="s"
                     @edit="(item) => openEditGameForm(item as unknown as RpcGame)"
-                    @delete="(item) => handleGameDelete((item as unknown as RpcGame).id)"
+                    @delete="(item) => handleGamesDelete([(item as unknown as RpcGame).id])"
                   />
                 </Table.Cell>
               </tr>
@@ -538,7 +555,7 @@ onBeforeMount(async () => {
     v-model:is-open="showGameDetails"
     :game="selectedGame"
     @edit="(item) => handleEditFromDetails(item)"
-    @delete="(item) => handleGameDelete(item.id)"
+    @delete="(item) => handleGamesDelete([item.id])"
   />
 
   <GameForm
@@ -546,7 +563,30 @@ onBeforeMount(async () => {
     :game="selectedGame"
     :is-edit-mode="isEditMode"
     @save="handleGameSave"
-    @delete="handleGameDelete"
+    @delete="(id: number) => handleGamesDelete([id])"
+  />
+
+  <SelectedRowsActions
+    :selected-count="selectedRows.size"
+    @clear="deselectAllRows()"
+  >
+    <DropdownItem @click="showBulkDeleteConfirm = true">
+      <template #icon>
+        <Icon name="ph:trash" class="text-color-red" />
+      </template>
+      Delete
+    </DropdownItem>
+  </SelectedRowsActions>
+
+  <ConfirmModal
+    :open="showBulkDeleteConfirm"
+    :title="`Delete ${selectedRows.size} items`"
+    :description="`Are you sure you want to delete ${selectedRows.size} games? This action cannot be undone.`"
+    confirm-text="Delete"
+    cancel-text="Cancel"
+    :destructive="true"
+    @cancel="showBulkDeleteConfirm = false"
+    @confirm="handleBulkDelete"
   />
 </template>
 
