@@ -421,6 +421,7 @@ export default defineNuxtConfig({
         'three/examples/jsm/postprocessing/ShaderPass.js',
         'three/examples/jsm/postprocessing/UnrealBloomPass.js',
         'ansi-to-html', // CJS
+        'jszip', // CJS
         'remark-math',
         'rehype-katex',
         'vue-advanced-cropper',
