@@ -8,7 +8,7 @@ import { usePwa } from '@/composables/usePwa'
 const DISMISSED_KEY = 'hivecom.chat.push-prompt-dismissed'
 
 const { account, accountAlwaysOn, accountInfoFetched, vapidKey } = useIrcChat()
-const { isSupported: pushSupported, isSubscribed: pushSubscribed, loading: pushLoading, subscribe: subscribePush } = useErgoPush()
+const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscriptionResolved: pushResolved, loading: pushLoading, subscribe: subscribePush } = useErgoPush()
 const { isStandalone } = usePwa()
 
 const dismissed = ref(false)
@@ -39,6 +39,10 @@ const visible = computed(() => {
   if (accountAlwaysOn.value !== true)
     return false
   if (!pushSupported.value || !vapidKey.value)
+    return false
+  // Only prompt once we've actually checked the live subscription. Before that
+  // the unknown state reads as "not subscribed" and would flash the banner.
+  if (!pushResolved.value)
     return false
   if (pushSubscribed.value || dismissed.value)
     return false

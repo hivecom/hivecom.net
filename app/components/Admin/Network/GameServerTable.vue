@@ -173,6 +173,7 @@ const filteredData = computed(() => {
     return true
   }).map(row => ({
     ...row,
+    id: row._original.id,
     Activity: getServerPlayers(row._original.id),
   }))
 })
@@ -426,7 +427,7 @@ async function handleBulkDelete() {
       <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
           <th class="vui-table-interactive-cell" />
-          <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
+          <Table.Head v-for="header in headers.filter(h => h.label !== '_original' && h.label !== 'id')" :key="header.label" sort :header />
           <Table.Head
             v-if="canManageResource"
             key="actions"

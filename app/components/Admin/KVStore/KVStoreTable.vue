@@ -46,6 +46,7 @@ const totalCount = computed(() => entries.value.length)
 const filteredCount = computed(() => filteredEntries.value.length)
 
 const displayRows = computed(() => filteredEntries.value.map((entry: KvEntry) => ({
+  id: entry.key,
   Key: entry.key,
   Type: entry.type,
   Value: renderKvValue(entry.value),
@@ -240,7 +241,7 @@ onBeforeMount(fetchEntries)
         <Table.Root :loading="loading" separate-cells>
           <template #header>
             <th class="vui-table-interactive-cell" />
-            <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+            <Table.Head v-for="header in headers.filter(header => header.label !== '_original' && header.label !== 'id')" :key="header.label" sort :header />
             <Table.Head
               v-if="canManageResource"
               key="actions"

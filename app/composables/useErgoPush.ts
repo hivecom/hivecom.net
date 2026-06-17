@@ -29,6 +29,11 @@ const ENABLED_KEY = 'hivecom.chat.webpush.enabled'
 
 const isSupported = ref(false)
 const isSubscribed = ref(false)
+// Whether we've reconciled `isSubscribed` against the real browser subscription
+// at least once. Until then the initial `false` means "unknown", not
+// "unsubscribed" - banners gate on this so they don't flash for users who
+// already have push enabled.
+const subscriptionResolved = ref(false)
 const loading = ref(false)
 // Endpoint we've already sent WEBPUSH REGISTER for on the current connection, to
 // avoid re-registering on every reactive tick. Cleared when the link drops.
@@ -105,11 +110,14 @@ export function useErgoPush() {
   // Reconcile local state with the live subscription on the chat-push worker.
   async function refresh() {
     detect()
-    if (!isSupported.value)
+    if (!isSupported.value) {
+      subscriptionResolved.value = true
       return
+    }
     const registration = await ergoRegistration()
     const subscription = await registration?.pushManager.getSubscription()
     isSubscribed.value = Boolean(subscription)
+    subscriptionResolved.value = true
   }
 
   async function subscribe(): Promise<boolean> {
@@ -177,6 +185,12 @@ export function useErgoPush() {
     _orchestratorRegistered = true
     detect()
 
+    // Optimistically seed from the persisted per-device intent so a returning
+    // subscriber reads `true` straight away (the cache), then reconcile against
+    // the live browser subscription so banners can gate on a known state.
+    isSubscribed.value = wantsPush()
+    void refresh()
+
     watch([isConnected, vapidKey, account], async ([connected, key, acct]) => {
       if (!connected) {
         registeredEndpoint.value = null
@@ -218,6 +232,7 @@ export function useErgoPush() {
   return {
     isSupported,
     isSubscribed,
+    subscriptionResolved,
     loading,
     refresh,
     subscribe,

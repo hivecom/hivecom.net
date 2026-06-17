@@ -61,7 +61,7 @@ const {
   defaultSort: { column: 'Created', direction: 'desc' },
 })
 
-const displayRows = computed(() => filteredRows.value)
+const displayRows = computed(() => filteredRows.value.map(row => ({ ...row, id: row._original.id })))
 
 const { headers, rows, pagination, setPage, setSort, selectedRows, deselectAllRows, options } = defineTable(displayRows, {
   pagination: { enabled: true, perPage: adminTablePerPage.value },
@@ -214,7 +214,7 @@ async function handleBulkDelete() {
         <Table.Root :loading="loading" separate-cells>
           <template #header>
             <th class="vui-table-interactive-cell" />
-            <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
+            <Table.Head v-for="header in headers.filter(h => h.label !== '_original' && h.label !== 'id')" :key="header.label" sort :header />
             <Table.Head
               v-if="canManageResource"
               key="actions"

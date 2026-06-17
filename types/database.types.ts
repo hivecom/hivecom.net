@@ -1603,6 +1603,51 @@ export type Database = {
           },
         ]
       }
+      profile_reservations: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string | null
+          id: number
+          modified_at: string | null
+          note: string | null
+          username: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          modified_at?: string | null
+          note?: string | null
+          username: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          modified_at?: string | null
+          note?: string | null
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_reservations_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_reservations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           agreed_content_rules: boolean
@@ -2184,6 +2229,7 @@ export type Database = {
           created_at: string
           endpoint: string
           id: string
+          last_success_at: string | null
           modified_at: string
           p256dh: string
           user_agent: string | null
@@ -2194,6 +2240,7 @@ export type Database = {
           created_at?: string
           endpoint: string
           id?: string
+          last_success_at?: string | null
           modified_at?: string
           p256dh: string
           user_agent?: string | null
@@ -2204,6 +2251,7 @@ export type Database = {
           created_at?: string
           endpoint?: string
           id?: string
+          last_success_at?: string | null
           modified_at?: string
           p256dh?: string
           user_agent?: string | null

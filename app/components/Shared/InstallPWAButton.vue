@@ -12,11 +12,14 @@ defineOptions({ inheritAttrs: false })
 const { isStandalone, canInstall, isIOS, install } = usePwa()
 
 const installing = ref(false)
-const showIosHelp = ref(false)
+const showModal = ref(false)
 
 // Hidden once installed, or when there's no install path on this device.
 const show = computed(() => !isStandalone.value && (canInstall.value || isIOS.value))
 
+// Chromium gives us a real install prompt, so fire it straight from the button.
+// iOS Safari has no programmatic install (and the Web Share sheet won't surface
+// "Add to Home Screen"), so there we open a modal and walk the user through it.
 async function handleClick() {
   if (canInstall.value) {
     installing.value = true
@@ -28,8 +31,7 @@ async function handleClick() {
     }
     return
   }
-  // iOS: no programmatic prompt, walk the user through it.
-  showIosHelp.value = true
+  showModal.value = true
 }
 </script>
 
@@ -42,7 +44,7 @@ async function handleClick() {
       Install app
     </Button>
 
-    <Modal :open="showIosHelp" size="s" centered @close="showIosHelp = false">
+    <Modal :open="showModal" size="s" centered @close="showModal = false">
       <template #header>
         <h4 style="margin: 0">
           Install Hivecom
@@ -69,7 +71,7 @@ async function handleClick() {
 
       <template #footer>
         <Flex expand x-end>
-          <Button expand variant="accent" @click="showIosHelp = false">
+          <Button expand variant="accent" @click="showModal = false">
             Got it
           </Button>
         </Flex>

@@ -333,6 +333,8 @@ const channelKeyError = ref(false)
 const channelSettingsOpen = ref<string | null>(null)
 // When non-null, a join was blocked by the server (e.g. registration required). Holds channel name + reason.
 const channelJoinBlocked = ref<{ channel: string, reason: string } | null>(null)
+// When non-null, a destructive moderation action (kick/kickban) is awaiting confirmation.
+const moderationPrompt = ref<{ action: 'kick' | 'kickban', nick: string, channel: string } | null>(null)
 
 // Form / draft state, shared so both surfaces edit the same values.
 const inputNick = ref('')
@@ -2024,6 +2026,36 @@ function handleMessage(raw: string) {
       else {
         addToBuffer(channel, 'channel', { type: 'part', channel, text: `${nickFrom} left` }, { ts, backlog })
       }
+      break
+    }
+
+    case 'KICK': {
+      // :kicker!user@host KICK #channel target :reason
+      const channel = params[0] ?? ''
+      const target = stripPrefix(params[1] ?? '')
+      const reason = params[2] ?? ''
+      const reasonSuffix = reason ? ` (${reason})` : ''
+      const buf = findBuffer(channel)
+      const wasSelf = target === nick.value
+      const lineText = wasSelf
+        ? `You were kicked from ${channel} by ${nickFrom}${reasonSuffix}`
+        : `${target} was kicked by ${nickFrom}${reasonSuffix}`
+      // Replayed KICK history must not evict currently-present users; just render
+      // the historical line for context.
+      if (backlog) {
+        if (buf)
+          addToBuffer(channel, 'channel', { type: 'part', channel, text: lineText }, { ts, backlog, prepend: isPrependBatch, batchTag: batchTag ?? undefined })
+        break
+      }
+      if (buf)
+        buf.users = buf.users.filter(u => u.name !== target)
+      clearTyping(channel, target)
+      if (wasSelf) {
+        // We were kicked; clear stale join intent so a future deliberate re-join is honoured.
+        explicitJoinIntents.delete(channel.toLowerCase())
+      }
+      if (buf)
+        addToBuffer(channel, 'channel', { type: 'part', channel, text: lineText }, { ts })
       break
     }
 
@@ -3852,6 +3884,21 @@ function sendMemberMode(channel: string, modeStr: string, targetNick: string) {
     send(`MODE ${channel} ${modeStr} ${targetNick}`)
 }
 
+/**
+ * Run a confirmed moderation action against a channel member. Kick removes them
+ * from the channel; kickban also sets a +b mask so they can't rejoin. The server
+ * echoes the KICK/MODE back, which the message handler applies to the user list.
+ */
+function executeModeration(req: { action: 'kick' | 'kickban', nick: string, channel: string }) {
+  const { action, nick: target, channel } = req
+  if (!channel || !target)
+    return
+  // Set the ban before kicking so the mask is in place before they leave.
+  if (action === 'kickban')
+    send(`MODE ${channel} +b ${target}!*@*`)
+  send(`KICK ${channel} ${target}`)
+}
+
 /** Return the calling user's role in a channel, or null if not a member / no privilege. */
 function myChannelRole(channelName: string): ChannelRole | null {
   const buf = findBuffer(channelName)
@@ -4175,6 +4222,8 @@ export function useIrcChat() {
     markBufferRead,
     channelSettingsOpen,
     channelJoinBlocked,
+    moderationPrompt,
+    executeModeration,
     requestWhois,
     // cache
     setCacheCap,

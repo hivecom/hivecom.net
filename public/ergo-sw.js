@@ -89,15 +89,21 @@ function buildNotification(line) {
   const title = isChannel ? target : (nick || 'Hivecom')
   const body = isChannel ? formatBody(nick, `${nick}: ${text}`) : formatBody(nick, text)
 
-  // Deep-link to the channel so tapping lands in the conversation that pinged,
-  // not the bare server tab. The chat page reads `?channel=` (without the `#`,
-  // which would otherwise be parsed as a URL fragment). DMs have no such route,
-  // so they fall back to the chat root. `notify=1` tells the chat page this open
-  // came from a notification tap, so it connects immediately and skips the
-  // connect dialog.
-  const href = target.startsWith('#')
-    ? `/chat?channel=${encodeURIComponent(target.slice(1))}&notify=1`
-    : '/chat?notify=1'
+  // Deep-link so tapping lands in the conversation that pinged, not the bare
+  // server tab. Channels read `?channel=` (without the `#`, which would otherwise
+  // be parsed as a URL fragment); DMs read `?dm=<sender>` and open by the sender's
+  // nick, since for a DM `target` is us and the message `nick` is the other party.
+  // Non-`#` channel prefixes (& + !) have no deep-link route, so they fall back to
+  // the chat root. `notify=1` tells the chat page this open came from a
+  // notification tap, so it connects immediately and skips the connect dialog.
+  let href = '/chat?notify=1'
+  if (isChannel) {
+    if (target.startsWith('#'))
+      href = `/chat?channel=${encodeURIComponent(target.slice(1))}&notify=1`
+  }
+  else if (nick) {
+    href = `/chat?dm=${encodeURIComponent(nick)}&notify=1`
+  }
 
   return {
     title,
@@ -188,17 +194,13 @@ globalThis.addEventListener('notificationclick', (event) => {
       const url = new URL(client.url)
       if (url.origin === globalThis.location.origin) {
         await client.focus()
-        if ('navigate' in client) {
-          try {
-            await client.navigate(href)
-          }
-          catch {
-            client.postMessage({ type: 'navigate', href })
-          }
-        }
-        else {
-          client.postMessage({ type: 'navigate', href })
-        }
+        // Route via the app's own router (postMessage -> router.push) rather than
+        // client.navigate(). This worker runs under the /chat-push/ scope and does
+        // not control the page, so navigate() rejects on spec-compliant engines and
+        // - worse - on WebKit/iOS PWAs soft-updates the URL without triggering the
+        // SPA router, leaving the user on the previous channel. postMessage is the
+        // reliable path: the page listener reads ?channel= and switches buffers.
+        client.postMessage({ type: 'navigate', href })
         return
       }
     }

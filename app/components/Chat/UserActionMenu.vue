@@ -40,7 +40,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const { nick: currentNick, openPm, send, activeName, inputMessage, myChannelRole, sendMemberMode } = useIrcChat()
+const { nick: currentNick, openPm, activeName, inputMessage, myChannelRole, sendMemberMode, moderationPrompt } = useIrcChat()
 const { settings } = useDataUserSettings()
 
 const isSelf = computed(() => props.nick === currentNick.value)
@@ -113,26 +113,13 @@ function doDevoice() {
   emit('close')
 }
 
-function doKick() {
+// Destructive actions route through a confirmation modal (mounted once in
+// ChatApp) so an accidental click can't kick or ban someone. The menu closes
+// immediately; the modal reads the pending request from shared state.
+function requestModeration(action: 'kick' | 'kickban') {
   const ch = activeName.value
   if (ch)
-    send(`KICK ${ch} ${props.nick}`)
-  emit('close')
-}
-
-function doBan() {
-  const ch = activeName.value
-  if (ch)
-    send(`MODE ${ch} +b ${props.nick}!*@*`)
-  emit('close')
-}
-
-function doKickBan() {
-  const ch = activeName.value
-  if (ch) {
-    send(`MODE ${ch} +b ${props.nick}!*@*`)
-    send(`KICK ${ch} ${props.nick}`)
-  }
+    moderationPrompt.value = { action, nick: props.nick, channel: ch }
   emit('close')
 }
 </script>
@@ -222,7 +209,7 @@ function doKickBan() {
         </template>
       </DropdownItem>
       <Divider />
-      <DropdownItem @click="doKick">
+      <DropdownItem @click="requestModeration('kick')">
         <template #icon>
           <Icon name="ph:boot" class="text-color-yellow" />
         </template>
@@ -233,18 +220,7 @@ function doKickBan() {
           Kick
         </template>
       </DropdownItem>
-      <DropdownItem @click="doBan">
-        <template #icon>
-          <Icon name="ph:prohibit" class="text-color-red" />
-        </template>
-        <template v-if="settings.chat_irc_native_modes">
-          MODE +b
-        </template>
-        <template v-else>
-          Ban
-        </template>
-      </DropdownItem>
-      <DropdownItem @click="doKickBan">
+      <DropdownItem @click="requestModeration('kickban')">
         <template #icon>
           <Icon name="ph:prohibit" class="text-color-red" />
         </template>

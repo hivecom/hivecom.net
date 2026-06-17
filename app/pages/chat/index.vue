@@ -7,7 +7,7 @@ import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const isMobile = useBreakpoint('<s')
-const { setChatVisible, joinChannel, setActive, seedChannel, isConnected, connState, connect, chatFullWidth } = useIrcChat()
+const { setChatVisible, joinChannel, setActive, seedChannel, openPm, isConnected, connState, connect, chatFullWidth } = useIrcChat()
 const hasMounted = ref(false)
 onMounted(() => {
   hasMounted.value = true
@@ -20,18 +20,25 @@ onMounted(() => setChatVisible(true))
 onUnmounted(() => setChatVisible(false))
 
 // Deep-link: ?channel=staff or ?channel=dev/frontend (e.g. from a push
-// notification tap) joins and focuses the channel. The channel is held pending
-// until the connection is up, since a cold open mounts this page before the
-// socket connects - seeding it also makes the post-connect auto-join land here.
+// notification tap) joins and focuses the channel; ?dm=<nick> opens the DM with
+// that sender. Both are held pending until the connection is up, since a cold
+// open mounts this page before the socket connects - seeding the channel also
+// makes the post-connect auto-join land here.
 const pendingChannel = ref<string | null>(null)
+const pendingDm = ref<string | null>(null)
 
-function applyPendingChannel() {
-  const name = pendingChannel.value
-  if (!name || !isConnected.value)
+function applyPending() {
+  if (!isConnected.value)
     return
-  joinChannel(name)
-  setActive(name)
-  pendingChannel.value = null
+  if (pendingChannel.value) {
+    joinChannel(pendingChannel.value)
+    setActive(pendingChannel.value)
+    pendingChannel.value = null
+  }
+  if (pendingDm.value) {
+    openPm(pendingDm.value)
+    pendingDm.value = null
+  }
 }
 
 // Tapping a chat push notification deep-links here with `notify=1` (and usually
@@ -54,26 +61,30 @@ function consumeQueryParams() {
     seedChannel(name)
   }
 
+  const dmParam = route.query.dm
+  if (typeof dmParam === 'string' && dmParam)
+    pendingDm.value = dmParam
+
   maybeConnectFromNotification(route.query.notify)
 
   // Strip the consumed params so the URL stays clean and a refresh/back doesn't
-  // re-trigger a connect; the pending channel survives in component state.
-  if (route.query.channel != null || route.query.notify != null) {
-    const { channel: _channel, notify: _notify, ...rest } = route.query
+  // re-trigger a connect; the pending target survives in component state.
+  if (route.query.channel != null || route.query.dm != null || route.query.notify != null) {
+    const { channel: _channel, dm: _dm, notify: _notify, ...rest } = route.query
     void router.replace({ query: rest })
   }
 
-  applyPendingChannel()
+  applyPending()
 }
 
-// Initial page load with ?channel=/?notify=, and any later in-app navigation.
+// Initial page load with ?channel=/?dm=/?notify=, and any later in-app navigation.
 onMounted(consumeQueryParams)
-watch(() => [route.query.channel, route.query.notify], consumeQueryParams)
+watch(() => [route.query.channel, route.query.dm, route.query.notify], consumeQueryParams)
 
 // Apply once the connection comes up (cold open mounts before connect).
 watch(isConnected, (connected) => {
   if (connected)
-    applyPendingChannel()
+    applyPending()
 })
 </script>
 

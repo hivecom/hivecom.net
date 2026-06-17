@@ -5,6 +5,7 @@ import { computed, ref } from 'vue'
 import RolesGrid from '@/components/Admin/Roles/RolesGrid.vue'
 
 import AdminGlobe from '@/components/Admin/Users/AdminGlobe.vue'
+import ReservationsTable from '@/components/Admin/Users/ReservationsTable.vue'
 import UserDetails from '@/components/Admin/Users/UserDetails.vue'
 import UserForm from '@/components/Admin/Users/UserForm.vue'
 import UserKPIs from '@/components/Admin/Users/UserKPIs.vue'
@@ -36,8 +37,12 @@ const {
   canViewUsers,
   canViewRoles,
   canUpdateRoles,
+  canModifyUsers,
   isAdmin,
 } = useAdminPermissions()
+
+// Reservation management reuses users.update (RLS gates all reservation CRUD on it).
+const canManageReservations = canModifyUsers
 
 const route = useRoute()
 const router = useRouter()
@@ -56,11 +61,13 @@ if (!canViewUsers.value && !canViewRoles.value) {
 
 // Tab management (pattern aligned with admin/network)
 const availableTabs = computed(() => {
-  const tabs: { label: string, value: 'Users' | 'Roles' | 'Globe' }[] = []
+  const tabs: { label: string, value: 'Users' | 'Roles' | 'Reservations' | 'Globe' }[] = []
   if (canViewUsers.value)
     tabs.push({ label: 'Users', value: 'Users' })
   if (canViewRoles.value)
     tabs.push({ label: 'Roles', value: 'Roles' })
+  if (canManageReservations.value)
+    tabs.push({ label: 'Reservations', value: 'Reservations' })
   if (canViewUsers.value)
     tabs.push({ label: 'Globe', value: 'Globe' })
   return tabs
@@ -463,6 +470,11 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
       <!-- Roles Tab -->
       <Flex v-if="canViewRoles" v-show="activeTab === 'Roles'" column gap="m" expand>
         <RolesGrid />
+      </Flex>
+
+      <!-- Reservations Tab -->
+      <Flex v-if="canManageReservations" v-show="activeTab === 'Reservations'" column gap="l" expand>
+        <ReservationsTable v-model:refresh-signal="refreshSignal" />
       </Flex>
     </Flex>
     <!-- Globe Tab -->

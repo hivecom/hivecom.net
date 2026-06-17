@@ -16,6 +16,7 @@ import ChatConnectForm from './ConnectForm.vue'
 import ChatConnecting from './Connecting.vue'
 import ChatIdentityModal from './IdentityModal.vue'
 import ChatMessageLog from './MessageLog.vue'
+import ChatModerationConfirmModal from './ModerationConfirmModal.vue'
 import ChatNoChannels from './NoChannels.vue'
 import ChatPushPromptBanner from './PushPromptBanner.vue'
 import ChatSetupBanner from './SetupBanner.vue'
@@ -231,6 +232,7 @@ watch(user, (u, prev) => {
     <ChatChannelSettingsModal :channel="channelSettingsOpen" @close="channelSettingsOpen = null" />
     <ChatChannelJoinBlockedModal :blocked="channelJoinBlocked" @close="channelJoinBlocked = null" />
     <ChatIdentityModal :open="identityOpen" @close="identityOpen = false" />
+    <ChatModerationConfirmModal />
   </section>
 </template>
 

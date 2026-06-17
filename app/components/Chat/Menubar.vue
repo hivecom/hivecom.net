@@ -10,8 +10,7 @@ defineProps<{
 }>()
 
 const route = useRoute()
-const router = useRouter()
-const isExclusive = computed(() => route.path === '/chat/exclusive')
+const isExclusive = computed(() => route.path.replace(/\/+$/, '') === '/chat/exclusive')
 
 const { isConnected, connState, connect, disconnect, sidebarHidden, toggleSidebar, chatFullWidth, toggleFullWidth, latencyMs, activeName, activateServerLog } = useIrcChat()
 
@@ -132,13 +131,13 @@ function run(action: () => void) {
         </Button>
         <template #menu>
           <div class="vui-dropdown chat-menubar__merged">
-            <DropdownItem v-if="!isExclusive" @click="run(() => router.push('/chat/exclusive'))">
+            <DropdownItem v-if="!isExclusive" @click="run(() => navigateTo('/chat/exclusive'))">
               <template #icon>
                 <Icon name="ph:frame-corners" />
               </template>
               Exclusive mode
             </DropdownItem>
-            <DropdownItem v-else @click="run(() => router.push('/chat'))">
+            <DropdownItem v-else @click="run(() => navigateTo('/chat'))">
               <template #icon>
                 <Icon name="ph:frame-corners" />
               </template>
