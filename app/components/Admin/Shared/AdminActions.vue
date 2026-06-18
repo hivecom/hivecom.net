@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AppPermission, PermissionResource } from '@/types/database.overrides'
 import { Button, Flex, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -6,9 +7,16 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface AdminActionsProps {
   /**
-   * Type of resource (used for permission checking)
+   * Entity type - drives the display labels (modal titles, tooltips).
    */
   resourceType: 'games' | 'events' | 'network_gameservers' | 'profiles' | 'funding' | 'referendums' | 'network_servers' | 'assets' | 'projects' | 'discussions' | 'kvstore' | 'motds' | 'themes'
+
+  /**
+   * Permission group for the edit/delete checks. Defaults to `resourceType`.
+   * Set this when the entity name differs from its permission group - e.g.
+   * network_gameservers / network_servers both gate on 'network'.
+   */
+  permission?: PermissionResource
 
   /**
    * The item being acted upon
@@ -42,7 +50,7 @@ interface AdminActionsProps {
     icon: string
     label: string
     variant?: 'gray' | 'danger' | 'success' | 'accent'
-    permission?: string
+    permission?: AppPermission
     handler: () => void
     loading?: boolean
     condition?: () => boolean
@@ -70,10 +78,15 @@ const { hasPermission } = useAdminPermissions()
 const isMobile = useBreakpoint('<xs')
 const showLabels = computed(() => !!props.showLabels && !isMobile.value)
 
+// The permission group defaults to the entity resourceType, but network
+// sub-resources (network_gameservers / network_servers) gate on 'network'.
+const permissionResource = computed<PermissionResource>(
+  () => props.permission ?? (props.resourceType as PermissionResource),
+)
+
 // Helper function to check if user has permission for specific action
 function hasActionPermission(action: string): boolean {
-  const permission = `${props.resourceType}.${action}`
-  return hasPermission(permission)
+  return hasPermission(`${permissionResource.value}.${action}` as AppPermission)
 }
 
 // Helper function to determine if specific action is loading

@@ -240,7 +240,7 @@ onBeforeMount(fetchEntries)
       <TableContainer>
         <Table.Root :loading="loading" separate-cells>
           <template #header>
-            <th class="vui-table-interactive-cell" />
+            <th v-if="canManageResource" class="vui-table-interactive-cell" />
             <Table.Head v-for="header in headers.filter(header => header.label !== '_original' && header.label !== 'id')" :key="header.label" sort :header />
             <Table.Head
               v-if="canManageResource"
@@ -252,7 +252,7 @@ onBeforeMount(fetchEntries)
 
           <template #body>
             <tr v-for="row in rows" :key="row._original.key">
-              <Table.SelectRow :row="row as any" />
+              <Table.SelectRow v-if="canManageResource" :row="row as any" />
               <Table.Cell>
                 <code>{{ row.Key }}</code>
               </Table.Cell>

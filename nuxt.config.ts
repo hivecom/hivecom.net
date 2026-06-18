@@ -156,6 +156,54 @@ export default defineNuxtConfig({
           type: 'text/javascript',
           tagPriority: 'critical',
         },
+        {
+          // Vue-independent boot watchdog. If hydration crashes, app.vue's
+          // onMounted never runs, so the in-app escape hatch timer in
+          // Loading.vue never starts and the SSR-rendered splash sits frozen
+          // with no way out. A plain setTimeout registered here still fires (a
+          // thrown hydration error frees the main thread), so we can detect the
+          // stuck splash and offer a reload. The 12s delay clears the 8s
+          // self-recovery in Loading.vue, so this only triggers on a real boot
+          // failure, not a slow-but-alive load.
+          innerHTML: `(function () {
+  try {
+    setTimeout(function () {
+      if (!document.querySelector('.initial-loading')) return;
+      if (document.getElementById('boot-escape-hatch')) return;
+
+      var wrap = document.createElement('div');
+      wrap.id = 'boot-escape-hatch';
+      wrap.style.cssText = 'position:fixed;left:50%;bottom:34px;transform:translateX(-50%);z-index:10000;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;font-family:sans-serif;';
+
+      var msg = document.createElement('p');
+      msg.textContent = 'Taking longer than expected...';
+      msg.style.cssText = 'margin:0;font-size:12px;color:var(--color-text-lighter,#888);';
+
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:8px;';
+
+      var reload = document.createElement('button');
+      reload.textContent = 'Reload';
+      reload.style.cssText = 'cursor:pointer;border:0;border-radius:var(--border-radius-m,8px);padding:6px 14px;font-size:13px;background:var(--color-accent,#a3e635);color:#000;';
+      reload.onclick = function () { location.reload(); };
+
+      var support = document.createElement('a');
+      support.textContent = 'Contact Support';
+      support.href = 'mailto:contact@hivecom.net';
+      support.style.cssText = 'display:inline-flex;align-items:center;border-radius:var(--border-radius-m,8px);padding:6px 14px;font-size:13px;color:var(--color-accent,#a3e635);text-decoration:none;';
+
+      row.appendChild(reload);
+      row.appendChild(support);
+      wrap.appendChild(msg);
+      wrap.appendChild(row);
+      (document.body || document.documentElement).appendChild(wrap);
+    }, 12000);
+  } catch (e) {
+    // Never let the watchdog itself break the page.
+  }
+})();`,
+          type: 'text/javascript',
+        },
       ],
     },
     pageTransition: {
@@ -256,6 +304,7 @@ export default defineNuxtConfig({
 
         // Chat/MessageLog.vue bridgeInfo() - relay source icons (dynamic :name binding)
         'ph:telegram-logo',
+        'simple-icons:matrix',
         // ph:discord-logo already listed above
         // ph:swap already scanned statically
         'ph:envelope-simple',

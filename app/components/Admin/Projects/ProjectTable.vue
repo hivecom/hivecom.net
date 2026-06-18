@@ -273,7 +273,7 @@ function clearFilters() {
     <TableContainer>
       <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
-          <th class="vui-table-interactive-cell" />
+          <th v-if="canManageResource" class="vui-table-interactive-cell" />
           <Table.Head v-for="header in headers.filter(h => h.label !== '_original' && h.label !== 'id')" :key="header.label" sort :header />
           <Table.Head
             v-if="canManageResource"
@@ -285,7 +285,7 @@ function clearFilters() {
 
         <template #body>
           <tr v-for="project in rows" :key="project._original.id" class="clickable-row">
-            <Table.SelectRow :row="project as any" />
+            <Table.SelectRow v-if="canManageResource" :row="project as any" />
             <Table.Cell @click="viewProject(project._original as QueryProject)">
               <Flex gap="xs" y-center>
                 <span class="text-s">{{ project.Title }}</span>
@@ -314,7 +314,7 @@ function clearFilters() {
               <span v-else class="text-color-light text-s">No tags</span>
             </Table.Cell>
             <Table.Cell @click="viewProject(project._original as QueryProject)">
-              <UserLink v-if="project.Owner" :user-id="project.Owner" class="text-s" />
+              <UserLink v-if="project.Owner" :user-id="project.Owner" show-avatar class="text-s" />
               <span v-else class="text-color-light text-s">No owner</span>
             </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>

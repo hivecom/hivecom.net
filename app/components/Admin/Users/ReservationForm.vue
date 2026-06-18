@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Button, Flex, Input, Sheet, Tooltip } from '@dolanske/vui'
-import { watchDebounced } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import UserAvatar from '@/components/Shared/UserAvatar.vue'
+import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
 
 type Reservation = Tables<'profile_reservations'>
 
@@ -29,20 +28,12 @@ const emit = defineEmits<{
 
 const isOpen = defineModel<boolean>('isOpen')
 
-const supabase = useSupabaseClient()
-
 const USERNAME_RE = /^\w+$/
 
 // Form state
 const username = ref('')
 const note = ref('')
-
-// Assignee picker state
-const assignee = ref<ProfileResult | null>(null)
-const assigneeQuery = ref('')
-const assigneeResults = ref<ProfileResult[]>([])
-const assigneeLoading = ref(false)
-const assigneeOpen = ref(false)
+const assignedTo = ref<string | null>(null)
 
 const showDeleteConfirm = ref(false)
 const saveLoading = ref(false)
@@ -69,85 +60,16 @@ watch(
     if (reservation) {
       username.value = reservation.username
       note.value = reservation.note ?? ''
-      assignee.value = reservation.assigned
-      assigneeQuery.value = reservation.assigned?.username ?? ''
+      assignedTo.value = reservation.assigned?.id ?? null
     }
     else {
       username.value = ''
       note.value = ''
-      assignee.value = null
-      assigneeQuery.value = ''
+      assignedTo.value = null
     }
-    assigneeResults.value = []
-    assigneeOpen.value = false
   },
   { immediate: true },
 )
-
-async function searchProfiles(term: string) {
-  if (term.trim() === '') {
-    assigneeResults.value = []
-    assigneeOpen.value = false
-    return
-  }
-
-  assigneeLoading.value = true
-  try {
-    const { data, error } = await supabase
-      .rpc('search_profiles', { search_term: term })
-      .select('id, username')
-      .limit(10)
-
-    if (error)
-      throw error
-
-    assigneeResults.value = (data ?? []) as ProfileResult[]
-    assigneeOpen.value = assigneeResults.value.length > 0
-  }
-  catch {
-    assigneeResults.value = []
-    assigneeOpen.value = false
-  }
-  finally {
-    assigneeLoading.value = false
-  }
-}
-
-watchDebounced(assigneeQuery, (val) => {
-  // Skip re-searching when the input still matches the confirmed selection.
-  if (assignee.value !== null && val === assignee.value.username)
-    return
-
-  // Editing the input after confirming clears the selection.
-  if (assignee.value !== null)
-    assignee.value = null
-
-  void searchProfiles(val)
-}, { debounce: 250 })
-
-function selectAssignee(profile: ProfileResult) {
-  assignee.value = profile
-  assigneeQuery.value = profile.username
-  assigneeResults.value = []
-  assigneeOpen.value = false
-}
-
-function clearAssignee() {
-  assignee.value = null
-  assigneeQuery.value = ''
-  assigneeResults.value = []
-  assigneeOpen.value = false
-}
-
-function onAssigneeBlur() {
-  // Close on blur; @mousedown.prevent on the dropdown keeps option clicks alive.
-  assigneeOpen.value = false
-}
-
-function onAssigneeFocus() {
-  if (assigneeResults.value.length > 0)
-    assigneeOpen.value = true
-}
 
 function handleClose() {
   isOpen.value = false
@@ -161,7 +83,7 @@ function handleSubmit() {
   emit('save', {
     username: username.value.trim(),
     note: note.value.trim() || null,
-    assigned_to: assignee.value?.id ?? null,
+    assigned_to: assignedTo.value,
   })
 }
 
@@ -225,44 +147,13 @@ function confirmDelete() {
           placeholder="Admin context (optional), e.g. legacy IRC owner"
         />
 
-        <Flex column gap="xs" expand class="reservation-form__assignee">
+        <Flex column gap="xs" expand>
           <label class="reservation-form__label">Assigned to</label>
-          <Input
-            v-model="assigneeQuery"
-            expand
+          <ProfileSelect
+            v-model="assignedTo"
             placeholder="Search a user (optional)..."
-            :loading="assigneeLoading"
-            autocomplete="off"
-            @blur="onAssigneeBlur"
-            @focus="onAssigneeFocus"
-          >
-            <template #start>
-              <Icon name="ph:user" />
-            </template>
-            <template v-if="assignee" #end>
-              <Button variant="gray" plain square size="s" @mousedown.prevent="clearAssignee">
-                <Icon name="ph:x" size="14" />
-              </Button>
-            </template>
-          </Input>
-
-          <div
-            v-if="assigneeOpen"
-            class="reservation-form__dropdown"
-            @mousedown.prevent
-          >
-            <button
-              v-for="profile in assigneeResults"
-              :key="profile.id"
-              class="reservation-form__option"
-              type="button"
-              @click="selectAssignee(profile)"
-            >
-              <UserAvatar :user-id="profile.id" :size="22" />
-              <span>{{ profile.username }}</span>
-            </button>
-          </div>
-
+            expand
+          />
           <span class="text-xs text-color-lighter">
             Leave empty to block the username for everyone. Assign a user to let only them take it.
           </span>
@@ -326,42 +217,6 @@ function confirmDelete() {
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-medium);
     color: var(--color-text);
-  }
-
-  &__assignee {
-    position: relative;
-  }
-
-  &__dropdown {
-    position: absolute;
-    top: calc(100% + var(--space-xxs));
-    left: 0;
-    min-width: 100%;
-    background-color: var(--color-bg-raised);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-m);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    z-index: var(--z-popout);
-    overflow: hidden;
-  }
-
-  &__option {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    width: 100%;
-    padding: var(--space-xs) var(--space-s);
-    background: none;
-    border: none;
-    text-align: left;
-    cursor: pointer;
-    color: var(--color-text);
-    font-size: var(--font-size-s);
-    transition: background-color var(--transition-fast);
-
-    &:hover {
-      background-color: var(--color-bg-medium);
-    }
   }
 }
 

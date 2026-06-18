@@ -74,6 +74,7 @@ const {
   refresh: fetchServers,
 } = useAdminCrudTable<Server, TransformedServer>({
   resourceType: 'network_servers',
+  permissionResource: 'network',
   queryParamKey: 'server',
   refreshSignal,
   fetch: async () => {
@@ -279,6 +280,7 @@ function clearFilters() {
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
                 resource-type="network_servers"
+                permission="network"
                 :item="server._original"
                 button-size="s"
                 @edit="(item) => openEditServerForm(item as Server)"

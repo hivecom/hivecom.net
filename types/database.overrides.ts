@@ -33,6 +33,29 @@ export type { CompositeTypes, Enums } from './database.types'
 export { Constants } from './database.types'
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Permissions
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Every permission string defined by the `app_permission` enum,
+ * e.g. 'network.update'. This is the source of truth - it is regenerated
+ * from the database whenever permissions change.
+ */
+export type AppPermission = Database['public']['Enums']['app_permission']
+
+/**
+ * The resource half of a permission key, e.g. 'network' from 'network.update'.
+ *
+ * Type permission-group identifiers as this so a stale or misspelled group
+ * (like the pre-consolidation 'containers' / 'network_gameservers') becomes a
+ * compile error instead of a silently failing string lookup.
+ */
+export type PermissionResource = AppPermission extends `${infer R}.${string}` ? R : never
+
+/** Permission actions that exist on resource groups. */
+export type PermissionAction = 'create' | 'read' | 'update' | 'delete'
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Concrete column types
 // ─────────────────────────────────────────────────────────────────────────────
 

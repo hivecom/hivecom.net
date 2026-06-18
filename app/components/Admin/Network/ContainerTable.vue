@@ -81,7 +81,7 @@ const props = defineProps<{
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Get admin permissions
-const { canManageResource } = useTableActions('containers')
+const { canManageResource } = useTableActions('network')
 const { hasPermission } = useAdminPermissions()
 const route = useRoute()
 const router = useRouter()
@@ -725,8 +725,8 @@ onBeforeMount(fetchContainers)
         <TableContainer>
           <Table.Root v-if="rows && rows.length > 0" separate-cells class="mb-l">
             <template #header>
-              <th class="vui-table-interactive-cell" />
-              <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+              <th v-if="canManageResource" class="vui-table-interactive-cell" />
+              <Table.Head v-for="header in headers.filter(header => header.label !== '_original' && header.label !== 'id')" :key="header.label" sort :header />
               <Table.Head
                 v-if="canManageResource"
                 key="actions" :header="{ label: 'Actions',
@@ -736,7 +736,7 @@ onBeforeMount(fetchContainers)
 
             <template #body>
               <tr v-for="container in rows" :key="container._original.name" class="clickable-row">
-                <Table.SelectRow :row="container as any" />
+                <Table.SelectRow v-if="canManageResource" :row="container as any" />
                 <Table.Cell @click="viewContainer(container._original)">
                   {{ container.Name }}
                 </Table.Cell>

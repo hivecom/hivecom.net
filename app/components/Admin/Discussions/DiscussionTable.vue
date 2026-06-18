@@ -617,7 +617,7 @@ onBeforeMount(async () => {
         <TableContainer>
           <Table.Root v-if="discussions.length > 0" separate-cells class="mb-l">
             <template #header>
-              <th class="vui-table-interactive-cell" />
+              <th v-if="canManageActions" class="vui-table-interactive-cell" />
 
               <!-- Title -->
               <Table.Head class="sortable-head" @click="handleSort('Title')">
@@ -677,7 +677,7 @@ onBeforeMount(async () => {
                 :key="discussion.id"
                 class="clickable-row"
               >
-                <Table.SelectRow :row="discussion" />
+                <Table.SelectRow v-if="canManageActions" :row="discussion" />
                 <!-- Title + description -->
                 <Table.Cell @click="openDiscussionDetails(discussion)">
                   <span class="text-medium text-s">{{ discussion.title || 'Untitled' }}</span>

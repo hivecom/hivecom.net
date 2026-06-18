@@ -42,7 +42,6 @@ Deno.serve(async (req: Request) => {
     const [
       snapshotResult,
       eventResult,
-      gameResult,
       nextEventResult,
       gamesResult,
     ] = await Promise.all([
@@ -57,13 +56,6 @@ Deno.serve(async (req: Request) => {
         .not("duration_minutes", "is", null)
         .order("date", { ascending: false })
         .limit(5),
-      // Top currently-played Steam game (mirrors cron-metrics-fetch logic)
-      supabaseClient
-        .from("presences_steam")
-        .select(
-          "current_app_id, current_app_name, profile:profiles!presences_steam_profile_id_fkey(rich_presence_enabled)",
-        )
-        .not("current_app_name", "is", null),
       // Next upcoming official event (for countdown KPI)
       supabaseClient
         .from("events")
@@ -72,10 +64,11 @@ Deno.serve(async (req: Request) => {
         .gt("date", now)
         .order("date", { ascending: true })
         .limit(1),
-      // Known games - only show games tracked in our games table
+      // Known games - resolves Steam app IDs to display names. Player counts
+      // come from the metrics snapshot, not from here.
       supabaseClient
         .from("games")
-        .select("steam_id")
+        .select("steam_id, name")
         .not("steam_id", "is", null),
     ]);
 
@@ -105,32 +98,37 @@ Deno.serve(async (req: Request) => {
     });
     const eventOngoing = Boolean(activeEvent);
 
-    // Build a set of known steam IDs from our games table
-    const knownSteamIds = new Set(
-      (gamesResult.data ?? []).map((g) =>
-        (g as unknown as { steam_id: number }).steam_id
-      ),
-    );
-
-    // Count occurrences of each game name, only for games in our games table
-    const counts: Record<string, number> = {};
-    for (const row of gameResult.data ?? []) {
-      const profile = row.profile as
-        | { rich_presence_enabled: boolean }
-        | null;
-      if (!profile?.rich_presence_enabled) continue;
-      const appId =
-        (row as unknown as { current_app_id: number | null }).current_app_id;
-      if (!appId || !knownSteamIds.has(appId)) continue;
-      const name = row.current_app_name;
-      if (name) counts[name] = (counts[name] ?? 0) + 1;
+    // Map known Steam app IDs to their display name. The games table only
+    // supplies metadata (the name); player counts come from the snapshot.
+    const steamIdToName = new Map<number, string>();
+    for (const g of gamesResult.data ?? []) {
+      const row = g as unknown as {
+        steam_id: number | null;
+        name: string | null;
+      };
+      if (row.steam_id != null && row.name) {
+        steamIdToName.set(row.steam_id, row.name);
+      }
     }
-    const topGame = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-    if (topGame) {
+
+    // Pick the top currently-played known game from the snapshot counts, so the
+    // footer count and the "In-game" KPI are derived from the same point in
+    // time and can never disagree.
+    let topAppId: number | null = null;
+    let topCount = 0;
+    for (const [appIdStr, count] of Object.entries(metrics.users.bySteamGame)) {
+      const appId = Number(appIdStr);
+      if (!steamIdToName.has(appId)) continue; // not a tracked game
+      if (count > topCount) {
+        topCount = count;
+        topAppId = appId;
+      }
+    }
+    if (topAppId != null) {
       live = {
         kind: "game",
-        title: topGame[0],
-        subtitle: `${topGame[1]} playing`,
+        title: steamIdToName.get(topAppId)!,
+        subtitle: `${topCount} playing`,
       };
     }
 

@@ -45,6 +45,11 @@ const STORAGE_CHANNEL = 'hivecom.chat.channel'
 // session. Used to drop that identity when the app is loaded signed-out, so the
 // connect form doesn't pre-populate a registered nick that would fail to auth.
 const STORAGE_IDENTITY_AUTHED = 'hivecom.chat.identity-authed'
+// '1' once this browser has ever connected with a signed-in identity. Unlike
+// STORAGE_IDENTITY_AUTHED (dropped on a signed-out load), this is sticky so the
+// connect form can default a returning user to the sign-in prompt rather than the
+// anonymous guest form.
+const STORAGE_HAD_ACCOUNT = 'hivecom.chat.had-account'
 // Timestamp (ms) of the most recent live message we've seen. Used as the lower
 // bound for CHATHISTORY TARGETS / LATEST on reconnect so we only pull missed DMs.
 const STORAGE_LASTSEEN = 'hivecom.chat.lastseen'
@@ -113,6 +118,10 @@ const WANTED_CAPS = [
   // draft/relaymsg: lets relay bots send messages with spoofed nicks; the tag
   // tells us which bot actually sent the message so we can show a relay indicator.
   'draft/relaymsg',
+  // draft/multiline: send/receive a multi-line message as a single logical
+  // message via a BATCH, instead of one PRIVMSG per line. The cap value carries
+  // max-bytes / max-lines limits (parsed below).
+  'draft/multiline',
 ]
 
 export type ConnState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'offline'
@@ -521,6 +530,13 @@ const _chanServProbeTimers = new Map<string, ReturnType<typeof setTimeout>>()
 // Channels awaiting ChanServ DROP confirmation code (two-step flow).
 const _pendingDropChannels = new Set<string>()
 let messageTagsActive = false
+// IRCv3 draft/multiline: set when the cap is ACKed; max-bytes / max-lines come
+// from the cap value on CAP LS. multilineRef is a monotonic counter for the
+// batch reference tag on outgoing multiline sends.
+let multilineActive = false
+let multilineMaxBytes = 0
+let multilineMaxLines = 0
+let multilineRef = 0
 // Per-target timestamp (ms) of the last typing notification we sent, for throttling.
 const lastTypingSent = new Map<string, number>()
 // Expiry timers keyed by `${bufName.toLowerCase()}|${nick.toLowerCase()}`.
@@ -547,6 +563,27 @@ interface BacklogBatchInfo {
 }
 // Active CHATHISTORY batch ids mapped to metadata, so replayed lines are flagged as backlog.
 const backlogBatches = new Map<string, BacklogBatchInfo>()
+interface MultilineBatchInfo {
+  /** IRC target (channel or nick) the batch is addressed to. */
+  target: string
+  /** Sender nick, taken from the opening BATCH line's prefix. */
+  from?: string
+  /** msgid on the opening BATCH line - applies to the whole assembled message. */
+  msgid?: string
+  /** +reply target msgid carried on the opening BATCH line. */
+  replyTo?: string
+  /** Relay bot nick when sent via draft/relaymsg. */
+  relayedBy?: string
+  /** server-time of the opening BATCH line. */
+  ts?: Date
+  /** Accumulated lines, joined with '\n' when the batch closes. */
+  lines: string[]
+  /** Parent batch id when this multiline batch is nested inside a CHATHISTORY replay. */
+  parentBatch?: string
+}
+// In-flight draft/multiline receive batches, keyed by batch id. Inner PRIVMSGs
+// accumulate here and assemble into one ChatMessage when the batch closes.
+const multilineBatches = new Map<string, MultilineBatchInfo>()
 // Reactions (react/unreact) that arrived before their parent message existed in
 // the buffer. Keyed by buffer name (lowercased) -> parent msgid -> queued ops.
 // The common case is reacting to (or receiving reactions on) our own message
@@ -1212,6 +1249,17 @@ function markIdentityAuthed(authed: boolean) {
     localStorage.removeItem(STORAGE_IDENTITY_AUTHED)
 }
 
+// True once this browser has connected with a signed-in identity. Sticky across
+// sign-out so the connect form can default returning users to the sign-in prompt.
+const hadAccount = ref(import.meta.client && localStorage.getItem(STORAGE_HAD_ACCOUNT) === '1')
+
+/** Mark that a signed-in identity has been used at least once on this browser. */
+function markHadAccount() {
+  hadAccount.value = true
+  if (import.meta.client)
+    localStorage.setItem(STORAGE_HAD_ACCOUNT, '1')
+}
+
 /**
  * Drop a persisted nick/channel that belonged to a signed-in session. Called
  * when the app loads (or transitions to) a signed-out state so the connect form
@@ -1817,6 +1865,18 @@ function handleMessage(raw: string) {
           if (sep)
             relaySeparator.value = sep
         }
+        // Capture draft/multiline limits from the cap value, e.g.
+        // "draft/multiline=max-bytes=4096,max-lines=24".
+        const mlEntry = rawEntries.find(c => c.startsWith('draft/multiline='))
+        if (mlEntry) {
+          for (const kv of mlEntry.slice('draft/multiline='.length).split(',')) {
+            const [k, v] = kv.split('=')
+            if (k === 'max-bytes')
+              multilineMaxBytes = Number.parseInt(v ?? '', 10) || 0
+            else if (k === 'max-lines')
+              multilineMaxLines = Number.parseInt(v ?? '', 10) || 0
+          }
+        }
         capLs.push(...list)
         // `CAP * LS * :...` indicates a continuation line is coming.
         if (params[2] === '*')
@@ -1833,6 +1893,8 @@ function handleMessage(raw: string) {
           echoMessageActive = true
         if (list.includes('message-tags'))
           messageTagsActive = true
+        if (list.includes('draft/multiline'))
+          multilineActive = true
         if (list.includes('draft/read-marker'))
           readMarkerActive = true
         if (list.includes('draft/message-redaction'))
@@ -2177,6 +2239,18 @@ function handleMessage(raw: string) {
       const isAction = text.startsWith('\x01ACTION ') && text.endsWith('\x01')
       const body = isAction ? text.slice(8, -1) : text
       const from = nickFrom
+      // Part of an in-flight draft/multiline batch: accumulate the raw line and
+      // defer materialising the message until the batch closes (BATCH -). The
+      // draft/multiline-concat tag means "join to the previous line with no
+      // separator" (a logical line the sender split to fit max-bytes).
+      const mlBatch = batchTag != null ? multilineBatches.get(batchTag) : undefined
+      if (mlBatch) {
+        if (tags['draft/multiline-concat'] != null && mlBatch.lines.length > 0)
+          mlBatch.lines[mlBatch.lines.length - 1] += text
+        else
+          mlBatch.lines.push(text)
+        break
+      }
       // Channel targets are prefixed; anything else is a DM. DM buffers are
       // keyed by the other party: sender for incoming, target for our own
       // outgoing messages (which appear in replayed DM history).
@@ -2232,7 +2306,42 @@ function handleMessage(raw: string) {
         const hasSinceBound = pendingTimeBoundTargets.delete(batchTarget.toLowerCase())
         backlogBatches.set(id, { target: batchTarget, count: 0, isPrepend, hasSinceBound, staging: isPrepend ? [] : undefined })
       }
+      else if (ref.startsWith('+') && params[1] === 'draft/multiline') {
+        // Opening line carries the whole message's tags (msgid/time/+reply/etc).
+        // tags.batch is set only when this multiline batch is nested inside a
+        // CHATHISTORY replay batch.
+        multilineBatches.set(id, {
+          target: params[2] ?? '',
+          from: nickFrom,
+          msgid: tags.msgid ?? undefined,
+          replyTo: tags['+reply'] ?? undefined,
+          relayedBy: tags['draft/relaymsg'] ?? undefined,
+          ts,
+          lines: [],
+          parentBatch: tags.batch ?? undefined,
+        })
+      }
       else if (ref.startsWith('-')) {
+        // Close of a draft/multiline batch: join the accumulated lines into one
+        // ChatMessage. Nested inside a CHATHISTORY batch -> inherit its backlog /
+        // prepend handling so the message lands at the right position.
+        const ml = multilineBatches.get(id)
+        if (ml) {
+          multilineBatches.delete(id)
+          const joined = ml.lines.join('\n')
+          const isChannel = ml.target.startsWith('#') || ml.target.startsWith('&')
+          const isSelf = ml.from === nick.value
+          const bufferName = isChannel ? ml.target : (isSelf ? ml.target : ml.from ?? ml.target)
+          const kind: BufferKind = isChannel ? 'channel' : 'pm'
+          const parent = ml.parentBatch != null ? backlogBatches.get(ml.parentBatch) : undefined
+          const isBacklog = parent != null
+          if (bufferName) {
+            addToBuffer(bufferName, kind, { type: 'chat', from: ml.from, channel: ml.target, text: joined, msgid: ml.msgid, replyTo: ml.replyTo, relayedBy: ml.relayedBy }, { ts: ml.ts, backlog: isBacklog, prepend: parent?.isPrepend ?? false, batchTag: ml.parentBatch ?? undefined })
+            if (!isBacklog && ml.from)
+              clearTyping(bufferName, ml.from)
+          }
+          break
+        }
         const info = backlogBatches.get(id)
         if (info) {
           const batchBuf = findBuffer(info.target)
@@ -3129,6 +3238,10 @@ function openSocket() {
   vapidKey.value = null
   echoMessageActive = false
   messageTagsActive = false
+  multilineActive = false
+  multilineMaxBytes = 0
+  multilineMaxLines = 0
+  multilineBatches.clear()
   readMarkerActive = false
   resetBuffers()
   // If we landed on the server buffer after the reset (first connect or no
@@ -3151,6 +3264,8 @@ function openSocket() {
   persistChannel(inputChannel.value)
   // Tag the persisted identity so a later signed-out load can discard it.
   markIdentityAuthed(authCreds != null)
+  if (authCreds != null)
+    markHadAccount()
 
   try {
     // IRCv3 defines the WebSocket subprotocols as `text.ircv3.net` / `binary.ircv3.net`.
@@ -3223,23 +3338,34 @@ async function connect(skipAutoJoin = false) {
   }
   authCreds = null
   useAnonymous = false
+  if (identityProvider) {
+    let creds: ChatIdentity | null = null
+    try {
+      creds = await identityProvider()
+    }
+    catch {
+      creds = null
+    }
+    if (creds != null && creds.token !== '' && creds.username !== '') {
+      authCreds = creds
+      inputNick.value = creds.username
+    }
+    else {
+      // An identity provider is registered (the user looked signed in), but it
+      // resolved to no valid session - e.g. an expired Supabase token. Do NOT
+      // fall through to an unauthenticated guest registration: that silently
+      // downgrades the user to anon with no channels (see the auto-connect path
+      // in plugins/chat.client.ts, which reads the cached profile). Leave the
+      // connection disconnected so the connect form / sign-in prompt is shown.
+      connState.value = 'disconnected'
+      return
+    }
+  }
   // Only fall back to the default channel when the user has never configured
   // one (key absent). An empty-string value means they explicitly left all
   // channels and should not be auto-joined anywhere.
   if (!inputChannel.value && (import.meta.client ? localStorage.getItem(STORAGE_CHANNEL) === null : true))
     inputChannel.value = defaultChannel(false)
-  if (identityProvider) {
-    try {
-      const creds = await identityProvider()
-      if (creds != null && creds.token !== '' && creds.username !== '') {
-        authCreds = creds
-        inputNick.value = creds.username
-      }
-    }
-    catch {
-      // Fall through to unauthenticated connect.
-    }
-  }
   openSocket()
 }
 
@@ -3633,6 +3759,55 @@ function redactMessage(message: ChatMessage, reason?: string) {
   send(`REDACT ${target} ${message.msgid}${trimmed ? ` :${trimmed}` : ''}`)
 }
 
+/** Byte length of a string - the draft/multiline caps are byte budgets. */
+function utf8Len(s: string): number {
+  return new TextEncoder().encode(s).length
+}
+
+/**
+ * Send a multi-line message as one or more IRCv3 draft/multiline batches. Lines
+ * are grouped into batches that respect the server's max-lines / max-bytes caps
+ * (a message that fits goes out as a single batch). The +reply tag, if any, rides
+ * the first line of the first batch. Empty lines are sent as a single space so the
+ * server doesn't drop a malformed empty-trailing PRIVMSG.
+ */
+function sendMultiline(target: string, lines: string[], replyMsgid?: string) {
+  const maxLines = multilineMaxLines > 0 ? multilineMaxLines : Number.POSITIVE_INFINITY
+  const maxBytes = multilineMaxBytes > 0 ? multilineMaxBytes : Number.POSITIVE_INFINITY
+  let pending: string[] = []
+  let pendingBytes = 0
+  let firstBatch = true
+
+  const flush = () => {
+    if (!pending.length)
+      return
+    const ref = `ml${multilineRef++}`
+    send(`BATCH +${ref} draft/multiline ${target}`)
+    pending.forEach((line, idx) => {
+      const tagParts: string[] = []
+      if (firstBatch && idx === 0 && replyMsgid)
+        tagParts.push(`+reply=${escapeTagValue(replyMsgid)}`)
+      tagParts.push(`batch=${ref}`)
+      send(`@${tagParts.join(';')} PRIVMSG ${target} :${line === '' ? ' ' : line}`)
+    })
+    send(`BATCH -${ref}`)
+    firstBatch = false
+    pending = []
+    pendingBytes = 0
+  }
+
+  for (const line of lines) {
+    const lb = utf8Len(line)
+    // Start a new batch when adding this line would exceed a cap, but never flush
+    // an empty one - a single over-cap line still goes out on its own.
+    if (pending.length && (pending.length >= maxLines || pendingBytes + lb > maxBytes))
+      flush()
+    pending.push(line)
+    pendingBytes += lb
+  }
+  flush()
+}
+
 function sendMessage() {
   // Strip characters that are illegal in IRC lines and cannot be escaped.
   const text = inputMessage.value.trim().replace(/\0/g, '')
@@ -3654,13 +3829,29 @@ function sendMessage() {
   }
 
   const replyMsgid = replyTarget.value?.msgid
-  // escapeTagValue is required: msgid is stored unescaped (via unescapeTag) and
-  // must be re-encoded before embedding in the wire tag string.
-  const tagPrefix = replyMsgid ? `@+reply=${escapeTagValue(replyMsgid)} ` : ''
-  send(`${tagPrefix}PRIVMSG ${target} :${text}`)
+  const lines = text.split('\n')
+
+  if (lines.length > 1 && multilineActive) {
+    sendMultiline(target, lines, replyMsgid)
+  }
+  else if (lines.length > 1) {
+    // No draft/multiline support: fall back to one PRIVMSG per line. The +reply
+    // tag rides only the first line; empty lines go out as a space (see above).
+    lines.forEach((line, idx) => {
+      const pfx = idx === 0 && replyMsgid ? `@+reply=${escapeTagValue(replyMsgid)} ` : ''
+      send(`${pfx}PRIVMSG ${target} :${line === '' ? ' ' : line}`)
+    })
+  }
+  else {
+    // escapeTagValue is required: msgid is stored unescaped (via unescapeTag) and
+    // must be re-encoded before embedding in the wire tag string.
+    const tagPrefix = replyMsgid ? `@+reply=${escapeTagValue(replyMsgid)} ` : ''
+    send(`${tagPrefix}PRIVMSG ${target} :${text}`)
+  }
 
   // When echo-message is active the server echoes our message back with a
-  // server-assigned msgid, so skip the local optimistic add to avoid duplicates.
+  // server-assigned msgid (a multiline send echoes as a batch we reassemble), so
+  // skip the local optimistic add to avoid duplicates.
   if (!echoMessageActive) {
     addToBuffer(target, buf.kind, { type: 'chat', from: nick.value, channel: target, text, replyTo: replyMsgid })
   }
@@ -4194,6 +4385,7 @@ export function useIrcChat() {
     setMentionKeywords,
     clearInputNick,
     clearAuthedIdentity,
+    hadAccount,
     defaultChannel,
     isChatVisible,
     setChatVisible,

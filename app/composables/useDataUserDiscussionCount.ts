@@ -2,15 +2,16 @@
  * Cached total discussion count for a given user - used for display counters
  * (e.g. "X discussions" on a profile card).
  *
- * ## Distinction from `useCacheBadgeDiscussionStartedCount`
+ * Counts non-draft discussions the user created, excluding profile wall posts
+ * (profile_id IS NOT NULL). Archived threads still count.
  *
- * | Composable                           | Counts                                              | Used for              |
- * |--------------------------------------|-----------------------------------------------------|-----------------------|
- * | `useDataUserDiscussionCount`         | ALL non-draft discussions, any context except profile wall | Display counter  |
- * | `useBadgeDiscussionStartedCount`     | Pure forum threads only (topic set, no entity FKs, not draft) | Badge threshold |
+ * ## Relationship to the "Forum Regular" badge
  *
- * These look similar but query different predicates and serve different consumers.
- * Do NOT merge them - the badge composable is intentionally stricter.
+ * The `forum_regular` badge ("Started X forum discussions") uses the SAME
+ * predicate, computed server-side in `recompute_forum_regular_badge` and stored
+ * on `profile_badges`. Both must stay in sync: this client-side composable is a
+ * live cached counter, the badge is a persisted, trigger-recomputed value with
+ * tiers. If you change the predicate here, change it there too.
  */
 
 import type { Ref } from 'vue'

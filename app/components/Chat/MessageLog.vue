@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MediaItem } from '@/components/Shared/Lightbox.vue'
 import type { ChatMessage } from '@/composables/useIrcChat'
+import type { Segment } from '@/lib/ircFormat'
 import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, pushToast, Sheet, Spinner } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
@@ -21,6 +22,7 @@ import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { mentionsSelf, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
+import { applyMarkdown, parseIrcFormatting, segStyle } from '@/lib/ircFormat'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { fullDate } from '@/lib/utils/date'
 
@@ -386,243 +388,13 @@ function nickStyle(msg: ChatMessage) {
   return undefined
 }
 
-// mIRC 99-color palette. Color 99 = transparent/default (omitted intentionally).
-const MIRC_COLORS: Record<number, string> = {
-  0: '#FFFFFF',
-  1: '#000000',
-  2: '#00007F',
-  3: '#009300',
-  4: '#FF0000',
-  5: '#7F0000',
-  6: '#9C009C',
-  7: '#FC7F00',
-  8: '#FFFF00',
-  9: '#00FC00',
-  10: '#009393',
-  11: '#00FFFF',
-  12: '#0000FC',
-  13: '#FF00FF',
-  14: '#7F7F7F',
-  15: '#D2D2D2',
-  16: '#470000',
-  17: '#472100',
-  18: '#474700',
-  19: '#324700',
-  20: '#004700',
-  21: '#00472C',
-  22: '#004747',
-  23: '#002747',
-  24: '#000047',
-  25: '#2E0047',
-  26: '#470047',
-  27: '#47002A',
-  28: '#740000',
-  29: '#743A00',
-  30: '#747400',
-  31: '#517400',
-  32: '#007400',
-  33: '#007449',
-  34: '#007474',
-  35: '#004074',
-  36: '#000074',
-  37: '#4B0074',
-  38: '#740074',
-  39: '#740045',
-  40: '#B50000',
-  41: '#B56300',
-  42: '#B5B500',
-  43: '#7DB500',
-  44: '#00B500',
-  45: '#00B571',
-  46: '#00B5B5',
-  47: '#0063B5',
-  48: '#0000B5',
-  49: '#7500B5',
-  50: '#B500B5',
-  51: '#B5006B',
-  52: '#FF0000',
-  53: '#FF8C00',
-  54: '#FFFF00',
-  55: '#B2FF00',
-  56: '#00FF00',
-  57: '#00FFA0',
-  58: '#00FFFF',
-  59: '#008CFF',
-  60: '#0000FF',
-  61: '#A500FF',
-  62: '#FF00FF',
-  63: '#FF0098',
-  64: '#FF5959',
-  65: '#FFB459',
-  66: '#FFFF71',
-  67: '#CFFF60',
-  68: '#6FFF6F',
-  69: '#65FFC9',
-  70: '#6DFFFF',
-  71: '#59B4FF',
-  72: '#5959FF',
-  73: '#C459FF',
-  74: '#FF66FF',
-  75: '#FF59BC',
-  76: '#FF9C9C',
-  77: '#FFD39C',
-  78: '#FFFF9C',
-  79: '#E2FF9C',
-  80: '#9CFF9C',
-  81: '#9CFFDB',
-  82: '#9CFFFF',
-  83: '#9CD3FF',
-  84: '#9C9CFF',
-  85: '#DC9CFF',
-  86: '#FF9CFF',
-  87: '#FF94D3',
-  88: '#000000',
-  89: '#131313',
-  90: '#282828',
-  91: '#363636',
-  92: '#4D4D4D',
-  93: '#656565',
-  94: '#818181',
-  95: '#9F9F9F',
-  96: '#BCBCBC',
-  97: '#E2E2E2',
-  98: '#FFFFFF',
-}
-
-function mircColor(n: number): string | undefined {
-  return n === 99 ? undefined : MIRC_COLORS[n]
-}
-
-interface Segment {
-  type: 'text' | 'link' | 'channel' | 'mention' | 'inline-image' | 'inline-video' | 'inline-youtube'
-  value: string
-  fg?: string
-  bg?: string
-  bold?: boolean
-  italic?: boolean
-  underline?: boolean
-}
-
-function segStyle(seg: Segment): Record<string, string> | undefined {
-  const style: Record<string, string> = {}
-  if (seg.fg)
-    style.color = seg.fg
-  if (seg.bg)
-    style.backgroundColor = seg.bg
-  if (seg.bold)
-    style.fontWeight = 'bold'
-  if (seg.italic)
-    style.fontStyle = 'italic'
-  if (seg.underline)
-    style.textDecoration = 'underline'
-  return Object.keys(style).length ? style : undefined
-}
-
-function parseIrcFormatting(text: string): Segment[] {
-  const out: Segment[] = []
-  let i = 0
-  let fg: string | undefined
-  let bg: string | undefined
-  let bold = false
-  let italic = false
-  let underline = false
-  let segStart = 0
-
-  function flush(end: number) {
-    if (end > segStart) {
-      const seg: Segment = { type: 'text', value: text.slice(segStart, end) }
-      if (fg !== undefined)
-        seg.fg = fg
-      if (bg !== undefined)
-        seg.bg = bg
-      if (bold)
-        seg.bold = true
-      if (italic)
-        seg.italic = true
-      if (underline)
-        seg.underline = true
-      out.push(seg)
-    }
-    segStart = i
-  }
-
-  while (i < text.length) {
-    const code = text.charCodeAt(i)
-    if (code === 0x03) {
-      flush(i)
-      i++
-      let fgStr = ''
-      if (i < text.length && /\d/.test(text.charAt(i))) {
-        fgStr += text.charAt(i++)
-        if (i < text.length && /\d/.test(text.charAt(i)))
-          fgStr += text.charAt(i++)
-      }
-      let bgStr = ''
-      if (i < text.length && text.charAt(i) === ',') {
-        i++
-        if (i < text.length && /\d/.test(text.charAt(i))) {
-          bgStr += text.charAt(i++)
-          if (i < text.length && /\d/.test(text.charAt(i)))
-            bgStr += text.charAt(i++)
-        }
-      }
-      if (fgStr === '') {
-        fg = undefined
-        bg = undefined
-      }
-      else {
-        fg = mircColor(Number.parseInt(fgStr, 10))
-        if (bgStr !== '')
-          bg = mircColor(Number.parseInt(bgStr, 10))
-      }
-      segStart = i
-    }
-    else if (code === 0x02) {
-      flush(i)
-      bold = !bold
-      i++
-      segStart = i
-    }
-    else if (code === 0x1D) {
-      flush(i)
-      italic = !italic
-      i++
-      segStart = i
-    }
-    else if (code === 0x1F) {
-      flush(i)
-      underline = !underline
-      i++
-      segStart = i
-    }
-    else if (code === 0x16) {
-      flush(i)
-      ;[fg, bg] = [bg, fg]
-      i++
-      segStart = i
-    }
-    else if (code === 0x0F) {
-      flush(i)
-      fg = undefined
-      bg = undefined
-      bold = false
-      italic = false
-      underline = false
-      i++
-      segStart = i
-    }
-    else {
-      i++
-    }
-  }
-  flush(i)
-  return out
-}
-
 function segments(text: string): Segment[] {
-  // Step 1: Parse IRC formatting and split by URLs
+  // Step 1: Parse IRC formatting + markdown, then split by URLs. Markdown styles
+  // in both modes; modern strips the markers, classic keeps them (asterisks etc
+  // stay visible while the content between them is still styled).
+  const base = applyMarkdown(parseIrcFormatting(text), isModernMode.value)
   const afterUrl: Segment[] = []
-  for (const seg of parseIrcFormatting(text)) {
+  for (const seg of base) {
     const { value, type: _type, ...style } = seg
     let last = 0
     for (const m of value.matchAll(new RegExp(URL_RE.source, 'g'))) {
@@ -1464,7 +1236,7 @@ onBeforeUnmount(() => {
                       <span v-else>@{{ seg.value }}</span>
                     </template>
                     <span
-                      v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline"
+                      v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono"
                       :style="segStyle(seg)"
                     >{{ seg.value }}</span>
                     <img
@@ -1571,7 +1343,7 @@ onBeforeUnmount(() => {
                       </UserPreviewHover>
                       <template v-else>@{{ seg.value }}</template>
                     </template>
-                    <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                    <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono" :style="segStyle(seg)">{{ seg.value }}</span>
                     <template v-else>{{ seg.value }}</template>
                   </template>
                 </span>
@@ -1595,7 +1367,7 @@ onBeforeUnmount(() => {
                     </UserPreviewHover>
                     <template v-else>@{{ seg.value }}</template>
                   </template>
-                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono" :style="segStyle(seg)">{{ seg.value }}</span>
                   <template v-else>{{ seg.value }}</template>
                 </template>
               </span>
@@ -1617,7 +1389,7 @@ onBeforeUnmount(() => {
                     </UserPreviewHover>
                     <template v-else>@{{ seg.value }}</template>
                   </template>
-                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono" :style="segStyle(seg)">{{ seg.value }}</span>
                   <template v-else>{{ seg.value }}</template>
                 </template>
               </span>
@@ -1642,7 +1414,7 @@ onBeforeUnmount(() => {
                     </UserPreviewHover>
                     <template v-else>@{{ seg.value }}</template>
                   </template>
-                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono" :style="segStyle(seg)">{{ seg.value }}</span>
                   <template v-else>{{ seg.value }}</template>
                 </template>
               </span>
@@ -1741,7 +1513,7 @@ onBeforeUnmount(() => {
                           </UserPreviewHover>
                           <template v-else>@{{ seg.value }}</template>
                         </template>
-                        <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                        <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono" :style="segStyle(seg)">{{ seg.value }}</span>
                         <template v-else>{{ seg.value }}</template>
                       </template>
                     </span>
@@ -2603,6 +2375,7 @@ onBeforeUnmount(() => {
       box-shadow: inset 2px 0 0 var(--color-accent);
       padding: 1px var(--space-xs);
       margin: 0 calc(-1 * var(--space-xs));
+      border-radius: 0;
     }
   }
 

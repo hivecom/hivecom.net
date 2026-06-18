@@ -465,7 +465,7 @@ defineExpose({ refresh: fetchUsers })
         <TableContainer>
           <Table.Root v-if="rows.length > 0" separate-cells>
             <template #header>
-              <th class="vui-table-interactive-cell" />
+              <th v-if="canModifyUsers || canDeleteUsers" class="vui-table-interactive-cell" />
 
               <!-- Username -->
               <Table.Head class="sortable-head" @click="handleSort('username')">
@@ -548,7 +548,7 @@ defineExpose({ refresh: fetchUsers })
 
             <template #body>
               <tr v-for="user in rows" :key="user.id" class="clickable-row">
-                <Table.SelectRow :row="user" />
+                <Table.SelectRow v-if="canModifyUsers || canDeleteUsers" :row="user" />
 
                 <!-- Username -->
                 <Table.Cell class="username-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">

@@ -1,4 +1,5 @@
 import type { ComputedRef, Ref } from 'vue'
+import type { PermissionResource } from '@/types/database.overrides'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import { useTableActions } from '@/composables/useTableActions'
 
@@ -11,8 +12,18 @@ const TRAILING_S_RE = /s$/
  * R = display row type - the columns shown in the table (the composable merges _original automatically)
  */
 export interface UseAdminCrudTableOptions<T extends { id: number }, R extends Record<string, unknown>> {
-  /** Resource type string - drives permission checks and the URL query param key (e.g. 'games') */
+  /**
+   * Resource type string - the entity label, used for the URL query param key
+   * and error messages (e.g. 'games', 'network_gameservers').
+   */
   resourceType: string
+
+  /**
+   * Permission group used for create/update/delete checks. Defaults to
+   * `resourceType`. Set this when the entity name differs from its permission
+   * group - e.g. network_gameservers / network_servers both gate on 'network'.
+   */
+  permissionResource?: PermissionResource
 
   /** Fetches the raw data. Caller owns the Supabase query shape. */
   fetch: () => Promise<T[]>
@@ -92,6 +103,7 @@ export function useAdminCrudTable<
 >(options: UseAdminCrudTableOptions<T, R>): UseAdminCrudTableReturn<T, R> {
   const {
     resourceType,
+    permissionResource,
     fetch: fetchFn,
     transform,
     filterFn,
@@ -105,8 +117,11 @@ export function useAdminCrudTable<
     ? false
     : (queryParamKey ?? resourceType.replace(TRAILING_S_RE, ''))
 
-  // Permissions
-  const { canManageResource, canCreate, canUpdate, canDelete } = useTableActions(resourceType)
+  // Permissions. The permission group defaults to the entity resourceType,
+  // but can be overridden when they differ (e.g. network sub-resources).
+  const { canManageResource, canCreate, canUpdate, canDelete } = useTableActions(
+    permissionResource ?? (resourceType as PermissionResource),
+  )
 
   // Router (only used when deep-link is enabled)
   const route = resolvedParamKey !== false ? useRoute() : null

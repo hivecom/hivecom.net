@@ -5,6 +5,7 @@ import { watch } from 'vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
+import UserLink from '@/components/Shared/UserLink.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { fullDate } from '@/lib/utils/date'
@@ -194,7 +195,7 @@ async function confirmDelete() {
         </Flex>
       </Flex>
 
-      <TableSkeleton :columns="4" :rows="10" :show-actions="canManageResource" />
+      <TableSkeleton :columns="5" :rows="10" :show-actions="canManageResource" />
     </Flex>
   </template>
 
@@ -246,9 +247,18 @@ async function confirmDelete() {
 
         <template #body>
           <tr v-for="reservation in rows" :key="reservation._original.id">
+            <Table.Cell>{{ reservation.id }}</Table.Cell>
             <Table.Cell>{{ reservation.Username }}</Table.Cell>
             <Table.Cell>{{ reservation.Note }}</Table.Cell>
-            <Table.Cell>{{ reservation.Assigned }}</Table.Cell>
+            <Table.Cell>
+              <UserLink
+                v-if="reservation._original.assigned"
+                :user-id="reservation._original.assigned.id"
+                show-avatar
+                class="text-s"
+              />
+              <span v-else class="text-color-light text-s">-</span>
+            </Table.Cell>
             <Table.Cell>{{ reservation.Created }}</Table.Cell>
             <Table.Cell v-if="canManageResource">
               <Flex gap="xs">

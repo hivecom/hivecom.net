@@ -161,7 +161,7 @@ watch(user, (u, prev) => {
 
         <!-- Not connected: show connect form centered -->
         <Flex v-else-if="!isConnected" key="disconnected" y-center x-center class="chat-app__connect">
-          <ChatConnectForm />
+          <ChatConnectForm :inline-sign-in="!props.compact" />
         </Flex>
 
         <!-- Connected: split layout (sidebar + chat) on the full page -->
@@ -213,7 +213,7 @@ watch(user, (u, prev) => {
           <ChatMessageLog v-else :compact="props.compact" />
           <ChatSetupBanner @open-identity="identityOpen = true" />
           <ChatPushPromptBanner />
-          <ChatComposer v-if="hasChannels || serverLogPinned" compact />
+          <ChatComposer v-if="hasChannels || serverLogPinned" />
         </Flex>
 
         <!-- Connected: stacked layout for the compact navbar sheet -->
@@ -223,7 +223,7 @@ watch(user, (u, prev) => {
           <ChatMessageLog v-else :compact="props.compact" />
           <ChatSetupBanner @open-identity="identityOpen = true" />
           <ChatPushPromptBanner />
-          <ChatComposer v-if="hasChannels || serverLogPinned" compact />
+          <ChatComposer v-if="hasChannels || serverLogPinned" />
         </Flex>
       </Transition>
     </Flex>

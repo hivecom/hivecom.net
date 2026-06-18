@@ -213,7 +213,7 @@ async function handleBulkDelete() {
       <TableContainer>
         <Table.Root :loading="loading" separate-cells>
           <template #header>
-            <th class="vui-table-interactive-cell" />
+            <th v-if="canManageResource" class="vui-table-interactive-cell" />
             <Table.Head v-for="header in headers.filter(h => h.label !== '_original' && h.label !== 'id')" :key="header.label" sort :header />
             <Table.Head
               v-if="canManageResource"
@@ -225,7 +225,7 @@ async function handleBulkDelete() {
 
           <template #body>
             <tr v-for="row in rows" :key="row._original.id">
-              <Table.SelectRow :row="row as any" />
+              <Table.SelectRow v-if="canManageResource" :row="row as any" />
               <Table.Cell>
                 {{ row.Message }}
               </Table.Cell>

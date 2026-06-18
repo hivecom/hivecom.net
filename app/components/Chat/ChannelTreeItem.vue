@@ -101,7 +101,7 @@ function bufferIcon(kind: string) {
         <Badge v-else-if="node.parentBuffer.unread > 0" size="s" round variant="neutral" class="chat-channels__badge">
           {{ node.parentBuffer.unread }}
         </Badge>
-        <Button square plain size="s" aria-label="Close" class="chat-channels__close" @click.stop="closeBuffer(node.parentBuffer.name)">
+        <Button v-if="!isMobile" square plain size="s" aria-label="Close" class="chat-channels__close" @click.stop="closeBuffer(node.parentBuffer.name)">
           <Icon name="ph:x" size="12" />
         </Button>
       </button>
@@ -217,7 +217,7 @@ function bufferIcon(kind: string) {
         {{ node.buffer.unread }}
       </Badge>
       <Button
-        v-if="node.buffer.kind !== 'server'"
+        v-if="node.buffer.kind !== 'server' && !isMobile"
         square
         plain
         size="s"

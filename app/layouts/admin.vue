@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AppPermission } from '@/types/database.overrides'
 import { Button, Divider, DropdownItem, Flex, Kbd, KbdGroup, Sheet, Sidebar, Spinner, Tooltip } from '@dolanske/vui'
 import { until, useMediaQuery } from '@vueuse/core'
 import SharedLogo from '@/components/Shared/Logo.vue'
@@ -126,17 +127,24 @@ watch(user, async (newUser) => {
 })
 
 // Helper function to check if user has specific permission
-function hasPermission(permission: string): boolean {
+function hasPermission(permission: AppPermission): boolean {
   return userPermissions.value.includes(permission)
 }
 
 // Helper function to check if user has any of the provided permissions
-function hasAnyPermission(permissions: string[]): boolean {
+function hasAnyPermission(permissions: AppPermission[]): boolean {
   return permissions.some(permission => userPermissions.value.includes(permission))
 }
 
 // Menu items with their required permissions
-const menuItems = [
+interface MenuItem {
+  name: string
+  path: string
+  icon: string
+  permissions: AppPermission[]
+  dividerAfter?: boolean
+}
+const menuItems: MenuItem[] = [
   {
     name: 'Dashboard',
     path: '/admin/',

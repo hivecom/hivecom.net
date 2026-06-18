@@ -8,6 +8,7 @@ import ChannelInfoModal from '@/components/Chat/ChannelInfoModal.vue'
 import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
 import ChannelTreeItem from '@/components/Chat/ChannelTreeItem.vue'
 import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
+import UserListModal from '@/components/Chat/UserListModal.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
@@ -485,6 +486,16 @@ function openChannelInfo(buf: ChatBuffer) {
   closeMenu()
 }
 
+const userlistOpen = ref(false)
+
+// The user list modal renders the active buffer's members, so switch to the
+// channel first, then open it. Channels only (PMs have no member list).
+function openUserlist(buf: ChatBuffer) {
+  setActive(buf.name)
+  userlistOpen.value = true
+  closeMenu()
+}
+
 const createSubchannelTarget = ref<ChatBuffer | null>(null)
 const createSubchannelInput = ref('')
 
@@ -602,7 +613,7 @@ function executeRenameChannel() {
                 <Flex y-center gap="s" class="chat-channels__name-wrap">
                   <span class="chat-channels__name chat-channels__name--compact">Server Log</span>
                 </Flex>
-                <Button square plain size="s" aria-label="Close" class="chat-channels__close" @click.stop="closeServerLog()">
+                <Button v-if="!isMobile" square plain size="s" aria-label="Close" class="chat-channels__close" @click.stop="closeServerLog()">
                   <Icon name="ph:x" size="12" />
                 </Button>
               </button>
@@ -672,7 +683,7 @@ function executeRenameChannel() {
                   {{ buf.unread }}
                 </Badge>
                 <Button
-                  v-if="buf.kind !== 'server'"
+                  v-if="buf.kind !== 'server' && !isMobile"
                   square
                   plain
                   size="s"
@@ -734,6 +745,12 @@ function executeRenameChannel() {
                   <Icon name="ph:info" />
                 </template>
                 About
+              </DropdownItem>
+              <DropdownItem @click="openUserlist(menuBuffer)">
+                <template #icon>
+                  <Icon name="ph:users" />
+                </template>
+                Userlist
               </DropdownItem>
               <Divider />
               <DropdownItem @click="copyText(buildChannelLink(menuBuffer.name), 'Channel link')">
@@ -836,6 +853,12 @@ function executeRenameChannel() {
               </template>
               About
             </DropdownItem>
+            <DropdownItem @click="openUserlist(menuBuffer)">
+              <template #icon>
+                <Icon name="ph:users" />
+              </template>
+              Userlist
+            </DropdownItem>
             <Divider />
             <DropdownItem @click="copyText(buildChannelLink(menuBuffer.name), 'Channel link')">
               <template #icon>
@@ -936,6 +959,8 @@ function executeRenameChannel() {
   </Flex>
   <IrcWhoisModal :nick="whoisModalNick" :open="whoisModalOpen" @close="whoisModalOpen = false" />
   <ChannelInfoModal :channel-name="menuBuffer?.kind === 'channel' ? menuBuffer.name : undefined" :open="channelInfoOpen" @close="channelInfoOpen = false" />
+
+  <UserListModal :open="userlistOpen" @close="userlistOpen = false" />
   <Modal :open="createSubchannelTarget !== null" size="s" @close="createSubchannelTarget = null">
     <template #header>
       <h4>Create sub-channel</h4>

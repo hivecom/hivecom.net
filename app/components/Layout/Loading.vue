@@ -28,30 +28,65 @@ onUnmounted(() => {
     clearTimeout(escapeHatchTimer)
 })
 
+// Fade out the loading screen. Idempotent - the guard makes it safe to call
+// more than once (e.g. both the normal path and a fallback timeout).
+function finishLoading() {
+  if (!isLoading.value)
+    return
+
+  // Remove the Vue-independent boot watchdog UI (nuxt.config inline script) in
+  // case it already injected itself before a late boot completed.
+  if (import.meta.client)
+    document.getElementById('boot-escape-hatch')?.remove()
+
+  // Mark content as ready first (render behind loading screen)
+  setTimeout(() => {
+    isContentReady.value = true
+
+    // Then start the fade-out animation
+    setTimeout(() => {
+      isFadingOut.value = true
+
+      // Remove the loading screen after animation completes
+      setTimeout(() => {
+        isLoading.value = false
+        showEscapeHatch.value = false
+      }, 500) // Match this to the transition duration in CSS
+    }, 100) // Short delay to ensure content is rendered
+  }, 100)
+}
+
+function reload() {
+  if (import.meta.client)
+    window.location.reload()
+}
+
 // Load content and then fade out loading screen
 onMounted(async () => {
   if (import.meta.client) {
-    // Block on user preferences so the correct theme and light/dark mode are
-    // already applied before the loading screen lifts. This is a no-op for
-    // guests - the composable guards against a null user internally.
-    await applyUserPreferences()
-    resolveSessionReady()
-
-    // Mark content as ready first (render behind loading screen)
-    setTimeout(() => {
-      isContentReady.value = true
-
-      // Then start the fade-out animation
-      setTimeout(() => {
-        isFadingOut.value = true
-
-        // Remove the loading screen after animation completes
-        setTimeout(() => {
-          isLoading.value = false
-          showEscapeHatch.value = false
-        }, 500) // Match this to the transition duration in CSS
-      }, 100) // Short delay to ensure content is rendered
-    }, 100)
+    try {
+      // Block on user preferences so the correct theme and light/dark mode are
+      // already applied before the loading screen lifts. This is a no-op for
+      // guests - the composable guards against a null user internally.
+      //
+      // Race against a timeout so a stalled network call (auth session,
+      // settings, or theme fetch) can never freeze the splash forever. A
+      // briefly wrong theme is better than a permanently stuck loading screen.
+      await Promise.race([
+        applyUserPreferences(),
+        new Promise(resolve => setTimeout(resolve, 8000)),
+      ])
+    }
+    catch (error) {
+      // Preferences failed - log it but still let the app through.
+      console.error('[Loading] Failed to apply user preferences', error)
+    }
+    finally {
+      // Always release the session gate and lift the screen, even on error or
+      // timeout, so the app is never held behind the splash indefinitely.
+      resolveSessionReady()
+      finishLoading()
+    }
   }
 })
 </script>
@@ -67,6 +102,9 @@ onMounted(async () => {
           Taking longer than expected...
         </p>
         <Flex gap="xs" x-center>
+          <Button variant="accent" size="s" @click="reload">
+            Reload
+          </Button>
           <Button variant="gray" size="s" @click="() => { isLoading = false }">
             Dismiss
           </Button>

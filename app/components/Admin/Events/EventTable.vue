@@ -500,7 +500,7 @@ onBeforeMount(async () => {
         <TableContainer>
           <Table.Root v-if="rows.length > 0" separate-cells class="mb-l">
             <template #header>
-              <th class="vui-table-interactive-cell" />
+              <th v-if="canManageResource" class="vui-table-interactive-cell" />
               <Table.Head class="sortable-head" @click="handleSort('Title')">
                 <Flex gap="xs" y-center>
                   Title
@@ -535,7 +535,7 @@ onBeforeMount(async () => {
 
             <template #body>
               <tr v-for="event in items" :key="event.id" class="clickable-row">
-                <Table.SelectRow :row="event" />
+                <Table.SelectRow v-if="canManageResource" :row="event" />
                 <Table.Cell @click="viewEventDetails(event)">
                   {{ event.title }}
                 </Table.Cell>

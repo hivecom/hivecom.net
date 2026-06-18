@@ -472,7 +472,7 @@ onBeforeMount(async () => {
         <TableContainer>
           <Table.Root v-if="rows.length > 0" separate-cells class="mb-l">
             <template #header>
-              <th class="vui-table-interactive-cell" />
+              <th v-if="canManageResource" class="vui-table-interactive-cell" />
               <Table.Head class="sortable-head" @click="handleSort('Title')">
                 <Flex gap="xs" y-center>
                   Title
@@ -500,7 +500,7 @@ onBeforeMount(async () => {
 
             <template #body>
               <tr v-for="referendum in rows" :key="referendum.id" class="clickable-row">
-                <Table.SelectRow :row="referendum as any" />
+                <Table.SelectRow v-if="canManageResource" :row="referendum as any" />
                 <Table.Cell @click="viewReferendum(referendum as RpcReferendum)">
                   <span class="text-s">{{ referendum.title }}</span>
                 </Table.Cell>

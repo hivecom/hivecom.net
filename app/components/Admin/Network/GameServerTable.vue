@@ -88,6 +88,7 @@ const {
   refresh: fetchGameservers,
 } = useAdminCrudTable<QueryGameserver, TransformedGameserver>({
   resourceType: 'network_gameservers',
+  permissionResource: 'network',
   // URL param sync handled manually below (also needs to set tab= param)
   queryParamKey: false,
   refreshSignal,
@@ -426,7 +427,7 @@ async function handleBulkDelete() {
     <TableContainer>
       <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
-          <th class="vui-table-interactive-cell" />
+          <th v-if="canManageResource" class="vui-table-interactive-cell" />
           <Table.Head v-for="header in headers.filter(h => h.label !== '_original' && h.label !== 'id')" :key="header.label" sort :header />
           <Table.Head
             v-if="canManageResource"
@@ -438,7 +439,7 @@ async function handleBulkDelete() {
 
         <template #body>
           <tr v-for="gameserver in rows" :key="gameserver._original.id" class="clickable-row">
-            <Table.SelectRow :row="gameserver as any" />
+            <Table.SelectRow v-if="canManageResource" :row="gameserver as any" />
             <Table.Cell @click="viewGameserver(gameserver._original as QueryGameserver)">
               {{ gameserver.Name }}
             </Table.Cell>
@@ -489,6 +490,7 @@ async function handleBulkDelete() {
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
                 resource-type="network_gameservers"
+                permission="network"
                 :item="gameserver._original"
                 button-size="s"
                 :custom-actions="[

@@ -99,10 +99,22 @@ onMounted(async () => {
   gap: var(--space-xxs);
 
   &--small-row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    max-width: 100%;
+    display: inline;
+
+    .yt-embed__preview {
+      vertical-align: middle;
+    }
+
+    .yt-embed__title {
+      display: inline;
+      flex: none;
+      min-width: 0;
+      margin-left: var(--space-xxs);
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      vertical-align: middle;
+    }
   }
 
   &--inline {

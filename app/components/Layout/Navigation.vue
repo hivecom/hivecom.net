@@ -91,8 +91,9 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
 <template>
   <nav
-    class="navigation" :class="{ landing: route.path === '/',
-                                 editing: editorActive }"
+    class="navigation" :class="{ 'landing': route.path === '/',
+                                 'editing': editorActive,
+                                 'on-chat': route.path === '/chat' }"
   >
     <DefineSearchButton>
       <Tooltip :disabled="isMobile">
@@ -236,7 +237,10 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
         <div v-else-if="user && !needsMfaChallenge" class="navigation__user">
           <SearchButton v-if="!isMobile" />
-          <ChatSheet v-if="showChat && !(isMobile && route.path === '/chat')" :mobile="isMobile" :disabled="route.path === '/chat'" />
+          <!-- On desktop /chat the trigger stays visible-but-disabled; on mobile
+               /chat it's hidden via CSS (.navigation.on-chat) so there's no
+               hydration flash from the SSR-gated isMobile breakpoint. -->
+          <ChatSheet v-if="showChat" :mobile="isMobile" :disabled="route.path === '/chat'" />
           <!-- Custom margin, since visually the pfp appears closer than the distance between search & notif icons -->
           <NotificationSheet style="margin-right:6px" />
           <UserSheet v-if="isMobile" />
@@ -694,6 +698,17 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
         gap: var(--space-xs);
       }
     }
+  }
+}
+
+// On the dedicated /chat page on mobile, the page itself is the chat surface and
+// the nav sheet (ChatNavSheet) provides channel/user access, so the navbar chat
+// trigger is redundant. Hide it via the viewport media query rather than the
+// SSR-gated useBreakpoint, so a fresh load of /chat doesn't flash the button in
+// before hydration removes it. Desktop /chat keeps the disabled trigger.
+@media (max-width: #{$breakpoint-s - 1}) {
+  .navigation.on-chat .chat-sheet {
+    display: none;
   }
 }
 

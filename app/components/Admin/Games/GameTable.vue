@@ -454,7 +454,7 @@ onBeforeMount(async () => {
         <TableContainer>
           <Table.Root v-if="games.length > 0" separate-cells class="mb-l">
             <template #header>
-              <th class="vui-table-interactive-cell" />
+              <th v-if="canManageResource" class="vui-table-interactive-cell" />
               <Table.Head class="sortable-head" @click="handleSort('Name')">
                 <Flex gap="xs" y-center>
                   Name
@@ -484,7 +484,7 @@ onBeforeMount(async () => {
                 :key="game.id"
                 class="clickable-row"
               >
-                <Table.SelectRow :row="game as any" />
+                <Table.SelectRow v-if="canManageResource" :row="game as any" />
                 <Table.Cell @click="openGameDetails(game)">
                   <Flex gap="xs" y-center>
                     <GameIcon :game="game as unknown as Tables<'games'>" size="xs" />

@@ -1,20 +1,15 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Modal, Spinner } from '@dolanske/vui'
-import { computed, onMounted, ref, watch, watchEffect } from 'vue'
-import ChatInfoModal from '@/components/Chat/ChannelInfoModal.vue'
+import { Button, ButtonGroup, Flex, Modal, Popout, Spinner } from '@dolanske/vui'
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
+import ChatComposerInput from '@/components/Chat/ComposerInput.vue'
 import IrcWhoisCard from '@/components/Chat/IrcWhoisCard.vue'
 import RelaySourceIcon from '@/components/Chat/RelaySourceIcon.vue'
 import ChatTypingIndicator from '@/components/Chat/TypingIndicator.vue'
-import UserListModal from '@/components/Chat/UserListModal.vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { nickColor, useIrcChat, whoisStore } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useBreakpoint } from '@/lib/mediaQuery'
-
-const props = defineProps<{
-  compact?: boolean
-}>()
 
 const { inputMessage, activeName, activeBuffer, canChat, users, buffers, nick, sendMessage, replyTarget, clearReply, sendTyping, requestWhois, markBufferRead, channelList, listChannels, channelListLoading, registerComposerFocus, relaySeparator } = useIrcChat()
 const { settings } = useDataUserSettings()
@@ -22,19 +17,18 @@ const { resolved: resolvedNicks, resolve: resolveNick } = useIrcNickResolver()
 const isMobile = useBreakpoint('<s')
 const isModernMode = computed(() => isMobile.value || settings.value.chat_display_mode === 'modern')
 
-const inputComp = ref<InstanceType<typeof Input>>()
+const inputComp = ref<InstanceType<typeof ChatComposerInput>>()
 
 onMounted(() => {
-  registerComposerFocus(() => nativeInput()?.focus())
+  registerComposerFocus(() => inputComp.value?.focus())
   watchEffect(() => {
-    const container = inputComp.value?.$el as HTMLElement | undefined
-    if (!container)
+    const el = inputComp.value?.getEl()
+    if (!el)
       return
-    container.style.setProperty('--irc-input-size', 'var(--chat-font-size, var(--font-size-s))')
     if (isModernMode.value)
-      container.style.removeProperty('--irc-input-font')
+      el.style.removeProperty('--irc-input-font')
     else
-      container.style.setProperty('--irc-input-font', 'monospace')
+      el.style.setProperty('--irc-input-font', 'monospace')
   })
 })
 
@@ -42,9 +36,6 @@ watch(activeBuffer, (buf) => {
   if (buf?.kind === 'pm')
     resolveNick([buf.name.toLowerCase()])
 }, { immediate: true })
-
-const infoOpen = ref(false)
-const usersOpen = ref(false)
 
 // /whois modal - independent of the active PM buffer
 const whoisModalNick = ref<string | null>(null)
@@ -54,12 +45,6 @@ const whoisModalData = computed(() =>
 const whoisModalUserId = computed(() =>
   whoisModalNick.value ? (resolvedNicks.value.get(whoisModalNick.value.toLowerCase())?.id ?? null) : null,
 )
-
-function openPmInfo() {
-  if (activeBuffer.value?.kind === 'pm')
-    requestWhois(activeBuffer.value.name)
-  infoOpen.value = true
-}
 
 const placeholder = computed(() => {
   if (!canChat.value)
@@ -112,8 +97,14 @@ const query = ref('')
 const triggerStart = ref(-1)
 const activeIndex = ref(0)
 
-function nativeInput(): HTMLInputElement | null {
-  return (inputComp.value?.$el as HTMLElement | undefined)?.querySelector('input') ?? null
+// Caret helpers delegating to the contenteditable composer input. Offsets are
+// in wire-string space (control codes + markers included), matching inputMessage.
+function getCaret(): { start: number, end: number } {
+  return inputComp.value?.getCaret() ?? { start: inputMessage.value.length, end: inputMessage.value.length }
+}
+
+function setCaret(start: number, end: number = start) {
+  inputComp.value?.setCaret(start, end)
 }
 
 const suggestions = computed<Suggestion[]>(() => {
@@ -215,16 +206,14 @@ function closeSuggestions() {
   triggerStart.value = -1
 }
 
-function onInput(event: Event) {
-  const el = event.target as HTMLInputElement
-  detectTrigger(el.value, el.selectionStart ?? el.value.length)
+function onInput() {
+  detectTrigger(inputMessage.value, getCaret().end)
 }
 
 function accept(item: Suggestion) {
   if (triggerStart.value < 0)
     return
-  const el = nativeInput()
-  const caret = el?.selectionStart ?? inputMessage.value.length
+  const caret = getCaret().end
   const before = inputMessage.value.slice(0, triggerStart.value)
   const after = inputMessage.value.slice(caret)
 
@@ -245,13 +234,175 @@ function accept(item: Suggestion) {
   closeSuggestions()
 
   const nextCaret = before.length + insert.length
-  nextTick(() => {
-    const input = nativeInput()
-    if (input) {
-      input.focus()
-      input.setSelectionRange(nextCaret, nextCaret)
+  nextTick(() => setCaret(nextCaret))
+}
+
+// --- selection formatting toolbar (desktop) --------------------------------
+// When the user selects text in the composer we float a small toolbar above
+// it. Each button wraps the selection with an IRC control code AND keeps the
+// readable markdown-style markers (** etc) literally in the message, so plain
+// IRC clients still see the emphasis while our renderer styles it for real.
+// Colors are code-only since there's no marker convention for them.
+
+const selStart = ref(-1)
+const selEnd = ref(-1)
+const colorPickerOpen = ref(false)
+const colorButtonRef = ref<HTMLElement | null>(null)
+
+// mIRC base palette (codes 0-15). Mirrors the values the message renderer uses.
+const MIRC_PALETTE: { code: number, hex: string }[] = [
+  { code: 0, hex: '#FFFFFF' },
+  { code: 1, hex: '#000000' },
+  { code: 2, hex: '#00007F' },
+  { code: 3, hex: '#009300' },
+  { code: 4, hex: '#FF0000' },
+  { code: 5, hex: '#7F0000' },
+  { code: 6, hex: '#9C009C' },
+  { code: 7, hex: '#FC7F00' },
+  { code: 8, hex: '#FFFF00' },
+  { code: 9, hex: '#00FC00' },
+  { code: 10, hex: '#009393' },
+  { code: 11, hex: '#00FFFF' },
+  { code: 12, hex: '#0000FC' },
+  { code: 13, hex: '#FF00FF' },
+  { code: 14, hex: '#7F7F7F' },
+  { code: 15, hex: '#D2D2D2' },
+]
+
+const showFormatToolbar = computed(() =>
+  !isMobile.value && !open.value && canChat.value && selEnd.value > selStart.value,
+)
+
+// Track the input's current selection range. Bound to select/mouseup/keyup so
+// it stays in sync however the user changes it.
+function syncSelection() {
+  const { start, end } = getCaret()
+  selStart.value = start
+  selEnd.value = end
+  // Selection collapsed (toolbar will hide) - drop any open color picker so it
+  // doesn't auto-reopen the next time text is selected.
+  if (selEnd.value <= selStart.value)
+    colorPickerOpen.value = false
+}
+
+function clearSelectionState() {
+  selStart.value = -1
+  selEnd.value = -1
+  colorPickerOpen.value = false
+}
+
+// Toggle the `before`/`after` wrapper around the tracked selection. If the
+// selection is already flanked by this exact wrapper, strip it (toggle off);
+// otherwise add it (toggle on). The inner text is reselected either way so
+// formats stack and the toolbar stays visible. Toggle-off matches the wrapper
+// this same function produces, so apply-then-reapply cleanly removes it.
+function wrapSelection(before: string, after: string) {
+  const start = selStart.value
+  const end = selEnd.value
+  if (start < 0)
+    return
+  const value = inputMessage.value
+  const wrappedBefore = start >= before.length && value.slice(start - before.length, start) === before
+  const wrappedAfter = value.slice(end, end + after.length) === after
+
+  if (end > start) {
+    const selected = value.slice(start, end)
+    if (wrappedBefore && wrappedAfter) {
+      // Toggle off: drop the surrounding wrapper, reselect the bare content.
+      inputMessage.value = value.slice(0, start - before.length) + selected + value.slice(end + after.length)
+      const ns = start - before.length
+      const ne = ns + selected.length
+      selStart.value = ns
+      selEnd.value = ne
+      nextTick(() => setCaret(ns, ne))
+      return
     }
-  })
+    // Toggle on: wrap and reselect the inner text so formats can be stacked.
+    inputMessage.value = value.slice(0, start) + before + selected + after + value.slice(end)
+    const innerStart = start + before.length
+    const innerEnd = innerStart + selected.length
+    selStart.value = innerStart
+    selEnd.value = innerEnd
+    nextTick(() => setCaret(innerStart, innerEnd))
+  }
+  else {
+    if (wrappedBefore && wrappedAfter) {
+      // Collapsed caret sitting inside an empty wrapper: remove the empty pair.
+      inputMessage.value = value.slice(0, start - before.length) + value.slice(start + after.length)
+      const caret = start - before.length
+      selStart.value = caret
+      selEnd.value = caret
+      nextTick(() => setCaret(caret))
+      return
+    }
+    // Collapsed caret (e.g. a keybind with no selection): insert an empty pair
+    // and drop the caret between the markers so the user can type inside.
+    inputMessage.value = value.slice(0, start) + before + after + value.slice(start)
+    const caret = start + before.length
+    selStart.value = caret
+    selEnd.value = caret
+    nextTick(() => setCaret(caret))
+  }
+}
+
+// Control code goes INSIDE the markers, e.g. strikethrough wraps as
+// tilde-tilde, strike-on, text, strike-off, tilde-tilde. Only the content is
+// styled so the markers stay clean (no struck or bolded asterisks), while
+// code-only IRC clients still get the styling.
+const formatBold = () => wrapSelection('**\u0002', '\u0002**')
+const formatItalic = () => wrapSelection('*\u001D', '\u001D*')
+const formatUnderline = () => wrapSelection('__\u001F', '\u001F__')
+const formatStrike = () => wrapSelection('~~\u001E', '\u001E~~')
+const formatMono = () => wrapSelection('`\u0011', '\u0011`')
+
+function applyColor(code: number) {
+  // Zero-pad so a digit immediately after the code isn't read as part of the
+  // color number by the renderer's two-digit parser.
+  const padded = String(code).padStart(2, '0')
+  wrapSelection(`\u0003${padded}`, '\u0003')
+  colorPickerOpen.value = false
+}
+
+function onFocusOut() {
+  closeSuggestions()
+  clearSelectionState()
+}
+
+// Ctrl/Cmd keybinds. Sync the tracked selection from the live caret first since
+// the user may not have triggered the toolbar's selection sync.
+function formatKeybind(fn: () => void) {
+  const { start, end } = getCaret()
+  selStart.value = start
+  selEnd.value = end
+  fn()
+}
+
+function handleFormatKeybind(event: KeyboardEvent): boolean {
+  if ((!event.ctrlKey && !event.metaKey) || event.altKey)
+    return false
+  const k = event.key.toLowerCase()
+  let fn: (() => void) | undefined
+  if (event.shiftKey) {
+    if (k === 'x')
+      fn = formatStrike
+    else if (k === 'm')
+      fn = formatMono
+  }
+  else if (k === 'b') {
+    fn = formatBold
+  }
+  else if (k === 'i') {
+    fn = formatItalic
+  }
+  else if (k === 'u') {
+    fn = formatUnderline
+  }
+  if (!fn)
+    return false
+  // Stop the browser's native contenteditable bold/italic/underline.
+  event.preventDefault()
+  formatKeybind(fn)
+  return true
 }
 
 // --- IRC-style tab completion --------------------------------------------
@@ -269,9 +420,8 @@ let tabCycle: TabCycle | null = null
 
 function tabComplete(event: KeyboardEvent) {
   event.preventDefault()
-  const el = nativeInput()
   const value = inputMessage.value
-  const caret = el?.selectionStart ?? value.length
+  const caret = getCaret().end
 
   if (tabCycle) {
     // Cycle to the next match.
@@ -318,20 +468,115 @@ function tabComplete(event: KeyboardEvent) {
   tabCycle.wordEnd = wordStart + insert.length
 
   const nextCaret = before.length + insert.length
-  nextTick(() => {
-    const input = nativeInput()
-    if (input) {
-      input.focus()
-      input.setSelectionRange(nextCaret, nextCaret)
-    }
-  })
+  nextTick(() => setCaret(nextCaret))
 }
 
-// --- command history (up/down navigation) ----------------------------------
+// --- per-buffer drafts + command history (persisted to localStorage) --------
+// Each buffer (channel/PM/server) keeps its own composer draft and command
+// history, so switching channels preserves what you were typing and your
+// per-channel recall. Keyed by lowercased buffer name.
 
-const messageHistory = ref<string[]>([])
+const DRAFTS_KEY = 'hivecom.chat.drafts'
+const HISTORY_KEY = 'hivecom.chat.history'
+const HISTORY_LIMIT = 100
+
+const drafts = new Map<string, string>()
+const histories = new Map<string, string[]>()
 const historyIndex = ref(-1)
-const draftBuffer = ref('')
+// In-progress text stashed when the user starts walking history with ArrowUp.
+const historyDraft = ref('')
+
+function bufKey(name = activeName.value) {
+  return name.toLowerCase()
+}
+
+function getHistory(): string[] {
+  const key = bufKey()
+  let h = histories.get(key)
+  if (!h) {
+    h = []
+    histories.set(key, h)
+  }
+  return h
+}
+
+function flushDrafts() {
+  if (!import.meta.client)
+    return
+  const obj: Record<string, string> = {}
+  for (const [k, v] of drafts) {
+    if (v)
+      obj[k] = v
+  }
+  localStorage.setItem(DRAFTS_KEY, JSON.stringify(obj))
+}
+
+let _persistDraftsTimer: ReturnType<typeof setTimeout> | null = null
+function persistDrafts() {
+  if (!import.meta.client)
+    return
+  if (_persistDraftsTimer !== null)
+    clearTimeout(_persistDraftsTimer)
+  _persistDraftsTimer = setTimeout(() => {
+    _persistDraftsTimer = null
+    flushDrafts()
+  }, 150)
+}
+
+function persistHistory() {
+  if (!import.meta.client)
+    return
+  const obj: Record<string, string[]> = {}
+  for (const [k, v] of histories) {
+    if (v.length)
+      obj[k] = v
+  }
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(obj))
+}
+
+function saveDraft(name: string, value: string) {
+  const key = bufKey(name)
+  if (value)
+    drafts.set(key, value)
+  else
+    drafts.delete(key)
+  persistDrafts()
+}
+
+onMounted(() => {
+  if (!import.meta.client)
+    return
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFTS_KEY) ?? '{}')
+    for (const [k, v] of Object.entries(d)) {
+      if (typeof v === 'string' && v)
+        drafts.set(k, v)
+    }
+  }
+  catch {}
+  try {
+    const h = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '{}')
+    for (const [k, v] of Object.entries(h)) {
+      if (Array.isArray(v))
+        histories.set(k, v.filter((x): x is string => typeof x === 'string'))
+    }
+  }
+  catch {}
+  // Restore the draft for whichever buffer is active on load.
+  const initial = drafts.get(bufKey())
+  if (initial)
+    inputMessage.value = initial
+})
+
+onUnmounted(() => {
+  // Flush any pending debounced write so an in-progress draft survives a route
+  // change away from the chat.
+  if (_persistDraftsTimer !== null) {
+    clearTimeout(_persistDraftsTimer)
+    _persistDraftsTimer = null
+  }
+  flushDrafts()
+})
 
 // --- Typing indicator state machine -----------------------------------------
 // 500ms debounce before the first 'active' send in each burst; prevents sending
@@ -359,6 +604,9 @@ function clearTypingTimers() {
 }
 
 watch(inputMessage, (newVal, oldVal) => {
+  // Keep the active buffer's persisted draft in sync with the composer.
+  saveDraft(activeName.value, newVal)
+
   // Clear read markers when the user starts typing - they're actively engaged.
   if (newVal && !oldVal?.trim())
     markBufferRead(activeName.value)
@@ -405,10 +653,15 @@ watch(inputMessage, (newVal, oldVal) => {
 })
 
 function pushHistory(msg: string) {
-  if (msg && msg !== messageHistory.value[messageHistory.value.length - 1])
-    messageHistory.value.push(msg)
+  const h = getHistory()
+  if (msg && msg !== h[h.length - 1]) {
+    h.push(msg)
+    if (h.length > HISTORY_LIMIT)
+      h.splice(0, h.length - HISTORY_LIMIT)
+    persistHistory()
+  }
   historyIndex.value = -1
-  draftBuffer.value = ''
+  historyDraft.value = ''
 }
 
 function sendWithHistory() {
@@ -436,6 +689,10 @@ function sendWithHistory() {
 function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Tab')
     tabCycle = null
+
+  // Formatting shortcuts take priority (Ctrl/Cmd+B/I/U, +Shift+X strike, +Shift+M mono).
+  if (handleFormatKeybind(event))
+    return
 
   if (open.value) {
     switch (event.key) {
@@ -470,39 +727,39 @@ function onKeydown(event: KeyboardEvent) {
   }
 
   if (event.key === 'ArrowUp') {
-    const el = nativeInput()
-    const caret = el?.selectionStart ?? 0
+    const caret = getCaret().start
     if (caret !== 0) {
       event.preventDefault()
-      el?.setSelectionRange(0, 0)
+      setCaret(0, 0)
       return
     }
-    const hist = messageHistory.value
+    const hist = getHistory()
     if (!hist.length)
       return
     event.preventDefault()
     if (historyIndex.value === -1)
-      draftBuffer.value = inputMessage.value
+      historyDraft.value = inputMessage.value
     historyIndex.value = Math.min(historyIndex.value + 1, hist.length - 1)
     inputMessage.value = hist[hist.length - 1 - historyIndex.value]!
     return
   }
 
   if (event.key === 'ArrowDown') {
-    const el = nativeInput()
-    const caret = el?.selectionStart ?? inputMessage.value.length
-    if (caret !== inputMessage.value.length) {
+    const len = inputMessage.value.length
+    const caret = getCaret().start
+    if (caret !== len) {
       event.preventDefault()
-      el?.setSelectionRange(inputMessage.value.length, inputMessage.value.length)
+      setCaret(len, len)
       return
     }
     if (historyIndex.value === -1)
       return
     event.preventDefault()
     historyIndex.value--
+    const hist = getHistory()
     inputMessage.value = historyIndex.value === -1
-      ? draftBuffer.value
-      : messageHistory.value[messageHistory.value.length - 1 - historyIndex.value]!
+      ? historyDraft.value
+      : hist[hist.length - 1 - historyIndex.value]!
   }
 }
 
@@ -512,12 +769,18 @@ function userStyle(name: string) {
   return undefined
 }
 
-// Close the popup when switching buffers so stale entries never linger.
-watch(activeName, () => {
+// Swap composer state per buffer: stash the outgoing draft, restore the
+// incoming one, and reset history navigation. Also closes the popup so stale
+// entries never linger.
+watch(activeName, (newName, oldName) => {
+  if (oldName !== undefined)
+    saveDraft(oldName, inputMessage.value)
+  inputMessage.value = drafts.get(bufKey(newName)) ?? ''
+
   clearTypingTimers()
   closeSuggestions()
   historyIndex.value = -1
-  draftBuffer.value = ''
+  historyDraft.value = ''
 })
 watch(activeName, clearReply)
 </script>
@@ -526,14 +789,6 @@ watch(activeName, clearReply)
   <Flex class="chat-composer" column expand :gap="0">
     <ChatTypingIndicator />
     <Flex expand :gap="0">
-      <Flex v-if="props.compact && !isMobile" :gap="0" class="chat-composer__compact-actions">
-        <Button square aria-label="Channel info" class="chat-composer__compact-btn" @click="activeBuffer?.kind === 'pm' ? openPmInfo() : (infoOpen = true)">
-          <Icon name="ph:info" size="16" />
-        </Button>
-        <Button v-if="activeBuffer?.kind === 'channel'" square aria-label="Users" class="chat-composer__compact-btn" @click="usersOpen = true">
-          <Icon name="ph:users" size="16" />
-        </Button>
-      </Flex>
       <Flex class="chat-composer__field" expand column :gap="0">
         <ul v-if="open" class="chat-composer__suggestions">
           <li v-for="(item, index) in suggestions" :key="item.value">
@@ -550,6 +805,59 @@ watch(activeName, clearReply)
             </button>
           </li>
         </ul>
+        <!-- Selection formatting toolbar (desktop). mousedown.prevent keeps the
+             input focused and the text selection intact while a button runs. -->
+        <div v-if="showFormatToolbar" class="chat-composer__format" @mousedown.prevent>
+          <ButtonGroup :gap="2">
+            <Button plain square size="s" aria-label="Bold" @click="formatBold">
+              <Icon name="ph:text-b" size="15" />
+            </Button>
+            <Button plain square size="s" aria-label="Italic" @click="formatItalic">
+              <Icon name="ph:text-italic" size="15" />
+            </Button>
+            <Button plain square size="s" aria-label="Underline" @click="formatUnderline">
+              <Icon name="ph:text-underline" size="15" />
+            </Button>
+            <Button plain square size="s" aria-label="Strikethrough" @click="formatStrike">
+              <Icon name="ph:text-strikethrough" size="15" />
+            </Button>
+            <Button plain square size="s" aria-label="Monospace" @click="formatMono">
+              <Icon name="ph:code" size="15" />
+            </Button>
+          </ButtonGroup>
+          <ButtonGroup :gap="2">
+            <Button
+              ref="colorButtonRef"
+              plain
+              square
+              size="s"
+              aria-label="Color"
+              :class="{ 'is-active': colorPickerOpen }"
+              @click="colorPickerOpen = !colorPickerOpen"
+            >
+              <Icon name="ph:palette" size="15" />
+            </Button>
+          </ButtonGroup>
+          <Popout
+            :anchor="colorButtonRef"
+            :visible="colorPickerOpen"
+            placement="top"
+            :offset="6"
+            @click-outside="colorPickerOpen = false"
+          >
+            <div class="chat-composer__color-grid" @mousedown.prevent>
+              <button
+                v-for="c in MIRC_PALETTE"
+                :key="c.code"
+                type="button"
+                class="chat-composer__swatch"
+                :style="{ backgroundColor: c.hex }"
+                :aria-label="`Color ${c.code}`"
+                @click="applyColor(c.code)"
+              />
+            </div>
+          </Popout>
+        </div>
         <Flex v-if="replyTarget" y-center gap="xs" class="chat-composer__reply" expand>
           <Icon name="ph:arrow-bend-down-right" size="13" class="chat-composer__reply-icon" />
           <span class="chat-composer__reply-label">
@@ -565,28 +873,26 @@ watch(activeName, clearReply)
             <Icon name="ph:x" size="13" />
           </Button>
         </Flex>
-        <Flex :gap="0" y-stretch class="chat-composer__input-row" expand>
-          <Input
+        <Flex :gap="0" class="chat-composer__input-row" expand>
+          <ChatComposerInput
             ref="inputComp"
             v-model="inputMessage"
-            expand
             :disabled="!canChat"
             :placeholder="placeholder"
-            class="text-s chat-composer__input"
+            :strip-markers="isModernMode"
+            class="chat-composer__input"
             @input="onInput"
             @keydown="onKeydown"
-            @focusout="closeSuggestions"
+            @keyup="syncSelection"
+            @mouseup="syncSelection"
+            @focusout="onFocusOut"
           />
-          <Button square :disabled="disabled" class="chat-composer__send" @click="sendWithHistory">
+          <Button plain square :disabled="disabled" class="chat-composer__send" @click="sendWithHistory">
             <Icon name="ph:paper-plane-tilt" size="16" />
           </Button>
         </Flex>
       </Flex>
     </Flex>
-
-    <UserListModal v-if="props.compact" :open="usersOpen" @close="usersOpen = false" />
-
-    <ChatInfoModal v-if="props.compact" :open="infoOpen" @close="infoOpen = false" />
 
     <Modal :open="!!whoisModalNick" size="s" @close="whoisModalNick = null">
       <template #header>
@@ -606,30 +912,22 @@ watch(activeName, clearReply)
 
 <style lang="scss" scoped>
 .chat-composer {
-  &__compact-actions {
-    align-self: stretch;
-    border-right: 1px solid var(--color-border);
-  }
-
-  &__compact-btn {
-    flex: 1;
-    width: var(--interactive-el-height);
-    border-radius: 0;
-  }
-
   &__whois-loading {
     padding: var(--space-s) 0;
   }
 
   &__input-row {
-    :deep(.vui-input) {
-      border-radius: var(--border-radius-s) 0 0 var(--border-radius-s);
-    }
+    position: relative;
   }
 
+  // Send button lives inside the field, pinned to the bottom-right. On a single
+  // line it sits centered (button height == field height); as the field grows it
+  // stays anchored at the bottom.
   &__send {
-    border-left: none;
-    border-radius: 0 var(--border-radius-s) var(--border-radius-s) 0;
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
   }
 
   &__field {
@@ -638,16 +936,42 @@ watch(activeName, clearReply)
     min-width: 0;
   }
 
+  &__format {
+    position: absolute;
+    bottom: calc(100% + var(--space-xxs));
+    left: 0;
+    z-index: var(--z-popout);
+    display: flex;
+    gap: var(--space-xxs);
+    padding: var(--space-xxxs);
+    background: var(--color-bg-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-m);
+    box-shadow: var(--box-shadow);
+
+    :deep(.vui-button.is-active) {
+      background: var(--color-bg-medium);
+    }
+  }
+
   &__input {
-    :deep(.vui-input-style) {
-      border-left: 0px;
-      border-radius: 0;
+    // Reserve space on the right so text clears the overlaid send button.
+    --composer-input-pad-right: calc(var(--interactive-el-height) + var(--space-xxs));
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-s);
+    background: var(--color-bg);
+    max-height: 160px;
+    overflow-y: auto;
+    transition: border-color var(--transition);
+
+    &:focus {
+      border-color: var(--color-accent);
     }
   }
 
   @media (max-width: #{$breakpoint-s}) {
     &__input {
-      height: 64px;
+      min-height: 64px;
     }
   }
 
@@ -760,10 +1084,27 @@ watch(activeName, clearReply)
 }
 </style>
 
+<!-- The color picker renders inside a VUI Popout, which teleports to <body>,
+     so its styles cannot be scoped. -->
 <style lang="scss">
-.chat-composer__input input,
-.chat-composer__input ::placeholder {
-  font-family: var(--irc-input-font, var(--font)) !important;
-  font-size: var(--irc-input-size, inherit) !important;
+.chat-composer__color-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 16px);
+  gap: 4px;
+  padding: 4px;
+}
+
+.chat-composer__swatch {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-s);
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+
+  &:hover {
+    transform: scale(1.15);
+  }
 }
 </style>
