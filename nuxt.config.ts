@@ -508,6 +508,8 @@ export default defineNuxtConfig({
       supabaseProjectRef: process.env.NUXT_PUBLIC_SUPABASE_PROJECT_REF ?? '',
       // VAPID application server key (URL-safe base64) for Web Push subscriptions.
       vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY ?? '',
+      // Orbit Depot storage gateway base URL.
+      depotUrl: process.env.NUXT_PUBLIC_DEPOT_URL ?? 'https://depot.hivecom.net',
     },
   },
   robots: {

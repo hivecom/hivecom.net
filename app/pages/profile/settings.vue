@@ -10,6 +10,7 @@ import GeneralUserSettings from '@/components/Settings/GeneralUserSettings.vue'
 import MfaCard from '@/components/Settings/MfaCard.vue'
 import PasskeyCard from '@/components/Settings/PasskeyCard.vue'
 import RichPresencePromptModal from '@/components/Settings/RichPresencePromptModal.vue'
+import SharingCard from '@/components/Settings/SharingCard.vue'
 import { useSessionReady } from '@/composables/useSessionReady'
 import { scrollToId } from '@/lib/utils/common'
 
@@ -112,6 +113,7 @@ watch(user, (newUser) => {
 const sections = [
   { id: 'general', label: 'General' },
   { id: 'connections', label: 'Connections' },
+  { id: 'sharing', label: 'Sharing' },
   { id: 'security', label: 'Security' },
   { id: 'account', label: 'Account' },
 ] as const
@@ -205,6 +207,9 @@ function registerScrollListener() {
           </div>
           <div id="connections" class="w-100">
             <ConnectionsCard :profile="profile" @updated="handleProfileUpdated" @connected="maybePromptRichPresence" />
+          </div>
+          <div id="sharing" class="w-100">
+            <SharingCard />
           </div>
           <div id="security" class="w-100">
             <strong class="block mb-m text-color-light">
