@@ -1,17 +1,14 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 
+import ChatChannelBrowserModal from '@/components/Chat/ChannelBrowserModal.vue'
 import ChatApp from '@/components/Chat/ChatApp.vue'
 import ChatNavSheet from '@/components/Layout/ChatNavSheet.vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const isMobile = useBreakpoint('<s')
-const { setChatVisible, joinChannel, setActive, seedChannel, openPm, isConnected, connState, connect, chatFullWidth } = useIrcChat()
-const hasMounted = ref(false)
-onMounted(() => {
-  hasMounted.value = true
-})
+const { setChatVisible, channelBrowserOpen, joinChannel, setActive, seedChannel, openPm, isConnected, connState, connect } = useIrcChat()
 
 const route = useRoute()
 const router = useRouter()
@@ -89,11 +86,12 @@ watch(isConnected, (connected) => {
 </script>
 
 <template>
-  <div
-    class="chat-page" :class="{ 'container-l': !isMobile && !(hasMounted && chatFullWidth),
-                                'chat-page--mobile': isMobile }"
-  >
+  <div class="chat-page" :class="{ 'chat-page--mobile': isMobile }">
     <ChatApp />
+    <!-- On desktop chat uses the bare layout, which has no global Navigation to
+         host the channel browser, so render it here. On mobile the navbar's
+         Navigation already provides it. -->
+    <ChatChannelBrowserModal v-if="!isMobile" :open="channelBrowserOpen" @close="channelBrowserOpen = false" />
     <ChatNavSheet v-if="isMobile" no-trigger />
   </div>
 </template>
@@ -102,8 +100,6 @@ watch(isConnected, (connected) => {
 .chat-page {
   width: 100%;
   height: 100dvh;
-  padding-top: calc(var(--navbar-offset) + var(--space-m));
-  padding-bottom: var(--space-l);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -118,7 +114,6 @@ watch(isConnected, (connected) => {
     left: 0;
     right: 0;
     height: auto;
-    padding: 0;
   }
 }
 </style>

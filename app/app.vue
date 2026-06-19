@@ -10,6 +10,7 @@ import { useIrcChat } from '@/composables/useIrcChat'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { useZoomPreference } from '@/composables/useZoomPreference'
 import { useLastSeenTracking } from '@/lib/lastSeen'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import MarkdownRenderer from './components/Shared/MarkdownRenderer.vue'
 import { wrapCode } from './lib/utils/formatting'
 
@@ -66,9 +67,13 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 })
 
+// Desktop chat runs full-screen (the bare layout) while mobile keeps the global
+// navbar so the rest of the site stays one tap away.
+const isDesktop = useBreakpoint('>=s')
+
 const layoutName = computed(() => {
   // Normalize away any trailing slash so production hosts that append one
-  // (e.g. `/chat/exclusive/`) still match the exact-path checks below.
+  // (e.g. `/chat/`) still match the exact-path checks below.
   const path = route.path.replace(/\/+$/, '') || '/'
 
   if (path.startsWith('/admin'))
@@ -77,8 +82,10 @@ const layoutName = computed(() => {
   if (path === '/')
     return 'landing'
 
-  if (path === '/chat/exclusive')
-    return 'bare'
+  // Chat is exclusive (full-screen, no chrome) on desktop, but keeps the navbar
+  // on mobile where it's the primary way to move around the site.
+  if (path === '/chat')
+    return isDesktop.value ? 'bare' : 'no-footer'
 
   if (path.startsWith('/chat'))
     return 'no-footer'
@@ -116,12 +123,12 @@ const { hasMention, hasUnread } = useIrcChat()
 const icon = useFavicon()
 
 watch(() => ({
-  exclusive: route.path.replace(/\/+$/, '') === '/chat/exclusive',
+  onChatPage: route.path.replace(/\/+$/, '') === '/chat',
   notification: unreadCount.value > 0 || realtimeActivityWhileHidden.value,
   mention: hasMention.value,
   unread: hasUnread.value,
-}), ({ exclusive, notification, mention, unread }) => {
-  if (exclusive) {
+}), ({ onChatPage, notification, mention, unread }) => {
+  if (onChatPage) {
     if (mention)
       icon.value = '/favicon-chat-mention.ico'
     else if (unread)

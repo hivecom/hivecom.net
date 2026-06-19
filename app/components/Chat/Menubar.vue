@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, DropdownItem, DropdownTitle, Flex, Menubar, MenuItem, Sheet } from '@dolanske/vui'
+import { Button, DropdownItem, DropdownTitle, Flex, Menubar, MenuItem, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -9,10 +9,19 @@ defineProps<{
   compact?: boolean
 }>()
 
-const route = useRoute()
-const isExclusive = computed(() => route.path.replace(/\/+$/, '') === '/chat/exclusive')
+const router = useRouter()
 
-const { isConnected, connState, connect, disconnect, sidebarHidden, toggleSidebar, chatFullWidth, toggleFullWidth, latencyMs, activeName, activateServerLog } = useIrcChat()
+// Desktop chat is full-screen with no global navbar, so give it a way out: back
+// to wherever the user came from, or home if they landed here directly.
+function goBack() {
+  const prev = window.history.state?.back as string | undefined
+  if (prev)
+    router.back()
+  else
+    navigateTo('/')
+}
+
+const { isConnected, connState, connect, disconnect, sidebarHidden, toggleSidebar, latencyMs, activeName, activateServerLog } = useIrcChat()
 
 const isMobile = useBreakpoint('<s')
 
@@ -91,8 +100,16 @@ function run(action: () => void) {
     </Sheet>
   </template>
 
-  <!-- Desktop: View + Connection menus -->
+  <!-- Desktop: back arrow + Connection + View menus -->
   <Flex v-else y-center :gap="0" class="chat-menubar">
+    <Tooltip>
+      <Button size="s" square plain aria-label="Back" @click="goBack">
+        <Icon name="ph:arrow-left" />
+      </Button>
+      <template #tooltip>
+        <p>Back</p>
+      </template>
+    </Tooltip>
     <Menubar>
       <MenuItem>
         <Button size="s" plain>
@@ -131,29 +148,11 @@ function run(action: () => void) {
         </Button>
         <template #menu>
           <div class="vui-dropdown chat-menubar__merged">
-            <DropdownItem v-if="!isExclusive" @click="run(() => navigateTo('/chat/exclusive'))">
-              <template #icon>
-                <Icon name="ph:frame-corners" />
-              </template>
-              Exclusive mode
-            </DropdownItem>
-            <DropdownItem v-else @click="run(() => navigateTo('/chat'))">
-              <template #icon>
-                <Icon name="ph:frame-corners" />
-              </template>
-              Exit exclusive mode
-            </DropdownItem>
             <DropdownItem @click="run(toggleSidebar)">
               <template #icon>
                 <Icon :name="sidebarHidden ? 'ph:sidebar-simple' : 'ph:sidebar'" />
               </template>
               {{ sidebarHidden ? 'Show sidebar' : 'Hide sidebar' }}
-            </DropdownItem>
-            <DropdownItem v-if="!isExclusive" @click="run(toggleFullWidth)">
-              <template #icon>
-                <Icon :name="chatFullWidth ? 'ph:arrows-in-line-horizontal' : 'ph:arrows-out-line-horizontal'" />
-              </template>
-              {{ chatFullWidth ? 'Restore width' : 'Full width' }}
             </DropdownItem>
           </div>
         </template>
