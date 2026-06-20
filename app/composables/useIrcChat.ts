@@ -27,6 +27,7 @@
 import type { StoredBufferMeta, StoredMessage } from '@/lib/chat/bufferCache'
 import type { SoundDesign } from '@/types/sound'
 import { clearChatCache, deleteBufferMessages, deleteBufferMeta, loadAllBufferMeta, loadNewerMessages, loadOlderMessages, loadRecentMessages, makeBufferKey, pruneBuffer, upsertBufferMeta, upsertMessages } from '@/lib/chat/bufferCache'
+import { markdownToIrc } from '@/lib/ircFormat'
 import { NONE_SOUND_ID, playNotificationSound } from '@/lib/notificationSound'
 
 const WS_URL = 'wss://irc.hivecom.net:8097'
@@ -3582,17 +3583,19 @@ function handleCommand(line: string) {
         break
       openPm(to)
       if (body) {
-        send(`PRIVMSG ${to} :${body}`)
-        addToBuffer(to, 'pm', { type: 'chat', from: nick.value, channel: to, text: body })
+        const bodyWire = markdownToIrc(body)
+        send(`PRIVMSG ${to} :${bodyWire}`)
+        addToBuffer(to, 'pm', { type: 'chat', from: nick.value, channel: to, text: bodyWire })
       }
       break
     }
     case 'me': {
       const target = activeName.value
       if (arg && target !== SERVER_BUFFER) {
-        send(`PRIVMSG ${target} :\x01ACTION ${arg}\x01`)
+        const argWire = markdownToIrc(arg)
+        send(`PRIVMSG ${target} :\x01ACTION ${argWire}\x01`)
         if (!echoMessageActive)
-          addToBuffer(target, findBuffer(target)?.kind ?? 'channel', { type: 'chat', from: nick.value, channel: target, text: arg, action: true })
+          addToBuffer(target, findBuffer(target)?.kind ?? 'channel', { type: 'chat', from: nick.value, channel: target, text: argWire, action: true })
       }
       break
     }
@@ -3829,7 +3832,12 @@ function sendMessage() {
   }
 
   const replyMsgid = replyTarget.value?.msgid
-  const lines = text.split('\n')
+  // Convert the composer's markdown (**bold**, *italic*, etc) into IRC control codes
+  // so other clients render the formatting. markdownToIrc converts each line on its
+  // own, so the split below still lines up. Our optimistic echo stores the same wire
+  // string, which the message log renders back via parseIrcFormatting.
+  const wire = markdownToIrc(text)
+  const lines = wire.split('\n')
 
   if (lines.length > 1 && multilineActive) {
     sendMultiline(target, lines, replyMsgid)
@@ -3846,14 +3854,14 @@ function sendMessage() {
     // escapeTagValue is required: msgid is stored unescaped (via unescapeTag) and
     // must be re-encoded before embedding in the wire tag string.
     const tagPrefix = replyMsgid ? `@+reply=${escapeTagValue(replyMsgid)} ` : ''
-    send(`${tagPrefix}PRIVMSG ${target} :${text}`)
+    send(`${tagPrefix}PRIVMSG ${target} :${wire}`)
   }
 
   // When echo-message is active the server echoes our message back with a
   // server-assigned msgid (a multiline send echoes as a batch we reassemble), so
   // skip the local optimistic add to avoid duplicates.
   if (!echoMessageActive) {
-    addToBuffer(target, buf.kind, { type: 'chat', from: nick.value, channel: target, text, replyTo: replyMsgid })
+    addToBuffer(target, buf.kind, { type: 'chat', from: nick.value, channel: target, text: wire, replyTo: replyMsgid })
   }
 
   clearReply()

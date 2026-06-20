@@ -391,15 +391,17 @@ function wrapSelection(before: string, after: string) {
   }
 }
 
-// Control code goes INSIDE the markers, e.g. strikethrough wraps as
-// tilde-tilde, strike-on, text, strike-off, tilde-tilde. Only the content is
-// styled so the markers stay clean (no struck or bolded asterisks), while
-// code-only IRC clients still get the styling.
-const formatBold = () => wrapSelection('**\u0002', '\u0002**')
-const formatItalic = () => wrapSelection('*\u001D', '\u001D*')
-const formatUnderline = () => wrapSelection('__\u001F', '\u001F__')
-const formatStrike = () => wrapSelection('~~\u001E', '\u001E~~')
-const formatMono = () => wrapSelection('`\u0011', '\u0011`')
+// Formatting uses real markdown markers (** * __ ~~ `). They're real characters in
+// the field - navigable in both modes, visible in IRC mode, hidden in modern mode -
+// so the caret never snags on an invisible toggle. wrapSelection handles both a real
+// selection (wraps it, toggles off on re-apply) and a collapsed caret (drops an empty
+// pair with the caret between). On send these are converted to IRC control codes so
+// other clients still render the emphasis (see markdownToIrc).
+const formatBold = () => wrapSelection('**', '**')
+const formatItalic = () => wrapSelection('*', '*')
+const formatUnderline = () => wrapSelection('__', '__')
+const formatStrike = () => wrapSelection('~~', '~~')
+const formatMono = () => wrapSelection('`', '`')
 
 function applyColor(code: number) {
   // Zero-pad so a digit immediately after the code isn't read as part of the

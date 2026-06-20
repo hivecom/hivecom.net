@@ -285,21 +285,219 @@ export function parseIrcFormatting(text: string): Segment[] {
 
 // Modern-mode markdown layer. IRC clients send invisible control codes; bridged
 // platforms (Discord etc.) send only the literal markers (**bold**, `code`).
-// This runs on top of the IRC-parsed segments so both round-trip: it applies
-// the matching style and removes the markers.
-// Underscore rules are guarded with `\b` word boundaries so they only fire at
-// word edges - this keeps `snake_case`, `__dunder__`, and underscores in nicks
-// or URLs from being mangled into emphasis. Asterisks intentionally stay
-// intraword-friendly (CommonMark allows `foo*bar*baz`).
-export const MD_RULES: { re: RegExp, len: number, flag: 'bold' | 'italic' | 'underline' | 'strike' | 'mono' }[] = [
-  { re: /\*\*(\S(?:[^*\n]*\S)?)\*\*/g, len: 2, flag: 'bold' },
-  { re: /\b__(\S(?:[^_\n]*\S)?)__\b/g, len: 2, flag: 'underline' },
-  { re: /~~(\S(?:[^~\n]*\S)?)~~/g, len: 2, flag: 'strike' },
-  { re: /\*(\S(?:[^*\n]*\S)?)\*/g, len: 1, flag: 'italic' },
-  // Single underscore italics (Discord-style). Runs after `__` underline so the
-  // double-underscore markers are already consumed and won't be re-matched.
-  { re: /\b_(\S(?:[^_\n]*\S)?)_\b/g, len: 1, flag: 'italic' },
+// resolveInlineMarkdown runs on top of the IRC-parsed cells: it finds emphasis and
+// code spans, flags each marker character for removal (del) and ORs the matching
+// style onto the content between them. It uses a delimiter stack so emphasis NESTS
+// and stacks correctly - ***both***, **a *b* c**, ~~**x**~~ all resolve cleanly -
+// where the old per-rule regex approach leaked stray markers on same-char nesting.
+// Underscores require a word boundary (so snake_case, __dunder__ and underscores in
+// URLs aren't mangled); asterisks stay intraword (CommonMark allows foo*bar*baz).
+type EmFlag = 'bold' | 'italic' | 'underline' | 'strike' | 'mono'
+interface MdCell { ch: string, style: StyleFlags, del: boolean, code: boolean }
+
+const isWS = (c: string | undefined): boolean => c === undefined || /\s/.test(c)
+// ASCII punctuation (CommonMark's set), listed explicitly to keep the flanking
+// rules readable and avoid obscure regex ranges.
+const ASCII_PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
+const isPunct = (c: string | undefined): boolean => c !== undefined && ASCII_PUNCT.includes(c)
+
+// Inline code spans: a backtick run is closed by the next run of the SAME length.
+// Content becomes mono and is marked `code` so emphasis markers inside stay literal.
+function resolveCodeSpans(cells: MdCell[]): void {
+  const n = cells.length
+  let i = 0
+  while (i < n) {
+    if (cells[i]!.ch === '`' && !cells[i]!.del && !cells[i]!.code) {
+      let j = i
+      while (j < n && cells[j]!.ch === '`') j++
+      const runLen = j - i
+      let k = j
+      let closed = false
+      while (k < n) {
+        if (cells[k]!.ch === '\n')
+          break // a code span doesn't cross a hard line break (matches the old regex)
+        if (cells[k]!.ch === '`' && !cells[k]!.code) {
+          let m = k
+          while (m < n && cells[m]!.ch === '`') m++
+          if (m - k === runLen) {
+            for (let p = i; p < j; p++) cells[p]!.del = true
+            for (let p = k; p < m; p++) cells[p]!.del = true
+            for (let p = j; p < k; p++) {
+              cells[p]!.code = true
+              cells[p]!.style.mono = true
+            }
+            i = m
+            closed = true
+            break
+          }
+          k = m
+          continue
+        }
+        k++
+      }
+      if (!closed)
+        i = j
+    }
+    else {
+      i++
+    }
+  }
+}
+
+// Emphasis for a single delimiter char via a delimiter stack (CommonMark-style), so
+// runs nest and stack. `strong` is the 2-char style, `em` the 1-char style (undefined
+// for ~~, which only matches in pairs). Closers consume markers from the front of
+// their run, openers from the back, so a run can close earlier emphasis then open new.
+function resolveEmphasis(cells: MdCell[], ch: string, strong: EmFlag, em: EmFlag | undefined, pairsOnly: boolean): void {
+  const n = cells.length
+  interface Run { start: number, end: number, len: number, openConsumed: number, closeConsumed: number, canOpen: boolean, canClose: boolean }
+  const runs: Run[] = []
+  let i = 0
+  while (i < n) {
+    if (cells[i]!.ch === ch && !cells[i]!.del && !cells[i]!.code) {
+      let j = i
+      while (j < n && cells[j]!.ch === ch && !cells[j]!.del && !cells[j]!.code) j++
+      runs.push({ start: i, end: j, len: j - i, openConsumed: 0, closeConsumed: 0, canOpen: false, canClose: false })
+      i = j
+    }
+    else {
+      i++
+    }
+  }
+  for (const r of runs) {
+    const before = r.start > 0 ? cells[r.start - 1]!.ch : undefined
+    const after = r.end < n ? cells[r.end]!.ch : undefined
+    const leftFlank = !isWS(after) && (!isPunct(after) || isWS(before) || isPunct(before))
+    const rightFlank = !isWS(before) && (!isPunct(before) || isWS(after) || isPunct(after))
+    if (ch === '_') {
+      r.canOpen = leftFlank && (!rightFlank || isPunct(before))
+      r.canClose = rightFlank && (!leftFlank || isPunct(after))
+    }
+    else {
+      r.canOpen = leftFlank
+      r.canClose = rightFlank
+    }
+  }
+  const stack: number[] = []
+  for (let ri = 0; ri < runs.length; ri++) {
+    const r = runs[ri]!
+    if (r.canClose) {
+      let avail = r.len - r.closeConsumed
+      while (avail > 0 && stack.length) {
+        const o = runs[stack[stack.length - 1]!]!
+        const oAvail = o.len - o.openConsumed - o.closeConsumed
+        if (oAvail <= 0) {
+          stack.pop()
+          continue
+        }
+        let use: number
+        if (pairsOnly) {
+          if (oAvail >= 2 && avail >= 2)
+            use = 2
+          else
+            break
+        }
+        else {
+          use = (oAvail >= 2 && avail >= 2) ? 2 : 1
+        }
+        for (let p = o.end - o.openConsumed - use; p < o.end - o.openConsumed; p++) cells[p]!.del = true
+        for (let p = r.start + r.closeConsumed; p < r.start + r.closeConsumed + use; p++) cells[p]!.del = true
+        const flag = use === 2 ? strong : em!
+        for (let p = o.end; p < r.start; p++) {
+          if (!cells[p]!.code)
+            cells[p]!.style[flag] = true
+        }
+        o.openConsumed += use
+        r.closeConsumed += use
+        avail -= use
+        if (o.len - o.openConsumed - o.closeConsumed <= 0)
+          stack.pop()
+      }
+    }
+    if (r.canOpen && (r.len - r.openConsumed - r.closeConsumed) > 0)
+      stack.push(ri)
+  }
+}
+
+// Resolve all inline markdown (code spans, then emphasis) over a run of cells,
+// mutating them in place: marker chars get del=true, content cells get the style.
+export function resolveInlineMarkdown(cells: MdCell[]): void {
+  resolveCodeSpans(cells)
+  resolveEmphasis(cells, '*', 'bold', 'italic', false)
+  resolveEmphasis(cells, '_', 'underline', 'italic', false)
+  resolveEmphasis(cells, '~', 'strike', undefined, true)
+}
+
+// Convert the composer's markdown into an IRC wire string: emphasis markers (** * __
+// ~~ `) become the matching control codes so other IRC clients render the formatting,
+// the markers themselves are dropped, and any existing control codes (e.g. a color
+// run from the picker) pass through untouched. Convert one line at a time - emphasis
+// doesn't carry across the per-line PRIVMSGs a multiline send produces.
+const MD_TOGGLES: [EmFlag, string][] = [
+  ['bold', String.fromCharCode(0x02)],
+  ['italic', String.fromCharCode(0x1D)],
+  ['underline', String.fromCharCode(0x1F)],
+  ['strike', String.fromCharCode(0x1E)],
+  ['mono', String.fromCharCode(0x11)],
 ]
+export function markdownToIrc(text: string): string {
+  return text.split('\n').map(markdownLineToIrc).join('\n')
+}
+function markdownLineToIrc(line: string): string {
+  interface WireCell extends MdCell { ctrl: boolean }
+  const cells: WireCell[] = []
+  const push = (ch: string, ctrl: boolean): void => void cells.push({ ch, ctrl, style: {}, del: false, code: false })
+  const chars = [...line]
+  let i = 0
+  while (i < chars.length) {
+    const ch = chars[i]!
+    if (ch.charCodeAt(0) === 0x03) {
+      // Color: \x03 plus up to two fg digits and an optional ",bg". Mark the whole
+      // run as passthrough (matching parseIrcFormatting) so an emphasis toggle never
+      // splits the code from its digits - otherwise \x03 08 would become a bare
+      // color reset followed by a literal "08".
+      push(ch, true)
+      i++
+      for (let d = 0; d < 2 && i < chars.length && /\d/.test(chars[i]!); d++, i++)
+        push(chars[i]!, true)
+      if (i < chars.length && chars[i] === ',') {
+        push(',', true)
+        i++
+        for (let b = 0; b < 2 && i < chars.length && /\d/.test(chars[i]!); b++, i++)
+          push(chars[i]!, true)
+      }
+      continue
+    }
+    // Other C0 control chars are existing IRC codes - pass them through and keep them
+    // out of markdown scanning.
+    push(ch, ch.charCodeAt(0) < 0x20)
+    i++
+  }
+  resolveInlineMarkdown(cells.filter(c => !c.ctrl))
+  let out = ''
+  const open: Partial<Record<EmFlag, boolean>> = {}
+  for (const c of cells) {
+    if (c.ctrl) {
+      out += c.ch
+      continue
+    }
+    if (c.del)
+      continue
+    for (const [flag, code] of MD_TOGGLES) {
+      if (!!c.style[flag] !== !!open[flag]) {
+        out += code
+        open[flag] = !!c.style[flag]
+      }
+    }
+    out += c.ch
+  }
+  // Close anything still open (unclosed markdown) so a trailing format doesn't bleed.
+  for (const [flag, code] of MD_TOGGLES) {
+    if (open[flag])
+      out += code
+  }
+  return out
+}
 
 // `strip` removes the markers (modern mode); when false the markers are kept in
 // place with their surrounding style (classic IRC mode keeps asterisks etc.
@@ -317,46 +515,7 @@ export function applyMarkdown(segs: Segment[], strip = true): Segment[] {
   if (!cells.length)
     return segs
 
-  const plain = cells.map(c => c.ch).join('')
-  const free = (positions: number[]) => positions.every(p => !cells[p]!.del)
-
-  // Inline code wins over emphasis and suppresses markers inside it.
-  for (const m of plain.matchAll(/`[^`\n]+`/g)) {
-    const s = m.index
-    const e = s + m[0].length
-    if (!free([s, e - 1]))
-      continue
-    cells[s]!.del = true
-    cells[e - 1]!.del = true
-    for (let k = s + 1; k < e - 1; k++) {
-      cells[k]!.style.mono = true
-      cells[k]!.code = true
-    }
-  }
-
-  // Emphasis. Order matters: ** is consumed before * so they don't collide.
-  for (const { re, len, flag } of MD_RULES) {
-    for (const m of plain.matchAll(re)) {
-      const s = m.index
-      const e = s + m[0].length
-      const markers: number[] = []
-      for (let k = 0; k < len; k++)
-        markers.push(s + k, e - 1 - k)
-      if (!free(markers))
-        continue
-      let inCode = false
-      for (let k = s + len; k < e - len; k++) {
-        if (cells[k]!.code) {
-          inCode = true
-          break
-        }
-      }
-      if (inCode)
-        continue
-      for (const p of markers) cells[p]!.del = true
-      for (let k = s + len; k < e - len; k++) cells[k]!.style[flag] = true
-    }
-  }
+  resolveInlineMarkdown(cells)
 
   // Coalesce surviving cells with identical style back into text segments.
   const out: Segment[] = []
@@ -501,53 +660,16 @@ export function tokenizeForEditor(text: string, strip = true): EditorToken[] {
     }
   }
 
-  // Pass 2: markdown markers, scanned over the visible (non-code) characters.
-  const visIdx: number[] = []
-  let plain = ''
-  for (let k = 0; k < cells.length; k++) {
-    if (!cells[k]!.hidden) {
-      plain += cells[k]!.ch
-      visIdx.push(k)
-    }
+  // Pass 2: markdown (code spans + nestable emphasis) over the visible characters.
+  // The control-code cells are skipped; resolveInlineMarkdown mutates the visible
+  // cells in place (they're the same objects), flagging markers del and styling
+  // content, exactly as it does for the message renderer.
+  const vis: MdCell[] = []
+  for (const cell of cells) {
+    if (!cell.hidden)
+      vis.push(cell)
   }
-  const cellAt = (plainPos: number) => cells[visIdx[plainPos]!]!
-  const free = (positions: number[]) => positions.every(p => !cellAt(p).del)
-
-  for (const m of plain.matchAll(/`[^`\n]+`/g)) {
-    const s = m.index
-    const e = s + m[0].length
-    if (!free([s, e - 1]))
-      continue
-    cellAt(s).del = true
-    cellAt(e - 1).del = true
-    for (let k = s + 1; k < e - 1; k++) {
-      cellAt(k).style.mono = true
-      cellAt(k).code = true
-    }
-  }
-
-  for (const { re, len, flag } of MD_RULES) {
-    for (const m of plain.matchAll(re)) {
-      const s = m.index
-      const e = s + m[0].length
-      const markers: number[] = []
-      for (let k = 0; k < len; k++)
-        markers.push(s + k, e - 1 - k)
-      if (!free(markers))
-        continue
-      let inCode = false
-      for (let k = s + len; k < e - len; k++) {
-        if (cellAt(k).code) {
-          inCode = true
-          break
-        }
-      }
-      if (inCode)
-        continue
-      for (const p of markers) cellAt(p).del = true
-      for (let k = s + len; k < e - len; k++) cellAt(k).style[flag] = true
-    }
-  }
+  resolveInlineMarkdown(vis)
 
   // Coalesce into tokens. Hidden runs (codes + consumed markers) group together;
   // visible runs group by identical style.

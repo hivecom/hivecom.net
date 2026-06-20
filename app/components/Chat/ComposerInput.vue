@@ -40,6 +40,11 @@ const root = ref<HTMLElement>()
 let composing = false
 
 // --- rendering -------------------------------------------------------------
+// The composer's value is markdown: emphasis is real marker characters (** * __ ~~
+// `), so they're real, navigable text in both modes. Classic/IRC mode shows the
+// markers; modern mode hides them (tokenizeForEditor flags them hidden) and the
+// caret skips the hidden run so it never rests on a zero-width char. Color is the
+// one format with no marker, so it stays an invisible control code either way.
 function render(value: string) {
   const el = root.value
   if (!el)
@@ -263,11 +268,12 @@ function insertNewline() {
   insertTextAtCaret('\n')
 }
 
-// Step the caret across a contiguous run of hidden formatting characters in one
+// Step the caret across a contiguous run of zero-width formatting characters in one
 // move, so it never rests inside a zero-width span (where it would vanish) and
-// arrowing past `**bold**` feels like one keystroke per visible character. Uses
-// the display mode, so visible markers in classic mode are NOT skipped. Returns
-// true when it handled the move; false leaves the native single-char step alone.
+// arrowing past a hidden run feels like one keystroke. Uses the display mode, so
+// visible markdown markers in classic/IRC mode are NOT skipped - they're real
+// characters you step through. Returns true when it handled the move; false leaves
+// the native single-char step alone.
 function skipHiddenCaret(forward: boolean): boolean {
   const value = root.value?.textContent ?? props.modelValue
   const { start, end } = getCaret()

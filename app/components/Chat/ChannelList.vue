@@ -608,6 +608,8 @@ function executeRenameChannel() {
                 class="chat-channels__item"
                 :class="{ 'chat-channels__item--active': activeName === '*' }"
                 @click="activateServerLog()"
+                @mousedown.middle.prevent
+                @mouseup.middle.prevent="closeServerLog()"
               >
                 <Icon name="ph:hard-drives" size="13" class="chat-channels__icon" />
                 <Flex y-center gap="s" class="chat-channels__name-wrap">
@@ -716,6 +718,8 @@ function executeRenameChannel() {
                 class="chat-channels__item chat-channels__item--server-log w-100"
                 :class="{ 'chat-channels__item--active': activeName === '*' }"
                 @click="activateServerLog()"
+                @mousedown.middle.prevent
+                @mouseup.middle.prevent="closeServerLog()"
               >
                 <Flex y-center x-between expand>
                   <Flex y-center gap="xs">
