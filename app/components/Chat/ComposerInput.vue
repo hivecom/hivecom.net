@@ -18,6 +18,10 @@ const props = withDefaults(defineProps<{
   // Hide consumed markdown markers (** etc), matching the modern message log.
   // false keeps them visible (classic/IRC mode). Control codes are always hidden.
   stripMarkers?: boolean
+  // Make a plain Enter insert a newline instead of handing off to the parent to
+  // send. Used on touch where the keyboard's return key should grow the field,
+  // not submit (the send button submits). Desktop keeps Enter-to-send.
+  enterNewline?: boolean
 }>(), {
   stripMarkers: true,
 })
@@ -29,6 +33,7 @@ const emit = defineEmits<{
   'keyup': [e: KeyboardEvent]
   'mouseup': [e: MouseEvent]
   'focusout': [e: FocusEvent]
+  'pasteFiles': [files: File[]]
 }>()
 
 const root = ref<HTMLElement>()
@@ -292,7 +297,9 @@ function onKeydown(e: KeyboardEvent) {
   // Either way the browser's own block insertion is prevented.
   if (e.key === 'Enter' && !e.isComposing) {
     e.preventDefault()
-    if (e.shiftKey) {
+    // Shift+Enter always inserts a newline; on touch (enterNewline) a plain
+    // Enter does too. Either way the parent never sees it as a send intent.
+    if (e.shiftKey || props.enterNewline) {
       insertNewline()
       return
     }
@@ -317,6 +324,13 @@ function onCompositionEnd() {
 
 function onPaste(e: ClipboardEvent) {
   e.preventDefault()
+  // Files on the clipboard (a screenshot, a copied image/file) go to the host as
+  // attachments rather than into the text.
+  const files = Array.from(e.clipboardData?.files ?? [])
+  if (files.length) {
+    emit('pasteFiles', files)
+    return
+  }
   // Normalize CRLF / lone CR to '\n' but keep the line breaks (multi-line paste).
   const text = (e.clipboardData?.getData('text/plain') ?? '').replace(/\r\n?/g, '\n')
   if (!text)
@@ -382,16 +396,16 @@ defineExpose({ focus, getCaret, setCaret, getEl: () => root.value })
   min-height: var(--interactive-el-height);
   // box-sizing is border-box (global reset), so a single line must budget for
   // the 1px top/bottom border too - otherwise the field grows by 2px the moment
-  // a line box appears. The `- 1px` per side offsets that border. Right padding
-  // is overridable (--composer-input-pad-right) so a host can reserve room for an
-  // overlaid control (the chat composer's send button).
+  // a line box appears. The `- 1px` per side offsets that border. Left and right
+  // padding are overridable (--composer-input-pad-left/-right) so a host can
+  // reserve room for overlaid controls (the chat composer's attach/send buttons).
   // Explicit (numeric) line-height so 1lh and the rendered line box match exactly
   // regardless of which font a span resolves to. With line-height: normal the two
   // diverge whenever a span's font metrics differ from the element's, which makes
   // the box grow by a pixel or two the moment the first line of text appears.
   line-height: 1.4;
   $v-pad: calc((var(--interactive-el-height) - 1lh) / 2 - 1px);
-  padding: $v-pad var(--composer-input-pad-right, var(--space-s)) $v-pad var(--space-s);
+  padding: $v-pad var(--composer-input-pad-right, var(--space-s)) $v-pad var(--composer-input-pad-left, var(--space-s));
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   outline: none;

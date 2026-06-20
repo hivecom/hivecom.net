@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Button, ButtonGroup, Flex, Modal, Popout, Spinner } from '@dolanske/vui'
 import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
+import ChatComposerAttachments from '@/components/Chat/ComposerAttachments.vue'
 import ChatComposerInput from '@/components/Chat/ComposerInput.vue'
 import IrcWhoisCard from '@/components/Chat/IrcWhoisCard.vue'
 import RelaySourceIcon from '@/components/Chat/RelaySourceIcon.vue'
 import ChatTypingIndicator from '@/components/Chat/TypingIndicator.vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
+import { useChatAttachments } from '@/composables/useChatAttachments'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { nickColor, useIrcChat, whoisStore } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
@@ -54,7 +56,51 @@ const placeholder = computed(() => {
   return `Message ${activeName.value}...`
 })
 
-const disabled = computed(() => !canChat.value || !inputMessage.value.trim())
+// --- Depot attachments -------------------------------------------------------
+// Files queued for the next send. On send they're uploaded to Depot and their
+// URLs are folded into the outgoing message (where the log auto-embeds images).
+const { attachments, uploading: attachmentsUploading, add: addAttachments, remove: removeAttachment, clear: clearAttachments, uploadAll: uploadAttachments } = useChatAttachments()
+const fileInput = ref<HTMLInputElement>()
+const dragging = ref(false)
+
+function openFilePicker() {
+  fileInput.value?.click()
+}
+
+function onFilesPicked(event: Event) {
+  const input = event.target as HTMLInputElement
+  if (input.files?.length)
+    addAttachments(input.files)
+  // Reset so picking the same file again still fires change.
+  input.value = ''
+}
+
+function onDragOver(event: DragEvent) {
+  if (!canChat.value || !event.dataTransfer?.types.includes('Files'))
+    return
+  event.preventDefault()
+  dragging.value = true
+}
+
+function onDragLeave(event: DragEvent) {
+  // Ignore leaves into child elements; only clear when leaving the field itself.
+  if (event.currentTarget instanceof Node && event.relatedTarget instanceof Node && (event.currentTarget as Node).contains(event.relatedTarget))
+    return
+  dragging.value = false
+}
+
+function onDrop(event: DragEvent) {
+  dragging.value = false
+  const files = event.dataTransfer?.files
+  if (!canChat.value || !files?.length)
+    return
+  event.preventDefault()
+  addAttachments(files)
+}
+
+const disabled = computed(() =>
+  !canChat.value || attachmentsUploading.value || (!inputMessage.value.trim() && attachments.value.length === 0),
+)
 
 // --- autocomplete (@mentions + /commands) ----------------------------------
 
@@ -664,7 +710,20 @@ function pushHistory(msg: string) {
   historyDraft.value = ''
 }
 
-function sendWithHistory() {
+async function sendWithHistory() {
+  // Upload any queued attachments first, then fold their URLs into the message.
+  // A failed upload keeps the tray so the user can retry; nothing is sent.
+  if (attachments.value.length) {
+    if (attachmentsUploading.value)
+      return
+    const urls = await uploadAttachments()
+    if (!urls)
+      return
+    const base = inputMessage.value.trim()
+    inputMessage.value = base ? `${base} ${urls.join(' ')}` : urls.join(' ')
+    clearAttachments()
+  }
+
   _skipTypingDone = true
   clearTypingTimers()
   const msg = inputMessage.value.trim()
@@ -789,7 +848,27 @@ watch(activeName, clearReply)
   <Flex class="chat-composer" column expand :gap="0">
     <ChatTypingIndicator />
     <Flex expand :gap="0">
-      <Flex class="chat-composer__field" expand column :gap="0">
+      <Flex
+        class="chat-composer__field"
+        :class="{ 'chat-composer__field--dragover': dragging }"
+        expand
+        column
+        :gap="0"
+        @dragover="onDragOver"
+        @dragleave="onDragLeave"
+        @drop="onDrop"
+      >
+        <input
+          ref="fileInput"
+          type="file"
+          multiple
+          hidden
+          @change="onFilesPicked"
+        >
+        <div v-if="dragging" class="chat-composer__dropzone">
+          <Icon name="ph:upload-simple" size="20" />
+          <span>Drop files to attach</span>
+        </div>
         <ul v-if="open" class="chat-composer__suggestions">
           <li v-for="(item, index) in suggestions" :key="item.value">
             <button
@@ -873,19 +952,36 @@ watch(activeName, clearReply)
             <Icon name="ph:x" size="13" />
           </Button>
         </Flex>
+        <ChatComposerAttachments
+          v-if="attachments.length"
+          :attachments="attachments"
+          @remove="removeAttachment"
+        />
         <Flex :gap="0" class="chat-composer__input-row" expand>
+          <Button
+            plain
+            square
+            :disabled="!canChat || attachmentsUploading"
+            class="chat-composer__attach"
+            aria-label="Attach files"
+            @click="openFilePicker"
+          >
+            <Icon name="ph:paperclip" size="16" />
+          </Button>
           <ChatComposerInput
             ref="inputComp"
             v-model="inputMessage"
             :disabled="!canChat"
             :placeholder="placeholder"
             :strip-markers="isModernMode"
+            :enter-newline="isMobile"
             class="chat-composer__input"
             @input="onInput"
             @keydown="onKeydown"
             @keyup="syncSelection"
             @mouseup="syncSelection"
             @focusout="onFocusOut"
+            @paste-files="addAttachments"
           />
           <Button plain square :disabled="disabled" class="chat-composer__send" @click="sendWithHistory">
             <Icon name="ph:paper-plane-tilt" size="16" />
@@ -912,6 +1008,18 @@ watch(activeName, clearReply)
 
 <style lang="scss" scoped>
 .chat-composer {
+  // On phones the composer sits flush to the bottom of the viewport, so add the
+  // home-indicator inset (plus a little breathing room) below the input so the
+  // bezel doesn't clip it.
+  @media (max-width: #{$breakpoint-s}) {
+    padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
+
+    .chat-composer__input {
+      border-left: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+    }
+  }
+
   &__whois-loading {
     padding: var(--space-s) 0;
   }
@@ -920,20 +1028,55 @@ watch(activeName, clearReply)
     position: relative;
   }
 
-  // Send button lives inside the field, pinned to the bottom-right. On a single
-  // line it sits centered (button height == field height); as the field grows it
-  // stays anchored at the bottom.
+  // Send button lives inside the field, pinned to the top-right. On a single
+  // line it sits centered (button height == field height); as the field grows
+  // with newlines it stays anchored at the top so the field grows downward.
   &__send {
     position: absolute;
     right: 0;
-    bottom: 0;
+    top: 0;
     z-index: 1;
+  }
+
+  // Attach button mirrors the send button on the top-left.
+  &__attach {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 1;
+    color: var(--color-text-light);
+
+    &:hover:not(:disabled) {
+      color: var(--color-text);
+    }
   }
 
   &__field {
     position: relative;
     flex: 1;
     min-width: 0;
+
+    &--dragover {
+      outline: 2px dashed var(--color-accent);
+      outline-offset: -2px;
+      border-radius: var(--border-radius-s);
+    }
+  }
+
+  &__dropzone {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-popout);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xxs);
+    border-radius: var(--border-radius-s);
+    background: color-mix(in srgb, var(--color-bg) 85%, transparent);
+    color: var(--color-text-light);
+    font-size: var(--font-size-s);
+    pointer-events: none;
   }
 
   &__format {
@@ -955,10 +1098,14 @@ watch(activeName, clearReply)
   }
 
   &__input {
-    // Reserve space on the right so text clears the overlaid send button.
+    // Reserve space on each side so text clears the overlaid attach/send buttons.
+    --composer-input-pad-left: calc(var(--interactive-el-height) + var(--space-xxs));
     --composer-input-pad-right: calc(var(--interactive-el-height) + var(--space-xxs));
     border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-s);
+    // Desktop sits flush in the chat panel, so drop the left and bottom borders.
+    // Mobile restores them below (it's not flush against a panel edge).
+    border-left: none;
+    border-bottom: none;
     background: var(--color-bg);
     max-height: 160px;
     overflow-y: auto;
@@ -966,12 +1113,6 @@ watch(activeName, clearReply)
 
     &:focus {
       border-color: var(--color-accent);
-    }
-  }
-
-  @media (max-width: #{$breakpoint-s}) {
-    &__input {
-      min-height: 64px;
     }
   }
 
