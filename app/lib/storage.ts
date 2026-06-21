@@ -609,7 +609,7 @@ export async function uploadTopicIcon(
 /**
  * Gets the public URL for a topic's icon.
  * Lists the topic's folder once and picks the best available extension.
- * This is a pure fetch — caching is handled by the useTopicIcon composable.
+ * This is a pure fetch - caching is handled by the useTopicIcon composable.
  */
 export async function getTopicIconUrl(
   supabaseClient: SupabaseClient<Database>,
@@ -617,7 +617,7 @@ export async function getTopicIconUrl(
 ): Promise<string | null> {
   try {
     const folder = `topics/${topicId}`
-    // Preferred extension order — one list() call covers all of them
+    // Preferred extension order - one list() call covers all of them
     const preferredOrder = ['icon.webp', 'icon.png', 'icon.jpg', 'icon.jpeg']
 
     const { data, error } = await supabaseClient.storage

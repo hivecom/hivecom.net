@@ -2,8 +2,8 @@
 // IndexedDB-backed cache for chat messages and buffer metadata (DB v2).
 //
 // Two object stores replace the old single-blob `buffers` store:
-//   - `messages`   — per-message rows, compound key [bufferKey, msgid]
-//   - `bufferMeta` — one row per open buffer, keyed by bufferKey string
+//   - `messages`   - per-message rows, compound key [bufferKey, msgid]
+//   - `bufferMeta` - one row per open buffer, keyed by bufferKey string
 //
 // All public functions are best-effort: they catch errors and return empty
 // values / void rather than throwing. This cache is a UX optimisation; losing

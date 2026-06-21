@@ -5,6 +5,8 @@ import { useCache } from '@/composables/useCache'
 export interface ResolvedNick {
   id: string
   username: string
+  /** ISO timestamp of the user's last website activity (for the online dot). */
+  last_seen: string | null
 }
 
 const NICK_TTL = 5 * 60 * 1000 // 5 minutes
@@ -47,7 +49,7 @@ export function useIrcNickResolver() {
       const orFilter = toFetch.map(n => `username.ilike.${n}`).join(',')
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username')
+        .select('id, username, last_seen')
         .or(orFilter)
 
       if (error)
@@ -56,7 +58,7 @@ export function useIrcNickResolver() {
       const found = new Map<string, ResolvedNick>()
       for (const p of (data ?? [])) {
         if (p.username)
-          found.set(p.username.toLowerCase(), { id: p.id, username: p.username })
+          found.set(p.username.toLowerCase(), { id: p.id, username: p.username, last_seen: p.last_seen ?? null })
       }
 
       const final = new Map(_resolved.value)

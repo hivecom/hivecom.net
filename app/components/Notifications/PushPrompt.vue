@@ -59,8 +59,15 @@ function ignore() {
 
 async function enable() {
   const ok = await subscribe()
-  // If the user blocked the permission prompt, stop nagging.
-  if (!ok && permission.value === 'denied')
+  // Persist dismissal once they've acted. `isSubscribed` is re-derived per mount
+  // and silently falls back to `false` whenever the service-worker lookup in
+  // `refresh()` returns null (SW not yet active, or the 5s timeout), which would
+  // otherwise re-show the prompt to an already-subscribed user. The stored flag
+  // is the durable signal that keeps it gone.
+  if (ok)
+    ignore()
+  // If the user blocked the permission prompt, also stop nagging.
+  else if (permission.value === 'denied')
     ignore()
 }
 </script>

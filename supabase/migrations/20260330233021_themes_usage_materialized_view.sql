@@ -6,7 +6,7 @@
 -- do a rather expensive query").
 --
 -- The materialized view is refreshed by a trigger on profiles that fires after
--- any INSERT, UPDATE OF theme_id, or DELETE — keeping counts current without
+-- any INSERT, UPDATE OF theme_id, or DELETE - keeping counts current without
 -- any manual refresh step.
 --
 -- Note: REFRESH MATERIALIZED VIEW CONCURRENTLY cannot run inside a transaction

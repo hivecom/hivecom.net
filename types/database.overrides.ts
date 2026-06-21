@@ -124,6 +124,10 @@ interface TableColumnOverrides {
       show_offtopic_replies: boolean
       show_thread_replies: boolean
       discussion_view_mode: 'flat' | 'threaded'
+      // How forum threads page through replies: 'infinite' = auto-load on scroll,
+      // 'paginated' = traditional page controls. Does not change how the forum
+      // looks, only how more replies are loaded.
+      forum_pagination_mode: 'infinite' | 'paginated'
       show_forum_updates: boolean
       show_forum_recently_visited: boolean
       show_forum_archived: boolean

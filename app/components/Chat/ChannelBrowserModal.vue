@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge, Button, ButtonGroup, Flex, Input, Modal, Skeleton, Tooltip } from '@dolanske/vui'
+import { Badge, BadgeGroup, Button, ButtonGroup, Flex, Input, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
 import { useIrcChat } from '@/composables/useIrcChat'
@@ -17,6 +17,13 @@ function channelModes(name: string): Set<string> | undefined {
     buffers.value.find(b => b.name.toLowerCase() === lower)?.modes
     ?? channelList.value.find(e => e.name.toLowerCase() === lower)?.modes
   )
+}
+
+// Unread count from the joined buffer, when we're in the channel. Channels we
+// haven't joined have no buffer (and so no unread state) - return 0 for those.
+function channelUnread(name: string): number {
+  const lower = name.toLowerCase()
+  return buffers.value.find(b => b.name.toLowerCase() === lower)?.unread ?? 0
 }
 
 const search = ref('')
@@ -156,9 +163,24 @@ function join(name: string) {
               <span class="chat-channel-browser__name">{{ entry.name.replace(/^#/, '') }}</span>
               <ChannelModeBadges :modes="channelModes(entry.name)" shortform />
             </Flex>
-            <Badge variant="neutral" size="s" class="chat-channel-browser__count">
-              {{ entry.userCount }}
-            </Badge>
+            <BadgeGroup v-if="entry.userCount > 0 || channelUnread(entry.name) > 0" class="chat-channel-browser__count">
+              <Tooltip v-if="channelUnread(entry.name) > 0">
+                <template #tooltip>
+                  {{ channelUnread(entry.name) }} unread message{{ channelUnread(entry.name) !== 1 ? 's' : '' }}
+                </template>
+                <Badge variant="neutral" size="s">
+                  {{ channelUnread(entry.name) }}
+                </Badge>
+              </Tooltip>
+              <Tooltip v-if="entry.userCount > 0">
+                <template #tooltip>
+                  {{ entry.userCount }} user{{ entry.userCount !== 1 ? 's' : '' }} connected
+                </template>
+                <Badge variant="info" size="s">
+                  {{ entry.userCount }}
+                </Badge>
+              </Tooltip>
+            </BadgeGroup>
           </Flex>
           <p v-if="entry.topic" class="chat-channel-browser__topic">
             {{ entry.topic }}

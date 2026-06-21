@@ -610,7 +610,7 @@ const editedAtFormatted = computed(() => {
         </Flex>
       </template>
 
-      <!-- User signature / banner — shown below the post body on desktop only -->
+      <!-- User signature / banner - shown below the post body on desktop only -->
       <BannerDisplay v-if="!data.is_deleted && !showNSFWWarning" :user="user ?? null" :external-hover="replyHovered" />      <!-- Mobile footer: reply count + reactions (only rendered on mobile when there's content) -->
       <div v-if="!data.is_deleted && isMobile && ((threadReplyCount && threadReplyCount > 0) || displayReactions.length > 0 || (userId && !showNSFWWarning))" class="discussion-forum__mobile-footer">
         <div class="discussion-forum__mobile-footer-row">

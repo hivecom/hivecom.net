@@ -29,6 +29,22 @@ export function normalizeInternalRedirect(value: unknown): string | null {
   return trimmed
 }
 
+/**
+ * Reloads the current page with a cache-busting query param appended so the
+ * browser is forced to re-fetch the HTML document from the network rather than
+ * re-serving a stale cached copy. This is essential after a deploy replaces the
+ * content-hashed `_nuxt/` chunks: a plain `location.reload()` can be served the
+ * same stale HTML (which still references now-deleted chunk files), leaving the
+ * app permanently broken. Preserves the current path and hash.
+ */
+export function reloadWithCacheBust() {
+  if (typeof window === 'undefined')
+    return
+  const { pathname, search, hash } = window.location
+  const sep = search ? '&' : '?'
+  window.location.replace(`${pathname}${search}${sep}_=${Date.now()}${hash}`)
+}
+
 export function getCSSVariable(key: string) {
   if (typeof window === 'undefined')
     return ''

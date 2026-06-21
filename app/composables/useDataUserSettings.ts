@@ -19,6 +19,7 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     show_offtopic_replies: false,
     show_thread_replies: false,
     discussion_view_mode: 'flat',
+    forum_pagination_mode: 'infinite',
     show_forum_updates: true,
     show_forum_recently_visited: true,
     show_forum_archived: false,

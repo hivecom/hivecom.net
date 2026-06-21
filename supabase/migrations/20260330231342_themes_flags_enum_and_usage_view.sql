@@ -5,15 +5,15 @@
 -- added here being committed first, so they live in a separate migration file.
 --
 -- Changes:
---   1. is_unmaintained — soft-disassociation flag; set manually by the author
+--   1. is_unmaintained - soft-disassociation flag; set manually by the author
 --      or automatically when their account is deleted.
---   2. is_official — marks Hivecom-curated themes (e.g. accessibility presets).
+--   2. is_official - marks Hivecom-curated themes (e.g. accessibility presets).
 --      Settable only via service_role or an admin (enforced in part 2 RLS).
 --   3. app_permission gains themes.{create,read,update,delete} CRUD values.
---   4. theme_usage view — GROUP BY theme_id on profiles, backed by the existing
+--   4. theme_usage view - GROUP BY theme_id on profiles, backed by the existing
 --      profiles_theme_id_idx. Consumers JOIN this to get per-theme user counts
 --      without hitting profiles on every themes query.
---   5. handle_theme_owner_deleted trigger — when the FK nulls created_by on
+--   5. handle_theme_owner_deleted trigger - when the FK nulls created_by on
 --      user deletion, automatically flips is_unmaintained = true (unless the
 --      theme is official, which has no owner by design).
 -- ─────────────────────────────────────────────────────────────────────────────

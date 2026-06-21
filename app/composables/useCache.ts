@@ -12,7 +12,7 @@
  * All entries are stored in localStorage and TTL-checked on every read.
  * A background cleanup timer sweeps expired entries and enforces the entry
  * budget periodically. On SSR (no window), all reads return null and writes
- * are no-ops — caching is a client-side optimisation only.
+ * are no-ops - caching is a client-side optimisation only.
  */
 
 import type { MaybeRefOrGetter, Ref } from 'vue'
@@ -147,14 +147,14 @@ function lsSet<T>(
     touchEntry(fullKey)
   }
   catch {
-    // Quota exceeded — evict LRU down to 50 % of the budget and retry once
+    // Quota exceeded - evict LRU down to 50 % of the budget and retry once
     evictLRU(prefix, Math.floor(maxEntries * 0.5))
     try {
       window.localStorage.setItem(fullKey, JSON.stringify(entry))
       touchEntry(fullKey)
     }
     catch {
-      // localStorage genuinely unavailable (private mode, storage disabled) —
+      // localStorage genuinely unavailable (private mode, storage disabled) -
       // silently skip; reads will just be cache misses
     }
   }
@@ -245,7 +245,7 @@ function evictLRU(prefix: string, keepCount: number): void {
         lastAccessed = lastAccessedOf(fullKey, entry)
       }
       catch {
-        // Corrupt entry — treat as oldest so it gets evicted first
+        // Corrupt entry - treat as oldest so it gets evicted first
         lastAccessed = 0
       }
     }
@@ -256,7 +256,7 @@ function evictLRU(prefix: string, keepCount: number): void {
   if (candidates.length <= keepCount)
     return
 
-  // Sort ascending — LRU (least recently used) first
+  // Sort ascending - LRU (least recently used) first
   candidates.sort((a, b) => a.lastAccessed - b.lastAccessed)
 
   const toEvict = candidates.length - keepCount
@@ -297,7 +297,7 @@ function cleanupPrefix(storagePrefix: string, maxEntries: number): void {
         keysToRemove.push(fullKey)
     }
     catch {
-      // Corrupt entry — evict
+      // Corrupt entry - evict
       keysToRemove.push(fullKey)
     }
   }
@@ -683,7 +683,7 @@ export function useCachedFetch<T = unknown>(
 
     // Join an existing in-flight request rather than firing a duplicate query.
     // Joiners await the same promise; the original caller populates the cache
-    // and sets data.value — joiners copy the resolved value into their own ref.
+    // and sets data.value - joiners copy the resolved value into their own ref.
     if (_inflightQueries.has(hash)) {
       const { data: result, error: joinError } = await (_inflightQueries.get(hash) as Promise<{ data: T | null, error: string | null }>)
       if (result !== null)
@@ -735,7 +735,7 @@ export function useCachedFetch<T = unknown>(
     })
   }
 
-  // Use the stable query hash as the watch key — avoids spurious refetches
+  // Use the stable query hash as the watch key - avoids spurious refetches
   // caused by object key ordering differences in filters/orderBy.
   watch(
     () => {

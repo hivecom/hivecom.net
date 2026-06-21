@@ -59,6 +59,19 @@ const emit = defineEmits<{
 // Extend the stock Image node to add loading="lazy" and decoding="async" so
 // images in the editor view defer decode and don't block the main thread.
 const LazyImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      // Transient client-only id used to track a placeholder through async
+      // conversion/upload without relying on the mutable `src`. rendered: false
+      // keeps it out of the serialized HTML, and the image markdown spec only
+      // emits src/alt/title so it never leaks into stored markdown either.
+      uploadId: {
+        default: null,
+        rendered: false,
+      },
+    }
+  },
   renderHTML({ HTMLAttributes }) {
     return ['div', { 'data-img-node': '' }, ['img', { loading: 'lazy', decoding: 'async', onerror: 'this.classList.add(\'img-error\')', ...HTMLAttributes }]]
   },
@@ -218,13 +231,16 @@ const youtubeModalOpen = ref(false)
 // Video modal state (insert by URL)
 const videoModalOpen = ref(false)
 
-// Pending blobs: blobUrl -> File. Plain Map (not ref) - only mutated imperatively.
-const pendingBlobs = new Map<string, File>()
+// Pending blobs: uploadId -> { file, blobUrl }. Plain Map (not ref) - only
+// mutated imperatively. Keyed on a stable per-placeholder uploadId rather than
+// the mutable blob src so async conversion/upload can never lose track of a
+// node even if its src changes (or a src-walk fails to find it) mid-flight.
+const pendingBlobs = new Map<string, { file: File, blobUrl: string }>()
 // In-flight background conversions (processPendingFile). flushPendingUploads must
 // await these before snapshotting pendingBlobs - otherwise a conversion that
 // swaps a node's blob src mid-upload would leave the placeholder blob in the doc.
 const pendingConversions = new Set<Promise<void>>()
-// Per-blob upload progress 0-100. ref so template can react.
+// Per-upload progress 0-100, keyed by uploadId. ref so template can react.
 const uploadProgress = ref(new Map<string, number>())
 // True only while flushPendingUploads is running - drives shimmer animation.
 const isUploading = ref(false)
@@ -687,14 +703,15 @@ const editor = useEditor({
     if (!transaction.docChanged || !props.mediaContext || externalContentUpdate)
       return
 
-    // Collect image and video srcs present in the document before this transaction
-    const prevSrcs = new Set<string>()
+    // Collect image and video media nodes (src + transient uploadId) present in
+    // the document before this transaction.
+    const prevNodes = new Map<string, string | null>()
     transaction.before.descendants((node) => {
       if ((node.type.name === 'image' || node.type.name === 'video') && typeof node.attrs.src === 'string')
-        prevSrcs.add(node.attrs.src)
+        prevNodes.set(node.attrs.src, typeof node.attrs.uploadId === 'string' ? node.attrs.uploadId : null)
     })
 
-    if (prevSrcs.size === 0)
+    if (prevNodes.size === 0)
       return
 
     // Collect image and video srcs present in the document after this transaction
@@ -705,15 +722,17 @@ const editor = useEditor({
     })
 
     // For every src that disappeared, attempt to remove it from storage
-    for (const src of prevSrcs) {
+    for (const [src, uploadId] of prevNodes) {
       if (nextSrcs.has(src))
         continue
 
       if (src.startsWith('blob:')) {
         URL.revokeObjectURL(src)
-        pendingBlobs.delete(src)
-        uploadProgress.value.delete(src)
-        uploadProgress.value = new Map(uploadProgress.value)
+        if (uploadId !== null) {
+          pendingBlobs.delete(uploadId)
+          uploadProgress.value.delete(uploadId)
+          uploadProgress.value = new Map(uploadProgress.value)
+        }
         continue
       }
 
@@ -794,7 +813,7 @@ const avgUploadProgress = computed(() => {
 // Background conversion/compression for a single file. Runs AFTER the
 // placeholder has been inserted so the user sees an immediate preview, then
 // swaps the placeholder's blob src to the optimised bytes when ready.
-async function processPendingFile(originalFile: File, currentBlobUrl: string, isVideo: boolean) {
+async function processPendingFile(originalFile: File, uploadId: string, currentBlobUrl: string, isVideo: boolean) {
   // Always convert raster images to WebP - it's a format/size optimisation
   // that benefits every upload regardless of the metadata-stripping preference.
   // Exceptions: GIF (canvas round-trip drops animation), WebP (already optimal),
@@ -853,7 +872,10 @@ async function processPendingFile(originalFile: File, currentBlobUrl: string, is
     return
 
   // Find the placeholder node (it may have been deleted while we were
-  // converting). If found, swap its src to the optimised blob URL.
+  // converting). We match on the transient uploadId rather than the mutable
+  // src so the walk can never miss its own node, even on a slow device where
+  // the src may have changed underneath us. If found, swap its src to the
+  // optimised blob URL.
   const newBlobUrl = URL.createObjectURL(file)
   let swapped = false
   if (editor.value) {
@@ -861,7 +883,7 @@ async function processPendingFile(originalFile: File, currentBlobUrl: string, is
       if (swapped)
         return false
       const isMedia = node.type.name === 'image' || node.type.name === 'video'
-      if (isMedia && node.attrs.src === currentBlobUrl) {
+      if (isMedia && node.attrs.uploadId === uploadId) {
         editor.value!
           .chain()
           .command(({ tr }) => {
@@ -876,19 +898,18 @@ async function processPendingFile(originalFile: File, currentBlobUrl: string, is
   }
 
   if (swapped) {
-    pendingBlobs.set(newBlobUrl, file)
-    pendingBlobs.delete(currentBlobUrl)
-    const progress = uploadProgress.value.get(currentBlobUrl) ?? 0
-    uploadProgress.value.set(newBlobUrl, progress)
-    uploadProgress.value.delete(currentBlobUrl)
+    // Bookkeeping is keyed on uploadId, so we only update the stored blobUrl /
+    // file - the key stays stable across the conversion swap.
+    pendingBlobs.set(uploadId, { file, blobUrl: newBlobUrl })
   }
   else {
-    // Placeholder gone (user deleted it) - drop the converted blob too.
+    // Placeholder gone (user deleted it) - drop the converted blob and the
+    // pending entry entirely.
     URL.revokeObjectURL(newBlobUrl)
-    pendingBlobs.delete(currentBlobUrl)
-    uploadProgress.value.delete(currentBlobUrl)
+    pendingBlobs.delete(uploadId)
+    uploadProgress.value.delete(uploadId)
+    uploadProgress.value = new Map(uploadProgress.value)
   }
-  uploadProgress.value = new Map(uploadProgress.value)
   URL.revokeObjectURL(currentBlobUrl)
 }
 
@@ -909,7 +930,7 @@ function handleFileUpload(files: File[] | null, pos?: number) {
   // bytes when ready. flushPendingUploads (on submit) reads from pendingBlobs,
   // which processPendingFile keeps up to date.
   let nextPos = pos ?? editor.value?.state.selection.anchor ?? 0
-  const queue: Array<{ originalFile: File, blobUrl: string, isVideo: boolean }> = []
+  const queue: Array<{ originalFile: File, uploadId: string, blobUrl: string, isVideo: boolean }> = []
 
   for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
     const originalFile = files[fileIndex]!
@@ -925,6 +946,12 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     // block on conversion. processPendingFile swaps this for the optimised blob.
     const blobUrl = URL.createObjectURL(originalFile)
 
+    // Stable, transient id stamped onto the placeholder node. All pending-upload
+    // bookkeeping is keyed on this rather than the mutable src, so async
+    // conversion/upload can never lose track of the node. It is NOT serialized
+    // into the stored markdown/HTML (rendered: false on the node attribute).
+    const uploadId = crypto.randomUUID()
+
     // Insert the placeholder without selecting it - we don't want the bubble
     // menu popping up mid-upload. CSS targets img[src^="blob:"] / video[src^="blob:"]
     // to show a shimmer during the actual storage upload. Only focus on the
@@ -933,7 +960,7 @@ function handleFileUpload(files: File[] | null, pos?: number) {
       .chain()
       .insertContentAt(nextPos, {
         type: nodeType,
-        attrs: { src: blobUrl },
+        attrs: { src: blobUrl, uploadId },
       }, { updateSelection: false })
 
     if (isLast)
@@ -948,10 +975,10 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     // Register as pending immediately - this gates the submit button via
     // hasPendingUploads. processPendingFile will replace the file ref with
     // the optimised bytes when ready.
-    pendingBlobs.set(blobUrl, originalFile)
-    uploadProgress.value.set(blobUrl, 0)
+    pendingBlobs.set(uploadId, { file: originalFile, blobUrl })
+    uploadProgress.value.set(uploadId, 0)
 
-    queue.push({ originalFile, blobUrl, isVideo })
+    queue.push({ originalFile, uploadId, blobUrl, isVideo })
   }
 
   uploadProgress.value = new Map(uploadProgress.value)
@@ -962,13 +989,39 @@ function handleFileUpload(files: File[] | null, pos?: number) {
   // snapshotting pendingBlobs (otherwise it may upload against a stale blob URL
   // that the conversion has since swapped out, leaving a blob: src in the doc).
   for (const item of queue) {
-    const conversion = processPendingFile(item.originalFile, item.blobUrl, item.isVideo)
+    const conversion = processPendingFile(item.originalFile, item.uploadId, item.blobUrl, item.isVideo)
       .finally(() => pendingConversions.delete(conversion))
     pendingConversions.add(conversion)
   }
 }
 
 // Converts the FileList from @input event into a File[]
+
+// Explicit mime -> file extension map. file.type.split('/')[1] is wrong for a
+// few common types (image/svg+xml -> "svg+xml", video/quicktime -> "quicktime")
+// and yields undefined for an empty type. processPendingFile converts most
+// rasters to image/webp, so webp is the common case.
+const MIME_EXTENSION_MAP: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+  'image/svg+xml': 'svg',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'video/ogg': 'ogv',
+  'video/quicktime': 'mov',
+}
+
+function extensionForMime(mime: string): string {
+  return MIME_EXTENSION_MAP[mime] ?? 'bin'
+}
+
+// Upload retry/timeout tuning for flaky mobile networks.
+const UPLOAD_MAX_ATTEMPTS = 3
+const UPLOAD_TIMEOUT_MS = 30_000
+const UPLOAD_RETRY_BACKOFF_MS = 1_000
 
 async function flushPendingUploads(): Promise<boolean> {
   // Wait for any background conversions to finish so pendingBlobs and the
@@ -994,40 +1047,83 @@ async function flushPendingUploads(): Promise<boolean> {
     const entries = [...pendingBlobs.entries()]
 
     // Phase 1: upload every pending blob in parallel. The doc is NOT touched
-    // here - we only collect the resulting public URL keyed by its blob URL.
+    // here - we only collect the resulting public URL keyed by the placeholder's
+    // stable uploadId (NOT the mutable src, which an in-flight conversion may
+    // have changed). Each upload is retried a few times behind a timeout so a
+    // stalled mobile request fails fast and retries instead of hanging forever.
     const results = await Promise.all(
-      entries.map(async ([blobUrl, file]) => {
-        const format = file.type.split('/')[1]
-        const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${format}`
+      entries.map(async ([uploadId, { file, blobUrl }]) => {
+        const format = extensionForMime(file.type)
 
-        const { error } = await supabase.storage
-          .from(resolvedMediaBucketId.value)
-          .upload(fileUrl, file, { contentType: file.type, metadata: { uploadedBy: user.value?.id ?? 'anonymous' } })
+        let lastError: { message: string } | null = null
+        let fileUrl = ''
+        for (let attempt = 0; attempt < UPLOAD_MAX_ATTEMPTS; attempt++) {
+          // Fresh path per attempt so a retry never collides with a previous
+          // attempt that stalled past the timeout but still succeeded
+          // server-side (same-path re-upload would 409 and fail the post). A
+          // timed-out-but-succeeded attempt just leaves a harmless orphan.
+          fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${format}`
 
-        if (error) {
+          // storage-js upload() does not accept an abort signal, so race it
+          // against a timeout to bound a stalled request.
+          let timeoutId: ReturnType<typeof setTimeout> | undefined
+          try {
+            const { error } = await Promise.race([
+              supabase.storage
+                .from(resolvedMediaBucketId.value)
+                .upload(fileUrl, file, { contentType: file.type, metadata: { uploadedBy: user.value?.id ?? 'anonymous' } }),
+              new Promise<{ error: { message: string } }>((resolve) => {
+                timeoutId = setTimeout(
+                  resolve,
+                  UPLOAD_TIMEOUT_MS,
+                  { error: { message: `Upload timed out after ${UPLOAD_TIMEOUT_MS / 1000}s` } },
+                )
+              }),
+            ])
+
+            if (!error) {
+              lastError = null
+              break
+            }
+            lastError = error
+          }
+          catch (err) {
+            lastError = { message: err instanceof Error ? err.message : String(err) }
+          }
+          finally {
+            if (timeoutId !== undefined)
+              clearTimeout(timeoutId)
+          }
+
+          // Back off briefly before retrying (skip the wait after the last try).
+          if (attempt < UPLOAD_MAX_ATTEMPTS - 1)
+            await new Promise(resolve => setTimeout(resolve, UPLOAD_RETRY_BACKOFF_MS * (attempt + 1)))
+        }
+
+        if (lastError) {
           const limit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
           pushToast('Error uploading media', {
-            description: `${error.message} (file is ${formatBytes(file.size)}, limit is ${formatBytes(limit)})`,
+            description: `${lastError.message} (file is ${formatBytes(file.size)}, limit is ${formatBytes(limit)})`,
           })
-          return { blobUrl, publicUrl: null as string | null }
+          return { uploadId, blobUrl, publicUrl: null as string | null }
         }
 
         // Set progress to 100 on success (no onUploadProgress in this storage-js version)
-        uploadProgress.value.set(blobUrl, 100)
+        uploadProgress.value.set(uploadId, 100)
         uploadProgress.value = new Map(uploadProgress.value)
 
         const { data } = supabase.storage.from(resolvedMediaBucketId.value).getPublicUrl(fileUrl)
-        return { blobUrl, publicUrl: data.publicUrl }
+        return { uploadId, blobUrl, publicUrl: data.publicUrl }
       }),
     )
 
-    // Phase 2: swap every successfully-uploaded blob src to its public URL in a
-    // single synchronous transaction, after all network is done. Editing is
-    // disabled, so node srcs are guaranteed to still match their blob URLs.
+    // Phase 2: swap every successfully-uploaded placeholder to its public URL in
+    // a single synchronous transaction, after all network is done. We match on
+    // the stable uploadId rather than the src so the swap cannot miss its node.
     const urlMap = new Map(
       results
-        .filter((r): r is { blobUrl: string, publicUrl: string } => r.publicUrl !== null)
-        .map(r => [r.blobUrl, r.publicUrl]),
+        .filter((r): r is { uploadId: string, blobUrl: string, publicUrl: string } => r.publicUrl !== null)
+        .map(r => [r.uploadId, r.publicUrl]),
     )
     if (editorRef && urlMap.size > 0) {
       editorRef
@@ -1035,10 +1131,13 @@ async function flushPendingUploads(): Promise<boolean> {
         .command(({ tr }) => {
           tr.doc.descendants((node, nodePos) => {
             const isMedia = node.type.name === 'image' || node.type.name === 'video'
-            if (isMedia && typeof node.attrs.src === 'string') {
-              const publicUrl = urlMap.get(node.attrs.src)
-              if (publicUrl)
+            if (isMedia && typeof node.attrs.uploadId === 'string') {
+              const publicUrl = urlMap.get(node.attrs.uploadId)
+              if (publicUrl) {
                 tr.setNodeAttribute(nodePos, 'src', publicUrl)
+                // Clear the transient id now that the node points at storage.
+                tr.setNodeAttribute(nodePos, 'uploadId', null)
+              }
             }
           })
           return true
@@ -1046,17 +1145,45 @@ async function flushPendingUploads(): Promise<boolean> {
         .run()
     }
 
-    // Clean up pending state for successful uploads.
+    // Clean up pending state for successful uploads. Failed entries are kept in
+    // pendingBlobs so the user can retry on the next submit.
     for (const r of results) {
       if (r.publicUrl !== null) {
         URL.revokeObjectURL(r.blobUrl)
-        pendingBlobs.delete(r.blobUrl)
-        uploadProgress.value.delete(r.blobUrl)
+        pendingBlobs.delete(r.uploadId)
+        uploadProgress.value.delete(r.uploadId)
       }
     }
     uploadProgress.value = new Map(uploadProgress.value)
 
-    return results.every(r => r.publicUrl !== null)
+    if (!results.every(r => r.publicUrl !== null))
+      return false
+
+    // Fail-closed safety net: even if every reported upload "succeeded", refuse
+    // to let the post proceed while ANY media node still points at a blob: URL.
+    // This catches the case where a node's src was never swapped (e.g. a
+    // conversion walk that failed to find its node on a slow device), which
+    // would otherwise ship a broken image. Both consumer paths abort the post
+    // when this returns false; the failed entries stay in pendingBlobs.
+    let hasBlobRemaining = false
+    editorRef?.state.doc.descendants((node) => {
+      if (hasBlobRemaining)
+        return false
+      const isMedia = node.type.name === 'image' || node.type.name === 'video'
+      if (isMedia && typeof node.attrs.src === 'string' && node.attrs.src.startsWith('blob:')) {
+        hasBlobRemaining = true
+        return false
+      }
+    })
+
+    if (hasBlobRemaining) {
+      pushToast('Some media failed to upload', {
+        description: 'One or more images or videos are still uploading. Please try again.',
+      })
+      return false
+    }
+
+    return true
   }
   finally {
     if (wasEditable)
@@ -1070,8 +1197,14 @@ function handleReplacePendingBlob(oldBlobUrl: string, newFile: File) {
     return
   const newBlobUrl = URL.createObjectURL(newFile)
 
+  // Locate the placeholder by its current blob src and read its stable uploadId,
+  // which keys all pending-upload bookkeeping. Swap the src to the new blob.
+  let uploadId: string | null = null
   editor.value.state.doc.descendants((node, nodePos) => {
+    if (uploadId !== null)
+      return false
     if (node.type.name === 'image' && node.attrs.src === oldBlobUrl) {
+      uploadId = typeof node.attrs.uploadId === 'string' ? node.attrs.uploadId : null
       editor.value!
         .chain()
         .setNodeSelection(nodePos)
@@ -1082,11 +1215,11 @@ function handleReplacePendingBlob(oldBlobUrl: string, newFile: File) {
     }
   })
 
-  pendingBlobs.set(newBlobUrl, newFile)
-  pendingBlobs.delete(oldBlobUrl)
-  uploadProgress.value.set(newBlobUrl, 0)
-  uploadProgress.value.delete(oldBlobUrl)
-  uploadProgress.value = new Map(uploadProgress.value)
+  if (uploadId !== null) {
+    pendingBlobs.set(uploadId, { file: newFile, blobUrl: newBlobUrl })
+    uploadProgress.value.set(uploadId, 0)
+    uploadProgress.value = new Map(uploadProgress.value)
+  }
   URL.revokeObjectURL(oldBlobUrl)
 }
 

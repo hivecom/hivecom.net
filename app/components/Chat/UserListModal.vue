@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Divider, Dropdown, DropdownItem, Flex, Input, Modal, pushToast, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import ChatPresenceDot from '@/components/Chat/ChatPresenceDot.vue'
 import UserRoleBadge from '@/components/Chat/UserRoleBadge.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
@@ -176,16 +177,24 @@ function devoiceUser(name: string) {
         <UserRoleBadge :role="user.role" class="user-list-modal__role-indicator" />
 
         <!-- Avatar -->
-        <UserAvatar
-          v-if="resolvedUser(user.name)"
-          :user-id="resolvedUser(user.name)!.id"
-          size="s"
-          show-preview
-          class="user-list-modal__avatar"
-        />
-        <AvatarMedia v-else :size="28" :alt="user.name" class="user-list-modal__avatar">
-          {{ user.name.charAt(0).toUpperCase() }}
-        </AvatarMedia>
+        <span class="user-list-modal__avatar-wrap">
+          <UserAvatar
+            v-if="resolvedUser(user.name)"
+            :user-id="resolvedUser(user.name)!.id"
+            size="s"
+            show-preview
+            class="user-list-modal__avatar"
+          />
+          <AvatarMedia v-else :size="28" :alt="user.name" class="user-list-modal__avatar">
+            {{ user.name.charAt(0).toUpperCase() }}
+          </AvatarMedia>
+          <ChatPresenceDot
+            :away="user.away"
+            :last-seen="resolvedUser(user.name)?.last_seen ?? null"
+            :no-tooltip="isMobile"
+            :size="8"
+          />
+        </span>
 
         <!-- Name + role label -->
         <Flex column :gap="0" class="user-list-modal__info">
@@ -424,6 +433,12 @@ function devoiceUser(name: string) {
     align-items: center;
     justify-content: center;
     width: 20px;
+    flex-shrink: 0;
+  }
+
+  &__avatar-wrap {
+    position: relative;
+    display: inline-flex;
     flex-shrink: 0;
   }
 

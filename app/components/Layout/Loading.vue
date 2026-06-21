@@ -3,6 +3,11 @@ import { Button, Flex } from '@dolanske/vui'
 import SharedLogo from '@/components/Shared/Logo.vue'
 import { useInitialUserPreferences } from '@/composables/useInitialUserPreferences'
 import { useSessionReady } from '@/composables/useSessionReady'
+import { reloadWithCacheBust } from '@/lib/utils/common'
+
+// Build id shown as tiny diagnostic text at the bottom of the splash, so a
+// stuck loading screen can still be tied to a specific deploy.
+const buildId = useRuntimeConfig().app.buildId
 
 // Add loading state to prevent FOUC (Flash of Unstyled Content)
 const isLoading = ref(true)
@@ -58,7 +63,7 @@ function finishLoading() {
 
 function reload() {
   if (import.meta.client)
-    window.location.reload()
+    reloadWithCacheBust()
 }
 
 // Load content and then fade out loading screen
@@ -114,6 +119,7 @@ onMounted(async () => {
         </Flex>
       </Flex>
     </Transition>
+    <span v-if="buildId" class="build-id">{{ buildId }}</span>
   </Flex>
 </template>
 
@@ -220,5 +226,19 @@ onMounted(async () => {
 .escape-hatch-enter-from {
   opacity: 0;
   transform: translateX(-50%) translateY(8px);
+}
+
+.build-id {
+  position: fixed;
+  bottom: var(--space-xs);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--color-text-lightest);
+  opacity: 0.4;
+  pointer-events: none;
+  user-select: text;
+  white-space: nowrap;
 }
 </style>

@@ -73,7 +73,7 @@ interface RawCursorRow {
   prev_cursor_id: string | null
 }
 
-// Shape returned by get_discussion_replies_tail RPC rows — derived from the
+// Shape returned by get_discussion_replies_tail RPC rows - derived from the
 // generated database types so the function name and args are type-checked.
 // eslint-disable-next-line unused-imports/no-unused-vars
 type TailRow = Database['public']['Functions']['get_discussion_replies_tail']['Returns'][number]

@@ -17,7 +17,7 @@ const isMac = import.meta.client && /Mac/i.test(navigator.platform)
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
-// resolvedUserId is just userId — we wait for useSupabaseUser() to populate
+// resolvedUserId is just userId - we wait for useSupabaseUser() to populate
 // before running the auth check, so no sessionUserId fallback is needed.
 const resolvedUserId = userId
 

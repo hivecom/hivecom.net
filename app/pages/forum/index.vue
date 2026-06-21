@@ -812,6 +812,14 @@ watch(
 
     if (!slug && !uuid) {
       activeTopicId.value = null
+      // Returning to the root view (e.g. browser back). If an intervening
+      // remount loaded only the active topic, sibling top-level topics may have
+      // lost their lazily-loaded discussions and would otherwise render with
+      // their sub-topics but no threads. Re-ensure they're loaded - the
+      // discussionsLoaded guard in loadTopicDiscussions makes this a no-op for
+      // topics that are still populated.
+      for (const topic of getTopicsByParentId(null))
+        loadTopicOrChildren(topic.id)
       return
     }
 

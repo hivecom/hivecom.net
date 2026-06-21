@@ -87,6 +87,13 @@ function copyLink() {
 function copyLinkForComment(id: string) {
   const url = new URL(window.location.href)
   url.searchParams.set('comment', id)
+  // Anchor the link on this comment's timestamp. In chronological (ascending
+  // forum) view a reply's position is stable, so the deep-link load can fetch
+  // the target block straight from this timestamp and skip the page-lookup RPC.
+  // Consumed in useDataDiscussionReplies; ignored in threaded/comment views.
+  // Only ever called for this item's own id, so data.created_at is the match.
+  if (id === data.id && data.created_at)
+    url.searchParams.set('ts', String(new Date(data.created_at).getTime()))
   copy(url.toString())
   pushToast('Link copied to clipboard', {
     timeout: 1500,
@@ -298,6 +305,14 @@ async function openFullThread() {
   await nextTick()
   openThreadSheetId.value = rootId as string
 }
+
+// Close the sheet and jump to this thread's root in the main discussion view.
+// The root is a top-level entry, so it's already on the loaded page/window - the
+// ?comment change drives the scroll. Only offered when this sheet is a root's.
+function goToThreadInDiscussion() {
+  repliesExpanded.value = false
+  void router.replace({ query: { ...route.query, comment: data.id } })
+}
 </script>
 
 <template>
@@ -347,12 +362,23 @@ async function openFullThread() {
               <Button v-if="data.reply_to_id" size="s" plain @click="openFullThread">
                 Full thread
               </Button>
+              <Button v-else size="s" plain @click="goToThreadInDiscussion">
+                View in discussion
+              </Button>
             </Flex>
           </Flex>
         </Flex>
       </template>
 
       <DiscussionThreadedScope>
+        <!-- Thread root: keep the top-level entry visible in the sheet, not just
+             its replies. Highlighted when the root is itself the linked comment. -->
+        <DiscussionModelComment
+          :data
+          :class="{ 'discussion-comment--highlight': isActive }"
+          @copy-link="copyLink"
+          @scroll-reply="scrollReply"
+        />
         <div class="discussion-comment-wrapper__children" :style="{ '--nest-depth': 1 }">
           <DiscussionItem
             v-for="item in visibleChildren"

@@ -4,7 +4,7 @@ import process from 'process'
 import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 import fetchRoutes from './nitro/fetch-routes'
 
-// Only fetch routes when actually building/generating — not during `nuxi prepare`, type-gen, etc.
+// Only fetch routes when actually building/generating - not during `nuxi prepare`, type-gen, etc.
 const isBuildCommand = process.argv.some(arg => ['build', 'generate'].includes(arg))
 
 // Cache the fetch result so it's only called once across hooks
@@ -185,7 +185,14 @@ export default defineNuxtConfig({
       var reload = document.createElement('button');
       reload.textContent = 'Reload';
       reload.style.cssText = 'cursor:pointer;border:0;border-radius:var(--border-radius-m,8px);padding:6px 14px;font-size:13px;background:var(--color-accent,#a3e635);color:#000;';
-      reload.onclick = function () { location.reload(); };
+      reload.onclick = function () {
+        // Cache-busting reload: a plain location.reload() can be served the
+        // same stale HTML (which references now-deleted _nuxt chunks), so this
+        // would never recover. Append a query param to force a network fetch.
+        var loc = window.location;
+        var sep = loc.search ? '&' : '?';
+        loc.replace(loc.pathname + loc.search + sep + '_=' + Date.now() + loc.hash);
+      };
 
       var support = document.createElement('a');
       support.textContent = 'Contact Support';
@@ -396,7 +403,7 @@ export default defineNuxtConfig({
       },
       // NOTE: rehype-sanitize is configured in mdc.config.ts instead of here.
       // nuxt.config.ts options are passed through JSON.stringify when generating
-      // .nuxt/mdc-imports.mjs, which silently converts every RegExp to {} —
+      // .nuxt/mdc-imports.mjs, which silently converts every RegExp to {} -
       // causing the iframe src allow-list to reject all YouTube embeds.
       // mdc.config.ts is loaded as a real ES module so RegExp values survive.
     },

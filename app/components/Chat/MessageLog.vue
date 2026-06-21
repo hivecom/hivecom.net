@@ -13,6 +13,7 @@ import LinkEmbed from '@/components/LinkEmbed/index.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import JumpToPresent from '@/components/Shared/JumpToPresent.vue'
 import Lightbox from '@/components/Shared/Lightbox.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
@@ -969,7 +970,7 @@ watch(
       pendingPrependRestore = false
       nextTick(() => {
         // Buffer switches (and visibility/activate restores) set wantBottom.
-        // In that case skip anchor-restore and go straight to the bottom —
+        // In that case skip anchor-restore and go straight to the bottom -
         // anchor-restore would land us mid-history when scrollTop was 0.
         if (wantBottom) {
           scrollToBottom()
@@ -1428,7 +1429,7 @@ onBeforeUnmount(() => {
               :data-msg-id="group.messages[0].id"
             >
               <div class="chat-log__group-avatar">
-                <UserAvatar v-if="resolvedUser(group.nickLower)" :user-id="resolvedUser(group.nickLower)!.id" :size="32" show-preview linked show-online-indicator />
+                <UserAvatar v-if="resolvedUser(group.nickLower)" :user-id="resolvedUser(group.nickLower)!.id" :size="32" show-preview linked />
                 <AvatarMedia v-else-if="ircAvatarUrl(group.nickLower)" :size="32" :url="ircAvatarUrl(group.nickLower)" :alt="group.from ?? ''" />
                 <AvatarMedia v-else :size="32" :alt="group.from ?? ''">
                   <template #default>
@@ -1594,12 +1595,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <Transition name="chat-log-jump">
-      <button v-if="!isAtBottom" class="chat-log__jump-to-present" @click="jumpToPresent">
-        <Icon name="ph:arrow-down" size="14" />
-        Jump to present
-      </button>
-    </Transition>
+    <JumpToPresent :visible="!isAtBottom" @click="jumpToPresent" />
 
     <Lightbox ref="lightboxRef" :items="chatMediaItems" />
 
@@ -2459,46 +2455,6 @@ onBeforeUnmount(() => {
       -webkit-user-select: none;
       user-select: none;
     }
-  }
-
-  &__jump-to-present {
-    position: absolute;
-    bottom: var(--space-s);
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: var(--space-xxs);
-    padding: var(--space-xxs) var(--space-s);
-    background: var(--color-bg-raised);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-l);
-    color: var(--color-text-light);
-    font-size: var(--font-size-xs);
-    cursor: pointer;
-    white-space: nowrap;
-    z-index: var(--z-active);
-    transition:
-      background var(--transition),
-      color var(--transition);
-
-    &:hover {
-      background: var(--color-bg-medium);
-      color: var(--color-text);
-    }
-  }
-
-  .chat-log-jump-enter-active,
-  .chat-log-jump-leave-active {
-    transition:
-      opacity var(--transition),
-      transform var(--transition);
-  }
-
-  .chat-log-jump-enter-from,
-  .chat-log-jump-leave-to {
-    opacity: 0;
-    transform: translateX(-50%) translateY(4px);
   }
 }
 </style>

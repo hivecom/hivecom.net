@@ -212,7 +212,32 @@ async function togglePushNotifications(value: boolean) {
 
     <Switch v-model="settings.show_forum_updates" class="reversed mb-m" label="Show latest activity" />
     <Switch v-model="settings.show_forum_recently_visited" class="reversed mb-m" label="Show recently visited" />
-    <Switch v-model="settings.show_forum_archived" class="reversed" label="Show archived topics & discussions" />
+    <Switch v-model="settings.show_forum_archived" class="reversed mb-m" label="Show archived topics & discussions" />
+
+    <Flex x-between y-center>
+      <div>
+        <p>Forum loading</p>
+        <p class="text-xs text-color-lightest">
+          How to load and display more replies. Paginated load is faster on initial load and better for performance, while infinite scroll is more convenient for browsing through large discussions.
+        </p>
+      </div>
+      <ButtonGroup size="s">
+        <Button
+          :variant="settings.forum_pagination_mode === 'infinite' ? 'accent' : 'gray'"
+          size="s"
+          @click="settings.forum_pagination_mode = 'infinite'"
+        >
+          Infinite
+        </Button>
+        <Button
+          :variant="settings.forum_pagination_mode === 'paginated' ? 'accent' : 'gray'"
+          size="s"
+          @click="settings.forum_pagination_mode = 'paginated'"
+        >
+          Pages
+        </Button>
+      </ButtonGroup>
+    </Flex>
 
     <Divider class="my-l" />
 

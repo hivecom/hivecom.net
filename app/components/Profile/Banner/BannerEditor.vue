@@ -847,14 +847,14 @@ function hitTestImageResizeHandle(x: number, y: number, layer: ImageLayer): bool
 // Whether the pointer is currently over the resize handle
 const cursorOnResizeHandle = ref(false)
 
-// Pan state — dragging on empty canvas space translates the workspace
+// Pan state - dragging on empty canvas space translates the workspace
 const panning = ref(false)
 const panStart = ref({ x: 0, y: 0 })
 const panOffset = ref({ x: 0, y: 0 })
 const panOffsetAtStart = ref({ x: 0, y: 0 })
 
 function onCanvasMouseDown(e: MouseEvent) {
-  // Click outside canvas bounds — just start a pan, don't touch selection
+  // Click outside canvas bounds - just start a pan, don't touch selection
   if (!isOverCanvas(e)) {
     panning.value = true
     panStart.value = { x: e.clientX, y: e.clientY }
@@ -898,7 +898,7 @@ function onCanvasMouseDown(e: MouseEvent) {
     }
   }
 
-  // Clicked empty space — start pan or deselect
+  // Clicked empty space - start pan or deselect
   panning.value = true
   panStart.value = { x: e.clientX, y: e.clientY }
   panOffsetAtStart.value = { x: panOffset.value.x, y: panOffset.value.y }
@@ -1356,7 +1356,7 @@ async function loadExistingBanner(supabase: SupabaseClient<Database>, userId: st
           applyMetadata(meta)
         }
         catch {
-          // Corrupted metadata — start fresh
+          // Corrupted metadata - start fresh
         }
       }
     }
@@ -1367,7 +1367,7 @@ async function loadExistingBanner(supabase: SupabaseClient<Database>, userId: st
     isDirty.value = false
   }
   catch {
-    // Could not load existing banner — start fresh
+    // Could not load existing banner - start fresh
   }
   finally {
     loading.value = false
@@ -1680,7 +1680,7 @@ function onDocumentMouseMove(e: MouseEvent) {
     return
   }
 
-  // Resize — works regardless of where mouse is
+  // Resize - works regardless of where mouse is
   if (resizingLayerId.value) {
     const layer = layers.value.find(l => l.id === resizingLayerId.value)
     if (layer && layer.type === 'image') {
@@ -1705,7 +1705,7 @@ function onDocumentMouseMove(e: MouseEvent) {
     return
   }
 
-  // Drag — works regardless of where mouse is
+  // Drag - works regardless of where mouse is
   if (dragging.value === 'layer' && draggingLayerId.value) {
     const layer = layers.value.find(l => l.id === draggingLayerId.value)
     if (layer) {
@@ -1717,7 +1717,7 @@ function onDocumentMouseMove(e: MouseEvent) {
     return
   }
 
-  // Idle — only do hover detection if the mouse is actually over the canvas.
+  // Idle - only do hover detection if the mouse is actually over the canvas.
   // Use a single getBoundingClientRect call shared by the over-canvas check and canvasToLocal.
   const canvas = canvasRef.value
   if (!canvas)
@@ -2145,7 +2145,7 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
   font-style: normal;
 }
 
-// Not scoped — mirrors the ThemeEditor pattern so we can target Modal internals
+// Not scoped - mirrors the ThemeEditor pattern so we can target Modal internals
 .banner-editor {
   // ── Two-column full-screen layout ──────────────────────────────────────────
 

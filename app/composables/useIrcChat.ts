@@ -215,6 +215,20 @@ export interface ChatBuffer {
   tailTrimmed?: boolean
   /** True while a forward cache-load (fetchNewerFromCache) is in-flight. */
   loadingNewerHistory?: boolean
+  /**
+   * Newest cached timestamp (ms) we must page BEFORE down to before cache-first
+   * scroll-back may resume. Set when a (re)connect leaves a gap between the
+   * pre-seeded cached block and the freshly-fetched LATEST block (more than
+   * HISTORY_LIMIT messages arrived while away). While set, scroll-back skips the
+   * cache and fetches from the server so the missed window is filled in;
+   * cleared once a BEFORE batch pages back into cached territory.
+   */
+  cacheBridgeTs?: number
+  /**
+   * Transient: newest cached timestamp (ms) captured at JOIN, before the LATEST
+   * batch merges in, so the batch-end handler can detect a reconnect gap.
+   */
+  pendingBridgeFromTs?: number
 }
 
 export interface ChannelListEntry {
@@ -231,6 +245,8 @@ export interface ChatUser {
   prefix: string
   /** True when the server reports this user as a bot (WHO flag B / user mode +B). */
   bot?: boolean
+  /** True when the user is marked away (WHO flag G / away-notify AWAY). */
+  away?: boolean
 }
 
 /** Identity supplied by the host app (the website's Supabase session). */
@@ -407,7 +423,35 @@ let readPositions: Record<string, number> = {}
 // Set when draft/read-marker CAP is negotiated successfully.
 let readMarkerActive = false
 
-function saveReadPosition(name: string, ts: number) {
+// Recompute a buffer's unread/mention badges against the current read marker,
+// dropping anything now at or below it. This is what makes read state converge
+// across devices: when another session advances the marker (server pushes us a
+// MARKREAD), the stale badge accumulated here has to be cleared, not just the
+// gate for future messages. Mirrors the badge gating in addToBuffer so the
+// recount matches what live accumulation would have produced.
+function reconcileUnread(buf: ChatBuffer) {
+  const marker = readPositions[buf.name.toLowerCase()] ?? 0
+  let unread = 0
+  let mentions = 0
+  for (const m of buf.messages) {
+    if (m.ts.getTime() <= marker)
+      continue
+    if (m.type !== 'chat' || m.from == null || m.from === nick.value || SERVICE_NICKS.has(m.from.toLowerCase()))
+      continue
+    unread += 1
+    // PMs are always a ping (service nicks already excluded above); channels
+    // only when the line actually mentions you.
+    if (buf.kind === 'pm' || mentionsSelf(m.text))
+      mentions += 1
+  }
+  buf.unread = unread
+  buf.mentions = mentions
+  // Fully caught up - drop the "new messages" divider too.
+  if (unread === 0)
+    buf.readLineTs = undefined
+}
+
+function saveReadPosition(name: string, ts: number, opts: { sync?: boolean } = {}) {
   const key = name.toLowerCase()
   // Monotonic - the read marker only ever advances. Replayed history can land in
   // the buffer after a newer system line (e.g. "You joined"), so guard against
@@ -417,8 +461,17 @@ function saveReadPosition(name: string, ts: number) {
   readPositions[key] = ts
   if (import.meta.client)
     localStorage.setItem(STORAGE_READ_POSITIONS, JSON.stringify(readPositions))
+  // Reconcile any badge already accumulated against the advanced marker. Cheap
+  // guard keeps the hot path (per-message pin on the active buffer) O(1) - we
+  // only walk the buffer when there's actually a stale badge to clear, which is
+  // the cross-device / catch-up case, not normal live reading.
+  const buf = findBuffer(name)
+  if (buf && (buf.unread || buf.mentions))
+    reconcileUnread(buf)
   // Sync to server so other clients (and fresh loads) get the correct marker.
-  if (readMarkerActive)
+  // Skipped when the marker originated from the server (a pushed MARKREAD), to
+  // avoid echoing it straight back.
+  if (readMarkerActive && opts.sync !== false)
     send(`MARKREAD ${name} timestamp=${new Date(ts).toISOString()}`)
 }
 
@@ -1141,6 +1194,16 @@ function removeUserEverywhere(name: string) {
     buf.users = buf.users.filter(u => u.name !== clean)
 }
 
+/** Update a user's away state across every channel they're in (away-notify). */
+function setAwayEverywhere(name: string, away: boolean) {
+  const clean = stripPrefix(name)
+  for (const buf of buffers.value) {
+    const user = buf.users.find(u => u.name === clean)
+    if (user)
+      user.away = away
+  }
+}
+
 function clearTyping(bufName: string, typingNick: string) {
   const key = `${bufName.toLowerCase()}|${typingNick.toLowerCase()}`
   const timer = typingTimers.get(key)
@@ -1701,8 +1764,12 @@ async function fetchOlderHistory(target: string) {
   buf.loadingOlderHistory = true
 
   // --- cache-first path ---
+  // While a reconnect gap is unbridged (cacheBridgeTs set), the cached messages
+  // below the live front are NOT contiguous with it - serving them here would
+  // silently skip the missed window. Force the server BEFORE path until
+  // pagination reaches back into cached territory and clears the bridge.
   const userKey = cacheNickKey()
-  if (userKey && !buf.cacheExhausted) {
+  if (userKey && !buf.cacheExhausted && buf.cacheBridgeTs == null) {
     const oldestTs = buf.messages[0]?.ts.getTime() ?? Date.now()
     const cached = await loadOlderMessages(userKey, target, oldestTs, CACHE_PAGE_SIZE)
     if (cached.length > 0) {
@@ -1770,6 +1837,19 @@ async function fetchOlderHistory(target: string) {
  * only messages after that point are returned; otherwise the most recent
  * HISTORY_LIMIT messages are fetched for context.
  */
+/**
+ * Record the newest cached timestamp on a buffer before a LATEST history fetch,
+ * so the batch-end handler can detect a reconnect gap (more than HISTORY_LIMIT
+ * messages missed between the cached block and the freshly-fetched block) and
+ * bridge it lazily via BEFORE pagination. No-op when the buffer holds no cached
+ * backlog - a live (non-`backlog`) tail means we never went offline here.
+ */
+function markPendingBridge(buf: ChatBuffer) {
+  const last = buf.messages[buf.messages.length - 1]
+  if (last?.backlog)
+    buf.pendingBridgeFromTs = last.ts.getTime()
+}
+
 function requestHistory(target: string, since?: number) {
   if (!chatHistorySupported.value)
     return
@@ -2047,12 +2127,15 @@ function handleMessage(raw: string) {
         if (chatHistorySupported.value) {
           if (isExplicitJoin)
             pendingJoinMarkers.add(channel.toLowerCase())
-          // If we seeded this buffer from cache, only fetch messages newer than
-          // the newest cached line so a quick reload shows nothing visibly loading.
-          const newestCachedTs = buf.messages.length > 0 && buf.messages[buf.messages.length - 1]?.backlog
-            ? buf.messages[buf.messages.length - 1]!.ts.getTime()
-            : 0
-          requestHistory(channel, newestCachedTs > 0 ? newestCachedTs : undefined)
+          // Fetch the newest history unconditionally rather than bounding it by
+          // the cached tail. A `since`-bounded LATEST returns only the *newest*
+          // HISTORY_LIMIT lines above the cursor, so when more than that arrived
+          // while we were away it silently drops everything in between - a gap in
+          // the feed. Plain LATEST overlaps the cached tail for short absences
+          // (dedup stitches them together); for longer ones the batch-end handler
+          // detects the gap and bridges it lazily via BEFORE pagination.
+          markPendingBridge(buf)
+          requestHistory(channel)
         }
         else if (isExplicitJoin) {
           addToBuffer(channel, 'channel', { type: 'join', channel, text: `You joined ${channel}` }, { ts })
@@ -2298,6 +2381,13 @@ function handleMessage(raw: string) {
       addServer({ type: 'part', text: `${nickFrom} quit: ${params[0] ?? ''}` }, { ts })
       break
 
+    case 'AWAY':
+      // away-notify: a trailing reason param means the user just went away;
+      // no param means they returned. Replayed history carries no AWAY lines.
+      if (!backlog)
+        setAwayEverywhere(nickFrom, params.length > 0)
+      break
+
     case 'BATCH': {
       const ref = params[0] ?? ''
       const id = ref.slice(1)
@@ -2355,8 +2445,44 @@ function handleMessage(raw: string) {
             // Fewer messages than the limit means no more history - unless this was
             // a time-bounded LATEST fetch (hasSinceBound), in which case a sparse
             // result only means no activity in that window, not that all history is gone.
-            if (info.count < HISTORY_LIMIT && !info.hasSinceBound)
-              batchBuf.historyExhausted = true
+            if (info.count < HISTORY_LIMIT && !info.hasSinceBound) {
+              if (batchBuf.cacheBridgeTs != null && info.isPrepend) {
+                // Bridging a reconnect gap (see below) and the server ran out of
+                // history before reaching the cached block. Stop bridging and let
+                // cache-first scroll-back serve the older cached messages.
+                batchBuf.cacheBridgeTs = undefined
+                batchBuf.cacheExhausted = false
+              }
+              else if (batchBuf.pendingBridgeFromTs == null) {
+                // Only truly exhausted when there's no cached history below the
+                // live front to fall back to. A sparse LATEST that overlaps the
+                // cache still has older cached messages to scroll into.
+                batchBuf.historyExhausted = true
+              }
+            }
+            // --- reconnect gap detection (plain LATEST on JOIN) ---
+            // A plain LATEST returns at most HISTORY_LIMIT of the newest lines. If
+            // this buffer was seeded from cache and the oldest line delivered sits
+            // above the newest cached line with no overlap, more than HISTORY_LIMIT
+            // messages arrived while we were away: the cached block and this fresh
+            // block aren't contiguous. Drop the now-disconnected cached block from
+            // the live view (it stays in IndexedDB for scroll-back) so the live
+            // front is one contiguous run, and record the cached boundary so
+            // scroll-back bridges the gap from the server before resuming the cache.
+            if (!info.isPrepend && batchBuf.pendingBridgeFromTs != null) {
+              const bridgeFrom = batchBuf.pendingBridgeFromTs
+              batchBuf.pendingBridgeFromTs = undefined
+              if (info.count >= HISTORY_LIMIT && info.oldestTs != null
+                && info.oldestTs > bridgeFrom + HISTORY_FUZZ_MS) {
+                const oldest = info.oldestTs
+                const seam = batchBuf.messages.findIndex(m => m.ts.getTime() >= oldest)
+                if (seam > 0)
+                  batchBuf.messages.splice(0, seam)
+                batchBuf.cacheBridgeTs = bridgeFrom
+                batchBuf.historyAnchorMsgid = info.oldestMsgid
+                batchBuf.historyAnchorTs = new Date(oldest).toISOString()
+              }
+            }
             // Bulk-insert staged BEFORE messages in one splice so the Vue
             // reactive array only updates once (no per-message layout shift).
             // Server delivers messages oldest-first, staging preserves that
@@ -2397,6 +2523,16 @@ function handleMessage(raw: string) {
                 batchBuf.historyAnchorMsgid = info.oldestMsgid
                 batchBuf.historyAnchorTs = new Date(info.oldestTs).toISOString()
               }
+            }
+
+            // If we were bridging a reconnect gap, check whether this BEFORE page
+            // reached back into cached territory. Once it does, the live front is
+            // contiguous with the cache again: clear the bridge so cache-first
+            // scroll-back resumes serving the older cached block instantly.
+            if (batchBuf.cacheBridgeTs != null && info.isPrepend && info.oldestTs != null
+              && info.oldestTs <= batchBuf.cacheBridgeTs + HISTORY_FUZZ_MS) {
+              batchBuf.cacheBridgeTs = undefined
+              batchBuf.cacheExhausted = false
             }
 
             // A batch may add few (or zero) visible messages when it's dominated
@@ -2450,7 +2586,12 @@ function handleMessage(raw: string) {
           }
           else {
             // No read-marker cap: fall back to eager buffer creation.
-            getBuffer(target, 'pm')
+            const dmBuf = getBuffer(target, 'pm')
+            // Same reconnect gap as channels: a `since`-bounded LATEST returns
+            // only the newest HISTORY_LIMIT lines, so a busy DM with more than
+            // that missed drops the messages in between. Mark the cached tail so
+            // the batch-end handler can bridge the gap on scroll-back.
+            markPendingBridge(dmBuf)
             requestHistory(target, historyLowerBound())
           }
         }
@@ -2466,8 +2607,12 @@ function handleMessage(raw: string) {
         : Number.NaN
 
       // Seed readPositions from the server marker before any history replay runs.
+      // This is also how a read on another device reaches us: the server pushes
+      // the advanced marker here, and saveReadPosition reconciles the local
+      // badge. sync: false because the marker already came from the server -
+      // don't echo it back.
       if (mrTarget && Number.isFinite(mrParsed))
-        saveReadPosition(mrTarget, mrParsed)
+        saveReadPosition(mrTarget, mrParsed, { sync: false })
 
       // Resolve a deferred DM target from CHATHISTORY TARGETS. Only open the
       // buffer and fetch history if the conversation has activity newer than the
@@ -2478,7 +2623,10 @@ function handleMessage(raw: string) {
         pendingDmTargets.delete(mrTarget.toLowerCase())
         const readTs = Number.isFinite(mrParsed) ? mrParsed : (readPositions[mrTarget.toLowerCase()] ?? 0)
         if (pendingLatestTs > readTs) {
-          getBuffer(mrTarget, 'pm')
+          const dmBuf = getBuffer(mrTarget, 'pm')
+          // Bridge a reconnect gap when more than HISTORY_LIMIT messages were
+          // missed in this DM (see the no-read-marker path above).
+          markPendingBridge(dmBuf)
           requestHistory(mrTarget, historyLowerBound())
         }
       }
@@ -2518,12 +2666,15 @@ function handleMessage(raw: string) {
       const whoReplyChannel = params[1] ?? ''
       const whoNick = params[5] ?? ''
       const whoFlags = params[6] ?? ''
-      if (whoReplyChannel && whoNick && whoFlags.includes('B')) {
+      if (whoReplyChannel && whoNick) {
         const buf = findBuffer(whoReplyChannel)
-        if (buf) {
-          const user = buf.users.find(u => u.name === whoNick)
-          if (user)
+        const user = buf?.users.find(u => u.name === whoNick)
+        if (user) {
+          if (whoFlags.includes('B'))
             user.bot = true
+          // WHO flags: 'G' = gone (away), 'H' = here. Seed presence so the user
+          // list reflects away state before any live away-notify update arrives.
+          user.away = whoFlags.includes('G')
         }
       }
       break
@@ -3491,8 +3642,10 @@ function openPm(target: string) {
   // Load history the first time this DM is opened. Skipped if the buffer was
   // already populated via CHATHISTORY TARGETS on connect (historyReady is set
   // when the first chathistory batch closes).
-  if (chatHistorySupported.value && !buf.historyReady)
+  if (chatHistorySupported.value && !buf.historyReady) {
+    markPendingBridge(buf)
     requestHistory(target)
+  }
 }
 
 function sendPm(target: string, text: string) {

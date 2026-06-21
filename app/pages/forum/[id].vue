@@ -315,6 +315,11 @@ onBeforeMount(async () => {
       }
 
       post.value = data
+      // Re-warm all three cache keys (id, slug, entity) from this hit. A
+      // fast-path hit may have resolved via slug only (e.g. another page warmed
+      // the slug key); writing all keys guarantees the Discussion composable's
+      // fetchById(post.id) is a cache hit instead of racing a duplicate SELECT *.
+      discussionCache.set(data)
       showNSFWWarning.value = !!data.is_nsfw && settings.value.show_nsfw_warning
       nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
       void loadTopicBreadcrumbs(data.discussion_topic_id)

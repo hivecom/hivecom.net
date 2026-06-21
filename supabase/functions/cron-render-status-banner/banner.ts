@@ -215,7 +215,7 @@ export function buildScene(
                     ? kpiCard("Next Event", "ONGOING", LIVE)
                     : kpiCard(
                       "Next Event",
-                      nextEventCountdown ?? "—",
+                      nextEventCountdown ?? "-",
                       nextEventCountdown ? "#e8e8e8" : "#5a5a5a",
                     ),
                 ],

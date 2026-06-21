@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, ContextMenu, Drawer, Flex, Overflow, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import ChatPresenceDot from '@/components/Chat/ChatPresenceDot.vue'
 import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import UserActionMenu from '@/components/Chat/UserActionMenu.vue'
 import UserListModal from '@/components/Chat/UserListModal.vue'
@@ -18,7 +19,19 @@ const props = defineProps<{
   limit?: number
 }>()
 
-const { users, nick, inputMessage, openPm, userMetaStore } = useIrcChat()
+const { users, nick, inputMessage, openPm, userMetaStore, activeBuffer, myChannelRole } = useIrcChat()
+
+// In an auditorium channel (+u) the server hides unprivileged members from the
+// NAMES list of non-operators, so a regular user only ever sees operators.
+// Surface a hint so the short list doesn't read like a bug.
+const OPERATOR_PREFIXES = new Set(['~', '&', '@', '%'])
+const showOperatorsOnlyNote = computed(() => {
+  const buf = activeBuffer.value
+  if (buf?.kind !== 'channel' || !buf.modes?.has('u'))
+    return false
+  const role = myChannelRole(buf.name)
+  return !role || !OPERATOR_PREFIXES.has(role.symbol)
+})
 
 function ircMeta(name: string) {
   return userMetaStore.value.get(name.toLowerCase())
@@ -35,6 +48,10 @@ watch(users, (newUsers) => {
 
 function resolvedUserId(name: string): string | null {
   return resolved.value.get(name.toLowerCase())?.id ?? null
+}
+
+function resolvedLastSeen(name: string): string | null {
+  return resolved.value.get(name.toLowerCase())?.last_seen ?? null
 }
 
 const displayUsers = computed(() =>
@@ -162,6 +179,10 @@ const menuUserData = computed(() =>
         <Icon name="ph:users" size="13" />
       </Button>
     </Flex>
+    <Flex v-if="showOperatorsOnlyNote" x-center y-center expand gap="xxs" class="text-xxs text-color-lighter chat-users__auditorium-note">
+      <Icon name="ph:megaphone" size="12" style="flex-shrink: 0" />
+      <span>Auditorium - only operators are shown</span>
+    </Flex>
     <ContextMenu class="chat-users__context w-100" :class="{ 'chat-users__context--static': limit }">
       <component :is="limit ? 'div' : Overflow" class="chat-users__list w-100">
         <Flex
@@ -186,19 +207,27 @@ const menuUserData = computed(() =>
             <span class="chat-users__indicator">
               <UserRoleBadge :role="user.role" icon />
             </span>
-            <UserAvatar
-              v-if="resolvedUserId(user.name)"
-              :user-id="resolvedUserId(user.name)!"
-              size="s"
-              show-preview
-              class="chat-users__avatar"
-            />
-            <AvatarMedia v-else-if="ircAvatarUrl(user.name)" :size="28" :url="ircAvatarUrl(user.name)" :alt="user.name" class="chat-users__avatar" />
-            <AvatarMedia v-else :size="28" :alt="user.name" class="chat-users__avatar">
-              <template #default>
-                {{ user.name.charAt(0).toUpperCase() }}
-              </template>
-            </AvatarMedia>
+            <span class="chat-users__avatar-wrap">
+              <UserAvatar
+                v-if="resolvedUserId(user.name)"
+                :user-id="resolvedUserId(user.name)!"
+                size="s"
+                show-preview
+                class="chat-users__avatar"
+              />
+              <AvatarMedia v-else-if="ircAvatarUrl(user.name)" :size="28" :url="ircAvatarUrl(user.name)" :alt="user.name" class="chat-users__avatar" />
+              <AvatarMedia v-else :size="28" :alt="user.name" class="chat-users__avatar">
+                <template #default>
+                  {{ user.name.charAt(0).toUpperCase() }}
+                </template>
+              </AvatarMedia>
+              <ChatPresenceDot
+                :away="user.away"
+                :last-seen="resolvedLastSeen(user.name)"
+                :no-tooltip="isMobile"
+                :size="6"
+              />
+            </span>
             <button
               class="chat-users__item"
               type="button"
@@ -365,9 +394,15 @@ const menuUserData = computed(() =>
     margin-left: var(--space-xs);
   }
 
-  &__avatar {
+  &__avatar-wrap {
+    position: relative;
+    display: inline-flex;
     flex-shrink: 0;
     margin-left: var(--space-xxs);
+  }
+
+  &__avatar {
+    flex-shrink: 0;
 
     width: 14px !important;
     height: 14px !important;
@@ -402,6 +437,14 @@ const menuUserData = computed(() =>
     font-size: var(--font-size-s);
     color: var(--color-text-lighter);
     font-style: italic;
+  }
+
+  &__auditorium-note {
+    span {
+      font-size: var(--font-size-xxs);
+    }
+    padding: var(--space-xs) var(--space-s);
+    border-bottom: 1px solid var(--color-border-weak);
   }
 
   &__menu {
