@@ -5,6 +5,8 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 interface Props {
   viewMode: 'flat' | 'threaded'
   hasComments: boolean
+  /** Whether the #center slot holds a pagination control (drives mobile wrap) */
+  hasPagination?: boolean
   offtopicCount: number
   showOfftopic: boolean
   showThreadReplies: boolean
@@ -31,7 +33,7 @@ const isBelowSmall = useBreakpoint('<s')
 </script>
 
 <template>
-  <Flex y-center x-between gap="xs" class="mb-m">
+  <Flex y-center x-between gap="xs" class="mb-m discussion-toolbar" :class="{ 'discussion-toolbar--paginated': hasPagination }">
     <Flex y-center gap="xs">
       <!-- View mode segmented control - hidden when there are no replies -->
       <ButtonGroup v-if="hasComments" size="s">
@@ -99,6 +101,11 @@ const isBelowSmall = useBreakpoint('<s')
       </Tooltip>
     </Flex>
 
+    <!-- Centered slot - the pagination control rides on this row (see Discussion.vue) -->
+    <Flex x-center y-center class="discussion-toolbar__center">
+      <slot name="center" />
+    </Flex>
+
     <Flex gap="xs">
       <Tooltip v-if="showSubscribeButton" :disabled="isBelowSmall">
         <Button
@@ -147,6 +154,27 @@ const isBelowSmall = useBreakpoint('<s')
 </template>
 
 <style scoped lang="scss">
+// Grow to fill the row between the left controls and the right group so the
+// pagination slot sits centered in the leftover space.
+.discussion-toolbar__center {
+  flex: 1;
+}
+
+// On mobile the timeline buttons join the row, so the pagination gets crowded.
+// Drop it onto its own full-width line below the switcher/timeline controls.
+// The container's gap supplies the spacing between the two lines. Only the
+// paginated state wraps, so a single-page toolbar keeps its empty centre inline.
+@media screen and (max-width: $breakpoint-m) {
+  .discussion-toolbar--paginated {
+    flex-wrap: wrap;
+
+    .discussion-toolbar__center {
+      order: 1;
+      flex-basis: 100%;
+    }
+  }
+}
+
 .discussion-toolbar__timeline-btn {
   @media screen and (min-width: $breakpoint-m) {
     display: none !important;

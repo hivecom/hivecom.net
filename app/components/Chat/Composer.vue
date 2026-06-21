@@ -1103,10 +1103,13 @@ watch(activeName, clearReply)
     // Reserve space on each side so text clears the overlaid attach/send buttons.
     --composer-input-pad-left: calc(var(--interactive-el-height) + var(--space-xxs));
     --composer-input-pad-right: calc(var(--interactive-el-height) + var(--space-xxs));
+    // Start at two lines tall (one line of room beyond the single-line height).
+    --composer-input-min-height: calc(var(--interactive-el-height) + 1lh);
     border: 1px solid var(--color-border);
-    // Desktop sits flush in the chat panel, so drop the left and bottom borders.
+    // Desktop sits flush in the chat panel, so drop the left, right, and bottom borders.
     // Mobile restores them below (it's not flush against a panel edge).
     border-left: none;
+    border-right: none;
     border-bottom: none;
     background: var(--color-bg);
     max-height: 160px;

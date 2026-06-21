@@ -372,13 +372,22 @@ watch(usePagination, () => {
 //   per view, so it always travels with ?view). Infinite mode writes no page.
 // router.replace keeps it out of history. Covers every change (control, timeline,
 // deep link, view toggle).
+//
+// Changing page from the pagination control also strips the one-shot ?comment
+// (and its ?ts) anchor: once you've paged away the linked comment is stale, and
+// leaving it in the URL would re-scroll to that comment every time you returned
+// to its page. goToPage raises this flag; the sync consumes it on its next run.
+let dropAnchorOnPageSync = false
 watch([currentPage, usePagination, viewMode], () => {
   const paginating = usePagination.value && currentPage.value > 1
   const desiredPage = paginating ? String(currentPage.value) : undefined
   const desiredView = viewMode.value === 'threaded' ? 'threaded' : undefined
+  const dropAnchor = dropAnchorOnPageSync
+  dropAnchorOnPageSync = false
+  const hasAnchor = route.query.comment != null || route.query.ts != null
   const curPage = Array.isArray(route.query.page) ? route.query.page[0] : route.query.page
   const curView = Array.isArray(route.query.view) ? route.query.view[0] : route.query.view
-  if ((curPage ?? undefined) === desiredPage && (curView ?? undefined) === desiredView)
+  if ((curPage ?? undefined) === desiredPage && (curView ?? undefined) === desiredView && !(dropAnchor && hasAnchor))
     return
   const query = { ...route.query }
   if (desiredPage)
@@ -389,6 +398,10 @@ watch([currentPage, usePagination, viewMode], () => {
     query.view = desiredView
   else
     delete query.view
+  if (dropAnchor) {
+    delete query.comment
+    delete query.ts
+  }
   void router.replace({ query })
 }, { immediate: true })
 
@@ -1184,6 +1197,10 @@ async function handleTimelineNavigate(date: Date) {
   }
 }
 
+// Whether the top pagination control (in the toolbar row) should show. Same gate
+// as the bottom controls; also drives the toolbar's mobile second-line layout.
+const showTopPagination = computed(() => usePagination.value && (hasMore.value || currentPage.value > 1))
+
 // Page changes from the pagination control. Toggling `navigating` dims the reply
 // area (and suspends scroll-fraction updates) while the new page loads, giving
 // the same "loading" feedback the timeline navigation does. The short trailing
@@ -1193,8 +1210,15 @@ async function goToPage(page: number) {
   if (page === currentPage.value || navigating.value)
     return
   navigating.value = true
+  // Paging from the control drops the stale ?comment anchor (the URL-sync watcher
+  // does the actual strip) so returning to its page later doesn't re-scroll to it.
+  dropAnchorOnPageSync = true
   try {
     await loadPage(page)
+    // Fresh page, fresh content: jump to the top of the listing rather than
+    // leaving the viewport parked where the (bottom) control was clicked.
+    await nextTick()
+    scrollToId(`#discussion-top-${props.id}`, 'start', false, props.additionalScrollOffset)
   }
   finally {
     await nextTick()
@@ -1520,10 +1544,14 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
         <div class="mb-m" />
       </template>
 
+      <!-- Scroll anchor: the pagination control jumps here ("the top") on a page change. -->
+      <div :id="`discussion-top-${props.id}`" class="discussion__top-anchor" />
+
       <!-- Toolbar: view mode selector + off-topic toggle -->
       <DiscussionToolbar
         :view-mode="viewMode"
         :has-comments="modelledComments.length > 0"
+        :has-pagination="showTopPagination"
         :offtopic-count="offtopicCount"
         :show-offtopic="showOfftopic"
         :show-thread-replies="showThreadReplies"
@@ -1538,7 +1566,17 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
         @toggle-subscription="handleToggleSubscription"
         @open-timeline="timelineRef?.openJumpModal()"
         @go-to-end="handleTimelineNavigateToEnd"
-      />
+      >
+        <!-- Top pagination - shares the toolbar row with the view-mode switcher.
+             One control here covers both views (flat/threaded paginate the same). -->
+        <template #center>
+          <Pagination
+            v-if="showTopPagination"
+            :pagination="paginate(paginationTotal, currentPage, discussionPageSize)"
+            @change="goToPage($event)"
+          />
+        </template>
+      </DiscussionToolbar>
 
       <!-- Pending banner for comment model: sits between toolbar and comments -->
       <DiscussionPendingBanner

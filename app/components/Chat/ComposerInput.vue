@@ -399,7 +399,8 @@ defineExpose({ focus, getCaret, setCaret, getEl: () => root.value })
 .composer-input {
   flex: 1;
   min-width: 0;
-  min-height: var(--interactive-el-height);
+  // One line by default; a host can reserve more (--composer-input-min-height).
+  min-height: var(--composer-input-min-height, var(--interactive-el-height));
   // box-sizing is border-box (global reset), so a single line must budget for
   // the 1px top/bottom border too - otherwise the field grows by 2px the moment
   // a line box appears. The `- 1px` per side offsets that border. Left and right
