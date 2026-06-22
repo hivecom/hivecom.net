@@ -50,6 +50,7 @@ const isBelowSmall = useBreakpoint('<s')
 const discussion = inject(DISCUSSION_KEYS.discussion) as ProvidedDiscussion
 
 const editorRef = useTemplateRef<{ focus: () => void }>('editor')
+const rootRef = useTemplateRef<HTMLElement>('root')
 
 const replyMentionIds = computed(() => extractMentionIds(replyingTo?.markdown ?? ''))
 const { users: replyMentionUsers } = useBulkDataUser(replyMentionIds)
@@ -64,6 +65,9 @@ const replyMentionLookup = computed<Record<string, string>>(() => {
 
 defineExpose({
   focus: () => editorRef.value?.focus(),
+  // Root element so the parent can measure the floating composer's height and
+  // lift the "jump to latest" pill above it.
+  rootEl: rootRef,
 })
 </script>
 
@@ -71,6 +75,7 @@ defineExpose({
   <!-- Authenticated: show editor -->
   <div
     v-if="userId"
+    ref="root"
     class="discussion__add"
     :class="{ 'discussion__add--floating': floating }"
   >

@@ -1310,7 +1310,15 @@ const form = reactive({
 
 provide(DISCUSSION_KEYS.setReplyToComment, (comment: Comment) => replyingTo.value = comment)
 
-const textareaRef = useTemplateRef<{ focus: () => void }>('textarea')
+const textareaRef = useTemplateRef<{ focus: () => void, rootEl: HTMLElement | null }>('textarea')
+
+// Height of the floating reply composer, used to lift the "jump to latest" pill
+// above it. Only tracked while the floating editor setting is on; otherwise the
+// composer sits in normal flow and never overlaps the fixed pill, so offset 0.
+const { height: composerHeight } = useElementSize(() =>
+  settings.value.editor_floating ? textareaRef.value?.rootEl ?? null : null,
+)
+const jumpToPresentOffset = computed(() => Math.round(composerHeight.value))
 
 function focusTextarea() {
   if (textareaRef.value)
@@ -1450,6 +1458,7 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
       :visible="showJumpToPresent"
       position="fixed"
       label="Jump to latest"
+      :offset="jumpToPresentOffset"
       @click="handleTimelineNavigateToEnd"
     />
 

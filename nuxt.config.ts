@@ -167,9 +167,22 @@ export default defineNuxtConfig({
           // failure, not a slow-but-alive load.
           innerHTML: `(function () {
   try {
-    setTimeout(function () {
-      if (!document.querySelector('.initial-loading')) return;
+    // Only conclude a stuck boot after 12s of CONTINUOUS foreground time. A
+    // backgrounded tab throttles timers and defers hydration, so wall-clock
+    // elapsed isn't a reliable signal - it would flag a slow-but-alive load
+    // that finishes the instant the tab is refocused. Count visible time only,
+    // and skip an overlay that's already fading out (i.e. recovering).
+    var DELAY = 12000;
+    var timer = null;
+    var shown = false;
+
+    function show() {
+      timer = null;
+      if (shown) return;
+      // Overlay gone, or mid fade-out -> the app booted, nothing is stuck.
+      if (!document.querySelector('.initial-loading:not(.fade-out)')) return;
       if (document.getElementById('boot-escape-hatch')) return;
+      shown = true;
 
       var wrap = document.createElement('div');
       wrap.id = 'boot-escape-hatch';
@@ -204,7 +217,25 @@ export default defineNuxtConfig({
       wrap.appendChild(msg);
       wrap.appendChild(row);
       (document.body || document.documentElement).appendChild(wrap);
-    }, 12000);
+    }
+
+    function arm() {
+      if (shown || timer) return;
+      timer = setTimeout(show, DELAY);
+    }
+
+    function disarm() {
+      if (timer) { clearTimeout(timer); timer = null; }
+    }
+
+    // Pause the countdown while hidden, start a fresh 12s when refocused, so
+    // only uninterrupted foreground time counts toward "stuck".
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') arm();
+      else disarm();
+    });
+
+    if (document.visibilityState === 'visible') arm();
   } catch (e) {
     // Never let the watchdog itself break the page.
   }

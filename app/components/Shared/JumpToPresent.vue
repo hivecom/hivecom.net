@@ -13,10 +13,16 @@ withDefaults(defineProps<{
    * `fixed` anchors to the viewport (forum, which scrolls the whole window).
    */
   position?: 'absolute' | 'fixed'
+  /**
+   * Extra bottom offset in px, applied in `fixed` mode only. Used to lift the
+   * pill above the forum's floating reply composer so they don't overlap.
+   */
+  offset?: number
 }>(), {
   label: 'Jump to present',
   icon: 'ph:arrow-down',
   position: 'absolute',
+  offset: 0,
 })
 
 defineEmits<{ click: [] }>()
@@ -29,6 +35,7 @@ defineEmits<{ click: [] }>()
       type="button"
       class="jump-to-present"
       :class="`jump-to-present--${position}`"
+      :style="{ '--jtp-offset': `${offset}px` }"
       @click="$emit('click')"
     >
       <Icon :name="icon" size="14" />
@@ -61,11 +68,17 @@ defineEmits<{ click: [] }>()
 
   &--fixed {
     position: fixed;
-    bottom: var(--space-m);
+    // --jtp-offset is the floating composer's height (0 when there's no floating
+    // composer), so the pill clears it and sits var(--space-m) above its top.
+    bottom: calc(var(--space-m) + var(--jtp-offset, 0px));
     // Draw above the floating reply composer (sticky, --z-sticky), which would
     // otherwise cover the pill at the bottom of the viewport. Stays below
     // nav/overlays/modals so those still occlude it as expected.
     z-index: calc(var(--z-sticky) + 1);
+    transition:
+      background var(--transition),
+      color var(--transition),
+      bottom var(--transition);
   }
 
   &:hover {
