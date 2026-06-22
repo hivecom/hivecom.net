@@ -92,7 +92,7 @@
     "eslint": "^10.5.0",
     "eslint-plugin-format": "^2.0.1",
     "eslint-plugin-vue": "^10.9.2",
-    "nuxi": "^3.35.2",
+    "nuxi": "^3.36.0",
     "supabase": "^2.106.0",
     "typescript": "^6.0.3",
     "vue-tsc": "^3.3.5"
