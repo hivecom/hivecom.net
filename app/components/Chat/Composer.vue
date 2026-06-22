@@ -294,6 +294,10 @@ const selStart = ref(-1)
 const selEnd = ref(-1)
 const colorPickerOpen = ref(false)
 const colorButtonRef = ref<HTMLElement | null>(null)
+const formatToolbarRef = ref<HTMLElement | null>(null)
+// Where the float toolbar sits, in pixels relative to the field (its offset
+// parent). Null falls back to the default "above the whole field, left-aligned".
+const formatPos = ref<{ left: number, top: number } | null>(null)
 
 // mIRC base palette (codes 0-15). Mirrors the values the message renderer uses.
 const MIRC_PALETTE: { code: number, hex: string }[] = [
@@ -319,6 +323,27 @@ const showFormatToolbar = computed(() =>
   !isMobile.value && !open.value && canChat.value && selEnd.value > selStart.value,
 )
 
+// Float the format toolbar above the live selection, centered on it and clamped
+// to the field so it never spills past an edge. Measured from the real DOM range
+// (not the wire offsets) so it tracks where the text actually sits on screen.
+function updateFormatPos() {
+  const rect = inputComp.value?.getSelectionRect()
+  const field = inputComp.value?.getEl()?.closest('.chat-composer__field') as HTMLElement | null
+  if (!rect || !field) {
+    formatPos.value = null
+    return
+  }
+  const f = field.getBoundingClientRect()
+  // The toolbar is centered (translateX(-50%)); clamp its center so its edges
+  // stay inside the field. Width is 0 until it's first rendered, then refines.
+  const halfW = (formatToolbarRef.value?.offsetWidth ?? 0) / 2
+  const center = rect.left + rect.width / 2 - f.left
+  formatPos.value = {
+    left: Math.max(halfW + 4, Math.min(center, f.width - halfW - 4)),
+    top: rect.top - f.top,
+  }
+}
+
 // Track the input's current selection range. Bound to select/mouseup/keyup so
 // it stays in sync however the user changes it.
 function syncSelection() {
@@ -327,8 +352,15 @@ function syncSelection() {
   selEnd.value = end
   // Selection collapsed (toolbar will hide) - drop any open color picker so it
   // doesn't auto-reopen the next time text is selected.
-  if (selEnd.value <= selStart.value)
+  if (selEnd.value <= selStart.value) {
     colorPickerOpen.value = false
+    formatPos.value = null
+    return
+  }
+  // Position now, then again after the toolbar renders so its measured width
+  // feeds the clamp on the first selection too.
+  updateFormatPos()
+  nextTick(updateFormatPos)
 }
 
 function clearSelectionState() {
@@ -888,7 +920,17 @@ watch(activeName, clearReply)
         </ul>
         <!-- Selection formatting toolbar (desktop). mousedown.prevent keeps the
              input focused and the text selection intact while a button runs. -->
-        <div v-if="showFormatToolbar" class="chat-composer__format" @mousedown.prevent>
+        <div
+          v-if="showFormatToolbar"
+          ref="formatToolbarRef"
+          class="chat-composer__format"
+          :class="{ 'chat-composer__format--floating': !!formatPos }"
+          :style="formatPos ? {
+            left: `${formatPos.left}px`,
+            top: `${formatPos.top}px`,
+          } : undefined"
+          @mousedown.prevent
+        >
           <ButtonGroup :gap="2">
             <Button plain square size="s" aria-label="Bold" @click="formatBold">
               <Icon name="ph:text-b" size="15" />
@@ -1083,6 +1125,8 @@ watch(activeName, clearReply)
 
   &__format {
     position: absolute;
+    // Fallback: above the whole field, left-aligned. Once a selection rect is
+    // measured, --floating takes over and anchors it above the selection.
     bottom: calc(100% + var(--space-xxs));
     left: 0;
     z-index: var(--z-popout);
@@ -1093,6 +1137,13 @@ watch(activeName, clearReply)
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-m);
     box-shadow: var(--box-shadow);
+
+    // Floating above the selection: top/left come from inline style (px relative
+    // to the field); center on the selection and lift clear of the text.
+    &--floating {
+      bottom: auto;
+      transform: translate(-50%, calc(-100% - var(--space-xxs)));
+    }
 
     :deep(.vui-button.is-active) {
       background: var(--color-bg-medium);

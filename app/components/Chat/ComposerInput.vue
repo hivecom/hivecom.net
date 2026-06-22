@@ -147,6 +147,24 @@ function focus() {
   root.value?.focus()
 }
 
+// Viewport-space bounding box of the current selection, for floating UI (the
+// composer's format toolbar anchors above it). Null when there's no selection
+// inside this input or the range has no measurable box (e.g. it spans only
+// zero-width control spans).
+function getSelectionRect(): DOMRect | null {
+  const el = root.value
+  const sel = window.getSelection()
+  if (!el || !sel || sel.rangeCount === 0)
+    return null
+  const rg = sel.getRangeAt(0)
+  if (!el.contains(rg.startContainer) || !el.contains(rg.endContainer))
+    return null
+  const rect = rg.getBoundingClientRect()
+  if (rect.width === 0 && rect.height === 0)
+    return null
+  return rect
+}
+
 // --- input flow ------------------------------------------------------------
 function syncFromDom() {
   if (composing)
@@ -373,7 +391,7 @@ watch(() => props.stripMarkers, () => {
 
 onMounted(() => render(props.modelValue))
 
-defineExpose({ focus, getCaret, setCaret, getEl: () => root.value })
+defineExpose({ focus, getCaret, setCaret, getSelectionRect, getEl: () => root.value })
 </script>
 
 <template>
