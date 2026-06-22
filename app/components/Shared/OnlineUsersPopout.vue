@@ -58,7 +58,7 @@ const isDisabled = computed(() => props.disabled || (props.count ?? 0) === 0)
   </PopoutHover>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss">
 .online-users-popout__more {
   font-size: var(--font-size-xs);
   color: var(--color-text-lighter);

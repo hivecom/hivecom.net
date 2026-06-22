@@ -469,7 +469,7 @@ onBeforeMount(() => {
               Bringing back the old school internet experience
             </p>
           </div>
-          <PopoutHover :disabled="!onlineCount || onlineCount <= 0" placement="bottom-end">
+          <PopoutHover v-if="onlineCount" :disabled="onlineCount <= 0" placement="bottom-end">
             <template #trigger>
               <OnlineBadge :count="onlineCount" clickable @click="activityModalOpen = true" />
             </template>

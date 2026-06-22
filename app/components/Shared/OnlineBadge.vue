@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge, Skeleton } from '@dolanske/vui'
+import { Badge } from '@dolanske/vui'
 import { computed } from 'vue'
 
 interface Props {
@@ -32,25 +32,18 @@ const displayLabel = computed(() => props.singular && props.count === 1 ? props.
 </script>
 
 <template>
-  <ClientOnly>
-    <Skeleton v-if="count === null" width="120" height="24" radius="12" />
-    <Badge
-      v-else
-      :variant
-      :size
-      :style="{
-        whiteSpace: 'nowrap',
-        ...(color && isActive ? { color } : {}),
-        ...(!isActive ? { color: 'var(--color-text-lighter)' } : {}),
-        ...(clickable ? { cursor: 'pointer' } : {}),
-      }"
-      @click="clickable && emit('click')"
-    >
-      <Icon name="ph:circle-fill" :size="iconSize" :style="color && isActive ? { color } : (!isActive ? { color: 'var(--color-text-lighter)' } : {})" />
-      {{ count }} {{ displayLabel }}
-    </Badge>
-    <template #fallback>
-      <Skeleton width="120" height="24" radius="12" />
-    </template>
-  </ClientOnly>
+  <Badge
+    :variant
+    :size
+    :style="{
+      whiteSpace: 'nowrap',
+      ...(color && isActive ? { color } : {}),
+      ...(!isActive ? { color: 'var(--color-text-lighter)' } : {}),
+      ...(clickable ? { cursor: 'pointer' } : {}),
+    }"
+    @click="clickable && emit('click')"
+  >
+    <Icon name="ph:circle-fill" :size="iconSize" :style="color && isActive ? { color } : (!isActive ? { color: 'var(--color-text-lighter)' } : {})" />
+    {{ count }} {{ displayLabel }}
+  </Badge>
 </template>
