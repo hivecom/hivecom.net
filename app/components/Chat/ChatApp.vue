@@ -100,18 +100,27 @@ const hasChannels = computed(() => buffers.value.some(b => b.kind === 'channel')
 const chatFontStyle = computed(() => ({ '--chat-font-size': `${isMobile.value ? settings.value.chat_mobile_font_size : settings.value.chat_font_size}px` }))
 
 const fallbackNick = `anon-${Math.random().toString(36).slice(2, 7)}`
-watch(user, (u, prev) => {
-  if (!u) {
-    // Signed out (either a live sign-out, or loaded without a session). Drop any
-    // persisted identity from a previous signed-in session so the connect form
-    // doesn't pre-fill that registered nick/channel - it would fail to auth.
-    if (prev && isConnected.value)
+// Key the sign-out handling off the auth session (userId), not the profile data
+// (user). The profile ref transiently goes null whenever its fetch errors or
+// hasn't resolved yet - e.g. a network blip that also drops the IRC socket - and
+// treating that as a sign-out would call clearAuthedIdentity() and wipe every
+// channel buffer, which is what flashed "No channels open" mid-session.
+watch([userId, user], ([id, u], prev) => {
+  const prevId = prev?.[0]
+  if (!id) {
+    // Genuinely signed out (no auth session). Drop any persisted identity from a
+    // previous signed-in session so the connect form doesn't pre-fill that
+    // registered nick/channel - it would fail to auth.
+    if (prevId && isConnected.value)
       disconnect()
     clearAuthedIdentity()
     ensureNick(fallbackNick)
     return
   }
-  ensureNick(u.username ?? fallbackNick)
+  // Signed in. The profile may still be loading; only set the nick once we
+  // actually have a username, otherwise leave the current/persisted nick alone.
+  if (u)
+    ensureNick(u.username ?? fallbackNick)
 }, { immediate: true })
 </script>
 

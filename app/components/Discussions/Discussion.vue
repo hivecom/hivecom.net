@@ -2,7 +2,6 @@
 import type { ValidationError } from '@dolanske/v-valid'
 import type { Comment, DiscussionSettings, RawComment, ThreadNode } from './Discussion.types'
 import type { TimelineBucket } from './DiscussionTimeline.vue'
-import type { SubscriptionRow } from '@/composables/useDiscussionSubscriptionsCache'
 import type { Tables } from '@/types/database.overrides'
 import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Flex, paginate, Pagination, Skeleton } from '@dolanske/vui'
@@ -13,11 +12,11 @@ import { useDataDiscussionReplies } from '@/composables/useDataDiscussionReplies
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 import { PAGE_SIZE_COMMENT, PAGE_SIZE_FORUM, useDiscussionRepliesCache } from '@/composables/useDiscussionRepliesCache'
-import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
+import { useDiscussionSubscription } from '@/composables/useDiscussionSubscription'
 import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useRealtimeDiscussion } from '@/composables/useRealtimeDiscussion'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
-import { scrollToId, scrollToIdWhenStable, waitForLayoutStability } from '@/lib/utils/common'
+import { getRouteQueryStringOrNull, scrollToId, scrollToIdWhenStable, waitForLayoutStability } from '@/lib/utils/common'
 import { normalizeTipTapOutput } from '@/lib/utils/formatting'
 import { DISCUSSION_KEYS } from './Discussion.keys'
 import DiscussionCommentCardSkeleton from './DiscussionCommentCardSkeleton.vue'
@@ -99,7 +98,6 @@ const { isAdminOrMod: canBypassLock } = useEffectiveRole()
 export type { Comment, DiscussionSettings, ProvidedDiscussion, RawComment, ThreadNode } from './Discussion.types'
 
 const supabase = useSupabaseClient()
-const subscriptionsCache = useDiscussionSubscriptionsCache()
 
 // ── Reply form state (declared early - referenced in useDataDiscussionReplies callback) ──
 
@@ -163,69 +161,10 @@ const realtime = useRealtimeDiscussion(
 
 // ── Subscription (comment model only) ────────────────────────────────────────
 
-const isSubscribed = ref(false)
-const subscriptionLoading = ref(false)
-
-// Fetch subscription status once the discussion ID is known
-watch(discussion, async (disc) => {
-  if (!disc || !userId.value || props.model !== 'comment')
-    return
-
-  const cached = subscriptionsCache.getStatus(userId.value, disc.id)
-  if (cached !== null) {
-    isSubscribed.value = cached
-    return
-  }
-
-  const { data } = await supabase
-    .from('discussion_subscriptions')
-    .select('id')
-    .eq('user_id', userId.value)
-    .eq('discussion_id', disc.id)
-    .maybeSingle()
-
-  isSubscribed.value = !!data
-  subscriptionsCache.setStatus(userId.value, disc.id, !!data)
-}, { immediate: true })
-
-async function handleToggleSubscription() {
-  if (!userId.value || !discussion.value || subscriptionLoading.value)
-    return
-
-  subscriptionLoading.value = true
-  const discussionId = discussion.value.id
-
-  if (isSubscribed.value) {
-    const { error } = await supabase
-      .from('discussion_subscriptions')
-      .delete()
-      .eq('user_id', userId.value)
-      .eq('discussion_id', discussionId)
-
-    if (!error) {
-      isSubscribed.value = false
-      subscriptionsCache.applyUnsubscribeByDiscussion(userId.value, discussionId)
-    }
-  }
-  else {
-    const { data, error } = await supabase
-      .from('discussion_subscriptions')
-      .insert({ user_id: userId.value, discussion_id: discussionId })
-      .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug, profile_id, event_id, gameserver_id, project_id, referendum_id, theme_id)')
-      .single()
-
-    if (!error && data) {
-      isSubscribed.value = true
-      subscriptionsCache.applySubscribe(userId.value, data as unknown as SubscriptionRow)
-    }
-    else if (!error) {
-      isSubscribed.value = true
-      subscriptionsCache.setStatus(userId.value, discussionId, true)
-    }
-  }
-
-  subscriptionLoading.value = false
-}
+const { isSubscribed, subscriptionLoading, toggleSubscription: handleToggleSubscription } = useDiscussionSubscription(
+  computed(() => discussion.value?.id ?? null),
+  { enabled: computed(() => props.model === 'comment') },
+)
 
 // ── View settings (declared before composable - viewMode is passed to useDataDiscussionReplies) ──
 
@@ -237,13 +176,13 @@ type ViewMode = 'flat' | 'threaded'
 // when their own defaults differ - a page number means different content in flat
 // vs threaded (which paginates top-level entries). Parsers are defensive: an
 // absent/invalid value falls back to the viewer's settings.
-function parseView(value: unknown): ViewMode | undefined {
-  const raw = Array.isArray(value) ? value[0] : value
+function parseView(value: string | null | (string | null)[] | undefined): ViewMode | undefined {
+  const raw = getRouteQueryStringOrNull(value)
   return raw === 'flat' || raw === 'threaded' ? raw : undefined
 }
-function parsePage(value: unknown): number | undefined {
-  const raw = Array.isArray(value) ? value[0] : value
-  if (typeof raw !== 'string')
+function parsePage(value: string | null | (string | null)[] | undefined): number | undefined {
+  const raw = getRouteQueryStringOrNull(value)
+  if (raw == null)
     return undefined
   const n = Number.parseInt(raw, 10)
   return Number.isInteger(n) && n >= 1 ? n : undefined
@@ -256,10 +195,19 @@ const initialPage = ref<number | undefined>(parsePage(route.query.page))
 // copy, and forcing pagination there would switch the viewer's mode instead of
 // just taking them to the comment (which works in either mode). So don't force
 // when a ?comment is present.
-const hasCommentLink = (Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment) != null
+const hasCommentLink = getRouteQueryStringOrNull(route.query.comment) != null
 const sharedPaginatedLink = initialPage.value != null && !hasCommentLink
 
-const viewMode = ref<ViewMode>(parseView(route.query.view) ?? settings.value.discussion_view_mode ?? 'flat')
+// A ?comment deep link is reachable in either view, so it must not switch the
+// recipient's view - the same reasoning as sharedPaginatedLink above. Only honor
+// a link's ?view when it isn't a comment link (e.g. a shared ?page link, where
+// page means different content per view). Otherwise fall back to the viewer's
+// own setting.
+const viewMode = ref<ViewMode>(
+  (hasCommentLink ? undefined : parseView(route.query.view))
+  ?? settings.value.discussion_view_mode
+  ?? 'flat',
+)
 const discussionPageSize = computed(() => props.model === 'forum' ? PAGE_SIZE_FORUM : PAGE_SIZE_COMMENT)
 // Whether to use traditional pagination (page controls + loadPage) over infinite
 // scroll. Comment model is always paginated; the forum model follows the user's
@@ -282,16 +230,16 @@ watch(() => settings.value.discussion_view_mode, (val) => {
 // load-start; we don't keep it in sync afterwards - later ?comment changes are
 // handled by the navigateToLinkedComment watcher below.
 const initialCommentId = ref<string | undefined>(
-  (Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment) ?? undefined,
+  getRouteQueryStringOrNull(route.query.comment) ?? undefined,
 )
 
 // Optional `?ts=<created_at ms>` anchor that copied comment links carry. In
 // chronological (ascending forum) view a reply's position is stable, so this
 // timestamp lets the initial load fetch the target block directly and skip the
 // page-lookup RPC. Parsed defensively; absent/invalid means "use the RPC path".
-function parseAnchorTs(value: unknown): number | undefined {
-  const raw = Array.isArray(value) ? value[0] : value
-  if (typeof raw !== 'string')
+function parseAnchorTs(value: string | null | (string | null)[] | undefined): number | undefined {
+  const raw = getRouteQueryStringOrNull(value)
+  if (raw == null)
     return undefined
   const ms = Number(raw)
   return Number.isFinite(ms) && ms > 0 ? ms : undefined
@@ -385,8 +333,8 @@ watch([currentPage, usePagination, viewMode], () => {
   const dropAnchor = dropAnchorOnPageSync
   dropAnchorOnPageSync = false
   const hasAnchor = route.query.comment != null || route.query.ts != null
-  const curPage = Array.isArray(route.query.page) ? route.query.page[0] : route.query.page
-  const curView = Array.isArray(route.query.view) ? route.query.view[0] : route.query.view
+  const curPage = getRouteQueryStringOrNull(route.query.page)
+  const curView = getRouteQueryStringOrNull(route.query.view)
   if ((curPage ?? undefined) === desiredPage && (curView ?? undefined) === desiredView && !(dropAnchor && hasAnchor))
     return
   const query = { ...route.query }
@@ -482,10 +430,11 @@ onUnmounted(() => {
 // A nested reply doesn't reliably render in the threaded main tree on its own:
 // in paginated view it has no page (only roots are paged), and in infinite view
 // it loads but sits under collapsed ancestors. Resolve its root, navigate to that
-// root (loads its page in paged mode, its window in infinite), then open the
-// root's thread sheet so the whole subtree - the target included - renders and the
-// target self-scrolls (its id is still in ?comment). No-ops when the target is
-// itself a root. Same mechanism as DiscussionItem's "open full thread".
+// root (loads its page in paged mode, its window in infinite), then signal the
+// root to reveal its subtree. With reply threads expanded the root opens in place;
+// with them collapsed it opens in the sheet (inline expansion only loads one
+// level). Either way the target self-scrolls once rendered (its id is still in
+// ?comment). No-ops when the target is itself a root.
 async function revealThreadedChild(childId: string) {
   const { data: rootId, error } = await supabase.rpc('get_thread_root', { p_reply_id: childId })
   if (error != null || rootId == null || rootId === childId)
@@ -540,8 +489,9 @@ async function navigateToLinkedComment(commentId: string) {
     }
     // Nested reply in threaded view: it won't render in the main tree on its own
     // (ancestors may be collapsed; in paged view it has no page at all), so reveal
-    // it through its root's thread sheet. Covers both infinite and paged threaded;
-    // revealThreadedChild no-ops when the target is itself a root.
+    // it through its root (inline when reply threads are expanded, in the sheet
+    // when collapsed). Covers both infinite and paged threaded; revealThreadedChild
+    // no-ops when the target is itself a root.
     if (viewMode.value === 'threaded') {
       const tc = modelledComments.value.find(c => c.id === commentId)
       if (tc == null || tc.reply_to_id != null)
@@ -566,8 +516,9 @@ async function navigateToLinkedComment(commentId: string) {
     }
     const found = await navigateToComment(commentId, { soft: true, anchorTs: parseAnchorTs(route.query.ts) })
     // Nested reply in threaded view (present but parented, or unreachable in paged
-    // view) - reveal through its root's thread sheet. A root falls through to the
-    // normal scroll; a genuinely missing target bails.
+    // view) - reveal through its root (inline when reply threads are expanded, in
+    // the sheet when collapsed). A root falls through to the normal scroll; a
+    // genuinely missing target bails.
     const tc = modelledComments.value.find(c => c.id === commentId)
     const nestedThreaded = viewMode.value === 'threaded' && (tc == null || tc.reply_to_id != null)
     if (nestedThreaded)
@@ -588,7 +539,7 @@ async function navigateToLinkedComment(commentId: string) {
 }
 
 watch(
-  () => (Array.isArray(route.query.comment) ? route.query.comment[0] : route.query.comment),
+  () => getRouteQueryStringOrNull(route.query.comment),
   async (commentId, prevCommentId) => {
     // Only act on genuine changes (skip same-value updates and clears).
     if (!commentId || commentId === prevCommentId)

@@ -87,6 +87,10 @@ function copyLink() {
 function copyLinkForComment(id: string) {
   const url = new URL(window.location.href)
   url.searchParams.set('comment', id)
+  // A comment link is reachable in either view and resolves its own page, so it
+  // shouldn't pin the recipient's view or page. Drop both from the copied URL.
+  url.searchParams.delete('view')
+  url.searchParams.delete('page')
   // Anchor the link on this comment's timestamp. In chronological (ascending
   // forum) view a reply's position is stable, so the deep-link load can fetch
   // the target block straight from this timestamp and skip the page-lookup RPC.
@@ -154,8 +158,6 @@ const hasReplies = computed(() =>
 const repliesExpanded = ref(false)
 const flatInlineExpanded = ref(false)
 
-const INLINE_EXPAND_THRESHOLD = 10
-
 // When the flat-mode sheet opens, lazily load children if not yet fetched.
 watch(repliesExpanded, (open) => {
   if (open && !childrenRequested.value && loadChildren != null) {
@@ -183,17 +185,12 @@ function onOpenReplies() {
     repliesExpanded.value = true
     return
   }
-  const count = replyCountMap?.value?.get(data.id) ?? visibleChildren.value.length
-  if (count <= INLINE_EXPAND_THRESHOLD) {
-    threadCollapsed.value = false
-    flatInlineExpanded.value = true
-    if (!childrenRequested.value && loadChildren != null) {
-      childrenRequested.value = true
-      void loadChildren(data.id)
-    }
-  }
-  else {
-    repliesExpanded.value = true
+  // threaded: always expand inline - the subtree renders here, no sheet needed.
+  threadCollapsed.value = false
+  flatInlineExpanded.value = true
+  if (!childrenRequested.value && loadChildren != null) {
+    childrenRequested.value = true
+    void loadChildren(data.id)
   }
 }
 
@@ -279,17 +276,36 @@ watch(
   },
 )
 
-// ── Showing replies in a sheet ───────────────────────────────────
+// ── Showing replies ───────────────────────────────────
 
+// This signal asks an item to reveal its thread. How depends on the view:
+// - flat: open the thread sheet (flat has no inline nesting).
+// - threaded + expand reply threads ON: the subtree is already inline, so just
+//   make sure this root is open in place.
+// - threaded + expand reply threads OFF: open the sheet. Inline expansion only
+//   loads one level, so a nested deep-link target wouldn't render - the sheet
+//   pulls the thread in on its own.
 const openThreadSheetId = inject(DISCUSSION_KEYS.openThreadSheet, ref(null))
 const supabase = useSupabaseClient()
 
-// When another item signals this ID, open the sheet.
-watch(openThreadSheetId, (id) => {
-  if (id === data.id) {
-    repliesExpanded.value = true
-    openThreadSheetId.value = null
+watch(openThreadSheetId, async (id) => {
+  if (id !== data.id)
+    return
+  openThreadSheetId.value = null
+  if (viewMode.value === 'threaded' && showThreadRepliesInjected.value) {
+    // Expanded threads: reveal inline. If this root is collapsed, load its
+    // children then expand; if already open, the target is on screen.
+    if (threadCollapsed.value) {
+      if (!childrenRequested.value && loadChildren != null) {
+        childrenRequested.value = true
+        await loadChildren(data.id)
+      }
+      threadCollapsed.value = false
+    }
+    return
   }
+  // Flat, or threaded with reply threads collapsed: use the sheet.
+  repliesExpanded.value = true
 })
 
 async function openFullThread() {

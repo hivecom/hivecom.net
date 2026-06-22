@@ -204,6 +204,10 @@ interface TopicDiscussionsPage {
 }
 const allDiscussions = ref<ForumDiscussion[]>([])
 
+// Shared column list for discussion rows. Used by both the lightweight index
+// fetch and the per-topic lazy loads so they return an identical row shape.
+const DISCUSSION_SELECT = 'id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, last_activity_by, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id'
+
 const TOPIC_PAGE_SIZE = 15
 
 interface TopicPaginationState {
@@ -473,7 +477,7 @@ async function fetchDiscussionsIndex() {
 
   const { data, error } = await supabase
     .from('discussions')
-    .select('id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, last_activity_by, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id')
+    .select(DISCUSSION_SELECT)
     .eq('is_draft', false)
     .not('discussion_topic_id', 'is', null)
 
@@ -600,8 +604,6 @@ const breadcrumbItems = computed(() =>
 
 const topicDiscussionsLoading = ref<Set<string>>(new Set())
 const topicPaginationLoading = ref<Set<string>>(new Set())
-
-const DISCUSSION_SELECT = 'id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, last_activity_by, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id'
 
 async function loadTopicDiscussions(topicId: string, page: number = 0, isExplicitPageChange: boolean = false) {
   const topic = topics.value.find(t => t.id === topicId)
