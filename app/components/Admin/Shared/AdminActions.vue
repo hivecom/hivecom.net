@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { AppPermission, PermissionResource } from '@/types/database.overrides'
-import { Button, Flex, Tooltip } from '@dolanske/vui'
+import { Flex, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import ResponsiveButton from '@/components/Shared/ResponsiveButton.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface AdminActionsProps {
@@ -188,21 +189,15 @@ function getItemDisplayName(): string {
   <Flex v-if="hasVisibleActions" gap="xs">
     <!-- Edit Action -->
     <Tooltip v-if="showEditAction" :disabled="showLabels">
-      <Button
-        variant="gray"
+      <ResponsiveButton
+        :collapsed="!showLabels"
         :size="props.buttonSize"
-        :square="!showLabels"
+        variant="gray"
         :loading="isActionLoading('edit')"
+        icon="ph:pencil-simple"
+        label="Edit"
         @click="handleEdit"
-      >
-        <template v-if="showLabels" #start>
-          <Icon name="ph:pencil-simple" />
-        </template>
-        <Icon v-if="!showLabels" name="ph:pencil-simple" />
-        <template v-if="showLabels">
-          Edit
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>Edit {{ resourceType.slice(0, -1) }}</p>
       </template>
@@ -214,21 +209,15 @@ function getItemDisplayName(): string {
       :key="index"
       :disabled="showLabels"
     >
-      <Button
-        :variant="action.variant || 'gray'"
+      <ResponsiveButton
+        :collapsed="!showLabels"
         :size="props.buttonSize"
-        :square="!showLabels"
+        :variant="action.variant || 'gray'"
         :loading="action.loading"
+        :icon="action.icon"
+        :label="action.label"
         @click="action.handler"
-      >
-        <template v-if="showLabels" #start>
-          <Icon :name="action.icon" />
-        </template>
-        <Icon v-if="!showLabels" :name="action.icon" />
-        <template v-if="showLabels">
-          {{ action.label }}
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>{{ action.label }}</p>
       </template>
@@ -236,21 +225,15 @@ function getItemDisplayName(): string {
 
     <!-- Delete Action -->
     <Tooltip v-if="showDeleteAction" :disabled="showLabels">
-      <Button
-        variant="danger"
+      <ResponsiveButton
+        :collapsed="!showLabels"
         :size="props.buttonSize"
-        :square="!showLabels"
+        variant="danger"
         :loading="isActionLoading('delete')"
+        icon="ph:trash"
+        label="Delete"
         @click="handleDelete"
-      >
-        <template v-if="showLabels" #start>
-          <Icon name="ph:trash" />
-        </template>
-        <Icon v-if="!showLabels" name="ph:trash" />
-        <template v-if="showLabels">
-          Delete
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>Delete {{ resourceType.slice(0, -1) }}</p>
       </template>

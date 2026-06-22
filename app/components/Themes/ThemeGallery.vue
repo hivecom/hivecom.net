@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Database } from '@/types/database.types'
-import { Button, Card, Flex, Grid, Input, paginate, Pagination, Select, Skeleton, Switch, Tab, Tabs } from '@dolanske/vui'
+import { Card, Flex, Grid, Input, paginate, Pagination, Select, Skeleton, Switch, Tab, Tabs } from '@dolanske/vui'
 import { watchDebounced } from '@vueuse/core'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
+import ResponsiveButton from '@/components/Shared/ResponsiveButton.vue'
 import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -334,13 +335,7 @@ defineExpose({ refresh, switchToCreated })
       </Tab>
 
       <template #end>
-        <Button variant="accent" :square="isMobile" size="s" @click="emit('create')">
-          <Icon v-if="isMobile" name="ph:plus" :size="16" />
-          <template #start>
-            <Icon v-if="!isMobile" name="ph:plus" :size="16" />
-          </template>
-          {{ isMobile ? '' : 'Create' }}
-        </Button>
+        <ResponsiveButton variant="accent" size="s" icon="ph:plus" :icon-size="16" label="Create" @click="emit('create')" />
       </template>
     </Tabs>
 

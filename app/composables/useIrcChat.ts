@@ -72,6 +72,11 @@ const DEFAULT_HISTORY_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000
 const HISTORY_FUZZ_MS = 5000
 // Max messages / targets per CHATHISTORY request.
 const HISTORY_LIMIT = 50
+// How long to wait after connecting for the server to restore an always-on
+// account's channels before falling back to joining the default channel. The
+// timer is reset on each restored JOIN, so the fallback only fires once the
+// restore burst has gone quiet.
+const DEFAULT_CHANNEL_SETTLE_MS = 1500
 
 // Synthetic buffer that holds connection-level/system output before any channel
 // is joined. Never sent to the server.
@@ -497,6 +502,13 @@ const _pendingMsgWrites = new Map<string, StoredMessage>()
 let _msgFlushTimer: ReturnType<typeof setTimeout> | null = null
 let _intentionalDisconnect = false
 let _skipAutoJoin = false
+// When the user has never configured a channel, we defer joining the default
+// until the server has had a chance to restore an always-on account's channels.
+// Holds the channel to fall back to (null = nothing pending); the settle timer
+// joins it only if no channel was restored. See connect() and the 001/JOIN
+// handlers.
+let _defaultChannelFallback: string | null = null
+let _defaultChannelFallbackTimer: ReturnType<typeof setTimeout> | null = null
 // Set when a connection attempt fails fatally (e.g. nickname in use) and must
 // NOT auto-reconnect. Unlike _intentionalDisconnect, this preserves the 'error'
 // state so the UI keeps showing why the connection failed. Cleared on each
@@ -2028,6 +2040,10 @@ function handleMessage(raw: string) {
       if (!_skipAutoJoin && inputChannel.value)
         send(`JOIN ${inputChannel.value}`)
       _skipAutoJoin = false
+      // Arm the default-channel fallback. If the server restores channels for an
+      // always-on account, the JOIN handler keeps pushing this out and the final
+      // check sees those channels and skips the default.
+      scheduleDefaultChannelFallback()
       _startPinging()
       // Subscribe to Orbit baseline metadata keys (draft/metadata-2).
       // Ergo pushes live METADATA notifications for subscribed keys whenever
@@ -2086,6 +2102,10 @@ function handleMessage(raw: string) {
       }
       if (nickFrom === nick.value) {
         buf.joined = true
+        // A channel arrived (restore or manual join). Push the default-channel
+        // fallback out so it only fires once the restore burst is quiet, and not
+        // at all if we now have a channel.
+        scheduleDefaultChannelFallback()
         if (channelKeyPrompt.value?.toLowerCase() === channel.toLowerCase()) {
           channelKeyPrompt.value = null
           channelKeyError.value = false
@@ -3378,6 +3398,13 @@ function openSocket() {
     clearTimeout(probeTimer)
     probeTimer = null
   }
+  // Cancel any in-flight settle timer from a previous connection, but keep the
+  // pending value: connect() sets it right before calling openSocket(), and 001
+  // re-arms the timer. On a bare reconnect the value is already null.
+  if (_defaultChannelFallbackTimer !== null) {
+    clearTimeout(_defaultChannelFallbackTimer)
+    _defaultChannelFallbackTimer = null
+  }
   backlogBatches.clear()
   pendingReactions.clear()
   pendingJoinMarkers.clear()
@@ -3475,6 +3502,43 @@ function openSocket() {
   }
 }
 
+function cancelDefaultChannelFallback() {
+  _defaultChannelFallback = null
+  if (_defaultChannelFallbackTimer !== null) {
+    clearTimeout(_defaultChannelFallbackTimer)
+    _defaultChannelFallbackTimer = null
+  }
+}
+
+// (Re)arm the settle timer. Called once on connect (001) and refreshed on each
+// restored channel JOIN, so the fallback only fires after the restore burst has
+// gone quiet. Joins the default channel only if the server restored none - this
+// is what stops signed-in users landing in the dev #playground when their cache
+// was cleared. A no-op when nothing is pending.
+function scheduleDefaultChannelFallback() {
+  if (_defaultChannelFallback == null)
+    return
+  if (_defaultChannelFallbackTimer !== null)
+    clearTimeout(_defaultChannelFallbackTimer)
+  _defaultChannelFallbackTimer = setTimeout(() => {
+    _defaultChannelFallbackTimer = null
+    const target = _defaultChannelFallback
+    _defaultChannelFallback = null
+    if (target == null || connState.value !== 'connected')
+      return
+    // The server already gave us a channel (always-on restore); don't force the
+    // default on top of it.
+    if (buffers.value.some(b => b.kind === 'channel'))
+      return
+    // Silent landing join (not an explicit intent), like the old connect-time
+    // default join. getBuffer + setActive create and focus the buffer and persist
+    // it as the configured channel for next time.
+    send(`JOIN ${target}`)
+    getBuffer(target, 'channel')
+    setActive(target)
+  }, DEFAULT_CHANNEL_SETTLE_MS)
+}
+
 /**
  * Connect as the signed-in user when an identity provider is registered, else as
  * the nickname currently in the form. SASL auth is attempted and falls back to
@@ -3513,11 +3577,17 @@ async function connect(skipAutoJoin = false) {
       return
     }
   }
-  // Only fall back to the default channel when the user has never configured
-  // one (key absent). An empty-string value means they explicitly left all
-  // channels and should not be auto-joined anywhere.
+  // Only fall back to the default channel when the user has never configured one
+  // (key absent). Defer the join rather than setting it eagerly: an always-on
+  // account usually has channels the server restores on connect, and forcing the
+  // default on top of (or instead of) those is wrong - it's what kept dropping
+  // signed-in users into the dev #playground after a cache clear. The settle
+  // timer joins the default only if no channel arrives. An empty-string value
+  // means they explicitly left all channels and should not be auto-joined.
   if (!inputChannel.value && (import.meta.client ? localStorage.getItem(STORAGE_CHANNEL) === null : true))
-    inputChannel.value = defaultChannel(false)
+    _defaultChannelFallback = defaultChannel(false)
+  else
+    _defaultChannelFallback = null
   openSocket()
 }
 
@@ -3525,6 +3595,9 @@ async function connect(skipAutoJoin = false) {
 function connectAsAnon() {
   _intentionalDisconnect = false
   _skipAutoJoin = false
+  // Anon guests have no always-on restore, so keep the eager default below and
+  // drop any deferred fallback left over from a prior signed-in attempt.
+  cancelDefaultChannelFallback()
   _reconnectAttempts = 0
   if (_reconnectTimer !== null) {
     clearTimeout(_reconnectTimer)
@@ -3539,6 +3612,7 @@ function connectAsAnon() {
 
 function disconnect() {
   _intentionalDisconnect = true
+  cancelDefaultChannelFallback()
   _reconnectAttempts = 0
   if (_reconnectTimer !== null) {
     clearTimeout(_reconnectTimer)

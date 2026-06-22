@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Button, Flex, Tooltip } from '@dolanske/vui'
+import { Flex, Tooltip } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import ResponsiveButton from '@/components/Shared/ResponsiveButton.vue'
 
 const props = defineProps<{
   container: {
@@ -70,84 +71,60 @@ function isActionLoading(actionType: string): boolean {
 <template>
   <Flex :gap="props.showLabels ? 's' : 'xs'">
     <Tooltip v-if="['stopped'].includes(props.status)" :disabled="props.showLabels">
-      <Button
+      <ResponsiveButton
+        :collapsed="!props.showLabels"
         :size="buttonSize"
-        :square="!props.showLabels"
         variant="success"
         :loading="isActionLoading('start')"
+        icon="ph:play"
+        label="Start"
         @click="handleAction('start')"
-      >
-        <Icon v-if="!props.showLabels" name="ph:play" />
-        <template v-if="props.showLabels" #start>
-          <Icon name="ph:play" />
-        </template>
-        <template v-if="props.showLabels">
-          Start
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>Start</p>
       </template>
     </Tooltip>
     <Tooltip v-if="['running', 'healthy', 'unhealthy', 'restarting'].includes(props.status)" :disabled="props.showLabels">
-      <Button
+      <ResponsiveButton
+        :collapsed="!props.showLabels"
         :size="buttonSize"
         variant="danger"
-        :square="!props.showLabels"
         :loading="isActionLoading('restart')"
         :disabled="props.status === 'restarting'"
+        icon="ph:arrow-clockwise"
+        label="Restart"
         @click="handleAction('restart')"
-      >
-        <Icon v-if="!props.showLabels" name="ph:arrow-clockwise" />
-        <template v-if="props.showLabels" #start>
-          <Icon name="ph:arrow-clockwise" />
-        </template>
-        <template v-if="props.showLabels">
-          Restart
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>Restart</p>
       </template>
     </Tooltip>
     <Tooltip v-if="['running', 'healthy', 'unhealthy'].includes(props.status)" :disabled="props.showLabels">
-      <Button
+      <ResponsiveButton
+        :collapsed="!props.showLabels"
         :size="buttonSize"
-        :square="!props.showLabels"
         variant="danger"
         :loading="isActionLoading('stop')"
         :disabled="props.status === 'restarting'"
+        icon="ph:stop"
+        label="Stop"
         @click="handleAction('stop')"
-      >
-        <Icon v-if="!props.showLabels" name="ph:stop" />
-        <template v-if="props.showLabels" #start>
-          <Icon name="ph:stop" />
-        </template>
-        <template v-if="props.showLabels">
-          Stop
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>Stop</p>
       </template>
     </Tooltip>
 
     <Tooltip v-if="['stale'].includes(props.status)" :disabled="props.showLabels">
-      <Button
+      <ResponsiveButton
+        :collapsed="!props.showLabels"
         :size="buttonSize"
         variant="danger"
         :loading="isActionLoading('prune')"
-        :square="!props.showLabels"
+        icon="ph:trash"
+        label="Prune"
         @click="openPruneConfirm"
-      >
-        <Icon v-if="!props.showLabels" name="ph:trash" />
-        <template v-if="props.showLabels" #start>
-          <Icon name="ph:trash" />
-        </template>
-        <template v-if="props.showLabels">
-          Prune
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>
           Prune Container

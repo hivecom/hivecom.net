@@ -126,6 +126,28 @@ function handlePostUpdate(updated: Tables<'discussions'> | Tables<'discussion_to
   post.value = post.value ? { ...post.value, ...updated } : { ...updated }
 }
 
+// Shared post-load processing for both the cache-hit and DB-fetch paths: store
+// the row, warm the cache, set the NSFW gate state, load breadcrumbs, and advance
+// the unread markers. Callers handle the entity-redirect short-circuit first.
+function applyLoadedPost(data: DiscussionWithContext) {
+  post.value = data
+  // Warm all cache keys (id, slug, entity) so the Discussion composable's
+  // fetchById(post.id) is a cache hit instead of racing a duplicate SELECT *.
+  discussionCache.set(data)
+  // Show the NSFW overlay only when the post is NSFW and warnings are enabled. If
+  // show_nsfw_content is disabled entirely, the watchEffect below redirects instead.
+  showNSFWWarning.value = !!data.is_nsfw && settings.value.show_nsfw_warning
+  nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
+  void loadTopicBreadcrumbs(data.discussion_topic_id)
+  // Mark seen in localStorage so the unread dot clears on direct URL visits.
+  forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
+  // Advance the parent topic's seenActivityAt to this discussion's last activity
+  // timestamp - not now, so we don't shadow concurrent activity in other
+  // discussions that may have happened more recently.
+  if (data.discussion_topic_id)
+    forumUnread.markTopicSeen(data.discussion_topic_id, data.last_activity_at ?? undefined)
+}
+
 let loadingTimer: ReturnType<typeof setTimeout> | null = null
 
 onBeforeMount(async () => {
@@ -164,23 +186,7 @@ onBeforeMount(async () => {
         return
       }
 
-      post.value = data
-      // Re-warm all three cache keys (id, slug, entity) from this hit. A
-      // fast-path hit may have resolved via slug only (e.g. another page warmed
-      // the slug key); writing all keys guarantees the Discussion composable's
-      // fetchById(post.id) is a cache hit instead of racing a duplicate SELECT *.
-      discussionCache.set(data)
-      showNSFWWarning.value = !!data.is_nsfw && settings.value.show_nsfw_warning
-      nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
-      void loadTopicBreadcrumbs(data.discussion_topic_id)
-      // Mark the discussion seen in localStorage so the unread dot clears
-      // even when navigating here by direct URL rather than from the forum index.
-      forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
-      // Advance the parent topic's seenActivityAt to this discussion's last
-      // activity timestamp - not now, so we don't shadow concurrent activity
-      // in other discussions that may have happened more recently.
-      if (data.discussion_topic_id)
-        forumUnread.markTopicSeen(data.discussion_topic_id, data.last_activity_at ?? undefined)
+      applyLoadedPost(data)
     }
 
     loading.value = false
@@ -228,25 +234,7 @@ onBeforeMount(async () => {
           return
         }
 
-        post.value = data
-        // Warm the discussion cache so back-navigation and the next visit
-        // within TTL don't re-fetch. The enriched join fields are stored
-        // alongside the base row and will be present on a cache hit.
-        discussionCache.set(data)
-        // Show the NSFW overlay only when the post is NSFW and the user has
-        // warnings enabled. If they have show_nsfw_content disabled entirely,
-        // the watchEffect below will redirect them away instead.
-        showNSFWWarning.value = !!data.is_nsfw && settings.value.show_nsfw_warning
-        // If warnings are disabled but content is allowed, consider it auto-revealed
-        nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
-        void loadTopicBreadcrumbs(data.discussion_topic_id)
-        // Mark seen in localStorage so the unread dot clears on direct URL visits.
-        forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
-        // Advance the parent topic's seenActivityAt to this discussion's last
-        // activity timestamp - not now, so we don't shadow concurrent activity
-        // in other discussions that may have happened more recently.
-        if (data.discussion_topic_id)
-          forumUnread.markTopicSeen(data.discussion_topic_id, data.last_activity_at ?? undefined)
+        applyLoadedPost(data)
       }
 
       loading.value = false

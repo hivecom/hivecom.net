@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, ButtonGroup, Card, Flex, Grid, Select, Tooltip } from '@dolanske/vui'
+import ResponsiveButton from '@/components/Shared/ResponsiveButton.vue'
 import ThemeGallery from '@/components/Themes/ThemeGallery.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -69,13 +70,7 @@ function openEditor(theme?: Parameters<typeof seedEditor>[0]) {
               <strong class="text-semibold text-color-accent mr-xs">{{ activeTheme?.name ?? 'Default' }}</strong>
               <ButtonGroup :gap="2">
                 <Tooltip v-if="userId">
-                  <Button size="s" :square="isMobile" @click="openEditor(activeTheme ?? null)">
-                    <Icon v-if="isMobile" name="ph:pen" />
-                    <template #start>
-                      <Icon v-if="!isMobile" name="ph:pen" />
-                    </template>
-                    {{ isMobile ? '' : 'Personalize' }}
-                  </Button>
+                  <ResponsiveButton size="s" icon="ph:pen" label="Personalize" @click="openEditor(activeTheme ?? null)" />
                   <template #tooltip>
                     <p>Create a new theme based on the current one</p>
                   </template>

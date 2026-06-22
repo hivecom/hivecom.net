@@ -487,14 +487,16 @@ async function navigateToLinkedComment(commentId: string) {
         })
       })
     }
-    // Nested reply in threaded view: it won't render in the main tree on its own
-    // (ancestors may be collapsed; in paged view it has no page at all), so reveal
-    // it through its root (inline when reply threads are expanded, in the sheet
-    // when collapsed). Covers both infinite and paged threaded; revealThreadedChild
-    // no-ops when the target is itself a root.
+    // Nested reply in threaded view. With auto-expand on in infinite mode the
+    // reply already renders inline (its thread is expanded from the loaded window)
+    // and self-scrolls, so jumping to its root would only disrupt it. Reveal via
+    // the root only when the reply won't be inline: paginated (it has no page) or
+    // auto-expand off (its thread is collapsed). revealThreadedChild no-ops when
+    // the target is itself a root.
     if (viewMode.value === 'threaded') {
       const tc = modelledComments.value.find(c => c.id === commentId)
-      if (tc == null || tc.reply_to_id != null)
+      const inlineExpanded = !usePagination.value && showThreadReplies.value
+      if (!inlineExpanded && (tc == null || tc.reply_to_id != null))
         await revealThreadedChild(commentId)
     }
   }
@@ -515,12 +517,13 @@ async function navigateToLinkedComment(commentId: string) {
       })
     }
     const found = await navigateToComment(commentId, { soft: true, anchorTs: parseAnchorTs(route.query.ts) })
-    // Nested reply in threaded view (present but parented, or unreachable in paged
-    // view) - reveal through its root (inline when reply threads are expanded, in
-    // the sheet when collapsed). A root falls through to the normal scroll; a
-    // genuinely missing target bails.
+    // Nested reply in threaded view. Skip the root-jump when it already renders
+    // inline (infinite + auto-expand); only reveal when it won't be inline -
+    // paginated (no page for it) or auto-expand off (thread collapsed). A root
+    // falls through to the normal scroll; a genuinely missing target bails.
     const tc = modelledComments.value.find(c => c.id === commentId)
-    const nestedThreaded = viewMode.value === 'threaded' && (tc == null || tc.reply_to_id != null)
+    const inlineExpanded = !usePagination.value && showThreadReplies.value
+    const nestedThreaded = viewMode.value === 'threaded' && !inlineExpanded && (tc == null || tc.reply_to_id != null)
     if (nestedThreaded)
       await revealThreadedChild(commentId)
     else if (!found)

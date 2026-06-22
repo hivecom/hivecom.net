@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Card, Flex, Sheet, Textarea } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import ResponsiveButton from '@/components/Shared/ResponsiveButton.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -377,34 +378,22 @@ function confirmDeleteComplaint() {
               />
               <div class="flex-1" />
               <Flex gap="xs">
-                <Button
+                <ResponsiveButton
+                  :collapsed="!showActionLabels"
+                  size="s"
                   variant="gray"
-                  size="s"
-                  :square="!showActionLabels"
+                  icon="ph:pencil"
+                  label="Edit"
                   @click="handleEditResponse"
-                >
-                  <template v-if="showActionLabels" #start>
-                    <Icon name="ph:pencil" />
-                  </template>
-                  <Icon v-if="!showActionLabels" name="ph:pencil" />
-                  <template v-if="showActionLabels">
-                    Edit
-                  </template>
-                </Button>
-                <Button
-                  variant="danger"
+                />
+                <ResponsiveButton
+                  :collapsed="!showActionLabels"
                   size="s"
-                  :square="!showActionLabels"
+                  variant="danger"
+                  icon="ph:trash"
+                  label="Remove"
                   @click="handleRemoveResponse"
-                >
-                  <template v-if="showActionLabels" #start>
-                    <Icon name="ph:trash" />
-                  </template>
-                  <Icon v-if="!showActionLabels" name="ph:trash" />
-                  <template v-if="showActionLabels">
-                    Remove
-                  </template>
-                </Button>
+                />
               </Flex>
             </Flex>
           </div>
@@ -447,50 +436,32 @@ function confirmDeleteComplaint() {
     <template #footer>
       <Flex gap="xs" class="form-actions">
         <!-- Acknowledge button -->
-        <Button
+        <ResponsiveButton
           v-if="status === 'pending'"
+          :collapsed="!showActionLabels"
           variant="accent"
-          :square="!showActionLabels"
+          icon="ph:check"
+          label="Acknowledge"
           @click="handleAcknowledge"
-        >
-          <template v-if="showActionLabels" #start>
-            <Icon name="ph:check" />
-          </template>
-          <Icon v-if="!showActionLabels" name="ph:check" />
-          <template v-if="showActionLabels">
-            Acknowledge
-          </template>
-        </Button>
+        />
         <!-- Respond/Update button -->
-        <Button
-          :disabled="!(complaint != null && ((canRespond && responseText.trim() && !complaint.response) || isEditingResponse)) || undefined"
+        <ResponsiveButton
+          :collapsed="!showActionLabels"
           variant="success"
           :loading="isSubmitting"
-          :square="!showActionLabels"
+          :disabled="!(complaint != null && ((canRespond && responseText.trim() && !complaint.response) || isEditingResponse)) || undefined"
+          icon="ph:paper-plane-tilt"
+          :label="isEditingResponse ? 'Update Response' : 'Send Response'"
           @click="handleSubmitResponse"
-        >
-          <template v-if="showActionLabels" #start>
-            <Icon name="ph:paper-plane-tilt" />
-          </template>
-          <Icon v-if="!showActionLabels" name="ph:paper-plane-tilt" />
-          <template v-if="showActionLabels">
-            {{ isEditingResponse ? 'Update Response' : 'Send Response' }}
-          </template>
-        </Button>
-        <Button
+        />
+        <ResponsiveButton
           v-if="canDeleteComplaints"
+          :collapsed="!showActionLabels"
           variant="danger"
-          :square="!showActionLabels"
+          icon="ph:trash"
+          label="Delete"
           @click="handleDeleteComplaint"
-        >
-          <template v-if="showActionLabels" #start>
-            <Icon name="ph:trash" />
-          </template>
-          <template v-if="showActionLabels">
-            Delete
-          </template>
-          <Icon v-if="!showActionLabels" name="ph:trash" />
-        </Button>
+        />
 
         <div class="flex-1" />
 

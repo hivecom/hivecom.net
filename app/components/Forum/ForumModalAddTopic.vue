@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RefreshTopicIconFn } from '@/components/Forum/Forum.keys'
-import type { TopicWithDiscussions } from '@/pages/forum/index.vue'
+import type { TopicWithDiscussions } from '@/composables/useForumTopics'
 import type { Tables } from '@/types/database.overrides'
 import { defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
 import { Button, Card, Dropdown, DropdownTitle, Flex, Input, Modal, pushToast, searchString, Switch, Tooltip } from '@dolanske/vui'
