@@ -10,6 +10,9 @@ let _autoSaveWatcherRegistered = false
 
 const GUEST_SETTINGS_KEY = 'hivecom.guest.settings'
 
+/** Default quick-reaction emoji - also used by the settings "reset" action. */
+export const DEFAULT_QUICK_REACTIONS = ['👍', '❤️', '😂', '🔥']
+
 // Single source of truth for user settings
 export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
   return {
@@ -19,6 +22,7 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     show_offtopic_replies: false,
     show_thread_replies: false,
     discussion_view_mode: 'flat',
+    quick_reactions: [...DEFAULT_QUICK_REACTIONS],
     forum_pagination_mode: 'infinite',
     show_forum_updates: true,
     show_forum_recently_visited: true,

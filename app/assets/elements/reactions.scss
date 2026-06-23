@@ -84,40 +84,25 @@
     max-width: 168px;
   }
 
-  &__picker {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
-    padding: var(--space-s);
-    max-height: 320px;
-    overflow-y: auto;
-    width: 260px;
+  &__list-popout {
+    padding: none;
   }
 
-  &__group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xxs);
+  &__list-drawer {
+    .vui-drawer-container {
+      padding: 0 !important;
+    }
   }
 
-  &__group-label {
-    font-size: var(--font-size-xxs);
-    color: var(--color-text-lighter);
-    text-transform: uppercase;
-    padding: 0 2px;
-    margin: 0;
-  }
-
-  &__grid {
+  // Quick-reaction strip shown above the full picker.
+  &__quick {
     display: flex;
     flex-wrap: wrap;
     gap: 2px;
-  }
-}
+    padding: var(--space-xs) var(--space-xs) 0;
 
-@media screen and (max-width: $breakpoint-s) {
-  .reactions__picker {
-    width: auto;
-    gap: var(--space-l);
+    .reactions__button {
+      font-size: var(--font-size-xl);
+    }
   }
 }

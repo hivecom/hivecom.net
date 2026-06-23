@@ -2,7 +2,7 @@ import type { RawReactions } from '@/lib/reactions'
 import {
   applyOptimisticToggle,
   buildDisplayReactions,
-  HIVECOM_PROVIDER,
+  EMOJI_PROVIDER,
   parseRawReactions,
 } from '@/lib/reactions'
 
@@ -89,11 +89,11 @@ export function useReactions(options: UseReactionsOptions) {
    * Toggle a reaction for the current user.
    *
    * @param emote    The emote string (emoji or external key).
-   * @param provider The provider key. Defaults to "hivecom".
+   * @param provider The provider key. Defaults to "emoji".
    */
   async function toggleReaction(
     emote: string,
-    provider: string = HIVECOM_PROVIDER,
+    provider: string = EMOJI_PROVIDER,
   ): Promise<void> {
     const id = rowId.value
     if (id == null || id === '') {
@@ -169,7 +169,7 @@ export function useReactions(options: UseReactionsOptions) {
    * Returns true if the current user has already reacted with this emote
    * under this provider.
    */
-  function hasReacted(emote: string, provider: string = HIVECOM_PROVIDER): boolean {
+  function hasReacted(emote: string, provider: string = EMOJI_PROVIDER): boolean {
     const uid = userId.value
     if (uid == null || uid === '')
       return false
@@ -180,7 +180,7 @@ export function useReactions(options: UseReactionsOptions) {
   /**
    * Count of unique users who reacted with this emote under this provider.
    */
-  function reactionCount(emote: string, provider: string = HIVECOM_PROVIDER): number {
+  function reactionCount(emote: string, provider: string = EMOJI_PROVIDER): number {
     const reactors = rawReactions.value[provider]?.[emote]
     return Array.isArray(reactors) ? reactors.length : 0
   }

@@ -4,7 +4,7 @@
  * Shape stored in the DB (reactions JSONB column):
  *
  *   {
- *     "hivecom": {                        ← provider key
+ *     "emoji": {                          ← provider key
  *       "👍": ["<uuid>", "<uuid>"],       ← emote → array of user UUIDs
  *       "❤️": ["<uuid>"]
  *     },
@@ -34,53 +34,7 @@ export type { ReactionData } from '@/types/database.overrides'
  * Built-in first-party provider key. Used as the default when toggling
  * reactions from the hivecom front-end.
  */
-export const HIVECOM_PROVIDER = 'hivecom' as const
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Display-layer emote manifest (hivecom provider)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Grouped emote manifest for the hivecom reaction picker.
- * This is the single source of truth - the flat list and picker UI are both
- * derived from this. Add emotes here only; ReactionsSelect.vue reads this directly.
- *
- * This is a **display-layer constant**, not a validation list - the DB accepts any emoji.
- */
-export const HIVECOM_EMOTE_GROUPS: { label: string, emotes: string[] }[] = [
-  {
-    label: 'Reactions',
-    emotes: ['👍', '👎', '🙌', '❤️', '🔥', '🎉', '👀', '💯', '💀', '⭐', '🏆', '✨'],
-  },
-  {
-    label: 'Emoticons',
-    emotes: ['😂', '😢', '😭', '😳', '🤯', '😍', '😡', '🤔', '😴', '🫠', '😎', '🥵', '🥶'],
-  },
-  {
-    label: 'Symbols',
-    emotes: ['✅', '❎', '🅰️', '🅱️', '🆒', '🆗', '⚠️'],
-  },
-  {
-    label: 'Other',
-    emotes: ['💅', '🚀', '🏳️‍🌈', '🗿', '🍆', '🍑', '💦', '🌡️', '❄️', '☀️', '🌧️', '🌞', '🌚', '🌿', '🌱', '🥀', '🐺', '🥚', '🐸', '🐐', '⛰️', '🦀', '📸', '🦄', '🍤'],
-  },
-]
-
-/** Flat list of all known hivecom emotes, derived from HIVECOM_EMOTE_GROUPS. */
-export const HIVECOM_EMOTES = HIVECOM_EMOTE_GROUPS.flatMap(g => g.emotes)
-
-export type HivecomEmote = string
-
-/** Fast O(1) membership check for display-layer filtering. */
-const HIVECOM_EMOTE_SET = new Set<string>(HIVECOM_EMOTES)
-
-/**
- * Returns true if the emote is in the hivecom display manifest.
- * Useful for display-layer filtering - NOT used as a write-path guard.
- */
-export function isHivecomEmote(emote: string): emote is HivecomEmote {
-  return HIVECOM_EMOTE_SET.has(emote)
-}
+export const EMOJI_PROVIDER = 'emoji' as const
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Raw DB shape
@@ -153,12 +107,9 @@ export function buildDisplayReactions(
       if (!Array.isArray(reactors) || reactors.length === 0)
         continue
 
-      // For the hivecom provider, skip emotes not in the display manifest.
-      // External providers (e.g. "xdd") have their own emote namespaces so
-      // we leave those unfiltered.
-      if (provider === HIVECOM_PROVIDER && !isHivecomEmote(emote))
-        continue
-
+      // Any stored emote with reactors is displayed. The hivecom picker now
+      // sources the full emoji set from VUI's EmojiPicker, so there's no
+      // curated manifest to filter against - if it's in the DB, we render it.
       result.push({
         content: emote,
         count: reactors.length,

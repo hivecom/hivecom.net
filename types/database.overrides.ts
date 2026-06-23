@@ -124,6 +124,9 @@ interface TableColumnOverrides {
       show_offtopic_replies: boolean
       show_thread_replies: boolean
       discussion_view_mode: 'flat' | 'threaded'
+      // Emoji shown as a quick-access strip above the full reaction picker, and
+      // in chat's floating reaction toolbar. User-curated, order preserved.
+      quick_reactions: string[]
       // How forum threads page through replies: 'infinite' = auto-load on scroll,
       // 'paginated' = traditional page controls. Does not change how the forum
       // looks, only how more replies are loaded.

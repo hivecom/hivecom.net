@@ -75,7 +75,7 @@ onMounted(async () => {
         @error="thumbError = true"
       >
       <span class="yt-embed__play-btn">
-        <Icon name="ph:play-fill" size="20" />
+        <Icon name="ph:play-fill" />
       </span>
     </component>
     <iframe
@@ -141,6 +141,10 @@ onMounted(async () => {
 
     &:hover .yt-embed__play-btn {
       background: rgba(0, 0, 0, 0.65);
+
+      span {
+        font-size: var(--chat-font-size);
+      }
     }
   }
 
