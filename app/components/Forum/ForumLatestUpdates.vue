@@ -332,7 +332,7 @@ onUnmounted(() => {
       </Button>
     </Flex>
 
-    <Carousel gap="s" :sheet-width="512" auto-adjust>
+    <Carousel gap="s">
       <template v-if="props.loading">
         <div v-for="item in 4" :key="item" class="forum__latest-skeleton">
           <Flex x-between y-center expand>

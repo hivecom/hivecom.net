@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { Drawer, Popout } from '@dolanske/vui'
-import { createReusableTemplate } from '@vueuse/core'
+import { Drawer, EmojiPicker, Popout } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { HIVECOM_EMOTE_GROUPS } from '@/lib/reactions'
 
 defineOptions({ inheritAttrs: false })
 
@@ -13,8 +11,6 @@ const emit = defineEmits<{
 const anchor = useTemplateRef('anchor')
 const open = ref(false)
 const isMobile = useBreakpoint('<s')
-
-const [DefinePickerContent, PickerContent] = createReusableTemplate()
 
 function toggle() {
   open.value = !open.value
@@ -27,26 +23,6 @@ function selectEmote(emote: string) {
 </script>
 
 <template>
-  <DefinePickerContent>
-    <div class="reactions__picker">
-      <div v-for="group in HIVECOM_EMOTE_GROUPS" :key="group.label" class="reactions__group">
-        <p class="reactions__group-label">
-          {{ group.label }}
-        </p>
-        <div class="reactions__grid">
-          <button
-            v-for="emote in group.emotes"
-            :key="emote"
-            class="reactions__button"
-            @click="selectEmote(emote)"
-          >
-            {{ emote }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </DefinePickerContent>
-
   <div ref="anchor" v-bind="$attrs" class="inline-block" :class="{ 'reactions-anchor-active': open }">
     <slot :toggle="toggle">
       <div role="button" class="reactions__button" @click="toggle">
@@ -55,10 +31,10 @@ function selectEmote(emote: string) {
     </slot>
   </div>
 
-  <Drawer v-if="isMobile" :open="open" @close="open = false">
-    <PickerContent />
+  <Drawer v-if="isMobile" :open="open" class="reactions__list-drawer" @close="open = false">
+    <EmojiPicker @select="({ emoji }) => selectEmote(emoji)" />
   </Drawer>
-  <Popout v-else :anchor :visible="open" @click-outside="open = false">
-    <PickerContent />
+  <Popout v-else :anchor :visible="open" class="reactions__list-popout" @click-outside="open = false">
+    <EmojiPicker @select="({ emoji }) => selectEmote(emoji)" />
   </Popout>
 </template>

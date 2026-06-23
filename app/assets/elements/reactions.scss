@@ -84,40 +84,13 @@
     max-width: 168px;
   }
 
-  &__picker {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
-    padding: var(--space-s);
-    max-height: 320px;
-    overflow-y: auto;
-    width: 260px;
+  &__list-popout {
+    padding: none;
   }
 
-  &__group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xxs);
-  }
-
-  &__group-label {
-    font-size: var(--font-size-xxs);
-    color: var(--color-text-lighter);
-    text-transform: uppercase;
-    padding: 0 2px;
-    margin: 0;
-  }
-
-  &__grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-  }
-}
-
-@media screen and (max-width: $breakpoint-s) {
-  .reactions__picker {
-    width: auto;
-    gap: var(--space-l);
+  &__list-drawer {
+    .vui-drawer-container {
+      padding: 0 !important;
+    }
   }
 }
