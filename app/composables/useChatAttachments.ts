@@ -21,16 +21,19 @@ const MAX_FILE_BYTES = 100 * 1024 * 1024
 
 let _idSeq = 0
 
+// Module-level singleton — there is only ever one active composer at a time, so
+// sharing a single tray is safe and lets parent components (e.g. ChatApp) call
+// add() from a drag handler without needing a separate composable instance.
+const attachments = ref<ChatAttachment[]>([])
+const uploading = ref(false)
+
 /**
- * Local attachment tray for the chat composer. Holds the files queued for the
+ * Shared attachment tray for the chat composer. Holds the files queued for the
  * next send, mints thumbnail previews for images, and uploads everything to
- * Depot on demand. State is per-composer (created fresh on each call), so two
- * composer instances never share a tray.
+ * Depot on demand.
  */
 export function useChatAttachments() {
   const depot = useDepot()
-  const attachments = ref<ChatAttachment[]>([])
-  const uploading = ref(false)
 
   function isImage(file: File) {
     return file.type.startsWith('image/')

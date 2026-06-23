@@ -72,6 +72,8 @@ function fileIcon(file: File): string {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/mixins.scss' as *;
+
 .chat-attachments {
   padding: var(--space-xxs) 0;
 
@@ -80,6 +82,7 @@ function fileIcon(file: File): string {
     align-items: center;
     gap: var(--space-xs);
     max-width: 220px;
+    overflow: hidden;
     padding: var(--space-xxs);
     padding-right: var(--space-xxs);
     background: var(--color-bg-medium);
@@ -132,11 +135,10 @@ function fileIcon(file: File): string {
   }
 
   &__name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    @include line-clamp(2);
     font-size: var(--font-size-xs);
     color: var(--color-text);
+    word-break: break-all;
   }
 
   &__size {

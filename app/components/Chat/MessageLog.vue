@@ -2,7 +2,7 @@
 import type { MediaItem } from '@/components/Shared/Lightbox.vue'
 import type { ChatMessage } from '@/composables/useIrcChat'
 import type { Segment } from '@/lib/ircFormat'
-import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, pushToast, Sheet, Spinner } from '@dolanske/vui'
+import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, pushToast, Sheet, Skeleton, Spinner } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import ChatMessageReactions from '@/components/Chat/MessageReactions.vue'
@@ -153,6 +153,7 @@ const mobileMenuOpen = ref(false)
 
 const logEl = ref<HTMLElement | null>(null)
 const topSentinel = ref<HTMLElement | null>(null)
+const bottomSentinel = ref<HTMLElement | null>(null)
 const activeMessage = ref<ChatMessage | null>(null)
 const lightboxRef = useTemplateRef('lightboxRef')
 
@@ -512,16 +513,12 @@ function isImageOnlyMessage(text: string): boolean {
 
 interface GalleryEntry { url: string, msgId: number }
 interface RenderMsg { kind: 'msg', msg: ChatMessage }
-// Message with both text and images: text rendered separately, images go into gallery
-interface RenderMsgText { kind: 'msg-text', msg: ChatMessage }
 interface RenderGallery { kind: 'gallery', rows: GalleryEntry[][], id: number }
-type RenderItem = RenderMsg | RenderMsgText | RenderGallery
+type RenderItem = RenderMsg | RenderGallery
 
 function groupRenderItems(msgs: readonly ChatMessage[]): RenderItem[] {
   const items: RenderItem[] = []
   let msgRun: ChatMessage[] = []
-  // Track messages whose text has already been rendered as 'msg-text'
-  const textRendered = new Set<number>()
 
   function flush() {
     if (msgRun.length === 0)
@@ -529,12 +526,12 @@ function groupRenderItems(msgs: readonly ChatMessage[]): RenderItem[] {
     const allEntries: GalleryEntry[] = msgRun.flatMap(m =>
       imageUrls(m.text).map(url => ({ url, msgId: m.id })),
     )
-    // Fall back to individual msg items only when there's <=1 image and no
-    // mixed messages (whose text was already rendered separately)
-    if (allEntries.length <= 1 && msgRun.every(m => !textRendered.has(m.id))) {
+    // A single image renders as a normal message line so it keeps its hover
+    // react bar; 2+ images collapse into a gallery grid.
+    if (allEntries.length <= 1) {
       for (const m of msgRun) items.push({ kind: 'msg', msg: m })
     }
-    else if (allEntries.length > 0) {
+    else {
       const rows: GalleryEntry[][] = []
       for (let k = 0; k < allEntries.length; k += 3)
         rows.push(allEntries.slice(k, k + 3))
@@ -544,15 +541,12 @@ function groupRenderItems(msgs: readonly ChatMessage[]): RenderItem[] {
   }
 
   for (const msg of msgs) {
+    // Only true image-only messages feed the gallery grouping. Anything with
+    // text renders as its own line carrying its text, image embeds and the
+    // hover react bar together - splitting text and image apart is what used
+    // to drop the image into a bar-less gallery, leaving it unhoverable (no
+    // reactions, no reply).
     if (isImageOnlyMessage(msg.text)) {
-      msgRun.push(msg)
-    }
-    else if (imageUrls(msg.text).length > 0) {
-      // Message has text + images: flush current run, emit text only, then
-      // add this message's images to a new gallery run.
-      flush()
-      items.push({ kind: 'msg-text', msg })
-      textRendered.add(msg.id)
       msgRun.push(msg)
     }
     else {
@@ -585,6 +579,32 @@ const videoShortUrls = reactive(new Set<string>())
 const brokenImages = reactive(new Set<string>())
 function onImageError(url: string) {
   brokenImages.add(url)
+}
+
+// Natural dimensions of embedded images, captured on first load and keyed by
+// URL. Lets us reserve the exact box for an image before it paints - so a
+// message arriving in the buffer (or scrolling back into view) holds its space
+// instead of growing the row from zero height and shoving the layout around.
+const imageDims = reactive(new Map<string, { w: number, h: number }>())
+// URLs whose image has painted - drives swapping the Skeleton out for the image.
+const loadedImages = reactive(new Set<string>())
+function onImageLoad(event: Event, url: string) {
+  const img = event.target as HTMLImageElement
+  if (img.naturalWidth > 0 && img.naturalHeight > 0)
+    imageDims.set(url, { w: img.naturalWidth, h: img.naturalHeight })
+  loadedImages.add(url)
+}
+
+// Reserved box for a block embed, clamped to the same max as the CSS. Known
+// natural size reserves the exact final box (no shift on load, and no shift at
+// all when scrolling back to an already-seen image); unknown falls back to the
+// full max box so first paint still has space held.
+function embedBox(url: string, maxW: number, maxH: number): Record<string, string> {
+  const d = imageDims.get(url)
+  if (!d)
+    return { width: `${maxW}px`, height: `${maxH}px` }
+  const scale = Math.min(maxW / d.w, maxH / d.h, 1)
+  return { width: `${Math.round(d.w * scale)}px`, height: `${Math.round(d.h * scale)}px` }
 }
 
 function onVideoMetadata(event: Event, url: string) {
@@ -889,7 +909,17 @@ function onTouchMove(event: TouchEvent) {
 // ---- Scroll management ----------------------------------------------------
 
 const SCROLL_BOTTOM_THRESHOLD = 80
-const SCROLL_TOP_THRESHOLD = 120
+// How far ahead, in multiples of the viewport height, to start pulling the next
+// page. Proportional to the viewport rather than a fixed pixel lead so a taller
+// window or larger font (fewer, taller messages per screen) still gets the same
+// number of screenfuls of runway. Forward is aggressive - that's the direction
+// the user scrolls fast and expects ready. Backward needs a comparable lead
+// because its pages can come from the server (network latency) rather than the
+// IDB cache - too small a lead and a fast scroll-up reaches the top edge before
+// the fetch lands. It chains a couple pages deep (maybeBackfillOlder) so there's
+// buffer to coast on, bounded so it never pre-pages the whole history.
+const FORWARD_LOAD_AHEAD_SCREENS = 2.5
+const BACKWARD_LOAD_AHEAD_SCREENS = 2
 const isAtBottom = ref(true)
 
 // Native scroll anchoring (overflow-anchor) keeps the viewport steady as
@@ -913,21 +943,26 @@ function updateScrollState() {
   if (!logEl.value)
     return
   const { scrollTop, scrollHeight, clientHeight } = logEl.value
-  const nowAtBottom = scrollHeight - scrollTop - clientHeight <= SCROLL_BOTTOM_THRESHOLD
+  const distFromBottom = scrollHeight - scrollTop - clientHeight
+  const nowAtBottom = distFromBottom <= SCROLL_BOTTOM_THRESHOLD
   const scrolledUp = scrollTop < lastScrollTop
   lastScrollTop = scrollTop
   if (!nowAtBottom && scrolledUp)
     wantBottom = false
   isAtBottom.value = nowAtBottom
-  // Scroll-position fallback for lazy history loading; the IntersectionObserver
-  // on the top sentinel can miss the first fire. triggerHistoryLoad() is
-  // idempotent (guards exhausted / in-flight / not-ready).
-  if (scrollTop <= SCROLL_TOP_THRESHOLD)
-    triggerHistoryLoad()
-  // Forward-load the next page of newer messages when scrolling toward the
-  // bottom of a tail-trimmed buffer (window slid back into history).
-  if (isAtBottom.value && activeBuffer.value?.tailTrimmed)
-    void fetchNewerFromCache(activeBuffer.value.name)
+  // Only the nearer edge loads. Picking by which edge is closer (rather than by
+  // scroll direction) means the backward and forward loaders can never both fire
+  // on one scroll and tug the window in opposite directions - the prepend+trim
+  // vs append+trim fight that jiggles the viewport - and it's immune to the
+  // programmatic scrollTop nudges our own restore code makes.
+  if (scrollTop <= distFromBottom) {
+    if (scrollTop <= clientHeight * BACKWARD_LOAD_AHEAD_SCREENS)
+      triggerHistoryLoad()
+  }
+  else {
+    if (distFromBottom <= clientHeight * FORWARD_LOAD_AHEAD_SCREENS)
+      maybeForwardLoad()
+  }
 }
 
 function scrollToBottom() {
@@ -966,6 +1001,55 @@ function triggerHistoryLoad() {
   fetchOlderHistory(activeBuffer.value.name)
 }
 
+// Chain older-history pages so the buffer above the fold reaches the lead, the
+// same way the forward loader drains pages below. Without this, scroll-back
+// loads one page per trigger and a fast scroll-up - especially when pages come
+// from the server - outruns it. Bounded two ways: it stops once there's a lead's
+// worth above (scrollTop past it), and it requires at least a screenful still
+// below, so chaining never drags the restore anchor down to the window's bottom
+// edge (which would make the restore clamp and visibly jump). triggerHistoryLoad
+// re-anchors on the new first-visible line each time, so each page restores cleanly.
+function maybeBackfillOlder() {
+  const buf = activeBuffer.value
+  const el = logEl.value
+  if (!buf || !el || wantBottom || buf.historyExhausted || buf.loadingOlderHistory)
+    return
+  const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+  if (el.scrollTop <= el.clientHeight * BACKWARD_LOAD_AHEAD_SCREENS && distFromBottom >= el.clientHeight)
+    triggerHistoryLoad()
+}
+
+// Pull the next page of newer messages from cache while the bottom of a
+// tail-trimmed window is within the load-ahead lead. Mirrors triggerHistoryLoad
+// for the forward direction, but unlike the older-history path there's nothing
+// to restore: overflow-anchor compensates the front-trim, so the viewport stays
+// put while the window slides forward. The lead is read live off clientHeight,
+// so it scales with the viewport and font size. Idempotent (guards
+// not-trimmed / in-flight / not-yet-near-the-edge).
+function maybeForwardLoad() {
+  const buf = activeBuffer.value
+  const el = logEl.value
+  if (!el || !buf?.tailTrimmed || buf.loadingNewerHistory)
+    return
+  const { scrollTop, scrollHeight, clientHeight } = el
+  if (scrollHeight - scrollTop - clientHeight <= clientHeight * FORWARD_LOAD_AHEAD_SCREENS)
+    void fetchNewerFromCache(buf.name)
+}
+
+// Keep draining newer pages until the buffer below the fold reaches the lead.
+// A single page only slides the window 25 lines, which a fast scroll blows
+// straight through; re-checking after each page lands builds a runway below the
+// viewport so scrolling forward feels instant instead of hitting the edge.
+// Self-terminating: each page pushes the bottom further past the lead, and
+// reaching the live edge clears tailTrimmed.
+watch(
+  () => activeBuffer.value?.loadingNewerHistory,
+  (loading, wasLoading) => {
+    if (wasLoading && !loading)
+      nextTick(maybeForwardLoad)
+  },
+)
+
 // After older history is prepended, restore the viewport to the content the
 // user was looking at (runs in nextTick, before paint, so there's no flash).
 watch(
@@ -986,6 +1070,7 @@ watch(
           logEl.value.scrollTop += delta
         }
         anchorMsgEl = null
+        maybeBackfillOlder()
       })
     }
   },
@@ -1021,7 +1106,6 @@ watch(
 // ---- Intersection observer for lazy history loading -----------------------
 
 let sentinelObserver: IntersectionObserver | null = null
-const sentinelVisible = ref(false)
 
 function setupSentinelObserver() {
   sentinelObserver?.disconnect()
@@ -1033,16 +1117,45 @@ function setupSentinelObserver() {
   // while logEl just expands to fit. Using logEl as root breaks the sheet case
   // (the sentinel never clips, so the observer never re-fires). The viewport
   // root respects every intervening scroll container's clipping, so it works on
-  // both. The top rootMargin pre-loads slightly before the sentinel is reached.
+  // both. This is the at-rest backstop (initial fill, and the sheet where logEl
+  // doesn't get scroll events); while actually scrolling, updateScrollState
+  // drives loads off the live clientHeight. The margins match the asymmetric
+  // leads, and each sentinel only fires when its edge is the nearer one, so the
+  // two loaders never fight. A gentle backward margin also keeps the top sentinel
+  // from pre-paging the whole history while parked near the top.
+  const back = Math.round((window.innerHeight || 800) * BACKWARD_LOAD_AHEAD_SCREENS)
+  const fwd = Math.round((window.innerHeight || 800) * FORWARD_LOAD_AHEAD_SCREENS)
   sentinelObserver = new IntersectionObserver(
     (entries) => {
-      sentinelVisible.value = entries[0]?.isIntersecting ?? false
-      if (sentinelVisible.value)
-        triggerHistoryLoad()
+      for (const entry of entries) {
+        if (!entry.isIntersecting)
+          continue
+        if (entry.target === bottomSentinel.value) {
+          if (!nearerTop())
+            maybeForwardLoad()
+        }
+        else if (nearerTop()) {
+          triggerHistoryLoad()
+        }
+      }
     },
-    { root: null, rootMargin: '200px 0px 0px 0px', threshold: 0 },
+    { root: null, rootMargin: `${back}px 0px ${fwd}px 0px`, threshold: 0 },
   )
   sentinelObserver.observe(topSentinel.value)
+  if (bottomSentinel.value)
+    sentinelObserver.observe(bottomSentinel.value)
+}
+
+// True when the viewport sits closer to the top of the loaded range than the
+// bottom. Lets the sentinel callbacks load only the nearer edge, matching the
+// closer-edge rule in updateScrollState. On the sheet surface logEl doesn't
+// scroll (scrollTop stays 0), so this reads true and only older history loads -
+// the same behaviour the sheet had before forward loading existed.
+function nearerTop(): boolean {
+  const el = logEl.value
+  if (!el)
+    return true
+  return el.scrollTop <= el.scrollHeight - el.scrollTop - el.clientHeight
 }
 
 // When initial history settles (historyReady flips true), retry the load if
@@ -1050,11 +1163,11 @@ function setupSentinelObserver() {
 // Two cases hit this:
 //  1. Content never filled the viewport - sentinel visible the whole time, but
 //     fetchOlderHistory returned early because historyReady was false then.
-//  2. CHATHISTORY LATEST pushed the sentinel just out of view, so sentinelVisible
-//     flipped false at the same moment historyReady became true - the observer
-//     won't re-fire and the sentinel check misses it.
+//  2. CHATHISTORY LATEST pushed the sentinel just out of view, so the observer
+//     flipped to not-intersecting at the same moment historyReady became true -
+//     it won't re-fire and the sentinel check misses it.
 // Re-evaluating scroll state in nextTick covers both: if the container still
-// isn't scrollable (scrollTop === 0 <= SCROLL_TOP_THRESHOLD), updateScrollState
+// isn't scrollable (scrollTop === 0, within the load-ahead lead), updateScrollState
 // calls triggerHistoryLoad regardless of sentinel state.
 watch(
   () => activeBuffer.value?.historyReady,
@@ -1277,16 +1390,23 @@ onBeforeUnmount(() => {
                   <ChatMessageReactions v-if="!msg.redacted && msg.reactions && settings.chat_irc_reactions" :message="msg" />
                 </div>
                 <Flex v-if="!msg.redacted && !settings.chat_irc_inline_images && imageUrls(msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
-                  <img
+                  <div
                     v-for="url in imageUrls(msg.text).filter(u => !brokenImages.has(u))"
                     :key="url"
-                    :src="url"
-                    alt=""
-                    loading="lazy"
-                    class="chat-log__embed"
-                    @error="onImageError(url)"
-                    @click="openLightbox(url, 'image')"
+                    class="chat-log__embed-wrap"
+                    :style="embedBox(url, 240, 180)"
                   >
+                    <Skeleton v-if="!loadedImages.has(url)" width="100%" height="100%" :radius="5" class="chat-log__embed-skeleton" />
+                    <img
+                      :src="url"
+                      alt=""
+                      loading="lazy"
+                      class="chat-log__embed"
+                      @load="onImageLoad($event, url)"
+                      @error="onImageError(url)"
+                      @click="openLightbox(url, 'image')"
+                    >
+                  </div>
                 </Flex>
                 <Flex v-if="!msg.redacted && !settings.chat_irc_inline_images && youtubeUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
                   <YouTubeEmbed v-for="url in youtubeUrls(msg.text)" :key="url" :url="url" />
@@ -1490,7 +1610,7 @@ onBeforeUnmount(() => {
                 </Flex>
                 <template v-for="item in groupRenderItems(group.messages)" :key="item.kind === 'gallery' ? `g-${item.id}` : item.msg.id">
                   <div
-                    v-if="item.kind === 'msg' || item.kind === 'msg-text'"
+                    v-if="item.kind === 'msg'"
                     class="chat-log__modern-line"
                     :class="{ 'chat-log__modern-line--mention': isMention(item.msg) }"
                     :data-msg-id="item.msg.id"
@@ -1535,10 +1655,13 @@ onBeforeUnmount(() => {
                         <template v-else>{{ seg.value }}</template>
                       </template>
                     </span>
-                    <Flex v-if="!item.msg.redacted && item.kind === 'msg' && imageUrls(item.msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
-                      <img v-for="url in imageUrls(item.msg.text).filter(u => !brokenImages.has(u))" :key="url" :src="url" alt="" loading="lazy" class="chat-log__embed" @error="onImageError(url)" @click="openLightbox(url, 'image')">
+                    <Flex v-if="!item.msg.redacted && imageUrls(item.msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
+                      <div v-for="url in imageUrls(item.msg.text).filter(u => !brokenImages.has(u))" :key="url" class="chat-log__embed-wrap" :style="embedBox(url, 240, 180)">
+                        <Skeleton v-if="!loadedImages.has(url)" width="100%" height="100%" :radius="5" class="chat-log__embed-skeleton" />
+                        <img :src="url" alt="" loading="lazy" class="chat-log__embed" @load="onImageLoad($event, url)" @error="onImageError(url)" @click="openLightbox(url, 'image')">
+                      </div>
                     </Flex>
-                    <Flex v-if="!item.msg.redacted && item.kind === 'msg' && youtubeUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                    <Flex v-if="!item.msg.redacted && youtubeUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
                       <YouTubeEmbed v-for="url in youtubeUrls(item.msg.text)" :key="url" :url="url" />
                     </Flex>
                     <Flex v-if="!item.msg.redacted && videoUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
@@ -1605,6 +1728,7 @@ onBeforeUnmount(() => {
             </div>
           </template>
         </template>
+        <div ref="bottomSentinel" class="chat-log__history-sentinel" />
         <Flex v-if="messages.length === 0 && !isLoadingInitialHistory" y-center x-center class="chat-log__empty" expand>
           No messages yet.
         </Flex>
@@ -2146,6 +2270,31 @@ onBeforeUnmount(() => {
     border: 1px solid var(--color-border-weak);
     object-fit: cover;
     cursor: pointer;
+  }
+
+  // Block embeds sit in a box pre-sized by embedBox() so the row holds its space
+  // before the image paints. A Skeleton fills that box until load, then the image
+  // covers it - no growing the layout from zero height.
+  &__embed-wrap {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border-radius: var(--border-radius-s);
+    border: 1px solid var(--color-border-weak);
+
+    .chat-log__embed {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+      border: none;
+      border-radius: 0;
+    }
+  }
+
+  &__embed-skeleton {
+    position: absolute;
+    inset: 0;
   }
 
   &__embed-video {

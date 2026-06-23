@@ -2,6 +2,7 @@
 import { Button, Flex, Resizable } from '@dolanske/vui'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import SharedErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import { useChatAttachments } from '@/composables/useChatAttachments'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
@@ -97,6 +98,32 @@ const lastConnError = computed(() => {
 
 const isChannelBuffer = computed(() => activeBuffer.value?.kind === 'channel')
 const hasChannels = computed(() => buffers.value.some(b => b.kind === 'channel'))
+
+const { add: addAttachments } = useChatAttachments()
+const { canChat } = useIrcChat()
+const fileDragging = ref(false)
+
+function onMainDragOver(event: DragEvent) {
+  if (!canChat.value || !event.dataTransfer?.types.includes('Files'))
+    return
+  event.preventDefault()
+  fileDragging.value = true
+}
+
+function onMainDragLeave(event: DragEvent) {
+  if (event.currentTarget instanceof Node && event.relatedTarget instanceof Node && (event.currentTarget as Node).contains(event.relatedTarget))
+    return
+  fileDragging.value = false
+}
+
+function onMainDrop(event: DragEvent) {
+  fileDragging.value = false
+  const files = event.dataTransfer?.files
+  if (!canChat.value || !files?.length)
+    return
+  event.preventDefault()
+  addAttachments(files)
+}
 const chatFontStyle = computed(() => ({ '--chat-font-size': `${isMobile.value ? settings.value.chat_mobile_font_size : settings.value.chat_font_size}px` }))
 
 const fallbackNick = `anon-${Math.random().toString(36).slice(2, 7)}`
@@ -193,7 +220,11 @@ watch([userId, user], ([id, u], prev) => {
               <ChatChannelList />
             </Flex>
           </Flex>
-          <Flex column :gap="0" class="chat-app__main">
+          <Flex column :gap="0" class="chat-app__main" @dragover="onMainDragOver" @dragleave="onMainDragLeave" @drop="onMainDrop">
+            <div v-if="fileDragging" class="chat-app__dropzone">
+              <Icon name="ph:upload-simple" size="24" />
+              <span>Drop files to attach</span>
+            </div>
             <ChatChannelHeader />
             <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
             <ChatMessageLog v-else :compact="props.compact" />
@@ -204,7 +235,11 @@ watch([userId, user], ([id, u], prev) => {
         </Resizable>
 
         <!-- Connected: full page, sidebar hidden -->
-        <Flex v-else-if="!isCompactLayout" key="connected-nosidebar" column :gap="0" class="chat-app__main">
+        <Flex v-else-if="!isCompactLayout" key="connected-nosidebar" column :gap="0" class="chat-app__main" @dragover="onMainDragOver" @dragleave="onMainDragLeave" @drop="onMainDrop">
+          <div v-if="fileDragging" class="chat-app__dropzone">
+            <Icon name="ph:upload-simple" size="24" />
+            <span>Drop files to attach</span>
+          </div>
           <ChatChannelHeader />
           <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
           <ChatMessageLog v-else :compact="props.compact" />
@@ -216,7 +251,11 @@ watch([userId, user], ([id, u], prev) => {
         <!-- Connected: mobile dedicated page. Channels/users/settings live in
              the nav sheet, so the page shows a compact header instead of the
              in-page channel strip to reclaim vertical space. -->
-        <Flex v-else-if="isMobile && !props.compact" key="connected-mobile-page" column :gap="0" class="chat-app__main">
+        <Flex v-else-if="isMobile && !props.compact" key="connected-mobile-page" column :gap="0" class="chat-app__main" @dragover="onMainDragOver" @dragleave="onMainDragLeave" @drop="onMainDrop">
+          <div v-if="fileDragging" class="chat-app__dropzone">
+            <Icon name="ph:upload-simple" size="24" />
+            <span>Drop files to attach</span>
+          </div>
           <ChatChannelHeader compact />
           <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
           <ChatMessageLog v-else :compact="props.compact" />
@@ -226,7 +265,11 @@ watch([userId, user], ([id, u], prev) => {
         </Flex>
 
         <!-- Connected: stacked layout for the compact navbar sheet -->
-        <Flex v-else key="connected-compact" column :gap="0" class="chat-app__main">
+        <Flex v-else key="connected-compact" column :gap="0" class="chat-app__main" @dragover="onMainDragOver" @dragleave="onMainDragLeave" @drop="onMainDrop">
+          <div v-if="fileDragging" class="chat-app__dropzone">
+            <Icon name="ph:upload-simple" size="24" />
+            <span>Drop files to attach</span>
+          </div>
           <ChatChannelList horizontal />
           <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
           <ChatMessageLog v-else :compact="props.compact" />
@@ -319,9 +362,27 @@ watch([userId, user], ([id, u], prev) => {
   }
 
   &__main {
+    position: relative;
     flex: 1;
     min-height: 0;
     height: 100%;
+  }
+
+  &__dropzone {
+    position: absolute;
+    inset: 4px;
+    z-index: var(--z-popout);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    border-radius: var(--border-radius-m);
+    border: 2px dashed var(--color-accent);
+    background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+    color: var(--color-text-light);
+    font-size: var(--font-size-s);
+    pointer-events: none;
   }
 
   .chat-state-enter-active,

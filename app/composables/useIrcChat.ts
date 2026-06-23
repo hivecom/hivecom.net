@@ -66,6 +66,13 @@ const STORAGE_IDENTITY_ALWAYS_ON = 'hivecom.chat.identity-always-on'
 // instant display before the IRC connection delivers METADATA responses.
 const STORAGE_CHANNEL_META = 'hivecom.chat.channel-meta'
 const APPEARANCE_KEYS: ReadonlySet<string> = new Set(['display-name', 'avatar', 'color', 'homepage', 'subchannels'])
+// Cached channel modes/flags (e.g. 'i', 'm', 'k', 'l') for instant display
+// before the IRC connection delivers a MODE query response after rejoin.
+const STORAGE_CHANNEL_MODES = 'hivecom.chat.channel-modes'
+// Mode params we never persist. The channel key (k) is effectively a join
+// password, so we keep the 'k' flag (UI can show "password protected") but never
+// write the secret to localStorage.
+const UNCACHED_MODE_PARAMS: ReadonlySet<string> = new Set(['k'])
 // How far back to look for missed DMs when there is no stored cursor.
 const DEFAULT_HISTORY_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000
 // Clock-skew fuzz applied to history bound timestamps.
@@ -355,6 +362,10 @@ const _backgroundMetaTargets = new Set<string>()
 // Channels for which a background METADATA LIST response has been received
 // (either data or FAIL). Lets consumers distinguish "pending" from "no data".
 const channelMetaResolved = ref<Set<string>>(new Set())
+// Channel modes/flags cache keyed by lowercase channel name. Mirrors the joined
+// buffers' modes/modeParams so flags display instantly on page reload, before a
+// MODE query response arrives. The 'k' key param is excluded on persist.
+const channelModesCache = ref<Map<string, { modes: Set<string>, params: Map<string, string> }>>(new Map())
 const channelListLoading = ref(false)
 const channelBrowserOpen = ref(false)
 // When non-null, a password-protected channel denied our JOIN and we need a key.
@@ -486,12 +497,16 @@ let _readWatcherRegistered = false
 // --- Local buffer cache (IndexedDB) ---
 // Messages seeded into the live buffer on startup from the per-message IDB store.
 const CACHE_SEED_COUNT = 150
-// Page size for cache-first scroll-back loads.
-const CACHE_PAGE_SIZE = 25
+// Page size for cache-first scroll-back loads. Matches the server HISTORY_LIMIT
+// so cache and server pages are the same depth and scroll-back advances in
+// even, larger steps (fewer round trips, more runway per load).
+const CACHE_PAGE_SIZE = 50
 // Maximum messages kept in the live reactive buffer. Older messages are trimmed
 // from the tail (newest end) when older pages are prepended via scroll-back, so
-// the DOM node count stays bounded while IDB holds the full history.
-const MAX_LIVE_MESSAGES = 200
+// the DOM node count stays bounded while IDB holds the full history. Sized to
+// hold a few screenfuls above and below the fold so scroll-back has buffer to
+// coast on while the next (possibly server-fetched) page loads.
+const MAX_LIVE_MESSAGES = 300
 // Per-buffer IDB message cap. Updated reactively from user settings via setCacheCap().
 let _cacheCap = 10000
 
@@ -722,6 +737,41 @@ function persistChannelMetaToStorage() {
   localStorage.setItem(STORAGE_CHANNEL_META, JSON.stringify(out))
 }
 
+function loadChannelModesFromStorage(): Map<string, { modes: Set<string>, params: Map<string, string> }> {
+  if (!import.meta.client)
+    return new Map()
+  try {
+    const raw = localStorage.getItem(STORAGE_CHANNEL_MODES)
+    if (!raw)
+      return new Map()
+    const parsed = JSON.parse(raw) as Record<string, { modes?: string[], params?: Record<string, string> }>
+    const result = new Map<string, { modes: Set<string>, params: Map<string, string> }>()
+    for (const [ch, entry] of Object.entries(parsed))
+      result.set(ch, { modes: new Set(entry.modes ?? []), params: new Map(Object.entries(entry.params ?? {})) })
+    return result
+  }
+  catch {
+    return new Map()
+  }
+}
+
+function persistChannelModesToStorage() {
+  if (!import.meta.client)
+    return
+  const out: Record<string, { modes: string[], params: Record<string, string> }> = {}
+  for (const [ch, entry] of channelModesCache.value) {
+    if (!entry.modes.size)
+      continue
+    const params: Record<string, string> = {}
+    for (const [mode, val] of entry.params) {
+      if (!UNCACHED_MODE_PARAMS.has(mode))
+        params[mode] = val
+    }
+    out[ch] = { modes: [...entry.modes], params }
+  }
+  localStorage.setItem(STORAGE_CHANNEL_MODES, JSON.stringify(out))
+}
+
 function resetBuffers() {
   for (const timer of typingTimers.values())
     clearTimeout(timer)
@@ -765,6 +815,7 @@ function resetBuffers() {
   channelMetaCache.value = loadChannelMetaFromStorage()
   _backgroundMetaTargets.clear()
   channelMetaResolved.value = new Set(channelMetaCache.value.keys())
+  channelModesCache.value = loadChannelModesFromStorage()
 }
 
 function findBuffer(name: string) {
@@ -783,6 +834,7 @@ function getBuffer(name: string, kind: BufferKind): ChatBuffer {
     const cached = channelMetaCache.value.get(name.toLowerCase())
     if (cached?.size)
       buf.metadata = new Map(cached)
+    seedBufferModes(buf)
   }
   buffers.value = [...buffers.value, buf]
   return buf
@@ -1196,8 +1248,10 @@ function applyModeChanges(buf: ChatBuffer, args: string[]) {
   }
   if (changed)
     buf.users = [...buf.users].sort(sortUsers)
-  if (modesChanged)
+  if (modesChanged) {
     buf.modes = new Set(buf.modes)
+    cacheChannelModes(buf)
+  }
 }
 
 function removeUserEverywhere(name: string) {
@@ -1256,6 +1310,7 @@ function loadPersisted() {
   inputChannel.value = localStorage.getItem(STORAGE_CHANNEL) ?? ''
   channelMetaCache.value = loadChannelMetaFromStorage()
   channelMetaResolved.value = new Set(channelMetaCache.value.keys())
+  channelModesCache.value = loadChannelModesFromStorage()
   const cachedEmail = localStorage.getItem(STORAGE_IDENTITY_EMAIL)
   accountEmail.value = cachedEmail
   const cachedAlwaysOn = localStorage.getItem(STORAGE_IDENTITY_ALWAYS_ON)
@@ -1537,6 +1592,7 @@ async function hydrateBufferCache() {
         const cached = channelMetaCache.value.get(meta.name.toLowerCase())
         if (cached?.size)
           buf.metadata = new Map(cached)
+        seedBufferModes(buf)
       }
       // Re-check after the awaits above: a live JOIN can create this buffer
       // while loadRecentMessages was in flight. Without this the seeded copy is
@@ -3628,30 +3684,33 @@ function disconnect() {
 
 // --- User actions ------------------------------------------------------------
 function setActive(name: string) {
-  // Clear the read line on the buffer we're leaving so it's recomputed fresh on
-  // return.
+  // Leaving a channel is one of the moments the "new messages" line resolves
+  // (along with sending a message or clicking the line): catch the buffer up so
+  // the line and badge clear and the marker sits at the last message you saw.
   const prev = activeName.value
   if (prev && prev.toLowerCase() !== name.toLowerCase()) {
     const prevBuf = findBuffer(prev)
-    if (prevBuf)
-      prevBuf.readLineTs = undefined
+    if (prevBuf && prevBuf.kind !== 'server')
+      markBufferRead(prevBuf.name)
     previousActiveName.value = prev
   }
 
   activeName.value = name
   const buf = findBuffer(name)
 
-  // Eagerly mark the incoming buffer as read. The read watcher handles ongoing
-  // monitoring, but it guards behind isChatVisible - which may not be true yet
-  // (e.g. setActive fires during the initial connect before onMounted sets it,
-  // or during the brief transition from the compact sheet to the full page).
-  // Clearing here makes channel-switching reliable regardless of timing.
+  // Entering a channel clears its unread badge but deliberately KEEPS the read
+  // line, so you can see where you left off. Advancing the marker is what used to
+  // wipe the line the instant you opened a channel, so the ORDER here matters:
+  // zero the counts first, then save the position. saveReadPosition only walks
+  // the buffer to drop the line (reconcileUnread) while a count is still set, so
+  // with the counts already cleared the marker advances without touching the
+  // line. The line is only resolved when you act - send, leave, or click it.
   if (buf && buf.kind !== 'server') {
+    buf.unread = 0
+    buf.mentions = 0
     const last = buf.messages[buf.messages.length - 1]
     if (last)
       saveReadPosition(buf.name, last.ts.getTime())
-    buf.unread = 0
-    buf.mentions = 0
   }
 
   // Persist the last active channel so the next connect auto-joins and lands here.
@@ -4091,6 +4150,11 @@ function sendMessage() {
     addToBuffer(target, buf.kind, { type: 'chat', from: nick.value, channel: target, text: wire, replyTo: replyMsgid })
   }
 
+  // Sending into a channel resolves its "new messages" line - you've engaged with
+  // it, so catch it up (one of the three line-clearing actions, with leaving and
+  // clicking the line).
+  markBufferRead(target)
+
   clearReply()
   inputMessage.value = ''
 }
@@ -4270,6 +4334,27 @@ function cacheChannelMeta(target: string, key: string, value: string | null) {
     persistChannelMetaToStorage()
 }
 
+/** Mirror a channel buffer's modes/params into the persistent cache. */
+function cacheChannelModes(buf: ChatBuffer) {
+  if (buf.kind !== 'channel')
+    return
+  const lc = buf.name.toLowerCase()
+  const next = new Map(channelModesCache.value)
+  next.set(lc, { modes: new Set(buf.modes), params: new Map(buf.modeParams ?? []) })
+  channelModesCache.value = next
+  persistChannelModesToStorage()
+}
+
+/** Seed a fresh channel buffer's modes/params from the persistent cache. */
+function seedBufferModes(buf: ChatBuffer) {
+  const cached = channelModesCache.value.get(buf.name.toLowerCase())
+  if (!cached)
+    return
+  buf.modes = new Set(cached.modes)
+  if (cached.params.size)
+    buf.modeParams = new Map(cached.params)
+}
+
 /**
  * Fetch a channel's metadata without joining it, for slash-nesting verification
  * and display of unjoined parents. Deduped; skips channels we already have a
@@ -4392,8 +4477,12 @@ async function fetchNewerFromCache(target: string) {
         // Slide window: trim from the front so DOM count stays bounded.
         if (buf.messages.length > MAX_LIVE_MESSAGES) {
           buf.messages.splice(0, buf.messages.length - MAX_LIVE_MESSAGES)
-          // Oldest messages were just removed - cache can serve them again on scroll-up.
+          // Oldest messages were just removed - cache can serve them again on
+          // scroll-up. The live front is no longer the absolute oldest line, so
+          // clear historyExhausted too: otherwise "beginning of history" sticks
+          // and fetchOlderHistory's exhausted-guard blocks scrolling back up.
           buf.cacheExhausted = false
+          buf.historyExhausted = false
         }
       }
     }
@@ -4421,6 +4510,12 @@ function markBufferRead(name: string) {
     saveReadPosition(buf.name, last.ts.getTime())
   buf.unread = 0
   buf.mentions = 0
+  // Resolve the "new messages" line explicitly. saveReadPosition only drops it
+  // (via reconcileUnread) when a count was still set, and by here the buffer may
+  // already be at zero - e.g. clicking the line while actively viewing. This is
+  // the single "fully caught up" action, used for clicking the line, the menu's
+  // "mark as read", sending a message, and leaving a channel.
+  buf.readLineTs = undefined
 }
 
 export function setCacheCap(cap: number) {
@@ -4453,7 +4548,8 @@ export function useIrcChat() {
   // after the reconnect race (where activeName flips as channels auto-join) by simply
   // reconciling whatever channel the user lands on once its history has settled. It
   // intentionally leaves readLineTs alone so the "new messages" line stays visible
-  // while reading and is only cleared on leave (setActive).
+  // while reading. The line is only resolved when you act on the channel: send a
+  // message, leave it, or click the line (all via markBufferRead).
   if (import.meta.client && !_readWatcherRegistered) {
     _readWatcherRegistered = true
     watch(
@@ -4468,29 +4564,33 @@ export function useIrcChat() {
         const b = activeBuffer.value
         if (!b || b.kind === 'server')
           return
+        // Zero the counts before advancing the marker so saveReadPosition never
+        // walks the buffer to drop the read line (see setActive) - reading live
+        // must keep the "new messages" line in place.
+        b.unread = 0
+        b.mentions = 0
         const last = b.messages[b.messages.length - 1]
         if (last)
           saveReadPosition(b.name, last.ts.getTime())
-        b.unread = 0
-        b.mentions = 0
       },
       { flush: 'post' },
     )
 
-    // When the user returns to the tab, immediately clear unread state for
-    // whatever buffer is active so the badge and read watcher stay in sync.
+    // When the user returns to the tab, clear the active buffer's badge so it
+    // stays in sync, but leave the read line alone - returning to the tab is not
+    // one of the actions that resolves it (send, leave, click). Zero the counts
+    // before advancing the marker so the line survives (see setActive).
     document.addEventListener('visibilitychange', () => {
       if (document.hidden || !isChatVisible.value)
         return
       const b = activeBuffer.value
       if (!b || b.kind === 'server')
         return
+      b.unread = 0
+      b.mentions = 0
       const last = b.messages[b.messages.length - 1]
       if (last)
         saveReadPosition(b.name, last.ts.getTime())
-      b.unread = 0
-      b.mentions = 0
-      b.readLineTs = undefined
     })
   }
 
@@ -4500,24 +4600,24 @@ export function useIrcChat() {
 
   function setChatVisible(visible: boolean) {
     isChatVisible.value = visible
+    const buf = activeBuffer.value
+    if (!buf || buf.kind === 'server')
+      return
     if (!visible) {
-      // Clear the read line on the active buffer so the next open correctly
-      // shows a "new messages" line for anything that arrived while closed.
-      const buf = activeBuffer.value
-      if (buf)
-        buf.readLineTs = undefined
+      // Closing the surface counts as leaving the channel: catch it up fully so a
+      // later open shows a fresh "new messages" line only for what arrived while
+      // it was closed, not what you already read.
+      markBufferRead(buf.name)
     }
     else {
-      // When the UI becomes visible, immediately mark the active buffer as read
-      // so the channel tab badge clears.
-      const b = activeBuffer.value
-      if (b && b.kind !== 'server') {
-        const last = b.messages[b.messages.length - 1]
-        if (last)
-          saveReadPosition(b.name, last.ts.getTime())
-        b.unread = 0
-        b.mentions = 0
-      }
+      // Becoming visible clears the active buffer's badge but keeps its read line
+      // - opening the chat is not one of the actions that resolves it. Zero the
+      // counts before advancing the marker so the line survives (see setActive).
+      buf.unread = 0
+      buf.mentions = 0
+      const last = buf.messages[buf.messages.length - 1]
+      if (last)
+        saveReadPosition(buf.name, last.ts.getTime())
     }
   }
 

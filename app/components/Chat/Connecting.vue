@@ -160,7 +160,7 @@ function drawArc(ctx: CanvasRenderingContext2D, arc: Arc) {
   const headSeg = arc.t < 1 ? Math.floor(arc.t * ARC_SEGMENTS) : ARC_SEGMENTS
 
   ctx.lineWidth = 1.4
-  ctx.lineCap = 'round'
+  ctx.lineCap = 'butt'
   for (let s = 0; s < headSeg; s++) {
     const p0 = pts[s]!
     const p1 = pts[s + 1]!

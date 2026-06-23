@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { Button, ButtonGroup, Card, Divider, Flex, Select, Slider, Switch } from '@dolanske/vui'
-import { onMounted, ref } from 'vue'
-import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
-import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { onMounted } from 'vue'
+import ReactionsEditor from '@/components/Reactions/ReactionsEditor.vue'
 import SoundChoicePicker from '@/components/Shared/SoundChoicePicker.vue'
 import { DEFAULT_QUICK_REACTIONS } from '@/composables/useDataUserSettings'
 import { usePushNotifications } from '@/composables/usePushNotifications'
@@ -78,32 +77,6 @@ async function togglePushNotifications(value: boolean) {
 // Quick reactions - the curated emoji strip shown above the full reaction
 // picker and in chat's floating toolbar.
 const MAX_QUICK_REACTIONS = 10
-const atQuickReactionMax = computed(() => settings.value.quick_reactions.length >= MAX_QUICK_REACTIONS)
-
-function addQuickReaction(emote: string) {
-  const current = settings.value.quick_reactions
-  if (current.includes(emote) || current.length >= MAX_QUICK_REACTIONS)
-    return
-  settings.value.quick_reactions = [...current, emote]
-}
-
-function removeQuickReaction(emote: string) {
-  settings.value.quick_reactions = settings.value.quick_reactions.filter(e => e !== emote)
-}
-
-const resetConfirmOpen = ref(false)
-
-function applyDefaultQuickReactions() {
-  settings.value.quick_reactions = [...DEFAULT_QUICK_REACTIONS]
-}
-
-function resetQuickReactions() {
-  // Nothing to overwrite, so just restore the defaults. Otherwise confirm first.
-  if (settings.value.quick_reactions.length === 0)
-    applyDefaultQuickReactions()
-  else
-    resetConfirmOpen.value = true
-}
 </script>
 
 <template>
@@ -141,43 +114,13 @@ function resetQuickReactions() {
     <Flex column gap="s">
       <Flex column gap="xxs">
         <span class="text-m">Quick reactions</span>
-        <span class="text-xs text-color-lighter">Emoji shown above the reaction picker and in chat's quick toolbar. Click one to remove it.</span>
+        <span class="text-xs text-color-lighter">Emoji shown above the reaction picker and in chat's quick toolbar. Drag to reorder, click one to remove it.</span>
       </Flex>
-      <Flex gap="xs" wrap y-center>
-        <button
-          v-for="emote in settings.quick_reactions"
-          :key="emote"
-          type="button"
-          class="quick-reaction"
-          aria-label="Remove quick reaction"
-          @click="removeQuickReaction(emote)"
-        >
-          {{ emote }}
-        </button>
-        <ReactionsSelect :quick="false" @reaction="addQuickReaction">
-          <template #default="{ toggle }">
-            <button
-              type="button"
-              class="quick-reaction quick-reaction--add"
-              :disabled="atQuickReactionMax"
-              :aria-label="atQuickReactionMax ? `Maximum ${MAX_QUICK_REACTIONS} quick reactions reached` : 'Add quick reaction'"
-              :title="atQuickReactionMax ? `Maximum ${MAX_QUICK_REACTIONS} reached - remove one to add another` : 'Add quick reaction'"
-              @click="toggle"
-            >
-              <Icon name="ph:plus" :size="18" />
-            </button>
-          </template>
-        </ReactionsSelect>
-        <span class="text-xs quick-reaction__count" :class="atQuickReactionMax ? 'text-color-light' : 'text-color-lighter'">
-          {{ settings.quick_reactions.length }}/{{ MAX_QUICK_REACTIONS }}
-        </span>
-        <Button size="s" plain @click="resetQuickReactions">
-          <template #icon>
-            <Icon name="ph:arrow-counter-clockwise" />
-          </template>
-          Reset
-        </Button>
-      </Flex>
+      <ReactionsEditor
+        v-model="settings.quick_reactions"
+        :max="MAX_QUICK_REACTIONS"
+        :defaults="DEFAULT_QUICK_REACTIONS"
+      />
     </Flex>
 
     <Divider class="my-l" />
@@ -323,69 +266,10 @@ function resetQuickReactions() {
 
     <Switch v-model="settings.editor_floating" class="reversed mb-m" label="Floating text editor" hint="If enabled, the text editor will stay at the bottom of the screen while scrolling through large forum posts." />
     <Switch v-model="settings.strip_image_metadata" class="reversed" label="Strip image metadata on upload" hint="Removes EXIF and other embedded metadata from images before uploading. Disable if you need to preserve location, camera, or other metadata." />
-
-    <ConfirmModal
-      v-model:open="resetConfirmOpen"
-      :confirm="applyDefaultQuickReactions"
-      title="Reset quick reactions"
-      description="This replaces your current quick reactions with the defaults. You can't undo it."
-      confirm-text="Reset"
-      cancel-text="Cancel"
-    />
   </Card>
 </template>
 
 <style lang="scss" scoped>
-.quick-reaction {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  font-size: var(--font-size-l);
-  border-radius: var(--border-radius-m);
-  background: var(--color-bg-raised);
-  position: relative;
-
-  // Removable emoji chips: hover shows a red strike to read as "click to remove".
-  &:not(.quick-reaction--add):hover {
-    background: var(--color-button-gray-hover);
-
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      box-shadow: inset 0 0 0 1px var(--color-text-red);
-    }
-  }
-
-  // Add trigger: a dashed, muted plus that brightens on hover and dims when
-  // the cap is reached.
-  &--add {
-    background: transparent;
-    border: 1px dashed var(--color-border-strong);
-    color: var(--color-text-lighter);
-
-    &:hover:not(:disabled) {
-      background: var(--color-button-gray-hover);
-      color: var(--color-text);
-    }
-
-    &:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-  }
-}
-
-.quick-reaction__count {
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 :deep(.vui-slider.is-disabled) {
   // Mute the fill so a disabled volume slider doesn't read as active accent.
   --vui-slider-indicator: var(--color-border-strong);

@@ -2,8 +2,9 @@
 import type { StoredBufferMeta, StoredMessage } from '@/lib/chat/bufferCache'
 import { Badge, Button, ButtonGroup, Divider, Flex, Input, Modal, Slider, Spinner, Switch, Tab, Tabs } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import ReactionsEditor from '@/components/Reactions/ReactionsEditor.vue'
 import SoundChoicePicker from '@/components/Shared/SoundChoicePicker.vue'
-import { useDataUserSettings } from '@/composables/useDataUserSettings'
+import { DEFAULT_QUICK_REACTIONS, useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useErgoPush } from '@/composables/useErgoPush'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { deleteBufferMessages, deleteBufferMeta, exportBufferMessages, getBufferStats, makeBufferKey, upsertBufferMeta, upsertMessages } from '@/lib/chat/bufferCache'
@@ -253,12 +254,9 @@ function removeKeyword(index: number) {
   settings.value.chat_mention_keywords = settings.value.chat_mention_keywords.filter((_, i) => i !== index)
 }
 
+// Typing indicators render on their own so the quick reactions editor can sit
+// directly beneath them. The rest are plain on/off rows.
 const options = [
-  {
-    key: 'chat_typing_indicators',
-    label: 'Typing indicators',
-    description: 'Show when others are typing, and let them see when you are. Disable for more privacy.',
-  },
   {
     key: 'chat_colored_nicks',
     label: 'Colored nicknames',
@@ -356,6 +354,22 @@ async function toggleBrowserNotifications(value: boolean) {
             <span class="chat-settings__value text-s text-color-light">{{ settings.chat_mobile_font_size }}px</span>
           </Flex>
           <Slider v-model="settings.chat_mobile_font_size" :min="10" :max="24" :step="1" />
+        </Flex>
+
+        <Flex y-center x-between gap="m" expand>
+          <Flex column gap="xxs" class="chat-settings__text">
+            <span class="text-s">Typing indicators</span>
+            <span class="text-xs text-color-lighter">Show when others are typing, and let them see when you are. Disable for more privacy.</span>
+          </Flex>
+          <Switch v-model="settings.chat_typing_indicators" />
+        </Flex>
+
+        <Flex column gap="xs" expand>
+          <Flex column gap="xxs" class="chat-settings__text">
+            <span class="text-s">Quick reactions</span>
+            <span class="text-xs text-color-lighter">Emoji shown in the chat reaction toolbar. Drag to reorder, click one to remove it.</span>
+          </Flex>
+          <ReactionsEditor v-model="settings.quick_reactions" :max="10" :defaults="DEFAULT_QUICK_REACTIONS" />
         </Flex>
 
         <Flex

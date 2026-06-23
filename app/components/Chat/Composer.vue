@@ -62,7 +62,6 @@ const placeholder = computed(() => {
 // URLs are folded into the outgoing message (where the log auto-embeds images).
 const { attachments, uploading: attachmentsUploading, add: addAttachments, remove: removeAttachment, clear: clearAttachments, uploadAll: uploadAttachments } = useChatAttachments()
 const fileInput = ref<HTMLInputElement>()
-const dragging = ref(false)
 
 function openFilePicker() {
   fileInput.value?.click()
@@ -74,29 +73,6 @@ function onFilesPicked(event: Event) {
     addAttachments(input.files)
   // Reset so picking the same file again still fires change.
   input.value = ''
-}
-
-function onDragOver(event: DragEvent) {
-  if (!canChat.value || !event.dataTransfer?.types.includes('Files'))
-    return
-  event.preventDefault()
-  dragging.value = true
-}
-
-function onDragLeave(event: DragEvent) {
-  // Ignore leaves into child elements; only clear when leaving the field itself.
-  if (event.currentTarget instanceof Node && event.relatedTarget instanceof Node && (event.currentTarget as Node).contains(event.relatedTarget))
-    return
-  dragging.value = false
-}
-
-function onDrop(event: DragEvent) {
-  dragging.value = false
-  const files = event.dataTransfer?.files
-  if (!canChat.value || !files?.length)
-    return
-  event.preventDefault()
-  addAttachments(files)
 }
 
 const disabled = computed(() =>
@@ -878,18 +854,19 @@ watch(activeName, clearReply)
 </script>
 
 <template>
-  <Flex class="chat-composer" column expand :gap="0">
+  <Flex
+    class="chat-composer"
+    column
+    expand
+    :gap="0"
+  >
     <ChatTypingIndicator />
     <Flex expand :gap="0">
       <Flex
         class="chat-composer__field"
-        :class="{ 'chat-composer__field--dragover': dragging }"
         expand
         column
         :gap="0"
-        @dragover="onDragOver"
-        @dragleave="onDragLeave"
-        @drop="onDrop"
       >
         <input
           ref="fileInput"
@@ -898,10 +875,6 @@ watch(activeName, clearReply)
           hidden
           @change="onFilesPicked"
         >
-        <div v-if="dragging" class="chat-composer__dropzone">
-          <Icon name="ph:upload-simple" size="20" />
-          <span>Drop files to attach</span>
-        </div>
         <ul v-if="open" class="chat-composer__suggestions">
           <li v-for="(item, index) in suggestions" :key="item.value">
             <button
@@ -1053,6 +1026,8 @@ watch(activeName, clearReply)
 
 <style lang="scss" scoped>
 .chat-composer {
+  position: relative;
+
   // On phones the composer sits flush to the bottom of the viewport, so add the
   // home-indicator inset (plus a little breathing room) below the input so the
   // bezel doesn't clip it.
@@ -1096,16 +1071,16 @@ watch(activeName, clearReply)
     }
   }
 
+  &--dragover {
+    outline: 2px dashed var(--color-accent);
+    outline-offset: -2px;
+    border-radius: var(--border-radius-s);
+  }
+
   &__field {
     position: relative;
     flex: 1;
     min-width: 0;
-
-    &--dragover {
-      outline: 2px dashed var(--color-accent);
-      outline-offset: -2px;
-      border-radius: var(--border-radius-s);
-    }
   }
 
   &__dropzone {
