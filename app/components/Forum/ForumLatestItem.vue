@@ -77,8 +77,8 @@ function handleClick(e: MouseEvent) {
   border-radius: var(--border-radius-m);
   border: 1px solid var(--color-border);
   width: 320px;
-  min-width: 320px;
-  max-width: 320px;
+  min-width: 320px !important;
+  max-width: 320px !important;
   overflow: hidden;
   cursor: pointer;
   text-decoration: none;
