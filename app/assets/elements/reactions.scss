@@ -93,4 +93,16 @@
       padding: 0 !important;
     }
   }
+
+  // Quick-reaction strip shown above the full picker.
+  &__quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: var(--space-xs) var(--space-xs) 0;
+
+    .reactions__button {
+      font-size: var(--font-size-xl);
+    }
+  }
 }

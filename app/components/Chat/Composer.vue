@@ -2,6 +2,7 @@
 import { Button, ButtonGroup, Flex, Modal, Popout, Spinner } from '@dolanske/vui'
 import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import ChatComposerAttachments from '@/components/Chat/ComposerAttachments.vue'
+import ChatComposerContextMenu from '@/components/Chat/ComposerContextMenu.vue'
 import ChatComposerInput from '@/components/Chat/ComposerInput.vue'
 import IrcWhoisCard from '@/components/Chat/IrcWhoisCard.vue'
 import RelaySourceIcon from '@/components/Chat/RelaySourceIcon.vue'
@@ -687,10 +688,6 @@ watch(inputMessage, (newVal, oldVal) => {
   // Keep the active buffer's persisted draft in sync with the composer.
   saveDraft(activeName.value, newVal)
 
-  // Clear read markers when the user starts typing - they're actively engaged.
-  if (newVal && !oldVal?.trim())
-    markBufferRead(activeName.value)
-
   if (!newVal) {
     if (oldVal && !_skipTypingDone && settings.value.chat_typing_indicators)
       sendTyping('done')
@@ -776,6 +773,8 @@ async function sendWithHistory() {
   if (msg)
     pushHistory(msg)
   sendMessage()
+  // Sending clears the read markers - the user is caught up on this buffer.
+  markBufferRead(activeName.value)
   historyIndex.value = -1
 }
 
@@ -1012,21 +1011,23 @@ watch(activeName, clearReply)
           >
             <Icon name="ph:paperclip" size="16" />
           </Button>
-          <ChatComposerInput
-            ref="inputComp"
-            v-model="inputMessage"
-            :disabled="!canChat"
-            :placeholder="placeholder"
-            :strip-markers="isModernMode"
-            :enter-newline="isMobile"
-            class="chat-composer__input"
-            @input="onInput"
-            @keydown="onKeydown"
-            @keyup="syncSelection"
-            @mouseup="syncSelection"
-            @focusout="onFocusOut"
-            @paste-files="addAttachments"
-          />
+          <ChatComposerContextMenu v-model="inputMessage" :input="inputComp">
+            <ChatComposerInput
+              ref="inputComp"
+              v-model="inputMessage"
+              :disabled="!canChat"
+              :placeholder="placeholder"
+              :strip-markers="isModernMode"
+              :enter-newline="isMobile"
+              class="chat-composer__input"
+              @input="onInput"
+              @keydown="onKeydown"
+              @keyup="syncSelection"
+              @mouseup="syncSelection"
+              @focusout="onFocusOut"
+              @paste-files="addAttachments"
+            />
+          </ChatComposerContextMenu>
           <Button plain square :disabled="disabled" class="chat-composer__send" @click="sendWithHistory">
             <Icon name="ph:paper-plane-tilt" size="16" />
           </Button>

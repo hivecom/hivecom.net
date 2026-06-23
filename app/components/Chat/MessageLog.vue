@@ -29,7 +29,7 @@ import { fullDate } from '@/lib/utils/date'
 
 const props = defineProps<{ compact?: boolean }>()
 
-const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, seekToPresent, fetchNewerFromCache, toggleReaction, canRedact, redactMessage, chatHistorySupported, isChatVisible, userMetaStore, relaySeparator } = useIrcChat()
+const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, seekToPresent, fetchNewerFromCache, toggleReaction, canRedact, redactMessage, chatHistorySupported, isChatVisible, userMetaStore, relaySeparator, markBufferRead } = useIrcChat()
 
 function ircMeta(nickLower: string | null | undefined) {
   if (!nickLower)
@@ -348,6 +348,13 @@ const readLineFirstGroupId = computed<number | null>(() => {
   }
   return null
 })
+
+// Clicking the divider catches the buffer up - clears the line and the count.
+function markRead() {
+  const name = activeBuffer.value?.name
+  if (name)
+    markBufferRead(name)
+}
 
 function cleanNick(name: string) {
   return name.replace(/^\*\s*/, '')
@@ -825,8 +832,6 @@ function scrollToReplySource(msg: ChatMessage) {
   setTimeout(() => el.classList.remove('chat-log__msg--jump-highlight'), 1500)
 }
 
-const QUICK_REACTIONS = ['👍', '❤️', '😂', '🔥']
-
 function pickReaction(emote: string) {
   if (activeMessage.value)
     toggleReaction(activeMessage.value, emote)
@@ -1146,7 +1151,7 @@ onBeforeUnmount(() => {
         </div>
         <template v-if="!isModernMode">
           <template v-for="msg in messages" :key="msg.id">
-            <div v-if="msg.id === readLineFirstMsgId" class="chat-log__new-divider" aria-label="New messages">
+            <div v-if="msg.id === readLineFirstMsgId" class="chat-log__new-divider" role="button" tabindex="0" aria-label="Mark as read" title="Mark as read" @click="markRead" @keydown.enter.prevent="markRead" @keydown.space.prevent="markRead">
               <span>new messages</span>
             </div>
             <div
@@ -1310,10 +1315,22 @@ onBeforeUnmount(() => {
                 </template>
               </div>
               <div v-if="msg.msgid && msg.type === 'chat' && !msg.redacted" class="chat-log__line-react">
+                <template v-if="settings.chat_irc_reactions">
+                  <button
+                    v-for="emote in settings.quick_reactions"
+                    :key="emote"
+                    class="chat-log__line-react-emote"
+                    :class="{ 'chat-log__line-react-emote--active': msg.reactions?.[emote]?.includes(nick) }"
+                    :title="`React ${emote}`"
+                    @click="toggleReaction(msg, emote)"
+                  >
+                    {{ emote }}
+                  </button>
+                  <ReactionsSelect :quick="false" @reaction="(emote) => toggleReaction(msg, emote)" />
+                </template>
                 <button v-if="msg.from" class="chat-log__line-reply-btn" @click="reply(msg)">
                   <Icon name="ph:arrow-bend-up-left" size="16" class="text-color-lighter" />
                 </button>
-                <ReactionsSelect v-if="settings.chat_irc_reactions" @reaction="(emote) => toggleReaction(msg, emote)" />
                 <button v-if="canRedact(msg)" class="chat-log__line-reply-btn" title="Delete message" @click="promptRedact(msg)">
                   <Icon name="ph:trash" size="16" class="text-color-lighter" />
                 </button>
@@ -1323,7 +1340,7 @@ onBeforeUnmount(() => {
         </template>
         <template v-else>
           <template v-for="group in groupedMessages" :key="group.id">
-            <div v-if="group.id === readLineFirstGroupId" class="chat-log__new-divider" aria-label="New messages">
+            <div v-if="group.id === readLineFirstGroupId" class="chat-log__new-divider" role="button" tabindex="0" aria-label="Mark as read" title="Mark as read" @click="markRead" @keydown.enter.prevent="markRead" @keydown.space.prevent="markRead">
               <span>new messages</span>
             </div>
             <!-- HistServ chat announcement dividers (one per message in the group) -->
@@ -1532,10 +1549,20 @@ onBeforeUnmount(() => {
                     </template>
                     <ChatMessageReactions v-if="!item.msg.redacted && item.msg.reactions" :message="item.msg" />
                     <div v-if="item.msg.msgid && !item.msg.redacted" class="chat-log__line-react">
+                      <button
+                        v-for="emote in settings.quick_reactions"
+                        :key="emote"
+                        class="chat-log__line-react-emote"
+                        :class="{ 'chat-log__line-react-emote--active': item.msg.reactions?.[emote]?.includes(nick) }"
+                        :title="`React ${emote}`"
+                        @click="toggleReaction(item.msg, emote)"
+                      >
+                        {{ emote }}
+                      </button>
+                      <ReactionsSelect :quick="false" @reaction="(emote) => toggleReaction(item.msg, emote)" />
                       <button class="chat-log__line-reply-btn" @click="reply(item.msg)">
                         <Icon name="ph:arrow-bend-up-left" :size="16" class="text-color-lighter" />
                       </button>
-                      <ReactionsSelect @reaction="(emote) => toggleReaction(item.msg, emote)" />
                       <button v-if="canRedact(item.msg)" class="chat-log__line-reply-btn" title="Delete message" @click="promptRedact(item.msg)">
                         <Icon name="ph:trash" :size="16" class="text-color-lighter" />
                       </button>
@@ -1602,6 +1629,28 @@ onBeforeUnmount(() => {
     <template #menu>
       <div class="vui-dropdown chat-log__menu" @click="closeMenu">
         <template v-if="activeMessage">
+          <template v-if="activeMessage.msgid && activeMessage.type === 'chat' && settings.quick_reactions.length">
+            <div class="chat-log__menu-react">
+              <button
+                v-for="emote in settings.quick_reactions"
+                :key="emote"
+                type="button"
+                class="chat-log__menu-react-btn"
+                :class="{ 'chat-log__menu-react-btn--active': activeMessage.reactions?.[emote]?.includes(nick) }"
+                @click="pickReaction(emote)"
+              >
+                {{ emote }}
+              </button>
+              <ReactionsSelect :quick="false" @reaction="pickReaction">
+                <template #default="{ toggle }">
+                  <button type="button" class="chat-log__menu-react-btn chat-log__menu-react-btn--more" aria-label="More reactions" @click.stop="toggle">
+                    <Icon name="ph:plus" :size="16" />
+                  </button>
+                </template>
+              </ReactionsSelect>
+            </div>
+            <Divider />
+          </template>
           <UserActionMenu
             v-if="activeMessage.from"
             :nick="cleanNick(activeMessage.from)"
@@ -1654,12 +1703,13 @@ onBeforeUnmount(() => {
   <Sheet
     :open="mobileMenuOpen"
     position="bottom"
+    class="chat-log__drawer-sheet"
     :card="{ separators: true,
              padding: false }"
     @close="mobileMenuOpen = false"
   >
     <template v-if="activeMessage" #header>
-      <Flex y-center x-between expand>
+      <Flex column gap="xxs" expand>
         <Flex y-center gap="xxs">
           <span v-if="activeMessage.from && (relayNickParts(activeMessage.from) || activeMessage.relayedBy)" class="chat-log__drawer-relay-icon">
             <RelaySourceIcon
@@ -1676,9 +1726,9 @@ onBeforeUnmount(() => {
         <span class="chat-log__drawer-ts">{{ fmtDateTime(activeMessage.ts) }}</span>
       </Flex>
     </template>
-    <Flex v-if="activeMessage?.msgid && activeMessage.type === 'chat'" x-between y-center style="padding: var(--space-s) var(--space-m)">
+    <div v-if="activeMessage?.msgid && activeMessage.type === 'chat'" class="chat-log__quick-row">
       <Button
-        v-for="emote in QUICK_REACTIONS"
+        v-for="emote in settings.quick_reactions"
         :key="emote"
         size="l"
         variant="gray"
@@ -1687,14 +1737,14 @@ onBeforeUnmount(() => {
       >
         {{ emote }}
       </Button>
-      <ReactionsSelect size="l" @reaction="pickReaction">
+      <ReactionsSelect size="l" :quick="false" class="chat-log__quick-add" @reaction="pickReaction">
         <template #default="{ toggle }">
-          <Button size="l" variant="gray" square style="min-width: 56px" @click="toggle">
+          <Button size="l" variant="gray" square @click="toggle">
             <Icon name="ph:plus" />
           </Button>
         </template>
       </ReactionsSelect>
-    </Flex>
+    </div>
     <Divider />
     <div class="vui-dropdown chat-log__menu">
       <template v-if="activeMessage">
@@ -1789,6 +1839,58 @@ onBeforeUnmount(() => {
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
     font-family: monospace;
+  }
+
+  // Quick-reaction strip in the message menu. Buttons grow to fill the row and
+  // wrap to a new line instead of overflowing or leaving space-between gaps.
+  &__quick-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    padding: var(--space-s) var(--space-m);
+
+    // ReactionsSelect renders an inline-block anchor wrapper; make it grow as a
+    // flex track member and let its trigger button fill it.
+    :deep(.chat-log__quick-add) {
+      display: flex;
+      flex: 1 1 44px;
+    }
+
+    // Emoji buttons (direct children) and the picker trigger all grow equally
+    // and wrap. min-width: 0 lets them shrink below the default button width.
+    :deep(.vui-button) {
+      flex: 1 1 44px;
+      width: auto;
+      min-width: 0;
+    }
+  }
+
+  // Compact quick-reaction strip at the top of the desktop right-click menu.
+  &__menu-react {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: var(--space-xxs);
+  }
+
+  &__menu-react-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--border-radius-m);
+    font-size: var(--font-size-l);
+    color: var(--color-text-lighter);
+
+    &:hover {
+      background-color: var(--color-button-gray-hover);
+      color: var(--color-text);
+    }
+
+    &--active {
+      background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 30%, transparent);
+    }
   }
 
   &__scroll {
@@ -2216,11 +2318,17 @@ onBeforeUnmount(() => {
     opacity: 0;
     display: flex;
     align-items: center;
-    height: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
+    gap: 1px;
+    padding: 1px;
+    height: calc(var(--chat-font-size, var(--font-size-s)) * 1.5 + 2px);
     pointer-events: none;
     transition: opacity var(--transition-fast);
-    background: var(--color-bg-medium);
-    border-radius: var(--border-radius-xs);
+    background: var(--color-bg-raised);
+    border-radius: var(--border-radius-m);
+    // Outset ring + drop shadow makes the toolbar pop without shifting layout.
+    box-shadow:
+      0 0 0 1px var(--color-border),
+      var(--box-shadow);
 
     &:has(.reactions-anchor-active) {
       opacity: 1;
@@ -2255,6 +2363,27 @@ onBeforeUnmount(() => {
 
       &:hover {
         background-color: var(--color-button-gray-hover);
+      }
+    }
+
+    // Quick-reaction emoji shown inline so common reactions are one click away.
+    .chat-log__line-react-emote {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
+      min-width: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
+      padding: 0 2px;
+      border-radius: var(--border-radius-m);
+      font-size: var(--chat-font-size, var(--font-size-s));
+      line-height: 1;
+
+      &:hover {
+        background-color: var(--color-button-gray-hover);
+      }
+
+      &--active {
+        background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 30%, transparent);
       }
     }
   }
@@ -2301,6 +2430,7 @@ onBeforeUnmount(() => {
     gap: var(--space-s);
     padding: var(--space-xs) var(--space-xs);
     color: var(--color-accent);
+    cursor: pointer;
 
     span {
       font-size: var(--chat-font-size, var(--font-size-s));
@@ -2316,6 +2446,11 @@ onBeforeUnmount(() => {
       height: 1px;
       background: var(--color-accent);
       opacity: 0.4;
+    }
+
+    &:hover::before,
+    &:hover::after {
+      opacity: 0.7;
     }
   }
 
@@ -2456,5 +2591,16 @@ onBeforeUnmount(() => {
       user-select: none;
     }
   }
+}
+</style>
+
+<style lang="scss">
+// The Sheet teleports its card to <body> and spreads our class onto the card
+// root, so a scoped :deep can't reach the header. The card's `padding: false`
+// adds vui's `.no-padding` rule (`padding: 0 !important`), so out-specify it and
+// match the !important to restore header padding (incl. the close button). The
+// content stays unpadded since each section manages its own spacing.
+.chat-log__drawer-sheet.vui-card.no-padding > .vui-card-header {
+  padding: var(--space-s) var(--space-m) !important;
 }
 </style>

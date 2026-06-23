@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/vue-3'
-import { ContextMenu, Divider, DropdownItem, pushToast } from '@dolanske/vui'
+import { ContextMenu, Divider, DropdownItem } from '@dolanske/vui'
 import { ref } from 'vue'
+import EmojiPickerMenu from '@/components/Shared/EmojiPickerMenu.vue'
 import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
+import { useTextContextMenu } from '@/composables/useTextContextMenu'
 
 const props = defineProps<{
   editor: Editor
 }>()
 
 const { guardedOpen } = useExternalLinkGuard()
+const { emojiOpen, emojiPos, closeMenu, writeClipboard, readClipboard, recordEmojiAnchor, openEmojiPicker } = useTextContextMenu()
 
 const activeLinkHref = ref<string | null>(null)
 const hasSelection = ref(false)
+const emojiAnchor = useTemplateRef('emoji-anchor')
 
 function onContextMenu(event: MouseEvent) {
   const target = event.target as HTMLElement | null
@@ -20,29 +24,13 @@ function onContextMenu(event: MouseEvent) {
 
   const { from, to } = props.editor.state.selection
   hasSelection.value = from !== to
-}
 
-// The VUI ContextMenu only closes when vueuse's onClickOutside fires. That
-// requires a click event with detail=0 (programmatic) dispatched outside the
-// popout AFTER the current tick - vueuse sets a same-tick dedup guard (p)
-// that blocks a synchronous dispatch during the same click handling.
-function closeMenu() {
-  if (import.meta.client)
-    setTimeout(() => document.body.dispatchEvent(new MouseEvent('click', { bubbles: true })), 0)
+  recordEmojiAnchor(event)
 }
 
 function getSelectionText() {
   const { from, to } = props.editor.state.selection
   return props.editor.state.doc.textBetween(from, to, '\n')
-}
-
-async function writeClipboard(text: string, label: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-  }
-  catch {
-    pushToast(`Could not copy ${label.toLowerCase()} to clipboard`)
-  }
 }
 
 function openLink() {
@@ -74,20 +62,20 @@ async function cutSelection() {
 }
 
 async function paste() {
-  try {
-    const text = await navigator.clipboard.readText()
-    if (text)
-      props.editor.chain().focus().insertContent(text).run()
-  }
-  catch {
-    pushToast('Could not read from clipboard')
-  }
+  const text = await readClipboard()
+  if (text)
+    props.editor.chain().focus().insertContent(text).run()
   closeMenu()
 }
 
 function selectAll() {
   props.editor.chain().focus().selectAll().run()
   closeMenu()
+}
+
+function insertEmoji(emoji: string) {
+  props.editor.chain().focus().insertContent(emoji).run()
+  emojiOpen.value = false
 }
 </script>
 
@@ -145,9 +133,33 @@ function selectAll() {
           </template>
           Select all
         </DropdownItem>
+        <Divider :size="0" />
+        <DropdownItem @click="openEmojiPicker">
+          <template #icon>
+            <Icon name="ph:smiley" />
+          </template>
+          Insert emoji
+        </DropdownItem>
       </div>
     </template>
   </ContextMenu>
+
+  <!-- Zero-size anchor placed at the right-click point so the picker opens there. -->
+  <div
+    ref="emoji-anchor"
+    class="editor-context-menu__emoji-anchor"
+    :style="{
+      left: `${emojiPos.x}px`,
+      top: `${emojiPos.y}px`,
+    }"
+  />
+
+  <EmojiPickerMenu
+    :open="emojiOpen"
+    :anchor="emojiAnchor"
+    @select="insertEmoji"
+    @close="emojiOpen = false"
+  />
 </template>
 
 <style scoped lang="scss">
@@ -155,5 +167,13 @@ function selectAll() {
 // would without the context menu around it.
 .editor-context-menu__target {
   display: contents;
+}
+
+// Invisible point the emoji Popout latches onto, positioned at the click spot.
+.editor-context-menu__emoji-anchor {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
 </style>
