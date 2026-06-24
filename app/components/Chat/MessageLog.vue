@@ -153,7 +153,6 @@ const mobileMenuOpen = ref(false)
 
 const logEl = ref<HTMLElement | null>(null)
 const topSentinel = ref<HTMLElement | null>(null)
-const bottomSentinel = ref<HTMLElement | null>(null)
 const activeMessage = ref<ChatMessage | null>(null)
 const lightboxRef = useTemplateRef('lightboxRef')
 
@@ -912,14 +911,16 @@ const SCROLL_BOTTOM_THRESHOLD = 80
 // How far ahead, in multiples of the viewport height, to start pulling the next
 // page. Proportional to the viewport rather than a fixed pixel lead so a taller
 // window or larger font (fewer, taller messages per screen) still gets the same
-// number of screenfuls of runway. Forward is aggressive - that's the direction
-// the user scrolls fast and expects ready. Backward needs a comparable lead
-// because its pages can come from the server (network latency) rather than the
-// IDB cache - too small a lead and a fast scroll-up reaches the top edge before
-// the fetch lands. It chains a couple pages deep (maybeBackfillOlder) so there's
-// buffer to coast on, bounded so it never pre-pages the whole history.
-const FORWARD_LOAD_AHEAD_SCREENS = 2.5
-const BACKWARD_LOAD_AHEAD_SCREENS = 2
+// number of screenfuls of runway. These define two separated trigger zones with
+// a dead zone between them: older history loads only within BACKWARD screens of
+// the top, newer only within FORWARD screens of the bottom. The window cap is
+// large enough that the zones don't overlap, so the two loaders never fire
+// together and fight (prepend-and-trim vs append-and-trim) - the oscillation
+// that empties the log. Each load also moves the viewport back toward the dead
+// zone (a prepend restores downward, an append slides the front up), so it
+// settles after one page instead of bouncing between the edges.
+const FORWARD_LOAD_AHEAD_SCREENS = 2
+const BACKWARD_LOAD_AHEAD_SCREENS = 1
 const isAtBottom = ref(true)
 
 // Native scroll anchoring (overflow-anchor) keeps the viewport steady as
@@ -950,19 +951,14 @@ function updateScrollState() {
   if (!nowAtBottom && scrolledUp)
     wantBottom = false
   isAtBottom.value = nowAtBottom
-  // Only the nearer edge loads. Picking by which edge is closer (rather than by
-  // scroll direction) means the backward and forward loaders can never both fire
-  // on one scroll and tug the window in opposite directions - the prepend+trim
-  // vs append+trim fight that jiggles the viewport - and it's immune to the
-  // programmatic scrollTop nudges our own restore code makes.
-  if (scrollTop <= distFromBottom) {
-    if (scrollTop <= clientHeight * BACKWARD_LOAD_AHEAD_SCREENS)
-      triggerHistoryLoad()
-  }
-  else {
-    if (distFromBottom <= clientHeight * FORWARD_LOAD_AHEAD_SCREENS)
-      maybeForwardLoad()
-  }
+  // Older history only near the top, newer only near the bottom, nothing in the
+  // dead zone between. The else makes them mutually exclusive at the boundary;
+  // maybeForwardLoad self-gates on the same near-top cutoff, so callers from the
+  // drain watch stay consistent.
+  if (scrollTop <= clientHeight * BACKWARD_LOAD_AHEAD_SCREENS)
+    triggerHistoryLoad()
+  else
+    maybeForwardLoad()
 }
 
 function scrollToBottom() {
@@ -1001,37 +997,22 @@ function triggerHistoryLoad() {
   fetchOlderHistory(activeBuffer.value.name)
 }
 
-// Chain older-history pages so the buffer above the fold reaches the lead, the
-// same way the forward loader drains pages below. Without this, scroll-back
-// loads one page per trigger and a fast scroll-up - especially when pages come
-// from the server - outruns it. Bounded two ways: it stops once there's a lead's
-// worth above (scrollTop past it), and it requires at least a screenful still
-// below, so chaining never drags the restore anchor down to the window's bottom
-// edge (which would make the restore clamp and visibly jump). triggerHistoryLoad
-// re-anchors on the new first-visible line each time, so each page restores cleanly.
-function maybeBackfillOlder() {
-  const buf = activeBuffer.value
-  const el = logEl.value
-  if (!buf || !el || wantBottom || buf.historyExhausted || buf.loadingOlderHistory)
-    return
-  const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
-  if (el.scrollTop <= el.clientHeight * BACKWARD_LOAD_AHEAD_SCREENS && distFromBottom >= el.clientHeight)
-    triggerHistoryLoad()
-}
-
 // Pull the next page of newer messages from cache while the bottom of a
-// tail-trimmed window is within the load-ahead lead. Mirrors triggerHistoryLoad
-// for the forward direction, but unlike the older-history path there's nothing
-// to restore: overflow-anchor compensates the front-trim, so the viewport stays
-// put while the window slides forward. The lead is read live off clientHeight,
-// so it scales with the viewport and font size. Idempotent (guards
-// not-trimmed / in-flight / not-yet-near-the-edge).
+// tail-trimmed window is within the forward lead. Mirrors triggerHistoryLoad for
+// the forward direction, but unlike the older-history path there's nothing to
+// restore: overflow-anchor compensates the front-trim, so the viewport stays put
+// while the window slides forward. Guards: not-trimmed / in-flight / still near
+// the top (older history's zone) / not-yet-near-the-bottom.
 function maybeForwardLoad() {
   const buf = activeBuffer.value
   const el = logEl.value
   if (!el || !buf?.tailTrimmed || buf.loadingNewerHistory)
     return
   const { scrollTop, scrollHeight, clientHeight } = el
+  // Never load newer while still in the top zone - that's older history's job,
+  // and letting both run is the oscillation.
+  if (scrollTop <= clientHeight * BACKWARD_LOAD_AHEAD_SCREENS)
+    return
   if (scrollHeight - scrollTop - clientHeight <= clientHeight * FORWARD_LOAD_AHEAD_SCREENS)
     void fetchNewerFromCache(buf.name)
 }
@@ -1070,7 +1051,6 @@ watch(
           logEl.value.scrollTop += delta
         }
         anchorMsgEl = null
-        maybeBackfillOlder()
       })
     }
   },
@@ -1117,45 +1097,19 @@ function setupSentinelObserver() {
   // while logEl just expands to fit. Using logEl as root breaks the sheet case
   // (the sentinel never clips, so the observer never re-fires). The viewport
   // root respects every intervening scroll container's clipping, so it works on
-  // both. This is the at-rest backstop (initial fill, and the sheet where logEl
-  // doesn't get scroll events); while actually scrolling, updateScrollState
-  // drives loads off the live clientHeight. The margins match the asymmetric
-  // leads, and each sentinel only fires when its edge is the nearer one, so the
-  // two loaders never fight. A gentle backward margin also keeps the top sentinel
-  // from pre-paging the whole history while parked near the top.
+  // both. Top sentinel only: it's the at-rest backstop for older history (initial
+  // fill, and the sheet where logEl gets no scroll events). Forward loading runs
+  // off updateScrollState's scroll events instead - a bottom sentinel firing
+  // independently of scroll position is what let the two loaders fight.
   const back = Math.round((window.innerHeight || 800) * BACKWARD_LOAD_AHEAD_SCREENS)
-  const fwd = Math.round((window.innerHeight || 800) * FORWARD_LOAD_AHEAD_SCREENS)
   sentinelObserver = new IntersectionObserver(
     (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting)
-          continue
-        if (entry.target === bottomSentinel.value) {
-          if (!nearerTop())
-            maybeForwardLoad()
-        }
-        else if (nearerTop()) {
-          triggerHistoryLoad()
-        }
-      }
+      if (entries[0]?.isIntersecting)
+        triggerHistoryLoad()
     },
-    { root: null, rootMargin: `${back}px 0px ${fwd}px 0px`, threshold: 0 },
+    { root: null, rootMargin: `${back}px 0px 0px 0px`, threshold: 0 },
   )
   sentinelObserver.observe(topSentinel.value)
-  if (bottomSentinel.value)
-    sentinelObserver.observe(bottomSentinel.value)
-}
-
-// True when the viewport sits closer to the top of the loaded range than the
-// bottom. Lets the sentinel callbacks load only the nearer edge, matching the
-// closer-edge rule in updateScrollState. On the sheet surface logEl doesn't
-// scroll (scrollTop stays 0), so this reads true and only older history loads -
-// the same behaviour the sheet had before forward loading existed.
-function nearerTop(): boolean {
-  const el = logEl.value
-  if (!el)
-    return true
-  return el.scrollTop <= el.scrollHeight - el.scrollTop - el.clientHeight
 }
 
 // When initial history settles (historyReady flips true), retry the load if
@@ -1728,7 +1682,6 @@ onBeforeUnmount(() => {
             </div>
           </template>
         </template>
-        <div ref="bottomSentinel" class="chat-log__history-sentinel" />
         <Flex v-if="messages.length === 0 && !isLoadingInitialHistory" y-center x-center class="chat-log__empty" expand>
           No messages yet.
         </Flex>
