@@ -318,7 +318,7 @@ watch(processedMarkdown, (val) => {
 /* YouTube embed produced by processYoutubeDirectives */
 :deep(.md-youtube-embed) {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   margin: var(--space-s) 0;
 
   iframe {
