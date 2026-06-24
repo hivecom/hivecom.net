@@ -172,6 +172,12 @@ const menuItems: MenuItem[] = [
     permissions: ['complaints.read', 'complaints.create', 'complaints.update', 'complaints.delete'],
   },
   {
+    name: 'Depot',
+    path: '/admin/depot',
+    icon: 'ph:cloud-arrow-up',
+    permissions: ['depot.read', 'depot.delete'],
+  },
+  {
     name: 'Discussions',
     path: '/admin/discussions',
     icon: 'ph:chat-circle',

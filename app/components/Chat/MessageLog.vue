@@ -933,6 +933,17 @@ const isAtBottom = ref(true)
 let anchorMsgEl: HTMLElement | null = null
 let anchorMsgVisualTop = 0
 let pendingPrependRestore = false
+// After an older-history prepend, keep the anchored line fixed (via the content
+// ResizeObserver) until the user scrolls away. A single restore isn't enough for
+// server-fetched pages: their images / link previews / videos load async and
+// resize above the fold after paint, shoving the viewport down - that's the
+// post-batch "jump". Re-pinning on every height change absorbs it. Cached pages
+// settle instantly so they never needed this, which is why they felt smooth.
+let pinTopUntilUserScroll = false
+// scrollTop we last set ourselves (restore / re-pin). Lets updateScrollState
+// tell our own programmatic scrolls from a genuine user scroll, which releases
+// the pin. -1 means "no programmatic scroll pending".
+let lastProgrammaticScrollTop = -1
 // Set whenever a buffer switch, visibility change, or activation wants to
 // land at the bottom. Cleared only when the user intentionally scrolls up
 // (scrollTop decreases). overflow-anchor bumps scrollTop UP, so they don't
@@ -948,6 +959,12 @@ function updateScrollState() {
   const nowAtBottom = distFromBottom <= SCROLL_BOTTOM_THRESHOLD
   const scrolledUp = scrollTop < lastScrollTop
   lastScrollTop = scrollTop
+  // Release the top pin once the user actually scrolls (a scroll we didn't make
+  // ourselves), so it stops fighting their movement.
+  if (pinTopUntilUserScroll && scrollTop !== lastProgrammaticScrollTop) {
+    pinTopUntilUserScroll = false
+    anchorMsgEl = null
+  }
   if (!nowAtBottom && scrolledUp)
     wantBottom = false
   isAtBottom.value = nowAtBottom
@@ -962,6 +979,9 @@ function updateScrollState() {
 }
 
 function scrollToBottom() {
+  // Going to the bottom overrides any top pin (buffer switch, jump-to-present,
+  // visibility restore).
+  pinTopUntilUserScroll = false
   if (logEl.value)
     logEl.value.scrollTo({ top: logEl.value.scrollHeight, behavior: 'instant' })
 }
@@ -1036,23 +1056,44 @@ watch(
 watch(
   () => activeBuffer.value?.loadingOlderHistory,
   (loading, wasLoading) => {
-    if (wasLoading && !loading && pendingPrependRestore) {
-      pendingPrependRestore = false
+    if (!(wasLoading && !loading && pendingPrependRestore))
+      return
+    pendingPrependRestore = false
+    pinTopUntilUserScroll = false
+    const el = logEl.value
+    // Buffer switches (and visibility/activate restores) set wantBottom. In that
+    // case skip anchor-restore and go straight to the bottom - anchor-restore
+    // would land us mid-history when scrollTop was 0.
+    if (wantBottom || !el || !anchorMsgEl?.isConnected) {
       nextTick(() => {
-        // Buffer switches (and visibility/activate restores) set wantBottom.
-        // In that case skip anchor-restore and go straight to the bottom -
-        // anchor-restore would land us mid-history when scrollTop was 0.
-        if (wantBottom) {
+        if (wantBottom)
           scrollToBottom()
-        }
-        else if (logEl.value && anchorMsgEl?.isConnected) {
-          const logRect = logEl.value.getBoundingClientRect()
-          const delta = anchorMsgEl.getBoundingClientRect().top - logRect.top - anchorMsgVisualTop
-          logEl.value.scrollTop += delta
-        }
         anchorMsgEl = null
       })
+      return
     }
+    // This watch runs before the prepend renders (flush: 'pre'), so measure the
+    // anchor line's position now (pre-prepend) and again after it renders. The
+    // difference is exactly how far the prepended page pushed it down. Offsetting
+    // scrollTop by that preserves whatever the user is looking at *right now* -
+    // even if they kept racing toward the top while a slow server page loaded.
+    // Restoring to a position captured back at trigger time is what jumped them
+    // back to where they were when the load started.
+    const beforeTop = anchorMsgEl.getBoundingClientRect().top
+    nextTick(() => {
+      if (!el || !anchorMsgEl?.isConnected) {
+        anchorMsgEl = null
+        return
+      }
+      const afterTop = anchorMsgEl.getBoundingClientRect().top
+      el.scrollTop += afterTop - beforeTop
+      // Record the resulting position so the content observer holds this line
+      // fixed while the new page's media loads and resizes above the fold.
+      // Released by the next genuine user scroll (updateScrollState).
+      anchorMsgVisualTop = anchorMsgEl.getBoundingClientRect().top - el.getBoundingClientRect().top
+      lastProgrammaticScrollTop = el.scrollTop
+      pinTopUntilUserScroll = true
+    })
   },
 )
 
@@ -1153,6 +1194,18 @@ function setupContentObserver() {
     // SCROLL_BOTTOM_THRESHOLD doesn't leave us stranded mid-log.
     if (wantBottom) {
       scrollToBottom()
+      return
+    }
+    // Just prepended older history: keep the anchored line fixed as the new
+    // page's media loads and resizes above the fold. This is what makes a
+    // server-fetched batch land smoothly instead of jumping after it paints.
+    if (pinTopUntilUserScroll && anchorMsgEl?.isConnected) {
+      const logRect = logEl.value.getBoundingClientRect()
+      const delta = anchorMsgEl.getBoundingClientRect().top - logRect.top - anchorMsgVisualTop
+      if (Math.abs(delta) >= 1) {
+        logEl.value.scrollTop += delta
+        lastProgrammaticScrollTop = logEl.value.scrollTop
+      }
       return
     }
     // For normal in-session use, re-read live rather than trusting

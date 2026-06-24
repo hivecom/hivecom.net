@@ -3487,6 +3487,8 @@ export type Database = {
         | "network.read"
         | "network.update"
         | "network.delete"
+        | "depot.read"
+        | "depot.delete"
       app_role: "admin" | "moderator"
       badge_source: "manual" | "flag" | "computed"
       badge_tier: "bronze" | "silver" | "gold" | "shiny"
@@ -3711,6 +3713,8 @@ export const Constants = {
         "network.read",
         "network.update",
         "network.delete",
+        "depot.read",
+        "depot.delete",
       ],
       app_role: ["admin", "moderator"],
       badge_source: ["manual", "flag", "computed"],

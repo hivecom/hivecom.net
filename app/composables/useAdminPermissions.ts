@@ -63,6 +63,8 @@ export function useAdminPermissions() {
     canCreateAssets: computed(() => resolvedHasPermission('assets.create')),
     canUpdateAssets: computed(() => resolvedHasPermission('assets.update')),
     canDeleteAssets: computed(() => resolvedHasPermission('assets.delete')),
+    canViewDepot: computed(() => resolvedHasPermission('depot.read')),
+    canModerateDepot: computed(() => resolvedHasPermission('depot.delete')),
 
     // Check if user is an admin (highest privilege level)
     isAdmin: computed(() => resolvedRole.value === 'admin'),

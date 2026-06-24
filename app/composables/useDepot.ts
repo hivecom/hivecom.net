@@ -21,6 +21,43 @@ export interface DepotUpload {
   content_type?: string
 }
 
+// A stored upload as returned by the listing endpoints.
+export interface DepotFile {
+  object_key: string
+  url: string
+  size: number
+  content_type: string
+  original_filename: string
+  uploaded_at: string
+}
+
+// The admin listing adds the uploader identity the self listing never exposes.
+export interface DepotAdminFile extends DepotFile {
+  uploader_account: string
+  uploader_issuer: string
+}
+
+export interface ListFilesOptions {
+  limit?: number
+  offset?: number
+  sort?: 'uploaded_at' | 'file_size'
+  order?: 'asc' | 'desc'
+  /** Case-insensitive substring on the original filename. */
+  q?: string
+}
+
+// Admin listing layers owner and content-type filters on top of the shared ones.
+export interface AdminListFilesOptions extends ListFilesOptions {
+  account?: string
+  issuer?: string
+  contentType?: string
+}
+
+export interface DepotFilePage<T> {
+  files: T[]
+  total: number
+}
+
 export interface MintKeyOptions {
   scopes?: string[]
   /** RFC3339 or YYYY-MM-DD; omit for a key that never expires. */
@@ -108,5 +145,48 @@ export function useDepot() {
       throw await fail(res, 'Could not revoke key')
   }
 
-  return { baseUrl, host, uploadFile, mintKey, listKeys, revokeKey }
+  // adminListFiles lists uploads across all owners. Requires an admin caller
+  // (an OIDC login whose configured claim matched); Depot returns 403 otherwise.
+  async function adminListFiles(opts: AdminListFilesOptions = {}): Promise<DepotFilePage<DepotAdminFile>> {
+    const params = new URLSearchParams()
+    if (opts.limit != null)
+      params.set('limit', String(opts.limit))
+    if (opts.offset != null)
+      params.set('offset', String(opts.offset))
+    if (opts.sort)
+      params.set('sort', opts.sort)
+    if (opts.order)
+      params.set('order', opts.order)
+    if (opts.q)
+      params.set('q', opts.q)
+    if (opts.account)
+      params.set('account', opts.account)
+    if (opts.issuer)
+      params.set('issuer', opts.issuer)
+    if (opts.contentType)
+      params.set('content_type', opts.contentType)
+
+    const qs = params.toString()
+    const res = await fetch(`${baseUrl}/admin/files${qs ? `?${qs}` : ''}`, { headers: await authHeaders() })
+    if (!res.ok)
+      throw await fail(res, 'Could not load files')
+    const data = await res.json() as { files?: DepotAdminFile[], total?: number }
+    return { files: data.files ?? [], total: data.total ?? 0 }
+  }
+
+  // deleteFile removes one upload by its object key. A normal caller may only
+  // delete its own; an admin caller deletes any (the moderation path). The key
+  // is a slash-separated path, so encode each segment but keep the separators.
+  async function deleteFile(objectKey: string): Promise<void> {
+    const path = objectKey.split('/').map(encodeURIComponent).join('/')
+    const res = await fetch(`${baseUrl}/file/${path}`, {
+      method: 'DELETE',
+      headers: await authHeaders(),
+    })
+    // Success is 204 No Content; anything else carries an error body.
+    if (!res.ok)
+      throw await fail(res, 'Could not delete file')
+  }
+
+  return { baseUrl, host, uploadFile, mintKey, listKeys, revokeKey, adminListFiles, deleteFile }
 }
