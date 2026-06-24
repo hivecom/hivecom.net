@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
+import { ref } from 'vue'
 import DepotFileTable from '@/components/Admin/Depot/DepotFileTable.vue'
+import DepotKPIs from '@/components/Admin/Depot/DepotKPIs.vue'
 import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { useDepot } from '@/composables/useDepot'
 
@@ -16,6 +18,9 @@ if (!canViewDepot.value) {
 }
 
 const { host } = useDepot()
+
+// Shared so a delete in the table refetches the KPI cards.
+const refreshSignal = ref(0)
 </script>
 
 <template>
@@ -28,6 +33,8 @@ const { host } = useDepot()
       </p>
     </Flex>
 
-    <DepotFileTable />
+    <DepotKPIs v-model:refresh-signal="refreshSignal" />
+
+    <DepotFileTable v-model:refresh-signal="refreshSignal" />
   </Flex>
 </template>

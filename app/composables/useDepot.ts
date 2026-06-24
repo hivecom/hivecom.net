@@ -58,6 +58,14 @@ export interface DepotFilePage<T> {
   total: number
 }
 
+// Aggregate upload metrics for the admin KPI cards. total_size is bytes;
+// total_images counts uploads whose content type is image/*.
+export interface DepotMetrics {
+  total_files: number
+  total_size: number
+  total_images: number
+}
+
 export interface MintKeyOptions {
   scopes?: string[]
   /** RFC3339 or YYYY-MM-DD; omit for a key that never expires. */
@@ -174,6 +182,32 @@ export function useDepot() {
     return { files: data.files ?? [], total: data.total ?? 0 }
   }
 
+  // adminMetrics reports aggregate counts and size. It honors the same owner and
+  // content-type filters as adminListFiles, so passing an account scopes the
+  // numbers to one user. Admin only.
+  async function adminMetrics(opts: AdminListFilesOptions = {}): Promise<DepotMetrics> {
+    const params = new URLSearchParams()
+    if (opts.account)
+      params.set('account', opts.account)
+    if (opts.issuer)
+      params.set('issuer', opts.issuer)
+    if (opts.contentType)
+      params.set('content_type', opts.contentType)
+    if (opts.q)
+      params.set('q', opts.q)
+
+    const qs = params.toString()
+    const res = await fetch(`${baseUrl}/admin/metrics${qs ? `?${qs}` : ''}`, { headers: await authHeaders() })
+    if (!res.ok)
+      throw await fail(res, 'Could not load metrics')
+    const data = await res.json() as Partial<DepotMetrics>
+    return {
+      total_files: data.total_files ?? 0,
+      total_size: data.total_size ?? 0,
+      total_images: data.total_images ?? 0,
+    }
+  }
+
   // deleteFile removes one upload by its object key. A normal caller may only
   // delete its own; an admin caller deletes any (the moderation path). The key
   // is a slash-separated path, so encode each segment but keep the separators.
@@ -188,5 +222,5 @@ export function useDepot() {
       throw await fail(res, 'Could not delete file')
   }
 
-  return { baseUrl, host, uploadFile, mintKey, listKeys, revokeKey, adminListFiles, deleteFile }
+  return { baseUrl, host, uploadFile, mintKey, listKeys, revokeKey, adminListFiles, adminMetrics, deleteFile }
 }

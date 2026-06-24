@@ -2,7 +2,7 @@
 import type { Ref } from 'vue'
 import type { DepotAdminFile } from '@/composables/useDepot'
 
-import { Alert, Badge, Button, Flex, Input, paginate, Pagination, pushToast, Spinner, Table } from '@dolanske/vui'
+import { Alert, Badge, Button, Card, CopyClipboard, Flex, Grid, Input, paginate, Pagination, pushToast, Spinner, Table, Tooltip } from '@dolanske/vui'
 import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
@@ -15,8 +15,17 @@ import { formatBytes } from '@/lib/storageAssets'
 
 type SortCol = 'uploaded_at' | 'file_size'
 
+// Bumped on delete so the page's KPI cards refetch.
+const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+
 const { adminListFiles, deleteFile } = useDepot()
 const { canModerateDepot } = useAdminPermissions()
+
+const viewMode = ref<'table' | 'grid'>('grid')
+
+function isImage(file: DepotAdminFile): boolean {
+  return file.content_type.startsWith('image/')
+}
 
 // Page size is provided by the admin layout, same as the other admin tables.
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
@@ -127,6 +136,7 @@ async function confirmDelete() {
     if (files.value.length === 1 && page.value > 1)
       page.value -= 1
     await fetchFiles()
+    refreshSignal.value++
   }
   catch (err) {
     pushToast(err instanceof Error ? err.message : 'Could not delete upload')
@@ -159,6 +169,24 @@ function uploaderLabel(file: DepotAdminFile): string {
       <Flex gap="s" y-center>
         <Spinner v-if="loading && !initialLoad" size="s" />
         <span class="text-color-lighter text-s" style="text-wrap: nowrap;">Total {{ total }}</span>
+        <Flex gap="xs" y-center>
+          <Tooltip>
+            <Button :variant="viewMode === 'table' ? 'accent' : 'gray'" size="s" square @click="viewMode = 'table'">
+              <Icon name="ph:list" />
+            </Button>
+            <template #tooltip>
+              <p>Table</p>
+            </template>
+          </Tooltip>
+          <Tooltip>
+            <Button :variant="viewMode === 'grid' ? 'accent' : 'gray'" size="s" square @click="viewMode = 'grid'">
+              <Icon name="ph:grid-four" />
+            </Button>
+            <template #tooltip>
+              <p>Grid</p>
+            </template>
+          </Tooltip>
+        </Flex>
       </Flex>
     </Flex>
 
@@ -170,8 +198,12 @@ function uploaderLabel(file: DepotAdminFile): string {
       <Spinner />
     </Flex>
 
-    <TableContainer v-else>
-      <Table.Root v-if="files.length > 0" separate-cells>
+    <Alert v-else-if="files.length === 0" variant="info">
+      No uploads found
+    </Alert>
+
+    <TableContainer v-else-if="viewMode === 'table'">
+      <Table.Root separate-cells>
         <template #header>
           <Table.Head>File</Table.Head>
           <Table.Head>Type</Table.Head>
@@ -230,11 +262,60 @@ function uploaderLabel(file: DepotAdminFile): string {
           <Pagination :pagination="paginationState" @change="setPage" />
         </template>
       </Table.Root>
-
-      <Alert v-else variant="info">
-        No uploads found
-      </Alert>
     </TableContainer>
+
+    <template v-else>
+      <Grid expand gap="s" class="depot-grid">
+        <Card
+          v-for="file in files"
+          :key="file.object_key"
+          :padding="false"
+          class="depot-grid-card"
+        >
+          <div class="depot-grid-preview">
+            <img
+              v-if="isImage(file)"
+              :src="file.url"
+              :alt="file.original_filename"
+              loading="lazy"
+            >
+            <Icon v-else name="ph:file" size="32" />
+
+            <div class="depot-grid-actions" @click.stop>
+              <CopyClipboard :text="file.url" confirm>
+                <Tooltip>
+                  <Button size="s" variant="gray" square>
+                    <Icon name="ph:link-simple" />
+                  </Button>
+                  <template #tooltip>
+                    <p>Copy URL</p>
+                  </template>
+                </Tooltip>
+              </CopyClipboard>
+              <Tooltip v-if="canModerateDepot">
+                <Button size="s" variant="danger" square @click="fileToDelete = file">
+                  <Icon name="ph:trash" />
+                </Button>
+                <template #tooltip>
+                  <p>Delete</p>
+                </template>
+              </Tooltip>
+            </div>
+          </div>
+
+          <Flex column :gap="0" class="depot-grid-meta">
+            <span class="depot-grid-name" :title="file.original_filename">{{ file.original_filename }}</span>
+            <span class="text-color-lighter text-s">
+              {{ formatBytes(file.size) }}, {{ uploaderLabel(file) }}
+            </span>
+          </Flex>
+        </Card>
+      </Grid>
+
+      <Flex v-if="shouldShowPagination" x-center expand>
+        <Pagination :pagination="paginationState" @change="setPage" />
+      </Flex>
+    </template>
 
     <ConfirmModal
       v-model:open="showDeleteModal"
@@ -261,5 +342,51 @@ function uploaderLabel(file: DepotAdminFile): string {
 .sort-icon {
   color: var(--color-text-lighter);
   flex-shrink: 0;
+}
+
+.depot-grid {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.depot-grid-preview {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--color-bg-lowered);
+  color: var(--color-text-lighter);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.depot-grid-actions {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  display: flex;
+  gap: var(--space-xs);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.depot-grid-card:hover .depot-grid-actions,
+.depot-grid-card:focus-within .depot-grid-actions {
+  opacity: 1;
+}
+
+.depot-grid-meta {
+  padding: var(--space-s);
+}
+
+.depot-grid-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 </style>
