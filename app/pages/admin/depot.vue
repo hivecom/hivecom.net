@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Flex } from '@dolanske/vui'
+import { Flex, Tab, Tabs } from '@dolanske/vui'
 import { ref } from 'vue'
 import DepotFileTable from '@/components/Admin/Depot/DepotFileTable.vue'
 import DepotKPIs from '@/components/Admin/Depot/DepotKPIs.vue'
+import DepotUserTable from '@/components/Admin/Depot/DepotUserTable.vue'
 import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { useDepot } from '@/composables/useDepot'
 
@@ -21,6 +22,8 @@ const { host } = useDepot()
 
 // Shared so a delete in the table refetches the KPI cards.
 const refreshSignal = ref(0)
+
+const activeTab = ref<'files' | 'users'>('files')
 </script>
 
 <template>
@@ -35,6 +38,16 @@ const refreshSignal = ref(0)
 
     <DepotKPIs v-model:refresh-signal="refreshSignal" />
 
-    <DepotFileTable v-model:refresh-signal="refreshSignal" />
+    <Tabs v-model="activeTab">
+      <Tab value="files">
+        Files
+      </Tab>
+      <Tab value="users">
+        Users
+      </Tab>
+    </Tabs>
+
+    <DepotFileTable v-if="activeTab === 'files'" v-model:refresh-signal="refreshSignal" />
+    <DepotUserTable v-else v-model:refresh-signal="refreshSignal" />
   </Flex>
 </template>

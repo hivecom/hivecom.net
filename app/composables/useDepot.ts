@@ -66,6 +66,15 @@ export interface DepotMetrics {
   total_images: number
 }
 
+// One uploader's footprint for the admin leaderboard. account is the raw OIDC
+// subject (the Supabase user id), which the client resolves to a username.
+export interface DepotUploader {
+  account: string
+  issuer: string
+  files: number
+  bytes: number
+}
+
 export interface MintKeyOptions {
   scopes?: string[]
   /** RFC3339 or YYYY-MM-DD; omit for a key that never expires. */
@@ -208,6 +217,23 @@ export function useDepot() {
     }
   }
 
+  // adminListUploaders ranks uploaders by total bytes (most first), with each
+  // uploader's file count. Admin only.
+  async function adminListUploaders(opts: { limit?: number, offset?: number } = {}): Promise<{ users: DepotUploader[], total: number }> {
+    const params = new URLSearchParams()
+    if (opts.limit != null)
+      params.set('limit', String(opts.limit))
+    if (opts.offset != null)
+      params.set('offset', String(opts.offset))
+
+    const qs = params.toString()
+    const res = await fetch(`${baseUrl}/admin/users${qs ? `?${qs}` : ''}`, { headers: await authHeaders() })
+    if (!res.ok)
+      throw await fail(res, 'Could not load uploaders')
+    const data = await res.json() as { users?: DepotUploader[], total?: number }
+    return { users: data.users ?? [], total: data.total ?? 0 }
+  }
+
   // deleteFile removes one upload by its object key. A normal caller may only
   // delete its own; an admin caller deletes any (the moderation path). The key
   // is a slash-separated path, so encode each segment but keep the separators.
@@ -222,5 +248,5 @@ export function useDepot() {
       throw await fail(res, 'Could not delete file')
   }
 
-  return { baseUrl, host, uploadFile, mintKey, listKeys, revokeKey, adminListFiles, adminMetrics, deleteFile }
+  return { baseUrl, host, uploadFile, mintKey, listKeys, revokeKey, adminListFiles, adminMetrics, adminListUploaders, deleteFile }
 }
