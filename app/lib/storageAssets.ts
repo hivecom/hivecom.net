@@ -277,6 +277,16 @@ export function isVideoAsset(asset: StorageAsset): boolean {
   return knownVideoExtensions.includes(extension)
 }
 
+export function isAudioAsset(asset: StorageAsset): boolean {
+  const mime = asset.mimeType ?? ''
+  const extension = asset.extension ?? ''
+  if (mime.startsWith('audio/'))
+    return true
+
+  const knownAudioExtensions = ['mp3', 'wav', 'flac', 'aac', 'm4a', 'oga', 'opus', 'weba', 'wma']
+  return knownAudioExtensions.includes(extension)
+}
+
 export function isTextAsset(asset: StorageAsset): boolean {
   const mime = asset.mimeType ?? ''
   const extension = asset.extension ?? ''

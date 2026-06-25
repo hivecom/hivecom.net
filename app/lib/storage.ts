@@ -17,7 +17,8 @@ export interface UploadResult {
 
 export const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
 export const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg']
-export const allowedMediaTypes = [...allowedImageTypes, ...allowedVideoTypes]
+export const allowedAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/flac', 'audio/aac', 'audio/mp4', 'audio/x-m4a', 'audio/webm', 'audio/opus']
+export const allowedMediaTypes = [...allowedImageTypes, ...allowedVideoTypes, ...allowedAudioTypes]
 export const allowedMediaExtensions = allowedMediaTypes.join(', ')
 
 export const allowedDataTypes = ['text/csv', 'application/json', 'text/plain']

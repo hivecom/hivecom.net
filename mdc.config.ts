@@ -19,6 +19,10 @@ export default {
           tagNames: [
             ...(defaultSchema.tagNames ?? []),
             'iframe',
+            // Uploaded media embeds (processVideoDirectives / processAudioDirectives).
+            // <audio> is mapped to the AudioPlayer component by MarkdownRendererInner.
+            'video',
+            'audio',
             // KaTeX emits <svg>, <path>, <line>, <use> for some output modes
             'svg',
             'path',
@@ -54,6 +58,9 @@ export default {
               'allowfullscreen',
               'className',
             ],
+            // Uploaded media embeds: keep src (and the rendering hints) intact.
+            'video': ['src', 'controls', 'className'],
+            'audio': ['src', 'controls', 'className'],
             // SVG elements for KaTeX
             'svg': ['xmlns', 'width', 'height', 'viewBox', 'className', 'style', 'ariaHidden', 'focusable'],
             'path': ['d', 'stroke', 'strokeWidth', 'fill', 'className'],

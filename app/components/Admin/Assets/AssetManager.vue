@@ -213,6 +213,13 @@ const tableData = computed(() => filteredAssets.value.map(asset => ({
 const filteredCount = computed(() => filteredAssets.value.length)
 const isFiltered = computed(() => filteredCount.value !== assets.value.length)
 
+// Rendered in the toolbar on desktop and below the filters on mobile.
+const itemCountLabel = computed(() => {
+  const filtered = isFiltered.value ? ` of ${assets.value.length}` : ''
+  const grand = totalCount.value > assets.value.length ? ` (${totalCount.value} total)` : ''
+  return `${filteredCount.value}${filtered} items${grand}`
+})
+
 const isForumsBucket = computed(() => resolvedBucketId.value === FORUMS_BUCKET_ID)
 
 const { headers, rows: tableRows, setSort, selectedRows, deselectAllRows } = defineTable(tableData, {
@@ -668,7 +675,7 @@ onBeforeMount(fetchAssets)
       </Breadcrumbs>
 
       <Flex
-        :column="isBelowMedium"
+        :column-reverse="isBelowMedium"
         gap="xs"
         wrap
         :x-between="!isBelowMedium"
@@ -719,10 +726,9 @@ onBeforeMount(fetchAssets)
           :y-start="isBelowMedium"
           :expand="isBelowMedium"
           :x-end="!isBelowMedium"
-          :column-reverse="isBelowMedium"
         >
-          <span class="text-s text-color-lighter">
-            {{ filteredCount }}{{ isFiltered ? ` of ${assets.length}` : '' }} items{{ totalCount > assets.length ? ` (${totalCount} total)` : '' }}
+          <span v-if="!isBelowMedium" class="text-s text-color-lighter">
+            {{ itemCountLabel }}
           </span>
 
           <Flex gap="xs" :expand="isBelowMedium" :x-between="isBelowMedium">
@@ -744,6 +750,13 @@ onBeforeMount(fetchAssets)
             </Tooltip>
           </Flex>
         </Flex>
+      </Flex>
+
+      <!-- The item count drops below the filters on mobile, centered. -->
+      <Flex v-if="isBelowMedium" x-center expand>
+        <span class="text-s text-color-lighter">
+          {{ itemCountLabel }}
+        </span>
       </Flex>
 
       <Alert v-if="errorMessage" variant="danger">

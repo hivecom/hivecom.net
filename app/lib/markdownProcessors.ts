@@ -9,6 +9,7 @@ const YOUTUBE_SHORT_RE = /youtu\.be\/([^?&\s]+)/
 const YOUTUBE_ID_RE = /(?:[?&]v=|\/shorts\/)([\w-]+)/
 const YOUTUBE_DIRECTIVE_RE = /:::youtube(?:\s+\{([^}]*)\})?\s*:::/g
 const VIDEO_DIRECTIVE_RE = /:::video(?:\s+\{([^}]*)\})?\s*:::/g
+const AUDIO_DIRECTIVE_RE = /:::audio(?:\s+\{([^}]*)\})?\s*:::/g
 const MENTION_BRACED_RE = /@\{([0-9a-f-]{36})\}/gi
 const MENTION_LEGACY_RE = /@([0-9a-f-]{36})/gi
 const COLOR_TAG_RE = /:::color\[([a-z-]+)\]([\s\S]*?):::(?![a-z-]+\[)/gi
@@ -28,6 +29,7 @@ const UNORDERED_SUB_ITEM_RE = /^(\s+)([-*+]\s)/
 const FENCED_CODE_RE = /^```/
 const STRIP_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/g
+const STRIP_AUDIO_RE = /:::audio(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_DATAFILE_RE = /:::dataFile(?:\s+\{[^}]*\})?\s*:::/g
 
 const DETAILS_SUMMARY_RE = /:::detailsSummary([\s\S]*?):::/
@@ -69,6 +71,7 @@ const DETECT_IMAGE_RE = /!\[.*?\]\(.*?\)/
 const DETECT_LINK_RE = /\[.*?\]\(.*?\)/
 const DETECT_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/
 const DETECT_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/
+const DETECT_AUDIO_RE = /:::audio(?:\s+\{[^}]*\})?\s*:::/
 const DETECT_DATAFILE_RE = /:::dataFile(?:\s+\{[^}]*\})?\s*:::/
 const DETECT_MATH_RE = /\$\$[\s\S]*?\$\$|\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/
 const DETECT_TABLE_RE = /^\s*\|(?:[^\n|]+\|)+\s*$/m
@@ -245,6 +248,27 @@ export function processVideoDirectives(markdown: string): string {
       return ''
 
     return `\n<div class="md-video-embed"><video src="${src}" controls></video></div>\n`
+  })
+}
+
+/**
+ * Converts TipTap's proprietary `:::audio {src="..."} :::` directive syntax
+ * into a raw <audio> block. MarkdownRendererInner maps the <audio> tag to the
+ * AudioPlayer component, so the player UI renders rather than native controls.
+ * Must run before the markdown is handed to `<MDC>`.
+ *
+ * TipTap format:
+ *   :::audio {src="URL"} :::
+ */
+export function processAudioDirectives(markdown: string): string {
+  return markdown.replace(AUDIO_DIRECTIVE_RE, (_full, attrString: string = '') => {
+    const attrs = parseTiptapAttrs(attrString)
+    const src = attrs.src ?? ''
+
+    if (!src)
+      return ''
+
+    return `\n<div class="md-audio-embed"><audio src="${src}"></audio></div>\n`
   })
 }
 
@@ -536,6 +560,10 @@ export function processMarkdown(markdown: string): string {
   // Convert TipTap video directives to raw HTML <video> blocks.
   markdown = processVideoDirectives(markdown)
 
+  // Convert TipTap audio directives to raw HTML <audio> blocks (rendered as
+  // the AudioPlayer component via the MDC components map).
+  markdown = processAudioDirectives(markdown)
+
   // Convert TipTap dataFile directives to raw HTML attachment cards.
   markdown = processDataFileDirectives(markdown)
 
@@ -676,6 +704,8 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
     .replace(STRIP_YOUTUBE_RE, '')
     // 0b2. Remove video directives: :::video {src="..." ...} :::
     .replace(STRIP_VIDEO_RE, '')
+    // 0b2b. Remove audio directives: :::audio {src="..."} :::
+    .replace(STRIP_AUDIO_RE, '')
     // 0b3. Remove data file directives: :::dataFile {src="..." ...} :::
     .replace(STRIP_DATAFILE_RE, '')
     // 0b. Remove block math: $$...$$
@@ -827,6 +857,9 @@ export function formatMarkdownPreview(
 
   if (DETECT_VIDEO_RE.test(markdown))
     return '#video'
+
+  if (DETECT_AUDIO_RE.test(markdown))
+    return '#audio'
 
   if (DETECT_DATAFILE_RE.test(markdown))
     return '#file'

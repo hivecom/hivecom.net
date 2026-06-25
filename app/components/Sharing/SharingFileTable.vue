@@ -38,7 +38,6 @@ const {
   open: rulesModalOpen,
   agreed: agreedToRules,
   run: runGated,
-  openRules,
   handleAgreed: handleRulesAgreed,
   handleCancelled: handleRulesCancelled,
 } = useSharingRulesGate()
@@ -143,18 +142,12 @@ async function handleWipeAll() {
       delete-consequence-singular="The public link will stop working and this cannot be undone."
       delete-consequence-plural="Their public links will stop working and this cannot be undone."
     >
-      <template #filters-before>
-        <Button variant="accent" :loading="uploading" @click="pickFiles">
+      <template #filters-before="{ isMobile }">
+        <Button variant="accent" :loading="uploading" :expand="isMobile" @click="pickFiles">
           <template #start>
             <Icon name="ph:upload-simple" />
           </template>
           Upload
-        </Button>
-        <Button variant="gray" @click="openRules">
-          <template #start>
-            <Icon name="ph:scroll" />
-          </template>
-          Rules
         </Button>
         <input
           ref="fileInput"
@@ -165,8 +158,10 @@ async function handleWipeAll() {
         >
       </template>
 
-      <template #toolbar-actions>
-        <Tooltip>
+      <!-- On desktop the wipe action sits in the toolbar as an icon button; on
+           mobile it moves below the table where there's room for a label. -->
+      <template #toolbar-actions="{ isMobile }">
+        <Tooltip v-if="!isMobile">
           <Button
             square
             size="s"
@@ -181,6 +176,22 @@ async function handleWipeAll() {
             <p>Delete every one of your uploads</p>
           </template>
         </Tooltip>
+      </template>
+
+      <template #below-table="{ isMobile }">
+        <Button
+          v-if="isMobile"
+          expand
+          variant="danger"
+          outline
+          :disabled="total === 0 || wiping"
+          @click="showWipeModal = true"
+        >
+          <template #start>
+            <Icon name="ph:trash" />
+          </template>
+          Delete all uploads
+        </Button>
       </template>
     </DepotFileTableBase>
 

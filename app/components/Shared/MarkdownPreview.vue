@@ -36,6 +36,10 @@ const preview = computed(() =>
       <Icon name="ph:video" :size="18" />
       Posted a video
     </i>
+    <i v-else-if="preview === '#audio'">
+      <Icon name="ph:music-notes" :size="18" />
+      Posted audio
+    </i>
     <i v-else-if="preview === '#math'">
       <Icon name="ph:math-operations" :size="18" />
       Posted math

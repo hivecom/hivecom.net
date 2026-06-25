@@ -27,13 +27,14 @@ import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, compressImageToFit, convertImageToWebP, stripImageMetadata } from '@/lib/storage'
+import { allowedAudioTypes, allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, compressImageToFit, convertImageToWebP, stripImageMetadata } from '@/lib/storage'
 import { BUCKET_SIZE_LIMITS, formatBytes, FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import EditorContextMenu from './EditorContextMenu.vue'
 import EditorMathModal from './EditorMathModal.vue'
 import EditorTableMenu from './EditorTableMenu.vue'
 import EditorVideoModal from './EditorVideoModal.vue'
 import EditorYoutubeModal from './EditorYoutubeModal.vue'
+import { Audio } from './plugins/audio'
 import { DataFile } from './plugins/dataFile'
 import { ImageGroup } from './plugins/imageGroup'
 import { LinkEmbed as LinkEmbedNode } from './plugins/linkEmbed'
@@ -91,6 +92,11 @@ const TRAILING_WS_RE = /(\s+)$/
 const LEADING_WS_RE = /^(\s+)/
 // Matches [url](url) where the label is identical to the href - collapses to bare url
 const SELF_LINK_RE = /\[([^\]]+)\]\(\1\)/g
+
+// Atom media nodes that share the blob-placeholder upload flow (insert a blob
+// src immediately, swap to the storage URL once uploaded). Used wherever the
+// upload bookkeeping walks the document for media to track/swap/clean up.
+const MEDIA_NODE_TYPES = new Set(['image', 'video', 'audio'])
 
 // TODO: Code block highlighting & dropdown for seleting language
 
@@ -448,6 +454,8 @@ const editor = useEditor({
     }),
     // Uploaded video embeds (:::video {src="..."} ::: directive)
     Video,
+    // Uploaded audio embeds (:::audio {src="..."} ::: directive)
+    Audio,
     // Standalone internal link embed cards
     LinkEmbedNode,
     // Uploaded CSV/JSON data file attachments (:::dataFile directive)
@@ -703,21 +711,21 @@ const editor = useEditor({
     if (!transaction.docChanged || !props.mediaContext || externalContentUpdate)
       return
 
-    // Collect image and video media nodes (src + transient uploadId) present in
-    // the document before this transaction.
+    // Collect image, video and audio media nodes (src + transient uploadId)
+    // present in the document before this transaction.
     const prevNodes = new Map<string, string | null>()
     transaction.before.descendants((node) => {
-      if ((node.type.name === 'image' || node.type.name === 'video') && typeof node.attrs.src === 'string')
+      if (MEDIA_NODE_TYPES.has(node.type.name) && typeof node.attrs.src === 'string')
         prevNodes.set(node.attrs.src, typeof node.attrs.uploadId === 'string' ? node.attrs.uploadId : null)
     })
 
     if (prevNodes.size === 0)
       return
 
-    // Collect image and video srcs present in the document after this transaction
+    // Collect media srcs present in the document after this transaction
     const nextSrcs = new Set<string>()
     transaction.doc.descendants((node) => {
-      if ((node.type.name === 'image' || node.type.name === 'video') && typeof node.attrs.src === 'string')
+      if (MEDIA_NODE_TYPES.has(node.type.name) && typeof node.attrs.src === 'string')
         nextSrcs.add(node.attrs.src)
     })
 
@@ -813,16 +821,16 @@ const avgUploadProgress = computed(() => {
 // Background conversion/compression for a single file. Runs AFTER the
 // placeholder has been inserted so the user sees an immediate preview, then
 // swaps the placeholder's blob src to the optimised bytes when ready.
-async function processPendingFile(originalFile: File, uploadId: string, currentBlobUrl: string, isVideo: boolean) {
+async function processPendingFile(originalFile: File, uploadId: string, currentBlobUrl: string, skipImageProcessing: boolean) {
   // Always convert raster images to WebP - it's a format/size optimisation
   // that benefits every upload regardless of the metadata-stripping preference.
   // Exceptions: GIF (canvas round-trip drops animation), WebP (already optimal),
-  // and video (handled separately).
-  const shouldConvert = !isVideo
+  // and video/audio (no image processing applies - uploaded as-is).
+  const shouldConvert = !skipImageProcessing
     && originalFile.type !== 'image/gif'
     && originalFile.type !== 'image/webp'
 
-  const shouldStrip = !isVideo
+  const shouldStrip = !skipImageProcessing
     && !shouldConvert
     && originalFile.type !== 'image/webp'
     && props.stripImageMetadata !== false
@@ -848,7 +856,7 @@ async function processPendingFile(originalFile: File, uploadId: string, currentB
   }
 
   const sizeLimit = BUCKET_SIZE_LIMITS[resolvedMediaBucketId.value]
-  if (!isVideo && file.type !== 'image/gif' && file.size > sizeLimit) {
+  if (!skipImageProcessing && file.type !== 'image/gif' && file.size > sizeLimit) {
     try {
       const compressed = await compressImageToFit(file, sizeLimit)
       if (compressed.size < file.size)
@@ -882,7 +890,7 @@ async function processPendingFile(originalFile: File, uploadId: string, currentB
     editor.value.state.doc.descendants((node, nodePos) => {
       if (swapped)
         return false
-      const isMedia = node.type.name === 'image' || node.type.name === 'video'
+      const isMedia = MEDIA_NODE_TYPES.has(node.type.name)
       if (isMedia && node.attrs.uploadId === uploadId) {
         editor.value!
           .chain()
@@ -930,7 +938,7 @@ function handleFileUpload(files: File[] | null, pos?: number) {
   // bytes when ready. flushPendingUploads (on submit) reads from pendingBlobs,
   // which processPendingFile keeps up to date.
   let nextPos = pos ?? editor.value?.state.selection.anchor ?? 0
-  const queue: Array<{ originalFile: File, uploadId: string, blobUrl: string, isVideo: boolean }> = []
+  const queue: Array<{ originalFile: File, uploadId: string, blobUrl: string, skipImageProcessing: boolean }> = []
 
   for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
     const originalFile = files[fileIndex]!
@@ -940,7 +948,10 @@ function handleFileUpload(files: File[] | null, pos?: number) {
       return
 
     const isVideo = allowedVideoTypes.includes(originalFile.type)
-    const nodeType = isVideo ? 'video' : 'image'
+    const isAudio = allowedAudioTypes.includes(originalFile.type)
+    const nodeType = isVideo ? 'video' : isAudio ? 'audio' : 'image'
+    // Video and audio upload as-is; only images go through conversion/strip.
+    const skipImageProcessing = isVideo || isAudio
 
     // Use the original file's blob URL as the immediate placeholder so we don't
     // block on conversion. processPendingFile swaps this for the optimised blob.
@@ -968,8 +979,8 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     else
       chain.run()
 
-    // image / video nodes have nodeSize 1; advance so the next iteration
-    // inserts after this placeholder rather than on top of it.
+    // image / video / audio atom nodes have nodeSize 1; advance so the next
+    // iteration inserts after this placeholder rather than on top of it.
     nextPos += 1
 
     // Register as pending immediately - this gates the submit button via
@@ -978,7 +989,7 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     pendingBlobs.set(uploadId, { file: originalFile, blobUrl })
     uploadProgress.value.set(uploadId, 0)
 
-    queue.push({ originalFile, uploadId, blobUrl, isVideo })
+    queue.push({ originalFile, uploadId, blobUrl, skipImageProcessing })
   }
 
   uploadProgress.value = new Map(uploadProgress.value)
@@ -989,7 +1000,7 @@ function handleFileUpload(files: File[] | null, pos?: number) {
   // snapshotting pendingBlobs (otherwise it may upload against a stale blob URL
   // that the conversion has since swapped out, leaving a blob: src in the doc).
   for (const item of queue) {
-    const conversion = processPendingFile(item.originalFile, item.uploadId, item.blobUrl, item.isVideo)
+    const conversion = processPendingFile(item.originalFile, item.uploadId, item.blobUrl, item.skipImageProcessing)
       .finally(() => pendingConversions.delete(conversion))
     pendingConversions.add(conversion)
   }
@@ -1012,6 +1023,17 @@ const MIME_EXTENSION_MAP: Record<string, string> = {
   'video/webm': 'webm',
   'video/ogg': 'ogv',
   'video/quicktime': 'mov',
+  'audio/mpeg': 'mp3',
+  'audio/mp3': 'mp3',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/ogg': 'oga',
+  'audio/flac': 'flac',
+  'audio/aac': 'aac',
+  'audio/mp4': 'm4a',
+  'audio/x-m4a': 'm4a',
+  'audio/webm': 'weba',
+  'audio/opus': 'opus',
 }
 
 function extensionForMime(mime: string): string {
@@ -1130,7 +1152,7 @@ async function flushPendingUploads(): Promise<boolean> {
         .chain()
         .command(({ tr }) => {
           tr.doc.descendants((node, nodePos) => {
-            const isMedia = node.type.name === 'image' || node.type.name === 'video'
+            const isMedia = MEDIA_NODE_TYPES.has(node.type.name)
             if (isMedia && typeof node.attrs.uploadId === 'string') {
               const publicUrl = urlMap.get(node.attrs.uploadId)
               if (publicUrl) {
@@ -1169,7 +1191,7 @@ async function flushPendingUploads(): Promise<boolean> {
     editorRef?.state.doc.descendants((node) => {
       if (hasBlobRemaining)
         return false
-      const isMedia = node.type.name === 'image' || node.type.name === 'video'
+      const isMedia = MEDIA_NODE_TYPES.has(node.type.name)
       if (isMedia && typeof node.attrs.src === 'string' && node.attrs.src.startsWith('blob:')) {
         hasBlobRemaining = true
         return false
@@ -1178,7 +1200,7 @@ async function flushPendingUploads(): Promise<boolean> {
 
     if (hasBlobRemaining) {
       pushToast('Some media failed to upload', {
-        description: 'One or more images or videos are still uploading. Please try again.',
+        description: 'One or more images, videos or audio files are still uploading. Please try again.',
       })
       return false
     }
@@ -2290,6 +2312,22 @@ onBeforeRouteLeave(() => {
 
     &.ProseMirror-selectednode video {
       outline: 2px solid var(--color-accent);
+    }
+  }
+
+  // Audio embeds (:::audio directive / uploaded audio). Native controls stand in
+  // as the editor placeholder; the stored markdown renders our AudioPlayer.
+  .ProseMirror div[data-audio-embed] {
+    margin: var(--space-s) 0;
+
+    audio {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    &.ProseMirror-selectednode audio {
+      outline: 2px solid var(--color-accent);
+      border-radius: var(--border-radius-l);
     }
   }
 

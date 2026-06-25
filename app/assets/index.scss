@@ -161,6 +161,9 @@
   }
 
   width: fit-content;
+  // Badges have a fixed height, so wrapping text overflows the pill. Keep them
+  // on a single line everywhere (e.g. "audio/mpeg" content-type tags in tables).
+  white-space: nowrap;
 
   // Iconify icons render as <span class="iconify">, not <svg>/<path>, so VUI's
   // per-variant svg/path color rules don't reach them. Mirror those rules here.

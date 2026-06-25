@@ -95,15 +95,16 @@ function isAnonymous(account: string): boolean {
     :extra-params="extraParams"
     :extra-watch-sources="extraWatchSources"
   >
-    <template #filters-after>
+    <template #filters-after="{ isMobile }">
       <ExpandableSelect
         v-model="contentTypeModel"
         :options="contentTypeOptions"
         placeholder="Filter by type"
         single
         show-clear
+        :expand="isMobile"
       />
-      <Flex class="depot-author-filter">
+      <Flex :class="{ 'depot-author-filter': !isMobile }" :expand="isMobile">
         <AuthorFilter v-model="authorFilter" />
       </Flex>
     </template>

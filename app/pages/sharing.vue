@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Flex, Spinner, Tab, Tabs } from '@dolanske/vui'
+import { Button, Flex, Spinner, Tab, Tabs, Tooltip } from '@dolanske/vui'
 import { ref, useTemplateRef } from 'vue'
 import FileDropzone from '@/components/Shared/FileDropzone.vue'
 import SharingFileTable from '@/components/Sharing/SharingFileTable.vue'
@@ -7,6 +7,7 @@ import SharingKeys from '@/components/Sharing/SharingKeys.vue'
 import SharingQuota from '@/components/Sharing/SharingQuota.vue'
 import { useDepot } from '@/composables/useDepot'
 import { useSessionReady } from '@/composables/useSessionReady'
+import { useSharingRulesGate } from '@/composables/useSharingRulesGate'
 
 const user = useSupabaseUser()
 const client = useSupabaseClient()
@@ -43,6 +44,10 @@ const refreshSignal = ref(0)
 const totalFiles = ref(0)
 
 const activeTab = ref<'files' | 'keys'>('files')
+
+// The rules gate's open state is a module-level singleton, so opening it here
+// drives the <SharingRulesModal> that stays mounted inside SharingFileTable.
+const { openRules } = useSharingRulesGate()
 
 const fileTable = useTemplateRef('fileTable')
 
@@ -82,6 +87,17 @@ function handleDrop(files: FileList) {
           <Tab value="keys">
             API keys
           </Tab>
+
+          <template #end>
+            <Tooltip>
+              <Button square size="s" variant="gray" plain @click="openRules">
+                <Icon name="ph:scroll" />
+              </Button>
+              <template #tooltip>
+                <p>Sharing rules</p>
+              </template>
+            </Tooltip>
+          </template>
         </Tabs>
 
         <SharingFileTable

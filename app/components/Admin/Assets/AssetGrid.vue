@@ -4,7 +4,7 @@ import { Button, Card, CopyClipboard, Flex, Grid, Modal, Tooltip } from '@dolans
 import { useEventListener } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import UserLink from '@/components/Shared/UserLink.vue'
-import { downloadAsset, formatBytes, FORUMS_BUCKET_ID, isImageAsset, isVideoAsset } from '@/lib/storageAssets'
+import { downloadAsset, formatBytes, FORUMS_BUCKET_ID, isAudioAsset, isImageAsset, isVideoAsset } from '@/lib/storageAssets'
 
 const props = defineProps<{
   assets: StorageAsset[]
@@ -198,6 +198,9 @@ function getUploaderId(asset: StorageAsset): string | null {
         </template>
         <template v-else-if="isVideoAsset(asset) && asset.publicUrl">
           <video :src="asset.publicUrl" autoplay loop muted playsinline preload="auto" class="asset-grid-video" />
+        </template>
+        <template v-else-if="isAudioAsset(asset)">
+          <Icon name="ph:music-notes" size="32" />
         </template>
         <template v-else>
           <Icon name="ph:file" size="32" />

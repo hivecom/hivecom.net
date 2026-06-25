@@ -5,11 +5,12 @@ import { Button, Card, CopyClipboard, Flex, Input, Sheet, Spinner, Tooltip } fro
 import { computed, ref, watch } from 'vue'
 import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
 import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
+import AudioPlayer from '@/components/Shared/AudioPlayer.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
 import MarkdownLightbox from '@/components/Shared/MarkdownLightbox.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 
-import { downloadAsset, formatBytes, isImageAsset, isTextAsset, isVideoAsset } from '@/lib/storageAssets'
+import { downloadAsset, formatBytes, isAudioAsset, isImageAsset, isTextAsset, isVideoAsset } from '@/lib/storageAssets'
 
 const props = defineProps<{
   asset: StorageAsset | null
@@ -31,7 +32,9 @@ const canRename = computed(() => props.canRename ?? canDeleteAssets.value)
 const isOpen = defineModel<boolean>('isOpen', { default: false })
 
 const isText = computed(() => props.asset != null && isTextAsset(props.asset))
-const hasPreview = computed(() => props.asset != null && props.asset.type === 'file' && (isImageAsset(props.asset) || isVideoAsset(props.asset) || isText.value))
+const isVideo = computed(() => props.asset != null && isVideoAsset(props.asset))
+const isAudio = computed(() => props.asset != null && isAudioAsset(props.asset))
+const hasPreview = computed(() => props.asset != null && props.asset.type === 'file' && (isImageAsset(props.asset) || isVideo.value || isAudio.value || isText.value))
 
 const textContent = ref<string | null>(null)
 const textLoading = ref(false)
@@ -54,9 +57,8 @@ watch(() => props.asset, async (asset) => {
 }, { immediate: true })
 
 const previewContainer = ref<HTMLElement | null>(null)
-const isVideo = computed(() => props.asset != null && isVideoAsset(props.asset))
 const assetUrl = computed(() => props.asset?.publicUrl ?? '')
-const lightboxMarkdown = computed(() => assetUrl.value && !isVideo.value && !isText.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
+const lightboxMarkdown = computed(() => assetUrl.value && !isVideo.value && !isAudio.value && !isText.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
 const markdownSnippet = computed(() => assetUrl.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
 
 function closeDrawer() {
@@ -139,6 +141,7 @@ function requestRename() {
     <Flex v-if="props.asset" column gap="l" class="asset-details">
       <Flex v-if="hasPreview" ref="previewContainer" expand class="asset-details__preview">
         <video v-if="isVideo" :src="assetUrl" controls class="asset-details__video" />
+        <AudioPlayer v-else-if="isAudio" bare :src="assetUrl" :title="props.asset?.name" class="asset-details__audio" />
         <template v-else-if="isText">
           <Flex expand>
             <div v-if="textLoading" class="asset-details__text-preview asset-details__text-preview--loading">
@@ -283,6 +286,11 @@ function requestRename() {
     max-height: 320px;
     object-fit: contain;
     background: #000;
+  }
+
+  &__audio {
+    width: 100%;
+    padding: var(--space-s);
   }
 
   &__code {

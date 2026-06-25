@@ -93,6 +93,8 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
+@use '@/assets/mixins.scss' as *;
+
 .yt-embed {
   display: inline-flex;
   flex-direction: column;
@@ -201,9 +203,8 @@ onMounted(async () => {
     cursor: pointer;
     flex: 1;
     min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    max-width: 240px;
+    @include line-clamp(1);
 
     &:hover {
       color: var(--color-text-light);

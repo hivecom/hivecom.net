@@ -12,6 +12,7 @@ import ElapsedTimeIndicator from '@/components/Shared/ElapsedTimeIndicator.vue'
 import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useDepotFileTable } from '@/composables/useDepotFileTable'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatBytes } from '@/lib/storageAssets'
 
 const props = defineProps<{
@@ -43,9 +44,10 @@ const props = defineProps<{
 }>()
 
 defineSlots<{
-  'filters-before': () => VNode[]
-  'filters-after': () => VNode[]
-  'toolbar-actions': () => VNode[]
+  'filters-before': (props: { isMobile: boolean }) => VNode[]
+  'filters-after': (props: { isMobile: boolean }) => VNode[]
+  'toolbar-actions': (props: { isMobile: boolean }) => VNode[]
+  'below-table': (props: { isMobile: boolean }) => VNode[]
   'extra-head': () => VNode[]
   'extra-cell': (props: { file: T, openDetails: (file: T) => void }) => VNode[]
   'drawer-overview': (props: { file: T | null }) => VNode[]
@@ -59,6 +61,10 @@ const total = defineModel<number>('total', { default: 0 })
 const viewMode = defineModel<'table' | 'grid'>('viewMode', { default: 'grid' })
 
 const perPage = computed(() => props.perPage)
+
+// Below the medium breakpoint the toolbar stacks into a column and its controls
+// reflow to full width, matching the Assets manager layout.
+const isBelowMedium = useBreakpoint('<m')
 
 const {
   loading,
@@ -109,23 +115,51 @@ defineExpose({ refresh: fetchFiles, handleUploaded, handleExternalWipe })
 
 <template>
   <Flex column gap="s" expand>
-    <!-- Toolbar: filters + count + view toggle -->
-    <Flex x-between y-center gap="s" wrap expand>
-      <Flex :gap="filtersGap ?? 's'" y-center wrap>
-        <slot name="filters-before" />
-        <Input v-model="search" placeholder="Search filename">
+    <!-- Toolbar: filters + count + view toggle. Stacks into a column below the
+         medium breakpoint so the controls reflow to full width on mobile.
+         column-reverse so the view toggles sit above the search/filters. -->
+    <Flex
+      :column-reverse="isBelowMedium"
+      gap="xs"
+      wrap
+      :x-between="!isBelowMedium"
+      :x-start="isBelowMedium"
+      :y-center="!isBelowMedium"
+      :y-start="isBelowMedium"
+      expand
+    >
+      <Flex :gap="isBelowMedium ? 's' : (filtersGap ?? 's')" y-center wrap :expand="isBelowMedium">
+        <slot name="filters-before" :is-mobile="isBelowMedium" />
+        <Input v-model="search" :expand="isBelowMedium" placeholder="Search filename">
           <template #start>
             <Icon name="ph:magnifying-glass" />
           </template>
         </Input>
-        <slot name="filters-after" />
+        <slot name="filters-after" :is-mobile="isBelowMedium" />
       </Flex>
-      <Flex gap="s" y-center>
-        <Spinner v-if="loading && !initialLoad" size="s" />
-        <span class="text-color-lighter text-s" style="text-wrap: nowrap;">Total {{ total }}</span>
-        <slot name="toolbar-actions" />
-        <FileViewToggle v-model="viewMode" />
+      <Flex
+        gap="s"
+        wrap
+        :y-center="!isBelowMedium"
+        :y-start="isBelowMedium"
+        :expand="isBelowMedium"
+        :x-end="!isBelowMedium"
+      >
+        <Flex v-if="!isBelowMedium" gap="s" y-center>
+          <Spinner v-if="loading && !initialLoad" size="s" />
+          <span class="text-color-lighter text-s" style="text-wrap: nowrap;">Total {{ total }}</span>
+        </Flex>
+        <Flex gap="xs" y-center :expand="isBelowMedium" :x-between="isBelowMedium">
+          <slot name="toolbar-actions" :is-mobile="isBelowMedium" />
+          <FileViewToggle v-model="viewMode" :expand="isBelowMedium" />
+        </Flex>
       </Flex>
+    </Flex>
+
+    <!-- The total drops below the filters on mobile, centered. -->
+    <Flex v-if="isBelowMedium" x-center y-center gap="s" expand>
+      <Spinner v-if="loading && !initialLoad" size="s" />
+      <span class="text-color-lighter text-s">Total {{ total }}</span>
     </Flex>
 
     <Alert v-if="errorMessage" variant="danger">
@@ -180,15 +214,6 @@ defineExpose({ refresh: fetchFiles, handleUploaded, handleExternalWipe })
             <Table.SelectRow v-if="canManage" :row="row" />
             <Table.Cell @click="openDetails(row._original)">
               <Flex gap="xs" y-center>
-                <NuxtLink
-                  :to="row._original.url"
-                  target="_blank"
-                  rel="noopener"
-                  class="text-s depot-file-link"
-                  @click.stop
-                >
-                  {{ row._original.original_filename }}
-                </NuxtLink>
                 <span @click.stop>
                   <CopyClipboard :text="row._original.url" confirm>
                     <Tooltip>
@@ -201,6 +226,15 @@ defineExpose({ refresh: fetchFiles, handleUploaded, handleExternalWipe })
                     </Tooltip>
                   </CopyClipboard>
                 </span>
+                <NuxtLink
+                  :to="row._original.url"
+                  target="_blank"
+                  rel="noopener"
+                  class="text-s depot-file-link"
+                  @click.stop
+                >
+                  {{ row._original.original_filename }}
+                </NuxtLink>
               </Flex>
             </Table.Cell>
             <Table.Cell @click="openDetails(row._original)">
@@ -256,6 +290,8 @@ defineExpose({ refresh: fetchFiles, handleUploaded, handleExternalWipe })
         <Pagination :pagination="paginationState" @change="setPage" />
       </Flex>
     </template>
+
+    <slot name="below-table" :is-mobile="isBelowMedium" />
 
     <SelectedRowsActions
       v-if="canManage && viewMode === 'table'"

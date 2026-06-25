@@ -16,7 +16,7 @@ const viewMode = defineModel<'table' | 'grid'>({ required: true })
 <template>
   <ButtonGroup :expand="expand">
     <Button
-      size="s"
+      :size="expand ? 'm' : 's'"
       :variant="viewMode === 'grid' ? 'accent' : 'gray'"
       :square="!expand"
       :expand="expand"
@@ -25,7 +25,7 @@ const viewMode = defineModel<'table' | 'grid'>({ required: true })
       <Icon name="ph:squares-four" />
     </Button>
     <Button
-      size="s"
+      :size="expand ? 'm' : 's'"
       :variant="viewMode === 'table' ? 'accent' : 'gray'"
       :square="!expand"
       :expand="expand"

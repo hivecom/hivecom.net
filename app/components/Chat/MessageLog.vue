@@ -11,6 +11,7 @@ import UserActionMenu from '@/components/Chat/UserActionMenu.vue'
 import YouTubeEmbed from '@/components/Chat/YouTubeEmbed.vue'
 import LinkEmbed from '@/components/LinkEmbed/index.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
+import AudioPlayer from '@/components/Shared/AudioPlayer.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import JumpToPresent from '@/components/Shared/JumpToPresent.vue'
@@ -182,6 +183,7 @@ const SERVICE_NICKS = new Set(['histserv', 'nickserv', 'chanserv'])
 const URL_RE = /(https?:\/\/\S+)/g
 const IMAGE_RE = /[./](?:png|jpe?g|gif|webp|avif|svg)(?:[?#]\S*)?$/i
 const VIDEO_RE = /\.(?:mp4|webm|mov|m4v)(?:\?\S*)?$/i
+const AUDIO_RE = /\.(?:mp3|wav|flac|aac|m4a|oga|opus|weba|wma)(?:\?\S*)?$/i
 const YOUTUBE_RE = /^https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([-\w]{11})/i
 const MENTION_RE = /@([a-z\d][\w-]{0,31})/gi
 
@@ -574,6 +576,27 @@ function videoUrls(text: string): string[] {
   return (text.match(URL_RE) ?? []).filter(u => VIDEO_RE.test(u))
 }
 
+// Audio is a media preview like images/video, so it's gated on the same
+// chat_show_previews toggle. Unlike those it has no inline thumbnail form, so it
+// always renders as a block player below the message regardless of the
+// inline-images layout preference.
+function audioUrls(text: string): string[] {
+  if (!settings.value.chat_show_previews)
+    return []
+  return (text.match(URL_RE) ?? []).filter(u => AUDIO_RE.test(u))
+}
+
+// Best-effort track title for the audio player: the file name from the URL.
+function mediaFilename(url: string): string {
+  try {
+    const path = new URL(url).pathname
+    return decodeURIComponent(path.slice(path.lastIndexOf('/') + 1)) || url
+  }
+  catch {
+    return url
+  }
+}
+
 const videoShortUrls = reactive(new Set<string>())
 const brokenImages = reactive(new Set<string>())
 function onImageError(url: string) {
@@ -663,7 +686,7 @@ function handleIrcLinkClick(event: MouseEvent, url: string) {
 // render as an inline embed, so the raw link text can be hidden.
 function isEmbeddedLink(msgText: string, url: string): boolean {
   if (settings.value.chat_show_previews) {
-    if (IMAGE_RE.test(url) || VIDEO_RE.test(url) || youtubeVideoId(url) !== null)
+    if (IMAGE_RE.test(url) || VIDEO_RE.test(url) || AUDIO_RE.test(url) || youtubeVideoId(url) !== null)
       return true
   }
   if (settings.value.chat_show_inline_embeds) {
@@ -1432,6 +1455,16 @@ onBeforeUnmount(() => {
                     @click="openLightbox(url, 'video')"
                   />
                 </Flex>
+                <Flex v-if="!msg.redacted && audioUrls(msg.text).length" column gap="xs" class="chat-log__embeds chat-log__embeds--audio">
+                  <AudioPlayer
+                    v-for="url in audioUrls(msg.text)"
+                    :key="url"
+                    :src="url"
+                    :title="mediaFilename(url)"
+                    compact
+                    class="chat-log__audio"
+                  />
+                </Flex>
                 <template v-if="!msg.redacted && previewUrls(msg.text).length">
                   <LinkEmbed
                     v-for="url in previewUrls(msg.text)"
@@ -1649,7 +1682,7 @@ onBeforeUnmount(() => {
                       </span>
                       <template v-for="(seg, i) in (item.msg.redacted ? [] : segments(item.msg.text))" :key="i">
                         <template v-if="seg.type === 'link'">
-                          <a v-if="!imageUrls(item.msg.text).includes(seg.value) && !videoUrls(item.msg.text).includes(seg.value) && !previewUrls(item.msg.text).includes(seg.value) && !youtubeUrls(item.msg.text).includes(seg.value)" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
+                          <a v-if="!imageUrls(item.msg.text).includes(seg.value) && !videoUrls(item.msg.text).includes(seg.value) && !audioUrls(item.msg.text).includes(seg.value) && !previewUrls(item.msg.text).includes(seg.value) && !youtubeUrls(item.msg.text).includes(seg.value)" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
                         </template>
                         <span v-else-if="seg.type === 'channel'" class="chat-log__channel-link" :style="segStyle(seg)" @click="joinChannel(seg.value)">{{ seg.value }}</span>
                         <template v-else-if="seg.type === 'mention'">
@@ -1673,6 +1706,9 @@ onBeforeUnmount(() => {
                     </Flex>
                     <Flex v-if="!item.msg.redacted && videoUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
                       <video v-for="url in videoUrls(item.msg.text)" :key="url" :src="url" muted playsinline preload="metadata" :loop="videoShortUrls.has(url)" class="chat-log__embed-video" @loadedmetadata="onVideoMetadata($event, url)" @click="openLightbox(url, 'video')" />
+                    </Flex>
+                    <Flex v-if="!item.msg.redacted && audioUrls(item.msg.text).length" column gap="xs" class="chat-log__embeds chat-log__embeds--audio">
+                      <AudioPlayer v-for="url in audioUrls(item.msg.text)" :key="url" :src="url" :title="mediaFilename(url)" compact class="chat-log__audio" />
                     </Flex>
                     <template v-if="!item.msg.redacted && previewUrls(item.msg.text).length">
                       <LinkEmbed v-for="url in previewUrls(item.msg.text)" :key="url" :url="url" class="chat-log__link-preview" />
@@ -2250,6 +2286,12 @@ onBeforeUnmount(() => {
 
   &__embeds {
     padding-top: var(--space-xxs);
+  }
+
+  // Audio embeds stack as full-width players, capped so they don't stretch the
+  // whole message column on wide screens.
+  &__embeds--audio {
+    max-width: 420px;
   }
 
   &__image-group {

@@ -185,7 +185,7 @@ onMounted(loadKeys)
           No keys yet. Go make one and upload something.
         </p>
       </Flex>
-      <div v-for="(key, index) in keys" v-else :key="key.id" class="w-100">
+      <Flex v-for="(key, index) in keys" v-else :key="key.id" column class="w-100">
         <Divider v-if="index > 0" />
         <Flex x-between y-center gap="m" expand>
           <Flex column gap="xxs">
@@ -216,7 +216,7 @@ onMounted(loadKeys)
             </template>
           </Tooltip>
         </Flex>
-      </div>
+      </Flex>
     </Flex>
   </Flex>
 
