@@ -13,6 +13,10 @@ import { downloadAsset, formatBytes, isImageAsset, isTextAsset, isVideoAsset } f
 
 const props = defineProps<{
   asset: StorageAsset | null
+  // Override the default asset-permission checks so other surfaces (e.g. Depot)
+  // can reuse this drawer with their own capability. Falls back to canDeleteAssets.
+  canDelete?: boolean
+  canRename?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -21,8 +25,8 @@ const emit = defineEmits<{
 }>()
 
 const { canDeleteAssets } = useAdminPermissions()
-const canDelete = computed(() => canDeleteAssets.value)
-const canRename = computed(() => canDeleteAssets.value)
+const canDelete = computed(() => props.canDelete ?? canDeleteAssets.value)
+const canRename = computed(() => props.canRename ?? canDeleteAssets.value)
 
 const isOpen = defineModel<boolean>('isOpen', { default: false })
 
@@ -170,6 +174,8 @@ function requestRename() {
         <DetailRow label="Updated">
           <TimestampDate :date="props.asset.updated_at ?? null" />
         </DetailRow>
+        <!-- Lets callers (e.g. Depot) append context rows like the uploader. -->
+        <slot name="overview" />
       </DetailTable>
 
       <Card v-if="assetUrl" class="asset-details__clipboard card-bg">

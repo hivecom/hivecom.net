@@ -38,6 +38,7 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     admin_expanded_layout: false,
     admin_asset_view_mode: 'table',
     admin_asset_flat_view: false,
+    admin_depot_view_mode: 'grid',
     chat_colored_nicks: true,
     chat_notify_only_mentions: true,
     chat_autoconnect: false,

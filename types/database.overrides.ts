@@ -145,6 +145,7 @@ interface TableColumnOverrides {
       admin_expanded_layout: boolean
       admin_asset_view_mode: 'table' | 'grid'
       admin_asset_flat_view: boolean
+      admin_depot_view_mode: 'table' | 'grid'
       chat_colored_nicks: boolean
       chat_notify_only_mentions: boolean
       chat_autoconnect: boolean

@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { Alert } from '@dolanske/vui'
 import { onBeforeMount, ref, watch } from 'vue'
-import KPICard from '@/components/Admin/KPICard.vue'
-import KPIContainer from '@/components/Admin/KPIContainer.vue'
+import StorageKPIRow from '@/components/Admin/Shared/StorageKPIRow.vue'
 import { useDepot } from '@/composables/useDepot'
-import { formatBytes } from '@/lib/storageAssets'
 
 // Bumped by the table after a delete so the cards refetch.
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
@@ -34,48 +31,16 @@ onBeforeMount(fetchMetrics)
 </script>
 
 <template>
-  <KPIContainer class="depot-kpi-row">
-    <KPICard
-      label="Total Uploads"
-      :value="metrics.total_files"
-      icon="ph:folders"
-      variant="primary"
-      :is-loading="loading"
-      description="All uploads recorded on the gateway"
-    />
-    <KPICard
-      label="Storage Used"
-      :value="formatBytes(metrics.total_size)"
-      icon="ph:database"
-      variant="success"
-      :is-loading="loading"
-      description="Approximate total. Counts uploads recorded at presign, so pending ones inflate it until reconciliation prunes them."
-    />
-    <KPICard
-      label="Image Uploads"
-      :value="metrics.total_images"
-      icon="ph:image"
-      variant="warning"
-      :is-loading="loading"
-      description="Uploads with an image content type"
-    />
-  </KPIContainer>
-
-  <Alert v-if="errorMessage" variant="danger">
-    {{ errorMessage }}
-  </Alert>
+  <StorageKPIRow
+    :total="metrics.total_files"
+    :storage="metrics.total_size"
+    :images="metrics.total_images"
+    :loading="loading"
+    :error-message="errorMessage"
+    total-label="Total Uploads"
+    total-description="All uploads recorded on the gateway"
+    storage-description="Approximate total. Counts uploads recorded at presign, so pending ones inflate it until reconciliation prunes them."
+    images-label="Image Uploads"
+    images-description="Uploads with an image content type"
+  />
 </template>
-
-<style scoped lang="scss">
-.depot-kpi-row {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-m);
-  align-items: stretch;
-}
-
-.depot-kpi-row :deep(> .kpi-card) {
-  width: 100%;
-  height: 100%;
-}
-</style>

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { DepotApiKey } from '@/composables/useDepot'
-import { Alert, Badge, Button, Card, CopyClipboard, Divider, Flex, Input, Modal, pushToast, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, CopyClipboard, Divider, Flex, Input, Modal, pushToast, Tooltip } from '@dolanske/vui'
 import { onMounted, ref } from 'vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import { useDepot } from '@/composables/useDepot'
 
 // API keys for Orbit Depot, the storage gateway. A key lets CLI / ShareX
 // clients upload as this user. Minting and revoking both require the Supabase
-// JWT (an API key can't manage keys), so this lives behind the settings page.
+// JWT (an API key can't manage keys), so this lives behind the signed-in page.
 const depot = useDepot()
 const depotUrl = depot.baseUrl
 const depotHost = depot.host
@@ -125,107 +125,100 @@ onMounted(loadKeys)
 </script>
 
 <template>
-  <Card class="card-bg" separators>
-    <template #header>
-      <Flex x-between y-start gap="m" expand>
-        <Flex gap="xxs" column>
-          <h4>Sharing</h4>
-          <p class="text-s text-color-lighter">
-            When you post media Hivecom's chat, you use <a :href="depotUrl" target="_blank">{{ depotHost }}</a> - for programmatic access you can create API keys for CLIs or ShareX clients. <b>A key acts as your account, so treat it like a password.</b>
-          </p>
-        </Flex>
-        <Tooltip>
-          <Button size="s" square plain @click="showInfo = true">
-            <Icon name="ph:info" size="18" />
-          </Button>
-          <template #tooltip>
-            How to use
-          </template>
-        </Tooltip>
-      </Flex>
-    </template>
-
-    <Flex column gap="l">
-      <Flex column gap="s" expand>
-        <Flex gap="xs" y-center expand>
-          <Input
-            v-model="keyLabel"
-            placeholder="Label (e.g. ShareX / Local CLI / Laptop Macro)"
-            expand
-            @keydown.enter="mintKey"
-          />
-          <Button variant="accent" :disabled="!keyLabel" :loading="minting" @click="mintKey">
-            Mint key
-          </Button>
-        </Flex>
-
-        <template v-if="mintedKey">
-          <Alert variant="info">
-            <p class="text-xs">
-              Copy this now - it won't be shown again.
-            </p>
-          </Alert>
-          <Flex gap="xs" y-center expand>
-            <code class="key w-100">{{ mintedKey }}</code>
-            <CopyClipboard :text="mintedKey" confirm="Copied!">
-              <Button variant="gray">
-                Copy
-              </Button>
-            </CopyClipboard>
-          </Flex>
+  <Flex column gap="l" expand>
+    <Flex x-between y-start gap="m" expand>
+      <p class="text-s text-color-lighter">
+        API keys let CLIs and ShareX clients upload to <a :href="depotUrl" target="_blank">{{ depotHost }}</a> as you. <b>A key acts as your account, so treat it like a password.</b>
+      </p>
+      <Tooltip>
+        <Button size="s" square plain @click="showInfo = true">
+          <Icon name="ph:info" size="18" />
+        </Button>
+        <template #tooltip>
+          How to use
         </template>
-      </Flex>
-
-      <Divider />
-
-      <Flex column gap="s" expand>
-        <Flex x-between y-center gap="s" wrap expand>
-          <strong class="text-color-light">Your keys</strong>
-          <Button size="s" plain square :loading="loadingKeys" @click="loadKeys">
-            <Icon name="ph:arrow-counter-clockwise" />
-          </Button>
-        </Flex>
-
-        <Flex v-if="!loadingKeys && keys.length === 0" expand>
-          <p class="text-s text-color-lighter">
-            No keys yet. Go make one and upload something.
-          </p>
-        </Flex>
-        <div v-for="(key, index) in keys" v-else :key="key.id" class="w-100">
-          <Divider v-if="index > 0" />
-          <Flex x-between y-center gap="m" expand>
-            <Flex column gap="xxs">
-              <Flex y-center gap="xs" wrap>
-                <strong>{{ key.label }}</strong>
-                <Badge v-for="scope in key.scopes" :key="scope" size="s">
-                  {{ scope }}
-                </Badge>
-              </Flex>
-              <span class="text-color-lighter text-xs">
-                Created {{ formatDate(key.created_at) }}, last used {{ formatDate(key.last_used_at) }}
-              </span>
-            </Flex>
-            <Tooltip>
-              <Button
-                size="s"
-                square
-                plain
-                variant="danger"
-                :loading="revokingId === key.id"
-                :disabled="revokingId !== null"
-                @click="revokeKey(key.id)"
-              >
-                <Icon name="ph:trash" size="16" />
-              </Button>
-              <template #tooltip>
-                Revoke key
-              </template>
-            </Tooltip>
-          </Flex>
-        </div>
-      </Flex>
+      </Tooltip>
     </Flex>
-  </Card>
+
+    <Flex column gap="s" expand>
+      <Flex gap="xs" y-center expand>
+        <Input
+          v-model="keyLabel"
+          placeholder="Label (e.g. ShareX / Local CLI / Laptop Macro)"
+          expand
+          @keydown.enter="mintKey"
+        />
+        <Button variant="accent" :disabled="!keyLabel" :loading="minting" @click="mintKey">
+          Mint key
+        </Button>
+      </Flex>
+
+      <template v-if="mintedKey">
+        <Alert variant="info">
+          <p class="text-xs">
+            Copy this now - it won't be shown again.
+          </p>
+        </Alert>
+        <Flex gap="xs" y-center expand>
+          <code class="key w-100">{{ mintedKey }}</code>
+          <CopyClipboard :text="mintedKey" confirm="Copied!">
+            <Button variant="gray">
+              Copy
+            </Button>
+          </CopyClipboard>
+        </Flex>
+      </template>
+    </Flex>
+
+    <Divider />
+
+    <Flex column gap="s" expand>
+      <Flex x-between y-center gap="s" wrap expand>
+        <strong class="text-color-light">Your keys</strong>
+        <Button size="s" plain square :loading="loadingKeys" @click="loadKeys">
+          <Icon name="ph:arrow-counter-clockwise" />
+        </Button>
+      </Flex>
+
+      <Flex v-if="!loadingKeys && keys.length === 0" expand>
+        <p class="text-s text-color-lighter">
+          No keys yet. Go make one and upload something.
+        </p>
+      </Flex>
+      <div v-for="(key, index) in keys" v-else :key="key.id" class="w-100">
+        <Divider v-if="index > 0" />
+        <Flex x-between y-center gap="m" expand>
+          <Flex column gap="xxs">
+            <Flex y-center gap="xs" wrap>
+              <strong>{{ key.label }}</strong>
+              <Badge v-for="scope in key.scopes" :key="scope" size="s">
+                {{ scope }}
+              </Badge>
+            </Flex>
+            <span class="text-color-lighter text-xs">
+              Created {{ formatDate(key.created_at) }}, last used {{ formatDate(key.last_used_at) }}
+            </span>
+          </Flex>
+          <Tooltip>
+            <Button
+              size="s"
+              square
+              plain
+              variant="danger"
+              :loading="revokingId === key.id"
+              :disabled="revokingId !== null"
+              @click="revokeKey(key.id)"
+            >
+              <Icon name="ph:trash" size="16" />
+            </Button>
+            <template #tooltip>
+              Revoke key
+            </template>
+          </Tooltip>
+        </Flex>
+      </div>
+    </Flex>
+  </Flex>
 
   <Modal :open="showInfo" size="l" centered scrollable :card="{ separators: true }" @close="showInfo = false">
     <template #header>

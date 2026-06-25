@@ -31,6 +31,11 @@ const props = defineProps<{
    * Also hides the explicit preview button.
    */
   clickToPreview?: boolean
+  /**
+   * Hide the uploader row on each tile. The Sharing page only ever shows the
+   * logged-in user's own files, so the uploader is noise there.
+   */
+  hideUploader?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -260,7 +265,7 @@ function getUploaderId(asset: StorageAsset): string | null {
         <Flex y-center gap="s" x-start expand>
           <span v-if="asset.type !== 'folder' && asset.extension" class="text-xxs text-color-light">{{ asset.extension.toUpperCase() }}</span>
           <span class="text-xxs text-color-light">{{ asset.type === 'folder' ? 'Folder' : formatBytes(asset.size) }}</span>
-          <UserLink :user-id="getUploaderId(asset)" placeholder="Unknown" class="text-xxs" />
+          <UserLink v-if="!hideUploader" :user-id="getUploaderId(asset)" placeholder="Unknown" class="text-xxs" />
         </Flex>
       </Flex>
     </Card>

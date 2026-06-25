@@ -475,7 +475,9 @@ onBeforeMount(async () => {
                   <Icon :name="sortIcon('Captured')" size="14" class="sort-icon" />
                 </Flex>
               </Table.Head>
-              <Table.Head v-if="canManageResource" />
+              <Table.Head v-if="canManageResource">
+                Actions
+              </Table.Head>
             </template>
 
             <template #body>

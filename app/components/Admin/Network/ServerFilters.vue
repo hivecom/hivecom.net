@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Select } from '@dolanske/vui'
+import { Button, Flex, Input } from '@dolanske/vui'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface SelectOption {
@@ -48,7 +49,7 @@ function clearFilters() {
     </Input>
 
     <!-- Status filter -->
-    <Select
+    <ExpandableSelect
       v-model="statusFilter"
       :options="props.statusOptions"
       placeholder="Filter by status"

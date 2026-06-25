@@ -385,7 +385,7 @@ function toStorageAsset(
   }
 }
 
-function extractExtension(filename: string): string | null {
+export function extractExtension(filename: string): string | null {
   const parts = filename.split('.')
   if (parts.length < 2)
     return null

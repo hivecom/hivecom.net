@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Flex, Input, Select } from '@dolanske/vui'
+import { Button, Flex, Input } from '@dolanske/vui'
 import { computed } from 'vue'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -52,7 +53,7 @@ function clearFilters() {
     />
 
     <!-- Region filter -->
-    <Select
+    <ExpandableSelect
       v-model="regionFilter"
       :options="props.regionOptions"
       placeholder="Filter by region"

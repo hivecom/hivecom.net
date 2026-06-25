@@ -2,10 +2,12 @@
 import { Button, Flex, Resizable } from '@dolanske/vui'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import SharedErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import SharingRulesModal from '@/components/Shared/SharingRulesModal.vue'
 import { useChatAttachments } from '@/composables/useChatAttachments'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
+import { useSharingRulesGate } from '@/composables/useSharingRulesGate'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import ChatChannelJoinBlockedModal from './ChannelJoinBlockedModal.vue'
 import ChatChannelList from './ChannelList.vue'
@@ -102,6 +104,16 @@ const hasChannels = computed(() => buffers.value.some(b => b.kind === 'channel')
 const { add: addAttachments } = useChatAttachments()
 const { canChat } = useIrcChat()
 const fileDragging = ref(false)
+
+// Shared sharing-rules gate. Attaching files (button, drop, paste) routes
+// through useChatAttachments, which opens this modal when the user hasn't
+// agreed yet; we just mount the modal once here for the whole chat surface.
+const {
+  open: sharingRulesOpen,
+  agreed: sharingRulesAgreed,
+  handleAgreed: onSharingRulesAgreed,
+  handleCancelled: onSharingRulesCancelled,
+} = useSharingRulesGate()
 
 function onMainDragOver(event: DragEvent) {
   if (!canChat.value || !event.dataTransfer?.types.includes('Files'))
@@ -285,6 +297,12 @@ watch([userId, user], ([id, u], prev) => {
     <ChatChannelJoinBlockedModal :blocked="channelJoinBlocked" @close="channelJoinBlocked = null" />
     <ChatIdentityModal :open="identityOpen" @close="identityOpen = false" />
     <ChatModerationConfirmModal />
+    <SharingRulesModal
+      v-model:open="sharingRulesOpen"
+      :show-agree-button="sharingRulesAgreed !== true"
+      @confirm="onSharingRulesAgreed"
+      @cancel="onSharingRulesCancelled"
+    />
   </section>
 </template>
 

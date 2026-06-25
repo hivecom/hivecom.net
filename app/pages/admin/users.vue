@@ -239,6 +239,8 @@ async function handleUserAction(action: UserAction) {
   if (action.type === 'delete') {
     try {
       await runActionWithDetailLoading(action, 'delete', async () => {
+        // The edge function wipes the user's Orbit Depot uploads server-side
+        // before removing the account, so a deleted user leaves no trace.
         const { error } = await supabase.functions.invoke('admin-user-delete', {
           method: 'POST',
           body: {
@@ -391,6 +393,8 @@ async function handleUserSave(userData: UserFormData, badges: string[], currentB
 // Handle delete from UserForm - delegates to the edge function so all cleanup runs
 async function handleUserDelete(userId: string) {
   try {
+    // The edge function wipes the user's Orbit Depot uploads server-side before
+    // removing the account, so nothing survives the deletion.
     const { error } = await supabase.functions.invoke('admin-user-delete', {
       method: 'POST',
       body: { userId },

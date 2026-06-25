@@ -1651,6 +1651,7 @@ export type Database = {
       profiles: {
         Row: {
           agreed_content_rules: boolean
+          agreed_sharing_rules: boolean
           avatar_extension: string | null
           ban_end: string | null
           ban_reason: string | null
@@ -1685,6 +1686,7 @@ export type Database = {
         }
         Insert: {
           agreed_content_rules?: boolean
+          agreed_sharing_rules?: boolean
           avatar_extension?: string | null
           ban_end?: string | null
           ban_reason?: string | null
@@ -1719,6 +1721,7 @@ export type Database = {
         }
         Update: {
           agreed_content_rules?: boolean
+          agreed_sharing_rules?: boolean
           avatar_extension?: string | null
           ban_end?: string | null
           ban_reason?: string | null

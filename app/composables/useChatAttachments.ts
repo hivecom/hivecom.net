@@ -1,6 +1,7 @@
 import { pushToast } from '@dolanske/vui'
 import { ref } from 'vue'
 import { useDepot } from '@/composables/useDepot'
+import { useSharingRulesGate } from '@/composables/useSharingRulesGate'
 
 export type ChatAttachmentStatus = 'pending' | 'uploading' | 'done' | 'error'
 
@@ -34,13 +35,14 @@ const uploading = ref(false)
  */
 export function useChatAttachments() {
   const depot = useDepot()
+  const rulesGate = useSharingRulesGate()
 
   function isImage(file: File) {
     return file.type.startsWith('image/')
   }
 
-  function add(files: FileList | File[]) {
-    for (const file of Array.from(files)) {
+  function addToTray(files: File[]) {
+    for (const file of files) {
       if (file.size > MAX_FILE_BYTES) {
         pushToast('File too large', { description: `${file.name} is over 100 MB.` })
         continue
@@ -52,6 +54,17 @@ export function useChatAttachments() {
         status: 'pending',
       })
     }
+  }
+
+  // Attaching is an upload to Depot, so it goes through the sharing-rules gate:
+  // if the user hasn't agreed yet, the shared modal opens and the files are
+  // added once they accept. Snapshot the list first since a FileList from an
+  // <input> is cleared right after this call.
+  function add(files: FileList | File[]) {
+    const snapshot = Array.from(files)
+    if (!snapshot.length)
+      return
+    rulesGate.run(() => addToTray(snapshot))
   }
 
   function remove(id: string) {

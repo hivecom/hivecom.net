@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
 import type { StorageAsset as CmsAsset, FlatSortColumn, StorageBucketId } from '@/lib/storageAssets'
-import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, ButtonGroup, CopyClipboard, defineTable, DropdownItem, Flex, Grid, Input, paginate, Pagination, pushToast, Skeleton, Spinner, Table, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, BreadcrumbItem, Breadcrumbs, Button, CopyClipboard, defineTable, DropdownItem, Flex, Grid, Input, paginate, Pagination, pushToast, Skeleton, Spinner, Table, Tooltip } from '@dolanske/vui'
 import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AssetDetails from '@/components/Admin/Assets/AssetDetails.vue'
 import AssetGrid from '@/components/Admin/Assets/AssetGrid.vue'
 import AssetRenameModal from '@/components/Admin/Assets/AssetRenameModal.vue'
+import FileViewToggle from '@/components/Admin/Shared/FileViewToggle.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
@@ -725,26 +726,7 @@ onBeforeMount(fetchAssets)
           </span>
 
           <Flex gap="xs" :expand="isBelowMedium" :x-between="isBelowMedium">
-            <ButtonGroup :expand="isBelowMedium">
-              <Button
-                size="s"
-                :variant="viewMode === 'table' ? 'accent' : 'gray'"
-                :square="!isBelowMedium"
-                :expand="isBelowMedium"
-                @click="viewMode = 'table'"
-              >
-                <Icon name="ph:list" />
-              </Button>
-              <Button
-                size="s"
-                :variant="viewMode === 'grid' ? 'accent' : 'gray'"
-                :square="!isBelowMedium"
-                :expand="isBelowMedium"
-                @click="viewMode = 'grid'"
-              >
-                <Icon name="ph:squares-four" />
-              </Button>
-            </ButtonGroup>
+            <FileViewToggle v-model="viewMode" :expand="isBelowMedium" />
 
             <Tooltip>
               <Button

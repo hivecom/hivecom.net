@@ -303,7 +303,9 @@ onBeforeMount(async () => {
                 </Flex>
               </Table.Head>
               <Table.Head>Created By</Table.Head>
-              <Table.Head v-if="canManageResource" />
+              <Table.Head v-if="canManageResource">
+                Actions
+              </Table.Head>
             </template>
 
             <template #body>

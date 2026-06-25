@@ -232,7 +232,7 @@ async function handleBulkDelete() {
       <Table.Root v-if="rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
           <th v-if="canManageResource" class="vui-table-interactive-cell" />
-          <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
+          <Table.Head v-for="header in headers.filter(h => h.label !== '_original' && h.label !== 'id')" :key="header.label" sort :header />
           <Table.Head
             v-if="canManageResource"
             key="actions"

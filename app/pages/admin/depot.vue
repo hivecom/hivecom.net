@@ -31,8 +31,7 @@ const activeTab = ref<'files' | 'users'>('files')
     <Flex column :gap="0" expand>
       <h1>Depot</h1>
       <p class="text-color-light">
-        Moderate uploads stored on the Orbit Depot gateway ({{ host }}). Listing and deletion are
-        service-operator capabilities, so only admins reach this page.
+        View and moderate uploads stored in Orbit Depot gateway ({{ host }})
       </p>
     </Flex>
 
