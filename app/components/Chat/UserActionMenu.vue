@@ -40,7 +40,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const { nick: currentNick, openPm, activeName, inputMessage, myChannelRole, sendMemberMode, moderationPrompt } = useIrcChat()
+const { nick: currentNick, openPm, openSelfSpace, activeName, inputMessage, myChannelRole, sendMemberMode, moderationPrompt } = useIrcChat()
 const { settings } = useDataUserSettings()
 
 const isSelf = computed(() => props.nick === currentNick.value)
@@ -75,6 +75,11 @@ async function copyNick() {
 
 function doOpenPm() {
   openPm(props.nick)
+  emit('close')
+}
+
+function doOpenSelfSpace() {
+  openSelfSpace()
   emit('close')
 }
 
@@ -146,6 +151,13 @@ function requestModeration(action: 'kick' | 'kickban') {
       <Icon name="ph:user" />
     </template>
     Copy nickname
+  </DropdownItem>
+
+  <DropdownItem v-if="isSelf" @click="doOpenSelfSpace">
+    <template #icon>
+      <Icon name="ph:bookmark-simple" />
+    </template>
+    Your Space
   </DropdownItem>
 
   <template v-if="!isSelf">

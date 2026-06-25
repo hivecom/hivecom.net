@@ -1028,11 +1028,17 @@ watch(activeName, clearReply)
 .chat-composer {
   position: relative;
 
-  // On phones the composer sits flush to the bottom of the viewport, so add the
-  // home-indicator inset (plus a little breathing room) below the input so the
-  // bezel doesn't clip it.
+  // The persistent audio mini-player floats over the bottom of the viewport,
+  // right where the composer lives. While it's docked it publishes its height as
+  // --audio-dock-height; reserve that here so the floating player never covers
+  // the input, on every layout (full-page chat included). 0 when nothing plays.
+  padding-bottom: var(--audio-dock-height, 0px);
+
+  // On phones the composer also sits flush to the bottom edge, so stack the
+  // home-indicator inset on top of the dock reservation so the bezel doesn't clip
+  // the input.
   @media (max-width: #{$breakpoint-s}) {
-    padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom, 0px) + var(--audio-dock-height, 0px));
 
     .chat-composer__input {
       border-left: 1px solid var(--color-border);

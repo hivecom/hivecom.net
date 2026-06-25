@@ -6,7 +6,7 @@ import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useChatNavSheet } from '@/composables/useChatNavSheet'
-import { SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
+import { SELF_SPACE_LABEL, SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -15,7 +15,7 @@ defineProps<{
   compact?: boolean
 }>()
 
-const { activeBuffer, buffers, joinChannel, openPm, requestWhois, isUnauthorizedSubchannel, myChannelRole, serverLogPinned } = useIrcChat()
+const { activeBuffer, buffers, joinChannel, openPm, requestWhois, isUnauthorizedSubchannel, myChannelRole, serverLogPinned, isSelfBuffer } = useIrcChat()
 
 const hasChannels = computed(() => buffers.value.some(b => b.kind === 'channel'))
 const showHeader = computed(() => hasChannels.value || serverLogPinned.value)
@@ -148,14 +148,14 @@ function topicSegments(topic: string): TopicSegment[] {
     <template v-else-if="activeBuffer.kind === 'pm'">
       <Flex x-between expand y-center>
         <Flex y-center gap="xs" :class="{ 'channel-header__left--clickable': isMobile }" @click="isMobile && openPmInfo()">
-          <UserAvatar v-if="pmUserId" :user-id="pmUserId" size="s" show-online-indicator show-preview linked />
+          <UserAvatar v-if="pmUserId" :user-id="pmUserId" :size="isMobile ? 22 : 's' " show-online-indicator show-preview linked />
           <AvatarMedia v-else :size="28" :alt="activeBuffer.name">
             <template #default>
               {{ activeBuffer.name.charAt(0).toUpperCase() }}
             </template>
           </AvatarMedia>
-          <span class="channel-header__name">{{ activeBuffer.name }}</span>
-          <ChannelModeBadges :is-service="pmIsService" :is-bot="pmIsBot" />
+          <span class="channel-header__name">{{ isSelfBuffer(activeBuffer.name) ? SELF_SPACE_LABEL : activeBuffer.name }}</span>
+          <ChannelModeBadges v-if="!isSelfBuffer(activeBuffer.name)" :is-service="pmIsService" :is-bot="pmIsBot" />
         </Flex>
         <Button :disabled="!hasPmInfo" square plain aria-label="User info" @click="openPmInfo">
           <Icon name="ph:info" size="14" />

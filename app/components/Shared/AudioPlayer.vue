@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { Button, Flex, Spinner } from '@dolanske/vui'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { Flex } from '@dolanske/vui'
+import { computed, ref, watch } from 'vue'
+import AudioEqualizer from '@/components/Shared/AudioEqualizer.vue'
+import AudioTransport from '@/components/Shared/AudioTransport.vue'
 
 const props = defineProps<{
   // The audio source URL.
@@ -17,170 +19,114 @@ const props = defineProps<{
   bare?: boolean
 }>()
 
-const audio = ref<HTMLAudioElement | null>(null)
-const playing = ref(false)
-const duration = ref(0)
-const currentTime = ref(0)
-const loading = ref(false)
-const errored = ref(false)
-// While the user drags the scrubber we hold playback updates so the thumb
-// doesn't jump back to the element's time mid-drag.
-const seeking = ref(false)
+// A view of the shared playback engine bound to one src. Actual playback lives
+// in useAudioPlayer so it survives navigation and list re-renders, with the
+// persistent toast as the other view. When this instance owns the active track
+// it reflects and drives the engine live; otherwise it sits idle and a press
+// hands the track over to the engine. The transport renders the controls.
+const player = useAudioPlayer()
 
-const progress = computed(() => {
-  if (!duration.value)
-    return 0
-  return (currentTime.value / duration.value) * 100
-})
+const isActive = computed(() => player.currentSrc.value === props.src)
 
-function formatTime(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0)
-    return '0:00'
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
+// A metadata-only probe so idle players can still show the total duration in
+// lists, the way they did when each owned its own element. It never plays.
+const probe = ref<HTMLAudioElement | null>(null)
+const localDuration = ref(0)
+const localErrored = ref(false)
+
+const displayPlaying = computed(() => isActive.value && player.playing.value)
+const displayLoading = computed(() => isActive.value && player.loading.value)
+const displayErrored = computed(() => (isActive.value ? player.errored.value : localErrored.value))
+const displayCurrentTime = computed(() => (isActive.value ? player.currentTime.value : 0))
+const displayDuration = computed(() => (isActive.value ? player.duration.value : localDuration.value))
 
 function togglePlay() {
-  const el = audio.value
-  if (!el)
-    return
-  if (el.paused)
-    el.play().catch(() => { errored.value = true })
-  else
-    el.pause()
+  player.toggle({ src: props.src, title: props.title, subtitle: props.subtitle })
 }
 
-function onLoadedMetadata() {
-  if (audio.value)
-    duration.value = audio.value.duration
-  loading.value = false
+function onProbeMeta() {
+  if (probe.value)
+    localDuration.value = probe.value.duration
 }
 
-function onTimeUpdate() {
-  if (audio.value && !seeking.value)
-    currentTime.value = audio.value.currentTime
+function onProbeError() {
+  localErrored.value = true
 }
 
-// Drive seeking off the range input so click, drag and keyboard all work.
-function onSeekInput(event: Event) {
-  seeking.value = true
-  const value = Number((event.target as HTMLInputElement).value)
-  currentTime.value = (value / 100) * duration.value
+function onSeekInput(time: number) {
+  player.seeking.value = true
+  player.currentTime.value = time
 }
 
 function onSeekCommit() {
-  if (audio.value)
-    audio.value.currentTime = currentTime.value
-  seeking.value = false
+  player.commitSeek()
 }
 
-function onError() {
-  errored.value = true
-  loading.value = false
-}
-
-// Reset everything when the source swaps (e.g. the drawer moves to another file).
+// Reset the idle probe state when the source swaps (e.g. the drawer moves to
+// another file).
 watch(() => props.src, () => {
-  playing.value = false
-  duration.value = 0
-  currentTime.value = 0
-  errored.value = false
-  loading.value = true
-})
-
-onBeforeUnmount(() => {
-  audio.value?.pause()
+  localDuration.value = 0
+  localErrored.value = false
 })
 </script>
 
 <template>
   <div
     class="audio-player" :class="{ 'audio-player--compact': compact,
-                                   'audio-player--error': errored,
                                    'audio-player--bare': bare }"
   >
+    <!-- Metadata-only probe so an idle player can show the track length. The
+         engine owns the element that actually plays, so this never does. -->
     <audio
-      ref="audio"
+      v-if="!isActive"
+      ref="probe"
       :src="src"
       preload="metadata"
-      @loadedmetadata="onLoadedMetadata"
-      @timeupdate="onTimeUpdate"
-      @play="playing = true"
-      @pause="playing = false"
-      @ended="playing = false"
-      @waiting="loading = true"
-      @playing="loading = false"
-      @error="onError"
+      @loadedmetadata="onProbeMeta"
+      @error="onProbeError"
     />
 
-    <Button
-      class="audio-player__toggle"
-      variant="accent"
-      square
-      :disabled="errored"
-      :aria-label="playing ? 'Pause' : 'Play'"
-      @click="togglePlay"
+    <AudioTransport
+      :playing="displayPlaying"
+      :loading="displayLoading"
+      :errored="displayErrored"
+      :current-time="displayCurrentTime"
+      :duration="displayDuration"
+      :seekable="isActive"
+      :compact="compact"
+      @toggle="togglePlay"
+      @seek-input="onSeekInput"
+      @seek-commit="onSeekCommit"
     >
-      <Spinner v-if="loading && playing" size="s" />
-      <Icon v-else :name="playing ? 'ph:pause-fill' : 'ph:play-fill'" size="18" />
-    </Button>
-
-    <Flex column :gap="0" expand class="audio-player__body">
-      <Flex v-if="title || subtitle" x-between y-center gap="s" class="audio-player__meta">
-        <span v-if="title" class="audio-player__title text-s">{{ title }}</span>
-        <span v-if="subtitle" class="audio-player__subtitle text-xs text-color-lighter">{{ subtitle }}</span>
-      </Flex>
-
-      <Flex y-center gap="s" expand class="audio-player__controls">
-        <span class="audio-player__time text-xs text-color-lighter">{{ formatTime(currentTime) }}</span>
-
-        <div class="audio-player__scrubber">
-          <div class="audio-player__track">
-            <div class="audio-player__fill" :style="{ width: `${progress}%` }" />
-          </div>
-          <input
-            class="audio-player__range"
-            type="range"
-            min="0"
-            max="100"
-            step="0.1"
-            :value="progress"
-            :disabled="errored || !duration"
-            aria-label="Seek"
-            @input="onSeekInput"
-            @change="onSeekCommit"
-            @mouseup="onSeekCommit"
-            @touchend="onSeekCommit"
-          >
-        </div>
-
-        <span class="audio-player__time text-xs text-color-lighter">{{ formatTime(duration) }}</span>
-      </Flex>
-
-      <span v-if="errored" class="audio-player__error-text text-xs text-color-red">Could not load audio.</span>
-    </Flex>
+      <template v-if="title || subtitle" #meta>
+        <Flex x-between y-center gap="s" expand class="audio-player__meta">
+          <span v-if="title" class="audio-player__title text-s">{{ title }}</span>
+          <span v-else aria-hidden="true" />
+          <Flex y-center gap="s" class="audio-player__meta-end">
+            <span v-if="subtitle" class="audio-player__subtitle text-xs text-color-lighter">{{ subtitle }}</span>
+            <AudioEqualizer :playing="displayPlaying" />
+          </Flex>
+        </Flex>
+      </template>
+    </AudioTransport>
   </div>
 </template>
 
 <style scoped lang="scss">
 .audio-player {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
   width: 100%;
   padding: var(--space-s);
   border-radius: var(--border-radius-l);
   background: var(--color-bg-raised);
   border: 1px solid var(--color-border-subtle);
+  transition: border-color var(--transition);
+
+  &:not(.audio-player--bare):hover {
+    border-color: var(--color-border);
+  }
 
   &--compact {
     padding: var(--space-xs);
-    gap: var(--space-xs);
-
-    .audio-player__toggle {
-      align-self: center;
-    }
   }
 
   &--bare {
@@ -190,21 +136,12 @@ onBeforeUnmount(() => {
     border-radius: 0;
   }
 
-  &--error .audio-player__toggle {
-    opacity: 0.6;
-  }
-
-  &__toggle {
-    flex-shrink: 0;
-    align-self: flex-start;
-  }
-
-  &__body {
-    min-width: 0;
-  }
-
   &__meta {
     margin-bottom: var(--space-xxs);
+  }
+
+  &__meta-end {
+    flex-shrink: 0;
   }
 
   &__title {
@@ -218,87 +155,6 @@ onBeforeUnmount(() => {
   &__subtitle {
     white-space: nowrap;
     flex-shrink: 0;
-  }
-
-  &__controls {
-    width: 100%;
-  }
-
-  &__time {
-    flex-shrink: 0;
-    font-variant-numeric: tabular-nums;
-    min-width: 2.5rem;
-
-    &:last-child {
-      text-align: right;
-    }
-  }
-
-  &__scrubber {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    height: 16px;
-    display: flex;
-    align-items: center;
-  }
-
-  &__track {
-    position: absolute;
-    inset-inline: 0;
-    height: 4px;
-    border-radius: var(--border-radius-xs);
-    background: var(--color-border);
-    overflow: hidden;
-  }
-
-  &__fill {
-    height: 100%;
-    background: var(--color-accent);
-    border-radius: inherit;
-  }
-
-  // Transparent native range sits on top of the painted track so we get real
-  // drag, click and keyboard seeking without rebuilding pointer math.
-  &__range {
-    position: relative;
-    width: 100%;
-    margin: 0;
-    background: transparent;
-    appearance: none;
-    cursor: pointer;
-
-    &:disabled {
-      cursor: default;
-    }
-
-    &::-webkit-slider-thumb {
-      appearance: none;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--color-accent);
-      border: 2px solid var(--color-bg);
-      cursor: pointer;
-    }
-
-    &::-moz-range-thumb {
-      width: 12px;
-      height: 12px;
-      border: 2px solid var(--color-bg);
-      border-radius: 50%;
-      background: var(--color-accent);
-      cursor: pointer;
-    }
-
-    &:disabled::-webkit-slider-thumb,
-    &:disabled::-moz-range-thumb {
-      background: var(--color-border-strong);
-    }
-  }
-
-  &__error-text {
-    margin-top: var(--space-xxs);
   }
 }
 </style>

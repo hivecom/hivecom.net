@@ -2347,7 +2347,9 @@ onBeforeUnmount(() => {
 
   &__embed-video {
     display: block;
-    max-width: 320px;
+    width: auto;
+    height: auto;
+    max-width: min(320px, 100%);
     max-height: 200px;
     border-radius: var(--border-radius-s);
     border: 1px solid var(--color-border-weak);

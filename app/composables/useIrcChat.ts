@@ -273,6 +273,11 @@ const MODE_PREFIX_RE = /^[~&@%+]+/
 // IRC service bots whose messages should never generate mention notifications.
 export const SERVICE_NICKS = new Set(['histserv', 'nickserv', 'chanserv'])
 
+// Label shown wherever the DM-with-yourself buffer surfaces (channel list,
+// header, etc.) instead of your own nick. A private space to keep notes and
+// share things between your own devices.
+export const SELF_SPACE_LABEL = 'Your Space'
+
 // IRC channel-membership prefixes ordered from highest to lowest privilege.
 const PREFIX_ORDER = '~&@%+'
 // Channel mode chars that map onto a membership prefix.
@@ -3781,6 +3786,23 @@ function openPm(target: string) {
   }
 }
 
+/** True when `name` is the current user's own nick - i.e. the "your space" DM. */
+function isSelfBuffer(name: string) {
+  const me = nick.value
+  return !!me && name.toLowerCase() === me.toLowerCase()
+}
+
+/**
+ * Open (or focus) the DM with yourself - "your space". A private buffer for
+ * notes and for shuttling messages between your own devices, since the server
+ * stores and replays it via CHATHISTORY like any other DM.
+ */
+function openSelfSpace() {
+  const me = nick.value
+  if (me)
+    openPm(me)
+}
+
 function sendPm(target: string, text: string) {
   const trimmed = text.trim()
   if (!trimmed)
@@ -4696,6 +4718,8 @@ export function useIrcChat() {
     joinChannel,
     renameChannel,
     openPm,
+    openSelfSpace,
+    isSelfBuffer,
     sendPm,
     closeBuffer,
     ensureNick,

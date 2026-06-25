@@ -99,6 +99,7 @@ onMounted(async () => {
   display: inline-flex;
   flex-direction: column;
   gap: var(--space-xxs);
+  max-width: 100%;
 
   &--small-row {
     display: inline;
@@ -134,6 +135,7 @@ onMounted(async () => {
   &__preview {
     position: relative;
     display: inline-block;
+    max-width: 100%;
     line-height: 0;
     border-radius: var(--border-radius-s);
     overflow: hidden;
@@ -152,7 +154,9 @@ onMounted(async () => {
 
   &__thumb {
     display: block;
-    max-width: 240px;
+    width: auto;
+    height: auto;
+    max-width: min(240px, 100%);
     max-height: 180px;
     object-fit: cover;
 

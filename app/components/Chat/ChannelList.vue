@@ -13,7 +13,7 @@ import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
-import { SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
+import { SELF_SPACE_LABEL, SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -27,7 +27,7 @@ const props = defineProps<{
   noScroll?: boolean
 }>()
 
-const { buffers, activeName, setActive, closeBuffer, joinChannel, renameChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, channelMetaResolved, requestChannelMetadata, isUnauthorizedSubchannel, setChannelMetadata, queryChanServInfo, serverLogPinned, activateServerLog, closeServerLog } = useIrcChat()
+const { buffers, activeName, setActive, closeBuffer, joinChannel, renameChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, channelMetaResolved, requestChannelMetadata, isUnauthorizedSubchannel, setChannelMetadata, queryChanServInfo, serverLogPinned, activateServerLog, closeServerLog, isSelfBuffer } = useIrcChat()
 
 // Proactively fetch metadata for every implied parent path so slash-nesting can
 // be verified and the parent displayed even when we haven't joined it.
@@ -117,6 +117,8 @@ const joinInput = ref('')
 function bufferLabel(buf: ChatBuffer) {
   if (buf.kind === 'server')
     return 'Server'
+  if (buf.kind === 'pm' && isSelfBuffer(buf.name))
+    return SELF_SPACE_LABEL
   return buf.metadata?.get('display-name') ?? buf.name.replace(/^#/, '')
 }
 
@@ -228,7 +230,9 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
 
   for (const buf of sortedBuffers.value) {
     if (buf.kind !== 'channel') {
-      const displayName = buf.kind === 'server' ? 'Server' : buf.name
+      const displayName = buf.kind === 'server'
+        ? 'Server'
+        : (buf.kind === 'pm' && isSelfBuffer(buf.name) ? SELF_SPACE_LABEL : buf.name)
       root.push({ type: 'channel', buffer: buf, displayName })
       continue
     }
@@ -846,7 +850,7 @@ function executeRenameChannel() {
     <!-- Mobile drawer -->
     <Drawer :open="mobileMenuOpen" @close="mobileMenuOpen = false">
       <template v-if="menuBuffer" #header>
-        <h4>{{ menuBuffer.metadata?.get('display-name') ?? menuBuffer.name }}</h4>
+        <h4>{{ menuBuffer.kind === 'pm' && isSelfBuffer(menuBuffer.name) ? SELF_SPACE_LABEL : (menuBuffer.metadata?.get('display-name') ?? menuBuffer.name) }}</h4>
       </template>
       <div class="vui-dropdown chat-channels__menu" @click="closeMenu">
         <template v-if="menuBuffer">

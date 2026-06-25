@@ -1315,8 +1315,13 @@ const textareaRef = useTemplateRef<{ focus: () => void, rootEl: HTMLElement | nu
 // Height of the floating reply composer, used to lift the "jump to latest" pill
 // above it. Only tracked while the floating editor setting is on; otherwise the
 // composer sits in normal flow and never overlaps the fixed pill, so offset 0.
-const { height: composerHeight } = useElementSize(() =>
-  settings.value.editor_floating ? textareaRef.value?.rootEl ?? null : null,
+// Measure the border box so the composer's own padding counts too, including the
+// --audio-dock-height reservation it adds while the audio mini-player is docked.
+// That keeps the pill above both the composer and the player.
+const { height: composerHeight } = useElementSize(
+  () => (settings.value.editor_floating ? textareaRef.value?.rootEl ?? null : null),
+  { width: 0, height: 0 },
+  { box: 'border-box' },
 )
 const jumpToPresentOffset = computed(() => Math.round(composerHeight.value))
 
@@ -1791,6 +1796,12 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
       bottom: 0;
       z-index: var(--z-sticky);
       padding-top: var(--space-s);
+      // The persistent audio mini-player floats over the bottom of the viewport,
+      // right where this sticky input sits. While it's docked it publishes its
+      // height as --audio-dock-height; reserve that so the player stops covering
+      // the input. The solid part of the background below fills the gap so the
+      // player sits over it cleanly. 0 when nothing's playing.
+      padding-bottom: var(--audio-dock-height, 0px);
       background: linear-gradient(to bottom, transparent, var(--color-bg) var(--space-s));
 
       // Keep the replying-to alert visually consistent when floating

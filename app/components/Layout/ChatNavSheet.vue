@@ -30,7 +30,7 @@ const { open } = useChatNavSheet()
 const identityOpen = ref(false)
 const settingsOpen = ref(false)
 
-const { isConnected, connState, connect, disconnect, hasUnread, hasMention, activeBuffer, account } = useIrcChat()
+const { isConnected, connState, connect, disconnect, hasUnread, hasMention, activeBuffer, account, nick, openSelfSpace } = useIrcChat()
 const { settings } = useDataUserSettings()
 const userId = useUserId()
 
@@ -52,6 +52,11 @@ watch(() => activeBuffer.value?.name, () => {
   if (open.value)
     open.value = false
 })
+
+function goToSelfSpace() {
+  openSelfSpace()
+  open.value = false
+}
 </script>
 
 <template>
@@ -110,6 +115,12 @@ watch(() => activeBuffer.value?.name, () => {
 
       <template #footer>
         <Flex column gap="s" expand class="p-s">
+          <Button v-if="isConnected && nick" expand variant="gray" @click="goToSelfSpace">
+            <template #start>
+              <Icon name="ph:bookmark-simple" />
+            </template>
+            Your Space
+          </Button>
           <Flex gap="s" expand>
             <Button expand variant="gray" @click="settingsOpen = true">
               <template #start>
