@@ -19,9 +19,56 @@ export type StorageBucketId
 // File size limits in bytes, mirroring the bucket config in storage.buckets.
 export const BUCKET_SIZE_LIMITS: Record<StorageBucketId, number> = {
   [CMS_BUCKET_ID]: 52428800, // 50 MB
-  [FORUMS_BUCKET_ID]: 10485760, // 10 MB
+  [FORUMS_BUCKET_ID]: 52428800, // 50 MB
   [STATIC_BUCKET_ID]: 5242880, // 5 MB
   [USERS_BUCKET_ID]: 1048576, // 1 MB
+}
+
+// Archive MIME types and extensions. Browsers report these inconsistently
+// (often '' or application/octet-stream), so we match by extension as a fallback.
+export const ARCHIVE_MIME_TYPES = ['application/zip', 'application/x-zip-compressed', 'application/x-7z-compressed', 'application/vnd.rar', 'application/x-rar-compressed', 'application/x-tar', 'application/gzip', 'application/x-gzip']
+export const ARCHIVE_EXTENSIONS = ['zip', '7z', 'rar', 'tar', 'gz', 'tgz', 'bz2', 'xz']
+
+// Allowed MIME patterns per bucket, mirroring allowed_mime_types in
+// storage.buckets. `null` means the bucket accepts any type. Patterns support a
+// trailing `/*` wildcard (e.g. image/*) just like the database column.
+export const BUCKET_ALLOWED_MIME_TYPES: Record<StorageBucketId, string[] | null> = {
+  [CMS_BUCKET_ID]: null,
+  [FORUMS_BUCKET_ID]: ['application/json', 'image/*', 'video/*', 'audio/*', 'text/csv', ...ARCHIVE_MIME_TYPES],
+  [STATIC_BUCKET_ID]: ['application/json', 'image/*', 'video/*', 'text/csv'],
+  [USERS_BUCKET_ID]: ['image/*', 'video/webm'],
+}
+
+function mimeMatchesPattern(pattern: string, type: string): boolean {
+  if (pattern.endsWith('/*'))
+    return type.startsWith(pattern.slice(0, -1))
+  return pattern === type
+}
+
+// Whether a file is allowed in a bucket, by MIME, with an extension fallback for
+// archives whose browser-reported MIME is empty or octet-stream.
+export function isFileAllowedForBucket(bucketId: StorageBucketId, fileType: string, fileName: string): boolean {
+  const patterns = BUCKET_ALLOWED_MIME_TYPES[bucketId]
+  if (patterns == null)
+    return true
+  if (fileType && patterns.some(pattern => mimeMatchesPattern(pattern, fileType)))
+    return true
+
+  const bucketAllowsArchives = patterns.some(pattern => ARCHIVE_MIME_TYPES.includes(pattern))
+  const extension = fileName.split('.').pop()?.toLowerCase() ?? ''
+  return bucketAllowsArchives && ARCHIVE_EXTENSIONS.includes(extension)
+}
+
+// Value for an <input type="file"> accept attribute. Empty string means any
+// type (CMS). Archive extensions are appended since their MIME is unreliable.
+export function getBucketAcceptAttr(bucketId: StorageBucketId): string {
+  const patterns = BUCKET_ALLOWED_MIME_TYPES[bucketId]
+  if (patterns == null)
+    return ''
+  const archiveExtensions = patterns.some(pattern => ARCHIVE_MIME_TYPES.includes(pattern))
+    ? ARCHIVE_EXTENSIONS.map(extension => `.${extension}`)
+    : []
+  return [...patterns, ...archiveExtensions].join(',')
 }
 
 export type SortColumn = 'name' | 'updated_at' | 'created_at'
@@ -285,6 +332,15 @@ export function isAudioAsset(asset: StorageAsset): boolean {
 
   const knownAudioExtensions = ['mp3', 'wav', 'flac', 'aac', 'm4a', 'oga', 'opus', 'weba', 'wma']
   return knownAudioExtensions.includes(extension)
+}
+
+export function isArchiveAsset(asset: StorageAsset): boolean {
+  const mime = asset.mimeType ?? ''
+  const extension = asset.extension ?? ''
+  if (ARCHIVE_MIME_TYPES.includes(mime))
+    return true
+
+  return ARCHIVE_EXTENSIONS.includes(extension)
 }
 
 export function isTextAsset(asset: StorageAsset): boolean {

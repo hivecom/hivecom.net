@@ -26,6 +26,15 @@ function onSeekInput(time: number) {
   player.currentTime.value = time
 }
 
+// Pop the fullscreen spectrogram view on the already-active track.
+function openFullscreen() {
+  player.openFullscreen({
+    src: player.currentSrc.value!,
+    title: player.title.value,
+    subtitle: player.subtitle.value,
+  })
+}
+
 // The toast floats over the bottom of the viewport, where the mobile chat
 // composer also lives. Publish the docked footprint (the toast's own height plus
 // its bottom offset and a small gap) as a CSS variable while we're mounted so the
@@ -61,7 +70,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Card :padding="false" expand class="toast-audio">
+  <Card v-show="!player.fullscreen.value" :padding="false" expand class="toast-audio">
     <AudioTransport
       class="toast-audio__transport"
       compact
@@ -79,7 +88,21 @@ onUnmounted(() => {
         <Flex x-between y-center gap="s" expand class="toast-audio__meta">
           <span v-if="player.title.value" class="toast-audio__title">{{ player.title.value }}</span>
           <span v-else aria-hidden="true" />
-          <AudioEqualizer :playing="player.playing.value" />
+          <!-- Clickable affordance, deliberately not a Button: the equalizer and
+               the expand glyph together open the fullscreen view. -->
+          <span
+            class="toast-audio__expand"
+            role="button"
+            tabindex="0"
+            aria-label="Open fullscreen player"
+            title="Open fullscreen player"
+            @click="openFullscreen"
+            @keydown.enter.prevent="openFullscreen"
+            @keydown.space.prevent="openFullscreen"
+          >
+            <AudioEqualizer :playing="player.playing.value" />
+            <Icon name="ph:arrows-out-simple" :size="14" />
+          </span>
         </Flex>
       </template>
 
@@ -118,6 +141,20 @@ onUnmounted(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+  }
+
+  &__expand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    flex-shrink: 0;
+    cursor: pointer;
+    color: var(--color-text-lighter);
+    transition: color var(--transition);
+
+    &:hover {
+      color: var(--color-accent);
+    }
   }
 
   &__close {

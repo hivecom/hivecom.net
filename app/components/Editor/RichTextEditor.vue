@@ -1247,7 +1247,18 @@ function handleReplacePendingBlob(oldBlobUrl: string, newFile: File) {
 
 const fileInput = useTemplateRef('file-input')
 
-const DATA_FILE_EXT_RE = /\.(?:csv|json)$/i
+const DATA_FILE_EXT_RE = /\.(?:csv|json|zip|7z|rar|tar|gz|tgz)$/i
+
+// Archive extension -> MIME. Used to set a reliable contentType on upload since
+// browsers leave file.type empty for most of these.
+const ARCHIVE_EXT_TO_MIME: Record<string, string> = {
+  'zip': 'application/zip',
+  '7z': 'application/x-7z-compressed',
+  'rar': 'application/vnd.rar',
+  'tar': 'application/x-tar',
+  'gz': 'application/gzip',
+  'tgz': 'application/gzip',
+}
 
 // (removed insertSpoilerBlock function)
 
@@ -1266,12 +1277,21 @@ async function handleDataFileUpload(file: File) {
   const insertPos = editor.value.state.selection.anchor
 
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'csv'
-  const type: 'csv' | 'json' = ext === 'json' ? 'json' : 'csv'
+  const type: 'csv' | 'json' | 'archive' = ext === 'json'
+    ? 'json'
+    : ARCHIVE_EXT_TO_MIME[ext]
+      ? 'archive'
+      : 'csv'
   const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${ext}`
+
+  // Browsers report archive MIME types inconsistently (often '' or
+  // octet-stream), but the bucket's allow-list needs a concrete type, so
+  // resolve it from the extension when we recognise one.
+  const contentType = ARCHIVE_EXT_TO_MIME[ext] ?? (file.type || 'application/octet-stream')
 
   const { error } = await supabase.storage
     .from(resolvedMediaBucketId.value)
-    .upload(fileUrl, file, { contentType: file.type, metadata: { uploadedBy: user.value?.id ?? 'anonymous' } })
+    .upload(fileUrl, file, { contentType, metadata: { uploadedBy: user.value?.id ?? 'anonymous' } })
 
   if (error) {
     pushToast('Error uploading file', { description: error.message })

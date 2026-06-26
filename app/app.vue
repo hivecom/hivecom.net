@@ -3,6 +3,7 @@ import { Button, Flex, Modal, Toasts } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import Command from '@/components/Command.vue'
 import LayoutLoading from '@/components/Layout/Loading.vue'
+import AudioLightbox from '@/components/Shared/AudioLightbox.vue'
 import ExternalLinkModal from '@/components/Shared/ExternalLinkModal.vue'
 import ThemeEditorControls from '@/components/Themes/ThemeEditorControls.vue'
 import { useDataNotifications } from '@/composables/useDataNotifications'
@@ -188,6 +189,7 @@ function onConfirmPreviewTheme(withCss: boolean, close: () => void) {
 
   <ClientOnly>
     <Toasts />
+    <AudioLightbox />
   </ClientOnly>
 
   <!-- Global always present components -->

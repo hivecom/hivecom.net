@@ -44,6 +44,14 @@ function togglePlay() {
   player.toggle({ src: props.src, title: props.title, subtitle: props.subtitle })
 }
 
+// Hand this track to the engine (if it isn't already playing) and pop the
+// fullscreen spectrogram view.
+function openFullscreen() {
+  if (displayErrored.value)
+    return
+  player.openFullscreen({ src: props.src, title: props.title, subtitle: props.subtitle })
+}
+
 function onProbeMeta() {
   if (probe.value)
     localDuration.value = probe.value.duration
@@ -100,11 +108,35 @@ watch(() => props.src, () => {
     >
       <template v-if="title || subtitle" #meta>
         <Flex x-between y-center gap="s" expand class="audio-player__meta">
-          <span v-if="title" class="audio-player__title text-s">{{ title }}</span>
+          <button
+            v-if="title"
+            type="button"
+            class="audio-player__title text-s"
+            :disabled="displayErrored"
+            title="Open fullscreen player"
+            @click="openFullscreen"
+          >
+            {{ title }}
+          </button>
           <span v-else aria-hidden="true" />
           <Flex y-center gap="s" class="audio-player__meta-end">
             <span v-if="subtitle" class="audio-player__subtitle text-xs text-color-lighter">{{ subtitle }}</span>
-            <AudioEqualizer :playing="displayPlaying" />
+            <!-- Clickable affordance, deliberately not a Button: the equalizer
+                 and the expand glyph together open the fullscreen view. -->
+            <span
+              class="audio-player__expand"
+              role="button"
+              tabindex="0"
+              :aria-disabled="displayErrored"
+              aria-label="Open fullscreen player"
+              title="Open fullscreen player"
+              @click="openFullscreen"
+              @keydown.enter.prevent="openFullscreen"
+              @keydown.space.prevent="openFullscreen"
+            >
+              <AudioEqualizer :playing="displayPlaying" />
+              <Icon name="ph:arrows-out-simple" :size="14" />
+            </span>
           </Flex>
         </Flex>
       </template>
@@ -145,16 +177,54 @@ watch(() => props.src, () => {
   }
 
   &__title {
+    display: block;
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+    cursor: pointer;
     color: var(--color-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+    transition: color var(--transition);
+
+    &:hover:not(:disabled) {
+      color: var(--color-accent);
+    }
+
+    &:disabled {
+      cursor: default;
+    }
   }
 
   &__subtitle {
     white-space: nowrap;
     flex-shrink: 0;
+  }
+
+  &__expand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    flex-shrink: 0;
+    align-self: center;
+    cursor: pointer;
+    color: var(--color-text-lighter);
+    transition: color var(--transition);
+
+    &:hover {
+      color: var(--color-accent);
+    }
+
+    &[aria-disabled='true'] {
+      cursor: default;
+      opacity: 0.6;
+      pointer-events: none;
+    }
   }
 }
 </style>

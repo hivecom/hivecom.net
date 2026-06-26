@@ -14,7 +14,7 @@ import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { CMS_BUCKET_ID, formatBytes, FORUMS_BUCKET_ID, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, listStorageObjectsFlat, normalizePrefix, zipAndDownloadAssets } from '@/lib/storageAssets'
+import { CMS_BUCKET_ID, formatBytes, FORUMS_BUCKET_ID, isArchiveAsset, isImageAsset, listStorageDirectory as listCmsDirectory, listStorageFilesRecursive as listCmsFilesRecursive, listStorageObjectsFlat, normalizePrefix, zipAndDownloadAssets } from '@/lib/storageAssets'
 import { fullDateTime } from '@/lib/utils/date'
 import { truncate } from '@/lib/utils/formatting'
 
@@ -568,6 +568,8 @@ function getAssetTypeLabel(asset: CmsAsset): string {
     return 'Folder'
   if (isImageAsset(asset))
     return 'Image'
+  if (isArchiveAsset(asset))
+    return 'Archive'
   if (documentExtensions.includes(asset.extension ?? ''))
     return 'Document'
   return 'File'

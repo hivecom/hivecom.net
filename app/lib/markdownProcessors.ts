@@ -281,9 +281,9 @@ export function processDataFileDirectives(markdown: string): string {
   return markdown.replace(DATAFILE_DIRECTIVE_RE, (_full, attrString: string = '') => {
     const attrs = parseTiptapAttrs(attrString)
     const src = attrs.src ?? ''
-    const name = attrs.name ?? (attrs.type === 'json' ? 'data.json' : 'data.csv')
-    const type = attrs.type === 'json' ? 'json' : 'csv'
-    const icon = type === 'json' ? '{ }' : '⊞'
+    const type = attrs.type === 'json' ? 'json' : attrs.type === 'archive' ? 'archive' : 'csv'
+    const name = attrs.name ?? (type === 'json' ? 'data.json' : type === 'archive' ? 'archive.zip' : 'data.csv')
+    const icon = type === 'json' ? '{ }' : type === 'archive' ? '🗜' : '⊞'
 
     if (!src)
       return ''

@@ -15,7 +15,7 @@ declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     dataFile: {
       /** Insert a data file node at the current selection. */
-      insertDataFile: (attrs: { src: string, name: string, type: 'csv' | 'json' }) => ReturnType
+      insertDataFile: (attrs: { src: string, name: string, type: 'csv' | 'json' | 'archive' }) => ReturnType
     }
   }
 }
@@ -60,8 +60,8 @@ export const DataFile = Node.create({
     const src = HTMLAttributes.src as string | null
     const name = HTMLAttributes.name as string
     const type = HTMLAttributes.type as string
-    const icon = type === 'json' ? '{ }' : '⊞'
-    const label = name || (type === 'json' ? 'data.json' : 'data.csv')
+    const icon = type === 'json' ? '{ }' : type === 'archive' ? '🗜' : '⊞'
+    const label = name || (type === 'json' ? 'data.json' : type === 'archive' ? 'archive.zip' : 'data.csv')
 
     return [
       'div',

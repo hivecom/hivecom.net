@@ -28,6 +28,9 @@ const errored = ref(false)
 // thumb back mid-drag. Shared, so dragging one surface holds them all.
 const seeking = ref(false)
 const activeToastId = ref<number | null>(null)
+// Whether the fullscreen spectrogram view is open. Shared so any inline player
+// can pop it and the single global AudioLightbox can render the active track.
+const fullscreen = ref(false)
 
 let audio: HTMLAudioElement | null = null
 
@@ -159,9 +162,25 @@ function commitSeek() {
   seeking.value = false
 }
 
+// Open the fullscreen spectrogram view on a track. Hands the track to the
+// engine if it isn't already active (so the playhead has something to follow);
+// resuming an already-active paused track is left to the user.
+function openFullscreen(track: AudioTrack) {
+  if (currentSrc.value !== track.src)
+    play(track)
+  else
+    ensureToast()
+  fullscreen.value = true
+}
+
+function closeFullscreen() {
+  fullscreen.value = false
+}
+
 // Full stop: reset playback and dismiss the toast.
 function stop() {
   reset()
+  fullscreen.value = false
   if (activeToastId.value != null) {
     removeToast(activeToastId.value)
     activeToastId.value = null
@@ -189,10 +208,13 @@ export function useAudioPlayer() {
     loading,
     errored,
     seeking,
+    fullscreen,
     play,
     toggle,
     togglePlayback,
     commitSeek,
+    openFullscreen,
+    closeFullscreen,
     stop,
     handleToastUnmount,
   }

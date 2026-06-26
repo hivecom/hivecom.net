@@ -21,8 +21,12 @@ export const allowedAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio
 export const allowedMediaTypes = [...allowedImageTypes, ...allowedVideoTypes, ...allowedAudioTypes]
 export const allowedMediaExtensions = allowedMediaTypes.join(', ')
 
-export const allowedDataTypes = ['text/csv', 'application/json', 'text/plain']
-export const allowedDataExtensions = '.csv,.json'
+// Archives. Browsers report these inconsistently (often '' or
+// application/octet-stream), so the editor routes them by extension too.
+export const allowedArchiveTypes = ['application/zip', 'application/x-zip-compressed', 'application/x-7z-compressed', 'application/vnd.rar', 'application/x-rar-compressed', 'application/x-tar', 'application/gzip', 'application/x-gzip']
+
+export const allowedDataTypes = ['text/csv', 'application/json', 'text/plain', ...allowedArchiveTypes]
+export const allowedDataExtensions = '.csv,.json,.zip,.7z,.rar,.tar,.gz,.tgz'
 
 function isStorageNotFoundError(error: unknown): boolean {
   if (error == null || typeof error !== 'object')
