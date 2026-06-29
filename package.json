@@ -87,7 +87,7 @@
     "@antfu/eslint-config": "^9.0.0",
     "@olrtg/emmet-language-server": "^2.8.0",
     "@types/node": "^26.0.0",
-    "@types/three": "^0.184.1",
+    "@types/three": "^0.185.0",
     "@webgpu/types": "^0.1.70",
     "eslint": "^10.5.0",
     "eslint-plugin-format": "^2.0.1",
