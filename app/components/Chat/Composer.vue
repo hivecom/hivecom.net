@@ -1040,6 +1040,14 @@ watch(activeName, clearReply)
   @media (max-width: #{$breakpoint-s}) {
     padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom, 0px) + var(--audio-dock-height, 0px));
 
+    // Inside the navbar sheet the sheet itself already reserves the home-bar
+    // inset (.vui-sheet-position-* in index.scss), so drop our own copy here or
+    // it stacks twice. The standalone /chat page has no sheet, so it keeps the
+    // reservation above.
+    .chat-app--menu-padding & {
+      padding-bottom: calc(var(--space-xs) + var(--audio-dock-height, 0px));
+    }
+
     .chat-composer__input {
       border-left: 1px solid var(--color-border);
       border-bottom: 1px solid var(--color-border);

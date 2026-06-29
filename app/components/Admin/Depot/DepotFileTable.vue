@@ -11,6 +11,7 @@ import UserLink from '@/components/Shared/UserLink.vue'
 import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useDepot } from '@/composables/useDepot'
+import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface ProfileResult {
   id: string
@@ -30,8 +31,17 @@ watch(viewMode, (mode) => {
   settings.value.admin_depot_view_mode = mode
 })
 
-// Page size is provided by the admin layout, same as the other admin tables.
+// The admin layout provides 10 (compact) or 20 (expanded). The grid view packs
+// far more per row than the row-based tables, so we scale up to match the Assets
+// manager: 25/50 per page and a fixed 4/8 column grid (2 on mobile).
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
+const isBelowMedium = useBreakpoint('<m')
+const perPage = computed(() => (adminTablePerPage.value > 10 ? 50 : 25))
+const gridColumns = computed(() => {
+  if (isBelowMedium.value)
+    return 2
+  return adminTablePerPage.value > 10 ? 8 : 4
+})
 
 // ─── Filters ──────────────────────────────────────────────────────────────────
 
@@ -85,7 +95,8 @@ function isAnonymous(account: string): boolean {
     v-model:view-mode="viewMode"
     :list-files="adminListFiles"
     :delete-file="deleteFile"
-    :per-page="adminTablePerPage"
+    :per-page="perPage"
+    :grid-columns="gridColumns"
     :can-manage="canModerateDepot"
     empty-message="No uploads found"
     empty-search-message="No uploads found"

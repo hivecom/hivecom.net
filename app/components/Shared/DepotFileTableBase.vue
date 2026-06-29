@@ -28,6 +28,10 @@ const props = defineProps<{
   hideUploader?: boolean
   emptyMessage: string
   emptySearchMessage?: string
+  // Fixed column count for the grid view. When omitted the grid auto-fills at a
+  // 200px min, which is what the Sharing table uses. The admin table passes a
+  // count to match the Assets manager.
+  gridColumns?: number
   // Gap between the filter controls in the toolbar. The admin filters sit at 's';
   // the self table packs its upload/rules/search tighter at 'xs'.
   filtersGap?: 'xs' | 's'
@@ -61,6 +65,11 @@ const total = defineModel<number>('total', { default: 0 })
 const viewMode = defineModel<'table' | 'grid'>('viewMode', { default: 'grid' })
 
 const perPage = computed(() => props.perPage)
+
+// Mirrors AssetGrid's own logic so the skeleton matches the loaded grid.
+const gridTemplate = computed(() =>
+  props.gridColumns ? `repeat(${props.gridColumns}, 1fr)` : 'repeat(auto-fill, minmax(200px, 1fr))',
+)
 
 // Below the medium breakpoint the toolbar stacks into a column and its controls
 // reflow to full width, matching the Assets manager layout.
@@ -176,7 +185,7 @@ defineExpose({ refresh: fetchFiles, handleUploaded, handleExternalWipe })
       v-else-if="initialLoad && viewMode === 'grid'"
       expand
       gap="s"
-      columns="repeat(auto-fill, minmax(200px, 1fr))"
+      :columns="gridTemplate"
     >
       <Skeleton v-for="i in perPage" :key="i" :height="207" :radius="8" />
     </Grid>
@@ -280,6 +289,7 @@ defineExpose({ refresh: fetchFiles, handleUploaded, handleExternalWipe })
     <template v-else>
       <AssetGrid
         :assets="gridAssets"
+        :columns="gridColumns"
         :can-delete="canManage"
         :hide-uploader="hideUploader"
         @click-asset="handleAssetClick"
