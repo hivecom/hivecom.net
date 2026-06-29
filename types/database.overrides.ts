@@ -179,6 +179,11 @@ interface TableColumnOverrides {
       chat_irc_native_modes: boolean
       chat_irc_pure_relay_nicks: boolean
       chat_cache_max_messages_per_buffer: number
+      // Output level (0-100) for the shared site audio player (depot tracks,
+      // embeds, the fullscreen lightbox), persisted so it carries across
+      // sessions and every player. Mobile ignores it and plays at full, leaving
+      // the device volume as the only control.
+      audio_player_volume: number
     }
   }
 

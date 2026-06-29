@@ -78,10 +78,16 @@ const resolvedPostSignInRedirect = computed(() => postSignInRedirect.value ?? '/
 // redirect (default page behaviour) or, for embedded use, stays put and lets the
 // host react via the `success` event.
 function finishSignIn() {
-  if (props.stayOnSuccess)
+  if (props.stayOnSuccess) {
+    // Embedded host stays put, so return the form to its initial state.
+    resetMfaState()
     emit('success')
-  else
+  }
+  else {
+    // Keep the MFA card up until navigation swaps the page out. Resetting here
+    // would flip requiresMfaChallenge off and flash the password form first.
     navigateTo(resolvedPostSignInRedirect.value)
+  }
 }
 
 function normalizeOtpFromText(text: string) {
@@ -349,6 +355,16 @@ async function prepareMfaRequirement(options: PrepareMfaOptions = {}) {
     if (aalError)
       throw aalError
 
+    // Push the assurance level into the shared cache straight away. Writes that
+    // gate on it (the user_settings auto-save) need to know a step-up is pending
+    // before any route change or the post-verify success path runs, otherwise
+    // they fire against the aal1 session and RLS rejects every one.
+    mfaCache.value = {
+      currentLevel: aalData?.currentLevel ?? null,
+      nextLevel: aalData?.nextLevel ?? null,
+      fetchedAt: Date.now(),
+    }
+
     const needsAal2 = aalData?.nextLevel === 'aal2' && aalData?.currentLevel !== 'aal2'
     if (!needsAal2)
       return false
@@ -453,7 +469,8 @@ async function verifyMfaCode() {
       console.warn('Unable to fetch upgraded MFA session:', sessionError)
 
     await persistVerifiedMfaSession(sessionResult?.session ?? null)
-    resetMfaState()
+    // finishSignIn handles resetting the MFA state itself (only for the embedded
+    // stay-put case); the navigate case keeps the card up to avoid a form flash.
     finishSignIn()
   }
   catch (error) {

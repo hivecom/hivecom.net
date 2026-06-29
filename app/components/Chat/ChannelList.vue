@@ -27,7 +27,7 @@ const props = defineProps<{
   noScroll?: boolean
 }>()
 
-const { buffers, activeName, setActive, closeBuffer, joinChannel, renameChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, channelMetaResolved, requestChannelMetadata, isUnauthorizedSubchannel, setChannelMetadata, queryChanServInfo, serverLogPinned, activateServerLog, closeServerLog, isSelfBuffer } = useIrcChat()
+const { buffers, activeName, setActive, closeBuffer, joinChannel, renameChannel, channelBrowserOpen, markBufferRead, channelSettingsOpen, myChannelRole, channelMetaCache, channelMetaResolved, requestChannelMetadata, isUnauthorizedSubchannel, setChannelMetadata, queryChanServInfo, isSelfBuffer } = useIrcChat()
 
 // Proactively fetch metadata for every implied parent path so slash-nesting can
 // be verified and the parent displayed even when we haven't joined it.
@@ -44,7 +44,8 @@ watch(buffers, () => {
 }, { immediate: true })
 
 const sortedBuffers = computed(() => {
-  const rest = buffers.value.filter(b => b.kind !== 'server')
+  // Self space has its own entry points (toolbar, nav sheet), so keep it out of the list.
+  const rest = buffers.value.filter(b => b.kind !== 'server' && !(b.kind === 'pm' && isSelfBuffer(b.name)))
   return [...rest].sort((a, b) => a.name.localeCompare(b.name))
 })
 
@@ -606,27 +607,6 @@ function executeRenameChannel() {
                 <p>Browse channels</p>
               </template>
             </Tooltip>
-            <Tooltip v-if="serverLogPinned" placement="bottom" :disabled="isMobile">
-              <button
-                type="button"
-                class="chat-channels__item"
-                :class="{ 'chat-channels__item--active': activeName === '*' }"
-                @click="activateServerLog()"
-                @mousedown.middle.prevent
-                @mouseup.middle.prevent="closeServerLog()"
-              >
-                <Icon name="ph:hard-drives" size="13" class="chat-channels__icon" />
-                <Flex y-center gap="s" class="chat-channels__name-wrap">
-                  <span class="chat-channels__name chat-channels__name--compact">Server Log</span>
-                </Flex>
-                <Button v-if="!isMobile" square plain size="s" aria-label="Close" class="chat-channels__close" @click.stop="closeServerLog()">
-                  <Icon name="ph:x" size="12" />
-                </Button>
-              </button>
-              <template #tooltip>
-                <p>Server Log</p>
-              </template>
-            </Tooltip>
             <Tooltip
               v-for="buf in sortedBuffers"
               :key="buf.name"
@@ -715,27 +695,6 @@ function executeRenameChannel() {
 
           <!-- Vertical mode: tree rendering with collapsible groups -->
           <template v-else>
-            <Flex expand>
-              <button
-                v-if="serverLogPinned"
-                type="button"
-                class="chat-channels__item chat-channels__item--server-log w-100"
-                :class="{ 'chat-channels__item--active': activeName === '*' }"
-                @click="activateServerLog()"
-                @mousedown.middle.prevent
-                @mouseup.middle.prevent="closeServerLog()"
-              >
-                <Flex y-center x-between expand>
-                  <Flex y-center gap="xs">
-                    <Icon name="ph:hard-drives" size="13" class="chat-channels__icon" />
-                    <span class="chat-channels__name">Server Log</span>
-                  </Flex>
-                  <Button square plain size="s" aria-label="Close" class="chat-channels__close" @click.stop="closeServerLog()">
-                    <Icon name="ph:x" size="12" />
-                  </Button>
-                </Flex>
-              </button>
-            </Flex>
             <template v-for="node in channelTree" :key="treeNodeKey(node)">
               <ChannelTreeItem :node="node" :depth="0" />
             </template>
@@ -827,7 +786,7 @@ function executeRenameChannel() {
                 </template>
                 Copy nickname
               </DropdownItem>
-              <Divider />
+              <Divider v-if="menuBuffer.unread > 0 || menuBuffer.mentions > 0" />
               <DropdownItem v-if="menuBuffer.unread > 0 || menuBuffer.mentions > 0" @click="markBufferRead(menuBuffer.name)">
                 <template #icon>
                   <Icon name="ph:check-circle" />
@@ -933,7 +892,7 @@ function executeRenameChannel() {
               </template>
               Copy nickname
             </DropdownItem>
-            <Divider />
+            <Divider v-if="menuBuffer.unread > 0 || menuBuffer.mentions > 0" />
             <DropdownItem v-if="menuBuffer.unread > 0 || menuBuffer.mentions > 0" @click="markBufferRead(menuBuffer.name)">
               <template #icon>
                 <Icon name="ph:check-circle" />

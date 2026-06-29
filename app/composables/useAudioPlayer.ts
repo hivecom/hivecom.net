@@ -1,7 +1,10 @@
-import type { Component } from 'vue'
+import type { Component, Ref } from 'vue'
 import { pushToast, removeToast } from '@dolanske/vui'
 
 import ToastBodyAudioPlayer from '@/components/Toast/ToastBodyAudioPlayer.vue'
+import { clearDecodeCache } from '@/lib/audio/decode'
+import { prewarmAudioVisuals } from '@/lib/audio/prewarm'
+import { useMobileViewport } from '@/lib/mediaQuery'
 
 // The whole point of this composable: playback has to survive page navigation
 // and list re-renders. A `new Audio()` element lives in JS, never in the DOM,
@@ -31,8 +34,55 @@ const activeToastId = ref<number | null>(null)
 // Whether the fullscreen spectrogram view is open. Shared so any inline player
 // can pop it and the single global AudioLightbox can render the active track.
 const fullscreen = ref(false)
+// Output level (0..1) and mute, shared so the fullscreen volume control drives
+// the one engine. Seeded at the 50% default; the persisted user setting takes
+// over once linkVolumeSetting runs on the client.
+const volume = ref(0.5)
+const muted = ref(false)
 
 let audio: HTMLAudioElement | null = null
+
+// Captured once the volume setting is linked, so setVolume can persist back to
+// it. Null on the server and until the first client mount.
+let userSettings: Ref<{ audio_player_volume: number }> | null = null
+let isMobileViewport: Ref<boolean> | null = null
+let volumeLinked = false
+
+// Link the engine's output level to the persisted `audio_player_volume` user
+// setting (stored 0-100, DB-synced for members and localStorage for guests).
+// Desktop output mirrors the setting both ways; mobile is pinned to full so the
+// device volume is the only control. Registered once, on the client.
+function linkVolumeSetting() {
+  if (!import.meta.client || volumeLinked)
+    return
+  volumeLinked = true
+
+  const { settings } = useDataUserSettings()
+  userSettings = settings
+  isMobileViewport = useMobileViewport()
+
+  // Push the setting onto the engine now and whenever it or the viewport changes
+  // (a login swaps the whole settings object in).
+  watch(
+    [() => settings.value.audio_player_volume, isMobileViewport],
+    ([stored, mobile]) => {
+      volume.value = mobile ? 1 : Math.max(0, Math.min(1, (stored ?? 50) / 100))
+      if (mobile)
+        muted.value = false
+      applyVolume()
+    },
+    { immediate: true },
+  )
+}
+
+// Push the current level/mute onto the live element. Safe to call before the
+// element exists.
+function applyVolume() {
+  if (!audio)
+    return
+  audio.volume = volume.value
+  audio.muted = muted.value
+}
 
 // Lazily build the element and wire its listeners once, on first play. Returns
 // null on the server where there's no Audio constructor.
@@ -42,6 +92,8 @@ function ensureAudio(): HTMLAudioElement | null {
 
   const el = new Audio()
   el.preload = 'metadata'
+  el.volume = volume.value
+  el.muted = muted.value
   el.addEventListener('loadedmetadata', () => {
     duration.value = el.duration
     loading.value = false
@@ -97,6 +149,8 @@ function reset() {
   duration.value = 0
   loading.value = false
   errored.value = false
+  // Player's closed, drop the held decoded buffer so its PCM can be collected.
+  clearDecodeCache()
 }
 
 // Start (or restart) a track and surface the toast. Resuming the track that's
@@ -115,6 +169,9 @@ function play(track: AudioTrack) {
     errored.value = false
     loading.value = true
     el.src = track.src
+    // Warm the fullscreen visuals while the user listens, so expanding is
+    // instant. Background, swallows its own errors.
+    prewarmAudioVisuals(track.src)
   }
 
   el.play().catch(() => {
@@ -162,6 +219,25 @@ function commitSeek() {
   seeking.value = false
 }
 
+// Set the output level. Any move off zero clears mute, the way a hardware fader
+// would.
+function setVolume(value: number) {
+  volume.value = Math.max(0, Math.min(1, value))
+  if (volume.value > 0)
+    muted.value = false
+  applyVolume()
+  // Persist as the shared user setting (0-100) on desktop. Mobile output is
+  // pinned to full, so there's nothing worth saving there. The setting watcher
+  // echoes the value back onto `volume`, which is a harmless no-op.
+  if (userSettings && isMobileViewport && !isMobileViewport.value)
+    userSettings.value.audio_player_volume = Math.round(volume.value * 100)
+}
+
+function toggleMute() {
+  muted.value = !muted.value
+  applyVolume()
+}
+
 // Open the fullscreen spectrogram view on a track. Hands the track to the
 // engine if it isn't already active (so the playhead has something to follow);
 // resuming an already-active paused track is left to the user.
@@ -198,6 +274,10 @@ function handleToastUnmount(id: number) {
 }
 
 export function useAudioPlayer() {
+  // Wire the shared volume to the persisted setting on first client use. Guarded
+  // so it only registers once across every player that calls this.
+  linkVolumeSetting()
+
   return {
     currentSrc,
     title,
@@ -209,10 +289,14 @@ export function useAudioPlayer() {
     errored,
     seeking,
     fullscreen,
+    volume,
+    muted,
     play,
     toggle,
     togglePlayback,
     commitSeek,
+    setVolume,
+    toggleMute,
     openFullscreen,
     closeFullscreen,
     stop,

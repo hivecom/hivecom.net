@@ -72,6 +72,7 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     chat_irc_native_modes: false,
     chat_irc_pure_relay_nicks: false,
     chat_cache_max_messages_per_buffer: 30000,
+    audio_player_volume: 50,
   }
 }
 

@@ -3,6 +3,7 @@ import { Button, Card, Flex } from '@dolanske/vui'
 import { onMounted, onUnmounted } from 'vue'
 import AudioEqualizer from '@/components/Shared/AudioEqualizer.vue'
 import AudioTransport from '@/components/Shared/AudioTransport.vue'
+import AudioVolume from '@/components/Shared/AudioVolume.vue'
 
 // The persistent mini-player. It only ever exists while there's an active
 // track, so it reads the shared engine directly and stays in lockstep with any
@@ -88,21 +89,30 @@ onUnmounted(() => {
         <Flex x-between y-center gap="s" expand class="toast-audio__meta">
           <span v-if="player.title.value" class="toast-audio__title">{{ player.title.value }}</span>
           <span v-else aria-hidden="true" />
-          <!-- Clickable affordance, deliberately not a Button: the equalizer and
-               the expand glyph together open the fullscreen view. -->
-          <span
-            class="toast-audio__expand"
-            role="button"
-            tabindex="0"
-            aria-label="Open fullscreen player"
-            title="Open fullscreen player"
-            @click="openFullscreen"
-            @keydown.enter.prevent="openFullscreen"
-            @keydown.space.prevent="openFullscreen"
-          >
-            <AudioEqualizer :playing="player.playing.value" />
-            <Icon name="ph:arrows-out-simple" :size="14" />
-          </span>
+          <Flex y-center gap="xxs" class="toast-audio__`">
+            <!-- Clickable affordance, deliberately not a Button: the equalizer and
+                 the expand glyph together open the fullscreen view. -->
+            <span
+              class="toast-audio__expand"
+              role="button"
+              tabindex="0"
+              aria-label="Open fullscreen player"
+              title="Open fullscreen player"
+              @click="openFullscreen"
+              @keydown.enter.prevent="openFullscreen"
+              @keydown.space.prevent="openFullscreen"
+            >
+              <AudioEqualizer :playing="player.playing.value" />
+              <Icon name="ph:arrows-out-simple" :size="14" />
+            </span>
+            <AudioVolume
+              bare
+              :volume="player.volume.value"
+              :muted="player.muted.value"
+              @set-volume="player.setVolume"
+              @toggle-mute="player.toggleMute()"
+            />
+          </Flex>
         </Flex>
       </template>
 
@@ -131,6 +141,10 @@ onUnmounted(() => {
 
   &__meta {
     margin-bottom: var(--space-xxs);
+  }
+
+  &__meta-end {
+    flex-shrink: 0;
   }
 
   &__title {

@@ -1,5 +1,5 @@
 import { pushToast } from '@dolanske/vui'
-import { reloadWithCacheBust } from '@/lib/utils/common'
+import { reloadWithCacheBust, stripCacheBustParam } from '@/lib/utils/common'
 
 // sessionStorage guard key. Set right before a stale-chunk recovery reload so a
 // second `vite:preloadError` (on a genuinely broken deploy) doesn't trigger an
@@ -56,6 +56,10 @@ export default defineNuxtPlugin((nuxtApp) => {
     catch {
       // Ignore.
     }
+
+    // The reload landed fine, so the cache-bust param has served its purpose.
+    // Strip it so it doesn't sit in the address bar.
+    stripCacheBustParam()
   })
 
   // --- 2. Outdated build prompt ------------------------------------------

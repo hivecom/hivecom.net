@@ -3,6 +3,7 @@ import { Flex } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import AudioEqualizer from '@/components/Shared/AudioEqualizer.vue'
 import AudioTransport from '@/components/Shared/AudioTransport.vue'
+import AudioVolume from '@/components/Shared/AudioVolume.vue'
 
 const props = defineProps<{
   // The audio source URL.
@@ -119,7 +120,7 @@ watch(() => props.src, () => {
             {{ title }}
           </button>
           <span v-else aria-hidden="true" />
-          <Flex y-center gap="s" class="audio-player__meta-end">
+          <Flex y-center gap="xxs" class="audio-player__meta-end">
             <span v-if="subtitle" class="audio-player__subtitle text-xs text-color-lighter">{{ subtitle }}</span>
             <!-- Clickable affordance, deliberately not a Button: the equalizer
                  and the expand glyph together open the fullscreen view. -->
@@ -137,6 +138,13 @@ watch(() => props.src, () => {
               <AudioEqualizer :playing="displayPlaying" />
               <Icon name="ph:arrows-out-simple" :size="14" />
             </span>
+            <AudioVolume
+              bare
+              :volume="player.volume.value"
+              :muted="player.muted.value"
+              @set-volume="player.setVolume"
+              @toggle-mute="player.toggleMute()"
+            />
           </Flex>
         </Flex>
       </template>

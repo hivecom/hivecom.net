@@ -40,9 +40,27 @@ export function normalizeInternalRedirect(value: unknown): string | null {
 export function reloadWithCacheBust() {
   if (typeof window === 'undefined')
     return
-  const { pathname, search, hash } = window.location
-  const sep = search ? '&' : '?'
-  window.location.replace(`${pathname}${search}${sep}_=${Date.now()}${hash}`)
+  const url = new URL(window.location.href)
+  // Set, don't append, so repeated recoveries can't stack `?_=...&_=...`.
+  url.searchParams.set('_', String(Date.now()))
+  window.location.replace(url.toString())
+}
+
+/**
+ * Removes the `_` cache-bust param that reloadWithCacheBust added, rewriting
+ * the address bar without a navigation. Call once after boot so the ugly
+ * `?_=...` doesn't linger in the URL after a recovery reload has done its job.
+ */
+export function stripCacheBustParam() {
+  if (typeof window === 'undefined')
+    return
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has('_'))
+    return
+  url.searchParams.delete('_')
+  const query = url.searchParams.toString()
+  const clean = `${url.pathname}${query ? `?${query}` : ''}${url.hash}`
+  window.history.replaceState(window.history.state, '', clean)
 }
 
 export function getCSSVariable(key: string) {
