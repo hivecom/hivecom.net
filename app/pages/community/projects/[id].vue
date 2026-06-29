@@ -91,17 +91,41 @@ const displayErrorDetail = computed(() => {
   return error.value ?? undefined
 })
 
+// Fetch minimal project data at SSR/prerender time so meta tags are populated.
+// useDataProjects fetches client-only (onMounted), so during prerendering
+// project.value stays null and every card falls back to "Project Details" /
+// "Community project details" - the doubled label crawlers were seeing.
+const supabase = useSupabaseClient()
+const { data: seoProject } = await useAsyncData(`project-seo-${projectId}`, async () => {
+  const { data } = await supabase
+    .from('projects')
+    .select('title, description')
+    .eq('id', projectId)
+    .maybeSingle()
+  return data
+})
+
+const seoTitle = computed(() => {
+  const source = project.value ?? seoProject.value
+  return source?.title ? `${source.title} | Community Projects` : 'Project Details'
+})
+
+const seoDescription = computed(() => {
+  const source = project.value ?? seoProject.value
+  return source?.description || 'Community project details'
+})
+
 // SEO and page metadata
 useSeoMeta({
-  title: computed(() => project.value ? `${project.value.title} | Community Projects` : 'Project Details'),
-  description: computed(() => project.value?.description || 'Community project details'),
-  ogTitle: computed(() => project.value ? `${project.value.title} | Community Projects` : 'Project Details'),
-  ogDescription: computed(() => project.value?.description || 'Community project details'),
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
 })
 
 // Page title
 useHead({
-  title: computed(() => project.value ? project.value.title : 'Project Details'),
+  title: computed(() => (project.value ?? seoProject.value)?.title ?? 'Project Details'),
 })
 
 defineOgImage('Project', {

@@ -74,7 +74,7 @@ function onGameClick(gameId: number) {
   overflow: hidden;
 
   &--non-interactive:hover {
-    .marquee-item :deep(.game-cover) {
+    .marquee-item :deep(.game-cover--ready) {
       filter: saturate(1);
       opacity: 1;
     }
@@ -98,14 +98,19 @@ function onGameClick(gameId: number) {
     object-fit: cover;
     border-radius: var(--border-radius-s);
     filter: saturate(0);
-    opacity: 0.5;
+    opacity: 0;
     transition: var(--transition-slow);
+  }
+
+  // Fade up to the dim resting state once the image has actually loaded
+  :deep(.game-cover--ready) {
+    opacity: 0.5;
   }
 
   &--clickable {
     cursor: pointer;
 
-    &:hover :deep(.game-cover) {
+    &:hover :deep(.game-cover--ready) {
       filter: saturate(1);
       opacity: 1;
     }

@@ -484,6 +484,7 @@ watch(
         :media-bucket-id="FORUMS_BUCKET_ID"
         min-height="128px"
         show-expand-button
+        always-show-expand-button
         show-attachment-button
         placeholder="Edit your comment. Do not leave it empty!"
         class="mb-xs"

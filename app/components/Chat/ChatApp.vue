@@ -22,6 +22,7 @@ import ChatMessageLog from './MessageLog.vue'
 import ChatModerationConfirmModal from './ModerationConfirmModal.vue'
 import ChatNoChannels from './NoChannels.vue'
 import ChatPushPromptBanner from './PushPromptBanner.vue'
+import ChatReconnectBanner from './ReconnectBanner.vue'
 import ChatSetupBanner from './SetupBanner.vue'
 import ChatSidebarSplit from './SidebarSplit.vue'
 import ChatToolbar from './Toolbar.vue'
@@ -53,7 +54,7 @@ const { settings } = useDataUserSettings()
 
 const isMobile = useBreakpoint('<s')
 
-const { connState, isConnected, ensureNick, clearAuthedIdentity, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt, channelSettingsOpen, channelJoinBlocked, serverLogPinned } = useIrcChat()
+const { connState, isConnected, reconnecting, ensureNick, clearAuthedIdentity, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt, channelSettingsOpen, channelJoinBlocked, serverLogPinned } = useIrcChat()
 
 const identityOpen = ref(false)
 
@@ -175,19 +176,24 @@ watch([userId, user], ([id, u], prev) => {
     </header>
 
     <Flex column y-stretch class="chat-app__body">
+      <!-- While reconnecting we keep the chat layout below visible and show this
+           thin banner instead of the full-screen overlay, so a phone returning
+           from the background doesn't throw the user out of their channels. -->
+      <ChatReconnectBanner v-if="reconnecting" />
       <Transition name="chat-state" mode="out-in">
-        <!-- Connecting -->
-        <div v-if="connState === 'connecting'" class="chat-app__status">
+        <!-- Connecting. Suppressed once we have a session to ride out (reconnecting),
+             so the globe overlay only shows on a completely fresh connection. -->
+        <div v-if="connState === 'connecting' && !reconnecting" class="chat-app__status">
           <ChatConnecting />
         </div>
 
         <!-- Offline: failed all reconnect attempts -->
-        <div v-else-if="connState === 'offline'" class="chat-app__status">
+        <div v-else-if="connState === 'offline' && !reconnecting" class="chat-app__status">
           <ChatConnecting offline @retry="connect()" @go-back="handleDisconnect" />
         </div>
 
         <!-- Error: unexpected connection failure (fallback) -->
-        <Flex v-else-if="connState === 'error'" key="error" y-center x-center class="chat-app__connect">
+        <Flex v-else-if="connState === 'error' && !reconnecting" key="error" y-center x-center class="chat-app__connect">
           <Flex column gap="m" expand>
             <SharedErrorAlert standalone message="Failed to connect to the chat server." :error="lastConnError" />
             <Flex x-center gap="s">
@@ -208,7 +214,7 @@ watch([userId, user], ([id, u], prev) => {
         </Flex>
 
         <!-- Not connected: show connect form centered -->
-        <Flex v-else-if="!isConnected" key="disconnected" y-center x-center class="chat-app__connect">
+        <Flex v-else-if="!isConnected && !reconnecting" key="disconnected" y-center x-center class="chat-app__connect">
           <ChatConnectForm :inline-sign-in="!props.compact" />
         </Flex>
 

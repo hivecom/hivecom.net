@@ -48,9 +48,12 @@ export function useZoomPreference() {
     meta: [
       {
         name: 'viewport',
+        // viewport-fit=cover is what turns on the env(safe-area-inset-*) values.
+        // Without it those insets read 0 even on a notched iPhone, so any
+        // safe-area padding (drawers, fullscreen modals, toasts) is a no-op.
         content: zoomDisabled.value
-          ? 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'
-          : 'width=device-width, initial-scale=1',
+          ? 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'
+          : 'width=device-width, initial-scale=1, viewport-fit=cover',
       },
     ],
   }))

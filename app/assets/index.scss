@@ -291,6 +291,13 @@ label:is(.required):after {
 // shifted - otherwise the layer offset creates a visible gap at the top.
 .vui-modal.vui-modal-size-screen {
   transform: none;
+
+  // Same home-bar grace as drawers and sheets: a fullscreen modal runs edge to
+  // edge, so reserve the safe-area inset at the bottom of its card. Additive, so
+  // it keeps the card's own padding and respects padding:false lightboxes.
+  > .vui-card {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 table th,
@@ -647,6 +654,25 @@ code {
 
 .vui-drawer-content {
   outline: none !important;
+
+  // iPhones with a home-bar bezel cut off the bottom of drawer content. Fold
+  // the safe-area inset into VUI's default container padding so every drawer
+  // gets it for free, instead of patching it per drawer everywhere.
+  .vui-drawer-container {
+    padding-bottom: calc(var(--space-l) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+// VUI Sheets (left / right / bottom) run to the screen edge, so their footer or
+// scrolling content lands against the iPhone bezel. Reserve the safe-area inset
+// on the sheet itself rather than the footer: it's additive, so it keeps each
+// sheet's own padding choice (including card padding:false), needs no
+// !important, and the sheet bg matches the footer so there's no seam. Top sheets
+// don't touch the home bar, so they're left out.
+.vui-sheet-position-left,
+.vui-sheet-position-right,
+.vui-sheet-position-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .vui-dropdown-item {

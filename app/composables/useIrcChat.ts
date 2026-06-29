@@ -288,6 +288,11 @@ const PARAM_MODES_ON_SET = new Set(['l', 'f', 'j'])
 
 // --- Shared reactive state ---------------------------------------------------
 const connState = ref<ConnState>('disconnected')
+// True once a live connection (RPL_WELCOME) has been established this session.
+// Stays true across transient socket drops so the UI can ride out a reconnect in
+// place (keep showing the cached channels/messages) instead of tearing down to
+// the full-screen connect overlay. Only an intentional disconnect() clears it.
+const everConnected = ref(false)
 const nick = ref('')
 const account = ref('')
 const buffers = ref<ChatBuffer[]>([])
@@ -1559,7 +1564,6 @@ async function hydrateBufferCache() {
     const metas = await loadAllBufferMeta(userKey)
     if (!metas.length)
       return
-    const seeded: ChatBuffer[] = []
     for (const meta of metas) {
       // Skip buffers that are already in the live list (e.g. on reconnect).
       if (findBuffer(meta.name))
@@ -1605,10 +1609,11 @@ async function hydrateBufferCache() {
       // appearance of a fully duplicated log when the active buffer flips).
       if (findBuffer(meta.name))
         continue
-      seeded.push(buf)
+      // Commit immediately rather than batching at the end. A JOIN that arrives
+      // during a *later* iteration's await would otherwise not see this seeded
+      // buffer (it's still local) and would append a live duplicate alongside it.
+      buffers.value = [...buffers.value, buf]
     }
-    if (seeded.length)
-      buffers.value = [...buffers.value, ...seeded]
   }
   catch {
     // Cache is a best-effort UX optimisation; ignore failures.
@@ -2096,6 +2101,7 @@ function handleMessage(raw: string) {
 
     case '001': // RPL_WELCOME
       connState.value = 'connected'
+      everConnected.value = true
       nick.value = params[0] ?? inputNick.value
       addServer({ type: 'system', text: `Connected as ${nick.value}` })
       if (!_skipAutoJoin && inputChannel.value)
@@ -3673,6 +3679,7 @@ function connectAsAnon() {
 
 function disconnect() {
   _intentionalDisconnect = true
+  everConnected.value = false
   cancelDefaultChannelFallback()
   _reconnectAttempts = 0
   if (_reconnectTimer !== null) {
@@ -4559,6 +4566,17 @@ export function useIrcChat() {
   }
 
   const isConnected = computed(() => connState.value === 'connected')
+  // A connection that dropped but can be ridden out in place: we were connected
+  // this session and still hold channel/pm buffers (and their cached messages),
+  // so the UI keeps showing them with a reconnect banner instead of throwing the
+  // user back to the full-screen connect/globe overlay. Stays false on a cold
+  // first connect (nothing to show yet) and after an intentional disconnect.
+  const reconnecting = computed(() =>
+    everConnected.value
+    && connState.value !== 'connected'
+    && connState.value !== 'disconnected'
+    && buffers.value.some(b => b.kind === 'channel' || b.kind === 'pm'),
+  )
   const activeBuffer = computed(() => findBuffer(activeName.value) ?? buffers.value[0])
   const messages = computed(() => activeBuffer.value?.messages ?? [])
   const users = computed(() => activeBuffer.value?.users ?? [])
@@ -4682,6 +4700,7 @@ export function useIrcChat() {
     // connection
     connState,
     isConnected,
+    reconnecting,
     canChat,
     latencyMs,
     nick,

@@ -778,6 +778,7 @@ async function confirmAvatarDelete() {
           :errors="markdownValidation.error ? [markdownValidation.error] : undefined"
           :show-attachment-button="!!props.profile?.id"
           show-expand-button
+          always-show-expand-button
         />
 
         <!-- Banner / Signature -->

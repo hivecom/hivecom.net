@@ -1812,6 +1812,7 @@ onBeforeRouteLeave(() => {
           v-model:nsfw="isNsfw"
           :errors="errors"
           :show-expand-button="false"
+          :fullscreen-on-mobile="false"
           min-height="calc(100vh - 142px)"
           max-height="100%"
           @submit="handleExpandedSubmit"

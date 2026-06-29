@@ -236,6 +236,7 @@ async function handleDelete() {
           :media-bucket-id="FORUMS_BUCKET_ID"
           :show-attachment-button="!!props.discussion.id"
           show-expand-button
+          always-show-expand-button
         />
       </Flex>
 

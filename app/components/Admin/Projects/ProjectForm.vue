@@ -336,6 +336,7 @@ function confirmDelete() {
           :media-bucket-id="STATIC_BUCKET_ID"
           :show-attachment-button="!!props.project?.id"
           show-expand-button
+          always-show-expand-button
         />
       </Flex>
     </Flex>

@@ -613,7 +613,7 @@ function confirmPublish() {
         placeholder="This is the main body of your discussion"
         show-attachment-button
         show-expand-button
-        fullscreen-on-mobile
+        always-show-expand-button
       />
 
       <Card class="card-bg">

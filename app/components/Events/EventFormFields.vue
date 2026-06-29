@@ -285,7 +285,7 @@ defineExpose({ flushPendingUploads })
       placeholder="Additional event details (optional)"
       min-height="144px"
       show-expand-button
-      fullscreen-on-mobile
+      always-show-expand-button
       :media-context="mediaContext"
       :media-bucket-id="mediaBucketId"
       :show-attachment-button="!!eventId && isEditMode"
