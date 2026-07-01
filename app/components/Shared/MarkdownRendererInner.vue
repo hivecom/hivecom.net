@@ -10,6 +10,7 @@ import { transformLinkEmbeds } from '@/lib/linkEmbedAST'
 import { extractMentionIds, processMarkdown } from '@/lib/markdownProcessors'
 import { wrapTablesAST } from '@/lib/tableWrapping'
 import { isExternalUrl } from '@/lib/utils/externalLink'
+import SharedAudioEmbed from './AudioEmbed.global.vue'
 import SharedChannelMention from './ChannelMention.global.vue'
 import MarkdownLightbox from './MarkdownLightbox.vue'
 import SharedUserMention from './UserMention.global.vue'
@@ -37,7 +38,7 @@ const emit = defineEmits<{
 // while keeping the actual runtime value as the component object.
 // 'img' key matches the AST node tag so MDCRenderer uses ProseImg for every
 // markdown image, giving us lazy loading and a fade-in without DOM post-processing.
-const mdcComponents = { SharedUserMention, SharedChannelMention, SharedLinkEmbed, img: ProseImg } as unknown as Record<string, string>
+const mdcComponents = { SharedUserMention, SharedChannelMention, SharedLinkEmbed, img: ProseImg, audio: SharedAudioEmbed } as unknown as Record<string, string>
 
 const container = useTemplateRef('container')
 
@@ -318,7 +319,7 @@ watch(processedMarkdown, (val) => {
 /* YouTube embed produced by processYoutubeDirectives */
 :deep(.md-youtube-embed) {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   margin: var(--space-s) 0;
 
   iframe {
@@ -353,6 +354,12 @@ watch(processedMarkdown, (val) => {
     align-items: center;
     justify-content: center;
   }
+}
+
+/* Audio embed produced by processAudioDirectives (rendered as AudioPlayer) */
+:deep(.md-audio-embed) {
+  margin: var(--space-s) 0;
+  max-width: 420px;
 }
 
 :deep(.md-missing-label) {

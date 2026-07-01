@@ -25,8 +25,6 @@ function scrollToPlatforms() {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .hero-section__actions {
   display: flex;
   gap: 1rem;

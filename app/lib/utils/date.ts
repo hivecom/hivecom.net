@@ -1,51 +1,212 @@
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
+/**
+ * Date formatting utilities.
+ *
+ * Display functions use the browser's locale via the Intl APIs so output
+ * adapts automatically to the user's region and language settings.
+ * Exception: relative time strings (fromNow) are always English.
+ *
+ * Non-display helpers (formatDateOnly, getBirthdayPatterns, isBirthdayDateToday)
+ * produce locale-independent strings for inputs or database values.
+ */
 
-dayjs.extend(relativeTime)
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
 
-export const dateFormat = {
-  display: 'dddd YYYY-MM-DD',
-  displayTime: 'dddd YYYY-MM-DD, HH:mm',
-  default: 'YYYY-MM-DD, HH:mm',
-  calendarDefault: 'YYYY-MM-DD',
-  time: 'HH:mm',
+function parse(date: string | Date | null | undefined): Date | null {
+  if (date == null || date === '')
+    return null
+  const d = typeof date === 'string' ? new Date(date) : date
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+// ---------------------------------------------------------------------------
+// Display formatters (all locale-aware)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a locale-aware relative time string, e.g. "3 minutes ago" or
+ * "il y a 3 minutes" for a French browser.
+ * Returns an empty string for null/invalid values.
+ */
+export function fromNow(date: string | Date | null | undefined): string {
+  const d = parse(date)
+  if (!d)
+    return ''
+
+  const diffMs = d.getTime() - Date.now()
+  const diffSecs = Math.round(diffMs / 1000)
+  const absSecs = Math.abs(diffSecs)
+
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+
+  if (absSecs < 60)
+    return rtf.format(diffSecs, 'second')
+  if (absSecs < 3600)
+    return rtf.format(Math.round(diffSecs / 60), 'minute')
+  if (absSecs < 86400)
+    return rtf.format(Math.round(diffSecs / 3600), 'hour')
+  if (absSecs < 604800)
+    return rtf.format(Math.round(diffSecs / 86400), 'day')
+  if (absSecs < 2592000)
+    return rtf.format(Math.round(diffSecs / 604800), 'week')
+  if (absSecs < 31536000)
+    return rtf.format(Math.round(diffSecs / 2592000), 'month')
+
+  return rtf.format(Math.round(diffSecs / 31536000), 'year')
 }
 
 /**
- * @deprecated Produces a non-standard format ("YYYY-MM-DD, HH:mm") that
- * differs from all other date helpers in this file.  Prefer:
- * - `formatDateShort`    → "Jan 5, 2025"
- * - `formatDateLong`     → "January 5, 2025"
- * - `formatDateWithTime` → "Jan 5, 2025, 02:30 PM"
- * - `formatDate` from dayjs directly if you need a custom format string
- *
- * This function is not imported anywhere in the app - it exists only for
- * backwards compatibility.  Remove once confirmed unused.
+ * Short date in locale-dependent order, e.g. "05/01/2025" (en-GB) or
+ * "01/05/2025" (en-US).
+ * Returns 'Unknown' for null/invalid values.
  */
-export function formatDate(dateStr: string) {
-  return dayjs(dateStr).format(dateFormat.default)
+export function displayDate(date: string | Date | null | undefined): string {
+  const d = parse(date)
+  if (!d)
+    return 'Unknown'
+  return new Intl.DateTimeFormat(undefined, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(d)
 }
 
-// Format month helper
-export function formatMonth(month: string): string {
-  return new Date(`${month}T00:00:00Z`).toLocaleDateString(undefined, {
+/**
+ * Short date + time in locale-dependent format, e.g. "05/01/2025, 14:30".
+ * Returns 'Unknown' for null/invalid values.
+ */
+export function displayDateTime(date: string | Date | null | undefined): string {
+  const d = parse(date)
+  if (!d)
+    return 'Unknown'
+  return new Intl.DateTimeFormat(undefined, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d)
+}
+
+/**
+ * Full date with abbreviated month name, e.g. "Jan 5, 2025" or "5 jan. 2025".
+ * Returns 'Unknown' for null/invalid values.
+ */
+export function fullDate(date: string | Date | null | undefined): string {
+  const d = parse(date)
+  if (!d)
+    return 'Unknown'
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(d)
+}
+
+/**
+ * Full date with abbreviated month name and time, e.g. "Jan 5, 2025, 2:30 PM".
+ * Returns 'Unknown' for null/invalid values.
+ */
+export function fullDateTime(date: string | Date | null | undefined): string {
+  const d = parse(date)
+  if (!d)
+    return 'Unknown'
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d)
+}
+
+/**
+ * Full date with long month name, e.g. "January 5, 2025".
+ * Returns 'Unknown' for null/invalid values.
+ */
+export function fullDateLong(date: string | Date | null | undefined): string {
+  const d = parse(date)
+  if (!d)
+    return 'Unknown'
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(d)
+}
+
+/**
+ * Month and year only, e.g. "January 2025" or "janvier 2025".
+ * Accepts a full date string, a Date object, or a "YYYY-MM" string.
+ * Returns 'Unknown' for null/invalid values.
+ */
+export function fullMonth(date: string | Date | null | undefined): string {
+  // Handle bare "YYYY-MM" strings without appending a time component that
+  // could shift the date across a UTC boundary into the wrong month.
+  if (typeof date === 'string' && /^\d{4}-\d{2}$/.test(date))
+    date = `${date}T00:00:00`
+
+  const d = parse(date)
+  if (!d)
+    return 'Unknown'
+  return new Intl.DateTimeFormat(undefined, {
     month: 'long',
     year: 'numeric',
-  })
-}
-
-export function formatTime(dateStr: string) {
-  return dayjs(dateStr).format(dateFormat.time)
-}
-
-export function formatSimpleDate(dateStr: string) {
-  return dayjs(dateStr).format(dateFormat.display)
+  }).format(d)
 }
 
 /**
- * Serialises a Date object to a YYYY-MM-DD string suitable for HTML date
- * inputs and database birthday columns.  Uses local calendar values so the
- * result matches what the user sees in the date picker.
+ * Full date with weekday, abbreviated month name, and time,
+ * e.g. "Monday, Jan 5, 2025, 2:30 PM" or "lundi 5 janv. 2025 à 14:30".
+ * Returns 'Unknown' for null/invalid values.
+ */
+export function fullDateTimeWeekday(date: string | Date | null | undefined): string {
+  const d = parse(date)
+  if (!d)
+    return 'Unknown'
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d)
+}
+
+/**
+ * Year only, e.g. "2025".
+ * Returns 'Unknown' for null/invalid values.
+ */
+export function yearOnly(date: string | Date | null | undefined): string {
+  const d = parse(date)
+  if (!d)
+    return 'Unknown'
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+  }).format(d)
+}
+
+/**
+ * ISO 8601 timestamp string for display purposes, e.g. "2025-01-05T14:30:00.000Z".
+ * Returns an empty string for null/invalid values.
+ */
+export function timestamp(date: string | Date | null | undefined): string {
+  const d = parse(date)
+  if (!d)
+    return ''
+  return d.toISOString()
+}
+
+// ---------------------------------------------------------------------------
+// Non-display utilities (locale-independent)
+// ---------------------------------------------------------------------------
+
+/**
+ * Serialises a Date to a YYYY-MM-DD string suitable for HTML date inputs and
+ * database birthday columns. Uses local calendar values so the result matches
+ * what the user sees in the date picker.
  */
 export function formatDateOnly(date: Date): string {
   const year = date.getFullYear()
@@ -55,63 +216,9 @@ export function formatDateOnly(date: Date): string {
 }
 
 /**
- * Formats a date string as a short human-readable date: "Jan 5, 2025".
- * Returns 'Unknown' when the value is falsy or not a valid date.
- */
-export function formatDateShort(dateString: string | null | undefined): string {
-  if (dateString == null || dateString === '')
-    return 'Unknown'
-  const parsed = new Date(dateString)
-  if (Number.isNaN(parsed.getTime()))
-    return 'Unknown'
-  return parsed.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-/**
- * Formats a date string as a long human-readable date: "January 5, 2025".
- * Returns 'Unknown' when the value is falsy or not a valid date.
- */
-export function formatDateLong(dateString: string | null | undefined): string {
-  if (dateString == null || dateString === '')
-    return 'Unknown'
-  const parsed = new Date(dateString)
-  if (Number.isNaN(parsed.getTime()))
-    return 'Unknown'
-  return parsed.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
-
-/**
- * Formats a date string with time: "Jan 5, 2025, 02:30 PM".
- * Returns 'Unknown' when the value is falsy or not a valid date.
- */
-export function formatDateWithTime(dateString: string | null | undefined): string {
-  if (dateString == null || dateString === '')
-    return 'Unknown'
-  const parsed = new Date(dateString)
-  if (Number.isNaN(parsed.getTime()))
-    return 'Unknown'
-  return parsed.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-/**
  * Compute the set of MM-DD patterns that cover "today" across all timezones.
- * We offset the current UTC time by -12h and +12h, then collect the unique
- * month-day strings so a birthday filter catches every user whose local date
- * is "today".
+ * Offsets UTC by ±12 h so a birthday filter catches every user whose local
+ * date is "today".
  */
 export function getBirthdayPatterns(): string[] {
   const now = Date.now()
@@ -126,10 +233,8 @@ export function getBirthdayPatterns(): string[] {
 }
 
 /**
- * Checks whether a birthday date string (YYYY-MM-DD) falls on "today",
- * accounting for timezone drift (±12 h around UTC).
- *
- * Returns `false` for null/undefined/empty values.
+ * Returns true if a YYYY-MM-DD birthday string falls on "today", accounting
+ * for timezone drift (±12 h around UTC).
  */
 export function isBirthdayDateToday(birthday: string | null | undefined): boolean {
   if (birthday == null || birthday === '')
@@ -139,14 +244,17 @@ export function isBirthdayDateToday(birthday: string | null | undefined): boolea
 }
 
 /**
- * Returns a human-readable relative time string, e.g. "3 minutes ago", "2 days ago".
- * Returns an empty string when the value is falsy or not a valid date.
+ * Time only in locale-aware format, e.g. "2:30 PM" (en-US) or "14:30" (en-GB).
+ * Returns 'Unknown' for null/invalid values.
+ *
+ * Previously produced a hardcoded "HH:mm" string - now locale-aware.
  */
-export function formatTimeAgo(dateString: string | null | undefined): string {
-  if (dateString == null || dateString === '')
-    return ''
-  const parsed = dayjs(dateString)
-  if (!parsed.isValid())
-    return ''
-  return parsed.fromNow()
+export function formatTime(date: string | Date | null | undefined): string {
+  const d = parse(date)
+  if (!d)
+    return 'Unknown'
+  return new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d)
 }

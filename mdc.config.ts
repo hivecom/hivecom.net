@@ -5,7 +5,7 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 //
 // The rehype-sanitize options in nuxt.config.ts are passed through
 // JSON.stringify when generating .nuxt/mdc-imports.mjs, which silently
-// converts every RegExp to {} — causing the iframe src allow-list to
+// converts every RegExp to {} - causing the iframe src allow-list to
 // accept nothing and stripping all YouTube embeds.  Defining the plugin
 // here bypasses that serialisation step entirely.
 
@@ -19,6 +19,10 @@ export default {
           tagNames: [
             ...(defaultSchema.tagNames ?? []),
             'iframe',
+            // Uploaded media embeds (processVideoDirectives / processAudioDirectives).
+            // <audio> is mapped to the AudioPlayer component by MarkdownRendererInner.
+            'video',
+            'audio',
             // KaTeX emits <svg>, <path>, <line>, <use> for some output modes
             'svg',
             'path',
@@ -43,7 +47,7 @@ export default {
             ],
             // iframe: locked to YouTube nocookie embeds only.
             // The RegExp here is the reason this config must live in
-            // mdc.config.ts rather than nuxt.config.ts — JSON.stringify
+            // mdc.config.ts rather than nuxt.config.ts - JSON.stringify
             // turns RegExp into {} which makes every src value fail the check.
             'iframe': [
               ['src', /^https:\/\/www\.youtube-nocookie\.com\/embed\//],
@@ -54,6 +58,9 @@ export default {
               'allowfullscreen',
               'className',
             ],
+            // Uploaded media embeds: keep src (and the rendering hints) intact.
+            'video': ['src', 'controls', 'className'],
+            'audio': ['src', 'controls', 'className'],
             // SVG elements for KaTeX
             'svg': ['xmlns', 'width', 'height', 'viewBox', 'className', 'style', 'ariaHidden', 'focusable'],
             'path': ['d', 'stroke', 'strokeWidth', 'fill', 'className'],

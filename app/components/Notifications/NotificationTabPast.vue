@@ -7,6 +7,7 @@ import NotificationCard from './NotificationCard.vue'
 import NotificationCardEmpty from './NotificationCardEmpty.vue'
 import NotificationCardError from './NotificationCardError.vue'
 import NotificationCardLoading from './NotificationCardLoading.vue'
+import PushPrompt from './PushPrompt.vue'
 
 const emit = defineEmits<{ (e: 'navigate'): void }>()
 
@@ -173,6 +174,8 @@ defineExpose({ load, reset, clearAll, clearAllLoading, hasNotifications })
 
 <template>
   <Flex column gap="xs" expand>
+    <PushPrompt context="past" />
+
     <template v-if="loading">
       <NotificationCardLoading />
     </template>

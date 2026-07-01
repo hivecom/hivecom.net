@@ -4,6 +4,7 @@ import { Flex } from '@dolanske/vui'
 import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
 import { useDataMetrics } from '@/composables/useDataMetrics'
+import { metricsPlayerCount } from '@/types/metrics'
 // useGameConnect is consumed inside GameServerConnectButton
 
 type GameserverData = NonNullable<ReturnType<typeof useDataLinkPreview>['data']['value']> & { type: 'gameserver' }
@@ -55,14 +56,7 @@ onMounted(() => {
 const playerCount = computed((): number | null => {
   if (!metrics.value)
     return null
-  const detail = metrics.value.gameservers.byServer[String(props.data.id)]
-  if (!detail?.data)
-    return null
-  if (detail.protocol === 'minecraft')
-    return detail.data.numPlayers
-  if (detail.protocol === 'source')
-    return detail.data.players
-  return null
+  return metricsPlayerCount(metrics.value.gameservers.byServer[String(props.data.id)])
 })
 </script>
 

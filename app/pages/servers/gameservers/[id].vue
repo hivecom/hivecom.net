@@ -158,12 +158,37 @@ const displayErrorDetail = computed(() => {
   return error.value ?? undefined
 })
 
+// Fetch minimal gameserver data at SSR/prerender time so meta tags are
+// populated. useDataGameservers fetches client-only (onMounted), so during
+// prerendering gameserver.value stays null and every card falls back to
+// "Game Server Details" / "Game server details" - the doubled label crawlers
+// were seeing.
+const supabase = useSupabaseClient()
+const { data: seoGameserver } = await useAsyncData(`gameserver-seo-${gameserverId}`, async () => {
+  const { data } = await supabase
+    .from('network_gameservers')
+    .select('name, description')
+    .eq('id', gameserverId)
+    .maybeSingle()
+  return data
+})
+
+const seoTitle = computed(() => {
+  const source = gameserver.value ?? seoGameserver.value
+  return source?.name ? `${source.name} | Game Servers` : 'Game Server Details'
+})
+
+const seoDescription = computed(() => {
+  const source = gameserver.value ?? seoGameserver.value
+  return source?.description || 'Game server details'
+})
+
 // SEO and page metadata
 useSeoMeta({
-  title: computed(() => gameserver.value ? `${gameserver.value.name} | Game Servers` : 'Game Server Details'),
-  description: computed(() => gameserver.value?.description || 'Game server details'),
-  ogTitle: computed(() => gameserver.value ? `${gameserver.value.name} | Game Servers` : 'Game Server Details'),
-  ogDescription: computed(() => gameserver.value?.description || 'Game server details'),
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
 })
 
 defineOgImage('Gameserver', {
@@ -172,7 +197,7 @@ defineOgImage('Gameserver', {
 
 // Page title
 useHead({
-  title: computed(() => gameserver.value ? gameserver.value.name : 'Game Server Details'),
+  title: computed(() => (gameserver.value ?? seoGameserver.value)?.name ?? 'Game Server Details'),
 })
 </script>
 
@@ -236,8 +261,6 @@ useHead({
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 /* .gameserver-discussion {
   max-width: 728px;
 } */

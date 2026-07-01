@@ -17,11 +17,16 @@ export interface UploadResult {
 
 export const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
 export const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg']
-export const allowedMediaTypes = [...allowedImageTypes, ...allowedVideoTypes]
+export const allowedAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/flac', 'audio/aac', 'audio/mp4', 'audio/x-m4a', 'audio/webm', 'audio/opus']
+export const allowedMediaTypes = [...allowedImageTypes, ...allowedVideoTypes, ...allowedAudioTypes]
 export const allowedMediaExtensions = allowedMediaTypes.join(', ')
 
-export const allowedDataTypes = ['text/csv', 'application/json', 'text/plain']
-export const allowedDataExtensions = '.csv,.json'
+// Archives. Browsers report these inconsistently (often '' or
+// application/octet-stream), so the editor routes them by extension too.
+export const allowedArchiveTypes = ['application/zip', 'application/x-zip-compressed', 'application/x-7z-compressed', 'application/vnd.rar', 'application/x-rar-compressed', 'application/x-tar', 'application/gzip', 'application/x-gzip']
+
+export const allowedDataTypes = ['text/csv', 'application/json', 'text/plain', ...allowedArchiveTypes]
+export const allowedDataExtensions = '.csv,.json,.zip,.7z,.rar,.tar,.gz,.tgz'
 
 function isStorageNotFoundError(error: unknown): boolean {
   if (error == null || typeof error !== 'object')
@@ -609,7 +614,7 @@ export async function uploadTopicIcon(
 /**
  * Gets the public URL for a topic's icon.
  * Lists the topic's folder once and picks the best available extension.
- * This is a pure fetch — caching is handled by the useTopicIcon composable.
+ * This is a pure fetch - caching is handled by the useTopicIcon composable.
  */
 export async function getTopicIconUrl(
   supabaseClient: SupabaseClient<Database>,
@@ -617,7 +622,7 @@ export async function getTopicIconUrl(
 ): Promise<string | null> {
   try {
     const folder = `topics/${topicId}`
-    // Preferred extension order — one list() call covers all of them
+    // Preferred extension order - one list() call covers all of them
     const preferredOrder = ['icon.webp', 'icon.png', 'icon.jpg', 'icon.jpeg']
 
     const { data, error } = await supabaseClient.storage

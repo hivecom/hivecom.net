@@ -2,6 +2,7 @@
 import { Divider, Flex, Progress, Skeleton, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import { computed } from 'vue'
+import { formatPercent } from '@/lib/utils/formatting'
 
 interface Props {
   countdown?: {
@@ -137,7 +138,7 @@ const timeProgressPercentage = computed(() => {
           <Progress v-model="timeProgressPercentage" />
         </div>
         <template #tooltip>
-          <p>We are {{ timeProgressPercentage.toFixed(2) }}% there</p>
+          <p>We are {{ formatPercent(timeProgressPercentage) }} there</p>
         </template>
       </Tooltip>
     </template>
@@ -149,8 +150,6 @@ const timeProgressPercentage = computed(() => {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .countdown-timer {
   position: relative;
   padding: var(--space-s);

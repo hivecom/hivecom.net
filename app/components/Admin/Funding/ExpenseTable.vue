@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, Button, defineTable, DropdownItem, Flex, Pagination, Table } from '@dolanske/vui'
 import { watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
+
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatCurrency } from '@/lib/utils/currency'
-import { formatDateShort } from '@/lib/utils/date'
+import { fullDate } from '@/lib/utils/date'
 import { calculateDurationBetweenDates } from '@/lib/utils/duration'
 import { getExpenseStatus } from '@/lib/utils/expenses'
 import ExpenseDetails from './ExpenseDetails.vue'
@@ -20,6 +23,7 @@ type Expense = Tables<'funding_expenses'>
 type ExpenseStatus = 'Planned' | 'Active' | 'Ended'
 
 interface TransformedExpense extends Record<string, unknown> {
+  id: number
   Name: string
   Amount: string
   Status: ExpenseStatus
@@ -32,6 +36,7 @@ const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 const supabase = useSupabaseClient()
 const userId = useUserId()
 const isBelowMedium = useBreakpoint('<m')
+const showBulkDeleteConfirm = ref(false)
 
 const {
   items: _expenses,
@@ -68,18 +73,19 @@ const {
     return (data as Expense[]) || []
   },
   transform: expense => ({
+    id: expense.id,
     Name: expense.name || 'Unnamed Expense',
     Amount: formatCurrency(expense.amount_cents),
     Status: getExpenseStatus(expense.started_at, expense.ended_at),
-    Started: formatDateShort(expense.started_at),
+    Started: fullDate(expense.started_at),
     Duration: calculateDurationBetweenDates(expense.started_at, expense.ended_at),
   }),
   defaultSort: { column: 'Started', direction: 'desc' },
 })
 
-const { headers, rows, pagination, setPage, setSort, options } = defineTable(filteredRows, {
+const { headers, rows, selectedRows, deselectAllRows, pagination, setPage, setSort, options } = defineTable(filteredRows, {
   pagination: { enabled: true, perPage: adminTablePerPage.value },
-  select: false,
+  select: true,
 })
 
 watch(adminTablePerPage, (perPage) => {
@@ -124,12 +130,15 @@ async function handleExpenseSave(expenseData: Partial<Expense>) {
   }
 }
 
-async function handleExpenseDelete(expenseId: number) {
+async function handleExpensesDelete(expenseIds: number[]) {
+  if (expenseIds.length === 0)
+    return
+
   try {
     const { error } = await supabase
       .from('funding_expenses')
       .delete()
-      .eq('id', expenseId)
+      .in('id', expenseIds)
     if (error)
       throw error
 
@@ -139,6 +148,13 @@ async function handleExpenseDelete(expenseId: number) {
   catch (err: unknown) {
     errorMessage.value = err instanceof Error ? err.message : 'An error occurred while deleting the expense'
   }
+}
+
+async function handleBulkDelete() {
+  showBulkDeleteConfirm.value = false
+  const ids = [...selectedRows.value].map(row => row._original.id)
+  await handleExpensesDelete(ids)
+  deselectAllRows()
 }
 </script>
 
@@ -215,7 +231,8 @@ async function handleExpenseDelete(expenseId: number) {
     <TableContainer>
       <Table.Root v-if="rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
-          <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
+          <th v-if="canManageResource" class="vui-table-interactive-cell" />
+          <Table.Head v-for="header in headers.filter(h => h.label !== '_original' && h.label !== 'id')" :key="header.label" sort :header />
           <Table.Head
             v-if="canManageResource"
             key="actions"
@@ -225,25 +242,34 @@ async function handleExpenseDelete(expenseId: number) {
         </template>
 
         <template #body>
-          <tr v-for="expense in rows" :key="expense._original.id" class="clickable-row" @click="viewExpenseDetails(expense._original)">
-            <Table.Cell>{{ expense.Name }}</Table.Cell>
-            <Table.Cell>{{ expense.Amount }}</Table.Cell>
-            <Table.Cell>
+          <tr v-for="expense in rows" :key="expense._original.id" class="clickable-row">
+            <Table.SelectRow v-if="canManageResource" :row="expense" />
+            <Table.Cell @click="viewExpenseDetails(expense._original)">
+              {{ expense.Name }}
+            </Table.Cell>
+            <Table.Cell @click="viewExpenseDetails(expense._original)">
+              {{ expense.Amount }}
+            </Table.Cell>
+            <Table.Cell @click="viewExpenseDetails(expense._original)">
               <Badge
                 :variant="expense.Status === 'Planned' ? 'accent' : expense.Status === 'Active' ? 'success' : 'neutral'"
               >
                 {{ expense.Status }}
               </Badge>
             </Table.Cell>
-            <Table.Cell>{{ expense.Started }}</Table.Cell>
-            <Table.Cell>{{ expense.Duration }}</Table.Cell>
+            <Table.Cell @click="viewExpenseDetails(expense._original)">
+              {{ expense.Started }}
+            </Table.Cell>
+            <Table.Cell @click="viewExpenseDetails(expense._original)">
+              {{ expense.Duration }}
+            </Table.Cell>
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
                 resource-type="funding"
                 :item="expense._original"
                 button-size="s"
                 @edit="(item) => openEditExpenseForm(item as Expense)"
-                @delete="(item) => handleExpenseDelete((item as Expense).id)"
+                @delete="(item) => handleExpensesDelete([(item as Expense).id])"
               />
             </Table.Cell>
           </tr>
@@ -263,7 +289,7 @@ async function handleExpenseDelete(expenseId: number) {
       v-model:is-open="showExpenseDetails"
       :expense="selectedExpense"
       @edit="handleEditFromDetails"
-      @delete="(item) => handleExpenseDelete(item.id)"
+      @delete="(item) => handleExpensesDelete([item.id])"
     />
 
     <ExpenseForm
@@ -271,7 +297,30 @@ async function handleExpenseDelete(expenseId: number) {
       :expense="selectedExpense"
       :is-edit-mode="isEditMode"
       @save="handleExpenseSave"
-      @delete="handleExpenseDelete"
+      @delete="(id: number) => handleExpensesDelete([id])"
+    />
+
+    <SelectedRowsActions
+      :selected-count="selectedRows.length"
+      @clear="deselectAllRows()"
+    >
+      <DropdownItem @click="showBulkDeleteConfirm = true">
+        <template #icon>
+          <Icon name="ph:trash" class="text-color-red" />
+        </template>
+        Delete
+      </DropdownItem>
+    </SelectedRowsActions>
+
+    <ConfirmModal
+      :open="showBulkDeleteConfirm"
+      :title="`Delete ${selectedRows.length} items`"
+      :description="`Are you sure you want to delete ${selectedRows.length} expenses? This action cannot be undone.`"
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      :destructive="true"
+      @cancel="showBulkDeleteConfirm = false"
+      @confirm="handleBulkDelete"
     />
   </Flex>
 </template>

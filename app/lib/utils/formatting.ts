@@ -43,27 +43,37 @@ export function capitalize(str: string) {
  * 3. Preserves all internal spacing.
  */
 /**
- * Formats a count for compact display.
+ * Formats a count for compact display using the browser locale.
  *
- * - Below `abbreviateAbove`: rendered with locale thousands separator (e.g. 2,345)
- * - abbreviateAbove–999,999: abbreviated to one decimal place with K suffix (e.g. 58.6K)
- * - 1,000,000+: abbreviated with M suffix (e.g. 1.2M)
+ * - Below `abbreviateAbove`: rendered with locale thousands separator (e.g. "2,345" or "2.345")
+ * - `abbreviateAbove` and above: locale-aware compact notation (e.g. "58.6K", "58,6K", "1.2M")
  *
- * `abbreviateAbove` defaults to 10,000 (max 5 chars counting the comma, e.g. "9,999").
+ * `abbreviateAbove` defaults to 10,000.
  * Pass 1_000 for a 4-char max (e.g. leaderboard badges, podium counts).
  */
 export function formatCount(value: number, abbreviateAbove = 10_000): string {
   if (value < abbreviateAbove)
-    return value.toLocaleString()
+    return new Intl.NumberFormat(undefined).format(value)
 
-  if (value < 1_000_000) {
-    const k = value / 1_000
-    // Drop the decimal if it would round to a whole number
-    return `${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}K`
-  }
+  return new Intl.NumberFormat(undefined, {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value)
+}
 
-  const m = value / 1_000_000
-  return `${m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)}M`
+/**
+ * Formats a percentage value (0–100) for locale-aware display.
+ * e.g. formatPercent(58.6) → "58.6%" (en) or "58,6 %" (fr)
+ *
+ * @param value - Percentage value in the range 0–100
+ * @param decimalPlaces - Maximum decimal places to show (defaults to 1)
+ */
+export function formatPercent(value: number, decimalPlaces = 1): string {
+  return new Intl.NumberFormat(undefined, {
+    style: 'percent',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimalPlaces,
+  }).format(value / 100)
 }
 
 export function normalizeTipTapOutput(content: string): string {

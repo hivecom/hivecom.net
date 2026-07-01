@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue'
 import EventFormFields from '@/components/Events/EventFormFields.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useEffectiveRole } from '@/composables/useEffectiveRole'
+import { STATIC_BUCKET_ID } from '@/lib/storageAssets'
 import { expandRecurringEvent } from '@/lib/utils/rrule'
 
 const props = defineProps<{
@@ -18,6 +19,8 @@ const emit = defineEmits<{
 
 const open = defineModel<boolean>('open')
 const fullscreen = ref(false)
+
+const formFieldsRef = ref<InstanceType<typeof EventFormFields> | null>(null)
 
 // Form state
 const eventForm = ref<FormState>({
@@ -187,6 +190,13 @@ async function doSave() {
   saveError.value = null
 
   try {
+    // Upload any pending blob-placeholder media before reading the markdown,
+    // otherwise blob: URLs get persisted and render as missing media. The editor
+    // surfaces its own error toast on failure, so we just abort here.
+    const uploaded = await formFieldsRef.value?.flushPendingUploads()
+    if (uploaded === false)
+      return
+
     const payload = buildPayload()
 
     if (isEditMode.value && props.event) {
@@ -232,6 +242,13 @@ async function doFork() {
   saveError.value = null
 
   try {
+    // Upload any pending blob-placeholder media before reading the markdown,
+    // otherwise blob: URLs get persisted and render as missing media. The editor
+    // surfaces its own error toast on failure, so we just abort here.
+    const uploaded = await formFieldsRef.value?.flushPendingUploads()
+    if (uploaded === false)
+      return
+
     const now = new Date()
     const payload = buildPayload()
 
@@ -337,11 +354,13 @@ async function handleDelete() {
 
     <!-- Form -->
     <EventFormFields
+      ref="formFieldsRef"
       v-model="eventForm"
       v-model:is-official="isOfficial"
       :is-privileged="isPrivileged"
       :is-edit-mode="isEditMode"
       :event-id="props.event?.id?.toString()"
+      :media-bucket-id="STATIC_BUCKET_ID"
       :validation="validation"
     />
 

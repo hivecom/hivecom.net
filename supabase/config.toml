@@ -142,6 +142,19 @@ max_enrolled_factors = 10
 enroll_enabled = true
 verify_enabled = true
 
+# Passwordless sign-in with passkeys (WebAuthn). Experimental in supabase-js.
+[auth.passkey]
+enabled = true
+
+# WebAuthn relying party config. Required when auth.passkey.enabled = true.
+# NOTE: passkeys are cryptographically bound to rp_id - keep it stable once users enroll.
+# Local dev must be reached via http://localhost:3000 (not 127.0.0.1) because
+# browsers reject IP addresses as WebAuthn relying party IDs.
+[auth.webauthn]
+rp_display_name = "Hivecom"
+rp_id = "localhost"
+rp_origins = [ "http://localhost:3000" ]
+
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
 [auth.hook.custom_access_token]
 enabled = true

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Button, ContextMenu, Flex, Overflow, Sheet, Tooltip } from '@dolanske/vui'
+import { Button, ContextMenu, Drawer, Flex, Overflow, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import ChatPresenceDot from '@/components/Chat/ChatPresenceDot.vue'
 import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import UserActionMenu from '@/components/Chat/UserActionMenu.vue'
 import UserListModal from '@/components/Chat/UserListModal.vue'
@@ -12,7 +13,29 @@ import { channelRole, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-const { users, nick, inputMessage, openPm } = useIrcChat()
+const props = defineProps<{
+  // When set, render a static (non-scrolling) list capped to this many users,
+  // with a "show all" button opening the full modal. Used in the mobile nav sheet.
+  limit?: number
+}>()
+
+const { users, nick, inputMessage, openPm, userMetaStore, activeBuffer, myChannelRole } = useIrcChat()
+
+// In an auditorium channel (+u) the server hides unprivileged members from the
+// NAMES list of non-operators, so a regular user only ever sees operators.
+// Surface a hint so the short list doesn't read like a bug.
+const OPERATOR_PREFIXES = new Set(['~', '&', '@', '%'])
+const showOperatorsOnlyNote = computed(() => {
+  const buf = activeBuffer.value
+  if (buf?.kind !== 'channel' || !buf.modes?.has('u'))
+    return false
+  const role = myChannelRole(buf.name)
+  return !role || !OPERATOR_PREFIXES.has(role.symbol)
+})
+
+function ircMeta(name: string) {
+  return userMetaStore.value.get(name.toLowerCase())
+}
 const { settings } = useDataUserSettings()
 const { resolved, resolve } = useIrcNickResolver()
 const isMobile = useBreakpoint('<s')
@@ -27,8 +50,20 @@ function resolvedUserId(name: string): string | null {
   return resolved.value.get(name.toLowerCase())?.id ?? null
 }
 
+function resolvedLastSeen(name: string): string | null {
+  return resolved.value.get(name.toLowerCase())?.last_seen ?? null
+}
+
 const displayUsers = computed(() =>
   users.value.map(user => ({ ...user, role: channelRole(user.prefix) })),
+)
+
+const visibleUsers = computed(() =>
+  props.limit ? displayUsers.value.slice(0, props.limit) : displayUsers.value,
+)
+
+const hiddenCount = computed(() =>
+  props.limit ? Math.max(0, displayUsers.value.length - props.limit) : 0,
 )
 
 function mention(name: string) {
@@ -42,6 +77,18 @@ function userStyle(name: string) {
   return undefined
 }
 
+function ircDisplayName(name: string): string {
+  return ircMeta(name)?.get('display-name') ?? name
+}
+
+function ircAvatarUrl(name: string): string | undefined {
+  return ircMeta(name)?.get('avatar') || undefined
+}
+
+function ircStatus(name: string): string | undefined {
+  return ircMeta(name)?.get('orbit.status') || undefined
+}
+
 // ---- Context menu ----
 
 const menuUser = ref<string | null>(null)
@@ -53,6 +100,51 @@ function openWhois(name: string) {
   closeMenu()
 }
 const mobileMenuOpen = ref(false)
+
+// Long-press detection for mobile - mirrors MessageLog.vue behaviour.
+let _longPressTimer: ReturnType<typeof setTimeout> | null = null
+let _touchStartX = 0
+let _touchStartY = 0
+const LONG_PRESS_MS = 500
+const LONG_PRESS_SLOP = 8 // px - cancel if finger drifts (user is scrolling)
+
+function onTouchStart(event: TouchEvent) {
+  const touch = event.touches[0]
+  if (!touch)
+    return
+  _touchStartX = touch.clientX
+  _touchStartY = touch.clientY
+
+  const el = (event.target as HTMLElement | null)?.closest('[data-user-name]') as HTMLElement | null
+  const name = el?.dataset.userName ?? null
+  if (!name)
+    return
+
+  _longPressTimer = setTimeout(() => {
+    _longPressTimer = null
+    menuUser.value = name
+    mobileMenuOpen.value = true
+  }, LONG_PRESS_MS)
+}
+
+function cancelLongPress() {
+  if (_longPressTimer !== null) {
+    clearTimeout(_longPressTimer)
+    _longPressTimer = null
+  }
+}
+
+function onTouchMove(event: TouchEvent) {
+  if (_longPressTimer === null)
+    return
+  const touch = event.touches[0]
+  if (!touch)
+    return
+  if (Math.abs(touch.clientX - _touchStartX) > LONG_PRESS_SLOP
+    || Math.abs(touch.clientY - _touchStartY) > LONG_PRESS_SLOP) {
+    cancelLongPress()
+  }
+}
 
 function onContextMenu(event: MouseEvent) {
   const el = (event.target as HTMLElement | null)?.closest('[data-user-name]') as HTMLElement | null
@@ -82,21 +174,29 @@ const menuUserData = computed(() =>
 <template>
   <Flex column :gap="0" class="chat-users" expand>
     <Flex y-center x-between class="chat-users__header" expand>
-      <span class="chat-users__title">Users</span>
+      <span class="chat-users__title">Channel Users</span>
       <Button square plain size="s" aria-label="User list" class="chat-users__list-btn" @click="userListOpen = true">
         <Icon name="ph:users" size="13" />
       </Button>
     </Flex>
-    <ContextMenu class="chat-users__context w-100">
-      <Overflow class="chat-users__list w-100">
+    <Flex v-if="showOperatorsOnlyNote" x-center y-center expand gap="xxs" class="text-xxs text-color-lighter chat-users__auditorium-note">
+      <Icon name="ph:megaphone" size="12" style="flex-shrink: 0" />
+      <span>Auditorium - only operators are shown</span>
+    </Flex>
+    <ContextMenu class="chat-users__context w-100" :class="{ 'chat-users__context--static': limit }">
+      <component :is="limit ? 'div' : Overflow" class="chat-users__list w-100">
         <Flex
           :gap="0"
           column
           expand
           @contextmenu.prevent="onContextMenu"
+          @touchstart.passive="onTouchStart"
+          @touchmove.passive="onTouchMove"
+          @touchend="cancelLongPress"
+          @touchcancel="cancelLongPress"
         >
           <Flex
-            v-for="user in displayUsers"
+            v-for="user in visibleUsers"
             :key="user.name"
             y-center
             expand
@@ -107,24 +207,34 @@ const menuUserData = computed(() =>
             <span class="chat-users__indicator">
               <UserRoleBadge :role="user.role" icon />
             </span>
-            <UserAvatar
-              v-if="resolvedUserId(user.name)"
-              :user-id="resolvedUserId(user.name)!"
-              size="s"
-              show-preview
-              class="chat-users__avatar"
-            />
-            <AvatarMedia v-else :size="28" :alt="user.name" class="chat-users__avatar">
-              <template #default>
-                {{ user.name.charAt(0).toUpperCase() }}
-              </template>
-            </AvatarMedia>
+            <span class="chat-users__avatar-wrap">
+              <UserAvatar
+                v-if="resolvedUserId(user.name)"
+                :user-id="resolvedUserId(user.name)!"
+                size="s"
+                show-preview
+                class="chat-users__avatar"
+              />
+              <AvatarMedia v-else-if="ircAvatarUrl(user.name)" :size="28" :url="ircAvatarUrl(user.name)" :alt="user.name" class="chat-users__avatar" />
+              <AvatarMedia v-else :size="28" :alt="user.name" class="chat-users__avatar">
+                <template #default>
+                  {{ user.name.charAt(0).toUpperCase() }}
+                </template>
+              </AvatarMedia>
+              <ChatPresenceDot
+                :away="user.away"
+                :last-seen="resolvedLastSeen(user.name)"
+                :no-tooltip="isMobile"
+                :size="6"
+              />
+            </span>
             <button
               class="chat-users__item"
               type="button"
               @click="user.name !== nick ? openPm(user.name) : mention(user.name)"
             >
-              <span class="chat-users__name" :style="userStyle(user.name)">{{ user.name }}</span>
+              <span class="chat-users__name" :style="userStyle(user.name)">{{ ircDisplayName(user.name) }}</span>
+              <span v-if="ircStatus(user.name)" class="chat-users__status">{{ ircStatus(user.name) }}</span>
               <Tooltip v-if="user.bot" :disabled="isMobile">
                 <Icon name="ph:robot" size="12" class="chat-users__bot-icon" />
                 <template #tooltip>
@@ -136,8 +246,11 @@ const menuUserData = computed(() =>
           <p v-if="displayUsers.length === 0" class="chat-users__empty">
             No users.
           </p>
+          <Button v-if="hiddenCount > 0" plain expand size="s" class="chat-users__show-all" @click="userListOpen = true">
+            Show all {{ displayUsers.length }} users
+          </Button>
         </Flex>
-      </Overflow>
+      </component>
 
       <template #menu>
         <div class="vui-dropdown chat-users__menu" @click="closeMenu">
@@ -153,8 +266,8 @@ const menuUserData = computed(() =>
       </template>
     </ContextMenu>
 
-    <!-- Mobile sheet -->
-    <Sheet :open="mobileMenuOpen" @close="mobileMenuOpen = false">
+    <!-- Mobile drawer -->
+    <Drawer :open="mobileMenuOpen" @close="mobileMenuOpen = false">
       <template v-if="menuUser" #header>
         <h4>{{ menuUser }}</h4>
       </template>
@@ -168,7 +281,7 @@ const menuUserData = computed(() =>
           @open-whois="openWhois"
         />
       </div>
-    </Sheet>
+    </Drawer>
   </Flex>
   <UserListModal :open="userListOpen" @close="userListOpen = false" />
   <IrcWhoisModal :nick="menuUser" :open="whoisModalOpen" @close="whoisModalOpen = false" />
@@ -179,6 +292,10 @@ const menuUserData = computed(() =>
   &__header {
     padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-s);
     border-bottom: 1px solid var(--color-border-weak);
+
+    @media (max-width: $breakpoint-s) {
+      padding: var(--space-m);
+    }
   }
 
   &__title {
@@ -201,9 +318,23 @@ const menuUserData = computed(() =>
       display: flex;
       flex-direction: column;
     }
+
+    &--static {
+      flex: 0 0 auto;
+
+      :deep(.vui-context-menu) {
+        flex: 0 0 auto;
+      }
+
+      .chat-users__list {
+        flex: 0 0 auto;
+        min-height: 0;
+      }
+    }
   }
 
   &__list {
+    user-select: none;
     flex: 1;
     min-height: 0;
     padding: var(--space-xxs);
@@ -263,9 +394,15 @@ const menuUserData = computed(() =>
     margin-left: var(--space-xs);
   }
 
-  &__avatar {
+  &__avatar-wrap {
+    position: relative;
+    display: inline-flex;
     flex-shrink: 0;
     margin-left: var(--space-xxs);
+  }
+
+  &__avatar {
+    flex-shrink: 0;
 
     width: 14px !important;
     height: 14px !important;
@@ -286,11 +423,28 @@ const menuUserData = computed(() =>
     }
   }
 
+  &__status {
+    font-size: var(--font-size-xxs);
+    color: var(--color-text-lighter);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 1;
+  }
+
   &__empty {
     padding: var(--space-xs);
     font-size: var(--font-size-s);
     color: var(--color-text-lighter);
     font-style: italic;
+  }
+
+  &__auditorium-note {
+    span {
+      font-size: var(--font-size-xxs);
+    }
+    padding: var(--space-xs) var(--space-s);
+    border-bottom: 1px solid var(--color-border-weak);
   }
 
   &__menu {
@@ -299,6 +453,10 @@ const menuUserData = computed(() =>
 
   &__list-btn {
     flex-shrink: 0;
+  }
+
+  &__show-all {
+    margin-top: var(--space-xxs);
   }
 }
 </style>

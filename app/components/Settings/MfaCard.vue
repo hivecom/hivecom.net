@@ -2,10 +2,13 @@
 import type { Session } from '@supabase/supabase-js'
 import { Alert, Badge, Button, Card, CopyClipboard, Flex, Input, Modal, OTP, OTPItem, pushToast, Skeleton } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import SupportModal from '@/components/Shared/SupportModal.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useMfaStatus } from '@/composables/useMfaStatus'
+import { usePasskeyBus } from '@/composables/usePasskeyBus'
 import { useUserId } from '@/composables/useUserId'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { isPasskeySupported, listPasskeys } from '@/lib/passkey'
 
 interface MfaFactor {
   id: string
@@ -37,6 +40,15 @@ const removeFactorError = ref('')
 const removeFactorModalOpen = ref(false)
 const removeFactorLoading = ref(false)
 const removeFactorTarget = ref<MfaFactor | null>(null)
+const supportModalOpen = ref(false)
+const mfaStepUp = reactive({
+  open: false,
+  targetFactorId: '',
+  challengeFactorId: '',
+  code: '',
+  verifying: false,
+  error: '',
+})
 const totpSetup = reactive({
   factorId: '',
   qrCode: '',
@@ -49,14 +61,27 @@ const totpSetup = reactive({
   verifying: false,
 })
 const mfaCache = useMfaStatus()
+const { onPasskeysChanged } = usePasskeyBus()
+const passkeyCount = ref(0)
+const hasPasskey = computed(() => passkeyCount.value > 0)
+
+// Keep the passkey-aware status in sync when the sibling PasskeyCard adds or
+// removes a passkey without requiring a page reload.
+onPasskeysChanged(({ count }) => {
+  passkeyCount.value = count
+})
 
 const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
 const showMfaSkeleton = computed(() => hasMfaSupport.value && Boolean(user.value) && (mfaLoading.value || !mfaHasFetched.value))
 const hasVerifiedTotp = computed(() => mfaFactors.value.some(f => f.factor_type === 'totp' && f.status === 'verified'))
 const isTotpSetupActive = computed(() => Boolean(totpSetup.qrCode && totpSetup.secret) || totpSetup.naming)
-const mfaStatusCopy = computed(() => (hasVerifiedTotp.value
-  ? 'Authenticator codes are required the next time you sign in.'
-  : 'Set up an authenticator app to add two-factor authentication.'))
+const mfaStatusCopy = computed(() => {
+  if (hasVerifiedTotp.value)
+    return 'Authenticator codes are required the next time you sign in.'
+  if (hasPasskey.value)
+    return 'Set up an authenticator app to secure password sign-ins. Passkey sign-ins skip MFA.'
+  return 'Set up an authenticator app to add two-factor authentication.'
+})
 const hasElevatedRole = computed(() => {
   const role = currentUserData.value?.role
   return role === 'admin' || role === 'moderator'
@@ -176,6 +201,21 @@ async function loadMfaFactors() {
   finally {
     mfaLoading.value = false
     mfaHasFetched.value = true
+  }
+}
+
+async function loadPasskeyCount() {
+  if (!isClient || !user.value || !isPasskeySupported()) {
+    passkeyCount.value = 0
+    return
+  }
+  try {
+    const passkeys = await listPasskeys(supabase)
+    passkeyCount.value = passkeys.length
+  }
+  catch {
+    // Passkey status is supplementary here; ignore failures (e.g. feature disabled).
+    passkeyCount.value = 0
   }
 }
 
@@ -342,6 +382,34 @@ const removeFactorDescription = computed(() => {
   return 'Removing this device will stop it from being usable for future sign-ins.'
 })
 
+function isInsufficientAalError(error: unknown): boolean {
+  if (!error || typeof error !== 'object')
+    return false
+  const code = (error as { code?: string }).code
+  const message = (error as { message?: string }).message ?? ''
+  return code === 'insufficient_aal' || /aal2 required/i.test(message)
+}
+
+// A passkey-authenticated session is aal1 server-side (our access-token hook
+// only elevates the JWT claim, not the GoTrue session), so removing a verified
+// factor requires the user to step up by verifying an existing authenticator.
+// Pick a verified TOTP factor to challenge against - prefer the one being
+// removed, otherwise any other verified authenticator.
+function pickStepUpFactorId(target: MfaFactor): string | null {
+  if (target.factor_type === 'totp' && target.status === 'verified')
+    return target.id
+  const verified = mfaFactors.value.find(f => f.factor_type === 'totp' && f.status === 'verified')
+  return verified?.id ?? null
+}
+
+async function finalizeFactorRemoval(targetFactorId: string) {
+  if (targetFactorId === totpSetup.factorId)
+    resetTotpSetup()
+  pushToast('MFA device removed.')
+  await loadMfaFactors()
+  mfaCache.value = { currentLevel: null, nextLevel: null, fetchedAt: 0 }
+}
+
 async function removeSelectedFactor() {
   const factor = removeFactorTarget.value
   if (!factor)
@@ -356,20 +424,82 @@ async function removeSelectedFactor() {
     if (error)
       throw error
 
-    if (factor.id === totpSetup.factorId)
-      resetTotpSetup()
-
-    pushToast('MFA device removed.')
-    await loadMfaFactors()
-    mfaCache.value = { currentLevel: null, nextLevel: null, fetchedAt: 0 }
+    await finalizeFactorRemoval(factor.id)
     removeFactorModalOpen.value = false
     removeFactorTarget.value = null
   }
   catch (error) {
+    if (isInsufficientAalError(error)) {
+      beginStepUpRemoval(factor)
+      return
+    }
     removeFactorError.value = resolveErrorMessage(error, 'Unable to remove this MFA device right now.')
   }
   finally {
     removeFactorLoading.value = false
+  }
+}
+
+function beginStepUpRemoval(target: MfaFactor) {
+  const challengeFactorId = pickStepUpFactorId(target)
+  if (!challengeFactorId) {
+    removeFactorError.value = 'To remove this device you must verify an existing authenticator. If you have lost access to it, please contact support.'
+    return
+  }
+  mfaStepUp.open = true
+  mfaStepUp.targetFactorId = target.id
+  mfaStepUp.challengeFactorId = challengeFactorId
+  mfaStepUp.code = ''
+  mfaStepUp.error = ''
+  mfaStepUp.verifying = false
+}
+
+function cancelStepUp() {
+  if (mfaStepUp.verifying)
+    return
+  mfaStepUp.open = false
+  mfaStepUp.code = ''
+  mfaStepUp.error = ''
+}
+
+async function verifyStepUpAndRemove() {
+  if (mfaStepUp.verifying)
+    return
+
+  const code = mfaStepUp.code.trim()
+  if (code.length !== 6) {
+    mfaStepUp.error = 'Enter the 6-digit code from your authenticator app.'
+    return
+  }
+
+  mfaStepUp.verifying = true
+  mfaStepUp.error = ''
+
+  try {
+    // Verifying an existing factor elevates the real session to aal2.
+    const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
+      factorId: mfaStepUp.challengeFactorId,
+      code,
+    })
+    if (verifyError)
+      throw verifyError
+
+    const { data: sessionResult } = await supabase.auth.getSession()
+    await persistVerifiedMfaSession(sessionResult?.session ?? null)
+
+    const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: mfaStepUp.targetFactorId })
+    if (unenrollError)
+      throw unenrollError
+
+    await finalizeFactorRemoval(mfaStepUp.targetFactorId)
+    mfaStepUp.open = false
+    removeFactorTarget.value = null
+  }
+  catch (error) {
+    mfaStepUp.error = resolveErrorMessage(error, 'Unable to verify the code. Double-check it and try again.')
+  }
+  finally {
+    mfaStepUp.verifying = false
   }
 }
 
@@ -395,15 +525,21 @@ async function persistVerifiedMfaSession(session: Session | null) {
 }
 
 watch(user, (newUser) => {
-  if (newUser)
+  if (newUser) {
     loadMfaFactors()
-  else
+    loadPasskeyCount()
+  }
+  else {
     resetTotpSetup()
+    passkeyCount.value = 0
+  }
 })
 
 onBeforeMount(() => {
-  if (user.value)
+  if (user.value) {
     loadMfaFactors()
+    loadPasskeyCount()
+  }
 })
 </script>
 
@@ -476,7 +612,7 @@ onBeforeMount(() => {
                   <Flex gap="s" y-center wrap>
                     <strong>{{ hasVerifiedTotp ? 'Enabled' : 'Not Enabled' }}</strong>
                     <Badge size="s" :variant="mfaStatusBadge.variant">
-                      <Icon :class="`text-color-${mfaStatusBadge.variant === 'success' ? 'accent' : 'red'}`" :name="mfaStatusIcon" />
+                      <Icon :class="`text-color-${mfaStatusBadge.variant === 'success' ? 'accent' : 'yellow'}`" :name="mfaStatusIcon" />
                       {{ mfaStatusBadge.label }}
                     </Badge>
                   </Flex>
@@ -672,6 +808,59 @@ onBeforeMount(() => {
     confirm-text="Remove"
     cancel-text="Cancel"
     :destructive="true"
+  />
+
+  <!-- Step-up verification required to remove a verified factor (e.g. on a passkey session) -->
+  <Modal
+    :open="mfaStepUp.open"
+    size="s"
+    :card="{ separators: true }"
+    :can-dismiss="!mfaStepUp.verifying"
+    @close="cancelStepUp"
+  >
+    <template #header>
+      <Flex column gap="xxs">
+        <h4>Confirm it's you</h4>
+        <p class="text-m text-color-light">
+          Enter a code from your authenticator app to confirm removing this device.
+        </p>
+      </Flex>
+    </template>
+
+    <Alert v-if="mfaStepUp.error" filled variant="danger" class="mb-m">
+      {{ mfaStepUp.error }}
+    </Alert>
+
+    <Flex column gap="m" y-center expand>
+      <OTP
+        v-model="mfaStepUp.code"
+        mode="num"
+        :disabled="mfaStepUp.verifying"
+        @complete="verifyStepUpAndRemove"
+      >
+        <OTPItem v-for="item in 6" :key="item" :i="item - 1" />
+      </OTP>
+      <Button variant="link" size="s" :disabled="mfaStepUp.verifying" @click="supportModalOpen = true">
+        Lost your device? Contact support
+      </Button>
+    </Flex>
+
+    <template #footer>
+      <Flex gap="s" :column="isBelowSmall" :row="!isBelowSmall" expand y-center>
+        <Button expand variant="danger" :loading="mfaStepUp.verifying" @click="verifyStepUpAndRemove">
+          Verify and remove
+        </Button>
+        <Button expand :disabled="mfaStepUp.verifying" @click="cancelStepUp">
+          Cancel
+        </Button>
+      </Flex>
+    </template>
+  </Modal>
+
+  <SupportModal
+    v-model:open="supportModalOpen"
+    title="Lost your authenticator?"
+    message="I've lost access to my authenticator app and need help removing two-factor authentication from my account."
   />
 </template>
 

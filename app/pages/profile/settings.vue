@@ -13,8 +13,11 @@ import RichPresencePromptModal from '@/components/Settings/RichPresencePromptMod
 import { useSessionReady } from '@/composables/useSessionReady'
 import { scrollToId } from '@/lib/utils/common'
 
-const isDev = import.meta.dev
 const route = useRoute()
+
+// Surfaced as subtle diagnostic text so users can read out which deploy they're
+// on when reporting a stale-build / stuck-loading issue.
+const buildId = useRuntimeConfig().app.buildId
 
 const richPresencePromptOpen = ref(false)
 
@@ -214,7 +217,7 @@ function registerScrollListener() {
             <Flex column gap="xl">
               <ChangePasswordCard />
               <MfaCard />
-              <PasskeyCard v-if="isDev" />
+              <PasskeyCard />
             </Flex>
           </div>
           <div id="account" class="w-100">
@@ -223,6 +226,10 @@ function registerScrollListener() {
               <ChangeEmailCard />
               <DeleteAccountCard />
             </Flex>
+
+            <p v-if="buildId" class="settings-build-id">
+              Latest Build Identifier: {{ buildId }}
+            </p>
           </div>
         </Flex>
 
@@ -274,6 +281,13 @@ function registerScrollListener() {
 }
 .profile-error {
   margin-bottom: var(--space-m);
+}
+
+.settings-build-id {
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-lightest);
+  user-select: text;
 }
 
 .settings {

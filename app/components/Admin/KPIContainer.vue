@@ -26,8 +26,6 @@ const attrs = useAttrs()
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .kpi-container {
   width: 100%;
   flex-wrap: nowrap !important;

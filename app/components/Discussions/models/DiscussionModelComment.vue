@@ -2,9 +2,7 @@
 import type { Comment, DiscussionSettings, ProvidedDiscussion, RawComment } from '../Discussion.types'
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, Card, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import ModalDeleteReply from '@/components/Discussions/ModalDeleteReply.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
@@ -23,6 +21,7 @@ import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
+import { fromNow, fullDateTime } from '@/lib/utils/date'
 import { DISCUSSION_KEYS } from '../Discussion.keys'
 
 const props = defineProps<Props>()
@@ -35,7 +34,7 @@ const emit = defineEmits<{
 
 const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
-dayjs.extend(relativeTime)
+const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
 interface Props {
   data: Comment
@@ -176,6 +175,15 @@ async function submitEdit() {
 
   editLoading.value = true
 
+  // Upload any pending blob-placeholder media before reading the markdown,
+  // otherwise blob: URLs get persisted and render as missing media. The editor
+  // surfaces its own error toast on failure, so we just abort here.
+  const uploaded = await markdownEditor.value?.flushPendingUploads()
+  if (uploaded === false) {
+    editLoading.value = false
+    return
+  }
+
   // Resolve any plain-text @username mentions that were typed in plain-text
   // mode - the RichTextEditor's handleSubmit does this automatically, but the
   // edit modal calls supabase directly and bypasses that path.
@@ -193,7 +201,7 @@ async function submitEdit() {
   else {
     data.value.markdown = resolvedMarkdown
     data.value.is_nsfw = editedIsNsfw.value
-    data.value.modified_at = dayjs().toISOString()
+    data.value.modified_at = new Date().toISOString()
     data.value.modified_by = userId.value ?? data.value.modified_by
     _showNSFWWarning.value = editedIsNsfw.value
     endEditing()
@@ -210,11 +218,11 @@ const showReportModal = ref(false)
 
 // ── Toolbar timestamps ────────────────────────────────────────────────────────
 
-const postedAtFormatted = computed(() => dayjs(data.value.created_at).fromNow())
+const postedAtFormatted = computed(() => fromNow(data.value.created_at))
 const editedAtFormatted = computed(() => {
   if (data.value.modified_at === data.value.created_at)
     return null
-  return dayjs(data.value.modified_at).fromNow()
+  return fromNow(data.value.modified_at)
 })
 
 // ── Breakpoint ────────────────────────────────────────────────────────────────
@@ -311,13 +319,13 @@ watch(
         </template>
         <Tooltip v-if="timestamps" :delay="500">
           <p class="discussion-comment__timestamp">
-            {{ dayjs(data.created_at).fromNow() }}
+            {{ fromNow(data.created_at) }}
             <span v-if="data.modified_at !== data.created_at" class="discussion-comment__edited">(edited)</span>
           </p>
           <template #tooltip>
-            <p>{{ dayjs(data.created_at).format('MMM D, YYYY [at] h:mm A') }}</p>
+            <p>{{ fullDateTime(data.created_at) }}</p>
             <p v-if="data.modified_at !== data.created_at">
-              Edited {{ dayjs(data.modified_at).format('MMM D, YYYY [at] h:mm A') }}{{ modifierId && modifierUser ? ` by ${modifierUser.username}` : '' }}
+              Edited {{ fullDateTime(data.modified_at) }}{{ modifierId && modifierUser ? ` by ${modifierUser.username}` : '' }}
             </p>
           </template>
         </Tooltip>
@@ -469,12 +477,14 @@ watch(
       </Alert>
 
       <RichTextEditor
+        ref="markdownEditor"
         v-model="editedContent"
         :errors="editError"
         :media-context="currentUserData ? `${data.discussion_id}/${currentUserData.id}` : undefined"
         :media-bucket-id="FORUMS_BUCKET_ID"
         min-height="128px"
         show-expand-button
+        always-show-expand-button
         show-attachment-button
         placeholder="Edit your comment. Do not leave it empty!"
         class="mb-xs"

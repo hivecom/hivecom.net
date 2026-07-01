@@ -43,7 +43,14 @@ export function useBreakpoint(query: BreakpointQuery) {
     : createMediaQuery(`(max-width: ${value - 1}px)`)
 }
 
-// REVIEW (@dolanske) Renamed because it clashes with vueuse export (at least what
+// Non-SSR-gated mobile viewport check for client-only runtime logic (e.g. sound
+// playback) that can run at plugin scope where onMounted never fires. Components
+// rendering UI should prefer useBreakpoint('<s') to avoid hydration mismatches.
+export function useMobileViewport() {
+  return useMediaQuery(`(max-width: ${BREAKPOINTS.s - 1}px)`)
+}
+
+// REVIEW (@dolanske) Renamed because it clashes with vueuse export
 // I think, becasue VSCOde refused to hint me an import to this). Not sure I was
 // using it wrong, but it always returned true for everything. Maybe we could
 // add tests for util functions?

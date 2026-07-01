@@ -6,13 +6,18 @@
  *    that knows the JWT comes from Supabase; when Orbit replaces this chat with
  *    a cross-origin iframe, only this function changes (token via postMessage).
  * 2. Auto-connects on site open when the user has enabled the setting.
+ * 3. Boots the Ergo Web Push orchestrator so the chat-push subscription is
+ *    re-registered on reconnect and on browser subscription rotation, even when
+ *    no chat surface (and thus no SettingsModal) is mounted.
  *
  * Lives at plugin scope (not in a chat component) so the seam is registered
  * before any surface mounts and a manual connect can authenticate immediately.
  */
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
-import { setBrowserNotificationsEnabled, useIrcChat } from '@/composables/useIrcChat'
+import { useErgoPush } from '@/composables/useErgoPush'
+import { setBrowserNotificationsEnabled, setNotificationSounds, useIrcChat } from '@/composables/useIrcChat'
+import { useMobileViewport } from '@/lib/mediaQuery'
 
 export default defineNuxtPlugin(() => {
   const supabase = useSupabaseClient()
@@ -20,6 +25,10 @@ export default defineNuxtPlugin(() => {
   const { user } = useDataUser(userId)
   const { settings } = useDataUserSettings()
   const { registerIdentityProvider, connect, connState, setMentionKeywords } = useIrcChat()
+
+  // On mobile the device/OS volume governs playback, so a separate in-app slider
+  // is confusing. Always play notification sounds at full volume there.
+  const isMobile = useMobileViewport()
 
   const currentUsername = computed<string>(() => {
     const profile = user.value as unknown as { username?: string | null } | null
@@ -43,6 +52,33 @@ export default defineNuxtPlugin(() => {
     { immediate: true },
   )
 
+  watch(
+    () => [
+      settings.value.chat_sound_mention_choice,
+      settings.value.chat_sound_message_choice,
+      settings.value.chat_sound_mention_url,
+      settings.value.chat_sound_message_url,
+      settings.value.chat_sound_mention_design,
+      settings.value.chat_sound_message_design,
+      settings.value.chat_sound_volume,
+      isMobile.value,
+    ] as const,
+    ([mentionChoice, messageChoice, mentionUrl, messageUrl, mentionDesign, messageDesign, volume, mobile]) => setNotificationSounds({
+      mentionChoice: mentionChoice ?? 'none',
+      messageChoice: messageChoice ?? 'none',
+      mentionUrl: mentionUrl ?? '',
+      messageUrl: messageUrl ?? '',
+      mentionDesign: mentionDesign ?? null,
+      messageDesign: messageDesign ?? null,
+      volume: mobile ? 1 : (typeof volume === 'number' ? volume / 100 : 1),
+    }),
+    { immediate: true },
+  )
+
+  // Initialise the Ergo Web Push orchestrator (idempotent): registers the
+  // reconnect/rotation watchers once, app-wide, independent of chat UI mounting.
+  useErgoPush()
+
   registerIdentityProvider(async () => {
     const { data } = await supabase.auth.getSession()
     const token = data.session?.access_token ?? ''
@@ -62,7 +98,7 @@ export default defineNuxtPlugin(() => {
         return
       if (connState.value === 'disconnected') {
         autoConnected = true
-        void connect()
+        void connect(true)
       }
     },
     { immediate: true, deep: true },

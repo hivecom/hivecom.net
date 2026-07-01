@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Select } from '@dolanske/vui'
+import { Button, Flex, Input } from '@dolanske/vui'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface SelectOption {
@@ -68,31 +69,31 @@ const hasActiveFilters = computed(() =>
     </Input>
 
     <!-- Status filter -->
-    <Select
+    <ExpandableSelect
       v-model="statusFilter"
       :options="props.statusOptions"
       placeholder="Filter by status"
-      :class="{ 'w-100': isBelowMedium }"
+      :expand="isBelowMedium"
       show-clear
       :single="false"
     />
 
     <!-- Type filter -->
-    <Select
+    <ExpandableSelect
       v-model="typeFilter"
       :options="props.typeOptions"
       placeholder="Filter by type"
-      :class="{ 'w-100': isBelowMedium }"
+      :expand="isBelowMedium"
       show-clear
       :single="false"
     />
 
     <!-- Visibility filter -->
-    <Select
+    <ExpandableSelect
       v-model="visibilityFilter"
       :options="props.visibilityOptions"
       placeholder="Filter by visibility"
-      :class="{ 'w-100': isBelowMedium }"
+      :expand="isBelowMedium"
       show-clear
       :single="false"
     />

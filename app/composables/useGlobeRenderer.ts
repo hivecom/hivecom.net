@@ -346,8 +346,8 @@ export function useGlobeRenderer() {
         endLat: dstPt.lat,
         endLng: dstPt.lng,
       }
-      const srcRing: RingDatum = { lat: src.lat, lng: src.lng }
-      const dstRing: RingDatum = { lat: dst.lat, lng: dst.lng }
+      const srcRing: RingDatum = { lat: srcPt.lat, lng: srcPt.lng }
+      const dstRing: RingDatum = { lat: dstPt.lat, lng: dstPt.lng }
 
       arcs.push(arc)
       rings.push(srcRing)

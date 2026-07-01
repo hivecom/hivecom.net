@@ -2,6 +2,7 @@ import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { checkAssuranceLevel } from "../_shared/auth.ts";
+import { wipeDepotUploads } from "../_shared/depot.ts";
 import type { Database } from "database-types";
 
 interface DeleteAccountRequest {
@@ -64,14 +65,16 @@ Deno.serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth
-      .getUser(token);
+    const { data: claimsData, error: userError } = await supabaseClient.auth
+      .getClaims(token);
 
     if (userError) {
       throw userError;
     }
 
-    const user = userData.user;
+    const claims = claimsData?.claims;
+    const userEmail = typeof claims?.email === "string" ? claims.email : null;
+    const user = claims?.sub ? { id: claims.sub, email: userEmail } : null;
     if (!user || !user.email) {
       return new Response(
         JSON.stringify({ error: "Unable to resolve current user" }),
@@ -109,6 +112,28 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Confirmation email does not match" }),
         {
           status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
+      );
+    }
+
+    // Wipe the user's Orbit Depot uploads first, so nothing survives the account
+    // deletion. Runs server-side with the gateway service key. A configured
+    // Depot that fails aborts the delete (retryable); an unconfigured Depot is
+    // skipped (null).
+    try {
+      const wiped = await wipeDepotUploads(user.id);
+      if (wiped !== null) {
+        console.log(`Wiped ${wiped} Depot upload(s) for user ${user.id}`);
+      }
+    } catch (depotError) {
+      console.error("Error wiping Depot uploads:", depotError);
+      return new Response(
+        JSON.stringify({
+          error: "Failed to wipe your Depot uploads; account not deleted",
+        }),
+        {
+          status: 502,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         },
       );

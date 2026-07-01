@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { Badge, BadgeGroup } from '@dolanske/vui'
+import { computed } from 'vue'
+import { formatPercent } from '@/lib/utils/formatting'
 
 interface Props {
   growth: number | null
-  value?: number | null
-  prefix?: string
+  // Pre-formatted display value (e.g. from formatCurrency or formatCount).
+  // Pass null to render the growth badge alone without a value badge.
+  value?: string | null
   size?: 's' | 'm' | 'l'
   showIcon?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   value: null,
-  prefix: '',
   size: 's',
   showIcon: false,
 })
@@ -20,10 +22,10 @@ function getGrowthIndicator(growth: number | null) {
   if (growth === null)
     return { variant: 'neutral' as const, icon: 'ph:minus', text: 'No data' }
   if (growth > 0)
-    return { variant: 'success' as const, icon: 'ph:trend-up', text: `+${growth.toFixed(1)}%` }
+    return { variant: 'success' as const, icon: 'ph:trend-up', text: `+${formatPercent(growth)}` }
   if (growth < 0)
-    return { variant: 'danger' as const, icon: 'ph:trend-down', text: `${growth.toFixed(1)}%` }
-  return { variant: 'neutral' as const, icon: 'ph:minus', text: '0%' }
+    return { variant: 'danger' as const, icon: 'ph:trend-down', text: formatPercent(growth) }
+  return { variant: 'neutral' as const, icon: 'ph:minus', text: formatPercent(0) }
 }
 
 const iconSize = computed(() => {
@@ -39,20 +41,19 @@ const indicator = computed(() => getGrowthIndicator(props.growth))
 const valueVariant = computed(() => {
   if (props.value === null || props.value === undefined)
     return 'neutral'
-  return props.value > 0 ? 'success' : props.value < 0 ? 'danger' : 'neutral'
-})
-
-const valueText = computed(() => {
-  if (props.value === null || props.value === undefined)
-    return ''
-  return `${props.value > 0 ? '+' : ''}${props.prefix}${props.value}`
+  // Infer sentiment from sign prefix on the formatted string
+  if (props.value.startsWith('+'))
+    return 'success'
+  if (props.value.startsWith('-'))
+    return 'danger'
+  return 'neutral'
 })
 </script>
 
 <template>
   <BadgeGroup v-if="value !== null && value !== undefined">
     <Badge :variant="valueVariant" :size="size" circle filled>
-      {{ valueText }}
+      {{ value }}
     </Badge>
     <Badge v-if="growth !== null" :variant="indicator.variant" :size="size">
       {{ indicator.text }}

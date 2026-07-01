@@ -61,7 +61,7 @@ const {
   defaultSort: { column: 'Created', direction: 'desc' },
 })
 
-const displayRows = computed(() => filteredRows.value)
+const displayRows = computed(() => filteredRows.value.map(row => ({ ...row, id: row._original.id })))
 
 const { headers, rows, pagination, setPage, setSort, selectedRows, deselectAllRows, options } = defineTable(displayRows, {
   pagination: { enabled: true, perPage: adminTablePerPage.value },
@@ -154,10 +154,11 @@ async function handleDelete(ids: number[]) {
 // Bulk deletion
 const showBulkDeleteConfirm = ref(false)
 
-function handleBulkDelete() {
+async function handleBulkDelete() {
   showBulkDeleteConfirm.value = false
-  const ids = [...selectedRows.value].map(row => (row._original as unknown as Motd).id)
-  handleDelete(ids)
+  const ids = [...selectedRows.value].map(row => row._original.id)
+  await handleDelete(ids)
+  deselectAllRows()
 }
 </script>
 
@@ -212,8 +213,8 @@ function handleBulkDelete() {
       <TableContainer>
         <Table.Root :loading="loading" separate-cells>
           <template #header>
-            <th class="vui-table-interactive-cell" />
-            <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
+            <th v-if="canManageResource" class="vui-table-interactive-cell" />
+            <Table.Head v-for="header in headers.filter(h => h.label !== '_original' && h.label !== 'id')" :key="header.label" sort :header />
             <Table.Head
               v-if="canManageResource"
               key="actions"
@@ -224,7 +225,7 @@ function handleBulkDelete() {
 
           <template #body>
             <tr v-for="row in rows" :key="row._original.id">
-              <Table.SelectRow :row="row as any" />
+              <Table.SelectRow v-if="canManageResource" :row="row as any" />
               <Table.Cell>
                 {{ row.Message }}
               </Table.Cell>
@@ -261,7 +262,7 @@ function handleBulkDelete() {
   </Flex>
 
   <SelectedRowsActions
-    :selected-count="selectedRows.size"
+    :selected-count="selectedRows.length"
     @clear="deselectAllRows()"
   >
     <DropdownItem @click="showBulkDeleteConfirm = true">
@@ -282,8 +283,8 @@ function handleBulkDelete() {
   <!-- Bulk Delete Confirmation Modal -->
   <ConfirmModal
     :open="showBulkDeleteConfirm"
-    :title="`Delete ${selectedRows.size} items`"
-    :description="`Are you sure you want to delete ${selectedRows.size} MOTD items? This action cannot be undone.`"
+    :title="`Delete ${selectedRows.length} items`"
+    :description="`Are you sure you want to delete ${selectedRows.length} MOTD items? This action cannot be undone.`"
     confirm-text="Delete"
     cancel-text="Cancel"
     :destructive="true"

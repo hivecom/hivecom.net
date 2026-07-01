@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
+import type { TablesInsert, TablesUpdate } from '@/types/database.types'
 import { Badge, Button, Calendar, Checkbox, Flex, Input, Sheet, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import { displayDateTime } from '@/lib/utils/date'
 
 const props = defineProps<{
   referendum: Tables<'referendums'> | null
@@ -10,7 +12,10 @@ const props = defineProps<{
 }>()
 
 // Define emits
-const emit = defineEmits(['save', 'delete'])
+const emit = defineEmits<{
+  save: [referendumData: TablesInsert<'referendums'> | TablesUpdate<'referendums'>]
+  delete: [number]
+}>()
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -265,14 +270,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
                 expand
                 :class="{ error: !validation.date_start }"
               >
-                {{ referendumForm.date_start ? referendumForm.date_start.toLocaleString(undefined, {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false,
-                }) : 'Choose start date and time' }}
+                {{ referendumForm.date_start ? displayDateTime(referendumForm.date_start) : 'Choose start date and time' }}
                 <template #end>
                   <Icon name="ph:calendar" />
                 </template>
@@ -304,14 +302,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
                 expand
                 :class="{ error: !validation.date_end || !validation.dateRange || !validation.startBeforeEnd }"
               >
-                {{ referendumForm.date_end ? referendumForm.date_end.toLocaleString(undefined, {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false,
-                }) : 'Choose end date and time' }}
+                {{ referendumForm.date_end ? displayDateTime(referendumForm.date_end) : 'Choose end date and time' }}
                 <template #end>
                   <Icon name="ph:calendar" />
                 </template>

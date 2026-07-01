@@ -37,7 +37,7 @@ const showModifiedUser = computed(() => {
         <span class="text-xxs text-color-lighter" style="text-transform: uppercase; letter-spacing: 0.5px;">
           Created
         </span>
-        <TimestampDate size="xs" :date="createdAt" format="MMM D, YYYY [at] HH:mm" />
+        <TimestampDate size="xs" :date="createdAt" type="fullDateTime" />
         <UserDisplay
           v-if="showCreatedUser"
           class="mt-xs"
@@ -51,7 +51,7 @@ const showModifiedUser = computed(() => {
         <span class="text-xxs text-color-lighter" style="text-transform: uppercase; letter-spacing: 0.5px;">
           Modified
         </span>
-        <TimestampDate size="xs" :date="modifiedAt" format="MMM D, YYYY [at] HH:mm" />
+        <TimestampDate size="xs" :date="modifiedAt" type="fullDateTime" />
         <UserDisplay
           v-if="showModifiedUser"
           class="mt-xs"

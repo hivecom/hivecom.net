@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Card, Flex } from '@dolanske/vui'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { isBanActive } from '@/lib/banStatus'
+import { displayDate } from '@/lib/utils/date'
 import { formatDuration } from '@/lib/utils/duration'
 
 interface Props {
@@ -18,7 +19,7 @@ function getBanDuration() {
   const banStart = new Date(props.profile.ban_start)
 
   if (!props.profile.ban_end) {
-    return `Permanently banned since ${banStart.toLocaleDateString()}`
+    return `Permanently banned since ${displayDate(banStart)}`
   }
 
   const banEnd = new Date(props.profile.ban_end)

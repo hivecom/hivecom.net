@@ -86,12 +86,12 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
       // where the user has no reply yet (brand-new threads with 0 replies from them).
       supabase
         .from('discussions')
-        .select('id, title, slug, last_activity_at, discussion_topic_id, is_archived')
+        .select('id, title, slug, created_at, discussion_topic_id, is_archived')
         .eq('created_by', uid)
         .eq('is_draft', false)
         .not('discussion_topic_id', 'is', null)
         .limit(20)
-        .order('last_activity_at', { ascending: false }),
+        .order('created_at', { ascending: false }),
     ])
 
     // Build reply items - timestamp is when the user actually posted the reply
@@ -126,15 +126,19 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
         discussionTopicId: item.discussion_topic_id ?? null,
         discussionTitle: item.title ?? 'Discussion',
         discussionHref: `/forum/${item.slug ?? item.id}`,
-        timestampRaw: item.last_activity_at,
-        timestamp: dayjs(item.last_activity_at).fromNow(),
+        // Use the discussion's created_at - for a thread the user started but
+        // hasn't replied in, "their last activity" is when they created it.
+        // last_activity_at would reflect other people's replies and wrongly
+        // float old threads above ones the user recently posted in.
+        timestampRaw: item.created_at,
+        timestamp: dayjs(item.created_at).fromNow(),
         isArchived: !!item.is_archived,
       }))
 
     // Merge, sort by most recent user action, deduplicate by discussion, take top 6
     const seenDiscussionIds = new Set<string>()
     userActivity.value = [...replyItems, ...discussionItems]
-      .sort((a, b) => (a.timestampRaw > b.timestampRaw ? -1 : 1))
+      .sort((a, b) => b.timestampRaw.localeCompare(a.timestampRaw))
       .filter((item) => {
         if (seenDiscussionIds.has(item.discussionId))
           return false

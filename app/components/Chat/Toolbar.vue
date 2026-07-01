@@ -23,13 +23,15 @@ const isMobile = useBreakpoint('<s')
 const settingsOpen = ref(false)
 const identityOpen = ref(false)
 
-const { isConnected, account, accountEmail, accountAlwaysOn } = useIrcChat()
+const { isConnected, account, accountEmail, accountAlwaysOn, nick, openSelfSpace } = useIrcChat()
 
 const userId = useUserId()
 
 // Show indicator when connected and either: email unclaimed or always-on explicitly disabled at user level.
 const identityHasIssues = computed(() => {
   if (!isConnected.value || !account.value)
+    return false
+  if (accountEmail.value === null || accountAlwaysOn.value === null)
     return false
   const unclaimed = accountEmail.value === ''
   const notAlwaysOn = accountAlwaysOn.value === false
@@ -39,10 +41,20 @@ const identityHasIssues = computed(() => {
 
 <template>
   <Flex y-center x-between expand gap="s" class="chat-toolbar">
-    <ChatMenubar :compact="compact" />
+    <Flex y-center gap="s">
+      <ChatMenubar :compact="compact" />
+    </Flex>
     <Flex y-center gap="s">
       <ChatStateBadge v-if="!isMobile" />
-      <Tooltip v-if="userId" :disabled="isMobile">
+      <Tooltip v-if="isConnected && nick" :disabled="isMobile">
+        <Button square plain aria-label="Your Space" class="vui-button-accent-weak vui-button-rounded" @click="openSelfSpace()">
+          <Icon name="ph:bookmark-simple" size="18" />
+        </Button>
+        <template #tooltip>
+          <p>Your Space</p>
+        </template>
+      </Tooltip>
+      <Tooltip v-if="userId && account" :disabled="isMobile">
         <div class="chat-toolbar__identity-btn">
           <Button square plain aria-label="Identity" class="vui-button-accent-weak vui-button-rounded" @click="identityOpen = true">
             <Icon name="ph:identification-card" size="18" />

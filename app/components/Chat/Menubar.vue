@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, DropdownItem, DropdownTitle, Flex, Menubar, MenuItem, Sheet } from '@dolanske/vui'
+import { Button, DropdownItem, DropdownTitle, Flex, Menubar, MenuItem, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -9,7 +9,19 @@ defineProps<{
   compact?: boolean
 }>()
 
-const { isConnected, connState, connect, disconnect, sidebarHidden, toggleSidebar, latencyMs } = useIrcChat()
+const router = useRouter()
+
+// Desktop chat is full-screen with no global navbar, so give it a way out: back
+// to wherever the user came from, or home if they landed here directly.
+function goBack() {
+  const prev = window.history.state?.back as string | undefined
+  if (prev)
+    router.back()
+  else
+    navigateTo('/')
+}
+
+const { isConnected, connState, connect, disconnect, sidebarHidden, toggleSidebar, latencyMs, activeName, activateServerLog } = useIrcChat()
 
 const isMobile = useBreakpoint('<s')
 
@@ -68,6 +80,12 @@ function run(action: () => void) {
           </template>
           Disconnect
         </DropdownItem>
+        <DropdownItem v-if="isConnected" :class="{ 'vui-dropdown-item--active': activeName === '*' }" @click="() => { activateServerLog(); connectionDrawerOpen = false }">
+          <template #icon>
+            <Icon name="ph:hard-drives" />
+          </template>
+          Server log
+        </DropdownItem>
         <DropdownTitle>About</DropdownTitle>
         <p class="chat-menubar__server">
           irc.hivecom.net:6697
@@ -82,18 +100,16 @@ function run(action: () => void) {
     </Sheet>
   </template>
 
-  <!-- Desktop: sidebar icon button + single merged Connection dropdown -->
+  <!-- Desktop: back arrow + Connection + View menus -->
   <Flex v-else y-center :gap="0" class="chat-menubar">
-    <Button
-      v-if="!compact"
-      square
-      plain
-      :aria-label="sidebarHidden ? 'Show sidebar' : 'Hide sidebar'"
-      class="vui-button-accent-weak vui-button-rounded"
-      @click="run(toggleSidebar)"
-    >
-      <Icon :name="sidebarHidden ? 'ph:sidebar-simple' : 'ph:sidebar'" size="16" />
-    </Button>
+    <Tooltip>
+      <Button size="s" square plain aria-label="Back" @click="goBack">
+        <Icon name="ph:arrow-left" />
+      </Button>
+      <template #tooltip>
+        <p>Back</p>
+      </template>
+    </Tooltip>
     <Menubar>
       <MenuItem>
         <Button size="s" plain>
@@ -113,10 +129,31 @@ function run(action: () => void) {
               </template>
               Disconnect
             </DropdownItem>
+            <DropdownItem v-if="isConnected" :class="{ 'vui-dropdown-item--active': activeName === '*' }" @click="run(activateServerLog)">
+              <template #icon>
+                <Icon name="ph:hard-drives" />
+              </template>
+              Server log
+            </DropdownItem>
             <DropdownTitle>About</DropdownTitle>
             <p class="chat-menubar__server">
               irc.hivecom.net:6697
             </p>
+          </div>
+        </template>
+      </MenuItem>
+      <MenuItem v-if="!compact">
+        <Button size="s" plain>
+          View
+        </Button>
+        <template #menu>
+          <div class="vui-dropdown chat-menubar__merged">
+            <DropdownItem @click="run(toggleSidebar)">
+              <template #icon>
+                <Icon :name="sidebarHidden ? 'ph:sidebar-simple' : 'ph:sidebar'" />
+              </template>
+              {{ sidebarHidden ? 'Show sidebar' : 'Hide sidebar' }}
+            </DropdownItem>
           </div>
         </template>
       </MenuItem>

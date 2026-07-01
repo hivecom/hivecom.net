@@ -33,7 +33,6 @@ const skeletonWidths = ['120px', '90px', '140px', '100px', '80px', '110px']
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
 @use '@/assets/mixins.scss' as *;
 
 .forum__continue {

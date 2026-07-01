@@ -2,9 +2,7 @@
 import type { Comment, ProvidedDiscussion } from '../Discussion.types'
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Avatar, Badge, Button, Card, Divider, Flex, Modal, Switch, Tooltip } from '@dolanske/vui'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 import DiscussionActionsToolbar from '@/components/Discussions/DiscussionActionsToolbar.vue'
 import ModalDeleteReply from '@/components/Discussions/ModalDeleteReply.vue'
 import { resolvePlainTextMentions } from '@/components/Editor/plugins/mentions'
@@ -29,6 +27,7 @@ import { extractMentionIds } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import { getCountryInfo } from '@/lib/utils/country'
+import { fromNow, fullDateTime, fullMonth } from '@/lib/utils/date'
 import { DISCUSSION_KEYS } from '../Discussion.keys'
 
 const props = defineProps<Props>()
@@ -42,7 +41,7 @@ const emit = defineEmits<{
 
 const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
-dayjs.extend(relativeTime)
+const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
 interface Props {
   data: Comment
@@ -262,6 +261,15 @@ async function submit() {
   if (editedContent.value.length > 0) {
     editLoading.value = true
 
+    // Upload any pending blob-placeholder media before reading the markdown,
+    // otherwise blob: URLs get persisted and render as missing media. The editor
+    // surfaces its own error toast on failure, so we just abort here.
+    const uploaded = await markdownEditor.value?.flushPendingUploads()
+    if (uploaded === false) {
+      editLoading.value = false
+      return
+    }
+
     // Resolve any plain-text @username mentions that were typed in plain-text
     // mode - the RichTextEditor's handleSubmit does this automatically, but the
     // edit modal calls supabase directly and bypasses that path.
@@ -283,7 +291,7 @@ async function submit() {
 
       data.value.markdown = resolvedMarkdown
       data.value.is_nsfw = editedIsNsfw.value
-      data.value.modified_at = dayjs().toISOString()
+      data.value.modified_at = new Date().toISOString()
       data.value.modified_by = currentUser.value?.id ?? null
       // Re-apply the NSFW warning if the user toggled it back on
       _showNSFWWarning.value = editedIsNsfw.value
@@ -314,11 +322,11 @@ const { displayReactions, toggleReaction } = useReactions({
 })
 
 // Formatted timestamps for the toolbar sheet
-const postedAtFormatted = computed(() => dayjs(data.value.created_at).fromNow())
+const postedAtFormatted = computed(() => fromNow(data.value.created_at))
 const editedAtFormatted = computed(() => {
   if (data.value.modified_at === data.value.created_at)
     return null
-  return dayjs(data.value.modified_at).fromNow()
+  return fromNow(data.value.modified_at)
 })
 </script>
 
@@ -368,7 +376,7 @@ const editedAtFormatted = computed(() => {
             {{ country.emoji }}
           </p>
           <p v-if="user?.created_at" class="author-meta">
-            Joined {{ dayjs(user.created_at).format('MMMM YYYY') }}
+            Joined {{ fullMonth(user.created_at) }}
           </p>
         </Flex>
         <p class="author-meta mt-xs text-color-lightest">
@@ -574,16 +582,16 @@ const editedAtFormatted = computed(() => {
         <Flex :key="timestampUpdateKey" wrap y-end x-between class="discussion-forum__bottom-row">
           <p class="discussion-forum__timestamp">
             <Tooltip :delay="500">
-              <span>Posted {{ dayjs(data.created_at).fromNow() }}</span>
+              <span>Posted {{ fromNow(data.created_at) }}</span>
               <template #tooltip>
-                <p>{{ dayjs(data.created_at).format('MMM D, YYYY [at] h:mm A') }}</p>
+                <p>{{ fullDateTime(data.created_at) }}</p>
               </template>
             </Tooltip>
             <span v-if="data.modified_at !== data.created_at">
               <Tooltip :delay="500">
-                <span>{{ `Edited ${dayjs(data.modified_at).fromNow()}` }}</span>
+                <span>{{ `Edited ${fromNow(data.modified_at)}` }}</span>
                 <template #tooltip>
-                  <p>{{ dayjs(data.modified_at).format('MMM D, YYYY [at] h:mm A') }}</p>
+                  <p>{{ fullDateTime(data.modified_at) }}</p>
                 </template>
               </Tooltip>
               <template v-if="modifierId && modifierUser">
@@ -591,7 +599,7 @@ const editedAtFormatted = computed(() => {
               </template>
             </span>
             <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
-              <CountDisplay :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+              <CountDisplay class="text-xs" :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
             </button>
           </p>
 
@@ -602,12 +610,12 @@ const editedAtFormatted = computed(() => {
         </Flex>
       </template>
 
-      <!-- User signature / banner — shown below the post body on desktop only -->
+      <!-- User signature / banner - shown below the post body on desktop only -->
       <BannerDisplay v-if="!data.is_deleted && !showNSFWWarning" :user="user ?? null" :external-hover="replyHovered" />      <!-- Mobile footer: reply count + reactions (only rendered on mobile when there's content) -->
       <div v-if="!data.is_deleted && isMobile && ((threadReplyCount && threadReplyCount > 0) || displayReactions.length > 0 || (userId && !showNSFWWarning))" class="discussion-forum__mobile-footer">
         <div class="discussion-forum__mobile-footer-row">
           <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
-            <CountDisplay :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
+            <CountDisplay class="text-xs" :value="threadReplyCount ?? 0" /> {{ threadReplyCount === 1 ? 'reply' : 'replies' }}
           </button>
           <!-- Empty div makes sure reactions are forced to flex end -->
           <div v-else />
@@ -651,11 +659,13 @@ const editedAtFormatted = computed(() => {
       </template>
 
       <RichTextEditor
+        ref="markdownEditor"
         v-model="editedContent"
         :errors="editError"
         :media-context="currentUserData ? `${data.discussion_id}/${currentUserData.id}` : undefined"
         :media-bucket-id="FORUMS_BUCKET_ID"
         show-expand-button
+        always-show-expand-button
         show-attachment-button
         min-height="196px"
         class="mb-xs"
@@ -687,8 +697,6 @@ const editedAtFormatted = computed(() => {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .discussion-forum {
   display: grid;
   grid-template-columns: 212px 1fr;

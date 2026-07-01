@@ -4,7 +4,7 @@ import { Button, Card, CopyClipboard, Flex, Grid, Modal, Tooltip } from '@dolans
 import { useEventListener } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import UserLink from '@/components/Shared/UserLink.vue'
-import { formatBytes, FORUMS_BUCKET_ID, isImageAsset, isVideoAsset } from '@/lib/storageAssets'
+import { downloadAsset, formatBytes, FORUMS_BUCKET_ID, isArchiveAsset, isAudioAsset, isImageAsset, isVideoAsset } from '@/lib/storageAssets'
 
 const props = defineProps<{
   assets: StorageAsset[]
@@ -31,6 +31,11 @@ const props = defineProps<{
    * Also hides the explicit preview button.
    */
   clickToPreview?: boolean
+  /**
+   * Hide the uploader row on each tile. The Sharing page only ever shows the
+   * logged-in user's own files, so the uploader is noise there.
+   */
+  hideUploader?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -140,6 +145,10 @@ function handleOpenClick(asset: StorageAsset) {
     window.open(asset.publicUrl, '_blank', 'noopener')
 }
 
+function handleDownloadClick(asset: StorageAsset) {
+  downloadAsset(asset.publicUrl, asset.name)
+}
+
 function getUploaderId(asset: StorageAsset): string | null {
   const fromMeta = (asset.metadata as Record<string, unknown> | null)?.uploadedBy
   if (typeof fromMeta === 'string' && fromMeta.length > 0 && fromMeta !== 'unknown' && fromMeta !== 'anonymous')
@@ -190,6 +199,12 @@ function getUploaderId(asset: StorageAsset): string | null {
         <template v-else-if="isVideoAsset(asset) && asset.publicUrl">
           <video :src="asset.publicUrl" autoplay loop muted playsinline preload="auto" class="asset-grid-video" />
         </template>
+        <template v-else-if="isAudioAsset(asset)">
+          <Icon name="ph:music-notes" size="32" />
+        </template>
+        <template v-else-if="isArchiveAsset(asset)">
+          <Icon name="ph:file-zip" size="32" />
+        </template>
         <template v-else>
           <Icon name="ph:file" size="32" />
         </template>
@@ -224,11 +239,19 @@ function getUploaderId(asset: StorageAsset): string | null {
             </Tooltip>
           </CopyClipboard>
           <Tooltip v-if="asset.publicUrl">
-            <Button size="s" variant="gray" square @click="handleOpenClick(asset)">
+            <Button size="s" variant="gray" square @click="handleOpenClick(asset)" @auxclick.middle.prevent="handleOpenClick(asset)">
               <Icon name="ph:arrow-square-out" size="16" />
             </Button>
             <template #tooltip>
               <p>Open</p>
+            </template>
+          </Tooltip>
+          <Tooltip v-if="asset.publicUrl">
+            <Button size="s" variant="gray" square @click="handleDownloadClick(asset)">
+              <Icon name="ph:download-simple" size="16" />
+            </Button>
+            <template #tooltip>
+              <p>Download</p>
             </template>
           </Tooltip>
           <Button
@@ -248,7 +271,7 @@ function getUploaderId(asset: StorageAsset): string | null {
         <Flex y-center gap="s" x-start expand>
           <span v-if="asset.type !== 'folder' && asset.extension" class="text-xxs text-color-light">{{ asset.extension.toUpperCase() }}</span>
           <span class="text-xxs text-color-light">{{ asset.type === 'folder' ? 'Folder' : formatBytes(asset.size) }}</span>
-          <UserLink :user-id="getUploaderId(asset)" placeholder="Unknown" class="text-xxs" />
+          <UserLink v-if="!hideUploader" :user-id="getUploaderId(asset)" placeholder="Unknown" class="text-xxs" />
         </Flex>
       </Flex>
     </Card>

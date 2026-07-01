@@ -9,7 +9,8 @@
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
     "node-ts": "npm:node-ts@8",
     "googleapis": "npm:googleapis@171",
-    "google-auth-library": "npm:google-auth-library@10"
+    "google-auth-library": "npm:google-auth-library@10",
+    "@negrel/webpush": "jsr:@negrel/webpush@0.5.0"
   },
   "workspace": [
     "./_shared",
@@ -42,6 +43,7 @@
     "./trigger-cleanup-discussion-media",
     "./trigger-discord-event-sync",
     "./trigger-google-calendar-sync",
+    "./trigger-notification-push-send",
     "./trigger-user-avatar-sync",
     "./user-delete-account",
     "./user-info",

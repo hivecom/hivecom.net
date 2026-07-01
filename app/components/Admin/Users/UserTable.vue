@@ -2,17 +2,20 @@
 import type { Ref } from 'vue'
 import type { AdminUserProfile, AdminUserRecord, AdminUserSortCol } from '@/composables/useAdminUserTableData'
 
-import { Alert, Button, CopyClipboard, defineTable, Flex, paginate, Pagination, Table, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, CopyClipboard, defineTable, DropdownItem, Flex, paginate, Pagination, Table, Tooltip } from '@dolanske/vui'
 import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
 import ElapsedTimeIndicator from '@/components/Shared/ElapsedTimeIndicator.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { useAdminUserTableData } from '@/composables/useAdminUserTableData'
 
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -75,6 +78,8 @@ const externalCountryFilter = defineModel<string>('countryFilter', { default: ''
 // ─── Session user ─────────────────────────────────────────────────────────────
 
 const currentUser = useSupabaseUser()
+const currentUserId = computed(() => currentUser.value?.id ?? null)
+const { canModifyUsers, canDeleteUsers } = useAdminPermissions()
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -109,7 +114,7 @@ const {
 
 // defineTable is used solely to provide the VUI table injection context
 // (TableSelectionProvideSymbol). All pagination/sorting is server-driven.
-const { rows } = defineTable(users, { pagination: { enabled: false }, select: false })
+const { rows, selectedRows, deselectAllRows } = defineTable(users, { pagination: { enabled: false }, select: true })
 
 // Sync external countryFilter into internal state
 watch(externalCountryFilter, (val) => {
@@ -148,6 +153,48 @@ const platformOptions: SelectOption[] = [
 
 const userAction = ref<UserActionInternal | null>(null)
 const actionLoading = ref<Record<string, Record<string, boolean>>>({})
+const showBulkBanConfirm = ref(false)
+const showBulkDeleteConfirm = ref(false)
+
+function canRunBulkAction(user: AdminUserRecord, action: 'ban' | 'delete'): boolean {
+  if (user.id === currentUserId.value)
+    return false
+
+  if (action === 'ban')
+    return user.is_banned !== true
+
+  return true
+}
+
+const selectedBanCount = computed(() =>
+  selectedRows.value.filter(user => canRunBulkAction(user, 'ban')).length,
+)
+
+const selectedDeleteCount = computed(() =>
+  selectedRows.value.filter(user => canRunBulkAction(user, 'delete')).length,
+)
+
+function handleBulkAction(action: 'ban' | 'delete') {
+  const targetUsers = selectedRows.value.filter(user => canRunBulkAction(user, action))
+
+  if (targetUsers.length === 0)
+    return
+
+  for (const user of targetUsers) {
+    emit('action', {
+      type: action,
+      user: buildAdminProfile(user),
+      ...(action === 'ban'
+        ? {
+            banDuration: 'permanent',
+            banReason: 'Bulk moderation action',
+          }
+        : {}),
+    })
+  }
+
+  deselectAllRows()
+}
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
@@ -418,19 +465,21 @@ defineExpose({ refresh: fetchUsers })
         <TableContainer>
           <Table.Root v-if="rows.length > 0" separate-cells>
             <template #header>
-              <!-- Confirmed -->
-              <Table.Head class="sortable-head" @click="handleSort('confirmed')">
-                <Flex gap="xs" y-center>
-                  Confirmed
-                  <Icon :name="sortIcon('confirmed')" size="14" class="sort-icon" />
-                </Flex>
-              </Table.Head>
+              <th v-if="canModifyUsers || canDeleteUsers" class="vui-table-interactive-cell" />
 
               <!-- Username -->
               <Table.Head class="sortable-head" @click="handleSort('username')">
                 <Flex gap="xs" y-center>
                   Username
                   <Icon :name="sortIcon('username')" size="14" class="sort-icon" />
+                </Flex>
+              </Table.Head>
+
+              <!-- Confirmed -->
+              <Table.Head class="sortable-head" @click="handleSort('confirmed')">
+                <Flex gap="xs" y-center>
+                  Confirmed
+                  <Icon :name="sortIcon('confirmed')" size="14" class="sort-icon" />
                 </Flex>
               </Table.Head>
 
@@ -498,9 +547,25 @@ defineExpose({ refresh: fetchUsers })
             </template>
 
             <template #body>
-              <tr v-for="user in rows" :key="user.id" class="clickable-row" @click="handleUserClick(user as unknown as AdminUserRecord)">
+              <tr v-for="user in rows" :key="user.id" class="clickable-row">
+                <Table.SelectRow v-if="canModifyUsers || canDeleteUsers" :row="user" />
+
+                <!-- Username -->
+                <Table.Cell class="username-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
+                  <Flex expand y-center gap="xs">
+                    <UserAvatar :user-id="user.id" :size="20" show-preview />
+                    <UserLink :user-id="user.id" />
+                    <Tooltip v-if="getCountryInfo(user.country)" placement="top">
+                      <template #tooltip>
+                        <div>{{ getCountryInfo(user.country)?.name }}</div>
+                      </template>
+                      <span class="country-flag">{{ getCountryInfo(user.country)?.emoji }}</span>
+                    </Tooltip>
+                  </Flex>
+                </Table.Cell>
+
                 <!-- Confirmed -->
-                <Table.Cell class="confirmed-cell">
+                <Table.Cell class="confirmed-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
                   <Tooltip placement="top">
                     <template #tooltip>
                       <div>{{ user.is_confirmed ? 'User confirmed (via social auth or email)' : 'Not confirmed' }}</div>
@@ -514,22 +579,8 @@ defineExpose({ refresh: fetchUsers })
                   </Tooltip>
                 </Table.Cell>
 
-                <!-- Username -->
-                <Table.Cell class="username-cell">
-                  <Flex expand y-center gap="xs">
-                    <UserAvatar :user-id="user.id" :size="20" show-preview />
-                    <UserLink :user-id="user.id" />
-                    <Tooltip v-if="getCountryInfo(user.country)" placement="top">
-                      <template #tooltip>
-                        <div>{{ getCountryInfo(user.country)?.name }}</div>
-                      </template>
-                      <span class="country-flag">{{ getCountryInfo(user.country)?.emoji }}</span>
-                    </Tooltip>
-                  </Flex>
-                </Table.Cell>
-
                 <!-- Email -->
-                <Table.Cell v-if="props.canViewUserEmails" class="email-cell">
+                <Table.Cell v-if="props.canViewUserEmails" class="email-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
                   <template v-if="user.email != null && user.email !== ''">
                     <CopyValue :text="user.email" />
                   </template>
@@ -537,22 +588,22 @@ defineExpose({ refresh: fetchUsers })
                 </Table.Cell>
 
                 <!-- UUID -->
-                <Table.Cell class="uuid-cell">
+                <Table.Cell class="uuid-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
                   <CopyValue :text="user.id" />
                 </Table.Cell>
 
                 <!-- Role -->
-                <Table.Cell class="role-cell">
+                <Table.Cell class="role-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
                   <RoleIndicator :role="user.role" size="m" />
                 </Table.Cell>
 
                 <!-- Status -->
-                <Table.Cell class="status-cell">
+                <Table.Cell class="status-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
                   <UserStatusIndicator :status="user.is_banned ? 'banned' : 'active'" :show-label="true" />
                 </Table.Cell>
 
                 <!-- Providers -->
-                <Table.Cell class="providers-cell" @click.stop>
+                <Table.Cell class="providers-cell" @click="handleUserClick(user as unknown as AdminUserRecord)" @click.stop>
                   <Flex gap="xs" y-center :wrap="false">
                     <template
                       v-for="provider in normalizeAuthProviders(user.auth_providers, user.auth_provider)"
@@ -562,9 +613,9 @@ defineExpose({ refresh: fetchUsers })
                         <template #tooltip>
                           <div>{{ getProviderInfo(provider).label }}</div>
                         </template>
-                        <Button variant="gray" size="s" square class="provider-button">
+                        <Badge circle filled>
                           <Icon :name="getProviderInfo(provider).icon" size="16" />
-                        </Button>
+                        </Badge>
                       </Tooltip>
                     </template>
                     <span
@@ -577,7 +628,7 @@ defineExpose({ refresh: fetchUsers })
                 </Table.Cell>
 
                 <!-- Last Seen -->
-                <Table.Cell class="last-seen-cell">
+                <Table.Cell class="last-seen-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
                   <ElapsedTimeIndicator :date="user.last_seen" />
                 </Table.Cell>
 
@@ -649,7 +700,7 @@ defineExpose({ refresh: fetchUsers })
                       v-if="(user.steam_id == null || user.steam_id === '') && (user.discord_id == null || user.discord_id === '') && (user.patreon_id == null || user.patreon_id === '') && !user.has_teamspeak && (user.lastfm_username == null || user.lastfm_username === '')"
                       class="text-color-lightest text-s"
                     >
-                      No connections
+                      None
                     </span>
                   </Flex>
                 </Table.Cell>
@@ -700,6 +751,58 @@ defineExpose({ refresh: fetchUsers })
           </Alert>
         </TableContainer>
       </Flex>
+
+      <SelectedRowsActions
+        :selected-count="selectedRows.length"
+        @clear="deselectAllRows()"
+      >
+        <DropdownItem
+          v-if="canModifyUsers && selectedBanCount > 0"
+          @click="showBulkBanConfirm = true"
+        >
+          <template #icon>
+            <Icon name="ph:prohibit" class="text-color-red" />
+          </template>
+          Ban
+          <template #hint>
+            {{ selectedBanCount }}
+          </template>
+        </DropdownItem>
+        <DropdownItem
+          v-if="canDeleteUsers && selectedDeleteCount > 0"
+          @click="showBulkDeleteConfirm = true"
+        >
+          <template #icon>
+            <Icon name="ph:trash" class="text-color-red" />
+          </template>
+          Delete
+          <template #hint>
+            {{ selectedDeleteCount }}
+          </template>
+        </DropdownItem>
+      </SelectedRowsActions>
+
+      <ConfirmModal
+        :open="showBulkBanConfirm"
+        :title="`Ban ${selectedBanCount} users`"
+        :description="`Are you sure you want to ban ${selectedBanCount} selected users?`"
+        confirm-text="Ban"
+        cancel-text="Cancel"
+        :destructive="true"
+        @cancel="showBulkBanConfirm = false"
+        @confirm="showBulkBanConfirm = false; handleBulkAction('ban')"
+      />
+
+      <ConfirmModal
+        :open="showBulkDeleteConfirm"
+        :title="`Delete ${selectedDeleteCount} users`"
+        :description="`Are you sure you want to delete ${selectedDeleteCount} selected users? This action cannot be undone.`"
+        confirm-text="Delete"
+        cancel-text="Cancel"
+        :destructive="true"
+        @cancel="showBulkDeleteConfirm = false"
+        @confirm="showBulkDeleteConfirm = false; handleBulkAction('delete')"
+      />
     </Flex>
   </flex>
 </template>
@@ -909,6 +1012,10 @@ defineExpose({ refresh: fetchUsers })
   text-align: center;
   padding: var(--space-xl);
   color: var(--color-text-light);
+}
+
+:deep(.vui-table-container table th .vui-table-th-content) {
+  white-space: nowrap;
 }
 
 .clickable-row:hover {

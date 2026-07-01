@@ -11,7 +11,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import { deleteUserAvatar, getUserAvatarUrl, uploadUserAvatar } from '@/lib/storage'
 import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
-import { formatDateOnly } from '@/lib/utils/date'
+import { formatDateOnly, fullDateLong } from '@/lib/utils/date'
 import { replaceMarkdownH1, stripHtmlTags } from '@/lib/utils/sanitize'
 import RichTextEditor from '../Editor/RichTextEditor.vue'
 import FileUpload from '../Shared/FileUpload.vue'
@@ -71,6 +71,7 @@ const importAnimatedRef = ref<HTMLInputElement | null>(null)
 const bannerEditorRef = ref<{ importBanner: (file: File) => Promise<{ hadMetadata: boolean }> } | null>(null)
 const sheetContentRef = ref<{ $el: HTMLElement } | null>(null)
 const bannerUploading = ref(false)
+const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
 const showBannerDeleteConfirm = ref(false)
 const showImportConfirm = ref(false)
 const showFfmpegInfo = ref(false)
@@ -388,11 +389,7 @@ const birthdayButtonLabel = computed(() => {
   if (!birthdayDateModel.value)
     return 'Choose birthday (optional)'
 
-  return birthdayDateModel.value.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
+  return fullDateLong(birthdayDateModel.value)
 })
 
 const hasBirthday = computed(() => !!profileForm.value.birthday)
@@ -478,8 +475,15 @@ function handleClose() {
 }
 
 // Handle form submission
-function handleSubmit() {
+async function handleSubmit() {
   if (!isValid.value)
+    return
+
+  // Upload any pending blob-placeholder media before reading the markdown,
+  // otherwise blob: URLs get persisted and render as missing media. The editor
+  // surfaces its own error toast on failure, so we just abort here.
+  const uploaded = await markdownEditor.value?.flushPendingUploads()
+  if (uploaded === false)
     return
 
   // Pre-process markdown
@@ -764,6 +768,7 @@ async function confirmAvatarDelete() {
         />
 
         <RichTextEditor
+          ref="markdownEditor"
           v-model="profileForm.markdown"
           :media-context="props.profile?.id ? `${props.profile.id}/markdown/media` : undefined"
           :media-bucket-id="USERS_BUCKET_ID"
@@ -773,6 +778,7 @@ async function confirmAvatarDelete() {
           :errors="markdownValidation.error ? [markdownValidation.error] : undefined"
           :show-attachment-button="!!props.profile?.id"
           show-expand-button
+          always-show-expand-button
         />
 
         <!-- Banner / Signature -->

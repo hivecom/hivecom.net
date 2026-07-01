@@ -2,9 +2,12 @@
 import { Button, Flex, Resizable } from '@dolanske/vui'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import SharedErrorAlert from '@/components/Shared/ErrorAlert.vue'
+import SharingRulesModal from '@/components/Shared/SharingRulesModal.vue'
+import { useChatAttachments } from '@/composables/useChatAttachments'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
+import { useSharingRulesGate } from '@/composables/useSharingRulesGate'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import ChatChannelJoinBlockedModal from './ChannelJoinBlockedModal.vue'
 import ChatChannelList from './ChannelList.vue'
@@ -14,7 +17,13 @@ import ChatChannelHeader from './ChatHeader.vue'
 import ChatComposer from './Composer.vue'
 import ChatConnectForm from './ConnectForm.vue'
 import ChatConnecting from './Connecting.vue'
+import ChatIdentityModal from './IdentityModal.vue'
 import ChatMessageLog from './MessageLog.vue'
+import ChatModerationConfirmModal from './ModerationConfirmModal.vue'
+import ChatNoChannels from './NoChannels.vue'
+import ChatPushPromptBanner from './PushPromptBanner.vue'
+import ChatReconnectBanner from './ReconnectBanner.vue'
+import ChatSetupBanner from './SetupBanner.vue'
 import ChatSidebarSplit from './SidebarSplit.vue'
 import ChatToolbar from './Toolbar.vue'
 import ChatUserList from './UserList.vue'
@@ -45,7 +54,9 @@ const { settings } = useDataUserSettings()
 
 const isMobile = useBreakpoint('<s')
 
-const { connState, isConnected, ensureNick, clearInputNick, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt, channelSettingsOpen, channelJoinBlocked } = useIrcChat()
+const { connState, isConnected, reconnecting, ensureNick, clearAuthedIdentity, activeBuffer, sidebarHidden, buffers, connect, disconnect, channelKeyPrompt, channelSettingsOpen, channelJoinBlocked, serverLogPinned } = useIrcChat()
+
+const identityOpen = ref(false)
 
 // Auto-reconnect when the browser comes back from sleep or phone background.
 // Track whether a connection was ever established so we only auto-reconnect
@@ -89,18 +100,67 @@ const lastConnError = computed(() => {
 })
 
 const isChannelBuffer = computed(() => activeBuffer.value?.kind === 'channel')
+const hasChannels = computed(() => buffers.value.some(b => b.kind === 'channel'))
+
+const { add: addAttachments } = useChatAttachments()
+const { canChat } = useIrcChat()
+const fileDragging = ref(false)
+
+// Shared sharing-rules gate. Attaching files (button, drop, paste) routes
+// through useChatAttachments, which opens this modal when the user hasn't
+// agreed yet; we just mount the modal once here for the whole chat surface.
+const {
+  open: sharingRulesOpen,
+  agreed: sharingRulesAgreed,
+  handleAgreed: onSharingRulesAgreed,
+  handleCancelled: onSharingRulesCancelled,
+} = useSharingRulesGate()
+
+function onMainDragOver(event: DragEvent) {
+  if (!canChat.value || !event.dataTransfer?.types.includes('Files'))
+    return
+  event.preventDefault()
+  fileDragging.value = true
+}
+
+function onMainDragLeave(event: DragEvent) {
+  if (event.currentTarget instanceof Node && event.relatedTarget instanceof Node && (event.currentTarget as Node).contains(event.relatedTarget))
+    return
+  fileDragging.value = false
+}
+
+function onMainDrop(event: DragEvent) {
+  fileDragging.value = false
+  const files = event.dataTransfer?.files
+  if (!canChat.value || !files?.length)
+    return
+  event.preventDefault()
+  addAttachments(files)
+}
 const chatFontStyle = computed(() => ({ '--chat-font-size': `${isMobile.value ? settings.value.chat_mobile_font_size : settings.value.chat_font_size}px` }))
 
 const fallbackNick = `anon-${Math.random().toString(36).slice(2, 7)}`
-watch(user, (u, prev) => {
-  if (!u && prev) {
-    // User signed out - disconnect and clear persisted nick
-    if (isConnected.value)
+// Key the sign-out handling off the auth session (userId), not the profile data
+// (user). The profile ref transiently goes null whenever its fetch errors or
+// hasn't resolved yet - e.g. a network blip that also drops the IRC socket - and
+// treating that as a sign-out would call clearAuthedIdentity() and wipe every
+// channel buffer, which is what flashed "No channels open" mid-session.
+watch([userId, user], ([id, u], prev) => {
+  const prevId = prev?.[0]
+  if (!id) {
+    // Genuinely signed out (no auth session). Drop any persisted identity from a
+    // previous signed-in session so the connect form doesn't pre-fill that
+    // registered nick/channel - it would fail to auth.
+    if (prevId && isConnected.value)
       disconnect()
-    clearInputNick()
+    clearAuthedIdentity()
+    ensureNick(fallbackNick)
     return
   }
-  ensureNick(u?.username ?? fallbackNick)
+  // Signed in. The profile may still be loading; only set the nick once we
+  // actually have a username, otherwise leave the current/persisted nick alone.
+  if (u)
+    ensureNick(u.username ?? fallbackNick)
 }, { immediate: true })
 </script>
 
@@ -109,24 +169,31 @@ watch(user, (u, prev) => {
     class="chat-app" :class="{ 'chat-app--compact': props.compact || isMobile,
                                'chat-app--menu-padding': props.menuPadding }" :style="chatFontStyle"
   >
-    <header v-if="!props.compact" class="chat-app__bar">
+    <!-- On the mobile dedicated page the toolbar moves into the nav sheet
+         (ChatNavSheet), so the page chrome stays minimal. -->
+    <header v-if="!props.compact && !isMobile" class="chat-app__bar">
       <ChatToolbar />
     </header>
 
     <Flex column y-stretch class="chat-app__body">
+      <!-- While reconnecting we keep the chat layout below visible and show this
+           thin banner instead of the full-screen overlay, so a phone returning
+           from the background doesn't throw the user out of their channels. -->
+      <ChatReconnectBanner v-if="reconnecting" />
       <Transition name="chat-state" mode="out-in">
-        <!-- Connecting -->
-        <div v-if="connState === 'connecting'" class="chat-app__status">
+        <!-- Connecting. Suppressed once we have a session to ride out (reconnecting),
+             so the globe overlay only shows on a completely fresh connection. -->
+        <div v-if="connState === 'connecting' && !reconnecting" class="chat-app__status">
           <ChatConnecting />
         </div>
 
         <!-- Offline: failed all reconnect attempts -->
-        <div v-else-if="connState === 'offline'" class="chat-app__status">
+        <div v-else-if="connState === 'offline' && !reconnecting" class="chat-app__status">
           <ChatConnecting offline @retry="connect()" @go-back="handleDisconnect" />
         </div>
 
         <!-- Error: unexpected connection failure (fallback) -->
-        <Flex v-else-if="connState === 'error'" key="error" y-center x-center class="chat-app__connect">
+        <Flex v-else-if="connState === 'error' && !reconnecting" key="error" y-center x-center class="chat-app__connect">
           <Flex column gap="m" expand>
             <SharedErrorAlert standalone message="Failed to connect to the chat server." :error="lastConnError" />
             <Flex x-center gap="s">
@@ -147,8 +214,8 @@ watch(user, (u, prev) => {
         </Flex>
 
         <!-- Not connected: show connect form centered -->
-        <Flex v-else-if="!isConnected" key="disconnected" y-center x-center class="chat-app__connect">
-          <ChatConnectForm />
+        <Flex v-else-if="!isConnected && !reconnecting" key="disconnected" y-center x-center class="chat-app__connect">
+          <ChatConnectForm :inline-sign-in="!props.compact" />
         </Flex>
 
         <!-- Connected: split layout (sidebar + chat) on the full page -->
@@ -171,25 +238,62 @@ watch(user, (u, prev) => {
               <ChatChannelList />
             </Flex>
           </Flex>
-          <Flex column :gap="0" class="chat-app__main">
+          <Flex column :gap="0" class="chat-app__main" @dragover="onMainDragOver" @dragleave="onMainDragLeave" @drop="onMainDrop">
+            <div v-if="fileDragging" class="chat-app__dropzone">
+              <Icon name="ph:upload-simple" size="24" />
+              <span>Drop files to attach</span>
+            </div>
             <ChatChannelHeader />
-            <ChatMessageLog :compact="isCompactLayout" />
-            <ChatComposer />
+            <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
+            <ChatMessageLog v-else :compact="props.compact" />
+            <ChatSetupBanner @open-identity="identityOpen = true" />
+            <ChatPushPromptBanner />
+            <ChatComposer v-if="hasChannels || serverLogPinned" />
           </Flex>
         </Resizable>
 
         <!-- Connected: full page, sidebar hidden -->
-        <Flex v-else-if="!isCompactLayout" key="connected-nosidebar" column :gap="0" class="chat-app__main">
+        <Flex v-else-if="!isCompactLayout" key="connected-nosidebar" column :gap="0" class="chat-app__main" @dragover="onMainDragOver" @dragleave="onMainDragLeave" @drop="onMainDrop">
+          <div v-if="fileDragging" class="chat-app__dropzone">
+            <Icon name="ph:upload-simple" size="24" />
+            <span>Drop files to attach</span>
+          </div>
           <ChatChannelHeader />
-          <ChatMessageLog :compact="isCompactLayout" />
-          <ChatComposer />
+          <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
+          <ChatMessageLog v-else :compact="props.compact" />
+          <ChatSetupBanner @open-identity="identityOpen = true" />
+          <ChatPushPromptBanner />
+          <ChatComposer v-if="hasChannels || serverLogPinned" />
         </Flex>
 
-        <!-- Connected: stacked layout for the compact sheet -->
-        <Flex v-else key="connected-compact" column :gap="0" class="chat-app__main">
+        <!-- Connected: mobile dedicated page. Channels/users/settings live in
+             the nav sheet, so the page shows a compact header instead of the
+             in-page channel strip to reclaim vertical space. -->
+        <Flex v-else-if="isMobile && !props.compact" key="connected-mobile-page" column :gap="0" class="chat-app__main" @dragover="onMainDragOver" @dragleave="onMainDragLeave" @drop="onMainDrop">
+          <div v-if="fileDragging" class="chat-app__dropzone">
+            <Icon name="ph:upload-simple" size="24" />
+            <span>Drop files to attach</span>
+          </div>
+          <ChatChannelHeader compact />
+          <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
+          <ChatMessageLog v-else :compact="props.compact" />
+          <ChatSetupBanner @open-identity="identityOpen = true" />
+          <ChatPushPromptBanner />
+          <ChatComposer v-if="hasChannels || serverLogPinned" />
+        </Flex>
+
+        <!-- Connected: stacked layout for the compact navbar sheet -->
+        <Flex v-else key="connected-compact" column :gap="0" class="chat-app__main" @dragover="onMainDragOver" @dragleave="onMainDragLeave" @drop="onMainDrop">
+          <div v-if="fileDragging" class="chat-app__dropzone">
+            <Icon name="ph:upload-simple" size="24" />
+            <span>Drop files to attach</span>
+          </div>
           <ChatChannelList horizontal />
-          <ChatMessageLog :compact="isCompactLayout" />
-          <ChatComposer compact />
+          <ChatNoChannels v-if="!hasChannels && !serverLogPinned" />
+          <ChatMessageLog v-else :compact="props.compact" />
+          <ChatSetupBanner @open-identity="identityOpen = true" />
+          <ChatPushPromptBanner />
+          <ChatComposer v-if="hasChannels || serverLogPinned" />
         </Flex>
       </Transition>
     </Flex>
@@ -197,6 +301,14 @@ watch(user, (u, prev) => {
     <ChatChannelPasswordModal :channel="channelKeyPrompt" @close="channelKeyPrompt = null" />
     <ChatChannelSettingsModal :channel="channelSettingsOpen" @close="channelSettingsOpen = null" />
     <ChatChannelJoinBlockedModal :blocked="channelJoinBlocked" @close="channelJoinBlocked = null" />
+    <ChatIdentityModal :open="identityOpen" @close="identityOpen = false" />
+    <ChatModerationConfirmModal />
+    <SharingRulesModal
+      v-model:open="sharingRulesOpen"
+      :show-agree-button="sharingRulesAgreed !== true"
+      @confirm="onSharingRulesAgreed"
+      @cancel="onSharingRulesCancelled"
+    />
   </section>
 </template>
 
@@ -274,9 +386,27 @@ watch(user, (u, prev) => {
   }
 
   &__main {
+    position: relative;
     flex: 1;
     min-height: 0;
     height: 100%;
+  }
+
+  &__dropzone {
+    position: absolute;
+    inset: 4px;
+    z-index: var(--z-popout);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    border-radius: var(--border-radius-m);
+    border: 2px dashed var(--color-accent);
+    background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+    color: var(--color-text-light);
+    font-size: var(--font-size-s);
+    pointer-events: none;
   }
 
   .chat-state-enter-active,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import dayjs from 'dayjs'
-import { formatDate } from '@/lib/utils/date'
+import { fullDate } from '@/lib/utils/date'
 
 const props = defineProps<{
   data: Tables<'events'>[]
@@ -56,7 +56,7 @@ const sortedData = computed<FormattedEvents>(() => {
       >
         <div class="item-indicator" />
         <strong>{{ event.title }}</strong>
-        <span>{{ formatDate(event.date) }}</span>
+        <span>{{ fullDate(event.date) }}</span>
       </NuxtLink>
     </li>
   </ul>

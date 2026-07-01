@@ -1,18 +1,23 @@
 <script setup lang="ts">
 import type { StorageAsset } from '@/lib/storageAssets'
-import { Button, Card, CopyClipboard, Flex, Input, Sheet, Spinner } from '@dolanske/vui'
+import { Button, Card, CopyClipboard, Flex, Input, Sheet, Spinner, Tooltip } from '@dolanske/vui'
 
 import { computed, ref, watch } from 'vue'
 import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
 import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
+import AudioPlayer from '@/components/Shared/AudioPlayer.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
 import MarkdownLightbox from '@/components/Shared/MarkdownLightbox.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
-import { useBreakpoint } from '@/lib/mediaQuery'
-import { formatBytes, isImageAsset, isTextAsset, isVideoAsset } from '@/lib/storageAssets'
+
+import { downloadAsset, formatBytes, isAudioAsset, isImageAsset, isTextAsset, isVideoAsset } from '@/lib/storageAssets'
 
 const props = defineProps<{
   asset: StorageAsset | null
+  // Override the default asset-permission checks so other surfaces (e.g. Depot)
+  // can reuse this drawer with their own capability. Falls back to canDeleteAssets.
+  canDelete?: boolean
+  canRename?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -21,13 +26,15 @@ const emit = defineEmits<{
 }>()
 
 const { canDeleteAssets } = useAdminPermissions()
-const canDelete = computed(() => canDeleteAssets.value)
-const canRename = computed(() => canDeleteAssets.value)
+const canDelete = computed(() => props.canDelete ?? canDeleteAssets.value)
+const canRename = computed(() => props.canRename ?? canDeleteAssets.value)
 
 const isOpen = defineModel<boolean>('isOpen', { default: false })
 
 const isText = computed(() => props.asset != null && isTextAsset(props.asset))
-const hasPreview = computed(() => props.asset != null && props.asset.type === 'file' && (isImageAsset(props.asset) || isVideoAsset(props.asset) || isText.value))
+const isVideo = computed(() => props.asset != null && isVideoAsset(props.asset))
+const isAudio = computed(() => props.asset != null && isAudioAsset(props.asset))
+const hasPreview = computed(() => props.asset != null && props.asset.type === 'file' && (isImageAsset(props.asset) || isVideo.value || isAudio.value || isText.value))
 
 const textContent = ref<string | null>(null)
 const textLoading = ref(false)
@@ -50,14 +57,9 @@ watch(() => props.asset, async (asset) => {
 }, { immediate: true })
 
 const previewContainer = ref<HTMLElement | null>(null)
-const isVideo = computed(() => props.asset != null && isVideoAsset(props.asset))
 const assetUrl = computed(() => props.asset?.publicUrl ?? '')
-const lightboxMarkdown = computed(() => assetUrl.value && !isVideo.value && !isText.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
+const lightboxMarkdown = computed(() => assetUrl.value && !isVideo.value && !isAudio.value && !isText.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
 const markdownSnippet = computed(() => assetUrl.value ? `![${props.asset?.name ?? 'asset'}](${assetUrl.value})` : '')
-
-const isMobile = useBreakpoint('<xs')
-const showActionLabels = computed(() => !isMobile.value)
-// const actionButtonSize = computed(() => showActionLabels.value ? 'm' as const : 's' as const)
 
 function closeDrawer() {
   isOpen.value = false
@@ -66,6 +68,11 @@ function closeDrawer() {
 function openInNewTab() {
   if (assetUrl.value)
     window.open(assetUrl.value, '_blank', 'noopener')
+}
+
+function downloadCurrentAsset() {
+  if (props.asset)
+    downloadAsset(assetUrl.value, props.asset.name)
 }
 
 function requestDelete() {
@@ -103,34 +110,30 @@ function requestRename() {
           </p>
         </Flex>
         <Flex gap="xs" y-center>
-          <Button
-            v-if="canRename"
-            variant="gray"
-            :square="!showActionLabels"
-            @click="requestRename"
-          >
-            <template v-if="showActionLabels" #start>
+          <Tooltip v-if="assetUrl">
+            <Button variant="gray" square @click="downloadCurrentAsset">
+              <Icon name="ph:download-simple" />
+            </Button>
+            <template #tooltip>
+              <p>Download</p>
+            </template>
+          </Tooltip>
+          <Tooltip v-if="canRename">
+            <Button variant="gray" square @click="requestRename">
               <Icon name="ph:text-t" />
+            </Button>
+            <template #tooltip>
+              <p>Rename</p>
             </template>
-            <Icon v-if="!showActionLabels" name="ph:text-t" />
-            <template v-if="showActionLabels">
-              Rename
-            </template>
-          </Button>
-          <Button
-            v-if="canDelete"
-            variant="danger"
-            :square="!showActionLabels"
-            @click="requestDelete"
-          >
-            <template v-if="showActionLabels" #start>
+          </Tooltip>
+          <Tooltip v-if="canDelete">
+            <Button variant="danger" square @click="requestDelete">
               <Icon name="ph:trash" />
+            </Button>
+            <template #tooltip>
+              <p>Delete</p>
             </template>
-            <Icon v-if="!showActionLabels" name="ph:trash" />
-            <template v-if="showActionLabels">
-              Delete
-            </template>
-          </Button>
+          </Tooltip>
         </Flex>
       </Flex>
     </template>
@@ -138,6 +141,7 @@ function requestRename() {
     <Flex v-if="props.asset" column gap="l" class="asset-details">
       <Flex v-if="hasPreview" ref="previewContainer" expand class="asset-details__preview">
         <video v-if="isVideo" :src="assetUrl" controls class="asset-details__video" />
+        <AudioPlayer v-else-if="isAudio" bare :src="assetUrl" :title="props.asset?.name" class="asset-details__audio" />
         <template v-else-if="isText">
           <Flex expand>
             <div v-if="textLoading" class="asset-details__text-preview asset-details__text-preview--loading">
@@ -173,6 +177,8 @@ function requestRename() {
         <DetailRow label="Updated">
           <TimestampDate :date="props.asset.updated_at ?? null" />
         </DetailRow>
+        <!-- Lets callers (e.g. Depot) append context rows like the uploader. -->
+        <slot name="overview" />
       </DetailTable>
 
       <Card v-if="assetUrl" class="asset-details__clipboard card-bg">
@@ -280,6 +286,11 @@ function requestRename() {
     max-height: 320px;
     object-fit: contain;
     background: #000;
+  }
+
+  &__audio {
+    width: 100%;
+    padding: var(--space-s);
   }
 
   &__code {

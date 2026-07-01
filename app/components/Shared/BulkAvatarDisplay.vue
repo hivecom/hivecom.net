@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import UserPreviewHover from '@/components/Shared/UserPreviewHover.vue'
 import { useBulkDataUser } from '@/composables/useDataUser'
+import { useUserId } from '@/composables/useUserId'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 import { shuffleArray } from '@/lib/utils/random'
 
@@ -155,7 +156,18 @@ const avatarStyleVars = computed(() => ({
 
 const isSupporter = (profile?: UserDisplayData | null) => Boolean(profile?.supporter_lifetime || profile?.supporter_patreon)
 
+const currentUserId = useUserId()
+
 function getActivityStatus(profile?: UserDisplayData | null) {
+  // The signed-in user is always online, regardless of last_seen.
+  if (profile?.id && currentUserId.value && profile.id === currentUserId.value) {
+    return {
+      isActive: true,
+      isAway: false,
+      lastSeenText: 'Online',
+      lastSeenTimestamp: new Date(),
+    }
+  }
   if (!profile?.last_seen)
     return null
   return getUserActivityStatus(profile.last_seen)

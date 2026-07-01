@@ -7,6 +7,7 @@ import GrowthBadge from '@/components/Shared/GrowthBadge.vue'
 import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { useDataAdminKPIs } from '@/composables/useDataAdminKPIs'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { formatCurrencyUnits } from '@/lib/utils/currency'
 
 const IncomeChart = defineAsyncComponent(() => import('@/components/Admin/Dashboard/IncomeChart.vue'))
 const UserChart = defineAsyncComponent(() => import('@/components/Admin/Dashboard/UserChart.vue'))
@@ -58,7 +59,7 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
               <Flex x-between y-center expand>
                 <span class="dashboard__charts-title">Users</span>
                 <Flex y-center gap="xs">
-                  <GrowthBadge :growth="userMomGrowth" :value="userTotal" size="s" />
+                  <GrowthBadge :growth="userMomGrowth" :value="userTotal !== null ? (userTotal > 0 ? `+${userTotal}` : String(userTotal)) : null" size="s" />
                   <Button variant="link" size="s" square @click.prevent="navigateTo('/admin/users')">
                     <Icon name="ph:arrow-square-out" size="16" />
                   </Button>
@@ -77,7 +78,7 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
               <Flex x-between y-center expand>
                 <span class="dashboard__charts-title">Funding</span>
                 <Flex y-center gap="xs">
-                  <GrowthBadge :growth="incomeMomGrowth" :value="incomeTotal" prefix="€" size="s" />
+                  <GrowthBadge :growth="incomeMomGrowth" :value="incomeTotal !== null ? formatCurrencyUnits(incomeTotal) : null" size="s" />
                   <Button variant="link" size="s" square @click.prevent="navigateTo('/admin/funding')">
                     <Icon name="ph:arrow-square-out" size="16" />
                   </Button>

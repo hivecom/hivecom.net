@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Flex, pushToast, Tooltip } from '@dolanske/vui'
+import { Flex, pushToast, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import ResponsiveButton from '@/components/Shared/ResponsiveButton.vue'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
 
 type DiscussionRecord = Tables<'discussions'>
@@ -16,6 +17,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   updated: [discussion: DiscussionRecord]
+  deleted: []
 }>()
 
 const supabase = useSupabaseClient()
@@ -24,6 +26,8 @@ const discussionCache = useDiscussionCache()
 const lockLoading = ref(false)
 const pinLoading = ref(false)
 const archiveLoading = ref(false)
+const deleteLoading = ref(false)
+const showDeleteConfirm = ref(false)
 const showLockConfirm = ref(false)
 const showArchiveConfirm = ref(false)
 const archiveMode = ref<'archive' | 'unarchive'>('archive')
@@ -127,70 +131,93 @@ function handleArchiveClick() {
   archiveMode.value = props.discussion.is_archived ? 'unarchive' : 'archive'
   showArchiveConfirm.value = true
 }
+
+async function handleDeletion() {
+  deleteLoading.value = true
+
+  try {
+    const { error } = await supabase
+      .from('discussions')
+      .delete()
+      .eq('id', props.discussion.id)
+
+    if (error)
+      throw error
+
+    discussionCache.invalidate(props.discussion.id)
+    pushToast('Deleted discussion')
+    showDeleteConfirm.value = false
+  }
+  catch (error) {
+    pushToast('Failed to update discussion', {
+      description: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+  finally {
+    deleteLoading.value = false
+  }
+}
 </script>
 
 <template>
-  <Flex :gap="shouldShowLabels ? 's' : 'xs'" y-center>
-    <Tooltip :disabled="shouldShowLabels">
-      <Button
-        variant="danger"
-        :size="buttonSize"
-        :loading="lockLoading"
-        :square="!shouldShowLabels"
-        @click="handleLockClick"
-      >
-        <Icon v-if="!shouldShowLabels" :name="props.discussion.is_locked ? 'ph:lock-open' : 'ph:lock'" />
-        <template v-if="shouldShowLabels" #start>
-          <Icon :name="props.discussion.is_locked ? 'ph:lock-open' : 'ph:lock'" />
-        </template>
-        <template v-if="shouldShowLabels">
-          {{ props.discussion.is_locked ? 'Unlock' : 'Lock' }}
-        </template>
-      </Button>
-      <template #tooltip>
-        <p>{{ props.discussion.is_locked ? 'Unlock Discussion' : 'Lock Discussion' }}</p>
-      </template>
-    </Tooltip>
-
+  <Flex gap="xs" y-center>
     <Tooltip v-if="props.discussion.discussion_topic_id && !props.hidePinButton" :disabled="shouldShowLabels">
-      <Button
-        variant="gray"
+      <ResponsiveButton
+        :collapsed="!shouldShowLabels"
         :size="buttonSize"
+        variant="gray"
         :loading="pinLoading"
-        :square="!shouldShowLabels"
+        :icon="props.discussion.is_sticky ? 'ph:push-pin-slash' : 'ph:push-pin'"
+        :label="props.discussion.is_sticky ? 'Unpin' : 'Pin'"
         @click="handlePinClick"
-      >
-        <Icon v-if="!shouldShowLabels" :name="props.discussion.is_sticky ? 'ph:push-pin-slash' : 'ph:push-pin'" />
-        <template v-if="shouldShowLabels" #start>
-          <Icon :name="props.discussion.is_sticky ? 'ph:push-pin-slash' : 'ph:push-pin'" />
-        </template>
-        <template v-if="shouldShowLabels">
-          {{ props.discussion.is_sticky ? 'Unpin' : 'Pin' }}
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>{{ props.discussion.is_sticky ? 'Unpin Discussion' : 'Pin Discussion' }}</p>
       </template>
     </Tooltip>
 
     <Tooltip :disabled="shouldShowLabels">
-      <Button
-        variant="gray"
+      <ResponsiveButton
+        :collapsed="!shouldShowLabels"
         :size="buttonSize"
+        variant="gray"
         :loading="archiveLoading"
-        :square="!shouldShowLabels"
+        icon="ph:archive"
+        :label="props.discussion.is_archived ? 'Unarchive' : 'Archive'"
         @click="handleArchiveClick"
-      >
-        <Icon v-if="!shouldShowLabels" name="ph:archive" />
-        <template v-if="shouldShowLabels" #start>
-          <Icon name="ph:archive" />
-        </template>
-        <template v-if="shouldShowLabels">
-          {{ props.discussion.is_archived ? 'Unarchive' : 'Archive' }}
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>{{ props.discussion.is_archived ? 'Unarchive Discussion' : 'Archive Discussion' }}</p>
+      </template>
+    </Tooltip>
+
+    <Tooltip :disabled="shouldShowLabels">
+      <ResponsiveButton
+        :collapsed="!shouldShowLabels"
+        :size="buttonSize"
+        variant="danger"
+        :loading="lockLoading"
+        :icon="props.discussion.is_locked ? 'ph:lock-open' : 'ph:lock'"
+        :label="props.discussion.is_locked ? 'Unlock' : 'Lock'"
+        @click="handleLockClick"
+      />
+      <template #tooltip>
+        <p>{{ props.discussion.is_locked ? 'Unlock Discussion' : 'Lock Discussion' }}</p>
+      </template>
+    </Tooltip>
+
+    <Tooltip :disabled="shouldShowLabels">
+      <ResponsiveButton
+        :collapsed="!shouldShowLabels"
+        :size="buttonSize"
+        variant="danger"
+        :loading="deleteLoading"
+        icon="ph:trash"
+        label="Delete"
+        @click="showDeleteConfirm = true"
+      />
+      <template #tooltip>
+        <p>Delete Discussion</p>
       </template>
     </Tooltip>
 
@@ -214,6 +241,17 @@ function handleArchiveClick() {
       :confirm-text="archiveMode === 'archive' ? 'Archive' : 'Unarchive'"
       cancel-text="Cancel"
       :destructive="archiveMode === 'archive'"
+    />
+
+    <ConfirmModal
+      v-model:open="showDeleteConfirm"
+      :confirm="handleDeletion"
+      title="Confirm Prune Action"
+      description="Are you sure you want to delete this discussion? This action cannot be undone."
+      confirm-text="Prune"
+      cancel-text="Cancel"
+      :destructive="true"
+      :confirm-loading="deleteLoading"
     />
   </Flex>
 </template>

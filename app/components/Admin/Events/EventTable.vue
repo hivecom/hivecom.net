@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Alert, Badge, Button, defineTable, Flex, paginate, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, Button, defineTable, DropdownItem, Flex, paginate, Pagination, Table } from '@dolanske/vui'
 import { watchDebounced } from '@vueuse/core'
 import { computed, inject, onBeforeMount, ref, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { invalidateEventsCache } from '@/composables/useDataEvents'
@@ -100,6 +102,7 @@ const selectedEvent = ref<Event | null>(null)
 const showEventDetails = ref(false)
 const showEventForm = ref(false)
 const isEditMode = ref(false)
+const showBulkDeleteConfirm = ref(false)
 
 // ─── Per-row action loading ───────────────────────────────────────────────────
 
@@ -116,7 +119,7 @@ function setActionLoading(id: number, action: string, value: boolean): void {
 
 // ─── VUI defineTable (for TableSelectionProvideSymbol context) ───────────────
 
-const { rows } = defineTable(items, { pagination: { enabled: false }, select: false })
+const { rows, selectedRows, deselectAllRows } = defineTable(items, { pagination: { enabled: false }, select: true })
 
 // ─── Sorting ─────────────────────────────────────────────────────────────────
 
@@ -307,13 +310,19 @@ async function handleEventSave(eventData: Partial<Event>) {
   }
 }
 
-async function handleEventDelete(eventId: number) {
+async function handleEventsDelete(eventIds: number[]) {
+  if (eventIds.length === 0)
+    return
+
   try {
-    setActionLoading(eventId, 'delete', true)
+    eventIds.forEach((eventId) => {
+      setActionLoading(eventId, 'delete', true)
+    })
+
     const { error } = await supabase
       .from('events')
       .delete()
-      .eq('id', eventId)
+      .in('id', eventIds)
     if (error)
       throw error
 
@@ -323,11 +332,20 @@ async function handleEventDelete(eventId: number) {
     await fetchEvents()
   }
   catch (err: unknown) {
-    errorMessage.value = err instanceof Error ? err.message : 'An error occurred while deleting the event'
+    errorMessage.value = err instanceof Error ? err.message : 'An error occurred while deleting events'
   }
   finally {
-    setActionLoading(eventId, 'delete', false)
+    eventIds.forEach((eventId) => {
+      setActionLoading(eventId, 'delete', false)
+    })
   }
+}
+
+async function handleBulkDelete() {
+  showBulkDeleteConfirm.value = false
+  const ids = [...selectedRows.value].map(row => row.id)
+  await handleEventsDelete(ids)
+  deselectAllRows()
 }
 
 // ─── URL deep-link ────────────────────────────────────────────────────────────
@@ -482,6 +500,7 @@ onBeforeMount(async () => {
         <TableContainer>
           <Table.Root v-if="rows.length > 0" separate-cells class="mb-l">
             <template #header>
+              <th v-if="canManageResource" class="vui-table-interactive-cell" />
               <Table.Head class="sortable-head" @click="handleSort('Title')">
                 <Flex gap="xs" y-center>
                   Title
@@ -515,18 +534,20 @@ onBeforeMount(async () => {
             </template>
 
             <template #body>
-              <tr v-for="event in items" :key="event.id" class="clickable-row" @click="viewEventDetails(event)">
-                <Table.Cell>{{ event.title }}</Table.Cell>
-                <Table.Cell>
+              <tr v-for="event in items" :key="event.id" class="clickable-row">
+                <Table.SelectRow v-if="canManageResource" :row="event" />
+                <Table.Cell @click="viewEventDetails(event)">
+                  {{ event.title }}
+                </Table.Cell>
+                <Table.Cell @click="viewEventDetails(event)">
                   <TimestampDate :date="event.date" />
                 </Table.Cell>
-                <Table.Cell>
-                  <Badge v-if="event.location" variant="neutral">
-                    {{ event.location }}
-                  </Badge>
-                  <span v-else>-</span>
+                <Table.Cell @click="viewEventDetails(event)">
+                  <span class="text-s">
+                    {{ event.location ?? '-' }}
+                  </span>
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="viewEventDetails(event)">
                   <Flex v-if="event.games && event.games.length > 0" gap="xs" y-center wrap>
                     <GameIcon
                       v-for="game in getGamesByIds(event.games)"
@@ -537,18 +558,18 @@ onBeforeMount(async () => {
                   </Flex>
                   <span v-else>-</span>
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="viewEventDetails(event)">
                   <Badge v-if="event.is_official" variant="accent">
                     <Icon name="ph:star-fill" size="12" />
                     Official
                   </Badge>
                   <span v-else>-</span>
                 </Table.Cell>
-                <Table.Cell>
-                  <code v-if="event.recurrence_rule" class="text-s">{{ event.recurrence_rule }}</code>
+                <Table.Cell @click="viewEventDetails(event)">
+                  <code v-if="event.recurrence_rule" class="text-s" v-html="event.recurrence_rule.split(';').join('<br>')" />
                   <span v-else>-</span>
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="viewEventDetails(event)">
                   <Badge :variant="getEventStatus(event).variant">
                     {{ getEventStatus(event).label }}
                   </Badge>
@@ -560,7 +581,7 @@ onBeforeMount(async () => {
                     button-size="s"
                     :is-loading="(action: string) => isActionLoading(event.id, action)"
                     @edit="(item) => openEditEventForm(item as unknown as RpcEvent)"
-                    @delete="(item) => handleEventDelete((item as unknown as RpcEvent).id)"
+                    @delete="(item) => handleEventsDelete([(item as unknown as RpcEvent).id])"
                   />
                 </Table.Cell>
               </tr>
@@ -581,7 +602,7 @@ onBeforeMount(async () => {
         v-model:is-open="showEventDetails"
         :event="selectedEvent"
         @edit="handleEditFromDetails"
-        @delete="(item) => handleEventDelete(item.id)"
+        @delete="(item) => handleEventsDelete([item.id])"
       />
 
       <EventForm
@@ -589,7 +610,30 @@ onBeforeMount(async () => {
         :event="selectedEvent"
         :is-edit-mode="isEditMode"
         @save="handleEventSave"
-        @delete="handleEventDelete"
+        @delete="(id: number) => handleEventsDelete([id])"
+      />
+
+      <SelectedRowsActions
+        :selected-count="selectedRows.length"
+        @clear="deselectAllRows()"
+      >
+        <DropdownItem @click="showBulkDeleteConfirm = true">
+          <template #icon>
+            <Icon name="ph:trash" class="text-color-red" />
+          </template>
+          Delete
+        </DropdownItem>
+      </SelectedRowsActions>
+
+      <ConfirmModal
+        :open="showBulkDeleteConfirm"
+        :title="`Delete ${selectedRows.length} items`"
+        :description="`Are you sure you want to delete ${selectedRows.length} events? This action cannot be undone.`"
+        confirm-text="Delete"
+        cancel-text="Cancel"
+        :destructive="true"
+        @cancel="showBulkDeleteConfirm = false"
+        @confirm="handleBulkDelete"
       />
     </Flex>
   </Flex>

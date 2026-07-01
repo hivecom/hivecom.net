@@ -104,8 +104,6 @@ function scrollUp() {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 :root.light .footer__logo {
   filter: invert(1);
 }

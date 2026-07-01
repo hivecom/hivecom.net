@@ -1,18 +1,35 @@
 <script setup lang="ts">
 import { Tooltip } from '@dolanske/vui'
-
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
-
 import { computed } from 'vue'
-import { dateFormat } from '@/lib/utils/date'
+import {
+  displayDate,
+  displayDateTime,
+  fromNow,
+  fullDate,
+  fullDateLong,
+  fullDateTime,
+  fullDateTimeWeekday,
+  fullMonth,
+  timestamp,
+  yearOnly,
+} from '@/lib/utils/date'
 
-// Define props with default values
+export type DateDisplayType
+  = | 'displayDate'
+    | 'displayDateTime'
+    | 'fullDate'
+    | 'fullDateLong'
+    | 'fullDateTime'
+    | 'fullDateTimeWeekday'
+    | 'fullMonth'
+    | 'timestamp'
+    | 'year'
+
 const props = withDefaults(defineProps<{
   // The date string to format
   date: string | null
-  // Optional format to use (will use dateFormat.default if not provided)
-  format?: string
+  // Which named format to use (defaults to fullDateTime)
+  type?: DateDisplayType
   // Render a human-readable relative time (e.g. "5 minutes ago") instead of a
   // formatted date. The tooltip still shows the precise timestamp.
   relative?: boolean
@@ -25,7 +42,7 @@ const props = withDefaults(defineProps<{
   // Use smaller font size
   size?: 'xxs' | 'xs' | 's' | 'm' | 'l' | 'xl' | 'xxl' | 'xxxl'
 }>(), {
-  format: dateFormat.default,
+  type: 'fullDateTime',
   relative: false,
   tooltip: true,
   fallback: 'N/A',
@@ -33,15 +50,24 @@ const props = withDefaults(defineProps<{
   size: 's',
 })
 
-dayjs.extend(relativeTime)
+const formatters: Record<DateDisplayType, (d: string | Date | null | undefined) => string> = {
+  displayDate,
+  displayDateTime,
+  fullDate,
+  fullDateLong,
+  fullDateTime,
+  fullDateTimeWeekday,
+  fullMonth,
+  timestamp,
+  year: yearOnly,
+}
 
-// Format the date for display using either the provided format or default
 const formattedDate = computed(() => {
   if (!props.date)
     return props.fallback
   if (props.relative)
-    return dayjs(props.date).fromNow()
-  return dayjs(props.date).format(props.format)
+    return fromNow(props.date)
+  return formatters[props.type](props.date)
 })
 
 // Generate the detailed tooltip text with full timestamp information
@@ -49,15 +75,18 @@ const tooltipText = computed(() => {
   if (!props.tooltip || !props.date)
     return ''
 
-  // Format with milliseconds and timezone info
-  const detailed = dayjs(props.date).format('YYYY-MM-DD HH:mm:ss.SSS')
+  const d = new Date(props.date)
+  if (Number.isNaN(d.getTime()))
+    return ''
+
+  const detailed = d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '')
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-  const offset = new Date(props.date).getTimezoneOffset()
+  const offset = d.getTimezoneOffset()
   const offsetSign = offset <= 0 ? '+' : '-'
   const offsetHours = String(Math.abs(Math.floor(offset / 60))).padStart(2, '0')
   const offsetMinutes = String(Math.abs(offset % 60)).padStart(2, '0')
 
-  return `${detailed} (UTC${offsetSign}${offsetHours}:${offsetMinutes}, ${timezone})`
+  return `${detailed} UTC (UTC${offsetSign}${offsetHours}:${offsetMinutes}, ${timezone})`
 })
 
 const attrs = useAttrs()

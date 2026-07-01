@@ -3,13 +3,14 @@ import type { Tables } from '@/types/database.overrides'
 import type { TeamSpeakIdentityRecord } from '@/types/teamspeak'
 import { Avatar, Button, Divider, Flex, Indicator, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, toRef } from 'vue'
+import { useSupabaseUser } from '#imports'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import UserPreviewCardBadges from '@/components/Shared/UserPreviewCardBadges.vue'
 import { useCachedFetch } from '@/composables/useCache'
 import { useDataUser } from '@/composables/useDataUser'
+import { useUserActivityStatus } from '@/composables/useUserActivityStatus'
 import { getAnonymousUsername } from '@/lib/anonymousUsernames'
-import { getUserActivityStatus } from '@/lib/lastSeen'
 import { getCountryInfo } from '@/lib/utils/country'
 import ActivityLastfm from '../Profile/Activity/ActivityLastfm.vue'
 import ActivitySteam from '../Profile/Activity/ActivitySteam.vue'
@@ -51,11 +52,12 @@ const {
   avatarTtl: 30 * 60 * 1000,
 })
 
-const activityStatus = computed(() => {
-  if (!user.value?.last_seen)
-    return null
-  return getUserActivityStatus(user.value.last_seen)
-})
+const currentUser = useSupabaseUser()
+
+const activityStatus = useUserActivityStatus(
+  () => user.value?.id ?? null,
+  () => user.value?.last_seen ?? null,
+)
 
 const profileLink = computed(() => {
   if (!user.value)
@@ -75,8 +77,6 @@ const introductionText = computed(() => {
 })
 
 const hasCustomIntroduction = computed(() => Boolean(user.value?.introduction?.trim()))
-
-const currentUser = useSupabaseUser()
 
 const memberSince = computed(() => {
   const createdAt = user.value?.created_at

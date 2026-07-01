@@ -720,6 +720,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
           placeholder="Write a longer description of the game..."
           min-height="180px"
           show-expand-button
+          always-show-expand-button
         />
 
         <!-- Genre tags -->

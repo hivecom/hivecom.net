@@ -47,7 +47,7 @@ watch(() => route.fullPath, () => {
         :disabled="props.disabled"
         @click="open = true"
       >
-        <Icon name="ph:chats" size="20" />
+        <Icon name="ph:chat" size="20" />
         <span v-if="showBadge" class="chat-sheet__badge" :class="{ 'chat-sheet__badge--mention': hasMention }" />
       </Button>
       <template #tooltip>
@@ -64,7 +64,7 @@ watch(() => route.fullPath, () => {
       :disabled="props.disabled"
       @click="open = true"
     >
-      <Icon name="ph:chats" size="20" />
+      <Icon name="ph:chat" size="20" />
       <span v-if="showBadge" class="chat-sheet__badge" :class="{ 'chat-sheet__badge--mention': hasMention }" />
     </Button>
 
@@ -94,8 +94,8 @@ watch(() => route.fullPath, () => {
     position: absolute;
     top: 4px;
     right: 4px;
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     border-radius: var(--border-radius-pill);
     background-color: var(--color-text-green);
     border: 2px solid var(--color-bg);

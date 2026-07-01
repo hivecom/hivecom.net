@@ -391,15 +391,15 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
 <template>
   <div class="page forum-stats container-l">
     <ClientOnly>
+      <Breadcrumbs>
+        <BreadcrumbItem @click="navigateTo('/forum')">
+          Forum
+        </BreadcrumbItem>
+        <BreadcrumbItem>
+          Statistics
+        </BreadcrumbItem>
+      </Breadcrumbs>
       <section class="page-title mb-xl">
-        <Breadcrumbs>
-          <BreadcrumbItem @click="navigateTo('/forum')">
-            Forum
-          </BreadcrumbItem>
-          <BreadcrumbItem>
-            Statistics
-          </BreadcrumbItem>
-        </Breadcrumbs>
         <h1>Forum Statistics</h1>
         <p>Yapping olympics</p>
       </section>
@@ -504,6 +504,46 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
 
       <!-- Stats content -->
       <template v-else-if="stats">
+        <!-- Summary counters -->
+
+        <div class="mb-m stats-counters">
+          <Card class="stats-counter-card">
+            <div class="stats-counter">
+              <Icon name="ph:folder-open" size="24" class="stats-counter__icon stats-counter__icon--topics" />
+              <CountDisplay class="stats-counter__value" :value="stats.totalTopics" />
+              <span class="stats-counter__label">Topics</span>
+            </div>
+          </Card>
+          <Card class="stats-counter-card">
+            <div class="stats-counter">
+              <Icon name="ph:scroll" size="24" class="stats-counter__icon stats-counter__icon--discussions" />
+              <CountDisplay class="stats-counter__value" :value="stats.totalDiscussions" />
+              <span class="stats-counter__label">Discussions</span>
+            </div>
+          </Card>
+          <Card class="stats-counter-card">
+            <div class="stats-counter">
+              <Icon name="ph:chats-circle" size="24" class="stats-counter__icon stats-counter__icon--replies" />
+              <CountDisplay class="stats-counter__value" :value="stats.totalReplies" />
+              <span class="stats-counter__label">Replies</span>
+            </div>
+          </Card>
+          <Card class="stats-counter-card">
+            <div class="stats-counter">
+              <Icon name="ph:chart-line-up" size="24" class="stats-counter__icon stats-counter__icon--avg" />
+              <span class="stats-counter__value">{{ stats.avgRepliesPerDiscussion }}</span>
+              <span class="stats-counter__label">Avg replies / discussion</span>
+            </div>
+          </Card>
+          <Card class="stats-counter-card">
+            <div class="stats-counter">
+              <Icon name="ph:calendar-check" size="24" class="stats-counter__icon stats-counter__icon--daily" />
+              <span class="stats-counter__value">{{ stats.avgPostsPerDay }}</span>
+              <span class="stats-counter__label">Avg discussions +replies / day</span>
+            </div>
+          </Card>
+        </div>
+
         <!-- Unified podium + leaderboard card -->
         <Card class="mb-xl stats-podium-card">
           <template #header>
@@ -560,6 +600,8 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
               <div v-else :key="`empty-${posIndex}`" class="podium__slot podium__slot--empty" />
             </template>
           </Flex>
+
+          <Divider class="leaderboard-divider" />
 
           <!-- Leaderboard: Top 10 -->
           <table class="leaderboard">
@@ -635,47 +677,8 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
           </table>
         </Card>
 
-        <!-- Summary counters -->
-        <div class="mb-xl stats-counters">
-          <Card class="stats-counter-card">
-            <div class="stats-counter">
-              <Icon name="ph:folder-open" size="24" class="stats-counter__icon stats-counter__icon--topics" />
-              <CountDisplay class="stats-counter__value" :value="stats.totalTopics" />
-              <span class="stats-counter__label">Topics</span>
-            </div>
-          </Card>
-          <Card class="stats-counter-card">
-            <div class="stats-counter">
-              <Icon name="ph:scroll" size="24" class="stats-counter__icon stats-counter__icon--discussions" />
-              <CountDisplay class="stats-counter__value" :value="stats.totalDiscussions" />
-              <span class="stats-counter__label">Discussions</span>
-            </div>
-          </Card>
-          <Card class="stats-counter-card">
-            <div class="stats-counter">
-              <Icon name="ph:chats-circle" size="24" class="stats-counter__icon stats-counter__icon--replies" />
-              <CountDisplay class="stats-counter__value" :value="stats.totalReplies" />
-              <span class="stats-counter__label">Replies</span>
-            </div>
-          </Card>
-          <Card class="stats-counter-card">
-            <div class="stats-counter">
-              <Icon name="ph:chart-line-up" size="24" class="stats-counter__icon stats-counter__icon--avg" />
-              <span class="stats-counter__value">{{ stats.avgRepliesPerDiscussion }}</span>
-              <span class="stats-counter__label">Avg replies / discussion</span>
-            </div>
-          </Card>
-          <Card class="stats-counter-card">
-            <div class="stats-counter">
-              <Icon name="ph:calendar-check" size="24" class="stats-counter__icon stats-counter__icon--daily" />
-              <span class="stats-counter__value">{{ stats.avgPostsPerDay }}</span>
-              <span class="stats-counter__label">Avg discussions +replies / day</span>
-            </div>
-          </Card>
-        </div>
-
         <!-- Activity over time chart -->
-        <div class="chart-container mb-xl">
+        <div class="chart-container mb-m">
           <div ref="activityChartWrapperRef" :key="`${theme}-${activeTheme?.id}-${isMobile}`" class="chart-wrapper">
             <Line
               ref="activityChartRef"
@@ -686,7 +689,7 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
         </div>
 
         <!-- Topic breakdown chart -->
-        <div class="chart-container mb-xl">
+        <div class="chart-container">
           <div ref="topicChartWrapperRef" :key="`topic-${theme}-${activeTheme?.id}-${isMobile}`" class="chart-wrapper">
             <Bar
               ref="topicChartRef"
@@ -701,8 +704,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 // ── Summary counters ─────────────────────────────────────────────────────────
 .stats-counters {
   display: grid;
@@ -740,23 +741,23 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
     opacity: 0.6;
 
     &--discussions {
-      color: #8b5cf6;
+      color: var(--text-color-purple);
     }
 
     &--replies {
-      color: #22c55e;
+      color: var(--text-color-lime);
     }
 
     &--topics {
-      color: #3b82f6;
+      color: var(--text-color-teal);
     }
 
     &--avg {
-      color: #f59e0b;
+      color: var(--text-color-amber);
     }
 
     &--daily {
-      color: #ec4899;
+      color: var(--text-color-red);
     }
   }
 
@@ -887,6 +888,12 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
   }
 }
 
+.leaderboard-divider {
+  width: auto;
+  margin-inline: calc(var(--space-m) * -1);
+  margin-bottom: var(--space-m);
+}
+
 // ── Leaderboard ──────────────────────────────────────────────────────────────
 .leaderboard {
   width: 100%;
@@ -895,6 +902,10 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
 
   tbody {
     border: none;
+  }
+
+  tr td {
+    border-top: none !important;
   }
 
   &__td {

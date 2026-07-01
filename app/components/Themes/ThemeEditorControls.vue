@@ -654,8 +654,6 @@ const iconTheme = computed<Theme>(() => {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .theme-editor {
   &__controls {
     display: flex;

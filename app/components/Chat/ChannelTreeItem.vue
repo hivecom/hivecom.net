@@ -9,6 +9,14 @@ import { SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
+export interface ChannelGhostNode {
+  type: 'ghost'
+  name: string
+  /** Full IRC channel name including prefix, e.g. "#playground/general" */
+  fullChannelName: string
+  displayName: string
+}
+
 export interface ChannelGroupNode {
   type: 'group'
   name: string
@@ -25,14 +33,14 @@ export interface ChannelItemNode {
   displayName: string
 }
 
-export type ChannelTreeNode = ChannelGroupNode | ChannelItemNode
+export type ChannelTreeNode = ChannelGroupNode | ChannelItemNode | ChannelGhostNode
 
 const { node, depth } = defineProps<{
   node: ChannelTreeNode
   depth: number
 }>()
 
-const { activeName, buffers, setActive, closeBuffer, isUnauthorizedSubchannel } = useIrcChat()
+const { activeName, buffers, setActive, closeBuffer, joinChannel, isUnauthorizedSubchannel, channelMetaCache } = useIrcChat()
 const { resolved } = useIrcNickResolver()
 const isMobile = useBreakpoint('<s')
 
@@ -93,7 +101,7 @@ function bufferIcon(kind: string) {
         <Badge v-else-if="node.parentBuffer.unread > 0" size="s" round variant="neutral" class="chat-channels__badge">
           {{ node.parentBuffer.unread }}
         </Badge>
-        <Button square plain size="s" aria-label="Close" class="chat-channels__close" @click.stop="closeBuffer(node.parentBuffer.name)">
+        <Button v-if="!isMobile" square plain size="s" aria-label="Close" class="chat-channels__close" @click.stop="closeBuffer(node.parentBuffer.name)">
           <Icon name="ph:x" size="12" />
         </Button>
       </button>
@@ -108,16 +116,53 @@ function bufferIcon(kind: string) {
         </Flex>
       </template>
     </Tooltip>
-    <!-- No parent buffer: virtual label (uses cached display-name if known) -->
-    <span v-else class="chat-channels__group-label">{{ node.meta?.get('display-name') ?? node.name }}</span>
+    <!-- No parent buffer: ghost button to join the parent channel -->
+    <Tooltip
+      v-else
+      placement="right"
+      :disabled="isMobile || !node.meta?.get('topic')"
+    >
+      <button
+        type="button"
+        class="chat-channels__item chat-channels__item--ghost w-100"
+        @click="joinChannel(`#${node.fullPath}`)"
+      >
+        <img
+          v-if="node.meta?.get('avatar')"
+          :src="node.meta.get('avatar')!"
+          class="chat-channels__icon chat-channels__icon--avatar"
+          :alt="node.name"
+        >
+        <Icon v-else name="ph:hash" size="13" class="chat-channels__icon" />
+        <span class="chat-channels__name">{{ node.meta?.get('display-name') ?? node.name }}</span>
+      </button>
+      <template #tooltip>
+        <p v-if="node.meta?.get('topic')" class="text-xs" style="margin:0">
+          {{ node.meta.get('topic') }}
+        </p>
+      </template>
+    </Tooltip>
 
     <!-- Children -->
     <div class="chat-channels__children">
-      <div v-for="child in node.children" :key="child.type === 'group' ? `group:${child.fullPath}` : child.buffer.name" class="chat-channels__child-item">
+      <div v-for="child in node.children" :key="child.type === 'group' ? `group:${child.fullPath}` : child.type === 'ghost' ? `ghost:${child.fullChannelName}` : child.buffer.name" class="chat-channels__child-item">
         <ChannelTreeItem :node="child" :depth="depth + 1" />
       </div>
     </div>
   </template>
+
+  <!-- Ghost node (unjoined subchannel known from parent metadata) -->
+  <button
+    v-else-if="node.type === 'ghost'"
+    type="button"
+    class="chat-channels__item chat-channels__item--ghost w-100"
+    @click="joinChannel(node.fullChannelName)"
+  >
+    <Icon name="ph:hash" size="13" class="chat-channels__icon" />
+    <span class="chat-channels__name">
+      {{ channelMetaCache.get(node.fullChannelName.toLowerCase())?.get('display-name') ?? node.displayName }}
+    </span>
+  </button>
 
   <!-- Leaf node -->
   <Tooltip
@@ -172,7 +217,7 @@ function bufferIcon(kind: string) {
         {{ node.buffer.unread }}
       </Badge>
       <Button
-        v-if="node.buffer.kind !== 'server'"
+        v-if="node.buffer.kind !== 'server' && !isMobile"
         square
         plain
         size="s"

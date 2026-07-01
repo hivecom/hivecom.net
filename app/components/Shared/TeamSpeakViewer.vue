@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TeamSpeakIdentityRecord, TeamSpeakNormalizedChannel, TeamSpeakServerSnapshot, TeamSpeakSnapshot } from '@/types/teamspeak'
 import { Alert, Badge, Button, Card, Flex, Grid, PopoutHover, Select, Skeleton, Tooltip } from '@dolanske/vui'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import constants from '~~/constants.json'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
@@ -35,18 +35,20 @@ const { fetchMetricsHistory } = useDataMetrics()
 const histogramHistory = shallowRef<{ capturedAt: string, max: number }[]>([])
 const histogramData = computed(() => histogramHistory.value.map(e => e.max))
 
-fetchMetricsHistory('14d').then((entries) => {
-  const byDay = new Map<string, { capturedAt: string, max: number }>()
-  for (const e of entries) {
-    const d = new Date(e.capturedAt)
-    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
-    const val = e.teamspeakOnline ?? 0
-    if (!byDay.has(key))
-      byDay.set(key, { capturedAt: e.capturedAt, max: val })
-    else
-      byDay.get(key)!.max = Math.max(byDay.get(key)!.max, val)
-  }
-  histogramHistory.value = Array.from(byDay.values()).slice(-14)
+onMounted(() => {
+  fetchMetricsHistory('14d').then((entries) => {
+    const byDay = new Map<string, { capturedAt: string, max: number }>()
+    for (const e of entries) {
+      const d = new Date(e.capturedAt)
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+      const val = e.teamspeakOnline ?? 0
+      if (!byDay.has(key))
+        byDay.set(key, { capturedAt: e.capturedAt, max: val })
+      else
+        byDay.get(key)!.max = Math.max(byDay.get(key)!.max, val)
+    }
+    histogramHistory.value = Array.from(byDay.values()).slice(-14)
+  })
 })
 
 const showActivityModal = ref(false)

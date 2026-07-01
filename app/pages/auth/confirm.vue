@@ -20,6 +20,14 @@ const route = useRoute()
 const loading = ref(true)
 const error = ref('')
 
+// When a sign-in/sign-up link is invalid or expired, we surface a recovery form
+// instead of leaving the user stuck waiting for an auth event that never fires.
+const linkExpired = ref(false)
+const resendEmail = ref('')
+const resendLoading = ref(false)
+const resendSent = ref(false)
+const resendError = ref('')
+
 const processComplete = ref(false)
 const usernameStep = ref(false)
 const username = ref('')
@@ -374,6 +382,69 @@ const hasAuthParams = computed(() => {
   return hash && (hash.includes('access_token') || hash.includes('error'))
 })
 
+interface AuthLinkError {
+  code: string
+  description: string
+}
+
+// Supabase delivers link errors (e.g. otp_expired) via the query string and/or
+// the URL hash fragment. Parse both so we can recover regardless of source.
+function parseAuthLinkError(): AuthLinkError | null {
+  if (typeof window === 'undefined')
+    return null
+
+  const sources: URLSearchParams[] = [new URLSearchParams(window.location.search)]
+  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash
+  if (hash)
+    sources.push(new URLSearchParams(hash))
+
+  for (const params of sources) {
+    const code = params.get('error_code') ?? params.get('error')
+    if (code) {
+      // URLSearchParams decodes '+' to spaces automatically.
+      const description = params.get('error_description') ?? ''
+      return { code, description }
+    }
+  }
+
+  return null
+}
+
+function getConfirmRedirectUrl() {
+  const redirect = postConfirmRedirect.value
+  const base = process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000/auth/confirm'
+    : (typeof window !== 'undefined' ? `${window.location.origin}/auth/confirm` : '/auth/confirm')
+
+  return redirect ? `${base}?redirect=${encodeURIComponent(redirect)}` : base
+}
+
+async function resendConfirmationLink() {
+  resendError.value = ''
+  resendSent.value = false
+  resendLoading.value = true
+
+  try {
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: resendEmail.value,
+      options: {
+        emailRedirectTo: getConfirmRedirectUrl(),
+      },
+    })
+
+    if (otpError)
+      throw otpError
+
+    resendSent.value = true
+  }
+  catch (err) {
+    resendError.value = err instanceof Error ? err.message : 'Unable to send a new link. Please try again.'
+  }
+  finally {
+    resendLoading.value = false
+  }
+}
+
 async function submitUsername() {
   usernameError.value = ''
   usernameLoading.value = true
@@ -546,6 +617,15 @@ onMounted(() => {
     return
   }
 
+  // If the link itself is invalid/expired, skip the auth wait and let the user
+  // request a fresh link straight away.
+  const linkError = parseAuthLinkError()
+  if (linkError) {
+    loading.value = false
+    linkExpired.value = true
+    return
+  }
+
   setTimeout(async () => {
     if (!user.value && !debugOptions.bypassAuth)
       await handleEmailConfirmation()
@@ -602,6 +682,42 @@ onMounted(() => {
             <p>You have been successfully authenticated and will be redirected shortly.</p>
             <Spinner size="m" />
           </Flex>
+        </div>
+      </Card>
+    </MetaballContainer>
+
+    <MetaballContainer v-else-if="linkExpired" :width="metaballWidth" :height="metaballHeight" min-height="520px" :absolute="isBelowS">
+      <Card class="auth-confirm-card text-center" separators>
+        <template #header>
+          <h4>Your link expired</h4>
+        </template>
+        <div class="auth-confirm-content">
+          <div class="auth-confirm-state">
+            <Icon name="ph:link-break" size="48" class="mb-s" />
+            <p>
+              This sign-in link is invalid or has expired. Enter your email below and we'll send you a new one.
+            </p>
+            <Flex x-center column gap="l" class="w-100 mt-l" style="max-width: 320px;">
+              <Input v-model="resendEmail" expand label="Email" type="email" placeholder="user@example.com">
+                <template #start>
+                  <Icon name="ph:envelope-simple" />
+                </template>
+              </Input>
+              <Button expand variant="accent" :loading="resendLoading" :disabled="!resendEmail" @click="resendConfirmationLink">
+                Send new link
+              </Button>
+            </Flex>
+            <Flex v-if="resendSent" class="mt-l" expand>
+              <Alert variant="info" filled>
+                <p class="text-s">
+                  A new sign-in link has been sent to your inbox! (check spam just in case)
+                </p>
+              </Alert>
+            </Flex>
+            <Flex v-if="resendError" class="mt-l" expand>
+              <ErrorAlert :message="resendError" />
+            </Flex>
+          </div>
         </div>
       </Card>
     </MetaballContainer>

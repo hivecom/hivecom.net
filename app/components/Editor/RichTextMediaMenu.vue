@@ -11,7 +11,7 @@ import { useSupabaseClient, useSupabaseUser } from '#imports'
 import FileCropModal from '@/components/Shared/FileCropModal.vue'
 import { slugify } from '@/lib/utils/formatting'
 
-type MediaNodeType = 'image' | 'video'
+type MediaNodeType = 'image' | 'video' | 'audio'
 
 const props = defineProps<{
   editor: Editor
@@ -49,7 +49,7 @@ function getSelectedNodeType(): MediaNodeType | null {
   if (!(selection instanceof NodeSelection))
     return null
   const name = selection.node?.type?.name
-  if (name === 'image' || name === 'video')
+  if (name === 'image' || name === 'video' || name === 'audio')
     return name
   return null
 }
@@ -68,7 +68,9 @@ function shouldShow({ state, view }: ShouldShowMenuProps): boolean {
       return false
     return true
   }
-  if (name === 'video')
+  // Video and audio: show once uploaded (no crop, no useful actions while
+  // the placeholder blob is still pending).
+  if (name === 'video' || name === 'audio')
     return !src.startsWith('blob:')
   return false
 }
@@ -77,6 +79,14 @@ const isBlobImage = computed(() => {
   const { selection } = props.editor.state
   const node = (selection as { node?: { type?: { name?: string }, attrs?: { src?: string } } }).node
   return node?.type?.name === 'image' && (node?.attrs?.src ?? '').startsWith('blob:')
+})
+
+// The tag/label modal only edits alt (image) or label (video). Audio nodes
+// store just a src, so the tag button is hidden for them.
+const canTagSelected = computed(() => {
+  const { selection } = props.editor.state
+  const name = (selection as { node?: { type?: { name?: string } } }).node?.type?.name
+  return name === 'image' || name === 'video'
 })
 
 // ---------------------------------------------------------------------------
@@ -291,7 +301,7 @@ async function updateMedia() {
       <Button v-if="isBlobImage" size="s" variant="gray" square @click="openCropModal">
         <Icon name="ph:crop" />
       </Button>
-      <Button size="s" variant="gray" square @click="openModal">
+      <Button v-if="canTagSelected" size="s" variant="gray" square @click="openModal">
         <Icon name="ph:tag" />
       </Button>
     </Flex>

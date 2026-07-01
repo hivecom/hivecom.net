@@ -11,7 +11,11 @@ import {
 } from "../_shared/teamspeak.ts";
 import type { Database, Json, Tables } from "database-types";
 import { COUNTRIES } from "../../../app/lib/utils/country.ts";
-import type { MetricsServerDetail, MetricsSnapshot } from "metrics-types";
+import {
+  metricsPlayerCount,
+  type MetricsServerDetail,
+  type MetricsSnapshot,
+} from "metrics-types";
 
 // ---------------------------------------------------------------------------
 // Country normalization (unchanged from previous implementation)
@@ -35,16 +39,19 @@ function normalizeCountryCode(value: string | null | undefined): string | null {
 // ------------------------------------------------------------------------
 type GameRow = Pick<Tables<"games">, "id" | "steam_id">;
 
-type GameserverRow = Pick<
-  Tables<"network_gameservers">,
-  | "id"
-  | "name"
-  | "query_protocol"
-  | "query_port"
-  | "port"
-  | "addresses"
-  | "container"
->;
+type GameserverRow =
+  & Pick<
+    Tables<"network_gameservers">,
+    | "id"
+    | "name"
+    | "query_protocol"
+    | "query_port"
+    | "port"
+    | "addresses"
+    | "container"
+  >
+  // query_options is JSONB; concrete shape (non-secret query config).
+  & { query_options: { factorioUseLua?: boolean } | null };
 
 // presences_steam row with embedded profile
 type SteamPresenceRow = Pick<Tables<"presences_steam">, "current_app_id"> & {
@@ -80,6 +87,101 @@ interface DockerMinecraftQueryResult {
   hostPort?: number;
   hostIp?: string;
   extra?: Record<string, string>;
+}
+
+interface DockerGameSpyQueryResult {
+  success: boolean;
+  numPlayers: number | null;
+  maxPlayers: number | null;
+  map: string | null;
+  hostName: string | null;
+  gameType: string | null;
+  players:
+    | {
+      name: string;
+      frags: number | null;
+      ping: number | null;
+      team: string | null;
+    }[]
+    | null;
+  extra?: Record<string, string>;
+}
+
+interface DockerSatisfactoryQueryResult {
+  success: boolean;
+  reachable: boolean;
+  joinable: boolean;
+  state: "offline" | "idle" | "loading" | "playing" | "unknown";
+  serverName: string | null;
+  serverNetCL: number | null;
+}
+
+interface DockerFactorioQueryResult {
+  success: boolean;
+  numPlayers: number | null;
+  maxPlayers: number | null;
+  players: string[] | null;
+}
+
+// Stable per-protocol "null" detail used when a server can't be reached.
+function buildNullDetail(
+  protocol: NonNullable<GameserverRow["query_protocol"]>,
+): MetricsServerDetail {
+  switch (protocol) {
+    case "minecraft":
+      return {
+        protocol,
+        data: {
+          numPlayers: null,
+          maxPlayers: null,
+          world: null,
+          players: null,
+          motd: null,
+          gameType: null,
+          gameId: null,
+          version: null,
+          plugins: null,
+          hostPort: null,
+          hostIp: null,
+          extra: null,
+        },
+      };
+    case "gamespy1":
+      return {
+        protocol,
+        data: {
+          numPlayers: null,
+          maxPlayers: null,
+          map: null,
+          hostName: null,
+          gameType: null,
+          players: null,
+          extra: null,
+        },
+      };
+    case "satisfactory":
+      return {
+        protocol,
+        data: {
+          reachable: false,
+          joinable: false,
+          state: "offline",
+          serverName: null,
+          serverNetCL: null,
+        },
+      };
+    case "factorio":
+      return {
+        protocol,
+        data: { numPlayers: null, maxPlayers: null, players: null },
+      };
+    case "source":
+    default:
+      return {
+        protocol: "source",
+        data: { players: null, maxPlayers: null, map: null, playerList: null },
+      };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -171,7 +273,7 @@ Deno.serve(async (req: Request) => {
       supabaseClient
         .from("network_gameservers")
         .select(
-          "id, name, query_protocol, query_port, port, addresses, container",
+          "id, name, query_protocol, query_port, port, addresses, container, query_options",
         )
         .not("container", "is", null),
       fetchSnapshotFromStorage(supabaseClient),
@@ -300,7 +402,7 @@ Deno.serve(async (req: Request) => {
       ),
     );
 
-    function countNonBotClients(s: (typeof tsServers)[number]): number {
+    const countNonBotClients = (s: (typeof tsServers)[number]): number => {
       const cfg = tsServerCfgMap.get(s.id);
       const musicBotGroupId = cfg?.roleMusicBotGroupId;
       return s.clients.filter(
@@ -308,7 +410,7 @@ Deno.serve(async (req: Request) => {
           c.uniqueId !== "serveradmin" &&
           (!musicBotGroupId || !c.serverGroups.includes(musicBotGroupId)),
       ).length;
-    }
+    };
 
     const tsByServer: Record<string, number> = {};
     for (const s of tsServers) {
@@ -370,15 +472,7 @@ Deno.serve(async (req: Request) => {
         queryableGameservers.map(async (gs) => {
           const nullDetail = {
             id: gs.id,
-            detail: {
-              protocol: gs.query_protocol!,
-              data: {
-                players: null,
-                maxPlayers: null,
-                map: null,
-                playerList: null,
-              },
-            } as MetricsServerDetail,
+            detail: buildNullDetail(gs.query_protocol!),
           };
 
           const server = containerServerMap.get(gs.container!);
@@ -398,10 +492,38 @@ Deno.serve(async (req: Request) => {
           if (port != null) params.set("port", port);
           const url = `${baseUrl}?${params.toString()}`;
 
+          const protocol = gs.query_protocol!;
+
+          // Build request headers. Factorio needs an RCON password, which lives
+          // in Vault and is read via a service_role-only RPC. We pass it (and
+          // the non-secret useLua flag) to docker-control through the
+          // X-Query-Options header so it never appears in the URL/access logs.
+          const headers: Record<string, string> = {
+            Authorization: `Bearer ${DOCKER_CONTROL_TOKEN}`,
+          };
+          if (protocol === "factorio") {
+            const queryOptions: Record<string, unknown> = {};
+            const { data: secret, error: secretError } = await supabaseClient
+              .rpc("get_gameserver_query_secret", { p_gameserver_id: gs.id });
+            if (secretError) {
+              console.warn(
+                `Failed to read query secret for gameserver ${gs.id} (${gs.name}): ${secretError.message}`,
+              );
+            } else if (secret) {
+              queryOptions.rconPassword = secret;
+            }
+            if (gs.query_options?.factorioUseLua) {
+              queryOptions.factorioUseLua = true;
+            }
+            if (Object.keys(queryOptions).length > 0) {
+              headers["X-Query-Options"] = JSON.stringify(queryOptions);
+            }
+          }
+
           try {
             const res = await fetch(url, {
               method: "GET",
-              headers: { Authorization: `Bearer ${DOCKER_CONTROL_TOKEN}` },
+              headers,
               signal: AbortSignal.timeout(5000),
             });
 
@@ -412,7 +534,6 @@ Deno.serve(async (req: Request) => {
               return nullDetail;
             }
 
-            const protocol = gs.query_protocol!;
             let detail: MetricsServerDetail;
 
             if (protocol === "minecraft") {
@@ -433,6 +554,45 @@ Deno.serve(async (req: Request) => {
                   hostPort: body.hostPort ?? null,
                   hostIp: body.hostIp ?? null,
                   extra: body.extra ?? null,
+                },
+              };
+            } else if (protocol === "gamespy1") {
+              const body = await res.json() as DockerGameSpyQueryResult;
+              if (!body.success) return nullDetail;
+              detail = {
+                protocol,
+                data: {
+                  numPlayers: body.numPlayers ?? null,
+                  maxPlayers: body.maxPlayers ?? null,
+                  map: body.map ?? null,
+                  hostName: body.hostName ?? null,
+                  gameType: body.gameType ?? null,
+                  players: body.players ?? null,
+                  extra: body.extra ?? null,
+                },
+              };
+            } else if (protocol === "satisfactory") {
+              const body = await res.json() as DockerSatisfactoryQueryResult;
+              if (!body.success) return nullDetail;
+              detail = {
+                protocol,
+                data: {
+                  reachable: body.reachable ?? false,
+                  joinable: body.joinable ?? false,
+                  state: body.state ?? "unknown",
+                  serverName: body.serverName ?? null,
+                  serverNetCL: body.serverNetCL ?? null,
+                },
+              };
+            } else if (protocol === "factorio") {
+              const body = await res.json() as DockerFactorioQueryResult;
+              if (!body.success) return nullDetail;
+              detail = {
+                protocol,
+                data: {
+                  numPlayers: body.numPlayers ?? null,
+                  maxPlayers: body.maxPlayers ?? null,
+                  players: body.players ?? null,
                 },
               };
             } else {
@@ -469,11 +629,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const totalPlayers = Object.values(byServer).reduce(
-      (sum, d) => {
-        if (!d.data) return sum;
-        if (d.protocol === "minecraft") return sum + (d.data.numPlayers ?? 0);
-        return sum + (d.data.players ?? 0);
-      },
+      (sum, d) => sum + (metricsPlayerCount(d) ?? 0),
       0,
     );
 

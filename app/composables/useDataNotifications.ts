@@ -5,7 +5,10 @@ import { pushToast, removeToast } from '@dolanske/vui'
 import ToastBodyFriendRequest from '@/components/Toast/ToastBodyFriendRequest.vue'
 import ToastBodyNotification from '@/components/Toast/ToastBodyNotification.vue'
 import { useDataUser } from '@/composables/useDataUser'
+import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { usePageVisibility } from '@/composables/usePageVisibility'
+import { useMobileViewport } from '@/lib/mediaQuery'
+import { playNotificationSound } from '@/lib/notificationSound'
 
 const BACKGROUND_POLL_INTERVAL_MS = 5 * 60 * 1000
 
@@ -40,6 +43,11 @@ const pendingComplaintCount = ref(0)
 let notificationChannel: RealtimeChannel | null = null
 let friendChannel: RealtimeChannel | null = null
 let subscribedUserId: string | null = null
+
+// Ids of notifications we've already surfaced, so background-poll catch-ups
+// only fire an OS notification for genuinely-new rows. `null` until the first
+// fetch establishes a baseline (so pre-existing unread on load never notifies).
+let knownNotificationIds: Set<string> | null = null
 
 // Background polling when tab is hidden.
 let backgroundPollTimer: ReturnType<typeof setInterval> | null = null
@@ -88,6 +96,45 @@ export function useDataNotifications() {
   const userId = useUserId()
   const { user: cachedUserData } = useDataUser(userId, { includeRole: true, includeAvatar: false })
   const userRole = computed(() => (cachedUserData.value?.role ?? null) as Database['public']['Enums']['app_role'] | null)
+  const { settings } = useDataUserSettings()
+
+  // On mobile the device/OS volume governs playback, so the in-app volume is
+  // bypassed and the cue always plays at full volume.
+  const isMobile = useMobileViewport()
+
+  // Plays the user's configured notification cue. No-ops when set to "None".
+  function playNotificationCue() {
+    playNotificationSound(
+      settings.value.notification_sound_choice,
+      settings.value.notification_sound_url,
+      isMobile.value ? 1 : (settings.value.notification_sound_volume ?? 70) / 100,
+      settings.value.notification_sound_design,
+    )
+  }
+
+  // Fires an OS notification for a backgrounded notification, mirroring the chat
+  // browser-notification pattern. Only when enabled, permitted, and the tab is
+  // actually hidden - foreground activity already surfaces a toast. Because we
+  // intentionally drop the socket while hidden, this is driven by the background
+  // poll, so delivery can lag by up to one poll interval.
+  function notifyOS(notification: NotificationRow) {
+    if (!settings.value.app_browser_notifications)
+      return
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted')
+      return
+    if (!document.hidden)
+      return
+
+    const osNotification = new Notification(sourceLabel(notification.source), {
+      body: notification.title,
+      tag: `app-notification-${notification.id}`,
+    })
+    osNotification.onclick = () => {
+      window.focus()
+      if (notification.href)
+        window.location.href = notification.href
+    }
+  }
 
   const birthdayWidget = computed(() => {
     const birthdayValue = profileMeta.value?.birthday
@@ -213,11 +260,24 @@ export function useDataNotifications() {
         : null
       inviteActionLoading.value = {}
 
-      if (notificationsResponse.error) {
-        unreadNotifications.value = []
+      const fetchedNotifications = notificationsResponse.error
+        ? []
+        : (notificationsResponse.data ?? [])
+      unreadNotifications.value = fetchedNotifications
+
+      // Establish a baseline on the first fetch (never notify for pre-existing
+      // unread). On later fetches - notably the background poll while hidden -
+      // fire an OS notification for any id we haven't surfaced yet.
+      if (knownNotificationIds == null) {
+        knownNotificationIds = new Set(fetchedNotifications.map(n => n.id))
       }
       else {
-        unreadNotifications.value = notificationsResponse.data ?? []
+        for (const n of fetchedNotifications) {
+          if (!knownNotificationIds.has(n.id)) {
+            knownNotificationIds.add(n.id)
+            notifyOS(n)
+          }
+        }
       }
 
       pendingComplaintCount.value = 0
@@ -325,8 +385,11 @@ export function useDataNotifications() {
             return
 
           unreadNotifications.value = [incoming, ...unreadNotifications.value]
+          // Mark surfaced so the re-subscribe catch-up poll won't re-notify.
+          knownNotificationIds?.add(incoming.id)
 
           window.__hivecomActivitySignal?.()
+          playNotificationCue()
 
           pushToast('', {
             body: ToastBodyNotification as Component,
@@ -368,6 +431,8 @@ export function useDataNotifications() {
 
           // Optimistically add to local friendships so the badge and invite card update immediately.
           friendships.value = [...friendships.value, payload.new]
+
+          playNotificationCue()
 
           pushToast('', {
             persist: true,
@@ -467,6 +532,7 @@ export function useDataNotifications() {
     inviteActionLoading.value = {}
     pendingComplaintCount.value = 0
     unreadNotifications.value = []
+    knownNotificationIds = null
     error.value = null
   }
 

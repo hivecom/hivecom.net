@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, Calendar, Flex, Input, Select } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
+import { fullDate } from '@/lib/utils/date'
 
 const props = defineProps<{
   modelValue: string | null
@@ -215,11 +216,7 @@ const monthDayInputValue = computed({
 const untilDateLabel = computed(() => {
   if (!untilDate.value)
     return 'No end date'
-  return untilDate.value.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  return fullDate(untilDate.value)
 })
 </script>
 

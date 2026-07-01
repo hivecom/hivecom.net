@@ -1,6 +1,10 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@negrel/http-ece@0.7.0": "0.7.0",
+    "jsr:@negrel/webpush@0.5.0": "0.5.0",
+    "jsr:@std/bytes@1": "1.0.6",
+    "jsr:@std/encoding@1": "1.0.10",
     "jsr:@supabase/functions-js@^0.0.0-automated": "0.0.0-jsr-test.1",
     "jsr:@supabase/supabase-js@2": "2.87.1",
     "npm:@deno/types@^0.0.1": "0.0.1",
@@ -18,6 +22,27 @@
     "npm:node-ts@8": "8.0.9"
   },
   "jsr": {
+    "@negrel/http-ece@0.7.0": {
+      "integrity": "068e61ba6f52da5454051a283cc19621607f8dd6e74d55c01bb365b8c6644076",
+      "dependencies": [
+        "jsr:@std/bytes",
+        "jsr:@std/encoding"
+      ]
+    },
+    "@negrel/webpush@0.5.0": {
+      "integrity": "919ed5bf4d676923667c5278093f36ffb2efe7fe2f155b6d32723ea3b73fa693",
+      "dependencies": [
+        "jsr:@negrel/http-ece",
+        "jsr:@std/bytes",
+        "jsr:@std/encoding"
+      ]
+    },
+    "@std/bytes@1.0.6": {
+      "integrity": "f6ac6adbd8ccd99314045f5703e23af0a68d7f7e58364b47d2c7f408aeb5820a"
+    },
+    "@std/encoding@1.0.10": {
+      "integrity": "8783c6384a2d13abd5e9e87a7ae0520a30e9f56aeeaa3bdf910a3eaaf5c811a1"
+    },
     "@supabase/functions-js@0.0.0-jsr-test.1": {
       "integrity": "b1b37924af1f0011b4753201e1585a37b030e996c6682492e02575eb27d902b2"
     },
@@ -682,6 +707,7 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@negrel/webpush@0.5.0",
       "npm:@deno/types@^0.0.1",
       "npm:@supabase/supabase-js@2",
       "npm:google-auth-library@10",
@@ -794,6 +820,12 @@
       "presence-refresh-steam": {
         "dependencies": [
           "npm:@supabase/supabase-js@2"
+        ]
+      },
+      "trigger-notification-push-send": {
+        "dependencies": [
+          "jsr:@negrel/webpush@0.5.0",
+          "jsr:@supabase/supabase-js@2"
         ]
       },
       "teamspeak-unlink": {

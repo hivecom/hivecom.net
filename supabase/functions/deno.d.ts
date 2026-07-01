@@ -54,6 +54,20 @@ declare module "@takumi-rs/helpers" {
   export const text: any;
 }
 
+declare module "node:crypto" {
+  export function createHash(algorithm: string): {
+    update(data: string, inputEncoding?: string): any;
+    digest(encoding: string): string;
+  };
+  export function createVerify(algorithm: string): {
+    update(data: string, inputEncoding?: string): any;
+    end(): void;
+    verify(object: any, signature: string, signatureEncoding?: string): boolean;
+  };
+  const _: any;
+  export default _;
+}
+
 // Catch-all for any other unresolvable npm: specifiers
 declare module "*" {
   const _: any;

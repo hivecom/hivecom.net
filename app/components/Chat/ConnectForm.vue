@@ -1,23 +1,26 @@
 <script setup lang="ts">
-import { Button, Divider, Flex, Input } from '@dolanske/vui'
-import { onMounted } from 'vue'
+import { Button, Checkbox, Divider, Flex, Input } from '@dolanske/vui'
+import SignInForm from '@/components/Auth/SignInForm.vue'
 import { useDataUser } from '@/composables/useDataUser'
+import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
 
-const { connState, inputNick, inputChannel, connect, connectAsAnon, defaultChannel } = useIrcChat()
+const props = defineProps<{
+  // When true (full page / exclusive surfaces), the "Sign in" affordance swaps in
+  // the embedded sign-in form instead of linking out to /auth/sign-in. The compact
+  // navbar sheet leaves this off and keeps the external link.
+  inlineSignIn?: boolean
+}>()
 
-// Show a resolved channel in the hint even before the user has a persisted
-// channel - falls back to the auth default so the hint is never blank.
-const hintChannel = computed(() => inputChannel.value || defaultChannel(false))
+const { connState, inputNick, inputChannel, connect, connectAsAnon, hadAccount } = useIrcChat()
+const route = useRoute()
+// Auto-connect is a regular user setting (DB-backed, reactive, shared with the
+// chat settings switch and the app-wide auto-connect in plugins/chat.client.ts),
+// so toggling it here applies everywhere immediately.
+const { settings } = useDataUserSettings()
 
 const userId = useUserId()
 const { user } = useDataUser(userId)
-
-// Prefill #public for anon/signed-out users who have no persisted channel.
-onMounted(() => {
-  if (!user.value && !inputChannel.value)
-    inputChannel.value = defaultChannel(true)
-})
 
 const connecting = computed(() => connState.value === 'connecting')
 
@@ -25,14 +28,23 @@ const connecting = computed(() => connState.value === 'connecting')
 const anonMode = ref(false)
 const anonNick = ref('')
 
+// Inline sign-in (signed-out surfaces only). A returning user - one who has
+// connected with an account on this browser before - defaults straight to the
+// sign-in form so an expired session doesn't strand them on the guest form. The
+// "Continue as guest" button below the form clears this and stays cleared.
+const signInMode = ref(false)
+onMounted(() => {
+  if (props.inlineSignIn && hadAccount.value && !user.value)
+    signInMode.value = true
+})
+
 function enterAnonMode() {
   anonNick.value = `anon-${Math.random().toString(36).slice(2, 7)}`
-  inputChannel.value = defaultChannel(true)
   anonMode.value = true
 }
 
 function onAnonConnect() {
-  if (!anonNick.value.trim() || !inputChannel.value.trim())
+  if (!anonNick.value.trim())
     return
   // Override the shared nick so openSocket uses the anon nick, not the
   // signed-in username that ensureNick may have seeded.
@@ -42,7 +54,7 @@ function onAnonConnect() {
 
 // For the signed-out form - channel input stays shared.
 function onSignedOutConnect() {
-  if (inputNick.value.trim() && inputChannel.value.trim())
+  if (inputNick.value.trim())
     connectAsAnon()
 }
 </script>
@@ -68,7 +80,9 @@ function onSignedOutConnect() {
               Connect to chat
             </h4>
             <p class="text-s text-color-light">
-              You'll join <strong class="text-s">{{ hintChannel }}</strong> as <strong class="text-s">{{ user.username }}</strong> using your Hivecom account.
+              You'll connect as <strong class="text-s">{{ user.username }}</strong> using your Hivecom account<template v-if="inputChannel">
+                , joining <strong class="text-s">{{ inputChannel }}</strong>
+              </template>.
             </p>
           </Flex>
           <Flex y-center gap="s" wrap>
@@ -82,6 +96,11 @@ function onSignedOutConnect() {
               Continue as anon
             </Button>
           </Flex>
+          <Checkbox
+            v-model="settings.chat_autoconnect"
+            accent
+            label="Connect automatically next time"
+          />
         </Flex>
 
         <!-- Signed in, anon path: pick a nick -->
@@ -105,7 +124,7 @@ function onSignedOutConnect() {
               />
             </Flex>
             <Flex column gap="xs" class="chat-connect__field">
-              <label class="text-s text-color-light">Channel</label>
+              <label class="text-s text-color-light">Channel <span class="text-color-lighter">(optional)</span></label>
               <Input v-model="inputChannel" expand placeholder="#public" @keydown.enter="onAnonConnect" />
             </Flex>
           </Flex>
@@ -113,13 +132,23 @@ function onSignedOutConnect() {
             <Button
               variant="accent"
               :loading="connecting"
-              :disabled="!anonNick.trim() || !inputChannel.trim()"
+              :disabled="!anonNick.trim()"
               @click="onAnonConnect"
             >
               Connect
             </Button>
             <Button variant="gray" plain :disabled="connecting" @click="anonMode = false">
               Back
+            </Button>
+          </Flex>
+        </Flex>
+
+        <!-- Signed out, inline sign-in: embedded sign-in form (no page chrome) -->
+        <Flex v-else-if="props.inlineSignIn && signInMode" key="signin" column gap="m" expand>
+          <SignInForm stay-on-success :redirect="route.path" @success="signInMode = false" />
+          <Flex x-center>
+            <Button variant="gray" plain @click="signInMode = false">
+              Continue as guest
             </Button>
           </Flex>
         </Flex>
@@ -132,7 +161,7 @@ function onSignedOutConnect() {
               <Input v-model="inputNick" expand placeholder="your-nick" @keydown.enter="onSignedOutConnect" />
             </Flex>
             <Flex column gap="xs" class="chat-connect__field">
-              <label class="text-s text-color-light">Channel</label>
+              <label class="text-s text-color-light">Channel <span class="text-color-lighter">(optional)</span></label>
               <Input v-model="inputChannel" expand placeholder="#public" @keydown.enter="onSignedOutConnect" />
             </Flex>
           </Flex>
@@ -140,7 +169,7 @@ function onSignedOutConnect() {
             <Button
               variant="accent"
               :loading="connecting"
-              :disabled="!inputNick.trim() || !inputChannel.trim()"
+              :disabled="!inputNick.trim()"
               @click="onSignedOutConnect"
             >
               Connect
@@ -148,7 +177,15 @@ function onSignedOutConnect() {
           </Flex>
           <Divider />
           <p class="text-s text-color-light">
-            <NuxtLink to="/auth/sign-in">
+            <button
+              v-if="props.inlineSignIn"
+              type="button"
+              class="chat-connect__link text-color-accent"
+              @click="signInMode = true"
+            >
+              Sign in
+            </button>
+            <NuxtLink v-else to="/auth/sign-in">
               Sign in
             </NuxtLink> to a Hivecom account to chat with a verified identity.
           </p>
@@ -177,6 +214,16 @@ function onSignedOutConnect() {
 
   &__title {
     margin: 0;
+  }
+
+  &__link {
+    background: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
   }
 }
 </style>

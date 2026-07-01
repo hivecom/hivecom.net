@@ -7,6 +7,7 @@ import RecurrenceBuilder from '@/components/Events/RecurrenceBuilder.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { displayDateTime } from '@/lib/utils/date'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -109,6 +110,19 @@ const effectiveValidation = computed(() =>
 const mediaContext = computed(() =>
   props.eventId ? `events/${props.eventId}/markdown/media` : undefined,
 )
+
+// ── Editor passthrough ──────────────────────────────────────────────────────
+// The editor uploads pasted/dropped media lazily (blob placeholders). Consumers
+// drive their own submit, so they MUST flush pending uploads before persisting
+// the markdown - otherwise blob: URLs get saved and render as missing media.
+
+const editorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
+
+async function flushPendingUploads(): Promise<boolean> {
+  return (await editorRef.value?.flushPendingUploads()) ?? true
+}
+
+defineExpose({ flushPendingUploads })
 </script>
 
 <template>
@@ -161,14 +175,7 @@ const mediaContext = computed(() =>
               expand
               :class="{ error: !effectiveValidation.date }"
             >
-              {{ localDate ? localDate.toLocaleString(undefined, {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false,
-              }) : 'Choose date and time' }}
+              {{ localDate ? displayDateTime(localDate) : 'Choose date and time' }}
               <template #end>
                 <Icon name="ph:calendar" />
               </template>
@@ -271,13 +278,14 @@ const mediaContext = computed(() =>
 
     <!-- Rich text content -->
     <RichTextEditor
+      ref="editorRef"
       :model-value="modelValue.markdown"
       label="Content"
       hint="You can use markdown and add media by drag-and-drop"
       placeholder="Additional event details (optional)"
       min-height="144px"
       show-expand-button
-      fullscreen-on-mobile
+      always-show-expand-button
       :media-context="mediaContext"
       :media-bucket-id="mediaBucketId"
       :show-attachment-button="!!eventId && isEditMode"

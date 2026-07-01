@@ -2,20 +2,23 @@
 import type { QueryData } from '@supabase/supabase-js'
 import type { MetricsHistoryEntry } from '@/composables/useDataMetrics'
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Alert, Badge, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Badge, Button, defineTable, DropdownItem, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, onMounted, watch } from 'vue'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import { useAdminCrudTable } from '@/composables/useAdminCrudTable'
 import { invalidateGameserversCache } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { metricsPlayerCount } from '@/types/metrics'
 import GameserverDetails from './GameServerDetails.vue'
 import GameserverFilters from './GameServerFilters.vue'
 import GameserverForm from './GameServerForm.vue'
@@ -85,6 +88,7 @@ const {
   refresh: fetchGameservers,
 } = useAdminCrudTable<QueryGameserver, TransformedGameserver>({
   resourceType: 'network_gameservers',
+  permissionResource: 'network',
   // URL param sync handled manually below (also needs to set tab= param)
   queryParamKey: false,
   refreshSignal,
@@ -145,14 +149,7 @@ function getServerPlayers(gameserverId: number): number | null {
   const byServer = latestMetrics.value?.gameservers?.byServer
   if (!byServer)
     return null
-  const detail = byServer[String(gameserverId)]
-  if (!detail || detail.protocol === null)
-    return null
-  if (detail.protocol === 'source')
-    return detail.data.players
-  if (detail.protocol === 'minecraft')
-    return detail.data.numPlayers
-  return null
+  return metricsPlayerCount(byServer[String(gameserverId)])
 }
 
 // Apply secondary filters on top of the composable's search-filtered rows
@@ -177,6 +174,7 @@ const filteredData = computed(() => {
     return true
   }).map(row => ({
     ...row,
+    id: row._original.id,
     Activity: getServerPlayers(row._original.id),
   }))
 })
@@ -184,9 +182,9 @@ const filteredData = computed(() => {
 const filteredCount = computed(() => filteredData.value.length)
 const isFiltered = computed(() => filteredCount.value !== totalCount.value)
 
-const { headers, rows, pagination, setPage, setSort, options } = defineTable(filteredData, {
+const { headers, rows, pagination, setPage, setSort, options, selectedRows, deselectAllRows } = defineTable(filteredData, {
   pagination: { enabled: true, perPage: adminTablePerPage.value },
-  select: false,
+  select: true,
 })
 
 watch(adminTablePerPage, (perPage) => {
@@ -232,8 +230,41 @@ watch(
   { immediate: true },
 )
 
-async function handleGameserverSave(gameserverData: TablesInsert<'network_gameservers'> | TablesUpdate<'network_gameservers'>) {
+interface GameserverSecretPayload {
+  // New secret to store (Vault), or null to leave the existing one untouched.
+  secret: string | null
+  // Remove any stored secret.
+  clear: boolean
+}
+
+// Persist the per-gameserver query secret (e.g. Factorio RCON password) to
+// Vault via the dedicated RPCs. The plaintext never lives on the row.
+async function persistGameserverSecret(gameserverId: number, payload: GameserverSecretPayload) {
+  if (payload.clear) {
+    const { error } = await supabase.rpc('delete_gameserver_query_secret', {
+      p_gameserver_id: gameserverId,
+    })
+    if (error)
+      throw error
+    return
+  }
+  if (payload.secret) {
+    const { error } = await supabase.rpc('set_gameserver_query_secret', {
+      p_gameserver_id: gameserverId,
+      p_secret: payload.secret,
+    })
+    if (error)
+      throw error
+  }
+}
+
+async function handleGameserverSave(
+  gameserverData: TablesInsert<'network_gameservers'> | TablesUpdate<'network_gameservers'>,
+  secretPayload?: GameserverSecretPayload,
+) {
   try {
+    let gameserverId: number | null = null
+
     if (isEditMode.value && selectedGameserver.value) {
       const { error } = await supabase
         .from('network_gameservers')
@@ -245,9 +276,10 @@ async function handleGameserverSave(gameserverData: TablesInsert<'network_gamese
         .eq('id', selectedGameserver.value.id)
       if (error)
         throw error
+      gameserverId = selectedGameserver.value.id
     }
     else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('network_gameservers')
         .insert({
           ...gameserverData,
@@ -255,12 +287,18 @@ async function handleGameserverSave(gameserverData: TablesInsert<'network_gamese
           modified_by: userId.value ?? null,
           modified_at: new Date().toISOString(),
         } as TablesInsert<'network_gameservers'>)
+        .select('id')
+        .single()
       if (error)
         throw error
+      gameserverId = data?.id ?? null
 
       if (userId.value)
         subscriptionsCache.invalidateList(userId.value)
     }
+
+    if (secretPayload && gameserverId != null)
+      await persistGameserverSecret(gameserverId, secretPayload)
 
     showGameserverForm.value = false
     invalidateGameserversCache()
@@ -271,12 +309,12 @@ async function handleGameserverSave(gameserverData: TablesInsert<'network_gamese
   }
 }
 
-async function handleGameserverDelete(gameserverId: number) {
+async function handleGameserversDelete(gameserverIds: number[]) {
   try {
     const { error } = await supabase
       .from('network_gameservers')
       .delete()
-      .eq('id', gameserverId)
+      .in('id', gameserverIds)
     if (error)
       throw error
 
@@ -293,6 +331,16 @@ function clearFilters() {
   search.value = ''
   regionFilter.value = undefined
   gameFilter.value = []
+}
+
+// Bulk deletion
+const showBulkDeleteConfirm = ref(false)
+
+async function handleBulkDelete() {
+  showBulkDeleteConfirm.value = false
+  const ids = [...selectedRows.value].map(row => row._original.id)
+  await handleGameserversDelete(ids)
+  deselectAllRows()
 }
 </script>
 
@@ -379,7 +427,8 @@ function clearFilters() {
     <TableContainer>
       <Table.Root v-if="rows && rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
-          <Table.Head v-for="header in headers.filter(h => h.label !== '_original')" :key="header.label" sort :header />
+          <th v-if="canManageResource" class="vui-table-interactive-cell" />
+          <Table.Head v-for="header in headers.filter(h => h.label !== '_original' && h.label !== 'id')" :key="header.label" sort :header />
           <Table.Head
             v-if="canManageResource"
             key="actions"
@@ -389,19 +438,22 @@ function clearFilters() {
         </template>
 
         <template #body>
-          <tr v-for="gameserver in rows" :key="gameserver._original.id" class="clickable-row" @click="viewGameserver(gameserver._original as QueryGameserver)">
-            <Table.Cell>{{ gameserver.Name }}</Table.Cell>
-            <Table.Cell>
+          <tr v-for="gameserver in rows" :key="gameserver._original.id" class="clickable-row">
+            <Table.SelectRow v-if="canManageResource" :row="gameserver as any" />
+            <Table.Cell @click="viewGameserver(gameserver._original as QueryGameserver)">
+              {{ gameserver.Name }}
+            </Table.Cell>
+            <Table.Cell @click="viewGameserver(gameserver._original as QueryGameserver)">
               <Flex v-if="(gameserver._original as QueryGameserver).game" gap="xs" y-center>
                 <GameIcon :game="(gameserver._original as QueryGameserver).game as Tables<'games'>" size="xs" />
                 <span class="text-s">{{ gameserver.Game }}</span>
               </Flex>
               <span v-else class="text-s">{{ gameserver.Game }}</span>
             </Table.Cell>
-            <Table.Cell>
+            <Table.Cell @click="viewGameserver(gameserver._original as QueryGameserver)">
               <RegionIndicator :region="gameserver._original.region" show-label />
             </Table.Cell>
-            <Table.Cell>
+            <Table.Cell @click="viewGameserver(gameserver._original as QueryGameserver)">
               <template v-if="(gameserver._original as QueryGameserver).query_protocol != null">
                 <Flex y-center gap="s" style="max-width: 260px">
                   <OnlineBadge
@@ -429,8 +481,8 @@ function clearFilters() {
               </template>
               <span v-else class="text-color-lighter text-xs">No query</span>
             </Table.Cell>
-            <Table.Cell>
-              <Badge v-if="gameserver.Container" variant="neutral" outline size="s">
+            <Table.Cell @click="viewGameserver(gameserver._original as QueryGameserver)">
+              <Badge v-if="gameserver.Container" variant="neutral" outline>
                 {{ gameserver.Container }}
               </Badge>
               <span v-else>-</span>
@@ -438,6 +490,7 @@ function clearFilters() {
             <Table.Cell v-if="canManageResource" @click.stop>
               <AdminActions
                 resource-type="network_gameservers"
+                permission="network"
                 :item="gameserver._original"
                 button-size="s"
                 :custom-actions="[
@@ -449,7 +502,7 @@ function clearFilters() {
                   },
                 ]"
                 @edit="(item) => openEditGameserverForm(item as QueryGameserver)"
-                @delete="(item) => handleGameserverDelete((item as QueryGameserver).id)"
+                @delete="(item) => handleGameserversDelete([item.id as number])"
               />
             </Table.Cell>
           </tr>
@@ -472,7 +525,7 @@ function clearFilters() {
     v-model:is-open="showGameserverDetails"
     :gameserver="selectedGameserver"
     @edit="handleEditFromDetails"
-    @delete="handleGameserverDelete"
+    @delete="(id: number) => handleGameserversDelete([id])"
   />
 
   <GameserverForm
@@ -480,7 +533,31 @@ function clearFilters() {
     :gameserver="selectedGameserver"
     :is-edit-mode="isEditMode"
     @save="handleGameserverSave"
-    @delete="handleGameserverDelete"
+    @delete="(id: number) => handleGameserversDelete([id])"
+  />
+
+  <SelectedRowsActions
+    :selected-count="selectedRows.length"
+    @clear="deselectAllRows()"
+  >
+    <DropdownItem @click="showBulkDeleteConfirm = true">
+      <template #icon>
+        <Icon name="ph:trash" class="text-color-red" />
+      </template>
+      Delete
+    </DropdownItem>
+  </SelectedRowsActions>
+
+  <!-- Bulk Delete Confirmation Modal -->
+  <ConfirmModal
+    :open="showBulkDeleteConfirm"
+    :title="`Delete ${selectedRows.length} items`"
+    :description="`Are you sure you want to delete ${selectedRows.length} game servers? This action cannot be undone.`"
+    confirm-text="Delete"
+    cancel-text="Cancel"
+    :destructive="true"
+    @cancel="showBulkDeleteConfirm = false"
+    @confirm="handleBulkDelete"
   />
 </template>
 

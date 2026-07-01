@@ -8,6 +8,7 @@ const props = defineProps<{
   placeholder?: string
   /** Allow comma-separated bulk entry */
   allowBulk?: boolean
+  disabled?: boolean
 }>()
 
 const tags = defineModel<string[]>({ default: () => [] })
@@ -32,7 +33,7 @@ function removeTag(tag: string) {
 <template>
   <Flex column gap="xs" expand>
     <label v-if="props.label" class="tag-input__label">{{ props.label }}</label>
-    <Flex gap="xs" y-center>
+    <Flex v-if="!props.disabled" gap="xs" y-center>
       <Input
         v-model="inputValue"
         expand
@@ -52,7 +53,7 @@ function removeTag(tag: string) {
         class="tag-input__badge"
       >
         {{ tag }}
-        <Button size="s" square class="tag-input__remove" @click="removeTag(tag)">
+        <Button v-if="!props.disabled" size="s" square class="tag-input__remove" @click="removeTag(tag)">
           <Icon name="ph:x" />
         </Button>
       </Badge>

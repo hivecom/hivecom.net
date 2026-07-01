@@ -103,7 +103,7 @@ const { iconUrl } = useTopicIcon(topicId)
         <Tooltip placement="top">
           <span>{{ dayjs(lastActivity ?? data.modified_at).fromNow() }}</span>
           <template #tooltip>
-            <TimestampDate :date="lastActivity ?? data.modified_at" :tooltip="false" format="YYYY-MM-DD HH:mm:ss" size="xs" />
+            <TimestampDate :date="lastActivity ?? data.modified_at" :tooltip="false" type="displayDateTime" size="xs" />
           </template>
         </Tooltip>
       </div>

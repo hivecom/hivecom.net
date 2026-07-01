@@ -11,7 +11,7 @@ import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getRouteQueryString } from '@/lib/utils/common'
 import { formatCurrency } from '@/lib/utils/currency'
-import { formatMonth } from '@/lib/utils/date'
+import { fullMonth } from '@/lib/utils/date'
 import FundingDetails from './FundingDetails.vue'
 import FundingFilters from './FundingFilters.vue'
 
@@ -65,7 +65,7 @@ const transformedFundings = computed<TransformedFunding[]>(() => {
   if (search.value) {
     const searchTerm = search.value.toLowerCase()
     filteredData = monthlyFundings.value.filter(funding =>
-      formatMonth(funding.month).toLowerCase().includes(searchTerm),
+      fullMonth(funding.month).toLowerCase().includes(searchTerm),
     )
   }
 
@@ -238,17 +238,17 @@ watch(() => refreshSignal.value, (sig, prev) => {
         <template #body>
           <tr v-for="funding in rows" :key="funding._original.month" class="clickable-row" @click="viewFundingDetails(funding._original)">
             <Table.Cell>
-              <TimestampDate :date="`${funding._original.month}T00:00:00+00:00`" format="MMMM YYYY" />
+              <TimestampDate :date="`${funding._original.month}T00:00:00+00:00`" type="fullMonth" />
             </Table.Cell>
             <Table.Cell>
-              <Badge v-if="funding['Patreon Amount'] !== '€0'" variant="success">
+              <Badge v-if="(funding._original.patreon_month_amount_cents || 0) > 0" variant="success">
                 {{ funding['Patreon Amount'] }}
                 <span v-if="funding._patronCount > 0" class="text-xs text-color-light ml-xs">({{ funding._patronCount }})</span>
               </Badge>
               <span v-else class="text-color-light">-</span>
             </Table.Cell>
             <Table.Cell>
-              <Badge v-if="funding['Donation Amount'] !== '€0'" variant="info">
+              <Badge v-if="(funding._original.donation_month_amount_cents || 0) > 0" variant="info">
                 {{ funding['Donation Amount'] }}
                 <span v-if="funding._donationCount > 0" class="text-xs text-color-light ml-xs">({{ funding._donationCount }})</span>
               </Badge>

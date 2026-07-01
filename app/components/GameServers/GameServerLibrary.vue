@@ -10,6 +10,7 @@ import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useOngoingEvents } from '@/composables/useOngoingEvents'
+import { metricsPlayerCount } from '@/types/metrics'
 
 const props = defineProps<Props>()
 
@@ -70,15 +71,7 @@ function getPlayersForGame(gameId: number): number | null {
     return null
   let total = 0
   for (const gs of servers) {
-    const detail = byServer[String(gs.id)]
-    if (!detail?.data)
-      continue
-    const count = detail.protocol === 'minecraft'
-      ? detail.data.numPlayers
-      : detail.protocol === 'source'
-        ? detail.data.players
-        : null
-    total += count ?? 0
+    total += metricsPlayerCount(byServer[String(gs.id)]) ?? 0
   }
   return total
 }
@@ -293,7 +286,6 @@ function isCoverLoading(gameId: number): boolean {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
 .game-library {
   width: 100%;
 }

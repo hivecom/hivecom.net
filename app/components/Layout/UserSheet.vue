@@ -145,6 +145,15 @@ async function signOut() {
             </DropdownItem>
           </NuxtLink>
 
+          <NuxtLink to="/sharing" class="w-100">
+            <DropdownItem>
+              <template #icon>
+                <Icon name="ph:share-network" :size="18" />
+              </template>
+              Sharing
+            </DropdownItem>
+          </NuxtLink>
+
           <NuxtLink to="/profile/settings" class="w-100">
             <DropdownItem>
               <template #icon>

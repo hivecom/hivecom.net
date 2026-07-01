@@ -25,6 +25,7 @@ import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { metricsPlayerCount } from '@/types/metrics'
 
 const ChartGameActivity = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameActivity.vue'))
 
@@ -169,15 +170,7 @@ function gameserverPlayersForGame(gameId: number): number {
   const servers = gameservers.value.filter(gs => gs.game === gameId && gs.query_protocol != null)
   let total = 0
   for (const gs of servers) {
-    const detail = byServer[String(gs.id)]
-    if (!detail?.data)
-      continue
-    const count = detail.protocol === 'minecraft'
-      ? (detail.data as { numPlayers?: number }).numPlayers
-      : detail.protocol === 'source'
-        ? (detail.data as { players?: number }).players
-        : null
-    total += count ?? 0
+    total += metricsPlayerCount(byServer[String(gs.id)]) ?? 0
   }
   return total
 }
@@ -410,9 +403,14 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
           hide-title
           hide-untracked
         >
-          <p class="chart-section__subtitle text-color-lighter text-xxs">
-            Last 14 days of game activity
-          </p>
+          <Flex y-center x-between gap="s" expand>
+            <Flex class="chart-section__subtitle" gap="xxs" y-center @click="activityModalOpen = true">
+              <p class="text-color-lighter text-xxs">
+                Last 14 days of game activity
+              </p>
+              <Icon size="14" name="ph:arrows-out" class="text-color-lighter" />
+            </Flex>
+          </Flex>
         </ChartGameActivity>
       </section>
 
@@ -515,8 +513,6 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 // ── Chart section ────────────────────────────────────────────────────────────
 .chart-section {
   position: relative;
@@ -544,6 +540,7 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
   }
 
   &__subtitle {
+    cursor: pointer;
     position: absolute;
     bottom: var(--space-s);
     right: var(--space-m);

@@ -7,7 +7,8 @@ import { useDataExpenses } from '@/composables/useDataExpenses'
 import { useDataMonthlyFunding } from '@/composables/useDataMonthlyFunding'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { scrollToId } from '@/lib/utils/common'
-import { formatCurrency } from '@/lib/utils/currency'
+import { formatCurrency, formatCurrencyUnits } from '@/lib/utils/currency'
+import { fullMonth } from '@/lib/utils/date'
 
 interface Props {
   onFundingPage?: boolean
@@ -61,10 +62,7 @@ const statusMessage = computed(() => {
 const currentMonthLabel = computed(() => {
   if (!currentFunding.value)
     return 'Monthly Funding'
-  return new Date(`${currentFunding.value.month}T00:00:00`).toLocaleDateString(undefined, {
-    month: 'long',
-    year: 'numeric',
-  })
+  return fullMonth(currentFunding.value.month)
 })
 
 // Absolute funding change vs previous month in whole euros (null if not enough data)
@@ -143,7 +141,7 @@ function scrollToSupport() {
                 {{ currentMonthLabel }}
               </h2>
               <Tooltip>
-                <GrowthBadge class="mt-xxs" :growth="growthPct" :value="growthValue" prefix="€" :size="isBelowSmall ? 's' : 'm'" show-icon />
+                <GrowthBadge class="mt-xxs" :growth="growthPct" :value="growthValue !== null ? (growthValue > 0 ? `+${formatCurrencyUnits(growthValue)}` : formatCurrencyUnits(growthValue)) : null" :size="isBelowSmall ? 's' : 'm'" show-icon />
                 <template #tooltip>
                   <p>Month-over-month change</p>
                 </template>
@@ -196,8 +194,6 @@ function scrollToSupport() {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .funding-progress__complete {
   border: 1px solid var(--color-accent);
 }

@@ -29,6 +29,40 @@ export function normalizeInternalRedirect(value: unknown): string | null {
   return trimmed
 }
 
+/**
+ * Reloads the current page with a cache-busting query param appended so the
+ * browser is forced to re-fetch the HTML document from the network rather than
+ * re-serving a stale cached copy. This is essential after a deploy replaces the
+ * content-hashed `_nuxt/` chunks: a plain `location.reload()` can be served the
+ * same stale HTML (which still references now-deleted chunk files), leaving the
+ * app permanently broken. Preserves the current path and hash.
+ */
+export function reloadWithCacheBust() {
+  if (typeof window === 'undefined')
+    return
+  const url = new URL(window.location.href)
+  // Set, don't append, so repeated recoveries can't stack `?_=...&_=...`.
+  url.searchParams.set('_', String(Date.now()))
+  window.location.replace(url.toString())
+}
+
+/**
+ * Removes the `_` cache-bust param that reloadWithCacheBust added, rewriting
+ * the address bar without a navigation. Call once after boot so the ugly
+ * `?_=...` doesn't linger in the URL after a recovery reload has done its job.
+ */
+export function stripCacheBustParam() {
+  if (typeof window === 'undefined')
+    return
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has('_'))
+    return
+  url.searchParams.delete('_')
+  const query = url.searchParams.toString()
+  const clean = `${url.pathname}${query ? `?${query}` : ''}${url.hash}`
+  window.history.replaceState(window.history.state, '', clean)
+}
+
 export function getCSSVariable(key: string) {
   if (typeof window === 'undefined')
     return ''

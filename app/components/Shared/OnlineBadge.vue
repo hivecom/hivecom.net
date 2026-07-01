@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Badge, Skeleton } from '@dolanske/vui'
+import { Badge } from '@dolanske/vui'
 import { computed } from 'vue'
 
 interface Props {
@@ -32,9 +32,7 @@ const displayLabel = computed(() => props.singular && props.count === 1 ? props.
 </script>
 
 <template>
-  <Skeleton v-if="count === null" width="120" height="22" radius="12" />
   <Badge
-    v-else
     :variant
     :size
     :style="{

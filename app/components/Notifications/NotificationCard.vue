@@ -2,7 +2,7 @@
 import { Badge, Card, Flex } from '@dolanske/vui'
 import { computed, toRefs } from 'vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { formatTimeAgo } from '@/lib/utils/date'
+import { fromNow } from '@/lib/utils/date'
 
 interface Props {
   text?: string
@@ -100,7 +100,7 @@ function handleCardClick() {
         class="notification-card__timestamp"
         :class="{ 'notification-card__timestamp--mobile': isMobile }"
       >
-        {{ formatTimeAgo(timestamp) }}
+        {{ fromNow(timestamp) }}
       </span>
       <Flex v-if="slots.actions" gap="xxs" class="notification-card__actions">
         <slot name="actions" />
@@ -111,7 +111,6 @@ function handleCardClick() {
 
 <style lang="scss" scoped>
 @use '@/assets/mixins.scss' as *;
-@use '@/assets/breakpoints.scss' as *;
 
 .notification-card {
   position: relative;

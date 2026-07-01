@@ -25,11 +25,35 @@
 
 import type { Database, Json } from './database.types'
 import type { MetricsSnapshot } from './metrics'
+import type { SoundDesign } from './sound'
 
 // Re-export pass-throughs so callers only need one import source.
 export type { Database, Json }
 export type { CompositeTypes, Enums } from './database.types'
 export { Constants } from './database.types'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Permissions
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Every permission string defined by the `app_permission` enum,
+ * e.g. 'network.update'. This is the source of truth - it is regenerated
+ * from the database whenever permissions change.
+ */
+export type AppPermission = Database['public']['Enums']['app_permission']
+
+/**
+ * The resource half of a permission key, e.g. 'network' from 'network.update'.
+ *
+ * Type permission-group identifiers as this so a stale or misspelled group
+ * (like the pre-consolidation 'containers' / 'network_gameservers') becomes a
+ * compile error instead of a silently failing string lookup.
+ */
+export type PermissionResource = AppPermission extends `${infer R}.${string}` ? R : never
+
+/** Permission actions that exist on resource groups. */
+export type PermissionAction = 'create' | 'read' | 'update' | 'delete'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Concrete column types
@@ -50,6 +74,21 @@ export { Constants } from './database.types'
  * inside computed properties or complex generics.
  */
 export type ReactionData = Record<string, Record<string, string[]>>
+
+/**
+ * Concrete type for the `network_gameservers.query_options` JSONB column.
+ *
+ * Non-secret, per-gameserver query configuration. Secrets (e.g. the Factorio
+ * RCON password) live in Vault, not here.
+ */
+export interface GameserverQueryOptions {
+  /**
+   * Factorio only: opt into the RCON `/silent-command` Lua mode that also
+   * returns player names and the configured max-player limit. Disables save
+   * achievements, so it is off by default.
+   */
+  factorioUseLua?: boolean
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Override map
@@ -85,6 +124,13 @@ interface TableColumnOverrides {
       show_offtopic_replies: boolean
       show_thread_replies: boolean
       discussion_view_mode: 'flat' | 'threaded'
+      // Emoji shown as a quick-access strip above the full reaction picker, and
+      // in chat's floating reaction toolbar. User-curated, order preserved.
+      quick_reactions: string[]
+      // How forum threads page through replies: 'infinite' = auto-load on scroll,
+      // 'paginated' = traditional page controls. Does not change how the forum
+      // looks, only how more replies are loaded.
+      forum_pagination_mode: 'infinite' | 'paginated'
       show_forum_updates: boolean
       show_forum_recently_visited: boolean
       show_forum_archived: boolean
@@ -99,6 +145,7 @@ interface TableColumnOverrides {
       admin_expanded_layout: boolean
       admin_asset_view_mode: 'table' | 'grid'
       admin_asset_flat_view: boolean
+      admin_depot_view_mode: 'table' | 'grid'
       chat_colored_nicks: boolean
       chat_notify_only_mentions: boolean
       chat_autoconnect: boolean
@@ -108,6 +155,18 @@ interface TableColumnOverrides {
       chat_mobile_font_size: number
       chat_mention_keywords: string[]
       chat_browser_notifications: boolean
+      chat_sound_mention_choice: string
+      chat_sound_message_choice: string
+      chat_sound_mention_url: string
+      chat_sound_message_url: string
+      chat_sound_mention_design: SoundDesign | null
+      chat_sound_message_design: SoundDesign | null
+      chat_sound_volume: number
+      app_browser_notifications: boolean
+      notification_sound_choice: string
+      notification_sound_url: string
+      notification_sound_design: SoundDesign | null
+      notification_sound_volume: number
       chat_show_timestamps: boolean
       chat_timestamp_format: string
       chat_display_mode: 'irc' | 'modern'
@@ -115,13 +174,25 @@ interface TableColumnOverrides {
       chat_typing_indicators: boolean
       chat_irc_reactions: boolean
       chat_irc_hide_embedded_links: boolean
+      chat_irc_hide_sidebar_timestamps: boolean
       chat_irc_inline_images: boolean
       chat_irc_native_modes: boolean
+      chat_irc_pure_relay_nicks: boolean
+      chat_cache_max_messages_per_buffer: number
+      // Output level (0-100) for the shared site audio player (depot tracks,
+      // embeds, the fullscreen lightbox), persisted so it carries across
+      // sessions and every player. Mobile ignores it and plays at full, leaving
+      // the device volume as the only control.
+      audio_player_volume: number
     }
   }
 
   metrics: {
     data: MetricsSnapshot
+  }
+
+  network_gameservers: {
+    query_options: GameserverQueryOptions | null
   }
 
 }

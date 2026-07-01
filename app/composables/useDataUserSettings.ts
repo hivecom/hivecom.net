@@ -10,6 +10,9 @@ let _autoSaveWatcherRegistered = false
 
 const GUEST_SETTINGS_KEY = 'hivecom.guest.settings'
 
+/** Default quick-reaction emoji - also used by the settings "reset" action. */
+export const DEFAULT_QUICK_REACTIONS = ['👍', '❤️', '😂', '🔥']
+
 // Single source of truth for user settings
 export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
   return {
@@ -19,6 +22,8 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     show_offtopic_replies: false,
     show_thread_replies: false,
     discussion_view_mode: 'flat',
+    quick_reactions: [...DEFAULT_QUICK_REACTIONS],
+    forum_pagination_mode: 'infinite',
     show_forum_updates: true,
     show_forum_recently_visited: true,
     show_forum_archived: false,
@@ -33,6 +38,7 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     admin_expanded_layout: false,
     admin_asset_view_mode: 'table',
     admin_asset_flat_view: false,
+    admin_depot_view_mode: 'grid',
     chat_colored_nicks: true,
     chat_notify_only_mentions: true,
     chat_autoconnect: false,
@@ -42,6 +48,18 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     chat_mobile_font_size: 14,
     chat_mention_keywords: [],
     chat_browser_notifications: false,
+    chat_sound_mention_choice: 'none',
+    chat_sound_message_choice: 'none',
+    chat_sound_mention_url: '',
+    chat_sound_message_url: '',
+    chat_sound_mention_design: null,
+    chat_sound_message_design: null,
+    chat_sound_volume: 70,
+    app_browser_notifications: false,
+    notification_sound_choice: 'none',
+    notification_sound_url: '',
+    notification_sound_design: null,
+    notification_sound_volume: 70,
     chat_show_timestamps: true,
     chat_timestamp_format: 'HH:mm:ss',
     chat_display_mode: 'modern',
@@ -49,8 +67,12 @@ export function getDefaultUserSettings(): Tables<'user_settings'>['data'] {
     chat_typing_indicators: false,
     chat_irc_reactions: true,
     chat_irc_hide_embedded_links: true,
+    chat_irc_hide_sidebar_timestamps: true,
     chat_irc_inline_images: true,
     chat_irc_native_modes: false,
+    chat_irc_pure_relay_nicks: false,
+    chat_cache_max_messages_per_buffer: 30000,
+    audio_player_volume: 50,
   }
 }
 
@@ -191,6 +213,7 @@ export function useDataUserSettings() {
       return
     }
 
+    hasFetched.value = false
     await fetchSettings()
   })
 

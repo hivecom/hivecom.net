@@ -8,6 +8,7 @@ import { useMfaStatus } from '@/composables/useMfaStatus'
 import { useSessionReady } from '@/composables/useSessionReady'
 import { navigationLinks } from '@/config/navigation'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import InstallPWAButton from '../Shared/InstallPWAButton.vue'
 import ChatSheet from './ChatSheet.vue'
 import NavEventBadge from './NavEventBadge.vue'
 import NotificationSheet from './NotificationSheet.vue'
@@ -90,8 +91,9 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
 <template>
   <nav
-    class="navigation" :class="{ landing: route.path === '/',
-                                 editing: editorActive }"
+    class="navigation" :class="{ 'landing': route.path === '/',
+                                 'editing': editorActive,
+                                 'on-chat': route.path === '/chat' }"
   >
     <DefineSearchButton>
       <Tooltip :disabled="isMobile">
@@ -125,7 +127,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
         <ul ref="navbarLinksRef" class="navigation__links" @mouseleave="hoveredElement = null">
           <template v-for="link in navigationLinks" :key="link.path">
             <li
-              v-if="!link.requiresAuth || (link.requiresAuth && authReady && user)"
+              v-if="(!link.requiresAuth || (link.requiresAuth && authReady && user)) && !link.desktopHidden"
               @mouseenter="updateHoveredElement"
             >
               <NuxtLink
@@ -217,6 +219,9 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
               Themes
             </NuxtLink>
           </div>
+          <template #footer>
+            <InstallPWAButton expand />
+          </template>
         </Sheet>
 
         <!-- User dropdown on right side -->
@@ -232,6 +237,9 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
         <div v-else-if="user && !needsMfaChallenge" class="navigation__user">
           <SearchButton v-if="!isMobile" />
+          <!-- On desktop /chat the trigger stays visible-but-disabled; on mobile
+               /chat it's hidden via CSS (.navigation.on-chat) so there's no
+               hydration flash from the SSR-gated isMobile breakpoint. -->
           <ChatSheet v-if="showChat" :mobile="isMobile" :disabled="route.path === '/chat'" />
           <!-- Custom margin, since visually the pfp appears closer than the distance between search & notif icons -->
           <NotificationSheet style="margin-right:6px" />
@@ -243,7 +251,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
           <div class="navigation__auth-buttons">
             <SearchButton />
 
-            <ChatSheet v-if="showChat" :disabled="route.path === '/chat'" />
+            <ChatSheet v-if="showChat && !(isMobile && route.path === '/chat')" :disabled="route.path === '/chat'" />
 
             <Tooltip :disabled="isMobile">
               <NuxtLink to="/themes">
@@ -267,7 +275,7 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 
           <!-- On mobile we just have a little user icon -->
           <div class="navigation__auth-mobile-button">
-            <ChatSheet v-if="showChat" mobile :disabled="route.path === '/chat'" />
+            <ChatSheet v-if="showChat && route.path !== '/chat'" mobile />
             <Button square aria-label="Sign in" @click="$router.push(signInPath())">
               <Icon name="ph:sign-in" />
             </Button>
@@ -281,8 +289,6 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 :deep(.counter) {
   color: var(--color-text-light);
   font-size: var(--font-size-xxs);
@@ -692,6 +698,17 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
         gap: var(--space-xs);
       }
     }
+  }
+}
+
+// On the dedicated /chat page on mobile, the page itself is the chat surface and
+// the nav sheet (ChatNavSheet) provides channel/user access, so the navbar chat
+// trigger is redundant. Hide it via the viewport media query rather than the
+// SSR-gated useBreakpoint, so a fresh load of /chat doesn't flash the button in
+// before hydration removes it. Desktop /chat keeps the disabled trigger.
+@media (max-width: #{$breakpoint-s - 1}) {
+  .navigation.on-chat .chat-sheet {
+    display: none;
   }
 }
 

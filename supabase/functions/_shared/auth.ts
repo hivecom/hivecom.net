@@ -87,6 +87,57 @@ export async function checkAssuranceLevel(
   return undefined;
 }
 
+/**
+ * Verifies the caller's access token using local JWKS signature + expiry
+ * checks (auth.getClaims) and returns the authenticated user id.
+ *
+ * Unlike auth.getUser, this does not require the session row to still exist
+ * server-side. With asymmetric JWT signing keys the access token is
+ * cryptographically verifiable on its own, so a token that is still valid and
+ * unexpired must be accepted even if its originating session has since been
+ * revoked. Returns the user id on success or a 401 Response on failure.
+ */
+// Structural type so callers can pass any Supabase client regardless of how
+// the @supabase/supabase-js module is resolved (jsr vs npm), which otherwise
+// produces a nominal SupabaseClient type mismatch.
+interface ClaimsVerifier {
+  auth: {
+    getClaims(
+      jwt?: string,
+    ): Promise<
+      { data: { claims: { sub?: string } } | null; error: unknown }
+    >;
+  };
+}
+
+export async function getAuthenticatedUserId(
+  supabaseClient: ClaimsVerifier,
+  authHeader: string,
+): Promise<{ userId: string } | { response: Response }> {
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+
+  const { data, error } = await supabaseClient.auth.getClaims(token);
+  const userId = data?.claims?.sub;
+
+  if (error || !userId) {
+    return {
+      response: new Response(
+        JSON.stringify({
+          success: false,
+          message: "Unauthorized: Invalid token or user not found",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          statusText: "Unauthorized - Invalid token or user not found",
+          status: 401,
+        },
+      ),
+    };
+  }
+
+  return { userId };
+}
+
 export function authorizeSystemCron(req: Request): Response | undefined {
   const systemCronSecret = Deno.env.get("SYSTEM_CRON_SECRET");
 
@@ -172,28 +223,13 @@ export async function authorizeAuthenticated(
       },
     );
 
-    // Get user information from the token
-    const {
-      data: { user },
-      error,
-    } = await supabaseClient.auth.getUser();
-
-    if (error || !user) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: "Unauthorized: Invalid token or user not found",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          statusText: "Unauthorized - Invalid token or user not found",
-          status: 401,
-        },
-      );
-    }
+    // Verify the token and resolve the user id
+    const auth = await getAuthenticatedUserId(supabaseClient, authHeader);
+    if ("response" in auth) return auth.response;
+    const userId = auth.userId;
 
     // Check active ban before allowing access
-    const banResponse = await checkBanStatus(user.id);
+    const banResponse = await checkBanStatus(userId);
     if (banResponse) return banResponse;
 
     // User is authenticated
@@ -253,35 +289,20 @@ export async function authorizeAuthenticatedHasPermission(
       },
     );
 
-    // Get user information from the token
-    const {
-      data: { user },
-      error,
-    } = await supabaseClient.auth.getUser();
-
-    if (error || !user) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: "Unauthorized: Invalid token or user not found",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          statusText: "Unauthorized - Invalid token or user not found",
-          status: 401,
-        },
-      );
-    }
+    // Verify the token and resolve the user id
+    const auth = await getAuthenticatedUserId(supabaseClient, authHeader);
+    if ("response" in auth) return auth.response;
+    const userId = auth.userId;
 
     // Check active ban before allowing access
-    const banResponse = await checkBanStatus(user.id);
+    const banResponse = await checkBanStatus(userId);
     if (banResponse) return banResponse;
 
     // Get the user_role claim from the token
     const { data: userRole, error: roleError } = await supabaseClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (roleError) {
@@ -409,27 +430,13 @@ export async function authorizeAuthenticatedHasPermissionAal2(
       },
     );
 
-    const {
-      data: { user },
-      error,
-    } = await supabaseClient.auth.getUser();
-
-    if (error || !user) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: "Unauthorized: Invalid token or user not found",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          statusText: "Unauthorized - Invalid token or user not found",
-          status: 401,
-        },
-      );
-    }
+    // Verify the token and resolve the user id
+    const auth = await getAuthenticatedUserId(supabaseClient, authHeader);
+    if ("response" in auth) return auth.response;
+    const userId = auth.userId;
 
     // Check active ban
-    const banResponse = await checkBanStatus(user.id);
+    const banResponse = await checkBanStatus(userId);
     if (banResponse) return banResponse;
 
     // Enforce aal2 when MFA is enrolled
@@ -440,7 +447,7 @@ export async function authorizeAuthenticatedHasPermissionAal2(
     const { data: userRole, error: roleError } = await supabaseClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (roleError) {

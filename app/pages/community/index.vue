@@ -426,8 +426,6 @@ watch(user, () => {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .community-card {
   border: none;
   position: relative;

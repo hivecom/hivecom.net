@@ -1,6 +1,7 @@
 import type { FileObject } from '@supabase/storage-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
+import JSZip from 'jszip'
 
 export const CMS_BUCKET_ID = 'hivecom-cms' as const
 export const FORUMS_BUCKET_ID = 'hivecom-content-forums' as const
@@ -18,9 +19,56 @@ export type StorageBucketId
 // File size limits in bytes, mirroring the bucket config in storage.buckets.
 export const BUCKET_SIZE_LIMITS: Record<StorageBucketId, number> = {
   [CMS_BUCKET_ID]: 52428800, // 50 MB
-  [FORUMS_BUCKET_ID]: 10485760, // 10 MB
+  [FORUMS_BUCKET_ID]: 52428800, // 50 MB
   [STATIC_BUCKET_ID]: 5242880, // 5 MB
   [USERS_BUCKET_ID]: 1048576, // 1 MB
+}
+
+// Archive MIME types and extensions. Browsers report these inconsistently
+// (often '' or application/octet-stream), so we match by extension as a fallback.
+export const ARCHIVE_MIME_TYPES = ['application/zip', 'application/x-zip-compressed', 'application/x-7z-compressed', 'application/vnd.rar', 'application/x-rar-compressed', 'application/x-tar', 'application/gzip', 'application/x-gzip']
+export const ARCHIVE_EXTENSIONS = ['zip', '7z', 'rar', 'tar', 'gz', 'tgz', 'bz2', 'xz']
+
+// Allowed MIME patterns per bucket, mirroring allowed_mime_types in
+// storage.buckets. `null` means the bucket accepts any type. Patterns support a
+// trailing `/*` wildcard (e.g. image/*) just like the database column.
+export const BUCKET_ALLOWED_MIME_TYPES: Record<StorageBucketId, string[] | null> = {
+  [CMS_BUCKET_ID]: null,
+  [FORUMS_BUCKET_ID]: ['application/json', 'image/*', 'video/*', 'audio/*', 'text/csv', ...ARCHIVE_MIME_TYPES],
+  [STATIC_BUCKET_ID]: ['application/json', 'image/*', 'video/*', 'text/csv'],
+  [USERS_BUCKET_ID]: ['image/*', 'video/webm'],
+}
+
+function mimeMatchesPattern(pattern: string, type: string): boolean {
+  if (pattern.endsWith('/*'))
+    return type.startsWith(pattern.slice(0, -1))
+  return pattern === type
+}
+
+// Whether a file is allowed in a bucket, by MIME, with an extension fallback for
+// archives whose browser-reported MIME is empty or octet-stream.
+export function isFileAllowedForBucket(bucketId: StorageBucketId, fileType: string, fileName: string): boolean {
+  const patterns = BUCKET_ALLOWED_MIME_TYPES[bucketId]
+  if (patterns == null)
+    return true
+  if (fileType && patterns.some(pattern => mimeMatchesPattern(pattern, fileType)))
+    return true
+
+  const bucketAllowsArchives = patterns.some(pattern => ARCHIVE_MIME_TYPES.includes(pattern))
+  const extension = fileName.split('.').pop()?.toLowerCase() ?? ''
+  return bucketAllowsArchives && ARCHIVE_EXTENSIONS.includes(extension)
+}
+
+// Value for an <input type="file"> accept attribute. Empty string means any
+// type (CMS). Archive extensions are appended since their MIME is unreliable.
+export function getBucketAcceptAttr(bucketId: StorageBucketId): string {
+  const patterns = BUCKET_ALLOWED_MIME_TYPES[bucketId]
+  if (patterns == null)
+    return ''
+  const archiveExtensions = patterns.some(pattern => ARCHIVE_MIME_TYPES.includes(pattern))
+    ? ARCHIVE_EXTENSIONS.map(extension => `.${extension}`)
+    : []
+  return [...patterns, ...archiveExtensions].join(',')
 }
 
 export type SortColumn = 'name' | 'updated_at' | 'created_at'
@@ -276,6 +324,25 @@ export function isVideoAsset(asset: StorageAsset): boolean {
   return knownVideoExtensions.includes(extension)
 }
 
+export function isAudioAsset(asset: StorageAsset): boolean {
+  const mime = asset.mimeType ?? ''
+  const extension = asset.extension ?? ''
+  if (mime.startsWith('audio/'))
+    return true
+
+  const knownAudioExtensions = ['mp3', 'wav', 'flac', 'aac', 'm4a', 'oga', 'opus', 'weba', 'wma']
+  return knownAudioExtensions.includes(extension)
+}
+
+export function isArchiveAsset(asset: StorageAsset): boolean {
+  const mime = asset.mimeType ?? ''
+  const extension = asset.extension ?? ''
+  if (ARCHIVE_MIME_TYPES.includes(mime))
+    return true
+
+  return ARCHIVE_EXTENSIONS.includes(extension)
+}
+
 export function isTextAsset(asset: StorageAsset): boolean {
   const mime = asset.mimeType ?? ''
   const extension = asset.extension ?? ''
@@ -295,6 +362,21 @@ export function getPublicAssetUrl(
   if (!normalized)
     return null
   return client.storage.from(bucketId).getPublicUrl(normalized).data.publicUrl
+}
+
+/**
+ * Triggers a browser download for a storage asset. Appends Supabase's
+ * `?download` query param so the response is served with a
+ * `Content-Disposition: attachment` header even when the asset is cross-origin.
+ */
+export function downloadAsset(publicUrl: string | null | undefined, fileName: string): void {
+  if (!import.meta.client || !publicUrl)
+    return
+
+  const url = new URL(publicUrl)
+  url.searchParams.set('download', fileName)
+
+  triggerDownload(url.toString(), fileName)
 }
 
 export function getBucketLabel(bucketId: StorageBucketId): string {
@@ -369,7 +451,7 @@ function toStorageAsset(
   }
 }
 
-function extractExtension(filename: string): string | null {
+export function extractExtension(filename: string): string | null {
   const parts = filename.split('.')
   if (parts.length < 2)
     return null
@@ -403,4 +485,39 @@ function parseNumericField(value: unknown): number | null {
       return parsed
   }
   return null
+}
+
+/**
+ * Given an array of public asset URLs, creates a ZIP archive and triggers a download in the browser.
+ *
+ */
+export async function zipAndDownloadAssets(publicPaths: string[], archiveName: string) {
+  const zip = new JSZip()
+
+  // Fetch all files and add them to the zip
+  await Promise.all(
+    publicPaths.map(async (path) => {
+      const fileBlob = await fetch(path).then(async res => res.blob())
+      const fileName = path.split('/').pop() ?? 'file'
+      zip.file(fileName, fileBlob)
+    }),
+  )
+
+  const mainBlob = await zip.generateAsync({ type: 'blob' })
+  const archiveHref = URL.createObjectURL(mainBlob)
+
+  triggerDownload(archiveHref, archiveName.endsWith('.zip') ? archiveName : `${archiveName}.zip`)
+}
+
+function triggerDownload(url: string, fileName: string) {
+  if (!import.meta.client)
+    return
+
+  const anchor = document.createElement('a')
+  anchor.classList.add('visually-hidden')
+  anchor.href = url
+  anchor.download = fileName
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
 }

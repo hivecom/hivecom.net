@@ -7,7 +7,7 @@ import { getTopicIconUrl } from '@/lib/storage'
 
 const _inflightIcons = new Map<string, Promise<string | null>>()
 
-const ICON_TTL = 60 * 60 * 1000 // 1 hour — matches getTopicIconUrl's own TTL
+const ICON_TTL = 60 * 60 * 1000 // 1 hour - matches getTopicIconUrl's own TTL
 
 // Module-level localStorage cache shared across all composable instances.
 // Key: topic ID (stored under 'hivecom:cache:kv:topic-icon:<id>' in localStorage).

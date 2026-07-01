@@ -215,8 +215,6 @@ async function goToStaffChannel() {
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .support-modal {
   display: flex;
   flex-direction: column;

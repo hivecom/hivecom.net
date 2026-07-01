@@ -99,8 +99,6 @@ const mobileCountdownLabel = computed(() => {
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .brush-sticky {
   background: var(--color-bg);
   padding-top: var(--space-m);

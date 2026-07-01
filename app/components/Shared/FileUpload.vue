@@ -147,14 +147,20 @@ function handleDragLeave() {
   dragOver.value = false
 }
 
-// Process and validate file
-function isAcceptedType(fileType: string): boolean {
-  if (!fileType)
-    return false
+// Process and validate file. Accept entries may be MIME types (image/png),
+// wildcards (image/*), or extensions (.zip). An empty accept (or a bare "*")
+// allows any type. Extension matching covers archives, whose browser-reported
+// MIME is often empty.
+function isAcceptedType(file: File): boolean {
+  if (allowedTypes.value.length === 0 || allowedTypes.value.includes('*'))
+    return true
+  const extension = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`
   return allowedTypes.value.some((type) => {
+    if (type.startsWith('.'))
+      return type.toLowerCase() === extension
     if (type.endsWith('/*'))
-      return fileType.startsWith(type.slice(0, -2))
-    return type === fileType
+      return Boolean(file.type) && file.type.startsWith(type.slice(0, -2))
+    return type === file.type
   })
 }
 
@@ -166,8 +172,8 @@ function isCroppable(mimeType: string): boolean {
 }
 
 function processFile(file: File) {
-  if (!isAcceptedType(file.type)) {
-    const msg = 'Unsupported file type. Please upload an accepted image format.'
+  if (!isAcceptedType(file)) {
+    const msg = 'Unsupported file type for this bucket.'
     internalError.value = msg
     emit('invalid', msg)
     return

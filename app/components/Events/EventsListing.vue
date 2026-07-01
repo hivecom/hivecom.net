@@ -165,8 +165,6 @@ const hasActiveEvents = computed(() =>
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .events-section {
   margin-bottom: var(--space-xxxl);
 

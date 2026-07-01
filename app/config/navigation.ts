@@ -19,6 +19,7 @@ export const commandLinks: CommandLink[] = [
   { path: '/community/games', label: 'Games', group: 'Community', icon: 'ph:game-controller' },
   { path: '/community/badges', label: 'Badges', group: 'Community', icon: 'ph:medal' },
   { path: '/community/projects', label: 'Projects', group: 'Community', icon: 'ph:code' },
+  { path: '/chat', label: 'Chat', group: 'Community', icon: 'ph:chats', requiresAuth: true },
   // Forum
   { path: '/forum', label: 'Forum', group: 'Forum', icon: 'ph:chats-circle' },
   { path: '/forum/stats', label: 'Forum Statistics / Leaderboard', group: 'Forum', icon: 'ph:chart-bar' },
@@ -59,6 +60,13 @@ export const navigationLinks = [
     path: '/',
     label: 'Home',
     icon: 'ph:house',
+    desktopHidden: true,
+  },
+  {
+    path: '/chat',
+    label: 'Chat',
+    icon: 'ph:chat',
+    desktopHidden: true,
   },
   {
     path: '/community',

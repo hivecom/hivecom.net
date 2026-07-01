@@ -2,6 +2,26 @@
 // https://day.js.org/docs/en/durations/durations
 
 /**
+ * Formats a number of seconds as a clock timecode for media players: `M:SS`,
+ * or `H:MM:SS` once it passes an hour. Non-finite or negative input reads `0:00`.
+ *
+ * @param seconds Elapsed or total seconds.
+ * @returns e.g. "0:00", "1:08", "1:02:34".
+ */
+export function formatClock(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0)
+    return '0:00'
+  const total = Math.floor(seconds)
+  const hours = Math.floor(total / 3600)
+  const mins = Math.floor((total % 3600) / 60)
+  const secs = total % 60
+  const ss = secs.toString().padStart(2, '0')
+  if (hours > 0)
+    return `${hours}:${mins.toString().padStart(2, '0')}:${ss}`
+  return `${mins}:${ss}`
+}
+
+/**
  * Formats a past duration in milliseconds to a human-readable "X ago" string.
  * Returns "Just now" for sub-minute durations.
  *

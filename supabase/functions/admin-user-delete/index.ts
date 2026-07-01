@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
-import { authorizeAuthenticatedHasPermissionAal2 } from "../_shared/auth.ts";
+import {
+  authorizeAuthenticatedHasPermissionAal2,
+  getAuthenticatedUserId,
+} from "../_shared/auth.ts";
+import { wipeDepotUploads } from "../_shared/depot.ts";
 import { responseMethodNotAllowed } from "../_shared/response.ts";
 import type { Database } from "database-types";
 
@@ -71,24 +75,13 @@ Deno.serve(async (req: Request) => {
       },
     );
 
-    const { data: { user: currentUser }, error: userError } = await tempClient
-      .auth.getUser();
-
-    if (userError || !currentUser) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Failed to get current user",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 401,
-        },
-      );
+    const currentUser = await getAuthenticatedUserId(tempClient, authHeader);
+    if ("response" in currentUser) {
+      return currentUser.response;
     }
 
     // Prevent users from deleting themselves
-    if (currentUser.id === userId) {
+    if (currentUser.userId === userId) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -146,6 +139,31 @@ Deno.serve(async (req: Request) => {
     console.log(
       `Attempting to delete user: ${userProfile.username} (${userId})`,
     );
+
+    // Wipe the user's Orbit Depot uploads first, so nothing survives the account
+    // deletion. Runs server-side with the gateway service key. A configured
+    // Depot that fails aborts the delete (retryable); an unconfigured Depot is
+    // skipped (null).
+    try {
+      const wiped = await wipeDepotUploads(userId);
+      if (wiped !== null) {
+        console.log(
+          `Wiped ${wiped} Depot upload(s) for ${userProfile.username} (${userId})`,
+        );
+      }
+    } catch (depotError) {
+      console.error("Error wiping Depot uploads:", depotError);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Failed to wipe the user's Depot uploads; account not deleted",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 502,
+        },
+      );
+    }
 
     // Delete the user using Supabase Auth Admin API
     // This will delete from auth.users table, which will cascade to profiles due to foreign key constraint

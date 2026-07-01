@@ -147,7 +147,9 @@ async function signUpWithGoogle() {
               </NuxtLink>.
             </p>
             <Alert v-if="showEmailNotice" filled variant="info">
-              An email with a sign-up link has been sent to your inbox! (check spam just in case)
+              <p class="text-s">
+                An email with a sign-up link has been sent to your inbox! (check spam just in case)
+              </p>
             </Alert>
             <Alert v-if="err" variant="danger" filled>
               {{ err }}

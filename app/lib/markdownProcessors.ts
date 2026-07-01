@@ -9,6 +9,7 @@ const YOUTUBE_SHORT_RE = /youtu\.be\/([^?&\s]+)/
 const YOUTUBE_ID_RE = /(?:[?&]v=|\/shorts\/)([\w-]+)/
 const YOUTUBE_DIRECTIVE_RE = /:::youtube(?:\s+\{([^}]*)\})?\s*:::/g
 const VIDEO_DIRECTIVE_RE = /:::video(?:\s+\{([^}]*)\})?\s*:::/g
+const AUDIO_DIRECTIVE_RE = /:::audio(?:\s+\{([^}]*)\})?\s*:::/g
 const MENTION_BRACED_RE = /@\{([0-9a-f-]{36})\}/gi
 const MENTION_LEGACY_RE = /@([0-9a-f-]{36})/gi
 const COLOR_TAG_RE = /:::color\[([a-z-]+)\]([\s\S]*?):::(?![a-z-]+\[)/gi
@@ -28,6 +29,7 @@ const UNORDERED_SUB_ITEM_RE = /^(\s+)([-*+]\s)/
 const FENCED_CODE_RE = /^```/
 const STRIP_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/g
+const STRIP_AUDIO_RE = /:::audio(?:\s+\{[^}]*\})?\s*:::/g
 const STRIP_DATAFILE_RE = /:::dataFile(?:\s+\{[^}]*\})?\s*:::/g
 
 const DETAILS_SUMMARY_RE = /:::detailsSummary([\s\S]*?):::/
@@ -36,6 +38,26 @@ const STRIP_BLOCK_MATH_RE = /\$\$[\s\S]*?\$\$/g
 const STRIP_INLINE_MATH_RE = /\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/g
 const STRIP_HTML_TAGS_RE = /<[^>]*>/g
 const STRIP_NBSP_RE = /&nbsp;/g
+const STRIP_HTML_ENTITY_RE = /&([a-z]+|#x?[0-9a-f]+);/gi
+const HTML_ENTITY_MAP: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: '\'',
+}
+function decodeHtmlEntities(str: string): string {
+  return str.replace(STRIP_HTML_ENTITY_RE, (match, entity: string) => {
+    const lower = entity.toLowerCase()
+    if (lower in HTML_ENTITY_MAP)
+      return HTML_ENTITY_MAP[lower]!
+    if (lower.startsWith('#x'))
+      return String.fromCodePoint(Number.parseInt(entity.slice(2), 16))
+    if (lower.startsWith('#'))
+      return String.fromCodePoint(Number.parseInt(entity.slice(1), 10))
+    return match
+  })
+}
 const STRIP_HR_RE = /^---/gm
 const STRIP_HEADERS_RE = /^#+\s+/gm
 const STRIP_BLOCKQUOTE_RE = /^>\s*/gm
@@ -49,6 +71,7 @@ const DETECT_IMAGE_RE = /!\[.*?\]\(.*?\)/
 const DETECT_LINK_RE = /\[.*?\]\(.*?\)/
 const DETECT_YOUTUBE_RE = /:::youtube(?:\s+\{[^}]*\})?\s*:::/
 const DETECT_VIDEO_RE = /:::video(?:\s+\{[^}]*\})?\s*:::/
+const DETECT_AUDIO_RE = /:::audio(?:\s+\{[^}]*\})?\s*:::/
 const DETECT_DATAFILE_RE = /:::dataFile(?:\s+\{[^}]*\})?\s*:::/
 const DETECT_MATH_RE = /\$\$[\s\S]*?\$\$|\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/
 const DETECT_TABLE_RE = /^\s*\|(?:[^\n|]+\|)+\s*$/m
@@ -229,6 +252,27 @@ export function processVideoDirectives(markdown: string): string {
 }
 
 /**
+ * Converts TipTap's proprietary `:::audio {src="..."} :::` directive syntax
+ * into a raw <audio> block. MarkdownRendererInner maps the <audio> tag to the
+ * AudioPlayer component, so the player UI renders rather than native controls.
+ * Must run before the markdown is handed to `<MDC>`.
+ *
+ * TipTap format:
+ *   :::audio {src="URL"} :::
+ */
+export function processAudioDirectives(markdown: string): string {
+  return markdown.replace(AUDIO_DIRECTIVE_RE, (_full, attrString: string = '') => {
+    const attrs = parseTiptapAttrs(attrString)
+    const src = attrs.src ?? ''
+
+    if (!src)
+      return ''
+
+    return `\n<div class="md-audio-embed"><audio src="${src}"></audio></div>\n`
+  })
+}
+
+/**
  * Converts TipTap's `:::dataFile {src="..." name="..." type="csv"} :::` directive
  * into an HTML attachment card block that MDC passes through as raw HTML.
  * Must run before the markdown is handed to `<MDC>`.
@@ -237,9 +281,9 @@ export function processDataFileDirectives(markdown: string): string {
   return markdown.replace(DATAFILE_DIRECTIVE_RE, (_full, attrString: string = '') => {
     const attrs = parseTiptapAttrs(attrString)
     const src = attrs.src ?? ''
-    const name = attrs.name ?? (attrs.type === 'json' ? 'data.json' : 'data.csv')
-    const type = attrs.type === 'json' ? 'json' : 'csv'
-    const icon = type === 'json' ? '{ }' : '⊞'
+    const type = attrs.type === 'json' ? 'json' : attrs.type === 'archive' ? 'archive' : 'csv'
+    const name = attrs.name ?? (type === 'json' ? 'data.json' : type === 'archive' ? 'archive.zip' : 'data.csv')
+    const icon = type === 'json' ? '{ }' : type === 'archive' ? '🗜' : '⊞'
 
     if (!src)
       return ''
@@ -516,6 +560,10 @@ export function processMarkdown(markdown: string): string {
   // Convert TipTap video directives to raw HTML <video> blocks.
   markdown = processVideoDirectives(markdown)
 
+  // Convert TipTap audio directives to raw HTML <audio> blocks (rendered as
+  // the AudioPlayer component via the MDC components map).
+  markdown = processAudioDirectives(markdown)
+
   // Convert TipTap dataFile directives to raw HTML attachment cards.
   markdown = processDataFileDirectives(markdown)
 
@@ -650,11 +698,14 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
   // Must run before the chain since it needs iterative application for nested directives.
   content = stripInlineDirectives(content)
 
-  return content
+  // Strip directives/math/tags, then decode HTML entities before further processing.
+  let stripped = content
     // 0a. Remove YouTube directives: :::youtube {src="..." ...} :::
     .replace(STRIP_YOUTUBE_RE, '')
     // 0b2. Remove video directives: :::video {src="..." ...} :::
     .replace(STRIP_VIDEO_RE, '')
+    // 0b2b. Remove audio directives: :::audio {src="..."} :::
+    .replace(STRIP_AUDIO_RE, '')
     // 0b3. Remove data file directives: :::dataFile {src="..." ...} :::
     .replace(STRIP_DATAFILE_RE, '')
     // 0b. Remove block math: $$...$$
@@ -663,6 +714,12 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
     .replace(STRIP_INLINE_MATH_RE, '')
     // 1. Remove HTML tags
     .replace(STRIP_HTML_TAGS_RE, '')
+
+  // 1b. Decode HTML entities left behind after tag removal
+  // (e.g. &gt; -> > from Tiptap-generated HTML stored in the DB)
+  stripped = decodeHtmlEntities(stripped)
+
+  return stripped
     // 2. Normalize non-breaking spaces
     .replace(STRIP_NBSP_RE, ' ')
     // 3. Remove horizontal rules
@@ -800,6 +857,9 @@ export function formatMarkdownPreview(
 
   if (DETECT_VIDEO_RE.test(markdown))
     return '#video'
+
+  if (DETECT_AUDIO_RE.test(markdown))
+    return '#audio'
 
   if (DETECT_DATAFILE_RE.test(markdown))
     return '#file'

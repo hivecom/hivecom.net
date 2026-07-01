@@ -19,6 +19,8 @@ import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
 import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { fullDate, fullMonth } from '@/lib/utils/date'
+import { metricsMaxPlayers, metricsPlayerCount } from '@/types/metrics'
 
 const props = withDefaults(defineProps<Props>(), {
   gameId: null,
@@ -125,15 +127,7 @@ const serverPlayerCount = computed(() => {
   for (const gs of gameServersForGame.value) {
     if (!gs.query_protocol)
       continue
-    const detail = byServer[String(gs.id)]
-    if (!detail?.data)
-      continue
-    const count = detail.protocol === 'minecraft'
-      ? (detail.data as { numPlayers?: number }).numPlayers
-      : detail.protocol === 'source'
-        ? (detail.data as { players?: number }).players
-        : null
-    total += count ?? 0
+    total += metricsPlayerCount(byServer[String(gs.id)]) ?? 0
   }
   return total
 })
@@ -165,25 +159,6 @@ function formatMinutesPlayed(minutes: number): string {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function formatDate(dateStr: string): string {
-  try {
-    return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-  }
-  catch {
-    return dateStr
-  }
-}
-
-function formatTrackedSince(createdAt: string | null): string {
-  if (!createdAt)
-    return ''
-  try {
-    return new Date(createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
-  }
-  catch {
-    return ''
-  }
-}
 
 type ServerState = 'healthy' | 'running' | 'unhealthy' | 'offline' | 'unknown'
 
@@ -215,19 +190,10 @@ function getServerPlayerCounts(gs: typeof gameServersForGame.value[0]): { curren
   const detail = metrics.value.gameservers.byServer[String(gs.id)]
   if (!detail?.data)
     return null
-  if (detail.protocol === 'minecraft') {
-    return {
-      current: (detail.data as { numPlayers?: number }).numPlayers ?? 0,
-      max: (detail.data as { maxPlayers?: number }).maxPlayers ?? null,
-    }
-  }
-  if (detail.protocol === 'source') {
-    return {
-      current: (detail.data as { players?: number }).players ?? 0,
-      max: (detail.data as { maxPlayers?: number }).maxPlayers ?? null,
-    }
-  }
-  return null
+  const current = metricsPlayerCount(detail)
+  if (current === null)
+    return null
+  return { current, max: metricsMaxPlayers(detail) }
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
@@ -405,7 +371,7 @@ watch(
         </h3>
         <Tooltip v-if="currentDetails?.game.created_at" placement="top">
           <template #tooltip>
-            <p>Tracked since {{ formatTrackedSince(currentDetails.game.created_at) }}</p>
+            <p>Tracked since {{ fullMonth(currentDetails.game.created_at) }}</p>
           </template>
         </Tooltip>
       </Flex>
@@ -475,7 +441,7 @@ watch(
                     <Badge v-for="mode in currentDetails.game.multiplayer_modes" :key="mode" variant="info" size="s">
                       {{ mode }}
                     </Badge>
-                    <TimestampDate v-if="currentDetails.game.release_date" :date="currentDetails.game.release_date" format="YYYY" size="xs" />
+                    <TimestampDate v-if="currentDetails.game.release_date" :date="currentDetails.game.release_date" type="year" size="xs" />
                   </Flex>
                   <Flex v-if="steamUrl || websiteUrl" wrap gap="xs" y-center>
                     <a v-if="steamUrl" :href="steamUrl" target="_blank" rel="noopener noreferrer" class="game-details-modal__meta-link" @click="handleContentClick">
@@ -661,7 +627,7 @@ watch(
                     {{ getEventStatus(ev).label }}
                   </Badge>
                 </Flex>
-                <span class="text-xs text-color-lighter">{{ formatDate(ev.date) }}</span>
+                <span class="text-xs text-color-lighter">{{ fullDate(ev.date) }}</span>
               </Flex>
             </NuxtLink>
           </Grid>

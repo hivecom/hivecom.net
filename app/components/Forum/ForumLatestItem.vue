@@ -47,7 +47,7 @@ function handleClick(e: MouseEvent) {
       <Tooltip placement="top">
         <span class="forum__latest-timestamp">{{ post.timestamp }}</span>
         <template #tooltip>
-          <TimestampDate :date="post.timestampRaw" :tooltip="false" format="YYYY-MM-DD HH:mm:ss" size="xs" />
+          <TimestampDate :date="post.timestampRaw" :tooltip="false" type="displayDateTime" size="xs" />
         </template>
       </Tooltip>
     </Flex>
@@ -67,7 +67,6 @@ function handleClick(e: MouseEvent) {
 
 <style lang="scss" scoped>
 @use '@/assets/mixins.scss' as *;
-@use '@/assets/breakpoints.scss' as *;
 
 .forum__latest-item {
   display: inline-flex;
@@ -78,8 +77,8 @@ function handleClick(e: MouseEvent) {
   border-radius: var(--border-radius-m);
   border: 1px solid var(--color-border);
   width: 320px;
-  min-width: 320px;
-  max-width: 320px;
+  min-width: 320px !important;
+  max-width: 320px !important;
   overflow: hidden;
   cursor: pointer;
   text-decoration: none;

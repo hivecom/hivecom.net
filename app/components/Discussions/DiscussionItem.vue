@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { Comment, ProvidedDiscussion, ThreadNode } from './Discussion.types'
-import { Flex, pushToast, Sheet } from '@dolanske/vui'
+import { Button, Flex, pushToast, Sheet } from '@dolanske/vui'
+import { nextTick } from 'vue'
 import { scrollToId, scrollToIdWhenStable } from '@/lib/utils/common'
 import UserAvatar from '../Shared/UserAvatar.vue'
 import UserName from '../Shared/UserName.vue'
 import { DISCUSSION_KEYS } from './Discussion.keys'
+import DiscussionThreadedScope from './DiscussionThreadedScope.vue'
 import DiscussionThreadToggle from './DiscussionThreadToggle.vue'
 import DiscussionModelComment from './models/DiscussionModelComment.vue'
 import DiscussionModelForum from './models/DiscussionModelForum.vue'
@@ -18,6 +20,7 @@ const {
   showOfftopic = false,
   staggerIndex,
   idPrefix = 'comment',
+  forceInlineExpand = false,
 } = defineProps<Props>()
 
 const loadChildren = inject(DISCUSSION_KEYS.loadChildren)
@@ -38,6 +41,10 @@ interface Props {
   depth?: number
   showOfftopic?: boolean
   staggerIndex?: number
+  // When true (propagated from a flat-mode inline expansion), this item
+  // auto-expands inline and passes the flag to its own children so the
+  // whole subtree opens without manual clicks.
+  forceInlineExpand?: boolean
 }
 
 const viewMode = inject(DISCUSSION_KEYS.viewMode, ref<'flat' | 'threaded'>('flat'))
@@ -80,6 +87,17 @@ function copyLink() {
 function copyLinkForComment(id: string) {
   const url = new URL(window.location.href)
   url.searchParams.set('comment', id)
+  // A comment link is reachable in either view and resolves its own page, so it
+  // shouldn't pin the recipient's view or page. Drop both from the copied URL.
+  url.searchParams.delete('view')
+  url.searchParams.delete('page')
+  // Anchor the link on this comment's timestamp. In chronological (ascending
+  // forum) view a reply's position is stable, so the deep-link load can fetch
+  // the target block straight from this timestamp and skip the page-lookup RPC.
+  // Consumed in useDataDiscussionReplies; ignored in threaded/comment views.
+  // Only ever called for this item's own id, so data.created_at is the match.
+  if (id === data.id && data.created_at)
+    url.searchParams.set('ts', String(new Date(data.created_at).getTime()))
   copy(url.toString())
   pushToast('Link copied to clipboard', {
     timeout: 1500,
@@ -138,6 +156,7 @@ const hasReplies = computed(() =>
 
 // Flat mode: sheet always starts closed - only opens on explicit user click.
 const repliesExpanded = ref(false)
+const flatInlineExpanded = ref(false)
 
 // When the flat-mode sheet opens, lazily load children if not yet fetched.
 watch(repliesExpanded, (open) => {
@@ -149,19 +168,43 @@ watch(repliesExpanded, (open) => {
 
 // Threaded mode: whether this node's sub-tree is folded closed.
 // - Root replies (depth 0): driven by the showThreadReplies setting.
-// - Sub-replies (depth > 0): auto-expanded unless they have more than 5 replies,
-//   in which case they follow the same setting as roots.
+// - Sub-replies (depth > 0): always start expanded so clicking a root toggle
+//   reveals the full thread without needing additional clicks per level.
 function computeThreadCollapsed() {
   if (viewMode.value !== 'threaded')
     return false
-  if (depth > 0) {
-    const count = replyCountMap?.value?.get(data.id) ?? 0
-    return count > 5 ? !showThreadRepliesInjected.value : false
-  }
+  if (depth > 0)
+    return false
   return !showThreadRepliesInjected.value
 }
 
 const threadCollapsed = ref(computeThreadCollapsed())
+
+function onOpenReplies() {
+  if (viewMode.value === 'flat') {
+    repliesExpanded.value = true
+    return
+  }
+  // threaded: always expand inline - the subtree renders here, no sheet needed.
+  threadCollapsed.value = false
+  flatInlineExpanded.value = true
+  if (!childrenRequested.value && loadChildren != null) {
+    childrenRequested.value = true
+    void loadChildren(data.id)
+  }
+}
+
+// When forceInlineExpand is propagated from a parent's flat inline expansion,
+// auto-expand this item and load its children.
+watch(() => forceInlineExpand, (force) => {
+  if (force && !flatInlineExpanded.value && hasReplies.value) {
+    flatInlineExpanded.value = true
+    if (!childrenRequested.value && loadChildren != null) {
+      childrenRequested.value = true
+      void loadChildren(data.id)
+    }
+  }
+}, { immediate: true })
 
 // Re-evaluate collapsed state whenever the view mode or the expand-threads setting
 // changes. The IIFE only ran once at setup, so items mounted in flat mode (or while
@@ -185,8 +228,12 @@ async function toggleThreadCollapsed() {
       childrenRequested.value = true
       await loadChildren(data.id)
     }
+    threadCollapsed.value = false
   }
-  threadCollapsed.value = !threadCollapsed.value
+  else {
+    threadCollapsed.value = true
+    flatInlineExpanded.value = false
+  }
 }
 
 // ── Lazy child loading (threaded mode) ────────────────────────────────────────
@@ -229,13 +276,58 @@ watch(
   },
 )
 
-// ── Showing replies in a sheet ───────────────────────────────────
+// ── Showing replies ───────────────────────────────────
 
-function stripReplyData(entry: Comment) {
-  return {
-    ...entry,
-    reply: null,
+// This signal asks an item to reveal its thread. How depends on the view:
+// - flat: open the thread sheet (flat has no inline nesting).
+// - threaded + expand reply threads ON: the subtree is already inline, so just
+//   make sure this root is open in place.
+// - threaded + expand reply threads OFF: open the sheet. Inline expansion only
+//   loads one level, so a nested deep-link target wouldn't render - the sheet
+//   pulls the thread in on its own.
+const openThreadSheetId = inject(DISCUSSION_KEYS.openThreadSheet, ref(null))
+const supabase = useSupabaseClient()
+
+watch(openThreadSheetId, async (id) => {
+  if (id !== data.id)
+    return
+  openThreadSheetId.value = null
+  if (viewMode.value === 'threaded' && showThreadRepliesInjected.value) {
+    // Expanded threads: reveal inline. If this root is collapsed, load its
+    // children then expand; if already open, the target is on screen.
+    if (threadCollapsed.value) {
+      if (!childrenRequested.value && loadChildren != null) {
+        childrenRequested.value = true
+        await loadChildren(data.id)
+      }
+      threadCollapsed.value = false
+    }
+    return
   }
+  // Flat, or threaded with reply threads collapsed: use the sheet.
+  repliesExpanded.value = true
+})
+
+async function openFullThread() {
+  const { data: rootId, error } = await supabase.rpc('get_thread_root', { p_reply_id: data.id })
+  if (error || !rootId)
+    return
+  repliesExpanded.value = false
+  // Ensure the root item is loaded (may be on a different page) before signalling.
+  // nextTick lets Vue mount the newly loaded DiscussionItem components so their
+  // watch is set up before we write the signal.
+  if (navigateToComment)
+    await navigateToComment(rootId as string)
+  await nextTick()
+  openThreadSheetId.value = rootId as string
+}
+
+// Close the sheet and jump to this thread's root in the main discussion view.
+// The root is a top-level entry, so it's already on the loaded page/window - the
+// ?comment change drives the scroll. Only offered when this sheet is a root's.
+function goToThreadInDiscussion() {
+  repliesExpanded.value = false
+  void router.replace({ query: { ...route.query, comment: data.id } })
 }
 </script>
 
@@ -256,7 +348,7 @@ function stripReplyData(entry: Comment) {
                 'discussion-comment--pinned': isPinned }"
       @copy-link="copyLink"
       @scroll-reply="scrollReply"
-      @open-replies="repliesExpanded = true"
+      @open-replies="onOpenReplies"
     />
     <DiscussionModelForum
       v-else
@@ -267,7 +359,7 @@ function stripReplyData(entry: Comment) {
                 'discussion-forum--pinned': isPinned }"
       @copy-link="copyLink"
       @scroll-reply="scrollReply"
-      @open-replies="repliesExpanded = true"
+      @open-replies="onOpenReplies"
     />
 
     <!-- Flat mode: sheet for thread replies (triggered from within the model components) -->
@@ -279,42 +371,47 @@ function stripReplyData(entry: Comment) {
             <h4>
               <UserName inherit :user-id="data.created_by" />'s thread
             </h4>
-            <p class="text-color-lighter">
-              {{ replyCountMap?.get(data.id) ?? visibleChildren.length }} {{ (replyCountMap?.get(data.id) ?? visibleChildren.length) === 1 ? 'reply' : 'replies' }}
-            </p>
+            <Flex gap="s" y-center>
+              <p class="text-color-lighter">
+                {{ replyCountMap?.get(data.id) ?? visibleChildren.length }} {{ (replyCountMap?.get(data.id) ?? visibleChildren.length) === 1 ? 'reply' : 'replies' }}
+              </p>
+              <Button v-if="data.reply_to_id" size="s" plain @click="openFullThread">
+                Full thread
+              </Button>
+              <Button v-else size="s" plain @click="goToThreadInDiscussion">
+                View in discussion
+              </Button>
+            </Flex>
           </Flex>
         </Flex>
       </template>
 
-      <Flex column gap="s" expand>
-        <template v-if="model === 'forum'">
-          <DiscussionModelForum
+      <DiscussionThreadedScope>
+        <!-- Thread root: keep the top-level entry visible in the sheet, not just
+             its replies. Highlighted when the root is itself the linked comment. -->
+        <DiscussionModelComment
+          :data
+          :class="{ 'discussion-comment--highlight': isActive }"
+          @copy-link="copyLink"
+          @scroll-reply="scrollReply"
+        />
+        <div class="discussion-comment-wrapper__children" :style="{ '--nest-depth': 1 }">
+          <DiscussionItem
             v-for="item in visibleChildren"
             :key="item.comment.id"
-            ref="self"
-            :data="stripReplyData(item.comment)"
-            @copy-link="copyLinkForComment(item.comment.id)"
-            @interact="repliesExpanded = false"
+            :data="item.comment"
+            model="comment"
+            :depth="1"
+            :show-offtopic
           />
-        </template>
-        <template v-else>
-          <DiscussionModelComment
-            v-for="item in visibleChildren"
-            :key="item.comment.id"
-            ref="self"
-            class="w-100"
-            :data="stripReplyData(item.comment)"
-            @copy-link="copyLinkForComment(item.comment.id)"
-            @interact="repliesExpanded = false"
-          />
-        </template>
-      </Flex>
+        </div>
+      </DiscussionThreadedScope>
     </Sheet>
 
     <!-- Threaded mode: recursively render children as full DiscussionItems -->
     <!-- v-show keeps nested DiscussionItems mounted across mode switches so -->
     <!-- MarkdownRenderer never re-suspends and the skeleton/fade-in flash doesn't appear. -->
-    <div v-show="viewMode === 'threaded' && hasReplies">
+    <div v-show="(viewMode === 'threaded' && hasReplies) || (viewMode === 'flat' && flatInlineExpanded)">
       <!-- Collapsed summary pill -->
       <DiscussionThreadToggle
         v-if="threadCollapsed"
@@ -343,6 +440,7 @@ function stripReplyData(entry: Comment) {
           :children="child.children"
           :depth="depth + 1"
           :show-offtopic
+          :force-inline-expand="flatInlineExpanded"
         />
       </div>
     </div>

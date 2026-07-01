@@ -3,11 +3,13 @@ import type { QueryData } from '@supabase/supabase-js'
 
 import type { Ref } from 'vue'
 
-import { Alert, Button, defineTable, Flex, Pagination, Table } from '@dolanske/vui'
+import { Alert, Button, defineTable, DropdownItem, Flex, Pagination, Table } from '@dolanske/vui'
 import { computed, inject, ref, watch } from 'vue'
 
 import TableSkeleton from '@/components/Admin/Shared/TableSkeleton.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import ElapsedTimeIndicator from '@/components/Shared/ElapsedTimeIndicator.vue'
+import SelectedRowsActions from '@/components/Shared/SelectedRowsActions.vue'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { getContainerStatus } from '@/lib/containerStatus'
@@ -37,10 +39,11 @@ interface ContainerWithServer {
   }[] | null
 }
 interface TransformedContainer {
+  'id': string
   'Name': string
   'Server': string
   'Status': 'running' | 'healthy' | 'unhealthy' | 'stopped' | 'unknown' | 'stale' | 'control_offline' | 'restarting'
-  'Started': string | null
+  'Started': string
   'Last Report': string
   '_original': {
     name: string
@@ -78,7 +81,7 @@ const props = defineProps<{
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Get admin permissions
-const { canManageResource } = useTableActions('containers')
+const { canManageResource } = useTableActions('network')
 const { hasPermission } = useAdminPermissions()
 const route = useRoute()
 const router = useRouter()
@@ -125,6 +128,7 @@ const logsError = ref('')
 const actionLoading = ref<Record<string, Record<string, boolean>>>({})
 const showContainerDetails = ref(false)
 const refreshContainerDetails = ref<boolean>(false)
+const showBulkPruneConfirm = ref(false)
 
 const refreshLogsConfig = ref<{ tail?: number, since?: string, from?: string, to?: string } | null>(null)
 
@@ -206,6 +210,7 @@ const filteredData = computed<TransformedContainer[]>(() => {
 
   // Transform the data into explicit key-value pairs
   return filtered.map((container: ContainerWithServer) => ({
+    'id': container.name,
     'Name': container.name,
     'Server': container.server ? container.server.address : 'Unknown',
     'Status': container.server?.docker_control
@@ -218,7 +223,7 @@ const filteredData = computed<TransformedContainer[]>(() => {
           !!actionLoading.value[container.name]?.restart,
         )
       : 'unknown',
-    'Started': container.started_at,
+    'Started': container.started_at ?? '',
     'Last Report': container.reported_at,
     // Keep the original object to use when emitting events
     '_original': container,
@@ -232,12 +237,12 @@ const isFiltered = computed(() => filteredCount.value !== totalCount.value)
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 
 // Table configuration
-const { headers, rows, pagination, setPage, setSort, options } = defineTable(filteredData, {
+const { headers, rows, selectedRows, deselectAllRows, pagination, setPage, setSort, options } = defineTable(filteredData, {
   pagination: {
     enabled: true,
     perPage: adminTablePerPage.value,
   },
-  select: false,
+  select: true,
 })
 
 watch(adminTablePerPage, (perPage) => {
@@ -558,6 +563,65 @@ function clearFilters() {
   statusFilter.value = undefined
 }
 
+function canRunBulkAction(
+  status: TransformedContainer['Status'],
+  action: 'start' | 'stop' | 'restart' | 'prune',
+): boolean {
+  switch (action) {
+    case 'start':
+      return status === 'stopped'
+    case 'stop':
+      return ['running', 'healthy', 'unhealthy'].includes(status)
+    case 'restart':
+      return ['running', 'healthy', 'unhealthy'].includes(status)
+    case 'prune':
+      return status === 'stale'
+    default:
+      return false
+  }
+}
+
+const selectedStartCount = computed(() =>
+  selectedRows.value.filter(row => canRunBulkAction((row as TransformedContainer).Status, 'start')).length,
+)
+const selectedStopCount = computed(() =>
+  selectedRows.value.filter(row => canRunBulkAction((row as TransformedContainer).Status, 'stop')).length,
+)
+const selectedRestartCount = computed(() =>
+  selectedRows.value.filter(row => canRunBulkAction((row as TransformedContainer).Status, 'restart')).length,
+)
+const selectedPruneCount = computed(() =>
+  selectedRows.value.filter(row => canRunBulkAction((row as TransformedContainer).Status, 'prune')).length,
+)
+
+async function handleBulkAction(action: 'start' | 'stop' | 'restart' | 'prune') {
+  const filteredContainers = selectedRows.value
+    .map(row => row as TransformedContainer)
+    .filter(row => canRunBulkAction(row.Status, action))
+    .map(row => row._original)
+
+  if (filteredContainers.length === 0)
+    return
+
+  for (const container of filteredContainers) {
+    if (action === 'prune') {
+      await handlePrune(container)
+      continue
+    }
+    await handleControl(container, action)
+  }
+
+  // Only deselect rows if all selected rows were affected by the action
+  if (filteredContainers.length === selectedRows.value.length) {
+    deselectAllRows()
+  }
+}
+
+function handleBulkPrune() {
+  showBulkPruneConfirm.value = false
+  handleBulkAction('prune')
+}
+
 // React to external focus requests (e.g. from query params)
 watch(
   () => [props.focusContainerName, loading.value] as const,
@@ -661,7 +725,8 @@ onBeforeMount(fetchContainers)
         <TableContainer>
           <Table.Root v-if="rows && rows.length > 0" separate-cells class="mb-l">
             <template #header>
-              <Table.Head v-for="header in headers.filter(header => header.label !== '_original')" :key="header.label" sort :header />
+              <th v-if="canManageResource" class="vui-table-interactive-cell" />
+              <Table.Head v-for="header in headers.filter(header => header.label !== '_original' && header.label !== 'id')" :key="header.label" sort :header />
               <Table.Head
                 v-if="canManageResource"
                 key="actions" :header="{ label: 'Actions',
@@ -670,17 +735,22 @@ onBeforeMount(fetchContainers)
             </template>
 
             <template #body>
-              <tr v-for="container in rows" :key="container._original.name" class="clickable-row" @click="viewContainer(container._original)">
-                <Table.Cell>{{ container.Name }}</Table.Cell>
-                <Table.Cell>{{ container.Server }}</Table.Cell>
-                <Table.Cell>
+              <tr v-for="container in rows" :key="container._original.name" class="clickable-row">
+                <Table.SelectRow v-if="canManageResource" :row="container as any" />
+                <Table.Cell @click="viewContainer(container._original)">
+                  {{ container.Name }}
+                </Table.Cell>
+                <Table.Cell @click="viewContainer(container._original)">
+                  {{ container.Server }}
+                </Table.Cell>
+                <Table.Cell @click="viewContainer(container._original)">
                   <ContainerStatusIndicator :status="container.Status" show-label />
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="viewContainer(container._original)">
                   <TimestampDate v-if="container.Started" :date="container.Started" />
                   <span v-else class="text-color-lighter text-s">Not started</span>
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell @click="viewContainer(container._original)">
                   <ElapsedTimeIndicator :date="container['Last Report']" :active-label="null" />
                 </Table.Cell>
                 <Table.Cell v-if="canManageResource" @click.stop>
@@ -708,6 +778,59 @@ onBeforeMount(fetchContainers)
         </Alert>
       </Flex>
     </Flex>
+
+    <SelectedRowsActions
+      :selected-count="selectedRows.length"
+      @clear="deselectAllRows()"
+    >
+      <DropdownItem v-if="selectedStartCount > 0" @click="handleBulkAction('start')">
+        <template #icon>
+          <Icon name="ph:play" class="text-color-green" />
+        </template>
+        Start
+        <template #hint>
+          {{ selectedStartCount }}
+        </template>
+      </DropdownItem>
+      <DropdownItem v-if="selectedStopCount > 0" @click="handleBulkAction('stop')">
+        <template #icon>
+          <Icon name="ph:stop" class="text-color-red" />
+        </template>
+        Stop
+        <template #hint>
+          {{ selectedStopCount }}
+        </template>
+      </DropdownItem>
+      <DropdownItem v-if="selectedRestartCount > 0" @click="handleBulkAction('restart')">
+        <template #icon>
+          <Icon name="ph:arrow-clockwise" />
+        </template>
+        Restart
+        <template #hint>
+          {{ selectedRestartCount }}
+        </template>
+      </DropdownItem>
+      <DropdownItem v-if="selectedPruneCount > 0" @click="showBulkPruneConfirm = true">
+        <template #icon>
+          <Icon name="ph:trash" class="text-color-red" />
+        </template>
+        Prune
+        <template #hint>
+          {{ selectedPruneCount }}
+        </template>
+      </DropdownItem>
+    </SelectedRowsActions>
+
+    <ConfirmModal
+      :open="showBulkPruneConfirm"
+      :title="`Prune ${selectedPruneCount} containers`"
+      :description="`Are you sure you want to prune ${selectedPruneCount} stale containers? This action cannot be undone.`"
+      confirm-text="Prune"
+      cancel-text="Cancel"
+      :destructive="true"
+      @cancel="showBulkPruneConfirm = false"
+      @confirm="handleBulkPrune"
+    />
 
     <!-- Container Detail Sheet -->
     <ContainerDetails

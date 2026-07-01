@@ -5,7 +5,7 @@ import { computed, ref, watch } from 'vue'
 
 import { useSupabaseClient, useSupabaseUser } from '#imports'
 import FileUpload from '@/components/Shared/FileUpload.vue'
-import { CMS_BUCKET_ID, formatBytes, getBucketDescription, getBucketLabel, joinAssetPath, normalizePrefix } from '@/lib/storageAssets'
+import { ARCHIVE_EXTENSIONS, BUCKET_SIZE_LIMITS, CMS_BUCKET_ID, formatBytes, getBucketAcceptAttr, getBucketDescription, getBucketLabel, isFileAllowedForBucket, joinAssetPath, normalizePrefix } from '@/lib/storageAssets'
 
 const props = withDefaults(defineProps<Props>(), {
   canUpload: false,
@@ -44,10 +44,23 @@ const replaceExisting = ref(false)
 const errorMessage = ref('')
 const uploadProgress = ref<Record<string, number>>({})
 
-const MAX_SIZE_BYTES = 5 * 1024 * 1024
-const ACCEPTED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/svg+xml'] as const
-const ACCEPT_ATTR = ACCEPTED_MIME_TYPES.join(',')
-const ACCEPTED_MIME_SET = new Set<string>(ACCEPTED_MIME_TYPES)
+// Accepted types and size cap follow the active bucket's config.
+const acceptAttr = computed(() => getBucketAcceptAttr(resolvedBucketId.value))
+const maxSizeBytes = computed(() => BUCKET_SIZE_LIMITS[resolvedBucketId.value])
+const maxSizeMb = computed(() => Math.floor(maxSizeBytes.value / (1024 * 1024)))
+
+function queueIcon(file: File): string {
+  if (file.type.startsWith('image/'))
+    return 'ph:image'
+  if (file.type.startsWith('video/'))
+    return 'ph:video'
+  if (file.type.startsWith('audio/'))
+    return 'ph:music-notes'
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
+  if (ARCHIVE_EXTENSIONS.includes(extension))
+    return 'ph:file-zip'
+  return 'ph:file'
+}
 
 const resolvedFolderLabel = computed(() => targetFolder.value ? `/${normalizePrefix(targetFolder.value)}` : '/ (root)')
 const canSubmit = computed(() => props.canUpload && fileQueue.value.length > 0 && !uploading.value)
@@ -111,13 +124,13 @@ function enqueueFiles(files: File[]) {
   const newQueued: QueuedFile[] = []
 
   files.forEach((file) => {
-    if (!ACCEPTED_MIME_SET.has(file.type)) {
-      errorMessage.value = 'Only PNG, JPG, WebP, GIF, or SVG files are allowed.'
+    if (!isFileAllowedForBucket(resolvedBucketId.value, file.type, file.name)) {
+      errorMessage.value = `${file.name} is not an allowed file type for the ${bucketLabel.value} bucket.`
       return
     }
 
-    if (file.size > MAX_SIZE_BYTES) {
-      errorMessage.value = 'Files must be 5MB or smaller.'
+    if (file.size > maxSizeBytes.value) {
+      errorMessage.value = `Files must be ${formatBytes(maxSizeBytes.value)} or smaller.`
       return
     }
 
@@ -215,7 +228,7 @@ function updateFileName(id: string, value: string) {
       <Flex column gap="xxs">
         <h4>Upload Assets</h4>
         <p class="text-color-light text-m">
-          Upload images into the {{ bucketLabel }} bucket for use inside markdown content.
+          Upload files to the {{ bucketLabel }} bucket.
         </p>
       </Flex>
     </template>
@@ -252,15 +265,15 @@ function updateFileName(id: string, value: string) {
 
       <FileUpload
         expand
-        label="Drag & drop images here, or click to browse"
+        label="Drag & drop files here, or click to browse"
         :disabled="!props.canUpload || uploading"
         :loading="uploading"
         variant="asset"
-        :max-size-m-b="50"
+        :max-size-m-b="maxSizeMb"
         :multiple="true"
         :persistent-dropzone="true"
         :show-delete="false"
-        :accept="ACCEPT_ATTR"
+        :accept="acceptAttr"
         @upload="handleFileUpload"
         @invalid="handleFileUploadError"
       />
@@ -280,7 +293,7 @@ function updateFileName(id: string, value: string) {
             <Flex column gap="xs" expand>
               <Flex gap="s" y-center x-between expand>
                 <Flex gap="xs" y-center expand>
-                  <Icon :name="item.file.type.startsWith('image/') ? 'ph:image' : 'ph:file'" />
+                  <Icon :name="queueIcon(item.file)" />
                   <span class="text-s">{{ item.file.name }}</span>
                 </Flex>
                 <Button

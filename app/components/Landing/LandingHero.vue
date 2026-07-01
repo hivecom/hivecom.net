@@ -146,8 +146,6 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 :root.light {
   .hero-overlay::after {
     background: radial-gradient(

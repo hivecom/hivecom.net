@@ -4,7 +4,7 @@ import process from 'process'
 import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 import fetchRoutes from './nitro/fetch-routes'
 
-// Only fetch routes when actually building/generating — not during `nuxi prepare`, type-gen, etc.
+// Only fetch routes when actually building/generating - not during `nuxi prepare`, type-gen, etc.
 const isBuildCommand = process.argv.some(arg => ['build', 'generate'].includes(arg))
 
 // Cache the fetch result so it's only called once across hooks
@@ -156,6 +156,92 @@ export default defineNuxtConfig({
           type: 'text/javascript',
           tagPriority: 'critical',
         },
+        {
+          // Vue-independent boot watchdog. If hydration crashes, app.vue's
+          // onMounted never runs, so the in-app escape hatch timer in
+          // Loading.vue never starts and the SSR-rendered splash sits frozen
+          // with no way out. A plain setTimeout registered here still fires (a
+          // thrown hydration error frees the main thread), so we can detect the
+          // stuck splash and offer a reload. The 12s delay clears the 8s
+          // self-recovery in Loading.vue, so this only triggers on a real boot
+          // failure, not a slow-but-alive load.
+          innerHTML: `(function () {
+  try {
+    // Only conclude a stuck boot after 12s of CONTINUOUS foreground time. A
+    // backgrounded tab throttles timers and defers hydration, so wall-clock
+    // elapsed isn't a reliable signal - it would flag a slow-but-alive load
+    // that finishes the instant the tab is refocused. Count visible time only,
+    // and skip an overlay that's already fading out (i.e. recovering).
+    var DELAY = 12000;
+    var timer = null;
+    var shown = false;
+
+    function show() {
+      timer = null;
+      if (shown) return;
+      // Overlay gone, or mid fade-out -> the app booted, nothing is stuck.
+      if (!document.querySelector('.initial-loading:not(.fade-out)')) return;
+      if (document.getElementById('boot-escape-hatch')) return;
+      shown = true;
+
+      var wrap = document.createElement('div');
+      wrap.id = 'boot-escape-hatch';
+      wrap.style.cssText = 'position:fixed;left:50%;bottom:34px;transform:translateX(-50%);z-index:10000;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;font-family:sans-serif;';
+
+      var msg = document.createElement('p');
+      msg.textContent = 'Taking longer than expected...';
+      msg.style.cssText = 'margin:0;font-size:12px;color:var(--color-text-lighter,#888);';
+
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:8px;';
+
+      var reload = document.createElement('button');
+      reload.textContent = 'Reload';
+      reload.style.cssText = 'cursor:pointer;border:0;border-radius:var(--border-radius-m,8px);padding:6px 14px;font-size:13px;background:var(--color-accent,#a3e635);color:#000;';
+      reload.onclick = function () {
+        // Cache-busting reload: a plain location.reload() can be served the
+        // same stale HTML (which references now-deleted _nuxt chunks), so this
+        // would never recover. Append a query param to force a network fetch.
+        var loc = window.location;
+        var sep = loc.search ? '&' : '?';
+        loc.replace(loc.pathname + loc.search + sep + '_=' + Date.now() + loc.hash);
+      };
+
+      var support = document.createElement('a');
+      support.textContent = 'Contact Support';
+      support.href = 'mailto:contact@hivecom.net';
+      support.style.cssText = 'display:inline-flex;align-items:center;border-radius:var(--border-radius-m,8px);padding:6px 14px;font-size:13px;color:var(--color-accent,#a3e635);text-decoration:none;';
+
+      row.appendChild(reload);
+      row.appendChild(support);
+      wrap.appendChild(msg);
+      wrap.appendChild(row);
+      (document.body || document.documentElement).appendChild(wrap);
+    }
+
+    function arm() {
+      if (shown || timer) return;
+      timer = setTimeout(show, DELAY);
+    }
+
+    function disarm() {
+      if (timer) { clearTimeout(timer); timer = null; }
+    }
+
+    // Pause the countdown while hidden, start a fresh 12s when refocused, so
+    // only uninterrupted foreground time counts toward "stuck".
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') arm();
+      else disarm();
+    });
+
+    if (document.visibilityState === 'visible') arm();
+  } catch (e) {
+    // Never let the watchdog itself break the page.
+  }
+})();`,
+          type: 'text/javascript',
+        },
       ],
     },
     pageTransition: {
@@ -253,6 +339,12 @@ export default defineNuxtConfig({
         // Admin/Users/UserTable.vue provider + platform icons
         'ph:google-logo',
         'ph:discord-logo',
+
+        // Chat/MessageLog.vue bridgeInfo() - relay source icons (dynamic :name binding)
+        'ph:telegram-logo',
+        'simple-icons:matrix',
+        // ph:discord-logo already listed above
+        // ph:swap already scanned statically
         'ph:envelope-simple',
         'ph:identification-card',
         'ph:steam-logo',
@@ -289,6 +381,7 @@ export default defineNuxtConfig({
 
         // events
         'ph:arrows-vertical',
+        'ph:download-simple',
 
         // Notifications/NotificationTabSubscriptions.vue subscription entity icons
         'ph:desktop-tower',
@@ -341,12 +434,19 @@ export default defineNuxtConfig({
       },
       // NOTE: rehype-sanitize is configured in mdc.config.ts instead of here.
       // nuxt.config.ts options are passed through JSON.stringify when generating
-      // .nuxt/mdc-imports.mjs, which silently converts every RegExp to {} —
+      // .nuxt/mdc-imports.mjs, which silently converts every RegExp to {} -
       // causing the iframe src allow-list to reject all YouTube embeds.
       // mdc.config.ts is loaded as a real ES module so RegExp values survive.
     },
   },
   vite: {
+    css: {
+      preprocessorOptions: {
+        scss: {
+          additionalData: `@use '@/assets/breakpoints.scss' as *;\n`,
+        },
+      },
+    },
     plugins: [
       monacoEditorPlugin({ languageWorkers: ['editorWorkerService', 'css'] }),
     ],
@@ -408,6 +508,7 @@ export default defineNuxtConfig({
         'three/examples/jsm/postprocessing/ShaderPass.js',
         'three/examples/jsm/postprocessing/UnrealBloomPass.js',
         'ansi-to-html', // CJS
+        'jszip', // CJS
         'remark-math',
         'rehype-katex',
         'vue-advanced-cropper',
@@ -415,6 +516,26 @@ export default defineNuxtConfig({
         'vue-chartjs',
         'chartjs-scale-timestack',
         'v-calendar',
+        '@unhead/schema-org/vue',
+        '@shikijs/engine-oniguruma',
+        '@shikijs/engine-javascript',
+        '@shikijs/core',
+        '@shikijs/transformers',
+        '@shikijs/langs/javascript',
+        '@shikijs/langs/jsx',
+        '@shikijs/langs/json',
+        '@shikijs/langs/typescript',
+        '@shikijs/langs/tsx',
+        '@shikijs/langs/vue',
+        '@shikijs/langs/css',
+        '@shikijs/langs/html',
+        '@shikijs/langs/shellscript',
+        '@shikijs/langs/markdown',
+        '@shikijs/langs/mdc',
+        '@shikijs/langs/yaml',
+        '@shikijs/themes/github-light',
+        '@shikijs/themes/github-dark',
+        'shiki/wasm',
       ],
     },
   },
@@ -423,6 +544,10 @@ export default defineNuxtConfig({
       patreonClientId: process.env.NUXT_PUBLIC_AUTH_EXTERNAL_PATREON_CLIENT_ID ?? '',
       baseUrl: process.env.NUXT_PUBLIC_BASE_URL ?? 'https://hivecom.net',
       supabaseProjectRef: process.env.NUXT_PUBLIC_SUPABASE_PROJECT_REF ?? '',
+      // VAPID application server key (URL-safe base64) for Web Push subscriptions.
+      vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY ?? '',
+      // Orbit Depot storage gateway base URL.
+      depotUrl: process.env.NUXT_PUBLIC_DEPOT_URL ?? 'https://depot.hivecom.net',
     },
   },
   robots: {
@@ -449,6 +574,27 @@ export default defineNuxtConfig({
     },
   },
   hooks: {
+    'vite:extendConfig': (config) => {
+      // `@` resolves to `./app`, but `@/types/*` files live at the repo root
+      // (`./types`). Nuxt registers the default `@` alias before any we add via
+      // `alias`, so Vite (and vite-node, used by the dev server) matches `@`
+      // first and fails to resolve runtime value imports of `@/types/*`.
+      // Prepend a more specific alias so it is matched first. Vite does not read
+      // tsconfig `paths`, so this must live in the Vite resolver explicitly.
+      const typesReplacement = `${fileURLToPath(new URL('./types', import.meta.url))}/`
+      const resolve = config.resolve
+      if (!resolve)
+        return
+      interface AliasEntry { find: string | RegExp, replacement: string }
+      const current = resolve.alias
+      const entries: AliasEntry[] = Array.isArray(current)
+        ? (current as AliasEntry[])
+        : Object.entries((current ?? {}) as Record<string, string>).map(([find, replacement]) => ({ find, replacement }))
+      resolve.alias = [
+        { find: /^@\/types\//, replacement: typesReplacement },
+        ...entries,
+      ]
+    },
     'nitro:build:before': (nitro) => {
       // Force-exit after Nitro fully closes (post-prerender) so the CI process
       // doesn't hang on open handles (native addons, etc.) in static builds.
@@ -520,6 +666,12 @@ export default defineNuxtConfig({
       callback: '/auth/confirm',
     },
     // types: './types/database.types.ts',
+    clientOptions: {
+      auth: {
+        // Opt in to the experimental passkey (WebAuthn) API in supabase-js.
+        experimental: { passkey: true },
+      },
+    },
   },
   site: {
     url: process.env.NUXT_PUBLIC_BASE_URL ?? 'https://hivecom.net',

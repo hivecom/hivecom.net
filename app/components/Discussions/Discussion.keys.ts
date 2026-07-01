@@ -21,6 +21,9 @@ export const DISCUSSION_KEYS = {
   /** Callback to lazily load children for a root comment (threaded view) */
   loadChildren: Symbol('loadChildren') as InjectionKey<(rootId: string) => Promise<void>>,
 
+  /** Signal a DiscussionItem by comment ID to open its replies sheet */
+  openThreadSheet: Symbol('openThreadSheet') as InjectionKey<Ref<string | null>>,
+
   /** Map of root comment ID → fetched children (used by comment model sheet) */
   childrenMap: Symbol('childrenMap') as InjectionKey<Ref<Map<string, RawComment[]>>>,
 

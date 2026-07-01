@@ -1,8 +1,7 @@
 <script setup lang="ts">
+import type { DiscussionEntityContext } from '@/lib/discussions'
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Badge, Button, Card, Flex, pushToast, Spinner, Tooltip } from '@dolanske/vui'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
 import { DISCUSSION_KEYS } from '@/components/Discussions/Discussion.keys'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import ForumBreadcrumbs from '@/components/Forum/ForumBreadcrumbs.vue'
@@ -19,13 +18,13 @@ import UserName from '@/components/Shared/UserName.vue'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
-import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
+import { useDiscussionSubscription } from '@/composables/useDiscussionSubscription'
 import { useBulkTopicIcons } from '@/composables/useTopicIcon'
+import { getDiscussionEntityContext, getDiscussionEntityHref } from '@/lib/discussions'
 import { stripMarkdown } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { formatDate } from '@/lib/utils/date'
-
-dayjs.extend(relativeTime)
+import { getRouteQueryStringOrNull } from '@/lib/utils/common'
+import { fromNow, fullDateTime } from '@/lib/utils/date'
 
 definePageMeta({
   key: route => route.params.id as string,
@@ -37,12 +36,6 @@ type DiscussionWithContext = Tables<'discussions'> & {
   event?: Pick<Tables<'events'>, 'id' | 'title'> | null
   gameserver?: Pick<Tables<'network_gameservers'>, 'id' | 'name'> | null
   referendum?: Pick<Tables<'referendums'>, 'id' | 'title'> | null
-}
-
-interface ContextInfo {
-  label: string
-  href: string
-  icon: string
 }
 
 type TopicBreadcrumb = Pick<Tables<'discussion_topics'>, 'id' | 'name' | 'slug' | 'parent_id'>
@@ -61,7 +54,6 @@ const isUuid = uuidRegex.test(identifier)
 
 const supabase = useSupabaseClient()
 const discussionCache = useDiscussionCache()
-const subscriptionsCache = useDiscussionSubscriptionsCache()
 const userId = useUserId()
 const loading = ref(true)
 const errorMessage = ref<string | null>(null)
@@ -99,128 +91,14 @@ const isMobile = useBreakpoint('<s')
 // Reporting
 const showReportModal = ref(false)
 
-// Subscription
-const isSubscribed = ref(false)
-const subscriptionLoading = ref(false)
+// Subscription - status is fetched automatically once post.id resolves.
+const { isSubscribed, subscriptionLoading, toggleSubscription } = useDiscussionSubscription(
+  computed(() => post.value?.id ?? null),
+)
 
-async function fetchSubscription(discussionId: string) {
-  if (!userId.value)
-    return
-
-  // Check status cache first - avoids a DB round-trip on every page visit
-  const cached = subscriptionsCache.getStatus(userId.value, discussionId)
-  if (cached !== null) {
-    isSubscribed.value = cached
-    return
-  }
-
-  const { data } = await supabase
-    .from('discussion_subscriptions')
-    .select('id')
-    .eq('user_id', userId.value)
-    .eq('discussion_id', discussionId)
-    .maybeSingle()
-
-  isSubscribed.value = !!data
-  subscriptionsCache.setStatus(userId.value, discussionId, !!data)
-}
-
-async function toggleSubscription() {
-  if (!userId.value || !post.value || subscriptionLoading.value)
-    return
-
-  subscriptionLoading.value = true
-
-  const discussionId = post.value.id
-
-  if (isSubscribed.value) {
-    const { error } = await supabase
-      .from('discussion_subscriptions')
-      .delete()
-      .eq('user_id', userId.value)
-      .eq('discussion_id', discussionId)
-
-    if (!error) {
-      isSubscribed.value = false
-      subscriptionsCache.applyUnsubscribeByDiscussion(userId.value, discussionId)
-    }
-  }
-  else {
-    const { data, error } = await supabase
-      .from('discussion_subscriptions')
-      .insert({
-        user_id: userId.value,
-        discussion_id: discussionId,
-      })
-      .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug, profile_id, event_id, gameserver_id, project_id, referendum_id, theme_id)')
-      .single()
-
-    if (!error && data) {
-      isSubscribed.value = true
-      // Patch the list + status caches so the notification sheet reflects the
-      // new subscription without a re-fetch the next time it opens
-      subscriptionsCache.applySubscribe(
-        userId.value,
-        data as unknown as import('@/composables/useDiscussionSubscriptionsCache').SubscriptionRow,
-      )
-    }
-    else if (!error) {
-      // insert succeeded but .single() returned no data - just update status
-      isSubscribed.value = true
-      subscriptionsCache.setStatus(userId.value, discussionId, true)
-    }
-  }
-
-  subscriptionLoading.value = false
-}
-
-const contextInfo = computed<ContextInfo | null>(() => {
-  if (!post.value)
-    return null
-
-  if (post.value.profile_id) {
-    const profileName = post.value.profile?.username ?? post.value.profile_id
-    return {
-      label: 'profile',
-      href: `/profile/${profileName}`,
-      icon: 'ph:user-circle',
-    }
-  }
-
-  if (post.value.project_id) {
-    return {
-      label: 'project',
-      href: `/community/projects/${post.value.project_id}`,
-      icon: 'ph:folder',
-    }
-  }
-
-  if (post.value.event_id) {
-    return {
-      label: 'event',
-      href: `/events/${post.value.event_id}`,
-      icon: 'ph:calendar',
-    }
-  }
-
-  if (post.value.gameserver_id) {
-    return {
-      label: 'gameserver',
-      href: `/servers/gameservers/${post.value.gameserver_id}`,
-      icon: 'ph:computer-tower',
-    }
-  }
-
-  if (post.value.referendum_id) {
-    return {
-      label: 'referendum',
-      href: `/votes/${post.value.referendum_id}`,
-      icon: 'ph:user-sound',
-    }
-  }
-
-  return null
-})
+const contextInfo = computed<DiscussionEntityContext | null>(() =>
+  post.value ? getDiscussionEntityContext(post.value) : null,
+)
 
 async function loadTopicBreadcrumbs(topicId: string | null) {
   if (!topicId) {
@@ -241,43 +119,33 @@ async function loadTopicBreadcrumbs(topicId: string | null) {
   topicBreadcrumbs.value = data as TopicBreadcrumb[]
 }
 
-/**
- * Returns the entity page href for entity-linked discussions that have no
- * discussion_topic_id. These are not browseable via /forum/[id] and should
- * redirect to their parent entity instead.
- *
- * If the discussion has a topic assigned (regardless of entity type), it is a
- * legitimate forum thread and should render normally.
- */
-function getEntityHref(data: DiscussionWithContext): string | null {
-  // If the discussion has a topic it renders normally - don't redirect.
-  if (data.discussion_topic_id != null)
-    return null
-
-  if (data.profile_id != null) {
-    const profileName = data.profile?.username ?? data.profile_id
-    return `/profile/${profileName}`
-  }
-  if (data.project_id != null) {
-    return `/community/projects/${data.project_id}`
-  }
-  if (data.event_id != null) {
-    return `/events/${data.event_id}`
-  }
-  if (data.gameserver_id != null) {
-    return `/servers/gameservers/${data.gameserver_id}`
-  }
-  if (data.referendum_id != null) {
-    return `/votes/${data.referendum_id}`
-  }
-  return null
-}
-
 function handlePostUpdate(updated: Tables<'discussions'> | Tables<'discussion_topics'>) {
   if (!('reply_count' in updated))
     return
 
   post.value = post.value ? { ...post.value, ...updated } : { ...updated }
+}
+
+// Shared post-load processing for both the cache-hit and DB-fetch paths: store
+// the row, warm the cache, set the NSFW gate state, load breadcrumbs, and advance
+// the unread markers. Callers handle the entity-redirect short-circuit first.
+function applyLoadedPost(data: DiscussionWithContext) {
+  post.value = data
+  // Warm all cache keys (id, slug, entity) so the Discussion composable's
+  // fetchById(post.id) is a cache hit instead of racing a duplicate SELECT *.
+  discussionCache.set(data)
+  // Show the NSFW overlay only when the post is NSFW and warnings are enabled. If
+  // show_nsfw_content is disabled entirely, the watchEffect below redirects instead.
+  showNSFWWarning.value = !!data.is_nsfw && settings.value.show_nsfw_warning
+  nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
+  void loadTopicBreadcrumbs(data.discussion_topic_id)
+  // Mark seen in localStorage so the unread dot clears on direct URL visits.
+  forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
+  // Advance the parent topic's seenActivityAt to this discussion's last activity
+  // timestamp - not now, so we don't shadow concurrent activity in other
+  // discussions that may have happened more recently.
+  if (data.discussion_topic_id)
+    forumUnread.markTopicSeen(data.discussion_topic_id, data.last_activity_at ?? undefined)
 }
 
 let loadingTimer: ReturnType<typeof setTimeout> | null = null
@@ -311,26 +179,14 @@ onBeforeMount(async () => {
       post.value = null
     }
     else {
-      const entityHref = getEntityHref(data)
+      const entityHref = getDiscussionEntityHref(data)
       if (entityHref != null) {
         void router.replace(entityHref)
         loading.value = false
         return
       }
 
-      post.value = data
-      showNSFWWarning.value = !!data.is_nsfw && settings.value.show_nsfw_warning
-      nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
-      void loadTopicBreadcrumbs(data.discussion_topic_id)
-      void fetchSubscription(data.id)
-      // Mark the discussion seen in localStorage so the unread dot clears
-      // even when navigating here by direct URL rather than from the forum index.
-      forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
-      // Advance the parent topic's seenActivityAt to this discussion's last
-      // activity timestamp - not now, so we don't shadow concurrent activity
-      // in other discussions that may have happened more recently.
-      if (data.discussion_topic_id)
-        forumUnread.markTopicSeen(data.discussion_topic_id, data.last_activity_at ?? undefined)
+      applyLoadedPost(data)
     }
 
     loading.value = false
@@ -371,33 +227,14 @@ onBeforeMount(async () => {
       else {
         // Entity-linked discussions are not browseable via /forum/[id].
         // Redirect to the entity page if we can, otherwise treat as not found.
-        const entityHref = getEntityHref(data)
+        const entityHref = getDiscussionEntityHref(data)
         if (entityHref != null) {
           void router.replace(entityHref)
           loading.value = false
           return
         }
 
-        post.value = data
-        // Warm the discussion cache so back-navigation and the next visit
-        // within TTL don't re-fetch. The enriched join fields are stored
-        // alongside the base row and will be present on a cache hit.
-        discussionCache.set(data)
-        // Show the NSFW overlay only when the post is NSFW and the user has
-        // warnings enabled. If they have show_nsfw_content disabled entirely,
-        // the watchEffect below will redirect them away instead.
-        showNSFWWarning.value = !!data.is_nsfw && settings.value.show_nsfw_warning
-        // If warnings are disabled but content is allowed, consider it auto-revealed
-        nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
-        void loadTopicBreadcrumbs(data.discussion_topic_id)
-        void fetchSubscription(data.id)
-        // Mark seen in localStorage so the unread dot clears on direct URL visits.
-        forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
-        // Advance the parent topic's seenActivityAt to this discussion's last
-        // activity timestamp - not now, so we don't shadow concurrent activity
-        // in other discussions that may have happened more recently.
-        if (data.discussion_topic_id)
-          forumUnread.markTopicSeen(data.discussion_topic_id, data.last_activity_at ?? undefined)
+        applyLoadedPost(data)
       }
 
       loading.value = false
@@ -535,8 +372,7 @@ const discussionRef = useTemplateRef<InstanceType<typeof Discussion>>('discussio
 // unloaded content before Discussion.vue picks up the navigation.
 const scrollingToReply = ref(
   import.meta.client
-    && typeof route.query.comment === 'string'
-    && route.query.comment.length > 0,
+    && !!getRouteQueryStringOrNull(route.query.comment),
 )
 
 function preventScroll(e: Event) {
@@ -846,17 +682,17 @@ function revealNsfw() {
             <UserDisplay :user-id="post.created_by" show-role />
             <Flex :key="timestampUpdateKey" y-center wrap :gap="4" class="forum-post__timestamps">
               <Tooltip :delay="500">
-                <span>Posted {{ dayjs(post.created_at).fromNow() }}</span>
+                <span>Posted {{ fromNow(post.created_at) }}</span>
                 <template #tooltip>
-                  Posted on {{ formatDate(post.created_at) }}
+                  Posted on {{ fullDateTime(post.created_at) }}
                 </template>
               </Tooltip>
               <template v-if="post.modified_at !== post.created_at">
                 <span aria-hidden="true">-</span>
                 <Tooltip :delay="500">
-                  <span>Edited {{ dayjs(post.modified_at).fromNow() }}</span>
+                  <span>Edited {{ fromNow(post.modified_at) }}</span>
                   <template #tooltip>
-                    Edited on {{ formatDate(post.modified_at) }}
+                    Edited on {{ fullDateTime(post.modified_at) }}
                   </template>
                 </Tooltip>
                 <template v-if="postModifierId && postModifierUser">
@@ -953,7 +789,6 @@ function revealNsfw() {
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
 @use '@/assets/mixins.scss' as *;
 
 .forum-post__nsfw-overlay {

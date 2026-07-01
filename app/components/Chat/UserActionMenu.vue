@@ -23,6 +23,14 @@ const props = defineProps<{
   /** When true, mod actions (Op/Deop/Voice/Devoice/Kick/Ban) are rendered
    *  for users with sufficient channel privileges. */
   showModActions?: boolean
+  /**
+   * Override the nick used in the mention action. Useful for relay nicks where
+   * the full IRC nick contains a bridge suffix (e.g. "user/cord") but the
+   * mention should only insert the user part ("user").
+   */
+  mentionNick?: string
+  /** When true, the "Message" (PM) and mod actions (Op/Voice/Kick/Ban) are hidden. Use for relay virtual nicks. */
+  hideMessage?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -32,7 +40,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const { nick: currentNick, openPm, send, activeName, inputMessage, myChannelRole } = useIrcChat()
+const { nick: currentNick, openPm, openSelfSpace, activeName, inputMessage, myChannelRole, sendMemberMode, moderationPrompt } = useIrcChat()
 const { settings } = useDataUserSettings()
 
 const isSelf = computed(() => props.nick === currentNick.value)
@@ -70,60 +78,53 @@ function doOpenPm() {
   emit('close')
 }
 
+function doOpenSelfSpace() {
+  openSelfSpace()
+  emit('close')
+}
+
 function doMention() {
+  const target = props.mentionNick ?? props.nick
   const current = inputMessage.value.trim()
-  inputMessage.value = current ? `${current} @${props.nick} ` : `@${props.nick}: `
+  inputMessage.value = current ? `${current} @${target} ` : `@${target}: `
   emit('close')
 }
 
 function doOp() {
   const ch = activeName.value
   if (ch)
-    send(`MODE ${ch} +o ${props.nick}`)
+    sendMemberMode(ch, '+o', props.nick)
   emit('close')
 }
 
 function doDeop() {
   const ch = activeName.value
   if (ch)
-    send(`MODE ${ch} -o ${props.nick}`)
+    sendMemberMode(ch, '-o', props.nick)
   emit('close')
 }
 
 function doVoice() {
   const ch = activeName.value
   if (ch)
-    send(`MODE ${ch} +v ${props.nick}`)
+    sendMemberMode(ch, '+v', props.nick)
   emit('close')
 }
 
 function doDevoice() {
   const ch = activeName.value
   if (ch)
-    send(`MODE ${ch} -v ${props.nick}`)
+    sendMemberMode(ch, '-v', props.nick)
   emit('close')
 }
 
-function doKick() {
+// Destructive actions route through a confirmation modal (mounted once in
+// ChatApp) so an accidental click can't kick or ban someone. The menu closes
+// immediately; the modal reads the pending request from shared state.
+function requestModeration(action: 'kick' | 'kickban') {
   const ch = activeName.value
   if (ch)
-    send(`KICK ${ch} ${props.nick}`)
-  emit('close')
-}
-
-function doBan() {
-  const ch = activeName.value
-  if (ch)
-    send(`MODE ${ch} +b ${props.nick}!*@*`)
-  emit('close')
-}
-
-function doKickBan() {
-  const ch = activeName.value
-  if (ch) {
-    send(`MODE ${ch} +b ${props.nick}!*@*`)
-    send(`KICK ${ch} ${props.nick}`)
-  }
+    moderationPrompt.value = { action, nick: props.nick, channel: ch }
   emit('close')
 }
 </script>
@@ -152,8 +153,15 @@ function doKickBan() {
     Copy nickname
   </DropdownItem>
 
+  <DropdownItem v-if="isSelf" @click="doOpenSelfSpace">
+    <template #icon>
+      <Icon name="ph:bookmark-simple" />
+    </template>
+    Your Space
+  </DropdownItem>
+
   <template v-if="!isSelf">
-    <DropdownItem @click="doOpenPm">
+    <DropdownItem v-if="!hideMessage" @click="doOpenPm">
       <template #icon>
         <Icon name="ph:chat-teardrop" />
       </template>
@@ -163,10 +171,10 @@ function doKickBan() {
       <template #icon>
         <Icon name="ph:at" />
       </template>
-      Mention {{ nick }}
+      Mention {{ mentionNick ?? nick }}
     </DropdownItem>
 
-    <template v-if="showModActions && canModerate">
+    <template v-if="showModActions && canModerate && !hideMessage">
       <Divider />
       <DropdownItem v-if="!hasOp" @click="doOp">
         <template #icon>
@@ -213,7 +221,7 @@ function doKickBan() {
         </template>
       </DropdownItem>
       <Divider />
-      <DropdownItem @click="doKick">
+      <DropdownItem @click="requestModeration('kick')">
         <template #icon>
           <Icon name="ph:boot" class="text-color-yellow" />
         </template>
@@ -224,18 +232,7 @@ function doKickBan() {
           Kick
         </template>
       </DropdownItem>
-      <DropdownItem @click="doBan">
-        <template #icon>
-          <Icon name="ph:prohibit" class="text-color-red" />
-        </template>
-        <template v-if="settings.chat_irc_native_modes">
-          MODE +b
-        </template>
-        <template v-else>
-          Ban
-        </template>
-      </DropdownItem>
-      <DropdownItem @click="doKickBan">
+      <DropdownItem @click="requestModeration('kickban')">
         <template #icon>
           <Icon name="ph:prohibit" class="text-color-red" />
         </template>

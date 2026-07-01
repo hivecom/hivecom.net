@@ -32,7 +32,14 @@ export const Video = Node.create({
       src: {
         default: null,
       },
-
+      // Transient client-only id used to track a placeholder through async
+      // upload without relying on the mutable `src`. rendered: false keeps it
+      // out of the serialized HTML, and the atom-block markdown spec below only
+      // allows `src`, so it never leaks into stored markdown either.
+      uploadId: {
+        default: null,
+        rendered: false,
+      },
     }
   },
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Select } from '@dolanske/vui'
+import { Button, Flex, Input } from '@dolanske/vui'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface SelectOption {
@@ -54,7 +55,7 @@ const hasActiveFilters = computed(() =>
     </Input>
 
     <!-- Tag filter -->
-    <Select
+    <ExpandableSelect
       v-model="tagFilter"
       :options="props.tagOptions"
       placeholder="Filter by tags"

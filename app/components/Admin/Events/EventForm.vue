@@ -5,7 +5,7 @@ import { Button, Flex, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref, watch } from 'vue'
 import EventFormFields from '@/components/Events/EventFormFields.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { CMS_BUCKET_ID } from '@/lib/storageAssets'
+import { STATIC_BUCKET_ID } from '@/lib/storageAssets'
 import { expandRecurringEvent } from '@/lib/utils/rrule'
 
 const props = defineProps<{
@@ -27,6 +27,8 @@ const emit = defineEmits<{
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
+
+const formFieldsRef = ref<InstanceType<typeof EventFormFields> | null>(null)
 
 // Get admin permissions
 const { hasPermission } = useAdminPermissions()
@@ -169,11 +171,20 @@ function buildEventData() {
 
 // ── Submit / fork ─────────────────────────────────────────────────────────────
 
-function handleSubmit() {
+async function handleSubmit() {
   if (!isValid.value)
     return
 
   saveLoading.value = true
+
+  // Upload any pending blob-placeholder media before reading the markdown,
+  // otherwise blob: URLs get persisted and render as missing media. The editor
+  // surfaces its own error toast on failure, so we just abort here.
+  const uploaded = await formFieldsRef.value?.flushPendingUploads()
+  if (uploaded === false) {
+    saveLoading.value = false
+    return
+  }
 
   // Fork detection: editing a recurring parent that has already started
   if (props.isEditMode && props.event && props.event.recurrence_rule) {
@@ -261,6 +272,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
     </template>
 
     <EventFormFields
+      ref="formFieldsRef"
       v-model="eventFormFields"
       v-model:is-official="eventForm.is_official"
       v-model:recurrence-exception="eventForm.recurrence_exception"
@@ -270,7 +282,7 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
       :show-recurrence-builder="!props.event?.recurrence_parent_id"
       :show-recurrence-exception="props.isEditMode && !!props.event?.recurrence_parent_id"
       :validation="validation"
-      :media-bucket-id="CMS_BUCKET_ID"
+      :media-bucket-id="STATIC_BUCKET_ID"
     />
 
     <template #footer>

@@ -75,7 +75,7 @@ onMounted(async () => {
         @error="thumbError = true"
       >
       <span class="yt-embed__play-btn">
-        <Icon name="ph:play-fill" size="20" />
+        <Icon name="ph:play-fill" />
       </span>
     </component>
     <iframe
@@ -93,16 +93,31 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
+@use '@/assets/mixins.scss' as *;
+
 .yt-embed {
   display: inline-flex;
   flex-direction: column;
   gap: var(--space-xxs);
+  max-width: 100%;
 
   &--small-row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    max-width: 100%;
+    display: inline;
+
+    .yt-embed__preview {
+      vertical-align: middle;
+    }
+
+    .yt-embed__title {
+      display: inline;
+      flex: none;
+      min-width: 0;
+      margin-left: var(--space-xxs);
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      vertical-align: middle;
+    }
   }
 
   &--inline {
@@ -120,6 +135,7 @@ onMounted(async () => {
   &__preview {
     position: relative;
     display: inline-block;
+    max-width: 100%;
     line-height: 0;
     border-radius: var(--border-radius-s);
     overflow: hidden;
@@ -129,12 +145,18 @@ onMounted(async () => {
 
     &:hover .yt-embed__play-btn {
       background: rgba(0, 0, 0, 0.65);
+
+      span {
+        font-size: var(--chat-font-size);
+      }
     }
   }
 
   &__thumb {
     display: block;
-    max-width: 240px;
+    width: auto;
+    height: auto;
+    max-width: min(240px, 100%);
     max-height: 180px;
     object-fit: cover;
 
@@ -185,9 +207,8 @@ onMounted(async () => {
     cursor: pointer;
     flex: 1;
     min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    max-width: 240px;
+    @include line-clamp(1);
 
     &:hover {
       color: var(--color-text-light);

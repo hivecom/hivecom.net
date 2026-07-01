@@ -9,6 +9,7 @@ import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { metricsCurrentMap } from '@/types/metrics'
 import UserLink from '../Shared/UserLink.vue'
 import GameServerStats from './GameServerStats.vue'
 
@@ -74,9 +75,7 @@ onMounted(() => {
 
 const currentMap = computed<string | null>(() => {
   const detail = metrics.value?.gameservers.byServer[String(_props.gameserver.id)]
-  if (detail?.protocol === 'source')
-    return detail.data?.map ?? null
-  return null
+  return metricsCurrentMap(detail)
 })
 </script>
 
@@ -264,8 +263,6 @@ const currentMap = computed<string | null>(() => {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .gameserver-header {
   &__title-container {
     margin-bottom: var(--space-m);

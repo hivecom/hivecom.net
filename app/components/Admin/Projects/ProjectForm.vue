@@ -8,7 +8,7 @@ import FileUpload from '@/components/Shared/FileUpload.vue'
 import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
 import TagInput from '@/components/Shared/TagInput.vue'
 import { deleteProjectBanner, getProjectBannerUrl, uploadProjectBanner } from '@/lib/storage'
-import { CMS_BUCKET_ID } from '@/lib/storageAssets'
+import { STATIC_BUCKET_ID } from '@/lib/storageAssets'
 
 const props = defineProps<{
   project: QueryProject | null
@@ -21,6 +21,8 @@ const emit = defineEmits<{
 }>()
 
 const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
+
+const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
 // Interface for project query result
 interface QueryProject {
@@ -173,8 +175,15 @@ function handleClose() {
 }
 
 // Handle form submission
-function handleSubmit() {
+async function handleSubmit() {
   if (!isValid.value)
+    return
+
+  // Upload any pending blob-placeholder media before reading the markdown,
+  // otherwise blob: URLs get persisted and render as missing media. The editor
+  // surfaces its own error toast on failure, so we just abort here.
+  const uploaded = await markdownEditor.value?.flushPendingUploads()
+  if (uploaded === false)
     return
 
   // Prepare the data to save
@@ -316,6 +325,7 @@ function confirmDelete() {
         <h4>Content</h4>
 
         <RichTextEditor
+          ref="markdownEditor"
           v-model="projectForm.markdown"
           label="Content"
           hint="You can use markdown and add media by drag-and-drop"
@@ -323,9 +333,10 @@ function confirmDelete() {
           min-height="216px"
           :errors="validation.markdown ? [] : ['Markdown content is required']"
           :media-context="props.project?.id ? `projects/${props.project.id}/markdown/media` : undefined"
-          :media-bucket-id="CMS_BUCKET_ID"
+          :media-bucket-id="STATIC_BUCKET_ID"
           :show-attachment-button="!!props.project?.id"
           show-expand-button
+          always-show-expand-button
         />
       </Flex>
     </Flex>

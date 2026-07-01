@@ -5,12 +5,13 @@
  * component that renders briefly before the admin layout's provide() is in scope).
  */
 import type { Ref } from 'vue'
+import type { AppPermission } from '@/types/database.overrides'
 import { computed, inject, ref } from 'vue'
 
 const _falsePermissions = ref<string[]>([])
 const _nullRole = ref<string | null>(null)
-const _noop = () => false
-const _noopAny = (_: string[]) => false
+const _noop = (_: AppPermission) => false
+const _noopAny = (_: AppPermission[]) => false
 
 export function useAdminPermissions() {
   // Inject the permissions provided by the admin layout. Pass defaults so Vue
@@ -18,8 +19,8 @@ export function useAdminPermissions() {
   // outside the admin layout (e.g. during a layout transition).
   const userPermissions = inject<Readonly<Ref<string[]>>>('userPermissions', _falsePermissions)
   const userRole = inject<Readonly<Ref<string | null>>>('userRole', _nullRole)
-  const hasPermission = inject<(permission: string) => boolean>('hasPermission', _noop)
-  const hasAnyPermission = inject<(permissions: string[]) => boolean>('hasAnyPermission', _noopAny)
+  const hasPermission = inject<(permission: AppPermission) => boolean>('hasPermission', _noop)
+  const hasAnyPermission = inject<(permissions: AppPermission[]) => boolean>('hasAnyPermission', _noopAny)
 
   const resolvedPermissions = userPermissions
   const resolvedRole = userRole
@@ -62,6 +63,8 @@ export function useAdminPermissions() {
     canCreateAssets: computed(() => resolvedHasPermission('assets.create')),
     canUpdateAssets: computed(() => resolvedHasPermission('assets.update')),
     canDeleteAssets: computed(() => resolvedHasPermission('assets.delete')),
+    canViewDepot: computed(() => resolvedHasPermission('depot.read')),
+    canModerateDepot: computed(() => resolvedHasPermission('depot.delete')),
 
     // Check if user is an admin (highest privilege level)
     isAdmin: computed(() => resolvedRole.value === 'admin'),

@@ -555,8 +555,6 @@ defineExpose({ setBrush })
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .chart-brush {
   width: 100%;
   isolation: isolate;

@@ -47,7 +47,7 @@ const CARD_W = (BANNER_WIDTH - GRID_PADDING * 2 - GRID_GAP) / 2; // 284
 const CARD_H = (BANNER_HEIGHT - FOOTER_HEIGHT - GRID_PADDING * 2 - GRID_GAP) /
   2; // 118
 
-const TEXT = "rgb(240, 240, 240)"; // white
+const _TEXT = "rgb(240, 240, 240)"; // white
 const ACCENT = "rgb(167, 252, 47)"; // green  - website
 const PLAYING_BLUE = "rgb(59, 130, 246)"; // blue   - playing
 const GAME_YELLOW = "rgb(234, 179, 8)"; // yellow - servers
@@ -215,7 +215,7 @@ export function buildScene(
                     ? kpiCard("Next Event", "ONGOING", LIVE)
                     : kpiCard(
                       "Next Event",
-                      nextEventCountdown ?? "—",
+                      nextEventCountdown ?? "-",
                       nextEventCountdown ? "#e8e8e8" : "#5a5a5a",
                     ),
                 ],

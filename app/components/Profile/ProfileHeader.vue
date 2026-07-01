@@ -5,10 +5,11 @@ import { Badge, Button, Card, CopyClipboard, Flex, Grid, Indicator, Modal, Skele
 import { computed } from 'vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import { useDataUser } from '@/composables/useDataUser'
-import { getLastSeenTextClass, getLastSeenVariant, getUserActivityStatus } from '@/lib/lastSeen'
+import { useUserActivityStatus } from '@/composables/useUserActivityStatus'
+import { getLastSeenTextClass, getLastSeenVariant } from '@/lib/lastSeen'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCountryInfo } from '@/lib/utils/country'
-import { isBirthdayDateToday } from '@/lib/utils/date'
+import { fullDateLong, fullDateTime, isBirthdayDateToday } from '@/lib/utils/date'
 import MarkdownRenderer from '../Shared/MarkdownRenderer.vue'
 
 interface Props {
@@ -44,12 +45,10 @@ const userRole = computed(() => user.value?.role ?? null)
 
 const isTablet = useBreakpoint('<m')
 
-const activityStatus = computed(() => {
-  if (!props.profile?.last_seen)
-    return null
-
-  return getUserActivityStatus(props.profile.last_seen)
-})
+const activityStatus = useUserActivityStatus(
+  () => props.profile?.id ?? null,
+  () => props.profile?.last_seen ?? null,
+)
 
 const countryInfo = computed(() => getCountryInfo(props.profile?.country ?? null))
 // Treat YYYY-MM-DD birthdays as date-only values so timezone offsets do not shift the day
@@ -96,7 +95,7 @@ const birthdayInfo = computed(() => {
     age = 0
 
   return {
-    formatted: parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+    formatted: fullDateLong(parsed),
     age,
     isToday: birthdayIsToday,
     isBornThisYear,
@@ -133,13 +132,7 @@ const joinedTooltip = computed(() => {
   if (Number.isNaN(created.getTime()))
     return ''
 
-  return created.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return fullDateTime(created)
 })
 
 // Generate profile URL for copying
@@ -668,8 +661,6 @@ onUnmounted(() => stopConfetti())
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .birthday-confetti-wrapper {
   position: relative;
   width: 100%;

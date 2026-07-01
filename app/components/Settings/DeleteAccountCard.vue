@@ -49,6 +49,9 @@ async function deleteAccount() {
   deleteAccountLoading.value = true
 
   try {
+    // The edge function wipes the user's Orbit Depot uploads server-side (via the
+    // gateway service key) before removing the account, so there's nothing to do
+    // here beyond the delete call.
     const { error } = await supabase.functions.invoke('user-delete-account', {
       body: {
         confirmEmail: deleteAccountConfirm.value.trim(),

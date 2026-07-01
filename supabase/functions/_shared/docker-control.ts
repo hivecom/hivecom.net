@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import type { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "./cors.ts";
 import type { Database, Tables } from "database-types";
 

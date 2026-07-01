@@ -1,4 +1,5 @@
 import type { ComputedRef, Ref } from 'vue'
+import type { TopicWithDiscussions } from '@/composables/useForumTopics'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import dayjs from 'dayjs'
@@ -33,11 +34,6 @@ export interface ActivityItem {
   isNsfw?: boolean
   isOfftopic?: boolean
   icon: string
-}
-
-export type TopicWithDiscussions = Tables<'discussion_topics'> & {
-  discussions: Tables<'discussions'>[]
-  discussionsLoaded: boolean
 }
 
 export interface UseForumActivityFeedOptions {

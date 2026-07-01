@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AppPermission } from '@/types/database.overrides'
 import { Button, Divider, DropdownItem, Flex, Kbd, KbdGroup, Sheet, Sidebar, Spinner, Tooltip } from '@dolanske/vui'
 import { until, useMediaQuery } from '@vueuse/core'
 import SharedLogo from '@/components/Shared/Logo.vue'
@@ -16,7 +17,7 @@ const isMac = import.meta.client && /Mac/i.test(navigator.platform)
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
-// resolvedUserId is just userId — we wait for useSupabaseUser() to populate
+// resolvedUserId is just userId - we wait for useSupabaseUser() to populate
 // before running the auth check, so no sessionUserId fallback is needed.
 const resolvedUserId = userId
 
@@ -126,17 +127,24 @@ watch(user, async (newUser) => {
 })
 
 // Helper function to check if user has specific permission
-function hasPermission(permission: string): boolean {
+function hasPermission(permission: AppPermission): boolean {
   return userPermissions.value.includes(permission)
 }
 
 // Helper function to check if user has any of the provided permissions
-function hasAnyPermission(permissions: string[]): boolean {
+function hasAnyPermission(permissions: AppPermission[]): boolean {
   return permissions.some(permission => userPermissions.value.includes(permission))
 }
 
 // Menu items with their required permissions
-const menuItems = [
+interface MenuItem {
+  name: string
+  path: string
+  icon: string
+  permissions: AppPermission[]
+  dividerAfter?: boolean
+}
+const menuItems: MenuItem[] = [
   {
     name: 'Dashboard',
     path: '/admin/',
@@ -162,6 +170,12 @@ const menuItems = [
     path: '/admin/complaints',
     icon: 'ph:flag',
     permissions: ['complaints.read', 'complaints.create', 'complaints.update', 'complaints.delete'],
+  },
+  {
+    name: 'Depot',
+    path: '/admin/depot',
+    icon: 'ph:cloud-arrow-up',
+    permissions: ['depot.read', 'depot.delete'],
   },
   {
     name: 'Discussions',
@@ -529,8 +543,6 @@ watch(() => route.path, () => {
 </template>
 
 <style lang="scss" scoped>
-@use '@/assets/breakpoints.scss' as *;
-
 .admin-layout {
   min-height: 100vh;
   display: flex;

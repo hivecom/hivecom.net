@@ -205,17 +205,40 @@ async function handleDelete() {
   }
 }
 
+// Fetch minimal event data at SSR/prerender time so meta tags are populated.
+// The full interactive fetch (useCachedFetch) is client-only, so during
+// prerendering event.value stays null and every card falls back to
+// "Event Details" / "Event details" - the doubled label crawlers were seeing.
+const { data: seoEvent } = await useAsyncData(`event-seo-${eventId}`, async () => {
+  const { data } = await supabase
+    .from('events')
+    .select('title, description')
+    .eq('id', eventId)
+    .maybeSingle()
+  return data
+})
+
+const seoTitle = computed(() => {
+  const source = event.value ?? seoEvent.value
+  return source?.title ? `${source.title} | Events` : 'Event Details'
+})
+
+const seoDescription = computed(() => {
+  const source = event.value ?? seoEvent.value
+  return source?.description || 'Event details'
+})
+
 // SEO and page metadata
 useSeoMeta({
-  title: computed(() => event.value ? `${event.value.title} | Events` : 'Event Details'),
-  description: computed(() => event.value?.description || 'Event details'),
-  ogTitle: computed(() => event.value ? `${event.value.title} | Events` : 'Event Details'),
-  ogDescription: computed(() => event.value?.description || 'Event details'),
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
 })
 
 // Page title
 useHead({
-  title: computed(() => event.value ? event.value.title : 'Event Details'),
+  title: computed(() => (event.value ?? seoEvent.value)?.title ?? 'Event Details'),
 })
 </script>
 

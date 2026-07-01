@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Flex, Input, Select, Switch } from '@dolanske/vui'
+import { Flex, Input, Switch } from '@dolanske/vui'
+import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
@@ -73,11 +74,11 @@ const hideRecurring = computed<boolean>({
       </template>
     </Input>
 
-    <Select
+    <ExpandableSelect
       v-model="officialSelection"
       :options="officialOptions"
       placeholder="Filter by official"
-      :class="{ 'w-100': isBelowMedium }"
+      :expand="isBelowMedium"
       show-clear
       :single="true"
     />

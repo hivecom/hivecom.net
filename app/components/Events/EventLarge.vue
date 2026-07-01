@@ -182,7 +182,6 @@ onBeforeMount(() => {
 
 <style lang="scss">
 @use '@/assets/mixins.scss' as *;
-@use '@/assets/breakpoints.scss' as *;
 
 .event-large {
   transition: background-color var(--transition);

@@ -4,7 +4,7 @@ import { Flex, Sheet } from '@dolanske/vui'
 import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
 import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import { formatCurrency } from '@/lib/utils/currency'
-import { formatMonth } from '@/lib/utils/date'
+import { fullMonth } from '@/lib/utils/date'
 
 const props = defineProps<{
   funding: Tables<'funding_history'> | null
@@ -41,7 +41,7 @@ function handleClose() {
           <h6>Overview</h6>
         </template>
         <DetailRow label="Month">
-          <span class="text-s text-bold">{{ formatMonth(props.funding.month) }}</span>
+          <span class="text-s text-bold">{{ fullMonth(props.funding.month) }}</span>
         </DetailRow>
         <DetailRow label="Total Monthly">
           <span class="text-s text-bold">{{ formatCurrency((props.funding.patreon_month_amount_cents || 0) + (props.funding.donation_month_amount_cents || 0)) }}</span>

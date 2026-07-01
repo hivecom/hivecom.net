@@ -193,6 +193,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .hero-motd {
   z-index: var(--z-active);
+  text-align: center;
+  padding: 0 var(--space-s);
   span {
     font-size: var(--font-size-s);
   }

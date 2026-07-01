@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onBeforeMount } from 'vue'
 import { useDataAdminKPIs } from '@/composables/useDataAdminKPIs'
+import { formatCurrency } from '@/lib/utils/currency'
+
 import KPICard from './KPICard.vue'
 import KPIContainer from './KPIContainer.vue'
 
@@ -13,10 +15,6 @@ const {
   upcomingEventsCount,
   fetchKPIData,
 } = useDataAdminKPIs()
-
-function formatCurrency(cents: number) {
-  return `€${Math.round(cents / 100)}`
-}
 
 onBeforeMount(() => {
   fetchKPIData()

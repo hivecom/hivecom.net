@@ -75,8 +75,8 @@ function clear() {
   }
 }
 .color-picker__label {
-  font-size: var(--font-size-m);
-  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text);
 }
 

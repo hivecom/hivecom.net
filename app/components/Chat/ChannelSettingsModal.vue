@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { Badge, Button, Divider, Dropdown, DropdownItem, Flex, Input, Modal, pushToast, Sheet, Spinner, Switch, Tab, Tabs } from '@dolanske/vui'
-import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import { Badge, Button, Divider, Dropdown, DropdownItem, Flex, Input, Modal, pushToast, Sheet, Skeleton, Spinner, Switch, Tab, Tabs } from '@dolanske/vui'
+import { computed, defineAsyncComponent, h, ref, watch } from 'vue'
 import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
 import UserRoleBadge from '@/components/Chat/UserRoleBadge.vue'
 import ColorPicker from '@/components/Shared/ColorPicker.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import TagInput from '@/components/Shared/TagInput.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { channelRole, useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -12,9 +14,12 @@ const props = defineProps<{ channel: string | null }>()
 
 const emit = defineEmits<{ close: [] }>()
 
-const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
+const RichTextEditor = defineAsyncComponent({
+  loader: () => import('@/components/Editor/RichTextEditor.vue'),
+  loadingComponent: { render: () => h(Skeleton, { height: 120, radius: 8 }) },
+})
 
-const { buffers, send, setChannelMetadata, deleteChannelMetadata, myChannelRole, fetchListModes, queryChanServInfo, suppressChanServResponse, initiateDrop, nick, channelMetaCache } = useIrcChat()
+const { buffers, send, setChannelMetadata, deleteChannelMetadata, myChannelRole, fetchListModes, queryChanServInfo, suppressChanServResponse, initiateDrop, renameChannel, nick, channelMetaCache } = useIrcChat()
 const isMobile = useBreakpoint('<s')
 const { settings } = useDataUserSettings()
 
@@ -102,7 +107,7 @@ const modeFlags: Array<{ mode: FlagKey, label: string, description: string }> = 
   { mode: 'U', label: 'Op-moderated', description: 'Messages from unprivileged users are seen only by operators' },
 ]
 
-type ActiveTab = 'channel' | 'bans' | 'members' | 'appearance'
+type ActiveTab = 'channel' | 'bans' | 'roles' | 'permissions' | 'subchannels'
 const activeTab = ref<ActiveTab>('channel')
 
 // Draft state
@@ -117,17 +122,26 @@ const draftPassword = ref('')
 const draftPasswordEnabled = ref(false)
 const draftLimit = ref('')
 const draftForward = ref('')
-const draftSubchannels = ref('')
+const draftSubchannels = ref<string[]>([])
+const draftRenameName = ref('')
 
 function populateDraft() {
   if (!buf.value)
     return
   draftTopic.value = buf.value.topic ?? ''
+  draftRenameName.value = buf.value.name.replace(/^[#&]/, '')
   draftDisplayName.value = buf.value.metadata?.get('display-name') ?? ''
   draftAvatar.value = buf.value.metadata?.get('avatar') ?? ''
   draftColor.value = buf.value.metadata?.get('color') ?? ''
   draftHomepage.value = buf.value.metadata?.get('homepage') ?? ''
   draftMarkdown.value = buf.value.metadata?.get('markdown') ?? ''
+  draftSubchannels.value = (buf.value.metadata?.get('subchannels') ?? '').split(',').map(s => s.trim()).filter(Boolean)
+  populateModeDraft()
+}
+
+function populateModeDraft() {
+  if (!buf.value)
+    return
   draftFlags.value = {
     i: buf.value.modes?.has('i') ?? false,
     m: buf.value.modes?.has('m') ?? false,
@@ -144,7 +158,6 @@ function populateDraft() {
   draftPasswordEnabled.value = buf.value.modes?.has('k') ?? false
   draftLimit.value = ''
   draftForward.value = buf.value.modeParams?.get('f') ?? ''
-  draftSubchannels.value = buf.value.metadata?.get('subchannels') ?? ''
 }
 
 watch(() => props.channel, (val) => {
@@ -156,10 +169,11 @@ watch(() => props.channel, (val) => {
   }
 })
 
-// Re-populate draft when modes arrive (server 324 response)
+// Re-populate only mode fields when modes arrive (server 324 response)
+// Metadata fields are populated on open only, so user edits are not overwritten
 watch(() => buf.value?.modes, () => {
   if (props.channel)
-    populateDraft()
+    populateModeDraft()
 })
 
 // Close if the buffer goes away (e.g. left channel)
@@ -260,6 +274,34 @@ function dropChannel() {
   initiateDrop(props.channel)
 }
 
+// Ergo refuses to rename channels with persistent history (i.e. registered
+// channels), so only offer the action once we know the channel is unregistered.
+const canRename = computed(() => canEdit.value && buf.value?.registered === false)
+
+const renameValid = computed(() => {
+  if (!props.channel)
+    return false
+  const slug = draftRenameName.value.trim().replace(/^[#&]+/, '')
+  if (!slug)
+    return false
+  return `${props.channel[0]}${slug}` !== props.channel
+})
+
+const renameConfirmOpen = ref(false)
+
+function promptRename() {
+  if (!canRename.value || !renameValid.value)
+    return
+  renameConfirmOpen.value = true
+}
+
+function renameChannelAction() {
+  if (!props.channel || !renameValid.value)
+    return
+  renameChannel(props.channel, draftRenameName.value)
+  renameConfirmOpen.value = false
+}
+
 function unban(mask: string) {
   if (!props.channel)
     return
@@ -349,16 +391,22 @@ function save() {
       ['color', draftColor.value.trim()],
       ['homepage', draftHomepage.value.trim()],
       ['markdown', draftMarkdown.value],
-      ['subchannels', draftSubchannels.value.trim()],
+      ['subchannels', draftSubchannels.value.join(', ')],
     ]
 
     for (const [key, value] of metaFields) {
       const current = buf.value.metadata?.get(key) ?? ''
       if (value !== current) {
-        if (value)
+        if (value) {
           setChannelMetadata(ch, key, value)
-        else
+          buf.value.metadata ??= new Map()
+          buf.value.metadata.set(key, value)
+        }
+        else {
           deleteChannelMetadata(ch, key)
+          buf.value.metadata?.delete(key)
+        }
+        buf.value.metadata = new Map(buf.value.metadata)
       }
     }
   }
@@ -384,76 +432,22 @@ function save() {
         <Tab value="channel">
           Channel
         </Tab>
+        <Tab value="permissions">
+          Permissions
+        </Tab>
         <Tab value="bans">
           Bans
         </Tab>
-        <Tab value="members">
-          Members
+        <Tab value="roles">
+          Roles
         </Tab>
-        <Tab value="appearance">
-          Appearance
+        <Tab value="subchannels">
+          Subchannels
         </Tab>
       </Tabs>
 
-      <!-- Channel tab -->
-      <template v-if="activeTab === 'channel'">
-        <Flex column expand>
-          <!-- Registration -->
-          <Flex y-center x-between expand class="channel-settings__flag-row">
-            <Flex column :gap="0">
-              <span class="channel-settings__label">Channel persistence registration</span>
-            </Flex>
-            <Flex y-center gap="xs">
-              <Spinner v-if="buf?.registered === undefined" size="s" />
-              <Badge v-else-if="buf.registered" variant="success" outline size="s">
-                Registered
-              </Badge>
-              <Badge v-else variant="neutral" outline size="s">
-                Not registered
-              </Badge>
-              <Button v-if="canEdit && buf?.registered === false" size="s" variant="accent" @click="registerChannel">
-                Register
-              </Button>
-              <Button v-if="canEdit && buf?.registered === true" size="s" variant="danger" @click="dropChannel">
-                Drop
-              </Button>
-            </Flex>
-          </Flex>
-          <!-- Subchannel parent authorization (only when registered) -->
-          <template v-if="isSubchannel && buf?.registered">
-            <Flex y-center x-between expand class="channel-settings__flag-row">
-              <Flex column :gap="0">
-                <span class="text-s">Parent channel</span>
-                <span class="text-xxs text-color-lighter">{{ isAuthorizedByParent ? `This channel is listed as a subchannel of ${parentChannelName}` : `Not yet authorized from parent - requires operator privileges on ${parentChannelName}` }}</span>
-              </Flex>
-              <Badge v-if="isAuthorizedByParent" variant="success" outline size="s">
-                Authorized
-              </Badge>
-              <Button v-else size="s" variant="accent" @click="registerWithParent">
-                Add to parent
-              </Button>
-            </Flex>
-          </template>
-        </Flex>
-
-        <Divider />
-
-        <!-- Topic -->
-        <Flex column gap="xs" expand>
-          <label class="channel-settings__label">Topic</label>
-          <Input
-            v-model="draftTopic"
-            expand
-            placeholder="Set channel topic..."
-            :disabled="!canEditTopic"
-          />
-          <p v-if="!canEditTopic" class="text-xxs text-color-lighter channel-settings__hint">
-            {{ buf?.modes?.has('t') ? 'Topic is locked - operator required' : 'Insufficient privileges to change topic' }}
-          </p>
-        </Flex>
-
-        <Divider />
-
+      <!-- Permissions tab -->
+      <template v-if="activeTab === 'permissions'">
         <!-- Mode flags -->
         <Flex column gap="s" expand>
           <span class="channel-settings__label">Channel Modes</span>
@@ -533,21 +527,6 @@ function save() {
             />
             <p class="text-xxs text-color-lighter channel-settings__hint">
               Users banned or blocked from joining are forwarded here. Leave empty to disable.
-            </p>
-          </Flex>
-
-          <Divider />
-
-          <!-- Authorized subchannels (nesting allowlist) -->
-          <Flex column gap="xs" expand>
-            <label class="channel-settings__label">Subchannels</label>
-            <Input
-              v-model="draftSubchannels"
-              expand
-              placeholder="e.g. dev, staging, 2"
-            />
-            <p class="text-xxs text-color-lighter channel-settings__hint">
-              Comma-separated leaf names this channel authorizes to nest beneath it. Listing "sub-channel" lets the channel {{ channel }}/sub-channel appear as a child here. Unlisted slash-channels stay top-level, preventing impersonation.
             </p>
           </Flex>
         </template>
@@ -653,8 +632,8 @@ function save() {
         </template>
       </template>
 
-      <!-- Members tab -->
-      <template v-if="activeTab === 'members'">
+      <!-- Roles tab -->
+      <template v-if="activeTab === 'roles'">
         <Flex column gap="xs" expand>
           <Flex
             v-for="user in buf?.users.filter(u => channelRole(u.prefix))"
@@ -718,13 +697,120 @@ function save() {
         </Flex>
       </template>
 
-      <!-- Appearance tab -->
-      <template v-if="activeTab === 'appearance'">
+      <!-- Subchannels tab -->
+      <template v-if="activeTab === 'subchannels'">
         <p v-if="!canEdit" class="text-xs text-color-lighter channel-settings__hint">
-          Appearance metadata requires operator privileges.
+          Subchannel settings require operator privileges.
+        </p>
+        <!-- Parent authorization (only for subchannels) -->
+        <template v-if="isSubchannel && buf?.registered">
+          <Flex y-center x-between expand class="channel-settings__flag-row">
+            <Flex column :gap="0">
+              <span class="text-s">Parent channel</span>
+              <span class="text-xxs text-color-lighter">{{ isAuthorizedByParent ? `This channel is listed as a subchannel of ${parentChannelName}` : `Not yet authorized from parent - requires operator privileges on ${parentChannelName}` }}</span>
+            </Flex>
+            <Badge v-if="isAuthorizedByParent" variant="success" outline size="s">
+              Authorized
+            </Badge>
+            <Button v-else size="s" variant="accent" @click="registerWithParent">
+              Add to parent
+            </Button>
+          </Flex>
+          <Divider />
+        </template>
+        <!-- Authorized subchannels allowlist -->
+        <Flex column gap="xs" expand>
+          <TagInput
+            v-model="draftSubchannels"
+            label="Subchannels"
+            placeholder="Add subchannel name..."
+            allow-bulk
+            :disabled="!canEdit"
+          />
+          <p class="text-xxs text-color-lighter channel-settings__hint">
+            Leaf names this channel authorizes to nest beneath it. Adding "sub-channel" lets {{ channel }}/sub-channel appear as a child. Unlisted slash-channels stay top-level.
+          </p>
+        </Flex>
+      </template>
+
+      <!-- Channel tab -->
+      <template v-if="activeTab === 'channel'">
+        <p v-if="!canEdit" class="text-xs text-color-lighter channel-settings__hint">
+          Channel metadata requires operator privileges.
         </p>
 
+        <!-- Registration -->
+        <Flex column expand>
+          <Flex y-center x-between expand class="channel-settings__flag-row">
+            <Flex column :gap="0">
+              <span class="channel-settings__label">Channel Persistence</span>
+            </Flex>
+            <Flex y-center gap="xs">
+              <Spinner v-if="buf?.registered === undefined" size="s" />
+              <Badge v-else-if="buf.registered" variant="success" outline size="s">
+                Registered
+              </Badge>
+              <Badge v-else variant="neutral" outline size="s">
+                Not registered
+              </Badge>
+              <Button v-if="canEdit && buf?.registered === false" size="s" variant="accent" @click="registerChannel">
+                Register
+              </Button>
+              <Button v-if="canEdit && buf?.registered === true" size="s" variant="danger" @click="dropChannel">
+                Drop
+              </Button>
+            </Flex>
+          </Flex>
+        </Flex>
+
+        <Divider />
+
+        <!-- Rename -->
+        <Flex column gap="xs" expand>
+          <label class="channel-settings__label">Channel name</label>
+          <Flex y-center gap="xs" expand>
+            <Input
+              v-model="draftRenameName"
+              expand
+              placeholder="channel-name"
+              :disabled="!canRename"
+              @keydown.enter="promptRename"
+            >
+              <template #start>
+                <span class="text-color-lighter">{{ channel?.[0] ?? '#' }}</span>
+              </template>
+            </Input>
+            <Button variant="accent" :disabled="!canRename || !renameValid" @click="promptRename">
+              Rename
+            </Button>
+          </Flex>
+          <p class="text-xxs text-color-lighter channel-settings__hint">
+            <template v-if="canEdit && buf?.registered === true">
+              Registered channels with persistent history cannot be renamed. Drop the registration first to rename it.
+            </template>
+            <template v-else>
+              For a cosmetic change, set the display name above. Renaming wipes the channel's message history.
+            </template>
+          </p>
+        </Flex>
+
+        <Divider />
+
         <Flex column gap="m" expand>
+          <!-- Topic -->
+          <Flex column gap="xs" expand>
+            <label class="channel-settings__label">Topic</label>
+            <Input
+              v-model="draftTopic"
+              expand
+              placeholder="Set channel topic..."
+              :disabled="!canEditTopic"
+            />
+            <p v-if="!canEditTopic" class="text-xxs text-color-lighter channel-settings__hint">
+              {{ buf?.modes?.has('t') ? 'Topic is locked - operator required' : 'Insufficient privileges to change topic' }}
+            </p>
+          </Flex>
+
           <Flex column gap="xs" expand>
             <label class="channel-settings__label">Display name</label>
             <Input
@@ -784,7 +870,7 @@ function save() {
           Cancel
         </Button>
         <Button
-          v-if="activeTab !== 'bans' && activeTab !== 'members'"
+          v-if="activeTab !== 'bans' && activeTab !== 'roles'"
           variant="accent"
           :disabled="!canEditTopic && !canEdit"
           @click="save"
@@ -831,6 +917,16 @@ function save() {
       </DropdownItem>
     </div>
   </Sheet>
+
+  <ConfirmModal
+    v-model:open="renameConfirmOpen"
+    :confirm="renameChannelAction"
+    title="Rename this channel?"
+    description="Renaming wipes the channel's message history. For a simple, cosmetic change, set the display name above instead."
+    confirm-text="Rename"
+    cancel-text="Cancel"
+    :destructive="true"
+  />
 </template>
 
 <style lang="scss" scoped>

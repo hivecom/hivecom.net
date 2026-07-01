@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Badge, Card, Flex, Grid, Sheet } from '@dolanske/vui'
+import { Badge, Button, Card, Flex, Grid, Sheet } from '@dolanske/vui'
 import AdminActions from '@/components/Admin/Shared/AdminActions.vue'
 import DetailRow from '@/components/Admin/Shared/DetailRow.vue'
 import DetailTable from '@/components/Admin/Shared/DetailTable.vue'
 import CopyValue from '@/components/Shared/CopyValue.vue'
-import Metadata from '@/components/Shared/Metadata.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
+import ThemeIcon from '@/components/Themes/ThemeIcon.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
-  theme: Tables<'themes'> | null
+  theme: Tables<'themes'>
 }>()
 
 const emit = defineEmits<{
@@ -44,20 +44,18 @@ function handleDelete(theme: Tables<'themes'>) {
   >
     <template #header>
       <Flex x-between y-center class="pr-s">
-        <Flex column :gap="0">
-          <h4>Theme Details</h4>
-          <p v-if="props.theme" class="text-color-light text-xs">
-            <NuxtLink :to="`/themes/${props.theme.id}`" target="_blank">
-              {{ props.theme.name }}
-            </NuxtLink>
-          </p>
+        <Flex y-center inline>
+          <ThemeIcon :theme="props.theme" />
+          <h4>{{ props.theme.name }}</h4>
         </Flex>
-        <Flex y-center gap="s">
+        <Flex y-center gap="xs">
+          <Button square :href="`/themes/${props.theme.id}`" target="_blank">
+            <Icon name="ph:arrow-square-out" />
+          </Button>
           <AdminActions
             v-if="props.theme"
             resource-type="themes"
-            :item="props.theme as unknown as Record<string, unknown>"
-            :show-labels="true"
+            :item="props.theme"
             :actions="['delete']"
             @delete="(item) => handleDelete(item as unknown as Tables<'themes'>)"
           />
@@ -73,6 +71,12 @@ function handleDelete(theme: Tables<'themes'>) {
           <h6>Overview</h6>
         </template>
 
+        <DetailRow label="Description">
+          <p class="text-s">
+            {{ props.theme.description }}
+          </p>
+        </DetailRow>
+
         <DetailRow label="ID">
           <CopyValue :text="props.theme.id" link />
         </DetailRow>
@@ -86,35 +90,18 @@ function handleDelete(theme: Tables<'themes'>) {
           <TimestampDate :date="props.theme.created_at" size="s" class="text-color" />
         </DetailRow>
 
-        <DetailRow label="Flags" wrap>
+        <DetailRow v-if="props.theme.is_official || props.theme.is_unmaintained" label="Flags" wrap>
           <Badge v-if="props.theme.is_official" variant="accent" filled size="s">
             Official
           </Badge>
-          <Badge v-if="props.theme.is_unmaintained" variant="warning" filled size="s">
+          <Badge v-else-if="props.theme.is_unmaintained" variant="warning" filled size="s">
             Unmaintained
           </Badge>
-          <span v-if="!props.theme.is_official && !props.theme.is_unmaintained" class="text-s text-color-lighter">
-            None
-          </span>
         </DetailRow>
 
-        <DetailRow label="Forked from">
-          <span v-if="props.theme.forked_from" class="text-s text-color-light">{{ props.theme.forked_from }}</span>
-          <span v-else class="text-color-lighter text-s">Original</span>
+        <DetailRow v-if="props.theme.forked_from" label="Forked from">
+          <span class="text-s text-color-light">{{ props.theme.forked_from }}</span>
         </DetailRow>
-      </DetailTable>
-
-      <!-- Description -->
-      <DetailTable v-if="props.theme.description">
-        <template #header>
-          <Icon name="ph:text-align-left" />
-          <h6>Description</h6>
-        </template>
-        <div class="theme-details__description">
-          <p class="text-s">
-            {{ props.theme.description }}
-          </p>
-        </div>
       </DetailTable>
 
       <!-- Scale settings -->
@@ -139,7 +126,7 @@ function handleDelete(theme: Tables<'themes'>) {
         </DetailTable>
       </Card>
 
-      <!-- Color swatches - dark palette -->
+      <!-- Color swatches -->
       <Card separators class="card-bg">
         <template #header>
           <h6>Dark Palette</h6>
@@ -166,6 +153,7 @@ function handleDelete(theme: Tables<'themes'>) {
             <div class="swatch" :style="{ background: props.theme.dark_accent }" />
             <span class="text-xs text-color-light">Accent</span>
           </Flex>
+
           <Flex column x-center gap="xs">
             <div class="swatch" :style="{ background: props.theme.dark_text }" />
             <span class="text-xs text-color-light">Text</span>
@@ -190,10 +178,13 @@ function handleDelete(theme: Tables<'themes'>) {
             <div class="swatch" :style="{ background: props.theme.dark_text_blue }" />
             <span class="text-xs text-color-light">Blue</span>
           </Flex>
+          <Flex column x-center gap="xs">
+            <div class="swatch" :style="{ background: props.theme.dark_text_purple }" />
+            <span class="text-xs text-color-light">Purple</span>
+          </Flex>
         </Grid>
       </Card>
 
-      <!-- Color swatches - light palette -->
       <Card separators class="card-bg">
         <template #header>
           <h6>Light Palette</h6>
@@ -244,16 +235,12 @@ function handleDelete(theme: Tables<'themes'>) {
             <div class="swatch" :style="{ background: props.theme.light_text_blue }" />
             <span class="text-xs text-color-light">Blue</span>
           </Flex>
+          <Flex column x-center gap="xs">
+            <div class="swatch" :style="{ background: props.theme.light_text_purple }" />
+            <span class="text-xs text-color-light">Purple</span>
+          </Flex>
         </Grid>
       </Card>
-
-      <!-- Metadata -->
-      <Metadata
-        :created-at="props.theme.created_at"
-        :created-by="props.theme.created_by ?? null"
-        :modified-at="props.theme.modified_at ?? null"
-        :modified-by="props.theme.modified_by ?? null"
-      />
     </Flex>
   </Sheet>
 </template>
@@ -270,7 +257,7 @@ function handleDelete(theme: Tables<'themes'>) {
 .swatch {
   width: 40px;
   height: 40px;
-  border-radius: var(--border-radius-s);
+  border-radius: var(--border-radius-m);
   border: 1px solid var(--color-border);
 }
 </style>

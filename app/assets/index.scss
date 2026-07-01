@@ -161,6 +161,9 @@
   }
 
   width: fit-content;
+  // Badges have a fixed height, so wrapping text overflows the pill. Keep them
+  // on a single line everywhere (e.g. "audio/mpeg" content-type tags in tables).
+  white-space: nowrap;
 
   // Iconify icons render as <span class="iconify">, not <svg>/<path>, so VUI's
   // per-variant svg/path color rules don't reach them. Mirror those rules here.
@@ -283,6 +286,20 @@ label:is(.required):after {
   margin-bottom: 0;
 }
 
+// VUI offsets nested modals by --layer-position * 16px to create a stacking
+// effect, but screen-size modals use position:fixed;inset:0 and must not be
+// shifted - otherwise the layer offset creates a visible gap at the top.
+.vui-modal.vui-modal-size-screen {
+  transform: none;
+
+  // Same home-bar grace as drawers and sheets: a fullscreen modal runs edge to
+  // edge, so reserve the safe-area inset at the bottom of its card. Additive, so
+  // it keeps the card's own padding and respects padding:false lightboxes.
+  > .vui-card {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
 table th,
 table td {
   font-size: var(--font-size-s);
@@ -381,17 +398,21 @@ blockquote {
   }
 }
 
+.vui-switch.checked .vui-switch-icon {
+  background-color: var(--color-bg-accent-lowered);
+
+  .vui-switch-indicator {
+    background-color: var(--color-accent);
+  }
+}
+
 :root.light {
   .vui-popout {
     box-shadow: 0 4px 12px 8px rgba(8, 8, 8, 0.125);
   }
-}
 
-.vui-switch.checked .vui-switch-icon {
-  background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 25%, transparent) !important;
-
-  .vui-switch-indicator {
-    background-color: var(--color-accent);
+  .vui-switch.checked .vui-switch-icon {
+    background-color: var(--color-bg-accent-raised);
   }
 }
 
@@ -633,6 +654,25 @@ code {
 
 .vui-drawer-content {
   outline: none !important;
+
+  // iPhones with a home-bar bezel cut off the bottom of drawer content. Fold
+  // the safe-area inset into VUI's default container padding so every drawer
+  // gets it for free, instead of patching it per drawer everywhere.
+  .vui-drawer-container {
+    padding-bottom: calc(var(--space-l) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+// VUI Sheets (left / right / bottom) run to the screen edge, so their footer or
+// scrolling content lands against the iPhone bezel. Reserve the safe-area inset
+// on the sheet itself rather than the footer: it's additive, so it keeps each
+// sheet's own padding choice (including card padding:false), needs no
+// !important, and the sheet bg matches the footer so there's no seam. Top sheets
+// don't touch the home bar, so they're left out.
+.vui-sheet-position-left,
+.vui-sheet-position-right,
+.vui-sheet-position-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .vui-dropdown-item {

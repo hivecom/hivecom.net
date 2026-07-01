@@ -70,8 +70,8 @@ async function handleConfirm(close: () => void) {
     </template>
 
     <Flex column gap="s">
-      <p v-if="props.showAgreeButton" class="text-l">
-        {{ props.description || 'Please review and agree to the content rules before continuing.' }}
+      <p v-if="props.showAgreeButton" class="text-l text-bold">
+        {{ props.description || 'Please review and agree to the content rules before continuing:' }}
       </p>
       <p>
         These rules are guidelines, not law, and are interpreted by the staff:

@@ -5,7 +5,7 @@ const props = defineProps<{
   channel: string
 }>()
 
-const { joinChannel, chatSheetOpen, isConnected, connect } = useIrcChat()
+const { joinChannel, chatSheetOpen, isConnected, seedChannel } = useIrcChat()
 const route = useRoute()
 
 function handleClick(e: MouseEvent) {
@@ -15,11 +15,8 @@ function handleClick(e: MouseEvent) {
     joinChannel(props.channel)
   }
   else {
-    connect()
-    // joinChannel is called automatically once the connection lands via
-    // the connect flow's initial channel seed - but for an explicit mention
-    // click we want to ensure the right channel is joined. The chat composable
-    // will handle the actual join when ready.
+    // Pre-fill the channel so the ConnectForm shows it; user still clicks Connect.
+    seedChannel(props.channel.startsWith('#') ? props.channel : `#${props.channel}`)
   }
   // If on the dedicated chat page the app is already visible; otherwise open
   // the sheet so the user sees the result without a full navigation.

@@ -83,6 +83,16 @@ function handleDelete(project: Tables<'projects'>) {
 
     <Flex v-if="props.project" column gap="m" class="project-details">
       <Flex column gap="m" expand>
+        <!-- Banner -->
+        <div v-if="projectBannerUrl" class="project-details__banner-card">
+          <div
+            class="project-details__banner-preview"
+            :style="{ backgroundImage: `url(${projectBannerUrl})` }"
+            role="img"
+            :aria-label="`${props.project.title} banner preview`"
+          />
+        </div>
+
         <!-- Basic info -->
         <DetailTable>
           <template #header>
@@ -124,16 +134,6 @@ function handleDelete(project: Tables<'projects'>) {
             </Badge>
           </DetailRow>
         </DetailTable>
-
-        <!-- Banner -->
-        <div v-if="projectBannerUrl" class="project-details__banner-card">
-          <div
-            class="project-details__banner-preview"
-            :style="{ backgroundImage: `url(${projectBannerUrl})` }"
-            role="img"
-            :aria-label="`${props.project.title} banner preview`"
-          />
-        </div>
 
         <!-- Description -->
         <DetailTable v-if="props.project.description">

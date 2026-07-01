@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { StorageBucketId } from '@/lib/storageAssets'
-import { Button, Flex, pushToast, Tab, Tabs } from '@dolanske/vui'
+import { Flex, pushToast, Tab, Tabs } from '@dolanske/vui'
 
 import { computed, ref, watch } from 'vue'
 import AssetKPIs from '@/components/Admin/Assets/AssetKPIs.vue'
 import AssetManager from '@/components/Admin/Assets/AssetManager.vue'
 import AssetUpload from '@/components/Admin/Assets/AssetUpload.vue'
+import ResponsiveButton from '@/components/Shared/ResponsiveButton.vue'
 import { useAdminPermissions } from '@/composables/useAdminPermissions'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { CMS_BUCKET_ID, getBucketDescription, getBucketLabel, getBucketOptions, STORAGE_BUCKET_IDS } from '@/lib/storageAssets'
@@ -106,26 +107,25 @@ watch([activeTab, viewMode, flatView, currentPrefix, page], ([tab, view, flat, p
 
       <template #end>
         <Flex gap="xs" wrap>
-          <Button v-if="canUpload" variant="accent" size="s" @click="showUploadDrawer = true">
-            <template #start>
-              <Icon name="ph:upload" />
-            </template>
-            Upload
-          </Button>
+          <ResponsiveButton
+            v-if="canUpload"
+            icon="ph:upload"
+            label="Upload"
+            variant="accent"
+            size="s"
+            @click="showUploadDrawer = true"
+          />
 
-          <Button
+          <ResponsiveButton
             v-if="storageConsoleUrl"
+            icon="ph:arrow-square-out"
+            label="Supabase"
             size="s"
             variant="gray"
             :href="storageConsoleUrl"
             target="_blank"
             rel="noopener noreferrer"
-          >
-            Supabase
-            <template #end>
-              <Icon name="ph:arrow-square-out" />
-            </template>
-          </Button>
+          />
         </Flex>
       </template>
     </Tabs>

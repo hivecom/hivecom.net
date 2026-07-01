@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Button, Flex, Tooltip } from '@dolanske/vui'
+import { Flex, Tooltip } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import ResponsiveButton from '@/components/Shared/ResponsiveButton.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import BanUserModal from './BanUserModal.vue'
 
@@ -102,20 +103,14 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 <template>
   <Flex gap="xs">
     <Tooltip v-if="canModifyUsers" :disabled="showLabels">
-      <Button
+      <ResponsiveButton
+        :collapsed="!showLabels"
         :size="props.size"
         variant="gray"
-        :square="!showLabels"
+        icon="ph:pencil-simple"
+        label="Edit"
         @click="openEditConfirm"
-      >
-        <template v-if="showLabels" #start>
-          <Icon name="ph:pencil-simple" />
-        </template>
-        <Icon v-if="!showLabels" name="ph:pencil-simple" />
-        <template v-if="showLabels">
-          Edit
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>
           Edit User
@@ -124,21 +119,15 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
     </Tooltip>
 
     <Tooltip v-if="!isCurrentlyBanned && canModifyUsers && !isCurrentUser" :disabled="showLabels">
-      <Button
+      <ResponsiveButton
+        :collapsed="!showLabels"
         :size="props.size"
         variant="danger"
         :loading="isActionLoading('ban')"
-        :square="!showLabels"
+        icon="ph:prohibit"
+        label="Ban"
         @click="openBanModal"
-      >
-        <template v-if="showLabels" #start>
-          <Icon name="ph:prohibit" />
-        </template>
-        <Icon v-if="!showLabels" name="ph:prohibit" />
-        <template v-if="showLabels">
-          Ban
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>
           Ban User
@@ -147,21 +136,15 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
     </Tooltip>
 
     <Tooltip v-if="isCurrentlyBanned && canModifyUsers && !isCurrentUser" :disabled="showLabels">
-      <Button
+      <ResponsiveButton
+        :collapsed="!showLabels"
         :size="props.size"
         variant="success"
         :loading="isActionLoading('unban')"
-        :square="!showLabels"
+        icon="ph:check-circle"
+        label="Unban"
         @click="openUnbanConfirm"
-      >
-        <template v-if="showLabels" #start>
-          <Icon name="ph:check-circle" />
-        </template>
-        <Icon v-if="!showLabels" name="ph:check-circle" />
-        <template v-if="showLabels">
-          Unban
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>
           Unban User
@@ -170,21 +153,15 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
     </Tooltip>
 
     <Tooltip v-if="canDeleteUsers && !isCurrentUser" :disabled="showLabels">
-      <Button
+      <ResponsiveButton
+        :collapsed="!showLabels"
         :size="props.size"
         variant="danger"
         :loading="isActionLoading('delete')"
-        :square="!showLabels"
+        icon="ph:trash"
+        label="Delete"
         @click="openDeleteConfirm"
-      >
-        <template v-if="showLabels" #start>
-          <Icon name="ph:trash" />
-        </template>
-        <Icon v-if="!showLabels" name="ph:trash" />
-        <template v-if="showLabels">
-          Delete
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>
           Delete User

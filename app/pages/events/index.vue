@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, Flex, Input, Switch, Tab, Tabs } from '@dolanske/vui'
+import { Flex, Input, Switch, Tab, Tabs } from '@dolanske/vui'
 import CalendarButtons from '@/components/Events/CalendarButtons.vue'
 import CreateEventModal from '@/components/Events/CreateEventModal.vue'
 import EventsCalendar from '@/components/Events/EventsCalendar.vue'
@@ -7,6 +7,7 @@ import EventsListing from '@/components/Events/EventsListing.vue'
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
+import ResponsiveButton from '@/components/Shared/ResponsiveButton.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataEvents } from '@/composables/useDataEvents'
 import { useDataGames } from '@/composables/useDataGames'
@@ -188,17 +189,7 @@ defineOgImage('Default', {
 
         <template #end>
           <Flex gap="xs" y-center>
-            <Button v-if="user" variant="accent" size="s" :square="isMobile" @click="handleCreateEventClick">
-              <template v-if="isMobile">
-                <Icon name="ph:plus" :size="16" />
-              </template>
-              <template v-if="!isMobile" #start>
-                <Icon name="ph:plus" :size="16" />
-              </template>
-              <template v-if="!isMobile">
-                Create
-              </template>
-            </Button>
+            <ResponsiveButton v-if="user" variant="accent" size="s" icon="ph:plus" :icon-size="16" label="Create" @click="handleCreateEventClick" />
             <CalendarButtons size="s" :show-labels="!isMobile" :is-authenticated="!!user" />
           </Flex>
         </template>
@@ -265,8 +256,6 @@ defineOgImage('Default', {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .event-details {
   &__row {
     margin-bottom: var(--space-m);

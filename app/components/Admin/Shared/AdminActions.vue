@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import { Button, Flex, Tooltip } from '@dolanske/vui'
+import type { AppPermission, PermissionResource } from '@/types/database.overrides'
+import { Flex, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import ResponsiveButton from '@/components/Shared/ResponsiveButton.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface AdminActionsProps {
   /**
-   * Type of resource (used for permission checking)
+   * Entity type - drives the display labels (modal titles, tooltips).
    */
   resourceType: 'games' | 'events' | 'network_gameservers' | 'profiles' | 'funding' | 'referendums' | 'network_servers' | 'assets' | 'projects' | 'discussions' | 'kvstore' | 'motds' | 'themes'
+
+  /**
+   * Permission group for the edit/delete checks. Defaults to `resourceType`.
+   * Set this when the entity name differs from its permission group - e.g.
+   * network_gameservers / network_servers both gate on 'network'.
+   */
+  permission?: PermissionResource
 
   /**
    * The item being acted upon
@@ -42,7 +51,7 @@ interface AdminActionsProps {
     icon: string
     label: string
     variant?: 'gray' | 'danger' | 'success' | 'accent'
-    permission?: string
+    permission?: AppPermission
     handler: () => void
     loading?: boolean
     condition?: () => boolean
@@ -70,10 +79,15 @@ const { hasPermission } = useAdminPermissions()
 const isMobile = useBreakpoint('<xs')
 const showLabels = computed(() => !!props.showLabels && !isMobile.value)
 
+// The permission group defaults to the entity resourceType, but network
+// sub-resources (network_gameservers / network_servers) gate on 'network'.
+const permissionResource = computed<PermissionResource>(
+  () => props.permission ?? (props.resourceType as PermissionResource),
+)
+
 // Helper function to check if user has permission for specific action
 function hasActionPermission(action: string): boolean {
-  const permission = `${props.resourceType}.${action}`
-  return hasPermission(permission)
+  return hasPermission(`${permissionResource.value}.${action}` as AppPermission)
 }
 
 // Helper function to determine if specific action is loading
@@ -175,21 +189,15 @@ function getItemDisplayName(): string {
   <Flex v-if="hasVisibleActions" gap="xs">
     <!-- Edit Action -->
     <Tooltip v-if="showEditAction" :disabled="showLabels">
-      <Button
-        variant="gray"
+      <ResponsiveButton
+        :collapsed="!showLabels"
         :size="props.buttonSize"
-        :square="!showLabels"
+        variant="gray"
         :loading="isActionLoading('edit')"
+        icon="ph:pencil-simple"
+        label="Edit"
         @click="handleEdit"
-      >
-        <template v-if="showLabels" #start>
-          <Icon name="ph:pencil-simple" />
-        </template>
-        <Icon v-if="!showLabels" name="ph:pencil-simple" />
-        <template v-if="showLabels">
-          Edit
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>Edit {{ resourceType.slice(0, -1) }}</p>
       </template>
@@ -201,21 +209,15 @@ function getItemDisplayName(): string {
       :key="index"
       :disabled="showLabels"
     >
-      <Button
-        :variant="action.variant || 'gray'"
+      <ResponsiveButton
+        :collapsed="!showLabels"
         :size="props.buttonSize"
-        :square="!showLabels"
+        :variant="action.variant || 'gray'"
         :loading="action.loading"
+        :icon="action.icon"
+        :label="action.label"
         @click="action.handler"
-      >
-        <template v-if="showLabels" #start>
-          <Icon :name="action.icon" />
-        </template>
-        <Icon v-if="!showLabels" :name="action.icon" />
-        <template v-if="showLabels">
-          {{ action.label }}
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>{{ action.label }}</p>
       </template>
@@ -223,21 +225,15 @@ function getItemDisplayName(): string {
 
     <!-- Delete Action -->
     <Tooltip v-if="showDeleteAction" :disabled="showLabels">
-      <Button
-        variant="danger"
+      <ResponsiveButton
+        :collapsed="!showLabels"
         :size="props.buttonSize"
-        :square="!showLabels"
+        variant="danger"
         :loading="isActionLoading('delete')"
+        icon="ph:trash"
+        label="Delete"
         @click="handleDelete"
-      >
-        <template v-if="showLabels" #start>
-          <Icon name="ph:trash" />
-        </template>
-        <Icon v-if="!showLabels" name="ph:trash" />
-        <template v-if="showLabels">
-          Delete
-        </template>
-      </Button>
+      />
       <template #tooltip>
         <p>Delete {{ resourceType.slice(0, -1) }}</p>
       </template>

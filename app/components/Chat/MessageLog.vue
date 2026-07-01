@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import type { MediaItem } from '@/components/Shared/Lightbox.vue'
 import type { ChatMessage } from '@/composables/useIrcChat'
-import { Button, ContextMenu, Divider, DropdownItem, Flex, pushToast, Sheet, Spinner } from '@dolanske/vui'
+import type { Segment } from '@/lib/ircFormat'
+import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, pushToast, Sheet, Skeleton, Spinner } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import ChatMessageReactions from '@/components/Chat/MessageReactions.vue'
+import RelaySourceIcon from '@/components/Chat/RelaySourceIcon.vue'
 import UserActionMenu from '@/components/Chat/UserActionMenu.vue'
 import YouTubeEmbed from '@/components/Chat/YouTubeEmbed.vue'
 import LinkEmbed from '@/components/LinkEmbed/index.vue'
 import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
+import AudioPlayer from '@/components/Shared/AudioPlayer.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
+import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import JumpToPresent from '@/components/Shared/JumpToPresent.vue'
 import Lightbox from '@/components/Shared/Lightbox.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
@@ -19,11 +24,29 @@ import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { mentionsSelf, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
+import { applyMarkdown, parseIrcFormatting, segStyle } from '@/lib/ircFormat'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { fullDate } from '@/lib/utils/date'
 
 const props = defineProps<{ compact?: boolean }>()
 
-const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, toggleReaction, chatHistorySupported, isChatVisible } = useIrcChat()
+const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, seekToPresent, fetchNewerFromCache, toggleReaction, canRedact, redactMessage, chatHistorySupported, isChatVisible, userMetaStore, relaySeparator, markBufferRead } = useIrcChat()
+
+function ircMeta(nickLower: string | null | undefined) {
+  if (!nickLower)
+    return undefined
+  return userMetaStore.value.get(nickLower)
+}
+
+function ircDisplayName(from: string | null | undefined): string {
+  if (!from)
+    return ''
+  return ircMeta(from.toLowerCase())?.get('display-name') ?? from
+}
+
+function ircAvatarUrl(nickLower: string | null | undefined): string | undefined {
+  return ircMeta(nickLower)?.get('avatar') || undefined
+}
 const { settings } = useDataUserSettings()
 
 // Unknown TAGMSG events are kept in the buffer but only rendered when the user
@@ -86,11 +109,43 @@ function collapseBacklogJoinParts(msgs: ChatMessage[]): ChatMessage[] {
   return out
 }
 
+// Incremental render: on channel switch expose the last RENDER_CHUNK messages
+// immediately, then add another chunk each animation frame until all messages
+// are visible. Each frame gives the browser a repaint opportunity, keeping the
+// UI responsive while the full history builds up behind the viewport.
+const RENDER_CHUNK = 25
+const phaseLimit = ref<number | null>(null)
+let _phaseRaf: number | null = null
+
+function expandPhase() {
+  if (phaseLimit.value === null)
+    return
+  const total = allMessages.value.length
+  const next = phaseLimit.value + RENDER_CHUNK
+  if (next >= total) {
+    phaseLimit.value = null
+  }
+  else {
+    phaseLimit.value = next
+    _phaseRaf = requestAnimationFrame(expandPhase)
+  }
+}
+
+watch(() => activeBuffer.value?.name, () => {
+  if (_phaseRaf !== null) {
+    cancelAnimationFrame(_phaseRaf)
+    _phaseRaf = null
+  }
+  phaseLimit.value = RENDER_CHUNK
+  _phaseRaf = requestAnimationFrame(expandPhase)
+})
+
 const messages = computed((): ChatMessage[] => {
   const raw = settings.value.chat_show_tag_messages
     ? allMessages.value
     : allMessages.value.filter(m => m.type !== 'tagmsg')
-  return collapseBacklogJoinParts(raw)
+  const collapsed = collapseBacklogJoinParts(raw)
+  return phaseLimit.value !== null ? collapsed.slice(-phaseLimit.value) : collapsed
 })
 const { handleContentClick } = useExternalLinkGuard()
 
@@ -128,22 +183,32 @@ const SERVICE_NICKS = new Set(['histserv', 'nickserv', 'chanserv'])
 const URL_RE = /(https?:\/\/\S+)/g
 const IMAGE_RE = /[./](?:png|jpe?g|gif|webp|avif|svg)(?:[?#]\S*)?$/i
 const VIDEO_RE = /\.(?:mp4|webm|mov|m4v)(?:\?\S*)?$/i
+const AUDIO_RE = /\.(?:mp3|wav|flac|aac|m4a|oga|opus|weba|wma)(?:\?\S*)?$/i
 const YOUTUBE_RE = /^https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([-\w]{11})/i
 const MENTION_RE = /@([a-z\d][\w-]{0,31})/gi
 
-const showTimestamps = computed(() => settings.value.chat_show_timestamps)
 const isModernMode = computed(() => (isMobile.value || settings.value.chat_display_mode === 'modern') && activeBuffer.value?.kind !== 'server')
+const showTimestamps = computed(() => {
+  // The "hide sidebar timestamps" preference only applies to the classic IRC
+  // compact layout. Mobile (and modern mode) render the group-header timestamp
+  // instead, so the IRC-specific hide must not suppress it there.
+  if (!isModernMode.value && props.compact && settings.value.chat_display_mode === 'irc' && settings.value.chat_irc_hide_sidebar_timestamps)
+    return false
+  return settings.value.chat_show_timestamps
+})
 const isServerBuffer = computed(() => activeBuffer.value?.kind === 'server')
 const isServiceQuery = computed(() => activeBuffer.value?.kind === 'pm' && SERVICE_NICKS.has((activeBuffer.value?.name ?? '').toLowerCase()))
 
-// True while we're waiting for the first CHATHISTORY LATEST batch to complete.
-// Drives skeleton placeholders so the viewport isn't blank on initial load.
+// Show the initial-load spinner only when there's genuinely nothing to show yet.
+// If the buffer was seeded from cache it already has messages, so skip the spinner
+// and let history settle silently in the background.
 const isLoadingInitialHistory = computed(() =>
   chatHistorySupported.value
   && !!activeBuffer.value
   && activeBuffer.value.kind !== 'server'
   && !isServiceQuery.value
-  && !activeBuffer.value.historyReady,
+  && !activeBuffer.value.historyReady
+  && activeBuffer.value.messages.length === 0,
 )
 
 // --- Modern mode -------------------------------------------------------
@@ -241,7 +306,7 @@ function fmtTime(d: Date): string {
 }
 
 function fmtDateTime(d: Date): string {
-  return `${dayjs(d).format('MMM D, YYYY')} at ${fmtTime(d)}`
+  return `${fullDate(d)} at ${fmtTime(d)}`
 }
 
 function isServiceNick(from?: string | null): boolean {
@@ -286,8 +351,45 @@ const readLineFirstGroupId = computed<number | null>(() => {
   return null
 })
 
+// Clicking the divider catches the buffer up - clears the line and the count.
+function markRead() {
+  const name = activeBuffer.value?.name
+  if (name)
+    markBufferRead(name)
+}
+
 function cleanNick(name: string) {
   return name.replace(/^\*\s*/, '')
+}
+
+/**
+ * Returns just the display username for a nick, stripping the relay bridge
+ * suffix when in modern mode or impure IRC mode.
+ */
+function displayNick(from: string | null | undefined): string {
+  if (!from)
+    return ''
+  if (isModernMode.value || !settings.value.chat_irc_pure_relay_nicks) {
+    const parts = relayNickParts(from)
+    if (parts)
+      return parts.user
+  }
+  return from
+}
+
+/**
+ * If the nick contains the relaymsg separator, returns { user, bridge }.
+ * Otherwise returns null (not a relayed nick).
+ */
+
+function relayNickParts(from: string | null | undefined): { user: string, bridge: string } | null {
+  if (!from || !relaySeparator.value)
+    return null
+  const sep = relaySeparator.value
+  const idx = from.indexOf(sep)
+  if (idx <= 0)
+    return null
+  return { user: from.slice(0, idx), bridge: from.slice(idx + sep.length) }
 }
 
 function nickStyle(msg: ChatMessage) {
@@ -296,243 +398,13 @@ function nickStyle(msg: ChatMessage) {
   return undefined
 }
 
-// mIRC 99-color palette. Color 99 = transparent/default (omitted intentionally).
-const MIRC_COLORS: Record<number, string> = {
-  0: '#FFFFFF',
-  1: '#000000',
-  2: '#00007F',
-  3: '#009300',
-  4: '#FF0000',
-  5: '#7F0000',
-  6: '#9C009C',
-  7: '#FC7F00',
-  8: '#FFFF00',
-  9: '#00FC00',
-  10: '#009393',
-  11: '#00FFFF',
-  12: '#0000FC',
-  13: '#FF00FF',
-  14: '#7F7F7F',
-  15: '#D2D2D2',
-  16: '#470000',
-  17: '#472100',
-  18: '#474700',
-  19: '#324700',
-  20: '#004700',
-  21: '#00472C',
-  22: '#004747',
-  23: '#002747',
-  24: '#000047',
-  25: '#2E0047',
-  26: '#470047',
-  27: '#47002A',
-  28: '#740000',
-  29: '#743A00',
-  30: '#747400',
-  31: '#517400',
-  32: '#007400',
-  33: '#007449',
-  34: '#007474',
-  35: '#004074',
-  36: '#000074',
-  37: '#4B0074',
-  38: '#740074',
-  39: '#740045',
-  40: '#B50000',
-  41: '#B56300',
-  42: '#B5B500',
-  43: '#7DB500',
-  44: '#00B500',
-  45: '#00B571',
-  46: '#00B5B5',
-  47: '#0063B5',
-  48: '#0000B5',
-  49: '#7500B5',
-  50: '#B500B5',
-  51: '#B5006B',
-  52: '#FF0000',
-  53: '#FF8C00',
-  54: '#FFFF00',
-  55: '#B2FF00',
-  56: '#00FF00',
-  57: '#00FFA0',
-  58: '#00FFFF',
-  59: '#008CFF',
-  60: '#0000FF',
-  61: '#A500FF',
-  62: '#FF00FF',
-  63: '#FF0098',
-  64: '#FF5959',
-  65: '#FFB459',
-  66: '#FFFF71',
-  67: '#CFFF60',
-  68: '#6FFF6F',
-  69: '#65FFC9',
-  70: '#6DFFFF',
-  71: '#59B4FF',
-  72: '#5959FF',
-  73: '#C459FF',
-  74: '#FF66FF',
-  75: '#FF59BC',
-  76: '#FF9C9C',
-  77: '#FFD39C',
-  78: '#FFFF9C',
-  79: '#E2FF9C',
-  80: '#9CFF9C',
-  81: '#9CFFDB',
-  82: '#9CFFFF',
-  83: '#9CD3FF',
-  84: '#9C9CFF',
-  85: '#DC9CFF',
-  86: '#FF9CFF',
-  87: '#FF94D3',
-  88: '#000000',
-  89: '#131313',
-  90: '#282828',
-  91: '#363636',
-  92: '#4D4D4D',
-  93: '#656565',
-  94: '#818181',
-  95: '#9F9F9F',
-  96: '#BCBCBC',
-  97: '#E2E2E2',
-  98: '#FFFFFF',
-}
-
-function mircColor(n: number): string | undefined {
-  return n === 99 ? undefined : MIRC_COLORS[n]
-}
-
-interface Segment {
-  type: 'text' | 'link' | 'channel' | 'mention' | 'inline-image' | 'inline-video' | 'inline-youtube'
-  value: string
-  fg?: string
-  bg?: string
-  bold?: boolean
-  italic?: boolean
-  underline?: boolean
-}
-
-function segStyle(seg: Segment): Record<string, string> | undefined {
-  const style: Record<string, string> = {}
-  if (seg.fg)
-    style.color = seg.fg
-  if (seg.bg)
-    style.backgroundColor = seg.bg
-  if (seg.bold)
-    style.fontWeight = 'bold'
-  if (seg.italic)
-    style.fontStyle = 'italic'
-  if (seg.underline)
-    style.textDecoration = 'underline'
-  return Object.keys(style).length ? style : undefined
-}
-
-function parseIrcFormatting(text: string): Segment[] {
-  const out: Segment[] = []
-  let i = 0
-  let fg: string | undefined
-  let bg: string | undefined
-  let bold = false
-  let italic = false
-  let underline = false
-  let segStart = 0
-
-  function flush(end: number) {
-    if (end > segStart) {
-      const seg: Segment = { type: 'text', value: text.slice(segStart, end) }
-      if (fg !== undefined)
-        seg.fg = fg
-      if (bg !== undefined)
-        seg.bg = bg
-      if (bold)
-        seg.bold = true
-      if (italic)
-        seg.italic = true
-      if (underline)
-        seg.underline = true
-      out.push(seg)
-    }
-    segStart = i
-  }
-
-  while (i < text.length) {
-    const code = text.charCodeAt(i)
-    if (code === 0x03) {
-      flush(i)
-      i++
-      let fgStr = ''
-      if (i < text.length && /\d/.test(text.charAt(i))) {
-        fgStr += text.charAt(i++)
-        if (i < text.length && /\d/.test(text.charAt(i)))
-          fgStr += text.charAt(i++)
-      }
-      let bgStr = ''
-      if (i < text.length && text.charAt(i) === ',') {
-        i++
-        if (i < text.length && /\d/.test(text.charAt(i))) {
-          bgStr += text.charAt(i++)
-          if (i < text.length && /\d/.test(text.charAt(i)))
-            bgStr += text.charAt(i++)
-        }
-      }
-      if (fgStr === '') {
-        fg = undefined
-        bg = undefined
-      }
-      else {
-        fg = mircColor(Number.parseInt(fgStr, 10))
-        if (bgStr !== '')
-          bg = mircColor(Number.parseInt(bgStr, 10))
-      }
-      segStart = i
-    }
-    else if (code === 0x02) {
-      flush(i)
-      bold = !bold
-      i++
-      segStart = i
-    }
-    else if (code === 0x1D) {
-      flush(i)
-      italic = !italic
-      i++
-      segStart = i
-    }
-    else if (code === 0x1F) {
-      flush(i)
-      underline = !underline
-      i++
-      segStart = i
-    }
-    else if (code === 0x16) {
-      flush(i)
-      ;[fg, bg] = [bg, fg]
-      i++
-      segStart = i
-    }
-    else if (code === 0x0F) {
-      flush(i)
-      fg = undefined
-      bg = undefined
-      bold = false
-      italic = false
-      underline = false
-      i++
-      segStart = i
-    }
-    else {
-      i++
-    }
-  }
-  flush(i)
-  return out
-}
-
 function segments(text: string): Segment[] {
-  // Step 1: Parse IRC formatting and split by URLs
+  // Step 1: Parse IRC formatting + markdown, then split by URLs. Markdown styles
+  // in both modes; modern strips the markers, classic keeps them (asterisks etc
+  // stay visible while the content between them is still styled).
+  const base = applyMarkdown(parseIrcFormatting(text), isModernMode.value)
   const afterUrl: Segment[] = []
-  for (const seg of parseIrcFormatting(text)) {
+  for (const seg of base) {
     const { value, type: _type, ...style } = seg
     let last = 0
     for (const m of value.matchAll(new RegExp(URL_RE.source, 'g'))) {
@@ -642,16 +514,12 @@ function isImageOnlyMessage(text: string): boolean {
 
 interface GalleryEntry { url: string, msgId: number }
 interface RenderMsg { kind: 'msg', msg: ChatMessage }
-// Message with both text and images: text rendered separately, images go into gallery
-interface RenderMsgText { kind: 'msg-text', msg: ChatMessage }
 interface RenderGallery { kind: 'gallery', rows: GalleryEntry[][], id: number }
-type RenderItem = RenderMsg | RenderMsgText | RenderGallery
+type RenderItem = RenderMsg | RenderGallery
 
 function groupRenderItems(msgs: readonly ChatMessage[]): RenderItem[] {
   const items: RenderItem[] = []
   let msgRun: ChatMessage[] = []
-  // Track messages whose text has already been rendered as 'msg-text'
-  const textRendered = new Set<number>()
 
   function flush() {
     if (msgRun.length === 0)
@@ -659,12 +527,12 @@ function groupRenderItems(msgs: readonly ChatMessage[]): RenderItem[] {
     const allEntries: GalleryEntry[] = msgRun.flatMap(m =>
       imageUrls(m.text).map(url => ({ url, msgId: m.id })),
     )
-    // Fall back to individual msg items only when there's <=1 image and no
-    // mixed messages (whose text was already rendered separately)
-    if (allEntries.length <= 1 && msgRun.every(m => !textRendered.has(m.id))) {
+    // A single image renders as a normal message line so it keeps its hover
+    // react bar; 2+ images collapse into a gallery grid.
+    if (allEntries.length <= 1) {
       for (const m of msgRun) items.push({ kind: 'msg', msg: m })
     }
-    else if (allEntries.length > 0) {
+    else {
       const rows: GalleryEntry[][] = []
       for (let k = 0; k < allEntries.length; k += 3)
         rows.push(allEntries.slice(k, k + 3))
@@ -674,15 +542,12 @@ function groupRenderItems(msgs: readonly ChatMessage[]): RenderItem[] {
   }
 
   for (const msg of msgs) {
+    // Only true image-only messages feed the gallery grouping. Anything with
+    // text renders as its own line carrying its text, image embeds and the
+    // hover react bar together - splitting text and image apart is what used
+    // to drop the image into a bar-less gallery, leaving it unhoverable (no
+    // reactions, no reply).
     if (isImageOnlyMessage(msg.text)) {
-      msgRun.push(msg)
-    }
-    else if (imageUrls(msg.text).length > 0) {
-      // Message has text + images: flush current run, emit text only, then
-      // add this message's images to a new gallery run.
-      flush()
-      items.push({ kind: 'msg-text', msg })
-      textRendered.add(msg.id)
       msgRun.push(msg)
     }
     else {
@@ -711,10 +576,57 @@ function videoUrls(text: string): string[] {
   return (text.match(URL_RE) ?? []).filter(u => VIDEO_RE.test(u))
 }
 
+// Audio is a media preview like images/video, so it's gated on the same
+// chat_show_previews toggle. Unlike those it has no inline thumbnail form, so it
+// always renders as a block player below the message regardless of the
+// inline-images layout preference.
+function audioUrls(text: string): string[] {
+  if (!settings.value.chat_show_previews)
+    return []
+  return (text.match(URL_RE) ?? []).filter(u => AUDIO_RE.test(u))
+}
+
+// Best-effort track title for the audio player: the file name from the URL.
+function mediaFilename(url: string): string {
+  try {
+    const path = new URL(url).pathname
+    return decodeURIComponent(path.slice(path.lastIndexOf('/') + 1)) || url
+  }
+  catch {
+    return url
+  }
+}
+
 const videoShortUrls = reactive(new Set<string>())
 const brokenImages = reactive(new Set<string>())
 function onImageError(url: string) {
   brokenImages.add(url)
+}
+
+// Natural dimensions of embedded images, captured on first load and keyed by
+// URL. Lets us reserve the exact box for an image before it paints - so a
+// message arriving in the buffer (or scrolling back into view) holds its space
+// instead of growing the row from zero height and shoving the layout around.
+const imageDims = reactive(new Map<string, { w: number, h: number }>())
+// URLs whose image has painted - drives swapping the Skeleton out for the image.
+const loadedImages = reactive(new Set<string>())
+function onImageLoad(event: Event, url: string) {
+  const img = event.target as HTMLImageElement
+  if (img.naturalWidth > 0 && img.naturalHeight > 0)
+    imageDims.set(url, { w: img.naturalWidth, h: img.naturalHeight })
+  loadedImages.add(url)
+}
+
+// Reserved box for a block embed, clamped to the same max as the CSS. Known
+// natural size reserves the exact final box (no shift on load, and no shift at
+// all when scrolling back to an already-seen image); unknown falls back to the
+// full max box so first paint still has space held.
+function embedBox(url: string, maxW: number, maxH: number): Record<string, string> {
+  const d = imageDims.get(url)
+  if (!d)
+    return { width: `${maxW}px`, height: `${maxH}px` }
+  const scale = Math.min(maxW / d.w, maxH / d.h, 1)
+  return { width: `${Math.round(d.w * scale)}px`, height: `${Math.round(d.h * scale)}px` }
 }
 
 function onVideoMetadata(event: Event, url: string) {
@@ -774,7 +686,7 @@ function handleIrcLinkClick(event: MouseEvent, url: string) {
 // render as an inline embed, so the raw link text can be hidden.
 function isEmbeddedLink(msgText: string, url: string): boolean {
   if (settings.value.chat_show_previews) {
-    if (IMAGE_RE.test(url) || VIDEO_RE.test(url) || youtubeVideoId(url) !== null)
+    if (IMAGE_RE.test(url) || VIDEO_RE.test(url) || AUDIO_RE.test(url) || youtubeVideoId(url) !== null)
       return true
   }
   if (settings.value.chat_show_inline_embeds) {
@@ -896,10 +808,14 @@ function activeMessagePrefix(): string | undefined {
 }
 
 const whoisModalNick = ref<string | null>(null)
+const whoisModalRelayedBy = ref<string | null>(null)
 const whoisModalOpen = ref(false)
 
 function openWhois(name: string) {
   whoisModalNick.value = cleanNick(name)
+  // If this message was relayed, pass the actual bot nick so the modal can
+  // WHOIS the real IRC user rather than the spoofed virtual nick.
+  whoisModalRelayedBy.value = activeMessage.value?.relayedBy ?? null
   whoisModalOpen.value = true
   closeMenu()
   mobileMenuOpen.value = false
@@ -909,6 +825,35 @@ function reply(msg: ChatMessage) {
   setReply(msg)
   closeMenu()
   mobileMenuOpen.value = false
+}
+
+// Message deletion (IRCv3 draft/message-redaction). Confirmed via ConfirmModal
+// before the REDACT command is sent.
+const redactConfirmOpen = ref(false)
+const redactTargetMsg = ref<ChatMessage | null>(null)
+
+const redactIsOwn = computed(() =>
+  !!redactTargetMsg.value?.from && redactTargetMsg.value.from.toLowerCase() === nick.value.toLowerCase(),
+)
+
+function promptRedact(msg: ChatMessage) {
+  redactTargetMsg.value = msg
+  redactConfirmOpen.value = true
+  closeMenu()
+  mobileMenuOpen.value = false
+}
+
+function confirmRedact() {
+  if (redactTargetMsg.value)
+    redactMessage(redactTargetMsg.value)
+  redactTargetMsg.value = null
+}
+
+// Placeholder shown in place of a deleted message's content.
+function redactedLabel(msg: ChatMessage): string {
+  const byOther = msg.redactedBy && msg.from && msg.redactedBy.toLowerCase() !== msg.from.toLowerCase()
+  const base = byOther ? `Message deleted by ${msg.redactedBy}` : 'Message deleted'
+  return msg.redactedReason ? `${base}: ${msg.redactedReason}` : base
 }
 
 function replySource(msg: ChatMessage): ChatMessage | null {
@@ -928,8 +873,6 @@ function scrollToReplySource(msg: ChatMessage) {
   el.classList.add('chat-log__msg--jump-highlight')
   setTimeout(() => el.classList.remove('chat-log__msg--jump-highlight'), 1500)
 }
-
-const QUICK_REACTIONS = ['👍', '❤️', '😂', '🔥']
 
 function pickReaction(emote: string) {
   if (activeMessage.value)
@@ -988,7 +931,19 @@ function onTouchMove(event: TouchEvent) {
 // ---- Scroll management ----------------------------------------------------
 
 const SCROLL_BOTTOM_THRESHOLD = 80
-const SCROLL_TOP_THRESHOLD = 120
+// How far ahead, in multiples of the viewport height, to start pulling the next
+// page. Proportional to the viewport rather than a fixed pixel lead so a taller
+// window or larger font (fewer, taller messages per screen) still gets the same
+// number of screenfuls of runway. These define two separated trigger zones with
+// a dead zone between them: older history loads only within BACKWARD screens of
+// the top, newer only within FORWARD screens of the bottom. The window cap is
+// large enough that the zones don't overlap, so the two loaders never fire
+// together and fight (prepend-and-trim vs append-and-trim) - the oscillation
+// that empties the log. Each load also moves the viewport back toward the dead
+// zone (a prepend restores downward, an append slides the front up), so it
+// settles after one page instead of bouncing between the edges.
+const FORWARD_LOAD_AHEAD_SCREENS = 2
+const BACKWARD_LOAD_AHEAD_SCREENS = 1
 const isAtBottom = ref(true)
 
 // Native scroll anchoring (overflow-anchor) keeps the viewport steady as
@@ -1001,22 +956,66 @@ const isAtBottom = ref(true)
 let anchorMsgEl: HTMLElement | null = null
 let anchorMsgVisualTop = 0
 let pendingPrependRestore = false
+// After an older-history prepend, keep the anchored line fixed (via the content
+// ResizeObserver) until the user scrolls away. A single restore isn't enough for
+// server-fetched pages: their images / link previews / videos load async and
+// resize above the fold after paint, shoving the viewport down - that's the
+// post-batch "jump". Re-pinning on every height change absorbs it. Cached pages
+// settle instantly so they never needed this, which is why they felt smooth.
+let pinTopUntilUserScroll = false
+// scrollTop we last set ourselves (restore / re-pin). Lets updateScrollState
+// tell our own programmatic scrolls from a genuine user scroll, which releases
+// the pin. -1 means "no programmatic scroll pending".
+let lastProgrammaticScrollTop = -1
+// Set whenever a buffer switch, visibility change, or activation wants to
+// land at the bottom. Cleared only when the user intentionally scrolls up
+// (scrollTop decreases). overflow-anchor bumps scrollTop UP, so they don't
+// clear this flag, letting late-loading media still re-pin to the bottom.
+let wantBottom = false
+let lastScrollTop = 0
 
 function updateScrollState() {
   if (!logEl.value)
     return
   const { scrollTop, scrollHeight, clientHeight } = logEl.value
-  isAtBottom.value = scrollHeight - scrollTop - clientHeight <= SCROLL_BOTTOM_THRESHOLD
-  // Scroll-position fallback for lazy history loading; the IntersectionObserver
-  // on the top sentinel can miss the first fire. triggerHistoryLoad() is
-  // idempotent (guards exhausted / in-flight / not-ready).
-  if (scrollTop <= SCROLL_TOP_THRESHOLD)
+  const distFromBottom = scrollHeight - scrollTop - clientHeight
+  const nowAtBottom = distFromBottom <= SCROLL_BOTTOM_THRESHOLD
+  const scrolledUp = scrollTop < lastScrollTop
+  lastScrollTop = scrollTop
+  // Release the top pin once the user actually scrolls (a scroll we didn't make
+  // ourselves), so it stops fighting their movement.
+  if (pinTopUntilUserScroll && scrollTop !== lastProgrammaticScrollTop) {
+    pinTopUntilUserScroll = false
+    anchorMsgEl = null
+  }
+  if (!nowAtBottom && scrolledUp)
+    wantBottom = false
+  isAtBottom.value = nowAtBottom
+  // Older history only near the top, newer only near the bottom, nothing in the
+  // dead zone between. The else makes them mutually exclusive at the boundary;
+  // maybeForwardLoad self-gates on the same near-top cutoff, so callers from the
+  // drain watch stay consistent.
+  if (scrollTop <= clientHeight * BACKWARD_LOAD_AHEAD_SCREENS)
     triggerHistoryLoad()
+  else
+    maybeForwardLoad()
 }
 
 function scrollToBottom() {
+  // Going to the bottom overrides any top pin (buffer switch, jump-to-present,
+  // visibility restore).
+  pinTopUntilUserScroll = false
   if (logEl.value)
     logEl.value.scrollTo({ top: logEl.value.scrollHeight, behavior: 'instant' })
+}
+
+async function jumpToPresent() {
+  const buf = activeBuffer.value
+  if (!buf)
+    return
+  if (buf.tailTrimmed)
+    await seekToPresent(buf.name)
+  nextTick(scrollToBottom)
 }
 
 function triggerHistoryLoad() {
@@ -1041,22 +1040,83 @@ function triggerHistoryLoad() {
   fetchOlderHistory(activeBuffer.value.name)
 }
 
+// Pull the next page of newer messages from cache while the bottom of a
+// tail-trimmed window is within the forward lead. Mirrors triggerHistoryLoad for
+// the forward direction, but unlike the older-history path there's nothing to
+// restore: overflow-anchor compensates the front-trim, so the viewport stays put
+// while the window slides forward. Guards: not-trimmed / in-flight / still near
+// the top (older history's zone) / not-yet-near-the-bottom.
+function maybeForwardLoad() {
+  const buf = activeBuffer.value
+  const el = logEl.value
+  if (!el || !buf?.tailTrimmed || buf.loadingNewerHistory)
+    return
+  const { scrollTop, scrollHeight, clientHeight } = el
+  // Never load newer while still in the top zone - that's older history's job,
+  // and letting both run is the oscillation.
+  if (scrollTop <= clientHeight * BACKWARD_LOAD_AHEAD_SCREENS)
+    return
+  if (scrollHeight - scrollTop - clientHeight <= clientHeight * FORWARD_LOAD_AHEAD_SCREENS)
+    void fetchNewerFromCache(buf.name)
+}
+
+// Keep draining newer pages until the buffer below the fold reaches the lead.
+// A single page only slides the window 25 lines, which a fast scroll blows
+// straight through; re-checking after each page lands builds a runway below the
+// viewport so scrolling forward feels instant instead of hitting the edge.
+// Self-terminating: each page pushes the bottom further past the lead, and
+// reaching the live edge clears tailTrimmed.
+watch(
+  () => activeBuffer.value?.loadingNewerHistory,
+  (loading, wasLoading) => {
+    if (wasLoading && !loading)
+      nextTick(maybeForwardLoad)
+  },
+)
+
 // After older history is prepended, restore the viewport to the content the
 // user was looking at (runs in nextTick, before paint, so there's no flash).
 watch(
   () => activeBuffer.value?.loadingOlderHistory,
   (loading, wasLoading) => {
-    if (wasLoading && !loading && pendingPrependRestore) {
-      pendingPrependRestore = false
+    if (!(wasLoading && !loading && pendingPrependRestore))
+      return
+    pendingPrependRestore = false
+    pinTopUntilUserScroll = false
+    const el = logEl.value
+    // Buffer switches (and visibility/activate restores) set wantBottom. In that
+    // case skip anchor-restore and go straight to the bottom - anchor-restore
+    // would land us mid-history when scrollTop was 0.
+    if (wantBottom || !el || !anchorMsgEl?.isConnected) {
       nextTick(() => {
-        if (logEl.value && anchorMsgEl?.isConnected) {
-          const logRect = logEl.value.getBoundingClientRect()
-          const delta = anchorMsgEl.getBoundingClientRect().top - logRect.top - anchorMsgVisualTop
-          logEl.value.scrollTop += delta
-        }
+        if (wantBottom)
+          scrollToBottom()
         anchorMsgEl = null
       })
+      return
     }
+    // This watch runs before the prepend renders (flush: 'pre'), so measure the
+    // anchor line's position now (pre-prepend) and again after it renders. The
+    // difference is exactly how far the prepended page pushed it down. Offsetting
+    // scrollTop by that preserves whatever the user is looking at *right now* -
+    // even if they kept racing toward the top while a slow server page loaded.
+    // Restoring to a position captured back at trigger time is what jumped them
+    // back to where they were when the load started.
+    const beforeTop = anchorMsgEl.getBoundingClientRect().top
+    nextTick(() => {
+      if (!el || !anchorMsgEl?.isConnected) {
+        anchorMsgEl = null
+        return
+      }
+      const afterTop = anchorMsgEl.getBoundingClientRect().top
+      el.scrollTop += afterTop - beforeTop
+      // Record the resulting position so the content observer holds this line
+      // fixed while the new page's media loads and resizes above the fold.
+      // Released by the next genuine user scroll (updateScrollState).
+      anchorMsgVisualTop = anchorMsgEl.getBoundingClientRect().top - el.getBoundingClientRect().top
+      lastProgrammaticScrollTop = el.scrollTop
+      pinTopUntilUserScroll = true
+    })
   },
 )
 
@@ -1064,6 +1124,7 @@ watch(
 // messages that arrived while closed are immediately visible.
 watch(isChatVisible, (visible) => {
   if (visible) {
+    wantBottom = true
     isAtBottom.value = true
     nextTick(scrollToBottom)
   }
@@ -1071,18 +1132,24 @@ watch(isChatVisible, (visible) => {
 
 // When switching buffers, jump to the bottom of the new buffer. The content
 // observer below keeps it pinned while the new buffer's content settles.
+// Also re-check scroll/history state in case historyReady is already true
+// (returning to a previously-visited channel) and the sentinel observer won't
+// re-fire because the sentinel was already intersecting.
 watch(
   () => activeBuffer.value?.name,
   () => {
+    wantBottom = true
     isAtBottom.value = true
-    nextTick(scrollToBottom)
+    nextTick(() => {
+      scrollToBottom()
+      updateScrollState()
+    })
   },
 )
 
 // ---- Intersection observer for lazy history loading -----------------------
 
 let sentinelObserver: IntersectionObserver | null = null
-const sentinelVisible = ref(false)
 
 function setupSentinelObserver() {
   sentinelObserver?.disconnect()
@@ -1094,26 +1161,37 @@ function setupSentinelObserver() {
   // while logEl just expands to fit. Using logEl as root breaks the sheet case
   // (the sentinel never clips, so the observer never re-fires). The viewport
   // root respects every intervening scroll container's clipping, so it works on
-  // both. The top rootMargin pre-loads slightly before the sentinel is reached.
+  // both. Top sentinel only: it's the at-rest backstop for older history (initial
+  // fill, and the sheet where logEl gets no scroll events). Forward loading runs
+  // off updateScrollState's scroll events instead - a bottom sentinel firing
+  // independently of scroll position is what let the two loaders fight.
+  const back = Math.round((window.innerHeight || 800) * BACKWARD_LOAD_AHEAD_SCREENS)
   sentinelObserver = new IntersectionObserver(
     (entries) => {
-      sentinelVisible.value = entries[0]?.isIntersecting ?? false
-      if (sentinelVisible.value)
+      if (entries[0]?.isIntersecting)
         triggerHistoryLoad()
     },
-    { root: null, rootMargin: '200px 0px 0px 0px', threshold: 0 },
+    { root: null, rootMargin: `${back}px 0px 0px 0px`, threshold: 0 },
   )
   sentinelObserver.observe(topSentinel.value)
 }
 
 // When initial history settles (historyReady flips true), retry the load if
-// the sentinel is still visible - the observer won't re-fire on its own since
-// intersection state hasn't changed.
+// the sentinel is still visible OR if the scroll container has no overflow.
+// Two cases hit this:
+//  1. Content never filled the viewport - sentinel visible the whole time, but
+//     fetchOlderHistory returned early because historyReady was false then.
+//  2. CHATHISTORY LATEST pushed the sentinel just out of view, so the observer
+//     flipped to not-intersecting at the same moment historyReady became true -
+//     it won't re-fire and the sentinel check misses it.
+// Re-evaluating scroll state in nextTick covers both: if the container still
+// isn't scrollable (scrollTop === 0, within the load-ahead lead), updateScrollState
+// calls triggerHistoryLoad regardless of sentinel state.
 watch(
   () => activeBuffer.value?.historyReady,
   (ready) => {
-    if (ready && sentinelVisible.value)
-      triggerHistoryLoad()
+    if (ready)
+      nextTick(updateScrollState)
   },
 )
 
@@ -1131,7 +1209,32 @@ function setupContentObserver() {
   if (!content || !logEl.value)
     return
   contentObserver = new ResizeObserver(() => {
-    if (isAtBottom.value)
+    if (!logEl.value)
+      return
+    // wantBottom: set on buffer switch / visibility / activate, cleared only
+    // when the user intentionally scrolls up. Always re-pin while it's set so
+    // late-loading media (images, embeds) that expands content by more than
+    // SCROLL_BOTTOM_THRESHOLD doesn't leave us stranded mid-log.
+    if (wantBottom) {
+      scrollToBottom()
+      return
+    }
+    // Just prepended older history: keep the anchored line fixed as the new
+    // page's media loads and resizes above the fold. This is what makes a
+    // server-fetched batch land smoothly instead of jumping after it paints.
+    if (pinTopUntilUserScroll && anchorMsgEl?.isConnected) {
+      const logRect = logEl.value.getBoundingClientRect()
+      const delta = anchorMsgEl.getBoundingClientRect().top - logRect.top - anchorMsgVisualTop
+      if (Math.abs(delta) >= 1) {
+        logEl.value.scrollTop += delta
+        lastProgrammaticScrollTop = logEl.value.scrollTop
+      }
+      return
+    }
+    // For normal in-session use, re-read live rather than trusting
+    // isAtBottom.value which native overflow-anchor scroll events can dirty.
+    const { scrollTop, scrollHeight, clientHeight } = logEl.value
+    if (scrollHeight - scrollTop - clientHeight <= SCROLL_BOTTOM_THRESHOLD)
       scrollToBottom()
   })
   // Observe both the message content (new lines / growing embeds) and the
@@ -1143,15 +1246,23 @@ function setupContentObserver() {
 }
 
 onMounted(() => {
+  wantBottom = true
+  isAtBottom.value = true
   setupSentinelObserver()
   setupContentObserver()
   nextTick(scrollToBottom)
 })
-onActivated(() => nextTick(scrollToBottom))
+onActivated(() => {
+  wantBottom = true
+  isAtBottom.value = true
+  nextTick(scrollToBottom)
+})
 
 onBeforeUnmount(() => {
   sentinelObserver?.disconnect()
   contentObserver?.disconnect()
+  if (_phaseRaf !== null)
+    cancelAnimationFrame(_phaseRaf)
 })
 </script>
 
@@ -1170,7 +1281,8 @@ onBeforeUnmount(() => {
     >
       <div
         class="chat-log__messages"
-        :class="{ 'chat-log__messages--server': isServerBuffer }"
+        :class="{ 'chat-log__messages--server': isServerBuffer,
+                  'chat-log__messages--modern': isModernMode }"
         :style="!isModernMode ? { '--irc-nick-col': `${nickColWidth}px` } : {}"
       >
         <div ref="topSentinel" class="chat-log__history-sentinel" />
@@ -1182,7 +1294,7 @@ onBeforeUnmount(() => {
         </div>
         <template v-if="!isModernMode">
           <template v-for="msg in messages" :key="msg.id">
-            <div v-if="msg.id === readLineFirstMsgId" class="chat-log__new-divider" aria-label="New messages">
+            <div v-if="msg.id === readLineFirstMsgId" class="chat-log__new-divider" role="button" tabindex="0" aria-label="Mark as read" title="Mark as read" @click="markRead" @keydown.enter.prevent="markRead" @keydown.space.prevent="markRead">
               <span>new messages</span>
             </div>
             <div
@@ -1201,10 +1313,30 @@ onBeforeUnmount(() => {
                   v-if="showTimestamps"
                   class="chat-log__ts"
                   :date="msg.ts.toISOString()"
-                  :format="settings.chat_timestamp_format || 'HH:mm:ss'"
-                />
+                ><span class="chat-log__ts">{{ fmtTime(msg.ts) }}</span></TimestampDate>
                 <template v-if="msg.action">
                   <span class="chat-log__action-star">*</span>
+                </template>
+                <template v-else-if="msg.from && relayNickParts(msg.from)">
+                  <template v-if="settings.chat_irc_pure_relay_nicks">
+                    <span class="chat-log__nick" :style="nickStyle(msg)" :title="`Relayed via ${relayNickParts(msg.from)!.bridge}`">
+                      {{ relayNickParts(msg.from)!.user }}/{{ relayNickParts(msg.from)!.bridge }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    <RelaySourceIcon
+                      :bridge="relayNickParts(msg.from)!.bridge"
+                      :relayed-by="msg.relayedBy"
+                      :size="12"
+                    />
+                    <span class="chat-log__nick" :style="nickStyle(msg)">
+                      {{ relayNickParts(msg.from)!.user }}
+                    </span>
+                  </template>
+                </template>
+                <template v-else-if="msg.from && msg.relayedBy">
+                  <RelaySourceIcon :relayed-by="msg.relayedBy" :size="12" />
+                  <span class="chat-log__nick" :style="nickStyle(msg)">{{ msg.from }}</span>
                 </template>
                 <span v-else-if="msg.from" class="chat-log__nick" :style="nickStyle(msg)">{{ msg.from }}</span>
               </span>
@@ -1216,14 +1348,19 @@ onBeforeUnmount(() => {
                   @click.stop="replySource(msg) && scrollToReplySource(msg)"
                 >
                   <template v-if="replySource(msg)">
-                    <span class="chat-log__reply-nick">{{ replySource(msg)!.from }}</span>
+                    <RelaySourceIcon v-if="relayNickParts(replySource(msg)!.from)" :bridge="relayNickParts(replySource(msg)!.from)!.bridge" :size="11" />
+                    <span class="chat-log__reply-nick">{{ displayNick(replySource(msg)!.from) }}:</span>
                     <span class="chat-log__reply-text">{{ replySource(msg)!.text }}</span>
                   </template>
                   <span v-else class="chat-log__reply-text">&#x21A9; Reply to a previous message</span>
                 </div>
                 <span v-if="msg.action" class="chat-log__nick chat-log__nick--action" :style="nickStyle(msg)">{{ msg.from }}</span>
                 <div class="chat-log__text">
-                  <template v-for="(seg, i) in ircSegments(msg)" :key="i">
+                  <span v-if="msg.redacted" class="chat-log__redacted">
+                    <Icon name="ph:prohibit" :size="14" />
+                    {{ redactedLabel(msg) }}
+                  </span>
+                  <template v-for="(seg, i) in (msg.redacted ? [] : ircSegments(msg))" :key="i">
                     <a
                       v-if="seg.type === 'link'"
                       :href="seg.value"
@@ -1241,19 +1378,14 @@ onBeforeUnmount(() => {
                     >{{ seg.value }}</span>
                     <template v-else-if="seg.type === 'mention'">
                       <UserPreviewHover v-if="resolvedUser(seg.value.toLowerCase())" :user-id="resolvedUser(seg.value.toLowerCase())!.id">
-                        <NuxtLink
-                          :to="`/profile/${resolvedUser(seg.value.toLowerCase())!.username}`"
-                          class="chat-log__mention-link"
-                        >
-                          @{{ resolvedUser(seg.value.toLowerCase())!.username }}
+                        <NuxtLink :to="`/profile/${resolvedUser(seg.value.toLowerCase())!.username}`" class="chat-log__mention-link">
+                          <span>@{{ resolvedUser(seg.value.toLowerCase())!.username }}</span>
                         </NuxtLink>
                       </UserPreviewHover>
-                      <template v-else>
-                        @{{ seg.value }}
-                      </template>
+                      <span v-else>@{{ seg.value }}</span>
                     </template>
                     <span
-                      v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline"
+                      v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono"
                       :style="segStyle(seg)"
                     >{{ seg.value }}</span>
                     <img
@@ -1285,24 +1417,31 @@ onBeforeUnmount(() => {
                       {{ seg.value }}
                     </template>
                   </template>
-                  <ChatMessageReactions v-if="msg.reactions && settings.chat_irc_reactions" :message="msg" />
+                  <ChatMessageReactions v-if="!msg.redacted && msg.reactions && settings.chat_irc_reactions" :message="msg" />
                 </div>
-                <Flex v-if="!settings.chat_irc_inline_images && imageUrls(msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
-                  <img
+                <Flex v-if="!msg.redacted && !settings.chat_irc_inline_images && imageUrls(msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
+                  <div
                     v-for="url in imageUrls(msg.text).filter(u => !brokenImages.has(u))"
                     :key="url"
-                    :src="url"
-                    alt=""
-                    loading="lazy"
-                    class="chat-log__embed"
-                    @error="onImageError(url)"
-                    @click="openLightbox(url, 'image')"
+                    class="chat-log__embed-wrap"
+                    :style="embedBox(url, 240, 180)"
                   >
+                    <Skeleton v-if="!loadedImages.has(url)" width="100%" height="100%" :radius="5" class="chat-log__embed-skeleton" />
+                    <img
+                      :src="url"
+                      alt=""
+                      loading="lazy"
+                      class="chat-log__embed"
+                      @load="onImageLoad($event, url)"
+                      @error="onImageError(url)"
+                      @click="openLightbox(url, 'image')"
+                    >
+                  </div>
                 </Flex>
-                <Flex v-if="!settings.chat_irc_inline_images && youtubeUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                <Flex v-if="!msg.redacted && !settings.chat_irc_inline_images && youtubeUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
                   <YouTubeEmbed v-for="url in youtubeUrls(msg.text)" :key="url" :url="url" />
                 </Flex>
-                <Flex v-if="!settings.chat_irc_inline_images && videoUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                <Flex v-if="!msg.redacted && !settings.chat_irc_inline_images && videoUrls(msg.text).length" wrap gap="xs" class="chat-log__embeds">
                   <video
                     v-for="url in videoUrls(msg.text)"
                     :key="url"
@@ -1316,7 +1455,17 @@ onBeforeUnmount(() => {
                     @click="openLightbox(url, 'video')"
                   />
                 </Flex>
-                <template v-if="previewUrls(msg.text).length">
+                <Flex v-if="!msg.redacted && audioUrls(msg.text).length" column gap="xs" class="chat-log__embeds chat-log__embeds--audio">
+                  <AudioPlayer
+                    v-for="url in audioUrls(msg.text)"
+                    :key="url"
+                    :src="url"
+                    :title="mediaFilename(url)"
+                    compact
+                    class="chat-log__audio"
+                  />
+                </Flex>
+                <template v-if="!msg.redacted && previewUrls(msg.text).length">
                   <LinkEmbed
                     v-for="url in previewUrls(msg.text)"
                     :key="url"
@@ -1325,15 +1474,33 @@ onBeforeUnmount(() => {
                   />
                 </template>
               </div>
-              <div v-if="msg.msgid && settings.chat_irc_reactions" class="chat-log__line-react">
-                <ReactionsSelect @reaction="(emote) => toggleReaction(msg, emote)" />
+              <div v-if="msg.msgid && msg.type === 'chat' && !msg.redacted" class="chat-log__line-react">
+                <template v-if="settings.chat_irc_reactions">
+                  <button
+                    v-for="emote in settings.quick_reactions"
+                    :key="emote"
+                    class="chat-log__line-react-emote"
+                    :class="{ 'chat-log__line-react-emote--active': msg.reactions?.[emote]?.includes(nick) }"
+                    :title="`React ${emote}`"
+                    @click="toggleReaction(msg, emote)"
+                  >
+                    {{ emote }}
+                  </button>
+                  <ReactionsSelect :quick="false" @reaction="(emote) => toggleReaction(msg, emote)" />
+                </template>
+                <button v-if="msg.from" class="chat-log__line-reply-btn" @click="reply(msg)">
+                  <Icon name="ph:arrow-bend-up-left" size="16" class="text-color-lighter" />
+                </button>
+                <button v-if="canRedact(msg)" class="chat-log__line-reply-btn" title="Delete message" @click="promptRedact(msg)">
+                  <Icon name="ph:trash" size="16" class="text-color-lighter" />
+                </button>
               </div>
             </div>
           </template>
         </template>
         <template v-else>
           <template v-for="group in groupedMessages" :key="group.id">
-            <div v-if="group.id === readLineFirstGroupId" class="chat-log__new-divider" aria-label="New messages">
+            <div v-if="group.id === readLineFirstGroupId" class="chat-log__new-divider" role="button" tabindex="0" aria-label="Mark as read" title="Mark as read" @click="markRead" @keydown.enter.prevent="markRead" @keydown.space.prevent="markRead">
               <span>new messages</span>
             </div>
             <!-- HistServ chat announcement dividers (one per message in the group) -->
@@ -1354,7 +1521,7 @@ onBeforeUnmount(() => {
                       </UserPreviewHover>
                       <template v-else>@{{ seg.value }}</template>
                     </template>
-                    <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                    <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono" :style="segStyle(seg)">{{ seg.value }}</span>
                     <template v-else>{{ seg.value }}</template>
                   </template>
                 </span>
@@ -1378,7 +1545,7 @@ onBeforeUnmount(() => {
                     </UserPreviewHover>
                     <template v-else>@{{ seg.value }}</template>
                   </template>
-                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono" :style="segStyle(seg)">{{ seg.value }}</span>
                   <template v-else>{{ seg.value }}</template>
                 </template>
               </span>
@@ -1400,7 +1567,7 @@ onBeforeUnmount(() => {
                     </UserPreviewHover>
                     <template v-else>@{{ seg.value }}</template>
                   </template>
-                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono" :style="segStyle(seg)">{{ seg.value }}</span>
                   <template v-else>{{ seg.value }}</template>
                 </template>
               </span>
@@ -1425,7 +1592,7 @@ onBeforeUnmount(() => {
                     </UserPreviewHover>
                     <template v-else>@{{ seg.value }}</template>
                   </template>
-                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                  <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono" :style="segStyle(seg)">{{ seg.value }}</span>
                   <template v-else>{{ seg.value }}</template>
                 </template>
               </span>
@@ -1439,7 +1606,8 @@ onBeforeUnmount(() => {
               :data-msg-id="group.messages[0].id"
             >
               <div class="chat-log__group-avatar">
-                <UserAvatar v-if="resolvedUser(group.nickLower)" :user-id="resolvedUser(group.nickLower)!.id" :size="32" show-preview linked show-online-indicator />
+                <UserAvatar v-if="resolvedUser(group.nickLower)" :user-id="resolvedUser(group.nickLower)!.id" :size="32" show-preview linked />
+                <AvatarMedia v-else-if="ircAvatarUrl(group.nickLower)" :size="32" :url="ircAvatarUrl(group.nickLower)" :alt="group.from ?? ''" />
                 <AvatarMedia v-else :size="32" :alt="group.from ?? ''">
                   <template #default>
                     <Icon v-if="isNickBot(group.nickLower)" name="ph:robot" :size="16" />
@@ -1460,9 +1628,19 @@ onBeforeUnmount(() => {
                       {{ resolvedUser(group.nickLower)!.username }}
                     </span>
                   </NuxtLink>
+                  <template v-else-if="relayNickParts(group.from)">
+                    <span class="chat-log__nick" :style="groupNickStyle(group.from)">
+                      {{ relayNickParts(group.from)!.user }}
+                    </span>
+                  </template>
                   <span v-else class="chat-log__nick" :style="groupNickStyle(group.from)">
-                    {{ group.from }}
+                    {{ ircDisplayName(group.from) }}
                   </span>
+                  <RelaySourceIcon
+                    v-if="relayNickParts(group.from) || group.messages[0].relayedBy"
+                    :bridge="relayNickParts(group.from)?.bridge"
+                    :relayed-by="group.messages[0].relayedBy"
+                  />
                   <TimestampDate
                     v-if="showTimestamps"
                     class="chat-log__ts chat-log__ts--inline"
@@ -1472,7 +1650,7 @@ onBeforeUnmount(() => {
                 </Flex>
                 <template v-for="item in groupRenderItems(group.messages)" :key="item.kind === 'gallery' ? `g-${item.id}` : item.msg.id">
                   <div
-                    v-if="item.kind === 'msg' || item.kind === 'msg-text'"
+                    v-if="item.kind === 'msg'"
                     class="chat-log__modern-line"
                     :class="{ 'chat-log__modern-line--mention': isMention(item.msg) }"
                     :data-msg-id="item.msg.id"
@@ -1484,15 +1662,27 @@ onBeforeUnmount(() => {
                       @click.stop="replySource(item.msg) && scrollToReplySource(item.msg)"
                     >
                       <template v-if="replySource(item.msg)">
-                        <span class="chat-log__reply-nick">{{ replySource(item.msg)!.from }}</span>
+                        <Badge variant="neutral" class="chat-log__reply-source">
+                          <Flex y-center gap="xxs">
+                            <Icon name="ph:arrow-bend-down-right" :size="10" />
+                            <UserAvatar v-if="resolvedUser(replySource(item.msg)!.from?.toLowerCase() ?? null)" :user-id="resolvedUser(replySource(item.msg)!.from?.toLowerCase() ?? null)!.id" :size="12" />
+                            <AvatarMedia v-else-if="ircAvatarUrl(replySource(item.msg)!.from?.toLowerCase() ?? '')" :size="12" :url="ircAvatarUrl(replySource(item.msg)!.from?.toLowerCase() ?? '')" :alt="replySource(item.msg)!.from ?? ''" />
+                            <RelaySourceIcon v-if="relayNickParts(replySource(item.msg)!.from)" :bridge="relayNickParts(replySource(item.msg)!.from)!.bridge" :size="11" />
+                            <span>{{ displayNick(replySource(item.msg)!.from) }}</span>
+                          </Flex>
+                        </Badge>
                         <span class="chat-log__reply-text">{{ replySource(item.msg)!.text }}</span>
                       </template>
                       <span v-else class="chat-log__reply-text">&#x21A9; Reply to a previous message</span>
                     </div>
                     <span class="chat-log__text">
-                      <template v-for="(seg, i) in segments(item.msg.text)" :key="i">
+                      <span v-if="item.msg.redacted" class="chat-log__redacted">
+                        <Icon name="ph:prohibit" :size="14" />
+                        {{ redactedLabel(item.msg) }}
+                      </span>
+                      <template v-for="(seg, i) in (item.msg.redacted ? [] : segments(item.msg.text))" :key="i">
                         <template v-if="seg.type === 'link'">
-                          <a v-if="!imageUrls(item.msg.text).includes(seg.value) && !videoUrls(item.msg.text).includes(seg.value) && !previewUrls(item.msg.text).includes(seg.value) && !youtubeUrls(item.msg.text).includes(seg.value)" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
+                          <a v-if="!imageUrls(item.msg.text).includes(seg.value) && !videoUrls(item.msg.text).includes(seg.value) && !audioUrls(item.msg.text).includes(seg.value) && !previewUrls(item.msg.text).includes(seg.value) && !youtubeUrls(item.msg.text).includes(seg.value)" :href="seg.value" target="_blank" rel="noopener noreferrer" class="chat-log__link" :style="segStyle(seg)">{{ seg.value }}</a>
                         </template>
                         <span v-else-if="seg.type === 'channel'" class="chat-log__channel-link" :style="segStyle(seg)" @click="joinChannel(seg.value)">{{ seg.value }}</span>
                         <template v-else-if="seg.type === 'mention'">
@@ -1501,25 +1691,47 @@ onBeforeUnmount(() => {
                           </UserPreviewHover>
                           <template v-else>@{{ seg.value }}</template>
                         </template>
-                        <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline" :style="segStyle(seg)">{{ seg.value }}</span>
+                        <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono" :style="segStyle(seg)">{{ seg.value }}</span>
                         <template v-else>{{ seg.value }}</template>
                       </template>
                     </span>
-                    <Flex v-if="item.kind === 'msg' && imageUrls(item.msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
-                      <img v-for="url in imageUrls(item.msg.text).filter(u => !brokenImages.has(u))" :key="url" :src="url" alt="" loading="lazy" class="chat-log__embed" @error="onImageError(url)" @click="openLightbox(url, 'image')">
+                    <Flex v-if="!item.msg.redacted && imageUrls(item.msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
+                      <div v-for="url in imageUrls(item.msg.text).filter(u => !brokenImages.has(u))" :key="url" class="chat-log__embed-wrap" :style="embedBox(url, 240, 180)">
+                        <Skeleton v-if="!loadedImages.has(url)" width="100%" height="100%" :radius="5" class="chat-log__embed-skeleton" />
+                        <img :src="url" alt="" loading="lazy" class="chat-log__embed" @load="onImageLoad($event, url)" @error="onImageError(url)" @click="openLightbox(url, 'image')">
+                      </div>
                     </Flex>
-                    <Flex v-if="item.kind === 'msg' && youtubeUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                    <Flex v-if="!item.msg.redacted && youtubeUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
                       <YouTubeEmbed v-for="url in youtubeUrls(item.msg.text)" :key="url" :url="url" />
                     </Flex>
-                    <Flex v-if="videoUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
+                    <Flex v-if="!item.msg.redacted && videoUrls(item.msg.text).length" wrap gap="xs" class="chat-log__embeds">
                       <video v-for="url in videoUrls(item.msg.text)" :key="url" :src="url" muted playsinline preload="metadata" :loop="videoShortUrls.has(url)" class="chat-log__embed-video" @loadedmetadata="onVideoMetadata($event, url)" @click="openLightbox(url, 'video')" />
                     </Flex>
-                    <template v-if="previewUrls(item.msg.text).length">
+                    <Flex v-if="!item.msg.redacted && audioUrls(item.msg.text).length" column gap="xs" class="chat-log__embeds chat-log__embeds--audio">
+                      <AudioPlayer v-for="url in audioUrls(item.msg.text)" :key="url" :src="url" :title="mediaFilename(url)" compact class="chat-log__audio" />
+                    </Flex>
+                    <template v-if="!item.msg.redacted && previewUrls(item.msg.text).length">
                       <LinkEmbed v-for="url in previewUrls(item.msg.text)" :key="url" :url="url" class="chat-log__link-preview" />
                     </template>
-                    <ChatMessageReactions v-if="item.msg.reactions" :message="item.msg" />
-                    <div v-if="item.msg.msgid" class="chat-log__line-react">
-                      <ReactionsSelect @reaction="(emote) => toggleReaction(item.msg, emote)" />
+                    <ChatMessageReactions v-if="!item.msg.redacted && item.msg.reactions" :message="item.msg" />
+                    <div v-if="item.msg.msgid && !item.msg.redacted" class="chat-log__line-react">
+                      <button
+                        v-for="emote in settings.quick_reactions"
+                        :key="emote"
+                        class="chat-log__line-react-emote"
+                        :class="{ 'chat-log__line-react-emote--active': item.msg.reactions?.[emote]?.includes(nick) }"
+                        :title="`React ${emote}`"
+                        @click="toggleReaction(item.msg, emote)"
+                      >
+                        {{ emote }}
+                      </button>
+                      <ReactionsSelect :quick="false" @reaction="(emote) => toggleReaction(item.msg, emote)" />
+                      <button class="chat-log__line-reply-btn" @click="reply(item.msg)">
+                        <Icon name="ph:arrow-bend-up-left" :size="16" class="text-color-lighter" />
+                      </button>
+                      <button v-if="canRedact(item.msg)" class="chat-log__line-reply-btn" title="Delete message" @click="promptRedact(item.msg)">
+                        <Icon name="ph:trash" :size="16" class="text-color-lighter" />
+                      </button>
                     </div>
                   </div>
                   <template v-else>
@@ -1576,14 +1788,40 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <JumpToPresent :visible="!isAtBottom" @click="jumpToPresent" />
+
     <Lightbox ref="lightboxRef" :items="chatMediaItems" />
 
     <template #menu>
       <div class="vui-dropdown chat-log__menu" @click="closeMenu">
         <template v-if="activeMessage">
+          <template v-if="activeMessage.msgid && activeMessage.type === 'chat' && settings.quick_reactions.length">
+            <div class="chat-log__menu-react">
+              <button
+                v-for="emote in settings.quick_reactions"
+                :key="emote"
+                type="button"
+                class="chat-log__menu-react-btn"
+                :class="{ 'chat-log__menu-react-btn--active': activeMessage.reactions?.[emote]?.includes(nick) }"
+                @click="pickReaction(emote)"
+              >
+                {{ emote }}
+              </button>
+              <ReactionsSelect :quick="false" @reaction="pickReaction">
+                <template #default="{ toggle }">
+                  <button type="button" class="chat-log__menu-react-btn chat-log__menu-react-btn--more" aria-label="More reactions" @click.stop="toggle">
+                    <Icon name="ph:plus" :size="16" />
+                  </button>
+                </template>
+              </ReactionsSelect>
+            </div>
+            <Divider />
+          </template>
           <UserActionMenu
             v-if="activeMessage.from"
             :nick="cleanNick(activeMessage.from)"
+            :mention-nick="relayNickParts(activeMessage.from)?.user"
+            :hide-message="!!relayNickParts(activeMessage.from)"
             :prefix="activeMessagePrefix()"
             show-mod-actions
             @close="closeMenu"
@@ -1617,6 +1855,12 @@ onBeforeUnmount(() => {
             </template>
             Copy message
           </DropdownItem>
+          <DropdownItem v-if="canRedact(activeMessage)" variant="danger" @click="promptRedact(activeMessage)">
+            <template #icon>
+              <Icon name="ph:trash" />
+            </template>
+            Delete message
+          </DropdownItem>
         </template>
       </div>
     </template>
@@ -1625,19 +1869,32 @@ onBeforeUnmount(() => {
   <Sheet
     :open="mobileMenuOpen"
     position="bottom"
+    class="chat-log__drawer-sheet"
     :card="{ separators: true,
              padding: false }"
     @close="mobileMenuOpen = false"
   >
     <template v-if="activeMessage" #header>
-      <Flex y-center x-between expand>
-        <span class="chat-log__drawer-nick">{{ activeMessage.from ? cleanNick(activeMessage.from) : '' }}</span>
+      <Flex column gap="xxs" expand>
+        <Flex y-center gap="xxs">
+          <span v-if="activeMessage.from && (relayNickParts(activeMessage.from) || activeMessage.relayedBy)" class="chat-log__drawer-relay-icon">
+            <RelaySourceIcon
+              :bridge="relayNickParts(activeMessage.from)?.bridge"
+              :relayed-by="activeMessage.relayedBy"
+              :size="16"
+            />
+          </span>
+          <span class="chat-log__drawer-nick">{{ activeMessage.from ? (relayNickParts(activeMessage.from)?.user ?? cleanNick(activeMessage.from)) : '' }}</span>
+          <span v-if="activeMessage.relayedBy" class="chat-log__drawer-bridge">
+            via {{ activeMessage.relayedBy }}
+          </span>
+        </Flex>
         <span class="chat-log__drawer-ts">{{ fmtDateTime(activeMessage.ts) }}</span>
       </Flex>
     </template>
-    <Flex v-if="activeMessage?.msgid && activeMessage.type === 'chat'" x-between y-center style="padding: var(--space-s) var(--space-m)">
+    <div v-if="activeMessage?.msgid && activeMessage.type === 'chat'" class="chat-log__quick-row">
       <Button
-        v-for="emote in QUICK_REACTIONS"
+        v-for="emote in settings.quick_reactions"
         :key="emote"
         size="l"
         variant="gray"
@@ -1646,20 +1903,22 @@ onBeforeUnmount(() => {
       >
         {{ emote }}
       </Button>
-      <ReactionsSelect size="l" @reaction="pickReaction">
+      <ReactionsSelect size="l" :quick="false" class="chat-log__quick-add" @reaction="pickReaction">
         <template #default="{ toggle }">
-          <Button size="l" variant="gray" square style="min-width: 56px" @click="toggle">
+          <Button size="l" variant="gray" square @click="toggle">
             <Icon name="ph:plus" />
           </Button>
         </template>
       </ReactionsSelect>
-    </Flex>
+    </div>
     <Divider />
     <div class="vui-dropdown chat-log__menu">
       <template v-if="activeMessage">
         <UserActionMenu
           v-if="activeMessage.from"
           :nick="cleanNick(activeMessage.from)"
+          :mention-nick="relayNickParts(activeMessage.from)?.user"
+          :hide-message="!!relayNickParts(activeMessage.from)"
           :prefix="activeMessagePrefix()"
           show-mod-actions
           @close="closeMenu"
@@ -1693,10 +1952,24 @@ onBeforeUnmount(() => {
           </template>
           Copy message
         </DropdownItem>
+        <DropdownItem v-if="canRedact(activeMessage)" variant="danger" @click="promptRedact(activeMessage)">
+          <template #icon>
+            <Icon name="ph:trash" />
+          </template>
+          Delete message
+        </DropdownItem>
       </template>
     </div>
   </Sheet>
-  <IrcWhoisModal :nick="whoisModalNick" :open="whoisModalOpen" @close="whoisModalOpen = false" />
+  <IrcWhoisModal :nick="whoisModalNick" :relayed-by="whoisModalRelayedBy" :open="whoisModalOpen" @close="whoisModalOpen = false" />
+  <ConfirmModal
+    v-model:open="redactConfirmOpen"
+    title="Delete message"
+    :description="redactIsOwn ? 'Delete your message for everyone? This cannot be undone.' : 'Delete this message for everyone? This cannot be undone.'"
+    confirm-text="Delete"
+    destructive
+    @confirm="confirmRedact"
+  />
 </template>
 
 <style lang="scss" scoped>
@@ -1708,16 +1981,82 @@ onBeforeUnmount(() => {
   position: relative;
 
   &__drawer-nick {
-    margin-left: var(--space-s);
     font-size: var(--font-size-s);
     font-weight: var(--font-weight-semibold);
     color: var(--color-text);
+  }
+
+  &__drawer-relay-icon {
+    display: flex;
+    align-items: center;
+    margin-right: var(--space-xxs);
+
+    :deep(.iconify) {
+      color: var(--color-text) !important;
+    }
+  }
+
+  &__drawer-bridge {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
   }
 
   &__drawer-ts {
     font-size: var(--font-size-xs);
     color: var(--color-text-lighter);
     font-family: monospace;
+  }
+
+  // Quick-reaction strip in the message menu. Buttons grow to fill the row and
+  // wrap to a new line instead of overflowing or leaving space-between gaps.
+  &__quick-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    padding: var(--space-s) var(--space-m);
+
+    // ReactionsSelect renders an inline-block anchor wrapper; make it grow as a
+    // flex track member and let its trigger button fill it.
+    :deep(.chat-log__quick-add) {
+      display: flex;
+      flex: 1 1 44px;
+    }
+
+    // Emoji buttons (direct children) and the picker trigger all grow equally
+    // and wrap. min-width: 0 lets them shrink below the default button width.
+    :deep(.vui-button) {
+      flex: 1 1 44px;
+      width: auto;
+      min-width: 0;
+    }
+  }
+
+  // Compact quick-reaction strip at the top of the desktop right-click menu.
+  &__menu-react {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: var(--space-xxs);
+  }
+
+  &__menu-react-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--border-radius-m);
+    font-size: var(--font-size-l);
+    color: var(--color-text-lighter);
+
+    &:hover {
+      background-color: var(--color-button-gray-hover);
+      color: var(--color-text);
+    }
+
+    &--active {
+      background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 30%, transparent);
+    }
   }
 
   &__scroll {
@@ -1739,6 +2078,10 @@ onBeforeUnmount(() => {
 
   &__messages {
     flex: 1;
+
+    &--modern {
+      font-family: var(--font);
+    }
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -1812,12 +2155,16 @@ onBeforeUnmount(() => {
   &__nick-cell {
     display: flex;
     justify-content: flex-end;
-    align-items: baseline;
+    align-items: center;
     gap: var(--space-xxs);
     overflow: hidden;
     min-width: 0;
     font-size: inherit;
     padding-right: var(--space-xs);
+
+    :deep(.iconify) {
+      font-size: 1em !important;
+    }
   }
 
   &__msg-cell {
@@ -1877,6 +2224,14 @@ onBeforeUnmount(() => {
     }
   }
 
+  &__relay-badge {
+    font-size: var(--font-size-xxs);
+    opacity: 0.7;
+    :deep(.vui-badge) {
+      padding: 1px 4px;
+    }
+  }
+
   &__nick-link {
     text-decoration: none;
     color: inherit;
@@ -1897,6 +2252,14 @@ onBeforeUnmount(() => {
     min-width: 0;
     font-size: inherit;
     white-space: pre-wrap;
+  }
+
+  &__redacted {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xxs);
+    font-style: italic;
+    color: var(--color-text-lighter);
   }
 
   &__link {
@@ -1925,6 +2288,12 @@ onBeforeUnmount(() => {
     padding-top: var(--space-xxs);
   }
 
+  // Audio embeds stack as full-width players, capped so they don't stretch the
+  // whole message column on wide screens.
+  &__embeds--audio {
+    max-width: 420px;
+  }
+
   &__image-group {
     display: flex;
     gap: var(--space-xs);
@@ -1951,9 +2320,36 @@ onBeforeUnmount(() => {
     cursor: pointer;
   }
 
+  // Block embeds sit in a box pre-sized by embedBox() so the row holds its space
+  // before the image paints. A Skeleton fills that box until load, then the image
+  // covers it - no growing the layout from zero height.
+  &__embed-wrap {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border-radius: var(--border-radius-s);
+    border: 1px solid var(--color-border-weak);
+
+    .chat-log__embed {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+      border: none;
+      border-radius: 0;
+    }
+  }
+
+  &__embed-skeleton {
+    position: absolute;
+    inset: 0;
+  }
+
   &__embed-video {
     display: block;
-    max-width: 320px;
+    width: auto;
+    height: auto;
+    max-width: min(320px, 100%);
     max-height: 200px;
     border-radius: var(--border-radius-s);
     border: 1px solid var(--color-border-weak);
@@ -1970,7 +2366,7 @@ onBeforeUnmount(() => {
     margin-left: var(--space-xxs);
     height: 1em;
     width: auto;
-    max-width: none;
+    max-width: 2em;
     max-height: none;
     vertical-align: middle;
     border: none;
@@ -2091,11 +2487,6 @@ onBeforeUnmount(() => {
     gap: var(--space-s);
     padding: var(--space-xxs) var(--space-xs);
     border-radius: var(--border-radius-s);
-    transition: background-color var(--transition-fast);
-
-    &:hover {
-      background: var(--color-bg-medium);
-    }
   }
 
   &__group-avatar {
@@ -2111,16 +2502,32 @@ onBeforeUnmount(() => {
     gap: 2px;
   }
 
+  &__group-header {
+    font-size: var(--chat-font-size, var(--font-size-s));
+
+    :deep(.iconify) {
+      font-size: 1em !important;
+    }
+  }
+
   &__line-react {
     position: absolute;
     right: 0;
     top: 0;
     opacity: 0;
-    height: var(--chat-font-size, var(--font-size-s));
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    padding: 1px;
+    height: calc(var(--chat-font-size, var(--font-size-s)) * 1.5 + 2px);
     pointer-events: none;
     transition: opacity var(--transition-fast);
-    background: var(--color-bg-medium);
-    border-radius: var(--border-radius-xs);
+    background: var(--color-bg-raised);
+    border-radius: var(--border-radius-m);
+    // Outset ring + drop shadow makes the toolbar pop without shifting layout.
+    box-shadow:
+      0 0 0 1px var(--color-border),
+      var(--box-shadow);
 
     &:has(.reactions-anchor-active) {
       opacity: 1;
@@ -2139,10 +2546,44 @@ onBeforeUnmount(() => {
       display: none;
     }
 
-    :deep(.reactions__button) {
+    :deep(.reactions__button),
+    .chat-log__line-reply-btn {
       height: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
       width: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
       color: var(--color-text-lighter);
+      font-size: var(--chat-font-size, var(--font-size-s));
+    }
+
+    .chat-log__line-reply-btn {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: var(--border-radius-m);
+
+      &:hover {
+        background-color: var(--color-button-gray-hover);
+      }
+    }
+
+    // Quick-reaction emoji shown inline so common reactions are one click away.
+    .chat-log__line-react-emote {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
+      min-width: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
+      padding: 0 2px;
+      border-radius: var(--border-radius-m);
+      font-size: var(--chat-font-size, var(--font-size-s));
+      line-height: 1;
+
+      &:hover {
+        background-color: var(--color-button-gray-hover);
+      }
+
+      &--active {
+        background-color: color-mix(in srgb, var(--color-bg-accent-lowered) 30%, transparent);
+      }
     }
   }
 
@@ -2178,7 +2619,7 @@ onBeforeUnmount(() => {
   }
 
   :deep(.chat-log__ts--inline) {
-    font-size: var(--font-size-xs);
+    font-size: calc(var(--chat-font-size, var(--font-size-s)) * 0.85);
     color: var(--color-text-lightest);
   }
 
@@ -2188,6 +2629,7 @@ onBeforeUnmount(() => {
     gap: var(--space-s);
     padding: var(--space-xs) var(--space-xs);
     color: var(--color-accent);
+    cursor: pointer;
 
     span {
       font-size: var(--chat-font-size, var(--font-size-s));
@@ -2203,6 +2645,11 @@ onBeforeUnmount(() => {
       height: 1px;
       background: var(--color-accent);
       opacity: 0.4;
+    }
+
+    &:hover::before,
+    &:hover::after {
+      opacity: 0.7;
     }
   }
 
@@ -2237,6 +2684,12 @@ onBeforeUnmount(() => {
     white-space: pre-wrap;
     word-break: break-word;
     line-height: 1.4;
+    border-radius: var(--border-radius-xs);
+    transition: background-color var(--transition-fast);
+
+    &:hover {
+      background: var(--color-bg-medium);
+    }
 
     // reactions__list uses display:contents globally so its children bleed
     // inline into the text. Override it here so reactions form their own row.
@@ -2252,22 +2705,26 @@ onBeforeUnmount(() => {
       box-shadow: inset 2px 0 0 var(--color-accent);
       padding: 1px var(--space-xs);
       margin: 0 calc(-1 * var(--space-xs));
+      border-radius: 0;
     }
   }
 
   &__reply-quote {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: var(--space-xxs);
     font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
+    color: var(--color-text-light);
     padding: var(--space-xxs) var(--space-xs);
     border-left: 2px solid var(--color-border-strong);
+
+    .chat-log__modern-line & {
+      border-left: none;
+    }
     margin-bottom: var(--space-xxs);
     overflow: hidden;
     white-space: nowrap;
     cursor: default;
-    border-radius: var(--border-radius-xs);
     transition:
       background var(--transition-fast),
       color var(--transition-fast);
@@ -2303,6 +2760,21 @@ onBeforeUnmount(() => {
     flex-shrink: 0;
   }
 
+  &__reply-source {
+    flex-shrink: 0;
+    font-size: calc(var(--chat-font-size, var(--font-size-s)) * 0.8);
+    line-height: 1;
+
+    :deep(.vui-avatar) {
+      border-radius: 50%;
+    }
+
+    :deep(.iconify) {
+      color: var(--color-text) !important;
+      font-size: 1em !important;
+    }
+  }
+
   &__reply-text {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2318,5 +2790,16 @@ onBeforeUnmount(() => {
       user-select: none;
     }
   }
+}
+</style>
+
+<style lang="scss">
+// The Sheet teleports its card to <body> and spreads our class onto the card
+// root, so a scoped :deep can't reach the header. The card's `padding: false`
+// adds vui's `.no-padding` rule (`padding: 0 !important`), so out-specify it and
+// match the !important to restore header padding (incl. the close button). The
+// content stays unpadded since each section manages its own spacing.
+.chat-log__drawer-sheet.vui-card.no-padding > .vui-card-header {
+  padding: var(--space-s) var(--space-m) !important;
 }
 </style>

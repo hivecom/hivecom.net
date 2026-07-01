@@ -151,48 +151,55 @@ function onKeydown(e: KeyboardEvent) {
 </script>
 
 <template>
-  <Input
-    v-model="query"
-    expand
-    placeholder="Filter by author..."
-    :loading="loading"
-    autocomplete="off"
-    @blur="onBlur"
-    @focus="onFocus"
-    @keydown="onKeydown"
-  >
-    <template #start>
-      <Icon name="ph:user" />
-    </template>
-    <template v-if="selectedAuthor" #end>
-      <Button variant="gray" plain square size="s" @mousedown.prevent="clear">
-        <Icon name="ph:x" size="14" />
-      </Button>
-    </template>
-  </Input>
-
-  <div
-    v-if="open"
-    ref="dropdownRef"
-    class="author-filter-dropdown"
-    @mousedown.prevent
-  >
-    <button
-      v-for="(profile, index) in results"
-      :key="profile.id"
-      class="author-filter-option"
-      :class="{ 'is-focused': focusedIndex === index }"
-      type="button"
-      @click="select(profile)"
-      @mouseenter="focusedIndex = index"
+  <div class="author-filter">
+    <Input
+      v-model="query"
+      expand
+      placeholder="Filter by author..."
+      :loading="loading"
+      autocomplete="off"
+      @blur="onBlur"
+      @focus="onFocus"
+      @keydown="onKeydown"
     >
-      <UserAvatar :user-id="profile.id" :size="22" />
-      <span>{{ profile.username }}</span>
-    </button>
+      <template #start>
+        <Icon name="ph:user" />
+      </template>
+      <template v-if="selectedAuthor" #end>
+        <Button variant="gray" plain square size="s" @mousedown.prevent="clear">
+          <Icon name="ph:x" size="14" />
+        </Button>
+      </template>
+    </Input>
+
+    <div
+      v-if="open"
+      ref="dropdownRef"
+      class="author-filter-dropdown"
+      @mousedown.prevent
+    >
+      <button
+        v-for="(profile, index) in results"
+        :key="profile.id"
+        class="author-filter-option"
+        :class="{ 'is-focused': focusedIndex === index }"
+        type="button"
+        @click="select(profile)"
+        @mouseenter="focusedIndex = index"
+      >
+        <UserAvatar :user-id="profile.id" :size="22" />
+        <span>{{ profile.username }}</span>
+      </button>
+    </div>
   </div>
 </template>
 
 <style scoped lang="scss">
+.author-filter {
+  position: relative;
+  width: 100%;
+}
+
 .author-filter-dropdown {
   position: absolute;
   top: calc(100% + var(--space-xxs));

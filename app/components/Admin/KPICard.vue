@@ -100,8 +100,6 @@ const linkAttrs = computed(() => {
 </template>
 
 <style lang="scss">
-@use '@/assets/breakpoints.scss' as *;
-
 .kpi-card {
   padding: var(--space-m);
   height: 100%;
@@ -118,7 +116,7 @@ const linkAttrs = computed(() => {
     text-decoration: none;
     border-radius: var(--border-radius-l);
 
-    @media (max-width: #{$breakpoint-m - 1px}) {
+    @media (max-width: #{$breakpoint-m}) {
       display: block;
       width: 100%;
       flex: unset;

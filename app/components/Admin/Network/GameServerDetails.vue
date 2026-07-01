@@ -245,7 +245,7 @@ function confirmDelete() {
         </DetailTable>
 
         <!-- Markdown Content -->
-        <DetailTable v-if="props.gameserver.markdown">
+        <Card v-if="props.gameserver.markdown" separators class="card-bg">
           <template #header>
             <Flex x-between y-center expand>
               <Flex y-center gap="xs">
@@ -255,8 +255,10 @@ function confirmDelete() {
               <span class="text-color-lightest text-xs">Markdown</span>
             </Flex>
           </template>
-          <MarkdownRenderer :md="props.gameserver.markdown" class="gameserver-details__markdown-content" />
-        </DetailTable>
+          <Flex column gap="s">
+            <MarkdownRenderer :md="props.gameserver.markdown" class="gameserver-details__markdown-content" />
+          </Flex>
+        </Card>
 
         <!-- Metadata -->
         <Metadata
@@ -289,8 +291,6 @@ function confirmDelete() {
   }
 
   &__markdown-content {
-    padding: var(--space-m);
-
     h1 {
       margin-top: var(--space-s);
       font-size: var(--font-size-xxl);
