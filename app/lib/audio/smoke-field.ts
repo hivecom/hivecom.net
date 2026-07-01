@@ -16,6 +16,7 @@
 
 import type * as THREE from 'three'
 import type { AudioFeatures } from '@/lib/audio/features'
+import { curlNoiseChunk, fbmChunk } from '@/lib/gl/noise'
 
 // Theme colours, each as a 0..1 [r, g, b] triple. The visualizer reads these
 // from the VUI CSS tokens so it tracks the active light/dark theme.
@@ -61,28 +62,7 @@ const ADVECT_FRAG = /* glsl */ `
   uniform float uRise;
   varying vec2 vUv;
 
-  vec2 hash2(vec2 p) {
-    p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
-    return fract(sin(p) * 43758.5453);
-  }
-  float vnoise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    float a = dot(hash2(i) - 0.5, f);
-    float b = dot(hash2(i + vec2(1.0, 0.0)) - 0.5, f - vec2(1.0, 0.0));
-    float c = dot(hash2(i + vec2(0.0, 1.0)) - 0.5, f - vec2(0.0, 1.0));
-    float d = dot(hash2(i + vec2(1.0, 1.0)) - 0.5, f - vec2(1.0, 1.0));
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-  }
-  // Curl of a scalar noise field gives a divergence-free flow that swirls
-  // instead of pumping outward, which is what reads as smoke.
-  vec2 curl(vec2 p) {
-    float e = 0.06;
-    float x = vnoise(p + vec2(0.0, e)) - vnoise(p - vec2(0.0, e));
-    float y = vnoise(p + vec2(e, 0.0)) - vnoise(p - vec2(e, 0.0));
-    return vec2(x, -y) / (2.0 * e);
-  }
+  ${curlNoiseChunk}
 
   void main() {
     vec2 flow = curl(vUv * 3.0 + uTime * 0.03) * uTurb;
@@ -164,31 +144,7 @@ const SPLOTCH_FRAG = /* glsl */ `
   varying float vBright;
   varying float vSeed;
 
-  float hash(vec2 p) {
-    p = fract(p * vec2(123.34, 456.21));
-    p += dot(p, p + 45.32);
-    return fract(p.x * p.y);
-  }
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    float a = hash(i);
-    float b = hash(i + vec2(1.0, 0.0));
-    float c = hash(i + vec2(0.0, 1.0));
-    float d = hash(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-  }
-  float fbm(vec2 p) {
-    float v = 0.0;
-    float amp = 0.5;
-    for (int k = 0; k < 4; k++) {
-      v += amp * noise(p);
-      p *= 2.0;
-      amp *= 0.5;
-    }
-    return v;
-  }
+  ${fbmChunk}
 
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
