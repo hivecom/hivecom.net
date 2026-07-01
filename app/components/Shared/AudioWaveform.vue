@@ -2,6 +2,7 @@
 import type { WaveformData } from '@/lib/audio/waveform'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { computeWaveform } from '@/lib/audio/waveform'
+import { formatClock } from '@/lib/utils/duration'
 
 // The SoundCloud-style waveform for the fullscreen player. Decodes the file once
 // (off the playback element, see lib/audio/decode), buckets it into bars and
@@ -41,21 +42,16 @@ const hoverFraction = ref<number | null>(null)
 
 // Read the live accent so the bars track the active theme.
 function readAccent(): [number, number, number] {
-  if (!import.meta.client)
-    return [167, 252, 47]
-  const raw = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim()
-  const hex = raw.match(/^#([0-9a-f]{6})$/i)
-  if (hex) {
-    const n = Number.parseInt(hex[1]!, 16)
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
-  }
-  const rgb = raw.match(/(\d+)[,\s]+(\d+)[,\s]+(\d+)/)
-  if (rgb)
-    return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])]
-  return [167, 252, 47]
+  return readThemeColor('--color-accent', [167, 252, 47])
 }
 
 let accent: [number, number, number] = [167, 252, 47]
+
+// Re-read the accent and repaint when the theme flips, the way the globe does.
+onThemeChange(() => {
+  accent = readAccent()
+  repaint()
+})
 
 // Geometry constants. Bars are a few px wide with a hairline gap; the canvas
 // fits as many as the width allows and samples the analysis grid down to match.
@@ -98,16 +94,12 @@ function draw() {
   if (!cv || !host || status.value !== 'ready')
     return
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 2)
   const w = host.clientWidth
   const h = host.clientHeight
   if (w === 0 || h === 0)
     return
 
-  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
-    cv.width = Math.round(w * dpr)
-    cv.height = Math.round(h * dpr)
-  }
+  const dpr = resizeCanvasToDisplay(cv, w, h)
 
   const ctx = cv.getContext('2d')
   if (!ctx)
@@ -251,10 +243,7 @@ function onPointerLeave() {
 const hoverTime = computed(() => {
   if (hoverFraction.value == null || !props.duration)
     return null
-  const seconds = hoverFraction.value * props.duration
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, '0')}`
+  return formatClock(hoverFraction.value * props.duration)
 })
 
 onBeforeUnmount(() => {

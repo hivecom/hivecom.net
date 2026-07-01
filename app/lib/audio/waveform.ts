@@ -4,6 +4,7 @@
 // lib/audio/decode.
 
 import { decodeAudio } from '@/lib/audio/decode'
+import { keyedAsyncCache } from '@/lib/audio/keyedAsyncCache'
 
 export interface WaveformData {
   // Per-bar peak amplitude in 0..1, left to right across the whole track. The
@@ -14,10 +15,6 @@ export interface WaveformData {
 // Analysis resolution. High enough that a wide player still shows fine detail,
 // the canvas buckets these down to whatever fits its width.
 const BARS = 1024
-
-// Computed waveforms keyed by src so reopening the same track is instant.
-const cache = new Map<string, WaveformData>()
-const inflight = new Map<string, Promise<WaveformData>>()
 
 // Cap on how many samples each bar actually reads. Past this we step over the
 // bar's window instead of touching every sample: a long track's bar can span
@@ -74,30 +71,13 @@ function analyze(buffer: AudioBuffer): WaveformData {
   return { peaks }
 }
 
+// Computed waveforms keyed by src so reopening the same track is instant, and so
+// the waveform and spectrum mounting together share one decode.
+const waveforms = keyedAsyncCache(async (src: string) => analyze(await decodeAudio(src)))
+
 // Decode and analyze a track, caching the result. Rejects if the file can't be
 // fetched (e.g. cross-origin without CORS) or decoded; callers should treat that
 // as "no waveform available" and degrade gracefully.
 export async function computeWaveform(src: string): Promise<WaveformData> {
-  const cached = cache.get(src)
-  if (cached)
-    return cached
-
-  const existing = inflight.get(src)
-  if (existing)
-    return existing
-
-  const job = (async () => {
-    const buffer = await decodeAudio(src)
-    const result = analyze(buffer)
-    cache.set(src, result)
-    return result
-  })()
-
-  inflight.set(src, job)
-  try {
-    return await job
-  }
-  finally {
-    inflight.delete(src)
-  }
+  return waveforms.get(src)
 }

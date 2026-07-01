@@ -1,133 +1,65 @@
 <script setup lang="ts">
-import { Alert, Button, Card, CopyClipboard, Divider, Flex, pushToast } from '@dolanske/vui'
-import { computed, onBeforeUnmount, ref } from 'vue'
-import { useSupabaseUser } from '#imports'
-import { useDepot } from '@/composables/useDepot'
+import { Button, Dropzone, Flex, pushToast } from '@dolanske/vui'
+import { ref } from 'vue'
 
-// Quick test bench for Depot uploads, driven by the useDepot composable.
-const depot = useDepot()
-const user = useSupabaseUser()
-const isAuthed = computed(() => !!user.value)
+// Visualizer playground: drop a local audio file and it opens in the fullscreen
+// lightbox (the smoke visualizer, spectrum and waveform) so the visuals can be
+// tried against real tracks without uploading anything. The file never leaves
+// the browser, it's handed to the shared player as a blob: URL.
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unknown error'
-}
+const player = useAudioPlayer()
 
-const fileInput = ref<HTMLInputElement | null>(null)
-const selectedFile = ref<File | null>(null)
-const localPreview = ref<string | null>(null)
-const uploading = ref(false)
-const uploadedUrl = ref<string | null>(null)
+const currentName = ref<string | null>(null)
+let objectUrl: string | null = null
 
-function clearPreview() {
-  if (localPreview.value) {
-    URL.revokeObjectURL(localPreview.value)
-    localPreview.value = null
-  }
-}
-
-function onFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0] ?? null
-  uploadedUrl.value = null
-  clearPreview()
-  selectedFile.value = file
-  if (file)
-    localPreview.value = URL.createObjectURL(file)
-}
-
-async function upload() {
-  if (!selectedFile.value || uploading.value)
+function openFile(file: File) {
+  if (!file.type.startsWith('audio/')) {
+    pushToast('Not an audio file', { description: file.name })
     return
-
-  uploading.value = true
-  try {
-    const result = await depot.uploadFile(selectedFile.value)
-    uploadedUrl.value = result.url
-    pushToast('Image uploaded')
   }
-  catch (error) {
-    pushToast('Upload failed', { description: errorMessage(error) })
-  }
-  finally {
-    uploading.value = false
-  }
+  // Drop the previous local URL so it doesn't leak when swapping tracks.
+  if (objectUrl)
+    URL.revokeObjectURL(objectUrl)
+  objectUrl = URL.createObjectURL(file)
+  currentName.value = file.name
+  player.openFullscreen({ src: objectUrl, title: file.name, subtitle: 'Local file' })
 }
 
-onBeforeUnmount(clearPreview)
+function onFiles(files: FileList) {
+  const file = files[0]
+  if (file)
+    openFile(file)
+}
+
+function reopen() {
+  if (objectUrl && currentName.value)
+    player.openFullscreen({ src: objectUrl, title: currentName.value, subtitle: 'Local file' })
+}
 </script>
 
 <template>
   <div class="page container-s">
     <Flex column gap="l" expand>
-      <h1>Depot playground</h1>
+      <h1>Visualizer playground</h1>
 
-      <p>It works. I'm realizing there needs to be a nice admin and self-service layer to this as well (seeing what users upload, managing your own uploads). But it works.</p>
+      <p>Drop an audio file to open it in the fullscreen player. Everything runs locally, nothing is uploaded.</p>
 
-      <Alert v-if="!isAuthed" variant="warning">
-        Sign in to upload.
-      </Alert>
+      <Flex expand>
+        <Dropzone
+          accept="audio/*"
+          label="Drop an audio file"
+          hint="mp3, wav, flac, ogg, ..."
+          expand
+          @files="onFiles"
+        />
+      </Flex>
 
-      <Card v-else class="card-bg" separators>
-        <template #header>
-          <h4>Upload an image</h4>
-        </template>
-
-        <Flex column gap="m" expand>
-          <input
-            ref="fileInput"
-            type="file"
-            accept="image/*"
-            hidden
-            @change="onFileChange"
-          >
-          <Flex gap="s" y-center wrap>
-            <Button @click="fileInput?.click()">
-              Choose image
-            </Button>
-            <span v-if="selectedFile" class="text-color-light">{{ selectedFile.name }}</span>
-          </Flex>
-
-          <img v-if="localPreview" :src="localPreview" class="preview" alt="Selected image preview">
-
-          <Button
-            variant="accent"
-            :disabled="!selectedFile || uploading"
-            :loading="uploading"
-            @click="upload"
-          >
-            Upload
-          </Button>
-
-          <template v-if="uploadedUrl">
-            <Divider />
-            <Flex column gap="s" expand>
-              <span class="block text-color-lighter text-xs">Uploaded URL</span>
-              <Flex gap="s" y-center wrap>
-                <a :href="uploadedUrl" target="_blank" rel="noopener noreferrer" class="text-color-accent">
-                  {{ uploadedUrl }}
-                </a>
-                <CopyClipboard :text="uploadedUrl" confirm="Copied!">
-                  <Button size="s" variant="gray">
-                    Copy
-                  </Button>
-                </CopyClipboard>
-              </Flex>
-              <img :src="uploadedUrl" class="preview" alt="Uploaded image">
-            </Flex>
-          </template>
-        </Flex>
-      </Card>
+      <Flex v-if="currentName" gap="s" y-center wrap>
+        <span class="text-color-light">{{ currentName }}</span>
+        <Button size="s" variant="gray" @click="reopen">
+          Reopen player
+        </Button>
+      </Flex>
     </Flex>
   </div>
 </template>
-
-<style scoped lang="scss">
-.preview {
-  max-width: 100%;
-  max-height: 320px;
-  width: auto;
-  border-radius: var(--border-radius-m);
-  border: 1px solid var(--color-border);
-}
-</style>

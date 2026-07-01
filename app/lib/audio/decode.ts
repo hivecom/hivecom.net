@@ -26,6 +26,52 @@ function getDecodeContext(): AudioContext {
 // of doing the whole expensive job twice.
 const inflight = new Map<string, Promise<AudioBuffer>>()
 
+// In-flight byte fetches keyed by src, separate from the decode dedup above. A
+// future tag reader (lib/audio/tags) and the PCM decode both want the same raw
+// bytes, so this collapses them into ONE network request instead of two. We
+// don't cache the resolved ArrayBuffer: the browser HTTP cache already serves
+// the second reader cheaply, and holding the raw bytes alongside the decoded
+// PCM would double the memory for no real win.
+const bytesInflight = new Map<string, Promise<ArrayBuffer>>()
+
+// Fetch a track to raw bytes, deduped per src. Exported so lib/audio/tags can
+// read ID3 off the same fetch the decode uses. Rejects if the file can't be
+// fetched (e.g. cross-origin without CORS); callers degrade gracefully.
+export async function fetchAudioBytes(src: string): Promise<ArrayBuffer> {
+  const existing = bytesInflight.get(src)
+  if (existing)
+    return existing
+
+  const job = (async () => {
+    // Fetch off a URL distinct from the one the <audio> element loads. The
+    // player loads the file with no Origin (no crossorigin), which can seed the
+    // browser cache with a copy that carries no CORS header; a plain fetch of
+    // the same URL would reuse it and fail the cross-origin read. A dedicated
+    // query param gives this request its own cache entry that goes through CORS
+    // cleanly. Depot's nginx keys its download cache on path only, so this never
+    // fragments the server-side cache, and both visualizations share the one
+    // param so they reuse each other's browser cache entry.
+    //
+    // blob:/data: URLs (a dropped local file in the playground) are same-origin
+    // and have no query string, so skip the param: appending it would make a URL
+    // the blob store can't resolve.
+    const isLocal = src.startsWith('blob:') || src.startsWith('data:')
+    const url = isLocal ? src : `${src}${src.includes('?') ? '&' : '?'}viz=1`
+    const res = await fetch(url)
+    if (!res.ok)
+      throw new Error(`Failed to fetch audio: ${res.status}`)
+    return res.arrayBuffer()
+  })()
+
+  bytesInflight.set(src, job)
+  try {
+    return await job
+  }
+  finally {
+    bytesInflight.delete(src)
+  }
+}
+
 // One decoded buffer held back, so prewarming a track (see lib/audio/prewarm)
 // lets the fullscreen spectrum open instantly instead of decoding on the spot.
 // Bounded to a single entry: a fresh decode replaces it and the old PCM is GC'd,
@@ -45,19 +91,10 @@ export async function decodeAudio(src: string): Promise<AudioBuffer> {
     return existing
 
   const job = (async () => {
-    // Fetch off a URL distinct from the one the <audio> element loads. The
-    // player loads the file with no Origin (no crossorigin), which can seed the
-    // browser cache with a copy that carries no CORS header; a plain fetch of
-    // the same URL would reuse it and fail the cross-origin read. A dedicated
-    // query param gives this request its own cache entry that goes through CORS
-    // cleanly. Depot's nginx keys its download cache on path only, so this never
-    // fragments the server-side cache, and both visualizations share the one
-    // param so they reuse each other's browser cache entry.
-    const url = `${src}${src.includes('?') ? '&' : '?'}viz=1`
-    const res = await fetch(url)
-    if (!res.ok)
-      throw new Error(`Failed to fetch audio: ${res.status}`)
-    const bytes = await res.arrayBuffer()
+    // Pull the raw bytes through the shared fetch (its own dedup, so a tag read
+    // riding the same src shares this request) and hand them to decodeAudioData.
+    // We throw the bytes away after; only the decoded PCM is worth holding.
+    const bytes = await fetchAudioBytes(src)
     return getDecodeContext().decodeAudioData(bytes)
   })()
 

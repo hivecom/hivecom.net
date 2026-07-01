@@ -38,7 +38,6 @@ const wrap = ref<HTMLElement | null>(null)
 let samples: Float32Array | null = null
 let sampleCount = 0
 let sampleRate = 44100
-let rafId: number | null = null
 
 // Two windows' worth of FFT scratch, reused every frame. The short window keeps
 // the upper bars snappy; the long (DOUBLE) window drives the lower third, where
@@ -123,30 +122,18 @@ function setBarCount(n: number) {
   computeBands()
 }
 
-// The progress value last handed to us and when it landed, so we can extrapolate
-// a smooth playhead between updates instead of stepping four times a second.
-let basisProgress = 0
-let basisAt = 0
-
-// Read a CSS custom property as an [r, g, b] triple, falling back if it can't be
-// parsed or we're on the server.
-function readColor(name: string, fallback: [number, number, number]): [number, number, number] {
-  if (!import.meta.client)
-    return fallback
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-  const hex = raw.match(/^#([0-9a-f]{6})$/i)
-  if (hex) {
-    const n = Number.parseInt(hex[1]!, 16)
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
-  }
-  const rgb = raw.match(/(\d+)[,\s]+(\d+)[,\s]+(\d+)/)
-  if (rgb)
-    return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])]
-  return fallback
-}
+// Smooth playhead between the ~4Hz progress updates so the bars don't step four
+// times a second.
+const playhead = usePlayhead(props)
 
 let accent: [number, number, number] = [167, 252, 47]
 let axis: [number, number, number] = [110, 110, 110]
+
+// Re-read the palette and repaint when the theme flips, the way the globe does.
+function refreshColors() {
+  accent = readThemeColor('--color-accent', [167, 252, 47])
+  axis = readThemeColor('--color-text-lighter', [110, 110, 110])
+}
 
 // dB gridlines drawn across the panel, and the C notes labelled along the bottom
 // (one per octave). Both are derived once; the notes within the displayed
@@ -201,13 +188,11 @@ function analyzeAt(center: number) {
   }
 }
 
-function frame(now: number) {
+const { start: startLoop, stop: stopLoop } = useCanvasLoop((now) => {
   const cv = canvas.value
   const host = wrap.value
-  if (!cv || !host) {
-    rafId = null
-    return
-  }
+  if (!cv || !host)
+    return false
 
   const w = host.clientWidth
   const h = host.clientHeight
@@ -222,9 +207,7 @@ function frame(now: number) {
   // playhead; otherwise (paused, or buffering through a seek) let them decay to
   // the baseline so motion tracks what's audible.
   if (props.playing && !props.loading && samples && sampleCount > 0) {
-    const elapsed = props.duration > 0 ? (now - basisAt) / 1000 / props.duration : 0
-    const playhead = Math.max(0, Math.min(1, basisProgress + elapsed))
-    analyzeAt(Math.floor(playhead * sampleCount))
+    analyzeAt(Math.floor(playhead.at(now) * sampleCount))
   }
   else {
     target.fill(0)
@@ -253,11 +236,7 @@ function frame(now: number) {
   }
 
   if (w > 0 && h > 0) {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
-      cv.width = Math.round(w * dpr)
-      cv.height = Math.round(h * dpr)
-    }
+    const dpr = resizeCanvasToDisplay(cv, w, h)
     const ctx = cv.getContext('2d')
     if (ctx) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -340,22 +319,8 @@ function frame(now: number) {
 
   // Keep looping while playing or while the bars are still settling; otherwise
   // park until playback resumes.
-  if (props.playing || alive)
-    rafId = requestAnimationFrame(frame)
-  else
-    rafId = null
-}
-
-function startLoop() {
-  rafId ??= requestAnimationFrame(frame)
-}
-
-function stopLoop() {
-  if (rafId != null) {
-    cancelAnimationFrame(rafId)
-    rafId = null
-  }
-}
+  return props.playing || alive
+})
 
 async function load() {
   samples = null
@@ -366,8 +331,7 @@ async function load() {
     const buffer = await decodeAudio(src)
     if (src !== props.src)
       return
-    accent = readColor('--color-accent', [167, 252, 47])
-    axis = readColor('--color-text-lighter', [110, 110, 110])
+    refreshColors()
     samples = buffer.getChannelData(0)
     sampleCount = buffer.length
     sampleRate = buffer.sampleRate
@@ -383,14 +347,14 @@ async function load() {
 
 watch(() => props.src, load, { immediate: true })
 
+// Re-read the palette and repaint when the theme flips, the way the globe does.
+onThemeChange(() => {
+  refreshColors()
+  startLoop()
+})
+
 // Run the loop while playing; a final settle pass lets the bars fall when paused.
 watch(() => props.playing, () => startLoop())
-
-// Re-anchor the extrapolation whenever a fresh progress value arrives.
-watch(() => props.progress, (value) => {
-  basisProgress = value
-  basisAt = import.meta.client ? performance.now() : 0
-}, { immediate: true })
 
 // Watch the panel size so the bar count re-collapses on resize or orientation
 // change even while paused, when the loop would otherwise be parked. A single
