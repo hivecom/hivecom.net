@@ -196,7 +196,7 @@ async function disconnectSteam() {
   }
 }
 
-async function updateRichPresence(enabled: boolean) {
+async function updateRichPresence(enabled = false) {
   if (richPresenceLoading.value)
     return
 

@@ -46,7 +46,7 @@ const emit = defineEmits<{
           :model-value="fillColor"
           size="s"
           expand
-          @update:model-value="emit('update:fillColor', $event); redraw()"
+          @update:model-value="emit('update:fillColor', $event ?? ''); redraw()"
         />
         <!-- Gradient: preview bar -->
         <span
@@ -93,7 +93,7 @@ const emit = defineEmits<{
           size="s"
           expand
           :disabled="!border"
-          @update:model-value="emit('update:borderColor', $event); redraw()"
+          @update:model-value="emit('update:borderColor', $event ?? ''); redraw()"
         />
       </Flex>
     </Flex>

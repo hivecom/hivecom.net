@@ -134,7 +134,7 @@ defineExpose({ flushPendingUploads })
       :model-value="isOfficial"
       label="Official Event"
       hint="All events are synced to Discord. Official events sync to the official Google Calendar, non-official events to the community Google Calendar."
-      @update:model-value="emit('update:isOfficial', $event)"
+      @update:model-value="emit('update:isOfficial', !!$event)"
     />
 
     <!-- Title -->
@@ -236,7 +236,7 @@ defineExpose({ flushPendingUploads })
       :model-value="recurrenceException"
       label="Mark as exception"
       hint="Override this single occurrence within the recurring series."
-      @update:model-value="emit('update:recurrenceException', $event)"
+      @update:model-value="emit('update:recurrenceException', !!$event)"
     />
 
     <!-- Description -->

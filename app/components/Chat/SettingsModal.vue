@@ -43,7 +43,7 @@ watch(() => props.open, async (open) => {
   }
 })
 
-async function toggleChatPush(value: boolean) {
+async function toggleChatPush(value = false) {
   if (value)
     await subscribePush()
   else
@@ -285,7 +285,7 @@ const options = [
   },
 ] as const
 
-async function toggleBrowserNotifications(value: boolean) {
+async function toggleBrowserNotifications(value = false) {
   if (value) {
     const permission = await Notification.requestPermission()
     settings.value.chat_browser_notifications = permission === 'granted'
