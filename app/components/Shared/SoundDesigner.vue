@@ -232,8 +232,8 @@ function ms(seconds: number): string {
             :max="4000"
             :start="glideLow(tone)"
             :end="glideHigh(tone)"
-            @update:start="(value: number) => setGlideLow(tone, value)"
-            @update:end="(value: number) => setGlideHigh(tone, value)"
+            @update:start="(value = 0) => setGlideLow(tone, value)"
+            @update:end="(value = 0) => setGlideHigh(tone, value)"
           />
           <Slider v-else v-model="tone.freq" :min="50" :max="4000" />
         </Flex>
@@ -251,8 +251,8 @@ function ms(seconds: number): string {
             :round="3"
             :start="timeStart(tone)"
             :end="timeEnd(tone)"
-            @update:start="(value: number) => setTimeStart(tone, value)"
-            @update:end="(value: number) => setTimeEnd(tone, value)"
+            @update:start="(value = 0) => setTimeStart(tone, value)"
+            @update:end="(value = 0) => setTimeEnd(tone, value)"
           />
         </Flex>
 

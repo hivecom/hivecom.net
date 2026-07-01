@@ -3,7 +3,7 @@ import type { ValidationError } from '@dolanske/v-valid'
 import type { Comment, DiscussionSettings, RawComment, ThreadNode } from './Discussion.types'
 import type { TimelineBucket } from './DiscussionTimeline.vue'
 import type { Tables } from '@/types/database.overrides'
-import { $withLabel, defineRules, maxLength, minLenNoSpace, required, useValidation } from '@dolanske/v-valid'
+import { defineRules, maxLength, minLenNoSpace, required, useValidation, withLabel } from '@dolanske/v-valid'
 import { Flex, paginate, Pagination, Skeleton } from '@dolanske/vui'
 import { useTemplateRef } from 'vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
@@ -1344,9 +1344,9 @@ provide(DISCUSSION_KEYS.setQuoteOfComment, (comment: Comment) => {
 
 const rules = defineRules<typeof form>({
   message: [
-    $withLabel('You cannot send an empty string', required),
-    $withLabel('You cannot send an empty string', minLenNoSpace(1)),
-    $withLabel(`Your comment cannot exceed ${MAX_COMMENT_CHARS} characters`, maxLength(MAX_COMMENT_CHARS)),
+    withLabel('You cannot send an empty string', required),
+    withLabel('You cannot send an empty string', minLenNoSpace(1)),
+    withLabel(`Your comment cannot exceed ${MAX_COMMENT_CHARS} characters`, maxLength(MAX_COMMENT_CHARS)),
   ],
 })
 

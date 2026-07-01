@@ -144,9 +144,9 @@ function onSignedOutConnect() {
         </Flex>
 
         <!-- Signed out, inline sign-in: embedded sign-in form (no page chrome) -->
-        <Flex v-else-if="props.inlineSignIn && signInMode" key="signin" column gap="m" expand>
+        <Flex v-else-if="props.inlineSignIn && signInMode" key="signin" column gap="xs" expand>
           <SignInForm stay-on-success :redirect="route.path" @success="signInMode = false" />
-          <Flex x-center>
+          <Flex x-center exapnd>
             <Button variant="gray" plain @click="signInMode = false">
               Continue as guest
             </Button>

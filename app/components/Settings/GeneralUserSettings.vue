@@ -43,7 +43,7 @@ const selectedVariantWithTransition = computed({
   },
 })
 
-async function toggleAppBrowserNotifications(value: boolean) {
+async function toggleAppBrowserNotifications(value = false) {
   if (value && typeof Notification !== 'undefined') {
     const permission = await Notification.requestPermission()
     settings.value.app_browser_notifications = permission === 'granted'
@@ -67,7 +67,7 @@ onMounted(() => {
   void refreshPush()
 })
 
-async function togglePushNotifications(value: boolean) {
+async function togglePushNotifications(value = false) {
   if (value)
     await subscribePush()
   else
