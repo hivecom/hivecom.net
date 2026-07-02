@@ -8,6 +8,8 @@ import LandingSun from '@/components/Landing/LandingSun.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 
+const props = defineProps<{
+  skipSplash: boolean
 }>()
 
 // Fetch the latest 6 forum posts and their title & description
@@ -146,8 +148,7 @@ async function toggleSide() {
     <!-- TODO: needs to be decoupled -->
     <!-- When peeking from the dashboard, skip the initial splash fade - the page
          already animates up into view, so replaying the 3s splash reads as a stall. -->
-      <template #after-stats>
-    </LandingHero>
+    <LandingHero :skip-splash="props.skipSplash" />
 
     <GlowGroup>
       <div class="container-m">
