@@ -102,7 +102,7 @@ function run(action: () => void) {
 
   <!-- Desktop: back arrow + Connection + View menus -->
   <Flex v-else y-center :gap="0" class="chat-menubar">
-    <Tooltip>
+    <Tooltip v-if="!compact">
       <Button size="s" square plain aria-label="Back" @click="goBack">
         <Icon name="ph:arrow-left" />
       </Button>
