@@ -87,8 +87,16 @@ onUnmounted(() => {
     >
       <template #meta>
         <Flex x-between y-center gap="s" expand class="toast-audio__meta">
-          <span v-if="player.title.value" class="toast-audio__title">{{ player.title.value }}</span>
-          <span v-else aria-hidden="true" />
+          <Flex y-center gap="xs" class="toast-audio__meta-start">
+            <img
+              v-if="player.tags.value?.cover"
+              :src="player.tags.value.cover"
+              alt=""
+              class="toast-audio__cover"
+            >
+            <span v-if="player.title.value" class="toast-audio__title">{{ player.title.value }}</span>
+            <span v-else aria-hidden="true" />
+          </Flex>
           <Flex y-center gap="xxs" class="toast-audio__`">
             <!-- Clickable affordance, deliberately not a Button: the equalizer and
                  the expand glyph together open the fullscreen view. -->
@@ -141,6 +149,20 @@ onUnmounted(() => {
 
   &__meta {
     margin-bottom: var(--space-xxs);
+  }
+
+  &__meta-start {
+    min-width: 0;
+  }
+
+  // Tiny square cover thumbnail in the mini-player. Hidden when a track has no
+  // embedded art, so the row looks exactly as it did before.
+  &__cover {
+    border-radius: var(--border-radius-xs);
+    flex-shrink: 0;
+    height: 28px;
+    object-fit: cover;
+    width: 28px;
   }
 
   &__meta-end {

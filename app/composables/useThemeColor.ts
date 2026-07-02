@@ -1,3 +1,4 @@
+import { cssVar } from '@/lib/cssVar'
 import { parseColor } from '@/lib/globe/GlobeTheme'
 
 // Shared theme-color reader for the canvas audio visuals. All three visualizers
@@ -15,7 +16,7 @@ type Rgb = [number, number, number]
 export function readThemeColor(name: string, fallback: Rgb, opts?: { normalized?: boolean }): Rgb {
   if (!import.meta.client)
     return fallback
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  const raw = cssVar(name)
   if (!raw)
     return fallback
   const [r, g, b] = parseColor(raw)

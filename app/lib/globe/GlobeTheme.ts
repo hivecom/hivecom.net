@@ -3,18 +3,11 @@
 // automatically track the active theme (dark/light, custom user themes, etc.)
 // All functions are safe to call on every frame - getComputedStyle is fast.
 
+import { cssVar } from '@/lib/cssVar'
+
 // Shared
 export const BACKGROUND_COLOR = 'rgba(0,0,0,0)'
 export const ATMOSPHERE_COLOR = '#ddffcc'
-
-// ---------------------------------------------------------------------------
-// CSS variable helpers
-// ------------------------------------------------------------------------
-function cssVar(name: string): string {
-  if (typeof window === 'undefined')
-    return ''
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-}
 
 // ---------------------------------------------------------------------------
 // Canvas-based CSS color parser

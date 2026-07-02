@@ -68,6 +68,7 @@
     "luxon": "^3.7.2",
     "marked": "^18.0.5",
     "monaco-editor": "^0.55.1",
+    "music-metadata": "^11.13.0",
     "nuxt": "4.4.8",
     "nuxt-og-image": "^6.7.0",
     "nuxt-toc": "^2.7.2",
