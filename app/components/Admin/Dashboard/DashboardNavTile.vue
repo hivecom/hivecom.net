@@ -5,7 +5,7 @@ const props = defineProps<{
   name: string
   path: string
   icon: string
-  description: string
+  description?: string
   stat?: number
   statVariant?: 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'accent'
 }>()
@@ -32,7 +32,7 @@ const props = defineProps<{
               {{ props.stat }}
             </Badge>
           </Flex>
-          <span class="dashboard-nav-tile__desc">{{ props.description }}</span>
+          <span v-if="props.description" class="dashboard-nav-tile__desc">{{ props.description }}</span>
         </Flex>
       </Flex>
     </Card>

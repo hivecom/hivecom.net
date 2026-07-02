@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { CSSProperties } from 'vue'
 import type { Tables } from '@/types/database.types'
 import { Marquee } from '@dolanske/vui'
 import constants from '~~/constants.json'
@@ -148,53 +147,28 @@ async function toggleSide() {
 
   aboutBusy = false
 }
-
-// Randomly generate 100 stars
-const STAR_COUNT = 75
-const STAR_TRANSFORM_THRESHOLD = 0.4
-const stars = shallowRef<CSSProperties[]>([])
-
-const { y } = useWindowScroll()
-
-onBeforeMount(() => {
-  const _stars = []
-  for (let i = 0; i < STAR_COUNT; i++) {
-    const size = Math.random() * 2 + 0.5
-    const verticalRandom = Math.random()
-    const baseOpacity = Math.random() * 0.45 + 0.55
-
-    _stars.push({
-      'left': `${Math.random() * window.innerWidth}px`,
-      'top': `${Math.random() * window.innerHeight}px`,
-      'width': `${size}px`,
-      'height': `${size}px`,
-      '--star-animation-offset': `${Math.random() * 10000}ms`,
-      '--star-animation-duration': `${Math.random() * 2000 + 2000}ms`,
-      '--star-base-opacity': `${baseOpacity}`,
-      '--vertical-random-multiplier': `${verticalRandom < STAR_TRANSFORM_THRESHOLD ? 0 : (verticalRandom - STAR_TRANSFORM_THRESHOLD) * 1.5}`,
-      '--vertical-offset': 0,
-    })
-  }
-
-  stars.value = _stars
-})
 </script>
 
 <template>
   <div class="home-page">
-    <!-- Shown only when a logged-in user is peeking at the landing from the dashboard. -->
-    <button
-      v-if="showBackToDashboard"
-      type="button"
-      class="home-back-to-dashboard"
-      @click="emit('backToDashboard')"
-    >
-      <Icon name="ph:arrow-left" />
-      Back to dashboard
-    </button>
-
     <!-- TODO: needs to be decoupled -->
-    <LandingHero />
+    <!-- When peeking from the dashboard, skip the initial splash fade - the page
+         already animates up into view, so replaying the 3s splash reads as a stall. -->
+    <LandingHero :skip-splash="showBackToDashboard">
+      <!-- Shown only when a logged-in user is peeking at the landing from the
+           dashboard. Sits between the stats and the motd in the hero. -->
+      <template #after-stats>
+        <button
+          v-if="showBackToDashboard"
+          type="button"
+          class="home-back-to-dashboard"
+          @click="emit('backToDashboard')"
+        >
+          <Icon name="ph:squares-four" />
+          Back to dashboard
+        </button>
+      </template>
+    </LandingHero>
 
     <GlowGroup>
       <div class="container-m">
@@ -305,13 +279,6 @@ onBeforeMount(() => {
         </svg>
       </div>
     </div>
-
-    <div
-      v-for="star in stars"
-      :key="`${star.left} + ${star.top}`" class="star"
-      :style="{ ...star,
-                '--vertical-offset': `${y * -0.05}px` }"
-    />
   </div>
 </template>
 
@@ -319,10 +286,10 @@ onBeforeMount(() => {
 @use '@/assets/mixins' as *;
 
 .home-back-to-dashboard {
-  position: fixed;
-  top: calc(var(--layout-navigation-height, 64px) + var(--space-m));
-  left: var(--space-m);
-  z-index: 100;
+  // Inline in the hero column, between the stats and the motd. Relative z-index
+  // keeps it above the faded splash so it stays clickable.
+  position: relative;
+  z-index: 4;
   display: flex;
   align-items: center;
   gap: var(--space-xs);
@@ -427,78 +394,14 @@ onBeforeMount(() => {
   }
 }
 
-.star {
-  --star-animation-offset: 0ms;
-  --star-animation-duration: 2000ms;
-  --star-base-opacity: 1;
-  --vertical-random-multiplier: 0;
-  --vertical-offset: 0px;
-
-  transform: translateY(calc(var(--vertical-offset) * var(--vertical-random-multiplier)));
-
-  position: fixed;
-  background-color: var(--color-text);
-  border-radius: 50%;
-  animation: star-flicker 2000ms infinite linear;
-  animation-delay: var(--star-animation-offset);
-  animation-duration: var(--star-animation-duration);
-  z-index: -1;
-}
-
-@keyframes star-flicker {
-  0%,
-  15%,
-  35%,
-  55%,
-  75%,
-  100% {
-    opacity: calc(var(--star-base-opacity) * 1);
-    background: white;
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
-  }
-
-  10% {
-    opacity: calc(var(--star-base-opacity) * 0.75);
-  }
-
-  20% {
-    opacity: calc(var(--star-base-opacity) * 0.85);
-    background: rgb(160, 210, 255);
-    filter: drop-shadow(0 0 8px rgba(120, 190, 255, 1));
-  }
-
-  25% {
-    opacity: calc(var(--star-base-opacity) * 1);
-    background: white;
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
-  }
-
-  45% {
-    opacity: calc(var(--star-base-opacity) * 0.7);
-  }
-
-  60% {
-    opacity: calc(var(--star-base-opacity) * 0.85);
-    background: rgb(255, 190, 190);
-    filter: drop-shadow(0 0 8px rgba(255, 120, 120, 1));
-  }
-
-  65% {
-    opacity: calc(var(--star-base-opacity) * 1);
-    background: white;
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
-  }
-
-  85% {
-    opacity: calc(var(--star-base-opacity) * 0.8);
-  }
-}
-
 .home-page {
   display: flex !important;
   flex-direction: column;
   gap: 128px;
   width: 100%;
+  // Sit above the persistent page backdrop (HomeBackdrop, z-index 0).
+  position: relative;
+  z-index: 1;
 
   * {
     user-select: none;

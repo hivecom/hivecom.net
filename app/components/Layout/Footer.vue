@@ -113,6 +113,10 @@ function scrollUp() {
 }
 
 .footer {
+  // Own stacking context so the footer's opaque background sits above any fixed
+  // page backdrop (e.g. the home nebula/stars), same reason the nav has --z-nav.
+  position: relative;
+  z-index: 1;
   width: 100%;
   padding-block: 64px;
   background-color: var(--color-bg-medium);

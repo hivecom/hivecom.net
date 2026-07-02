@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { MetricsSnapshot } from '@/types/metrics'
-import { computed, defineAsyncComponent, onBeforeUnmount } from 'vue'
+import { defineAsyncComponent, onBeforeUnmount } from 'vue'
 import constants from '~~/constants.json'
 import LandingHeroActions from '@/components/Landing/LandingHeroActions.vue'
-import LandingHeroShader from '@/components/Landing/LandingHeroBackground.vue'
 import LandingHeroStats from '@/components/Landing/LandingHeroStats.vue'
 import LandingMotd from '@/components/Landing/LandingMotd.vue'
 
@@ -16,25 +15,16 @@ interface CommunityStats {
   forumPosts: number
 }
 
+// When mounted from the dashboard peek, the page already animates in, so we skip
+// the splash and let the globe fade up on its own.
+const props = withDefaults(defineProps<{
+  skipSplash?: boolean
+}>(), {
+  skipSplash: false,
+})
+
 const loading = ref(true)
 const errorMessage = ref('')
-
-// The nebula backdrop (shader + vignette + bottom fade) is pinned to the viewport
-// and drifts down a touch while fading out as you scroll off the hero, so it
-// reads as a fixed backdrop that dissolves as a unit rather than scrolling away
-// with the page. Exposed as CSS vars so the pseudo-element vignette and fade move
-// with it too.
-const { y: heroScrollY } = useWindowScroll()
-const heroBackdropVars = computed(() => {
-  if (!import.meta.client)
-    return undefined
-  const vh = window.innerHeight || 1
-  const fade = Math.max(0, 1 - heroScrollY.value / (vh * 1.6))
-  return {
-    '--hero-fade': `${fade}`,
-    '--hero-shift': `${heroScrollY.value * 0.1}px`,
-  }
-})
 
 const { fetchMetrics, metrics: cachedMetrics } = useDataMetrics()
 
@@ -88,7 +78,7 @@ const splashMessage = ref(defaultSplashMessage)
 // Splash fades out when the globe signals it has rendered its first frame.
 // Fallback timeout covers the case where the globe fails to load entirely or
 // takes pathologically long, so users are never stuck looking at a placeholder.
-const globeReady = ref(false)
+const globeReady = ref(props.skipSplash)
 let splashFallbackTimer: ReturnType<typeof setTimeout> | null = null
 
 function handleGlobeReady() {
@@ -100,6 +90,8 @@ function handleGlobeReady() {
 }
 
 onMounted(() => {
+  if (props.skipSplash)
+    return
   splashFallbackTimer = setTimeout(() => {
     globeReady.value = true
     splashFallbackTimer = null
@@ -139,10 +131,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="hero-overlay" :style="heroBackdropVars">
-    <div class="hero-overlay__backdrop">
-      <LandingHeroShader class="hero-overlay__shader" />
-    </div>
+  <section class="hero-overlay">
     <div class="hero-overlay__body">
       <div class="hero-overlay__splash-base" :class="{ 'is-faded': globeReady }" aria-hidden="true" />
       <div class="hero-overlay__splash" :class="{ 'is-faded': globeReady }" aria-hidden="true" />
@@ -158,6 +147,7 @@ onMounted(() => {
       </div>
 
       <LandingHeroStats class="hero-overlay__stats" :community-stats="communityStats" :loading="loading" />
+      <slot name="after-stats" />
       <LandingMotd :fallback-text="splashMessage" />
       <LandingHeroActions />
     </div>
@@ -166,21 +156,6 @@ onMounted(() => {
 
 <style scoped lang="scss">
 :root.light {
-  .hero-overlay__backdrop::after {
-    background: radial-gradient(
-      circle at 50% 50%,
-      rgba(255, 255, 255, 0.75) 0%,
-      rgba(255, 255, 255, 0.7) 32%,
-      rgba(255, 255, 255, 0.55) 55%,
-      rgba(255, 255, 255, 0.35) 70%,
-      transparent 82%
-    );
-  }
-
-  .hero-overlay::before {
-    border-bottom-color: rgba(0, 0, 0, 0.08);
-  }
-
   .hero-overlay__splash-base {
     background-image: url('/landing/splash-light.jpg');
   }
@@ -206,60 +181,6 @@ onMounted(() => {
   min-height: 100vh;
   display: flex;
   align-items: stretch;
-
-  // The whole nebula unit: shader, vignette, and bottom fade pinned to the
-  // viewport and faded/drifted together via the --hero-fade / --hero-shift vars.
-  &__backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    // Clips the oversized shader so the parallax translate never exposes its
-    // edge. The vignette and bottom fade stay pinned here (not translated), so
-    // there's no gap to reveal the canvas against the page.
-    overflow: hidden;
-    opacity: var(--hero-fade, 1);
-    will-change: opacity;
-
-    // Vignette: dark centre fading out to the edges, over the nebula.
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(
-        circle at 50% 50%,
-        rgba(0, 0, 0, 0.78) 0%,
-        rgba(0, 0, 0, 0.7) 32%,
-        rgba(0, 0, 0, 0.48) 55%,
-        rgba(0, 0, 0, 0.12) 70%,
-        transparent 82%
-      );
-    }
-
-    // Bottom fade so the nebula dissolves into the page instead of showing a
-    // hard green band below the hero as it scrolls.
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      top: 55%;
-      background: linear-gradient(transparent, var(--color-bg) 100%);
-    }
-  }
-
-  &__shader {
-    position: absolute;
-    inset: 0;
-    // Behind the backdrop's vignette (::after) and bottom fade (::before) so both
-    // darken the nebula. Without this the canvas paints over them and the nebula
-    // floods green.
-    z-index: -1;
-    pointer-events: none;
-    // Scaled up so the parallax translate has headroom on every side before the
-    // canvas edge would enter the clipped backdrop.
-    transform: translate3d(0, var(--hero-shift, 0), 0) scale(1.4);
-    will-change: transform;
-  }
 }
 
 .hero-overlay__splash-base {

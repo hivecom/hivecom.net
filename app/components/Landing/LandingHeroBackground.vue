@@ -5,6 +5,14 @@ import { isLightTheme, parseColor } from '@/lib/globe/GlobeTheme'
 import fragSrc from './LandingHeroBackgroundShader.frag.glsl?raw'
 import vertSrc from './LandingHeroBackgroundShader.vert.glsl?raw'
 
+// Playback speed multiplier for the drift. 1 is the original rate; the dashboard
+// runs it slower so the backdrop is calmer behind the cards.
+const props = withDefaults(defineProps<{
+  speed?: number
+}>(), {
+  speed: 1,
+})
+
 const canvasEl = ref<HTMLCanvasElement | null>(null)
 let gl: WebGLRenderingContext | null = null
 let program: WebGLProgram | null = null
@@ -14,8 +22,12 @@ let resolutionUniform: WebGLUniformLocation | null = null
 let baseColorUniform: WebGLUniformLocation | null = null
 let altColorUniform: WebGLUniformLocation | null = null
 let rafId: number | null = null
-let start = 0
-let startOffset = 0
+// Accumulated animation time in seconds, advanced by real elapsed time scaled by
+// the speed prop. Accumulating (rather than deriving t from a fixed start) means
+// changing speed shifts the rate without jumping the noise phase.
+let animTime = 0
+let lastFrame = 0
+let timeOffset = 0
 let themeObserver: MutationObserver | null = null
 let themeMedia: MediaQueryList | null = null
 const { params: perfParams } = useGlobePerf()
@@ -119,9 +131,11 @@ function resize() {
 function render(now: number) {
   if (!gl || !program || !canvasEl.value)
     return
-  if (!start)
-    start = now - startOffset
-  const t = (now - start) / 1000
+  if (!lastFrame)
+    lastFrame = now
+  animTime += ((now - lastFrame) / 1000) * props.speed
+  lastFrame = now
+  const t = animTime + timeOffset
 
   // Retry until the theme CSS vars are actually resolved. On a hard reload the
   // loading screen is still fading in while this canvas is already ticking, so
@@ -215,7 +229,9 @@ function initGL(): boolean {
 
   if (rafId != null)
     cancelAnimationFrame(rafId)
-  start = 0
+  // Reset frame timing, but keep animTime so a context restore doesn't jump the
+  // noise phase.
+  lastFrame = 0
   rafId = requestAnimationFrame(render)
   return true
 }
@@ -241,7 +257,8 @@ onMounted(() => {
   if (!canvas)
     return
 
-  startOffset = Math.random() * 100000
+  // Random phase in seconds so multiple instances don't animate in lockstep.
+  timeOffset = Math.random() * 100
 
   canvas.addEventListener('webglcontextlost', handleContextLost, false)
   canvas.addEventListener('webglcontextrestored', handleContextRestored, false)

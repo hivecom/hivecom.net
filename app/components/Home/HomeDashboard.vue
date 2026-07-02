@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Button, Card, Flex, Grid } from '@dolanske/vui'
 import DashboardNavTile from '@/components/Admin/Dashboard/DashboardNavTile.vue'
-import LandingHeroShader from '@/components/Landing/LandingHeroBackground.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataUser } from '@/composables/useDataUser'
@@ -19,34 +18,26 @@ const greetingName = computed(() => user.value?.username?.trim() || 'friend')
 // Mobile-only quick nav mirrors the top-level site navigation so the dashboard
 // is a full jumping-off point on small screens.
 const navTiles = [
-  { name: 'Chat', path: '/chat', icon: 'ph:chat-circle', description: 'IRC and TeamSpeak' },
-  { name: 'Events', path: '/events', icon: 'ph:calendar-dots', description: 'Upcoming and RSVPs' },
-  { name: 'Forum', path: '/forum', icon: 'ph:chats', description: 'Discussions' },
-  { name: 'Servers', path: '/gameservers', icon: 'ph:hard-drives', description: 'Game servers' },
-  { name: 'Votes', path: '/votes', icon: 'ph:gavel', description: 'Referendums' },
-  { name: 'My Profile', path: '/profile', icon: 'ph:user', description: 'You' },
+  { name: 'Chat', path: '/chat', icon: 'ph:chat-circle' },
+  { name: 'Events', path: '/events', icon: 'ph:calendar-dots' },
+  { name: 'Forum', path: '/forum', icon: 'ph:chats' },
+  { name: 'Servers', path: '/gameservers', icon: 'ph:hard-drives' },
+  { name: 'Votes', path: '/votes', icon: 'ph:gavel' },
+  { name: 'My Profile', path: '/profile', icon: 'ph:user' },
 ]
 </script>
 
 <template>
   <div class="dashboard">
-    <!-- Same nebula as the landing hero, no globe. Fixed so it stays a backdrop. -->
-    <ClientOnly>
-      <div class="dashboard__bg" aria-hidden="true">
-        <LandingHeroShader class="dashboard__shader" />
-      </div>
-    </ClientOnly>
-
+    <!-- Nebula + stars are rendered once at the page level (HomeBackdrop) so they
+         persist across the landing swap. -->
     <div class="dashboard__content container-l">
-      <Flex x-between y-center wrap gap="m" expand>
+      <Flex x-between y-center gap="m" expand>
         <h1 class="dashboard__greeting">
-          Hello, {{ greetingName }}
+          Hello, friend
         </h1>
-        <Button plain @click="emit('viewLanding')">
-          <template #start>
-            <Icon name="ph:sparkle" />
-          </template>
-          Show landing page
+        <Button plain square aria-label="Show landing page" @click="emit('viewLanding')">
+          <Icon name="ph:house" size="20" />
         </Button>
       </Flex>
 
@@ -128,53 +119,37 @@ const navTiles = [
 <style lang="scss" scoped>
 .dashboard {
   position: relative;
+  // Sit above the persistent page backdrop (HomeBackdrop, z-index 0).
+  z-index: 1;
   width: 100%;
   min-height: 100vh;
-}
-
-// Nebula backdrop - no VUI equivalent, so this bit stays bespoke. Scoped to the
-// dashboard (absolute, not fixed) so it never paints over the footer below main.
-.dashboard__bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-
-  // Fade the nebula toward the page background at the edges so cards stay legible.
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(
-      circle at 50% 0%,
-      transparent 0%,
-      color-mix(in srgb, var(--color-bg) 70%, transparent) 60%,
-      var(--color-bg) 100%
-    );
-  }
-}
-
-.dashboard__shader {
-  position: absolute;
-  inset: 0;
-  opacity: 0.6;
 }
 
 .dashboard__content {
   position: relative;
   z-index: 1;
-  // Clear the fixed navbar, then breathing room top and bottom.
-  padding-block: calc(var(--navbar-offset, 64px) + var(--space-xl)) 6rem;
+  // Clear the fixed navbar, then match the standard .page + .page-title top gap
+  // (see assets/elements/page.scss) so the greeting lines up with other pages.
+  padding-block: calc(var(--navbar-offset, 64px) + 4rem + var(--space-l)) 6rem;
   display: flex;
   flex-direction: column;
   gap: var(--space-xxl);
   width: 100%;
+
+  @media screen and (max-width: $breakpoint-m) {
+    padding-block: calc(var(--navbar-offset, 64px) + 2rem + var(--space-l)) 4rem;
+    gap: var(--space-l);
+  }
 }
 
 .dashboard__greeting {
   font-size: var(--font-size-xxxl);
   font-weight: var(--font-weight-extrabold);
+  margin: 0;
+
+  @media screen and (max-width: $breakpoint-m) {
+    font-size: var(--font-size-xxl);
+  }
 }
 
 .dashboard__nav {
