@@ -3,17 +3,11 @@ import { Button, Card, Flex, Grid } from '@dolanske/vui'
 import DashboardNavTile from '@/components/Admin/Dashboard/DashboardNavTile.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
-import { useDataUser } from '@/composables/useDataUser'
-import { useUserId } from '@/composables/useUserId'
 
 // Lets the parent swap back to the marketing landing.
 const emit = defineEmits<{
   viewLanding: []
 }>()
-
-const userId = useUserId()
-const { user } = useDataUser(userId)
-const greetingName = computed(() => user.value?.username?.trim() || 'friend')
 
 // Mobile-only quick nav mirrors the top-level site navigation so the dashboard
 // is a full jumping-off point on small screens.
