@@ -8,14 +8,6 @@ import LandingSun from '@/components/Landing/LandingSun.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 
-// When a logged-in user chose to peek at the landing, we show a way back to the
-// dashboard. Guests never see this.
-defineProps<{
-  showBackToDashboard?: boolean
-}>()
-
-const emit = defineEmits<{
-  backToDashboard: []
 }>()
 
 // Fetch the latest 6 forum posts and their title & description
@@ -154,27 +146,14 @@ async function toggleSide() {
     <!-- TODO: needs to be decoupled -->
     <!-- When peeking from the dashboard, skip the initial splash fade - the page
          already animates up into view, so replaying the 3s splash reads as a stall. -->
-    <LandingHero :skip-splash="showBackToDashboard">
-      <!-- Shown only when a logged-in user is peeking at the landing from the
-           dashboard. Sits between the stats and the motd in the hero. -->
       <template #after-stats>
-        <button
-          v-if="showBackToDashboard"
-          type="button"
-          class="home-back-to-dashboard"
-          @click="emit('backToDashboard')"
-        >
-          <Icon name="ph:squares-four" />
-          Back to dashboard
-        </button>
-      </template>
     </LandingHero>
 
     <GlowGroup>
       <div class="container-m">
-        <section class="hero ">
+        <section id="hero" class="hero">
           <GlowCard class="glow-card-home">
-            <div class="home-card centered home-card--about typeset">
+            <div class="home-card centered home-card--about typeset ">
               <span class="corner-text">{{ side.corner }}</span>
               <span class="corner-text right">DLN // ZLS</span>
 
@@ -208,7 +187,7 @@ async function toggleSide() {
                 :aria-label="isAbout ? 'Show our mantra' : 'Show about us'"
                 @click="toggleSide"
               >
-                <svg :viewBox="`0 0 ${side.barcode.length} 12`" width="128" height="12" aria-hidden="true">
+                <svg :viewBox="`0 0 ${side.barcode.length} 12`" :width="side.barcode.length" height="12" aria-hidden="true">
                   <rect v-for="bar in barcodeBars" :key="bar.x" :x="bar.x" y="0" :width="bar.w" height="12" />
                 </svg>
               </button>
@@ -274,8 +253,12 @@ async function toggleSide() {
           {{ link.name }}
         </a>
 
-        <svg width="857" height="112" viewBox="0 0 857 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg class="desktop-constellation" width="857" height="112" viewBox="0 0 857 112" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M34.624 100.214L237.624 66.214M274.707 61.7071L456.707 53.2192M498.707 50.2071L669.207 11.2955M710.99 11.2955L829.707 83.7071M0.707031 102.192L9.19231 93.7071L17.6776 102.192L9.19231 110.678L0.707031 102.192ZM838.707 92.1924L847.192 83.7071L855.678 92.1924L847.192 100.678L838.707 92.1924ZM247.707 63.1924L256.192 54.7071L264.678 63.1924L256.192 71.6777L247.707 63.1924ZM684.707 9.19239L693.192 0.707108L701.678 9.19239L693.192 17.6777L684.707 9.19239ZM468.707 52.1924L477.192 43.7071L485.678 52.1924L477.192 60.6777L468.707 52.1924Z" stroke="white" stroke-opacity="0.25" stroke-dasharray="2 2" />
+        </svg>
+
+        <svg class="mobile-constellation" width="265" height="339" viewBox="0 0 265 339" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M29.707 86.707L11.707 26.707M83.707 162.707L49.707 120.707M153.707 211.707L112.707 187.707M242.707 314.707L183.707 236.707M0.707031 9.19231L9.19231 0.707031L17.6776 9.19231L9.19231 17.6776L0.707031 9.19231ZM29.707 106.192L38.1923 97.707L46.6776 106.192L38.1923 114.678L29.707 106.192ZM87.707 176.192L96.1923 167.707L104.678 176.192L96.1923 184.678L87.707 176.192ZM160.707 222.192L169.192 213.707L177.678 222.192L169.192 230.678L160.707 222.192ZM246.707 329.192L255.192 320.707L263.678 329.192L255.192 337.678L246.707 329.192Z" stroke="white" stroke-opacity="0.5" stroke-dasharray="2 2" />
         </svg>
       </div>
     </div>
@@ -284,33 +267,6 @@ async function toggleSide() {
 
 <style lang="scss" scoped>
 @use '@/assets/mixins' as *;
-
-.home-back-to-dashboard {
-  // Inline in the hero column, between the stats and the motd. Relative z-index
-  // keeps it above the faded splash so it stays clickable.
-  position: relative;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-m);
-  border-radius: var(--border-radius-pill);
-  border: 1px solid var(--color-border);
-  background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
-  backdrop-filter: blur(8px);
-  color: var(--color-text);
-  font-size: var(--font-size-s);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition:
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-
-  &:hover {
-    border-color: var(--color-accent);
-    color: var(--color-accent);
-  }
-}
 
 .glow-card-home {
   corner-shape: squircle;
@@ -406,6 +362,10 @@ async function toggleSide() {
   * {
     user-select: none;
   }
+
+  @media screen and (max-width: $breakpoint-m) {
+    gap: var(--space-xxxl);
+  }
 }
 
 .home-join {
@@ -420,10 +380,16 @@ async function toggleSide() {
   .home-join__sun {
     position: absolute;
     left: 0;
-    bottom: 0;
+    bottom: -80px;
     width: 100%;
     height: 760px;
     z-index: 0;
+  }
+
+  @media screen and (max-width: $breakpoint-m) {
+    .home-join__sun {
+      bottom: 0;
+    }
   }
 
   h2 {
@@ -470,6 +436,58 @@ async function toggleSide() {
     position: relative;
     z-index: 1;
     margin-top: 164px;
+
+    .mobile-constellation {
+      display: none;
+    }
+
+    @media screen and (max-width: $breakpoint-m) {
+      padding-bottom: 128px;
+      margin-top: 96px;
+
+      .desktop-constellation {
+        display: none;
+      }
+
+      .mobile-constellation {
+        display: block;
+      }
+
+      a {
+        padding-bottom: var(--space-l) !important;
+        padding-left: 56px !important;
+
+        // Media query for some reason does not override default styles here
+        &:nth-child(1) {
+          top: -4.8% !important;
+          left: -7.2% !important;
+        }
+
+        &:nth-child(2) {
+          top: 15% !important;
+          left: 3.3% !important;
+        }
+
+        &:nth-child(3) {
+          top: 28% !important;
+          left: 25% !important;
+          white-space: nowrap;
+          padding-top: var(--space-l) !important;
+        }
+
+        &:nth-child(4) {
+          top: 38% !important;
+          left: 51.4% !important;
+        }
+
+        &:nth-child(5) {
+          top: 67% !important;
+          left: 59% !important;
+          padding-right: 56px !important;
+          padding-left: var(--space-l) !important;
+        }
+      }
+    }
 
     a {
       display: block;
@@ -525,6 +543,11 @@ async function toggleSide() {
   gap: var(--space-m);
   z-index: 2;
   position: relative;
+
+  @media screen and (max-width: $breakpoint-s) {
+    grid-template-columns: 1fr;
+    grid-template: 'main' 'sideA' 'sideB';
+  }
 
   &:hover a {
     background-color: var(--color-bg-medium);
@@ -629,6 +652,10 @@ async function toggleSide() {
   padding-bottom: 128px;
   position: relative;
 
+  @media screen and (max-width: $breakpoint-m) {
+    padding: 64px 32px;
+  }
+
   .corner-text {
     position: absolute;
     top: 16px;
@@ -660,12 +687,6 @@ async function toggleSide() {
     line-height: 0;
     color: var(--color-accent);
     transition: opacity var(--transition-fast);
-
-    svg {
-      display: block;
-      width: 128px;
-      height: 12px;
-    }
 
     rect {
       fill: currentColor;

@@ -2,14 +2,15 @@
 import { Button } from '@dolanske/vui'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 
-function scrollToPlatforms() {
+function scrollDown() {
   if (!import.meta.client)
     return
-  const target = document.querySelector('.page-landing')
+
+  const target = document.querySelector('#hero')
   if (!target)
     return
 
-  const top = target.getBoundingClientRect().top - 64
+  const top = target.getBoundingClientRect().top - 192
   window.scrollTo({ top, behavior: 'smooth' })
 }
 </script>
@@ -17,7 +18,7 @@ function scrollToPlatforms() {
 <template>
   <div class="hero-section__actions">
     <GlowCard halo>
-      <Button size="l" square variant="link" @click="scrollToPlatforms">
+      <Button size="l" square variant="link" @click="scrollDown">
         <Icon name="mdi:arrow-down" />
       </Button>
     </GlowCard>

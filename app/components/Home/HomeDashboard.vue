@@ -1,13 +1,8 @@
 <script setup lang="ts">
-import { Button, Card, Flex, Grid } from '@dolanske/vui'
+import { Card, Flex, Grid } from '@dolanske/vui'
 import DashboardNavTile from '@/components/Admin/Dashboard/DashboardNavTile.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
-
-// Lets the parent swap back to the marketing landing.
-const emit = defineEmits<{
-  viewLanding: []
-}>()
 
 // Mobile-only quick nav mirrors the top-level site navigation so the dashboard
 // is a full jumping-off point on small screens.
@@ -26,13 +21,10 @@ const navTiles = [
     <!-- Nebula + stars are rendered once at the page level (HomeBackdrop) so they
          persist across the landing swap. -->
     <div class="dashboard__content container-l">
-      <Flex x-between y-center gap="m" expand>
+      <Flex x-center y-center gap="m" expand>
         <h1 class="dashboard__greeting">
           Hello, friend
         </h1>
-        <Button plain square aria-label="Show landing page" @click="emit('viewLanding')">
-          <Icon name="ph:house" size="20" />
-        </Button>
       </Flex>
 
       <!-- Top-level nav tiles only show on mobile, where the global nav collapses. -->
@@ -122,23 +114,20 @@ const navTiles = [
 .dashboard__content {
   position: relative;
   z-index: 1;
-  // Clear the fixed navbar, then match the standard .page + .page-title top gap
-  // (see assets/elements/page.scss) so the greeting lines up with other pages.
-  padding-block: calc(var(--navbar-offset, 64px) + 4rem + var(--space-l)) 6rem;
   display: flex;
+  padding-top: 192px;
   flex-direction: column;
-  gap: var(--space-xxl);
-  width: 100%;
+  gap: var(--space-xl);
 
   @media screen and (max-width: $breakpoint-m) {
-    padding-block: calc(var(--navbar-offset, 64px) + 2rem + var(--space-l)) 4rem;
+    // note (dolanske): after adding the tabs, I just eyeballed the spacing
+    padding-top: 160px;
+    // padding-block: calc(var(--navbar-offset, 64px) + 2rem + var(--space-l)) 4rem;
     gap: var(--space-l);
   }
 }
 
 .dashboard__greeting {
-  font-size: var(--font-size-xxxl);
-  font-weight: var(--font-weight-extrabold);
   margin: 0;
 
   @media screen and (max-width: $breakpoint-m) {
@@ -159,7 +148,7 @@ const navTiles = [
   text-transform: uppercase;
   color: var(--color-text-lighter);
   letter-spacing: 0.04em;
-  margin-bottom: var(--space-l);
+  margin-bottom: var(--space-m);
 }
 
 .dashboard__placeholder {

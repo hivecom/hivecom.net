@@ -68,12 +68,7 @@ onBeforeMount(async () => {
 
 const LandingHeroGlobe = defineAsyncComponent(() => import('@/components/Landing/LandingHeroGlobe.vue'))
 
-const defaultSplashMessage
-  = (typeof constants.SPLASH_MESSAGE === 'string' && constants.SPLASH_MESSAGE.trim())
-    ? constants.SPLASH_MESSAGE
-    : 'A community of friends from all around the world'
-
-const splashMessage = ref(defaultSplashMessage)
+const splashMessage = ref(constants.SPLASH_MESSAGE)
 
 // Splash fades out when the globe signals it has rendered its first frame.
 // Fallback timeout covers the case where the globe fails to load entirely or
@@ -111,7 +106,7 @@ onMounted(() => {
     : []
 
   if (alternatives.length === 0) {
-    splashMessage.value = defaultSplashMessage
+    splashMessage.value = constants.SPLASH_MESSAGE
     return
   }
 
@@ -121,12 +116,12 @@ onMounted(() => {
   const chance = Math.min(1, Math.max(0, Number.isFinite(rawChance) ? rawChance : 0))
 
   if (Math.random() >= chance) {
-    splashMessage.value = defaultSplashMessage
+    splashMessage.value = constants.SPLASH_MESSAGE
     return
   }
 
   const idx = Math.floor(Math.random() * alternatives.length)
-  splashMessage.value = alternatives[idx] ?? defaultSplashMessage
+  splashMessage.value = alternatives[idx] ?? constants.SPLASH_MESSAGE
 })
 </script>
 
@@ -147,7 +142,6 @@ onMounted(() => {
       </div>
 
       <LandingHeroStats class="hero-overlay__stats" :community-stats="communityStats" :loading="loading" />
-      <slot name="after-stats" />
       <LandingMotd :fallback-text="splashMessage" />
       <LandingHeroActions />
     </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Tab, Tabs } from '@dolanske/vui'
 import HomeBackdrop from '@/components/Home/HomeBackdrop.vue'
 import HomeDashboard from '@/components/Home/HomeDashboard.vue'
 import HomeMarketing from '@/components/Home/HomeMarketing.vue'
@@ -12,8 +13,13 @@ const user = useSupabaseUser()
 
 // Lets a logged-in user peek at the landing and come back. Local-only, no route
 // or query - everyone lands at / regardless.
-const showLanding = ref(false)
-const showDashboard = computed(() => !!user.value && !showLanding.value)
+// const showLanding = ref(false)
+const activeTab = ref<'home' | 'dashboard'>('dashboard')
+const showDashboard = computed(() => !!user.value && activeTab.value === 'dashboard')
+
+watch(activeTab, () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+})
 </script>
 
 <template>
@@ -25,13 +31,20 @@ const showDashboard = computed(() => !!user.value && !showLanding.value)
   <!-- out-in so the dashboard fades away first, then the landing rises up into
        place. The backdrop stays put underneath, so there's no bare frame. -->
   <Transition name="home-swap" mode="out-in">
-    <HomeDashboard v-if="showDashboard" @view-landing="showLanding = true" />
-    <HomeMarketing
-      v-else
-      :show-back-to-dashboard="!!user && showLanding"
-      @back-to-dashboard="showLanding = false"
-    />
+    <HomeDashboard v-if="showDashboard" />
+    <HomeMarketing v-else :skip-splash="showDashboard" />
   </Transition>
+
+  <div v-if="user" class="home-swap-tabs">
+    <Tabs v-model="activeTab" variant="filled">
+      <Tab value="home">
+        Home
+      </Tab>
+      <Tab value="dashboard">
+        Dashboard
+      </Tab>
+    </Tabs>
+  </div>
 </template>
 
 <style lang="scss" scoped>
@@ -60,5 +73,21 @@ const showDashboard = computed(() => !!user.value && !showLanding.value)
   .home-swap-enter-from {
     transform: none;
   }
+}
+</style>
+
+<style>
+.home-swap-tabs {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-sticky);
+
+  .vui-tabs {
+    border: 1px solid var(--color-border-weak);
+  }
+
+  --border-radius-m: var(--border-radius-pill);
 }
 </style>
