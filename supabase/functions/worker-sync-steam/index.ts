@@ -62,6 +62,43 @@ interface SteamApiResponse {
   };
 }
 
+// Recent apps: bounded state on the presence row, not a play history. Only
+// sessions at least this long qualify, so seconds-long launches never land in
+// the list, and the list is capped newest-first.
+const RECENT_APP_MIN_SESSION_MS = 10 * 60 * 1000;
+const RECENT_APPS_MAX = 8;
+
+// Type alias (not interface) so the array stays assignable to the Json column
+// type on upsert.
+type RecentApp = {
+  app_id: number;
+  app_name: string | null;
+  last_played_at: string;
+};
+
+// Defensive parse - the column is jsonb, so never trust the stored shape.
+function parseRecentApps(value: unknown): RecentApp[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is RecentApp =>
+    entry !== null &&
+    typeof entry === "object" &&
+    typeof (entry as { app_id?: unknown }).app_id === "number"
+  );
+}
+
+// Newest first, deduped by app id, capped.
+function pushRecentApp(
+  list: RecentApp[],
+  appId: number,
+  appName: string | null,
+  playedAt: string,
+): RecentApp[] {
+  return [
+    { app_id: appId, app_name: appName, last_played_at: playedAt },
+    ...list.filter((entry) => entry.app_id !== appId),
+  ].slice(0, RECENT_APPS_MAX);
+}
+
 // Create Supabase client with service role
 function createServiceClient() {
   const url = Deno.env.get("SUPABASE_URL");
@@ -260,7 +297,7 @@ async function updateSteamPresence(
   const { data: existingPresence, error: existingError } = await supabase
     .from("presences_steam")
     .select(
-      "current_app_id, current_app_name, last_app_id, last_app_name",
+      "current_app_id, current_app_name, last_app_id, last_app_name, current_app_started_at, recent_apps",
     )
     .eq("profile_id", profileId)
     .single();
@@ -311,6 +348,8 @@ async function updateSteamPresence(
     last_app_id?: number | null;
     last_app_name?: string | null;
     last_app_ended_at?: string | null;
+    current_app_started_at?: string | null;
+    recent_apps?: RecentApp[];
     details: { [key: string]: Json | undefined };
   } = {
     profile_id: profileId,
@@ -340,17 +379,22 @@ async function updateSteamPresence(
 
   const existingCurrentAppId = existingPresence?.current_app_id ?? null;
   const existingCurrentAppName = existingPresence?.current_app_name ?? null;
+  const existingStartedAt = existingPresence?.current_app_started_at ?? null;
 
   let lastAppId = existingPresence?.last_app_id ?? null;
   let lastAppName = existingPresence?.last_app_name ?? null;
 
   let lastAppEndedAt: string | null = null;
+  let endedAppId: number | null = null;
+  let endedAppName: string | null = null;
 
   if (!currentAppId && existingCurrentAppId) {
     // Session ended - user stopped playing
     lastAppId = existingCurrentAppId;
     lastAppName = existingCurrentAppName;
     lastAppEndedAt = now;
+    endedAppId = existingCurrentAppId;
+    endedAppName = existingCurrentAppName;
   } else if (
     currentAppId &&
     existingCurrentAppId &&
@@ -360,6 +404,8 @@ async function updateSteamPresence(
     lastAppId = existingCurrentAppId;
     lastAppName = existingCurrentAppName;
     lastAppEndedAt = now;
+    endedAppId = existingCurrentAppId;
+    endedAppName = existingCurrentAppName;
   }
 
   presenceData.current_app_id = currentAppId;
@@ -368,6 +414,31 @@ async function updateSteamPresence(
   presenceData.last_app_name = currentAppName ?? lastAppName;
   if (lastAppEndedAt !== null) {
     presenceData.last_app_ended_at = lastAppEndedAt;
+  }
+
+  // Session start tracking for recent_apps gating.
+  if (currentAppId === null) {
+    presenceData.current_app_started_at = null;
+  } else if (currentAppId !== existingCurrentAppId) {
+    presenceData.current_app_started_at = now;
+  } else {
+    // Same app still running. Backfill the start for sessions that began
+    // before the column existed so they can eventually qualify.
+    presenceData.current_app_started_at = existingStartedAt ?? now;
+  }
+
+  // Promote the ended session into recent_apps when it lasted long enough.
+  // Sessions with no observed start are skipped rather than guessed at.
+  if (endedAppId !== null && existingStartedAt !== null) {
+    const sessionMs = Date.parse(now) - Date.parse(existingStartedAt);
+    if (Number.isFinite(sessionMs) && sessionMs >= RECENT_APP_MIN_SESSION_MS) {
+      presenceData.recent_apps = pushRecentApp(
+        parseRecentApps(existingPresence?.recent_apps),
+        endedAppId,
+        endedAppName,
+        now,
+      );
+    }
   }
 
   // Upsert into presences_steam

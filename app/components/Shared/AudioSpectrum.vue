@@ -1,24 +1,26 @@
 <script setup lang="ts">
+import type { AnalysisFrame, SharedAnalysis } from '@/lib/audio/analysis'
 import { onBeforeUnmount, ref, watch } from 'vue'
-import { decodeAudio } from '@/lib/audio/decode'
-import { hannWindow, RealFFT } from '@/lib/audio/fft'
+import { getSharedAnalysis } from '@/lib/audio/analysis'
 
-// The live, music-reactive bar visualizer. It decodes the track once and then,
-// each frame while playing, runs a single windowed FFT at the playhead, so the
-// work is one small transform per frame instead of analyzing the whole track up
-// front. It never taps the live <audio> element (which would risk muting
-// cross-origin tracks, see lib/audio/decode). When paused the bars decay to a
-// flat baseline and the loop idles, so the panel always holds its space.
+// The live, music-reactive bar visualizer. It runs no FFTs of its own: the
+// shared analysis provider (lib/audio/analysis) decodes the track once and hands
+// every panel the windowed magnitudes for each size it asks for, computed once
+// per frame. This panel reads an 8192 (snappy upper bars) and a 16384 (finer
+// bass, smoother over time) and pools them into bars. The provider never taps
+// the live <audio> element (which would risk muting cross-origin tracks, see
+// lib/audio/decode). When paused the bars decay to a flat baseline, so the panel
+// always holds its space.
 
 const props = defineProps<{
-  // Track URL. Swapping it re-decodes.
+  // Track URL. Swapping it re-subscribes to that track's shared analysis.
   src: string
-  // Playback position as a 0..1 fraction, where we window the FFT.
+  // Playback position as a 0..1 fraction. The provider reads playback state
+  // directly; this is only here for the shared prop shape the lightbox binds.
   progress: number
-  // Total duration in seconds, used to advance the scan smoothly between the
-  // ~4Hz progress updates.
+  // Total duration in seconds.
   duration: number
-  // Whether the engine is playing, so the FFT loop only runs then.
+  // Whether the engine is playing.
   playing: boolean
   // Whether the engine is buffering/seeking. The spectrum reads decoded PCM at an
   // extrapolated playhead, not the live element, so without this it keeps moving
@@ -33,28 +35,19 @@ const props = defineProps<{
 const canvas = ref<HTMLCanvasElement | null>(null)
 const wrap = ref<HTMLElement | null>(null)
 
-// Decoded PCM we window per frame. We FFT channel 0 directly, no mono copy, so
-// the only memory held is the decoded buffer itself.
-let samples: Float32Array | null = null
-let sampleCount = 0
+// Sample rate drives how many bins a frequency spans; the provider sets the PCM,
+// we just need the rate to map bands. Seeded at the common default until a frame
+// carries the real value.
 let sampleRate = 44100
 
-// Two windows' worth of FFT scratch, reused every frame. The short window keeps
-// the upper bars snappy; the long (DOUBLE) window drives the lower third, where
-// the extra length buys finer bass bins and averages over more time, so that end
-// reacts more gently.
+// The two window sizes we pool from. The short window keeps the upper bars
+// snappy; the long (DOUBLE) window drives the lower third, where the extra
+// length buys finer bass bins and averages over more time, so that end reacts
+// more gently.
 const FFT_SIZE = 8192
 const DOUBLE = FFT_SIZE * 2
 const HALF = FFT_SIZE / 2
 const DOUBLE_HALF = DOUBLE / 2
-const hann = hannWindow(FFT_SIZE)
-const hannBig = hannWindow(DOUBLE)
-const transform = new RealFFT(FFT_SIZE)
-const transformBig = new RealFFT(DOUBLE)
-const frameBuf = new Float32Array(FFT_SIZE)
-const frameBufBig = new Float32Array(DOUBLE)
-const mags = new Float32Array(HALF)
-const magsBig = new Float32Array(DOUBLE_HALF)
 // dB window the bars normalize into. Magnitudes are scaled by the transform size
 // first (a full-scale tone lands near -12 dB after that), so this window runs
 // from the noise floor up to roughly the loudest a band ever reaches.
@@ -122,9 +115,9 @@ function setBarCount(n: number) {
   computeBands()
 }
 
-// Smooth playhead between the ~4Hz progress updates so the bars don't step four
-// times a second.
-const playhead = usePlayhead(props)
+// The shared analysis this panel is subscribed to, plus its unsubscribe.
+let analysis: SharedAnalysis | null = null
+let unsubscribe: (() => void) | null = null
 
 let accent: [number, number, number] = [167, 252, 47]
 let axis: [number, number, number] = [110, 110, 110]
@@ -150,26 +143,11 @@ const NOTES = (() => {
   return out
 })()
 
-// Window both sizes centered on `center`, transform each, and pool the
-// magnitudes into the bar targets. Each bar reads from the FFT its band was
-// mapped against in computeBands.
-function analyzeAt(center: number) {
-  // Short window for the snappy upper bars.
-  const start = center - HALF
-  for (let i = 0; i < FFT_SIZE; i++) {
-    const s = start + i
-    frameBuf[i] = (s >= 0 && s < sampleCount ? samples![s]! : 0) * hann[i]!
-  }
-  transform.magnitudes(frameBuf, mags)
-
-  // Long window for the lower third: finer bass bins, smoother over time.
-  const startBig = center - DOUBLE_HALF
-  for (let i = 0; i < DOUBLE; i++) {
-    const s = startBig + i
-    frameBufBig[i] = (s >= 0 && s < sampleCount ? samples![s]! : 0) * hannBig[i]!
-  }
-  transformBig.magnitudes(frameBufBig, magsBig)
-
+// Pool the shared magnitudes into the bar targets. `mags` is the 8192 window,
+// `magsBig` the 16384; each bar reads from whichever its band was mapped against
+// in computeBands. The provider hands both arrays already windowed at the
+// playhead, so this is pure pooling, no transform.
+function poolBars(mags: Float32Array, magsBig: Float32Array) {
   for (let j = 0; j < activeBars; j++) {
     const big = j < lowBars
     const src = big ? magsBig : mags
@@ -188,26 +166,35 @@ function analyzeAt(center: number) {
   }
 }
 
-const { start: startLoop, stop: stopLoop } = useCanvasLoop((now) => {
+// Draw one frame from the shared analysis. The provider runs the loop; we get a
+// frame with the magnitudes already windowed at the playhead.
+function onFrame(frame: AnalysisFrame) {
   const cv = canvas.value
   const host = wrap.value
   if (!cv || !host)
-    return false
+    return
+
+  // Recompute bands the first time the real sample rate arrives (it drives how
+  // many bins a frequency spans).
+  if (frame.sampleRate > 0 && frame.sampleRate !== sampleRate) {
+    sampleRate = frame.sampleRate
+    computeBands()
+  }
 
   const w = host.clientWidth
   const h = host.clientHeight
 
   // Collapse the bar count on narrow panels so each bar keeps at least
   // MIN_BAR_PX of width. A `bars` prop pins it instead. This must run before
-  // analyzeAt so the bands match the count we draw.
+  // poolBars so the bands match the count we draw.
   if (w > 0)
     setBarCount(props.bars ?? w / (MIN_BAR_PX + BAR_GAP))
 
-  // Feed the bar targets. While playing and not stalled, FFT at the extrapolated
-  // playhead; otherwise (paused, or buffering through a seek) let them decay to
-  // the baseline so motion tracks what's audible.
-  if (props.playing && !props.loading && samples && sampleCount > 0) {
-    analyzeAt(Math.floor(playhead.at(now) * sampleCount))
+  // Feed the bar targets. While playing and not stalled, pool the shared mags;
+  // otherwise (paused, or buffering through a seek) let them decay to the
+  // baseline so motion tracks what's audible.
+  if (frame.playing && !frame.loading && frame.sampleRate > 0) {
+    poolBars(frame.mags(8192), frame.mags(16384))
   }
   else {
     target.fill(0)
@@ -317,44 +304,32 @@ const { start: startLoop, stop: stopLoop } = useCanvasLoop((now) => {
     }
   }
 
-  // Keep looping while playing or while the bars are still settling; otherwise
-  // park until playback resumes.
-  return props.playing || alive
-})
-
-async function load() {
-  samples = null
-  sampleCount = 0
-  levels.fill(0)
-  const src = props.src
-  try {
-    const buffer = await decodeAudio(src)
-    if (src !== props.src)
-      return
-    refreshColors()
-    samples = buffer.getChannelData(0)
-    sampleCount = buffer.length
-    sampleRate = buffer.sampleRate
-    computeBands()
-    if (props.playing)
-      startLoop()
-  }
-  catch {
-    // No audio (e.g. cross-origin without CORS). The row just stays flat.
-    samples = null
-  }
+  // Paused but the bars are still falling: nudge one more frame so they settle
+  // even if the provider's coast window would otherwise park the loop first.
+  if (!frame.playing && alive)
+    analysis?.requestFrame()
 }
 
-watch(() => props.src, load, { immediate: true })
+// Subscribe to the shared analysis for the current track. The provider owns the
+// decode and the loop; we just get a per-frame callback while it's live.
+function subscribe(src: string) {
+  unsubscribe?.()
+  levels.fill(0)
+  refreshColors()
+  analysis = getSharedAnalysis(src)
+  unsubscribe = analysis.subscribe(onFrame)
+}
+
+watch(() => props.src, src => subscribe(src), { immediate: true })
 
 // Re-read the palette and repaint when the theme flips, the way the globe does.
 onThemeChange(() => {
   refreshColors()
-  startLoop()
+  analysis?.requestFrame()
 })
 
-// Run the loop while playing; a final settle pass lets the bars fall when paused.
-watch(() => props.playing, () => startLoop())
+// Nudge a settle pass so the bars fall when paused (and start moving on play).
+watch(() => props.playing, () => analysis?.requestFrame())
 
 // Watch the panel size so the bar count re-collapses on resize or orientation
 // change even while paused, when the loop would otherwise be parked. A single
@@ -362,7 +337,8 @@ watch(() => props.playing, () => startLoop())
 let resizeObserver: ResizeObserver | null = null
 
 onBeforeUnmount(() => {
-  stopLoop()
+  unsubscribe?.()
+  unsubscribe = null
   resizeObserver?.disconnect()
 })
 
@@ -370,10 +346,10 @@ watch(wrap, (el) => {
   resizeObserver?.disconnect()
   if (el) {
     if (import.meta.client && 'ResizeObserver' in window) {
-      resizeObserver = new ResizeObserver(() => startLoop())
+      resizeObserver = new ResizeObserver(() => analysis?.requestFrame())
       resizeObserver.observe(el)
     }
-    startLoop()
+    analysis?.requestFrame()
   }
 })
 </script>

@@ -1,9 +1,11 @@
 import type { Component, Ref } from 'vue'
-import { pushToast, removeToast } from '@dolanske/vui'
+import type { AudioTags } from '@/lib/audio/tags'
 
+import { pushToast, removeToast } from '@dolanske/vui'
 import ToastBodyAudioPlayer from '@/components/Toast/ToastBodyAudioPlayer.vue'
 import { clearDecodeCache } from '@/lib/audio/decode'
 import { prewarmAudioVisuals } from '@/lib/audio/prewarm'
+import { readTags } from '@/lib/audio/tags'
 import { useMobileViewport } from '@/lib/mediaQuery'
 
 // The whole point of this composable: playback has to survive page navigation
@@ -22,6 +24,10 @@ export interface AudioTrack {
 const currentSrc = ref<string | null>(null)
 const title = ref<string | undefined>()
 const subtitle = ref<string | undefined>()
+// Embedded metadata for the active track (title/artist/album/cover), populated
+// async off the shared fetch. Null until a read resolves or when a track has no
+// readable tags, so the UI falls back to the passed title/subtitle.
+const tags = ref<AudioTags | null>(null)
 const playing = ref(false)
 const duration = ref(0)
 const currentTime = ref(0)
@@ -41,6 +47,20 @@ const volume = ref(0.5)
 const muted = ref(false)
 
 let audio: HTMLAudioElement | null = null
+
+// The cover object URL currently held by `tags`, tracked module-side so we can
+// revoke it before the next one replaces it. Object URLs live until revoked, so
+// without this the blobs pile up on every track change.
+let lastCoverUrl: string | null = null
+
+// Swap the tag state and revoke the previous cover URL so its blob is freed.
+// The one bit of real cleanup in here: everything else is plain refs.
+function setTags(next: AudioTags | null) {
+  if (lastCoverUrl)
+    URL.revokeObjectURL(lastCoverUrl)
+  lastCoverUrl = next?.cover ?? null
+  tags.value = next
+}
 
 // Captured once the volume setting is linked, so setVolume can persist back to
 // it. Null on the server and until the first client mount.
@@ -149,8 +169,10 @@ function reset() {
   duration.value = 0
   loading.value = false
   errored.value = false
-  // Player's closed, drop the held decoded buffer so its PCM can be collected.
+  // Player's closed, drop the held decoded buffer so its PCM can be collected
+  // and revoke the cover URL so its blob is freed.
   clearDecodeCache()
+  setTags(null)
 }
 
 // Start (or restart) a track and surface the toast. Resuming the track that's
@@ -172,6 +194,14 @@ function play(track: AudioTrack) {
     // Warm the fullscreen visuals while the user listens, so expanding is
     // instant. Background, swallows its own errors.
     prewarmAudioVisuals(track.src)
+    // Read embedded tags off the same shared fetch. Fire-and-forget; the
+    // currentSrc guard mirrors the components' `if (src !== props.src) return`
+    // so a slow resolve on an old track can't clobber a newer one.
+    setTags(null)
+    void readTags(track.src).then((t) => {
+      if (currentSrc.value === track.src)
+        setTags(t)
+    })
   }
 
   el.play().catch(() => {
@@ -282,6 +312,7 @@ export function useAudioPlayer() {
     currentSrc,
     title,
     subtitle,
+    tags,
     playing,
     duration,
     currentTime,

@@ -21,6 +21,11 @@ const player = useAudioPlayer()
 
 const hasTrack = computed(() => player.currentSrc.value != null)
 
+// Prefer embedded tag title/artist when present, fall back to the passed
+// title/subtitle the engine holds.
+const headerTitle = computed(() => player.tags.value?.title ?? player.title.value)
+const headerSubtitle = computed(() => player.tags.value?.artist ?? player.subtitle.value)
+
 // On mobile the OS volume keys are the control and the hover fader doesn't work
 // on touch, so we drop the in-app fader and grow the play button. The engine
 // pins output to full on mobile, so there's nothing to force here.
@@ -55,10 +60,18 @@ useEventListener('keydown', (event) => {
     @close="player.closeFullscreen()"
   >
     <template #header>
-      <Flex column gap="xxs" class="audio-lightbox__titles">
-        <span v-if="player.title.value" class="audio-lightbox__title">{{ player.title.value }}</span>
-        <span v-else class="audio-lightbox__title">Audio</span>
-        <span v-if="player.subtitle.value" class="audio-lightbox__subtitle text-s text-color-lighter">{{ player.subtitle.value }}</span>
+      <Flex y-center gap="s" class="audio-lightbox__header">
+        <img
+          v-if="player.tags.value?.cover"
+          :src="player.tags.value.cover"
+          alt=""
+          class="audio-lightbox__cover"
+        >
+        <Flex column gap="xxs" class="audio-lightbox__titles">
+          <span v-if="headerTitle" class="audio-lightbox__title">{{ headerTitle }}</span>
+          <span v-else class="audio-lightbox__title">Audio</span>
+          <span v-if="headerSubtitle" class="audio-lightbox__subtitle text-s text-color-lighter">{{ headerSubtitle }}</span>
+        </Flex>
       </Flex>
     </template>
 
@@ -165,6 +178,20 @@ useEventListener('keydown', (event) => {
   &__spectrum {
     height: 100%;
     width: 100%;
+  }
+
+  &__header {
+    min-width: 0;
+  }
+
+  // Small square cover thumbnail beside the titles. Hidden entirely when a track
+  // has no embedded art, so the header looks exactly as it did before.
+  &__cover {
+    border-radius: var(--border-radius-s);
+    flex-shrink: 0;
+    height: 40px;
+    object-fit: cover;
+    width: 40px;
   }
 
   &__titles {

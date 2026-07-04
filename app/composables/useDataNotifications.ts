@@ -182,6 +182,24 @@ export function useDataNotifications() {
       .map(entry => entry.friender)
   })
 
+  // Mutual friends: both sides have a row pointing at each other. Derived from
+  // the friendship rows already fetched here so consumers (e.g. friend
+  // presence on the home dashboard) don't need a second profile_friends query.
+  const mutualFriendIds = computed(() => {
+    if (userId.value == null)
+      return []
+
+    const outgoing = new Set(
+      friendships.value
+        .filter(entry => entry.friender === userId.value)
+        .map(entry => entry.friend),
+    )
+
+    return friendships.value
+      .filter(entry => entry.friend === userId.value && outgoing.has(entry.friender))
+      .map(entry => entry.friender)
+  })
+
   const KNOWN_SOURCES = new Set(['discussion_reply', 'mention', 'discussion_reply_reply'])
 
   const discussionNotifications = computed(() =>
@@ -543,6 +561,7 @@ export function useDataNotifications() {
     unreadNotifications: readonly(unreadNotifications),
     friendships: readonly(friendships),
     pendingRequestIds,
+    mutualFriendIds,
     birthdayWidget,
     pendingComplaintCount: readonly(pendingComplaintCount),
     inviteActionLoading: readonly(inviteActionLoading),

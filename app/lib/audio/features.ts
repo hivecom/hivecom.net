@@ -14,6 +14,20 @@ import { hannWindow, RealFFT } from '@/lib/audio/fft'
 const FFT_SIZE = 4096
 const HALF = FFT_SIZE / 2
 
+// Tempo tracking. The analyzer runs at the visual frame rate (~60fps), so the
+// onset envelope is sampled at ~60Hz. A ring of ~6s (384 samples) is plenty of
+// history to autocorrelate. BPM = 60 * onsetRate / lag, so 60-180 BPM at 60Hz
+// is lag 20-60. We assume 60Hz for the BPM number; a little frame-rate wobble
+// only nudges the estimate, and the half/double resolve plus smoothing absorb
+// it. Autocorrelate every ~24 frames (~400ms) to keep it cheap.
+const TEMPO_RING = 384
+const ONSET_RATE = 60
+const MIN_BPM = 60
+const MAX_BPM = 180
+const MIN_LAG = Math.floor((60 * ONSET_RATE) / MAX_BPM)
+const MAX_LAG = Math.ceil((60 * ONSET_RATE) / MIN_BPM)
+const TEMPO_INTERVAL = 24
+
 // The bands we pool the spectrum into, in Hz. Roughly: kick/sub, bass, body,
 // presence, air. The engine reads these by name.
 const BANDS = [
@@ -47,6 +61,12 @@ export interface AudioFeatures {
   flow: number
   splatter: number
   geometry: number
+  // Estimated tempo in BPM, smoothed, 0 until we're confident. Derived from the
+  // low-band onset envelope by autocorrelation.
+  bpm: number
+  // Phase within the current beat, 0..1, advancing with the estimated tempo.
+  // Stays 0 while bpm is 0. A visual can pulse on it instead of raw flux.
+  beatPhase: number
 }
 
 // The calm/default feature set a consumer feeds the engine when nothing is
@@ -66,6 +86,8 @@ export const IDLE_FEATURES: AudioFeatures = {
   flow: 0,
   splatter: 0,
   geometry: 0,
+  bpm: 0,
+  beatPhase: 0,
 }
 
 // A value that snaps up fast and falls slow, used to turn raw flux into a 0..1
@@ -113,7 +135,7 @@ export class FeatureAnalyzer {
   private readonly bandTrackers = BANDS.map(() => new Tracker(0.6, 0.12))
   private readonly energyTracker = new Tracker(0.5, 0.05)
   private readonly onsetTracker = new Tracker(0.8, 0.18)
-  private readonly bassHitTracker = new Tracker(0.85, 0.16)
+  private readonly bassHitTracker = new Tracker(0.9, 0.4)
   private readonly highHitTracker = new Tracker(0.85, 0.2)
 
   // Slow-moving stats the mood is derived from, so style doesn't flicker frame
@@ -133,7 +155,21 @@ export class FeatureAnalyzer {
     flow: 1,
     splatter: 0,
     geometry: 0,
+    bpm: 0,
+    beatPhase: 0,
   }
+
+  // Tempo tracking. A ring of the recent low-band onset envelope (kick/snare
+  // drive tempo), autocorrelated every so often to find the beat period.
+  private readonly onsetRing = new Float32Array(TEMPO_RING)
+  private ringPos = 0
+  private ringCount = 0
+  // Frames since the last autocorrelation, so we run it every ~few hundred ms
+  // instead of every frame.
+  private sinceTempo = 0
+  // Smoothed BPM estimate and the phase within the current beat.
+  private bpm = 0
+  private beatPhase = 0
 
   setSamples(samples: Float32Array, count: number, sampleRate: number) {
     this.samples = samples
@@ -156,6 +192,12 @@ export class FeatureAnalyzer {
     this.transientRate = 0
     this.bassRate = 0
     this.highRate = 0
+    this.onsetRing.fill(0)
+    this.ringPos = 0
+    this.ringCount = 0
+    this.sinceTempo = 0
+    this.bpm = 0
+    this.beatPhase = 0
   }
 
   private computeBands() {
@@ -170,12 +212,12 @@ export class FeatureAnalyzer {
 
   // Window the frame centered on `center` (a sample index), transform it, and
   // fold the spectrum into the feature set. Returns a reference to the same
-  // object each call, so don't hold it across frames.
+  // object each call, so don't hold it across frames. Thin wrapper: the shared
+  // analysis provider skips this and calls analyzeMags with mags it already has.
   analyze(center: number): AudioFeatures {
-    const out = this.out
     const samples = this.samples
     if (!samples || this.sampleCount === 0)
-      return out
+      return this.out
 
     const start = center - HALF
     for (let i = 0; i < FFT_SIZE; i++) {
@@ -183,6 +225,17 @@ export class FeatureAnalyzer {
       this.frame[i] = (s >= 0 && s < this.sampleCount ? samples[s]! : 0) * this.hann[i]!
     }
     this.fft.magnitudes(this.frame, this.mags)
+    return this.analyzeMags(this.mags)
+  }
+
+  // Fold an already-computed 4096 magnitude array into the feature set. Same
+  // work analyze does after the transform, split out so the shared provider can
+  // hand in the mags it computed once for every panel instead of each analyzer
+  // running its own FFT. `mags` must be HALF long (a 4096 window's lower half).
+  analyzeMags(mags: Float32Array): AudioFeatures {
+    const out = this.out
+    if (!this.samples || this.sampleCount === 0)
+      return out
 
     // Per-band energy (peak within the band, log-companded) and total energy.
     let total = 0
@@ -190,7 +243,7 @@ export class FeatureAnalyzer {
       let peak = 0
       const hi = this.bandHi[i]!
       for (let b = this.bandLo[i]!; b < hi; b++) {
-        const m = this.mags[b]!
+        const m = mags[b]!
         if (m > peak)
           peak = m
       }
@@ -210,7 +263,7 @@ export class FeatureAnalyzer {
     const mid = Math.floor(HALF * 0.18)
     if (this.hasPrev) {
       for (let k = 1; k < HALF; k++) {
-        const d = this.mags[k]! - this.prevMags[k]!
+        const d = mags[k]! - this.prevMags[k]!
         if (d > 0) {
           flux += d
           if (k < mid)
@@ -220,13 +273,19 @@ export class FeatureAnalyzer {
         }
       }
     }
-    this.prevMags.set(this.mags)
+    this.prevMags.set(mags)
     this.hasPrev = true
 
     const scale = FFT_SIZE
     out.onset = this.onsetTracker.push(flux / scale)
     out.bassHit = this.bassHitTracker.push(lowFlux / scale)
     out.highHit = this.highHitTracker.push(highFlux / scale)
+
+    // Tempo: push this frame's low onset into the ring and, every so often,
+    // autocorrelate for the beat period. Then advance the beat phase.
+    this.trackTempo(out.bassHit)
+    out.bpm = this.bpm
+    out.beatPhase = this.beatPhase
 
     // Brightness: how much of the energy sits up high. Bass-heavy -> 0, airy -> 1.
     const lowE = out.bands.sub + out.bands.bass + out.bands.lowMid
@@ -242,14 +301,129 @@ export class FeatureAnalyzer {
     // splatter when the low end is pumping; geometry when the top end is busy
     // and bright.
     const calm = 1 - Math.min(1, this.transientRate * 2.2)
-    const flow = 0.15 + calm * (1 - out.energy * 0.5)
-    const splatter = this.bassRate * 2.4 * (0.4 + out.energy)
-    const geometry = this.highRate * 2.2 * (0.3 + out.brightness)
+    let flow = 0.15 + calm * (1 - out.energy * 0.5)
+    let splatter = this.bassRate * 2.4 * (0.4 + out.energy)
+    let geometry = this.highRate * 2.2 * (0.3 + out.brightness)
+
+    // Tempo sharpens the mood, additive to the weights above so the base formula
+    // still drives it. A confident slow beat with strong low onsets leans
+    // splatter; nothing to lock onto leans flow; a fast beat leans geometry.
+    if (this.bpm > 0) {
+      if (this.bpm < 110 && this.bassRate > 0.2)
+        splatter += 0.4 * this.bassRate
+      if (this.bpm > 140)
+        geometry += 0.3 * (0.3 + out.brightness)
+    }
+    else {
+      flow += 0.2
+    }
+
     const sum = flow + splatter + geometry || 1
     out.flow = flow / sum
     out.splatter = splatter / sum
     out.geometry = geometry / sum
 
     return out
+  }
+
+  // Feed one low-onset sample into the tempo tracker: ring it, re-estimate the
+  // BPM every so often by autocorrelation, and advance the beat phase.
+  private trackTempo(lowOnset: number) {
+    this.onsetRing[this.ringPos] = lowOnset
+    this.ringPos = (this.ringPos + 1) % TEMPO_RING
+    if (this.ringCount < TEMPO_RING)
+      this.ringCount++
+
+    // Advance the phase with the current estimate. One beat spans ONSET_RATE /
+    // (bpm / 60) frames, so phase steps by (bpm / 60) / ONSET_RATE each frame.
+    if (this.bpm > 0) {
+      this.beatPhase += (this.bpm / 60) / ONSET_RATE
+      if (this.beatPhase >= 1)
+        this.beatPhase -= Math.floor(this.beatPhase)
+    }
+    else {
+      this.beatPhase = 0
+    }
+
+    // Only re-estimate every TEMPO_INTERVAL frames, and only once we have enough
+    // history for the longest lag we test to be meaningful.
+    this.sinceTempo++
+    if (this.sinceTempo < TEMPO_INTERVAL || this.ringCount < MAX_LAG * 3)
+      return
+    this.sinceTempo = 0
+
+    // Autocorrelate the buffered envelope over the candidate lag range. Read the
+    // ring oldest-first into linear order so lag offsets are contiguous. Subtract
+    // the mean first so a loud DC level doesn't swamp the periodicity.
+    const n = this.ringCount
+    let mean = 0
+    for (let i = 0; i < n; i++)
+      mean += this.onsetRing[(this.ringPos + i) % TEMPO_RING]!
+    mean /= n
+
+    let bestLag = 0
+    let bestScore = 0
+    for (let lag = MIN_LAG; lag <= MAX_LAG; lag++) {
+      let score = 0
+      for (let i = lag; i < n; i++) {
+        const a = this.onsetRing[(this.ringPos + i) % TEMPO_RING]! - mean
+        const b = this.onsetRing[(this.ringPos + i - lag) % TEMPO_RING]! - mean
+        score += a * b
+      }
+      // Normalize by the overlap so long lags aren't penalized for fewer terms.
+      score /= (n - lag)
+      if (score > bestScore) {
+        bestScore = score
+        bestLag = lag
+      }
+    }
+
+    // No real periodicity: let the estimate leak back toward 0 so a beatless
+    // passage stops reading as a fixed tempo.
+    if (bestLag === 0 || bestScore <= 0) {
+      this.bpm *= 0.9
+      if (this.bpm < 1)
+        this.bpm = 0
+      return
+    }
+
+    let bpm = (60 * ONSET_RATE) / bestLag
+    // Resolve half/double-time toward the range most tracks sit in, and prefer
+    // continuity with the last estimate so it locks instead of octave-jumping.
+    bpm = this.foldTempo(bpm)
+
+    // Smooth so it settles rather than jitters frame to frame.
+    if (this.bpm === 0)
+      this.bpm = bpm
+    else
+      this.bpm += (bpm - this.bpm) * 0.25
+  }
+
+  // Fold a raw BPM into the musical range by doubling/halving, biased toward
+  // 90-150 and toward whatever we last locked onto.
+  private foldTempo(bpm: number): number {
+    let b = bpm
+    while (b < 90)
+      b *= 2
+    while (b > 180)
+      b /= 2
+    // If we already have a lock, check the octave neighbours and keep whichever
+    // lands closest to it, so a track doesn't flip between 75 and 150.
+    if (this.bpm > 0) {
+      const candidates = [b, b * 2, b / 2]
+      let best = b
+      let bestGap = Infinity
+      for (const c of candidates) {
+        if (c < MIN_BPM || c > MAX_BPM)
+          continue
+        const gap = Math.abs(c - this.bpm)
+        if (gap < bestGap) {
+          bestGap = gap
+          best = c
+        }
+      }
+      b = best
+    }
+    return b
   }
 }
