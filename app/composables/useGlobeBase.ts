@@ -61,6 +61,53 @@ export function useGlobeBase() {
   let wheelCleanup: (() => void) | null = null
 
   // ---------------------------------------------------------------------------
+  // Incremental hex feed
+  // ------------------------------------------------------------------------
+  // The hexed-polygons layer tessellates each feature into H3 cells and merges
+  // per-hex geometry synchronously during its digest. Setting every country at
+  // once blocks the main thread for hundreds of ms in a single frame, so we
+  // stream features in batches sized to a per-frame time budget instead.
+  const HEX_FRAME_BUDGET_MS = 14
+  const HEX_BATCH_MIN = 1
+  const HEX_BATCH_MAX = 40
+  const HEX_BATCH_INITIAL = 6
+
+  async function nextFrame(): Promise<void> {
+    return new Promise(resolve => requestAnimationFrame(() => resolve()))
+  }
+
+  async function feedHexFeatures(features: CountryFeature[]) {
+    const fed: CountryFeature[] = []
+    let batchSize = HEX_BATCH_INITIAL
+    let i = 0
+
+    while (i < features.length) {
+      // Bail if the globe was destroyed mid-feed (e.g. route change).
+      if (globeInstance == null)
+        return
+
+      for (let n = 0; n < batchSize && i < features.length; n++) {
+        const feat = features[i++]
+        if (feat != null)
+          fed.push(feat)
+      }
+      globeInstance.hexPolygonsData(fed)
+
+      // The digest runs on a 1ms debounce timer, so awaiting the next frame
+      // both lets it run and tells us what the batch cost. Scale the next
+      // batch toward the frame budget: cheap countries pack together, big
+      // ones (Russia, Canada) get a frame to themselves.
+      const start = performance.now()
+      await nextFrame()
+      const frameMs = performance.now() - start
+      if (frameMs > 0) {
+        const scaled = Math.round(batchSize * (HEX_FRAME_BUDGET_MS / frameMs))
+        batchSize = Math.min(HEX_BATCH_MAX, Math.max(HEX_BATCH_MIN, scaled))
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Theme
   // ------------------------------------------------------------------------
   function applyGlobeColor() {
@@ -169,7 +216,7 @@ export function useGlobeBase() {
     // ----------------------------------------------------------------------
     globeInstance
       .globeMaterial(globeMaterial)
-      .hexPolygonsData(featureCollection.features)
+      .hexPolygonsData([])
       .hexPolygonResolution(perfParams.hexResolution)
       .hexPolygonCurvatureResolution(perfParams.hexCurvatureResolution)
       .hexPolygonMargin(0.3)
@@ -265,9 +312,15 @@ export function useGlobeBase() {
       globeMaterial = null
     }
 
+    // Stream in the hex features last so a destroy mid-feed only has to stop
+    // the feed itself - everything else is already wired up.
+    const instance = globeInstance
+    const material = globeMaterial
+    await feedHexFeatures(featureCollection.features)
+
     return {
-      globeInstance,
-      globeMaterial,
+      globeInstance: instance,
+      globeMaterial: material,
       refreshHexColors,
       destroy,
     }

@@ -130,6 +130,14 @@ export function useGlobeRenderer() {
   // ---------------------------------------------------------------------------
   // Post-processing setup
   // ------------------------------------------------------------------------
+  // Each pass's shaders compile on the first frame it renders, so we yield a
+  // frame between adding passes to spread the compile cost instead of paying
+  // it all in one frame. The globe is still faded out at this point, so the
+  // intermediate frames are not visible.
+  async function nextFrame(): Promise<void> {
+    return new Promise(resolve => requestAnimationFrame(() => resolve()))
+  }
+
   async function setupPostProcessing(perfParams: GlobePerfParams) {
     if (!import.meta.client || !globeInstance)
       return
@@ -188,6 +196,7 @@ export function useGlobeRenderer() {
           fragmentShader: scanPassFragSrc,
         })
         composer.addPass(scanlinePass)
+        await nextFrame()
       }
 
       if (perfParams.bloomEnabled) {
@@ -204,6 +213,7 @@ export function useGlobeRenderer() {
           (bloomPass as unknown as { enabled?: boolean }).enabled
             = !isLightTheme()
           composer.addPass(bloomPass)
+          await nextFrame()
         }
         catch {
           bloomPass = null

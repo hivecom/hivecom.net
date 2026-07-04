@@ -8,10 +8,6 @@ import LandingSun from '@/components/Landing/LandingSun.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 
-const props = defineProps<{
-  skipSplash: boolean
-}>()
-
 // Fetch the latest 6 forum posts and their title & description
 const supabase = useSupabaseClient()
 const maruqeeItems = ref<{ id: number, title: string, description: string | null }[]>([])
@@ -141,14 +137,28 @@ async function toggleSide() {
 
   aboutBusy = false
 }
+
+// Diamond centers lifted from the constellation paths below, one per link in order.
+const DESKTOP_STARS = [
+  [9.192, 102.192],
+  [256.192, 63.192],
+  [477.192, 52.192],
+  [693.192, 9.192],
+  [847.192, 92.192],
+]
+
+const MOBILE_STARS = [
+  [9.192, 9.192],
+  [38.192, 106.192],
+  [96.192, 176.192],
+  [169.192, 222.192],
+  [255.192, 329.192],
+]
 </script>
 
 <template>
   <div class="home-page">
-    <!-- TODO: needs to be decoupled -->
-    <!-- When peeking from the dashboard, skip the initial splash fade - the page
-         already animates up into view, so replaying the 3s splash reads as a stall. -->
-    <LandingHero :skip-splash="props.skipSplash" />
+    <LandingHero />
 
     <GlowGroup>
       <div class="container-m">
@@ -256,10 +266,40 @@ async function toggleSide() {
 
         <svg class="desktop-constellation" width="857" height="112" viewBox="0 0 857 112" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M34.624 100.214L237.624 66.214M274.707 61.7071L456.707 53.2192M498.707 50.2071L669.207 11.2955M710.99 11.2955L829.707 83.7071M0.707031 102.192L9.19231 93.7071L17.6776 102.192L9.19231 110.678L0.707031 102.192ZM838.707 92.1924L847.192 83.7071L855.678 92.1924L847.192 100.678L838.707 92.1924ZM247.707 63.1924L256.192 54.7071L264.678 63.1924L256.192 71.6777L247.707 63.1924ZM684.707 9.19239L693.192 0.707108L701.678 9.19239L693.192 17.6777L684.707 9.19239ZM468.707 52.1924L477.192 43.7071L485.678 52.1924L477.192 60.6777L468.707 52.1924Z" stroke="white" stroke-opacity="0.25" stroke-dasharray="2 2" />
+          <defs>
+            <radialGradient id="constellation-glow-desktop">
+              <stop class="flare-glow-hot" offset="0%" stop-opacity="0.9" />
+              <stop offset="30%" stop-opacity="0.4" />
+              <stop offset="100%" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+          <g v-for="([x, y], index) in DESKTOP_STARS" :key="index" class="constellation-flare" :data-flare="index + 1" :transform="`translate(${x} ${y})`">
+            <circle class="flare-glow" r="20" fill="url(#constellation-glow-desktop)" />
+            <path class="flare-sparkle" d="M9 -9L2 0L9 9L0 2L-9 9L-2 0L-9 -9L0 -2Z" />
+            <path class="flare-streak" d="M0 -16L1.5 -1.5L44 0L1.5 1.5L0 16L-1.5 1.5L-44 0L-1.5 -1.5Z" />
+            <path class="flare-streak-hot" d="M0 -9L1 -1L30 0L1 1L0 9L-1 1L-30 0L-1 -1Z" />
+            <path class="flare-core" d="M0 -8.485L8.485 0L0 8.485L-8.485 0Z" />
+            <path class="flare-core-hot" d="M0 -4L4 0L0 4L-4 0Z" />
+          </g>
         </svg>
 
         <svg class="mobile-constellation" width="265" height="339" viewBox="0 0 265 339" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M29.707 86.707L11.707 26.707M83.707 162.707L49.707 120.707M153.707 211.707L112.707 187.707M242.707 314.707L183.707 236.707M0.707031 9.19231L9.19231 0.707031L17.6776 9.19231L9.19231 17.6776L0.707031 9.19231ZM29.707 106.192L38.1923 97.707L46.6776 106.192L38.1923 114.678L29.707 106.192ZM87.707 176.192L96.1923 167.707L104.678 176.192L96.1923 184.678L87.707 176.192ZM160.707 222.192L169.192 213.707L177.678 222.192L169.192 230.678L160.707 222.192ZM246.707 329.192L255.192 320.707L263.678 329.192L255.192 337.678L246.707 329.192Z" stroke="white" stroke-opacity="0.5" stroke-dasharray="2 2" />
+          <defs>
+            <radialGradient id="constellation-glow-mobile">
+              <stop class="flare-glow-hot" offset="0%" stop-opacity="0.9" />
+              <stop offset="30%" stop-opacity="0.4" />
+              <stop offset="100%" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+          <g v-for="([x, y], index) in MOBILE_STARS" :key="index" class="constellation-flare" :data-flare="index + 1" :transform="`translate(${x} ${y})`">
+            <circle class="flare-glow" r="20" fill="url(#constellation-glow-mobile)" />
+            <path class="flare-sparkle" d="M9 -9L2 0L9 9L0 2L-9 9L-2 0L-9 -9L0 -2Z" />
+            <path class="flare-streak" d="M0 -16L1.5 -1.5L44 0L1.5 1.5L0 16L-1.5 1.5L-44 0L-1.5 -1.5Z" />
+            <path class="flare-streak-hot" d="M0 -9L1 -1L30 0L1 1L0 9L-1 1L-30 0L-1 -1Z" />
+            <path class="flare-core" d="M0 -8.485L8.485 0L0 8.485L-8.485 0Z" />
+            <path class="flare-core-hot" d="M0 -4L4 0L0 4L-4 0Z" />
+          </g>
         </svg>
       </div>
     </div>
@@ -534,6 +574,91 @@ async function toggleSide() {
         left: 93%;
       }
     }
+
+    svg {
+      overflow: visible;
+    }
+
+    stop {
+      stop-color: var(--color-accent);
+
+      &.flare-glow-hot {
+        stop-color: white;
+      }
+    }
+
+    .constellation-flare {
+      color: var(--color-accent);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+
+      .flare-streak,
+      .flare-sparkle,
+      .flare-core {
+        fill: currentColor;
+      }
+
+      .flare-streak {
+        fill-opacity: 0.55;
+      }
+
+      .flare-sparkle {
+        fill-opacity: 0.35;
+      }
+
+      .flare-streak-hot,
+      .flare-core-hot {
+        fill: white;
+        fill-opacity: 0.9;
+      }
+    }
+
+    @for $i from 1 through 5 {
+      a:nth-child(#{$i}):hover ~ svg [data-flare='#{$i}'],
+      a:nth-child(#{$i}):focus-visible ~ svg [data-flare='#{$i}'] {
+        opacity: 1;
+        transition: none;
+        animation: constellation-flicker 0.35s linear;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .constellation-flare {
+        animation: none !important;
+      }
+    }
+  }
+}
+
+@keyframes constellation-flicker {
+  0% {
+    opacity: 0;
+  }
+
+  8%,
+  14% {
+    opacity: 1;
+  }
+
+  15%,
+  22% {
+    opacity: 0.25;
+  }
+
+  23%,
+  34% {
+    opacity: 1;
+  }
+
+  35%,
+  42% {
+    opacity: 0.55;
+  }
+
+  43%,
+  100% {
+    opacity: 1;
   }
 }
 

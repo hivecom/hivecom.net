@@ -46,8 +46,8 @@ onMounted(async () => {
     startProbe()
 
     // Wait for two animation frames so the first WebGL frame has actually
-    // been painted before we signal readiness. Without this the splash can
-    // fade out a tick before the globe shows up.
+    // been painted before we signal readiness. Without this the planet ghost
+    // can fade out a tick before the globe shows up.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         isGlobeVisible.value = true
@@ -86,7 +86,9 @@ onBeforeUnmount(() => {
   pointer-events: auto;
   z-index: 2;
   opacity: 0;
-  transition: opacity var(--transition-slow);
+  // Long fade so the planet resolves out of the blurred ghost behind it
+  // instead of popping in (--transition-slow is only 0.15s).
+  transition: opacity 1400ms ease;
 }
 
 .hero-globe.is-visible {

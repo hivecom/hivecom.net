@@ -32,7 +32,7 @@ watch(activeTab, () => {
        place. The backdrop stays put underneath, so there's no bare frame. -->
   <Transition name="home-swap" mode="out-in">
     <HomeDashboard v-if="showDashboard" />
-    <HomeMarketing v-else :skip-splash="showDashboard" />
+    <HomeMarketing v-else />
   </Transition>
 
   <div v-if="user" class="home-swap-tabs">

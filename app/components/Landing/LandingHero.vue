@@ -15,14 +15,6 @@ interface CommunityStats {
   forumPosts: number
 }
 
-// When mounted from the dashboard peek, the page already animates in, so we skip
-// the splash and let the globe fade up on its own.
-const props = withDefaults(defineProps<{
-  skipSplash?: boolean
-}>(), {
-  skipSplash: false,
-})
-
 const loading = ref(true)
 const errorMessage = ref('')
 
@@ -70,33 +62,32 @@ const LandingHeroGlobe = defineAsyncComponent(() => import('@/components/Landing
 
 const splashMessage = ref(constants.SPLASH_MESSAGE)
 
-// Splash fades out when the globe signals it has rendered its first frame.
-// Fallback timeout covers the case where the globe fails to load entirely or
-// takes pathologically long, so users are never stuck looking at a placeholder.
-const globeReady = ref(props.skipSplash)
-let splashFallbackTimer: ReturnType<typeof setTimeout> | null = null
+// Tracks the globe's actual first frame. Drives the planet ghost that holds
+// the planet's spot until the real globe resolves out of it. Fallback timeout
+// covers the case where the globe never readies (load failure, WebGL
+// unavailable) so users aren't left staring at the ghost.
+const globeVisible = ref(false)
+let ghostFallbackTimer: ReturnType<typeof setTimeout> | null = null
 
 function handleGlobeReady() {
-  globeReady.value = true
-  if (splashFallbackTimer != null) {
-    clearTimeout(splashFallbackTimer)
-    splashFallbackTimer = null
+  globeVisible.value = true
+  if (ghostFallbackTimer != null) {
+    clearTimeout(ghostFallbackTimer)
+    ghostFallbackTimer = null
   }
 }
 
 onMounted(() => {
-  if (props.skipSplash)
-    return
-  splashFallbackTimer = setTimeout(() => {
-    globeReady.value = true
-    splashFallbackTimer = null
+  ghostFallbackTimer = setTimeout(() => {
+    globeVisible.value = true
+    ghostFallbackTimer = null
   }, 8000)
 })
 
 onBeforeUnmount(() => {
-  if (splashFallbackTimer != null) {
-    clearTimeout(splashFallbackTimer)
-    splashFallbackTimer = null
+  if (ghostFallbackTimer != null) {
+    clearTimeout(ghostFallbackTimer)
+    ghostFallbackTimer = null
   }
 })
 
@@ -128,8 +119,9 @@ onMounted(() => {
 <template>
   <section class="hero-overlay">
     <div class="hero-overlay__body">
-      <div class="hero-overlay__splash-base" :class="{ 'is-faded': globeReady }" aria-hidden="true" />
-      <div class="hero-overlay__splash" :class="{ 'is-faded': globeReady }" aria-hidden="true" />
+      <!-- Stand-in where the planet will render. Sits under the globe canvas
+           so the planet fades up through it, then the ghost dissolves. -->
+      <div class="hero-overlay__planet-ghost" :class="{ 'is-faded': globeVisible }" aria-hidden="true" />
       <ClientOnly>
         <LandingHeroGlobe @ready="handleGlobeReady" />
       </ClientOnly>
@@ -150,18 +142,6 @@ onMounted(() => {
 
 <style scoped lang="scss">
 :root.light {
-  .hero-overlay__splash-base {
-    background-image: url('/landing/splash-light.jpg');
-  }
-
-  .hero-overlay__splash {
-    background-image: url('/landing/splash-light.jpg');
-
-    &::after {
-      background-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
-    }
-  }
-
   .hero-overlay__logo {
     filter: invert(1);
   }
@@ -177,36 +157,20 @@ onMounted(() => {
   align-items: stretch;
 }
 
-.hero-overlay__splash-base {
+// Stand-in disc matching the planet's on-screen size and position. The layer
+// fills the hero exactly like the globe canvas and clips the same way, and the
+// disc is sized off the layer height because that's what drives the planet's
+// silhouette (globe.gl centers the globe; at altitude 1.9 with a 50deg vertical
+// fov it spans ~79% of the container height, overflowing narrow viewports).
+.hero-overlay__planet-ghost {
   position: absolute;
   inset: 0;
-  z-index: 3;
-  background-image: url('/landing/splash-dark.jpg');
-  background-size: cover;
-  background-position: center;
+  z-index: 1;
+  overflow: hidden;
   opacity: 1;
-  transition: opacity 3000ms ease;
+  transition: opacity 1800ms ease;
   will-change: opacity;
   pointer-events: none;
-
-  &.is-faded {
-    opacity: 0;
-  }
-}
-
-.hero-overlay__splash {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  background-image: url('/landing/splash-dark.jpg');
-  background-size: cover;
-  background-position: center;
-  filter: blur(128px);
-  opacity: 1;
-  transition: opacity 3000ms ease;
-  will-change: opacity, transform, filter;
-  pointer-events: none;
-  isolation: isolate;
 
   &.is-faded {
     opacity: 0;
@@ -215,16 +179,23 @@ onMounted(() => {
   &::after {
     content: '';
     position: absolute;
-    inset: 0;
-    background-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
-    mix-blend-mode: color;
-    pointer-events: none;
+    top: 50%;
+    left: 50%;
+    height: 79%;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    // Shaded like the real planet: globe.gl's default directional light comes
+    // from above, so the top rim catches light and the body falls into shadow.
+    // Base tracks the globe material (--color-bg) nudged toward the dot color.
+    background:
+      radial-gradient(circle at 50% -35%, color-mix(in srgb, var(--color-border) 65%, transparent) 35%, transparent 70%),
+      color-mix(in srgb, var(--color-bg) 88%, var(--color-border));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-overlay__splash-base,
-  .hero-overlay__splash {
+  .hero-overlay__planet-ghost {
     transition: none;
   }
 }
