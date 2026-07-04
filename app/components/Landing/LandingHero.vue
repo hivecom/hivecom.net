@@ -189,7 +189,11 @@ onMounted(() => {
     // from above, so the top rim catches light and the body falls into shadow.
     // Base tracks the globe material (--color-bg) nudged toward the dot color.
     background:
-      radial-gradient(circle at 50% -35%, color-mix(in srgb, var(--color-border) 65%, transparent) 35%, transparent 70%),
+      radial-gradient(
+        circle at 50% -35%,
+        color-mix(in srgb, var(--color-border) 65%, transparent) 35%,
+        transparent 70%
+      ),
       color-mix(in srgb, var(--color-bg) 88%, var(--color-border));
   }
 }

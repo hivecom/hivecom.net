@@ -10,7 +10,7 @@ const navTiles = [
   { name: 'Chat', path: '/chat', icon: 'ph:chat-circle' },
   { name: 'Events', path: '/events', icon: 'ph:calendar-dots' },
   { name: 'Forum', path: '/forum', icon: 'ph:chats' },
-  { name: 'Servers', path: '/gameservers', icon: 'ph:hard-drives' },
+  { name: 'Servers', path: '/servers/gameservers', icon: 'ph:hard-drives' },
   { name: 'Votes', path: '/votes', icon: 'ph:gavel' },
   { name: 'My Profile', path: '/profile', icon: 'ph:user' },
 ]
