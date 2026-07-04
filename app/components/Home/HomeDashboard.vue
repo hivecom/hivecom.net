@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { Card, Flex, Grid } from '@dolanske/vui'
 import DashboardNavTile from '@/components/Admin/Dashboard/DashboardNavTile.vue'
+import HomeDashboardEvents from '@/components/Home/HomeDashboardEvents.vue'
+import HomeDashboardForum from '@/components/Home/HomeDashboardForum.vue'
+import HomeDashboardGames from '@/components/Home/HomeDashboardGames.vue'
+import HomeDashboardGameservers from '@/components/Home/HomeDashboardGameservers.vue'
+import HomeDashboardVotes from '@/components/Home/HomeDashboardVotes.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 
@@ -42,9 +47,7 @@ const navTiles = [
               <h2 class="dashboard__card-title">
                 Events
               </h2>
-              <p class="dashboard__placeholder">
-                Your upcoming and relevant events land here.
-              </p>
+              <HomeDashboardEvents />
             </Card>
           </GlowCard>
 
@@ -53,9 +56,7 @@ const navTiles = [
               <h2 class="dashboard__card-title">
                 Forum
               </h2>
-              <p class="dashboard__placeholder">
-                Latest activity from your posts and subscriptions.
-              </p>
+              <HomeDashboardForum />
             </Card>
           </GlowCard>
 
@@ -64,9 +65,7 @@ const navTiles = [
               <h2 class="dashboard__card-title">
                 Games
               </h2>
-              <p class="dashboard__placeholder">
-                Games you play and who's playing right now.
-              </p>
+              <HomeDashboardGames />
             </Card>
           </GlowCard>
         </Grid>
@@ -80,9 +79,7 @@ const navTiles = [
               <h2 class="dashboard__card-title">
                 Gameservers
               </h2>
-              <p class="dashboard__placeholder">
-                Server activity and what's live right now.
-              </p>
+              <HomeDashboardGameservers />
             </Card>
           </GlowCard>
 
@@ -91,9 +88,7 @@ const navTiles = [
               <h2 class="dashboard__card-title">
                 Votes
               </h2>
-              <p class="dashboard__placeholder">
-                Anything that needs deciding, and your latest results.
-              </p>
+              <HomeDashboardVotes />
             </Card>
           </GlowCard>
         </Grid>
@@ -149,10 +144,6 @@ const navTiles = [
   color: var(--color-text-lighter);
   letter-spacing: 0.04em;
   margin-bottom: var(--space-m);
-}
-
-.dashboard__placeholder {
-  color: var(--color-text-light);
 }
 
 @media screen and (max-width: $breakpoint-m) {
