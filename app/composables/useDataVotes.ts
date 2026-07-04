@@ -27,6 +27,9 @@ function keyOwnPrivate(userId: string): string {
 function keyVotedPrivate(userId: string): string {
   return `referendum:voted-private:${userId}`
 }
+function keyVotedIds(userId: string): string {
+  return `referendum:voted-ids:${userId}`
+}
 function keyVoteCounts(ids: number[]): string {
   return `referendum:vote-counts:${[...ids].sort((a, b) => a - b).join(',')}`
 }
@@ -214,6 +217,42 @@ export function useDataVotes() {
     const cachedVoted = cache.get<Tables<'referendums'>[]>(keyVotedPrivate(_uid))
     if (cachedVoted !== null)
       votedPrivateReferendums.value = cachedVoted
+    const cachedVotedIds = cache.get<number[]>(keyVotedIds(_uid))
+    if (cachedVotedIds !== null)
+      userVotedReferendumIds.value = cachedVotedIds
+  }
+
+  /**
+   * Fetch just the ids of every referendum the current user has voted in,
+   * public and private. Cheaper than fetchVotedPrivate when a consumer only
+   * needs hasVoted, e.g. an unvoted count on the home dashboard.
+   */
+  async function fetchUserVotedIds(force = false): Promise<void> {
+    const id = userId.value
+    if (id == null || id === '')
+      return
+
+    if (!force) {
+      const cached = cache.get<number[]>(keyVotedIds(id))
+      if (cached !== null) {
+        userVotedReferendumIds.value = cached
+        return
+      }
+    }
+
+    const { data: votes, error: votesError } = await supabase
+      .from('referendum_votes')
+      .select('referendum_id')
+      .eq('user_id', id)
+
+    if (votesError) {
+      console.error('Error fetching voted referendum ids:', votesError)
+      return
+    }
+
+    const ids = (votes ?? []).map(v => v.referendum_id).filter((rid): rid is number => rid != null)
+    userVotedReferendumIds.value = ids
+    cache.set(keyVotedIds(id), ids, TTL_PRIVATE)
   }
 
   async function fetchOwnPrivate(force = false): Promise<void> {
@@ -270,9 +309,14 @@ export function useDataVotes() {
       const cached = cache.get<Tables<'referendums'>[]>(keyVotedPrivate(id))
       if (cached !== null) {
         votedPrivateReferendums.value = cached
-        // Rebuild voted IDs from cached referendums.
-        userVotedReferendumIds.value = cached.map(r => r.id)
-        return
+        // Voted ids cover public referendums too, so restore them from their
+        // own cache entry instead of rebuilding from the private-only rows.
+        // Missing ids cache falls through to a fresh fetch of both.
+        const cachedIds = cache.get<number[]>(keyVotedIds(id))
+        if (cachedIds !== null) {
+          userVotedReferendumIds.value = cachedIds
+          return
+        }
       }
     }
 
@@ -288,6 +332,7 @@ export function useDataVotes() {
 
       const ids = (votes ?? []).map(v => v.referendum_id).filter((rid): rid is number => rid != null)
       userVotedReferendumIds.value = ids
+      cache.set(keyVotedIds(id), ids, TTL_PRIVATE)
 
       if (ids.length === 0) {
         votedPrivateReferendums.value = []
@@ -425,8 +470,13 @@ export function useDataVotes() {
     // all vote count entries - they're cheap to refetch.
     cache.invalidateByPattern('referendum:vote-counts:')
     // Optimistically mark as voted so hasVoted is consistent until next fetch.
-    if (!userVotedReferendumIds.value.includes(referendumId))
+    if (!userVotedReferendumIds.value.includes(referendumId)) {
       userVotedReferendumIds.value = [...userVotedReferendumIds.value, referendumId]
+      // Persist so other consumers reading the ids cache within TTL see it too.
+      const id = userId.value
+      if (id != null && id !== '')
+        cache.set(keyVotedIds(id), userVotedReferendumIds.value, TTL_PRIVATE)
+    }
   }
 
   return {
@@ -452,6 +502,7 @@ export function useDataVotes() {
     loadingVoted,
     fetchOwnPrivate,
     fetchVotedPrivate,
+    fetchUserVotedIds,
 
     // Vote counts
     referendumVoteCounts,

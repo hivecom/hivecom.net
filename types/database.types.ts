@@ -1281,6 +1281,7 @@ export type Database = {
         Row: {
           current_app_id: number | null
           current_app_name: string | null
+          current_app_started_at: string | null
           details: Json | null
           fetched_at: string | null
           id: string
@@ -1289,6 +1290,7 @@ export type Database = {
           last_app_name: string | null
           last_online_at: string | null
           profile_id: string
+          recent_apps: Json
           status: Database["public"]["Enums"]["presence_steam_status"] | null
           steam_name: string | null
           updated_at: string
@@ -1297,6 +1299,7 @@ export type Database = {
         Insert: {
           current_app_id?: number | null
           current_app_name?: string | null
+          current_app_started_at?: string | null
           details?: Json | null
           fetched_at?: string | null
           id?: string
@@ -1305,6 +1308,7 @@ export type Database = {
           last_app_name?: string | null
           last_online_at?: string | null
           profile_id: string
+          recent_apps?: Json
           status?: Database["public"]["Enums"]["presence_steam_status"] | null
           steam_name?: string | null
           updated_at?: string
@@ -1313,6 +1317,7 @@ export type Database = {
         Update: {
           current_app_id?: number | null
           current_app_name?: string | null
+          current_app_started_at?: string | null
           details?: Json | null
           fetched_at?: string | null
           id?: string
@@ -1321,6 +1326,7 @@ export type Database = {
           last_app_name?: string | null
           last_online_at?: string | null
           profile_id?: string
+          recent_apps?: Json
           status?: Database["public"]["Enums"]["presence_steam_status"] | null
           steam_name?: string | null
           updated_at?: string
