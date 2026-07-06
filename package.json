@@ -48,7 +48,7 @@
     "@tiptap/extension-youtube": "^3.27.1",
     "@tiptap/markdown": "^3.27.1",
     "@tiptap/pm": "^3.27.1",
-    "@tiptap/starter-kit": "^3.27.1",
+    "@tiptap/starter-kit": "^3.27.2",
     "@tiptap/vue-3": "^3.27.1",
     "@unhead/vue": "^3.1.6",
     "@vueuse/nuxt": "^14.3.0",
