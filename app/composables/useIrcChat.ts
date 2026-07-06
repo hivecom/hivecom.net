@@ -517,6 +517,36 @@ const CACHE_PAGE_SIZE = 50
 // hold a few screenfuls above and below the fold so scroll-back has buffer to
 // coast on while the next (possibly server-fetched) page loads.
 const MAX_LIVE_MESSAGES = 300
+// The scroll loaders in MessageLog only stay out of each other's way when the
+// rendered log is tall enough that their trigger zones (1 screen at the top for
+// older, 2 at the bottom for newer) can't overlap. MAX_LIVE_MESSAGES counts raw
+// messages, but collapsed backlog join/part runs and hidden TAGMSGs render far
+// fewer pixels than that count suggests - trimming a short log is what makes
+// the two loaders oscillate (prepend-and-trim vs append-and-trim) and flash
+// blank space. So trims are gated on measured height: while the rendered log is
+// under MIN_TRIM_SCREENS viewports, the window may exceed the cap instead of
+// sliding. Invisible messages cost no DOM, so the node count stays bounded by
+// height either way.
+const MIN_TRIM_SCREENS = 6
+// Scroll element of the currently rendered MessageLog, registered by the
+// component so the trim gate can measure real rendered height. Null (chat not
+// rendered) permits trimming, matching the old unconditional behavior.
+let _liveLogEl: HTMLElement | null = null
+
+function setLiveLogEl(el: HTMLElement | null) {
+  _liveLogEl = el
+}
+
+function releaseLiveLogEl(el: HTMLElement | null) {
+  if (_liveLogEl === el)
+    _liveLogEl = null
+}
+
+function windowTrimAllowed(): boolean {
+  if (typeof window === 'undefined' || !_liveLogEl?.isConnected)
+    return true
+  return _liveLogEl.scrollHeight >= (window.innerHeight || 800) * MIN_TRIM_SCREENS
+}
 // Per-buffer IDB message cap. Updated reactively from user settings via setCacheCap().
 let _cacheCap = 10000
 
@@ -1870,9 +1900,11 @@ async function fetchOlderHistory(target: string) {
         }
         // Keep the live DOM node count bounded: trim newest messages from the
         // tail. The user is scrolled to the top (trigger condition), so content
-        // below the viewport disappears silently.
-        if (buf.messages.length > MAX_LIVE_MESSAGES) {
-          buf.messages.splice(MAX_LIVE_MESSAGES)
+        // below the viewport disappears silently. At most one page per load -
+        // skipped trims (short rendered log) let excess accumulate, and chopping
+        // it all at once later could remove content near the viewport.
+        if (buf.messages.length > MAX_LIVE_MESSAGES && windowTrimAllowed()) {
+          buf.messages.splice(Math.max(MAX_LIVE_MESSAGES, buf.messages.length - CACHE_PAGE_SIZE))
           buf.tailTrimmed = true
         }
       }
@@ -2584,9 +2616,11 @@ function handleMessage(raw: string) {
                   drainPendingReactions(batchBuf, staged.msgid)
               }
             }
-            // Trim the live buffer if loading older pages pushed it over the cap.
-            if (batchBuf.messages.length > MAX_LIVE_MESSAGES) {
-              batchBuf.messages.splice(MAX_LIVE_MESSAGES)
+            // Trim the live buffer if loading older pages pushed it over the
+            // cap. Gated on rendered height and capped to one page per batch,
+            // same as the cache-first path.
+            if (batchBuf.messages.length > MAX_LIVE_MESSAGES && windowTrimAllowed()) {
+              batchBuf.messages.splice(Math.max(MAX_LIVE_MESSAGES, batchBuf.messages.length - CACHE_PAGE_SIZE))
               batchBuf.tailTrimmed = true
             }
             // Write CHATHISTORY-sourced pages to IDB so cache-first scroll-back
@@ -4503,9 +4537,10 @@ async function fetchNewerFromCache(target: string) {
         .filter(m => !messageExists(buf.messages, m))
       if (newMsgs.length) {
         buf.messages.push(...newMsgs)
-        // Slide window: trim from the front so DOM count stays bounded.
-        if (buf.messages.length > MAX_LIVE_MESSAGES) {
-          buf.messages.splice(0, buf.messages.length - MAX_LIVE_MESSAGES)
+        // Slide window: trim from the front so DOM count stays bounded. Gated
+        // on rendered height and capped to one page, same as the tail trims.
+        if (buf.messages.length > MAX_LIVE_MESSAGES && windowTrimAllowed()) {
+          buf.messages.splice(0, Math.min(buf.messages.length - MAX_LIVE_MESSAGES, CACHE_PAGE_SIZE))
           // Oldest messages were just removed - cache can serve them again on
           // scroll-up. The live front is no longer the absolute oldest line, so
           // clear historyExhausted too: otherwise "beginning of history" sticks
@@ -4775,6 +4810,8 @@ export function useIrcChat() {
     fetchOlderHistory,
     seekToPresent,
     fetchNewerFromCache,
+    setLiveLogEl,
+    releaseLiveLogEl,
     // metadata
     setChannelMetadata,
     deleteChannelMetadata,

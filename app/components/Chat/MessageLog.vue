@@ -30,7 +30,7 @@ import { fullDate } from '@/lib/utils/date'
 
 const props = defineProps<{ compact?: boolean }>()
 
-const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, seekToPresent, fetchNewerFromCache, toggleReaction, canRedact, redactMessage, chatHistorySupported, isChatVisible, userMetaStore, relaySeparator, markBufferRead } = useIrcChat()
+const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel, fetchOlderHistory, seekToPresent, fetchNewerFromCache, setLiveLogEl, releaseLiveLogEl, toggleReaction, canRedact, redactMessage, chatHistorySupported, isChatVisible, userMetaStore, relaySeparator, markBufferRead } = useIrcChat()
 
 function ircMeta(nickLower: string | null | undefined) {
   if (!nickLower)
@@ -1248,6 +1248,7 @@ function setupContentObserver() {
 onMounted(() => {
   wantBottom = true
   isAtBottom.value = true
+  setLiveLogEl(logEl.value)
   setupSentinelObserver()
   setupContentObserver()
   nextTick(scrollToBottom)
@@ -1255,10 +1256,12 @@ onMounted(() => {
 onActivated(() => {
   wantBottom = true
   isAtBottom.value = true
+  setLiveLogEl(logEl.value)
   nextTick(scrollToBottom)
 })
 
 onBeforeUnmount(() => {
+  releaseLiveLogEl(logEl.value)
   sentinelObserver?.disconnect()
   contentObserver?.disconnect()
   if (_phaseRaf !== null)
