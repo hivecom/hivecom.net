@@ -805,6 +805,71 @@ export async function getGameAssetUrl(
 }
 
 /**
+ * Moves all assets of a game to a new shorthand folder.
+ * Used when a game's shorthand changes so existing assets don't get orphaned.
+ */
+export async function moveGameAssets(
+  supabaseClient: SupabaseClient<Database>,
+  fromShorthand: string,
+  toShorthand: string,
+): Promise<{ success: boolean, error?: string }> {
+  try {
+    if (fromShorthand === toShorthand)
+      return { success: true }
+
+    const bucket = supabaseClient.storage.from('hivecom-content-static')
+    const { data, error: listError } = await bucket.list(`games/${fromShorthand}`)
+
+    if (listError) {
+      if (isStorageNotFoundError(listError))
+        return { success: true }
+
+      console.error('Error listing game assets:', listError)
+      return { success: false, error: listError.message }
+    }
+
+    const files = data ?? []
+    if (files.length === 0)
+      return { success: true }
+
+    // Assets can already exist at the destination (uploads apply immediately,
+    // before the rename is saved). Those are newer - keep them and drop the
+    // stale copy instead of moving over it.
+    const { data: destData } = await bucket.list(`games/${toShorthand}`)
+    const destNames = new Set((destData ?? []).map(f => f.name))
+
+    for (const file of files) {
+      const sourcePath = `games/${fromShorthand}/${file.name}`
+
+      if (destNames.has(file.name)) {
+        const { error } = await bucket.remove([sourcePath])
+        if (error) {
+          console.error('Error removing stale game asset:', error)
+          return { success: false, error: error.message }
+        }
+        continue
+      }
+
+      const { error } = await bucket.move(sourcePath, `games/${toShorthand}/${file.name}`)
+
+      if (error) {
+        console.error('Error moving game asset:', error)
+        return { success: false, error: error.message }
+      }
+    }
+
+    return { success: true }
+  }
+  catch (error) {
+    console.error('Error moving game assets:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    }
+  }
+}
+
+/**
  * Deletes a game asset from storage
  * Tries multiple common extensions to find and delete the asset, prioritizing WebP
  */

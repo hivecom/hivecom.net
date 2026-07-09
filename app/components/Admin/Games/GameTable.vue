@@ -20,6 +20,7 @@ import { invalidateGamesCache } from '@/composables/useDataGames'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useUserId } from '@/composables/useUserId'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { moveGameAssets } from '@/lib/storage'
 import { getRouteQueryString } from '@/lib/utils/common'
 import GameDetails from './GameDetails.vue'
 import GameFilters from './GameFilters.vue'
@@ -46,6 +47,7 @@ const router = useRouter()
 const userId = useUserId()
 const isBelowMedium = useBreakpoint('<m')
 const { hasPermission } = useAdminPermissions()
+const { clearGameAssets } = useDataGameAssets()
 
 const canCreate = computed(() => hasPermission('games.create'))
 const canManageResource = computed(() =>
@@ -224,6 +226,8 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
     }
 
     if (isEditMode.value && selectedGame.value) {
+      const previousShorthand = selectedGame.value.shorthand
+
       const { error } = await supabase
         .from('games')
         .update({
@@ -234,6 +238,15 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
         .eq('id', selectedGame.value.id)
       if (error)
         throw error
+
+      // Shorthand changed - move existing assets to the new folder so they
+      // don't get orphaned under the old shorthand.
+      if (previousShorthand && normalizedData.shorthand && normalizedData.shorthand !== previousShorthand) {
+        const moveResult = await moveGameAssets(supabase, previousShorthand, normalizedData.shorthand)
+        if (!moveResult.success)
+          errorMessage.value = `Game saved, but moving its assets failed: ${moveResult.error ?? 'unknown error'}`
+        clearGameAssets(selectedGame.value.id)
+      }
     }
     else {
       const { error } = await supabase

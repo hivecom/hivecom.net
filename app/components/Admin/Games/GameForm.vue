@@ -139,11 +139,51 @@ function onNameInput() {
     gameForm.value.shorthand = suggestShorthand(gameForm.value.name)
 }
 
+// Shorthand availability - assets live under games/{shorthand}/ in storage,
+// so a duplicate shorthand would clobber another game's assets. Compared
+// normalized (lowercase, no whitespace), same as the save path.
+const WHITESPACE_RE = /\s+/g
+const shorthandTaken = ref(false)
+let shorthandCheckTimer: ReturnType<typeof setTimeout> | null = null
+
+function normalizeShorthand(value: string) {
+  return value.toLowerCase().replace(WHITESPACE_RE, '')
+}
+
+async function checkShorthandTaken(normalized: string) {
+  const { data, error } = await supabase
+    .from('games')
+    .select('id')
+    .eq('shorthand', normalized)
+    .limit(1)
+
+  // Ignore stale responses from an earlier keystroke
+  if (normalizeShorthand(gameForm.value.shorthand) !== normalized)
+    return
+
+  shorthandTaken.value = error === null && (data?.length ?? 0) > 0
+}
+
+watch(() => gameForm.value.shorthand, (value) => {
+  if (shorthandCheckTimer !== null)
+    clearTimeout(shorthandCheckTimer)
+  shorthandTaken.value = false
+
+  const normalized = normalizeShorthand(value)
+  if (!normalized || normalized === props.game?.shorthand)
+    return
+
+  shorthandCheckTimer = setTimeout(() => {
+    void checkShorthandTaken(normalized)
+  }, 300)
+})
+
 // Form validation
 const HEX_COLOR_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
 
 const validation = computed(() => ({
   name: !!gameForm.value.name.trim(),
+  shorthand: !shorthandTaken.value,
   color: !gameForm.value.color || HEX_COLOR_RE.test(gameForm.value.color),
 }))
 
@@ -296,36 +336,37 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
     background_url: payload.background_url,
   }
 
-  // name - only fill when empty
-  if (!gameForm.value.name.trim())
+  // name
+  if (overwrite || !gameForm.value.name.trim())
     gameForm.value.name = payload.name
 
-  // shorthand - suggest only if not manually set and name was just filled
-  if (!shorthandManuallySet.value && !gameForm.value.shorthand.trim())
+  // shorthand - re-suggest alongside the name unless the user set it manually
+  if (!shorthandManuallySet.value && (overwrite || !gameForm.value.shorthand.trim()))
     gameForm.value.shorthand = payload.acronym?.toLowerCase() ?? suggestShorthand(payload.name)
 
   // markdown body - summary + storyline
-  if (overwrite || !gameForm.value.markdown.trim()) {
-    const parts = [payload.summary, payload.storyline].filter(Boolean)
-    gameForm.value.markdown = parts.join('\n\n')
-  }
+  const markdownParts = [payload.summary, payload.storyline].filter(Boolean)
+  if (markdownParts.length > 0 && (overwrite || !gameForm.value.markdown.trim()))
+    gameForm.value.markdown = markdownParts.join('\n\n')
 
   // release_date
-  if (overwrite || !gameForm.value.release_date.trim())
-    gameForm.value.release_date = payload.release_date ?? ''
+  if (payload.release_date && (overwrite || !gameForm.value.release_date.trim()))
+    gameForm.value.release_date = payload.release_date
 
   // website
-  if (overwrite || !gameForm.value.website.trim())
-    gameForm.value.website = payload.website ?? ''
+  if (payload.website && (overwrite || !gameForm.value.website.trim()))
+    gameForm.value.website = payload.website
 
   // steam_id
   if (payload.steam_id && (overwrite || !gameForm.value.steam_id.trim()))
     gameForm.value.steam_id = payload.steam_id
 
-  // genre_tags - always merge (dedupe case-insensitively); overwrite replaces entirely
+  // genre_tags - merge (dedupe case-insensitively); overwrite replaces, but
+  // an empty incoming list never wipes existing tags
   const incomingTags = payload.genre_tags.map(t => sanitizeTag(t))
   if (overwrite) {
-    gameForm.value.genre_tags = incomingTags
+    if (incomingTags.length > 0)
+      gameForm.value.genre_tags = incomingTags
   }
   else {
     const existing = new Set(gameForm.value.genre_tags.map(t => t.toLowerCase()))
@@ -340,7 +381,8 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
   // multiplayer_modes - same merge logic
   const incomingModes = multiplayerModeOptions.filter(o => payload.multiplayer_modes.includes(o.value))
   if (overwrite) {
-    gameForm.value.multiplayer_modes = incomingModes
+    if (incomingModes.length > 0)
+      gameForm.value.multiplayer_modes = incomingModes
   }
   else {
     const existing = new Set((gameForm.value.multiplayer_modes ?? []).map(o => o.value))
@@ -352,11 +394,11 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
     gameForm.value.multiplayer_modes = merged
   }
 
-  // Import cover and background if not already set
-  if (payload.cover_url && !assetsUrl.value.cover && gameForm.value.shorthand)
+  // Import cover and background - overwrite replaces existing assets
+  if (payload.cover_url && (overwrite || !assetsUrl.value.cover) && gameForm.value.shorthand)
     importRemoteAsset('cover', payload.cover_url)
 
-  if (payload.background_url && !assetsUrl.value.background && gameForm.value.shorthand)
+  if (payload.background_url && (overwrite || !assetsUrl.value.background) && gameForm.value.shorthand)
     importRemoteAsset('background', payload.background_url)
 }
 
@@ -563,6 +605,13 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
   if (!gameForm.value.shorthand)
     return
 
+  // Uploads apply immediately - writing under a taken shorthand would
+  // overwrite another game's assets.
+  if (shorthandTaken.value) {
+    assetsError.value[assetType] = 'Shorthand is already used by another game'
+    return
+  }
+
   try {
     assetsUploading.value[assetType] = true
     assetsError.value[assetType] = null
@@ -594,6 +643,13 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
 async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
   if (!gameForm.value.shorthand)
     return
+
+  // Same as upload - removing under a taken shorthand would delete another
+  // game's assets.
+  if (shorthandTaken.value) {
+    assetsError.value[assetType] = 'Shorthand is already used by another game'
+    return
+  }
 
   try {
     const supabase = useSupabaseClient()
@@ -671,6 +727,8 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
           name="shorthand"
           label="Shorthand"
           placeholder="Enter game shorthand (optional)"
+          :valid="validation.shorthand"
+          error="This shorthand is already used by another game"
           @input="onShorthandInput"
         />
 
