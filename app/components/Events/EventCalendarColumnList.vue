@@ -43,7 +43,7 @@ const sortedData = computed<FormattedEvents>(() => {
 
 <template>
   <ul class="calendar-list">
-    <li v-for="event in sortedData" :key="event.id">
+    <li v-for="event in sortedData" :key="`${event.id}-${event.date}`">
       <NuxtLink
         :to="`/events/${event.id}`"
         class="calendar-list__list-item"
