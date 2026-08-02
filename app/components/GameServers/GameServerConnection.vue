@@ -2,14 +2,16 @@
 import type { Tables } from '@/types/database.overrides'
 import { Card, CopyClipboard, Flex } from '@dolanske/vui'
 import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
+import { buildConnectContext } from '@/composables/useGameConnect'
 
 interface Props {
   gameserver: Tables<'network_gameservers'>
-  gameShorthand?: string | null
+  game?: Tables<'games'> | null
 }
 
-const { gameserver, gameShorthand } = defineProps<Props>()
+const { gameserver, game } = defineProps<Props>()
 const addresses = computed(() => gameserver.addresses as string[] | null)
+const connect = computed(() => buildConnectContext(game, gameserver))
 </script>
 
 <template>
@@ -60,7 +62,7 @@ const addresses = computed(() => gameserver.addresses as string[] | null)
             <GameServerConnectButton
               :addresses="addresses"
               :port="gameserver.port"
-              :game-shorthand="gameShorthand"
+              :connect="connect"
               variant="success"
               size="l"
             />

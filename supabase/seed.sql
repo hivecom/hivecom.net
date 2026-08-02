@@ -909,12 +909,16 @@ INSERT INTO public.network_servers(active, address, created_at, docker_control, 
   VALUES (TRUE, 'host.docker.internal', NOW(), TRUE, FALSE, 54320, TRUE, NOW());
 
 -- Insert test games
-INSERT INTO public.games(created_at, created_by, name, shorthand, steam_id)
+-- CS2 and Garrys Mod cover the steam://connect shape, Cobalt covers the
+-- rungameid shape for games Steam's connect handler does not know. Minecraft
+-- and Generic stay copy-only.
+INSERT INTO public.games(created_at, created_by, name, shorthand, steam_id, connect_uri, connect_command)
 VALUES
-  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Counter-Strike 2', 'cs2', 730),
-  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Garrys Mod', 'gmod', 4000),
-  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Minecraft', 'minecraft', NULL),
-  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Generic Game', 'generic', NULL);
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Counter-Strike 2', 'cs2', 730, 'steam://connect/{address}:{port}', 'connect {address}:{port}'),
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Garrys Mod', 'gmod', 4000, 'steam://connect/{address}:{port}', 'connect {address}:{port}'),
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Minecraft', 'minecraft', NULL, NULL, NULL),
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Generic Game', 'generic', NULL, NULL, NULL),
+  (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Cobalt', 'cobalt', 357340, 'steam://rungameid/{steam_id}//{command}', '+connect {address}:{port}');
 
 -- Insert a test container for our gameserver
 INSERT INTO public.network_containers(created_at, healthy, name, reported_at, running, server, started_at)
@@ -951,6 +955,11 @@ INSERT INTO public.network_gameservers(addresses, created_at, created_by, descri
 -- Insert a test gameserver for Generic Game (no query protocol configured)
 INSERT INTO public.network_gameservers(addresses, created_at, created_by, description, game, name, port, region)
   VALUES (ARRAY['generic.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'A generic community game server with no query protocol', 4, 'Hivecom Generic Game Server', '7777', 'eu');
+
+-- Insert a test gameserver for Cobalt. Its connect command will not resolve
+-- hostnames, so the address is a literal IP - see the game's connect_uri.
+INSERT INTO public.network_gameservers(addresses, created_at, created_by, description, game, name, port, region, query_protocol, query_port)
+  VALUES (ARRAY['127.0.0.1'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Cobalt deathmatch server', 5, 'Hivecom Cobalt Deathmatch', '27051', 'eu', 'source', 27051);
 
 -- Insert a test expense
 INSERT INTO public.funding_expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)

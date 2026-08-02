@@ -5,6 +5,7 @@ import { capitalize } from 'vue'
 import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
+import { buildConnectContext } from '@/composables/useGameConnect'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { metricsMaxPlayers, metricsPlayerCount } from '@/types/metrics'
 
@@ -50,6 +51,7 @@ const state = computed(() => {
 
 const isCompactLayout = useBreakpoint('<s')
 const addresses = computed(() => props.gameserver.addresses as string[] | null)
+const connect = computed(() => buildConnectContext(props.game, props.gameserver))
 
 const { metrics } = useDataMetrics()
 
@@ -119,7 +121,7 @@ const playerCounts = computed(() => {
             v-if="!isCompactLayout"
             :addresses="addresses"
             :port="props.gameserver.port"
-            :game-shorthand="props.game?.shorthand ?? null"
+            :connect="connect"
             variant="gray"
             size="s"
             stop-propagation

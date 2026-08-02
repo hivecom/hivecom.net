@@ -871,6 +871,8 @@ export type Database = {
         Row: {
           automated: boolean
           color: string | null
+          connect_command: string | null
+          connect_uri: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -890,6 +892,8 @@ export type Database = {
         Insert: {
           automated?: boolean
           color?: string | null
+          connect_command?: string | null
+          connect_uri?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -909,6 +913,8 @@ export type Database = {
         Update: {
           automated?: boolean
           color?: string | null
+          connect_command?: string | null
+          connect_uri?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1052,6 +1058,7 @@ export type Database = {
         Row: {
           addresses: string[] | null
           administrator: string | null
+          connect_command: string | null
           container: string | null
           created_at: string
           created_by: string | null
@@ -1073,6 +1080,7 @@ export type Database = {
         Insert: {
           addresses?: string[] | null
           administrator?: string | null
+          connect_command?: string | null
           container?: string | null
           created_at?: string
           created_by?: string | null
@@ -1094,6 +1102,7 @@ export type Database = {
         Update: {
           addresses?: string[] | null
           administrator?: string | null
+          connect_command?: string | null
           container?: string | null
           created_at?: string
           created_by?: string | null

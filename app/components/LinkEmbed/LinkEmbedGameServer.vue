@@ -115,7 +115,7 @@ const playerCount = computed((): number | null => {
           v-if="hasAddresses"
           :addresses="data.addresses"
           :port="data.port"
-          :game-shorthand="data.gameShorthand"
+          :connect="data.connect"
           variant="gray"
           size="s"
           stop-propagation

@@ -80,6 +80,8 @@ const gameForm = ref({
   shorthand: '',
   steam_id: '',
   website: '',
+  connect_uri: '',
+  connect_command: '',
   description: '',
   markdown: '',
   genre_tags: [] as string[],
@@ -181,10 +183,15 @@ watch(() => gameForm.value.shorthand, (value) => {
 // Form validation
 const HEX_COLOR_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
 
+// Mirrors games_connect_uri_scheme_check so a bad scheme fails here rather than
+// on insert. The URI ends up in window.location, so the allowlist matters.
+const CONNECT_URI_RE = /^(?:steam|minecraft|ts3server|https):\/\//
+
 const validation = computed(() => ({
   name: !!gameForm.value.name.trim(),
   shorthand: !shorthandTaken.value,
   color: !gameForm.value.color || HEX_COLOR_RE.test(gameForm.value.color),
+  connect_uri: !gameForm.value.connect_uri.trim() || CONNECT_URI_RE.test(gameForm.value.connect_uri.trim()),
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -449,6 +456,8 @@ watch(
         shorthand: newGame.shorthand || '',
         steam_id: newGame.steam_id ? String(newGame.steam_id) : '',
         website: newGame.website || '',
+        connect_uri: newGame.connect_uri ?? '',
+        connect_command: newGame.connect_command ?? '',
         description: newGame.description ?? '',
         markdown: newGame.markdown ?? '',
         genre_tags: newGame.genre_tags ?? [],
@@ -476,6 +485,8 @@ watch(
         shorthand: prefillName ? suggestShorthand(prefillName) : '',
         steam_id: props.prefill?.steam_id != null ? String(props.prefill.steam_id) : '',
         website: '',
+        connect_uri: '',
+        connect_command: '',
         description: '',
         markdown: '',
         genre_tags: [],
@@ -516,6 +527,8 @@ watch(
       shorthand: prefillName ? suggestShorthand(prefillName) : '',
       steam_id: newPrefill?.steam_id != null ? String(newPrefill.steam_id) : '',
       website: '',
+      connect_uri: '',
+      connect_command: '',
       description: '',
       markdown: '',
       genre_tags: [],
@@ -540,6 +553,8 @@ function resetForm() {
     shorthand: '',
     steam_id: '',
     website: '',
+    connect_uri: '',
+    connect_command: '',
     description: '',
     markdown: '',
     genre_tags: [],
@@ -572,6 +587,8 @@ function handleSubmit() {
     shorthand: gameForm.value.shorthand || null,
     steam_id: gameForm.value.steam_id ? Number(gameForm.value.steam_id) : null,
     website: gameForm.value.website?.trim() ? gameForm.value.website.trim() : null,
+    connect_uri: gameForm.value.connect_uri.trim() || null,
+    connect_command: gameForm.value.connect_command.trim() || null,
     description: gameForm.value.description.trim() || null,
     markdown: gameForm.value.markdown.trim() || null,
     genre_tags: gameForm.value.genre_tags.length > 0 ? gameForm.value.genre_tags : null,
@@ -748,6 +765,25 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
           label="Website"
           type="url"
           placeholder="https://example.com (optional)"
+        />
+
+        <Input
+          v-model="gameForm.connect_uri"
+          expand
+          name="connect_uri"
+          label="Connect URI"
+          placeholder="steam://connect/{address}:{port} (optional)"
+          hint="Launch template. Tokens: {address} {port} {steam_id} {command}. Leave empty for copy-only servers."
+          :error="validation.connect_uri ? undefined : 'Must start with steam://, minecraft://, ts3server:// or https://'"
+        />
+
+        <Input
+          v-model="gameForm.connect_command"
+          expand
+          name="connect_command"
+          label="Connect Command"
+          placeholder="+connect {address}:{port} (optional)"
+          hint="Console or launch arguments players can copy. Tokens: {address} {port}."
         />
       </Flex>
 

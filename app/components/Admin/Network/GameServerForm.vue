@@ -36,6 +36,7 @@ interface QueryGameserver {
   modified_by: string | null
   name: string
   port: string | null
+  connect_command: string | null
   query_protocol: string | null
   query_port: number | null
   query_options: Json | null
@@ -62,6 +63,7 @@ const gameserverForm = ref({
   region: null as Tables<'network_gameservers'>['region'],
   addresses: [] as string[],
   port: '',
+  connect_command: '',
   query_protocol: null as string | null,
   query_port: '' as string,
   game: null as number | null,
@@ -233,6 +235,7 @@ async function loadQuerySecretState(gameserverId: number) {
 }
 
 async function fetchDropdownData() {
+  loadingContainers.value = true
   try {
     const { data: containersData, error: containersError } = await supabase
       .from('network_containers')
@@ -242,63 +245,68 @@ async function fetchDropdownData() {
     if (containersError)
       throw containersError
     containers.value = containersData || []
-    loadingContainers.value = false
   }
   catch (error) {
     console.error('Error fetching dropdown data:', error)
   }
+  finally {
+    loadingContainers.value = false
+  }
+}
+
+// Seed the form from a gameserver row, or wipe it back to defaults for a new one
+function applyGameserver(newGameserver: QueryGameserver | null) {
+  newAddress.value = ''
+
+  if (newGameserver) {
+    gameserverForm.value = {
+      name: newGameserver.name || '',
+      description: newGameserver.description || '',
+      markdown: newGameserver.markdown || '',
+      region: newGameserver.region,
+      addresses: newGameserver.addresses || [],
+      port: newGameserver.port || '',
+      connect_command: newGameserver.connect_command || '',
+      query_protocol: newGameserver.query_protocol,
+      query_port: newGameserver.query_port?.toString() || '',
+      game: newGameserver.game?.id || null,
+      container: newGameserver.container,
+      administrator: newGameserver.administrator,
+    }
+    // Reset Factorio fields, then hydrate from the row / Vault state.
+    const queryOptions = newGameserver.query_options as { factorioUseLua?: boolean } | null
+    factorioUseLua.value = queryOptions?.factorioUseLua ?? false
+    querySecret.value = ''
+    clearQuerySecret.value = false
+    querySecretExists.value = false
+    if (newGameserver.query_protocol === 'factorio')
+      void loadQuerySecretState(newGameserver.id)
+  }
+  else {
+    // Reset form for new gameserver
+    gameserverForm.value = {
+      name: '',
+      description: '',
+      markdown: '',
+      region: null,
+      addresses: [],
+      port: '',
+      connect_command: '',
+      query_protocol: null,
+      query_port: '',
+      game: null,
+      container: null,
+      administrator: null,
+    }
+    factorioUseLua.value = false
+    querySecret.value = ''
+    clearQuerySecret.value = false
+    querySecretExists.value = false
+  }
 }
 
 // Update form data when gameserver prop changes
-watch(
-  () => props.gameserver,
-  (newGameserver) => {
-    if (newGameserver) {
-      gameserverForm.value = {
-        name: newGameserver.name || '',
-        description: newGameserver.description || '',
-        markdown: newGameserver.markdown || '',
-        region: newGameserver.region,
-        addresses: newGameserver.addresses || [],
-        port: newGameserver.port || '',
-        query_protocol: newGameserver.query_protocol,
-        query_port: newGameserver.query_port?.toString() || '',
-        game: newGameserver.game?.id || null,
-        container: newGameserver.container,
-        administrator: newGameserver.administrator,
-      }
-      // Reset Factorio fields, then hydrate from the row / Vault state.
-      const queryOptions = newGameserver.query_options as { factorioUseLua?: boolean } | null
-      factorioUseLua.value = queryOptions?.factorioUseLua ?? false
-      querySecret.value = ''
-      clearQuerySecret.value = false
-      querySecretExists.value = false
-      if (newGameserver.query_protocol === 'factorio')
-        void loadQuerySecretState(newGameserver.id)
-    }
-    else {
-      // Reset form for new gameserver
-      gameserverForm.value = {
-        name: '',
-        description: '',
-        markdown: '',
-        region: null,
-        addresses: [],
-        port: '',
-        query_protocol: null,
-        query_port: '',
-        game: null,
-        container: null,
-        administrator: null,
-      }
-      factorioUseLua.value = false
-      querySecret.value = ''
-      clearQuerySecret.value = false
-      querySecretExists.value = false
-    }
-  },
-  { immediate: true },
-)
+watch(() => props.gameserver, applyGameserver, { immediate: true })
 
 // Handle adding a new address
 function addAddress() {
@@ -322,10 +330,17 @@ function handleClose() {
 watch(isOpen, (open) => {
   if (!open) {
     saveLoading.value = false
+    return
   }
-  else if (games.value.length === 0) {
+
+  // The sheet stays mounted, so a second "Add" hands us the same null prop and
+  // the prop watcher never fires. Re-seed on every open instead, and pull
+  // containers again in case they changed while the sheet was closed.
+  applyGameserver(props.gameserver)
+  fetchDropdownData()
+
+  if (games.value.length === 0)
     searchGames('')
-  }
 })
 
 // Handle form submission
@@ -348,6 +363,7 @@ async function handleSubmit() {
     region: gameserverForm.value.region,
     addresses: gameserverForm.value.addresses.length > 0 ? gameserverForm.value.addresses : null,
     port: gameserverForm.value.port || null,
+    connect_command: gameserverForm.value.connect_command.trim() || null,
     query_protocol: gameserverForm.value.query_protocol as TablesInsert<'network_gameservers'>['query_protocol'],
     query_port: gameserverForm.value.query_port ? Number(gameserverForm.value.query_port) : null,
     query_options: gameserverForm.value.query_protocol === 'factorio'
@@ -491,6 +507,15 @@ onMounted(() => {
             placeholder="Enter port (optional)"
           />
         </Flex>
+
+        <Input
+          v-model="gameserverForm.connect_command"
+          expand
+          name="connect_command"
+          label="Connect Command Override"
+          placeholder="Inherits the game default when empty"
+          hint="Overrides the game's connect command for this server only, e.g. extra launch arguments. Tokens: {address} {port}. Not a place for secrets, this row is publicly readable."
+        />
 
         <!-- Third row: Query Protocol and Query Port -->
         <Flex gap="m" wrap expand>
