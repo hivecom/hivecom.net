@@ -261,9 +261,24 @@ export function getLineChartDefaults(_theme?: string): ChartOptions<'line'> {
 }
 
 /**
- * Chart.js plugin that draws a faint fill over bar chart columns where the
- * first dataset has a null y-value, visually indicating a data gap without
- * polluting the legend or tooltip with an extra dataset.
+ * Reads the y-value out of a Chart.js bar datapoint, which may be a plain
+ * number, a plain `null`, or an `{x, y}` point object.
+ */
+function barPointY(value: unknown): number | null {
+  if (value !== null && typeof value === 'object' && 'y' in value)
+    return (value as { x: number, y: number | null }).y
+  return value as number | null
+}
+
+/**
+ * Chart.js plugin that draws a faint fill over bar chart columns where every
+ * dataset has a null y-value, visually indicating a data gap without polluting
+ * the legend or tooltip with an extra dataset.
+ *
+ * The all-datasets check matters for the stacked per-server charts, which build
+ * one dataset per server. Testing only the first dataset paints a gap over any
+ * column where that one server is missing, even when every other server
+ * reported - which is wrong, and disagrees with the tooltip's own gap text.
  *
  * Supports both plain `null` values and `{x, y}` point objects.
  *
@@ -278,8 +293,8 @@ export const barGapPlugin: Plugin<'bar'> = {
     if (pluginOpts?.enabled === false)
       return
 
-    const dataset = chart.data.datasets[0]
-    if (!dataset)
+    const datasets = chart.data.datasets
+    if (!datasets.length)
       return
 
     const ctx = chart.ctx
@@ -288,6 +303,15 @@ export const barGapPlugin: Plugin<'bar'> = {
     if (!xAxis || !yAxis)
       return
 
+    // Only consider datasets Chart.js is actually drawing, so a column doesn't
+    // count as a gap on account of a series the user hid.
+    const visible = datasets
+      .map((dataset, i) => ({ dataset, index: i }))
+      .filter(({ index }) => chart.isDatasetVisible(index))
+    if (!visible.length)
+      return
+
+    const pointCount = Math.max(...visible.map(({ dataset }) => dataset.data.length))
     const color = getCSSVariable('--color-border')
     const top = yAxis.top
     const bottom = yAxis.bottom
@@ -296,25 +320,30 @@ export const barGapPlugin: Plugin<'bar'> = {
     ctx.save()
     ctx.fillStyle = `${color}44`
 
-    dataset.data.forEach((value, index) => {
-      // Support both plain null values and {x, y} point objects
-      const yVal = (value !== null && typeof value === 'object' && 'y' in value)
-        ? (value as unknown as { x: number, y: number | null }).y
-        : value as number | null
-      if (yVal !== null)
-        return
+    for (let index = 0; index < pointCount; index++) {
+      const isGap = visible.every(({ dataset }) => barPointY(dataset.data[index]) === null)
+      if (!isGap)
+        continue
 
-      const meta = chart.getDatasetMeta(0)
-      const bar = meta.data[index]
+      // Geometry comes from whichever visible dataset has a bar laid out here.
+      // Stacked datasets share an x position, so any of them will do.
+      let bar: { x: number, width?: number } | undefined
+      for (const { index: datasetIndex } of visible) {
+        const candidate = chart.getDatasetMeta(datasetIndex).data[index] as unknown as { x: number, width?: number } | undefined
+        if (candidate) {
+          bar = candidate
+          break
+        }
+      }
       if (!bar)
-        return
+        continue
 
       // bar.width comes from Chart.js internal layout
-      const barWidth = (bar as unknown as { width: number }).width ?? xAxis.width / dataset.data.length
+      const barWidth = bar.width ?? xAxis.width / pointCount
       const x = bar.x - barWidth / 2
 
       ctx.fillRect(x, top, barWidth, height)
-    })
+    }
 
     ctx.restore()
   },

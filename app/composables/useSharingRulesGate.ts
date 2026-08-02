@@ -19,16 +19,28 @@ const open = ref(false)
 let pendingAction: (() => void) | null = null
 
 export function useSharingRulesGate() {
-  const { agreed, markAgreed } = useSharingRulesAgreement()
+  const { agreed, ensure, markAgreed } = useSharingRulesAgreement()
 
   // Run `action` if the user has agreed; otherwise hold it and open the modal.
   function run(action: () => void) {
+    // Fast path stays synchronous so actions that need the click's user
+    // activation (opening the file picker) keep it.
     if (agreed.value === true) {
       action()
       return
     }
-    pendingAction = action
-    open.value = true
+
+    // Otherwise the value may just be unresolved: null is "the profile fetch
+    // hasn't landed", not "hasn't agreed". Settle it before prompting, or an
+    // already-agreed user eats the modal on their next paste.
+    void ensure().then((hasAgreed) => {
+      if (hasAgreed) {
+        action()
+        return
+      }
+      pendingAction = action
+      open.value = true
+    })
   }
 
   // Open the modal without a held action (the "Rules" button). View-only once

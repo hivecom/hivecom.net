@@ -41,7 +41,7 @@ const ALL_SERIES: SeriesDef[] = [
   { key: 'usersSteamGameActivity', label: 'Steam Games', paletteIndex: 2 },
 ]
 
-const { metricsOverview, fetchMetricsOverview } = useDataMetrics()
+const { metricsOverview, fetchMetricsOverview, fetchMetricsEarliest } = useDataMetrics()
 
 // ── Canvas ────────────────────────────────────────────────────────────────────
 
@@ -82,17 +82,25 @@ const selectionMode = ref<SelectionMode>('period')
 const activePeriod = ref<MetricsPeriod>(props.initialPeriod ?? '7d')
 
 function applyWindow(start: Date, end: Date) {
+  // Widen the brush's own dataset when a selection reaches back past what it
+  // holds. No-ops when the range is already covered.
+  void fetchMetricsOverview(start)
   brushStart.value = start.getTime()
   brushEnd.value = end.getTime()
   emit('change', { start, end })
 }
 
-function applyPeriod(period: MetricsPeriod) {
+async function applyPeriod(period: MetricsPeriod) {
   selectionMode.value = 'period'
   activePeriod.value = period
   const config = PERIOD_CONFIGS[period]
   const end = new Date()
-  const start = new Date(Date.now() - config.hours * 60 * 60 * 1000)
+  const fallback = new Date(Date.now() - config.hours * 60 * 60 * 1000)
+  // All Time has no fixed lookback - anchor it to the first snapshot we hold,
+  // falling back to the ceiling in the config if that lookup fails.
+  const start = config.allTime
+    ? (await fetchMetricsEarliest() ?? fallback)
+    : fallback
   applyWindow(start, end)
 }
 
@@ -121,7 +129,8 @@ watch(calendarRange, (val) => {
   const duration = end.getTime() - start.getTime()
   const matched = METRICS_PERIOD_OPTIONS.find((opt) => {
     const config = PERIOD_CONFIGS[opt.value]
-    return Math.abs(duration - config.hours * 60 * 60 * 1000) < 60 * 1000
+    // All Time isn't a fixed duration, so it can never be matched by width.
+    return !config.allTime && Math.abs(duration - config.hours * 60 * 60 * 1000) < 60 * 1000
   })
   if (matched) {
     selectionMode.value = 'period'
@@ -160,10 +169,21 @@ const matchedPeriod = computed<MetricsPeriod | null>(() => {
   const winDuration = Math.abs(b - a)
   for (const opt of METRICS_PERIOD_OPTIONS) {
     const config = PERIOD_CONFIGS[opt.value]
+    if (config.allTime)
+      continue
     if (Math.abs(winDuration - config.hours * 60 * 60 * 1000) < MATCH_TOLERANCE_MS)
       return opt.value
   }
   return null
+})
+
+// The trigger label follows the chip the user actually picked. Deriving it from
+// the window width instead would leave All Time reading as "Custom", since it
+// has no fixed duration to match against.
+const periodLabel = computed(() => {
+  if (selectionMode.value !== 'period')
+    return 'Custom'
+  return PERIOD_CONFIGS[activePeriod.value]?.label ?? 'Custom'
 })
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -514,7 +534,7 @@ defineExpose({ setBrush })
                 :variant="selectionMode === 'period' ? 'fill' : 'gray'"
                 @click="toggle"
               >
-                {{ selectionMode === 'calendar' || selectionMode === 'brush' ? 'Custom' : (matchedPeriod ? METRICS_PERIOD_OPTIONS.find(o => o.value === matchedPeriod)?.label : 'Custom') }}
+                {{ periodLabel }}
                 <template #end>
                   <Icon :name="dropdownOpen ? 'ph:caret-up' : 'ph:caret-down'" :size="12" />
                 </template>
@@ -536,6 +556,7 @@ defineExpose({ setBrush })
             :enable-time-picker="true"
             :max-date="new Date()"
             :teleport="true"
+            :auto-apply="false"
           >
             <template #trigger>
               <Tooltip placement="top">

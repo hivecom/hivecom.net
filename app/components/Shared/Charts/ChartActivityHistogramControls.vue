@@ -37,7 +37,8 @@ function onBrushChange(window: { start: Date, end: Date }) {
   const duration = window.end.getTime() - window.start.getTime()
   const matched = METRICS_PERIOD_OPTIONS.find((opt) => {
     const config = PERIOD_CONFIGS[opt.value]
-    return Math.abs(duration - config.hours * 60 * 60 * 1000) < MATCH_TOLERANCE_MS
+    // All Time isn't a fixed duration, so it can never be matched by width.
+    return !config.allTime && Math.abs(duration - config.hours * 60 * 60 * 1000) < MATCH_TOLERANCE_MS
   })
   if (matched)
     activePeriod.value = matched.value

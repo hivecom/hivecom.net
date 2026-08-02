@@ -7,12 +7,17 @@ import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { metricsPlayerCount } from '@/types/metrics'
 
-export type MetricsPeriod = '6h' | '24h' | '7d' | '14d' | '30d' | '90d'
+export type MetricsPeriod = '6h' | '24h' | '7d' | '14d' | '30d' | '90d' | '1y' | '3y' | 'all'
 
 interface PeriodConfig {
   label: string
   hours: number
   bucketMs: number
+  /**
+   * Spans everything ever collected rather than a fixed lookback. `hours` is
+   * only the fallback ceiling for when the earliest timestamp isn't known yet.
+   */
+  allTime?: boolean
 }
 
 export const PERIOD_CONFIGS: Record<MetricsPeriod, PeriodConfig> = {
@@ -22,6 +27,9 @@ export const PERIOD_CONFIGS: Record<MetricsPeriod, PeriodConfig> = {
   '14d': { label: 'Last 14 Days', hours: 336, bucketMs: 2 * 60 * 60 * 1000 },
   '30d': { label: 'Last 30 Days', hours: 720, bucketMs: 3 * 60 * 60 * 1000 },
   '90d': { label: 'Last 90 Days', hours: 2160, bucketMs: 24 * 60 * 60 * 1000 },
+  '1y': { label: 'Last Year', hours: 8760, bucketMs: 24 * 60 * 60 * 1000 },
+  '3y': { label: 'Last 3 Years', hours: 26280, bucketMs: 7 * 24 * 60 * 60 * 1000 },
+  'all': { label: 'All Time', hours: 87600, bucketMs: 7 * 24 * 60 * 60 * 1000, allTime: true },
 }
 
 export const METRICS_PERIOD_OPTIONS = (Object.entries(PERIOD_CONFIGS) as [MetricsPeriod, PeriodConfig][]).map(
@@ -58,6 +66,27 @@ function msUntilNextCollection(): number {
   const now = Date.now()
   const elapsed = now % METRICS_COLLECTION_INTERVAL
   return METRICS_COLLECTION_INTERVAL - elapsed
+}
+
+/**
+ * Bucket width for an arbitrary window duration, so the point count stays in a
+ * range the charts can actually draw. Anything past a year steps up to weekly
+ * buckets - daily over three years is ~1100 bars in a few hundred pixels.
+ */
+function bucketMsForDuration(durationMs: number): number {
+  const hour = 60 * 60 * 1000
+  const day = 24 * hour
+  if (durationMs <= 6 * hour)
+    return 5 * 60 * 1000
+  if (durationMs <= day)
+    return 15 * 60 * 1000
+  if (durationMs <= 7 * day)
+    return hour
+  if (durationMs <= 30 * day)
+    return 3 * hour
+  if (durationMs <= 365 * day)
+    return day
+  return 7 * day
 }
 
 // Convert a millisecond duration to a Postgres interval string.
@@ -217,6 +246,8 @@ let activeConsumers = 0
 // by period fetches so the brush always shows the full context.
 const metricsOverview = ref<MetricsHistoryEntry[]>([])
 const loadingOverview = ref(false)
+// How far back the overview currently reaches. Null until the first fetch.
+let overviewSinceMs: number | null = null
 
 // Shared snapshot state - hoisted so all callers share the same reactive ref.
 const metrics = shallowRef<MetricsSnapshot | null>(null)
@@ -316,18 +347,7 @@ export function useDataMetrics() {
     error.value = null
 
     try {
-      const durationMs = end.getTime() - start.getTime()
-      let bucketMs: number
-      if (durationMs <= 6 * 60 * 60 * 1000)
-        bucketMs = 5 * 60 * 1000
-      else if (durationMs <= 24 * 60 * 60 * 1000)
-        bucketMs = 15 * 60 * 1000
-      else if (durationMs <= 7 * 24 * 60 * 60 * 1000)
-        bucketMs = 60 * 60 * 1000
-      else if (durationMs <= 30 * 24 * 60 * 60 * 1000)
-        bucketMs = 3 * 60 * 60 * 1000
-      else
-        bucketMs = 24 * 60 * 60 * 1000
+      const bucketMs = bucketMsForDuration(end.getTime() - start.getTime())
 
       const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
         p_since: start.toISOString(),
@@ -362,18 +382,7 @@ export function useDataMetrics() {
     if (cached !== null)
       return cached
     try {
-      const durationMs = end.getTime() - start.getTime()
-      let bucketMs: number
-      if (durationMs <= 6 * 60 * 60 * 1000)
-        bucketMs = 5 * 60 * 1000
-      else if (durationMs <= 24 * 60 * 60 * 1000)
-        bucketMs = 15 * 60 * 1000
-      else if (durationMs <= 7 * 24 * 60 * 60 * 1000)
-        bucketMs = 60 * 60 * 1000
-      else if (durationMs <= 30 * 24 * 60 * 60 * 1000)
-        bucketMs = 3 * 60 * 60 * 1000
-      else
-        bucketMs = 24 * 60 * 60 * 1000
+      const bucketMs = bucketMsForDuration(end.getTime() - start.getTime())
       const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
         p_since: start.toISOString(),
         p_until: end.toISOString(),
@@ -595,8 +604,58 @@ export function useDataMetrics() {
     }
   }
 
-  const fetchMetricsOverview = async () => {
-    const cacheKey = 'metrics:history:90d'
+  /**
+   * Earliest snapshot we ever collected, used to size the All Time period.
+   * Cached for the session - it only moves when the rollup trims the tail, and
+   * a stale value there is off by a day at worst.
+   */
+  const fetchMetricsEarliest = async (): Promise<Date | null> => {
+    const cacheKey = 'metrics:earliest'
+    const cached = metricsCache.get<string>(cacheKey)
+    if (cached !== null)
+      return new Date(cached)
+
+    const { data, error: dbError } = await supabase
+      .from('metrics')
+      .select('captured_at')
+      .order('captured_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (dbError !== null || data === null)
+      return null
+
+    const capturedAt = data.captured_at
+    metricsCache.set(cacheKey, capturedAt, 60 * 60 * 1000)
+    return new Date(capturedAt)
+  }
+
+  /**
+   * Dataset backing the brush. Defaults to 90 days, and takes a `since` so the
+   * brush can widen itself when a selection reaches further back than that -
+   * otherwise it renders a window it holds no data for, stretching 90 days
+   * across the full width while the charts below show a different range.
+   *
+   * Within a session it only ever widens, so a narrower request is a no-op
+   * rather than a refetch and a narrower response that lands late can't clobber
+   * a wider one.
+   *
+   * Calling it with no argument is a reset, not a widening request - that's a
+   * freshly mounted brush asking for its default view. Without that, the state
+   * here outlives the component and the brush comes back still stretched to
+   * whatever the last visit expanded it to.
+   */
+  const fetchMetricsOverview = async (since?: Date) => {
+    const defaultStartMs = Date.now() - PERIOD_CONFIGS['90d'].hours * 60 * 60 * 1000
+    const isReset = since === undefined
+    const startMs = isReset ? defaultStartMs : Math.min(since.getTime(), defaultStartMs)
+    if (!isReset && overviewSinceMs !== null && startMs >= overviewSinceMs)
+      return metricsOverview.value
+    overviewSinceMs = startMs
+
+    const start = new Date(startMs)
+    const end = new Date()
+    const cacheKey = `metrics:overview:${start.toISOString().slice(0, 13)}`
     const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
     if (cached !== null) {
       metricsOverview.value = cached
@@ -605,8 +664,20 @@ export function useDataMetrics() {
 
     loadingOverview.value = true
     try {
-      const entries = await fetchMetricsHistoryFromDB(supabase, '90d')
-      metricsOverview.value = entries
+      const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
+        p_since: start.toISOString(),
+        p_until: end.toISOString(),
+        p_bucket_interval: msToPgInterval(bucketMsForDuration(end.getTime() - startMs)),
+      })
+
+      const entries = (dbError !== null || data === null)
+        ? []
+        : (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
+
+      // Still the widest request? Two expansions can overlap, and the loser
+      // must not overwrite the winner's wider dataset.
+      if (overviewSinceMs === startMs)
+        metricsOverview.value = entries
       metricsCache.set(cacheKey, entries, msUntilNextCollection())
       return entries
     }
@@ -664,6 +735,7 @@ export function useDataMetrics() {
     metricsOverview,
     loadingOverview,
     fetchMetricsOverview,
+    fetchMetricsEarliest,
     scheduleRefresh,
     fetchMetricsForServer,
     fetchDailyHistory,

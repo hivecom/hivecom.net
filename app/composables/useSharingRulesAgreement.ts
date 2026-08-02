@@ -29,6 +29,12 @@ function getCacheKey(userId: string): string {
 const agreed = ref<boolean | null>(null)
 const loading = ref(false)
 
+// Bound once for the module rather than once per instance. The state it touches
+// is shared and several components hold this composable at the same time, so
+// per-instance binding piles up handlers that never unsubscribe and each redo
+// the same work.
+let authListenerBound = false
+
 export function useSharingRulesAgreement() {
   const supabase = useSupabaseClient<Database>()
   const userId = useUserId()
@@ -36,15 +42,23 @@ export function useSharingRulesAgreement() {
 
   // Evict any stale localStorage entry on SIGNED_IN so a stale `true` from a
   // previous session (e.g. after a dev DB reset) is cleared before it's read.
-  supabase.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_IN') {
-      const id = userId.value
-      if (id != null && id !== '') {
-        cache.delete(getCacheKey(id))
+  if (import.meta.client && !authListenerBound) {
+    authListenerBound = true
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        const id = userId.value
+        if (id != null && id !== '') {
+          cache.delete(getCacheKey(id))
+        }
+        agreed.value = null
+        // Supabase re-emits SIGNED_IN mid-session (a token refresh when the tab
+        // regains focus counts), so this isn't only a login path. Re-fetch right
+        // away, otherwise the value sits at null with nothing left to resolve it
+        // and the upload gate prompts someone who agreed months ago.
+        void fetch()
       }
-      agreed.value = null
-    }
-  })
+    })
+  }
 
   async function fetch(force = false): Promise<void> {
     const id = userId.value
@@ -114,6 +128,18 @@ export function useSharingRulesAgreement() {
     await fetch(true)
   }
 
+  /**
+   * Settle `agreed` if it's still unknown, then report it. Anything that gates
+   * behaviour on the answer (the upload gate) should go through this: null means
+   * "the fetch hasn't landed", which is not the same as "hasn't agreed".
+   */
+  async function ensure(): Promise<boolean> {
+    if (agreed.value === null)
+      await fetch()
+
+    return agreed.value === true
+  }
+
   // Re-fetch when the user changes (account switch or sign-in)
   watch(userId, (id, prevId) => {
     if (id !== prevId) {
@@ -126,6 +152,7 @@ export function useSharingRulesAgreement() {
     agreed: readonly(agreed),
     loading: readonly(loading),
     refresh,
+    ensure,
     markAgreed,
   }
 }
