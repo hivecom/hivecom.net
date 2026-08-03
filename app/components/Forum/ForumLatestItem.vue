@@ -87,8 +87,8 @@ function handleClick(e: MouseEvent) {
 
   &--expand {
     width: 100%;
-    min-width: unset;
-    max-width: unset;
+    min-width: unset !important;
+    max-width: unset !important;
 
     .forum__latest-title {
       @include line-clamp(2);

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
@@ -47,9 +48,9 @@ const suggested = computed(() =>
 </script>
 
 <template>
-  <div>
+  <Flex column gap="m">
     <HomeDashboardSection label="Your upcoming events">
-      <EventSmall v-if="nextAttending" :data="nextAttending" compact />
+      <EventSmall v-if="nextAttending" :data="nextAttending" compact no-glow />
       <p v-else>
         No upcoming event you RSVPed to.
       </p>
@@ -57,7 +58,7 @@ const suggested = computed(() =>
 
     <HomeDashboardSection label="Friends are going">
       <template v-if="friendsAttending.length">
-        <EventCompact v-for="{ event } in friendsAttending" :key="event.id" compact :data="event" />
+        <EventCompact v-for="{ event } in friendsAttending" :key="event.id" compact :data="event" no-glow />
       </template>
       <p v-else>
         Nothing your friends are on that you're missing.
@@ -66,11 +67,11 @@ const suggested = computed(() =>
 
     <HomeDashboardSection label="You could join these">
       <template v-if="suggested.length">
-        <EventCompact v-for="event in suggested" :key="event.id" :data="event" />
+        <EventCompact v-for="event in suggested" :key="event.id" :data="event" no-glow />
       </template>
       <p v-else>
         No other upcoming events.
       </p>
     </HomeDashboardSection>
-  </div>
+  </Flex>
 </template>

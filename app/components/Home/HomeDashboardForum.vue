@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { SubscriptionRow } from '@/composables/useDiscussionSubscriptionsCache'
 import type { Database } from '@/types/database.types'
+import { Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
-import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useDataNotifications } from '@/composables/useDataNotifications'
 import { useUserId } from '@/composables/useUserId'
 
@@ -38,7 +38,7 @@ watch(userId, async (uid) => {
     .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug, profile_id, event_id, gameserver_id, project_id, referendum_id, theme_id)')
     .eq('user_id', uid)
     .order('last_seen_at', { ascending: false })
-    .limit(5)
+    .limit(6)
   subscriptions.value = (data ?? []) as unknown as SubscriptionRow[]
 }, { immediate: true })
 
@@ -46,7 +46,7 @@ watch(userId, async (uid) => {
 const feed = ref<FeedRow[]>([])
 
 onMounted(async () => {
-  const { data } = await supabase.rpc('get_forum_activity_feed', { p_limit: 8 })
+  const { data } = await supabase.rpc('get_forum_activity_feed', { p_limit: 5 })
   feed.value = data ?? []
 })
 
@@ -58,7 +58,7 @@ function excerpt(text: string | null): string {
 </script>
 
 <template>
-  <div>
+  <Flex column gap="m">
     <HomeDashboardSection label="Activity on your posts">
       <ul v-if="myActivity.length">
         <li v-for="n in myActivity" :key="n.id">
@@ -75,14 +75,14 @@ function excerpt(text: string | null): string {
     </HomeDashboardSection>
 
     <HomeDashboardSection label="Your subscriptions">
-      <ul v-if="subscriptions.length">
-        <li v-for="sub in subscriptions" :key="sub.id">
-          <NuxtLink :to="`/forum/${sub.discussion?.slug ?? sub.discussion_id}`">
+      <div v-if="subscriptions.length">
+        <NuxtLink v-for="sub in subscriptions" :key="sub.id" :to="`/forum/${sub.discussion?.slug ?? sub.discussion_id}`">
+          <strong>
             {{ sub.discussion?.title ?? sub.discussion_id }}
-          </NuxtLink>
-          - last seen {{ dayjs(sub.last_seen_at).fromNow() }}
-        </li>
-      </ul>
+          </strong>
+          <span>updated {{ dayjs(sub.last_seen_at).fromNow() }}</span>
+        </NuxtLink>
+      </div>
       <p v-else>
         No subscriptions.
       </p>
@@ -100,5 +100,5 @@ function excerpt(text: string | null): string {
         No forum activity.
       </p>
     </HomeDashboardSection>
-  </div>
+  </Flex>
 </template>

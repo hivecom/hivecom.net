@@ -6,8 +6,6 @@ import HomeDashboardForum from '@/components/Home/HomeDashboardForum.vue'
 import HomeDashboardGames from '@/components/Home/HomeDashboardGames.vue'
 import HomeDashboardGameservers from '@/components/Home/HomeDashboardGameservers.vue'
 import HomeDashboardVotes from '@/components/Home/HomeDashboardVotes.vue'
-import GlowCard from '@/components/Shared/GlowCard.vue'
-import GlowGroup from '@/components/Shared/GlowGroup.vue'
 
 // Mobile-only quick nav mirrors the top-level site navigation so the dashboard
 // is a full jumping-off point on small screens.
@@ -40,59 +38,45 @@ const navTiles = [
       </div>
 
       <!-- Primary card row: Events, Forum, Games -->
-      <GlowGroup>
-        <Grid :columns="3" gap="m" expand y-stretch class="dashboard__grid">
-          <GlowCard>
-            <Card class="h-100">
-              <h2 class="dashboard__card-title">
-                Events
-              </h2>
-              <HomeDashboardEvents />
-            </Card>
-          </GlowCard>
+      <Grid :columns="3" gap="m" expand y-stretch class="dashboard__grid">
+        <Card class="h-100">
+          <h2 class="dashboard__card-title">
+            Events
+          </h2>
+          <HomeDashboardEvents />
+        </Card>
 
-          <GlowCard>
-            <Card class="h-100">
-              <h2 class="dashboard__card-title">
-                Forum
-              </h2>
-              <HomeDashboardForum />
-            </Card>
-          </GlowCard>
+        <Card class="h-100">
+          <h2 class="dashboard__card-title">
+            Forum
+          </h2>
+          <HomeDashboardForum />
+        </Card>
 
-          <GlowCard>
-            <Card class="h-100">
-              <h2 class="dashboard__card-title">
-                Games
-              </h2>
-              <HomeDashboardGames />
-            </Card>
-          </GlowCard>
-        </Grid>
-      </GlowGroup>
+        <Card class="h-100">
+          <h2 class="dashboard__card-title">
+            Games
+          </h2>
+          <HomeDashboardGames />
+        </Card>
+      </Grid>
 
       <!-- Secondary card row: Gameservers, Votes -->
-      <GlowGroup>
-        <Grid :columns="2" gap="m" expand y-stretch class="dashboard__grid">
-          <GlowCard>
-            <Card class="h-100">
-              <h2 class="dashboard__card-title">
-                Gameservers
-              </h2>
-              <HomeDashboardGameservers />
-            </Card>
-          </GlowCard>
+      <Grid :columns="2" gap="m" expand y-stretch class="dashboard__grid">
+        <Card class="h-100">
+          <h2 class="dashboard__card-title">
+            Gameservers
+          </h2>
+          <HomeDashboardGameservers />
+        </Card>
 
-          <GlowCard>
-            <Card class="h-100">
-              <h2 class="dashboard__card-title">
-                Votes
-              </h2>
-              <HomeDashboardVotes />
-            </Card>
-          </GlowCard>
-        </Grid>
-      </GlowGroup>
+        <Card class="h-100">
+          <h2 class="dashboard__card-title">
+            Votes
+          </h2>
+          <HomeDashboardVotes />
+        </Card>
+      </Grid>
     </div>
   </div>
 </template>

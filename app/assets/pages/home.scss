@@ -1,9 +1,36 @@
-.home-list-item {
-  padding: var(--space-s);
+@use '@/assets/mixins.scss' as *;
+
+.home-item-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-s);
+  width: 100%;
+}
+
+.home-item {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  padding: var(--space-xs);
   background-color: var(--color-bg-medium);
   border-radius: var(--border-radius-m);
+  border: 1px solid var(--color-border-weak);
 
   &:hover {
     background-color: var(--color-bg-raised);
+    border-color: var(--color-border);
+  }
+
+  strong {
+    font-size: var(--font-size-m);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  span {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-lighter);
   }
 }

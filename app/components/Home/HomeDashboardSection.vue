@@ -17,6 +17,7 @@ defineProps<{ label: string }>()
 <style scoped lang="scss">
 .dashboard-section {
   height: 100%;
+  width: 100%;
 
   &:not(:last-child) {
     margin-bottom: var(--space-m);
@@ -26,9 +27,9 @@ defineProps<{ label: string }>()
     list-style: none;
     padding: 0;
     margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
+    // display: flex;
+    // flex-direction: column;
+    // gap: var(--space-xs);
   }
 
   :deep(p) {

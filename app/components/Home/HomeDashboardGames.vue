@@ -77,7 +77,7 @@ const unplayedByMe = computed(() => {
 </script>
 
 <template>
-  <div>
+  <Flex column gap="m">
     <HomeDashboardSection label="You like this game, people are in it now">
       <div v-if="likedGameWithPlayers">
         <strong>{{ likedGameWithPlayers.app.app_name ?? likedGameWithPlayers.app.app_id }}</strong>
@@ -90,12 +90,14 @@ const unplayedByMe = computed(() => {
       </p>
     </HomeDashboardSection>
 
+    <!-- TODO: replace these with game icons -->
     <HomeDashboardSection label="Your recent games">
-      <ul v-if="myRecentApps.length">
-        <li v-for="app in myRecentApps" :key="app.app_id">
-          {{ app.app_name ?? app.app_id }} - {{ dayjs(app.last_played_at).fromNow() }}
-        </li>
-      </ul>
+      <div v-if="myRecentApps.length" class="home-item-list">
+        <div v-for="app in myRecentApps" :key="app.app_id" class="home-item">
+          <strong>{{ app.app_name ?? app.app_id }}</strong>
+          <span>{{ dayjs(app.last_played_at).fromNow() }}</span>
+        </div>
+      </div>
       <p v-else>
         No recent games on your presence row.
       </p>
@@ -134,5 +136,5 @@ const unplayedByMe = computed(() => {
         Nothing the community plays that you don't.
       </p>
     </HomeDashboardSection>
-  </div>
+  </Flex>
 </template>
