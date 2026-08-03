@@ -16,6 +16,8 @@ defineProps<{ label: string }>()
 
 <style scoped lang="scss">
 .dashboard-section {
+  height: 100%;
+
   &:not(:last-child) {
     margin-bottom: var(--space-m);
   }

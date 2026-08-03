@@ -1,0 +1,9 @@
+.home-list-item {
+  padding: var(--space-s);
+  background-color: var(--color-bg-medium);
+  border-radius: var(--border-radius-m);
+
+  &:hover {
+    background-color: var(--color-bg-raised);
+  }
+}

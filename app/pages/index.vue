@@ -3,6 +3,7 @@ import { Tab, Tabs } from '@dolanske/vui'
 import HomeBackdrop from '@/components/Home/HomeBackdrop.vue'
 import HomeDashboard from '@/components/Home/HomeDashboard.vue'
 import HomeMarketing from '@/components/Home/HomeMarketing.vue'
+import '@/assets/pages/home.scss'
 
 // Logged-in users get the dashboard; guests get the marketing landing. The
 // decision is reactive and resolves behind the global loading splash (which
@@ -79,7 +80,7 @@ watch(activeTab, () => {
 <style>
 .home-swap-tabs {
   position: fixed;
-  top: 80px;
+  top: 76px;
   left: 50%;
   transform: translateX(-50%);
   z-index: var(--z-sticky);

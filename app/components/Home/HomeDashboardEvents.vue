@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { Badge, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
-import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useDataEvents } from '@/composables/useDataEvents'
 import { useDataFriendRsvps } from '@/composables/useDataFriendRsvps'
 import { useDataNotifications } from '@/composables/useDataNotifications'
 import { useDataUserRsvps } from '@/composables/useDataUserRsvps'
+import EventCompact from '../Events/EventCompact.vue'
+import EventSmall from '../Events/EventSmall.vue'
 
 dayjs.extend(relativeTime)
 
@@ -48,53 +48,26 @@ const suggested = computed(() =>
 
 <template>
   <div>
-    <HomeDashboardSection label="Next event you're attending">
-      <div v-if="nextAttending">
-        <Flex gap="xs" y-center>
-          <NuxtLink :to="`/events/${nextAttending.id}`">
-            <strong>{{ nextAttending.title }}</strong>
-          </NuxtLink>
-          <Badge v-if="nextAttending.is_official" variant="accent">
-            Official
-          </Badge>
-        </Flex>
-        <p>{{ dayjs(nextAttending.date).fromNow() }} ({{ nextAttending.date }})</p>
-        <p>Your RSVP: {{ rsvpByEventId.get(nextAttending.id) }}</p>
-        <p v-if="nextAttending.description">
-          {{ nextAttending.description }}
-        </p>
-      </div>
+    <HomeDashboardSection label="Your upcoming events">
+      <EventSmall v-if="nextAttending" :data="nextAttending" compact />
       <p v-else>
         No upcoming event you RSVPed to.
       </p>
     </HomeDashboardSection>
 
-    <HomeDashboardSection label="Friends are going, you haven't RSVPed">
-      <ul v-if="friendsAttending.length">
-        <li v-for="{ event, friendIds } in friendsAttending" :key="event.id">
-          <NuxtLink :to="`/events/${event.id}`">
-            <strong>{{ event.title }}</strong>
-          </NuxtLink>
-          - {{ dayjs(event.date).fromNow() }}
-          <Flex gap="xs" wrap>
-            <UserDisplay v-for="id in friendIds" :key="id" :user-id="id" size="s" />
-          </Flex>
-        </li>
-      </ul>
+    <HomeDashboardSection label="Friends are going">
+      <template v-if="friendsAttending.length">
+        <EventCompact v-for="{ event } in friendsAttending" :key="event.id" compact :data="event" />
+      </template>
       <p v-else>
         Nothing your friends are on that you're missing.
       </p>
     </HomeDashboardSection>
 
     <HomeDashboardSection label="You could join these">
-      <ul v-if="suggested.length">
-        <li v-for="event in suggested" :key="event.id">
-          <NuxtLink :to="`/events/${event.id}`">
-            {{ event.title }}
-          </NuxtLink>
-          - {{ dayjs(event.date).fromNow() }}
-        </li>
-      </ul>
+      <template v-if="suggested.length">
+        <EventCompact v-for="event in suggested" :key="event.id" :data="event" />
+      </template>
       <p v-else>
         No other upcoming events.
       </p>

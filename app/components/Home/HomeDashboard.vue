@@ -43,7 +43,7 @@ const navTiles = [
       <GlowGroup>
         <Grid :columns="3" gap="m" expand y-stretch class="dashboard__grid">
           <GlowCard>
-            <Card>
+            <Card class="h-100">
               <h2 class="dashboard__card-title">
                 Events
               </h2>
@@ -52,7 +52,7 @@ const navTiles = [
           </GlowCard>
 
           <GlowCard>
-            <Card>
+            <Card class="h-100">
               <h2 class="dashboard__card-title">
                 Forum
               </h2>
@@ -61,7 +61,7 @@ const navTiles = [
           </GlowCard>
 
           <GlowCard>
-            <Card>
+            <Card class="h-100">
               <h2 class="dashboard__card-title">
                 Games
               </h2>
@@ -75,7 +75,7 @@ const navTiles = [
       <GlowGroup>
         <Grid :columns="2" gap="m" expand y-stretch class="dashboard__grid">
           <GlowCard>
-            <Card>
+            <Card class="h-100">
               <h2 class="dashboard__card-title">
                 Gameservers
               </h2>
@@ -84,7 +84,7 @@ const navTiles = [
           </GlowCard>
 
           <GlowCard>
-            <Card>
+            <Card class="h-100">
               <h2 class="dashboard__card-title">
                 Votes
               </h2>
@@ -141,8 +141,7 @@ const navTiles = [
 .dashboard__card-title {
   font-size: var(--font-size-s);
   text-transform: uppercase;
-  color: var(--color-text-lighter);
-  letter-spacing: 0.04em;
+  color: var(--color-text-light);
   margin-bottom: var(--space-m);
 }
 
