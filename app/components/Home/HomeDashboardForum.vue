@@ -6,16 +6,13 @@ import type { Database } from '@/types/database.types'
 import { Flex, Skeleton } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import ForumLatestItem from '@/components/Forum/ForumLatestItem.vue'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
 import { sourceIcon, useDataNotifications } from '@/composables/useDataNotifications'
 import { useForumFeedPreview } from '@/composables/useForumFeedPreview'
 import { useUserId } from '@/composables/useUserId'
+import HomeForumItem from './HomeForumItem.vue'
 
 dayjs.extend(relativeTime)
-
-// Forum card, priority order from the sketch: activity aimed at me first
-// (replies, mentions), then my subscriptions, then the general feed.
 
 const PREVIEW_LIMIT = 3
 
@@ -23,12 +20,6 @@ const supabase = useSupabaseClient<Database>()
 const userId = useUserId()
 const { discussionNotifications, replyNotifications, mentionNotifications } = useDataNotifications()
 
-/**
- * Notifications aren't feed rows, so normalise them into the same shape
- * ForumLatestItem renders. Which field holds the discussion context depends on
- * the source: subscription replies put the discussion title in `title` and the
- * sentence in `body`, the other two are the other way around.
- */
 function toActivityItem(notification: NotificationRow): ActivityItem {
   const contextInTitle = notification.source === 'discussion_reply'
 
@@ -87,12 +78,11 @@ const {
   <Flex column gap="m">
     <HomeDashboardSection label="Activity on your posts">
       <Flex v-if="myActivity.length" column gap="xs">
-        <ForumLatestItem
+        <HomeForumItem
           v-for="item in myActivity"
           :key="item.id"
           :post="item"
           :mention-lookup="noMentions"
-          variant="compact"
           expand
         />
       </Flex>
@@ -102,8 +92,8 @@ const {
     </HomeDashboardSection>
 
     <HomeDashboardSection label="Your subscriptions">
-      <div v-if="subscriptions.length">
-        <NuxtLink v-for="sub in subscriptions" :key="sub.id" :to="`/forum/${sub.discussion?.slug ?? sub.discussion_id}`">
+      <div v-if="subscriptions.length" class="home-item-list">
+        <NuxtLink v-for="sub in subscriptions" :key="sub.id" :to="`/forum/${sub.discussion?.slug ?? sub.discussion_id}`" class="home-item">
           <strong>
             {{ sub.discussion?.title ?? sub.discussion_id }}
           </strong>
@@ -120,12 +110,11 @@ const {
         <Skeleton v-for="i in PREVIEW_LIMIT" :key="i" width="100%" height="56px" />
       </Flex>
       <Flex v-else-if="latestItems.length" column gap="xs">
-        <ForumLatestItem
+        <HomeForumItem
           v-for="item in latestItems"
           :key="item.id"
           :post="item"
           :mention-lookup="latestMentionLookup"
-          variant="compact"
           expand
         />
       </Flex>
