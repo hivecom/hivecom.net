@@ -155,6 +155,9 @@ const mobileMenuOpen = ref(false)
 const logEl = ref<HTMLElement | null>(null)
 const topSentinel = ref<HTMLElement | null>(null)
 const activeMessage = ref<ChatMessage | null>(null)
+// URL under the pointer when the menu opened. We suppress the native context
+// menu on the log, so "Copy link address" has to come from our own menu.
+const activeLink = ref<string | null>(null)
 const lightboxRef = useTemplateRef('lightboxRef')
 
 const nickColWidth = useLocalStorage(props.compact ? 'chat-irc-nick-col-width-compact' : 'chat-irc-nick-col-width', 160)
@@ -758,10 +761,18 @@ function ircSegments(msg: ChatMessage): Segment[] {
   return out
 }
 
+// Resolve the anchor under an event target to an absolute URL, so profile
+// mentions (relative `/profile/x`) copy as a full link like message URLs do.
+function linkAt(target: EventTarget | null): string | null {
+  const anchor = (target as HTMLElement | null)?.closest('a[href]') as HTMLAnchorElement | null
+  return anchor?.href || null
+}
+
 function onContextMenu(event: MouseEvent) {
   const el = (event.target as HTMLElement | null)?.closest('[data-msg-id]') as HTMLElement | null
   const id = el?.dataset.msgId
   activeMessage.value = id ? messages.value.find(m => m.id === Number(id)) ?? null : null
+  activeLink.value = linkAt(event.target)
   if (isMobile.value) {
     event.stopPropagation()
     mobileMenuOpen.value = true
@@ -902,9 +913,12 @@ function onTouchStart(event: TouchEvent) {
   if (!msg)
     return
 
+  const link = linkAt(event.target)
+
   _longPressTimer = setTimeout(() => {
     _longPressTimer = null
     activeMessage.value = msg
+    activeLink.value = link
     mobileMenuOpen.value = true
   }, LONG_PRESS_MS)
 }
@@ -1852,6 +1866,12 @@ onBeforeUnmount(() => {
             </template>
           </UserActionMenu>
           <Divider />
+          <DropdownItem v-if="activeLink" @click="copyText(activeLink, 'Link')">
+            <template #icon>
+              <Icon name="ph:link" />
+            </template>
+            Copy link
+          </DropdownItem>
           <DropdownItem @click="copyText(activeMessage.text, 'Message')">
             <template #icon>
               <Icon name="ph:copy" />
@@ -1949,6 +1969,12 @@ onBeforeUnmount(() => {
           </template>
         </UserActionMenu>
         <Divider />
+        <DropdownItem v-if="activeLink" @click="copyText(activeLink, 'Link')">
+          <template #icon>
+            <Icon name="ph:link" />
+          </template>
+          Copy link
+        </DropdownItem>
         <DropdownItem @click="copyText(activeMessage.text, 'Message')">
           <template #icon>
             <Icon name="ph:copy" />

@@ -73,9 +73,13 @@ function formatBody(nick, text) {
   return text
 }
 
-function buildNotification(line) {
-  const { tags, nick, command, params } = parseIrc(line)
+// Ergo casefolds with ASCII casemapping, so lowercasing is enough to line a
+// MARKREAD target up with the conversation a notification came from.
+function casefold(name) {
+  return name.toLowerCase()
+}
 
+function buildNotification({ tags, nick, command, params }) {
   // Only PRIVMSG/NOTICE carry a target + body worth surfacing.
   if (command !== 'PRIVMSG' && command !== 'NOTICE')
     return null
@@ -105,6 +109,8 @@ function buildNotification(line) {
     href = `/chat?dm=${encodeURIComponent(nick)}&notify=1`
   }
 
+  const ts = Date.parse(tags.time ?? '')
+
   return {
     title,
     options: {
@@ -114,8 +120,41 @@ function buildNotification(line) {
       // Coalesce repeated pings from the same conversation.
       tag: tags.msgid || target || undefined,
       renotify: true,
-      data: { href },
+      // `conversation` + `ts` are what a later MARKREAD matches against to
+      // retire this notification. For a DM the conversation is the sender, not
+      // `target` (which is us) - same name the client buffers it under.
+      data: {
+        href,
+        conversation: casefold(isChannel ? target : nick),
+        ts: Number.isFinite(ts) ? ts : null,
+      },
     },
+  }
+}
+
+// Ergo pushes a MARKREAD line once a conversation has been read, so devices can
+// drop pings the user has already dealt with. That happens when the read came
+// from another device, and also from this one when the read lands before the
+// session has registered its subscription (Ergo only skips the endpoint that
+// sent the MARKREAD). Clear what it covers and show nothing - the ping this
+// retires already satisfied the userVisibleOnly contract.
+async function clearRead(params) {
+  const conversation = casefold(params[0] ?? '')
+  if (!conversation)
+    return
+
+  const raw = params[1] ?? ''
+  const marker = Date.parse(raw.startsWith('timestamp=') ? raw.slice('timestamp='.length) : raw)
+
+  const notifications = await globalThis.registration.getNotifications()
+  for (const notification of notifications) {
+    const data = notification.data
+    if (!data || data.conversation !== conversation)
+      continue
+    // Anything newer than the marker arrived after the read and still stands.
+    if (Number.isFinite(marker) && typeof data.ts === 'number' && data.ts > marker)
+      continue
+    notification.close()
   }
 }
 
@@ -127,9 +166,22 @@ globalThis.addEventListener('push', (event) => {
   if (!line)
     return
 
+  let parsed
+  try {
+    parsed = parseIrc(line)
+  }
+  catch {
+    parsed = null
+  }
+
+  if (parsed?.command === 'MARKREAD') {
+    event.waitUntil(clearRead(parsed.params))
+    return
+  }
+
   let notification
   try {
-    notification = buildNotification(line)
+    notification = parsed ? buildNotification(parsed) : null
   }
   catch {
     notification = null
