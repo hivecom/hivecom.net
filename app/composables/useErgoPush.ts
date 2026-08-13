@@ -145,6 +145,19 @@ export function useErgoPush() {
         })
 
       localStorage.setItem(ENABLED_KEY, 'true')
+      // Flag the upcoming registration test push ("PING webpush", sent by Ergo
+      // before it acks a fresh endpoint) so the worker shows a welcome
+      // notification for it instead of dropping it like a keepalive. Cache API
+      // because the flag must survive the worker restarting between now and the
+      // push landing. Only set here, on user-initiated enable - reconnect and
+      // rotation re-registers stay silent.
+      try {
+        const cache = await caches.open('ergo-push-meta')
+        await cache.put('/ergo-push/welcome-pending', new Response(String(Date.now())))
+      }
+      catch {
+        // Cache unavailable just means no welcome notification.
+      }
       if (isConnected.value && account.value)
         sendRegister(subscription)
       isSubscribed.value = true

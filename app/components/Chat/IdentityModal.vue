@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Button, Divider, Flex, Input, Modal } from '@dolanske/vui'
+import type { DmHistorySetting } from '@/composables/useIrcChat'
+import { Button, Divider, Flex, Input, Modal, Select } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import { useSupabaseUser } from '#imports'
 import { useIrcChat } from '@/composables/useIrcChat'
@@ -9,7 +10,45 @@ defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 const isMobile = useBreakpoint('<s')
-const { account, accountEmail, accountAlwaysOn, accountInfoFetched, enableAlwaysOn, disableAlwaysOn, claimEmail, verifyClaimCode } = useIrcChat()
+const { account, accountEmail, accountAlwaysOn, accountDmHistory, accountDmHistoryEffective, accountInfoFetched, enableAlwaysOn, disableAlwaysOn, setDmHistory, claimEmail, verifyClaimCode } = useIrcChat()
+
+// --- DM history ---
+
+const dmHistoryOptions = [
+  { label: 'Server default', value: 'default' as DmHistorySetting },
+  { label: 'On', value: 'persistent' as DmHistorySetting },
+  { label: 'Ephemeral', value: 'ephemeral' as DmHistorySetting },
+  { label: 'Off', value: 'disabled' as DmHistorySetting },
+]
+
+const dmHistoryModel = computed<{ label: string, value: DmHistorySetting }[] | undefined>({
+  get() {
+    const match = dmHistoryOptions.find(o => o.value === accountDmHistory.value)
+    return match ? [match] : undefined
+  },
+  set(selection) {
+    const value = selection?.[0]?.value
+    if (value && value !== accountDmHistory.value)
+      setDmHistory(value)
+  },
+})
+
+// What the preference resolves to. The effective value comes from the server's
+// own "Given current server settings" reply, so 'default' reflects actual
+// server config instead of a hardcoded assumption.
+const dmHistoryEffective = computed(() => accountDmHistoryEffective.value ?? (accountDmHistory.value !== 'default' ? accountDmHistory.value : null))
+
+const dmHistoryDescription = computed(() => {
+  const effective = dmHistoryEffective.value
+  const state = effective === 'persistent'
+    ? 'Direct messages are stored on the server so you can catch up after being offline.'
+    : effective === 'ephemeral'
+      ? 'A limited amount of recent direct messages is kept in memory, nothing is written to disk.'
+      : effective === 'disabled'
+        ? 'No direct message history is kept. Messages you miss while offline are lost.'
+        : 'Direct message history follows the server default.'
+  return accountDmHistory.value === 'default' && effective ? `Server default: ${state.charAt(0).toLowerCase()}${state.slice(1)}` : state
+})
 
 // --- Claim flow ---
 
@@ -132,6 +171,38 @@ function handleClose() {
         <Button v-else-if="accountInfoFetched && accountAlwaysOn === true" variant="gray" size="s" @click="disableAlwaysOn">
           Disable
         </Button>
+      </Flex>
+
+      <Divider />
+
+      <!-- DM history -->
+      <Flex y-center x-between expand gap="m">
+        <Flex column gap="xxs" expand>
+          <Flex y-center gap="xs">
+            <Icon
+              :name="!accountInfoFetched ? 'ph:hourglass' : 'ph:clock-counter-clockwise'"
+              :class="!accountInfoFetched ? 'text-color-lighter' : dmHistoryEffective === 'disabled' ? 'text-color-yellow' : dmHistoryEffective === 'persistent' ? 'text-color-green' : 'text-color-lighter'"
+            />
+            <span class="text-s font-weight-medium">Message history</span>
+          </Flex>
+          <span v-if="!accountInfoFetched" class="text-xs text-color-lighter">
+            Checking status...
+          </span>
+          <template v-else>
+            <span class="text-xs text-color-lighter">{{ dmHistoryDescription }}</span>
+            <span v-if="accountAlwaysOn === false" class="text-xs text-color-yellow">
+              Only takes effect while always-on is enabled.
+            </span>
+          </template>
+        </Flex>
+        <Select
+          v-if="accountInfoFetched"
+          v-model="dmHistoryModel"
+          :options="dmHistoryOptions"
+          single
+          size="s"
+          style="width: 140px"
+        />
       </Flex>
 
       <Divider />

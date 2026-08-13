@@ -158,6 +158,32 @@ async function clearRead(params) {
   }
 }
 
+// The page drops a timestamp in this cache right before it sends WEBPUSH
+// REGISTER for a subscription the user just enabled. Ergo's registration flow
+// sends a "PING webpush" test push to the new endpoint before acking, and the
+// keepalive PINGs it sends later are byte-identical, so this flag is the only
+// way to tell "you just subscribed" apart from "still alive?". Consumed (and
+// deleted) on first read; the TTL covers the flag going stale when no test
+// push arrives, e.g. Ergo already knew the endpoint and skipped it.
+const WELCOME_CACHE = 'ergo-push-meta'
+const WELCOME_KEY = '/ergo-push/welcome-pending'
+const WELCOME_TTL_MS = 2 * 60 * 1000
+
+async function consumeWelcomePending() {
+  try {
+    const cache = await caches.open(WELCOME_CACHE)
+    const hit = await cache.match(WELCOME_KEY)
+    if (!hit)
+      return false
+    await cache.delete(WELCOME_KEY)
+    const ts = Number(await hit.text())
+    return Number.isFinite(ts) && Date.now() - ts < WELCOME_TTL_MS
+  }
+  catch {
+    return false
+  }
+}
+
 globalThis.addEventListener('push', (event) => {
   if (!event.data)
     return
@@ -176,6 +202,30 @@ globalThis.addEventListener('push', (event) => {
 
   if (parsed?.command === 'MARKREAD') {
     event.waitUntil(clearRead(parsed.params))
+    return
+  }
+
+  // Ergo sends a "PING webpush" payload to verify the endpoint on a fresh
+  // WEBPUSH REGISTER and as a periodic keepalive from push maintenance. It's a
+  // health check, not activity - showing it is what produced the stray "New
+  // activity" notifications. The one PING worth surfacing is the verification
+  // push right after the user enabled notifications: the page flags that moment
+  // (see consumeWelcomePending), and we greet it so the user sees end-to-end
+  // delivery actually works. Every other PING is dropped silently; like
+  // MARKREAD, the occasional non-visible push stays within the browsers'
+  // userVisibleOnly tolerance.
+  if (parsed?.command === 'PING') {
+    event.waitUntil((async () => {
+      if (await consumeWelcomePending()) {
+        await globalThis.registration.showNotification('Hivecom chat', {
+          body: 'You\'re now subscribed to push notifications',
+          icon: '/apple-touch-icon.png',
+          badge: '/apple-touch-icon.png',
+          tag: 'ergo-push-welcome',
+          data: { href: '/chat?notify=1' },
+        })
+      }
+    })())
     return
   }
 

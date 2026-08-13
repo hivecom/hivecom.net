@@ -62,6 +62,8 @@ const STORAGE_READ_POSITIONS = 'hivecom.chat.readpos'
 // Cached NickServ identity state to avoid indicator flash on reconnect.
 const STORAGE_IDENTITY_EMAIL = 'hivecom.chat.identity-email'
 const STORAGE_IDENTITY_ALWAYS_ON = 'hivecom.chat.identity-always-on'
+const STORAGE_IDENTITY_DM_HISTORY = 'hivecom.chat.identity-dm-history'
+const STORAGE_IDENTITY_DM_HISTORY_EFFECTIVE = 'hivecom.chat.identity-dm-history-effective'
 // Cached channel appearance metadata (display-name, avatar, color, homepage) for
 // instant display before the IRC connection delivers METADATA responses.
 const STORAGE_CHANNEL_META = 'hivecom.chat.channel-meta'
@@ -319,6 +321,15 @@ const chatFullWidth = ref(
 const accountEmail = ref<string | null>(null)
 // null = not yet determined; true/false parsed from NickServ INFO Flags line
 const accountAlwaysOn = ref<boolean | null>(null)
+// NickServ dm-history setting. Ergo reports 'default' | 'disabled' | 'ephemeral' | 'persistent';
+// null = not yet determined. Only effective while always-on is enabled.
+export type DmHistorySetting = 'default' | 'disabled' | 'ephemeral' | 'persistent'
+const DM_HISTORY_VALUES: ReadonlySet<string> = new Set(['default', 'disabled', 'ephemeral', 'persistent'])
+const accountDmHistory = ref<DmHistorySetting | null>(null)
+// What the stored preference resolves to under current server settings, parsed
+// from the "Given current server settings" follow-up notice. This is how we
+// know what 'default' actually means without hardcoding server config.
+const accountDmHistoryEffective = ref<DmHistorySetting | null>(null)
 
 // Per-nick metadata store populated from draft/metadata-2 METADATA notifications.
 // Keyed by lowercased nick. Used to surface avatar, display-name, and orbit.status
@@ -1355,6 +1366,10 @@ function loadPersisted() {
   accountEmail.value = cachedEmail
   const cachedAlwaysOn = localStorage.getItem(STORAGE_IDENTITY_ALWAYS_ON)
   accountAlwaysOn.value = cachedAlwaysOn === null ? null : cachedAlwaysOn === 'true'
+  const cachedDmHistory = localStorage.getItem(STORAGE_IDENTITY_DM_HISTORY)
+  accountDmHistory.value = cachedDmHistory !== null && DM_HISTORY_VALUES.has(cachedDmHistory) ? cachedDmHistory as DmHistorySetting : null
+  const cachedDmHistoryEffective = localStorage.getItem(STORAGE_IDENTITY_DM_HISTORY_EFFECTIVE)
+  accountDmHistoryEffective.value = cachedDmHistoryEffective !== null && DM_HISTORY_VALUES.has(cachedDmHistoryEffective) ? cachedDmHistoryEffective as DmHistorySetting : null
   lastSeenTs = Number(localStorage.getItem(STORAGE_LASTSEEN)) || 0
   try {
     closedDms = JSON.parse(localStorage.getItem(STORAGE_CLOSED_DMS) ?? '{}') as Record<string, number>
@@ -1680,6 +1695,7 @@ function queryNickServInfo() {
     clearTimeout(probeTimer)
   send('PRIVMSG NickServ :INFO')
   send('PRIVMSG NickServ :GET always-on')
+  send('PRIVMSG NickServ :GET dm-history')
   probeTimer = setTimeout(() => {
     probingNickServInfo = false
     probeTimer = null
@@ -1692,6 +1708,11 @@ function queryNickServInfo() {
       accountAlwaysOn.value = false
       if (import.meta.client)
         localStorage.setItem(STORAGE_IDENTITY_ALWAYS_ON, 'false')
+    }
+    if (accountDmHistory.value === null) {
+      accountDmHistory.value = 'default'
+      if (import.meta.client)
+        localStorage.setItem(STORAGE_IDENTITY_DM_HISTORY, 'default')
     }
     accountInfoFetched.value = true
   }, 5000)
@@ -1722,6 +1743,26 @@ function disableAlwaysOn() {
     localStorage.setItem(STORAGE_IDENTITY_ALWAYS_ON, 'false')
   suppressingNickServOp = true
   send('PRIVMSG NickServ :SET always-on false')
+  setTimeout(() => {
+    suppressingNickServOp = false
+  }, 3000)
+}
+
+/**
+ * Set the NickServ dm-history preference, suppressing its reply notices from
+ * visible buffers. Sets accountDmHistory optimistically on send, then re-probes
+ * GET dm-history inside the suppression window so the effective value (what the
+ * preference resolves to under server settings) refreshes from the server.
+ */
+function setDmHistory(value: DmHistorySetting) {
+  if (!account.value)
+    return
+  accountDmHistory.value = value
+  if (import.meta.client)
+    localStorage.setItem(STORAGE_IDENTITY_DM_HISTORY, value)
+  suppressingNickServOp = true
+  send(`PRIVMSG NickServ :SET dm-history ${value}`)
+  send('PRIVMSG NickServ :GET dm-history')
   setTimeout(() => {
     suppressingNickServOp = false
   }, 3000)
@@ -3027,6 +3068,27 @@ function handleMessage(raw: string) {
             localStorage.setItem(STORAGE_IDENTITY_ALWAYS_ON, 'true')
           accountInfoFetched.value = true
         }
+        // Parse dm-history from the explicit GET response. The "stored" line is
+        // the preference; the "Given current server settings" follow-up is what
+        // it resolves to (e.g. what 'default' actually means on this server).
+        const dmHistoryMatch = /stored direct message history setting is:\s*(\w+)/i.exec(noticeText)
+        if (dmHistoryMatch) {
+          const value = dmHistoryMatch[1]?.toLowerCase() ?? ''
+          if (DM_HISTORY_VALUES.has(value)) {
+            accountDmHistory.value = value as DmHistorySetting
+            if (import.meta.client)
+              localStorage.setItem(STORAGE_IDENTITY_DM_HISTORY, value)
+          }
+        }
+        const dmHistoryEffectiveMatch = /current server settings.*direct message history setting is:\s*(\w+)/i.exec(noticeText)
+        if (dmHistoryEffectiveMatch) {
+          const value = dmHistoryEffectiveMatch[1]?.toLowerCase() ?? ''
+          if (DM_HISTORY_VALUES.has(value)) {
+            accountDmHistoryEffective.value = value as DmHistorySetting
+            if (import.meta.client)
+              localStorage.setItem(STORAGE_IDENTITY_DM_HISTORY_EFFECTIVE, value)
+          }
+        }
       }
 
       // Swallow NickServ output during the silent background probe or a suppressed SET op.
@@ -3536,6 +3598,10 @@ function openSocket() {
   accountEmail.value = import.meta.client ? localStorage.getItem(STORAGE_IDENTITY_EMAIL) : null
   const _cachedAlwaysOn = import.meta.client ? localStorage.getItem(STORAGE_IDENTITY_ALWAYS_ON) : null
   accountAlwaysOn.value = _cachedAlwaysOn === null ? null : _cachedAlwaysOn === 'true'
+  const _cachedDmHistory = import.meta.client ? localStorage.getItem(STORAGE_IDENTITY_DM_HISTORY) : null
+  accountDmHistory.value = _cachedDmHistory !== null && DM_HISTORY_VALUES.has(_cachedDmHistory) ? _cachedDmHistory as DmHistorySetting : null
+  const _cachedDmHistoryEffective = import.meta.client ? localStorage.getItem(STORAGE_IDENTITY_DM_HISTORY_EFFECTIVE) : null
+  accountDmHistoryEffective.value = _cachedDmHistoryEffective !== null && DM_HISTORY_VALUES.has(_cachedDmHistoryEffective) ? _cachedDmHistoryEffective as DmHistorySetting : null
   accountInfoFetched.value = false
   connState.value = 'connecting'
   addServer({ type: 'system', text: `Connecting to ${WS_URL}...` })
@@ -4787,10 +4853,13 @@ export function useIrcChat() {
     // account claim state
     accountEmail,
     accountAlwaysOn,
+    accountDmHistory,
+    accountDmHistoryEffective,
     accountInfoFetched,
     queryNickServInfo,
     enableAlwaysOn,
     disableAlwaysOn,
+    setDmHistory,
     claimEmail,
     verifyClaimCode,
     // identity seam
