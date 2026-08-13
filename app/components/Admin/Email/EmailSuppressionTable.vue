@@ -58,7 +58,10 @@ async function loadMore() {
   errorMessage.value = ''
   try {
     const page = await fetchSuppressionPage(PAGE_SIZE, nextToken.value)
-    entries.value = [...entries.value, ...page.entries]
+    // The first page unions in profile-flagged addresses that SES may still
+    // list on a later page, so drop anything we already have.
+    const known = new Set(entries.value.map(row => row.email))
+    entries.value = [...entries.value, ...page.entries.filter(row => !known.has(row.email))]
     nextToken.value = page.nextToken
   }
   catch (error: unknown) {
@@ -80,9 +83,11 @@ function reasonVariant(reason: string | null) {
 }
 
 // SES is suppressing the address but our profile never got flagged, so the two
-// sides disagree about whether this person is deliverable.
+// sides disagree about whether this person is deliverable. The mirror case,
+// flagged but not in SES, is a first-class row now and gets its own badge in
+// the reason column instead.
 function hasDrift(entry: SuppressionEntry): boolean {
-  return entry.user !== null && !entry.user.bouncedFlag
+  return entry.sesSuppressed && entry.user !== null && !entry.user.bouncedFlag
 }
 
 function promptRemove(entry: SuppressionEntry) {
@@ -146,9 +151,17 @@ async function confirmRemove() {
               <Table.Cell>{{ entry.email }}</Table.Cell>
 
               <Table.Cell>
-                <Badge :variant="reasonVariant(entry.reason)">
+                <Badge v-if="entry.sesSuppressed" :variant="reasonVariant(entry.reason)">
                   {{ entry.reason ?? 'Unknown' }}
                 </Badge>
+                <Tooltip v-else>
+                  <Badge variant="warning">
+                    PROFILE FLAG
+                  </Badge>
+                  <template #tooltip>
+                    <p>Flagged on the profile (usually a delivery delay) but not suppressed in SES</p>
+                  </template>
+                </Tooltip>
               </Table.Cell>
 
               <Table.Cell>{{ fullDateTime(entry.lastUpdate) }}</Table.Cell>

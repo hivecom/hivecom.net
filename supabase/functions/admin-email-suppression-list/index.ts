@@ -23,7 +23,16 @@ interface SuppressionEntry {
   email: string;
   reason: string | null;
   lastUpdate: string | null;
+  sesSuppressed: boolean;
   user: SuppressionUser | null;
+}
+
+interface FlaggedProfileRow {
+  id: string;
+  email: string;
+  username: string | null;
+  email_notifications_bounced: boolean;
+  email_notifications_disabled: boolean;
 }
 
 const DEFAULT_PAGE_SIZE = 50;
@@ -190,6 +199,7 @@ Deno.serve(async (req: Request) => {
         lastUpdate: summary.LastUpdateTime
           ? new Date(summary.LastUpdateTime).toISOString()
           : null,
+        sesSuppressed: true,
         user: userId
           ? {
             id: userId,
@@ -200,6 +210,42 @@ Deno.serve(async (req: Request) => {
           : null,
       };
     });
+
+    // Profiles flagged by the webhook (a DeliveryDelay never creates an SES
+    // suppression entry) would otherwise be invisible here, so the first page
+    // unions them in. Later pages skip this; the client dedupes by email in
+    // case an SES page repeats one of these addresses.
+    if (body.nextToken === undefined) {
+      const sesEmails = new Set(entries.map((entry) => entry.email));
+      const { data: flagged, error: flaggedError } = await supabase.rpc(
+        "get_flagged_email_profiles" as never,
+      );
+
+      if (flaggedError) {
+        throw new Error(
+          `Failed to fetch flagged profiles: ${flaggedError.message}`,
+        );
+      }
+
+      const rows = (flagged ?? []) as unknown as FlaggedProfileRow[];
+
+      for (const row of rows) {
+        if (!row.email || sesEmails.has(row.email)) continue;
+
+        entries.push({
+          email: row.email,
+          reason: null,
+          lastUpdate: null,
+          sesSuppressed: false,
+          user: {
+            id: row.id,
+            username: row.username ?? null,
+            bouncedFlag: row.email_notifications_bounced,
+            disabledFlag: row.email_notifications_disabled,
+          },
+        });
+      }
+    }
 
     return jsonResponse({
       success: true,

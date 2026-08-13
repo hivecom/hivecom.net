@@ -57,6 +57,8 @@ export interface SuppressionEntry {
   /** "BOUNCE" or "COMPLAINT", null when SES doesn't report one. */
   reason: string | null
   lastUpdate: string | null
+  /** False for rows that only exist because the profile is flagged, like after a delivery delay. */
+  sesSuppressed: boolean
   user: SuppressionUser | null
 }
 

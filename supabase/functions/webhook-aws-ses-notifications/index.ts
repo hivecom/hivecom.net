@@ -129,11 +129,15 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true, message: "No recipients" }, 200);
   }
 
-  // Ignore successful deliveries; only flag problematic events
   const notificationKind = ses.notificationType ?? ses.eventType;
+
+  // A successful delivery proves the address works, so it clears any flags an
+  // earlier DeliveryDelay set. Hard bounces and complaints put the address on
+  // the SES suppression list, which blocks further sends, so a Delivery can't
+  // undo those.
   if (notificationKind === "Delivery") {
-    console.log("Email delivered successfully", emails);
-    return jsonResponse({ ok: true, message: "Delivery event ignored" }, 200);
+    const results = await clearEmails(emails);
+    return jsonResponse({ ok: true, results }, 200);
   }
 
   const results = await flagEmails(emails, notificationKind ?? "Bounce");
@@ -239,6 +243,54 @@ async function flagEmails(emails: string[], reason: SesNotificationType) {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       summary.push({ email, updated: false, error: message });
+    }
+  }
+
+  return summary;
+}
+
+async function clearEmails(emails: string[]) {
+  const summary: Array<{ email: string; cleared: boolean; error?: string }> =
+    [];
+
+  for (const email of emails) {
+    try {
+      const userId = await findUserIdByEmail(email);
+
+      if (!userId) {
+        summary.push({ email, cleared: false });
+        continue;
+      }
+
+      const updatePayload = {
+        email_notifications_bounced: false,
+        email_notifications_disabled: false,
+      } satisfies Database["public"]["Tables"]["profiles"]["Update"];
+
+      // Filtering on the flags keeps the common case, a delivery to a healthy
+      // address, a no-op write.
+      const { data, error: updateError } = await supabase
+        .from("profiles")
+        .update(updatePayload)
+        .eq("id", userId)
+        .or(
+          "email_notifications_bounced.eq.true,email_notifications_disabled.eq.true",
+        )
+        .select("id");
+
+      if (updateError) {
+        summary.push({ email, cleared: false, error: updateError.message });
+        continue;
+      }
+
+      const cleared = (data?.length ?? 0) > 0;
+      if (cleared) {
+        console.log(`Cleared email flags for ${email} after delivery`);
+      }
+      summary.push({ email, cleared });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      summary.push({ email, cleared: false, error: message });
     }
   }
 
