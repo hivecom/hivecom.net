@@ -2439,10 +2439,6 @@ export type Database = {
         Returns: undefined
       }
       array_elements_match_slug: { Args: { arr: string[] }; Returns: boolean }
-      audit_fields_unchanged: {
-        Args: { created_at: string; created_by: string }
-        Returns: boolean
-      }
       authorize: {
         Args: {
           requested_permission: Database["public"]["Enums"]["app_permission"]
@@ -3507,6 +3503,8 @@ export type Database = {
         | "network.delete"
         | "depot.read"
         | "depot.delete"
+        | "broadcasts.create"
+        | "broadcasts.read"
       app_role: "admin" | "moderator"
       badge_source: "manual" | "flag" | "computed"
       badge_tier: "bronze" | "silver" | "gold" | "shiny"
@@ -3733,6 +3731,8 @@ export const Constants = {
         "network.delete",
         "depot.read",
         "depot.delete",
+        "broadcasts.create",
+        "broadcasts.read",
       ],
       app_role: ["admin", "moderator"],
       badge_source: ["manual", "flag", "computed"],

@@ -1,0 +1,10 @@
+{
+  "name": "admin-email-broadcast",
+  "imports": {
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
+    "@aws-sdk/client-sesv2": "npm:@aws-sdk/client-sesv2@3",
+    "database-types": "../../../types/database.types.ts",
+    "broadcast-email": "../../email/broadcast.ts"
+  },
+  "exports": {}
+}

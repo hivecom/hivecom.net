@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Alert, Button, Divider, Flex, Tooltip } from '@dolanske/vui'
 import LegalDiffView from '@/components/Legal/DiffView.vue'
-import { fullDateLong } from '@/lib/utils/date'
+import { calendarDateLong, formatDateOnly } from '@/lib/utils/date'
 
 const route = useRoute()
 const name = computed(() => (route.params.name as string[]).filter(Boolean).join('/'))
@@ -29,8 +29,10 @@ defineOgImage('Default', {
   description: computed(() => seoDescription.value),
 })
 
-const today = new Date()
-today.setHours(0, 0, 0, 0)
+// Effective dates are date-only YYYY-MM-DD strings, so revisions are compared
+// lexicographically against the viewer's local day instead of Date objects,
+// which would shift across the UTC boundary.
+const todayKey = formatDateOnly(new Date())
 
 // Detect whether we're viewing a revision (path has 2+ segments, e.g. "terms/2026-12-01")
 const nameParts = computed(() => name.value.split('/'))
@@ -39,14 +41,13 @@ const isRevisionPage = computed(() => nameParts.value.length > 1)
 // The base document name (e.g. "terms") for linking back
 const baseName = computed(() => nameParts.value[0])
 
-// For revision pages, fetch the parent document so we can find the preceding revision
+// The current in-effect document. On the index page this is the same document
+// as `content`, but fetching it unconditionally keeps the cached entry a real
+// document, so client-side navigation between the index and a revision page
+// never gets stuck on a cached null.
 const { data: parentContent, error: parentError } = await useAsyncData(
   () => `legal:${baseName.value}:parent`,
-  () => {
-    if (!isRevisionPage.value)
-      return Promise.resolve(null)
-    return queryCollection('legal').path(`/legal/${baseName.value}`).first()
-  },
+  () => queryCollection('legal').path(`/legal/${baseName.value}`).first(),
   { watch: [name] },
 )
 
@@ -54,30 +55,36 @@ const { data: parentContent, error: parentError } = await useAsyncData(
 const isFutureRevision = computed(() => {
   if (!isRevisionPage.value || !content.value?.date)
     return false
-  const d = new Date(content.value.date)
-  return !Number.isNaN(d.getTime()) && d >= today
+  return content.value.date >= todayKey
 })
 
 // Past revision = is a revision page, not future
 const isPastRevision = computed(() => isRevisionPage.value && !isFutureRevision.value)
 
-const pastRevisions = computed(() => {
-  const source = isRevisionPage.value ? parentContent.value : content.value
-  return (source?.revisions ?? []).filter((r) => {
-    const d = new Date(r)
-    return !Number.isNaN(d.getTime()) && d < today
-  })
-})
+// Effective date of the current in-effect version, shown as its own entry on
+// revision pages.
+const currentDate = computed(() => parentContent.value?.date ?? null)
 
-const futureRevisions = computed(() => {
-  const source = isRevisionPage.value ? parentContent.value : content.value
-  return (source?.revisions ?? []).filter((r) => {
-    const d = new Date(r)
-    return !Number.isNaN(d.getTime()) && d >= today
-  })
-})
+// The lists leave out the date of the page being viewed and the current
+// version's date, so no page links to itself and the current version only
+// appears as the dedicated "Current Version" entry.
+const pastRevisions = computed(() =>
+  (parentContent.value?.revisions ?? []).filter(r =>
+    r < todayKey && r !== content.value?.date && r !== currentDate.value,
+  ),
+)
 
-const hasRevisions = computed(() => pastRevisions.value.length > 0 || futureRevisions.value.length > 0)
+const futureRevisions = computed(() =>
+  (parentContent.value?.revisions ?? []).filter(r =>
+    r >= todayKey && r !== content.value?.date,
+  ),
+)
+
+const hasRevisions = computed(() =>
+  pastRevisions.value.length > 0
+  || futureRevisions.value.length > 0
+  || (isRevisionPage.value && !!currentDate.value),
+)
 
 // Diff toggle
 const diffOpen = ref(false)
@@ -106,7 +113,7 @@ const diffToPath = computed(() => `/legal/${name.value}`)
 const diffFromLabel = computed(() => {
   if (!isRevisionPage.value) {
     const last = pastRevisions.value.at(-1)
-    return last ? fullDateLong(last) : ''
+    return last ? calendarDateLong(last) : ''
   }
 
   const thisDate = content.value?.date
@@ -116,10 +123,10 @@ const diffFromLabel = computed(() => {
   const all = (parentContent.value?.revisions ?? []).toSorted((a, b) => new Date(a).getTime() - new Date(b).getTime())
 
   const idx = all.indexOf(thisDate)
-  return idx > 0 ? fullDateLong(all[idx - 1]) : ''
+  return idx > 0 ? calendarDateLong(all[idx - 1]) : ''
 })
 
-const diffToLabel = computed(() => fullDateLong(content.value?.date ?? null))
+const diffToLabel = computed(() => calendarDateLong(content.value?.date ?? null))
 
 const canDiff = computed(() => !!diffFromPath.value)
 
@@ -147,21 +154,21 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
             <div>
               <p class="legal-page__last-updated">
                 <template v-if="isFutureRevision">
-                  Effective on {{ fullDateLong(content.date) }}
+                  Effective on {{ calendarDateLong(content.date) }}
                 </template>
                 <template v-else-if="isPastRevision">
-                  Previously effective from {{ fullDateLong(content.date) }} -
+                  Previously effective from {{ calendarDateLong(content.date) }} -
                   <NuxtLink :to="`/legal/${baseName}`" class="legal-page__current-link">
                     Go to current
                   </NuxtLink>
                 </template>
                 <template v-else>
-                  Effective since {{ fullDateLong(content.date) }}
+                  Effective since {{ calendarDateLong(content.date) }}
                 </template>
               </p>
             </div>
 
-            <Flex v-if="changeNote || canDiff || (hasRevisions && !isRevisionPage)" y-center gap="xs">
+            <Flex v-if="changeNote || canDiff || hasRevisions" y-center gap="xs">
               <Tooltip v-if="changeNote" placement="top">
                 <Icon name="ph:note" class="legal-page__note-icon" />
                 <template #tooltip>
@@ -177,7 +184,7 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
                 </template>
               </Tooltip>
               <Button
-                v-if="hasRevisions && !isRevisionPage"
+                v-if="hasRevisions"
                 size="s"
                 variant="gray"
                 href="#revisions"
@@ -211,13 +218,13 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
             <NuxtLink :to="`/legal/${baseName}`">
               current version
             </NuxtLink>
-            on {{ fullDateLong(content.date) }}.
+            on {{ calendarDateLong(content.date) }}.
           </Alert>
 
           <!-- Callout: current doc has upcoming changes -->
           <Alert v-else-if="!isRevisionPage && futureRevisions.length" variant="info" class="legal-page__callout">
             <template v-if="futureRevisions.length === 1">
-              Updated terms will take effect on {{ fullDateLong(futureRevisions[0]) }}.
+              Updated terms will take effect on {{ calendarDateLong(futureRevisions[0]) }}.
               <NuxtLink :to="`/legal/${name}/${futureRevisions[0]}`">
                 Preview the upcoming version.
               </NuxtLink>
@@ -225,7 +232,7 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
             <template v-else>
               Updated terms are scheduled. Upcoming effective dates:
               <span v-for="(r, i) in futureRevisions" :key="r">
-                <NuxtLink :to="`/legal/${name}/${r}`">{{ fullDateLong(r) }}</NuxtLink><template v-if="i < futureRevisions.length - 1">, </template>
+                <NuxtLink :to="`/legal/${name}/${r}`">{{ calendarDateLong(r) }}</NuxtLink><template v-if="i < futureRevisions.length - 1">, </template>
               </span>.
             </template>
           </Alert>
@@ -236,37 +243,47 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
           <!-- Seems to not be working right now -->
           <!-- <TableOfContents :toc="content.body.toc" /> -->
 
-          <div v-if="hasRevisions && !isRevisionPage" class="legal-page__revisions">
+          <div v-if="hasRevisions" id="revisions" class="legal-page__revisions">
             <div v-if="futureRevisions.length" class="legal-page__revisions-group">
-              <h5 id="revisions">
-                Future Revisions
-              </h5>
+              <h5>Future Revisions</h5>
               <p class="legal-page__revisions-note">
                 These versions are scheduled to take effect on the listed date.
               </p>
               <ul>
                 <li v-for="revision in futureRevisions" :key="revision">
                   <NuxtLink
-                    :to="`/legal/${name}/${revision}`"
-                    :aria-label="`View upcoming revision effective ${fullDateLong(revision)}`"
+                    :to="`/legal/${baseName}/${revision}`"
+                    :aria-label="`View upcoming revision effective ${calendarDateLong(revision)}`"
                   >
-                    Effective {{ fullDateLong(revision) }}
+                    Effective {{ calendarDateLong(revision) }}
+                  </NuxtLink>
+                </li>
+              </ul>
+            </div>
+
+            <div v-if="isRevisionPage && currentDate" class="legal-page__revisions-group">
+              <h5>Current Version</h5>
+              <ul>
+                <li>
+                  <NuxtLink
+                    :to="`/legal/${baseName}`"
+                    :aria-label="`View current version effective since ${calendarDateLong(currentDate)}`"
+                  >
+                    Effective since {{ calendarDateLong(currentDate) }}
                   </NuxtLink>
                 </li>
               </ul>
             </div>
 
             <div v-if="pastRevisions.length" class="legal-page__revisions-group">
-              <h5 :id="futureRevisions.length ? 'past-revisions' : 'revisions'">
-                Previous Revisions
-              </h5>
+              <h5>Previous Revisions</h5>
               <ul>
                 <li v-for="revision in pastRevisions" :key="revision">
                   <NuxtLink
-                    :to="`/legal/${name}/${revision}`"
-                    :aria-label="`View revision from ${fullDateLong(revision)}`"
+                    :to="`/legal/${baseName}/${revision}`"
+                    :aria-label="`View revision from ${calendarDateLong(revision)}`"
                   >
-                    {{ fullDateLong(revision) }}
+                    {{ calendarDateLong(revision) }}
                   </NuxtLink>
                 </li>
               </ul>

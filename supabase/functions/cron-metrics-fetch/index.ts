@@ -35,6 +35,54 @@ function normalizeCountryCode(value: string | null | undefined): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// History payload
+// ------------------------------------------------------------------------
+
+// The metrics table is queryable history; player name lists stay out of it
+// and exist only in the current latest.json snapshot. See Privacy Policy 2.10.
+function stripPlayerNames(snapshot: MetricsSnapshot): MetricsSnapshot {
+  const byServer: MetricsSnapshot["gameservers"]["byServer"] = {};
+
+  for (
+    const [key, detail] of Object.entries(snapshot.gameservers.byServer)
+  ) {
+    switch (detail.protocol) {
+      case "source":
+        byServer[key] = detail.data === null ? detail : {
+          ...detail,
+          data: { ...detail.data, playerList: null },
+        };
+        break;
+      case "minecraft":
+        byServer[key] = detail.data === null ? detail : {
+          ...detail,
+          data: { ...detail.data, players: null },
+        };
+        break;
+      case "gamespy1":
+        byServer[key] = detail.data === null ? detail : {
+          ...detail,
+          data: { ...detail.data, players: null },
+        };
+        break;
+      case "factorio":
+        byServer[key] = detail.data === null ? detail : {
+          ...detail,
+          data: { ...detail.data, players: null },
+        };
+        break;
+      default:
+        byServer[key] = detail;
+    }
+  }
+
+  return {
+    ...snapshot,
+    gameservers: { ...snapshot.gameservers, byServer },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Local row shapes
 // ------------------------------------------------------------------------
 type GameRow = Pick<Tables<"games">, "id" | "steam_id">;
@@ -722,13 +770,13 @@ Deno.serve(async (req: Request) => {
     };
 
     // ---------------------------------------------------------------------------
-    // Persist: INSERT into metrics table
+    // Persist: INSERT into metrics table (counts only, no player name lists)
     // ------------------------------------------------------------------------
     const { error: insertError } = await supabaseClient
       .from("metrics")
       .insert({
         captured_at: now.toISOString(),
-        data: payload as unknown as Json,
+        data: stripPlayerNames(payload) as unknown as Json,
       });
 
     if (insertError) {

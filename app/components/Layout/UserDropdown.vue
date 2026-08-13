@@ -135,6 +135,7 @@ async function signOut() {
                 :anchor="impersonatePopoutAnchor"
                 :visible="impersonatePopoutOpen"
                 placement="left-start"
+                :teleport="false"
                 @click-outside="impersonatePopoutOpen = false"
               >
                 <div class="vui-dropdown">

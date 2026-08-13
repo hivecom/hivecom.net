@@ -1,0 +1,9 @@
+{
+  "name": "admin-email-overview",
+  "imports": {
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
+    "@aws-sdk/client-sesv2": "npm:@aws-sdk/client-sesv2@3",
+    "database-types": "../../../types/database.types.ts"
+  },
+  "exports": {}
+}
