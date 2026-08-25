@@ -224,3 +224,44 @@ verify_jwt = false
 [functions.webhook-kofi-donation]
 # Allow unauthenticated Ko-fi POSTs; rely on verification_token in payload instead of JWT
 verify_jwt = false
+
+# Internally invoked functions (pg_cron jobs, queue dispatchers, DB triggers) are
+# called via pg_net, which can't mint a valid JWT now that the legacy anon key is
+# disabled. Gateway JWT verification is off for these; each one authenticates via
+# its System-Cron-Secret / System-Trigger-Secret header check in code instead.
+
+[functions.cron-docker-control-container-fetch]
+verify_jwt = false
+
+[functions.cron-metrics-fetch]
+verify_jwt = false
+
+[functions.cron-patreon-fetch]
+verify_jwt = false
+
+[functions.cron-render-status-banner]
+verify_jwt = false
+
+[functions.cron-teamspeak-sync]
+verify_jwt = false
+
+[functions.worker-sync-lastfm]
+verify_jwt = false
+
+[functions.worker-sync-steam]
+verify_jwt = false
+
+[functions.trigger-cleanup-discussion-media]
+verify_jwt = false
+
+[functions.trigger-discord-event-sync]
+verify_jwt = false
+
+[functions.trigger-google-calendar-sync]
+verify_jwt = false
+
+[functions.trigger-notification-push-send]
+verify_jwt = false
+
+[functions.trigger-user-avatar-sync]
+verify_jwt = false

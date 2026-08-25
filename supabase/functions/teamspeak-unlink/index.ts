@@ -1,3 +1,4 @@
+import { getPublishableKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Tables } from "database-types";
 import type { TeamSpeakIdentityRecord } from "../../../types/teamspeak.ts";
@@ -41,7 +42,7 @@ async function requireAuthenticatedUser(req: Request): Promise<{ id: string }> {
 
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    getPublishableKey(),
     {
       global: {
         headers: { Authorization: authHeader },

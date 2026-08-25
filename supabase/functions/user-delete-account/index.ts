@@ -1,3 +1,4 @@
+import { getPublishableKey, getSecretKey } from "../_shared/env.ts";
 import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -37,9 +38,8 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-    const serviceKey = Deno.env.get("SUPABASE_SECRET_KEY") ??
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const anonKey = getPublishableKey();
+    const serviceKey = getSecretKey();
 
     if (!supabaseUrl || !anonKey || !serviceKey) {
       console.error(

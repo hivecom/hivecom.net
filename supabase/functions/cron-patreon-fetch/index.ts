@@ -1,3 +1,4 @@
+import { getSecretKey } from "../_shared/env.ts";
 import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
@@ -101,8 +102,7 @@ Deno.serve(async (req: Request) => {
     // Don't pass Authorization header from the request
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SECRET_KEY") ??
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      getSecretKey(),
     );
 
     // Fetch the latest Patreon contribution records for our campaign.

@@ -1,3 +1,4 @@
+import { getSecretKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -206,9 +207,7 @@ Deno.serve(async (req: Request) => {
 
 function createSupabaseAdminClient(): SupabaseClientType {
   const url = Deno.env.get("SUPABASE_URL") ?? "";
-  const key = Deno.env.get("SUPABASE_SECRET_KEY") ??
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-    "";
+  const key = getSecretKey();
 
   if (url === "" || key === "") {
     throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");

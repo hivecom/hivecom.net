@@ -1,3 +1,4 @@
+import { getSecretKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -83,9 +84,7 @@ Deno.serve(async (req) => {
     console.log(`Found ${paths.length} path(s) to remove:`, paths);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-      Deno.env.get("SUPABASE_SECRET_KEY") ??
-      "";
+    const supabaseKey = getSecretKey();
 
     if (!supabaseUrl || !supabaseKey) {
       throw new Error(

@@ -1,3 +1,4 @@
+import { getPublishableKey, getSecretKey } from "./env.ts";
 import { corsHeaders } from "./cors.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
@@ -12,9 +13,7 @@ import type { Database } from "database-types";
  */
 async function checkBanStatus(userId: string): Promise<Response | undefined> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SECRET_KEY") ??
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-    "";
+  const serviceRoleKey = getSecretKey();
 
   const adminClient = createClient<Database>(supabaseUrl, serviceRoleKey);
 
@@ -215,7 +214,7 @@ export async function authorizeAuthenticated(
     // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      getPublishableKey(),
       {
         global: {
           headers: { Authorization: authHeader },
@@ -281,7 +280,7 @@ export async function authorizeAuthenticatedHasPermission(
     // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      getPublishableKey(),
       {
         global: {
           headers: { Authorization: authHeader },
@@ -422,7 +421,7 @@ export async function authorizeAuthenticatedHasPermissionAal2(
   try {
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      getPublishableKey(),
       {
         global: {
           headers: { Authorization: authHeader },

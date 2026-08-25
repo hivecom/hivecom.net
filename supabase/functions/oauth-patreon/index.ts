@@ -1,3 +1,4 @@
+import { getPublishableKey, getSecretKey } from "../_shared/env.ts";
 import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -69,8 +70,8 @@ Deno.serve(async (req) => {
     const supabaseClient = createClient(
       // Supabase API URL - env var exported by default
       Deno.env.get("SUPABASE_URL") ?? "",
-      // Supabase API ANON KEY - env var exported by default
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      // Supabase publishable API key, resolved from the platform-injected env
+      getPublishableKey(),
       // Create client with Auth context of the user that called the function
       {
         global: {
@@ -176,8 +177,7 @@ Deno.serve(async (req) => {
     // Create Supabase admin client for database operations
     const supabaseAdmin = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SECRET_KEY") ??
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      getSecretKey(),
     );
 
     // Update the user's profile with Patreon data

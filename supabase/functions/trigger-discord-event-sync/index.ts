@@ -1,3 +1,4 @@
+import { getSecretKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -272,8 +273,7 @@ Deno.serve(async (req) => {
 
 function createSupabaseClient() {
   const url = Deno.env.get("SUPABASE_URL") ?? "";
-  const key = Deno.env.get("SUPABASE_SECRET_KEY") ??
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const key = getSecretKey();
 
   if (!url || !key) {
     throw new Error(

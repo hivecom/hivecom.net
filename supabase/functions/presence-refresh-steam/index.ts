@@ -1,3 +1,4 @@
+import { getPublishableKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -27,7 +28,7 @@ Deno.serve(async (req: Request) => {
 
     // Create Supabase client with user's auth
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseAnonKey = getPublishableKey();
 
     if (!supabaseUrl || !supabaseAnonKey) {
       throw new Error("Missing Supabase configuration");

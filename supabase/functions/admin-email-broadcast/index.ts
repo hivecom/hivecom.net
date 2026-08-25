@@ -1,3 +1,4 @@
+import { getPublishableKey } from "../_shared/env.ts";
 import { SendEmailCommand, SESv2Client } from "@aws-sdk/client-sesv2";
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -231,7 +232,7 @@ Deno.serve(async (req: Request) => {
 
     const tempClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      getPublishableKey(),
       {
         global: {
           headers: { Authorization: authHeader },

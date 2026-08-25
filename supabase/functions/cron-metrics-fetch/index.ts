@@ -1,3 +1,4 @@
+import { getSecretKey } from "../_shared/env.ts";
 import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
@@ -244,9 +245,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseKey = Deno.env.get("SUPABASE_SECRET_KEY") ??
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-      "";
+    const supabaseKey = getSecretKey();
 
     if (!supabaseUrl) {
       throw new Error("SUPABASE_URL environment variable is not set");
