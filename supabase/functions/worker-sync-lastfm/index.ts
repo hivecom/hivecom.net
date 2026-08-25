@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
+import { timingSafeEqualString } from "../_shared/auth.ts";
 import { fetchRecentTrack, resolveAlbumArt } from "../_shared/lastfm.ts";
 
 // Convenience alias - used for queries against tables/columns not yet in
@@ -261,7 +262,10 @@ Deno.serve(async (req: Request) => {
     const cronSecret = Deno.env.get("SYSTEM_CRON_SECRET");
     const providedSecret = req.headers.get("System-Cron-Secret");
 
-    if (!cronSecret || providedSecret !== cronSecret) {
+    if (
+      !cronSecret || !providedSecret ||
+      !timingSafeEqualString(providedSecret, cronSecret)
+    ) {
       return new Response(
         JSON.stringify({ success: false, message: "Unauthorized" }),
         {

@@ -6,11 +6,21 @@ Edge functions access their credentials through Deno environment variables (Supa
 
 To add or update a Vault secret, use the Supabase dashboard under **Database > Vault**, or via the CLI.
 
+## Rotating the system secrets
+
+`system_cron_secret` and `system_trigger_secret` are the sole auth gate for the internally invoked edge functions now that gateway JWT verification is off for them, so rotate them once in a while. Each secret lives in two places that must match: Vault (what the database sends) and the edge function environment (what the functions expect).
+
+1. Generate a new value: `openssl rand -base64 32`
+2. Update the function env: `supabase secrets set SYSTEM_CRON_SECRET=<value>` (or `SYSTEM_TRIGGER_SECRET`)
+3. Update the matching Vault secret under **Database > Vault**
+
+Ticks that fire between steps 2 and 3 will 401 and self-heal on the next run; check the `stability-pg-net-failures` snippet afterwards to confirm the 401s stopped.
+
 ## `anon_key`
 
-The project's anon (publishable) API key. Used by database trigger functions when constructing the `Authorization` header for outbound edge function calls (`net.http_post`). This allows triggers to invoke edge functions without embedding a service role key in SQL.
+The legacy anon JWT, still sent as the `Authorization` header by existing trigger and cron SQL. Nothing verifies it anymore: the legacy key was disabled in April 2026 and gateway JWT verification is off for the internally invoked functions, so the `System-Cron-Secret` / `System-Trigger-Secret` headers carry the actual auth. The header is inert and only kept because the SQL that sends it hasn't been rewritten.
 
-**Used by:** all trigger and cron functions that call edge functions from within the database.
+**Used by:** all trigger and cron functions that call edge functions from within the database, as a vestigial header.
 
 ## `project_url`
 
