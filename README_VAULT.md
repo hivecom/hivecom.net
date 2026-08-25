@@ -10,11 +10,12 @@ To add or update a Vault secret, use the Supabase dashboard under **Database > V
 
 `system_cron_secret` and `system_trigger_secret` are the sole auth gate for the internally invoked edge functions now that gateway JWT verification is off for them, so rotate them once in a while. Each secret lives in two places that must match: Vault (what the database sends) and the edge function environment (what the functions expect).
 
-1. Generate a new value: `openssl rand -base64 32`
-2. Update the function env: `supabase secrets set SYSTEM_CRON_SECRET=<value>` (or `SYSTEM_TRIGGER_SECRET`)
-3. Update the matching Vault secret under **Database > Vault**
+```sh
+SUPABASE_DB_URL='postgresql://postgres:<password>@db.<ref>.supabase.co:5432/postgres' \
+  ./supabase/scripts/rotate-system-secrets.sh
+```
 
-Ticks that fire between steps 2 and 3 will 401 and self-heal on the next run; check the `stability-pg-net-failures` snippet afterwards to confirm the 401s stopped.
+The script rotates both secrets: function env first via `supabase secrets set`, then Vault via `vault.update_secret`. Ticks that fire between the two steps will 401 and self-heal on the next run; check the `stability-pg-net-failures` snippet afterwards to confirm the 401s stopped.
 
 ## `anon_key`
 
