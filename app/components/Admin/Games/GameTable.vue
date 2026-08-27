@@ -245,7 +245,7 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
         const moveResult = await moveGameAssets(supabase, previousShorthand, normalizedData.shorthand)
         if (!moveResult.success)
           errorMessage.value = `Game saved, but moving its assets failed: ${moveResult.error ?? 'unknown error'}`
-        clearGameAssets(selectedGame.value.id)
+        clearGameAssets(selectedGame.value.id, previousShorthand, normalizedData.shorthand)
       }
     }
     else {

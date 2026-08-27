@@ -8,7 +8,7 @@ import CountdownTimer from '@/components/Events/CountdownTimer.vue'
 import { useContainerBreakpoint } from '@/composables/useContainerBreakpoint'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { fullDate } from '@/lib/utils/date'
-import { humanizeRrule, nextOccurrenceDate } from '@/lib/utils/rrule'
+import { currentOrNextOccurrenceDate, humanizeRrule } from '@/lib/utils/rrule'
 
 type LinkPreviewData = NonNullable<ReturnType<typeof useDataLinkPreview>['data']['value']>
 type EventData = LinkPreviewData & { type: 'event' }
@@ -36,17 +36,13 @@ const effectiveDate = computed<string | null>(() => {
   if (!props.data.recurrenceRule)
     return props.data.date
 
-  // Search from (now - duration) so an in-progress occurrence is still found.
-  const durationMs = (props.data.durationMinutes ?? 0) * 60 * 1000
-  const searchFrom = new Date(now.value.getTime() - durationMs)
-
   const stub = {
     date: props.data.date,
     recurrence_rule: props.data.recurrenceRule,
     duration_minutes: props.data.durationMinutes,
   } as unknown as Tables<'events'>
 
-  const next = nextOccurrenceDate(stub, searchFrom)
+  const next = currentOrNextOccurrenceDate(stub, now.value)
   return next ? next.toISOString() : null
 })
 

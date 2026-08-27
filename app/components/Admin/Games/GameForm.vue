@@ -640,8 +640,7 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
     if (result.success && result.url) {
       assetsUrl.value[assetType] = result.url
       // Clear cache for this game to ensure fresh data
-      if (props.game?.id)
-        clearGameAssets(props.game.id)
+      clearGameAssets(props.game?.id ?? null, gameForm.value.shorthand)
     }
     else {
       assetsError.value[assetType] = result.error || `Failed to upload ${assetType}`
@@ -676,8 +675,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
       assetsUrl.value[assetType] = null
       assetsError.value[assetType] = null
       // Clear cache for this game to ensure fresh data
-      if (props.game?.id)
-        clearGameAssets(props.game.id)
+      clearGameAssets(props.game?.id ?? null, gameForm.value.shorthand)
     }
     else {
       assetsError.value[assetType] = result.error || 'Failed to remove asset'
@@ -696,6 +694,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
     position="right"
     :card="{ separators: true }"
     :size="600"
+    :can-dismiss="false"
     @close="handleClose"
   >
     <template #header>

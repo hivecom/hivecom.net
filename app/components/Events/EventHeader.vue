@@ -13,7 +13,7 @@ import { useRsvpBus } from '@/composables/useRsvpBus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatDurationFromMinutes } from '@/lib/utils/duration'
-import { humanizeRrule, isSeriesActive, nextOccurrenceDate } from '@/lib/utils/rrule'
+import { currentOrNextOccurrenceDate, humanizeRrule, isSeriesActive } from '@/lib/utils/rrule'
 import CountdownTimer from './CountdownTimer.vue'
 import EventRSVPCount from './EventRSVPCount.vue'
 import EventRSVPModal from './EventRSVPModal.vue'
@@ -56,12 +56,12 @@ const timeAgoParts = computed(() => {
 
 const isBelowSmall = useBreakpoint('<s')
 
-// For recurring series, display the next upcoming occurrence date rather than
-// the stored origin date. If the series has ended (UNTIL passed), fall back
-// to the origin date so something is always shown.
+// For recurring series, display the in-progress occurrence or the next upcoming
+// one rather than the stored origin date. If the series has ended (UNTIL
+// passed), fall back to the origin date so something is always shown.
 const displayDate = computed(() => {
   if (props.event.recurrence_rule) {
-    const next = nextOccurrenceDate(props.event)
+    const next = currentOrNextOccurrenceDate(props.event)
     if (next)
       return next.toISOString()
   }

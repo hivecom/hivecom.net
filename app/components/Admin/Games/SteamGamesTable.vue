@@ -2,7 +2,7 @@
 import type { Ref } from 'vue'
 import type { MetricsHistoryEntry } from '@/composables/useDataMetrics'
 import type { Tables } from '@/types/database.overrides'
-import { Alert, Badge, Button, defineTable, Flex, Input, paginate, Pagination, Table, Tooltip } from '@dolanske/vui'
+import { Alert, Badge, Button, defineTable, Flex, Input, paginate, Pagination, Select, Table, Tooltip } from '@dolanske/vui'
 import { computed, defineAsyncComponent, inject, onBeforeMount, ref, watch } from 'vue'
 
 import GameForm from '@/components/Admin/Games/GameForm.vue'
@@ -43,6 +43,27 @@ const steamGames = ref<RpcSteamGame[]>([])
 const trackedSteamIds = ref<Set<number>>(new Set())
 const search = ref('')
 const isBelowMedium = useBreakpoint('<m')
+
+// Tracked filter - '' means no filter
+interface SelectOption {
+  label: string
+  value: string
+}
+
+const trackedOptions: SelectOption[] = [
+  { label: 'Tracked', value: 'tracked' },
+  { label: 'Untracked', value: 'untracked' },
+]
+
+const trackedFilter = ref<'' | 'tracked' | 'untracked'>('')
+
+// VUI Select speaks SelectOption[] - bridge to/from the plain string model
+const trackedSelectModel = computed({
+  get: () => trackedFilter.value ? trackedOptions.filter(o => o.value === trackedFilter.value) : [],
+  set: (val: SelectOption[] | undefined) => {
+    trackedFilter.value = (val?.[0]?.value ?? '') as '' | 'tracked' | 'untracked'
+  },
+})
 
 // Required to satisfy VUI's TableSelectionProvideSymbol context for Table.Root
 defineTable(steamGames, { pagination: { enabled: false }, select: false })
@@ -132,6 +153,7 @@ async function fetchSteamGames() {
       p_sort_dir: sortDir.value,
       p_limit: adminTablePerPage.value,
       p_offset: (page.value - 1) * adminTablePerPage.value,
+      p_tracked: trackedFilter.value ? trackedFilter.value === 'tracked' : undefined,
     })
 
     if (error)
@@ -168,6 +190,11 @@ watch(search, () => {
 })
 
 watch(adminTablePerPage, () => {
+  page.value = 1
+  void fetchSteamGames()
+})
+
+watch(trackedFilter, () => {
   page.value = 1
   void fetchSteamGames()
 })
@@ -264,11 +291,20 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
 
     <Flex v-else gap="s" column expand>
       <Flex x-between y-center gap="s" wrap expand>
-        <Input v-model="search" placeholder="Search Steam games..." size="s" :expand="isBelowMedium">
-          <template #start>
-            <Icon name="ph:magnifying-glass" />
-          </template>
-        </Input>
+        <Flex y-center gap="s" :expand="isBelowMedium">
+          <Input v-model="search" placeholder="Search Steam games..." size="s" :expand="isBelowMedium">
+            <template #start>
+              <Icon name="ph:magnifying-glass" />
+            </template>
+          </Input>
+          <Select
+            v-model="trackedSelectModel"
+            :options="trackedOptions"
+            placeholder="Tracked status"
+            size="s"
+            show-clear
+          />
+        </Flex>
         <Flex y-center x-between :expand="isBelowMedium" :style="isBelowMedium ? { flexDirection: 'row-reverse' } : {}">
           <Tooltip v-if="steamRichPresenceCount !== null">
             <Badge size="s" variant="neutral" filled>

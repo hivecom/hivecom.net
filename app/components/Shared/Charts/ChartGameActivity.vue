@@ -87,7 +87,17 @@ function gameLabel(id: string): string {
   return gameNameMap.value.get(id) ?? id
 }
 
+// This chart reads history through the isolated fetchers, so refreshes have to
+// arrive via the subscription listener - the shared ref never updates for us.
+let stopRefresh: (() => void) | null = null
+// Guards against a superseded load re-subscribing after a faster later one.
+let loadToken = 0
+
 async function loadData() {
+  const token = ++loadToken
+  stopRefresh?.()
+  stopRefresh = null
+
   if (props.window !== null) {
     loadingHistory.value = true
     try {
@@ -105,7 +115,11 @@ async function loadData() {
     finally {
       loadingHistory.value = false
     }
-    scheduleRefresh(props.period)
+    if (token === loadToken) {
+      stopRefresh = scheduleRefresh(props.period, (entries) => {
+        metricsHistory.value = entries
+      })
+    }
   }
   if (metrics.value === null)
     fetchMetrics()

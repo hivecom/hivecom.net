@@ -267,6 +267,17 @@ export function nextOccurrenceDate(event: EventRow, after: Date = new Date()): D
 }
 
 /**
+ * Returns the occurrence the series is currently in, or the next one if none is
+ * in progress. Looks back by `duration_minutes` so an occurrence that already
+ * started is still returned instead of being skipped for the following one.
+ * Returns null for non-recurring events or once the series has ended.
+ */
+export function currentOrNextOccurrenceDate(event: EventRow, now: Date = new Date()): Date | null {
+  const lookbackMs = (event.duration_minutes ?? 0) * 60 * 1000
+  return nextOccurrenceDate(event, new Date(now.getTime() - lookbackMs))
+}
+
+/**
  * Returns true when the event is a recurring series parent that still has
  * future occurrences (i.e. not capped with a past UNTIL).
  * Used by RSVP components to avoid treating ended series as active.

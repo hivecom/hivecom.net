@@ -496,7 +496,13 @@ export async function getUserAvatarUrl(
           .from('hivecom-content-users')
           .getPublicUrl(filePath)
 
-        const avatarUrl = urlData.publicUrl
+        // Version by last modification so replaced avatars bypass the stale
+        // browser/CDN cache for the unchanged path.
+        const file = data.find(f => f.name === `avatar.${extension}`) ?? data[0]
+        const updatedAt = file?.updated_at ?? file?.created_at
+        const avatarUrl = updatedAt
+          ? `${urlData.publicUrl}?v=${new Date(updatedAt).getTime()}`
+          : urlData.publicUrl
 
         // Cache the result
         if (typeof window !== 'undefined') {
@@ -597,9 +603,11 @@ export async function uploadTopicIcon(
       .from(TOPIC_ICON_BUCKET)
       .getPublicUrl(filePath)
 
+    // The path is stable across replacements (upsert), so without a version
+    // param the browser and CDN keep serving the previous image.
     return {
       success: true,
-      url: urlData.publicUrl,
+      url: `${urlData.publicUrl}?v=${Date.now()}`,
     }
   }
   catch (error) {
@@ -642,7 +650,13 @@ export async function getTopicIconUrl(
       .from(TOPIC_ICON_BUCKET)
       .getPublicUrl(`${folder}/${found}`)
 
-    return urlData.publicUrl
+    // Version by last modification so replaced icons bypass the stale
+    // browser/CDN cache for the unchanged path.
+    const file = data.find(f => f.name === found)
+    const updatedAt = file?.updated_at ?? file?.created_at
+    return updatedAt
+      ? `${urlData.publicUrl}?v=${new Date(updatedAt).getTime()}`
+      : urlData.publicUrl
   }
   catch (error) {
     console.error('Error getting topic icon URL:', error)
@@ -748,9 +762,11 @@ export async function uploadGameAsset(
       .from('hivecom-content-static')
       .getPublicUrl(filePath)
 
+    // The path is stable across replacements (upsert), so without a version
+    // param the browser and CDN keep serving the previous image.
     return {
       success: true,
-      url: urlData.publicUrl,
+      url: `${urlData.publicUrl}?v=${Date.now()}`,
     }
   }
   catch (error) {
@@ -791,7 +807,13 @@ export async function getGameAssetUrl(
           .from('hivecom-content-static')
           .getPublicUrl(filePath)
 
-        return urlData.publicUrl
+        // Version by last modification so replaced assets bypass the stale
+        // browser/CDN cache for the unchanged path.
+        const file = data.find(f => f.name === `${assetType}.${extension}`) ?? data[0]
+        const updatedAt = file?.updated_at ?? file?.created_at
+        return updatedAt
+          ? `${urlData.publicUrl}?v=${new Date(updatedAt).getTime()}`
+          : urlData.publicUrl
       }
     }
 
@@ -969,11 +991,15 @@ export async function uploadProjectBanner(
       .from(PROJECT_BANNER_BUCKET)
       .getPublicUrl(filePath)
 
-    dispatchProjectBannerUpdated(normalizedProjectId, urlData.publicUrl)
+    // The path is stable across replacements (upsert), so without a version
+    // param the browser and CDN keep serving the previous image.
+    const bustUrl = `${urlData.publicUrl}?v=${Date.now()}`
+
+    dispatchProjectBannerUpdated(normalizedProjectId, bustUrl)
 
     return {
       success: true,
-      url: urlData.publicUrl,
+      url: bustUrl,
     }
   }
   catch (error) {
@@ -1005,10 +1031,17 @@ export async function getProjectBannerUrl(
     const files = data ?? []
     for (const extension of PROJECT_BANNER_EXTENSIONS) {
       const targetName = `banner.${extension}`
-      if (files.some(file => file.name === targetName)) {
+      const file = files.find(f => f.name === targetName)
+      if (file) {
         const filePath = buildProjectBannerPath(normalizedProjectId, extension)
         const { data: urlData } = bucket.getPublicUrl(filePath)
-        return urlData.publicUrl
+
+        // Version by last modification so replaced banners bypass the stale
+        // browser/CDN cache for the unchanged path.
+        const updatedAt = file.updated_at ?? file.created_at
+        return updatedAt
+          ? `${urlData.publicUrl}?v=${new Date(updatedAt).getTime()}`
+          : urlData.publicUrl
       }
     }
 

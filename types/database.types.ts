@@ -2686,6 +2686,7 @@ export type Database = {
           p_search?: string
           p_sort_col?: string
           p_sort_dir?: string
+          p_tracked?: boolean
         }
         Returns: {
           created_at: string

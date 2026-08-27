@@ -2,10 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import type { MetricsSnapshot } from '@/types/metrics'
-import { onUnmounted, ref } from 'vue'
+import { ref } from 'vue'
 import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
-import { metricsPlayerCount } from '@/types/metrics'
 
 export type MetricsPeriod = '6h' | '24h' | '7d' | '14d' | '30d' | '90d' | '1y' | '3y' | 'all'
 
@@ -211,10 +210,12 @@ function normalizeRpcRow(row: Record<string, unknown>): MetricsHistoryEntry {
   }
 }
 
+// Returns null when the query fails, so callers can tell a broken fetch apart
+// from a period that genuinely has no data.
 async function fetchMetricsHistoryFromDB(
   supabase: SupabaseClient<Database>,
   period: MetricsPeriod,
-): Promise<MetricsHistoryEntry[]> {
+): Promise<MetricsHistoryEntry[] | null> {
   const config = PERIOD_CONFIGS[period]
   const since = new Date(Date.now() - config.hours * 60 * 60 * 1000).toISOString()
   const until = new Date().toISOString()
@@ -227,20 +228,37 @@ async function fetchMetricsHistoryFromDB(
   })
 
   if (error !== null || data === null)
-    return []
+    return null
 
   return (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
+}
+
+// In-flight history fetches keyed by cache key. The metrics page mounts five
+// charts plus the brush, and a period switch makes all of them request the
+// same range at once - before any response has landed in the cache. Sharing
+// the pending promise collapses those into a single RPC call. Six concurrent
+// copies of get_metrics_bucketed were enough to push each past the 8s
+// statement timeout on long ranges.
+// Null propagates a failed fetch through the coalescing layer so callers can
+// tell it apart from a range that legitimately holds no rows.
+const inflightHistory = new Map<string, Promise<MetricsHistoryEntry[] | null>>()
+
+async function coalesceHistory(
+  key: string,
+  fetcher: () => Promise<MetricsHistoryEntry[] | null>,
+): Promise<MetricsHistoryEntry[] | null> {
+  const existing = inflightHistory.get(key)
+  if (existing !== undefined)
+    return existing
+  const promise = fetcher().finally(() => inflightHistory.delete(key))
+  inflightHistory.set(key, promise)
+  return promise
 }
 
 // Shared module-level state so all callers react to the same fetches.
 const metricsHistory = ref<MetricsHistoryEntry[]>([])
 const loadingHistory = ref(false)
 export const metricsWindow = ref<{ start: Date, end: Date } | null>(null)
-let refreshTimer: ReturnType<typeof setTimeout> | null = null
-
-// Global snapshot auto-refresh - runs as long as any component uses the composable.
-let snapshotRefreshTimer: ReturnType<typeof setTimeout> | null = null
-let activeConsumers = 0
 
 // Separate 90d overview dataset exclusively for the brush - never overwritten
 // by period fetches so the brush always shows the full context.
@@ -257,9 +275,180 @@ const latestMetrics = shallowRef<MetricsSnapshot | null>(null)
 const loadingLatest = shallowRef(false)
 const lastFetchedAt = shallowRef<Date | null>(null)
 
+// The refresh machinery outlives any single component, so it holds its own
+// cache and client rather than borrowing them from whichever consumer happened
+// to arm a timer first.
+const metricsCache = useCache(CACHE_NAMESPACES.community)
+let metricsClient: SupabaseClient<Database> | null = null
+
+/**
+ * Which period last wrote the shared `metricsHistory` ref, or null while a
+ * window fetch owns it. A period only writes the shared ref on refresh while it
+ * still owns it, so a background period can't overwrite the visible chart.
+ */
+let sharedHistoryPeriod: MetricsPeriod | null = null
+
+function cacheSnapshot(snapshot: MetricsSnapshot): void {
+  // TTL runs to the *next* collection after this snapshot, so one fetched just
+  // after a fresh collection isn't held for five extra minutes.
+  const collectedAt = new Date(snapshot.collectedAt).getTime()
+  metricsCache.set(METRICS_CACHE_KEY, snapshot, Math.max(0, collectedAt + METRICS_COLLECTION_INTERVAL - Date.now()))
+  lastFetchedAt.value = new Date()
+}
+
+// ── Snapshot auto-refresh ─────────────────────────────────────────────────────
+// Ref-counted: runs as long as at least one live consumer holds the composable.
+
+let snapshotRefreshTimer: ReturnType<typeof setTimeout> | null = null
+let activeConsumers = 0
+
+async function refreshSnapshot(): Promise<void> {
+  if (metricsClient === null)
+    return
+  const snapshot = await fetchMetricsFromStorage(metricsClient)
+  if (snapshot === null)
+    return
+  metrics.value = snapshot
+  cacheSnapshot(snapshot)
+}
+
+function scheduleSnapshotRefresh(): void {
+  if (snapshotRefreshTimer !== null)
+    clearTimeout(snapshotRefreshTimer)
+
+  snapshotRefreshTimer = setTimeout(() => {
+    void refreshSnapshot().finally(() => {
+      if (activeConsumers > 0)
+        scheduleSnapshotRefresh()
+    })
+  }, msUntilNextCollection() + METRICS_REFRESH_BUFFER_MS)
+}
+
+// ── History auto-refresh ──────────────────────────────────────────────────────
+//
+// Consumers subscribe to a period and get an unsubscribe back. Subscriptions
+// are ref-counted per period, so one component unmounting can't cancel a timer
+// another still depends on, and each period owns its own timer, so two charts
+// on different periods both stay current instead of whichever mounted last
+// silently winning.
+
+export type MetricsRefreshListener = (entries: MetricsHistoryEntry[]) => void
+
+interface PeriodSubscription {
+  consumers: number
+  listeners: Set<MetricsRefreshListener>
+  timer: ReturnType<typeof setTimeout> | null
+  lastRefreshedAt: number
+}
+
+const periodSubscriptions = new Map<MetricsPeriod, PeriodSubscription>()
+
+async function refreshPeriod(period: MetricsPeriod): Promise<void> {
+  if (metricsClient === null)
+    return
+
+  const cacheKey = `metrics:history:${period}`
+  const client = metricsClient
+  const entries = await coalesceHistory(cacheKey, async () => fetchMetricsHistoryFromDB(client, period))
+
+  // A failed fetch leaves the last good data in place. Writing the empty array
+  // through would blank every chart on this period over a transient error.
+  if (entries === null)
+    return
+
+  const subscription = periodSubscriptions.get(period)
+  if (subscription !== undefined)
+    subscription.lastRefreshedAt = Date.now()
+
+  metricsCache.set(cacheKey, entries, msUntilNextCollection())
+  if (sharedHistoryPeriod === period)
+    metricsHistory.value = entries
+  // Isolated consumers keep their own refs and never observe the shared one,
+  // so hand them the entries directly.
+  subscription?.listeners.forEach(listener => listener(entries))
+}
+
+function schedulePeriodRefresh(period: MetricsPeriod): void {
+  const subscription = periodSubscriptions.get(period)
+  if (subscription === undefined)
+    return
+  if (subscription.timer !== null)
+    clearTimeout(subscription.timer)
+
+  subscription.timer = setTimeout(() => {
+    void refreshPeriod(period).finally(() => {
+      // Re-arm only while someone is still listening.
+      if (periodSubscriptions.has(period))
+        schedulePeriodRefresh(period)
+    })
+  }, msUntilNextCollection() + METRICS_REFRESH_BUFFER_MS)
+}
+
+function subscribePeriod(period: MetricsPeriod, listener?: MetricsRefreshListener): () => void {
+  let subscription = periodSubscriptions.get(period)
+  if (subscription === undefined) {
+    // Subscribing follows a load, so treat now as the last refresh.
+    subscription = { consumers: 0, listeners: new Set(), timer: null, lastRefreshedAt: Date.now() }
+    periodSubscriptions.set(period, subscription)
+  }
+
+  subscription.consumers++
+  if (listener !== undefined)
+    subscription.listeners.add(listener)
+  if (subscription.timer === null)
+    schedulePeriodRefresh(period)
+
+  let released = false
+  return () => {
+    if (released)
+      return
+    released = true
+
+    const current = periodSubscriptions.get(period)
+    if (current === undefined)
+      return
+    if (listener !== undefined)
+      current.listeners.delete(listener)
+    current.consumers--
+    if (current.consumers > 0)
+      return
+
+    if (current.timer !== null)
+      clearTimeout(current.timer)
+    periodSubscriptions.delete(period)
+  }
+}
+
+// A backgrounded tab throttles timers and a sleeping machine stops them
+// outright, so by the time the tab is visible again a scheduled refresh can be
+// arbitrarily overdue. Catch up on anything past its collection interval and
+// re-arm every timer from the current time.
+if (import.meta.client) {
+  const { isHidden } = usePageVisibility()
+
+  watch(isHidden, (hidden) => {
+    if (hidden || metricsClient === null)
+      return
+
+    const isStale = (since: number) => Date.now() - since >= METRICS_COLLECTION_INTERVAL
+
+    if (activeConsumers > 0) {
+      if (lastFetchedAt.value === null || isStale(lastFetchedAt.value.getTime()))
+        void refreshSnapshot()
+      scheduleSnapshotRefresh()
+    }
+
+    for (const [period, subscription] of periodSubscriptions) {
+      if (isStale(subscription.lastRefreshedAt))
+        void refreshPeriod(period)
+      schedulePeriodRefresh(period)
+    }
+  })
+}
+
 export function useDataMetrics() {
   const supabase = useSupabaseClient<Database>()
-  const metricsCache = useCache(CACHE_NAMESPACES.community)
+  metricsClient = supabase
 
   // Pre-populate synchronously so first render has data on warm cache.
   const _initialCached = metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
@@ -273,31 +462,46 @@ export function useDataMetrics() {
       lastFetchedAt.value = new Date(source.collectedAt)
   }
 
-  // Ref-counted snapshot refresh - starts on first consumer, stops on last unmount.
-  const scheduleSnapshotRefresh = () => {
-    if (snapshotRefreshTimer !== null)
-      clearTimeout(snapshotRefreshTimer)
+  // Refresh subscriptions owned by this instance, released together on
+  // teardown. Tracked per instance so unmounting one consumer can never cancel
+  // another's refresh.
+  const ownedSubscriptions = new Set<() => void>()
 
-    const delay = msUntilNextCollection() + METRICS_REFRESH_BUFFER_MS
-    snapshotRefreshTimer = setTimeout(() => {
-      void (async () => {
-        const snapshot = await fetchMetricsFromStorage(supabase)
-        if (snapshot !== null) {
-          metrics.value = snapshot
-          const collectedAt = new Date(snapshot.collectedAt).getTime()
-          const ttl = Math.max(0, collectedAt + METRICS_COLLECTION_INTERVAL - Date.now())
-          metricsCache.set(METRICS_CACHE_KEY, snapshot, ttl)
-          lastFetchedAt.value = new Date()
-        }
-        if (activeConsumers > 0)
-          scheduleSnapshotRefresh()
-      })()
-    }, delay)
+  /**
+   * Keep `period` refreshing for as long as this consumer is alive. Pass
+   * `onRefresh` when reading history through the isolated fetchers, which never
+   * observe the shared `metricsHistory` ref. Returns an unsubscribe; calling it
+   * is optional since teardown releases anything left over.
+   */
+  const scheduleRefresh = (period: MetricsPeriod, onRefresh?: MetricsRefreshListener): (() => void) => {
+    const release = subscribePeriod(period, onRefresh)
+    const stop = () => {
+      ownedSubscriptions.delete(stop)
+      release()
+    }
+    ownedSubscriptions.add(stop)
+    return stop
   }
 
-  activeConsumers++
-  if (activeConsumers === 1)
-    scheduleSnapshotRefresh()
+  // Only take a ref-count when there's a scope to release it in. A scopeless
+  // call is a one-shot fetch, not a live consumer, and counting it would pin
+  // the snapshot timer open forever.
+  if (getCurrentScope() !== undefined) {
+    activeConsumers++
+    if (activeConsumers === 1)
+      scheduleSnapshotRefresh()
+
+    onScopeDispose(() => {
+      for (const stop of [...ownedSubscriptions])
+        stop()
+
+      activeConsumers--
+      if (activeConsumers === 0 && snapshotRefreshTimer !== null) {
+        clearTimeout(snapshotRefreshTimer)
+        snapshotRefreshTimer = null
+      }
+    })
+  }
 
   const fetchMetrics = async () => {
     // Serve from cache until next collection boundary
@@ -335,18 +539,11 @@ export function useDataMetrics() {
     }
   }
 
-  const fetchMetricsWindow = async (start: Date, end: Date): Promise<MetricsHistoryEntry[]> => {
+  // Shared fetch for a window range - concurrent callers with the same range
+  // share one RPC call via coalesceHistory.
+  const fetchWindowEntries = async (start: Date, end: Date): Promise<MetricsHistoryEntry[] | null> => {
     const cacheKey = `metrics:history:window:${start.getTime()}:${end.getTime()}`
-    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
-    if (cached !== null) {
-      metricsHistory.value = cached
-      return cached
-    }
-
-    loadingHistory.value = true
-    error.value = null
-
-    try {
+    return coalesceHistory(cacheKey, async () => {
       const bucketMs = bucketMsForDuration(end.getTime() - start.getTime())
 
       const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
@@ -355,14 +552,31 @@ export function useDataMetrics() {
         p_bucket_interval: msToPgInterval(bucketMs),
       })
 
-      if (dbError !== null || data === null) {
-        metricsHistory.value = []
-        return []
-      }
+      if (dbError !== null || data === null)
+        return null
 
       const result = (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
-      metricsHistory.value = result
       metricsCache.set(cacheKey, result, msUntilNextCollection())
+      return result
+    })
+  }
+
+  const fetchMetricsWindow = async (start: Date, end: Date): Promise<MetricsHistoryEntry[]> => {
+    const cacheKey = `metrics:history:window:${start.getTime()}:${end.getTime()}`
+    const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
+    if (cached !== null) {
+      sharedHistoryPeriod = null
+      metricsHistory.value = cached
+      return cached
+    }
+
+    loadingHistory.value = true
+    error.value = null
+
+    try {
+      const result = await fetchWindowEntries(start, end) ?? []
+      sharedHistoryPeriod = null
+      metricsHistory.value = result
       return result
     }
     catch (err) {
@@ -382,27 +596,32 @@ export function useDataMetrics() {
     if (cached !== null)
       return cached
     try {
-      const bucketMs = bucketMsForDuration(end.getTime() - start.getTime())
-      const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
-        p_since: start.toISOString(),
-        p_until: end.toISOString(),
-        p_bucket_interval: msToPgInterval(bucketMs),
-      })
-      if (dbError !== null || data === null)
-        return []
-      const result = (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
-      metricsCache.set(cacheKey, result, msUntilNextCollection())
-      return result
+      return await fetchWindowEntries(start, end) ?? []
     }
     catch {
       return []
     }
   }
 
+  // Shared fetch for a period - concurrent callers with the same period share
+  // one RPC call via coalesceHistory.
+  const fetchHistoryEntries = async (period: MetricsPeriod): Promise<MetricsHistoryEntry[]> => {
+    const cacheKey = `metrics:history:${period}`
+    const entries = await coalesceHistory(cacheKey, async () => {
+      const rows = await fetchMetricsHistoryFromDB(supabase, period)
+      // Caching a failed fetch would pin an empty chart for the whole interval.
+      if (rows !== null)
+        metricsCache.set(cacheKey, rows, msUntilNextCollection())
+      return rows
+    })
+    return entries ?? []
+  }
+
   const fetchMetricsHistory = async (period: MetricsPeriod = '24h') => {
     const cacheKey = `metrics:history:${period}`
     const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
     if (cached !== null) {
+      sharedHistoryPeriod = period
       metricsHistory.value = cached
       return cached
     }
@@ -411,9 +630,9 @@ export function useDataMetrics() {
     error.value = null
 
     try {
-      const entries = await fetchMetricsHistoryFromDB(supabase, period)
+      const entries = await fetchHistoryEntries(period)
+      sharedHistoryPeriod = period
       metricsHistory.value = entries
-      metricsCache.set(cacheKey, entries, msUntilNextCollection())
       return entries
     }
     catch (err) {
@@ -435,9 +654,7 @@ export function useDataMetrics() {
     if (cached !== null)
       return cached
     try {
-      const entries = await fetchMetricsHistoryFromDB(supabase, period)
-      metricsCache.set(cacheKey, entries, msUntilNextCollection())
-      return entries
+      return await fetchHistoryEntries(period)
     }
     catch {
       return []
@@ -466,119 +683,6 @@ export function useDataMetrics() {
     metricsCache.set(cacheKey, entries, msUntilNextCollection())
     return entries
   }
-
-  // Auto-refresh: after each 5-min boundary + 1 min buffer, fetch latest.json
-  // and append the new data point to the history without hitting the DB.
-
-  const scheduleRefresh = (period: MetricsPeriod) => {
-    if (refreshTimer !== null)
-      clearTimeout(refreshTimer)
-
-    const delay = msUntilNextCollection() + METRICS_REFRESH_BUFFER_MS
-    const doRefresh = async () => {
-      // Only the 6h view buckets at 5-min intervals matching the snapshot cadence.
-      // For all other periods the bucket size is larger than the collection interval,
-      // so appending a raw snapshot would create a spurious bar at the wrong
-      // granularity. Instead, evict the cache and re-fetch from the DB.
-      if (period !== '6h') {
-        const cacheKey = `metrics:history:${period}`
-        metricsCache.delete(cacheKey)
-        await fetchMetricsHistoryFromDB(supabase, period).then((entries) => {
-          metricsHistory.value = entries
-        })
-        scheduleRefresh(period)
-        return
-      }
-
-      const snapshot = await fetchMetricsFromStorage(supabase)
-      if (snapshot === null) {
-        // Fetch failed - append a null entry for this bucket so the gap shows
-        const bucketMs = PERIOD_CONFIGS['6h'].bucketMs
-        const bucketKey = Math.floor(Date.now() / bucketMs) * bucketMs
-        metricsHistory.value = [
-          ...metricsHistory.value,
-          {
-            capturedAt: new Date(bucketKey).toISOString(),
-            usersOnline: null,
-            usersTotal: null,
-            teamspeakOnline: null,
-            gameserversPlayers: null,
-            teamspeakByServer: null,
-            gameserversByServer: null,
-            usersByGame: null,
-            usersBySteamGame: null,
-            usersGameActivity: null,
-            usersSteamGameActivity: null,
-            discussionsTotal: null,
-            discussionsReplies: null,
-            discussionsNewTotal: null,
-            discussionsNewReplies: null,
-          },
-        ]
-      }
-      else {
-        metrics.value = snapshot
-        const collectedAt = new Date(snapshot.collectedAt).getTime()
-        const ttl = Math.max(0, collectedAt + METRICS_COLLECTION_INTERVAL - Date.now())
-        metricsCache.set(METRICS_CACHE_KEY, snapshot, ttl)
-
-        const bucketMs = PERIOD_CONFIGS['6h'].bucketMs
-        const bucketKey = Math.floor(Date.now() / bucketMs) * bucketMs
-        const newEntry: MetricsHistoryEntry = {
-          capturedAt: new Date(bucketKey).toISOString(),
-          usersOnline: snapshot.users.online,
-          usersTotal: snapshot.users.total,
-          teamspeakOnline: snapshot.teamspeak.online,
-          gameserversPlayers: snapshot.gameservers.players,
-          teamspeakByServer: snapshot.teamspeak.byServer,
-          gameserversByServer: Object.fromEntries(
-            Object.entries(snapshot.gameservers.byServer).map(([k, v]) => [k, metricsPlayerCount(v) ?? 0]),
-          ),
-          usersByGame: snapshot.users.byGame,
-          usersBySteamGame: snapshot.users.bySteamGame,
-          usersGameActivity: snapshot.users.byGame !== null && snapshot.users.byGame !== undefined
-            ? Object.values(snapshot.users.byGame).reduce((a, b) => a + b, 0)
-            : null,
-          usersSteamGameActivity: snapshot.users.bySteamGame !== null && snapshot.users.bySteamGame !== undefined
-            ? Object.values(snapshot.users.bySteamGame).reduce((a, b) => a + b, 0)
-            : null,
-          discussionsTotal: snapshot.discussions.total,
-          discussionsReplies: snapshot.discussions.replies,
-          discussionsNewTotal: snapshot.discussions.newTotal,
-          discussionsNewReplies: snapshot.discussions.newReplies,
-        }
-
-        // Replace the last bucket if it matches, otherwise append
-        const last = metricsHistory.value.at(-1)
-        const lastBucket = last ? Math.floor(new Date(last.capturedAt).getTime() / bucketMs) * bucketMs : null
-        if (lastBucket === bucketKey) {
-          metricsHistory.value = [...metricsHistory.value.slice(0, -1), newEntry]
-        }
-        else {
-          metricsHistory.value = [...metricsHistory.value, newEntry]
-        }
-
-        // Evict the 6h history cache so next full load re-fetches from DB
-        metricsCache.delete('metrics:history:6h')
-      }
-
-      scheduleRefresh(period)
-    }
-    refreshTimer = setTimeout(() => {
-      void doRefresh()
-    }, delay)
-  }
-
-  onUnmounted(() => {
-    if (refreshTimer !== null)
-      clearTimeout(refreshTimer)
-
-    activeConsumers--
-    if (activeConsumers === 0 && snapshotRefreshTimer !== null) {
-      clearTimeout(snapshotRefreshTimer)
-      snapshotRefreshTimer = null
-    }
-  })
 
   const fetchLatestMetrics = async () => {
     if (latestMetrics.value != null)
@@ -664,21 +768,27 @@ export function useDataMetrics() {
 
     loadingOverview.value = true
     try {
-      const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
-        p_since: start.toISOString(),
-        p_until: end.toISOString(),
-        p_bucket_interval: msToPgInterval(bucketMsForDuration(end.getTime() - startMs)),
-      })
+      const entries = await coalesceHistory(cacheKey, async () => {
+        const { data, error: dbError } = await supabase.rpc('get_metrics_bucketed', {
+          p_since: start.toISOString(),
+          p_until: end.toISOString(),
+          p_bucket_interval: msToPgInterval(bucketMsForDuration(end.getTime() - startMs)),
+        })
 
-      const entries = (dbError !== null || data === null)
-        ? []
-        : (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
+        // Don't cache a failure - an empty brush would stick for the whole
+        // interval and every chart under it would render the wrong range.
+        if (dbError !== null || data === null)
+          return null
+
+        const result = (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
+        metricsCache.set(cacheKey, result, msUntilNextCollection())
+        return result
+      }) ?? []
 
       // Still the widest request? Two expansions can overlap, and the loser
       // must not overwrite the winner's wider dataset.
       if (overviewSinceMs === startMs)
         metricsOverview.value = entries
-      metricsCache.set(cacheKey, entries, msUntilNextCollection())
       return entries
     }
     finally {

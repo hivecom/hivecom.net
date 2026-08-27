@@ -16,7 +16,7 @@ import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useSessionReady } from '@/composables/useSessionReady'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { expandRecurringEvent, nextOccurrenceDate } from '@/lib/utils/rrule'
+import { currentOrNextOccurrenceDate, expandRecurringEvent } from '@/lib/utils/rrule'
 
 const isMobile = useBreakpoint('<s')
 
@@ -50,15 +50,16 @@ defineOgImage('Event', {
 
 const mutableEvent = computed(() => event.value as Tables<'events'> | null)
 
-// For recurring series, timing should reflect the next upcoming occurrence
-// (for countdown) or the last occurrence (for timeAgo), not the stored origin.
+// For recurring series, timing should reflect the occurrence we're currently in
+// or the next upcoming one (for countdown), or the last occurrence (for
+// timeAgo), not the stored origin.
 const effectiveEventForTiming = computed(() => {
   const ev = mutableEvent.value
   if (!ev || !ev.recurrence_rule)
     return ev
 
-  // If there's a next occurrence coming up, show countdown to it.
-  const next = nextOccurrenceDate(ev)
+  // An in-progress occurrence wins, otherwise count down to the next one.
+  const next = currentOrNextOccurrenceDate(ev)
   if (next)
     return { ...ev, date: next.toISOString() }
 
