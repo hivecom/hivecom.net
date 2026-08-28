@@ -86,9 +86,11 @@ function handleClick(e: MouseEvent) {
   background-color: var(--color-bg-medium);
 
   &--expand {
+    // The base width is !important so the carousel's fixed-track rule can't
+    // shrink it, so the expand override has to match that weight to win.
     width: 100%;
-    min-width: unset;
-    max-width: unset;
+    min-width: 0 !important;
+    max-width: 100% !important;
 
     .forum__latest-title {
       @include line-clamp(2);
