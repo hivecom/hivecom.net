@@ -1979,8 +1979,126 @@ async function fetchOlderHistory(target: string) {
       ? `msgid=${anchorMsg.msgid}`
       : `timestamp=${anchorMsg.ts.toISOString()}`
   }
-  pendingBeforeTargets.add(target.toLowerCase())
-  send(`CHATHISTORY BEFORE ${target} ${anchor} ${HISTORY_LIMIT}`)
+  queueHistoryRequest({
+    target,
+    line: `CHATHISTORY BEFORE ${target} ${anchor} ${HISTORY_LIMIT}`,
+    onSend: () => pendingBeforeTargets.add(target.toLowerCase()),
+  })
+}
+
+// --- CHATHISTORY request scheduling ---
+// Ergo answers CHATHISTORY in the order requests arrive, so firing one per
+// channel during a connect burst (plus the sparse-batch backfills each of those
+// kicks off) leaves the buffer the user is actually looking at queued behind
+// every other channel. Requests go through a small scheduler instead: the active
+// buffer is sent straight away, everything else waits at a low concurrency and
+// the queue is re-sorted every time a slot frees, so switching buffers
+// mid-restore doesn't mean waiting out the whole backlog.
+const HISTORY_CONCURRENCY = 2
+// Safety valve: a request whose batch never closes (server error, target gone)
+// would otherwise hold its slot forever.
+const HISTORY_SLOT_TIMEOUT_MS = 15_000
+
+interface QueuedHistory {
+  target: string
+  /** The exact line to send once a slot opens. */
+  line: string
+  /** Bookkeeping that must happen at send time, not queue time (pending-target sets). */
+  onSend?: () => void
+}
+
+const historyQueue: QueuedHistory[] = []
+const historyInFlight = new Map<string, ReturnType<typeof setTimeout>>()
+
+/**
+ * Lower sorts sooner. The active buffer wins, then the channel we're landing on
+ * (set before the joins even start on a restore), then the buffer we came from.
+ * DMs edge out remaining channels: there are few of them and they're the most
+ * likely to be waiting on a reply.
+ */
+function historyPriority(target: string) {
+  const t = target.toLowerCase()
+  if (t === activeName.value.toLowerCase())
+    return 0
+  if (inputChannel.value && t === inputChannel.value.toLowerCase())
+    return 1
+  if (t === previousActiveName.value.toLowerCase())
+    return 2
+  return findBuffer(target)?.kind === 'pm' ? 3 : 4
+}
+
+function dispatchHistoryRequest(req: QueuedHistory) {
+  const key = req.target.toLowerCase()
+  const existing = historyInFlight.get(key)
+  if (existing !== undefined)
+    clearTimeout(existing)
+  req.onSend?.()
+  historyInFlight.set(key, setTimeout(releaseHistorySlot, HISTORY_SLOT_TIMEOUT_MS, req.target))
+  send(req.line)
+}
+
+function drainHistoryQueue() {
+  while (historyQueue.length > 0 && historyInFlight.size < HISTORY_CONCURRENCY) {
+    // Sorted at drain time rather than insert time: priorities move as the user
+    // switches buffers while the restore burst is still running.
+    let bestIdx = 0
+    let bestRank = historyPriority(historyQueue[0]!.target)
+    for (let i = 1; i < historyQueue.length; i++) {
+      const rank = historyPriority(historyQueue[i]!.target)
+      if (rank < bestRank) {
+        bestRank = rank
+        bestIdx = i
+      }
+    }
+    const next = historyQueue.splice(bestIdx, 1)[0]
+    if (next)
+      dispatchHistoryRequest(next)
+  }
+}
+
+function queueHistoryRequest(req: QueuedHistory) {
+  // The active buffer is what the user is staring at, so it skips the queue
+  // entirely - even if that briefly puts us one over the concurrency cap.
+  if (historyPriority(req.target) === 0) {
+    dispatchHistoryRequest(req)
+    return
+  }
+  historyQueue.push(req)
+  drainHistoryQueue()
+}
+
+/** Free the slot held by a target's request and let the next one out. */
+function releaseHistorySlot(target: string) {
+  const key = target.toLowerCase()
+  const timer = historyInFlight.get(key)
+  if (timer === undefined)
+    return
+  clearTimeout(timer)
+  historyInFlight.delete(key)
+  drainHistoryQueue()
+}
+
+/**
+ * Send any queued history for `target` right now. Called when the user switches
+ * buffers mid-restore: waiting for a slot would mean staring at an empty channel
+ * while some background channel finishes replaying.
+ */
+function promoteHistoryRequests(target: string) {
+  const key = target.toLowerCase()
+  for (let i = historyQueue.length - 1; i >= 0; i--) {
+    if (historyQueue[i]!.target.toLowerCase() === key) {
+      const req = historyQueue.splice(i, 1)[0]
+      if (req)
+        dispatchHistoryRequest(req)
+    }
+  }
+}
+
+function resetHistoryQueue() {
+  for (const timer of historyInFlight.values())
+    clearTimeout(timer)
+  historyInFlight.clear()
+  historyQueue.length = 0
 }
 
 /**
@@ -2005,11 +2123,14 @@ function requestHistory(target: string, since?: number) {
   if (!chatHistorySupported.value)
     return
   if (since != null && since > 0) {
-    pendingTimeBoundTargets.add(target.toLowerCase())
-    send(`CHATHISTORY LATEST ${target} timestamp=${new Date(since).toISOString()} ${HISTORY_LIMIT}`)
+    queueHistoryRequest({
+      target,
+      line: `CHATHISTORY LATEST ${target} timestamp=${new Date(since).toISOString()} ${HISTORY_LIMIT}`,
+      onSend: () => pendingTimeBoundTargets.add(target.toLowerCase()),
+    })
   }
   else {
-    send(`CHATHISTORY LATEST ${target} * ${HISTORY_LIMIT}`)
+    queueHistoryRequest({ target, line: `CHATHISTORY LATEST ${target} * ${HISTORY_LIMIT}` })
   }
 }
 
@@ -2595,6 +2716,10 @@ function handleMessage(raw: string) {
         }
         const info = backlogBatches.get(id)
         if (info) {
+          // Free the scheduler slot first so the next queued target goes out
+          // while we're still merging this batch, and so the sparse-batch
+          // backfill below has somewhere to land.
+          releaseHistorySlot(info.target)
           const batchBuf = findBuffer(info.target)
           if (batchBuf) {
             // Always clear loading state - covers both LATEST and BEFORE completions.
@@ -3496,6 +3621,12 @@ function handleMessage(raw: string) {
         const desc = params[params.length - 1] ?? 'The message could not be deleted'
         addToActive({ type: 'error', text: `Delete failed: ${desc}` }, { ts })
       }
+      else if (failCmd === 'CHATHISTORY') {
+        // No batch will arrive for this request, so nothing else frees its
+        // scheduler slot. The target sits in a middle param when Ergo names it;
+        // releasing by every param is harmless since unknown ones no-op.
+        for (const p of params.slice(1)) releaseHistorySlot(p)
+      }
       else if (failCmd === 'WEBPUSH') {
         // draft/webpush failures (INVALID_PARAMS, INTERNAL_ERROR).
         const desc = params[params.length - 1] ?? 'Push subscription failed'
@@ -3574,6 +3705,7 @@ function openSocket() {
   explicitJoinIntents.clear()
   pendingBeforeTargets.clear()
   pendingTimeBoundTargets.clear()
+  resetHistoryQueue()
   pendingDmTargets.clear()
   serviceLog.value = []
   chatHistorySupported.value = false
@@ -3808,6 +3940,9 @@ function setActive(name: string) {
   }
 
   activeName.value = name
+  // This buffer just became the one on screen, so any history still sitting in
+  // the scheduler queue for it goes out now instead of waiting its turn.
+  promoteHistoryRequests(name)
   const buf = findBuffer(name)
 
   // Entering a channel clears its unread badge but deliberately KEEPS the read
