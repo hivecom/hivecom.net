@@ -177,8 +177,17 @@ export function createVuiTooltipHandler() {
       x = 4
     if (x + elWidth > canvasRect.width)
       x = canvasRect.width - elWidth - 4
-    if (y < 0)
-      y = tooltip.caretY + 12
+
+    // Short charts (the 160px game activity strip) can't fit a multi-row
+    // tooltip above the caret, and flipping it below used to spill it out of
+    // the wrapper and over the content underneath. Flip only when there's room,
+    // otherwise clamp it inside the canvas box.
+    if (y < 0) {
+      const below = tooltip.caretY + 12
+      y = below + elHeight <= canvasRect.height
+        ? below
+        : Math.max(4, canvasRect.height - elHeight - 4)
+    }
 
     el.style.left = `${x}px`
     el.style.top = `${y}px`
