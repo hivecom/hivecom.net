@@ -2953,6 +2953,16 @@ export type Database = {
               user_id: string
             }[]
           }
+      get_flagged_email_profiles: {
+        Args: never
+        Returns: {
+          email: string
+          email_notifications_bounced: boolean
+          email_notifications_disabled: boolean
+          id: string
+          username: string
+        }[]
+      }
       get_forum_activity_feed: {
         Args: {
           p_created_by?: string
@@ -3003,6 +3013,11 @@ export type Database = {
           discussions_total: number
           gameservers_by_server: Json
           gameservers_players: number
+          irc_by_channel: Json
+          irc_channels: number
+          irc_messages: number
+          irc_messages_by_channel: Json
+          irc_online: number
           teamspeak_by_server: Json
           teamspeak_online: number
           users_by_game: Json

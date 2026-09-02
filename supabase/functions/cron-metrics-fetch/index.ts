@@ -84,6 +84,104 @@ function stripPlayerNames(snapshot: MetricsSnapshot): MetricsSnapshot {
 }
 
 // ---------------------------------------------------------------------------
+// IRC stats
+// ------------------------------------------------------------------------
+// The IRC host exposes one authenticated stats endpoint covering users,
+// publicly listable channels and a trailing message count. The endpoint's
+// default message window matches this cron's 5 minute cadence, so no window
+// parameter is passed. Nothing here is required for a snapshot to be useful,
+// so an unreachable or erroring endpoint degrades to a zeroed irc block the
+// same way an unreachable gameserver degrades to a null detail.
+
+const IRC_STATS_DEFAULT_URL = "https://irc.hivecom.net/stats";
+const IRC_STATS_TIMEOUT_MS = 5000;
+
+interface IrcStatsResponse {
+  collectedAt: string;
+  server: { version: string | null; startTime: string | null };
+  users: {
+    total: number;
+    invisible: number;
+    operators: number;
+    unknown: number;
+    max: number;
+  };
+  channels: {
+    name: string;
+    userCount: number;
+    topic: string | null;
+    createdAt: string | null;
+    registered: boolean;
+  }[];
+  messages: {
+    since: string;
+    until: string;
+    total: number;
+    byChannel: Record<string, number>;
+  };
+}
+
+function emptyIrcMetrics(): MetricsSnapshot["irc"] {
+  return {
+    online: 0,
+    channels: 0,
+    messages: 0,
+    byChannel: {},
+    messagesByChannel: {},
+  };
+}
+
+async function fetchIrcStats(): Promise<MetricsSnapshot["irc"]> {
+  const token = Deno.env.get("IRC_STATS_TOKEN");
+  if (!token) {
+    console.warn("IRC_STATS_TOKEN is not set, recording zeroed IRC metrics");
+    return emptyIrcMetrics();
+  }
+
+  const url = Deno.env.get("IRC_STATS_URL") || IRC_STATS_DEFAULT_URL;
+
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(IRC_STATS_TIMEOUT_MS),
+    });
+
+    if (!res.ok) {
+      console.warn(`IRC stats query failed: HTTP ${res.status}`);
+      return emptyIrcMetrics();
+    }
+
+    const body = await res.json() as IrcStatsResponse;
+
+    const byChannel: Record<string, number> = {};
+    for (const channel of body.channels ?? []) {
+      if (!channel?.name) continue;
+      byChannel[channel.name] = Number(channel.userCount ?? 0);
+    }
+
+    const messagesByChannel: Record<string, number> = {};
+    for (
+      const [name, count] of Object.entries(body.messages?.byChannel ?? {})
+    ) {
+      messagesByChannel[name] = Number(count ?? 0);
+    }
+
+    return {
+      online: Number(body.users?.total ?? 0),
+      channels: (body.channels ?? []).length,
+      messages: Number(body.messages?.total ?? 0),
+      byChannel,
+      messagesByChannel,
+    };
+  } catch (err) {
+    const error = err as Error;
+    console.warn("IRC stats query error:", error.message);
+    return emptyIrcMetrics();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Local row shapes
 // ------------------------------------------------------------------------
 type GameRow = Pick<Tables<"games">, "id" | "steam_id">;
@@ -282,6 +380,7 @@ Deno.serve(async (req: Request) => {
       presencesRes,
       gameserversRes,
       tsSnapshot,
+      irc,
       prevMetricsRes,
       ...bucketMetricsResults
     ] = await Promise.all([
@@ -324,6 +423,7 @@ Deno.serve(async (req: Request) => {
         )
         .not("container", "is", null),
       fetchSnapshotFromStorage(supabaseClient),
+      fetchIrcStats(),
       // Fetch previous snapshot for delta computation
       supabaseClient
         .from("metrics")
@@ -758,6 +858,7 @@ Deno.serve(async (req: Request) => {
         online: tsOnline,
         byServer: tsByServer,
       },
+      irc,
       gameservers: {
         total: totalGameservers,
         players: totalPlayers,

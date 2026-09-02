@@ -11,6 +11,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 const ChartDiscussions = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartDiscussions.vue'))
 const ChartGameActivity = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameActivity.vue'))
 const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameserversPlayers.vue'))
+const ChartIrc = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartIrc.vue'))
 const ChartOnlineUsers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartOnlineUsers.vue'))
 const ChartTeamSpeakOnline = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartTeamSpeakOnline.vue'))
 
@@ -92,6 +93,7 @@ const mobileCountdownLabel = computed(() => {
     <ChartBrush class="brush-sticky" @change="onBrushChange" @update:utc="activeUtc = $event" />
     <ChartOnlineUsers :period="activePeriod" :window="activeWindow" :utc="activeUtc" fresh />
     <ChartTeamSpeakOnline :period="activePeriod" :window="activeWindow" :utc="activeUtc" />
+    <ChartIrc :period="activePeriod" :window="activeWindow" :utc="activeUtc" />
     <ChartGameserversPlayers :period="activePeriod" :window="activeWindow" :utc="activeUtc" />
     <ChartGameActivity :period="activePeriod" :window="activeWindow" :utc="activeUtc" colorize />
     <ChartDiscussions :period="activePeriod" :window="activeWindow" :utc="activeUtc" />

@@ -51,6 +51,11 @@ export interface MetricsHistoryEntry {
   discussionsReplies: number | null
   discussionsNewTotal: number | null
   discussionsNewReplies: number | null
+  ircOnline: number | null
+  ircChannels: number | null
+  ircMessages: number | null
+  ircByChannel: Record<string, number> | null
+  ircMessagesByChannel: Record<string, number> | null
 }
 
 const METRICS_CACHE_KEY = 'metrics:latest'
@@ -109,6 +114,7 @@ function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
   const users = record.users as Record<string, unknown> | undefined
   const community = record.community as Record<string, unknown> | undefined
   const teamspeak = record.teamspeak as Record<string, unknown> | undefined
+  const irc = record.irc as Record<string, unknown> | undefined
   const gameservers = record.gameservers as Record<string, unknown> | undefined
 
   if (typeof collectedAt !== 'string' || users === undefined)
@@ -142,6 +148,17 @@ function normalizeMetricsSnapshot(snapshot: unknown): MetricsSnapshot | null {
       online: typeof teamspeak?.online === 'number' ? teamspeak.online : 0,
       byServer: (typeof teamspeak?.byServer === 'object' && teamspeak.byServer !== null)
         ? (teamspeak.byServer as Record<string, number>)
+        : {},
+    },
+    irc: {
+      online: typeof irc?.online === 'number' ? irc.online : 0,
+      channels: typeof irc?.channels === 'number' ? irc.channels : 0,
+      messages: typeof irc?.messages === 'number' ? irc.messages : 0,
+      byChannel: (typeof irc?.byChannel === 'object' && irc.byChannel !== null)
+        ? (irc.byChannel as Record<string, number>)
+        : {},
+      messagesByChannel: (typeof irc?.messagesByChannel === 'object' && irc.messagesByChannel !== null)
+        ? (irc.messagesByChannel as Record<string, number>)
         : {},
     },
     gameservers: {
@@ -207,6 +224,11 @@ function normalizeRpcRow(row: Record<string, unknown>): MetricsHistoryEntry {
     discussionsReplies: row.discussions_replies as number | null,
     discussionsNewTotal: row.discussions_new_total as number | null,
     discussionsNewReplies: row.discussions_new_replies as number | null,
+    ircOnline: row.irc_online as number | null,
+    ircChannels: row.irc_channels as number | null,
+    ircMessages: row.irc_messages as number | null,
+    ircByChannel: row.irc_by_channel as Record<string, number> | null,
+    ircMessagesByChannel: row.irc_messages_by_channel as Record<string, number> | null,
   }
 }
 

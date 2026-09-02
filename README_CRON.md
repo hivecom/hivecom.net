@@ -24,6 +24,10 @@ Collects current metrics from all tracked servers and gameservers and writes sna
 
 **Edge function:** `/functions/v1/cron-metrics-fetch`
 
+**Optional environment variables:** `IRC_STATS_URL`, `IRC_STATS_TOKEN`
+
+`IRC_STATS_URL` defaults to `https://irc.hivecom.net/stats`. Without `IRC_STATS_TOKEN` the IRC section of each snapshot is written as zeros, and the rest of the snapshot is unaffected.
+
 ## `cron-metrics-rollup`
 
 **Schedule:** `0 4 * * *` (daily at 04:00 UTC)

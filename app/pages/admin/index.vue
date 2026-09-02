@@ -13,6 +13,7 @@ const IncomeChart = defineAsyncComponent(() => import('@/components/Admin/Dashbo
 const UserChart = defineAsyncComponent(() => import('@/components/Admin/Dashboard/UserChart.vue'))
 const ChartDiscussions = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartDiscussions.vue'))
 const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameserversPlayers.vue'))
+const ChartIrc = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartIrc.vue'))
 const ChartOnlineUsers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartOnlineUsers.vue'))
 const ChartTeamSpeakOnline = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartTeamSpeakOnline.vue'))
 
@@ -111,6 +112,8 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
               <ChartOnlineUsers period="7d" :window="null" :utc="false" fresh compact show-y-axis />
               <Divider />
               <ChartTeamSpeakOnline period="7d" :window="null" :utc="false" compact show-y-axis />
+              <Divider />
+              <ChartIrc period="7d" :window="null" :utc="false" compact show-y-axis />
               <Divider />
               <ChartGameserversPlayers period="7d" :window="null" :utc="false" compact show-y-axis />
               <Divider />

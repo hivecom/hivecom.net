@@ -282,6 +282,7 @@ function normalizeMetricsPayload(raw: unknown): MetricsSnapshot {
   // Legacy snapshots used `members`. Current schema uses `users`.
   const usersSrc = asObj(src.users ?? src.members)
   const teamspeakSrc = asObj(src.teamspeak)
+  const ircSrc = asObj(src.irc)
   const gameserversSrc = asObj(src.gameservers)
   const discussionsSrc = asObj(src.discussions)
   const communitySrc = asObj(src.community)
@@ -308,6 +309,13 @@ function normalizeMetricsPayload(raw: unknown): MetricsSnapshot {
     teamspeak: {
       online: asNum(teamspeakSrc.online),
       byServer: asRecord<number>(teamspeakSrc.byServer),
+    },
+    irc: {
+      online: asNum(ircSrc.online),
+      channels: asNum(ircSrc.channels),
+      messages: asNum(ircSrc.messages),
+      byChannel: asRecord<number>(ircSrc.byChannel),
+      messagesByChannel: asRecord<number>(ircSrc.messagesByChannel),
     },
     gameservers: {
       total: asNum(gameserversSrc.total),
