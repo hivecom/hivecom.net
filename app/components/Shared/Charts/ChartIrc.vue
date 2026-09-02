@@ -386,13 +386,13 @@ watch(chartData, () => {
     <Flex v-if="compact" x-between y-center class="chart-compact-title">
       <span>IRC</span>
       <Flex gap="xs" y-center>
-        <OnlineBadge :count="currentCount ?? null" label="online" singular="online" size="s" color="var(--color-text-purple)" :suffix="messagesLabel" />
         <VuiTooltip placement="top">
           <Icon name="ph:info" :size="12" class="chart-irc__info" />
           <template #tooltip>
             <p>{{ IRC_MESSAGES_INFO }}</p>
           </template>
         </VuiTooltip>
+        <OnlineBadge :count="currentCount ?? null" label="online" singular="online" size="s" color="var(--color-text-purple)" :suffix="messagesLabel" />
       </Flex>
     </Flex>
     <Flex v-if="!compact && !hideTitle" x-between y-center class="text-m text-bold-row">

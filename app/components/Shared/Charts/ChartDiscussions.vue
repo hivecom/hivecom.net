@@ -9,6 +9,8 @@ import {
   Chart as ChartJS,
   Legend,
   LinearScale,
+  LineElement,
+  PointElement,
   Title,
   Tooltip,
 } from 'chart.js'
@@ -36,6 +38,8 @@ const props = defineProps<{
 ChartJS.register(
   LinearScale,
   BarElement,
+  LineElement,
+  PointElement,
   Title,
   Tooltip,
   Legend,
@@ -92,45 +96,36 @@ const chartData = computed(() => {
 
   const palette = getChartPalette()
   const show = activeSeries.value.value
+  const timestamps = metricsHistory.value.map(e => new Date(e.capturedAt).getTime())
+
+  // Both series are per-interval rates, so they draw as lines on the bar
+  // host, which keeps the time axis and gap shading shared with the other
+  // metric charts.
+  function line(label: string, color: string, values: (number | null)[]): ChartDataset<'bar'> {
+    return {
+      type: 'line',
+      label,
+      data: values.map((y, i) => ({ x: timestamps[i], y })),
+      borderColor: color,
+      backgroundColor: color,
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHitRadius: 8,
+      tension: 0.3,
+      spanGaps: false,
+      clip: false,
+    } as unknown as ChartDataset<'bar'>
+  }
 
   const datasets: ChartDataset<'bar'>[] = []
 
-  if (show === 'total' || show === 'both') {
-    datasets.push({
-      label: 'Discussions',
-      data: metricsHistory.value.map(e => ({
-        x: new Date(e.capturedAt).getTime(),
-        y: e.discussionsNewTotal,
-      })),
-      backgroundColor: `${palette.datasets[0]}cc`,
-      clip: false as const,
-      stack: 'discussions',
-    } as unknown as ChartDataset<'bar'>)
-  }
+  if (show === 'total' || show === 'both')
+    datasets.push(line('Discussions', palette.datasets[0] ?? '', metricsHistory.value.map(e => e.discussionsNewTotal)))
 
-  if (show === 'replies' || show === 'both') {
-    datasets.push({
-      label: 'Replies',
-      data: metricsHistory.value.map(e => ({
-        x: new Date(e.capturedAt).getTime(),
-        y: e.discussionsNewReplies,
-      })),
-      backgroundColor: `${palette.datasets[1]}cc`,
-      clip: false as const,
-      stack: 'discussions',
-    } as unknown as ChartDataset<'bar'>)
-  }
+  if (show === 'replies' || show === 'both')
+    datasets.push(line('Replies', palette.datasets[1] ?? '', metricsHistory.value.map(e => e.discussionsNewReplies)))
 
   return { datasets }
-})
-
-const computedBarThickness = computed(() => {
-  const count = metricsHistory.value.length
-  const width = chartWrapperWidth.value
-  if (!count || !width)
-    return undefined
-  const raw = (width / count) * 0.7
-  return Math.max(1, Math.floor(raw))
 })
 
 const localChartOptions = computed<ChartOptions<'bar'>>(() => ({
@@ -160,15 +155,7 @@ const localChartOptions = computed<ChartOptions<'bar'>>(() => ({
     y: {
       beginAtZero: true,
       suggestedMax: 10,
-      stacked: true,
-    },
-    x: {
-      stacked: true,
-    },
-  },
-  datasets: {
-    bar: {
-      barThickness: computedBarThickness.value,
+      ticks: { precision: 0 },
     },
   },
 }))
@@ -187,7 +174,6 @@ function refreshChartOptions() {
 onMounted(() => refreshChartOptions())
 watch(theme, () => refreshChartOptions())
 watch(() => props.utc, () => refreshChartOptions())
-watch(computedBarThickness, () => refreshChartOptions())
 
 watch(chartData, () => {
   nextTick(() => {
