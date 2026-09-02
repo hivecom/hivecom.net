@@ -2,7 +2,7 @@
 import type { ChartDataset, ChartOptions } from 'chart.js'
 import type { ChartComponentRef } from 'vue-chartjs'
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
-import { Flex, Select, Skeleton, theme } from '@dolanske/vui'
+import { Flex, Skeleton, theme } from '@dolanske/vui'
 import { useElementSize } from '@vueuse/core'
 import {
   BarElement,
@@ -18,13 +18,8 @@ import { computed, nextTick, onMounted, ref, watch, watchEffect } from 'vue'
 import { Bar } from 'vue-chartjs'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useUserTheme } from '@/composables/useUserTheme'
-import { barGapPlugin, getBarChartDefaults, getChartPalette } from '@/lib/charts'
+import { barGapPlugin, getBarChartDefaults, getChartPalette, withAlpha } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
-
-interface SeriesOption {
-  label: string
-  value: 'total' | 'replies' | 'both'
-}
 
 const props = defineProps<{
   period: MetricsPeriod
@@ -77,16 +72,6 @@ const chartRef = ref<ChartComponentRef<'bar'> | null>(null)
 const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
 const { activeTheme } = useUserTheme()
 
-const seriesOptions: SeriesOption[] = [
-  { label: 'Discussions + Replies', value: 'both' },
-  { label: 'Discussions', value: 'total' },
-  { label: 'Replies', value: 'replies' },
-]
-
-const DEFAULT_SERIES: SeriesOption = { label: 'Discussions + Replies', value: 'both' }
-const selectedSeriesArr = ref<SeriesOption[]>([DEFAULT_SERIES])
-const activeSeries = computed<SeriesOption>(() => selectedSeriesArr.value[0] ?? DEFAULT_SERIES)
-
 const chartData = computed(() => {
   void theme.value
   void activeTheme.value
@@ -95,37 +80,47 @@ const chartData = computed(() => {
     return { datasets: [] }
 
   const palette = getChartPalette()
-  const show = activeSeries.value.value
   const timestamps = metricsHistory.value.map(e => new Date(e.capturedAt).getTime())
 
-  // Both series are per-interval rates, so they draw as lines on the bar
-  // host, which keeps the time axis and gap shading shared with the other
-  // metric charts.
-  function line(label: string, color: string, values: (number | null)[]): ChartDataset<'bar'> {
-    return {
-      type: 'line',
-      label,
-      data: values.map((y, i) => ({ x: timestamps[i], y })),
-      borderColor: color,
-      backgroundColor: color,
-      borderWidth: 2,
-      pointRadius: 0,
-      pointHitRadius: 8,
-      tension: 0.3,
-      spanGaps: false,
-      clip: false,
-    } as unknown as ChartDataset<'bar'>
+  // Same split as the IRC chart: new discussions are bars that read as
+  // background, and replies draw as a line on their own axis since they run
+  // at a much higher rate. Both use the text color, the bars faded so the
+  // line stays on top.
+  return {
+    datasets: [
+      {
+        label: 'Discussions',
+        data: metricsHistory.value.map((e, i) => ({ x: timestamps[i], y: e.discussionsNewTotal })),
+        backgroundColor: withAlpha(palette.text, 0.5),
+        clip: false,
+        order: 1,
+      } as unknown as ChartDataset<'bar'>,
+      {
+        type: 'line',
+        label: 'Replies',
+        data: metricsHistory.value.map((e, i) => ({ x: timestamps[i], y: e.discussionsNewReplies })),
+        borderColor: palette.text,
+        backgroundColor: palette.text,
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHitRadius: 8,
+        tension: 0.3,
+        spanGaps: false,
+        yAxisID: 'y1',
+        clip: false,
+        order: 0,
+      } as unknown as ChartDataset<'bar'>,
+    ],
   }
+})
 
-  const datasets: ChartDataset<'bar'>[] = []
-
-  if (show === 'total' || show === 'both')
-    datasets.push(line('Discussions', palette.datasets[0] ?? '', metricsHistory.value.map(e => e.discussionsNewTotal)))
-
-  if (show === 'replies' || show === 'both')
-    datasets.push(line('Replies', palette.datasets[1] ?? '', metricsHistory.value.map(e => e.discussionsNewReplies)))
-
-  return { datasets }
+const computedBarThickness = computed(() => {
+  const count = metricsHistory.value.length
+  const width = chartWrapperWidth.value
+  if (!count || !width)
+    return undefined
+  const raw = (width / count) * 0.7
+  return Math.max(1, Math.floor(raw))
 })
 
 const localChartOptions = computed<ChartOptions<'bar'>>(() => ({
@@ -155,7 +150,20 @@ const localChartOptions = computed<ChartOptions<'bar'>>(() => ({
     y: {
       beginAtZero: true,
       suggestedMax: 10,
-      ticks: { precision: 0 },
+      ticks: { stepSize: 1 },
+    },
+    y1: {
+      type: 'linear',
+      position: 'right',
+      beginAtZero: true,
+      suggestedMax: 10,
+      grid: { drawOnChartArea: false },
+      ticks: { color: getChartPalette().textLighter, precision: 0 },
+    },
+  },
+  datasets: {
+    bar: {
+      barThickness: computedBarThickness.value,
     },
   },
 }))
@@ -165,7 +173,7 @@ const chartOptions = ref<ChartOptions<'bar'>>(import.meta.client ? deepMergePlai
 function refreshChartOptions() {
   nextTick(() => {
     const compactOverride: ChartOptions<'bar'> = props.compact
-      ? { scales: { x: { ticks: { display: props.showXAxis ?? false } }, y: { ticks: { display: props.showYAxis } } } }
+      ? { scales: { x: { ticks: { display: props.showXAxis ?? false } }, y: { ticks: { display: props.showYAxis } }, y1: { ticks: { display: props.showYAxis } } } }
       : {}
     chartOptions.value = deepMergePlainObjects(getBarChartDefaults(props.utc), localChartOptions.value, compactOverride)
   })
@@ -174,6 +182,7 @@ function refreshChartOptions() {
 onMounted(() => refreshChartOptions())
 watch(theme, () => refreshChartOptions())
 watch(() => props.utc, () => refreshChartOptions())
+watch(computedBarThickness, () => refreshChartOptions())
 
 watch(chartData, () => {
   nextTick(() => {
@@ -207,12 +216,6 @@ watchEffect(() => {
       <Flex y-center gap="s">
         <span class="text-m text-bold">New Discussions</span>
       </Flex>
-      <Select
-        v-model="selectedSeriesArr"
-        :options="seriesOptions"
-        :single="true"
-        placeholder="Discussions + Replies"
-      />
     </Flex>
 
     <div v-if="loadingHistory" class="chart-loading" :class="{ 'chart-loading--compact': compact }">
@@ -239,7 +242,7 @@ watchEffect(() => {
     <div
       v-else
       ref="chartWrapperRef"
-      :key="`${theme}-${activeTheme?.id}-${props.utc}-${activeSeries.value}`"
+      :key="`${theme}-${activeTheme?.id}-${props.utc}`"
       class="chart-wrapper"
       :class="{
         'chart-wrapper--compact': compact && !showXAxis,
