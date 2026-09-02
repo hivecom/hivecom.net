@@ -58,6 +58,14 @@ export interface MetricsHistoryEntry {
   ircMessagesByChannel: Record<string, number> | null
 }
 
+// Shown next to the IRC badge wherever message counts appear, so readers know
+// what the number covers before comparing it against their own experience.
+export const IRC_MESSAGES_INFO = 'Message counts cover registered public channels with history enabled, plus secret channels. Direct messages aren\'t included.'
+
+export function formatMessageCount(total: number): string {
+  return `${total} ${total === 1 ? 'message' : 'messages'}`
+}
+
 const METRICS_CACHE_KEY = 'metrics:latest'
 export const METRICS_COLLECTION_INTERVAL = 5 * 60 * 1000 // 5 minutes
 export const METRICS_REFRESH_BUFFER_MS = 30 * 1000 // buffer after collection boundary

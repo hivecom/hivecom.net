@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
-import { Flex, Modal } from '@dolanske/vui'
+import { Flex, Modal, Tooltip } from '@dolanske/vui'
 import { ref, watch } from 'vue'
 import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
 import MetricsRefreshCountdown from '@/components/Shared/Charts/MetricsRefreshCountdown.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 
-type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'ircOnline' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
+type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'ircMessages' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
 
 const props = defineProps<{
   title?: string
   count?: number | null
   countLabel?: string
   countSingular?: string
+  // Extra text after the count, e.g. a message total for the loaded range.
+  countSuffix?: string
+  // Optional explainer shown as an info icon next to the count badge.
+  countInfo?: string
   series?: SeriesKey[]
   color?: string
   initialPeriod?: MetricsPeriod
@@ -45,7 +49,15 @@ watch(open, (val) => {
     <template #header>
       <Flex y-center gap="s" x-between>
         <h4>{{ title ?? 'Activity' }}</h4>
-        <OnlineBadge v-if="count !== undefined" :count="count ?? null" :label="countLabel ?? 'online'" :singular="countSingular" :color="props.color" />
+        <Flex gap="xs" y-center>
+          <OnlineBadge v-if="count !== undefined" :count="count ?? null" :label="countLabel ?? 'online'" :singular="countSingular" :suffix="countSuffix" :color="props.color" />
+          <Tooltip v-if="countInfo" placement="top">
+            <Icon name="ph:info" :size="12" class="activity-modal__info" />
+            <template #tooltip>
+              <p>{{ countInfo }}</p>
+            </template>
+          </Tooltip>
+        </Flex>
       </Flex>
     </template>
 
@@ -74,3 +86,9 @@ watch(open, (val) => {
     </template>
   </Modal>
 </template>
+
+<style scoped lang="scss">
+.activity-modal__info {
+  color: var(--color-text-lightest);
+}
+</style>

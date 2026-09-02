@@ -90,7 +90,12 @@ const mobileCountdownLabel = computed(() => {
       </Flex>
     </Flex>
 
-    <ChartBrush class="brush-sticky" @change="onBrushChange" @update:utc="activeUtc = $event" />
+    <ChartBrush
+      class="brush-sticky"
+      :series="['usersOnline', 'teamspeakOnline', 'ircMessages', 'gameserversPlayers']"
+      @change="onBrushChange"
+      @update:utc="activeUtc = $event"
+    />
     <ChartOnlineUsers :period="activePeriod" :window="activeWindow" :utc="activeUtc" fresh />
     <ChartTeamSpeakOnline :period="activePeriod" :window="activeWindow" :utc="activeUtc" />
     <ChartIrc :period="activePeriod" :window="activeWindow" :utc="activeUtc" />

@@ -3,7 +3,7 @@ import type { ChartDataset, ChartOptions } from 'chart.js'
 import type { ChartComponentRef } from 'vue-chartjs'
 import type { MetricsPeriod } from '@/composables/useDataMetrics'
 
-import { Flex, Select, Skeleton, theme } from '@dolanske/vui'
+import { Flex, Select, Skeleton, theme, Tooltip as VuiTooltip } from '@dolanske/vui'
 import { useElementSize } from '@vueuse/core'
 import {
   BarElement,
@@ -18,10 +18,10 @@ import {
 import { computed, nextTick, onMounted, ref, watch, watchEffect } from 'vue'
 import { Bar } from 'vue-chartjs'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
-import { useDataMetrics } from '@/composables/useDataMetrics'
+import { formatMessageCount, IRC_MESSAGES_INFO, useDataMetrics } from '@/composables/useDataMetrics'
 import { isOpaqueIrcChannelKey, useMetricsAdminIrcChannels } from '@/composables/useMetricsAdminIrcChannels'
 import { useUserTheme } from '@/composables/useUserTheme'
-import { barGapPlugin, getBarChartDefaults, getChartPalette } from '@/lib/charts'
+import { barGapPlugin, getBarChartDefaults, getChartPalette, withAlpha } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
 interface ChannelOption {
@@ -168,6 +168,30 @@ const selectedChannelNames = computed(() =>
     : null,
 )
 
+// Messages summed over the loaded range, narrowed to the selected channels
+// when a filter is active, so the badge matches what the line plots.
+const messagesLabel = computed(() => {
+  if (!metricsHistory.value.length)
+    return undefined
+  const names = selectedChannelNames.value
+  let total: number | null = null
+  for (const e of metricsHistory.value) {
+    if (names === null) {
+      if (e.ircMessages !== null)
+        total = (total ?? 0) + e.ircMessages
+      continue
+    }
+    for (const name of names) {
+      const v = channelValue(e.ircMessagesByChannel, name)
+      if (v !== null)
+        total = (total ?? 0) + v
+    }
+  }
+  if (total === null)
+    return undefined
+  return formatMessageCount(total)
+})
+
 const chartData = computed(() => {
   void theme.value
   void activeTheme.value
@@ -177,10 +201,20 @@ const chartData = computed(() => {
   }
 
   const palette = getChartPalette()
-  const alphas = ['ff', 'bf', '8c', '61']
-  // Online users are bars in green, messages a line in red on its own axis,
-  // since a concurrent count and a per-interval rate live on different scales.
-  const [, onlineColor = '', messagesColor = ''] = palette.datasets
+  const alphas = [0.6, 0.45, 0.33, 0.24]
+  // Online users are muted gray bars so they read as background, and messages
+  // draw as a colored line on their own axis, since a concurrent count and a
+  // per-interval rate live on different scales. Per-channel lines take the
+  // palette in order (purple first), and the gray bars step down in alpha so
+  // stacked channels still separate.
+  const onlineColor = palette.textLighter
+  const lineColors = [
+    palette.datasets[6] ?? '', // purple
+    palette.datasets[1] ?? '', // green
+    palette.datasets[0] ?? '', // blue
+    palette.datasets[3] ?? '', // yellow
+  ]
+  const messagesColor = lineColors[0] ?? ''
 
   const timestamps = metricsHistory.value.map(e => new Date(e.capturedAt).getTime())
 
@@ -223,7 +257,7 @@ const chartData = computed(() => {
   if (!isFiltered || names.length === 0) {
     return {
       datasets: [
-        onlineBars('Online', `${onlineColor}cc`, metricsHistory.value.map(e => e.ircOnline)),
+        onlineBars('Online', withAlpha(onlineColor, 0.6), metricsHistory.value.map(e => e.ircOnline)),
         messageLine('Messages', messagesColor, metricsHistory.value.map(e => e.ircMessages)),
       ],
     }
@@ -231,12 +265,12 @@ const chartData = computed(() => {
 
   const bars = names.map((name, i) => onlineBars(
     `${channelLabel(name)} online`,
-    `${onlineColor}${alphas[i % alphas.length]}`,
+    withAlpha(onlineColor, alphas[i % alphas.length] ?? 0.6),
     metricsHistory.value.map(e => channelValue(e.ircByChannel, name)),
   ))
   const lines = names.map((name, i) => messageLine(
     `${channelLabel(name)} messages`,
-    `${messagesColor}${alphas[i % alphas.length]}`,
+    lineColors[i % lineColors.length] ?? messagesColor,
     metricsHistory.value.map(e => channelValue(e.ircMessagesByChannel, name)),
   ))
   return { datasets: [...bars, ...lines] }
@@ -351,12 +385,26 @@ watch(chartData, () => {
   <div class="chart-container" :class="{ 'chart-container--compact': compact }">
     <Flex v-if="compact" x-between y-center class="chart-compact-title">
       <span>IRC</span>
-      <OnlineBadge :count="currentCount ?? null" label="online" singular="online" size="s" color="var(--color-text-green)" />
+      <Flex gap="xs" y-center>
+        <OnlineBadge :count="currentCount ?? null" label="online" singular="online" size="s" color="var(--color-text-purple)" :suffix="messagesLabel" />
+        <VuiTooltip placement="top">
+          <Icon name="ph:info" :size="12" class="chart-irc__info" />
+          <template #tooltip>
+            <p>{{ IRC_MESSAGES_INFO }}</p>
+          </template>
+        </VuiTooltip>
+      </Flex>
     </Flex>
     <Flex v-if="!compact && !hideTitle" x-between y-center class="text-m text-bold-row">
       <Flex gap="s" y-center>
         <span class="text-m text-bold">IRC</span>
-        <OnlineBadge :count="currentCount ?? null" label="online" singular="online" size="s" color="var(--color-text-green)" />
+        <OnlineBadge :count="currentCount ?? null" label="online" singular="online" size="s" color="var(--color-text-purple)" :suffix="messagesLabel" />
+        <VuiTooltip placement="top">
+          <Icon name="ph:info" :size="12" class="chart-irc__info" />
+          <template #tooltip>
+            <p>{{ IRC_MESSAGES_INFO }}</p>
+          </template>
+        </VuiTooltip>
       </Flex>
       <Select
         v-model="selectedChannelOptions"
@@ -404,3 +452,9 @@ watch(chartData, () => {
     </div>
   </div>
 </template>
+
+<style scoped lang="scss">
+.chart-irc__info {
+  color: var(--color-text-lightest);
+}
+</style>

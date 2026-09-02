@@ -6,7 +6,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { METRICS_PERIOD_OPTIONS, PERIOD_CONFIGS, useDataMetrics } from '@/composables/useDataMetrics'
 import { getCSSVariable } from '@/lib/utils/common'
 
-type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'ircOnline' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
+type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'ircMessages' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
 
 interface SeriesDef {
   key: SeriesKey
@@ -36,7 +36,7 @@ const emit = defineEmits<{
 const ALL_SERIES: SeriesDef[] = [
   { key: 'usersOnline', label: 'Users', paletteIndex: 1 },
   { key: 'teamspeakOnline', label: 'TeamSpeak', paletteIndex: 0 },
-  { key: 'ircOnline', label: 'IRC', paletteIndex: 1 },
+  { key: 'ircMessages', label: 'IRC', paletteIndex: 5 },
   { key: 'gameserversPlayers', label: 'Servers', paletteIndex: 3 },
   { key: 'usersGameActivity', label: 'Games', paletteIndex: 4 },
   { key: 'usersSteamGameActivity', label: 'Steam Games', paletteIndex: 2 },
@@ -154,6 +154,24 @@ const dataMax = computed<number | null>(() => {
   return last ? new Date(last.capturedAt).getTime() : null
 })
 
+// Entries come back evenly spaced at bucket starts, so the gap between
+// neighbours is the bucket width.
+const bucketMs = computed<number>(() => {
+  const min = dataMin.value
+  const max = dataMax.value
+  if (min === null || max === null || max <= min)
+    return 1
+  return (max - min) / (metricsOverview.value.length - 1 || 1)
+})
+
+// The last entry starts at dataMax and its bar runs one bucket further. The
+// axis has to reach the end of that bucket, otherwise today's bar and any
+// selection inside it land past the right edge of the canvas.
+const axisMax = computed<number | null>(() => {
+  const max = dataMax.value
+  return max === null ? null : max + bucketMs.value
+})
+
 watch(dataMin, (min) => {
   if (min !== null && brushStart.value === null)
     applyPeriod(activePeriod.value)
@@ -191,7 +209,7 @@ const periodLabel = computed(() => {
 
 function xToTimestamp(x: number, canvasWidth: number): number {
   const min = dataMin.value
-  const max = dataMax.value
+  const max = axisMax.value
   if (min === null || max === null)
     return 0
   return min + (x / canvasWidth) * (max - min)
@@ -199,7 +217,7 @@ function xToTimestamp(x: number, canvasWidth: number): number {
 
 function timestampToX(ts: number, canvasWidth: number): number {
   const min = dataMin.value
-  const max = dataMax.value
+  const max = axisMax.value
   if (min === null || max === null || max === min)
     return 0
   return ((ts - min) / (max - min)) * canvasWidth
@@ -230,6 +248,7 @@ function draw() {
     getCSSVariable('--color-text-red') || '#d95f5f',
     getCSSVariable('--color-text-yellow') || '#d4a72c',
     getCSSVariable('--color-accent') || '#6bbf74',
+    getCSSVariable('--color-text-purple') || '#c176ff',
   ]
 
   ctx.clearRect(0, 0, W, H)
@@ -263,12 +282,11 @@ function draw() {
   )
 
   const min = dataMin.value
-  const max = dataMax.value
+  const max = axisMax.value
   if (min === null || max === null)
     return
 
-  const bucketMs = max > min ? (max - min) / (entries.length - 1 || 1) : 1
-  const bucketPx = (bucketMs / (max - min)) * W
+  const bucketPx = (bucketMs.value / (max - min)) * W
   const totalBw = Math.max(bucketPx - 1, 1)
   const numSeries = active.length
   const bw = totalBw / numSeries

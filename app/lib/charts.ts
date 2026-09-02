@@ -55,6 +55,16 @@ function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
 }
 
 /**
+ * Applies an alpha (0-1) to any CSS color. Tokens aren't guaranteed to be hex
+ * (the app overrides some VUI tokens with rgb() values), so appending a hex
+ * alpha suffix would produce an invalid color that Chart.js renders as black.
+ */
+export function withAlpha(color: string, alpha: number): string {
+  const [r, g, b] = parseColor(color)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/**
  * Reads the accent CSS variable and returns its HSL hue (0-360).
  * Falls back to 120 (green) if the variable is unavailable (SSR).
  */
@@ -104,6 +114,7 @@ export function getChartPalette(): ChartPalette {
       getCSSVariable('--color-text-yellow'),
       getCSSVariable('--color-accent'),
       getCSSVariable('--color-text-lighter'),
+      getCSSVariable('--color-text-purple'),
     ],
   }
 }
