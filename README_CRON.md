@@ -28,6 +28,8 @@ Collects current metrics from all tracked servers and gameservers and writes sna
 
 `IRC_STATS_URL` defaults to `https://irc.hivecom.net/stats`. Without `IRC_STATS_TOKEN` the IRC section of each snapshot is written as zeros, and the rest of the snapshot is unaffected.
 
+Secret (+s) IRC channels are keyed in the public snapshot by an opaque id rather than their name. The collector upserts every listed channel into `metrics_admin_irc_channels`, readable only with `metrics_admin.read`, which maps those ids back to names for the admin charts.
+
 ## `cron-metrics-rollup`
 
 **Schedule:** `0 4 * * *` (daily at 04:00 UTC)

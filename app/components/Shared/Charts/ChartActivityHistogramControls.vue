@@ -6,7 +6,7 @@ import ChartBrush from '@/components/Shared/Charts/ChartBrush.vue'
 import { METRICS_PERIOD_OPTIONS, PERIOD_CONFIGS } from '@/composables/useDataMetrics'
 import { getCSSVariable } from '@/lib/utils/common'
 
-type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
+type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'ircOnline' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
 
 const props = defineProps<{
   series?: SeriesKey[]

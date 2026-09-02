@@ -989,6 +989,30 @@ export type Database = {
         }
         Relationships: []
       }
+      metrics_admin_irc_channels: {
+        Row: {
+          first_seen: string
+          id: string
+          last_seen: string
+          name: string
+          secret: boolean
+        }
+        Insert: {
+          first_seen?: string
+          id?: string
+          last_seen?: string
+          name: string
+          secret?: boolean
+        }
+        Update: {
+          first_seen?: string
+          id?: string
+          last_seen?: string
+          name?: string
+          secret?: boolean
+        }
+        Relationships: []
+      }
       motds: {
         Row: {
           created_at: string
@@ -3521,6 +3545,7 @@ export type Database = {
         | "depot.delete"
         | "broadcasts.create"
         | "broadcasts.read"
+        | "metrics_admin.read"
       app_role: "admin" | "moderator"
       badge_source: "manual" | "flag" | "computed"
       badge_tier: "bronze" | "silver" | "gold" | "shiny"
@@ -3749,6 +3774,7 @@ export const Constants = {
         "depot.delete",
         "broadcasts.create",
         "broadcasts.read",
+        "metrics_admin.read",
       ],
       app_role: ["admin", "moderator"],
       badge_source: ["manual", "flag", "computed"],

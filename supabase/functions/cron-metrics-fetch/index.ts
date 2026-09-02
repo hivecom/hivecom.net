@@ -87,11 +87,18 @@ function stripPlayerNames(snapshot: MetricsSnapshot): MetricsSnapshot {
 // IRC stats
 // ------------------------------------------------------------------------
 // The IRC host exposes one authenticated stats endpoint covering users,
-// publicly listable channels and a trailing message count. The endpoint's
-// default message window matches this cron's 5 minute cadence, so no window
-// parameter is passed. Nothing here is required for a snapshot to be useful,
-// so an unreachable or erroring endpoint degrades to a zeroed irc block the
-// same way an unreachable gameserver degrades to a null detail.
+// every non-purged channel (secret ones included, flagged by `secret`) and a
+// trailing message count. The endpoint's default message window matches this
+// cron's 5 minute cadence, so no window parameter is passed. Nothing here is
+// required for a snapshot to be useful, so an unreachable or erroring endpoint
+// degrades to a zeroed irc block the same way an unreachable gameserver
+// degrades to a null detail.
+//
+// The metrics table and latest.json are public, so secret channels must not
+// appear there by name. Every listed channel is upserted into
+// metrics_admin_irc_channels (readable only with metrics_admin.read) and the
+// secret ones are keyed in the snapshot by that row's id instead of the name.
+// The id is DB assigned so the key stays stable across runs and rollups.
 
 const IRC_STATS_DEFAULT_URL = "https://irc.hivecom.net/stats";
 const IRC_STATS_TIMEOUT_MS = 5000;
@@ -112,6 +119,9 @@ interface IrcStatsResponse {
     topic: string | null;
     createdAt: string | null;
     registered: boolean;
+    // Absent on sampler builds that predate the flag. Treated as secret so a
+    // version lag never publishes a name.
+    secret?: boolean;
   }[];
   messages: {
     since: string;
@@ -131,7 +141,57 @@ function emptyIrcMetrics(): MetricsSnapshot["irc"] {
   };
 }
 
-async function fetchIrcStats(): Promise<MetricsSnapshot["irc"]> {
+type IrcChannelKeyMap = Map<string, string>;
+
+// Records every listed channel and returns name -> public key. Public channels
+// key by name, secret ones by their lookup row id. A channel only counts as
+// public when the sampler explicitly says `secret: false`. On any failure the
+// secret channels are left out of the map entirely, so the caller drops them
+// rather than falling back to the name.
+async function resolveIrcChannelKeys(
+  supabaseClient: ReturnType<typeof createClient<Database>>,
+  channels: IrcStatsResponse["channels"],
+): Promise<IrcChannelKeyMap> {
+  const keys: IrcChannelKeyMap = new Map();
+  const seenAt = new Date().toISOString();
+
+  const rows = channels
+    .filter((c) => c?.name)
+    .map((c) => ({
+      name: c.name,
+      secret: c.secret !== false,
+      last_seen: seenAt,
+    }));
+
+  for (const row of rows) {
+    if (!row.secret) keys.set(row.name, row.name);
+  }
+
+  if (rows.length === 0) return keys;
+
+  const { data, error } = await supabaseClient
+    .from("metrics_admin_irc_channels")
+    .upsert(rows, { onConflict: "name" })
+    .select("id, name, secret");
+
+  if (error) {
+    console.warn(
+      "IRC channel lookup upsert failed, dropping secret channels:",
+      error.message,
+    );
+    return keys;
+  }
+
+  for (const row of data ?? []) {
+    if (row.secret) keys.set(row.name, row.id);
+  }
+
+  return keys;
+}
+
+async function fetchIrcStats(
+  supabaseClient: ReturnType<typeof createClient<Database>>,
+): Promise<MetricsSnapshot["irc"]> {
   const token = Deno.env.get("IRC_STATS_TOKEN");
   if (!token) {
     console.warn("IRC_STATS_TOKEN is not set, recording zeroed IRC metrics");
@@ -153,18 +213,23 @@ async function fetchIrcStats(): Promise<MetricsSnapshot["irc"]> {
     }
 
     const body = await res.json() as IrcStatsResponse;
+    const channels = body.channels ?? [];
+    const keys = await resolveIrcChannelKeys(supabaseClient, channels);
 
     const byChannel: Record<string, number> = {};
-    for (const channel of body.channels ?? []) {
-      if (!channel?.name) continue;
-      byChannel[channel.name] = Number(channel.userCount ?? 0);
+    for (const channel of channels) {
+      const key = keys.get(channel?.name);
+      if (key === undefined) continue;
+      byChannel[key] = Number(channel.userCount ?? 0);
     }
 
     const messagesByChannel: Record<string, number> = {};
     for (
       const [name, count] of Object.entries(body.messages?.byChannel ?? {})
     ) {
-      messagesByChannel[name] = Number(count ?? 0);
+      const key = keys.get(name);
+      if (key === undefined) continue;
+      messagesByChannel[key] = Number(count ?? 0);
     }
 
     return {
@@ -423,7 +488,7 @@ Deno.serve(async (req: Request) => {
         )
         .not("container", "is", null),
       fetchSnapshotFromStorage(supabaseClient),
-      fetchIrcStats(),
+      fetchIrcStats(supabaseClient),
       // Fetch previous snapshot for delta computation
       supabaseClient
         .from("metrics")

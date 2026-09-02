@@ -6,6 +6,7 @@ import { useUserId } from '@/composables/useUserId'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import ChatIdentityModal from './IdentityModal.vue'
 import ChatMenubar from './Menubar.vue'
+import ChatNetworkBadge from './NetworkBadge.vue'
 import ChatSettingsModal from './SettingsModal.vue'
 import ChatStateBadge from './StateBadge.vue'
 
@@ -45,6 +46,7 @@ const identityHasIssues = computed(() => {
       <ChatMenubar :compact="compact" />
     </Flex>
     <Flex y-center gap="s">
+      <ChatNetworkBadge v-if="!isMobile" />
       <ChatStateBadge v-if="!isMobile" />
       <Tooltip v-if="isConnected && nick" :disabled="isMobile">
         <Button square plain aria-label="Your Space" class="vui-button-accent-weak vui-button-rounded" @click="openSelfSpace()">

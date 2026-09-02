@@ -19,6 +19,7 @@ import { computed, nextTick, onMounted, ref, watch, watchEffect } from 'vue'
 import { Bar } from 'vue-chartjs'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
+import { isOpaqueIrcChannelKey, useMetricsAdminIrcChannels } from '@/composables/useMetricsAdminIrcChannels'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { barGapPlugin, getBarChartDefaults, getChartPalette } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
@@ -88,6 +89,40 @@ const chartRef = ref<ChartComponentRef<'bar'> | null>(null)
 const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
 const { activeTheme } = useUserTheme()
 
+// Secret channels arrive keyed by an opaque id. Admins resolve those back to
+// names through the lookup table; everyone else sees them folded into one
+// "Secret channels" entry so the picker never shows raw ids.
+const SECRET_GROUP_KEY = '__secret__'
+const { isAdmin, load: loadChannelLookup, resolve: resolveChannel } = useMetricsAdminIrcChannels()
+watch(isAdmin, (admin) => {
+  if (admin)
+    loadChannelLookup()
+}, { immediate: true })
+
+function isGroupedKey(key: string): boolean {
+  return isOpaqueIrcChannelKey(key) && resolveChannel(key) === null
+}
+
+function channelLabel(key: string): string {
+  if (key === SECRET_GROUP_KEY)
+    return 'Secret channels'
+  const row = resolveChannel(key)
+  return row ? `${row.name} (secret)` : key
+}
+
+function channelValue(map: Record<string, number> | null | undefined, key: string): number | null {
+  if (!map)
+    return null
+  if (key !== SECRET_GROUP_KEY)
+    return map[key] ?? null
+  let sum: number | null = null
+  for (const [k, v] of Object.entries(map)) {
+    if (isGroupedKey(k))
+      sum = (sum ?? 0) + v
+  }
+  return sum
+}
+
 const channelListKey = computed(() => {
   const keys = metricsHistory.value
     .flatMap(e => e.ircByChannel ? Object.keys(e.ircByChannel) : [])
@@ -102,12 +137,24 @@ const currentCount = computed(() => {
 })
 
 const channelOptions = computed<ChannelOption[]>(() => {
-  const names = new Set<string>()
+  const keys = new Set<string>()
+  let hasGrouped = false
   metricsHistory.value.forEach((e) => {
-    if (e.ircByChannel)
-      Object.keys(e.ircByChannel).forEach(k => names.add(k))
+    if (!e.ircByChannel)
+      return
+    Object.keys(e.ircByChannel).forEach((k) => {
+      if (isGroupedKey(k))
+        hasGrouped = true
+      else
+        keys.add(k)
+    })
   })
-  return [...names].sort().map(n => ({ label: n, value: n }))
+  const options = [...keys]
+    .map(k => ({ label: channelLabel(k), value: k }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+  if (hasGrouped)
+    options.push({ label: channelLabel(SECRET_GROUP_KEY), value: SECRET_GROUP_KEY })
+  return options
 })
 
 const _selectedChannelOptions = ref<ChannelOption[] | undefined>([])
@@ -183,14 +230,14 @@ const chartData = computed(() => {
   }
 
   const bars = names.map((name, i) => onlineBars(
-    `${name} online`,
+    `${channelLabel(name)} online`,
     `${onlineColor}${alphas[i % alphas.length]}`,
-    metricsHistory.value.map(e => e.ircByChannel?.[name] ?? null),
+    metricsHistory.value.map(e => channelValue(e.ircByChannel, name)),
   ))
   const lines = names.map((name, i) => messageLine(
-    `${name} messages`,
+    `${channelLabel(name)} messages`,
     `${messagesColor}${alphas[i % alphas.length]}`,
-    metricsHistory.value.map(e => e.ircMessagesByChannel?.[name] ?? null),
+    metricsHistory.value.map(e => channelValue(e.ircMessagesByChannel, name)),
   ))
   return { datasets: [...bars, ...lines] }
 })

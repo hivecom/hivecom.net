@@ -6,7 +6,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { METRICS_PERIOD_OPTIONS, PERIOD_CONFIGS, useDataMetrics } from '@/composables/useDataMetrics'
 import { getCSSVariable } from '@/lib/utils/common'
 
-type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
+type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'ircOnline' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
 
 interface SeriesDef {
   key: SeriesKey
@@ -36,6 +36,7 @@ const emit = defineEmits<{
 const ALL_SERIES: SeriesDef[] = [
   { key: 'usersOnline', label: 'Users', paletteIndex: 1 },
   { key: 'teamspeakOnline', label: 'TeamSpeak', paletteIndex: 0 },
+  { key: 'ircOnline', label: 'IRC', paletteIndex: 1 },
   { key: 'gameserversPlayers', label: 'Servers', paletteIndex: 3 },
   { key: 'usersGameActivity', label: 'Games', paletteIndex: 4 },
   { key: 'usersSteamGameActivity', label: 'Steam Games', paletteIndex: 2 },
