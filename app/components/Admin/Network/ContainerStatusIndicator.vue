@@ -37,7 +37,7 @@ const statusDescriptions = {
       </div>
     </template>
     <Flex class="containers__status-indicator-wrapper" y-center>
-      <span :class="`containers__status-indicator ${status}`" />
+      <span class="containers__status-indicator" :class="status" />
       <span v-if="showLabel" class="text-s">{{ statusLabels[status] }}</span>
     </Flex>
   </Tooltip>

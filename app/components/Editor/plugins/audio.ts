@@ -13,6 +13,8 @@ import { createAtomBlockMarkdownSpec, mergeAttributes, Node } from '@tiptap/core
 // ------------------------------------------------------------------------
 declare module '@tiptap/core' {
 
+  // Module augmentation, typescript-eslint 8.69 reports it as unused
+  // eslint-disable-next-line unused-imports/no-unused-vars
   interface Commands<ReturnType> {
     audio: {
       /** Insert an audio node at the current selection. */

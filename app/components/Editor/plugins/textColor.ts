@@ -51,6 +51,8 @@ function isValidColorName(value: string): value is TextColorName {
 // ------------------------------------------------------------------------
 declare module '@tiptap/core' {
 
+  // Module augmentation, typescript-eslint 8.69 reports it as unused
+  // eslint-disable-next-line unused-imports/no-unused-vars
   interface Commands<ReturnType> {
     textColor: {
       /** Apply a named palette color to the selected text, e.g. "red". */

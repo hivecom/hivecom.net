@@ -3014,6 +3014,7 @@ export type Database = {
         Args: { p_exclude?: string }
         Returns: number
       }
+      get_forum_stats: { Args: never; Returns: Json }
       get_game_playtime_minutes: {
         Args: {
           p_game_id: number

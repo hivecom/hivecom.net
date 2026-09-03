@@ -64,6 +64,9 @@ async function deleteAccount() {
     pushToast('Account deleted successfully. Goodbye!')
     deleteAccountConfirm.value = ''
 
+    // Drop open realtime channels first. Signing out pushes the anon key to any joined channel,
+    // and Realtime rejects the user-scoped filters under that role.
+    await supabase.removeAllChannels()
     await supabase.auth.signOut()
     navigateTo('/')
   }

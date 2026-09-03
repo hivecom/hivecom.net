@@ -175,11 +175,11 @@ onMounted(() => {
     pointer-events: none;
     animation: leak-pulse 8s infinite alternate;
     z-index: -1;
-
-    &:root.light {
-      filter: invert(1);
-    }
   }
+}
+
+:root.light .error-button:before {
+  filter: invert(1);
 }
 
 @keyframes leak-pulse {

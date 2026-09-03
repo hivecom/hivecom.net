@@ -619,7 +619,10 @@ function confirmDelete() {
 
 // Handle asset upload
 async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', file: File) {
-  if (!gameForm.value.shorthand)
+  // Save normalizes the shorthand, so storage writes have to use the same
+  // value or the assets end up under a folder the game never points at.
+  const shorthand = normalizeShorthand(gameForm.value.shorthand)
+  if (!shorthand)
     return
 
   // Uploads apply immediately - writing under a taken shorthand would
@@ -635,12 +638,12 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
 
     const supabase = useSupabaseClient()
     const user = useSupabaseUser()
-    const result = await uploadGameAsset(supabase, gameForm.value.shorthand, assetType, file, user.value?.id)
+    const result = await uploadGameAsset(supabase, shorthand, assetType, file, user.value?.id)
 
     if (result.success && result.url) {
       assetsUrl.value[assetType] = result.url
       // Clear cache for this game to ensure fresh data
-      clearGameAssets(props.game?.id ?? null, gameForm.value.shorthand)
+      clearGameAssets(props.game?.id ?? null, shorthand)
     }
     else {
       assetsError.value[assetType] = result.error || `Failed to upload ${assetType}`
@@ -657,7 +660,8 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
 
 // Handle asset removal
 async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
-  if (!gameForm.value.shorthand)
+  const shorthand = normalizeShorthand(gameForm.value.shorthand)
+  if (!shorthand)
     return
 
   // Same as upload - removing under a taken shorthand would delete another
@@ -669,13 +673,13 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
 
   try {
     const supabase = useSupabaseClient()
-    const result = await deleteGameAsset(supabase, gameForm.value.shorthand, assetType)
+    const result = await deleteGameAsset(supabase, shorthand, assetType)
 
     if (result.success) {
       assetsUrl.value[assetType] = null
       assetsError.value[assetType] = null
       // Clear cache for this game to ensure fresh data
-      clearGameAssets(props.game?.id ?? null, gameForm.value.shorthand)
+      clearGameAssets(props.game?.id ?? null, shorthand)
     }
     else {
       assetsError.value[assetType] = result.error || 'Failed to remove asset'

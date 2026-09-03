@@ -87,7 +87,7 @@ const playerCounts = computed(() => {
           <template #tooltip>
             <p>{{ capitalize(state) }}{{ state === 'offline' ? ' - Ask an administrator to start it' : state === 'unknown' ? ' - Docker Control is unavailable for this server' : '' }}</p>
           </template>
-          <div :class="`gameserver-indicator ${state}`" />
+          <div class="gameserver-indicator" :class="state" />
         </Tooltip>
         <Flex expand x-between>
           <Flex y-center gap="s" style="min-width: 0;">

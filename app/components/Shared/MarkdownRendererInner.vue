@@ -143,7 +143,8 @@ watch(processedMarkdown, (val) => {
       :body="parsed.body"
       :data="parsed.data ?? {}"
       :tag="props.tag"
-      :class="`typeset ${props.extraClass}`"
+      class="typeset"
+      :class="props.extraClass"
       :components="mdcComponents"
     />
     <MarkdownLightbox v-if="props.md" :markdown="props.md" :container="container" />

@@ -529,7 +529,7 @@ defineExpose({ refreshBadges })
                 <h6>Introduction</h6>
               </Flex>
             </template>
-            <div :class="`introduction-text text-s ${!user.introduction ? 'text-color-lighter' : ''}`">
+            <div class="introduction-text text-s" :class="{ 'text-color-lighter': !user.introduction }">
               {{ user.introduction ? user.introduction : 'No introduction provided.' }}
             </div>
           </Card>

@@ -39,6 +39,8 @@ function isValidFontName(value: string): value is TextFontName {
 // ------------------------------------------------------------------------
 declare module '@tiptap/core' {
 
+  // Module augmentation, typescript-eslint 8.69 reports it as unused
+  // eslint-disable-next-line unused-imports/no-unused-vars
   interface Commands<ReturnType> {
     textFont: {
       /** Apply a named system font stack to the selected text, e.g. "mono". */

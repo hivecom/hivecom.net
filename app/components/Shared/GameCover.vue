@@ -22,23 +22,34 @@ const isLoading = ref(true)
 const hasError = ref(false)
 const isImageReady = ref(false)
 
-async function loadGameCover() {
-  try {
-    isLoading.value = true
-    hasError.value = false
+// Incremented per load so an older in-flight lookup can't clobber the state
+// of a newer one (it used to reset isImageReady after the image had loaded).
+let loadToken = 0
 
-    const url = await getGameCoverUrl(props.game)
-    coverUrl.value = url
+async function loadGameCover() {
+  const token = ++loadToken
+  isLoading.value = true
+  hasError.value = false
+
+  let url: string | null = null
+  try {
+    url = await getGameCoverUrl(props.game)
   }
   catch (error) {
     console.error(`Failed to load cover for game ${props.game.id}:`, error)
-    hasError.value = true
-    coverUrl.value = null
+    if (token === loadToken)
+      hasError.value = true
   }
-  finally {
-    isLoading.value = false
+
+  if (token !== loadToken)
+    return
+
+  // Same URL means the <img> stays mounted and won't fire load again, so
+  // keep the ready state we already have.
+  if (url !== coverUrl.value)
     isImageReady.value = false
-  }
+  coverUrl.value = url
+  isLoading.value = false
 }
 
 function handleImageLoad() {
@@ -54,7 +65,9 @@ onMounted(() => {
   loadGameCover()
 })
 
-watch(() => props.game, () => {
+// Watch identity rather than the object: list refetches hand us fresh
+// references for the same game and shouldn't restart the lookup.
+watch(() => [props.game.id, props.game.shorthand], () => {
   loadGameCover()
 })
 
