@@ -24,7 +24,7 @@ import { useUserTheme } from '@/composables/useUserTheme'
 import { barGapPlugin, getBarChartDefaults, getChartPalette, withAlpha } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
-interface ChannelOption {
+export interface ChannelOption {
   label: string
   value: string
 }
@@ -38,6 +38,35 @@ const props = defineProps<{
   showYAxis?: boolean
   showXAxis?: boolean
 }>()
+
+// Lets a parent (the modal header, for one) follow the channel filter instead
+// of showing network totals next to a chart that's been narrowed down.
+const emit = defineEmits<{
+  summary: [{ online: number | null, messages: string | undefined, scope: string }]
+  options: [ChannelOption[]]
+}>()
+
+// Bindable so a parent can host the picker somewhere else (the modal puts it in
+// the brush controls row). No `default` on the model on purpose: a default makes
+// the prop always defined, and Vue then reads the prop over the local value, so
+// an unbound picker would never register a pick.
+const channelsModel = defineModel<ChannelOption[] | undefined>('channels')
+const localChannels = ref<ChannelOption[]>([])
+
+// Select appends to the bound array in place, so this has to hand back one
+// stable reactive array. Rebuilding it per read (`model.value ?? []`) drops the
+// append on the floor and the picker looks dead. Writes go to whichever side
+// owns the state: the parent when it binds the model, the local ref otherwise.
+const selectedChannelOptions = computed<ChannelOption[]>({
+  get: () => channelsModel.value ?? localChannels.value,
+  set: (v) => {
+    const next = v ?? []
+    if (channelsModel.value !== undefined)
+      channelsModel.value = next
+    else
+      localChannels.value = next
+  },
+})
 
 ChartJS.register(
   LinearScale,
@@ -90,8 +119,9 @@ const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0,
 const { activeTheme } = useUserTheme()
 
 // Secret channels arrive keyed by an opaque id. Admins resolve those back to
-// names through the lookup table; everyone else sees them folded into one
-// "Secret channels" entry so the picker never shows raw ids.
+// names through the lookup table, and any id that doesn't resolve falls into a
+// single "Secret channels" entry so the picker never shows raw ids. Non-admins
+// don't get either one, so secret channels stay out of the filter for them.
 const SECRET_GROUP_KEY = '__secret__'
 const { isAdmin, load: loadChannelLookup, resolve: resolveChannel } = useMetricsAdminIrcChannels()
 watch(isAdmin, (admin) => {
@@ -152,21 +182,27 @@ const channelOptions = computed<ChannelOption[]>(() => {
   const options = [...keys]
     .map(k => ({ label: channelLabel(k), value: k }))
     .sort((a, b) => a.label.localeCompare(b.label))
-  if (hasGrouped)
+  if (hasGrouped && isAdmin.value)
     options.push({ label: channelLabel(SECRET_GROUP_KEY), value: SECRET_GROUP_KEY })
   return options
 })
 
-const _selectedChannelOptions = ref<ChannelOption[] | undefined>([])
-const selectedChannelOptions = computed({
-  get: () => _selectedChannelOptions.value ?? [],
-  set: (v) => { _selectedChannelOptions.value = v ?? [] },
-})
 const selectedChannelNames = computed(() =>
   selectedChannelOptions.value.length > 0
     ? new Set(selectedChannelOptions.value.map(o => o.value))
     : null,
 )
+
+// A selection can go stale when the lookup loads or the role changes, so drop
+// anything that isn't in the options list before it reaches the chart.
+watch(channelOptions, (options) => {
+  emit('options', options)
+  const valid = new Set(options.map(o => o.value))
+  const current = selectedChannelOptions.value
+  const kept = current.filter(o => valid.has(o.value))
+  if (kept.length !== current.length)
+    selectedChannelOptions.value = kept
+}, { immediate: true })
 
 // Messages summed over the loaded range, narrowed to the selected channels
 // when a filter is active, so the badge matches what the line plots.
@@ -190,6 +226,35 @@ const messagesLabel = computed(() => {
   if (total === null)
     return undefined
   return formatMessageCount(total)
+})
+
+// Latest online figure for whatever the filter is scoped to. Summing several
+// selected channels double counts anyone sitting in more than one of them,
+// which is the same caveat the stacked bars carry.
+const scopedOnline = computed<number | null>(() => {
+  const names = selectedChannelNames.value
+  if (names === null)
+    return currentCount.value ?? null
+  const latest = [...metricsHistory.value].reverse().find(e => e.ircByChannel !== null)
+  if (!latest)
+    return null
+  let sum: number | null = null
+  for (const name of names) {
+    const v = channelValue(latest.ircByChannel, name)
+    if (v !== null)
+      sum = (sum ?? 0) + v
+  }
+  return sum
+})
+
+watchEffect(() => {
+  emit('summary', {
+    online: scopedOnline.value,
+    messages: messagesLabel.value,
+    scope: selectedChannelOptions.value.length > 0
+      ? selectedChannelOptions.value.map(o => o.label).join(', ')
+      : 'whole network',
+  })
 })
 
 const chartData = computed(() => {
@@ -398,7 +463,7 @@ watch(chartData, () => {
     <Flex v-if="!compact && !hideTitle" x-between y-center class="text-m text-bold-row">
       <Flex gap="s" y-center>
         <span class="text-m text-bold">IRC</span>
-        <OnlineBadge :count="currentCount ?? null" label="online" singular="online" size="s" color="var(--color-text-purple)" :suffix="messagesLabel" />
+        <OnlineBadge :count="scopedOnline" label="online" singular="online" size="s" color="var(--color-text-purple)" :suffix="messagesLabel" />
         <VuiTooltip placement="top">
           <Icon name="ph:info" :size="12" class="chart-irc__info" />
           <template #tooltip>
@@ -409,7 +474,8 @@ watch(chartData, () => {
       <Select
         v-model="selectedChannelOptions"
         :options="channelOptions"
-        placeholder="All Channels"
+        placeholder="Whole network"
+        size="s"
         show-clear
         search
         :single="false"

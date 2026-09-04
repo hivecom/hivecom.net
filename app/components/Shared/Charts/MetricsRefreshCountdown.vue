@@ -55,6 +55,9 @@ const nextUpdateLabel = computed(() => {
           <Flex x-between expand gap="s">
             <span>Voice Servers</span><span>15 min</span>
           </Flex>
+          <Flex x-between expand gap="s">
+            <span>IRC</span><span>5 min</span>
+          </Flex>
         </Flex>
       </template>
     </Tooltip>

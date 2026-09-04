@@ -61,7 +61,11 @@ function onBrushChange(window: { start: Date, end: Date }) {
       :server-name="props.serverName"
       @change="onBrushChange"
       @update:utc="activeUtc = $event"
-    />
+    >
+      <template v-if="$slots.controls" #controls>
+        <slot name="controls" />
+      </template>
+    </ChartBrush>
     <slot :period="activePeriod" :window="activeWindow" :utc="activeUtc" :color />
   </Flex>
 </template>

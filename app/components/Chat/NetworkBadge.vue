@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ChannelOption } from '@/components/Shared/Charts/ChartIrc.vue'
+import { Select } from '@dolanske/vui'
 import { computed, onMounted, ref } from 'vue'
 import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
 import ChartIrc from '@/components/Shared/Charts/ChartIrc.vue'
@@ -21,6 +23,24 @@ const messagesLabel = computed(() => {
   }
   return total === null ? undefined : formatMessageCount(total)
 })
+
+// The chart inside the modal owns the channel filter, so it reports back what
+// the header should show. Falls back to network totals until it does.
+interface ChartSummary { online: number | null, messages: string | undefined, scope: string }
+const summary = ref<ChartSummary | null>(null)
+const modalCount = computed(() => summary.value ? summary.value.online : count.value)
+const modalSuffix = computed(() => summary.value ? summary.value.messages : messagesLabel.value)
+const modalSubtitle = computed(() => {
+  const scope = summary.value?.scope
+  if (scope === undefined || scope === 'whole network')
+    return 'Across the whole IRC network'
+  return `Filtered to ${scope}`
+})
+// The picker sits in the brush controls row up in the modal, so the selection
+// and the options the chart found live here and get handed back down.
+const channelOptions = ref<ChannelOption[]>([])
+const selectedChannels = ref<ChannelOption[] | undefined>([])
+
 const activityModalOpen = ref(false)
 // Resolved at runtime because the brush paints it onto a canvas, where a
 // var() reference wouldn't work.
@@ -46,16 +66,36 @@ onMounted(() => {
     v-model:open="activityModalOpen"
     title="IRC Activity"
     :color="accentColor"
-    :count="count"
+    :count="modalCount"
+    :subtitle="modalSubtitle"
     count-label="online"
     count-singular="online"
-    :count-suffix="messagesLabel"
+    :count-suffix="modalSuffix"
     :count-info="IRC_MESSAGES_INFO"
     :series="['ircMessages']"
     :initial-period="count ? '24h' : '14d'"
   >
+    <template v-if="channelOptions.length > 0" #controls>
+      <Select
+        v-model="selectedChannels"
+        :options="channelOptions"
+        placeholder="Whole network"
+        size="s"
+        show-clear
+        search
+        :single="false"
+      />
+    </template>
     <template #default="{ period, window, utc }">
-      <ChartIrc :period :window :utc hide-title />
+      <ChartIrc
+        v-model:channels="selectedChannels"
+        :period
+        :window
+        :utc
+        hide-title
+        @summary="summary = $event"
+        @options="channelOptions = $event"
+      />
     </template>
   </ChartActivityHistogramModal>
 </template>

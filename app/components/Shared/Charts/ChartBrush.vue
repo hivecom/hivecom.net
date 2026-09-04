@@ -531,14 +531,18 @@ defineExpose({ setBrush })
       <span class="chart-brush__range">{{ startLabel }}{{ endLabel ? ` - ${endLabel}` : '' }}</span>
 
       <Flex gap="xs" y-center>
+        <slot name="controls" />
+
         <ButtonGroup>
           <Button
+            size="s"
             :variant="!useUtc ? 'fill' : 'gray'"
             @click="useUtc = false"
           >
             Local
           </Button>
           <Button
+            size="s"
             :variant="useUtc ? 'fill' : 'gray'"
             @click="useUtc = true"
           >
@@ -550,6 +554,7 @@ defineExpose({ setBrush })
           <Dropdown placement="bottom-end">
             <template #trigger="{ toggle, isOpen: dropdownOpen }">
               <Button
+                size="s"
                 :variant="selectionMode === 'period' ? 'fill' : 'gray'"
                 @click="toggle"
               >
@@ -579,7 +584,7 @@ defineExpose({ setBrush })
           >
             <template #trigger>
               <Tooltip placement="top">
-                <Button square :variant="selectionMode === 'calendar' ? 'fill' : 'gray'">
+                <Button square size="s" :variant="selectionMode === 'calendar' ? 'fill' : 'gray'">
                   <Icon name="ph:calendar-dots" />
                 </Button>
                 <template #tooltip>
