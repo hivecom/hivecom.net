@@ -3,6 +3,7 @@ import { Button, Divider, Flex, Sheet, Tooltip } from '@dolanske/vui'
 import { computed, ref, watch } from 'vue'
 import ChatChannelList from '@/components/Chat/ChannelList.vue'
 import ChatIdentityModal from '@/components/Chat/IdentityModal.vue'
+import ChatNetworkBadge from '@/components/Chat/NetworkBadge.vue'
 import ChatSettingsModal from '@/components/Chat/SettingsModal.vue'
 import ChatStateBadge from '@/components/Chat/StateBadge.vue'
 import ChatUserList from '@/components/Chat/UserList.vue'
@@ -101,7 +102,7 @@ function goToSelfSpace() {
       <template #header>
         <Flex y-center x-between expand class="p-m">
           <h4>Chat</h4>
-          <ChatStateBadge />
+          <ChatNetworkBadge />
         </Flex>
       </template>
 
@@ -147,6 +148,9 @@ function goToSelfSpace() {
             </template>
             Connect
           </Button>
+          <Flex x-center expand>
+            <ChatStateBadge />
+          </Flex>
         </Flex>
       </template>
     </Sheet>

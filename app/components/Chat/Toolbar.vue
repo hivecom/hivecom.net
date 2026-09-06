@@ -46,7 +46,9 @@ const identityHasIssues = computed(() => {
       <ChatMenubar :compact="compact" />
     </Flex>
     <Flex y-center gap="s">
-      <ChatNetworkBadge v-if="!isMobile" />
+      <ChatNetworkBadge />
+      <!-- On mobile the connection state and latency live in the menubar's
+           Connection drawer, so the toolbar keeps just the online count. -->
       <ChatStateBadge v-if="!isMobile" />
       <Tooltip v-if="isConnected && nick" :disabled="isMobile">
         <Button square plain aria-label="Your Space" class="vui-button-accent-weak vui-button-rounded" @click="openSelfSpace()">
