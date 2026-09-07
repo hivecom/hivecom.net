@@ -52,6 +52,10 @@ async function loadGameCover() {
   isLoading.value = false
 }
 
+// Nothing rendered and no fallback wanted, so the slot is blank. Consumers
+// that lay covers out in a strip can collapse these instead of showing a gap.
+const isEmpty = computed(() => !isLoading.value && (coverUrl.value === null || hasError.value) && !props.showFallback)
+
 function handleImageLoad() {
   isImageReady.value = true
 }
@@ -77,7 +81,12 @@ defineExpose({
 </script>
 
 <template>
-  <div class="game-cover-container" :data-size="size" :data-ratio="aspectRatio">
+  <div
+    class="game-cover-container"
+    :class="{ 'game-cover-container--empty': isEmpty }"
+    :data-size="size"
+    :data-ratio="aspectRatio"
+  >
     <div v-if="isLoading" class="game-cover-skeleton" />
 
     <img

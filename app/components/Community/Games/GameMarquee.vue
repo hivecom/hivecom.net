@@ -87,6 +87,11 @@ function onGameClick(gameId: number) {
   margin-bottom: var(--space-xs);
   flex-shrink: 0;
 
+  // Games without a cover asset would otherwise hold a blank 12rem slot in the strip
+  &:has(.game-cover-container--empty) {
+    display: none;
+  }
+
   :deep(.game-cover-container) {
     height: 100%;
     width: auto;
