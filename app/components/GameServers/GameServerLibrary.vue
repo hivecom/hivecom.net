@@ -229,17 +229,19 @@ function isCoverLoading(gameId: number): boolean {
                           <EventPopoverList :events="getOngoingEventsForGame(game.id)" />
                         </Popout>
                       </template>
-                      <Tooltip v-else-if="(getPlayersForGame(game.id) ?? 0) > 0" placement="top">
-                        <Indicator
-                          variant="online"
-                          class="cover-live-indicator"
-                          outline
-                          ripple
-                        />
-                        <template #tooltip>
-                          <p>{{ getPlayersForGame(game.id) }} online</p>
-                        </template>
-                      </Tooltip>
+                      <span v-else-if="(getPlayersForGame(game.id) ?? 0) > 0" class="cover-live-indicator-anchor">
+                        <Tooltip placement="top">
+                          <Indicator
+                            variant="online"
+                            class="cover-live-indicator"
+                            outline
+                            ripple
+                          />
+                          <template #tooltip>
+                            <p>{{ getPlayersForGame(game.id) }} online</p>
+                          </template>
+                        </Tooltip>
+                      </span>
                     </ClientOnly>
                   </div>
                   <div class="game-info">

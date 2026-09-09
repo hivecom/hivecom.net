@@ -1,5 +1,7 @@
+import type { ConnectContext, ConnectGameFields } from '@/composables/useGameConnect'
 import type { Database } from '@/types/database.types'
 import { useSupabaseUser } from '#imports'
+import { buildConnectContext } from '@/composables/useGameConnect'
 import { unwrapJoin } from '@/lib/utils/common'
 
 export type LinkPreviewType = 'forum-discussion' | 'profile' | 'gameserver' | 'event' | 'vote' | 'unknown'
@@ -43,6 +45,7 @@ export interface LinkPreviewGameserver {
   containerState: 'healthy' | 'running' | 'unhealthy' | 'offline' | 'unknown'
   addresses: string[] | null
   port: string | null
+  connect: ConnectContext
 }
 
 export interface LinkPreviewEvent {
@@ -270,7 +273,7 @@ export function useDataLinkPreview(url: string) {
     const { data: row, error: fetchError } = await supabase
       .from('network_gameservers')
       .select(`
-        id, name, description, region, game, addresses, port,
+        id, name, description, region, game, addresses, port, connect_command,
         container (
           running, healthy,
           server ( docker_control, accessible )
@@ -289,16 +292,18 @@ export function useDataLinkPreview(url: string) {
 
     let gameName: string | null = null
     let gameShorthand: string | null = null
+    let connect = buildConnectContext(null, row)
     if (row.game != null) {
       const gameResult = await supabase
         .from('games')
-        .select('name, shorthand')
+        .select('name, shorthand, connect_uri, connect_command, steam_id')
         .eq('id', row.game)
         .maybeSingle()
-      interface GameRow { name: string | null, shorthand: string | null }
+      interface GameRow extends ConnectGameFields { name: string | null, shorthand: string | null }
       const gameRow: GameRow | null = gameResult.data
       gameName = gameRow?.name ?? null
       gameShorthand = gameRow?.shorthand ?? null
+      connect = buildConnectContext(gameRow, row)
     }
 
     // Derive container state the same way the gameserver detail page does
@@ -339,6 +344,7 @@ export function useDataLinkPreview(url: string) {
       containerState,
       addresses: row.addresses,
       port: row.port,
+      connect,
     } satisfies LinkPreviewGameserver
   }
 

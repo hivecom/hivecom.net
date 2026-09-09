@@ -2,7 +2,7 @@
 
 Scheduled jobs are managed via `pg_cron`, which lets us run periodic tasks directly from the database without needing an external scheduler or service. The job definitions and their invocation functions are created automatically by migrations, so there is nothing to manually register when setting up a new environment.
 
-Jobs that call edge functions authenticate using vault-stored `anon_key` and `system_cron_secret` - see [README_VAULT.md](README_VAULT.md) for how those secrets work and where to set them up.
+Jobs that call edge functions authenticate with the vault-stored `system_cron_secret`, sent as a `System-Cron-Secret` header and checked inside the function - see [README_VAULT.md](README_VAULT.md) for how those secrets work and where to set them up. These functions are deployed with `verify_jwt = false` in `supabase/config.toml`: pg_net can't present a valid JWT since the legacy anon key was disabled, so the shared secret is the auth gate. The vault `anon_key` is still sent as a Bearer header by older job definitions but is no longer verified by anything.
 
 The two Steam sync jobs (`queue_enqueue_sync_steam`, `queue_dispatch_sync_steam`) are part of a more complex background queue architecture - see [README_ARCHITECTURE.md](README_ARCHITECTURE.md) for the full design.
 
@@ -23,6 +23,12 @@ Fetches the current state of all managed Docker containers and persists it to th
 Collects current metrics from all tracked servers and gameservers and writes snapshots to the metrics tables. Raw snapshots are later rolled up into daily aggregates by `cron-metrics-rollup`.
 
 **Edge function:** `/functions/v1/cron-metrics-fetch`
+
+**Optional environment variables:** `IRC_STATS_URL`, `IRC_STATS_TOKEN`
+
+`IRC_STATS_URL` defaults to `https://irc.hivecom.net/stats`. Without `IRC_STATS_TOKEN` the IRC section of each snapshot is written as zeros, and the rest of the snapshot is unaffected.
+
+Secret (+s) IRC channels are keyed in the public snapshot by an opaque id rather than their name. The collector upserts every listed channel into `metrics_admin_irc_channels`, readable only with `metrics_admin.read`, which maps those ids back to names for the admin charts.
 
 ## `cron-metrics-rollup`
 

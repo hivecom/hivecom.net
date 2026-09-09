@@ -1,3 +1,4 @@
+import { getPublishableKey, getSecretKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
@@ -98,10 +99,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SECRET_KEY") ??
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-      "";
+    const supabaseAnonKey = getPublishableKey();
+    const supabaseServiceRoleKey = getSecretKey();
 
     const tempClient = createClient<Database>(
       supabaseUrl,

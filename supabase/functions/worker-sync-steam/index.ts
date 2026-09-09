@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database, Json } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
+import { timingSafeEqualString } from "../_shared/auth.ts";
 
 // Steam API constants
 const STEAM_API_KEY = Deno.env.get("STEAM_API_KEY");
@@ -538,7 +539,10 @@ Deno.serve(async (req: Request) => {
     const cronSecret = Deno.env.get("SYSTEM_CRON_SECRET");
     const providedSecret = req.headers.get("System-Cron-Secret");
 
-    if (!cronSecret || providedSecret !== cronSecret) {
+    if (
+      !cronSecret || !providedSecret ||
+      !timingSafeEqualString(providedSecret, cronSecret)
+    ) {
       return new Response(
         JSON.stringify({ success: false, message: "Unauthorized" }),
         {

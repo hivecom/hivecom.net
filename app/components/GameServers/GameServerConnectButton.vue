@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Button, Dropdown, DropdownItem, Flex, pushToast } from '@dolanske/vui'
+import type { ConnectAction, ConnectContext } from '@/composables/useGameConnect'
+import { Button, Dropdown, DropdownItem, DropdownTitle, pushToast } from '@dolanske/vui'
 import { useGameConnect } from '@/composables/useGameConnect'
 
 interface Props {
   addresses: string[] | null | undefined
   port: string | null | undefined
-  gameShorthand?: string | null
+  /** Resolved connect templates, from buildConnectContext(game, gameserver) */
+  connect: ConnectContext
   variant?: 'accent' | 'gray' | 'success' | 'danger' | 'link'
   size?: 's' | 'm' | 'l'
   plain?: boolean
@@ -15,7 +17,6 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  gameShorthand: null,
   variant: 'accent',
   size: 'm',
   plain: false,
@@ -23,120 +24,174 @@ const props = withDefaults(defineProps<Props>(), {
   stopPropagation: false,
 })
 
-const { getConnectActions, triggerConnect, supportsDirectConnect } = useGameConnect()
+interface MenuEntry {
+  key: string
+  label: string
+  icon: string
+  run: () => void
+}
+
+const { getConnectActions, triggerConnect } = useGameConnect()
 
 const connectActions = computed(() =>
-  getConnectActions(props.addresses, props.port, props.gameShorthand),
+  getConnectActions(props.addresses, props.port, props.connect),
 )
 
-const isSingleAddress = computed(() => connectActions.value.length === 1)
-const singleAction = computed(() => connectActions.value[0] ?? null)
-const isDirect = computed(() => supportsDirectConnect(props.gameShorthand))
+function copy(text: string) {
+  navigator.clipboard.writeText(text).catch(() => {})
+}
 
-const buttonLabel = computed(() => isDirect.value ? 'Launch' : 'Copy Address')
-const buttonIcon = computed(() => isDirect.value ? 'ph:rocket-launch' : 'ph:copy')
+// Launching also copies the address, so there is a paste-ready fallback when
+// the handler does not fire (game not installed, protocol blocked).
+function launch(action: ConnectAction) {
+  triggerConnect(action)
+  copy(action.addressWithPort)
+  pushToast('Launching on Steam', { description: action.addressWithPort, timeout: 3000 })
+}
 
-// function actionIcon(action: ReturnType<typeof getConnectActions>[number]) {
-//   return action.uri != null ? 'ph:rocket-launch' : 'ph:copy'
-// }
+function copyAddress(action: ConnectAction) {
+  copy(action.addressWithPort)
+  pushToast('Copied to clipboard', { description: action.addressWithPort, timeout: 3000 })
+}
 
-function handleClick(e: MouseEvent) {
-  if (props.stopPropagation) {
-    e.stopPropagation()
-    e.preventDefault()
-  }
-  if (!singleAction.value)
+function copyCommand(action: ConnectAction) {
+  if (action.command == null)
     return
-  if (singleAction.value.uri != null) {
-    triggerConnect(singleAction.value)
-    navigator.clipboard.writeText(singleAction.value.addressWithPort).catch(() => {})
-    pushToast('Launching on Steam', { description: singleAction.value.addressWithPort, timeout: 3000 })
-  }
-  else {
-    navigator.clipboard.writeText(singleAction.value.addressWithPort).catch(() => {})
-    pushToast('Copied to clipboard', { description: singleAction.value.addressWithPort, timeout: 3000 })
-  }
+  copy(action.command)
+  pushToast('Copied command', { description: action.command, timeout: 3000 })
 }
 
-function handleToggle(e: MouseEvent, toggle: () => void) {
+function copyLauncherCommand(action: ConnectAction) {
+  if (action.launcherCommand == null)
+    return
+  copy(action.launcherCommand)
+  pushToast('Copied launcher command', { description: action.launcherCommand, timeout: 3000 })
+}
+
+interface MenuGroup {
+  address: string
+  items: MenuEntry[]
+}
+
+// Grouped by address rather than flattened, so the address is named once in a
+// heading instead of repeated on every row. Keeps the labels short enough that
+// the button does not crowd out the server name next to it.
+const groups = computed<MenuGroup[]>(() =>
+  connectActions.value.map((action) => {
+    const items: MenuEntry[] = []
+
+    if (action.uri != null) {
+      items.push({
+        key: `launch:${action.addressWithPort}`,
+        label: 'Launch',
+        icon: 'ph:rocket-launch',
+        run: () => launch(action),
+      })
+    }
+
+    items.push({
+      key: `address:${action.addressWithPort}`,
+      label: 'Copy Address',
+      icon: 'ph:copy',
+      run: () => copyAddress(action),
+    })
+
+    if (action.command != null) {
+      items.push({
+        key: `command:${action.addressWithPort}`,
+        label: 'Copy Command',
+        icon: 'ph:terminal-window',
+        run: () => copyCommand(action),
+      })
+    }
+
+    if (action.launcherCommand != null) {
+      items.push({
+        key: `launcher:${action.addressWithPort}`,
+        label: 'Copy Launcher Command',
+        icon: 'ph:terminal',
+        run: () => copyLauncherCommand(action),
+      })
+    }
+
+    return { address: action.addressWithPort, items }
+  }),
+)
+
+const entries = computed(() => groups.value.flatMap(group => group.items))
+
+// The primary action targets the first address. Aliases point at the same
+// server, so picking one is fine, and the menu still names them all.
+const primaryEntry = computed(() => entries.value[0] ?? null)
+const hasMenu = computed(() => entries.value.length > 1)
+const showGroupTitles = computed(() => groups.value.length > 1)
+
+function withStop(e: MouseEvent, fn: () => void) {
   if (props.stopPropagation) {
     e.stopPropagation()
     e.preventDefault()
   }
-  toggle()
+  fn()
 }
 
-function handleActionClick(e: MouseEvent, action: ReturnType<typeof getConnectActions>[number]) {
-  if (props.stopPropagation) {
-    e.stopPropagation()
-    e.preventDefault()
-  }
-  if (action.uri != null) {
-    triggerConnect(action)
-    navigator.clipboard.writeText(action.addressWithPort).catch(() => {})
-    pushToast('Launching on Steam', { description: action.addressWithPort, timeout: 3000 })
-  }
-  else {
-    navigator.clipboard.writeText(action.addressWithPort).catch(() => {})
-    pushToast('Copied to clipboard', { description: action.addressWithPort, timeout: 3000 })
-  }
+function runPrimary(e: MouseEvent) {
+  withStop(e, () => primaryEntry.value?.run())
 }
 </script>
 
 <template>
   <div
-    v-if="connectActions.length > 0"
+    v-if="primaryEntry"
     class="gameserver-connect-button"
+    :class="{ 'gameserver-connect-button--split': hasMenu }"
     :data-dropdown-ignore="stopPropagation || undefined"
     @click.stop="stopPropagation ? () => {} : undefined"
   >
-    <!-- Single address -->
     <Button
-      v-if="isSingleAddress"
+      class="gameserver-connect-button__primary"
       :variant="variant"
       :size="size"
       :plain="plain"
       :outline="outline"
-      @click="handleClick"
+      @click="runPrimary"
     >
       <template #start>
-        <Icon :name="buttonIcon" />
+        <Icon :name="primaryEntry.icon" />
       </template>
-      {{ buttonLabel }}
+      {{ primaryEntry.label }}
     </Button>
 
-    <!-- Multiple addresses -->
-    <Dropdown v-else>
+    <Dropdown v-if="hasMenu">
       <template #trigger="{ toggle }">
         <Button
+          class="gameserver-connect-button__caret"
           :variant="variant"
           :size="size"
           :plain="plain"
           :outline="outline"
-          @click="(e: MouseEvent) => handleToggle(e, toggle)"
+          square
+          aria-label="More connection options"
+          @click="(e: MouseEvent) => withStop(e, toggle)"
         >
-          <template #start>
-            <Icon :name="buttonIcon" />
-          </template>
-          <Flex y-center gap="xs">
-            {{ buttonLabel }}
-            <Icon name="ph:caret-down" />
-          </Flex>
+          <Icon name="ph:caret-down" />
         </Button>
       </template>
 
-      <DropdownItem
-        v-for="action in connectActions"
-        :key="action.addressWithPort"
-      >
-        <button
-          class="gameserver-connect-button__item"
-          @click="(e: MouseEvent) => handleActionClick(e, action)"
-        >
-          <!-- <Icon :name="actionIcon(action)" /> -->
-          {{ action.addressWithPort }}
-        </button>
-      </DropdownItem>
+      <template v-for="group in groups" :key="group.address">
+        <DropdownTitle v-if="showGroupTitles">
+          {{ group.address }}
+        </DropdownTitle>
+
+        <DropdownItem v-for="entry in group.items" :key="entry.key">
+          <button
+            class="gameserver-connect-button__item"
+            @click="(e: MouseEvent) => withStop(e, entry.run)"
+          >
+            <Icon :name="entry.icon" />
+            {{ entry.label }}
+          </button>
+        </DropdownItem>
+      </template>
     </Dropdown>
   </div>
 </template>
@@ -144,6 +199,20 @@ function handleActionClick(e: MouseEvent, action: ReturnType<typeof getConnectAc
 <style scoped lang="scss">
 .gameserver-connect-button {
   display: inline-flex;
+
+  // Join the primary action and the menu caret into one control.
+  &--split {
+    .gameserver-connect-button__primary {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    .gameserver-connect-button__caret {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+      margin-left: 1px;
+    }
+  }
 
   &__item {
     display: flex;

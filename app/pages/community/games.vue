@@ -67,7 +67,13 @@ onMounted(() => {
   fetchMetricsHistoryIsolated(POPPED_OFF_PERIOD)
     .then((entries) => { metricsHistory30d.value = entries })
     .finally(() => { loadingHistory30d.value = false })
+
   scheduleRefresh(HISTORY_PERIOD)
+  // The 30d set is fetched in isolation, so it needs the entries handed to it
+  // rather than reading the shared history ref.
+  scheduleRefresh(POPPED_OFF_PERIOD, (entries) => {
+    metricsHistory30d.value = entries
+  })
 })
 
 // ── Top 3 games this week ─────────────────────────────────────────────────────

@@ -237,7 +237,6 @@ onMounted(async () => {
   line-height: 1;
   color: var(--color-text-lightest);
   opacity: 0.4;
-  pointer-events: none;
   user-select: text;
   white-space: nowrap;
 }

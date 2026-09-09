@@ -1,5 +1,6 @@
 import type { Database } from '@/types/database.types'
 import { onMounted, ref, watch } from 'vue'
+import { METRICS_COLLECTION_INTERVAL, METRICS_REFRESH_BUFFER_MS } from '@/composables/useDataMetrics'
 
 export interface SteamPresenceGame {
   appId: number
@@ -17,12 +18,52 @@ const currentGameByProfileId = ref<Map<string, SteamPresenceGame>>(new Map())
 const recentlyPlayedByAppId = ref<Map<number, RecentlyPlayedGame>>(new Map())
 const presencesLoading = ref(false)
 let fetched = false
+let inflight: Promise<void> | null = null
+let lastFetchedAt = 0
+
+// Presences come from the same cron as metrics, so they go stale on the same
+// five-minute cadence. Without this the first mount of the session was the only
+// fetch that ever ran and only a full reload showed new players.
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+let activeConsumers = 0
+
+// Set by the composable so the module-level timer and visibility listener can
+// refetch without a Nuxt context of their own.
+let refetchPresences: (() => Promise<void>) | null = null
+
+// Aligned to the collection boundary so a refetch lands just after the cron has
+// written, rather than drifting by whenever the page happened to load.
+function schedulePresencesRefresh(): void {
+  if (refreshTimer !== null)
+    clearTimeout(refreshTimer)
+
+  refreshTimer = setTimeout(() => {
+    void (refetchPresences?.() ?? Promise.resolve()).finally(() => {
+      if (activeConsumers > 0)
+        schedulePresencesRefresh()
+    })
+  }, METRICS_COLLECTION_INTERVAL - (Date.now() % METRICS_COLLECTION_INTERVAL) + METRICS_REFRESH_BUFFER_MS)
+}
+
+// Timers throttle in a background tab and stop outright across sleep, so by the
+// time the tab is visible again the roster can be far older than one interval.
+if (import.meta.client) {
+  const { isHidden } = usePageVisibility()
+
+  watch(isHidden, (hidden) => {
+    if (hidden || activeConsumers === 0)
+      return
+    if (Date.now() - lastFetchedAt >= METRICS_COLLECTION_INTERVAL)
+      void refetchPresences?.()
+    schedulePresencesRefresh()
+  })
+}
 
 export function useDataSteamPresences() {
   const supabase = useSupabaseClient<Database>()
   const user = useSupabaseUser()
 
-  async function fetchCurrentPlayers(): Promise<void> {
+  async function loadCurrentPlayers(): Promise<void> {
     presencesLoading.value = true
     const { data } = await supabase
       .from('presences_steam')
@@ -61,12 +102,31 @@ export function useDataSteamPresences() {
     currentGameByProfileId.value = byProfileId
     recentlyPlayedByAppId.value = recentByAppId
     fetched = true
+    lastFetchedAt = Date.now()
+  }
+
+  // Concurrent callers join the pending request instead of firing duplicates.
+  async function fetchCurrentPlayers(): Promise<void> {
+    if (inflight !== null)
+      return inflight
+    inflight = loadCurrentPlayers().finally(() => {
+      inflight = null
+    })
+    return inflight
   }
 
   function currentPlayersForSteamId(steamId: number | null | undefined): string[] {
     if (steamId == null)
       return []
     return currentPlayersBySteamId.value.get(steamId) ?? []
+  }
+
+  // Signed-out visitors can't read the table, so the scheduled refetch is a
+  // no-op for them rather than a stream of rejected queries.
+  refetchPresences = async () => {
+    if (!user.value)
+      return
+    await fetchCurrentPlayers()
   }
 
   onMounted(() => {
@@ -78,6 +138,20 @@ export function useDataSteamPresences() {
     if (u && !fetched)
       void fetchCurrentPlayers()
   })
+
+  if (getCurrentScope() !== undefined) {
+    activeConsumers++
+    if (activeConsumers === 1)
+      schedulePresencesRefresh()
+
+    onScopeDispose(() => {
+      activeConsumers--
+      if (activeConsumers === 0 && refreshTimer !== null) {
+        clearTimeout(refreshTimer)
+        refreshTimer = null
+      }
+    })
+  }
 
   return {
     currentPlayersBySteamId,

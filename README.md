@@ -66,6 +66,17 @@ npm run reset
 
 This will ensure your local database is in sync with the latest migrations and schema changes plus seed it with the initial data.
 
+If you need volume rather than fixtures, there's a second seed that generates members, forum threads, replies, events and RSVPs on top:
+
+```bash
+npm run seed:bulk
+npm run seed:bulk -- --users=2000 --discussions=3000 --replies=40000
+```
+
+It's additive and idempotent, so run it after a reset and re-run it to top up. Every row is generated from a hash of its own key, so the same flags always produce the same database.
+
+Every trigger fires the way it does in production, so the data comes out with real profile discussions, subscriptions, notifications and badges. That also sets the pace: replies carry per-row trigger work, so the defaults finish in seconds while `--replies=40000` takes a few minutes.
+
 ## Edge Functions
 
 Our edge functions are located in the `supabase/functions` directory. Keep in mind they run on Deno, so you will need to install Deno if you haven't already.

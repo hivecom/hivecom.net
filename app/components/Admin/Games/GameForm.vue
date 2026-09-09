@@ -80,6 +80,8 @@ const gameForm = ref({
   shorthand: '',
   steam_id: '',
   website: '',
+  connect_uri: '',
+  connect_command: '',
   description: '',
   markdown: '',
   genre_tags: [] as string[],
@@ -139,12 +141,57 @@ function onNameInput() {
     gameForm.value.shorthand = suggestShorthand(gameForm.value.name)
 }
 
+// Shorthand availability - assets live under games/{shorthand}/ in storage,
+// so a duplicate shorthand would clobber another game's assets. Compared
+// normalized (lowercase, no whitespace), same as the save path.
+const WHITESPACE_RE = /\s+/g
+const shorthandTaken = ref(false)
+let shorthandCheckTimer: ReturnType<typeof setTimeout> | null = null
+
+function normalizeShorthand(value: string) {
+  return value.toLowerCase().replace(WHITESPACE_RE, '')
+}
+
+async function checkShorthandTaken(normalized: string) {
+  const { data, error } = await supabase
+    .from('games')
+    .select('id')
+    .eq('shorthand', normalized)
+    .limit(1)
+
+  // Ignore stale responses from an earlier keystroke
+  if (normalizeShorthand(gameForm.value.shorthand) !== normalized)
+    return
+
+  shorthandTaken.value = error === null && (data?.length ?? 0) > 0
+}
+
+watch(() => gameForm.value.shorthand, (value) => {
+  if (shorthandCheckTimer !== null)
+    clearTimeout(shorthandCheckTimer)
+  shorthandTaken.value = false
+
+  const normalized = normalizeShorthand(value)
+  if (!normalized || normalized === props.game?.shorthand)
+    return
+
+  shorthandCheckTimer = setTimeout(() => {
+    void checkShorthandTaken(normalized)
+  }, 300)
+})
+
 // Form validation
 const HEX_COLOR_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
 
+// Mirrors games_connect_uri_scheme_check so a bad scheme fails here rather than
+// on insert. The URI ends up in window.location, so the allowlist matters.
+const CONNECT_URI_RE = /^(?:steam|minecraft|ts3server|https):\/\//
+
 const validation = computed(() => ({
   name: !!gameForm.value.name.trim(),
+  shorthand: !shorthandTaken.value,
   color: !gameForm.value.color || HEX_COLOR_RE.test(gameForm.value.color),
+  connect_uri: !gameForm.value.connect_uri.trim() || CONNECT_URI_RE.test(gameForm.value.connect_uri.trim()),
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -296,36 +343,37 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
     background_url: payload.background_url,
   }
 
-  // name - only fill when empty
-  if (!gameForm.value.name.trim())
+  // name
+  if (overwrite || !gameForm.value.name.trim())
     gameForm.value.name = payload.name
 
-  // shorthand - suggest only if not manually set and name was just filled
-  if (!shorthandManuallySet.value && !gameForm.value.shorthand.trim())
+  // shorthand - re-suggest alongside the name unless the user set it manually
+  if (!shorthandManuallySet.value && (overwrite || !gameForm.value.shorthand.trim()))
     gameForm.value.shorthand = payload.acronym?.toLowerCase() ?? suggestShorthand(payload.name)
 
   // markdown body - summary + storyline
-  if (overwrite || !gameForm.value.markdown.trim()) {
-    const parts = [payload.summary, payload.storyline].filter(Boolean)
-    gameForm.value.markdown = parts.join('\n\n')
-  }
+  const markdownParts = [payload.summary, payload.storyline].filter(Boolean)
+  if (markdownParts.length > 0 && (overwrite || !gameForm.value.markdown.trim()))
+    gameForm.value.markdown = markdownParts.join('\n\n')
 
   // release_date
-  if (overwrite || !gameForm.value.release_date.trim())
-    gameForm.value.release_date = payload.release_date ?? ''
+  if (payload.release_date && (overwrite || !gameForm.value.release_date.trim()))
+    gameForm.value.release_date = payload.release_date
 
   // website
-  if (overwrite || !gameForm.value.website.trim())
-    gameForm.value.website = payload.website ?? ''
+  if (payload.website && (overwrite || !gameForm.value.website.trim()))
+    gameForm.value.website = payload.website
 
   // steam_id
   if (payload.steam_id && (overwrite || !gameForm.value.steam_id.trim()))
     gameForm.value.steam_id = payload.steam_id
 
-  // genre_tags - always merge (dedupe case-insensitively); overwrite replaces entirely
+  // genre_tags - merge (dedupe case-insensitively); overwrite replaces, but
+  // an empty incoming list never wipes existing tags
   const incomingTags = payload.genre_tags.map(t => sanitizeTag(t))
   if (overwrite) {
-    gameForm.value.genre_tags = incomingTags
+    if (incomingTags.length > 0)
+      gameForm.value.genre_tags = incomingTags
   }
   else {
     const existing = new Set(gameForm.value.genre_tags.map(t => t.toLowerCase()))
@@ -340,7 +388,8 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
   // multiplayer_modes - same merge logic
   const incomingModes = multiplayerModeOptions.filter(o => payload.multiplayer_modes.includes(o.value))
   if (overwrite) {
-    gameForm.value.multiplayer_modes = incomingModes
+    if (incomingModes.length > 0)
+      gameForm.value.multiplayer_modes = incomingModes
   }
   else {
     const existing = new Set((gameForm.value.multiplayer_modes ?? []).map(o => o.value))
@@ -352,11 +401,11 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
     gameForm.value.multiplayer_modes = merged
   }
 
-  // Import cover and background if not already set
-  if (payload.cover_url && !assetsUrl.value.cover && gameForm.value.shorthand)
+  // Import cover and background - overwrite replaces existing assets
+  if (payload.cover_url && (overwrite || !assetsUrl.value.cover) && gameForm.value.shorthand)
     importRemoteAsset('cover', payload.cover_url)
 
-  if (payload.background_url && !assetsUrl.value.background && gameForm.value.shorthand)
+  if (payload.background_url && (overwrite || !assetsUrl.value.background) && gameForm.value.shorthand)
     importRemoteAsset('background', payload.background_url)
 }
 
@@ -407,6 +456,8 @@ watch(
         shorthand: newGame.shorthand || '',
         steam_id: newGame.steam_id ? String(newGame.steam_id) : '',
         website: newGame.website || '',
+        connect_uri: newGame.connect_uri ?? '',
+        connect_command: newGame.connect_command ?? '',
         description: newGame.description ?? '',
         markdown: newGame.markdown ?? '',
         genre_tags: newGame.genre_tags ?? [],
@@ -434,6 +485,8 @@ watch(
         shorthand: prefillName ? suggestShorthand(prefillName) : '',
         steam_id: props.prefill?.steam_id != null ? String(props.prefill.steam_id) : '',
         website: '',
+        connect_uri: '',
+        connect_command: '',
         description: '',
         markdown: '',
         genre_tags: [],
@@ -474,6 +527,8 @@ watch(
       shorthand: prefillName ? suggestShorthand(prefillName) : '',
       steam_id: newPrefill?.steam_id != null ? String(newPrefill.steam_id) : '',
       website: '',
+      connect_uri: '',
+      connect_command: '',
       description: '',
       markdown: '',
       genre_tags: [],
@@ -498,6 +553,8 @@ function resetForm() {
     shorthand: '',
     steam_id: '',
     website: '',
+    connect_uri: '',
+    connect_command: '',
     description: '',
     markdown: '',
     genre_tags: [],
@@ -530,6 +587,8 @@ function handleSubmit() {
     shorthand: gameForm.value.shorthand || null,
     steam_id: gameForm.value.steam_id ? Number(gameForm.value.steam_id) : null,
     website: gameForm.value.website?.trim() ? gameForm.value.website.trim() : null,
+    connect_uri: gameForm.value.connect_uri.trim() || null,
+    connect_command: gameForm.value.connect_command.trim() || null,
     description: gameForm.value.description.trim() || null,
     markdown: gameForm.value.markdown.trim() || null,
     genre_tags: gameForm.value.genre_tags.length > 0 ? gameForm.value.genre_tags : null,
@@ -560,8 +619,18 @@ function confirmDelete() {
 
 // Handle asset upload
 async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', file: File) {
-  if (!gameForm.value.shorthand)
+  // Save normalizes the shorthand, so storage writes have to use the same
+  // value or the assets end up under a folder the game never points at.
+  const shorthand = normalizeShorthand(gameForm.value.shorthand)
+  if (!shorthand)
     return
+
+  // Uploads apply immediately - writing under a taken shorthand would
+  // overwrite another game's assets.
+  if (shorthandTaken.value) {
+    assetsError.value[assetType] = 'Shorthand is already used by another game'
+    return
+  }
 
   try {
     assetsUploading.value[assetType] = true
@@ -569,13 +638,12 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
 
     const supabase = useSupabaseClient()
     const user = useSupabaseUser()
-    const result = await uploadGameAsset(supabase, gameForm.value.shorthand, assetType, file, user.value?.id)
+    const result = await uploadGameAsset(supabase, shorthand, assetType, file, user.value?.id)
 
     if (result.success && result.url) {
       assetsUrl.value[assetType] = result.url
       // Clear cache for this game to ensure fresh data
-      if (props.game?.id)
-        clearGameAssets(props.game.id)
+      clearGameAssets(props.game?.id ?? null, shorthand)
     }
     else {
       assetsError.value[assetType] = result.error || `Failed to upload ${assetType}`
@@ -592,19 +660,26 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
 
 // Handle asset removal
 async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
-  if (!gameForm.value.shorthand)
+  const shorthand = normalizeShorthand(gameForm.value.shorthand)
+  if (!shorthand)
     return
+
+  // Same as upload - removing under a taken shorthand would delete another
+  // game's assets.
+  if (shorthandTaken.value) {
+    assetsError.value[assetType] = 'Shorthand is already used by another game'
+    return
+  }
 
   try {
     const supabase = useSupabaseClient()
-    const result = await deleteGameAsset(supabase, gameForm.value.shorthand, assetType)
+    const result = await deleteGameAsset(supabase, shorthand, assetType)
 
     if (result.success) {
       assetsUrl.value[assetType] = null
       assetsError.value[assetType] = null
       // Clear cache for this game to ensure fresh data
-      if (props.game?.id)
-        clearGameAssets(props.game.id)
+      clearGameAssets(props.game?.id ?? null, shorthand)
     }
     else {
       assetsError.value[assetType] = result.error || 'Failed to remove asset'
@@ -623,6 +698,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
     position="right"
     :card="{ separators: true }"
     :size="600"
+    :can-dismiss="false"
     @close="handleClose"
   >
     <template #header>
@@ -671,6 +747,8 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
           name="shorthand"
           label="Shorthand"
           placeholder="Enter game shorthand (optional)"
+          :valid="validation.shorthand"
+          error="This shorthand is already used by another game"
           @input="onShorthandInput"
         />
 
@@ -690,6 +768,25 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
           label="Website"
           type="url"
           placeholder="https://example.com (optional)"
+        />
+
+        <Input
+          v-model="gameForm.connect_uri"
+          expand
+          name="connect_uri"
+          label="Connect URI"
+          placeholder="steam://connect/{address}:{port} (optional)"
+          hint="Launch template. Tokens: {address} {port} {steam_id} {command}. Leave empty for copy-only servers."
+          :error="validation.connect_uri ? undefined : 'Must start with steam://, minecraft://, ts3server:// or https://'"
+        />
+
+        <Input
+          v-model="gameForm.connect_command"
+          expand
+          name="connect_command"
+          label="Connect Command"
+          placeholder="+connect {address}:{port} (optional)"
+          hint="Console or launch arguments players can copy. Tokens: {address} {port}."
         />
       </Flex>
 

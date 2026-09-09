@@ -176,6 +176,7 @@ async function handleDelete() {
     position="right"
     :card="{ separators: true }"
     :size="700"
+    :can-dismiss="false"
     @close="handleClose"
   >
     <template #header>

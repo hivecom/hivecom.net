@@ -871,6 +871,8 @@ export type Database = {
         Row: {
           automated: boolean
           color: string | null
+          connect_command: string | null
+          connect_uri: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -890,6 +892,8 @@ export type Database = {
         Insert: {
           automated?: boolean
           color?: string | null
+          connect_command?: string | null
+          connect_uri?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -909,6 +913,8 @@ export type Database = {
         Update: {
           automated?: boolean
           color?: string | null
+          connect_command?: string | null
+          connect_uri?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -983,6 +989,30 @@ export type Database = {
         }
         Relationships: []
       }
+      metrics_admin_irc_channels: {
+        Row: {
+          first_seen: string
+          id: string
+          last_seen: string
+          name: string
+          secret: boolean
+        }
+        Insert: {
+          first_seen?: string
+          id?: string
+          last_seen?: string
+          name: string
+          secret?: boolean
+        }
+        Update: {
+          first_seen?: string
+          id?: string
+          last_seen?: string
+          name?: string
+          secret?: boolean
+        }
+        Relationships: []
+      }
       motds: {
         Row: {
           created_at: string
@@ -1052,6 +1082,7 @@ export type Database = {
         Row: {
           addresses: string[] | null
           administrator: string | null
+          connect_command: string | null
           container: string | null
           created_at: string
           created_by: string | null
@@ -1073,6 +1104,7 @@ export type Database = {
         Insert: {
           addresses?: string[] | null
           administrator?: string | null
+          connect_command?: string | null
           container?: string | null
           created_at?: string
           created_by?: string | null
@@ -1094,6 +1126,7 @@ export type Database = {
         Update: {
           addresses?: string[] | null
           administrator?: string | null
+          connect_command?: string | null
           container?: string | null
           created_at?: string
           created_by?: string | null
@@ -2430,10 +2463,6 @@ export type Database = {
         Returns: undefined
       }
       array_elements_match_slug: { Args: { arr: string[] }; Returns: boolean }
-      audit_fields_unchanged: {
-        Args: { created_at: string; created_by: string }
-        Returns: boolean
-      }
       authorize: {
         Args: {
           requested_permission: Database["public"]["Enums"]["app_permission"]
@@ -2681,6 +2710,7 @@ export type Database = {
           p_search?: string
           p_sort_col?: string
           p_sort_dir?: string
+          p_tracked?: boolean
         }
         Returns: {
           created_at: string
@@ -2947,6 +2977,16 @@ export type Database = {
               user_id: string
             }[]
           }
+      get_flagged_email_profiles: {
+        Args: never
+        Returns: {
+          email: string
+          email_notifications_bounced: boolean
+          email_notifications_disabled: boolean
+          id: string
+          username: string
+        }[]
+      }
       get_forum_activity_feed: {
         Args: {
           p_created_by?: string
@@ -2974,6 +3014,7 @@ export type Database = {
         Args: { p_exclude?: string }
         Returns: number
       }
+      get_forum_stats: { Args: never; Returns: Json }
       get_game_playtime_minutes: {
         Args: {
           p_game_id: number
@@ -2997,6 +3038,11 @@ export type Database = {
           discussions_total: number
           gameservers_by_server: Json
           gameservers_players: number
+          irc_by_channel: Json
+          irc_channels: number
+          irc_messages: number
+          irc_messages_by_channel: Json
+          irc_online: number
           teamspeak_by_server: Json
           teamspeak_online: number
           users_by_game: Json
@@ -3498,6 +3544,9 @@ export type Database = {
         | "network.delete"
         | "depot.read"
         | "depot.delete"
+        | "broadcasts.create"
+        | "broadcasts.read"
+        | "metrics_admin.read"
       app_role: "admin" | "moderator"
       badge_source: "manual" | "flag" | "computed"
       badge_tier: "bronze" | "silver" | "gold" | "shiny"
@@ -3724,6 +3773,9 @@ export const Constants = {
         "network.delete",
         "depot.read",
         "depot.delete",
+        "broadcasts.create",
+        "broadcasts.read",
+        "metrics_admin.read",
       ],
       app_role: ["admin", "moderator"],
       badge_source: ["manual", "flag", "computed"],

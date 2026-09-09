@@ -1,3 +1,4 @@
+import { getSecretKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
 import {
@@ -24,8 +25,7 @@ Deno.serve(async (req: Request) => {
     // Create a Supabase client with the service role key (full admin access)
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SECRET_KEY") ??
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      getSecretKey(),
     );
 
     // Fetch all active servers with docker control enabled from the database

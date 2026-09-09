@@ -8,6 +8,7 @@ import GameIcon from '@/components/Shared/GameIcon.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
+import { buildConnectContext } from '@/composables/useGameConnect'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { metricsCurrentMap } from '@/types/metrics'
 import UserLink from '../Shared/UserLink.vue'
@@ -15,6 +16,7 @@ import GameServerStats from './GameServerStats.vue'
 
 const _props = defineProps<Props>()
 const addresses = computed(() => _props.gameserver.addresses as string[] | null)
+const connect = computed(() => buildConnectContext(_props.game, _props.gameserver))
 
 const { navigateToSignIn } = useAuthRedirect()
 
@@ -140,7 +142,7 @@ const currentMap = computed<string | null>(() => {
           <GameServerConnectButton
             :addresses="addresses"
             :port="gameserver.port"
-            :game-shorthand="game?.shorthand ?? null"
+            :connect="connect"
             variant="accent"
             size="m"
           />

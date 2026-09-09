@@ -616,7 +616,7 @@ onBeforeMount(() => {
                       {{ mfaStatusBadge.label }}
                     </Badge>
                   </Flex>
-                  <p :class="`text-s text-color-lighter ${isBelowSmall ? 'text-center' : ''}`">
+                  <p class="text-s text-color-lighter" :class="{ 'text-center': isBelowSmall }">
                     {{ mfaStatusCopy }}
                   </p>
                 </Flex>

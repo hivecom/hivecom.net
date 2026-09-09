@@ -1,3 +1,4 @@
+import { getPublishableKey } from "../_shared/env.ts";
 import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -15,8 +16,8 @@ Deno.serve(async (req: Request) => {
     const supabaseClient = createClient(
       // Supabase API URL - env var exported by default.
       Deno.env.get("SUPABASE_URL") ?? "",
-      // Supabase API ANON KEY - env var exported by default.
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      // Supabase publishable API key, resolved from the platform-injected env
+      getPublishableKey(),
       // Create client with Auth context of the user that called the function.
       // This way your row-level-security (RLS) policies are applied.
       {

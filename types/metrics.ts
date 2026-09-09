@@ -176,6 +176,19 @@ export interface MetricsTeamSpeak {
   byServer: Record<string, number>
 }
 
+export interface MetricsIrc {
+  /** Users connected to the IRC network right now. */
+  online: number
+  /** Number of publicly listable channels. */
+  channels: number
+  /** Messages sent across all channels during the collection interval. */
+  messages: number
+  /** Channel name to current user count. Listable channels only. */
+  byChannel: Record<string, number>
+  /** Channel name to messages during the collection interval. Listable channels only. */
+  messagesByChannel: Record<string, number>
+}
+
 export interface MetricsGameServers {
   total: number
   players: number
@@ -205,6 +218,7 @@ export interface MetricsSnapshot {
   community: MetricsCommunity
   discussions: MetricsDiscussions
   teamspeak: MetricsTeamSpeak
+  irc: MetricsIrc
   gameservers: MetricsGameServers
   storage: MetricsStorage
 }

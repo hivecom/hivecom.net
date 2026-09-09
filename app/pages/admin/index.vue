@@ -13,6 +13,7 @@ const IncomeChart = defineAsyncComponent(() => import('@/components/Admin/Dashbo
 const UserChart = defineAsyncComponent(() => import('@/components/Admin/Dashboard/UserChart.vue'))
 const ChartDiscussions = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartDiscussions.vue'))
 const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameserversPlayers.vue'))
+const ChartIrc = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartIrc.vue'))
 const ChartOnlineUsers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartOnlineUsers.vue'))
 const ChartTeamSpeakOnline = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartTeamSpeakOnline.vue'))
 
@@ -48,7 +49,7 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
 
     <KPIOverview />
 
-    <Grid :columns="gridColumns" gap="s" align="start" expand>
+    <Grid :columns="gridColumns" gap="s" y-stretch expand>
       <!-- Left col: alerts + metric cards -->
       <Flex column gap="s" expand>
         <Alerts v-if="canViewAlerts" />
@@ -112,6 +113,8 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
               <Divider />
               <ChartTeamSpeakOnline period="7d" :window="null" :utc="false" compact show-y-axis />
               <Divider />
+              <ChartIrc period="7d" :window="null" :utc="false" compact show-y-axis />
+              <Divider />
               <ChartGameserversPlayers period="7d" :window="null" :utc="false" compact show-y-axis />
               <Divider />
               <ChartDiscussions period="7d" :window="null" :utc="false" compact show-y-axis show-x-axis />
@@ -125,11 +128,30 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
 
 <style scoped lang="scss">
 .dashboard {
+  // The grid stretches this column to the metrics card height, and the two
+  // metric cards split whatever is left below the alerts between them. No
+  // explicit height here: in a single column the row is auto-sized and a
+  // percentage would collapse the cards.
   &__metric-link {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
     width: 100%;
     text-decoration: none;
     border-radius: var(--border-radius-l);
+
+    :deep(.vui-card) {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    :deep(.vui-card-content) {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
 
     &:hover :deep(.vui-card) {
       border-color: var(--color-border-strong);
@@ -142,11 +164,33 @@ const gridColumns = computed(() => isBelowMedium.value ? 1 : '2fr 3fr')
   }
 
   &__metric-chart {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+
     :deep(.chart-container) {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
       border: none;
       border-radius: 0;
       padding: 0;
       min-height: unset;
+    }
+
+    // The wrapper takes its height from flex alone. The canvas is pulled out
+    // of flow so its own size never feeds back into the wrapper height,
+    // which otherwise loops the chart into growing on every resize.
+    :deep(.chart-wrapper) {
+      flex: 1;
+      height: auto;
+      min-height: 178px;
+
+      canvas {
+        position: absolute;
+        inset: 0;
+      }
     }
   }
 

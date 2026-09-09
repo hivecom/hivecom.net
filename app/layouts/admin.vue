@@ -184,6 +184,12 @@ const menuItems: MenuItem[] = [
     permissions: ['discussions.read', 'discussions.create', 'discussions.update', 'discussions.delete'],
   },
   {
+    name: 'Email',
+    path: '/admin/email',
+    icon: 'ph:envelope',
+    permissions: ['broadcasts.read', 'broadcasts.create'],
+  },
+  {
     name: 'Events',
     path: '/admin/events',
     icon: 'ph:calendar-blank',

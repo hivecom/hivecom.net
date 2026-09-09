@@ -2,7 +2,7 @@
 import type { Tables } from '@/types/database.overrides'
 import { Flex, Skeleton } from '@dolanske/vui'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
-import { nextOccurrenceDate } from '@/lib/utils/rrule'
+import { currentOrNextOccurrenceDate } from '@/lib/utils/rrule'
 import EventLarge from './EventLarge.vue'
 import EventsPastListing from './EventsPastListing.vue'
 
@@ -44,10 +44,7 @@ function matchesFilters(event: Tables<'events'>): boolean {
 // ongoing (look back by duration_minutes), or the next future occurrence.
 function effectiveDate(event: Tables<'events'>, now: Date = new Date()): Date {
   if (event.recurrence_rule) {
-    // Look back far enough to catch an in-progress occurrence
-    const lookback = event.duration_minutes ?? 0
-    const searchFrom = new Date(now.getTime() - lookback * 60 * 1000)
-    const next = nextOccurrenceDate(event, searchFrom)
+    const next = currentOrNextOccurrenceDate(event, now)
     if (next)
       return next
   }

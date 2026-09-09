@@ -1,3 +1,4 @@
+import { getPublishableKey, getSecretKey } from "./env.ts";
 import { corsHeaders } from "./cors.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
@@ -12,9 +13,7 @@ import type { Database } from "database-types";
  */
 async function checkBanStatus(userId: string): Promise<Response | undefined> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SECRET_KEY") ??
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-    "";
+  const serviceRoleKey = getSecretKey();
 
   const adminClient = createClient<Database>(supabaseUrl, serviceRoleKey);
 
@@ -138,6 +137,24 @@ export async function getAuthenticatedUserId(
   return { userId };
 }
 
+/**
+ * Constant-time string equality for shared-secret comparison, so response
+ * timing doesn't leak how many leading characters of a guess matched.
+ */
+export function timingSafeEqualString(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const aBytes = encoder.encode(a);
+  const bBytes = encoder.encode(b);
+
+  if (aBytes.length !== bBytes.length) return false;
+
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) {
+    diff |= aBytes[i] ^ bBytes[i];
+  }
+  return diff === 0;
+}
+
 export function authorizeSystemCron(req: Request): Response | undefined {
   const systemCronSecret = Deno.env.get("SYSTEM_CRON_SECRET");
 
@@ -174,7 +191,7 @@ export function authorizeSystemCron(req: Request): Response | undefined {
   }
 
   // Check if the provided token matches our system token from the vault
-  if (authHeader !== systemCronSecret) {
+  if (!timingSafeEqualString(authHeader, systemCronSecret)) {
     return new Response(
       JSON.stringify({ success: false, message: "Unauthorized" }),
       {
@@ -215,7 +232,7 @@ export async function authorizeAuthenticated(
     // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      getPublishableKey(),
       {
         global: {
           headers: { Authorization: authHeader },
@@ -281,7 +298,7 @@ export async function authorizeAuthenticatedHasPermission(
     // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      getPublishableKey(),
       {
         global: {
           headers: { Authorization: authHeader },
@@ -422,7 +439,7 @@ export async function authorizeAuthenticatedHasPermissionAal2(
   try {
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      getPublishableKey(),
       {
         global: {
           headers: { Authorization: authHeader },
@@ -571,7 +588,7 @@ export function authorizeSystemTrigger(req: Request): Response | undefined {
   }
 
   // Check if the provided token matches our system token from the vault
-  if (triggerHeader !== systemTriggerSecret) {
+  if (!timingSafeEqualString(triggerHeader, systemTriggerSecret)) {
     return new Response(
       JSON.stringify({ success: false, message: "Unauthorized" }),
       {

@@ -283,6 +283,13 @@ export const PLACEHOLDER_METRICS: MetricsSnapshot = {
   community: { projects: 12 },
   discussions: { total: 0, replies: 0, newTotal: 0, newReplies: 0 },
   teamspeak: { online: 14, byServer: {} },
+  irc: {
+    online: 12,
+    channels: 4,
+    messages: 87,
+    byChannel: {},
+    messagesByChannel: {},
+  },
   gameservers: { total: 6, players: 23, byServer: {} },
   storage: { buckets: {} },
 };

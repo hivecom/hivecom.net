@@ -1,3 +1,4 @@
+import { getSecretKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "database-types";
 import type { calendar_v3 } from "googleapis";
@@ -144,8 +145,7 @@ Deno.serve(async (req) => {
       // For INSERT/UPDATE, fetch the data from the database
       const supabase = createClient<Database>(
         Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SECRET_KEY") ??
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        getSecretKey(),
       );
 
       const { data: event_data, error: eventError } = await supabase

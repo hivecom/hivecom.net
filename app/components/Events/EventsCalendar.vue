@@ -190,7 +190,10 @@ const calendarAttributes = computed(() => {
       : eventStart.toDate()
 
     return {
-      key: event.id,
+      // Expanded recurring occurrences share the parent's id, so include the
+      // date to keep attribute keys unique. VCalendar otherwise merges the
+      // series into one attribute and styles every occurrence alike.
+      key: `${event.id}-${event.date}`,
       dates,
       dot: {
         color,
@@ -323,6 +326,11 @@ watch(
   { immediate: true },
 )
 
+// Bumped every time VCalendar finishes a pane transition. Used to remount the
+// column list teleports, since each transition replaces the pane DOM and a
+// mounted Teleport keeps rendering into the detached old pane.
+const paneEpoch = ref(0)
+
 // Update startMonth whenever users navigate between months
 function updatePaggeIndex(data: { id: string }[]) {
   if (!data[0])
@@ -437,8 +445,11 @@ const pageTitle = computed(() => {
 
     <ClientOnly v-else>
       <div class="events-calendar__layout" :class="{ 'events-calendar__layout--fetching': fetching }">
-        <!-- There are no slots to put content to the footer of a VC calendar column. So we teleport them there instead -->
-        <template v-for="(upcoming, index) in upcomingEvents" :key="index">
+        <!-- There are no slots to put content to the footer of a VC calendar column. So we teleport them there instead.
+             VCalendar replaces its pane DOM on every move, which would leave a mounted Teleport rendering into a
+             detached element. Keying on the pane epoch (and window) remounts the teleports once the transition is
+             done so they re-resolve their targets in the fresh panes. -->
+        <template v-for="(upcoming, index) in upcomingEvents" :key="`${paneEpoch}-${startMonth.format('YYYY-MM')}-${calendarColumns}-${index}`">
           <Teleport v-if="upcoming.length > 0" :to="`.vc-pane.column-${index + 1}`" defer>
             <EventCalendarColumnList :data="upcoming" />
           </Teleport>
@@ -459,6 +470,7 @@ const pageTitle = computed(() => {
                            year: date.year() }"
           @dayclick="onDayClick"
           @did-move="updatePaggeIndex"
+          @transition-end="paneEpoch++"
         >
           <template #header-prev-button="{ move }">
             <Button square outline @click="move">

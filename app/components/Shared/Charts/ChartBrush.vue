@@ -6,7 +6,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { METRICS_PERIOD_OPTIONS, PERIOD_CONFIGS, useDataMetrics } from '@/composables/useDataMetrics'
 import { getCSSVariable } from '@/lib/utils/common'
 
-type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
+type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'ircMessages' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
 
 interface SeriesDef {
   key: SeriesKey
@@ -36,12 +36,13 @@ const emit = defineEmits<{
 const ALL_SERIES: SeriesDef[] = [
   { key: 'usersOnline', label: 'Users', paletteIndex: 1 },
   { key: 'teamspeakOnline', label: 'TeamSpeak', paletteIndex: 0 },
+  { key: 'ircMessages', label: 'IRC', paletteIndex: 5 },
   { key: 'gameserversPlayers', label: 'Servers', paletteIndex: 3 },
   { key: 'usersGameActivity', label: 'Games', paletteIndex: 4 },
   { key: 'usersSteamGameActivity', label: 'Steam Games', paletteIndex: 2 },
 ]
 
-const { metricsOverview, fetchMetricsOverview } = useDataMetrics()
+const { metricsOverview, fetchMetricsOverview, fetchMetricsEarliest } = useDataMetrics()
 
 // ── Canvas ────────────────────────────────────────────────────────────────────
 
@@ -82,17 +83,25 @@ const selectionMode = ref<SelectionMode>('period')
 const activePeriod = ref<MetricsPeriod>(props.initialPeriod ?? '7d')
 
 function applyWindow(start: Date, end: Date) {
+  // Widen the brush's own dataset when a selection reaches back past what it
+  // holds. No-ops when the range is already covered.
+  void fetchMetricsOverview(start)
   brushStart.value = start.getTime()
   brushEnd.value = end.getTime()
   emit('change', { start, end })
 }
 
-function applyPeriod(period: MetricsPeriod) {
+async function applyPeriod(period: MetricsPeriod) {
   selectionMode.value = 'period'
   activePeriod.value = period
   const config = PERIOD_CONFIGS[period]
   const end = new Date()
-  const start = new Date(Date.now() - config.hours * 60 * 60 * 1000)
+  const fallback = new Date(Date.now() - config.hours * 60 * 60 * 1000)
+  // All Time has no fixed lookback - anchor it to the first snapshot we hold,
+  // falling back to the ceiling in the config if that lookup fails.
+  const start = config.allTime
+    ? (await fetchMetricsEarliest() ?? fallback)
+    : fallback
   applyWindow(start, end)
 }
 
@@ -121,7 +130,8 @@ watch(calendarRange, (val) => {
   const duration = end.getTime() - start.getTime()
   const matched = METRICS_PERIOD_OPTIONS.find((opt) => {
     const config = PERIOD_CONFIGS[opt.value]
-    return Math.abs(duration - config.hours * 60 * 60 * 1000) < 60 * 1000
+    // All Time isn't a fixed duration, so it can never be matched by width.
+    return !config.allTime && Math.abs(duration - config.hours * 60 * 60 * 1000) < 60 * 1000
   })
   if (matched) {
     selectionMode.value = 'period'
@@ -144,6 +154,24 @@ const dataMax = computed<number | null>(() => {
   return last ? new Date(last.capturedAt).getTime() : null
 })
 
+// Entries come back evenly spaced at bucket starts, so the gap between
+// neighbours is the bucket width.
+const bucketMs = computed<number>(() => {
+  const min = dataMin.value
+  const max = dataMax.value
+  if (min === null || max === null || max <= min)
+    return 1
+  return (max - min) / (metricsOverview.value.length - 1 || 1)
+})
+
+// The last entry starts at dataMax and its bar runs one bucket further. The
+// axis has to reach the end of that bucket, otherwise today's bar and any
+// selection inside it land past the right edge of the canvas.
+const axisMax = computed<number | null>(() => {
+  const max = dataMax.value
+  return max === null ? null : max + bucketMs.value
+})
+
 watch(dataMin, (min) => {
   if (min !== null && brushStart.value === null)
     applyPeriod(activePeriod.value)
@@ -160,17 +188,28 @@ const matchedPeriod = computed<MetricsPeriod | null>(() => {
   const winDuration = Math.abs(b - a)
   for (const opt of METRICS_PERIOD_OPTIONS) {
     const config = PERIOD_CONFIGS[opt.value]
+    if (config.allTime)
+      continue
     if (Math.abs(winDuration - config.hours * 60 * 60 * 1000) < MATCH_TOLERANCE_MS)
       return opt.value
   }
   return null
 })
 
+// The trigger label follows the chip the user actually picked. Deriving it from
+// the window width instead would leave All Time reading as "Custom", since it
+// has no fixed duration to match against.
+const periodLabel = computed(() => {
+  if (selectionMode.value !== 'period')
+    return 'Custom'
+  return PERIOD_CONFIGS[activePeriod.value]?.label ?? 'Custom'
+})
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function xToTimestamp(x: number, canvasWidth: number): number {
   const min = dataMin.value
-  const max = dataMax.value
+  const max = axisMax.value
   if (min === null || max === null)
     return 0
   return min + (x / canvasWidth) * (max - min)
@@ -178,7 +217,7 @@ function xToTimestamp(x: number, canvasWidth: number): number {
 
 function timestampToX(ts: number, canvasWidth: number): number {
   const min = dataMin.value
-  const max = dataMax.value
+  const max = axisMax.value
   if (min === null || max === null || max === min)
     return 0
   return ((ts - min) / (max - min)) * canvasWidth
@@ -209,6 +248,7 @@ function draw() {
     getCSSVariable('--color-text-red') || '#d95f5f',
     getCSSVariable('--color-text-yellow') || '#d4a72c',
     getCSSVariable('--color-accent') || '#6bbf74',
+    getCSSVariable('--color-text-purple') || '#c176ff',
   ]
 
   ctx.clearRect(0, 0, W, H)
@@ -242,12 +282,11 @@ function draw() {
   )
 
   const min = dataMin.value
-  const max = dataMax.value
+  const max = axisMax.value
   if (min === null || max === null)
     return
 
-  const bucketMs = max > min ? (max - min) / (entries.length - 1 || 1) : 1
-  const bucketPx = (bucketMs / (max - min)) * W
+  const bucketPx = (bucketMs.value / (max - min)) * W
   const totalBw = Math.max(bucketPx - 1, 1)
   const numSeries = active.length
   const bw = totalBw / numSeries
@@ -492,14 +531,18 @@ defineExpose({ setBrush })
       <span class="chart-brush__range">{{ startLabel }}{{ endLabel ? ` - ${endLabel}` : '' }}</span>
 
       <Flex gap="xs" y-center>
+        <slot name="controls" />
+
         <ButtonGroup>
           <Button
+            size="s"
             :variant="!useUtc ? 'fill' : 'gray'"
             @click="useUtc = false"
           >
             Local
           </Button>
           <Button
+            size="s"
             :variant="useUtc ? 'fill' : 'gray'"
             @click="useUtc = true"
           >
@@ -511,10 +554,11 @@ defineExpose({ setBrush })
           <Dropdown placement="bottom-end">
             <template #trigger="{ toggle, isOpen: dropdownOpen }">
               <Button
+                size="s"
                 :variant="selectionMode === 'period' ? 'fill' : 'gray'"
                 @click="toggle"
               >
-                {{ selectionMode === 'calendar' || selectionMode === 'brush' ? 'Custom' : (matchedPeriod ? METRICS_PERIOD_OPTIONS.find(o => o.value === matchedPeriod)?.label : 'Custom') }}
+                {{ periodLabel }}
                 <template #end>
                   <Icon :name="dropdownOpen ? 'ph:caret-up' : 'ph:caret-down'" :size="12" />
                 </template>
@@ -536,10 +580,11 @@ defineExpose({ setBrush })
             :enable-time-picker="true"
             :max-date="new Date()"
             :teleport="true"
+            :auto-apply="false"
           >
             <template #trigger>
               <Tooltip placement="top">
-                <Button square :variant="selectionMode === 'calendar' ? 'fill' : 'gray'">
+                <Button square size="s" :variant="selectionMode === 'calendar' ? 'fill' : 'gray'">
                   <Icon name="ph:calendar-dots" />
                 </Button>
                 <template #tooltip>

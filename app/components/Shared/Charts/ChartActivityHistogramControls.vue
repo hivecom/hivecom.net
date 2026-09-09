@@ -6,7 +6,7 @@ import ChartBrush from '@/components/Shared/Charts/ChartBrush.vue'
 import { METRICS_PERIOD_OPTIONS, PERIOD_CONFIGS } from '@/composables/useDataMetrics'
 import { getCSSVariable } from '@/lib/utils/common'
 
-type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
+type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'ircMessages' | 'gameserversPlayers' | 'usersGameActivity' | 'usersSteamGameActivity'
 
 const props = defineProps<{
   series?: SeriesKey[]
@@ -37,7 +37,8 @@ function onBrushChange(window: { start: Date, end: Date }) {
   const duration = window.end.getTime() - window.start.getTime()
   const matched = METRICS_PERIOD_OPTIONS.find((opt) => {
     const config = PERIOD_CONFIGS[opt.value]
-    return Math.abs(duration - config.hours * 60 * 60 * 1000) < MATCH_TOLERANCE_MS
+    // All Time isn't a fixed duration, so it can never be matched by width.
+    return !config.allTime && Math.abs(duration - config.hours * 60 * 60 * 1000) < MATCH_TOLERANCE_MS
   })
   if (matched)
     activePeriod.value = matched.value
@@ -60,7 +61,11 @@ function onBrushChange(window: { start: Date, end: Date }) {
       :server-name="props.serverName"
       @change="onBrushChange"
       @update:utc="activeUtc = $event"
-    />
+    >
+      <template v-if="$slots.controls" #controls>
+        <slot name="controls" />
+      </template>
+    </ChartBrush>
     <slot :period="activePeriod" :window="activeWindow" :utc="activeUtc" :color />
   </Flex>
 </template>

@@ -1,3 +1,4 @@
+import { getSecretKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeAuthenticatedHasPermissionAal2 } from "../_shared/auth.ts";
@@ -55,8 +56,7 @@ Deno.serve(async (req: Request) => {
     // Create a Supabase client
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SECRET_KEY") ??
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      getSecretKey(),
     );
 
     // Get container details including the server it's hosted on

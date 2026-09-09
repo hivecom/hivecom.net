@@ -49,13 +49,24 @@ ChartJS.register(
 
 const { metrics, fetchMetrics, metricsHistory, loadingHistory, fetchMetricsHistory, fetchMetricsWindow, scheduleRefresh } = useDataMetrics()
 
+// Releasing our own subscription on switch and teardown keeps this chart's
+// unmount from cancelling a refresh another consumer still depends on.
+let stopRefresh: (() => void) | null = null
+// Guards against a superseded load re-subscribing after a faster later one.
+let loadToken = 0
+
 async function loadData() {
+  const token = ++loadToken
+  stopRefresh?.()
+  stopRefresh = null
+
   if (props.window !== null) {
     await fetchMetricsWindow(props.window.start, props.window.end)
   }
   else {
     await fetchMetricsHistory(props.period)
-    scheduleRefresh(props.period)
+    if (token === loadToken)
+      stopRefresh = scheduleRefresh(props.period)
   }
   if (metrics.value === null)
     fetchMetrics()

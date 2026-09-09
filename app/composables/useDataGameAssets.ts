@@ -141,9 +141,16 @@ export function useDataGameAssets() {
 
   /**
    * Clear all cached assets for a specific game.
+   * Pass shorthands too when available - link embeds cache by shorthand, so
+   * those entries would otherwise stay stale until the TTL expires.
    */
-  function clearGameAssets(gameId: number) {
-    _gameAssetCache.invalidateByPattern(`game_asset:${gameId}:`)
+  function clearGameAssets(gameId: number | null, ...shorthands: Array<string | null | undefined>) {
+    if (gameId !== null)
+      _gameAssetCache.invalidateByPattern(`game_asset:${gameId}:`)
+    for (const shorthand of shorthands) {
+      if (shorthand)
+        _gameAssetCache.invalidateByPattern(`game_asset_sh:${shorthand}:`)
+    }
   }
 
   return {

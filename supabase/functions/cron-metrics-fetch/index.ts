@@ -1,3 +1,4 @@
+import { getSecretKey } from "../_shared/env.ts";
 import * as constants from "constants" with { type: "json" };
 import { createClient } from "@supabase/supabase-js";
 import { authorizeSystemCron } from "../_shared/auth.ts";
@@ -32,6 +33,217 @@ function normalizeCountryCode(value: string | null | undefined): string | null {
   const normalized = value.trim().toUpperCase();
   if (!/^[A-Z]{2}$/.test(normalized)) return null;
   return VALID_COUNTRY_CODES.has(normalized) ? normalized : null;
+}
+
+// ---------------------------------------------------------------------------
+// History payload
+// ------------------------------------------------------------------------
+
+// The metrics table is queryable history; player name lists stay out of it
+// and exist only in the current latest.json snapshot. See Privacy Policy 2.10.
+function stripPlayerNames(snapshot: MetricsSnapshot): MetricsSnapshot {
+  const byServer: MetricsSnapshot["gameservers"]["byServer"] = {};
+
+  for (
+    const [key, detail] of Object.entries(snapshot.gameservers.byServer)
+  ) {
+    switch (detail.protocol) {
+      case "source":
+        byServer[key] = detail.data === null ? detail : {
+          ...detail,
+          data: { ...detail.data, playerList: null },
+        };
+        break;
+      case "minecraft":
+        byServer[key] = detail.data === null ? detail : {
+          ...detail,
+          data: { ...detail.data, players: null },
+        };
+        break;
+      case "gamespy1":
+        byServer[key] = detail.data === null ? detail : {
+          ...detail,
+          data: { ...detail.data, players: null },
+        };
+        break;
+      case "factorio":
+        byServer[key] = detail.data === null ? detail : {
+          ...detail,
+          data: { ...detail.data, players: null },
+        };
+        break;
+      default:
+        byServer[key] = detail;
+    }
+  }
+
+  return {
+    ...snapshot,
+    gameservers: { ...snapshot.gameservers, byServer },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// IRC stats
+// ------------------------------------------------------------------------
+// The IRC host exposes one authenticated stats endpoint covering users,
+// every non-purged channel (secret ones included, flagged by `secret`) and a
+// trailing message count. The endpoint's default message window matches this
+// cron's 5 minute cadence, so no window parameter is passed. Nothing here is
+// required for a snapshot to be useful, so an unreachable or erroring endpoint
+// degrades to a zeroed irc block the same way an unreachable gameserver
+// degrades to a null detail.
+//
+// The metrics table and latest.json are public, so secret channels must not
+// appear there by name. Every listed channel is upserted into
+// metrics_admin_irc_channels (readable only with metrics_admin.read) and the
+// secret ones are keyed in the snapshot by that row's id instead of the name.
+// The id is DB assigned so the key stays stable across runs and rollups.
+
+const IRC_STATS_DEFAULT_URL = "https://irc.hivecom.net/stats";
+const IRC_STATS_TIMEOUT_MS = 5000;
+
+interface IrcStatsResponse {
+  collectedAt: string;
+  server: { version: string | null; startTime: string | null };
+  users: {
+    total: number;
+    invisible: number;
+    operators: number;
+    unknown: number;
+    max: number;
+  };
+  channels: {
+    name: string;
+    userCount: number;
+    topic: string | null;
+    createdAt: string | null;
+    registered: boolean;
+    // Absent on sampler builds that predate the flag. Treated as secret so a
+    // version lag never publishes a name.
+    secret?: boolean;
+  }[];
+  messages: {
+    since: string;
+    until: string;
+    total: number;
+    byChannel: Record<string, number>;
+  };
+}
+
+function emptyIrcMetrics(): MetricsSnapshot["irc"] {
+  return {
+    online: 0,
+    channels: 0,
+    messages: 0,
+    byChannel: {},
+    messagesByChannel: {},
+  };
+}
+
+type IrcChannelKeyMap = Map<string, string>;
+
+// Records every listed channel and returns name -> public key. Public channels
+// key by name, secret ones by their lookup row id. A channel only counts as
+// public when the sampler explicitly says `secret: false`. On any failure the
+// secret channels are left out of the map entirely, so the caller drops them
+// rather than falling back to the name.
+async function resolveIrcChannelKeys(
+  supabaseClient: ReturnType<typeof createClient<Database>>,
+  channels: IrcStatsResponse["channels"],
+): Promise<IrcChannelKeyMap> {
+  const keys: IrcChannelKeyMap = new Map();
+  const seenAt = new Date().toISOString();
+
+  const rows = channels
+    .filter((c) => c?.name)
+    .map((c) => ({
+      name: c.name,
+      secret: c.secret !== false,
+      last_seen: seenAt,
+    }));
+
+  for (const row of rows) {
+    if (!row.secret) keys.set(row.name, row.name);
+  }
+
+  if (rows.length === 0) return keys;
+
+  const { data, error } = await supabaseClient
+    .from("metrics_admin_irc_channels")
+    .upsert(rows, { onConflict: "name" })
+    .select("id, name, secret");
+
+  if (error) {
+    console.warn(
+      "IRC channel lookup upsert failed, dropping secret channels:",
+      error.message,
+    );
+    return keys;
+  }
+
+  for (const row of data ?? []) {
+    if (row.secret) keys.set(row.name, row.id);
+  }
+
+  return keys;
+}
+
+async function fetchIrcStats(
+  supabaseClient: ReturnType<typeof createClient<Database>>,
+): Promise<MetricsSnapshot["irc"]> {
+  const token = Deno.env.get("IRC_STATS_TOKEN");
+  if (!token) {
+    console.warn("IRC_STATS_TOKEN is not set, recording zeroed IRC metrics");
+    return emptyIrcMetrics();
+  }
+
+  const url = Deno.env.get("IRC_STATS_URL") || IRC_STATS_DEFAULT_URL;
+
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(IRC_STATS_TIMEOUT_MS),
+    });
+
+    if (!res.ok) {
+      console.warn(`IRC stats query failed: HTTP ${res.status}`);
+      return emptyIrcMetrics();
+    }
+
+    const body = await res.json() as IrcStatsResponse;
+    const channels = body.channels ?? [];
+    const keys = await resolveIrcChannelKeys(supabaseClient, channels);
+
+    const byChannel: Record<string, number> = {};
+    for (const channel of channels) {
+      const key = keys.get(channel?.name);
+      if (key === undefined) continue;
+      byChannel[key] = Number(channel.userCount ?? 0);
+    }
+
+    const messagesByChannel: Record<string, number> = {};
+    for (
+      const [name, count] of Object.entries(body.messages?.byChannel ?? {})
+    ) {
+      const key = keys.get(name);
+      if (key === undefined) continue;
+      messagesByChannel[key] = Number(count ?? 0);
+    }
+
+    return {
+      online: Number(body.users?.total ?? 0),
+      channels: (body.channels ?? []).length,
+      messages: Number(body.messages?.total ?? 0),
+      byChannel,
+      messagesByChannel,
+    };
+  } catch (err) {
+    const error = err as Error;
+    console.warn("IRC stats query error:", error.message);
+    return emptyIrcMetrics();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -196,9 +408,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseKey = Deno.env.get("SUPABASE_SECRET_KEY") ??
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-      "";
+    const supabaseKey = getSecretKey();
 
     if (!supabaseUrl) {
       throw new Error("SUPABASE_URL environment variable is not set");
@@ -235,6 +445,7 @@ Deno.serve(async (req: Request) => {
       presencesRes,
       gameserversRes,
       tsSnapshot,
+      irc,
       prevMetricsRes,
       ...bucketMetricsResults
     ] = await Promise.all([
@@ -277,6 +488,7 @@ Deno.serve(async (req: Request) => {
         )
         .not("container", "is", null),
       fetchSnapshotFromStorage(supabaseClient),
+      fetchIrcStats(supabaseClient),
       // Fetch previous snapshot for delta computation
       supabaseClient
         .from("metrics")
@@ -711,6 +923,7 @@ Deno.serve(async (req: Request) => {
         online: tsOnline,
         byServer: tsByServer,
       },
+      irc,
       gameservers: {
         total: totalGameservers,
         players: totalPlayers,
@@ -722,13 +935,13 @@ Deno.serve(async (req: Request) => {
     };
 
     // ---------------------------------------------------------------------------
-    // Persist: INSERT into metrics table
+    // Persist: INSERT into metrics table (counts only, no player name lists)
     // ------------------------------------------------------------------------
     const { error: insertError } = await supabaseClient
       .from("metrics")
       .insert({
         captured_at: now.toISOString(),
-        data: payload as unknown as Json,
+        data: stripPlayerNames(payload) as unknown as Json,
       });
 
     if (insertError) {

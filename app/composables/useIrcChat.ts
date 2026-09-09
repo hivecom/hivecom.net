@@ -62,6 +62,8 @@ const STORAGE_READ_POSITIONS = 'hivecom.chat.readpos'
 // Cached NickServ identity state to avoid indicator flash on reconnect.
 const STORAGE_IDENTITY_EMAIL = 'hivecom.chat.identity-email'
 const STORAGE_IDENTITY_ALWAYS_ON = 'hivecom.chat.identity-always-on'
+const STORAGE_IDENTITY_DM_HISTORY = 'hivecom.chat.identity-dm-history'
+const STORAGE_IDENTITY_DM_HISTORY_EFFECTIVE = 'hivecom.chat.identity-dm-history-effective'
 // Cached channel appearance metadata (display-name, avatar, color, homepage) for
 // instant display before the IRC connection delivers METADATA responses.
 const STORAGE_CHANNEL_META = 'hivecom.chat.channel-meta'
@@ -319,6 +321,15 @@ const chatFullWidth = ref(
 const accountEmail = ref<string | null>(null)
 // null = not yet determined; true/false parsed from NickServ INFO Flags line
 const accountAlwaysOn = ref<boolean | null>(null)
+// NickServ dm-history setting. Ergo reports 'default' | 'disabled' | 'ephemeral' | 'persistent';
+// null = not yet determined. Only effective while always-on is enabled.
+export type DmHistorySetting = 'default' | 'disabled' | 'ephemeral' | 'persistent'
+const DM_HISTORY_VALUES: ReadonlySet<string> = new Set(['default', 'disabled', 'ephemeral', 'persistent'])
+const accountDmHistory = ref<DmHistorySetting | null>(null)
+// What the stored preference resolves to under current server settings, parsed
+// from the "Given current server settings" follow-up notice. This is how we
+// know what 'default' actually means without hardcoding server config.
+const accountDmHistoryEffective = ref<DmHistorySetting | null>(null)
 
 // Per-nick metadata store populated from draft/metadata-2 METADATA notifications.
 // Keyed by lowercased nick. Used to surface avatar, display-name, and orbit.status
@@ -517,6 +528,36 @@ const CACHE_PAGE_SIZE = 50
 // hold a few screenfuls above and below the fold so scroll-back has buffer to
 // coast on while the next (possibly server-fetched) page loads.
 const MAX_LIVE_MESSAGES = 300
+// The scroll loaders in MessageLog only stay out of each other's way when the
+// rendered log is tall enough that their trigger zones (1 screen at the top for
+// older, 2 at the bottom for newer) can't overlap. MAX_LIVE_MESSAGES counts raw
+// messages, but collapsed backlog join/part runs and hidden TAGMSGs render far
+// fewer pixels than that count suggests - trimming a short log is what makes
+// the two loaders oscillate (prepend-and-trim vs append-and-trim) and flash
+// blank space. So trims are gated on measured height: while the rendered log is
+// under MIN_TRIM_SCREENS viewports, the window may exceed the cap instead of
+// sliding. Invisible messages cost no DOM, so the node count stays bounded by
+// height either way.
+const MIN_TRIM_SCREENS = 6
+// Scroll element of the currently rendered MessageLog, registered by the
+// component so the trim gate can measure real rendered height. Null (chat not
+// rendered) permits trimming, matching the old unconditional behavior.
+let _liveLogEl: HTMLElement | null = null
+
+function setLiveLogEl(el: HTMLElement | null) {
+  _liveLogEl = el
+}
+
+function releaseLiveLogEl(el: HTMLElement | null) {
+  if (_liveLogEl === el)
+    _liveLogEl = null
+}
+
+function windowTrimAllowed(): boolean {
+  if (typeof window === 'undefined' || !_liveLogEl?.isConnected)
+    return true
+  return _liveLogEl.scrollHeight >= (window.innerHeight || 800) * MIN_TRIM_SCREENS
+}
 // Per-buffer IDB message cap. Updated reactively from user settings via setCacheCap().
 let _cacheCap = 10000
 
@@ -1325,6 +1366,10 @@ function loadPersisted() {
   accountEmail.value = cachedEmail
   const cachedAlwaysOn = localStorage.getItem(STORAGE_IDENTITY_ALWAYS_ON)
   accountAlwaysOn.value = cachedAlwaysOn === null ? null : cachedAlwaysOn === 'true'
+  const cachedDmHistory = localStorage.getItem(STORAGE_IDENTITY_DM_HISTORY)
+  accountDmHistory.value = cachedDmHistory !== null && DM_HISTORY_VALUES.has(cachedDmHistory) ? cachedDmHistory as DmHistorySetting : null
+  const cachedDmHistoryEffective = localStorage.getItem(STORAGE_IDENTITY_DM_HISTORY_EFFECTIVE)
+  accountDmHistoryEffective.value = cachedDmHistoryEffective !== null && DM_HISTORY_VALUES.has(cachedDmHistoryEffective) ? cachedDmHistoryEffective as DmHistorySetting : null
   lastSeenTs = Number(localStorage.getItem(STORAGE_LASTSEEN)) || 0
   try {
     closedDms = JSON.parse(localStorage.getItem(STORAGE_CLOSED_DMS) ?? '{}') as Record<string, number>
@@ -1650,6 +1695,7 @@ function queryNickServInfo() {
     clearTimeout(probeTimer)
   send('PRIVMSG NickServ :INFO')
   send('PRIVMSG NickServ :GET always-on')
+  send('PRIVMSG NickServ :GET dm-history')
   probeTimer = setTimeout(() => {
     probingNickServInfo = false
     probeTimer = null
@@ -1662,6 +1708,11 @@ function queryNickServInfo() {
       accountAlwaysOn.value = false
       if (import.meta.client)
         localStorage.setItem(STORAGE_IDENTITY_ALWAYS_ON, 'false')
+    }
+    if (accountDmHistory.value === null) {
+      accountDmHistory.value = 'default'
+      if (import.meta.client)
+        localStorage.setItem(STORAGE_IDENTITY_DM_HISTORY, 'default')
     }
     accountInfoFetched.value = true
   }, 5000)
@@ -1692,6 +1743,26 @@ function disableAlwaysOn() {
     localStorage.setItem(STORAGE_IDENTITY_ALWAYS_ON, 'false')
   suppressingNickServOp = true
   send('PRIVMSG NickServ :SET always-on false')
+  setTimeout(() => {
+    suppressingNickServOp = false
+  }, 3000)
+}
+
+/**
+ * Set the NickServ dm-history preference, suppressing its reply notices from
+ * visible buffers. Sets accountDmHistory optimistically on send, then re-probes
+ * GET dm-history inside the suppression window so the effective value (what the
+ * preference resolves to under server settings) refreshes from the server.
+ */
+function setDmHistory(value: DmHistorySetting) {
+  if (!account.value)
+    return
+  accountDmHistory.value = value
+  if (import.meta.client)
+    localStorage.setItem(STORAGE_IDENTITY_DM_HISTORY, value)
+  suppressingNickServOp = true
+  send(`PRIVMSG NickServ :SET dm-history ${value}`)
+  send('PRIVMSG NickServ :GET dm-history')
   setTimeout(() => {
     suppressingNickServOp = false
   }, 3000)
@@ -1870,9 +1941,11 @@ async function fetchOlderHistory(target: string) {
         }
         // Keep the live DOM node count bounded: trim newest messages from the
         // tail. The user is scrolled to the top (trigger condition), so content
-        // below the viewport disappears silently.
-        if (buf.messages.length > MAX_LIVE_MESSAGES) {
-          buf.messages.splice(MAX_LIVE_MESSAGES)
+        // below the viewport disappears silently. At most one page per load -
+        // skipped trims (short rendered log) let excess accumulate, and chopping
+        // it all at once later could remove content near the viewport.
+        if (buf.messages.length > MAX_LIVE_MESSAGES && windowTrimAllowed()) {
+          buf.messages.splice(Math.max(MAX_LIVE_MESSAGES, buf.messages.length - CACHE_PAGE_SIZE))
           buf.tailTrimmed = true
         }
       }
@@ -1906,8 +1979,126 @@ async function fetchOlderHistory(target: string) {
       ? `msgid=${anchorMsg.msgid}`
       : `timestamp=${anchorMsg.ts.toISOString()}`
   }
-  pendingBeforeTargets.add(target.toLowerCase())
-  send(`CHATHISTORY BEFORE ${target} ${anchor} ${HISTORY_LIMIT}`)
+  queueHistoryRequest({
+    target,
+    line: `CHATHISTORY BEFORE ${target} ${anchor} ${HISTORY_LIMIT}`,
+    onSend: () => pendingBeforeTargets.add(target.toLowerCase()),
+  })
+}
+
+// --- CHATHISTORY request scheduling ---
+// Ergo answers CHATHISTORY in the order requests arrive, so firing one per
+// channel during a connect burst (plus the sparse-batch backfills each of those
+// kicks off) leaves the buffer the user is actually looking at queued behind
+// every other channel. Requests go through a small scheduler instead: the active
+// buffer is sent straight away, everything else waits at a low concurrency and
+// the queue is re-sorted every time a slot frees, so switching buffers
+// mid-restore doesn't mean waiting out the whole backlog.
+const HISTORY_CONCURRENCY = 2
+// Safety valve: a request whose batch never closes (server error, target gone)
+// would otherwise hold its slot forever.
+const HISTORY_SLOT_TIMEOUT_MS = 15_000
+
+interface QueuedHistory {
+  target: string
+  /** The exact line to send once a slot opens. */
+  line: string
+  /** Bookkeeping that must happen at send time, not queue time (pending-target sets). */
+  onSend?: () => void
+}
+
+const historyQueue: QueuedHistory[] = []
+const historyInFlight = new Map<string, ReturnType<typeof setTimeout>>()
+
+/**
+ * Lower sorts sooner. The active buffer wins, then the channel we're landing on
+ * (set before the joins even start on a restore), then the buffer we came from.
+ * DMs edge out remaining channels: there are few of them and they're the most
+ * likely to be waiting on a reply.
+ */
+function historyPriority(target: string) {
+  const t = target.toLowerCase()
+  if (t === activeName.value.toLowerCase())
+    return 0
+  if (inputChannel.value && t === inputChannel.value.toLowerCase())
+    return 1
+  if (t === previousActiveName.value.toLowerCase())
+    return 2
+  return findBuffer(target)?.kind === 'pm' ? 3 : 4
+}
+
+function dispatchHistoryRequest(req: QueuedHistory) {
+  const key = req.target.toLowerCase()
+  const existing = historyInFlight.get(key)
+  if (existing !== undefined)
+    clearTimeout(existing)
+  req.onSend?.()
+  historyInFlight.set(key, setTimeout(releaseHistorySlot, HISTORY_SLOT_TIMEOUT_MS, req.target))
+  send(req.line)
+}
+
+function drainHistoryQueue() {
+  while (historyQueue.length > 0 && historyInFlight.size < HISTORY_CONCURRENCY) {
+    // Sorted at drain time rather than insert time: priorities move as the user
+    // switches buffers while the restore burst is still running.
+    let bestIdx = 0
+    let bestRank = historyPriority(historyQueue[0]!.target)
+    for (let i = 1; i < historyQueue.length; i++) {
+      const rank = historyPriority(historyQueue[i]!.target)
+      if (rank < bestRank) {
+        bestRank = rank
+        bestIdx = i
+      }
+    }
+    const next = historyQueue.splice(bestIdx, 1)[0]
+    if (next)
+      dispatchHistoryRequest(next)
+  }
+}
+
+function queueHistoryRequest(req: QueuedHistory) {
+  // The active buffer is what the user is staring at, so it skips the queue
+  // entirely - even if that briefly puts us one over the concurrency cap.
+  if (historyPriority(req.target) === 0) {
+    dispatchHistoryRequest(req)
+    return
+  }
+  historyQueue.push(req)
+  drainHistoryQueue()
+}
+
+/** Free the slot held by a target's request and let the next one out. */
+function releaseHistorySlot(target: string) {
+  const key = target.toLowerCase()
+  const timer = historyInFlight.get(key)
+  if (timer === undefined)
+    return
+  clearTimeout(timer)
+  historyInFlight.delete(key)
+  drainHistoryQueue()
+}
+
+/**
+ * Send any queued history for `target` right now. Called when the user switches
+ * buffers mid-restore: waiting for a slot would mean staring at an empty channel
+ * while some background channel finishes replaying.
+ */
+function promoteHistoryRequests(target: string) {
+  const key = target.toLowerCase()
+  for (let i = historyQueue.length - 1; i >= 0; i--) {
+    if (historyQueue[i]!.target.toLowerCase() === key) {
+      const req = historyQueue.splice(i, 1)[0]
+      if (req)
+        dispatchHistoryRequest(req)
+    }
+  }
+}
+
+function resetHistoryQueue() {
+  for (const timer of historyInFlight.values())
+    clearTimeout(timer)
+  historyInFlight.clear()
+  historyQueue.length = 0
 }
 
 /**
@@ -1932,11 +2123,14 @@ function requestHistory(target: string, since?: number) {
   if (!chatHistorySupported.value)
     return
   if (since != null && since > 0) {
-    pendingTimeBoundTargets.add(target.toLowerCase())
-    send(`CHATHISTORY LATEST ${target} timestamp=${new Date(since).toISOString()} ${HISTORY_LIMIT}`)
+    queueHistoryRequest({
+      target,
+      line: `CHATHISTORY LATEST ${target} timestamp=${new Date(since).toISOString()} ${HISTORY_LIMIT}`,
+      onSend: () => pendingTimeBoundTargets.add(target.toLowerCase()),
+    })
   }
   else {
-    send(`CHATHISTORY LATEST ${target} * ${HISTORY_LIMIT}`)
+    queueHistoryRequest({ target, line: `CHATHISTORY LATEST ${target} * ${HISTORY_LIMIT}` })
   }
 }
 
@@ -2522,6 +2716,10 @@ function handleMessage(raw: string) {
         }
         const info = backlogBatches.get(id)
         if (info) {
+          // Free the scheduler slot first so the next queued target goes out
+          // while we're still merging this batch, and so the sparse-batch
+          // backfill below has somewhere to land.
+          releaseHistorySlot(info.target)
           const batchBuf = findBuffer(info.target)
           if (batchBuf) {
             // Always clear loading state - covers both LATEST and BEFORE completions.
@@ -2584,9 +2782,11 @@ function handleMessage(raw: string) {
                   drainPendingReactions(batchBuf, staged.msgid)
               }
             }
-            // Trim the live buffer if loading older pages pushed it over the cap.
-            if (batchBuf.messages.length > MAX_LIVE_MESSAGES) {
-              batchBuf.messages.splice(MAX_LIVE_MESSAGES)
+            // Trim the live buffer if loading older pages pushed it over the
+            // cap. Gated on rendered height and capped to one page per batch,
+            // same as the cache-first path.
+            if (batchBuf.messages.length > MAX_LIVE_MESSAGES && windowTrimAllowed()) {
+              batchBuf.messages.splice(Math.max(MAX_LIVE_MESSAGES, batchBuf.messages.length - CACHE_PAGE_SIZE))
               batchBuf.tailTrimmed = true
             }
             // Write CHATHISTORY-sourced pages to IDB so cache-first scroll-back
@@ -2992,6 +3192,27 @@ function handleMessage(raw: string) {
           if (import.meta.client)
             localStorage.setItem(STORAGE_IDENTITY_ALWAYS_ON, 'true')
           accountInfoFetched.value = true
+        }
+        // Parse dm-history from the explicit GET response. The "stored" line is
+        // the preference; the "Given current server settings" follow-up is what
+        // it resolves to (e.g. what 'default' actually means on this server).
+        const dmHistoryMatch = /stored direct message history setting is:\s*(\w+)/i.exec(noticeText)
+        if (dmHistoryMatch) {
+          const value = dmHistoryMatch[1]?.toLowerCase() ?? ''
+          if (DM_HISTORY_VALUES.has(value)) {
+            accountDmHistory.value = value as DmHistorySetting
+            if (import.meta.client)
+              localStorage.setItem(STORAGE_IDENTITY_DM_HISTORY, value)
+          }
+        }
+        const dmHistoryEffectiveMatch = /current server settings.*direct message history setting is:\s*(\w+)/i.exec(noticeText)
+        if (dmHistoryEffectiveMatch) {
+          const value = dmHistoryEffectiveMatch[1]?.toLowerCase() ?? ''
+          if (DM_HISTORY_VALUES.has(value)) {
+            accountDmHistoryEffective.value = value as DmHistorySetting
+            if (import.meta.client)
+              localStorage.setItem(STORAGE_IDENTITY_DM_HISTORY_EFFECTIVE, value)
+          }
         }
       }
 
@@ -3400,6 +3621,12 @@ function handleMessage(raw: string) {
         const desc = params[params.length - 1] ?? 'The message could not be deleted'
         addToActive({ type: 'error', text: `Delete failed: ${desc}` }, { ts })
       }
+      else if (failCmd === 'CHATHISTORY') {
+        // No batch will arrive for this request, so nothing else frees its
+        // scheduler slot. The target sits in a middle param when Ergo names it;
+        // releasing by every param is harmless since unknown ones no-op.
+        for (const p of params.slice(1)) releaseHistorySlot(p)
+      }
       else if (failCmd === 'WEBPUSH') {
         // draft/webpush failures (INVALID_PARAMS, INTERNAL_ERROR).
         const desc = params[params.length - 1] ?? 'Push subscription failed'
@@ -3478,6 +3705,7 @@ function openSocket() {
   explicitJoinIntents.clear()
   pendingBeforeTargets.clear()
   pendingTimeBoundTargets.clear()
+  resetHistoryQueue()
   pendingDmTargets.clear()
   serviceLog.value = []
   chatHistorySupported.value = false
@@ -3502,6 +3730,10 @@ function openSocket() {
   accountEmail.value = import.meta.client ? localStorage.getItem(STORAGE_IDENTITY_EMAIL) : null
   const _cachedAlwaysOn = import.meta.client ? localStorage.getItem(STORAGE_IDENTITY_ALWAYS_ON) : null
   accountAlwaysOn.value = _cachedAlwaysOn === null ? null : _cachedAlwaysOn === 'true'
+  const _cachedDmHistory = import.meta.client ? localStorage.getItem(STORAGE_IDENTITY_DM_HISTORY) : null
+  accountDmHistory.value = _cachedDmHistory !== null && DM_HISTORY_VALUES.has(_cachedDmHistory) ? _cachedDmHistory as DmHistorySetting : null
+  const _cachedDmHistoryEffective = import.meta.client ? localStorage.getItem(STORAGE_IDENTITY_DM_HISTORY_EFFECTIVE) : null
+  accountDmHistoryEffective.value = _cachedDmHistoryEffective !== null && DM_HISTORY_VALUES.has(_cachedDmHistoryEffective) ? _cachedDmHistoryEffective as DmHistorySetting : null
   accountInfoFetched.value = false
   connState.value = 'connecting'
   addServer({ type: 'system', text: `Connecting to ${WS_URL}...` })
@@ -3708,6 +3940,9 @@ function setActive(name: string) {
   }
 
   activeName.value = name
+  // This buffer just became the one on screen, so any history still sitting in
+  // the scheduler queue for it goes out now instead of waiting its turn.
+  promoteHistoryRequests(name)
   const buf = findBuffer(name)
 
   // Entering a channel clears its unread badge but deliberately KEEPS the read
@@ -4503,9 +4738,10 @@ async function fetchNewerFromCache(target: string) {
         .filter(m => !messageExists(buf.messages, m))
       if (newMsgs.length) {
         buf.messages.push(...newMsgs)
-        // Slide window: trim from the front so DOM count stays bounded.
-        if (buf.messages.length > MAX_LIVE_MESSAGES) {
-          buf.messages.splice(0, buf.messages.length - MAX_LIVE_MESSAGES)
+        // Slide window: trim from the front so DOM count stays bounded. Gated
+        // on rendered height and capped to one page, same as the tail trims.
+        if (buf.messages.length > MAX_LIVE_MESSAGES && windowTrimAllowed()) {
+          buf.messages.splice(0, Math.min(buf.messages.length - MAX_LIVE_MESSAGES, CACHE_PAGE_SIZE))
           // Oldest messages were just removed - cache can serve them again on
           // scroll-up. The live front is no longer the absolute oldest line, so
           // clear historyExhausted too: otherwise "beginning of history" sticks
@@ -4752,10 +4988,13 @@ export function useIrcChat() {
     // account claim state
     accountEmail,
     accountAlwaysOn,
+    accountDmHistory,
+    accountDmHistoryEffective,
     accountInfoFetched,
     queryNickServInfo,
     enableAlwaysOn,
     disableAlwaysOn,
+    setDmHistory,
     claimEmail,
     verifyClaimCode,
     // identity seam
@@ -4775,6 +5014,8 @@ export function useIrcChat() {
     fetchOlderHistory,
     seekToPresent,
     fetchNewerFromCache,
+    setLiveLogEl,
+    releaseLiveLogEl,
     // metadata
     setChannelMetadata,
     deleteChannelMetadata,

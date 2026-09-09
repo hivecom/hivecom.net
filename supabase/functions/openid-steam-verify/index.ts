@@ -1,3 +1,4 @@
+import { getPublishableKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import { getAuthenticatedUserId } from "../_shared/auth.ts";
@@ -83,7 +84,7 @@ Deno.serve(async (req) => {
 
       const supabaseClient = createClient<Database>(
         Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        getPublishableKey(),
         {
           global: {
             headers: { Authorization: authHeader },

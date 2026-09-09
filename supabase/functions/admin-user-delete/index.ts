@@ -1,3 +1,4 @@
+import { getPublishableKey, getSecretKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
@@ -67,7 +68,7 @@ Deno.serve(async (req: Request) => {
 
     const tempClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      getPublishableKey(),
       {
         global: {
           headers: { Authorization: authHeader },
@@ -97,8 +98,7 @@ Deno.serve(async (req: Request) => {
     // Create a Supabase client with service role key for admin operations
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SECRET_KEY") ??
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      getSecretKey(),
     );
 
     // First, check if the user exists by looking up their profile

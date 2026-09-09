@@ -222,6 +222,7 @@ function updateFileName(id: string, value: string) {
     position="right"
     :card="{ separators: true }"
     :size="520"
+    :can-dismiss="false"
     @close="closeDrawer"
   >
     <template #header>

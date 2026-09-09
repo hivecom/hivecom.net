@@ -121,6 +121,7 @@ watch(isOpen, (open) => {
     position="right"
     :card="{ separators: true }"
     :size="600"
+    :can-dismiss="false"
     @close="isOpen = false"
   >
     <template #header>

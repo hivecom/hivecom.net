@@ -9,6 +9,8 @@ interface Props {
   size?: 's' | 'm' | 'l'
   clickable?: boolean
   color?: string
+  /** Extra text appended after the count, separated by a slash. */
+  suffix?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -29,6 +31,10 @@ const variant = computed(() => {
 
 const iconSize = computed(() => props.size === 's' ? '8' : '12')
 const displayLabel = computed(() => props.singular && props.count === 1 ? props.singular : props.label)
+const text = computed(() => {
+  const base = displayLabel.value ? `${props.count} ${displayLabel.value}` : `${props.count}`
+  return props.suffix ? `${base} / ${props.suffix}` : base
+})
 </script>
 
 <template>
@@ -44,6 +50,6 @@ const displayLabel = computed(() => props.singular && props.count === 1 ? props.
     @click="clickable && emit('click')"
   >
     <Icon name="ph:circle-fill" :size="iconSize" :style="color && isActive ? { color } : (!isActive ? { color: 'var(--color-text-lighter)' } : {})" />
-    {{ count }} {{ displayLabel }}
+    {{ text }}
   </Badge>
 </template>

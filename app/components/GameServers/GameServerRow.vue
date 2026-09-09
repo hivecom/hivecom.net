@@ -5,6 +5,7 @@ import { capitalize } from 'vue'
 import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
+import { buildConnectContext } from '@/composables/useGameConnect'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { metricsMaxPlayers, metricsPlayerCount } from '@/types/metrics'
 
@@ -50,6 +51,7 @@ const state = computed(() => {
 
 const isCompactLayout = useBreakpoint('<s')
 const addresses = computed(() => props.gameserver.addresses as string[] | null)
+const connect = computed(() => buildConnectContext(props.game, props.gameserver))
 
 const { metrics } = useDataMetrics()
 
@@ -85,7 +87,7 @@ const playerCounts = computed(() => {
           <template #tooltip>
             <p>{{ capitalize(state) }}{{ state === 'offline' ? ' - Ask an administrator to start it' : state === 'unknown' ? ' - Docker Control is unavailable for this server' : '' }}</p>
           </template>
-          <div :class="`gameserver-indicator ${state}`" />
+          <div class="gameserver-indicator" :class="state" />
         </Tooltip>
         <Flex expand x-between>
           <Flex y-center gap="s" style="min-width: 0;">
@@ -119,7 +121,7 @@ const playerCounts = computed(() => {
             v-if="!isCompactLayout"
             :addresses="addresses"
             :port="props.gameserver.port"
-            :game-shorthand="props.game?.shorthand ?? null"
+            :connect="connect"
             variant="gray"
             size="s"
             stop-propagation

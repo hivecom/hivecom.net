@@ -1,10 +1,10 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
+import { getSecretKey } from "./env.ts";
 
 function requireServiceCredentials(): { url: string; key: string } {
   const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-    Deno.env.get("SUPABASE_KEY");
+  const key = getSecretKey() || Deno.env.get("SUPABASE_KEY");
 
   if (!url || !key) {
     throw new Error("Missing Supabase service role configuration");

@@ -137,6 +137,24 @@ export function fullDateLong(date: string | Date | null | undefined): string {
 }
 
 /**
+ * Calendar date with long month name, e.g. "September 1, 2026".
+ * Formats in UTC so a date-only value like "2026-09-01" displays as that
+ * calendar day everywhere instead of shifting with the viewer's timezone.
+ * Returns 'Unknown' for null/invalid values.
+ */
+export function calendarDateLong(date: string | Date | null | undefined): string {
+  const d = parse(date)
+  if (!d)
+    return 'Unknown'
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(d)
+}
+
+/**
  * Month and year only, e.g. "January 2025" or "janvier 2025".
  * Accepts a full date string, a Date object, or a "YYYY-MM" string.
  * Returns 'Unknown' for null/invalid values.

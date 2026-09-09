@@ -1,3 +1,4 @@
+import { getPublishableKey, getSecretKey } from "../_shared/env.ts";
 import * as constants from "constants" with { type: "json" };
 import { createClient, type UserIdentity } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -42,7 +43,7 @@ Deno.serve(async (req) => {
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      getPublishableKey(),
       {
         global: {
           headers: { Authorization: authHeader },
@@ -101,8 +102,7 @@ Deno.serve(async (req) => {
 
     const serviceClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SECRET_KEY") ??
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      getSecretKey(),
     );
 
     const { error: updateError } = await serviceClient

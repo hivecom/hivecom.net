@@ -1,7 +1,13 @@
-<script setup lang="ts">
+<script lang="ts">
 import { Avatar } from '@dolanske/vui'
 import { computed, nextTick, ref, watch } from 'vue'
 
+// Module-level so it survives component remounts. Avatar uploads bust the URL
+// with a ?t= query string, so a changed avatar is a different key here.
+const loadedUrls = new Set<string>()
+</script>
+
+<script setup lang="ts">
 interface Props {
   url?: string | null
   size?: 's' | 'm' | 'l' | number
@@ -47,9 +53,17 @@ function preload(url: string) {
     visibleSrc.value = url
     return
   }
+  // Already decoded once this session, so skip the fallback entirely. Without
+  // this, remounting (layout swaps on navigation remount the navbar) drops back
+  // to the initials and fades the same image in again, which reads as a reload.
+  if (loadedUrls.has(url)) {
+    visibleSrc.value = url
+    return
+  }
   const img = new Image()
   img.src = url
   if (img.complete) {
+    loadedUrls.add(url)
     // Defer so the Transition has a chance to mount before we flip the value.
     nextTick(() => {
       visibleSrc.value = url
@@ -58,6 +72,7 @@ function preload(url: string) {
   }
   visibleSrc.value = null
   img.onload = () => {
+    loadedUrls.add(url)
     visibleSrc.value = url
   }
   img.onerror = () => {

@@ -73,9 +73,13 @@ function formatBody(nick, text) {
   return text
 }
 
-function buildNotification(line) {
-  const { tags, nick, command, params } = parseIrc(line)
+// Ergo casefolds with ASCII casemapping, so lowercasing is enough to line a
+// MARKREAD target up with the conversation a notification came from.
+function casefold(name) {
+  return name.toLowerCase()
+}
 
+function buildNotification({ tags, nick, command, params }) {
   // Only PRIVMSG/NOTICE carry a target + body worth surfacing.
   if (command !== 'PRIVMSG' && command !== 'NOTICE')
     return null
@@ -105,6 +109,8 @@ function buildNotification(line) {
     href = `/chat?dm=${encodeURIComponent(nick)}&notify=1`
   }
 
+  const ts = Date.parse(tags.time ?? '')
+
   return {
     title,
     options: {
@@ -114,8 +120,67 @@ function buildNotification(line) {
       // Coalesce repeated pings from the same conversation.
       tag: tags.msgid || target || undefined,
       renotify: true,
-      data: { href },
+      // `conversation` + `ts` are what a later MARKREAD matches against to
+      // retire this notification. For a DM the conversation is the sender, not
+      // `target` (which is us) - same name the client buffers it under.
+      data: {
+        href,
+        conversation: casefold(isChannel ? target : nick),
+        ts: Number.isFinite(ts) ? ts : null,
+      },
     },
+  }
+}
+
+// Ergo pushes a MARKREAD line once a conversation has been read, so devices can
+// drop pings the user has already dealt with. That happens when the read came
+// from another device, and also from this one when the read lands before the
+// session has registered its subscription (Ergo only skips the endpoint that
+// sent the MARKREAD). Clear what it covers and show nothing - the ping this
+// retires already satisfied the userVisibleOnly contract.
+async function clearRead(params) {
+  const conversation = casefold(params[0] ?? '')
+  if (!conversation)
+    return
+
+  const raw = params[1] ?? ''
+  const marker = Date.parse(raw.startsWith('timestamp=') ? raw.slice('timestamp='.length) : raw)
+
+  const notifications = await globalThis.registration.getNotifications()
+  for (const notification of notifications) {
+    const data = notification.data
+    if (!data || data.conversation !== conversation)
+      continue
+    // Anything newer than the marker arrived after the read and still stands.
+    if (Number.isFinite(marker) && typeof data.ts === 'number' && data.ts > marker)
+      continue
+    notification.close()
+  }
+}
+
+// The page drops a timestamp in this cache right before it sends WEBPUSH
+// REGISTER for a subscription the user just enabled. Ergo's registration flow
+// sends a "PING webpush" test push to the new endpoint before acking, and the
+// keepalive PINGs it sends later are byte-identical, so this flag is the only
+// way to tell "you just subscribed" apart from "still alive?". Consumed (and
+// deleted) on first read; the TTL covers the flag going stale when no test
+// push arrives, e.g. Ergo already knew the endpoint and skipped it.
+const WELCOME_CACHE = 'ergo-push-meta'
+const WELCOME_KEY = '/ergo-push/welcome-pending'
+const WELCOME_TTL_MS = 2 * 60 * 1000
+
+async function consumeWelcomePending() {
+  try {
+    const cache = await caches.open(WELCOME_CACHE)
+    const hit = await cache.match(WELCOME_KEY)
+    if (!hit)
+      return false
+    await cache.delete(WELCOME_KEY)
+    const ts = Number(await hit.text())
+    return Number.isFinite(ts) && Date.now() - ts < WELCOME_TTL_MS
+  }
+  catch {
+    return false
   }
 }
 
@@ -127,9 +192,46 @@ globalThis.addEventListener('push', (event) => {
   if (!line)
     return
 
+  let parsed
+  try {
+    parsed = parseIrc(line)
+  }
+  catch {
+    parsed = null
+  }
+
+  if (parsed?.command === 'MARKREAD') {
+    event.waitUntil(clearRead(parsed.params))
+    return
+  }
+
+  // Ergo sends a "PING webpush" payload to verify the endpoint on a fresh
+  // WEBPUSH REGISTER and as a periodic keepalive from push maintenance. It's a
+  // health check, not activity - showing it is what produced the stray "New
+  // activity" notifications. The one PING worth surfacing is the verification
+  // push right after the user enabled notifications: the page flags that moment
+  // (see consumeWelcomePending), and we greet it so the user sees end-to-end
+  // delivery actually works. Every other PING is dropped silently; like
+  // MARKREAD, the occasional non-visible push stays within the browsers'
+  // userVisibleOnly tolerance.
+  if (parsed?.command === 'PING') {
+    event.waitUntil((async () => {
+      if (await consumeWelcomePending()) {
+        await globalThis.registration.showNotification('Hivecom chat', {
+          body: 'You\'re now subscribed to push notifications',
+          icon: '/apple-touch-icon.png',
+          badge: '/apple-touch-icon.png',
+          tag: 'ergo-push-welcome',
+          data: { href: '/chat?notify=1' },
+        })
+      }
+    })())
+    return
+  }
+
   let notification
   try {
-    notification = buildNotification(line)
+    notification = parsed ? buildNotification(parsed) : null
   }
   catch {
     notification = null

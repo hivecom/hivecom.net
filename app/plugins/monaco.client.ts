@@ -1,5 +1,5 @@
-import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
+import EditorWorker from 'monaco-editor/editor/editor.worker?worker'
+import CssWorker from 'monaco-editor/language/css/css.worker?worker'
 
 export default defineNuxtPlugin(() => {
   globalThis.MonacoEnvironment = {

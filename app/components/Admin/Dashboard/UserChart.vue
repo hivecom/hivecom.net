@@ -46,7 +46,7 @@ const errorMessage = ref('')
 const monthlyData = ref<MonthlyUserData[]>([])
 const chartWrapperRef = ref<HTMLElement | null>(null)
 const chartRef = ref<ChartComponentRef<'line'> | null>(null)
-const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
+const { width: chartWrapperWidth, height: chartWrapperHeight } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
 const { activeTheme } = useUserTheme()
 
 // Fetch users data and group by month
@@ -203,13 +203,15 @@ watch(theme, () => refreshChartOptions())
 
 watchEffect(() => {
   const width = chartWrapperWidth.value
+  const height = chartWrapperHeight.value
   const chart = chartRef.value?.chart
 
   if (!width || !chart)
     return
 
-  const containerHeight = chartWrapperRef.value?.clientHeight
-  chart.resize(Math.floor(width), containerHeight)
+  // The dashboard stretches the wrapper to fill its column, so height
+  // changes need to trigger a redraw the same way width changes do.
+  chart.resize(Math.floor(width), Math.floor(height) || undefined)
 })
 
 // Month-over-month growth %

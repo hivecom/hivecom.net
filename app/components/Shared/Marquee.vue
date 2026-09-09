@@ -25,11 +25,13 @@ const emit = defineEmits<{
 }>()
 
 // --- Refs ---
+const rootRef = ref<HTMLElement | null>(null)
 const trackRef = ref<HTMLElement | null>(null)
 const contentRef = ref<HTMLElement | null>(null)
 
 const offset = ref(0)
 const contentWidth = ref(0)
+const containerWidth = ref(0)
 const isDragging = ref(false)
 
 // --- Internal state (non-reactive) ---
@@ -60,6 +62,19 @@ const targetVelocity = computed<number>(() => {
   if (isDragging.value || isHovering.value)
     return 0
   return props.direction === 'left' ? -props.speed : props.speed
+})
+
+// How many copies of the content the track needs so the viewport is always
+// covered. normalizeOffset keeps the offset in (-w, 0], so the first copy can
+// be scrolled fully out of view and the remaining ones have to span the
+// container on their own. Short sets (few items) would otherwise leave a blank
+// run at the end of the strip.
+const copies = computed<number>(() => {
+  const w = contentWidth.value
+  const cw = containerWidth.value
+  if (w <= 0 || cw <= 0)
+    return 2
+  return Math.min(50, Math.max(2, Math.ceil(cw / w) + 1))
 })
 
 const trackStyle = computed(() => ({
@@ -203,22 +218,27 @@ onMounted(() => {
     reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   }
 
-  // ResizeObserver
-  if (contentRef.value) {
+  // ResizeObserver - watches both the content copy (for the wrap width) and
+  // the container (for how many copies are needed to fill it)
+  if (contentRef.value && rootRef.value) {
     resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (!entry)
-        return
-      const newWidth = entry.contentRect.width
-      if (newWidth > 0 && contentWidth.value > 0) {
-        // Normalize offset proportionally to avoid jump
-        const ratio = newWidth / contentWidth.value
-        offset.value = offset.value * ratio
+      for (const entry of entries) {
+        if (entry.target === rootRef.value) {
+          containerWidth.value = entry.contentRect.width
+          continue
+        }
+        const newWidth = entry.contentRect.width
+        if (newWidth > 0 && contentWidth.value > 0) {
+          // Normalize offset proportionally to avoid jump
+          const ratio = newWidth / contentWidth.value
+          offset.value = offset.value * ratio
+        }
+        contentWidth.value = newWidth
+        normalizeOffset()
       }
-      contentWidth.value = newWidth
-      normalizeOffset()
     })
     resizeObserver.observe(contentRef.value)
+    resizeObserver.observe(rootRef.value)
   }
 
   // IntersectionObserver
@@ -253,6 +273,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div
+    ref="rootRef"
     class="marquee"
     :class="{
       'marquee--draggable': draggable,
@@ -274,7 +295,7 @@ onBeforeUnmount(() => {
       <div ref="contentRef" class="marquee__content">
         <slot />
       </div>
-      <div class="marquee__content" aria-hidden="true">
+      <div v-for="i in copies - 1" :key="i" class="marquee__content" aria-hidden="true">
         <slot />
       </div>
     </div>
