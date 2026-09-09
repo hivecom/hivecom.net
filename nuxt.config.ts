@@ -420,6 +420,12 @@ export default defineNuxtConfig({
     '@/assets/index.scss',
     'katex/dist/katex.min.css',
   ],
+  content: {
+    experimental: {
+      // Build the content database with node:sqlite instead of better-sqlite3.
+      sqliteConnector: 'native',
+    },
+  },
   mdc: {
     remarkPlugins: {
       'remark-math': {},
