@@ -457,7 +457,7 @@ async function handleBulkDelete() {
               <template v-if="(gameserver._original as QueryGameserver).query_protocol != null">
                 <Flex y-center gap="s" style="max-width: 260px">
                   <OnlineBadge
-                    :count="getServerPlayers((gameserver._original as QueryGameserver).id)"
+                    :count="getServerPlayers((gameserver._original as QueryGameserver).id) ?? 0"
                     label="Players"
                     singular="Player"
                     size="s"
