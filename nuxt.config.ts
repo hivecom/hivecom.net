@@ -30,6 +30,9 @@ export default defineNuxtConfig({
   app: {
     head: {
       link: [
+        // Declared explicitly so nuxt-seo-utils doesn't advertise every
+        // favicon-*.ico and icon*.{png,svg} in public/ as a site icon.
+        { rel: 'icon', href: '/favicon.ico', type: 'image/x-icon' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' },
         { rel: 'manifest', href: '/manifest.json' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
