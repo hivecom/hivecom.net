@@ -78,63 +78,49 @@ const unplayedByMe = computed(() => {
 
 <template>
   <Flex column gap="m">
-    <HomeDashboardSection label="You like this game, people are in it now">
-      <div v-if="likedGameWithPlayers">
+    <HomeDashboardSection v-if="likedGameWithPlayers" label="People playing your game">
+      <div class="home-item">
         <strong>{{ likedGameWithPlayers.app.app_name ?? likedGameWithPlayers.app.app_id }}</strong>
         <Flex gap="xs" wrap>
           <UserDisplay v-for="id in likedGameWithPlayers.players" :key="id" :user-id="id" size="s" />
         </Flex>
       </div>
-      <p v-else>
-        Nobody is in your recent games right now.
-      </p>
     </HomeDashboardSection>
 
-    <!-- TODO: replace these with game icons -->
-    <HomeDashboardSection label="Your recent games">
-      <div v-if="myRecentApps.length" class="home-item-list">
-        <div v-for="app in myRecentApps" :key="app.app_id" class="home-item">
+    <HomeDashboardSection v-if="myRecentApps.length" label="Your recent games">
+      <div class="home-item-list">
+        <div v-for="app in myRecentApps.slice(0, 4)" :key="app.app_id" class="home-item">
           <strong>{{ app.app_name ?? app.app_id }}</strong>
           <span>{{ dayjs(app.last_played_at).fromNow() }}</span>
         </div>
       </div>
-      <p v-else>
-        No recent games on your presence row.
-      </p>
     </HomeDashboardSection>
 
-    <HomeDashboardSection label="Friends playing right now">
-      <ul v-if="friendsPlaying.length">
-        <li v-for="{ profileId, game } in friendsPlaying" :key="profileId">
+    <HomeDashboardSection v-if="friendsPlaying.length" label="Friends playing right now">
+      <Flex column gap="xs">
+        <li v-for="{ profileId, game } in friendsPlaying" :key="profileId" class="home-item inline">
           <UserDisplay :user-id="profileId" size="s" inline />
-          - {{ game.appName ?? game.appId }}
+          <span>{{ game.appName ?? game.appId }}</span>
         </li>
-      </ul>
-      <p v-else>
-        No friends in a game right now.
-      </p>
+      </Flex>
     </HomeDashboardSection>
 
-    <HomeDashboardSection label="Community plays these (now or last)">
-      <ul v-if="communityRecent.length">
-        <li v-for="entry in communityRecent" :key="entry.appId">
-          {{ entry.appName ?? entry.appId }} - {{ entry.count }}
-        </li>
-      </ul>
-      <p v-else>
-        No presence data.
-      </p>
+    <HomeDashboardSection v-if="communityRecent.length" label="Community plays these">
+      <Flex column gap="xs">
+        <div v-for="entry in communityRecent" :key="entry.appId" class="home-item inline">
+          <strong>{{ entry.appName ?? entry.appId }}</strong>
+          <span>{{ entry.count }} player{{ entry.count === 1 ? '' : 's' }}</span>
+        </div>
+      </Flex>
     </HomeDashboardSection>
 
-    <HomeDashboardSection label="You haven't played these recently">
-      <ul v-if="unplayedByMe.length">
-        <li v-for="entry in unplayedByMe" :key="entry.appId">
-          {{ entry.appName ?? entry.appId }} - {{ entry.count }} playing or played last
-        </li>
-      </ul>
-      <p v-else>
-        Nothing the community plays that you don't.
-      </p>
+    <HomeDashboardSection v-if="unplayedByMe.length" label="You haven't tried these yet">
+      <Flex column gap="xs">
+        <div v-for="entry in unplayedByMe" :key="entry.appId" class="home-item inline">
+          <strong>{{ entry.appName ?? entry.appId }}</strong>
+          <span>{{ entry.count }} players{{ entry.count === 1 ? '' : 's' }}</span>
+        </div>
+      </Flex>
     </HomeDashboardSection>
   </Flex>
 </template>

@@ -201,7 +201,7 @@ const MOBILE_STARS = [
                     class="about-barcode"
                     :aria-label="isAbout ? 'Show our mantra' : 'Show about us'"
                   >
-                    <AtypeText :name="side.barcode" :height="32" />
+                    <AtypeText :name="side.barcode" :height="16" />
                   </button>
                 </div>
               </GlowCard>
@@ -214,10 +214,10 @@ const MOBILE_STARS = [
             <section class="home-events">
               <EventSmall v-for="event in events" :key="event.id" :data="event" :no-glow="false" class="glow-card-home" />
               <div class="card-pointer top-right" data-text="Upcoming events">
-                <AtypeText name="guideEvents" :height="12" />
+                <!-- <AtypeText name="guideEvents" :height="12" /> -->
               </div>
               <div class="card-pointer bottom-left" data-text="What we're up to">
-                <AtypeText name="guideActivity" :height="12" />
+                <!-- <AtypeText name="guideActivity" :height="12" /> -->
               </div>
             </section>
           </FocusTarget>
@@ -250,7 +250,7 @@ const MOBILE_STARS = [
                 </GlowCard>
               </FocusTarget>
               <div class="card-pointer bottom-right" data-text="Forum">
-                <AtypeText name="guideForum" :height="12" />
+                <!-- <AtypeText name="guideForum" :height="12" /> -->
               </div>
             </div>
           </div>

@@ -32,6 +32,7 @@ interface Props {
   isPrivate?: boolean
   /** Highlight that the current user voted in this vote */
   hasVoted?: boolean
+  compact?: boolean
 }
 
 const props = defineProps<Props>()
@@ -73,16 +74,17 @@ function goToReferendum() {
   <GlowCard>
     <Card
       class="referendum-card card-bg"
-      :class="{ 'referendum-card--private': isPrivate }"
+      :class="{ 'referendum-card--private': isPrivate,
+                'referendum-card--compact': compact }"
       role="button"
       @click="goToReferendum"
     >
-      <Flex column gap="m" expand>
-        <h2 class="text-xxl referendum-card__title">
+      <Flex column :gap="compact ? 'xs' : 'm'" expand>
+        <h2 class="referendum-card__title" :class="`text-${compact ? 'l' : 'xxl'}`">
           {{ referendum.title }}
         </h2>
 
-        <p v-if="referendum.description" class="text-color-light text-m line-clamp-3">
+        <p v-if="referendum.description" class="text-color-light text-m" :class="`text-overflow-${compact ? 1 : 3}`">
           {{ referendum.description }}
         </p>
 
@@ -156,10 +158,6 @@ function goToReferendum() {
     color: var(--color-text-lighter);
     font-size: var(--font-size-m);
     flex-shrink: 0;
-  }
-
-  .line-clamp-3 {
-    @include line-clamp(3);
   }
 
   // Ensure UserDisplay component displays inline properly

@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
 import { useDataVotes } from '@/composables/useDataVotes'
+import ReferendumCard from '../Shared/ReferendumCard.vue'
 
 dayjs.extend(relativeTime)
 
@@ -31,47 +33,40 @@ watch([activePublicItems, concludedPublicItems], ([active, concluded]) => {
     void fetchVoteCounts(ids)
 })
 
-const needsDeciding = computed(() => activePublicItems.value.filter(r => !hasVoted(r.id)))
-const alreadyVoted = computed(() => activePublicItems.value.filter(r => hasVoted(r.id)))
+const needsDeciding = computed(() => activePublicItems.value.filter(r => !hasVoted(r.id))[0])
+const alreadyVoted = computed(() => activePublicItems.value.filter(r => hasVoted(r.id)).slice(0, 2))
 const latestConcluded = computed(() => concludedPublicItems.value.slice(0, 3))
 </script>
 
 <template>
   <div>
-    <HomeDashboardSection label="Needs deciding">
-      <ul v-if="needsDeciding.length">
-        <li v-for="r in needsDeciding" :key="r.id">
-          <NuxtLink to="/votes">
-            <strong>{{ r.title }}</strong>
-          </NuxtLink>
-          - ends {{ dayjs(r.date_end).fromNow() }}, {{ getVoteCount(r.id) }} votes so far
-        </li>
-      </ul>
-      <p v-else>
-        Nothing waiting on your vote.
-      </p>
+    <HomeDashboardSection v-if="needsDeciding" label="Needs deciding">
+      <ReferendumCard :referendum="needsDeciding" :vote-count="getVoteCount(needsDeciding.id)" status="active" compact />
     </HomeDashboardSection>
 
-    <HomeDashboardSection label="You voted, still running">
-      <ul v-if="alreadyVoted.length">
-        <li v-for="r in alreadyVoted" :key="r.id">
-          {{ r.title }} - ends {{ dayjs(r.date_end).fromNow() }}, {{ getVoteCount(r.id) }} votes
-        </li>
-      </ul>
-      <p v-else>
-        No active votes you took part in.
-      </p>
+    <HomeDashboardSection v-if="alreadyVoted.length" label="You voted, still running">
+      <Flex column gap="xs">
+        <ReferendumCard
+          v-for="r in alreadyVoted" :key="r.id"
+          :referendum="r"
+          :vote-count="getVoteCount(r.id)"
+          status="active"
+          has-voted
+          compact
+        />
+      </Flex>
     </HomeDashboardSection>
 
-    <HomeDashboardSection label="Latest results">
-      <ul v-if="latestConcluded.length">
-        <li v-for="r in latestConcluded" :key="r.id">
-          {{ r.title }} - concluded {{ dayjs(r.date_end).fromNow() }}, {{ getVoteCount(r.id) }} votes
-        </li>
-      </ul>
-      <p v-else>
-        No concluded votes.
-      </p>
+    <HomeDashboardSection v-if="latestConcluded.length" label="Latest results">
+      <Flex column gap="xs">
+        <ReferendumCard
+          v-for="r in latestConcluded" :key="r.id"
+          :referendum="r"
+          :vote-count="getVoteCount(r.id)"
+          status="active"
+          compact
+        />
+      </Flex>
     </HomeDashboardSection>
   </div>
 </template>

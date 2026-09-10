@@ -88,6 +88,7 @@ const navTiles = [
   z-index: 1;
   width: 100%;
   min-height: 100vh;
+  padding-bottom: var(--space-xl);
 }
 
 .dashboard__content {
@@ -96,7 +97,7 @@ const navTiles = [
   display: flex;
   padding-top: 192px;
   flex-direction: column;
-  gap: var(--space-xl);
+  gap: var(--space-m);
 
   @media screen and (max-width: $breakpoint-m) {
     // note (dolanske): after adding the tabs, I just eyeballed the spacing

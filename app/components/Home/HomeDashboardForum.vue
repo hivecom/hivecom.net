@@ -3,7 +3,7 @@ import type { NotificationRow } from '@/composables/useDataNotifications'
 import type { SubscriptionRow } from '@/composables/useDiscussionSubscriptionsCache'
 import type { ActivityItem } from '@/composables/useForumActivityFeed'
 import type { Database } from '@/types/database.types'
-import { Flex, Skeleton } from '@dolanske/vui'
+import { Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
@@ -59,14 +59,14 @@ watch(userId, async (uid) => {
     .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug, profile_id, event_id, gameserver_id, project_id, referendum_id, theme_id)')
     .eq('user_id', uid)
     .order('last_seen_at', { ascending: false })
-    .limit(6)
+    .limit(4)
   subscriptions.value = (data ?? []) as unknown as SubscriptionRow[]
 }, { immediate: true })
 
 // Latest activity across the whole forum.
 const {
   items: latestItems,
-  loading: latestLoading,
+  // loading: latestLoading,
   mentionLookup: latestMentionLookup,
 } = useForumFeedPreview({
   limit: PREVIEW_LIMIT,
@@ -76,8 +76,8 @@ const {
 
 <template>
   <Flex column gap="m">
-    <HomeDashboardSection label="Activity on your posts">
-      <Flex v-if="myActivity.length" column gap="xs">
+    <HomeDashboardSection v-if="myActivity.length" label="Activity on your posts">
+      <Flex column gap="xs">
         <HomeForumItem
           v-for="item in myActivity"
           :key="item.id"
@@ -86,13 +86,10 @@ const {
           expand
         />
       </Flex>
-      <p v-else>
-        Nothing new on your posts.
-      </p>
     </HomeDashboardSection>
 
-    <HomeDashboardSection label="Your subscriptions">
-      <div v-if="subscriptions.length" class="home-item-list">
+    <HomeDashboardSection v-if="subscriptions.length" label="Your subscriptions">
+      <div class="home-item-list">
         <NuxtLink v-for="sub in subscriptions" :key="sub.id" :to="`/forum/${sub.discussion?.slug ?? sub.discussion_id}`" class="home-item">
           <strong>
             {{ sub.discussion?.title ?? sub.discussion_id }}
@@ -100,16 +97,10 @@ const {
           <span>updated {{ dayjs(sub.last_seen_at).fromNow() }}</span>
         </NuxtLink>
       </div>
-      <p v-else>
-        No subscriptions.
-      </p>
     </HomeDashboardSection>
 
-    <HomeDashboardSection label="Latest across the forum">
-      <Flex v-if="latestLoading" column gap="xs">
-        <Skeleton v-for="i in PREVIEW_LIMIT" :key="i" width="100%" height="56px" />
-      </Flex>
-      <Flex v-else-if="latestItems.length" column gap="xs">
+    <HomeDashboardSection v-if="latestItems.length" label="Latest across the forum">
+      <Flex column gap="xs">
         <HomeForumItem
           v-for="item in latestItems"
           :key="item.id"
@@ -118,9 +109,6 @@ const {
           expand
         />
       </Flex>
-      <p v-else>
-        No forum activity.
-      </p>
     </HomeDashboardSection>
   </Flex>
 </template>

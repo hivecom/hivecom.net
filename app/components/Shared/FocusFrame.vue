@@ -282,8 +282,8 @@ onBeforeUnmount(() => {
 
 .focus-frame__corner {
   position: absolute;
-  width: 28px;
-  height: 28px;
+  width: 18px;
+  height: 18px;
   border-color: currentColor;
   border-style: solid;
 

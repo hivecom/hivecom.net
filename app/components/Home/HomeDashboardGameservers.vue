@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { Flex } from '@dolanske/vui'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
 import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
+import { isNil } from '@/lib/utils/common'
 import { metricsPlayerCount } from '@/types/metrics'
+import RegionIndicator from '../Shared/RegionIndicator.vue'
 
 // Raw data pass for the Gameservers card: every server with its live player
 // count, busiest first. Graph material can come from
@@ -21,6 +24,8 @@ const serversWithPlayers = computed(() => {
   return gameservers.value
     .map(gs => ({ gs, players: metricsPlayerCount(byServer[String(gs.id)]) }))
     .sort((a, b) => (b.players ?? -1) - (a.players ?? -1))
+    .filter(item => !isNil(item.players))
+    .slice(0, 12)
 })
 
 const totalPlayers = computed(() => metrics.value?.gameservers.players ?? null)
@@ -32,19 +37,18 @@ const totalPlayers = computed(() => metrics.value?.gameservers.players ?? null)
       <p>{{ totalPlayers ?? 'no snapshot yet' }}</p>
     </HomeDashboardSection>
 
-    <HomeDashboardSection label="Servers, busiest first">
-      <ul v-if="serversWithPlayers.length">
-        <li v-for="{ gs, players } in serversWithPlayers" :key="gs.id">
-          <NuxtLink :to="`/servers/gameservers/${gs.id}`">
+    <HomeDashboardSection v-if="serversWithPlayers.length" label="Servers, busiest first">
+      <!-- <div class="home-item-list"> -->
+      <Flex column gap="xs">
+        <NuxtLink v-for="{ gs, players } in serversWithPlayers" :key="gs.id" :to="`/servers/gameservers/${gs.id}`" class="home-item inline">
+          <strong>
+            <RegionIndicator v-if="gs.region" class="mr-xxs" :region="gs.region" size="m" />
             {{ gs.name }}
-          </NuxtLink>
-          <span v-if="gs.region"> [{{ gs.region }}]</span>
-          - {{ players ?? 'no data' }} playing
-        </li>
-      </ul>
-      <p v-else>
-        No gameservers.
-      </p>
+          </strong>
+          <span>{{ players }} player{{ players! === 1 ? '' : 's' }}</span>
+        </NuxtLink>
+      </Flex>
+      <!-- </div> -->
     </HomeDashboardSection>
   </div>
 </template>

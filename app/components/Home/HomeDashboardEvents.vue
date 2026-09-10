@@ -56,22 +56,12 @@ const suggested = computed(() =>
       </p>
     </HomeDashboardSection>
 
-    <HomeDashboardSection label="Friends are going">
-      <template v-if="friendsAttending.length">
-        <EventCompact v-for="{ event } in friendsAttending" :key="event.id" compact :data="event" no-glow />
-      </template>
-      <p v-else>
-        Nothing your friends are on that you're missing.
-      </p>
+    <HomeDashboardSection v-if="friendsAttending.length" label="Friends are going">
+      <EventCompact v-for="{ event } in friendsAttending" :key="event.id" compact :data="event" no-glow />
     </HomeDashboardSection>
 
-    <HomeDashboardSection label="You could join these">
-      <template v-if="suggested.length">
-        <EventCompact v-for="event in suggested" :key="event.id" :data="event" no-glow />
-      </template>
-      <p v-else>
-        No other upcoming events.
-      </p>
+    <HomeDashboardSection v-if="suggested.length" label="You could join these">
+      <EventCompact v-for="event in suggested" :key="event.id" :data="event" no-glow />
     </HomeDashboardSection>
   </Flex>
 </template>
