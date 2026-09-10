@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import type { AtypeName } from '@/lib/atype.generated'
 import type { Tables } from '@/types/database.types'
 import { Marquee } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import EventSmall from '@/components/Events/EventSmall.vue'
 import LandingHero from '@/components/Landing/LandingHero.vue'
 import LandingSun from '@/components/Landing/LandingSun.vue'
+import AtypeText from '@/components/Shared/AtypeText.vue'
+import FocusFrame from '@/components/Shared/FocusFrame.vue'
+import FocusTarget from '@/components/Shared/FocusTarget.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 
@@ -44,14 +48,21 @@ onBeforeMount(() => {
 
 // About card flips between the "about us" story and our mantra. Clicking the
 // barcode glitch-swaps the copy in place, same letter-jitter feel as LandingMotd.
-const BAR_ABOUT = '1011010011101011010100110101101011010010'
-const BAR_MANTRA = '1101001101011001011010011010110100110101'
+// The corners and barcode are pre-rendered hidden messages from app/lib/atype.generated.ts.
+interface AboutSide {
+  corner: AtypeName
+  cornerRight: AtypeName
+  heading: string
+  barcode: AtypeName
+  lines: { text: string, strong?: boolean }[]
+}
 
-const SIDES = [
+const SIDES: AboutSide[] = [
   {
-    corner: '##########',
+    corner: 'cornerAbout',
+    cornerRight: 'cornerRightAbout',
     heading: 'About us',
-    barcode: BAR_ABOUT,
+    barcode: 'barcodeAbout',
     lines: [
       { text: 'Hivecom started back in 2013 as a few friends who just wanted a reliable place to hang out and talk.' },
       { text: 'We ran our first server on an in-home Raspberry Pi. The growing demand for a better connection and 24/7 uptime pushed us onto a dedicated server, and eventually onto infrastructure we run and manage entirely ourselves.' },
@@ -60,9 +71,10 @@ const SIDES = [
     ],
   },
   {
-    corner: '//////////',
+    corner: 'cornerMantra',
+    cornerRight: 'cornerRightMantra',
     heading: 'Our mantra',
-    barcode: BAR_MANTRA,
+    barcode: 'barcodeMantra',
     lines: [
       { text: 'We run on a non-profit basis. Every donation goes back into server hosting and our projects, nothing else.' },
       { text: 'We aim to know as little about you as possible, and we will never sell out to a larger entity that would change that.' },
@@ -79,26 +91,6 @@ const isAbout = computed(() => sideIndex.value === 0)
 
 const ABOUT_OUT_MS = 260
 const ABOUT_IN_MS = 320
-
-// Runs of set bits become bars, so the pattern string maps straight to an SVG.
-const barcodeBars = computed(() => {
-  const pattern = side.value.barcode
-  const bars: { x: number, w: number }[] = []
-  let x = 0
-  while (x < pattern.length) {
-    if (pattern[x] === '1') {
-      let w = 1
-      while (pattern[x + w] === '1')
-        w++
-      bars.push({ x, w })
-      x += w
-    }
-    else {
-      x++
-    }
-  }
-  return bars
-})
 
 let aboutBusy = false
 
@@ -158,151 +150,172 @@ const MOBILE_STARS = [
 
 <template>
   <div class="home-page">
-    <LandingHero />
+    <!-- Corner brackets that start in the corners of the hero, settle on each
+         big tile as it scrolls into view or gets hovered, and stay parked on
+         the join block at the end. -->
+    <FocusFrame>
+      <!-- The hero fills the viewport, so the brackets pull inside it, and
+           further at the top to clear the fixed nav (64px). -->
+      <FocusTarget :padding="-24" :padding-top="-88" no-hover>
+        <LandingHero />
+      </FocusTarget>
 
-    <GlowGroup>
-      <div class="container-m">
-        <section id="hero" class="hero">
-          <GlowCard class="glow-card-home">
-            <div class="home-card centered home-card--about typeset ">
-              <span class="corner-text">{{ side.corner }}</span>
-              <span class="corner-text right">DLN // ZLS</span>
-
-              <!-- Both sides are always rendered and stacked in one grid cell, so the
-                   card is always as tall as the taller side and the layout never shifts. -->
-              <div class="about-stack">
-                <div
-                  v-for="(entry, entryIndex) in SIDES"
-                  :key="entryIndex"
-                  class="about-swap"
-                  :class="{
-                    'about-swap--active': entryIndex === sideIndex,
-                    'about-swap--out': entryIndex === sideIndex && aboutPhase === 'out',
-                    'about-swap--in': entryIndex === sideIndex && aboutPhase === 'in',
-                  }"
-                  :aria-hidden="entryIndex !== sideIndex"
-                >
-                  <h2>{{ entry.heading }}</h2>
-                  <p v-for="(line, index) in entry.lines" :key="index">
-                    <b v-if="line.strong">{{ line.text }}</b>
-                    <template v-else>
-                      {{ line.text }}
-                    </template>
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                class="about-barcode"
-                :aria-label="isAbout ? 'Show our mantra' : 'Show about us'"
-                @click="toggleSide"
-              >
-                <svg :viewBox="`0 0 ${side.barcode.length} 12`" :width="side.barcode.length" height="12" aria-hidden="true">
-                  <rect v-for="bar in barcodeBars" :key="bar.x" :x="bar.x" y="0" :width="bar.w" height="12" />
-                </svg>
-              </button>
-            </div>
-          </GlowCard>
-        </section>
-      </div>
-
-      <div class="container-m ">
-        <section class="home-events">
-          <EventSmall v-for="event in events" :key="event.id" :data="event" :no-glow="false" class="glow-card-home" />
-          <div class="card-pointer top-right" data-text="Upcoming events" />
-          <div class="card-pointer bottom-left" data-text="What we're up to" />
-        </section>
-      </div>
-
-      <section class="">
+      <GlowGroup>
         <div class="container-m">
-          <div class="relative">
-            <GlowCard class="glow-card-home">
-              <div class="home-card home-card--forum">
-                <Marquee :speed="MARQUEE_SPEED" direction="left">
-                  <p>
-                    <NuxtLink to="/forum">
-                      LATEST FORUM POSTS LATEST FORUM POSTS LATEST FORUM POSTS
-                    </NuxtLink>
-                  </p>
-                </Marquee>
-                <Marquee
-                  v-for="(item, index) in maruqeeItems" :key="item.id" :speed="MARQUEE_SPEED"
-                  :direction="index % 2 === 0 ? 'right' : 'left'"
-                >
-                  <p>
-                    <NuxtLink :to="`/forum/${item.id}`">
-                      {{ item.title }}{{ item.description ? `: ${item.description}` : '' }}
-                    </NuxtLink>
-                  </p>
-                </Marquee>
-              </div>
-            </GlowCard>
-            <div class="card-pointer bottom-right" data-text="Forum" />
-          </div>
+          <section id="hero" class="hero">
+            <FocusTarget>
+              <GlowCard class="glow-card-home">
+                <div class="home-card centered home-card--about typeset" @click="toggleSide">
+                  <span class="corner-text"><AtypeText :name="side.corner" :height="9" /></span>
+                  <span class="corner-text right"><AtypeText :name="side.cornerRight" :height="9" /></span>
+
+                  <!-- Both sides are always rendered and stacked in one grid cell, so the
+                       card is always as tall as the taller side and the layout never shifts. -->
+                  <div class="about-stack">
+                    <div
+                      v-for="(entry, entryIndex) in SIDES"
+                      :key="entryIndex"
+                      class="about-swap"
+                      :class="{
+                        'about-swap--active': entryIndex === sideIndex,
+                        'about-swap--out': entryIndex === sideIndex && aboutPhase === 'out',
+                        'about-swap--in': entryIndex === sideIndex && aboutPhase === 'in',
+                      }"
+                      :aria-hidden="entryIndex !== sideIndex"
+                    >
+                      <h2>{{ entry.heading }}</h2>
+                      <p v-for="(line, index) in entry.lines" :key="index">
+                        <b v-if="line.strong">{{ line.text }}</b>
+                        <template v-else>
+                          {{ line.text }}
+                        </template>
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- The whole card flips on click. The barcode stays a button so keyboard
+                       and screen reader users get a focusable target. Its click bubbles up
+                       to the card, so it has no handler of its own. -->
+                  <button
+                    type="button"
+                    class="about-barcode"
+                    :aria-label="isAbout ? 'Show our mantra' : 'Show about us'"
+                  >
+                    <AtypeText :name="side.barcode" :height="32" />
+                  </button>
+                </div>
+              </GlowCard>
+            </FocusTarget>
+          </section>
         </div>
-      </section>
-    </GlowGroup>
-    <div class="home-join">
-      <LandingSun class="home-join__sun" />
-      <div class="container-s">
-        <h2>Join us</h2>
-        <p>
-          Join us but also dont have to but it’d be cool if you did just thinkig about it, ok i'll sit down for a sec don't
-          let me disturb you just ponder on it for a second.
-        </p>
-        <NuxtLink to="/auth/sign-up" class="join-button">
-          Sign Up
-        </NuxtLink>
 
-        <p>Or you can visit...</p>
+        <div class="container-m ">
+          <FocusTarget>
+            <section class="home-events">
+              <EventSmall v-for="event in events" :key="event.id" :data="event" :no-glow="false" class="glow-card-home" />
+              <div class="card-pointer top-right" data-text="Upcoming events">
+                <AtypeText name="guideEvents" :height="12" />
+              </div>
+              <div class="card-pointer bottom-left" data-text="What we're up to">
+                <AtypeText name="guideActivity" :height="12" />
+              </div>
+            </section>
+          </FocusTarget>
+        </div>
+
+        <section class="">
+          <div class="container-m">
+            <div class="relative">
+              <FocusTarget>
+                <GlowCard class="glow-card-home">
+                  <div class="home-card home-card--forum">
+                    <Marquee :speed="MARQUEE_SPEED" direction="left">
+                      <p>
+                        <NuxtLink to="/forum">
+                          LATEST FORUM POSTS LATEST FORUM POSTS LATEST FORUM POSTS
+                        </NuxtLink>
+                      </p>
+                    </Marquee>
+                    <Marquee
+                      v-for="(item, index) in maruqeeItems" :key="item.id" :speed="MARQUEE_SPEED"
+                      :direction="index % 2 === 0 ? 'right' : 'left'"
+                    >
+                      <p>
+                        <NuxtLink :to="`/forum/${item.id}`">
+                          {{ item.title }}{{ item.description ? `: ${item.description}` : '' }}
+                        </NuxtLink>
+                      </p>
+                    </Marquee>
+                  </div>
+                </GlowCard>
+              </FocusTarget>
+              <div class="card-pointer bottom-right" data-text="Forum">
+                <AtypeText name="guideForum" :height="12" />
+              </div>
+            </div>
+          </div>
+        </section>
+      </GlowGroup>
+      <div class="home-join">
+        <LandingSun class="home-join__sun" />
+        <FocusTarget class="container-s">
+          <h2>Join us</h2>
+          <p>
+            Join us but also dont have to but it’d be cool if you did just thinkig about it, ok i'll sit down for a sec don't
+            let me disturb you just ponder on it for a second.
+          </p>
+          <NuxtLink to="/auth/sign-up" class="join-button">
+            Sign Up
+          </NuxtLink>
+
+          <p>Or you can visit...</p>
+        </FocusTarget>
+
+        <div class="constellation">
+          <a v-for="link in constants.LINKS" :key="link.name" target="_blank" rel="noreferer noopener" :href="link.url">
+            {{ link.name }}
+          </a>
+
+          <svg class="desktop-constellation" width="857" height="112" viewBox="0 0 857 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M34.624 100.214L237.624 66.214M274.707 61.7071L456.707 53.2192M498.707 50.2071L669.207 11.2955M710.99 11.2955L829.707 83.7071M0.707031 102.192L9.19231 93.7071L17.6776 102.192L9.19231 110.678L0.707031 102.192ZM838.707 92.1924L847.192 83.7071L855.678 92.1924L847.192 100.678L838.707 92.1924ZM247.707 63.1924L256.192 54.7071L264.678 63.1924L256.192 71.6777L247.707 63.1924ZM684.707 9.19239L693.192 0.707108L701.678 9.19239L693.192 17.6777L684.707 9.19239ZM468.707 52.1924L477.192 43.7071L485.678 52.1924L477.192 60.6777L468.707 52.1924Z" stroke="white" stroke-opacity="0.25" stroke-dasharray="2 2" />
+            <defs>
+              <radialGradient id="constellation-glow-desktop">
+                <stop class="flare-glow-hot" offset="0%" stop-opacity="0.9" />
+                <stop offset="30%" stop-opacity="0.4" />
+                <stop offset="100%" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <g v-for="([x, y], index) in DESKTOP_STARS" :key="index" class="constellation-flare" :data-flare="index + 1" :transform="`translate(${x} ${y})`">
+              <circle class="flare-glow" r="20" fill="url(#constellation-glow-desktop)" />
+              <path class="flare-sparkle" d="M9 -9L2 0L9 9L0 2L-9 9L-2 0L-9 -9L0 -2Z" />
+              <path class="flare-streak" d="M0 -16L1.5 -1.5L44 0L1.5 1.5L0 16L-1.5 1.5L-44 0L-1.5 -1.5Z" />
+              <path class="flare-streak-hot" d="M0 -9L1 -1L30 0L1 1L0 9L-1 1L-30 0L-1 -1Z" />
+              <path class="flare-core" d="M0 -8.485L8.485 0L0 8.485L-8.485 0Z" />
+              <path class="flare-core-hot" d="M0 -4L4 0L0 4L-4 0Z" />
+            </g>
+          </svg>
+
+          <svg class="mobile-constellation" width="265" height="339" viewBox="0 0 265 339" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M29.707 86.707L11.707 26.707M83.707 162.707L49.707 120.707M153.707 211.707L112.707 187.707M242.707 314.707L183.707 236.707M0.707031 9.19231L9.19231 0.707031L17.6776 9.19231L9.19231 17.6776L0.707031 9.19231ZM29.707 106.192L38.1923 97.707L46.6776 106.192L38.1923 114.678L29.707 106.192ZM87.707 176.192L96.1923 167.707L104.678 176.192L96.1923 184.678L87.707 176.192ZM160.707 222.192L169.192 213.707L177.678 222.192L169.192 230.678L160.707 222.192ZM246.707 329.192L255.192 320.707L263.678 329.192L255.192 337.678L246.707 329.192Z" stroke="white" stroke-opacity="0.5" stroke-dasharray="2 2" />
+            <defs>
+              <radialGradient id="constellation-glow-mobile">
+                <stop class="flare-glow-hot" offset="0%" stop-opacity="0.9" />
+                <stop offset="30%" stop-opacity="0.4" />
+                <stop offset="100%" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <g v-for="([x, y], index) in MOBILE_STARS" :key="index" class="constellation-flare" :data-flare="index + 1" :transform="`translate(${x} ${y})`">
+              <circle class="flare-glow" r="20" fill="url(#constellation-glow-mobile)" />
+              <path class="flare-sparkle" d="M9 -9L2 0L9 9L0 2L-9 9L-2 0L-9 -9L0 -2Z" />
+              <path class="flare-streak" d="M0 -16L1.5 -1.5L44 0L1.5 1.5L0 16L-1.5 1.5L-44 0L-1.5 -1.5Z" />
+              <path class="flare-streak-hot" d="M0 -9L1 -1L30 0L1 1L0 9L-1 1L-30 0L-1 -1Z" />
+              <path class="flare-core" d="M0 -8.485L8.485 0L0 8.485L-8.485 0Z" />
+              <path class="flare-core-hot" d="M0 -4L4 0L0 4L-4 0Z" />
+            </g>
+          </svg>
+        </div>
       </div>
-
-      <div class="constellation">
-        <a v-for="link in constants.LINKS" :key="link.name" target="_blank" rel="noreferer noopener" :href="link.url">
-          {{ link.name }}
-        </a>
-
-        <svg class="desktop-constellation" width="857" height="112" viewBox="0 0 857 112" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M34.624 100.214L237.624 66.214M274.707 61.7071L456.707 53.2192M498.707 50.2071L669.207 11.2955M710.99 11.2955L829.707 83.7071M0.707031 102.192L9.19231 93.7071L17.6776 102.192L9.19231 110.678L0.707031 102.192ZM838.707 92.1924L847.192 83.7071L855.678 92.1924L847.192 100.678L838.707 92.1924ZM247.707 63.1924L256.192 54.7071L264.678 63.1924L256.192 71.6777L247.707 63.1924ZM684.707 9.19239L693.192 0.707108L701.678 9.19239L693.192 17.6777L684.707 9.19239ZM468.707 52.1924L477.192 43.7071L485.678 52.1924L477.192 60.6777L468.707 52.1924Z" stroke="white" stroke-opacity="0.25" stroke-dasharray="2 2" />
-          <defs>
-            <radialGradient id="constellation-glow-desktop">
-              <stop class="flare-glow-hot" offset="0%" stop-opacity="0.9" />
-              <stop offset="30%" stop-opacity="0.4" />
-              <stop offset="100%" stop-opacity="0" />
-            </radialGradient>
-          </defs>
-          <g v-for="([x, y], index) in DESKTOP_STARS" :key="index" class="constellation-flare" :data-flare="index + 1" :transform="`translate(${x} ${y})`">
-            <circle class="flare-glow" r="20" fill="url(#constellation-glow-desktop)" />
-            <path class="flare-sparkle" d="M9 -9L2 0L9 9L0 2L-9 9L-2 0L-9 -9L0 -2Z" />
-            <path class="flare-streak" d="M0 -16L1.5 -1.5L44 0L1.5 1.5L0 16L-1.5 1.5L-44 0L-1.5 -1.5Z" />
-            <path class="flare-streak-hot" d="M0 -9L1 -1L30 0L1 1L0 9L-1 1L-30 0L-1 -1Z" />
-            <path class="flare-core" d="M0 -8.485L8.485 0L0 8.485L-8.485 0Z" />
-            <path class="flare-core-hot" d="M0 -4L4 0L0 4L-4 0Z" />
-          </g>
-        </svg>
-
-        <svg class="mobile-constellation" width="265" height="339" viewBox="0 0 265 339" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M29.707 86.707L11.707 26.707M83.707 162.707L49.707 120.707M153.707 211.707L112.707 187.707M242.707 314.707L183.707 236.707M0.707031 9.19231L9.19231 0.707031L17.6776 9.19231L9.19231 17.6776L0.707031 9.19231ZM29.707 106.192L38.1923 97.707L46.6776 106.192L38.1923 114.678L29.707 106.192ZM87.707 176.192L96.1923 167.707L104.678 176.192L96.1923 184.678L87.707 176.192ZM160.707 222.192L169.192 213.707L177.678 222.192L169.192 230.678L160.707 222.192ZM246.707 329.192L255.192 320.707L263.678 329.192L255.192 337.678L246.707 329.192Z" stroke="white" stroke-opacity="0.5" stroke-dasharray="2 2" />
-          <defs>
-            <radialGradient id="constellation-glow-mobile">
-              <stop class="flare-glow-hot" offset="0%" stop-opacity="0.9" />
-              <stop offset="30%" stop-opacity="0.4" />
-              <stop offset="100%" stop-opacity="0" />
-            </radialGradient>
-          </defs>
-          <g v-for="([x, y], index) in MOBILE_STARS" :key="index" class="constellation-flare" :data-flare="index + 1" :transform="`translate(${x} ${y})`">
-            <circle class="flare-glow" r="20" fill="url(#constellation-glow-mobile)" />
-            <path class="flare-sparkle" d="M9 -9L2 0L9 9L0 2L-9 9L-2 0L-9 -9L0 -2Z" />
-            <path class="flare-streak" d="M0 -16L1.5 -1.5L44 0L1.5 1.5L0 16L-1.5 1.5L-44 0L-1.5 -1.5Z" />
-            <path class="flare-streak-hot" d="M0 -9L1 -1L30 0L1 1L0 9L-1 1L-30 0L-1 -1Z" />
-            <path class="flare-core" d="M0 -8.485L8.485 0L0 8.485L-8.485 0Z" />
-            <path class="flare-core-hot" d="M0 -4L4 0L0 4L-4 0Z" />
-          </g>
-        </svg>
-      </div>
-    </div>
+    </FocusFrame>
   </div>
 </template>
 
@@ -346,6 +359,12 @@ const MOBILE_STARS = [
     height: 16px;
   }
 
+  // Atype strip that rides the horizontal run of the pointer line.
+  .atype-text {
+    position: absolute;
+    color: var(--color-text-lightest);
+  }
+
   &.top-right {
     left: 100%;
     bottom: 100%;
@@ -355,6 +374,11 @@ const MOBILE_STARS = [
       right: 0;
       transform: translateX(100%) translateY(50%) rotate(90deg);
       top: 16px;
+    }
+
+    .atype-text {
+      top: 12px;
+      left: 96px;
     }
   }
 
@@ -372,6 +396,11 @@ const MOBILE_STARS = [
       transform: translateX(14px) rotate(-90deg);
       bottom: 24px;
     }
+
+    .atype-text {
+      bottom: 12px;
+      left: 24px;
+    }
   }
 
   &.bottom-right {
@@ -387,6 +416,11 @@ const MOBILE_STARS = [
       right: 0;
       transform: translateX(-14px) rotate(90deg);
       bottom: 24px;
+    }
+
+    .atype-text {
+      bottom: 12px;
+      left: 96px;
     }
   }
 }
@@ -777,9 +811,13 @@ const MOBILE_STARS = [
   padding-top: 96px;
   padding-bottom: 128px;
   position: relative;
+  // Clicking anywhere on the card flips it.
+  cursor: pointer;
 
   @media screen and (max-width: $breakpoint-m) {
-    padding: 64px 32px;
+    // Bottom stays clear of the barcode, which sits 24px up and is 48px tall
+    // including its padding.
+    padding: 64px 32px 104px;
   }
 
   .corner-text {
@@ -811,15 +849,11 @@ const MOBILE_STARS = [
     border: none;
     cursor: pointer;
     line-height: 0;
-    color: var(--color-accent);
-    transition: opacity var(--transition-fast);
+    color: var(--color-text-lightest);
 
-    rect {
-      fill: currentColor;
-    }
-
-    &:hover {
-      opacity: 0.7;
+    // The barcode is drawn one module per px, keep the edges from smearing.
+    .atype-text {
+      shape-rendering: crispEdges;
     }
 
     &:focus-visible {
