@@ -30,9 +30,11 @@ const variant = computed(() => {
 })
 
 const iconSize = computed(() => props.size === 's' ? '8' : '12')
-const displayLabel = computed(() => props.singular && props.count === 1 ? props.singular : props.label)
+// A null count means no data yet, which reads the same as zero on a badge.
+const shownCount = computed(() => props.count ?? 0)
+const displayLabel = computed(() => props.singular && shownCount.value === 1 ? props.singular : props.label)
 const text = computed(() => {
-  const base = displayLabel.value ? `${props.count} ${displayLabel.value}` : `${props.count}`
+  const base = displayLabel.value ? `${shownCount.value} ${displayLabel.value}` : `${shownCount.value}`
   return props.suffix ? `${base} / ${props.suffix}` : base
 })
 </script>
