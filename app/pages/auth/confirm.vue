@@ -23,6 +23,15 @@ const error = ref('')
 // When a sign-in/sign-up link is invalid or expired, we surface a recovery form
 // instead of leaving the user stuck waiting for an auth event that never fires.
 const linkExpired = ref(false)
+const LINK_EXPIRED = {
+  title: 'Your link expired',
+  message: 'This sign-in link is invalid or has expired. Enter your email below and we\'ll send you a new one.',
+}
+const LINK_WRONG_BROWSER = {
+  title: 'This link can\'t be used here',
+  message: 'Sign-in links only work in the browser where you requested them. Enter your email below and we\'ll send a new one you can open in this browser.',
+}
+const linkRecovery = ref(LINK_EXPIRED)
 const resendEmail = ref('')
 const resendLoading = ref(false)
 const resendSent = ref(false)
@@ -382,6 +391,18 @@ const hasAuthParams = computed(() => {
   return hash && (hash.includes('access_token') || hash.includes('error'))
 })
 
+// PKCE links land here as ?code=... and supabase-js only exchanges the code on
+// init when it finds the matching verifier in this browser's cookies. If the
+// link was opened elsewhere, or a newer link replaced the verifier, the code is
+// silently ignored and we'd otherwise report a generic missing-session error.
+const pkceCode = computed(() => (typeof route.query.code === 'string' ? route.query.code : null))
+
+function showLinkRecovery(recovery: typeof LINK_EXPIRED) {
+  linkRecovery.value = recovery
+  linkExpired.value = true
+  loading.value = false
+}
+
 interface AuthLinkError {
   code: string
   description: string
@@ -479,7 +500,16 @@ async function handleEmailConfirmation() {
       throw authError
 
     if (!data.session) {
-      if (hasAuthParams.value) {
+      if (pkceCode.value) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(pkceCode.value)
+        if (exchangeError) {
+          console.warn('PKCE code exchange failed:', exchangeError)
+          showLinkRecovery(LINK_WRONG_BROWSER)
+          return
+        }
+        await checkUsernameStatus()
+      }
+      else if (hasAuthParams.value) {
         const { data: authData } = await supabase.auth.onAuthStateChange((event, session) => {
           if (event === 'SIGNED_IN' && session)
             checkUsernameStatus()
@@ -621,8 +651,7 @@ onMounted(() => {
   // request a fresh link straight away.
   const linkError = parseAuthLinkError()
   if (linkError) {
-    loading.value = false
-    linkExpired.value = true
+    showLinkRecovery(LINK_EXPIRED)
     return
   }
 
@@ -689,13 +718,13 @@ onMounted(() => {
     <MetaballContainer v-else-if="linkExpired" :width="metaballWidth" :height="metaballHeight" min-height="520px" :absolute="isBelowS">
       <Card class="auth-confirm-card text-center" separators>
         <template #header>
-          <h4>Your link expired</h4>
+          <h4>{{ linkRecovery.title }}</h4>
         </template>
         <div class="auth-confirm-content">
           <div class="auth-confirm-state">
             <Icon name="ph:link-break" size="48" class="mb-s" />
             <p>
-              This sign-in link is invalid or has expired. Enter your email below and we'll send you a new one.
+              {{ linkRecovery.message }}
             </p>
             <Flex x-center column gap="l" class="w-100 mt-l" style="max-width: 320px;">
               <Input v-model="resendEmail" expand label="Email" type="email" placeholder="user@example.com">
