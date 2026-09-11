@@ -21,7 +21,7 @@ const isUpcoming = computed(() => {
 })
 
 const user = useSupabaseUser()
-const { hasEventEnded } = useEventTiming(() => props.data)
+const { hasEventEnded, isOngoing } = useEventTiming(() => props.data)
 const userIds = ref<string[]>([])
 const rsvpCount = ref(0)
 const loadingRsvps = ref(false)
@@ -68,10 +68,16 @@ const linkedGames = computed(() => {
 <template>
   <NuxtLink :to="`/events/${props.data.id}`" :draggable="false">
     <GlowCard>
-      <Card class="event-small" :class="{ upcoming: isUpcoming }">
+      <Card
+        class="event-small"
+        :class="{
+          upcoming: isUpcoming,
+          ongoing: isOngoing,
+        }"
+      >
         <Flex x-between y-center class="mb-m">
           <span class="event-date">
-            {{ fromNow(props.data.date) }}
+            {{ isOngoing ? 'Ongoing' : fromNow(props.data.date) }}
           </span>
           <Badge v-if="user" :variant="props.data.is_official ? 'accent' : 'neutral'">
             {{ props.data.is_official ? 'Official' : 'Community' }}
@@ -121,7 +127,8 @@ const linkedGames = computed(() => {
     }
   }
 
-  &.upcoming {
+  &.upcoming,
+  &.ongoing {
     .event-date {
       color: var(--color-accent);
     }
