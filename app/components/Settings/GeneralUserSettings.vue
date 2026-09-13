@@ -5,6 +5,8 @@ import ReactionsEditor from '@/components/Reactions/ReactionsEditor.vue'
 import SoundChoicePicker from '@/components/Shared/SoundChoicePicker.vue'
 import { DEFAULT_QUICK_REACTIONS } from '@/composables/useDataUserSettings'
 import { usePushNotifications } from '@/composables/usePushNotifications'
+import { usePwa } from '@/composables/usePwa'
+import { usePwaStartPage } from '@/composables/usePwaStartPage'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { NONE_SOUND_ID } from '@/lib/notificationSound'
 
@@ -40,6 +42,24 @@ const selectedVariantWithTransition = computed({
     variantPendingOrigin = undefined
     if (value[0])
       void transitionTheme(() => setVariant(value[0]!.value), origin)
+  },
+})
+
+// Installed-app launch page. Device-local, so the control only appears when
+// we're actually running as the installed app - setting it from a browser tab
+// wouldn't carry over to the home-screen app on iOS.
+const { isStandalone } = usePwa()
+const { startPage, setStartPage, destinations } = usePwaStartPage()
+
+const startPageOptions = destinations.map(({ label, path }) => ({ label, value: path }))
+
+const startPageModel = computed({
+  get() {
+    const selection = startPageOptions.find(option => option.value === startPage.value)
+    return selection ? [selection] : []
+  },
+  set(value) {
+    setStartPage(value[0]?.value ?? '/')
   },
 })
 
@@ -122,6 +142,22 @@ const MAX_QUICK_REACTIONS = 10
         :defaults="DEFAULT_QUICK_REACTIONS"
       />
     </Flex>
+
+    <template v-if="isStandalone">
+      <Divider class="my-l" />
+
+      <Flex y-center gap="xs" class="text-color-lighter mb-m">
+        <Icon name="ph:device-mobile" size="16" />
+        <strong class="text-s">Installed app</strong>
+      </Flex>
+      <Flex x-between y-center gap="m">
+        <Flex column gap="xxs">
+          <span class="text-m">Launch page</span>
+          <span class="text-xs text-color-lighter">Where Hivecom opens when you launch it from your home screen or app list. Saved on this device only.</span>
+        </Flex>
+        <Select v-model="startPageModel" :show-clear="false" :options="startPageOptions" size="s" single />
+      </Flex>
+    </template>
 
     <Divider class="my-l" />
 

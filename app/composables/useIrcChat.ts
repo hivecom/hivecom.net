@@ -173,6 +173,16 @@ export interface ChatMessage {
   edited?: boolean
   /** When set, this message was relayed by a bridge bot; value is the real bot nick. */
   relayedBy?: string
+  /**
+   * Local-only: we've shown this message optimistically and are waiting for the
+   * server to echo it back (echo-message). Renders dimmed until it lands.
+   */
+  pending?: boolean
+  /**
+   * Local-only: the echo never arrived (socket died or the wait timed out), so
+   * the message most likely never made it to the server.
+   */
+  failed?: boolean
 }
 
 export type BufferKind = 'server' | 'channel' | 'pm'
@@ -651,6 +661,36 @@ const relaySeparator = ref<string | null>(null)
 // to create the browser push subscription for draft/webpush. Null until 005 lands.
 const vapidKey = ref<string | null>(null)
 let echoMessageActive = false
+/**
+ * What it takes to put an outgoing message on the wire again. Recorded when the
+ * message is sent and kept until the server confirms it, so a send that failed
+ * can be resent with its original target and reply context intact.
+ *
+ * Deliberately never flushed automatically on reconnect: a queue that empties
+ * itself would post messages the user has since thought better of, into a room
+ * they may no longer be in. Resending is always an explicit action.
+ */
+interface OutboxEntry {
+  /** Buffer the message was sent to, and the kind needed to re-open it. */
+  target: string
+  kind: BufferKind
+  /** Wire text as it went out, markdown already converted to IRC codes. */
+  text: string
+  /** True for a CTCP ACTION (/me). */
+  action: boolean
+  /** msgid this send was replying to, if any. */
+  replyTo?: string
+  /** Gives up on the echo and flags the line as undelivered. Cleared once settled. */
+  timer?: ReturnType<typeof setTimeout>
+}
+// Outgoing messages not yet confirmed by the server, keyed by the local message id
+// of the line showing them. Entries are dropped when the echo lands, and kept for
+// failed sends so the user can resend or discard them.
+const outbox = new Map<number, OutboxEntry>()
+// How long we wait for the echo before flagging the line as undelivered.
+const PENDING_ECHO_TIMEOUT = 15_000
+// Don't let a replayed message from long ago absorb a stale pending line.
+const PENDING_ECHO_MAX_SKEW = 5 * 60 * 1000
 let probingNickServInfo = false
 // True once the NickServ INFO probe for the current session has resolved (or timed out).
 const accountInfoFetched = ref(false)
@@ -1094,6 +1134,193 @@ function addToActive(msg: Omit<ChatMessage, 'id' | 'ts'>, opts: { ts?: Date } = 
     addToBuffer(name, buf.kind, msg, opts)
   else
     addServer(msg, opts)
+}
+
+/**
+ * Show a message we just sent immediately, before the server has echoed it back,
+ * and record what it would take to send it again. Without this the line only
+ * appears once the echo lands, which reads as the message being swallowed on a
+ * slow connection. The line renders dimmed until reconcileOwnEcho promotes it, or
+ * the timeout flags it as undelivered.
+ *
+ * Deliberately leaner than addToBuffer: our own message never badges, notifies,
+ * or dedups, and it has no msgid yet so there's nothing to cache or to drain
+ * queued reactions against. The cache write happens on reconciliation instead.
+ */
+function addPendingSend(name: string, kind: BufferKind, msg: Omit<ChatMessage, 'id' | 'ts'>): void {
+  const buf = getBuffer(name, kind)
+  const ts = new Date()
+  const id = msgCounter.value++
+  buf.messages.push({ ...msg, id, ts, pending: true })
+  noteSeen(ts.getTime())
+  const timer = setTimeout(() => {
+    const stale = findLocalMessage(name, id)
+    if (stale) {
+      stale.pending = false
+      stale.failed = true
+    }
+    // The entry itself stays: it's what a resend is rebuilt from.
+    const entry = outbox.get(id)
+    if (entry)
+      entry.timer = undefined
+  }, PENDING_ECHO_TIMEOUT)
+  outbox.set(id, {
+    target: name,
+    kind,
+    text: msg.text,
+    action: msg.action === true,
+    replyTo: msg.replyTo,
+    timer,
+  })
+}
+
+/**
+ * Look up a line by local id. Goes through buf.messages so we get the reactive
+ * proxy - mutating the raw object we pushed wouldn't re-render.
+ */
+function findLocalMessage(bufferName: string, id: number): ChatMessage | undefined {
+  return findBuffer(bufferName)?.messages.find(m => m.id === id)
+}
+
+/**
+ * Add our own outgoing message to its buffer. `sent` is whether the line actually
+ * made it onto the socket.
+ *
+ * Without echo-message a successful send is the only confirmation we will ever
+ * get, so the line goes straight in as settled history. Anything that didn't make
+ * it out needs the outbox either way - that's what a resend is rebuilt from.
+ */
+function addOwnMessage(name: string, kind: BufferKind, msg: Omit<ChatMessage, 'id' | 'ts'>, sent: boolean): void {
+  if (echoMessageActive || !sent)
+    addPendingSend(name, kind, msg)
+  else
+    addToBuffer(name, kind, msg)
+}
+
+/** Drop an outbox entry and its timer. */
+function clearOutboxEntry(id: number) {
+  const entry = outbox.get(id)
+  if (entry?.timer != null)
+    clearTimeout(entry.timer)
+  outbox.delete(id)
+}
+
+/**
+ * Take an undelivered line out of the buffer without touching the cache - a line
+ * that never got a msgid was never persisted, so there's nothing to delete.
+ */
+function removeLocalMessage(bufferName: string, id: number) {
+  const buf = findBuffer(bufferName)
+  if (!buf)
+    return
+  const idx = buf.messages.findIndex(m => m.id === id)
+  if (idx !== -1)
+    buf.messages.splice(idx, 1)
+}
+
+/** Whether `message` is an undelivered send the user can resend or discard. */
+function canResend(message: ChatMessage): boolean {
+  return message.failed === true && outbox.has(message.id)
+}
+
+/**
+ * Send an undelivered message again: the old line comes out of the log and the
+ * message goes back out from its outbox entry, so it reappears at the bottom as a
+ * fresh pending line rather than leaving a dead copy behind. Target and reply
+ * context come from the entry, not from the composer, so a resend lands where the
+ * original was aimed even if the user has since switched buffers.
+ */
+function resendMessage(message: ChatMessage) {
+  const entry = outbox.get(message.id)
+  if (!entry || message.failed !== true)
+    return
+  clearOutboxEntry(message.id)
+  removeLocalMessage(entry.target, message.id)
+  deliverWire(entry.target, entry.kind, entry.text, { replyTo: entry.replyTo, action: entry.action })
+}
+
+/** Drop an undelivered message for good: it leaves the log and the outbox. */
+function discardMessage(message: ChatMessage) {
+  const entry = outbox.get(message.id)
+  if (!entry || message.failed !== true)
+    return
+  clearOutboxEntry(message.id)
+  removeLocalMessage(entry.target, message.id)
+}
+
+/**
+ * Normalise text for echo matching. Leading and trailing whitespace on a line
+ * doesn't survive the round trip reliably (a blank line goes out as a single
+ * space), so it can't be part of the comparison.
+ */
+function echoKey(text: string): string {
+  return text.split('\n').map(line => line.trim()).join('\n')
+}
+
+/**
+ * Absorb a self-echoed message into the optimistic line we already showed, so the
+ * echo promotes that line in place instead of appending a duplicate. Matching is
+ * on text + action flag within the target buffer, which also holds for a replayed
+ * copy of a send whose echo we missed across a reconnect.
+ *
+ * Returns true when the echo was absorbed and the caller should not add it again.
+ */
+function reconcileOwnEcho(
+  bufferName: string,
+  text: string,
+  action: boolean,
+  msgid: string | undefined,
+  replyTo: string | undefined,
+  serverTs: Date | undefined,
+): boolean {
+  const buf = findBuffer(bufferName)
+  if (!buf)
+    return false
+  const ts = serverTs ?? new Date()
+  const key = echoKey(text)
+  const match = buf.messages.find(m =>
+    (m.pending === true || m.failed === true)
+    && m.type === 'chat'
+    && echoKey(m.text) === key
+    && !!m.action === action
+    && Math.abs(m.ts.getTime() - ts.getTime()) <= PENDING_ECHO_MAX_SKEW)
+  if (!match)
+    return false
+  // Confirmed history now, so the send intent is no longer needed.
+  clearOutboxEntry(match.id)
+  match.pending = false
+  match.failed = false
+  match.msgid = msgid
+  // Adopt server-time so the line sorts and stamps like every other message.
+  match.ts = ts
+  if (replyTo != null)
+    match.replyTo = replyTo
+  scheduleMsgWrite(bufferName, match)
+  if (msgid != null)
+    drainPendingReactions(buf, msgid)
+  noteSeen(ts.getTime())
+  return true
+}
+
+/**
+ * Give up waiting on every in-flight send. Called when the socket closes: anything
+ * still unconfirmed at that point never got an acknowledgement, so it's shown as
+ * undelivered rather than left sitting dim forever. The outbox entries stay, so
+ * each one can be resent by hand. A CHATHISTORY replay after reconnect reconciles
+ * the ones that did reach the server.
+ */
+function failInFlightSends() {
+  for (const [id, entry] of outbox) {
+    if (entry.timer != null) {
+      clearTimeout(entry.timer)
+      entry.timer = undefined
+    }
+    const msg = findLocalMessage(entry.target, id)
+    if (msg?.pending === true) {
+      msg.pending = false
+      msg.failed = true
+    }
+  }
 }
 
 /**
@@ -1669,9 +1896,17 @@ async function hydrateBufferCache() {
 }
 
 // --- IRC wire ----------------------------------------------------------------
-function send(line: string) {
-  if (ws && ws.readyState === WebSocket.OPEN)
+/** True when the socket can carry a line right now. */
+function socketOpen(): boolean {
+  return ws != null && ws.readyState === WebSocket.OPEN
+}
+
+function send(line: string): boolean {
+  if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(`${line}\r\n`)
+    return true
+  }
+  return false
 }
 
 function requestWhois(targetNick: string) {
@@ -2644,6 +2879,13 @@ function handleMessage(raw: string) {
       // The TAGMSG command itself provides full tag context via the TAGMSG handler.
       if (nickFrom.toLowerCase() === 'histserv' && /\bsent a TAGMSG\b/i.test(body))
         break
+      // Our own message coming back (echo-message, or a replay of one we sent):
+      // fold it into the optimistic line already on screen. Skipped for prepend
+      // batches, where the line would land above the loaded window anyway.
+      if (isSelf && !isPrependBatch && relayedBy == null
+        && reconcileOwnEcho(bufferName, body, isAction, msgid, replyTo, ts)) {
+        break
+      }
       addToBuffer(bufferName, kind, { type: 'chat', from, channel: target, text: body, msgid, replyTo, relayedBy, ...(isAction && { action: true }) }, { ts, backlog, prepend: isPrependBatch, batchTag: batchTag ?? undefined })
       // Receiving a message clears the sender's typing indicator.
       if (!backlog)
@@ -2708,6 +2950,11 @@ function handleMessage(raw: string) {
           const parent = ml.parentBatch != null ? backlogBatches.get(ml.parentBatch) : undefined
           const isBacklog = parent != null
           if (bufferName) {
+            // Same echo reconciliation as the single-line case above.
+            if (isSelf && !(parent?.isPrepend ?? false) && ml.relayedBy == null
+              && reconcileOwnEcho(bufferName, joined, false, ml.msgid, ml.replyTo, ml.ts)) {
+              break
+            }
             addToBuffer(bufferName, kind, { type: 'chat', from: ml.from, channel: ml.target, text: joined, msgid: ml.msgid, replyTo: ml.replyTo, relayedBy: ml.relayedBy }, { ts: ml.ts, backlog: isBacklog, prepend: parent?.isPrepend ?? false, batchTag: ml.parentBatch ?? undefined })
             if (!isBacklog && ml.from)
               clearTyping(bufferName, ml.from)
@@ -3788,6 +4035,7 @@ function openSocket() {
   ws.onclose = (evt) => {
     _stopPinging()
     addServer({ type: 'system', text: `Disconnected (code ${evt.code})` })
+    failInFlightSends()
     for (const timer of typingTimers.values())
       clearTimeout(timer)
     typingTimers.clear()
@@ -4050,8 +4298,7 @@ function sendPm(target: string, text: string) {
   if (!trimmed)
     return
   openPm(target)
-  send(`PRIVMSG ${target} :${trimmed}`)
-  addToBuffer(target, 'pm', { type: 'chat', from: nick.value, channel: target, text: trimmed })
+  deliverWire(target, 'pm', trimmed)
 }
 
 function closeBuffer(name: string) {
@@ -4133,19 +4380,14 @@ function handleCommand(line: string) {
         break
       openPm(to)
       if (body) {
-        const bodyWire = markdownToIrc(body)
-        send(`PRIVMSG ${to} :${bodyWire}`)
-        addToBuffer(to, 'pm', { type: 'chat', from: nick.value, channel: to, text: bodyWire })
+        deliverWire(to, 'pm', markdownToIrc(body))
       }
       break
     }
     case 'me': {
       const target = activeName.value
       if (arg && target !== SERVER_BUFFER) {
-        const argWire = markdownToIrc(arg)
-        send(`PRIVMSG ${target} :\x01ACTION ${argWire}\x01`)
-        if (!echoMessageActive)
-          addToBuffer(target, findBuffer(target)?.kind ?? 'channel', { type: 'chat', from: nick.value, channel: target, text: argWire, action: true })
+        deliverWire(target, findBuffer(target)?.kind ?? 'channel', markdownToIrc(arg), { action: true })
       }
       break
     }
@@ -4324,26 +4566,27 @@ function utf8Len(s: string): number {
  * the first line of the first batch. Empty lines are sent as a single space so the
  * server doesn't drop a malformed empty-trailing PRIVMSG.
  */
-function sendMultiline(target: string, lines: string[], replyMsgid?: string) {
+function sendMultiline(target: string, lines: string[], replyMsgid?: string): boolean {
   const maxLines = multilineMaxLines > 0 ? multilineMaxLines : Number.POSITIVE_INFINITY
   const maxBytes = multilineMaxBytes > 0 ? multilineMaxBytes : Number.POSITIVE_INFINITY
   let pending: string[] = []
   let pendingBytes = 0
   let firstBatch = true
+  let sent = true
 
   const flush = () => {
     if (!pending.length)
       return
     const ref = `ml${multilineRef++}`
-    send(`BATCH +${ref} draft/multiline ${target}`)
+    sent = send(`BATCH +${ref} draft/multiline ${target}`) && sent
     pending.forEach((line, idx) => {
       const tagParts: string[] = []
       if (firstBatch && idx === 0 && replyMsgid)
         tagParts.push(`+reply=${escapeTagValue(replyMsgid)}`)
       tagParts.push(`batch=${ref}`)
-      send(`@${tagParts.join(';')} PRIVMSG ${target} :${line === '' ? ' ' : line}`)
+      sent = send(`@${tagParts.join(';')} PRIVMSG ${target} :${line === '' ? ' ' : line}`) && sent
     })
-    send(`BATCH -${ref}`)
+    sent = send(`BATCH -${ref}`) && sent
     firstBatch = false
     pending = []
     pendingBytes = 0
@@ -4359,6 +4602,66 @@ function sendMultiline(target: string, lines: string[], replyMsgid?: string) {
     pendingBytes += lb
   }
   flush()
+  return sent
+}
+
+/**
+ * Put an outgoing message on the wire and show it locally. Everything we send
+ * funnels through here - the composer, /me, /msg, and a resend from the outbox -
+ * so they all share one delivery shape and one optimistic-display path.
+ *
+ * `wire` is already markdown-converted. Each branch shows what it actually sends:
+ * with echo-message the server echoes the message back with a server-assigned
+ * msgid (a multiline send echoes as a batch we reassemble), and reconcileOwnEcho
+ * folds that echo into the line already on screen instead of appending a copy.
+ */
+function deliverWire(target: string, kind: BufferKind, wire: string, opts: { replyTo?: string, action?: boolean } = {}) {
+  const { replyTo, action = false } = opts
+  // escapeTagValue is required: msgid is stored unescaped (via unescapeTag) and
+  // must be re-encoded before embedding in the wire tag string.
+  const tagPrefix = replyTo != null ? `@+reply=${escapeTagValue(replyTo)} ` : ''
+  const own = (text: string, msgReplyTo?: string): Omit<ChatMessage, 'id' | 'ts'> => ({
+    type: 'chat',
+    from: nick.value,
+    channel: target,
+    text,
+    replyTo: msgReplyTo,
+    ...(action && { action: true }),
+  })
+
+  if (action) {
+    // CTCP ACTION is one line by definition - a newline would truncate the line
+    // at the server, so fold the whole thing onto one.
+    const oneLine = wire.replace(/\n/g, ' ')
+    const sent = send(`${tagPrefix}PRIVMSG ${target} :\x01ACTION ${oneLine}\x01`)
+    addOwnMessage(target, kind, own(oneLine, replyTo), sent)
+  }
+  else {
+    const lines = wire.split('\n')
+    if (lines.length > 1 && multilineActive) {
+      const sent = sendMultiline(target, lines, replyTo)
+      addOwnMessage(target, kind, own(wire, replyTo), sent)
+    }
+    else if (lines.length > 1) {
+      // No draft/multiline support: fall back to one PRIVMSG per line. The +reply
+      // tag rides only the first line; empty lines go out as a space (see above).
+      // One visible line per PRIVMSG, since that's how the echoes come back.
+      lines.forEach((line, idx) => {
+        const pfx = idx === 0 ? tagPrefix : ''
+        const sent = send(`${pfx}PRIVMSG ${target} :${line === '' ? ' ' : line}`)
+        addOwnMessage(target, kind, own(line, idx === 0 ? replyTo : undefined), sent)
+      })
+    }
+    else {
+      const sent = send(`${tagPrefix}PRIVMSG ${target} :${wire}`)
+      addOwnMessage(target, kind, own(wire, replyTo), sent)
+    }
+  }
+
+  // Nothing left the socket, so no echo is coming - flag the lines now instead of
+  // leaving them dim until the timeout.
+  if (!socketOpen())
+    failInFlightSends()
 }
 
 function sendMessage() {
@@ -4384,35 +4687,11 @@ function sendMessage() {
   const replyMsgid = replyTarget.value?.msgid
   // Convert the composer's markdown (**bold**, *italic*, etc) into IRC control codes
   // so other clients render the formatting. markdownToIrc converts each line on its
-  // own, so the split below still lines up. Our optimistic echo stores the same wire
-  // string, which the message log renders back via parseIrcFormatting.
+  // own, so deliverWire's line split still lines up. The local copy stores the same
+  // wire string, which the message log renders back via parseIrcFormatting.
   const wire = markdownToIrc(text)
-  const lines = wire.split('\n')
 
-  if (lines.length > 1 && multilineActive) {
-    sendMultiline(target, lines, replyMsgid)
-  }
-  else if (lines.length > 1) {
-    // No draft/multiline support: fall back to one PRIVMSG per line. The +reply
-    // tag rides only the first line; empty lines go out as a space (see above).
-    lines.forEach((line, idx) => {
-      const pfx = idx === 0 && replyMsgid ? `@+reply=${escapeTagValue(replyMsgid)} ` : ''
-      send(`${pfx}PRIVMSG ${target} :${line === '' ? ' ' : line}`)
-    })
-  }
-  else {
-    // escapeTagValue is required: msgid is stored unescaped (via unescapeTag) and
-    // must be re-encoded before embedding in the wire tag string.
-    const tagPrefix = replyMsgid ? `@+reply=${escapeTagValue(replyMsgid)} ` : ''
-    send(`${tagPrefix}PRIVMSG ${target} :${wire}`)
-  }
-
-  // When echo-message is active the server echoes our message back with a
-  // server-assigned msgid (a multiline send echoes as a batch we reassemble), so
-  // skip the local optimistic add to avoid duplicates.
-  if (!echoMessageActive) {
-    addToBuffer(target, buf.kind, { type: 'chat', from: nick.value, channel: target, text: wire, replyTo: replyMsgid })
-  }
+  deliverWire(target, buf.kind, wire, { replyTo: replyMsgid })
 
   // Sending into a channel resolves its "new messages" line - you've engaged with
   // it, so catch it up (one of the three line-clearing actions, with leaving and
@@ -4968,6 +5247,9 @@ export function useIrcChat() {
     connectAsAnon,
     disconnect,
     sendMessage,
+    canResend,
+    resendMessage,
+    discardMessage,
     clearMessages,
     setActive,
     joinChannel,

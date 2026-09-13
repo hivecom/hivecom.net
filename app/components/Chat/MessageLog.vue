@@ -7,6 +7,7 @@ import dayjs from 'dayjs'
 import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import ChatMessageReactions from '@/components/Chat/MessageReactions.vue'
 import RelaySourceIcon from '@/components/Chat/RelaySourceIcon.vue'
+import ChatUndeliveredNotice from '@/components/Chat/UndeliveredNotice.vue'
 import UserActionMenu from '@/components/Chat/UserActionMenu.vue'
 import YouTubeEmbed from '@/components/Chat/YouTubeEmbed.vue'
 import LinkEmbed from '@/components/LinkEmbed/index.vue'
@@ -1322,6 +1323,8 @@ onBeforeUnmount(() => {
                 'chat-log__msg--backlog': msg.backlog && !isServiceNick(msg.from),
                 'chat-log__msg--service': isServiceNick(msg.from),
                 'chat-log__msg--action': msg.action,
+                'chat-log__msg--pending': msg.pending,
+                'chat-log__msg--failed': msg.failed,
               }]"
               :data-msg-id="msg.id"
             >
@@ -1435,6 +1438,7 @@ onBeforeUnmount(() => {
                     </template>
                   </template>
                   <ChatMessageReactions v-if="!msg.redacted && msg.reactions && settings.chat_irc_reactions" :message="msg" />
+                  <ChatUndeliveredNotice v-if="msg.failed" :message="msg" />
                 </div>
                 <Flex v-if="!msg.redacted && !settings.chat_irc_inline_images && imageUrls(msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
                   <div
@@ -1594,7 +1598,11 @@ onBeforeUnmount(() => {
             <div
               v-else-if="group.isAction"
               class="chat-log__action-line"
-              :class="{ 'chat-log__msg--backlog': group.messages[0].backlog }"
+              :class="{
+                'chat-log__msg--backlog': group.messages[0].backlog,
+                'chat-log__msg--pending': group.messages[0].pending,
+                'chat-log__msg--failed': group.messages[0].failed,
+              }"
               :data-msg-id="group.messages[0].id"
             >
               <span class="chat-log__action-star">*</span>
@@ -1612,6 +1620,7 @@ onBeforeUnmount(() => {
                   <span v-else-if="seg.fg || seg.bg || seg.bold || seg.italic || seg.underline || seg.strike || seg.mono" :style="segStyle(seg)">{{ seg.value }}</span>
                   <template v-else>{{ seg.value }}</template>
                 </template>
+                <ChatUndeliveredNotice v-if="group.messages[0].failed" :message="group.messages[0]" />
               </span>
             </div>
 
@@ -1669,7 +1678,11 @@ onBeforeUnmount(() => {
                   <div
                     v-if="item.kind === 'msg'"
                     class="chat-log__modern-line"
-                    :class="{ 'chat-log__modern-line--mention': isMention(item.msg) }"
+                    :class="{
+                      'chat-log__modern-line--mention': isMention(item.msg),
+                      'chat-log__msg--pending': item.msg.pending,
+                      'chat-log__msg--failed': item.msg.failed,
+                    }"
                     :data-msg-id="item.msg.id"
                   >
                     <div
@@ -1731,6 +1744,7 @@ onBeforeUnmount(() => {
                       <LinkEmbed v-for="url in previewUrls(item.msg.text)" :key="url" :url="url" class="chat-log__link-preview" />
                     </template>
                     <ChatMessageReactions v-if="!item.msg.redacted && item.msg.reactions" :message="item.msg" />
+                    <ChatUndeliveredNotice v-if="item.msg.failed" :message="item.msg" />
                     <div v-if="item.msg.msgid && !item.msg.redacted" class="chat-log__line-react">
                       <button
                         v-for="emote in settings.quick_reactions"
@@ -2155,6 +2169,17 @@ onBeforeUnmount(() => {
 
   &__loading {
     flex: 1;
+  }
+
+  // Optimistic send waiting on the server echo. Same class on the IRC row, the
+  // modern row, and the /me line, so all three dim the same way.
+  &__msg--pending {
+    opacity: 0.55;
+  }
+
+  // The echo never came back, so the message probably never left.
+  &__msg--failed {
+    opacity: 0.75;
   }
 
   &__msg {

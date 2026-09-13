@@ -160,6 +160,16 @@ rp_origins = [ "http://localhost:3000" ]
 enabled = true
 uri = "pg-functions://postgres/public/custom_access_token_hook"
 
+# Lets the project act as an OAuth 2.1 identity provider for our own apps (quotes, etc).
+# authorization_url_path is appended to site_url to build the consent screen URL, so this
+# has to match the route at app/pages/auth/oauth/consent.vue.
+[auth.oauth_server]
+enabled = true
+authorization_url_path = "/auth/oauth/consent"
+# Clients are registered by hand in the dashboard. Leave dynamic registration off so
+# nobody can self-register an app against our IDP.
+allow_dynamic_registration = false
+
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]
 enabled = false
