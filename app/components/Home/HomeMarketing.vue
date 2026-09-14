@@ -334,7 +334,7 @@ const MOBILE_STARS = [
                       :direction="index % 2 === 0 ? 'right' : 'left'"
                     >
                       <p>
-                        <NuxtLink :to="`/forum/${item.id}`">
+                        <NuxtLink v-for="copy in 3" :key="copy" :to="`/forum/${item.id}`">
                           {{ item.title }}{{ item.description ? `: ${item.description}` : '' }}
                         </NuxtLink>
                       </p>
@@ -352,9 +352,9 @@ const MOBILE_STARS = [
       <div class="home-join">
         <LandingSun class="home-join__sun" />
         <FocusTarget class="container-s">
-          <h2>Join us</h2>
+          <h2>Join the community</h2>
           <p>
-            Join us but also dont have to but it’d be cool if you did just thinkig about it, ok i'll sit down for a sec don't
+            Join us but also dont have to but it wo be cool if you did just thinkig about it, ok i'll sit down for a sec don't
             let me disturb you just ponder on it for a second.
           </p>
           <NuxtLink to="/auth/sign-up" class="join-button">

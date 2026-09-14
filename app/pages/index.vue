@@ -84,11 +84,27 @@ watch(activeTab, () => {
   left: 50%;
   transform: translateX(-50%);
   z-index: var(--z-sticky);
+  box-shadow: 0 1px 12px color-mix(in srgb, var(--color-bg) 50%, transparent);
+  border-radius: var(--border-radius-pill);
+  transition: box-shadow var(--transition);
+
+  &:hover {
+    box-shadow: 0 4px 32px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  }
 
   .vui-tabs {
     border: 1px solid var(--color-border-weak);
   }
 
   --border-radius-m: var(--border-radius-pill);
+}
+
+:root.light .home-swap-tabs {
+  border: 1px solid var(--color-border-strong);
+  box-shadow: 0 1px 12px color-mix(in srgb, var(--dark-color-bg) 15%, transparent);
+
+  &:hover {
+    box-shadow: 0 4px 32px color-mix(in srgb, var(--dark-color-bg) 30%, transparent);
+  }
 }
 </style>
