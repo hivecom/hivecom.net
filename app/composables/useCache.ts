@@ -595,6 +595,11 @@ export function useCachedFetch<T = unknown>(
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  // True only while we have nothing to show yet. Background refreshes keep
+  // `loading` true but leave this false, so views can hold the current data
+  // instead of flashing a placeholder and coming back with the same values.
+  const initialLoading = computed(() => loading.value && data.value === null)
+
   function resolvedQuery(): QueryCacheKey | null {
     return toValue(query)
   }
@@ -812,6 +817,7 @@ export function useCachedFetch<T = unknown>(
   return {
     data: readonly(data),
     loading: readonly(loading),
+    initialLoading,
     error: readonly(error),
     fetch,
     refetch,

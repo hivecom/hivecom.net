@@ -58,7 +58,7 @@ const presenceEnabled = computed(() => props.richPresenceEnabled && hasIdentitie
 
 const {
   data: cachedPresence,
-  loading,
+  initialLoading,
   refetch: refetchPresence,
 } = useCachedFetch(
   () => ({
@@ -181,13 +181,14 @@ watch(() => props.profileId, () => {
     :profile-id="props.profileId"
     :teamspeak-identities="props.teamspeakIdentities"
     :rich-presence-enabled="props.richPresenceEnabled"
-    :presences="loading ? null : presenceList"
+    :presences="initialLoading ? null : presenceList"
   >
     <template #trigger>
       <div class="activity-item">
         <Flex expand y-center x-between gap="s">
-          <!-- Loading state -->
-          <template v-if="loading">
+          <!-- Loading state - only before the first result, so a background
+               refresh doesn't blank a row we already have data for -->
+          <template v-if="initialLoading">
             <div>
               <span class="activity-item__label">
                 <Icon class="activity-item__icon" name="mdi:teamspeak" size="13" />
