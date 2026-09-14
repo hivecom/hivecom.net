@@ -85,14 +85,33 @@ const SIDES: AboutSide[] = [
 ]
 
 const sideIndex = ref(0)
-const aboutPhase = ref<'idle' | 'out' | 'in'>('idle')
 const side = computed(() => SIDES[sideIndex.value] ?? SIDES[0]!)
 const isAbout = computed(() => sideIndex.value === 0)
 
-const ABOUT_OUT_MS = 260
-const ABOUT_IN_MS = 320
+// The copy swaps on the same frame as the click. Everything after that is a
+// short burst of tearing on top of the already-swapped card, so the flip reads
+// as a hard cut rather than a fade.
+const CUT_MS = 220
 
-let aboutBusy = false
+// Horizontal slices of the card that shear sideways and snap back. They all
+// carry the accent, so the overlap reads as one signal doubling rather than an
+// RGB split. Percentages are of the copy block's height, offsets are px.
+const TEAR_BANDS = [
+  { top: 0, bottom: 18, x: -22, delay: 0 },
+  { top: 14, bottom: 34, x: 16, delay: 20 },
+  { top: 31, bottom: 52, x: -12, delay: 0 },
+  { top: 48, bottom: 66, x: 26, delay: 40 },
+  { top: 62, bottom: 84, x: -18, delay: 20 },
+  { top: 80, bottom: 100, x: 14, delay: 40 },
+]
+
+const cutting = ref(false)
+
+// Bumped on every click so a rapid second flip remounts the animated layers and
+// restarts the burst instead of riding out the first one.
+const cutKey = ref(0)
+
+let cutTimer: ReturnType<typeof setTimeout> | undefined
 
 function aboutReducedMotion(): boolean {
   try {
@@ -103,32 +122,22 @@ function aboutReducedMotion(): boolean {
   }
 }
 
-function aboutSleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-async function toggleSide() {
-  if (aboutBusy)
-    return
-  aboutBusy = true
-
-  const reduce = aboutReducedMotion()
-
-  if (!reduce) {
-    aboutPhase.value = 'out'
-    await aboutSleep(ABOUT_OUT_MS)
-  }
-
+function toggleSide() {
   sideIndex.value = sideIndex.value === 0 ? 1 : 0
 
-  if (!reduce) {
-    aboutPhase.value = 'in'
-    await aboutSleep(ABOUT_IN_MS)
-    aboutPhase.value = 'idle'
-  }
+  if (aboutReducedMotion())
+    return
 
-  aboutBusy = false
+  cutKey.value++
+  cutting.value = true
+
+  clearTimeout(cutTimer)
+  cutTimer = setTimeout(() => {
+    cutting.value = false
+  }, CUT_MS)
 }
+
+onBeforeUnmount(() => clearTimeout(cutTimer))
 
 // Diamond centers lifted from the constellation paths below, one per link in order.
 const DESKTOP_STARS = [
@@ -165,22 +174,75 @@ const MOBILE_STARS = [
           <section id="hero" class="hero">
             <FocusTarget>
               <GlowCard class="glow-card-home">
-                <div class="home-card centered home-card--about typeset" @click="toggleSide">
-                  <span class="corner-text"><AtypeText :name="side.corner" :height="9" /></span>
-                  <span class="corner-text right"><AtypeText :name="side.cornerRight" :height="9" /></span>
+                <div class="home-card centered home-card--about typeset" :class="{ 'is-cut': cutting }" @click="toggleSide">
+                  <!-- The actual warp. Turbulence with a near-zero X frequency gives one
+                       noise value per row, so displacing by it shreds the copy into
+                       horizontal slips instead of a soft wobble. Remounted on every click
+                       via the key, which is what restarts the SMIL timeline. -->
+                  <svg :key="cutKey" class="about-distort-defs" aria-hidden="true" focusable="false">
+                    <!-- Copy block. The regions are generous because displaced pixels get
+                         clipped to them, and a tight region just eats the shred. -->
+                    <filter id="about-distort" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+                      <feTurbulence type="fractalNoise" baseFrequency="0.00001 0.12" numOctaves="1" seed="11" result="shred">
+                        <animate
+                          attributeName="baseFrequency"
+                          dur="0.22s"
+                          calcMode="discrete"
+                          values="0.00001 0.3;0.00001 0.05;0.00001 0.5;0.00001 0.09;0.00001 0.2;0.00001 0"
+                          fill="freeze"
+                        />
+                      </feTurbulence>
+                      <feDisplacementMap in="SourceGraphic" in2="shred" xChannelSelector="R" yChannelSelector="G" scale="0">
+                        <animate
+                          attributeName="scale"
+                          dur="0.22s"
+                          calcMode="discrete"
+                          values="56;18;40;9;3;0"
+                          fill="freeze"
+                        />
+                      </feDisplacementMap>
+                    </filter>
+
+                    <!-- Same warp scaled down for the atype. The barcode is 16px tall and the
+                         corner marks are 9px, so the copy block's displacement would push
+                         every pixel clean out of the region and just blank them. -->
+                    <filter id="about-distort-fine" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+                      <feTurbulence type="fractalNoise" baseFrequency="0.00001 0.4" numOctaves="1" seed="3" result="shredFine">
+                        <animate
+                          attributeName="baseFrequency"
+                          dur="0.2s"
+                          calcMode="discrete"
+                          values="0.00001 0.9;0.00001 0.25;0.00001 1.4;0.00001 0.4;0.00001 0"
+                          fill="freeze"
+                        />
+                      </feTurbulence>
+                      <feDisplacementMap in="SourceGraphic" in2="shredFine" xChannelSelector="R" yChannelSelector="G" scale="0">
+                        <animate
+                          attributeName="scale"
+                          dur="0.2s"
+                          calcMode="discrete"
+                          values="14;5;10;3;0"
+                          fill="freeze"
+                        />
+                      </feDisplacementMap>
+                    </filter>
+                  </svg>
+
+                  <span class="corner-text">
+                    <span :key="cutKey" class="corner-text__inner"><AtypeText :name="side.corner" :height="9" /></span>
+                  </span>
+                  <span class="corner-text right">
+                    <span :key="cutKey" class="corner-text__inner"><AtypeText :name="side.cornerRight" :height="9" /></span>
+                  </span>
 
                   <!-- Both sides are always rendered and stacked in one grid cell, so the
                        card is always as tall as the taller side and the layout never shifts. -->
-                  <div class="about-stack">
+                  <div :key="cutKey" class="about-stack" :class="{ 'about-stack--cut': cutting }">
                     <div
                       v-for="(entry, entryIndex) in SIDES"
                       :key="entryIndex"
                       class="about-swap"
-                      :class="{
-                        'about-swap--active': entryIndex === sideIndex,
-                        'about-swap--out': entryIndex === sideIndex && aboutPhase === 'out',
-                        'about-swap--in': entryIndex === sideIndex && aboutPhase === 'in',
-                      }"
+                      :class="{ 'about-swap--active': entryIndex === sideIndex }"
                       :aria-hidden="entryIndex !== sideIndex"
                     >
                       <h2>{{ entry.heading }}</h2>
@@ -190,6 +252,30 @@ const MOBILE_STARS = [
                           {{ line.text }}
                         </template>
                       </p>
+                    </div>
+
+                    <!-- Torn copies of the side that just landed. Each band clips to a
+                         slice, shears sideways and snaps back in accent. Purely
+                         decorative, gone in 220ms. -->
+                    <div v-if="cutting" class="about-tear" aria-hidden="true">
+                      <div
+                        v-for="(band, bandIndex) in TEAR_BANDS"
+                        :key="bandIndex"
+                        class="about-tear__band"
+                        :style="{
+                          'clip-path': `inset(${band.top}% 0 ${100 - band.bottom}% 0)`,
+                          '--tear-x': `${band.x}px`,
+                          '--tear-delay': `${band.delay}ms`,
+                        }"
+                      >
+                        <h2>{{ side.heading }}</h2>
+                        <p v-for="(line, index) in side.lines" :key="index">
+                          <b v-if="line.strong">{{ line.text }}</b>
+                          <template v-else>
+                            {{ line.text }}
+                          </template>
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -202,6 +288,13 @@ const MOBILE_STARS = [
                     :aria-label="isAbout ? 'Show our mantra' : 'Show about us'"
                   >
                     <AtypeText :name="side.barcode" :height="16" />
+
+                    <!-- Channel ghosts of the new barcode, offset either way for the two
+                         frames the cut lasts. Keyed off the button so focus survives. -->
+                    <span v-if="cutting" :key="cutKey" class="about-barcode__ghosts" aria-hidden="true">
+                      <span class="about-barcode__ghost about-barcode__ghost--a"><AtypeText :name="side.barcode" :height="16" /></span>
+                      <span class="about-barcode__ghost about-barcode__ghost--b"><AtypeText :name="side.barcode" :height="16" /></span>
+                    </span>
                   </button>
                 </div>
               </GlowCard>
@@ -277,7 +370,7 @@ const MOBILE_STARS = [
           </a>
 
           <svg class="desktop-constellation" width="857" height="112" viewBox="0 0 857 112" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M34.624 100.214L237.624 66.214M274.707 61.7071L456.707 53.2192M498.707 50.2071L669.207 11.2955M710.99 11.2955L829.707 83.7071M0.707031 102.192L9.19231 93.7071L17.6776 102.192L9.19231 110.678L0.707031 102.192ZM838.707 92.1924L847.192 83.7071L855.678 92.1924L847.192 100.678L838.707 92.1924ZM247.707 63.1924L256.192 54.7071L264.678 63.1924L256.192 71.6777L247.707 63.1924ZM684.707 9.19239L693.192 0.707108L701.678 9.19239L693.192 17.6777L684.707 9.19239ZM468.707 52.1924L477.192 43.7071L485.678 52.1924L477.192 60.6777L468.707 52.1924Z" stroke="white" stroke-opacity="0.25" stroke-dasharray="2 2" />
+            <path d="M34.624 100.214L237.624 66.214M274.707 61.7071L456.707 53.2192M498.707 50.2071L669.207 11.2955M710.99 11.2955L829.707 83.7071M0.707031 102.192L9.19231 93.7071L17.6776 102.192L9.19231 110.678L0.707031 102.192ZM838.707 92.1924L847.192 83.7071L855.678 92.1924L847.192 100.678L838.707 92.1924ZM247.707 63.1924L256.192 54.7071L264.678 63.1924L256.192 71.6777L247.707 63.1924ZM684.707 9.19239L693.192 0.707108L701.678 9.19239L693.192 17.6777L684.707 9.19239ZM468.707 52.1924L477.192 43.7071L485.678 52.1924L477.192 60.6777L468.707 52.1924Z" stroke="currentColor" stroke-opacity="0.25" stroke-dasharray="2 2" />
             <defs>
               <radialGradient id="constellation-glow-desktop">
                 <stop class="flare-glow-hot" offset="0%" stop-opacity="0.9" />
@@ -296,7 +389,7 @@ const MOBILE_STARS = [
           </svg>
 
           <svg class="mobile-constellation" width="265" height="339" viewBox="0 0 265 339" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M29.707 86.707L11.707 26.707M83.707 162.707L49.707 120.707M153.707 211.707L112.707 187.707M242.707 314.707L183.707 236.707M0.707031 9.19231L9.19231 0.707031L17.6776 9.19231L9.19231 17.6776L0.707031 9.19231ZM29.707 106.192L38.1923 97.707L46.6776 106.192L38.1923 114.678L29.707 106.192ZM87.707 176.192L96.1923 167.707L104.678 176.192L96.1923 184.678L87.707 176.192ZM160.707 222.192L169.192 213.707L177.678 222.192L169.192 230.678L160.707 222.192ZM246.707 329.192L255.192 320.707L263.678 329.192L255.192 337.678L246.707 329.192Z" stroke="white" stroke-opacity="0.5" stroke-dasharray="2 2" />
+            <path d="M29.707 86.707L11.707 26.707M83.707 162.707L49.707 120.707M153.707 211.707L112.707 187.707M242.707 314.707L183.707 236.707M0.707031 9.19231L9.19231 0.707031L17.6776 9.19231L9.19231 17.6776L0.707031 9.19231ZM29.707 106.192L38.1923 97.707L46.6776 106.192L38.1923 114.678L29.707 106.192ZM87.707 176.192L96.1923 167.707L104.678 176.192L96.1923 184.678L87.707 176.192ZM160.707 222.192L169.192 213.707L177.678 222.192L169.192 230.678L160.707 222.192ZM246.707 329.192L255.192 320.707L263.678 329.192L255.192 337.678L246.707 329.192Z" stroke="currentColor" stroke-opacity="0.5" stroke-dasharray="2 2" />
             <defs>
               <radialGradient id="constellation-glow-mobile">
                 <stop class="flare-glow-hot" offset="0%" stop-opacity="0.9" />
@@ -506,6 +599,10 @@ const MOBILE_STARS = [
   }
 
   .constellation {
+    // Lines and the hot centres of the flares were white, which is nothing on a
+    // light background. Drawing them in the text colour flips them with the theme.
+    --constellation-ink: var(--color-text);
+
     display: inline-block;
     margin: auto;
     position: relative;
@@ -611,13 +708,14 @@ const MOBILE_STARS = [
 
     svg {
       overflow: visible;
+      color: var(--constellation-ink);
     }
 
     stop {
       stop-color: var(--color-accent);
 
       &.flare-glow-hot {
-        stop-color: white;
+        stop-color: var(--constellation-ink);
       }
     }
 
@@ -643,7 +741,7 @@ const MOBILE_STARS = [
 
       .flare-streak-hot,
       .flare-core-hot {
-        fill: white;
+        fill: var(--constellation-ink);
         fill-opacity: 0.9;
       }
     }
@@ -820,6 +918,14 @@ const MOBILE_STARS = [
     padding: 64px 32px 104px;
   }
 
+  // Filter defs only, nothing to paint.
+  .about-distort-defs {
+    position: absolute;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+
   .corner-text {
     position: absolute;
     top: 16px;
@@ -833,6 +939,21 @@ const MOBILE_STARS = [
       left: unset;
       right: 16px;
     }
+  }
+
+  // The corner atype changes message with the side, so it takes the same hit as
+  // the copy: a couple of dropped frames and a nudge, tinted on the way through.
+  &.is-cut .corner-text__inner {
+    display: block;
+    animation: about-corner-cut 180ms steps(1, end) both;
+
+    .atype-text {
+      filter: url('#about-distort-fine');
+    }
+  }
+
+  &.right.is-cut .corner-text__inner {
+    animation-delay: 30ms;
   }
 
   p {
@@ -850,6 +971,7 @@ const MOBILE_STARS = [
     cursor: pointer;
     line-height: 0;
     color: var(--color-text-lightest);
+    transition: color var(--transition-fast);
 
     // The barcode is drawn one module per px, keep the edges from smearing.
     .atype-text {
@@ -861,16 +983,141 @@ const MOBILE_STARS = [
       outline-offset: 4px;
     }
   }
+
+  // The whole card flips, so the barcode lights up for a hover anywhere on it.
+  &:hover .about-barcode {
+    color: var(--color-accent);
+  }
+
+  &.is-cut .about-barcode .atype-text {
+    filter: url('#about-distort-fine');
+    animation: about-barcode-cut 200ms steps(1, end) both;
+  }
+
+  // Two accent copies of the new barcode, thrown either side of the real one for
+  // the length of the cut. Screen blend so the overlap builds rather than smears.
+  .about-barcode__ghosts {
+    position: absolute;
+    inset: var(--space-s);
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+
+  .about-barcode__ghost {
+    position: absolute;
+    inset: 0;
+    color: var(--color-accent);
+
+    .atype-text {
+      shape-rendering: crispEdges;
+      filter: url('#about-distort-fine');
+    }
+
+    &--a {
+      animation: about-barcode-ghost-a 200ms steps(1, end) both;
+    }
+
+    &--b {
+      animation: about-barcode-ghost-b 200ms steps(1, end) both;
+    }
+  }
+}
+
+@keyframes about-corner-cut {
+  0% {
+    opacity: 0;
+    transform: translate3d(6px, 0, 0);
+  }
+  20% {
+    opacity: 1;
+    color: var(--color-accent);
+    transform: translate3d(-4px, 0, 0);
+  }
+  45% {
+    opacity: 0;
+    transform: none;
+  }
+  70% {
+    opacity: 1;
+    color: var(--color-accent);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes about-barcode-cut {
+  0% {
+    opacity: 0.2;
+    transform: scaleX(1.35) skewX(-14deg);
+  }
+  15% {
+    opacity: 1;
+    transform: scaleX(0.82) skewX(9deg);
+  }
+  32% {
+    opacity: 0.3;
+    transform: scaleX(1.12);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes about-barcode-ghost-a {
+  0% {
+    opacity: 1;
+    transform: translate3d(-14px, -2px, 0) scaleX(1.2);
+  }
+  35% {
+    opacity: 1;
+    transform: translate3d(9px, 1px, 0);
+  }
+  70% {
+    opacity: 0.5;
+    transform: translate3d(-3px, 0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes about-barcode-ghost-b {
+  0% {
+    opacity: 1;
+    transform: translate3d(13px, 2px, 0) scaleX(0.86);
+  }
+  35% {
+    opacity: 1;
+    transform: translate3d(-8px, -1px, 0);
+  }
+  70% {
+    opacity: 0.5;
+    transform: translate3d(4px, 0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: none;
+  }
 }
 
 // Both sides live in one grid cell, so the card height is the taller of the two
 // and never shifts when swapping. Only the active side is visible.
 .about-stack {
   display: grid;
+  position: relative;
 }
 
-// Glitch swap between the about and mantra copy. Each line jitters out then the
-// new line jitters back in, staggered top to bottom for the "almost glitching" feel.
+// The swap itself is instant: the click flips which side is visible on the same
+// frame. Everything below is a 200ms burst of tearing played over the copy that
+// already landed, all of it on steps() so the frames snap instead of easing.
 .about-swap {
   grid-area: 1 / 1;
   opacity: 0;
@@ -880,85 +1127,106 @@ const MOBILE_STARS = [
     opacity: 1;
     pointer-events: auto;
   }
-
-  > * {
-    will-change: opacity, transform, clip-path;
-  }
-
-  &--out > * {
-    animation: about-glitch-out 260ms cubic-bezier(0.65, 0, 0.35, 1) both;
-  }
-
-  &--in > * {
-    animation: about-glitch-in 320ms cubic-bezier(0.65, 0, 0.35, 1) both;
-  }
-
-  &--out > :nth-child(2),
-  &--in > :nth-child(2) {
-    animation-delay: 40ms;
-  }
-
-  &--out > :nth-child(3),
-  &--in > :nth-child(3) {
-    animation-delay: 80ms;
-  }
-
-  &--out > :nth-child(4),
-  &--in > :nth-child(4) {
-    animation-delay: 120ms;
-  }
-
-  &--out > :nth-child(5),
-  &--in > :nth-child(5) {
-    animation-delay: 160ms;
-  }
 }
 
-@keyframes about-glitch-out {
-  0% {
-    opacity: 1;
-    transform: translateX(0);
-    clip-path: inset(0 0 0 0);
-  }
-  25% {
-    transform: translateX(-3px) skewX(-3deg);
-    clip-path: inset(0 0 45% 0);
-  }
-  50% {
-    transform: translateX(4px);
-    clip-path: inset(55% 0 0 0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(-4px);
-  }
+.about-stack--cut .about-swap--active {
+  animation: about-cut 200ms steps(1, end) both;
+  will-change: opacity, transform, filter;
 }
 
-@keyframes about-glitch-in {
+@keyframes about-cut {
   0% {
     opacity: 0;
-    transform: translateX(5px);
+    transform: translate3d(7px, -2px, 0) skewX(-7deg);
+    filter: url('#about-distort') brightness(2.4) contrast(0.5);
   }
-  30% {
+  12% {
     opacity: 1;
-    transform: translateX(-3px) skewX(2deg);
-    clip-path: inset(45% 0 0 0);
+    transform: translate3d(-6px, 1px, 0) skewX(5deg);
+    filter: url('#about-distort') brightness(1.7);
   }
-  60% {
-    transform: translateX(2px);
-    clip-path: inset(0 0 35% 0);
+  26% {
+    opacity: 0.25;
+    transform: translate3d(4px, 0, 0);
+    filter: url('#about-distort');
+  }
+  38% {
+    opacity: 1;
+    transform: translate3d(-2px, 0, 0) skewX(-2deg);
+    filter: url('#about-distort');
+  }
+  62% {
+    transform: translate3d(1px, 0, 0);
+    filter: url('#about-distort');
   }
   100% {
     opacity: 1;
-    transform: translateX(0);
-    clip-path: inset(0 0 0 0);
+    transform: none;
+    filter: none;
   }
 }
 
+// Torn slices of the copy, stacked over the real thing and blended additively so
+// overlapping slices build up instead of smearing.
+.about-tear {
+  grid-area: 1 / 1;
+  position: relative;
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: screen;
+
+  &__band {
+    position: absolute;
+    inset: 0;
+    color: var(--color-accent);
+    animation: about-tear-band 150ms steps(1, end) var(--tear-delay) both;
+    will-change: transform, opacity;
+
+    b {
+      color: inherit;
+    }
+  }
+}
+
+@keyframes about-tear-band {
+  0% {
+    opacity: 1;
+    transform: translate3d(var(--tear-x), 0, 0);
+  }
+  35% {
+    opacity: 1;
+    transform: translate3d(calc(var(--tear-x) * -0.5), 0, 0);
+  }
+  65% {
+    opacity: 0.7;
+    transform: translate3d(calc(var(--tear-x) * 0.25), 0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+// Reduced motion gets the swap with none of the tearing: toggleSide bails before
+// setting the cut flag, so these are a belt-and-braces guard.
 @media (prefers-reduced-motion: reduce) {
-  .about-swap--out > *,
-  .about-swap--in > * {
+  .about-stack--cut .about-swap--active,
+  .about-tear__band,
+  .home-card--about.is-cut .corner-text__inner,
+  .home-card--about.is-cut .about-barcode .atype-text {
     animation: none !important;
+  }
+
+  .about-stack--cut .about-swap--active,
+  .home-card--about.is-cut .corner-text__inner .atype-text,
+  .home-card--about.is-cut .about-barcode .atype-text,
+  .about-barcode__ghost .atype-text {
+    filter: none !important;
+  }
+
+  .about-tear,
+  .about-barcode__ghosts {
+    display: none;
   }
 }
 

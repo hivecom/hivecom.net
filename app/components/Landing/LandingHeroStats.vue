@@ -149,6 +149,13 @@ defineProps<{
   gap: 1rem;
 }
 
+// GlowCard carries width: 100% so it fills a grid cell on the dashboard. Here
+// the cards are flex items in a wrapping row, and a 100% width puts every one
+// of them on its own line. Size them to their content instead.
+.hero-section__stats-grid :deep(.glow-card) {
+  width: auto;
+}
+
 .hero-section__stats-card {
   display: block;
   width: 152px;

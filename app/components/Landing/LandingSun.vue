@@ -31,6 +31,9 @@ let lastNow = 0
 function readColors(): SunColors {
   return {
     accent: readThemeColor('--color-accent', [0.65, 0.99, 0.18], { normalized: true }) as [number, number, number],
+    // The field derives its heat ramp off the accent, and needs the page colour
+    // to know whether "hot" means white or saturated gold.
+    bg: readThemeColor('--color-bg', [0.07, 0.07, 0.07], { normalized: true }) as [number, number, number],
   }
 }
 

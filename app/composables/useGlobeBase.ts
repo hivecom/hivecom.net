@@ -123,10 +123,12 @@ export function useGlobeBase() {
     themeMedia = window.matchMedia?.('(prefers-color-scheme: light)') ?? null
     themeMedia?.addEventListener('change', applyGlobeColor)
 
+    // 'style' catches a custom colour theme: applyTheme sets the tokens inline
+    // on the root without touching class or data-theme.
     themeObserver = new MutationObserver(applyGlobeColor)
     themeObserver.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['class', 'data-theme'],
+      attributeFilter: ['class', 'data-theme', 'style'],
     })
   }
 

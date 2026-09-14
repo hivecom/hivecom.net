@@ -90,6 +90,23 @@ onBeforeUnmount(() => {
   // Long fade so the planet resolves out of the blurred ghost behind it
   // instead of popping in (--transition-slow is only 0.15s).
   transition: opacity 1400ms ease;
+
+  // The canvas stops dead on the hero's bottom edge, and the bloom pass puts
+  // real light right up against it: arcs flaring off the limb, the phosphor
+  // trail they leave behind. Cut flat, that glow draws a straight line across
+  // the page at the section boundary. Fading the layer out over the last slice
+  // lets it die into the backdrop instead. The stops are eased rather than a
+  // straight ramp, since a linear fade leaves a visible corner where it starts.
+  --hero-globe-fade: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 90%,
+    rgba(0, 0, 0, 0.82) 94%,
+    rgba(0, 0, 0, 0.4) 97.5%,
+    transparent 100%
+  );
+  -webkit-mask-image: var(--hero-globe-fade);
+  mask-image: var(--hero-globe-fade);
 }
 
 .hero-globe.is-visible {

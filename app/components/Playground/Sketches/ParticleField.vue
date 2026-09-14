@@ -243,8 +243,10 @@ onMounted(() => {
   resolveColors()
   resize()
 
+  // 'style' included so a custom colour theme, which lands as inline tokens on
+  // the root, repaints too and not just a light/dark flip.
   const themeObserver = new MutationObserver(resolveColors)
-  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme', 'style'] })
 
   window.addEventListener('resize', resize)
   window.addEventListener('mousemove', (e) => {

@@ -86,7 +86,7 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
         <template v-else>
           <Flex gap="xs" y-center>
             <h4>Friends</h4>
-            <span v-if="isLoggedIn" class="counter">
+            <span v-if="isLoggedIn && !loading" class="counter">
               {{ friends.length }}
             </span>
           </Flex>
