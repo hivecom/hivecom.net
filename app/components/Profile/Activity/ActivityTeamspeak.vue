@@ -156,6 +156,7 @@ function formatLastSeen(lastSeenAt: string | null): string {
 const lastSeenFormatted = computed(() => {
   if (!presenceEntries.value.length)
     return null
+
   return formatLastSeen(presenceEntries.value[0]?.lastSeenAt ?? null)
 })
 
@@ -163,6 +164,7 @@ const lastSeenFormatted = computed(() => {
 const statusColor = computed(() => {
   if (isOnline.value)
     return 'var(--color-text-green)'
+
   return 'var(--color-text-lighter)'
 })
 

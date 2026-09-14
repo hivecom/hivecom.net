@@ -64,6 +64,7 @@ async function addPasskey() {
     // A cancelled browser prompt surfaces as an abort/NotAllowed error - keep quiet for those.
     if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError'))
       return
+
     passkeyError.value = err instanceof Error ? err.message : 'Failed to register passkey.'
   }
   finally {
@@ -82,6 +83,7 @@ function openRename(passkey: EnrolledPasskey) {
 function cancelRename() {
   if (renameState.saving)
     return
+
   renameState.open = false
 }
 
@@ -116,6 +118,7 @@ function requestRemove(passkey: EnrolledPasskey) {
 async function removeSelectedPasskey() {
   if (!removeTarget.value)
     return
+
   removeLoading.value = true
   removeError.value = ''
   try {

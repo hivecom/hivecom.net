@@ -163,6 +163,7 @@ function getSubscriptionIcon(sub: SubscriptionRow): string {
     return 'ph:scales'
   if (d.theme_id)
     return 'ph:paint-brush'
+
   return 'ph:chat-dots'
 }
 
@@ -183,6 +184,7 @@ function getSubscriptionTitle(sub: SubscriptionRow): string {
     return `Vote - ${title}`
   if (d.theme_id)
     return `Theme - ${title}`
+
   return title
 }
 

@@ -9,6 +9,7 @@ import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useEmailAdmin } from '@/composables/useEmailAdmin'
 import { useBreakpoint } from '@/lib/mediaQuery'
+
 // The email shell lives next to the hand-crafted auth templates in supabase/
 // so the edge function and this preview render from the same source.
 import { renderBroadcastEmail } from '../../../../supabase/email/broadcast'
@@ -180,6 +181,7 @@ async function send(mode: BroadcastMode) {
         { description: `${outcome.sent} of ${outcome.total} delivered` },
       )
     }
+
     // Even a test consumes quota, so the page refreshes the cards either way.
     emit('sent')
   }
@@ -198,6 +200,7 @@ async function send(mode: BroadcastMode) {
 const recipientPhrase = computed(() => {
   if (props.recipients === null)
     return 'every member with an email address, minus the suppressed ones'
+
   const count = props.recipients.eligible.toLocaleString()
   return props.recipients.suppressed > 0
     ? `${count} members (${props.recipients.suppressed.toLocaleString()} suppressed addresses are skipped)`
@@ -207,6 +210,7 @@ const recipientPhrase = computed(() => {
 function openConfirm() {
   if (!canSend.value)
     return
+
   confirmWord.value = ''
   confirmOpen.value = true
 }
@@ -214,6 +218,7 @@ function openConfirm() {
 function closeConfirm() {
   if (sending.value === 'send')
     return
+
   confirmOpen.value = false
   confirmWord.value = ''
 }

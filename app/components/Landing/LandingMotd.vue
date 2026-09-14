@@ -61,6 +61,7 @@ function prefersReducedMotion(): boolean {
 function getOffset(count: number | null, size: number): number {
   if (!count || count <= size)
     return 0
+
   return Math.floor(Math.random() * Math.max(1, count - size + 1))
 }
 

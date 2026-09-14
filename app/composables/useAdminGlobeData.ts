@@ -25,6 +25,7 @@ export function useAdminGlobeData() {
   async function fetchOnlineUsers(force = false) {
     if (!force && cachedAt != null && Date.now() - cachedAt < CACHE_TTL_MS && onlineCountsByCountry.value.length > 0)
       return
+
     loading.value = true
     error.value = null
 
@@ -45,6 +46,7 @@ export function useAdminGlobeData() {
         const country = row.country
         if (country == null || country === '')
           continue
+
         grouped.set(country, (grouped.get(country) ?? 0) + 1)
       }
 

@@ -7,16 +7,19 @@ interface Props {
    * The label text displayed in the left column.
    */
   label: string
+
   /**
    * Column layout. Use "wide" for a 1fr/2fr split (label narrower, value wider).
    * Use "equal" for a 50/50 split. Defaults to "wide".
    */
   split?: 'wide' | 'equal'
+
   /**
    * When true, the row is not rendered. Useful for conditionally hiding rows
    * without wrapping every row in a v-if at the call site.
    */
   hidden?: boolean
+
   /**
    * Allow the row to wrap onto multiple lines (passes `wrap` to the Grid).
    */

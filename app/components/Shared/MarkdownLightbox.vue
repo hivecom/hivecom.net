@@ -6,6 +6,7 @@ const props = defineProps<Props>()
 
 interface Props {
   markdown: string
+
   // May be a raw HTMLElement or a Vue component instance (e.g. when ref is on a VUI wrapper)
   container: HTMLElement | { $el: HTMLElement } | null
 }

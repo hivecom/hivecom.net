@@ -56,6 +56,7 @@ const discussionChannels = new Map<string, SharedDiscussionChannel>()
 
 function acquireReplyChannel(supabase: AnySupabase, discussionId: string): SharedReplyChannel {
   const existing = replyChannels.get(discussionId)
+
   if (existing) {
     existing.refCount++
     return existing
@@ -85,15 +86,21 @@ function acquireReplyChannel(supabase: AnySupabase, discussionId: string): Share
     .subscribe()
 
   const entry: SharedReplyChannel = { channel, refCount: 1, insertHandlers, updateHandlers, deleteHandlers }
+
   replyChannels.set(discussionId, entry)
+
   return entry
 }
 
 function releaseReplyChannel(supabase: AnySupabase, discussionId: string) {
   const entry = replyChannels.get(discussionId)
+
   if (!entry)
     return
+
   entry.refCount--
+
+  // Last subscriber out closes the channel.
   if (entry.refCount <= 0) {
     replyChannels.delete(discussionId)
     void supabase.removeChannel(entry.channel)
@@ -102,6 +109,7 @@ function releaseReplyChannel(supabase: AnySupabase, discussionId: string) {
 
 function acquireDiscussionChannel(supabase: AnySupabase, discussionId: string): SharedDiscussionChannel {
   const existing = discussionChannels.get(discussionId)
+
   if (existing) {
     existing.refCount++
     return existing
@@ -119,15 +127,21 @@ function acquireDiscussionChannel(supabase: AnySupabase, discussionId: string): 
     .subscribe()
 
   const entry: SharedDiscussionChannel = { channel, refCount: 1, updateHandlers }
+
   discussionChannels.set(discussionId, entry)
+
   return entry
 }
 
 function releaseDiscussionChannel(supabase: AnySupabase, discussionId: string) {
   const entry = discussionChannels.get(discussionId)
+
   if (!entry)
     return
+
   entry.refCount--
+
+  // Last subscriber out closes the channel.
   if (entry.refCount <= 0) {
     discussionChannels.delete(discussionId)
     void supabase.removeChannel(entry.channel)
@@ -166,6 +180,7 @@ export function useRealtimeDiscussion(
   function startBackgroundPoll() {
     if (backgroundPollTimer != null)
       return
+
     backgroundPollTimer = setInterval(() => {
       void loadPendingReplies()
     }, BACKGROUND_POLL_INTERVAL_MS)
@@ -174,9 +189,13 @@ export function useRealtimeDiscussion(
   function stopBackgroundPoll() {
     if (backgroundPollTimer == null)
       return
+
     clearInterval(backgroundPollTimer)
     backgroundPollTimer = null
   }
+
+  // The handlers this instance registered on the shared channels, kept so
+  // unsubscribe removes only ours and leaves the other subscribers alone.
   let myInsertHandler: ((p: InsertPayload) => void) | null = null
   let myUpdateReplyHandler: ((p: UpdateReplyPayload) => void) | null = null
   let myDeleteHandler: ((p: DeletePayload) => void) | null = null
@@ -185,7 +204,9 @@ export function useRealtimeDiscussion(
   const latestCommentTime = computed((): string | null => {
     if (comments.value.length === 0)
       return null
+
     const first: string = (comments.value[0] as RawComment).created_at
+
     return comments.value.reduce((latest: string, c: RawComment) =>
       c.created_at > latest ? c.created_at : latest, first)
   })
@@ -227,6 +248,7 @@ export function useRealtimeDiscussion(
         return
 
       const ascendingOrder = model.value !== 'comment'
+
       if (pushRealtimeReplies) {
         // Delegate to the data composable which tracks realtime items separately
         // so cursor-based loadMore pages remain in chronological order.
@@ -261,7 +283,8 @@ export function useRealtimeDiscussion(
 
     myInsertHandler = (payload: InsertPayload) => {
       const newReply = payload.new
-      // Skip replies already present - covers optimistic inserts from this tab.
+
+      // Skip replies already present, which covers optimistic inserts from this tab.
       if (comments.value.some(c => c.id === newReply.id))
         return
 
@@ -269,11 +292,13 @@ export function useRealtimeDiscussion(
       // something they just posted, regardless of timing.
       const ownUserId = currentUserId?.value
       const replyAuthor = newReply.created_by
+
       if (ownUserId != null && replyAuthor != null && replyAuthor === ownUserId)
         return
 
       // When a hash filter is active only count replies for this section.
       const replyHash = (newReply.meta as Record<string, unknown> | null)?.hash as string | undefined
+
       if (hash != null && replyHash !== hash)
         return
 
@@ -285,22 +310,30 @@ export function useRealtimeDiscussion(
     myUpdateReplyHandler = (payload: UpdateReplyPayload) => {
       const updated = payload.new
       const idx = comments.value.findIndex(c => c.id === updated.id)
+
+      // An edit to a reply we never loaded is nothing to reconcile.
       if (idx === -1)
         return
+
       comments.value[idx] = updated
+
       repliesCache.legacySet(discussionId, comments.value, model.value !== 'comment')
     }
 
     myDeleteHandler = (payload: DeletePayload) => {
       const deletedId = payload.old.id
+
       comments.value = comments.value.filter(c => c.id !== deletedId)
+
       repliesCache.legacySet(discussionId, comments.value, model.value !== 'comment')
     }
 
     myUpdateDiscussionHandler = (payload: UpdateDiscussionPayload) => {
       const updated = payload.new
+
       if (discussion.value != null)
         discussion.value = { ...discussion.value, ...updated }
+
       discussionCache.set(updated)
     }
 
@@ -322,19 +355,25 @@ export function useRealtimeDiscussion(
     const discussionId = subscribedDiscussionId
 
     const replyEntry = replyChannels.get(discussionId)
+
     if (replyEntry) {
       if (myInsertHandler)
         replyEntry.insertHandlers.delete(myInsertHandler)
+
       if (myUpdateReplyHandler)
         replyEntry.updateHandlers.delete(myUpdateReplyHandler)
+
       if (myDeleteHandler)
         replyEntry.deleteHandlers.delete(myDeleteHandler)
+
       releaseReplyChannel(supabase, discussionId)
     }
 
     const discEntry = discussionChannels.get(discussionId)
+
     if (discEntry && myUpdateDiscussionHandler) {
       discEntry.updateHandlers.delete(myUpdateDiscussionHandler)
+
       releaseDiscussionChannel(supabase, discussionId)
     }
 
@@ -359,6 +398,7 @@ export function useRealtimeDiscussion(
       if (pausedDiscussionId != null) {
         const idToRestore = pausedDiscussionId
         pausedDiscussionId = null
+
         // Re-subscribe first so we don't miss events that arrive during fetch.
         subscribe(idToRestore)
         void loadPendingReplies()

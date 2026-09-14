@@ -102,6 +102,7 @@ const hoveredHasUsers = computed(() => {
 
 // True once the globe has finished its initial mount sequence
 const globeReady = ref(false)
+
 // Dim the globe while data is loading after initial render (mirrors UserTable's table-loading pattern)
 const isGlobeLoading = computed(() => globeReady.value && (loading.value || loadingLatest.value))
 
@@ -155,6 +156,7 @@ onMounted(async () => {
         const baseHex = getHexBaseColor()
         if (!iso)
           return baseHex
+
         if (hoveredIso.value && iso.toUpperCase() === hoveredIso.value) {
           const isoUpper = iso.toUpperCase()
           const hasUsers = mode.value === 'all'
@@ -188,6 +190,7 @@ onMounted(async () => {
 
     globeInstance
       .enablePointerInteraction(true)
+
       // Invisible polygon layer for whole-country hover detection
       // Filter out Bermuda (id: BMU) - its GeoJSON polygon covers most of the Atlantic
       .polygonsData(featureCollection.features.filter((f) => {
@@ -200,6 +203,7 @@ onMounted(async () => {
       .onPolygonClick((polygon: object | null) => {
         if (!polygon)
           return
+
         const feat = polygon as CountryFeature
         const iso = ((feat.id ?? '') as string).toUpperCase()
         const userCount = mode.value === 'online' ? (onlineMap.value.get(iso) ?? 0) : (allMap.value.get(iso) ?? 0)
@@ -221,15 +225,18 @@ onMounted(async () => {
         const feat = polygon as CountryFeature
         const iso = (feat.id ?? '') as string
         const isoUpper = iso.toUpperCase()
+
         // Only re-trigger fetch if country changed
         if (hoveredIso.value === isoUpper)
           return
+
         hoveredIso.value = isoUpper
         refreshHexColors()
         const countryName = feat.properties.ADMIN ?? feat.properties.name ?? iso
         const onlineCount = onlineMap.value.get(isoUpper) ?? 0
         const allCount = allMap.value.get(isoUpper) ?? 0
         const userCount = mode.value === 'online' ? onlineCount : allCount
+
         // Show tooltip immediately with count and loading state
         tooltip.value = {
           x: lastMouseX,
@@ -243,6 +250,7 @@ onMounted(async () => {
         }
         if (userCount === 0)
           return
+
         // Check cache first
         const cacheKey = `${mode.value}:${isoUpper}`
         const cached = userCache.get(cacheKey)
@@ -250,6 +258,7 @@ onMounted(async () => {
           tooltip.value = { ...tooltip.value!, userIds: cached, usersLoading: false }
           return
         }
+
         // Debounce the actual user fetch
         if (hoverFetchTimer != null)
           clearTimeout(hoverFetchTimer)
@@ -259,6 +268,7 @@ onMounted(async () => {
             const result = mode.value === 'online'
               ? await fetchCountryUsers(isoUpper)
               : await fetchCountryAllUsers(isoUpper)
+
             // Only update if still hovering same country
             if (tooltip.value?.iso === isoUpper) {
               userCache.set(cacheKey, result.userIds)

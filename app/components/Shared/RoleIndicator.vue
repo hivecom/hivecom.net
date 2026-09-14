@@ -13,8 +13,10 @@ const ROLE_SEPARATOR_RE = /[-_]/g
 interface Props {
   role: string | null | undefined
   size?: 's' | 'm' | 'l'
+
   /** Show a single-letter badge with full label on hover. */
   shorten?: boolean
+
   /** Use small Badge instead of full-size Badge for compact display. */
   tiny?: boolean
 }
@@ -37,12 +39,16 @@ const shortDisplay = computed(() => {
   switch (props.role) {
     case 'admin':
       return 'A'
+
     case 'moderator':
       return 'M'
+
     case 'registered':
       return 'R'
+
     case 'music-bot':
       return 'B'
+
     default:
       return roleDisplay.value.charAt(0)
   }
@@ -53,10 +59,13 @@ const variant = computed(() => {
   switch (props.role) {
     case 'admin':
       return 'danger'
+
     case 'moderator':
       return 'info'
+
     case 'music-bot':
       return 'warning'
+
     default:
       return 'success'
   }

@@ -48,12 +48,16 @@ export function getLastSeenTextClass(variant: LastSeenVariant): string {
   switch (variant) {
     case 'online':
       return 'last-seen-online'
+
     case 'fresh':
       return 'text-color'
+
     case 'light':
       return 'text-color-light'
+
     case 'lighter':
       return 'text-color-lighter'
+
     case 'lightest':
       return 'text-color-lightest'
   }
@@ -69,10 +73,13 @@ export interface UserActivityStatus {
 /**
  * Determines if a user is considered "active" based on their last seen timestamp
  * A user is considered active if they were last seen within the last 15 minutes
+ *
+ * Pass `nowMs` (usually the shared tick from useNow) to keep the derived text
+ * live. Without it the result is computed once and never ages.
  */
-export function getUserActivityStatus(lastSeen: string | Date): UserActivityStatus {
+export function getUserActivityStatus(lastSeen: string | Date, nowMs: number = Date.now()): UserActivityStatus {
   const lastSeenDate = typeof lastSeen === 'string' ? new Date(lastSeen) : lastSeen
-  const now = new Date()
+  const now = new Date(nowMs)
   const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000)
   const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000)
 
@@ -190,6 +197,7 @@ export function useLastSeenTracking() {
   const handleVisibilityChange = () => {
     if (import.meta.server === true)
       return
+
     if (!document.hidden && user.value !== null) {
       void updateCurrentUserLastSeen()
     }
@@ -199,6 +207,7 @@ export function useLastSeenTracking() {
   const handleFocus = () => {
     if (import.meta.server === true)
       return
+
     if (user.value !== null) {
       void updateCurrentUserLastSeen()
     }

@@ -23,6 +23,7 @@ const copy = computed(() => {
   const req = moderationPrompt.value
   if (!req)
     return { title: '', description: '', confirmText: '' }
+
   const where = `${req.channel}`
   switch (req.action) {
     case 'kick':
@@ -31,12 +32,14 @@ const copy = computed(() => {
         description: `Remove ${req.nick} from ${where}. They can rejoin afterwards.`,
         confirmText: 'Kick',
       }
+
     case 'kickban':
       return {
         title: `Kick & ban ${req.nick}?`,
         description: `Remove ${req.nick} from ${where} and ban them from rejoining until the ban is lifted.`,
         confirmText: 'Kick & ban',
       }
+
     default:
       return { title: '', description: '', confirmText: '' }
   }

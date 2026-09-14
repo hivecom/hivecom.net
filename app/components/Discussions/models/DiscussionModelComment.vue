@@ -64,6 +64,7 @@ const modifierId = computed(() => {
   const { modified_at, created_at, modified_by, created_by } = data.value
   if (modified_at === created_at || !modified_by || modified_by === created_by)
     return null
+
   return modified_by
 })
 const { user: modifierUser } = useDataUser(modifierId, { userTtl: 10 * 60 * 1000 })
@@ -222,6 +223,7 @@ const postedAtFormatted = computed(() => fromNow(data.value.created_at))
 const editedAtFormatted = computed(() => {
   if (data.value.modified_at === data.value.created_at)
     return null
+
   return fromNow(data.value.modified_at)
 })
 
@@ -251,6 +253,7 @@ watch(
   async (replyToId) => {
     if (!replyToId || data.value.reply != null || fetchedReply.value != null || replyLoading.value)
       return
+
     replyLoading.value = true
     const { data: row } = await supabase
       .from('discussion_replies')

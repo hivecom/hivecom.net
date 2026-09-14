@@ -32,6 +32,7 @@ function onDragEnd(payload: { dragged: boolean }) {
 function onGameClick(gameId: number) {
   if (wasDragged.value)
     return
+
   if (props.interactive)
     emit('select', gameId)
   else

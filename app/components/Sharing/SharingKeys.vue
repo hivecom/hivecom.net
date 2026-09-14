@@ -63,6 +63,7 @@ const mintedKey = ref<string | null>(null)
 async function mintKey() {
   if (minting.value)
     return
+
   if (!keyLabel.value.trim()) {
     pushToast('Label required', { description: 'Give the key a label first.' })
     return
@@ -71,6 +72,7 @@ async function mintKey() {
   minting.value = true
   try {
     const created = await depot.mintKey(keyLabel.value.trim())
+
     // The raw key is only returned once, on creation.
     mintedKey.value = created.key
     keyLabel.value = ''

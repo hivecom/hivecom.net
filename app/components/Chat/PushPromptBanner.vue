@@ -20,6 +20,7 @@ function dismissalKey(): string {
 function loadDismissed() {
   if (!import.meta.client || !account.value)
     return
+
   dismissed.value = localStorage.getItem(dismissalKey()) === '1'
 }
 
@@ -40,12 +41,14 @@ const visible = computed(() => {
     return false
   if (!pushSupported.value || !vapidKey.value)
     return false
+
   // Only prompt once we've actually checked the live subscription. Before that
   // the unknown state reads as "not subscribed" and would flash the banner.
   if (!pushResolved.value)
     return false
   if (pushSubscribed.value || dismissed.value)
     return false
+
   return true
 })
 

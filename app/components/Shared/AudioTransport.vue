@@ -14,9 +14,11 @@ const props = defineProps<{
   errored: boolean
   currentTime: number
   duration: number
+
   // Whether the scrubber actually seeks. An idle inline player shows the track
   // length but can't be dragged until it owns the active track.
   seekable: boolean
+
   // Tighter spacing and a centered toggle, for lists and the mini-player.
   compact?: boolean
 }>()
@@ -30,6 +32,7 @@ const emit = defineEmits<{
 const progress = computed(() => {
   if (!props.duration)
     return 0
+
   return (props.currentTime / props.duration) * 100
 })
 
@@ -39,6 +42,7 @@ const progress = computed(() => {
 function onSeekInput(event: Event) {
   if (!props.seekable)
     return
+
   const value = Number((event.target as HTMLInputElement).value)
   emit('seekInput', (value / 100) * props.duration)
 }

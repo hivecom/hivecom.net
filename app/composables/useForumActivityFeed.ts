@@ -124,6 +124,7 @@ export function useForumActivityFeed({
         if (!settings.value.show_nsfw_content) {
           if (reply.isNsfw)
             return false
+
           const discussion = discussionLookup.value.get(reply.discussionId)
           if (discussion?.is_nsfw)
             return false
@@ -170,6 +171,7 @@ export function useForumActivityFeed({
       .filter((d) => {
         if (!settings.value.show_nsfw_content && d.is_nsfw)
           return false
+
         if (!settings.value.show_forum_archived) {
           if (d.is_archived)
             return false
@@ -292,6 +294,7 @@ export function useForumActivityFeed({
   function prependReplyItem(item: ActivityItem) {
     latestReplies.value = [item, ...latestReplies.value]
     forumCache.delete(FORUM_REPLIES_CACHE_KEY)
+
     // Also bust today count so the badge updates on next fetch
     const countKey = userId.value != null
       ? `${FORUM_TODAY_COUNT_CACHE_KEY}:${userId.value}`

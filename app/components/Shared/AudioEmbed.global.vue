@@ -18,6 +18,7 @@ const src = computed(() => (attrs.src as string | undefined) ?? '')
 const title = computed(() => {
   if (!src.value)
     return undefined
+
   try {
     const path = new URL(src.value, 'https://example.invalid').pathname
     return decodeURIComponent(path.slice(path.lastIndexOf('/') + 1)) || undefined

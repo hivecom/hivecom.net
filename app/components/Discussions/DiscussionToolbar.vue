@@ -5,12 +5,14 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 interface Props {
   viewMode: 'flat' | 'threaded'
   hasComments: boolean
+
   /** Whether the #center slot holds a pagination control (drives mobile wrap) */
   hasPagination?: boolean
   offtopicCount: number
   showOfftopic: boolean
   showThreadReplies: boolean
   showTimelineButton?: boolean
+
   /** Show the subscribe/unsubscribe bell button (comment model only) */
   showSubscribeButton?: boolean
   isSubscribed?: boolean

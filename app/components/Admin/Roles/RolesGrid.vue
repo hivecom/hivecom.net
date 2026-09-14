@@ -39,6 +39,7 @@ const permissionsByRole = computed(() => {
     const perms = grouped[role]
     if (!perms)
       continue
+
     if (perms.includes('discussions.update') && !perms.includes('discussion_replies.update'))
       perms.push('discussion_replies.update')
     if (perms.includes('discussions.delete') && !perms.includes('discussion_replies.delete'))

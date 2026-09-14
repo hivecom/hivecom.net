@@ -15,17 +15,22 @@ import { getSharedAnalysis } from '@/lib/audio/analysis'
 const props = defineProps<{
   // Track URL. Swapping it re-subscribes to that track's shared analysis.
   src: string
+
   // Playback position as a 0..1 fraction. The provider reads playback state
   // directly; this is only here for the shared prop shape the lightbox binds.
   progress: number
+
   // Total duration in seconds.
   duration: number
+
   // Whether the engine is playing.
   playing: boolean
+
   // Whether the engine is buffering/seeking. The spectrum reads decoded PCM at an
   // extrapolated playhead, not the live element, so without this it keeps moving
   // through a seek gap while no sound is out. Gating on it idles the bars then.
   loading?: boolean
+
   // Optional fixed bar count. Leave unset and the panel picks a count from its
   // width so bars never get thinner than MIN_BAR_PX, which is what smeared the
   // mobile view. Set it to pin a specific resolution.
@@ -48,6 +53,7 @@ const FFT_SIZE = 8192
 const DOUBLE = FFT_SIZE * 2
 const HALF = FFT_SIZE / 2
 const DOUBLE_HALF = DOUBLE / 2
+
 // dB window the bars normalize into. Magnitudes are scaled by the transform size
 // first (a full-scale tone lands near -12 dB after that), so this window runs
 // from the noise floor up to roughly the loudest a band ever reaches.
@@ -106,6 +112,7 @@ function setBarCount(n: number) {
   const clamped = Math.max(MIN_BARS, Math.min(MAX_BARS, Math.floor(n)))
   if (clamped === activeBars)
     return
+
   activeBars = clamped
   lowBars = Math.floor(activeBars / 3)
   levels.fill(0)
@@ -135,6 +142,7 @@ const DB_MARKS = [-20, -40, -60]
 const LOG_RANGE = Math.log(MAX_FREQ / MIN_FREQ)
 const NOTES = (() => {
   const out: { label: string, freq: number }[] = []
+
   // C1 = 32.703 Hz, doubling each octave.
   for (let octave = 1, freq = 32.703; freq < MAX_FREQ; octave++, freq *= 2) {
     if (freq >= MIN_FREQ)
@@ -158,6 +166,7 @@ function poolBars(mags: Float32Array, magsBig: Float32Array) {
       if (src[b]! > mag)
         mag = src[b]!
     }
+
     // Scale by the transform size so the dB window is meaningful (an unnormalized
     // FFT magnitude is huge and would clamp every band to the top); both windows
     // land on the same scale once divided by their own size.
@@ -233,6 +242,7 @@ function onFrame(frame: AnalysisFrame) {
       const gap = BAR_GAP
       const barW = (w - gap * (activeBars - 1)) / activeBars
       const step = barW + gap
+
       // Reserve a thin strip at the bottom for note labels when there's room, and
       // skip the whole axis when the panel is too short to fit it.
       const showAxes = h > 72
@@ -298,6 +308,7 @@ function onFrame(frame: AnalysisFrame) {
           const x = xForFreq(note.freq)
           if (x < 8 || x > w - 8)
             continue
+
           ctx.fillText(note.label, x, h - 3)
         }
       }

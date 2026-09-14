@@ -37,10 +37,13 @@ export function parseKvValue(entry: Pick<KvEntry, 'type' | 'value'>): unknown {
   switch (type) {
     case 'STRING':
       return value == null ? '' : String(value)
+
     case 'NUMBER':
       return typeof value === 'number' ? value : Number(value)
+
     case 'BOOLEAN':
       return Boolean(value)
+
     case 'JSON': {
       if (typeof value === 'string') {
         try {
@@ -52,6 +55,7 @@ export function parseKvValue(entry: Pick<KvEntry, 'type' | 'value'>): unknown {
       }
       return value
     }
+
     default:
       return value
   }

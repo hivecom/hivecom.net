@@ -19,12 +19,14 @@ function formatEventTime(event: Tables<'events'>): string {
 function formatEventDuration(event: Tables<'events'>): string {
   if (!event.duration_minutes)
     return ''
+
   const hours = Math.floor(event.duration_minutes / 60)
   const minutes = event.duration_minutes % 60
   if (hours === 0)
     return `${minutes}m`
   if (minutes === 0)
     return `${hours}h`
+
   return `${hours}h ${minutes}m`
 }
 </script>

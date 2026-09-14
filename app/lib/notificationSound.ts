@@ -14,10 +14,12 @@ let audioCtx: AudioContext | null = null
 function getContext(): AudioContext | null {
   if (typeof window === 'undefined')
     return null
+
   const Ctor = window.AudioContext
     ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
   if (!Ctor)
     return null
+
   audioCtx ??= new Ctor()
   return audioCtx
 }
@@ -33,6 +35,7 @@ type Tone = SoundDesignTone
 export interface SoundPreset {
   id: string
   label: string
+
   // Exactly one of `tones` / `url` is used. `tones` is synthesized on the fly;
   // `url` points at a bundled or remote audio file (the hand-made-sound seam).
   tones?: Tone[]
@@ -110,6 +113,7 @@ const presetById = new Map(SOUND_PRESETS.map(p => [p.id, p]))
 function clamp01(value: number): number {
   if (Number.isNaN(value))
     return 1
+
   return Math.min(1, Math.max(0, value))
 }
 
@@ -137,6 +141,7 @@ export function parseDesign(value: unknown): SoundDesign | null {
   for (const raw of value.slice(0, DESIGN_MAX_TONES)) {
     if (!raw || typeof raw !== 'object')
       continue
+
     const r = raw as Record<string, unknown>
     const freq = finiteNum(r.freq)
     const start = finiteNum(r.start)
@@ -168,6 +173,7 @@ function playTones(tones: Tone[], volume: number) {
   const ctx = getContext()
   if (!ctx)
     return
+
   // Autoplay policies suspend the context until a user gesture; resume best-effort.
   if (ctx.state === 'suspended')
     void ctx.resume()
@@ -185,6 +191,7 @@ function playTones(tones: Tone[], volume: number) {
 
     const start = now + tone.start
     const end = start + tone.duration
+
     // Optional pitch glide: ramp the oscillator from `freq` to `endFreq`.
     // Exponential tracks perceived pitch better and can't cross zero (freqs
     // are positive), so clamp the target away from 0.
@@ -192,6 +199,7 @@ function playTones(tones: Tone[], volume: number) {
       osc.frequency.setValueAtTime(tone.freq, start)
       osc.frequency.exponentialRampToValueAtTime(Math.max(1, tone.endFreq), end)
     }
+
     // Quick attack, exponential release so the cue is soft rather than jarring.
     // Clamp the attack so it never runs past the tone's own end.
     const peak = Math.max(0.0001, tone.gain * volume)
@@ -212,6 +220,7 @@ const audioCache = new Map<string, HTMLAudioElement>()
 function playUrl(url: string, volume: number) {
   if (typeof Audio === 'undefined')
     return
+
   let el = audioCache.get(url)
   if (!el) {
     el = new Audio(url)
@@ -219,8 +228,10 @@ function playUrl(url: string, volume: number) {
     audioCache.set(url, el)
   }
   el.volume = clamp01(volume)
+
   // Rewind so rapid consecutive pings each restart the clip rather than no-op.
   el.currentTime = 0
+
   // Swallow autoplay/decoding rejections; a bad URL should never throw upstream.
   void el.play().catch(() => {})
 }
@@ -258,6 +269,7 @@ export function playNotificationSound(choice: string, customUrl?: string, volume
   const preset = presetById.get(choice)
   if (!preset)
     return
+
   if (preset.url)
     playUrl(preset.url, vol)
   else if (preset.tones)

@@ -158,6 +158,7 @@ export function useGlobeRenderer() {
       const existingOutputPass = passesBefore.find((pass) => {
         if (pass == null || typeof pass !== 'object')
           return false
+
         return Boolean((pass as { isOutputPass?: boolean }).isOutputPass)
       })
       if (existingOutputPass != null && typeof composerAny.removePass === 'function') {
@@ -236,6 +237,7 @@ export function useGlobeRenderer() {
           = passesAfter?.some((pass) => {
             if (pass == null || typeof pass !== 'object')
               return false
+
             const ctor = (pass as { constructor?: { name?: string } })
               .constructor
             return (
@@ -468,6 +470,7 @@ export function useGlobeRenderer() {
         const baseHex = getHexBaseColor()
         if (iso == null || iso === '')
           return baseHex
+
         const entry = highlighted.get(iso)
         if (entry != null) {
           const elapsed = performance.now() - entry.started
@@ -478,6 +481,7 @@ export function useGlobeRenderer() {
             return blendHex(getHighlightColor(), baseHex, elapsed / entry.duration)
           }
         }
+
         // Dim ambient highlight for countries with users (max 25% alpha)
         const userCount = countryUserCounts.get(iso.toUpperCase())
         if (userCount != null && userCount > 0) {

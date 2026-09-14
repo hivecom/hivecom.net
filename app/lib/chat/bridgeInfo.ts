@@ -11,5 +11,6 @@ export function bridgeInfo(bridge: string): BridgeInfo {
     return { icon: 'ph:discord-logo', label: 'Discord' }
   if (b === 'mat' || b === 'matrix')
     return { icon: 'simple-icons:matrix', label: 'Matrix' }
+
   return { icon: 'ph:swap', label: bridge }
 }

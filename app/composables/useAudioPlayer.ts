@@ -24,6 +24,7 @@ export interface AudioTrack {
 const currentSrc = ref<string | null>(null)
 const title = ref<string | undefined>()
 const subtitle = ref<string | undefined>()
+
 // Embedded metadata for the active track (title/artist/album/cover), populated
 // async off the shared fetch. Null until a read resolves or when a track has no
 // readable tags, so the UI falls back to the passed title/subtitle.
@@ -33,13 +34,16 @@ const duration = ref(0)
 const currentTime = ref(0)
 const loading = ref(false)
 const errored = ref(false)
+
 // Held true while a scrubber is being dragged so timeupdate doesn't yank the
 // thumb back mid-drag. Shared, so dragging one surface holds them all.
 const seeking = ref(false)
 const activeToastId = ref<number | null>(null)
+
 // Whether the fullscreen spectrogram view is open. Shared so any inline player
 // can pop it and the single global AudioLightbox can render the active track.
 const fullscreen = ref(false)
+
 // Output level (0..1) and mute, shared so the fullscreen volume control drives
 // the one engine. Seeded at the 50% default; the persisted user setting takes
 // over once linkVolumeSetting runs on the client.
@@ -75,6 +79,7 @@ let volumeLinked = false
 function linkVolumeSetting() {
   if (!import.meta.client || volumeLinked)
     return
+
   volumeLinked = true
 
   const { settings } = useDataUserSettings()
@@ -100,6 +105,7 @@ function linkVolumeSetting() {
 function applyVolume() {
   if (!audio)
     return
+
   audio.volume = volume.value
   audio.muted = muted.value
 }
@@ -151,6 +157,7 @@ function ensureAudio(): HTMLAudioElement | null {
 function ensureToast() {
   if (activeToastId.value != null)
     return
+
   const toast = pushToast('', {
     persist: true,
     body: ToastBodyAudioPlayer as Component,
@@ -169,6 +176,7 @@ function reset() {
   duration.value = 0
   loading.value = false
   errored.value = false
+
   // Player's closed, drop the held decoded buffer so its PCM can be collected
   // and revoke the cover URL so its blob is freed.
   clearDecodeCache()
@@ -191,9 +199,11 @@ function play(track: AudioTrack) {
     errored.value = false
     loading.value = true
     el.src = track.src
+
     // Warm the fullscreen visuals while the user listens, so expanding is
     // instant. Background, swallows its own errors.
     prewarmAudioVisuals(track.src)
+
     // Read embedded tags off the same shared fetch. Fire-and-forget; the
     // currentSrc guard mirrors the components' `if (src !== props.src) return`
     // so a slow resolve on an old track can't clobber a newer one.
@@ -232,6 +242,7 @@ function toggle(track: AudioTrack) {
 function togglePlayback() {
   if (!audio)
     return
+
   if (audio.paused) {
     audio.play().catch(() => {
       errored.value = true
@@ -256,6 +267,7 @@ function setVolume(value: number) {
   if (volume.value > 0)
     muted.value = false
   applyVolume()
+
   // Persist as the shared user setting (0-100) on desktop. Mobile output is
   // pinned to full, so there's nothing worth saving there. The setting watcher
   // echoes the value back onto `volume`, which is a harmless no-op.
@@ -299,6 +311,7 @@ function stop() {
 function handleToastUnmount(id: number) {
   if (activeToastId.value !== id)
     return
+
   activeToastId.value = null
   reset()
 }

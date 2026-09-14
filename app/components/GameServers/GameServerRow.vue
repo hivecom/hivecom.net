@@ -59,9 +59,11 @@ const playerCounts = computed(() => {
   const detail = metrics.value?.gameservers.byServer[String(props.gameserver.id)]
   if (!detail?.data)
     return null
+
   const current = metricsPlayerCount(detail)
   if (current === null)
     return null
+
   return { current, max: metricsMaxPlayers(detail) }
 })
 </script>

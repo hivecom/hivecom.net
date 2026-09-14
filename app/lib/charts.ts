@@ -15,12 +15,16 @@ import 'chartjs-scale-timestack'
 export interface ChartPalette {
   /** Grid lines, axis ticks. */
   grid: string
+
   /** Axis label text. */
   text: string
+
   /** Muted axis label text. */
   textLight: string
+
   /** Dimmer axis tick text. */
   textLighter: string
+
   /**
    * Ordered dataset colors. Callers should index into this array by dataset
    * position. Falls back gracefully - the array always has at least 6 entries.
@@ -42,6 +46,7 @@ function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   const l = (max + min) / 2
   if (max === min)
     return [0, 0, Math.round(l * 100)]
+
   const d = max - min
   const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
   let h: number
@@ -72,6 +77,7 @@ function getAccentHue(): number {
   const raw = getCSSVariable('--color-accent')
   if (!raw)
     return 120
+
   const [r, g, b] = parseColor(raw)
   const [h] = rgbToHsl(r, g, b)
   return h
@@ -88,6 +94,7 @@ function getAccentHue(): number {
 export function getColorizedPalette(count: number, alpha = 'cc'): string[] {
   if (count <= 0)
     return []
+
   const anchorHue = getAccentHue()
   const alphaPercent = Math.round((Number.parseInt(alpha, 16) / 255) * 100)
   return Array.from({ length: count }, (_, i) => {
@@ -157,6 +164,7 @@ export function createVuiTooltipHandler() {
       lines.forEach((line) => {
         if (!line)
           return
+
         const swatch = ds
           ? `<span class="chartjs-vui-tooltip__swatch" style="background:${color}"></span>`
           : ''
@@ -287,6 +295,7 @@ export function getLineChartDefaults(_theme?: string): ChartOptions<'line'> {
 function barPointY(value: unknown): number | null {
   if (value !== null && typeof value === 'object' && 'y' in value)
     return (value as { x: number, y: number | null }).y
+
   return value as number | null
 }
 

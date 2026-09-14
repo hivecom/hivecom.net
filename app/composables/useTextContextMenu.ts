@@ -7,6 +7,7 @@ import { ref } from 'vue'
 // insert) differ per backend and stay in each component.
 export function useTextContextMenu() {
   const emojiOpen = ref(false)
+
   // Where the right-click happened, so the picker can anchor at the menu spot.
   const emojiPos = ref({ x: 0, y: 0 })
 
@@ -50,12 +51,14 @@ export function useTextContextMenu() {
   function passThroughNative(event: MouseEvent) {
     if (!event.shiftKey)
       return false
+
     event.stopPropagation()
     return true
   }
 
   function openEmojiPicker() {
     closeMenu()
+
     // Open after the synthetic body click that closes the context menu, so the
     // picker's own click-outside guard isn't tripped by that same click.
     if (import.meta.client)

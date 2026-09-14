@@ -76,6 +76,7 @@ export function useDataUserReplyCount(
   function invalidate(profileId: string | null | undefined) {
     if (!hasValidProfileId(profileId))
       return
+
     cache.delete(getCacheKey(profileId.trim()))
   }
 
@@ -83,6 +84,7 @@ export function useDataUserReplyCount(
     const profileId = unref(userId)
     if (!hasValidProfileId(profileId))
       return
+
     invalidate(profileId)
     await loadCount(profileId.trim(), true)
   }

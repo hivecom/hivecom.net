@@ -85,6 +85,7 @@ watch(
         created_by: null,
       }
     }
+
     // Reset confirm modals when opening form
     showEditConfirm.value = false
     showDeleteConfirm.value = false
@@ -95,6 +96,7 @@ watch(
 function handleSave() {
   if (!isValid.value)
     return
+
   if (props.isEditMode) {
     showEditConfirm.value = true
   }

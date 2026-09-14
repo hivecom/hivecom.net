@@ -42,6 +42,7 @@ export const BUCKET_ALLOWED_MIME_TYPES: Record<StorageBucketId, string[] | null>
 function mimeMatchesPattern(pattern: string, type: string): boolean {
   if (pattern.endsWith('/*'))
     return type.startsWith(pattern.slice(0, -1))
+
   return pattern === type
 }
 
@@ -65,6 +66,7 @@ export function getBucketAcceptAttr(bucketId: StorageBucketId): string {
   const patterns = BUCKET_ALLOWED_MIME_TYPES[bucketId]
   if (patterns == null)
     return ''
+
   const archiveExtensions = patterns.some(pattern => ARCHIVE_MIME_TYPES.includes(pattern))
     ? ARCHIVE_EXTENSIONS.map(extension => `.${extension}`)
     : []
@@ -89,6 +91,7 @@ export interface FlatListOptions {
 export interface FlatListResult {
   assets: StorageAsset[]
   totalCount: number
+
   /** True when there may be more results (returned count === limit). */
   hasMore: boolean
 }
@@ -288,6 +291,7 @@ export function joinAssetPath(prefix: string, name: string): string {
     return name
   if (name.length === 0)
     return normalizedPrefix
+
   return `${normalizedPrefix}/${name}`
 }
 
@@ -361,6 +365,7 @@ export function getPublicAssetUrl(
   const normalized = normalizePrefix(path)
   if (!normalized)
     return null
+
   return client.storage.from(bucketId).getPublicUrl(normalized).data.publicUrl
 }
 
@@ -383,12 +388,16 @@ export function getBucketLabel(bucketId: StorageBucketId): string {
   switch (bucketId) {
     case CMS_BUCKET_ID:
       return 'CMS'
+
     case FORUMS_BUCKET_ID:
       return 'Forums'
+
     case STATIC_BUCKET_ID:
       return 'Static'
+
     case USERS_BUCKET_ID:
       return 'Users'
+
     default:
       return bucketId
   }
@@ -398,12 +407,16 @@ export function getBucketDescription(bucketId: StorageBucketId): string {
   switch (bucketId) {
     case CMS_BUCKET_ID:
       return 'Shared CMS assets'
+
     case FORUMS_BUCKET_ID:
       return 'Discussion uploads'
+
     case STATIC_BUCKET_ID:
       return 'Site static assets'
+
     case USERS_BUCKET_ID:
       return 'User avatars & profile media'
+
     default:
       return ''
   }
@@ -455,6 +468,7 @@ export function extractExtension(filename: string): string | null {
   const parts = filename.split('.')
   if (parts.length < 2)
     return null
+
   return parts.pop()?.toLowerCase() ?? null
 }
 
@@ -479,6 +493,7 @@ function resolveSize(metadata: StorageMetadata): number {
 function parseNumericField(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value))
     return value
+
   if (typeof value === 'string') {
     const parsed = Number.parseInt(value, 10)
     if (Number.isFinite(parsed))

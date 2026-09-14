@@ -10,13 +10,16 @@ type SeriesKey = 'usersOnline' | 'teamspeakOnline' | 'ircMessages' | 'gameserver
 
 const props = defineProps<{
   title?: string
+
   // Small line under the title, e.g. what the chart below is scoped to.
   subtitle?: string
   count?: number | null
   countLabel?: string
   countSingular?: string
+
   // Extra text after the count, e.g. a message total for the loaded range.
   countSuffix?: string
+
   // Optional explainer shown as an info icon next to the count badge.
   countInfo?: string
   series?: SeriesKey[]

@@ -97,6 +97,7 @@ async function applyPeriod(period: MetricsPeriod) {
   const config = PERIOD_CONFIGS[period]
   const end = new Date()
   const fallback = new Date(Date.now() - config.hours * 60 * 60 * 1000)
+
   // All Time has no fixed lookback - anchor it to the first snapshot we hold,
   // falling back to the ceiling in the config if that lookup fails.
   const start = config.allTime
@@ -113,9 +114,11 @@ const calendarRange = ref<Date[] | null>(null)
 watch(calendarRange, (val) => {
   if (!val || val.length < 2)
     return
+
   const [rawStart, rawEnd] = val
   if (!rawStart || !rawEnd)
     return
+
   // same day clicked twice - expand to full day
   let start = rawStart
   let end = rawEnd
@@ -126,10 +129,12 @@ watch(calendarRange, (val) => {
     end.setHours(23, 59, 59, 999)
   }
   applyWindow(start, end)
+
   // check if it matches a preset
   const duration = end.getTime() - start.getTime()
   const matched = METRICS_PERIOD_OPTIONS.find((opt) => {
     const config = PERIOD_CONFIGS[opt.value]
+
     // All Time isn't a fixed duration, so it can never be matched by width.
     return !config.allTime && Math.abs(duration - config.hours * 60 * 60 * 1000) < 60 * 1000
   })
@@ -161,6 +166,7 @@ const bucketMs = computed<number>(() => {
   const max = dataMax.value
   if (min === null || max === null || max <= min)
     return 1
+
   return (max - min) / (metricsOverview.value.length - 1 || 1)
 })
 
@@ -185,6 +191,7 @@ const matchedPeriod = computed<MetricsPeriod | null>(() => {
   const b = brushEnd.value
   if (a === null || b === null)
     return activePeriod.value
+
   const winDuration = Math.abs(b - a)
   for (const opt of METRICS_PERIOD_OPTIONS) {
     const config = PERIOD_CONFIGS[opt.value]
@@ -202,6 +209,7 @@ const matchedPeriod = computed<MetricsPeriod | null>(() => {
 const periodLabel = computed(() => {
   if (selectionMode.value !== 'period')
     return 'Custom'
+
   return PERIOD_CONFIGS[activePeriod.value]?.label ?? 'Custom'
 })
 
@@ -212,6 +220,7 @@ function xToTimestamp(x: number, canvasWidth: number): number {
   const max = axisMax.value
   if (min === null || max === null)
     return 0
+
   return min + (x / canvasWidth) * (max - min)
 }
 
@@ -220,6 +229,7 @@ function timestampToX(ts: number, canvasWidth: number): number {
   const max = axisMax.value
   if (min === null || max === null || max === min)
     return 0
+
   return ((ts - min) / (max - min)) * canvasWidth
 }
 
@@ -231,6 +241,7 @@ function draw() {
   const canvas = canvasRef.value
   if (!canvas)
     return
+
   const ctx = canvas.getContext('2d')
   if (!ctx)
     return
@@ -270,6 +281,7 @@ function draw() {
       return entry.gameserversByServer?.[String(props.serverId)] ?? null
     if (props.serverName !== undefined && key === 'teamspeakOnline')
       return entry.teamspeakByServer?.[props.serverName] ?? null
+
     return entry[key] as number | null
   }
 
@@ -296,6 +308,7 @@ function draw() {
     const entry = entries[i]
     if (!entry)
       continue
+
     const ts = new Date(entry.capturedAt).getTime()
     const x = ((ts - min) / (max - min)) * W
     if (active.every(s => getEntryValue(entry, s.key) === null)) {
@@ -316,9 +329,11 @@ function draw() {
       const entry = entries[i]
       if (!entry || getEntryValue(entry, s.key) === null)
         continue
+
       const v = getEntryValue(entry, s.key) ?? 0
       if (v <= 0)
         continue
+
       const ts = new Date(entry.capturedAt).getTime()
       const x = ((ts - min) / (max - min)) * W + si * bw
       const barH = Math.max((v / sMax) * H, 1)
@@ -373,6 +388,7 @@ watch([wrapperWidth, metricsOverview, brushStart, brushEnd, theme, hoverX], () =
   const canvas = canvasRef.value
   if (!canvas)
     return
+
   const w = wrapperWidth.value
   if (w > 0)
     canvas.width = w
@@ -386,6 +402,7 @@ function getCanvasX(clientX: number): number {
   const canvas = canvasRef.value
   if (!canvas)
     return 0
+
   const rect = canvas.getBoundingClientRect()
   return Math.max(0, Math.min(clientX - rect.left, canvas.width))
 }
@@ -403,6 +420,7 @@ function onMouseMove(e: MouseEvent) {
   hoverTimestamp.value = xToTimestamp(x, canvasRef.value?.width ?? 1)
   if (!isDragging.value)
     return
+
   brushEnd.value = hoverTimestamp.value
 }
 
@@ -411,6 +429,7 @@ function onTouchStart(e: TouchEvent) {
   const touch = e.touches[0]
   if (!touch)
     return
+
   isDragging.value = true
   const x = getCanvasX(touch.clientX)
   const ts = xToTimestamp(x, canvasRef.value?.width ?? 1)
@@ -424,6 +443,7 @@ function onTouchMove(e: TouchEvent) {
   const touch = e.touches[0]
   if (!touch || !isDragging.value)
     return
+
   const x = getCanvasX(touch.clientX)
   hoverX.value = x
   brushEnd.value = xToTimestamp(x, canvasRef.value?.width ?? 1)
@@ -438,11 +458,13 @@ function onTouchEnd(e: TouchEvent) {
 function finishDrag() {
   if (!isDragging.value)
     return
+
   isDragging.value = false
   const bStart = brushStart.value
   const bEnd = brushEnd.value
   if (bStart === null || bEnd === null)
     return
+
   const start = new Date(Math.min(bStart, bEnd))
   const end = new Date(Math.max(bStart, bEnd))
   const matched = matchedPeriod.value
@@ -479,6 +501,7 @@ const startLabel = computed(() => {
 const endLabel = computed(() => {
   if (endMs.value === null)
     return ''
+
   return Date.now() - endMs.value < 5 * 60 * 1000 ? 'Now' : formatTimestamp(endMs.value)
 })
 

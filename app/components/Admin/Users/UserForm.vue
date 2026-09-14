@@ -220,6 +220,7 @@ const badgeSummaryText = computed(() => {
 const canEditForm = computed(() => {
   if (!props.isEditMode)
     return canModifyUsers.value // Creating new user
+
   return canModifyUsers.value // Editing existing user
 })
 
@@ -307,18 +308,22 @@ watch(
       if (props.isEditMode) {
         fetchUserRoles()
       }
+
       // Fetch user avatar when editing existing user
       if (props.isEditMode && newUser.id) {
         avatarUrl.value = await getUserAvatarUrl(supabase, newUser.id)
       }
+
       // Verify role permissions when user changes - now handled reactively via canUpdateRoles
     }
     else {
       // Reset form for new user
       userForm.value = createDefaultUserFormState()
+
       // Reset role for new user
       selectedRole.value = 'user'
       originalRole.value = 'user'
+
       // Reset avatar for new user
       avatarUrl.value = null
     }
@@ -406,10 +411,12 @@ async function handleAvatarDelete() {
   try {
     await deleteUserAvatar(supabase, props.user.id)
     avatarUrl.value = null
+
     // You might want to emit an event here to notify parent component
   }
   catch (error) {
     console.error('Error deleting avatar:', error)
+
     // Handle error state if needed
   }
   finally {

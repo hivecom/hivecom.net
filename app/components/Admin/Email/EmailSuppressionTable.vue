@@ -58,6 +58,7 @@ async function loadMore() {
   errorMessage.value = ''
   try {
     const page = await fetchSuppressionPage(PAGE_SIZE, nextToken.value)
+
     // The first page unions in profile-flagged addresses that SES may still
     // list on a later page, so drop anything we already have.
     const known = new Set(entries.value.map(row => row.email))
@@ -79,6 +80,7 @@ function reasonVariant(reason: string | null) {
     return 'danger'
   if (reason === 'BOUNCE')
     return 'warning'
+
   return 'neutral'
 }
 

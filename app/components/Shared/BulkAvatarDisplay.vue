@@ -23,11 +23,13 @@ interface Props {
   supporterHighlight?: boolean
   noEmptyState?: boolean
   expand?: boolean
+
   /**
    * Cluster mode: avatars overlap (negative gap), no slot reservation for
    * the overflow bubble, and no remainingClick interaction.
    */
   cluster?: boolean
+
   /**
    * Show a green online indicator dot on avatars whose last_seen is within
    * the active threshold (~15 minutes).
@@ -104,6 +106,7 @@ const remainingCount = computed(() => {
 const effectiveMaxUsers = computed(() => {
   if (props.cluster)
     return props.maxUsers
+
   return remainingCount.value > 0 ? props.maxUsers - 1 : props.maxUsers
 })
 
@@ -112,6 +115,7 @@ const effectiveMaxUsers = computed(() => {
 const displayedRemainingCount = computed(() => {
   if (props.cluster)
     return remainingCount.value
+
   return remainingCount.value > 0 ? remainingCount.value + 1 : 0
 })
 
@@ -170,6 +174,7 @@ function getActivityStatus(profile?: UserDisplayData | null) {
   }
   if (!profile?.last_seen)
     return null
+
   return getUserActivityStatus(profile.last_seen)
 }
 

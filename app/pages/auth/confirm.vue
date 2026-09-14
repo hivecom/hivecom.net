@@ -387,6 +387,7 @@ async function ensureProfileDiscordId(currentDiscordId: string | null) {
 const hasAuthParams = computed(() => {
   if (typeof window === 'undefined')
     return false
+
   const hash = window.location.hash
   return hash && (hash.includes('access_token') || hash.includes('error'))
 })
@@ -500,20 +501,26 @@ async function handleEmailConfirmation() {
       throw authError
 
     if (!data.session) {
+      // A PKCE link opened in this browser can still be redeemed for a session.
       if (pkceCode.value) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(pkceCode.value)
+
         if (exchangeError) {
           console.warn('PKCE code exchange failed:', exchangeError)
           showLinkRecovery(LINK_WRONG_BROWSER)
           return
         }
+
         await checkUsernameStatus()
       }
+      // Implicit-flow params: the SDK signs in on its own, so wait for the event
+      // and give up after ten seconds rather than listening forever.
       else if (hasAuthParams.value) {
         const { data: authData } = await supabase.auth.onAuthStateChange((event, session) => {
           if (event === 'SIGNED_IN' && session)
             checkUsernameStatus()
         })
+
         setTimeout(() => {
           authData.subscription.unsubscribe()
         }, 10000)

@@ -75,6 +75,7 @@ export function useDataForumUnread() {
       return false
     if (lastActivityAt == null || lastActivityAt === '')
       return false
+
     return dayjs(lastActivityAt).isAfter(dayjs(seen.seenActivityAt))
   }
 
@@ -96,6 +97,7 @@ export function useDataForumUnread() {
   ): boolean {
     if (lastActivityBy != null && lastActivityBy === currentUserId.value)
       return false
+
     if (discussionsLoaded) {
       return discussions.some(d => isDiscussionNew(d.id, d.reply_count ?? null, d.last_activity_by))
     }
@@ -110,11 +112,13 @@ export function useDataForumUnread() {
   function isDiscussionNew(discussionId: string, replyCount: number | null, lastActivityBy?: string | null): boolean {
     if (lastActivityBy != null && lastActivityBy === currentUserId.value)
       return false
+
     const seen = storage.value.discussions[discussionId]
     if (!seen)
       return false
     if (replyCount == null)
       return false
+
     return replyCount > seen.seenReplyCount
   }
 
@@ -130,9 +134,11 @@ export function useDataForumUnread() {
   function markTopicSeen(topicId: string, activityAt?: string) {
     const incoming = activityAt ?? new Date().toISOString()
     const current = storage.value.topics[topicId]?.seenActivityAt
+
     // Only write if the incoming value is newer than what we already have
     if (current != null && !dayjs(incoming).isAfter(dayjs(current)))
       return
+
     storage.value = {
       ...storage.value,
       topics: {

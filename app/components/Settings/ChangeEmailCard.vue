@@ -21,6 +21,7 @@ function isValidEmail(value: string): boolean {
     return false
   if (domain.startsWith('.') || domain.endsWith('.'))
     return false
+
   return domain.includes('.')
 }
 

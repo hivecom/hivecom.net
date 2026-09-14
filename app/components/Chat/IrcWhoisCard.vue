@@ -4,6 +4,7 @@ import { Badge, Flex, Spinner } from '@dolanske/vui'
 
 defineProps<{
   whois: WhoisData
+
   /** When true, omits the top border separator (e.g. when no profile card precedes it). */
   standalone?: boolean
   ircOnly?: boolean

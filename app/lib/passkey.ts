@@ -26,9 +26,11 @@ type Supabase = SupabaseClient<Database>
 /** A passkey enrolled by the user, as returned by the GoTrue passkey API. */
 export interface EnrolledPasskey {
   id: string
+
   /** Friendly name derived from the authenticator's AAGUID, renameable by the user. */
   friendly_name?: string
   created_at: string
+
   /** Updated each time the passkey is used to sign in. */
   last_used_at?: string
 }
@@ -68,6 +70,7 @@ export async function registerPasskey(supabase: Supabase): Promise<EnrolledPassk
     throw error
   if (!data)
     throw new Error('Passkey registration returned no data.')
+
   return data
 }
 
@@ -83,6 +86,7 @@ export async function signInWithPasskey(supabase: Supabase): Promise<PasskeySign
   const { data, error } = await supabase.auth.signInWithPasskey()
   if (error)
     throw error
+
   return { session: data?.session ?? null, user: data?.user ?? null }
 }
 
@@ -92,6 +96,7 @@ export async function listPasskeys(supabase: Supabase): Promise<EnrolledPasskey[
   const { data, error } = await supabase.auth.passkey.list()
   if (error)
     throw error
+
   return data ?? []
 }
 
@@ -106,6 +111,7 @@ export async function renamePasskey(
     throw error
   if (!data)
     throw new Error('Passkey update returned no data.')
+
   return data
 }
 

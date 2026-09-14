@@ -89,6 +89,7 @@ function openEditConfirm() {
 function isActionLoading(actionType: string): boolean {
   if (!props.isLoading)
     return false
+
   const loading = props.isLoading(actionType)
   if (typeof loading === 'boolean') {
     return loading

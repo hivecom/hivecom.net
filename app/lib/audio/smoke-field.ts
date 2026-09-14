@@ -25,10 +25,13 @@ import type { AudioFeatures } from '@/lib/audio/features'
 export interface SmokeColors {
   // Empty field / canvas background (--color-bg).
   bg: [number, number, number]
+
   // Bright additive smoke (--color-accent).
   accent: [number, number, number]
+
   // Subtractive cutouts (--color-bg-lowered), a touch darker than the background.
   dark: [number, number, number]
+
   // Bright foreground hits (--color-text), so the fast flashes punch a second tone
   // against the accent smoke.
   text: [number, number, number]
@@ -44,9 +47,11 @@ const MAX_LONG_EDGE = 1800
 // accumulated smoke so the two fight each other.
 const MAX_SPLOTCHES = 120
 const MAX_CUTOUTS = 120
+
 // Long streak lines. Each flashes for a single frame on a hit, long enough to
 // run off both edges of the frame, then the feedback buffer smears it away.
 const MAX_LINES = 32
+
 // Distorted wireframe shards flashed in on a big hit. A small pool, they're rare
 // punctuation on the drops, not a steady emitter.
 const MAX_SHARDS = 6
@@ -66,10 +71,12 @@ export interface SmokeConfig {
   cameraAudioKick: number // how hard bass shoves the camera (0 = ignores the music)
   cameraBeatPump: number // in/out pump on the beat
   cameraSway: number // how much the field slides around in space
+
   // Motion pace
   paceEnergy: number // how much loudness speeds everything up
   tempoInfluence: number // 0 ignores tempo, 1 fully ties pace to BPM
   flowSpeed: number // advection swirl animation rate
+
   // Background smoke
   smokePersist: number // how long the smoke lingers (feedback decay, near 1)
   turbulence: number // swirl strength
@@ -77,6 +84,7 @@ export interface SmokeConfig {
   smokeBlur: number // how much the smoke diffuses each frame
   bedDensity: number // how many ambient dust specks
   bedSize: number // size of those specks
+
   // Hits
   bassBloomSize: number // size of the kick bloom
   bassPush: number // strength of the buffer shove on a kick
@@ -86,6 +94,7 @@ export interface SmokeConfig {
   cutouts: number // strength of the dark cutouts
   lines: number // how often streak lines fire
   lineAccent: number // 0 = all lines are cutouts, 1 = all accent, 0.5 = an even mix
+
   // Look
   contrast: number // display contrast
   grain: number // film grain amount
@@ -155,6 +164,7 @@ const ADVECT_FRAG = /* glsl */ `
     float d = dot(hash2(i + vec2(1.0, 1.0)) - 0.5, f - vec2(1.0, 1.0));
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
   }
+
   // Curl of a scalar noise field gives a divergence-free flow that swirls
   // instead of pumping outward, which is what reads as smoke.
   vec2 curl(vec2 p) {
@@ -182,6 +192,7 @@ const ADVECT_FRAG = /* glsl */ `
   void main() {
     vec2 flow = flowField(vUv * 3.0) * uTurb;
     flow.y -= uRise;
+
     // uPush is a whole-frame directional shove, set on a bass hit and decayed, so a
     // kick whips the entire buffer one way like a shockwave.
     vec2 uv = vUv + (flow + uPush) * uTexel;
@@ -233,6 +244,7 @@ const DISPLAY_FRAG = /* glsl */ `
     float bgN = max(-db, 0.0);
     float fgP = max(df, 0.0);
     float fgN = max(-df, 0.0);
+
     // Punchier response so the smoke fills bright and reads high-contrast like the
     // reference; blacks stay black.
     bgP = pow(bgP / (1.0 + bgP * 0.35), 0.72);
@@ -265,6 +277,7 @@ const DISPLAY_FRAG = /* glsl */ `
     float ink = bgP + fgP;
     float g = hash(vUv * vec2(1920.0, 1080.0) + uTime) - 0.5;
     col += g * (0.01 + 0.04 * ink + 0.08 * uGrain * (0.3 + ink)) * uGrainScale;
+
     // Fine bright dust specks drifting through the ink, the reference's film-dust
     // sparkle. Sparse (step near 1), stepped in time so they twinkle rather than boil.
     float dust = step(0.9965, hash(vUv * vec2(2600.0, 1500.0) + floor(uTime * 24.0) * 1.7));
@@ -329,14 +342,17 @@ const SPLOTCH_FRAG = /* glsl */ `
     float r = length(uv) * 2.0; // 0 at center, 1 at the sprite edge
     if (r > 1.0) discard;
     float ang = atan(uv.y, uv.x);
+
     // Jagged radial reach: the burst extends different distances at different angles,
     // with sharp spikes, so the silhouette is a torn star, not a clean disc.
     float spike = fbm(vec2(ang * 5.0 + vSeed * 30.0, vSeed * 13.0));
     spike = pow(spike, 2.5);
     float reach = 0.3 + spike * 0.7;
     if (r > reach) discard;
+
     // Filament streaks running outward along the angle, for the shredded look.
     float streak = fbm(vec2(ang * 16.0 + vSeed * 50.0, r * 2.5));
+
     // Bright core falling toward the torn edge, broken up by cloud noise + streaks.
     float body = pow(max(0.0, 1.0 - r / reach), 1.5);
     float n = fbm(gl_PointCoord * 7.0 + vSeed * 40.0);
@@ -460,8 +476,10 @@ class ShardLayer {
   readonly group: THREE.Group
   private readonly meshes: THREE.Mesh[] = []
   private readonly mats: THREE.MeshBasicMaterial[] = []
+
   // Undistorted base positions per mesh, so each hit warps from the clean shape.
   private readonly bases: Float32Array[] = []
+
   // Remaining life per mesh, 1 on spawn down to 0, and a per-mesh spin speed.
   private readonly life: Float32Array
   private readonly spin: Float32Array
@@ -531,6 +549,7 @@ class ShardLayer {
     for (let i = 0; i < this.count; i++) {
       if (this.life[i]! <= 0)
         continue
+
       this.life[i]! -= step * 5
       const l = this.life[i]!
       const mesh = this.meshes[i]!
@@ -629,6 +648,7 @@ class LineLayer {
 
 export class SmokeField {
   private readonly THREE: typeof THREE
+
   // Live tuning, mutated in place by setConfig so the next frame reads new values.
   private readonly cfg: SmokeConfig
   private readonly renderer: THREE.WebGLRenderer
@@ -654,6 +674,7 @@ export class SmokeField {
   private readonly white: SplotchLayer
   private readonly black: SplotchLayer
   private readonly flash: SplotchLayer
+
   // Distorted wireframe shards flashed in on the biggest hits.
   private readonly shards: ShardLayer
 
@@ -671,6 +692,7 @@ export class SmokeField {
 
   // Smoothed style state so the look glides between moods.
   private turb = 3
+
   // Background feedback decay (near 1, so smoke persists), foreground decay (well
   // below 1, so hits vanish fast), plus the rise/swirl/time the passes read.
   private bgDecay = 0.97
@@ -678,17 +700,21 @@ export class SmokeField {
   private rise = 1.2
   private beatSwirl = 0
   private time = 0
+
   // Paced clock for the advection flow and world sway, so motion follows the song
   // rather than real time. Advances by pace each frame.
   private flowTime = 0
+
   // Directional shove of the smoke buffer, a shockwave set on a bass hit and decayed
   // over a few frames so the whole frame lurches in one direction.
   private pushX = 0
   private pushY = 0
   private brushPhase = 1
+
   // Horizontal spread so the cloud fills a wide frame instead of a centred
   // square. Set from the aspect ratio in resize.
   private spreadX = 1
+
   // Rising-edge latches: emit one burst / flash per detected hit instead of
   // every frame the feature sits above threshold.
   // Bass trigger, adaptive per song. bassBaseline tracks the onset floor between kicks
@@ -702,14 +728,18 @@ export class SmokeField {
   private bassPeak = 0.3
   private highHeld = false
   private lineHeld = false
+
   // Last frame's beat phase, so we can catch the wrap to 0 as a downbeat.
   private prevBeatPhase = 0
+
   // Smoothed beat-breathing envelope, 0..1, peaks on the downbeat. Drives the
   // camera pump and the beat swirl so the motion tracks the tempo.
   private beatPulse = 0
+
   // Smoothed loudness of the passage: a plain EMA of the raw level, not the
   // adaptively-normalized features. Gates emission so quiet parts stay calm.
   private drive = 0
+
   // Slow peak-holding loudness reference, so the gate keys on loud-vs-quiet for
   // this track rather than an absolute level. Leaks down to recalibrate.
   private loudRef = 0
@@ -818,10 +848,12 @@ export class SmokeField {
   static async create(canvas: HTMLCanvasElement, colors: SmokeColors, config: SmokeConfig): Promise<SmokeField | null> {
     try {
       const t = await import('three')
+
       // Probe for a working context before committing.
       const probe = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
       if (!probe)
         return null
+
       return new SmokeField(t, canvas, colors, config)
     }
     catch {
@@ -839,6 +871,7 @@ export class SmokeField {
   setColors(colors: SmokeColors) {
     if (this.disposed)
       return
+
     const t = this.THREE
     ;(this.displayMat.uniforms.uBg!.value as THREE.Vector3).set(colors.bg[0], colors.bg[1], colors.bg[2])
     ;(this.displayMat.uniforms.uAccent!.value as THREE.Vector3).set(colors.accent[0], colors.accent[1], colors.accent[2])
@@ -861,6 +894,7 @@ export class SmokeField {
   resize(width: number, height: number, dpr: number) {
     if (this.disposed || width <= 0 || height <= 0)
       return
+
     // Cap the backing buffer so the multi-pass loop stays affordable.
     let pr = Math.min(dpr, MAX_PIXEL_RATIO)
     const longEdge = Math.max(width, height) * pr
@@ -887,6 +921,7 @@ export class SmokeField {
 
     this.camera.aspect = width / height
     this.camera.updateProjectionMatrix()
+
     // Bias emitter spread toward the wide axis so the cloud fills a wide panel to
     // the sides instead of clustering in a centred disc. Over-spread (aspect x 1.3)
     // so the mid-radius particles reach the horizontal edges, not just the sparse
@@ -913,6 +948,7 @@ export class SmokeField {
   frame(f: AudioFeatures, dt: number, time: number) {
     if (this.disposed)
       return
+
     const step = Math.min(dt, 0.05)
 
     // Beat breathing: with a tempo locked, a smooth envelope that peaks on the
@@ -929,9 +965,11 @@ export class SmokeField {
     // field settles instead of swirling forever. The flow clock, swirl strength, and
     // camera all scale by these. ---
     const rawTempo = f.bpm > 0 ? Math.min(1.4, Math.max(0.55, f.bpm / 120)) : 0.9
+
     // tempoInfluence blends between "ignore tempo" (1) and "fully paced by BPM".
     const tempoRate = 1 + (rawTempo - 1) * this.cfg.tempoInfluence
     const pace = Math.max(0.04, (0.1 + f.energy * this.cfg.paceEnergy) * tempoRate)
+
     // Flow clock: advances with pace, so the advection swirl evolves and drifts only
     // as fast as the music moves, not at a fixed real-time rate.
     this.flowTime += step * (0.2 + pace * 1.1) * this.cfg.flowSpeed
@@ -942,15 +980,18 @@ export class SmokeField {
     // (NOT adaptively normalized) as the passage's loudness: attack fast so a drop
     // opens up right away, release slow so it settles. ---
     this.drive += (f.level - this.drive) * (f.level > this.drive ? 0.2 : 0.05)
+
     // Key the gate on where we sit in THIS track's loudness range, not an absolute
     // number: level's log scale rarely climbs near 1. loudRef holds the recent peak
     // and leaks down to recalibrate; rel is 0..1 within that range.
     this.loudRef = Math.max(this.drive, this.loudRef * 0.9997)
     const rel = this.loudRef > 1e-3 ? this.drive / this.loudRef : 0
     const gate = Math.max(0, Math.min(1, (rel - 0.3) / 0.4))
+
     // quiet raises every hit threshold, gate shrinks what slips through, so a
     // breakdown stays calm and the busy look is earned by a loud section.
     const quiet = 1 - gate
+
     // Low-intensity factor: 1 in quiet passages, 0 as the mix gets loud. Drives the
     // dust, which belongs only to the calm parts.
     const lowFactor = Math.max(0, 1 - gate * 1.8)
@@ -965,9 +1006,11 @@ export class SmokeField {
     const targetTurb = (0.6 + loudSurge * 3.5 + f.splatter * 1.6) * tempoRate * this.cfg.turbulence
     this.bgDecay += (targetBgDecay - this.bgDecay) * 0.1
     this.turb += (targetTurb - this.turb) * 0.1
+
     // Foreground vanishes quick, a touch quicker when busy so hits don't pile up.
     this.fgDecay = 0.86 - f.splatter * 0.06
     this.rise = (0.4 + f.energy * 1.2) * tempoRate * this.cfg.buoyancy
+
     // A gentle beat term on the swirl so the smoke breathes on the beat.
     this.beatSwirl = this.beatPulse * f.energy * 1.0
     this.time = time
@@ -978,6 +1021,7 @@ export class SmokeField {
     this.displayMat.uniforms.uGrain!.value = Math.min(1, f.onset * 0.6 + f.bassHit * 0.5 + f.highHit * 0.4) * gate
     this.displayMat.uniforms.uContrast!.value = this.cfg.contrast
     this.displayMat.uniforms.uGrainScale!.value = this.cfg.grain
+
     // Dust sparkle rides the low-intensity factor too, so it fades out on drops.
     this.displayMat.uniforms.uDust!.value = this.cfg.dust * lowFactor
 
@@ -1010,9 +1054,11 @@ export class SmokeField {
     if (this.bassArmed && f.bassHit > fireLevel && bassEnergy > 0.15) {
       this.bassArmed = false
       const s = f.bassHit
+
       // "hard" is relative too: a kick near the top of the recent range, only in a
       // loud section, so shards punctuate drops rather than every bar.
       const hard = above > this.bassPeak * 0.85 && gate > 0.4
+
       // Shove the whole smoke buffer, a shockwave off the kick.
       const ang = Math.random() * Math.PI * 2
       const mag = (6 + s * 16) * gate * this.cfg.bassPush * (hard ? this.cfg.bigPush * 1.6 : 1)
@@ -1028,6 +1074,7 @@ export class SmokeField {
         this.phiVel += (Math.random() - 0.5) * s * this.cfg.cameraAudioKick * 0.6
       }
     }
+
     // Re-arm once the kick has released back toward the floor.
     if (f.bassHit < rearmLevel)
       this.bassArmed = true
@@ -1093,6 +1140,7 @@ export class SmokeField {
     const cutDirty = this.linesCut.clearLit()
     let firedAccent = false
     let firedCut = false
+
     // Geometry mood (sharp, fast, bright) makes the streaks trigger-happy: lower the
     // threshold and raise the flash odds, so a busy bright passage lances lines often
     // while a calm one almost never does.
@@ -1142,9 +1190,11 @@ export class SmokeField {
     this.theta += this.thetaVel * step
     this.phi += this.phiVel * step
     this.phi = Math.max(-1.2, Math.min(1.2, this.phi))
+
     // The energy dolly is part of the audio reactivity, so gate it by cameraAudioKick
     // too: at 0 the distance holds steady instead of drifting with the loudness.
     this.radius += ((this.cfg.cameraDistance - f.energy * 1.2 * this.cfg.cameraAudioKick) - this.radius) * 0.02
+
     // Pump the orbit inward on each beat and let it back out, scaled by energy so a
     // quiet passage doesn't bob. cameraBeatPump is the knob; applied on top of the
     // slow base radius, which lerps far too slowly to track a beat on its own.
@@ -1164,6 +1214,7 @@ export class SmokeField {
   private render() {
     const r = this.renderer
     const a = this.advectMat.uniforms
+
     // The advect flow animates off the paced clock, so the swirl slows with the song
     // instead of running at a fixed real-time rate.
     a.uTime!.value = this.flowTime
@@ -1226,6 +1277,7 @@ export class SmokeField {
   dispose() {
     if (this.disposed)
       return
+
     this.disposed = true
     this.bgA.dispose()
     this.bgB.dispose()

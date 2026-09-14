@@ -62,6 +62,7 @@ const statusMessage = computed(() => {
 const currentMonthLabel = computed(() => {
   if (!currentFunding.value)
     return 'Monthly Funding'
+
   return fullMonth(currentFunding.value.month)
 })
 
@@ -69,10 +70,12 @@ const currentMonthLabel = computed(() => {
 const growthValue = computed(() => {
   if (allFunding.value.length < 2)
     return null
+
   const curr = allFunding.value[0]
   const prev = allFunding.value[1]
   if (!curr || !prev)
     return null
+
   const current = (curr.patreon_month_amount_cents ?? 0) + (curr.donation_month_amount_cents ?? 0)
   const previous = (prev.patreon_month_amount_cents ?? 0) + (prev.donation_month_amount_cents ?? 0)
   return Math.round((current - previous) / 100)
@@ -82,14 +85,17 @@ const growthValue = computed(() => {
 const growthPct = computed(() => {
   if (allFunding.value.length < 2)
     return null
+
   const curr = allFunding.value[0]
   const prev = allFunding.value[1]
   if (!curr || !prev)
     return null
+
   const current = (curr.patreon_month_amount_cents ?? 0) + (curr.donation_month_amount_cents ?? 0)
   const previous = (prev.patreon_month_amount_cents ?? 0) + (prev.donation_month_amount_cents ?? 0)
   if (previous === 0)
     return null
+
   return ((current - previous) / previous) * 100
 })
 
@@ -99,6 +105,7 @@ const [DefineTemplate, ProgressTemplate] = createReusableTemplate()
 function onSupportButtonClick(e: Event) {
   if (!isOnFundingPage.value)
     return
+
   e.preventDefault()
   e.stopPropagation()
   scrollToSupport()

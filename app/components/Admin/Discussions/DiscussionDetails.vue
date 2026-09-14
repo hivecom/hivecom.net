@@ -153,6 +153,7 @@ function setAssetsPage(n: number) {
 const discussionMarkdown = computed(() => {
   if (!props.discussion)
     return ''
+
   const markdown = (props.discussion as { markdown?: string | null }).markdown
   return markdown ?? fetchedMarkdown.value ?? ''
 })

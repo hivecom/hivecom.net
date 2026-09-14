@@ -12,6 +12,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 export interface ChannelGhostNode {
   type: 'ghost'
   name: string
+
   /** Full IRC channel name including prefix, e.g. "#playground/general" */
   fullChannelName: string
   displayName: string
@@ -22,6 +23,7 @@ export interface ChannelGroupNode {
   name: string
   fullPath: string
   parentBuffer: ChatBuffer | null
+
   /** Cached metadata for an unjoined parent (used to render its display-name). */
   meta?: Map<string, string> | null
   children: ChannelTreeNode[]
@@ -62,6 +64,7 @@ function bufferIcon(kind: string) {
     return 'ph:user'
   if (kind === 'server')
     return 'ph:hard-drives'
+
   return 'ph:hash'
 }
 </script>

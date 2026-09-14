@@ -17,6 +17,7 @@ export const PWA_START_PAGE_KEY = 'hivecom.pwa.start-page'
 export interface PwaStartPageDestination {
   label: string
   path: string
+
   /** Route sits behind the auth guard, so we skip it when signed out. */
   authRequired?: boolean
 }
@@ -40,6 +41,7 @@ let hydrated = false
 function hydrate(): void {
   if (hydrated || !import.meta.client)
     return
+
   hydrated = true
 
   const stored = localStorage.getItem(PWA_START_PAGE_KEY)

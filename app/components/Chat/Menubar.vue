@@ -30,6 +30,7 @@ const connectionDrawerOpen = ref(false)
 const latencyLabel = computed(() => {
   if (latencyMs.value == null)
     return null
+
   return `${latencyMs.value} ms`
 })
 

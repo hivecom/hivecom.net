@@ -80,6 +80,7 @@ const mfaStatusCopy = computed(() => {
     return 'Authenticator codes are required the next time you sign in.'
   if (hasPasskey.value)
     return 'Set up an authenticator app to secure password sign-ins. Passkey sign-ins skip MFA.'
+
   return 'Set up an authenticator app to add two-factor authentication.'
 })
 const hasElevatedRole = computed(() => {
@@ -106,6 +107,7 @@ function factorTypeLabel(factorType: MfaFactor['factor_type']) {
     return 'App'
   if (factorType === 'phone')
     return 'Phone'
+
   return 'Security key'
 }
 
@@ -113,6 +115,7 @@ function factorDisplayName(factor: MfaFactor, fallbackIndex: number) {
   const friendly = factor.friendly_name?.trim()
   if (friendly)
     return friendly
+
   return `${factorTypeLabel(factor.factor_type)} ${fallbackIndex + 1}`
 }
 
@@ -192,6 +195,7 @@ async function loadMfaFactors() {
     const { data, error } = await supabase.auth.mfa.listFactors()
     if (error)
       throw error
+
     const factors = Array.isArray(data?.all) ? data.all : []
     mfaFactors.value = factors as MfaFactor[]
   }
@@ -385,6 +389,7 @@ const removeFactorDescription = computed(() => {
 function isInsufficientAalError(error: unknown): boolean {
   if (!error || typeof error !== 'object')
     return false
+
   const code = (error as { code?: string }).code
   const message = (error as { message?: string }).message ?? ''
   return code === 'insufficient_aal' || /aal2 required/i.test(message)
@@ -398,6 +403,7 @@ function isInsufficientAalError(error: unknown): boolean {
 function pickStepUpFactorId(target: MfaFactor): string | null {
   if (target.factor_type === 'totp' && target.status === 'verified')
     return target.id
+
   const verified = mfaFactors.value.find(f => f.factor_type === 'totp' && f.status === 'verified')
   return verified?.id ?? null
 }
@@ -457,6 +463,7 @@ function beginStepUpRemoval(target: MfaFactor) {
 function cancelStepUp() {
   if (mfaStepUp.verifying)
     return
+
   mfaStepUp.open = false
   mfaStepUp.code = ''
   mfaStepUp.error = ''

@@ -21,6 +21,7 @@ const isMobile = useBreakpoint('<l')
 const linkAttrs = computed(() => {
   if (!props.to)
     return {}
+
   return {
     href: props.to,
     onClick: (e: MouseEvent) => {

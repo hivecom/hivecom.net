@@ -61,6 +61,7 @@ let isVisible = true
 const targetVelocity = computed<number>(() => {
   if (isDragging.value || isHovering.value)
     return 0
+
   return props.direction === 'left' ? -props.speed : props.speed
 })
 
@@ -74,6 +75,7 @@ const copies = computed<number>(() => {
   const cw = containerWidth.value
   if (w <= 0 || cw <= 0)
     return 2
+
   return Math.min(50, Math.max(2, Math.ceil(cw / w) + 1))
 })
 
@@ -87,6 +89,7 @@ function normalizeOffset() {
   const w = contentWidth.value
   if (w <= 0)
     return
+
   // Keep offset in (-w, 0] for BOTH directions. The track lays out two
   // identical copies at [0, w] and [w, 2w], so the viewport is only guaranteed
   // to be covered while offset <= 0 (a positive offset exposes a blank gap on
@@ -118,6 +121,7 @@ function startLoop() {
     return
   if (rafId !== null)
     return
+
   lastTimestamp = null
   rafId = requestAnimationFrame(loop)
 }
@@ -136,6 +140,7 @@ let pendingPointerId: number | null = null
 function onPointerDown(e: PointerEvent) {
   if (!props.draggable)
     return
+
   // Track start position but don't capture yet - capturing immediately
   // redirects pointerup to this element, which causes the browser to fire
   // click here instead of on the child target, breaking child click handlers.
@@ -150,12 +155,14 @@ function onPointerDown(e: PointerEvent) {
 function onPointerMove(e: PointerEvent) {
   if (pendingPointerId === null && !isDragging.value)
     return
+
   const dx = e.clientX - dragStartX
 
   // Only start a real drag once threshold is crossed
   if (!isDragging.value) {
     if (Math.abs(dx) <= 5)
       return
+
     // Threshold crossed - now capture and enter drag mode
     isDragging.value = true
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
@@ -202,12 +209,14 @@ function onPointerUp(e: PointerEvent) {
 function onPointerEnter() {
   if (!props.pauseOnHover || isDragging.value)
     return
+
   isHovering.value = true
 }
 
 function onPointerLeave() {
   if (isDragging.value)
     return
+
   isHovering.value = false
 }
 
@@ -248,6 +257,7 @@ onMounted(() => {
         const entry = entries[0]
         if (!entry)
           return
+
         isVisible = entry.isIntersecting
         if (isVisible) {
           startLoop()

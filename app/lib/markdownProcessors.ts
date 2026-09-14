@@ -20,6 +20,7 @@ const WORD_ONLY_RE = /^\w+$/
 const DETAILS_WORD_AFTER_RE = /^(\w*)/
 const DATAFILE_DIRECTIVE_RE = /:::dataFile(?:\s+\{([^}]*)\})?\s*:::/g
 const CHANNEL_MENTION_RE = /(?<![`\w#])#([a-z][\w-]*)/gi
+
 // Matches a bare currency dollar sign: $ followed by a digit (e.g. $3, $10).
 // These must be escaped before remark-math sees them so they are not treated
 // as inline math delimiters.
@@ -55,6 +56,7 @@ function decodeHtmlEntities(str: string): string {
       return String.fromCodePoint(Number.parseInt(entity.slice(2), 16))
     if (lower.startsWith('#'))
       return String.fromCodePoint(Number.parseInt(entity.slice(1), 10))
+
     return match
   })
 }
@@ -87,6 +89,7 @@ const DETECT_DETAILS_RE = /:::details\b/
  */
 function parseTiptapAttrs(attrString: string): Record<string, string> {
   const attrs: Record<string, string> = {}
+
   // Match key="value" pairs (value may be empty)
   const attrPattern = TIPTAP_ATTR_RE
   for (const match of attrString.matchAll(attrPattern)) {
@@ -402,6 +405,7 @@ export function processColorTags(markdown: string): string {
       const colorName = name.toLowerCase()
       if (!TEXT_COLOR_NAMES.has(colorName))
         return _full
+
       return `<span data-text-color="${colorName}" style="color: var(--text-color-${colorName})">${inner}</span>`
     },
   )
@@ -432,6 +436,7 @@ export function processFontTags(markdown: string): string {
       const fontName = name.toLowerCase()
       if (!TEXT_FONT_NAMES.has(fontName))
         return _full
+
       return `<span data-text-font="${fontName}" style="font-family: var(--text-font-${fontName})">${inner}</span>`
     },
   )
@@ -462,6 +467,7 @@ export function processSizeTags(markdown: string): string {
       const sizeName = name.toLowerCase()
       if (!TEXT_SIZE_NAMES.has(sizeName))
         return _full
+
       return `<span data-text-size="${sizeName}" style="font-size: var(--text-size-${sizeName})">${inner}</span>`
     },
   )
@@ -478,6 +484,7 @@ export function processSizeTags(markdown: string): string {
 function normalizeListIndentation(markdown: string): string {
   const lines = markdown.split('\n')
   const result: string[] = []
+
   // Stack of required indent widths per nesting level
   const indentStack: number[] = []
   let inFencedCode = false
@@ -702,16 +709,22 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
   let stripped = content
     // 0a. Remove YouTube directives: :::youtube {src="..." ...} :::
     .replace(STRIP_YOUTUBE_RE, '')
+
     // 0b2. Remove video directives: :::video {src="..." ...} :::
     .replace(STRIP_VIDEO_RE, '')
+
     // 0b2b. Remove audio directives: :::audio {src="..."} :::
     .replace(STRIP_AUDIO_RE, '')
+
     // 0b3. Remove data file directives: :::dataFile {src="..." ...} :::
     .replace(STRIP_DATAFILE_RE, '')
+
     // 0b. Remove block math: $$...$$
     .replace(STRIP_BLOCK_MATH_RE, '')
+
     // 0c. Remove inline math: $...$  (avoid matching lone $ signs like currency $5)
     .replace(STRIP_INLINE_MATH_RE, '')
+
     // 1. Remove HTML tags
     .replace(STRIP_HTML_TAGS_RE, '')
 
@@ -722,22 +735,31 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
   return stripped
     // 2. Normalize non-breaking spaces
     .replace(STRIP_NBSP_RE, ' ')
+
     // 3. Remove horizontal rules
     .replace(STRIP_HR_RE, '')
+
     // 4. Remove headers (###)
     .replace(STRIP_HEADERS_RE, '')
+
     // 5. Remove blockquote markers (> )
     .replace(STRIP_BLOCKQUOTE_RE, '')
+
     // 6. Remove unordered list markers (- or * at start of line)
     .replace(STRIP_LIST_MARKERS_RE, '')
+
     // 7. Remove bold/italic (** or __)
     .replace(STRIP_BOLD_ITALIC_RE, '$2')
+
     // 8. Remove links [text](url) -> "text"
     .replace(STRIP_LINKS_RE, '$1')
+
     // 9. Remove code blocks and inline code
     .replace(STRIP_CODE_RE, '$2')
+
     // 10. Remove images ![alt](url)
     .replace(STRIP_IMAGES_RE, '$1')
+
     // 11. Trim extra whitespace
     .replace(STRIP_NEWLINES_RE, ' ')
     .trim()
@@ -831,6 +853,7 @@ export function formatMarkdownPreview(
     const outsideSpoiler = stripDetailsBlocks(markdown).trim()
     if (!outsideSpoiler || !stripMarkdown(processMentionsToText(outsideSpoiler, mentionLookup)))
       return '#spoiler'
+
     // There is real text outside the spoiler - continue with that content only
     return formatMarkdownPreview(outsideSpoiler, mentionLookup, maxLength)
   }

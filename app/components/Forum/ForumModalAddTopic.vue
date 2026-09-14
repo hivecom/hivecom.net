@@ -135,6 +135,7 @@ async function handleIconUpload(file: File) {
 
     if (result.success && result.url) {
       iconUrl.value = result.url
+
       // Bust cache and refresh the forum list's bulk icon map
       invalidateTopicIconCache(props.editedItem.id)
       void refreshTopicIcon?.(props.editedItem.id)

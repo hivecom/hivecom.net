@@ -157,6 +157,7 @@ export function useForumTopics() {
       const matched = topics.value.find(t => t.id === uuid)
       if (matched) {
         activeTopicId.value = matched.id
+
         // Silently upgrade UUID → slug if possible (replace, no new history entry).
         if (matched.slug)
           _setQuery(matched.slug, null, false)
@@ -247,6 +248,7 @@ export function useForumTopics() {
 
   async function loadTopicDiscussions(topicId: string, page: number = 0, isExplicitPageChange: boolean = false) {
     const topic = topics.value.find(t => t.id === topicId)
+
     // On first load (page 0) guard against duplicate fetches and already-loaded state.
     // Skip the already-loaded guard when this is an explicit pagination action (e.g. clicking page 1 again).
     // On subsequent pages always allow the fetch.
@@ -480,6 +482,7 @@ export function useForumTopics() {
     if (children.length > 0) {
       const parent = topics.value.find(t => t.id === activeTopicId.value)
       const sorted = children.toSorted(sortTopicsByPriority)
+
       // Always prepend the parent as a card so its own direct discussions are
       // visible alongside child topic cards (e.g. pinned posts on "Hivecom").
       if (parent) {
@@ -534,6 +537,7 @@ export function useForumTopics() {
       }
       else {
         topic.discussions = [discussion, ...topic.discussions]
+
         // Bump total count
         const pag = topicPagination.value[topic.id]
         if (pag) {
@@ -544,15 +548,19 @@ export function useForumTopics() {
         }
       }
       topic.discussionsLoaded = true
+
       // Also add to the global discussions index so the activity feed sees it immediately
       if (!allDiscussions.value.some(d => d.id === discussion.id))
         allDiscussions.value = [discussion, ...allDiscussions.value]
+
       // Bust topic discussion page caches for all pages of this topic so next open fetches fresh
       forumCache.invalidateByPattern(new RegExp(`^topic-discussions:${discussion.discussion_topic_id}:`))
       forumCache.delete(FORUM_DISCUSSIONS_INDEX_CACHE_KEY)
+
       // You created this discussion - seed it as seen so initializeTopics doesn't
       // treat it as an unseen discussion in a known topic (seenReplyCount = -1).
       forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)
+
       // Advance the topic watermark to now so the act of creating a discussion
       // doesn't produce a topic dot when returning from the discussion page.
       if (discussion.discussion_topic_id)
@@ -596,6 +604,7 @@ export function useForumTopics() {
       for (const child of children) {
         void loadTopicDiscussions(child.id)
       }
+
       // Also load the parent's own direct discussions (e.g. pinned items on a
       // parent topic that also has sub-topic children)
       void loadTopicDiscussions(topicId)
@@ -638,17 +647,21 @@ export function useForumTopics() {
         }
       }
     }
+
     // Bust cache so remounts reflect the mutation.
     if (type === 'discussion') {
       const updatedDiscussion = data as ForumDiscussion
+
       // Invalidate per-topic discussion page cache for affected topic(s)
       if (updatedDiscussion.discussion_topic_id) {
         forumCache.invalidateByPattern(new RegExp(`^topic-discussions:${updatedDiscussion.discussion_topic_id}:`))
       }
+
       // Keep the global index in sync with updated discussion data
       const indexIdx = allDiscussions.value.findIndex(d => d.id === updatedDiscussion.id)
       if (indexIdx !== -1)
         allDiscussions.value = allDiscussions.value.toSpliced(indexIdx, 1, updatedDiscussion)
+
       // Also update stickyDiscussions if the discussion is sticky
       const stickyParentTopic = topics.value.find(t =>
         t.stickyDiscussions.some(d => d.id === updatedDiscussion.id),
@@ -681,11 +694,13 @@ export function useForumTopics() {
         parentTopic.discussions = parentTopic.discussions.filter(discussion => discussion.id !== id)
       }
       allDiscussions.value = allDiscussions.value.filter(d => d.id !== id)
+
       // Also remove from stickyDiscussions if present
       const stickyParent = topics.value.find(t => t.stickyDiscussions.some(d => d.id === id))
       if (stickyParent) {
         stickyParent.stickyDiscussions = stickyParent.stickyDiscussions.filter(d => d.id !== id)
       }
+
       // Decrement total count
       const discussionTopicId = topics.value.find(t => t.discussions.some(d => d.id === id))?.id
       if (discussionTopicId) {

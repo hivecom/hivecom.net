@@ -17,6 +17,7 @@ const isMac = import.meta.client && /Mac/i.test(navigator.platform)
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
+
 // resolvedUserId is just userId - we wait for useSupabaseUser() to populate
 // before running the auth check, so no sessionUserId fallback is needed.
 const resolvedUserId = userId
@@ -96,6 +97,7 @@ onMounted(async () => {
     }
     else {
       realPermissions.value = permissionsData?.map(p => p.permission) ?? []
+
       // If already impersonating when the layout mounts, apply the impersonated
       // permissions immediately - the watch won't fire for a pre-existing value.
       if (impersonatedRole.value) {

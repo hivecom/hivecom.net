@@ -20,27 +20,34 @@ const props = defineProps<{
   listFiles: (opts: AdminListFilesOptions) => Promise<DepotFilePage<T>>
   deleteFile: (objectKey: string) => Promise<void>
   perPage: number
+
   // Gates the select column, row/bulk delete, grid + drawer delete. The Sharing
   // table is always on (your own files); the admin table gates on moderation.
   canManage: boolean
+
   // Hide the uploader on the grid tiles. The Sharing page only shows the
   // logged-in user's own files, so there's nothing to attribute.
   hideUploader?: boolean
   emptyMessage: string
   emptySearchMessage?: string
+
   // Fixed column count for the grid view. When omitted the grid auto-fills at a
   // 200px min, which is what the Sharing table uses. The admin table passes a
   // count to match the Assets manager.
   gridColumns?: number
+
   // Gap between the filter controls in the toolbar. The admin filters sit at 's';
   // the self table packs its upload/rules/search tighter at 'xs'.
   filtersGap?: 'xs' | 's'
+
   // The admin table renders the content type as a Badge; the self table plain.
   contentTypeBadge?: boolean
+
   // Trailing clause of the delete confirmations (after "Permanently delete X?").
   deleteConsequenceSingular?: string
   deleteConsequencePlural?: string
   loadErrorMessage?: string
+
   // Extra listing params and the reactive sources that trigger a refetch (admin
   // content-type and owner filters).
   extraParams?: () => Partial<AdminListFilesOptions>
@@ -59,8 +66,10 @@ defineSlots<{
 
 // Bumped after a mutation so the page's KPI/quota cards refetch.
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+
 // Surfaced so the self page can show the upload count; internal for admin.
 const total = defineModel<number>('total', { default: 0 })
+
 // The admin table persists this in user settings; the self table keeps it local.
 const viewMode = defineModel<'table' | 'grid'>('viewMode', { default: 'grid' })
 

@@ -27,12 +27,14 @@ watch(activeBuffer, (buf) => {
 const pmUserId = computed(() => {
   if (activeBuffer.value?.kind !== 'pm')
     return null
+
   return resolvedNicks.value.get(activeBuffer.value.name.toLowerCase())?.id ?? null
 })
 
 const pmIsBot = computed(() => {
   if (activeBuffer.value?.kind !== 'pm')
     return false
+
   const name = activeBuffer.value.name.toLowerCase()
   return buffers.value.some(b => b.users?.some(u => u.name.toLowerCase() === name && u.bot))
 })
@@ -40,6 +42,7 @@ const pmIsBot = computed(() => {
 const pmIsService = computed(() => {
   if (activeBuffer.value?.kind !== 'pm')
     return false
+
   return SERVICE_NICKS.has(activeBuffer.value.name.toLowerCase())
 })
 
@@ -47,6 +50,7 @@ const OP_PREFIXES = new Set(['~', '&', '@'])
 const canEdit = computed(() => {
   if (activeBuffer.value?.kind !== 'channel')
     return false
+
   const r = myChannelRole(activeBuffer.value.name)
   return r !== null && OP_PREFIXES.has(r.symbol)
 })
@@ -55,6 +59,7 @@ const hasInfo = computed(() => {
   const buf = activeBuffer.value
   if (!buf || buf.kind !== 'channel')
     return false
+
   return !!(
     buf.topic
     || buf.metadata?.get('markdown')
@@ -66,6 +71,7 @@ const hasInfo = computed(() => {
 const pmWhois = computed(() => {
   if (activeBuffer.value?.kind !== 'pm')
     return null
+
   return whoisStore.value.get(activeBuffer.value.name.toLowerCase()) ?? null
 })
 

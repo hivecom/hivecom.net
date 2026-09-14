@@ -32,6 +32,7 @@ const officialSelection = computed<SelectOption[]>({
   get() {
     if (isOfficial.value === null)
       return []
+
     return officialOptions.filter(o => o.value === String(isOfficial.value))
   },
   set(val) {

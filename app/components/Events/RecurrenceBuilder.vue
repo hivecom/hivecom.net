@@ -5,6 +5,7 @@ import { fullDate } from '@/lib/utils/date'
 
 const props = defineProps<{
   modelValue: string | null
+
   // The currently selected event date - used to derive smart defaults
   // for BYMONTHDAY (monthly) and BYDAY (weekly) when no rule exists yet.
   eventDate?: Date | null
@@ -63,6 +64,7 @@ function parseUntil(until: string): Date | null {
   const match = until.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/)
   if (!match)
     return null
+
   return new Date(`${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}Z`)
 }
 
@@ -135,6 +137,7 @@ watch(() => props.modelValue, (val) => {
 watch(() => props.eventDate, (newDate) => {
   if (!newDate || freq.value === 'NONE')
     return
+
   if (freq.value === 'WEEKLY') {
     // Only update if the current selection is a single auto-derived day
     if (selectedDays.value.length <= 1)
@@ -165,6 +168,7 @@ const freqModel = computed<FreqSelectOption[]>({
     freq.value = val
     interval.value = 1
     untilDate.value = null
+
     // Derive smart defaults from the event date when switching frequency
     const dateRef = props.eventDate ?? null
     selectedDays.value = val === 'WEEKLY' && dateRef ? [dayCodeFromDate(dateRef)] : []
@@ -216,6 +220,7 @@ const monthDayInputValue = computed({
 const untilDateLabel = computed(() => {
   if (!untilDate.value)
     return 'No end date'
+
   return fullDate(untilDate.value)
 })
 </script>

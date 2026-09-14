@@ -40,7 +40,9 @@ export function normalizeInternalRedirect(value: unknown): string | null {
 export function reloadWithCacheBust() {
   if (typeof window === 'undefined')
     return
+
   const url = new URL(window.location.href)
+
   // Set, don't append, so repeated recoveries can't stack `?_=...&_=...`.
   url.searchParams.set('_', String(Date.now()))
   window.location.replace(url.toString())
@@ -54,9 +56,11 @@ export function reloadWithCacheBust() {
 export function stripCacheBustParam() {
   if (typeof window === 'undefined')
     return
+
   const url = new URL(window.location.href)
   if (!url.searchParams.has('_'))
     return
+
   url.searchParams.delete('_')
   const query = url.searchParams.toString()
   const clean = `${url.pathname}${query ? `?${query}` : ''}${url.hash}`
@@ -66,6 +70,7 @@ export function stripCacheBustParam() {
 export function getCSSVariable(key: string) {
   if (typeof window === 'undefined')
     return ''
+
   return window
     .getComputedStyle(document.body)
     .getPropertyValue(key)
@@ -154,10 +159,12 @@ function findVisibleElement(id: string): HTMLElement | null {
   const els = document.querySelectorAll<HTMLElement>(id)
   if (els.length === 0)
     return null
+
   for (const el of els) {
     if (el.getBoundingClientRect().height > 0)
       return el
   }
+
   // All hidden - return the first so callers can at least measure it.
   return els[0]!
 }
@@ -331,6 +338,7 @@ export async function waitForImages(timeoutMs = 4000): Promise<void> {
     const resolveOnce = () => {
       if (settled)
         return
+
       settled = true
       resolve()
     }
@@ -369,6 +377,7 @@ export async function waitForLayoutStability(timeoutMs = 8000, stableForMs = 120
   return new Promise((resolve) => {
     const deadline = Date.now() + timeoutMs
     let lastHeight = document.body.scrollHeight
+
     // Initialise to null so the stable window only starts once we've taken
     // at least one rAF measurement - avoids a false "already stable" resolve
     // before image loads have even started shifting the layout.
@@ -417,6 +426,7 @@ export function getRouteQueryString(
 ): string {
   if (typeof value === 'string')
     return value
+
   if (Array.isArray(value)) {
     const first = value.find(v => typeof v === 'string')
     return first ?? ''
@@ -444,5 +454,6 @@ export function getRouteQueryStringOrNull(
 export function unwrapJoin<T>(value: T | T[] | null | undefined): T | null {
   if (value == null)
     return null
+
   return Array.isArray(value) ? (value[0] ?? null) : value
 }

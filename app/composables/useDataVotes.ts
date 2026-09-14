@@ -309,6 +309,7 @@ export function useDataVotes() {
       const cached = cache.get<Tables<'referendums'>[]>(keyVotedPrivate(id))
       if (cached !== null) {
         votedPrivateReferendums.value = cached
+
         // Voted ids cover public referendums too, so restore them from their
         // own cache entry instead of rebuilding from the private-only rows.
         // Missing ids cache falls through to a fresh fetch of both.
@@ -469,9 +470,11 @@ export function useDataVotes() {
     // Vote count cache keys are based on the full visible ID set, so clear
     // all vote count entries - they're cheap to refetch.
     cache.invalidateByPattern('referendum:vote-counts:')
+
     // Optimistically mark as voted so hasVoted is consistent until next fetch.
     if (!userVotedReferendumIds.value.includes(referendumId)) {
       userVotedReferendumIds.value = [...userVotedReferendumIds.value, referendumId]
+
       // Persist so other consumers reading the ids cache within TTL see it too.
       const id = userId.value
       if (id != null && id !== '')

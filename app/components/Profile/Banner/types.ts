@@ -1,5 +1,6 @@
 export interface GradientStop {
   color: string
+
   /** 0–1 */
   position: number
 }
@@ -11,17 +12,23 @@ export interface TextLayer {
   type: 'text'
   content: string
   fontFamily: string
+
   /** Capped between TEXT_FONT_SIZE_MIN and TEXT_FONT_SIZE_MAX */
   fontSize: number
   fillType: FillType
+
   /** Primary / solid color; also the first gradient stop default */
   fillColor: string
+
   /** Gradient stops - used when fillType != 'solid' */
   fillStops: GradientStop[]
+
   /** Angle in degrees for linear and conic gradients */
   fillAngle: number
+
   /** 0–1 */
   opacity: number
+
   /** Rotation in degrees, clockwise */
   rotation: number
   x: number
@@ -30,10 +37,12 @@ export interface TextLayer {
   italic: boolean
   outline: boolean
   outlineColor: string
+
   /** Stroke width in pixels */
   outlineWidth: number
   shadow: boolean
   shadowColor: string
+
   /** Blur radius in pixels */
   shadowBlur: number
   shadowOffsetX: number
@@ -45,8 +54,10 @@ export interface ImageAssetMeta {
   size: number | null
   type: string | null
   lastModified: number | null
+
   /** Base name of the source folder, stored only when the user opts in */
   folderName: string | null
+
   /** Path relative to the folder root (e.g. "sub/image.png"), stored only when the user opts in */
   folderRelativePath: string | null
 }
@@ -54,17 +65,21 @@ export interface ImageAssetMeta {
 export interface ImageLayer {
   id: string
   type: 'image'
+
   /** Object URL for local preview; empty string when restored from metadata */
   src: string
+
   /** Raw file when freshly added; null when restored from metadata */
   file: File | null
   assetMeta: ImageAssetMeta
+
   /** Rotation in degrees, clockwise */
   rotation: number
   x: number
   y: number
   width: number
   height: number
+
   /** width / height - preserved during resize */
   aspect: number
 }
@@ -77,10 +92,12 @@ export interface MetadataTextLayer {
   content: string
   fontFamily: string
   fontSize: number
+
   // Legacy fields (v3 and below) - kept for backward-compat reads
   color?: string
   gradientColor?: string | null
   gradientAngle?: number
+
   // Current fill system
   fillType?: FillType
   fillColor?: string
@@ -126,6 +143,7 @@ export interface BannerMetadata {
     color?: string
     gradientEnd?: string
     gradientAngle?: number
+
     // Current fill system
     fillType?: FillType
     fillColor?: string

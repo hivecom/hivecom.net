@@ -96,6 +96,7 @@ async function loadAuthorizationDetails() {
     const isAuthed = await ensureAuthenticatedOrRedirect()
     if (!isAuthed)
       return
+
     const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId.value)
 
     if (error)
@@ -152,6 +153,7 @@ async function decide(decision: 'approve' | 'deny') {
     if (typeof window !== 'undefined') {
       if (isDev && debugOptions.skipRedirect)
         return
+
       window.location.assign(redirectTo)
       return
     }

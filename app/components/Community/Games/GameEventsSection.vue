@@ -26,6 +26,7 @@ const gameEvents = computed(() => {
       return 'ongoing'
     if (start > nowMs)
       return 'upcoming'
+
     return 'past'
   }
 

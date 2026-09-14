@@ -70,6 +70,7 @@ const isLinkedDiscussion = computed(() => {
   const d = editedDiscussion.value
   if (!d)
     return false
+
   return Boolean(
     d.event_id
     || d.gameserver_id
@@ -195,6 +196,7 @@ function buildAutoSlug(title: string) {
   const baseSlug = slugify(title)
   if (!baseSlug)
     return ''
+
   const topicSlug = form.discussion_topic_id
     ? (resolvedTopics.value.find(t => t.id === form.discussion_topic_id)?.slug ?? null)
     : null
@@ -321,6 +323,7 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
     if (isEditing.value && editedDiscussion.value) {
       discussionCache.invalidate(editedDiscussion.value.id, editedDiscussion.value.slug)
     }
+
     // Warm the cache with the freshly saved row.
     discussionCache.set(data[0])
 
@@ -343,6 +346,7 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
         drafts.value = drafts.value.filter(d => d.id !== data[0].id)
         emit('draftUpdated')
       }
+
       // Capture old identifier now - emitting 'created' propagates the new data
       // back up through the parent chain reactively, so editedDiscussion.value
       // will already reflect the new slug by the time we check after nextTick.
@@ -351,10 +355,12 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
         : null
       emit('created', data[0])
       emit('close')
+
       // Defer navigation until after the modal has had a tick to tear down.
       // Navigating synchronously while the modal is still mounted causes a
       // null-node unmount crash in Vue's patch cycle.
       await nextTick()
+
       // Navigate to the new slug when editing and the slug changed, or to the
       // newly published discussion when creating.
       if (oldIdentifier !== null) {
@@ -497,6 +503,7 @@ watch(() => props.open, async (isOpen) => {
     isAutoUpdatingSlug.value = false
     editingDraft.value = null
     publishConfirmOpen.value = false
+
     // nextTick so the slug watcher flush from clearing form.slug doesn't set slugTouched
     await nextTick()
     slugTouched.value = false

@@ -32,6 +32,7 @@ const props = defineProps<{
   // Compact surfaces (the navbar sheet) drop the sidebar and their own header,
   // since the surrounding sheet provides the header chrome instead.
   compact?: boolean
+
   // When true, signals that the surrounding menu/sheet removed card padding and
   // the associated header should receive padding-x: space-s to compensate.
   menuPadding?: boolean
@@ -79,6 +80,7 @@ function tryReconnect() {
     return
   if (connState.value === 'connecting' || connState.value === 'connected')
     return
+
   connect()
 }
 
@@ -119,6 +121,7 @@ const {
 function onMainDragOver(event: DragEvent) {
   if (!canChat.value || !event.dataTransfer?.types.includes('Files'))
     return
+
   event.preventDefault()
   fileDragging.value = true
 }
@@ -126,6 +129,7 @@ function onMainDragOver(event: DragEvent) {
 function onMainDragLeave(event: DragEvent) {
   if (event.currentTarget instanceof Node && event.relatedTarget instanceof Node && (event.currentTarget as Node).contains(event.relatedTarget))
     return
+
   fileDragging.value = false
 }
 
@@ -134,12 +138,14 @@ function onMainDrop(event: DragEvent) {
   const files = event.dataTransfer?.files
   if (!canChat.value || !files?.length)
     return
+
   event.preventDefault()
   addAttachments(files)
 }
 const chatFontStyle = computed(() => ({ '--chat-font-size': `${isMobile.value ? settings.value.chat_mobile_font_size : settings.value.chat_font_size}px` }))
 
 const fallbackNick = `anon-${Math.random().toString(36).slice(2, 7)}`
+
 // Key the sign-out handling off the auth session (userId), not the profile data
 // (user). The profile ref transiently goes null whenever its fetch errors or
 // hasn't resolved yet - e.g. a network blip that also drops the IRC socket - and
@@ -157,6 +163,7 @@ watch([userId, user], ([id, u], prev) => {
     ensureNick(fallbackNick)
     return
   }
+
   // Signed in. The profile may still be loading; only set the nick once we
   // actually have a username, otherwise leave the current/persisted nick alone.
   if (u)

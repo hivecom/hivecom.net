@@ -34,6 +34,7 @@ async function runSearch() {
   const q = query.value.trim()
   if (!q)
     return
+
   searching.value = true
   searchError.value = null
   results.value = []

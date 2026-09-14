@@ -8,12 +8,16 @@ interface Props {
   open: boolean
   imageSrc: string
   imageMime: string
+
   /** Use circular stencil (avatar variant) */
   circular?: boolean
+
   /** Lock aspect ratio. If not set, free crop. */
   aspectRatio?: number
+
   /** Output image max dimension in pixels */
   outputSize?: number
+
   /** Original filename to preserve in the output File */
   originalName?: string
 }
@@ -37,6 +41,7 @@ const stencilComponent = computed(() => props.circular ? CircleStencil : Rectang
 // is no initial offset/crop inset.
 function defaultSize({ imageSize, visibleArea }: { imageSize: { width: number, height: number }, visibleArea: { width: number, height: number } | null }) {
   const area = visibleArea ?? imageSize
+
   // For circular/fixed-ratio stencils use the smallest dimension to stay square
   if (props.circular || props.aspectRatio) {
     const min = Math.min(area.width, area.height)
@@ -65,6 +70,7 @@ const stencilProps = computed(() => {
     return { aspectRatio: 1 }
   if (props.aspectRatio)
     return { aspectRatio: props.aspectRatio }
+
   return {}
 })
 

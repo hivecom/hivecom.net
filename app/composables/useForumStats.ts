@@ -32,6 +32,7 @@ export interface ForumStats {
   topCombined: ForumUserStat[]
   topRepliers: ForumUserStat[]
   topStarters: ForumUserStat[]
+
   // Full sorted lists (not sliced) - used for out-of-top-10 rank lookups
   allCombined: ForumUserStat[]
   allRepliers: ForumUserStat[]

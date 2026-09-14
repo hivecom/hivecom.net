@@ -57,6 +57,7 @@ declare module '@tiptap/core' {
     textColor: {
       /** Apply a named palette color to the selected text, e.g. "red". */
       setTextColor: (color: TextColorName) => ReturnType
+
       /** Remove the text color mark from the selection. */
       unsetTextColor: () => ReturnType
     }
@@ -101,6 +102,7 @@ export const TextColor = Mark.create({
           const color = attributes.color
           if (typeof color !== 'string' || !isValidColorName(color))
             return {}
+
           return {
             'data-text-color': color,
             'style': `color: ${textColorValue(color)}`,
@@ -121,6 +123,7 @@ export const TextColor = Mark.create({
           const color = node.getAttribute('data-text-color')
           if (color !== null && color !== '' && isValidColorName(color))
             return { color }
+
           return false
         },
       },
@@ -131,10 +134,12 @@ export const TextColor = Mark.create({
           const raw = node.style.color
           if (!raw)
             return false
+
           const varMatch = CSS_VAR_COLOR_RE.exec(raw)
           const name = varMatch?.[1] ?? null
           if (name !== null && isValidColorName(name))
             return { color: name }
+
           return false
         },
       },
@@ -155,6 +160,7 @@ export const TextColor = Mark.create({
           ({ commands }) => {
             if (!isValidColorName(color))
               return false
+
             return commands.setMark(this.name, { color })
           },
 
@@ -216,6 +222,7 @@ export const TextColor = Mark.create({
             i += 3
             continue
           }
+
           // Closing ::: - anything NOT followed by an opening-directive pattern
           // (letters then '[') counts as a close, including bare ':::' sequences
           // and text that happens to start with a letter but is not a directive.

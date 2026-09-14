@@ -14,6 +14,7 @@ const props = defineProps<{
   // 0..1 output level.
   volume: number
   muted: boolean
+
   // Render the trigger as a bare inline icon instead of a square button.
   bare?: boolean
 }>()
@@ -33,6 +34,7 @@ const icon = computed(() => {
     return 'ph:speaker-simple-x'
   if (props.volume < 0.5)
     return 'ph:speaker-simple-low'
+
   return 'ph:speaker-simple-high'
 })
 
@@ -44,6 +46,7 @@ function levelFromEvent(event: PointerEvent): number {
   const el = track.value
   if (!el)
     return props.volume
+
   const rect = el.getBoundingClientRect()
   return Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / rect.height))
 }

@@ -80,6 +80,7 @@ const scopeBadgeVariant = computed(() => {
     return 'success'
   if (activeTab.value === 'tentative')
     return 'warning'
+
   return 'danger'
 })
 
@@ -180,6 +181,7 @@ async function fetchRSVPs(force = false) {
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
     fetchRSVPs()
+
     // Set default tab to the one with the most responses, or 'yes' if tied
     if (yesCount.value >= tentativeCount.value && yesCount.value >= noCount.value) {
       activeTab.value = 'yes'

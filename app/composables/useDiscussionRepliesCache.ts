@@ -48,6 +48,7 @@ export interface PageCursor {
 export interface ReplyPage {
   rows: RawComment[]
   hasMore: boolean
+
   /** The cursor to pass to fetch the NEXT page after this one. */
   nextCursor: PageCursor | null
 }
@@ -56,6 +57,7 @@ export interface ReplyPageCursorResult {
   pageIndex: number
   predecessorCount: number
   cursor: PageCursor | null // null when the target is on page 0
+
   /** Cursor for the page BEFORE the target's page (page N-1). Non-null only when pageIndex >= 2. */
   prevCursor: PageCursor | null
 }
@@ -401,6 +403,7 @@ export function useDiscussionRepliesCache() {
 
       const rows = data
       cache.set(key, rows as unknown as RawComment[], CACHE_TTL)
+
       // NOTE: key already encodes hash so hash-filtered tails are cached separately
       return rows as unknown as RawComment[]
     }

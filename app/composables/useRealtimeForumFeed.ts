@@ -17,12 +17,16 @@ type TopicRow = Tables<'discussion_topics'>
 export interface UseRealtimeForumFeedOptions {
   /** Called when a new reply arrives - prepend it to the carousel feed */
   onReply: (item: ActivityItem) => void
+
   /** Called when a new discussion arrives - prepend it to the carousel feed */
   onDiscussion: (item: ActivityItem) => void
+
   /** Emits count of incoming items not yet reflected in the sheet feed */
   onPendingSheet: (delta: number) => void
+
   /** Called when a topic's last_activity_at changes - used for unread dot updates */
   onTopicActivity?: (topicId: string, lastActivityAt: string) => void
+
   /** Current discussion lookup for resolving reply context labels */
   discussionLookup: Ref<Map<string, Tables<'discussions'>>>
   settings: Ref<{
@@ -83,6 +87,7 @@ function acquireReplyChannel(supabase: AnySupabase): SharedChannel<ReplyInsertPa
 function releaseReplyChannel(supabase: AnySupabase) {
   if (!replyChannel)
     return
+
   replyChannel.refCount--
   if (replyChannel.refCount <= 0) {
     void supabase.removeChannel(replyChannel.channel)
@@ -111,6 +116,7 @@ function acquireDiscussionChannel(supabase: AnySupabase): SharedChannel<Discussi
 function releaseDiscussionChannel(supabase: AnySupabase) {
   if (!discussionChannel)
     return
+
   discussionChannel.refCount--
   if (discussionChannel.refCount <= 0) {
     void supabase.removeChannel(discussionChannel.channel)
@@ -139,6 +145,7 @@ function acquireTopicActivityChannel(supabase: AnySupabase): SharedChannel<Topic
 function releaseTopicActivityChannel(supabase: AnySupabase) {
   if (!topicActivityChannel)
     return
+
   topicActivityChannel.refCount--
   if (topicActivityChannel.refCount <= 0) {
     void supabase.removeChannel(topicActivityChannel.channel)
@@ -244,12 +251,14 @@ export function useRealtimeForumFeed({
   function subscribe() {
     if (subscribed)
       return
+
     subscribed = true
 
     replyHandler = (payload: ReplyInsertPayload) => {
       const item = mapReply(payload.new)
       if (item == null)
         return
+
       onReply(item)
       onPendingSheet(1)
       window.__hivecomActivitySignal?.()
@@ -261,6 +270,7 @@ export function useRealtimeForumFeed({
       const item = mapDiscussion(payload.new)
       if (item == null)
         return
+
       onDiscussion(item)
       onPendingSheet(1)
       window.__hivecomActivitySignal?.()
@@ -281,6 +291,7 @@ export function useRealtimeForumFeed({
   function unsubscribe() {
     if (!subscribed)
       return
+
     subscribed = false
 
     if (replyHandler) {

@@ -52,6 +52,7 @@ onUnmounted(() => {
 const mobileCountdownLabel = computed(() => {
   if (lastFetchedAt.value === null)
     return null
+
   const msLeft = Math.max(0, lastFetchedAt.value.getTime() + METRICS_COLLECTION_INTERVAL + METRICS_REFRESH_BUFFER_MS - now.value)
   const totalSec = Math.ceil(msLeft / 1000)
   const m = Math.floor(totalSec / 60)

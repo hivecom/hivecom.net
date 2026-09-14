@@ -38,11 +38,13 @@ const officialFilterOptions: SelectOption[] = [
 const resolvedOfficialFilter = computed<boolean | null>(() => {
   if (props.officialFilter != null)
     return props.officialFilter
+
   const val = officialFilterOption.value?.[0]?.value
   if (val === 'official')
     return true
   if (val === 'unofficial')
     return false
+
   return null
 })
 
@@ -165,6 +167,7 @@ const calendarAttributes = computed(() => {
     const isOngoing = (() => {
       if (!eventEnd)
         return false
+
       return eventStart.valueOf() <= now.valueOf() && now.valueOf() <= eventEnd.valueOf()
     })()
     const isPast = eventEnd ? eventEnd.isBefore(now) : eventStart.isBefore(now)
@@ -237,6 +240,7 @@ function formatEventDuration(event: Tables<'events'>) {
     return `${minutes}m`
   if (minutes === 0)
     return `${hours}h`
+
   return `${hours}h ${minutes}m`
 }
 
@@ -376,6 +380,7 @@ const pageTitle = computed(() => {
 
   // Month offset from now to the start of the visible window (0 = current month)
   const startOffset = startMonth.value.diff(now, 'month')
+
   // Month offset from now to the end of the visible window
   const endOffset = endMonth.diff(now, 'month')
 
@@ -383,6 +388,7 @@ const pageTitle = computed(() => {
   if (endOffset < -11) {
     if (startMonth.value.year() === endMonth.year())
       return `Back in ${startMonth.value.format('YYYY')}`
+
     return `Back in ${startMonth.value.format('YYYY')} - ${endMonth.format('YYYY')}`
   }
 
@@ -390,6 +396,7 @@ const pageTitle = computed(() => {
   if (startOffset > 11) {
     if (startMonth.value.year() === endMonth.year())
       return `In ${startMonth.value.format('YYYY')}`
+
     return `In ${startMonth.value.format('YYYY')} - ${endMonth.format('YYYY')}`
   }
 

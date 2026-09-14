@@ -37,6 +37,7 @@ const currentUser = useSupabaseUser()
 const profileLink = computed(() => {
   if (user.value?.username_set && user.value?.username)
     return `/profile/${user.value.username}`
+
   return `/profile/${props.userId}`
 })
 </script>

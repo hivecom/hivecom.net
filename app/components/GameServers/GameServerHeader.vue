@@ -31,6 +31,7 @@ interface Props {
   gameserver: Tables<'network_gameservers'>
   game?: Tables<'games'> | null
   container?: ContainerWithServer | null
+
   // FIxme: these props are passed in, but unused
   state: string
   stateConfig: unknown // TODO: add type

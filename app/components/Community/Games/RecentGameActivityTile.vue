@@ -21,6 +21,7 @@ function timeAgo(ts: number): string {
     return `${mins}m ago`
   if (hours < 24)
     return `${hours}h ago`
+
   return `${days}d ago`
 }
 

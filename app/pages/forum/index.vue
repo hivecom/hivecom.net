@@ -236,6 +236,7 @@ const visibleDiscussionIds = computed(() => {
         }
         if (!settings.value.show_nsfw_content && d.is_nsfw)
           return false
+
         return true
       })
       .map(d => d.id),
@@ -244,8 +245,10 @@ const visibleDiscussionIds = computed(() => {
 
 const discussionLookup = computed(() => {
   const lookup = new Map<string, ForumDiscussion>()
+
   // Seed from the global index first
   allDiscussions.value.forEach(d => lookup.set(d.id, d))
+
   // Overwrite with lazily-loaded per-topic data which may have fresher counts
   topics.value.forEach((topic) => {
     topic.discussions.forEach((discussion) => {
@@ -258,6 +261,7 @@ const discussionLookup = computed(() => {
 const hiddenTopicIds = computed(() => {
   if (settings.value.show_forum_archived)
     return new Set<string>()
+
   return new Set(
     topics.value
       .filter(topic => topic.is_archived)
@@ -334,6 +338,7 @@ function onVisibilityChange() {
 
 onMounted(() => {
   lastFeedVisitedAt.value = forumUnread.recordFeedVisit()
+
   // Server-side count for the "since last visit" badge so it isn't capped by
   // the carousel slice (16) or the latest-replies fetch (30).
   void fetchSinceLastVisitCount(lastFeedVisitedAt.value)
@@ -343,6 +348,7 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', onVisibilityChange)
 })
+
 // ── Realtime feed updates ─────────────────────────────────────────────────
 
 // Count of incoming items not yet reflected in the paginated sheet feed.
@@ -360,6 +366,7 @@ function handleTopicActivity(topicId: string, lastActivityAt: string) {
 const { subscribe: subscribeForumFeed } = useRealtimeForumFeed({
   onReply: (item) => {
     prependReplyItem(item)
+
     // Bump the "since last visit" badge if the item is newer than the
     // watermark and not authored by the current user.
     if (lastFeedVisitedAt.value != null
@@ -441,6 +448,7 @@ watch(
 function sortIcon(col: SortColumn) {
   if (sortColumn.value !== col)
     return null
+
   return sortAscending.value ? 'ph:arrow-up' : 'ph:arrow-down'
 }
 

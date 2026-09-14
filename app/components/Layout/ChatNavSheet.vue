@@ -16,6 +16,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 const props = defineProps<{
   // When true, render a plain (mobile) trigger instead of the tooltip button.
   mobile?: boolean
+
   // When true, suppress the trigger button entirely (the surrounding page
   // provides its own trigger, e.g. ChatHeader's back button on mobile).
   noTrigger?: boolean
@@ -40,6 +41,7 @@ const isChannelBuffer = computed(() => activeBuffer.value?.kind === 'channel')
 const showBadge = computed(() => {
   if (open.value || !isConnected.value)
     return false
+
   return settings.value.chat_notify_only_mentions ? hasMention.value : hasUnread.value
 })
 

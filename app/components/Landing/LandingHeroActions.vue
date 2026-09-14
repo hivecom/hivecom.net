@@ -5,6 +5,7 @@ import GlowCard from '@/components/Shared/GlowCard.vue'
 function scrollToPlatforms() {
   if (!import.meta.client)
     return
+
   const target = document.querySelector('.page-landing')
   if (!target)
     return

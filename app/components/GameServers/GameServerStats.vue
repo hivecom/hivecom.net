@@ -59,6 +59,7 @@ const currentPlayerCount = computed<number | null>(() => {
   const detail = metrics.value?.gameservers.byServer[String(props.id)]
   if (!detail?.data)
     return null
+
   return metricsPlayerCount(detail) ?? 0
 })
 
@@ -66,6 +67,7 @@ const minecraftDetail = computed<MetricsServerDetailMinecraft | null>(() => {
   const detail = metrics.value?.gameservers.byServer[String(props.id)]
   if (detail?.protocol === 'minecraft')
     return detail
+
   return null
 })
 
@@ -73,6 +75,7 @@ const sourceDetail = computed<MetricsServerDetailSource | null>(() => {
   const detail = metrics.value?.gameservers.byServer[String(props.id)]
   if (detail?.protocol === 'source')
     return detail
+
   return null
 })
 
@@ -88,6 +91,7 @@ function formatDuration(seconds: number): string {
   const h = Math.floor(m / 60)
   if (h > 0)
     return `${h}h ${m % 60}m`
+
   return `${m}m`
 }
 

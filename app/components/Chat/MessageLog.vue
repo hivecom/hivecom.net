@@ -25,9 +25,10 @@ import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { mentionsSelf, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
+import { useNow } from '@/composables/useNow'
 import { applyMarkdown, parseIrcFormatting, segStyle } from '@/lib/ircFormat'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { fullDate } from '@/lib/utils/date'
+import { fromNow, fullDate } from '@/lib/utils/date'
 
 const props = defineProps<{ compact?: boolean }>()
 
@@ -36,12 +37,14 @@ const { messages: allMessages, nick, users, activeBuffer, setReply, joinChannel,
 function ircMeta(nickLower: string | null | undefined) {
   if (!nickLower)
     return undefined
+
   return userMetaStore.value.get(nickLower)
 }
 
 function ircDisplayName(from: string | null | undefined): string {
   if (!from)
     return ''
+
   return ircMeta(from.toLowerCase())?.get('display-name') ?? from
 }
 
@@ -60,6 +63,7 @@ const JOINPART_MAX_NAMES = 3
 function fmtNickList(nicks: string[], verb: string): string {
   if (nicks.length <= JOINPART_MAX_NAMES)
     return `${nicks.join(', ')} ${verb}`
+
   const shown = nicks.slice(0, JOINPART_MAX_NAMES - 1).join(', ')
   const rest = nicks.length - (JOINPART_MAX_NAMES - 1)
   return `${shown} and ${rest} ${rest === 1 ? 'other' : 'others'} ${verb}`
@@ -80,6 +84,7 @@ function collapseBacklogJoinParts(msgs: ChatMessage[]): ChatMessage[] {
       i++
       continue
     }
+
     // Collect the full contiguous run of backlog join/part messages.
     const runStart = i
     const joinNicks: string[] = []
@@ -121,6 +126,7 @@ let _phaseRaf: number | null = null
 function expandPhase() {
   if (phaseLimit.value === null)
     return
+
   const total = allMessages.value.length
   const next = phaseLimit.value + RENDER_CHUNK
   if (next >= total) {
@@ -156,6 +162,7 @@ const mobileMenuOpen = ref(false)
 const logEl = ref<HTMLElement | null>(null)
 const topSentinel = ref<HTMLElement | null>(null)
 const activeMessage = ref<ChatMessage | null>(null)
+
 // URL under the pointer when the menu opened. We suppress the native context
 // menu on the log, so "Copy link address" has to come from our own menu.
 const activeLink = ref<string | null>(null)
@@ -175,6 +182,7 @@ function startDrag(event: MouseEvent) {
 useEventListener('mousemove', (event: MouseEvent) => {
   if (!isDragging.value)
     return
+
   const delta = event.clientX - dragStartX
   nickColWidth.value = Math.max(60, Math.min(300, dragStartWidth + delta))
 })
@@ -198,6 +206,7 @@ const showTimestamps = computed(() => {
   // instead, so the IRC-specific hide must not suppress it there.
   if (!isModernMode.value && props.compact && settings.value.chat_display_mode === 'irc' && settings.value.chat_irc_hide_sidebar_timestamps)
     return false
+
   return settings.value.chat_show_timestamps
 })
 const isServerBuffer = computed(() => activeBuffer.value?.kind === 'server')
@@ -231,10 +240,15 @@ const { resolved, resolve } = useIrcNickResolver()
 const groupedMessages = computed((): MessageGroup[] => {
   if (!isModernMode.value)
     return []
+
   const groups: MessageGroup[] = []
+
   for (const msg of messages.value) {
     const isSystemMsg = msg.type !== 'chat' && !(isServiceQuery.value && isServiceNick(msg.from))
     const isActionMsg = msg.type === 'chat' && !!msg.action
+
+    // System lines and /me actions never merge with anything, so they each get
+    // a group of their own.
     if (isSystemMsg || isActionMsg) {
       groups.push({
         id: msg.id,
@@ -247,7 +261,10 @@ const groupedMessages = computed((): MessageGroup[] => {
       })
       continue
     }
+
+    // Consecutive messages from the same nick share one header.
     const last = groups[groups.length - 1]
+
     if (last && !last.isSystem && !last.isAction && last.from === msg.from) {
       last.messages.push(msg)
     }
@@ -263,6 +280,7 @@ const groupedMessages = computed((): MessageGroup[] => {
       })
     }
   }
+
   return groups
 })
 
@@ -278,6 +296,7 @@ watch(messages, (msgs) => {
   for (const msg of msgs) {
     if (msg.type !== 'chat')
       continue
+
     for (const m of msg.text.matchAll(new RegExp(MENTION_RE.source, 'gi'))) {
       if (m[1])
         nicks.add(m[1].toLowerCase())
@@ -290,18 +309,21 @@ watch(messages, (msgs) => {
 function resolvedUser(nickLower: string | null) {
   if (!nickLower)
     return null
+
   return resolved.value.get(nickLower) ?? null
 }
 
 function isNickBot(nickLower: string | null): boolean {
   if (!nickLower)
     return false
+
   return users.value.some(u => u.name.toLowerCase() === nickLower && u.bot === true)
 }
 
 function groupNickStyle(from: string | null) {
   if (from && settings.value.chat_colored_nicks && from !== nick.value)
     return { color: nickColor(cleanNick(from)) }
+
   return undefined
 }
 
@@ -309,8 +331,12 @@ function fmtTime(d: Date): string {
   return dayjs(d).format(settings.value.chat_timestamp_format || 'HH:mm:ss')
 }
 
+// Header line for the mobile long-press sheet. The relative part rides the
+// shared tick, so a sheet left open doesn't sit on a stale "1 minute ago".
+const { now } = useNow()
+
 function fmtDateTime(d: Date): string {
-  return `${fullDate(d)} at ${fmtTime(d)}`
+  return `${fullDate(d)} at ${fmtTime(d)} (${fromNow(d, now.value)})`
 }
 
 function isServiceNick(from?: string | null): boolean {
@@ -341,6 +367,7 @@ const readLineFirstMsgId = computed<number | null>(() => {
   const readLineTs = activeBuffer.value?.readLineTs
   if (!readLineTs)
     return null
+
   return messages.value.find(m => m.ts.getTime() > readLineTs)?.id ?? null
 })
 
@@ -348,6 +375,7 @@ const readLineFirstGroupId = computed<number | null>(() => {
   const readLineTs = activeBuffer.value?.readLineTs
   if (!readLineTs)
     return null
+
   for (const group of groupedMessages.value) {
     if (group.messages.some(m => m.ts.getTime() > readLineTs))
       return group.id
@@ -373,6 +401,7 @@ function cleanNick(name: string) {
 function displayNick(from: string | null | undefined): string {
   if (!from)
     return ''
+
   if (isModernMode.value || !settings.value.chat_irc_pure_relay_nicks) {
     const parts = relayNickParts(from)
     if (parts)
@@ -389,16 +418,19 @@ function displayNick(from: string | null | undefined): string {
 function relayNickParts(from: string | null | undefined): { user: string, bridge: string } | null {
   if (!from || !relaySeparator.value)
     return null
+
   const sep = relaySeparator.value
   const idx = from.indexOf(sep)
   if (idx <= 0)
     return null
+
   return { user: from.slice(0, idx), bridge: from.slice(idx + sep.length) }
 }
 
 function nickStyle(msg: ChatMessage) {
   if (msg.type === 'chat' && msg.from && settings.value.chat_colored_nicks && msg.from !== nick.value && !isServiceNick(msg.from))
     return { color: nickColor(cleanNick(msg.from)) }
+
   return undefined
 }
 
@@ -506,6 +538,7 @@ function segments(text: string): Segment[] {
 function imageUrls(text: string): string[] {
   if (!settings.value.chat_show_previews)
     return []
+
   return (text.match(URL_RE) ?? []).filter(u => IMAGE_RE.test(u))
 }
 
@@ -513,6 +546,7 @@ function isImageOnlyMessage(text: string): boolean {
   const imgs = imageUrls(text)
   if (!imgs.length)
     return false
+
   return text.replace(URL_RE, '').trim() === ''
 }
 
@@ -528,9 +562,11 @@ function groupRenderItems(msgs: readonly ChatMessage[]): RenderItem[] {
   function flush() {
     if (msgRun.length === 0)
       return
+
     const allEntries: GalleryEntry[] = msgRun.flatMap(m =>
       imageUrls(m.text).map(url => ({ url, msgId: m.id })),
     )
+
     // A single image renders as a normal message line so it keeps its hover
     // react bar; 2+ images collapse into a gallery grid.
     if (allEntries.length <= 1) {
@@ -571,12 +607,14 @@ function youtubeVideoId(url: string): string | null {
 function youtubeUrls(text: string): string[] {
   if (!settings.value.chat_show_previews)
     return []
+
   return (text.match(URL_RE) ?? []).filter(u => youtubeVideoId(u) !== null)
 }
 
 function videoUrls(text: string): string[] {
   if (!settings.value.chat_show_previews)
     return []
+
   return (text.match(URL_RE) ?? []).filter(u => VIDEO_RE.test(u))
 }
 
@@ -587,6 +625,7 @@ function videoUrls(text: string): string[] {
 function audioUrls(text: string): string[] {
   if (!settings.value.chat_show_previews)
     return []
+
   return (text.match(URL_RE) ?? []).filter(u => AUDIO_RE.test(u))
 }
 
@@ -612,6 +651,7 @@ function onImageError(url: string) {
 // message arriving in the buffer (or scrolling back into view) holds its space
 // instead of growing the row from zero height and shoving the layout around.
 const imageDims = reactive(new Map<string, { w: number, h: number }>())
+
 // URLs whose image has painted - drives swapping the Skeleton out for the image.
 const loadedImages = reactive(new Set<string>())
 function onImageLoad(event: Event, url: string) {
@@ -629,6 +669,7 @@ function embedBox(url: string, maxW: number, maxH: number): Record<string, strin
   const d = imageDims.get(url)
   if (!d)
     return { width: `${maxW}px`, height: `${maxH}px` }
+
   const scale = Math.min(maxW / d.w, maxH / d.h, 1)
   return { width: `${Math.round(d.w * scale)}px`, height: `${Math.round(d.h * scale)}px` }
 }
@@ -645,6 +686,7 @@ function onVideoMetadata(event: Event, url: string) {
 function previewUrls(text: string): string[] {
   if (!settings.value.chat_show_inline_embeds)
     return []
+
   const urls = text.match(URL_RE) ?? []
   const seen = new Set<string>()
   const out: string[] = []
@@ -653,6 +695,7 @@ function previewUrls(text: string): string[] {
       continue
     if (seen.has(u))
       continue
+
     if (parseInternalUrl(u) !== null) {
       seen.add(u)
       out.push(u)
@@ -681,6 +724,7 @@ function openLightbox(url: string, type: 'image' | 'video') {
 function handleIrcLinkClick(event: MouseEvent, url: string) {
   if (!IMAGE_RE.test(url) && !VIDEO_RE.test(url))
     return
+
   event.preventDefault()
   event.stopPropagation()
   openLightbox(url, IMAGE_RE.test(url) ? 'image' : 'video')
@@ -715,6 +759,7 @@ function ircSegments(msg: ChatMessage): Segment[] {
     const seg = segs[i]!
     if (seg.type !== 'link')
       continue
+
     if (inlineImages && showPreviews && (IMAGE_RE.test(seg.value) || VIDEO_RE.test(seg.value) || youtubeVideoId(seg.value) !== null))
       inlineMediaIndices.add(i)
     else if (hideLinks && isEmbeddedLink(msg.text, seg.value))
@@ -734,9 +779,11 @@ function ircSegments(msg: ChatMessage): Segment[] {
         out.push({ type, value: seg.value })
         continue
       }
+
       // Non-media embed with hide-links on: produce nothing
       if (removedLinkIndices.has(i))
         continue
+
       out.push(seg)
       continue
     }
@@ -785,6 +832,7 @@ function onContextMenu(event: MouseEvent) {
 function closeMenu() {
   if (!import.meta.client)
     return
+
   mobileMenuOpen.value = false
   setTimeout(() => {
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
@@ -807,6 +855,7 @@ function viewProfile(name: string) {
   const user = resolvedUser(name.toLowerCase())
   if (!user)
     return
+
   navigateTo(`/profile/${user.username}`)
   closeMenu()
   mobileMenuOpen.value = false
@@ -815,6 +864,7 @@ function viewProfile(name: string) {
 function activeMessagePrefix(): string | undefined {
   if (!activeMessage.value?.from)
     return undefined
+
   const lower = cleanNick(activeMessage.value.from).toLowerCase()
   return users.value.find(u => u.name.toLowerCase() === lower)?.prefix
 }
@@ -825,6 +875,7 @@ const whoisModalOpen = ref(false)
 
 function openWhois(name: string) {
   whoisModalNick.value = cleanNick(name)
+
   // If this message was relayed, pass the actual bot nick so the modal can
   // WHOIS the real IRC user rather than the spoofed virtual nick.
   whoisModalRelayedBy.value = activeMessage.value?.relayedBy ?? null
@@ -871,6 +922,7 @@ function redactedLabel(msg: ChatMessage): string {
 function replySource(msg: ChatMessage): ChatMessage | null {
   if (!msg.replyTo)
     return null
+
   return messages.value.find(m => m.msgid === msg.replyTo) ?? null
 }
 
@@ -878,9 +930,11 @@ function scrollToReplySource(msg: ChatMessage) {
   const source = replySource(msg)
   if (!source || !logEl.value)
     return
+
   const el = logEl.value.querySelector<HTMLElement>(`[data-msg-id="${source.id}"]`)
   if (!el)
     return
+
   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   el.classList.add('chat-log__msg--jump-highlight')
   setTimeout(() => el.classList.remove('chat-log__msg--jump-highlight'), 1500)
@@ -905,6 +959,7 @@ function onTouchStart(event: TouchEvent) {
   const touch = event.touches[0]
   if (!touch)
     return
+
   _touchStartX = touch.clientX
   _touchStartY = touch.clientY
 
@@ -934,9 +989,11 @@ function cancelLongPress() {
 function onTouchMove(event: TouchEvent) {
   if (_longPressTimer === null)
     return
+
   const touch = event.touches[0]
   if (!touch)
     return
+
   if (Math.abs(touch.clientX - _touchStartX) > LONG_PRESS_SLOP
     || Math.abs(touch.clientY - _touchStartY) > LONG_PRESS_SLOP) {
     cancelLongPress()
@@ -946,6 +1003,7 @@ function onTouchMove(event: TouchEvent) {
 // ---- Scroll management ----------------------------------------------------
 
 const SCROLL_BOTTOM_THRESHOLD = 80
+
 // How far ahead, in multiples of the viewport height, to start pulling the next
 // page. Proportional to the viewport rather than a fixed pixel lead so a taller
 // window or larger font (fewer, taller messages per screen) still gets the same
@@ -971,6 +1029,7 @@ const isAtBottom = ref(true)
 let anchorMsgEl: HTMLElement | null = null
 let anchorMsgVisualTop = 0
 let pendingPrependRestore = false
+
 // After an older-history prepend, keep the anchored line fixed (via the content
 // ResizeObserver) until the user scrolls away. A single restore isn't enough for
 // server-fetched pages: their images / link previews / videos load async and
@@ -978,10 +1037,12 @@ let pendingPrependRestore = false
 // post-batch "jump". Re-pinning on every height change absorbs it. Cached pages
 // settle instantly so they never needed this, which is why they felt smooth.
 let pinTopUntilUserScroll = false
+
 // scrollTop we last set ourselves (restore / re-pin). Lets updateScrollState
 // tell our own programmatic scrolls from a genuine user scroll, which releases
 // the pin. -1 means "no programmatic scroll pending".
 let lastProgrammaticScrollTop = -1
+
 // Set whenever a buffer switch, visibility change, or activation wants to
 // land at the bottom. Cleared only when the user intentionally scrolls up
 // (scrollTop decreases). overflow-anchor bumps scrollTop UP, so they don't
@@ -992,11 +1053,13 @@ let lastScrollTop = 0
 function updateScrollState() {
   if (!logEl.value)
     return
+
   const { scrollTop, scrollHeight, clientHeight } = logEl.value
   const distFromBottom = scrollHeight - scrollTop - clientHeight
   const nowAtBottom = distFromBottom <= SCROLL_BOTTOM_THRESHOLD
   const scrolledUp = scrollTop < lastScrollTop
   lastScrollTop = scrollTop
+
   // Release the top pin once the user actually scrolls (a scroll we didn't make
   // ourselves), so it stops fighting their movement.
   if (pinTopUntilUserScroll && scrollTop !== lastProgrammaticScrollTop) {
@@ -1006,6 +1069,7 @@ function updateScrollState() {
   if (!nowAtBottom && scrolledUp)
     wantBottom = false
   isAtBottom.value = nowAtBottom
+
   // Older history only near the top, newer only near the bottom, nothing in the
   // dead zone between. The else makes them mutually exclusive at the boundary;
   // maybeForwardLoad self-gates on the same near-top cutoff, so callers from the
@@ -1028,6 +1092,7 @@ async function jumpToPresent() {
   const buf = activeBuffer.value
   if (!buf)
     return
+
   if (buf.tailTrimmed)
     await seekToPresent(buf.name)
   nextTick(scrollToBottom)
@@ -1036,6 +1101,7 @@ async function jumpToPresent() {
 function triggerHistoryLoad() {
   if (!activeBuffer.value || activeBuffer.value.loadingOlderHistory)
     return
+
   // Find the first visible message element and record its visual position.
   // Only user-scroll loads come through here, so the flag keeps the
   // initial-load auto-fetch path (fetchOlderHistory called directly) from
@@ -1066,11 +1132,14 @@ function maybeForwardLoad() {
   const el = logEl.value
   if (!el || !buf?.tailTrimmed || buf.loadingNewerHistory)
     return
+
   const { scrollTop, scrollHeight, clientHeight } = el
+
   // Never load newer while still in the top zone - that's older history's job,
   // and letting both run is the oscillation.
   if (scrollTop <= clientHeight * BACKWARD_LOAD_AHEAD_SCREENS)
     return
+
   if (scrollHeight - scrollTop - clientHeight <= clientHeight * FORWARD_LOAD_AHEAD_SCREENS)
     void fetchNewerFromCache(buf.name)
 }
@@ -1096,9 +1165,11 @@ watch(
   (loading, wasLoading) => {
     if (!(wasLoading && !loading && pendingPrependRestore))
       return
+
     pendingPrependRestore = false
     pinTopUntilUserScroll = false
     const el = logEl.value
+
     // Buffer switches (and visibility/activate restores) set wantBottom. In that
     // case skip anchor-restore and go straight to the bottom - anchor-restore
     // would land us mid-history when scrollTop was 0.
@@ -1110,6 +1181,7 @@ watch(
       })
       return
     }
+
     // This watch runs before the prepend renders (flush: 'pre'), so measure the
     // anchor line's position now (pre-prepend) and again after it renders. The
     // difference is exactly how far the prepended page pushed it down. Offsetting
@@ -1125,6 +1197,7 @@ watch(
       }
       const afterTop = anchorMsgEl.getBoundingClientRect().top
       el.scrollTop += afterTop - beforeTop
+
       // Record the resulting position so the content observer holds this line
       // fixed while the new page's media loads and resizes above the fold.
       // Released by the next genuine user scroll (updateScrollState).
@@ -1170,6 +1243,7 @@ function setupSentinelObserver() {
   sentinelObserver?.disconnect()
   if (!topSentinel.value)
     return
+
   // Observe against the viewport (root: null) rather than logEl. The actual
   // scroll container varies by surface: on the full page it's .chat-log__scroll
   // (logEl), but inside the navbar sheet VUI's .vui-card-content is the scroller
@@ -1223,9 +1297,11 @@ function setupContentObserver() {
   const content = logEl.value?.querySelector('.chat-log__messages')
   if (!content || !logEl.value)
     return
+
   contentObserver = new ResizeObserver(() => {
     if (!logEl.value)
       return
+
     // wantBottom: set on buffer switch / visibility / activate, cleared only
     // when the user intentionally scrolls up. Always re-pin while it's set so
     // late-loading media (images, embeds) that expands content by more than
@@ -1234,6 +1310,7 @@ function setupContentObserver() {
       scrollToBottom()
       return
     }
+
     // Just prepended older history: keep the anchored line fixed as the new
     // page's media loads and resizes above the fold. This is what makes a
     // server-fetched batch land smoothly instead of jumping after it paints.
@@ -1246,12 +1323,14 @@ function setupContentObserver() {
       }
       return
     }
+
     // For normal in-session use, re-read live rather than trusting
     // isAtBottom.value which native overflow-anchor scroll events can dirty.
     const { scrollTop, scrollHeight, clientHeight } = logEl.value
     if (scrollHeight - scrollTop - clientHeight <= SCROLL_BOTTOM_THRESHOLD)
       scrollToBottom()
   })
+
   // Observe both the message content (new lines / growing embeds) and the
   // scroll container itself. The container grows during the sheet open
   // animation; without observing it, isAtBottom goes stale-false by the time

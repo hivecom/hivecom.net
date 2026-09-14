@@ -28,8 +28,10 @@ export type ConnectMethod = 'uri' | 'copy'
 export interface ConnectContext {
   /** games.connect_uri - null when the game has no direct-launch support */
   connectUri: string | null
+
   /** network_gameservers.connect_command ?? games.connect_command */
   connectCommand: string | null
+
   /** games.steam_id, used by the {steam_id} token */
   steamId: number | null
 }
@@ -37,12 +39,16 @@ export interface ConnectContext {
 export interface ConnectAction {
   /** The URI to navigate to, or null when the action is copy-only */
   uri: string | null
+
   /** Substituted console/launch command, or null when the game defines none */
   command: string | null
+
   /** Shell one-liner handing the URI to the Steam client, steam:// URIs only */
   launcherCommand: string | null
+
   /** Raw address string including port, always available for clipboard fallback */
   addressWithPort: string
+
   /** Which underlying mechanism this action uses */
   method: ConnectMethod
 }
@@ -57,6 +63,7 @@ export interface ConnectAction {
 function buildLauncherCommand(uri: string | null): string | null {
   if (uri == null || !uri.startsWith('steam://'))
     return null
+
   return `steam "${uri.replace(/"/g, '\\"')}"`
 }
 
@@ -84,6 +91,7 @@ function substitute(template: string, tokens: TokenMap): string | null {
   const result = template.replace(/\{(\w+)\}/g, (match, key: string) => {
     if (!(key in tokens))
       return match
+
     const value = tokens[key]
     if (value == null || value === '') {
       missing = true
@@ -185,6 +193,7 @@ export function useGameConnect() {
   ): ConnectAction[] {
     if (addresses == null || addresses.length === 0)
       return []
+
     return addresses.map(a => getConnectAction(a, port, ctx))
   }
 

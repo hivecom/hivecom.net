@@ -23,6 +23,7 @@ const toCssSize = (value?: SizeProp) => (typeof value === 'number' ? `${value}px
 const containerStyle = computed(() => {
   if (props.absolute)
     return {}
+
   return {
     width: toCssSize(props.width),
     height: toCssSize(props.height),

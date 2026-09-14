@@ -65,6 +65,7 @@ onBeforeMount(async () => {
 const allUserIds = computed(() => {
   if (stats.value == null)
     return []
+
   const ids = new Set<string>()
   for (const u of stats.value.topCombined) ids.add(u.user_id)
   for (const u of stats.value.topRepliers) ids.add(u.user_id)
@@ -164,6 +165,7 @@ watchEffect(() => {
   const chart = activityChartRef.value?.chart
   if (!width || !chart)
     return
+
   const containerHeight = activityChartWrapperRef.value?.clientHeight
   chart.resize(Math.floor(width), containerHeight)
 })
@@ -304,6 +306,7 @@ watchEffect(() => {
   const chart = topicChartRef.value?.chart
   if (!width || !chart)
     return
+
   const containerHeight = topicChartWrapperRef.value?.clientHeight
   chart.resize(Math.floor(width), containerHeight)
 })
@@ -334,6 +337,7 @@ const selectedLeaderboardOption = computed({
 const activeLeaderboard = computed<ForumUserStat[]>(() => {
   if (stats.value == null)
     return []
+
   switch (leaderboardMode.value) {
     case 'discussions': return stats.value.topStarters
     case 'replies': return stats.value.topRepliers
@@ -374,9 +378,11 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
     case 'discussions':
       fullList = stats.value.allStarters
       break
+
     case 'replies':
       fullList = stats.value.allRepliers
       break
+
     default: fullList = stats.value.allCombined
   }
 

@@ -12,6 +12,7 @@ export interface PlaceholderBannerProject {
 function normalizeSeed(seed: number | null | undefined): number {
   if (seed == null || !Number.isFinite(seed))
     return 0
+
   return Math.abs(Math.trunc(seed))
 }
 
@@ -20,10 +21,13 @@ function getFlipTransform(seed: number): string | null {
   switch (variation) {
     case 1:
       return 'scaleX(-1)'
+
     case 2:
       return 'scaleY(-1)'
+
     case 3:
       return 'scaleX(-1) scaleY(-1)'
+
     default:
       return null
   }

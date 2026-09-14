@@ -8,29 +8,35 @@ import { downloadAsset, formatBytes, FORUMS_BUCKET_ID, isArchiveAsset, isAudioAs
 
 const props = defineProps<{
   assets: StorageAsset[]
+
   /**
    * Number of columns in the grid. Defaults to auto-fill with 200px min.
    */
   columns?: number
+
   /**
    * Show delete button in the card overlay. Defaults to false.
    */
   canDelete?: boolean
+
   /**
    * Pass true when assets are from the forums bucket to show the uploader row
    * and enable the path-segment fallback for uploader ID.
    */
   isForumsBucket?: boolean
+
   /**
    * When provided, the path-segment fallback further constrains to only assets
    * whose path starts with this context ID (e.g. a discussion ID).
    */
   forumContextId?: string
+
   /**
    * When true, clicking the card opens the lightbox preview instead of emitting clickAsset.
    * Also hides the explicit preview button.
    */
   clickToPreview?: boolean
+
   /**
    * Hide the uploader row on each tile. The Sharing page only ever shows the
    * logged-in user's own files, so the uploader is noise there.
@@ -53,6 +59,7 @@ const loadedUrls = ref(new Set<string>())
 function preloadImage(url: string) {
   if (!import.meta.client || loadedUrls.value.has(url))
     return
+
   const img = new Image()
   img.onload = () => {
     loadedUrls.value = new Set(loadedUrls.value).add(url)
@@ -123,6 +130,7 @@ watch(lightboxIndex, resetZoom)
 useEventListener('keydown', (event) => {
   if (!lightboxIsOpen.value)
     return
+
   if (event.key === 'Escape')
     closeLightbox()
   else if (event.key === 'ArrowLeft')
@@ -130,6 +138,7 @@ useEventListener('keydown', (event) => {
   else if (event.key === 'ArrowRight')
     lightboxNext()
 })
+
 // ──────────────────────────────────────────────────────────────────────────────
 
 function handleCardClick(asset: StorageAsset) {
@@ -157,6 +166,7 @@ function getUploaderId(asset: StorageAsset): string | null {
   // Fallback: forum bucket path structure - {contextId}/{userId}/{filename}
   if (asset.bucket_id === FORUMS_BUCKET_ID) {
     const segments = asset.path.split('/').filter(Boolean)
+
     // If a context ID is provided, only match assets under that context
     if (props.forumContextId) {
       if (segments.length >= 2 && segments[0] === props.forumContextId)

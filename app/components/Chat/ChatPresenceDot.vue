@@ -11,12 +11,16 @@ import { getUserActivityStatus } from '@/lib/lastSeen'
 const props = withDefaults(defineProps<{
   /** Whether the user is currently a member of the IRC channel. */
   onIrc?: boolean
+
   /** IRC away flag (only meaningful when onIrc). */
   away?: boolean
+
   /** Resolved Hivecom account's last website activity (ISO string), if any. */
   lastSeen?: string | null
+
   /** Suppress the tooltip (e.g. on touch devices). */
   noTooltip?: boolean
+
   /** Dot diameter in px. */
   size?: number
 }>(), {
@@ -37,6 +41,7 @@ const state = computed<Presence>(() => {
     return 'online'
   if (props.onIrc)
     return 'irc'
+
   return 'offline'
 })
 
@@ -44,10 +49,13 @@ const label = computed(() => {
   switch (state.value) {
     case 'online':
       return 'Online'
+
     case 'irc':
       return 'Connected via IRC only'
+
     case 'away':
       return 'Offline'
+
     default:
       return activity.value?.lastSeenText ?? 'Offline'
   }

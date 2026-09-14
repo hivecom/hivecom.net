@@ -141,6 +141,7 @@ const profileQuery = computed(() => {
       single: true,
     }
   }
+
   return null
 })
 
@@ -167,6 +168,7 @@ watch(hydratedProfileData, (newData) => {
   if (newData) {
     const hydratedProfile = cloneProfileRecord(newData as ProfileRecord)
     profile.value = hydratedProfile
+
     // Check friendship status after profile is loaded
     checkFriendshipStatus()
   }
@@ -274,6 +276,7 @@ function openEditSheet() {
 
 function closeEditSheet() {
   isEditSheetOpen.value = false
+
   // Clear any submission errors when closing
   profileSubmissionError.value = null
 }
@@ -285,8 +288,10 @@ function clearProfileError() {
 function handleProfilePatch(patch: Partial<Tables<'profiles'>>) {
   if (!profile.value)
     return
+
   // Patch local state immediately so the UI updates without waiting
   profile.value = cloneProfileRecord({ ...profile.value, ...patch })
+
   // Bust the localStorage cache so reloads don't serve stale has_banner state
   void refetchProfile()
 }

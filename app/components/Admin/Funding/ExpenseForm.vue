@@ -61,6 +61,7 @@ const isValid = computed(() => Object.values(validation.value).every(Boolean))
 const isPlannedExpense = computed(() => {
   if (!expenseForm.value.started_at)
     return false
+
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const startDate = new Date(expenseForm.value.started_at)

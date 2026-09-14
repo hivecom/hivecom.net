@@ -29,12 +29,14 @@ const ENABLED_KEY = 'hivecom.chat.webpush.enabled'
 
 const isSupported = ref(false)
 const isSubscribed = ref(false)
+
 // Whether we've reconciled `isSubscribed` against the real browser subscription
 // at least once. Until then the initial `false` means "unknown", not
 // "unsubscribed" - banners gate on this so they don't flash for users who
 // already have push enabled.
 const subscriptionResolved = ref(false)
 const loading = ref(false)
+
 // Endpoint we've already sent WEBPUSH REGISTER for on the current connection, to
 // avoid re-registering on every reactive tick. Cleared when the link drops.
 const registeredEndpoint = ref<string | null>(null)
@@ -63,12 +65,14 @@ function wantsPush(): boolean {
 async function ergoRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!isSupported.value)
     return null
+
   // getRegistration() returns the longest-scope match, which before our worker
   // exists is the root `/sw.js` (scope `/`). Only reuse a registration that is
   // actually our `/chat-push/` worker; otherwise register it.
   const existing = await navigator.serviceWorker.getRegistration(ERGO_SW_SCOPE)
   if (existing && new URL(existing.scope).pathname === ERGO_SW_SCOPE)
     return existing
+
   try {
     return await navigator.serviceWorker.register(ERGO_SW_URL, { scope: ERGO_SW_SCOPE })
   }
@@ -84,6 +88,7 @@ export function useErgoPush() {
   const send = irc.send
   const isConnected = irc.isConnected
   const vapidKey = irc.vapidKey
+
   // Ergo only accepts WEBPUSH REGISTER on a connection logged into an account
   // (it rejects guests with "You must be logged in to receive push messages").
   const account = irc.account
@@ -103,6 +108,7 @@ export function useErgoPush() {
     const auth = json.keys?.auth
     if (!json.endpoint || !p256dh || !auth)
       return
+
     send(`WEBPUSH REGISTER ${json.endpoint} p256dh=${p256dh};auth=${auth}`)
     registeredEndpoint.value = json.endpoint
   }
@@ -122,6 +128,7 @@ export function useErgoPush() {
 
   async function subscribe(): Promise<boolean> {
     detect()
+
     // The key only arrives after connecting (005 ISUPPORT), and Ergo requires an
     // account, so a subscription can't be created until we're connected to a
     // webpush-capable server while logged in.
@@ -145,6 +152,7 @@ export function useErgoPush() {
         })
 
       localStorage.setItem(ENABLED_KEY, 'true')
+
       // Flag the upcoming registration test push ("PING webpush", sent by Ergo
       // before it acks a fresh endpoint) so the worker shows a welcome
       // notification for it instead of dropping it like a keepalive. Cache API
@@ -209,11 +217,13 @@ export function useErgoPush() {
         registeredEndpoint.value = null
         return
       }
+
       // Need the server key and a logged-in account before Ergo will accept the
       // subscription. Both arrive shortly after connect (SASL + 005 ISUPPORT),
       // and watching `account` covers a guest connection that later authenticates.
       if (!key || !acct || !wantsPush())
         return
+
       const registration = await ergoRegistration()
       const subscription = await registration?.pushManager.getSubscription()
       if (subscription && subscription.endpoint !== registeredEndpoint.value)
@@ -228,6 +238,7 @@ export function useErgoPush() {
       } | null
       if (data?.type !== 'ergo-pushsubscriptionchange')
         return
+
       // The worker rotated the subscription. Drop the old endpoint and register
       // the new one over IRC (best-effort; only possible while connected).
       if (isConnected.value && account.value) {

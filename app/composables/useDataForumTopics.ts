@@ -46,6 +46,7 @@ export function useDataForumTopics() {
         .order('name', { ascending: true })
       if (fetchError)
         throw fetchError
+
       return data ?? []
     }, { force, ttl: CACHE_TTL })
     if (result !== null)

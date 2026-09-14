@@ -19,6 +19,7 @@ watch(open, (isOpen) => {
 const displayHost = computed(() => {
   if (!pendingUrl.value)
     return ''
+
   try {
     return new URL(pendingUrl.value).hostname
   }

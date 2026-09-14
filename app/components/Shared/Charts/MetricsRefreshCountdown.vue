@@ -21,6 +21,7 @@ const dataFromLabel = computed(() => {
   const source = metrics.value?.collectedAt ?? lastFetchedAt.value?.toISOString() ?? null
   if (!source)
     return null
+
   const d = new Date(source)
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 })
@@ -28,6 +29,7 @@ const dataFromLabel = computed(() => {
 const nextUpdateLabel = computed(() => {
   if (lastFetchedAt.value === null)
     return null
+
   const msLeft = Math.max(0, lastFetchedAt.value.getTime() + METRICS_COLLECTION_INTERVAL + METRICS_REFRESH_BUFFER_MS - now.value)
   const totalSec = Math.ceil(msLeft / 1000)
   const m = Math.floor(totalSec / 60)

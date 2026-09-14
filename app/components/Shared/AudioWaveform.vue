@@ -14,8 +14,10 @@ import { formatClock } from '@/lib/utils/duration'
 const props = defineProps<{
   // Track URL. Swapping it recomputes the waveform.
   src: string
+
   // Playback position as a 0..1 fraction of the duration, for the playhead.
   progress: number
+
   // Total duration in seconds, used to turn a click position into a seek time.
   duration: number
 }>()
@@ -23,6 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   // A scrub target in seconds.
   seek: [time: number]
+
   // Pointer pressed/released, so the parent can hold timeupdate off mid-drag.
   seekStart: []
   seekEnd: []
@@ -84,6 +87,7 @@ function rebuildBars() {
   const data = waveform.value
   if (!host || !data)
     return
+
   const count = Math.max(1, Math.floor(host.clientWidth / (BAR_WIDTH + BAR_GAP)))
   displayBars = resample(data.peaks, count)
 }
@@ -159,6 +163,7 @@ let repaintQueued = false
 function repaint() {
   if (status.value !== 'ready' || repaintQueued)
     return
+
   repaintQueued = true
   requestAnimationFrame(() => {
     repaintQueued = false
@@ -173,9 +178,11 @@ async function load() {
   const src = props.src
   try {
     const data = await computeWaveform(src)
+
     // Bail if the src changed while we were decoding.
     if (src !== props.src)
       return
+
     accent = readAccent()
     waveform.value = data
     status.value = 'ready'
@@ -198,6 +205,7 @@ function fractionFromEvent(event: PointerEvent): number | null {
   const host = wrap.value
   if (!host)
     return null
+
   const rect = host.getBoundingClientRect()
   return Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
 }
@@ -207,6 +215,7 @@ let dragging = false
 function onPointerDown(event: PointerEvent) {
   if (status.value !== 'ready' || !props.duration)
     return
+
   dragging = true
   emit('seekStart')
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
@@ -243,6 +252,7 @@ function onPointerLeave() {
 const hoverTime = computed(() => {
   if (hoverFraction.value == null || !props.duration)
     return null
+
   return formatClock(hoverFraction.value * props.duration)
 })
 
@@ -255,6 +265,7 @@ watch(wrap, (el) => {
   resizeObserver?.disconnect()
   if (!el)
     return
+
   resizeObserver = new ResizeObserver(() => {
     rebuildBars()
     repaint()

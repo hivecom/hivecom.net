@@ -93,6 +93,7 @@ function onBlur(e: FocusEvent) {
   const related = e.relatedTarget as HTMLElement | null
   if (dropdownRef.value?.contains(related))
     return
+
   open.value = false
   focusedIndex.value = -1
 }

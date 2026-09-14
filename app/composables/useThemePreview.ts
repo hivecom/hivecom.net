@@ -123,6 +123,7 @@ export function useThemePreview() {
   function keepPreview(origin?: { x: number, y: number }) {
     if (previewingThemeId.value === null || previewingTheme === null)
       return
+
     const theme = previewingTheme
     const withCss = previewingWithCss
     if (previewToastId !== null) {

@@ -19,6 +19,7 @@ function dismissalKey(): string {
 function loadDismissed() {
   if (!import.meta.client || !account.value)
     return
+
   dismissed.value = localStorage.getItem(dismissalKey()) === '1'
 }
 
@@ -37,6 +38,7 @@ const needsEmail = computed(() => accountInfoFetched.value && accountEmail.value
 const visible = computed(() => {
   if (!account.value || dismissed.value || !accountInfoFetched.value)
     return false
+
   return needsAlwaysOn.value || needsEmail.value
 })
 
@@ -44,6 +46,7 @@ const enablingAlwaysOn = ref(false)
 async function handleEnableAlwaysOn() {
   enablingAlwaysOn.value = true
   enableAlwaysOn()
+
   // The reactive accountAlwaysOn will update once the server confirms.
   // Add a safety timeout so the button doesn't stay loading forever.
   setTimeout(() => {

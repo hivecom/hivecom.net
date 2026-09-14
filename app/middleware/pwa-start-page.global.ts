@@ -14,6 +14,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   if (launchHandled)
     return
+
   launchHandled = true
 
   // A launch always arrives at a bare `/`. Anything else is a deep link, a

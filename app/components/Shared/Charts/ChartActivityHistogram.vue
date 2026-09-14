@@ -30,9 +30,11 @@ const slots = defineSlots()
 function getDaysAgo(index: number): string | null {
   if (!timestamps)
     return null
+
   const iso = timestamps[index]
   if (!iso)
     return null
+
   const entryDate = new Date(iso)
   const entryDay = Date.UTC(entryDate.getUTCFullYear(), entryDate.getUTCMonth(), entryDate.getUTCDate())
   const now = new Date()
@@ -42,6 +44,7 @@ function getDaysAgo(index: number): string | null {
     return 'today'
   if (diffDays === 1)
     return 'yesterday'
+
   return `${diffDays} days ago`
 }
 

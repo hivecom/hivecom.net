@@ -21,6 +21,7 @@ const message = defineModel<string>({ required: true })
 const { emojiOpen, emojiPos, closeMenu, writeClipboard, readClipboard, recordEmojiAnchor, openEmojiPicker, passThroughNative } = useTextContextMenu()
 const emojiAnchor = useTemplateRef('emoji-anchor')
 const hasSelection = ref(false)
+
 // Unlike TipTap, a contenteditable loses its selection the moment the menu steals
 // focus, so capture the caret at right-click time and operate against that.
 const savedCaret = ref({ start: 0, end: 0 })

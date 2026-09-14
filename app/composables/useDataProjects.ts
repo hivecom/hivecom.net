@@ -49,6 +49,7 @@ export function useDataProjects() {
         .order('created_at', { ascending: false })
       if (fetchError)
         throw fetchError
+
       return data ?? []
     }, { force })
     if (result !== null)

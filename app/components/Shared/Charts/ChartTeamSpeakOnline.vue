@@ -52,6 +52,7 @@ const { metrics, fetchMetrics, metricsHistory, loadingHistory, fetchMetricsHisto
 // Releasing our own subscription on switch and teardown keeps this chart's
 // unmount from cancelling a refresh another consumer still depends on.
 let stopRefresh: (() => void) | null = null
+
 // Guards against a superseded load re-subscribing after a faster later one.
 let loadToken = 0
 
@@ -190,6 +191,7 @@ const computedBarThickness = computed(() => {
   const width = chartWrapperWidth.value
   if (!count || !width)
     return undefined
+
   const raw = (width / count) * 0.7
   return Math.max(1, Math.floor(raw))
 })
@@ -205,6 +207,7 @@ const localChartOptions = computed<ChartOptions<'bar'>>(() => ({
           const raw = item.raw as { y: number | null } | null | undefined
           if (raw === null || raw === undefined || raw.y === null)
             return ''
+
           return `${item.dataset.label}: ${item.parsed.y}`
         },
         afterBody(items: import('chart.js').TooltipItem<'bar'>[]) {
@@ -276,6 +279,7 @@ watch(chartData, () => {
     const chart = chartRef.value?.chart
     if (!width || !chart)
       return
+
     const containerHeight = chartWrapperRef.value?.clientHeight
     chart.resize(Math.floor(width), containerHeight)
   })

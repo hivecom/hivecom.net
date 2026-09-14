@@ -12,6 +12,7 @@ const props = defineProps<{
 const githubUrl = computed(() => {
   if (!props.github)
     return null
+
   return `https://github.com/${props.github}`
 })
 

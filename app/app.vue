@@ -29,6 +29,7 @@ useHead(() => ({
   titleTemplate: (titleChunk?: string) => {
     if (titleChunk)
       return titleChunk === site.name || titleChunk.includes(`| ${site.name}`) ? titleChunk : `${titleChunk} | ${site.name}`
+
     return site.name
   },
   htmlAttrs: {
@@ -152,6 +153,7 @@ function onConfirmTheme(_close: () => void) {
   void transitionTheme(() => {
     void confirmPendingTheme()
   }, origin)
+
   // Do NOT call close() here - confirmPendingTheme sets pendingTheme = null,
   // which closes the modal via :open="!!pendingTheme". Calling close() first
   // triggers @close → pendingTheme = null before the transition callback fires,
@@ -163,6 +165,7 @@ function onConfirmThemeWithoutCss(_close: () => void) {
   void transitionTheme(() => {
     void confirmPendingThemeWithoutCss()
   }, origin)
+
   // Same reason as onConfirmTheme - let confirmPendingThemeWithoutCss close the modal.
 }
 

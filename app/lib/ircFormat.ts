@@ -135,6 +135,7 @@ export function segStyle(seg: StyleFlags): Record<string, string> | undefined {
     style.fontWeight = 'bold'
   if (seg.italic)
     style.fontStyle = 'italic'
+
   // Underline and strikethrough both map to text-decoration, so combine them.
   const decorations: string[] = []
   if (seg.underline)
@@ -145,6 +146,7 @@ export function segStyle(seg: StyleFlags): Record<string, string> | undefined {
     style.textDecoration = decorations.join(' ')
   if (seg.mono) {
     style.fontFamily = 'monospace'
+
     // Subtle chip so inline code stands apart. Skip the background if an IRC
     // color code already set one, so we don't clobber it.
     if (!seg.bg)
@@ -174,9 +176,12 @@ export function parseIrcFormatting(text: string): Segment[] {
   let mono = false
   let segStart = 0
 
+  // Closes the run of text ending at `end` as one segment carrying whatever
+  // styles are active right now.
   function flush(end: number) {
     if (end > segStart) {
       const seg: Segment = { type: 'text', value: text.slice(segStart, end) }
+
       if (fg !== undefined)
         seg.fg = fg
       if (bg !== undefined)
@@ -196,35 +201,51 @@ export function parseIrcFormatting(text: string): Segment[] {
     segStart = i
   }
 
+  // Walk the string, closing the current segment whenever a control code changes
+  // the active style: 0x03 colour, 0x02 bold, 0x1D italic, 0x1F underline,
+  // 0x1E strike, 0x11 monospace, 0x16 reverse, 0x0F reset.
   while (i < text.length) {
     const code = text.charCodeAt(i)
+
     if (code === 0x03) {
       flush(i)
       i++
+
+      // Colour is `<fg>[,<bg>]`, one or two digits each, both optional.
       let fgStr = ''
+
       if (i < text.length && /\d/.test(text.charAt(i))) {
         fgStr += text.charAt(i++)
+
         if (i < text.length && /\d/.test(text.charAt(i)))
           fgStr += text.charAt(i++)
       }
+
       let bgStr = ''
+
       if (i < text.length && text.charAt(i) === ',') {
         i++
+
         if (i < text.length && /\d/.test(text.charAt(i))) {
           bgStr += text.charAt(i++)
+
           if (i < text.length && /\d/.test(text.charAt(i)))
             bgStr += text.charAt(i++)
         }
       }
+
+      // A bare 0x03 with no digits clears colour instead of setting it.
       if (fgStr === '') {
         fg = undefined
         bg = undefined
       }
       else {
         fg = mircColor(Number.parseInt(fgStr, 10))
+
         if (bgStr !== '')
           bg = mircColor(Number.parseInt(bgStr, 10))
       }
+
       segStart = i
     }
     else if (code === 0x02) {
@@ -296,6 +317,7 @@ type EmFlag = 'bold' | 'italic' | 'underline' | 'strike' | 'mono'
 interface MdCell { ch: string, style: StyleFlags, del: boolean, code: boolean }
 
 const isWS = (c: string | undefined): boolean => c === undefined || /\s/.test(c)
+
 // ASCII punctuation (CommonMark's set), listed explicitly to keep the flanking
 // rules readable and avoid obscure regex ranges.
 const ASCII_PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
@@ -306,35 +328,51 @@ const isPunct = (c: string | undefined): boolean => c !== undefined && ASCII_PUN
 function resolveCodeSpans(cells: MdCell[]): void {
   const n = cells.length
   let i = 0
+
   while (i < n) {
     if (cells[i]!.ch === '`' && !cells[i]!.del && !cells[i]!.code) {
+      // Measure the opening run, then hunt for a closing run of the same length.
       let j = i
+
       while (j < n && cells[j]!.ch === '`') j++
+
       const runLen = j - i
       let k = j
       let closed = false
+
       while (k < n) {
         if (cells[k]!.ch === '\n')
           break // a code span doesn't cross a hard line break (matches the old regex)
+
         if (cells[k]!.ch === '`' && !cells[k]!.code) {
           let m = k
+
           while (m < n && cells[m]!.ch === '`') m++
+
+          // A shorter or longer run isn't the closer; keep looking from its end.
           if (m - k === runLen) {
+            // Drop both backtick runs and mark everything between them as code.
             for (let p = i; p < j; p++) cells[p]!.del = true
             for (let p = k; p < m; p++) cells[p]!.del = true
+
             for (let p = j; p < k; p++) {
               cells[p]!.code = true
               cells[p]!.style.mono = true
             }
+
             i = m
             closed = true
             break
           }
+
           k = m
           continue
         }
+
         k++
       }
+
+      // Unclosed run: it's literal text, so resume after it.
       if (!closed)
         i = j
     }
@@ -350,13 +388,19 @@ function resolveCodeSpans(cells: MdCell[]): void {
 // their run, openers from the back, so a run can close earlier emphasis then open new.
 function resolveEmphasis(cells: MdCell[], ch: string, strong: EmFlag, em: EmFlag | undefined, pairsOnly: boolean): void {
   const n = cells.length
+
   interface Run { start: number, end: number, len: number, openConsumed: number, closeConsumed: number, canOpen: boolean, canClose: boolean }
+
+  // Pass one: collect every run of the delimiter char.
   const runs: Run[] = []
   let i = 0
+
   while (i < n) {
     if (cells[i]!.ch === ch && !cells[i]!.del && !cells[i]!.code) {
       let j = i
+
       while (j < n && cells[j]!.ch === ch && !cells[j]!.del && !cells[j]!.code) j++
+
       runs.push({ start: i, end: j, len: j - i, openConsumed: 0, closeConsumed: 0, canOpen: false, canClose: false })
       i = j
     }
@@ -364,11 +408,16 @@ function resolveEmphasis(cells: MdCell[], ch: string, strong: EmFlag, em: EmFlag
       i++
     }
   }
+
+  // Pass two: decide which runs may open and which may close, from what sits on
+  // either side of them (CommonMark's flanking rules).
   for (const r of runs) {
     const before = r.start > 0 ? cells[r.start - 1]!.ch : undefined
     const after = r.end < n ? cells[r.end]!.ch : undefined
     const leftFlank = !isWS(after) && (!isPunct(after) || isWS(before) || isPunct(before))
     const rightFlank = !isWS(before) && (!isPunct(before) || isWS(after) || isPunct(after))
+
+    // Underscores are stricter, which is what keeps snake_case intact.
     if (ch === '_') {
       r.canOpen = leftFlank && (!rightFlank || isPunct(before))
       r.canClose = rightFlank && (!leftFlank || isPunct(after))
@@ -378,6 +427,8 @@ function resolveEmphasis(cells: MdCell[], ch: string, strong: EmFlag, em: EmFlag
       r.canClose = rightFlank
     }
   }
+
+  // Pass three: match closers against the open stack.
   const stack: number[] = []
   for (let ri = 0; ri < runs.length; ri++) {
     const r = runs[ri]!
@@ -458,16 +509,20 @@ function markdownLineToIrc(line: string): string {
       // color reset followed by a literal "08".
       push(ch, true)
       i++
+
       for (let d = 0; d < 2 && i < chars.length && /\d/.test(chars[i]!); d++, i++)
         push(chars[i]!, true)
+
       if (i < chars.length && chars[i] === ',') {
         push(',', true)
         i++
+
         for (let b = 0; b < 2 && i < chars.length && /\d/.test(chars[i]!); b++, i++)
           push(chars[i]!, true)
       }
       continue
     }
+
     // Other C0 control chars are existing IRC codes - pass them through and keep them
     // out of markdown scanning.
     push(ch, ch.charCodeAt(0) < 0x20)
@@ -483,6 +538,7 @@ function markdownLineToIrc(line: string): string {
     }
     if (c.del)
       continue
+
     for (const [flag, code] of MD_TOGGLES) {
       if (!!c.style[flag] !== !!open[flag]) {
         out += code
@@ -491,6 +547,7 @@ function markdownLineToIrc(line: string): string {
     }
     out += c.ch
   }
+
   // Close anything still open (unclosed markdown) so a trailing format doesn't bleed.
   for (const [flag, code] of MD_TOGGLES) {
     if (open[flag])
@@ -523,6 +580,7 @@ export function applyMarkdown(segs: Segment[], strip = true): Segment[] {
   for (const cell of cells) {
     if (cell.del && strip)
       continue
+
     if (cur && sameStyle(cur, cell.style)) {
       cur.value += cell.ch
     }
@@ -588,35 +646,48 @@ export function tokenizeForEditor(text: string, strip = true): EditorToken[] {
   // Pass 1: walk the source, hiding control codes and tracking active style.
   while (i < text.length) {
     const code = text.charCodeAt(i)
+
     if (code === 0x03) {
       pushHidden(text.charAt(i++))
+
+      // Colour is `<fg>[,<bg>]`, one or two digits each. Every character of the
+      // code is hidden, but the digits still have to be read to know the colour.
       let fgStr = ''
+
       if (i < text.length && /\d/.test(text.charAt(i))) {
         fgStr += text.charAt(i)
         pushHidden(text.charAt(i++))
+
         if (i < text.length && /\d/.test(text.charAt(i))) {
           fgStr += text.charAt(i)
           pushHidden(text.charAt(i++))
         }
       }
+
       let bgStr = ''
+
       if (i < text.length && text.charAt(i) === ',') {
         pushHidden(text.charAt(i++))
+
         if (i < text.length && /\d/.test(text.charAt(i))) {
           bgStr += text.charAt(i)
           pushHidden(text.charAt(i++))
+
           if (i < text.length && /\d/.test(text.charAt(i))) {
             bgStr += text.charAt(i)
             pushHidden(text.charAt(i++))
           }
         }
       }
+
+      // A bare 0x03 with no digits clears colour instead of setting it.
       if (fgStr === '') {
         fg = undefined
         bg = undefined
       }
       else {
         fg = mircColor(Number.parseInt(fgStr, 10))
+
         if (bgStr !== '')
           bg = mircColor(Number.parseInt(bgStr, 10))
       }

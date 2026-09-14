@@ -8,15 +8,18 @@ import { getAnonymousUsername } from '@/lib/anonymousUsernames'
 interface Props {
   userId?: string | null
   size?: 's' | 'm' | 'l'
+
   /**
    * When true the username is rendered as a plain span instead of a
    * NuxtLink to the user's profile.
    */
   noLink?: boolean
+
   /**
    * When true, hovering the username shows the user profile preview card.
    */
   showPreview?: boolean
+
   /**
    * When true, font size, line height and color are all inherited from the
    * parent component instead of using the component's own defaults.
@@ -63,6 +66,7 @@ const profileLink = computed(() => {
 
   if (user.value?.username_set && user.value?.username)
     return `/profile/${user.value.username}`
+
   return `/profile/${props.userId}`
 })
 
@@ -71,6 +75,7 @@ const canLink = computed(() => {
     return false
   if (!currentUser.value)
     return !!user.value
+
   return true
 })
 
@@ -83,6 +88,7 @@ const ariaLabel = computed(() => {
 const fontClass = computed(() => {
   if (props.inherit)
     return 'user-name--inherit'
+
   switch (props.size) {
     case 's': return 'user-name--s'
     case 'l': return 'user-name--l'

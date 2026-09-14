@@ -37,6 +37,7 @@ export interface CountryPoint {
   lat: number
   lng: number
   iso?: string
+
   /** Pre-sampled random points within the country polygon for arc spawn variety. */
   points?: Array<{ lat: number, lng: number }>
 }
@@ -171,9 +172,11 @@ function polygonCentroid(
   for (const pt of ring) {
     if (!Array.isArray(pt) || pt.length < 2)
       continue
+
     const [lng, lat] = pt
     if (typeof lng !== 'number' || typeof lat !== 'number')
       continue
+
     sumLng += normalizeLng(lng)
     sumLat += lat
     count++
@@ -200,11 +203,13 @@ function normalizeMetricCountryCode(
 ): string | null {
   if (code == null || code === '')
     return null
+
   const normalized = code.trim().toUpperCase()
   if (ISO2_RE.test(normalized))
     return normalized
   if (ISO3_RE.test(normalized))
     return iso3Map.get(normalized) ?? null
+
   return null
 }
 
@@ -214,24 +219,29 @@ function normalizeMetricCountryCode(
 export interface GlobeDataResult {
   /** Every country centroid derived from the GeoJSON. */
   allCentroids: CountryPoint[]
+
   /**
    * Centroid subset filtered to countries that actually have platform users.
    * Falls back to `allCentroids` when metrics are unavailable or the filtered
    * set is too small.
    */
   sourceCentroids: CountryPoint[]
+
   /** Raw GeoJSON feature collection - needed for hexPolygonsData. */
   featureCollection: FeatureCollection
+
   /**
    * Whether `sourceCentroids` fell back to the full globe because the
    * metrics-filtered set was below MIN_METRIC_COUNTRIES.
    */
   usingGlobalFallback: boolean
+
   /**
    * Suggested maxConcurrentArcs scaled to the size of `sourceCentroids`
    * relative to MIN_METRIC_COUNTRIES. Always between 1 and `maxArcs`.
    */
   scaledArcCount: (maxArcs: number) => number
+
   /** ISO-2 -> user count map from the metrics snapshot. Empty if metrics unavailable. */
   countryUserCounts: Map<string, number>
 }
@@ -309,6 +319,7 @@ export function useGlobeData() {
     function scaledArcCount(maxArcs: number): number {
       if (usingGlobalFallback)
         return maxArcs
+
       const count = sourceCentroids.length
       const scaled = Math.round((count / MIN_METRIC_COUNTRIES) * maxArcs)
       return Math.max(1, Math.min(maxArcs, scaled))

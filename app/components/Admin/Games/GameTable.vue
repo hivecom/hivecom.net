@@ -106,6 +106,7 @@ function handleSort(label: string) {
   const col = sortColMap[label]
   if (!col)
     return
+
   if (sortCol.value === col) {
     sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
   }
@@ -121,6 +122,7 @@ function sortIcon(label: string): string {
   const col = sortColMap[label]
   if (sortCol.value !== col)
     return 'ph:arrows-down-up'
+
   return sortDir.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'
 }
 
@@ -349,6 +351,7 @@ function getGamePlayers(gameId: number): number {
   const byGame = metrics.value?.users.byGame
   if (!byGame)
     return 0
+
   return byGame[String(gameId)] ?? 0
 }
 

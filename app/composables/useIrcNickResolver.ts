@@ -5,6 +5,7 @@ import { useCache } from '@/composables/useCache'
 export interface ResolvedNick {
   id: string
   username: string
+
   /** ISO timestamp of the user's last website activity (for the online dot). */
   last_seen: string | null
 }
@@ -18,6 +19,7 @@ const _resolved = ref<Map<string, ResolvedNick | null>>(new Map())
 
 export function useIrcNickResolver() {
   const supabase = useSupabaseClient<Database>()
+
   // Per-instance cache handle; all instances share the same localStorage keys.
   const cache = useCache({ storagePrefix: 'hivecom:cache:irc:' })
 
@@ -64,6 +66,7 @@ export function useIrcNickResolver() {
       const final = new Map(_resolved.value)
       for (const nick of toFetch) {
         const entry = found.get(nick) ?? null
+
         // Persist result (including null misses) so subsequent page loads skip
         // the network round-trip.
         cache.set(`nick:${nick}`, entry, NICK_TTL)

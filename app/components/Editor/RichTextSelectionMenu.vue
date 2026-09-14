@@ -12,9 +12,11 @@ import { TEXT_FONT_NAMES, textFontValue } from './plugins/textFont'
 
 const props = defineProps<{
   editor: Editor
+
   // When true the toolbar renders as a static bar above the editor (plain text
   // mode) rather than as a floating bubble menu tied to the selection.
   plainText?: boolean
+
   // The underlying <textarea> element exposed by VUI's Textarea component.
   // Required in plain text mode so toolbar buttons can splice markdown syntax
   // around the current text selection.
@@ -139,12 +141,14 @@ const linkUrl = ref('')
 function isLinkActive(): boolean {
   if (props.plainText)
     return false
+
   return props.editor.isActive('link')
 }
 
 function getActiveLinkHref(): string {
   if (props.plainText)
     return ''
+
   const attrs = props.editor.getAttributes('link')
   return typeof attrs?.href === 'string' ? attrs.href : ''
 }
@@ -180,12 +184,14 @@ function insertLinkMarkdown() {
   const el = props.textareaEl
   if (!el)
     return
+
   const start = el.selectionStart
   const end = el.selectionEnd
   const selected = el.value.slice(start, end)
   const url = linkUrl.value.trim()
   if (!url)
     return
+
   const inserted = `[${selected}](${url})`
   el.value = el.value.slice(0, start) + inserted + el.value.slice(end)
   el.selectionStart = start + 1
@@ -216,6 +222,7 @@ const HEADING_LEVELS = [1, 2, 3, 4] as const
 function getActiveHeading(): HeadingLevel | null {
   if (props.plainText)
     return null
+
   for (const level of HEADING_LEVELS) {
     if (props.editor.isActive('heading', { level }))
       return level
@@ -263,6 +270,7 @@ const bucketButtonRef = ref<HTMLElement | null>(null)
 function getActiveColor(): TextColorName | null {
   if (props.plainText)
     return null
+
   const attrs = props.editor.getAttributes('textColor')
   const color = attrs?.color
   return typeof color === 'string' && color.trim() !== '' ? color as TextColorName : null
@@ -312,6 +320,7 @@ const FONT_LABELS: Record<TextFontName, string> = {
 function getActiveFont(): TextFontName | null {
   if (props.plainText)
     return null
+
   const attrs = props.editor.getAttributes('textFont')
   const font = attrs?.font
   return typeof font === 'string' && font.trim() !== '' ? font as TextFontName : null
@@ -401,18 +410,22 @@ function closeAllPickers() {
 useEventListener(document, 'mousedown', (e) => {
   if (!headingPickerOpen.value && !colorPickerOpen.value && !fontPickerOpen.value && !linkPickerOpen.value)
     return
+
   const target = e.target as Node | null
   if (target == null)
     return
+
   // Keep pickers open when clicking inside the toolbar (static or floating).
   if (toolbarEl.value?.contains(target))
     return
+
   // Our picker popouts teleport to body - check if click landed inside one.
   // We use a data attribute on the inner content div rather than .vui-popout
   // so we don't accidentally match other dropdowns on the page (e.g. the + menu).
   const openPickerPopouts = document.querySelectorAll('[data-editor-picker]')
   if ([...openPickerPopouts].some(el => el.contains(target)))
     return
+
   closeAllPickers()
 }, { capture: true })
 </script>

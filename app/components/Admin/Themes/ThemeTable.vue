@@ -99,6 +99,7 @@ function handleSort(label: string) {
   const col = sortColMap[label]
   if (!col)
     return
+
   if (sortCol.value === col) {
     sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
   }
@@ -114,6 +115,7 @@ function sortIcon(label: string): string {
   const col = sortColMap[label]
   if (sortCol.value !== col)
     return 'ph:arrows-down-up'
+
   return sortDir.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'
 }
 
@@ -206,6 +208,7 @@ async function handleThemeUpdate(themeId: string, data: TablesUpdate<'themes'>) 
       .eq('id', themeId)
     if (error)
       throw error
+
     invalidateThemesCache()
     await fetchThemes()
   }

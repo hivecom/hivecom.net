@@ -19,6 +19,7 @@ function preload(url: string) {
   hasError.value = false
   if (!import.meta.client)
     return
+
   // blob: URLs are session-scoped and always fail on reload - treat as missing immediately
   if (url.startsWith('blob:')) {
     hasError.value = true

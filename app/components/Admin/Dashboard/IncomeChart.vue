@@ -160,6 +160,7 @@ const localChartOptions: ChartOptions<'line'> = {
         maxRotation: 0,
         callback(val, index) {
           const label = this.getLabelForValue(index)
+
           // label is 'MMM YYYY' e.g. 'Apr 2025' - shorten to 'Apr '25'
           const parts = label.split(' ')
           const [month, year] = parts
@@ -205,10 +206,12 @@ const momGrowth = computed(() => {
   const data = monthlyFundings.value
   if (data.length < 2)
     return null
+
   const prev = ((data[data.length - 2]!.patreon_month_amount_cents || 0) + (data[data.length - 2]!.donation_month_amount_cents || 0)) / 100
   const curr = ((data[data.length - 1]!.patreon_month_amount_cents || 0) + (data[data.length - 1]!.donation_month_amount_cents || 0)) / 100
   if (prev === 0)
     return null
+
   return Math.round(((curr - prev) / prev) * 100)
 })
 
@@ -216,6 +219,7 @@ const currentDiff = computed(() => {
   const data = monthlyFundings.value
   if (data.length < 2)
     return null
+
   const prev = ((data[data.length - 2]!.patreon_month_amount_cents || 0) + (data[data.length - 2]!.donation_month_amount_cents || 0)) / 100
   const curr = ((data[data.length - 1]!.patreon_month_amount_cents || 0) + (data[data.length - 1]!.donation_month_amount_cents || 0)) / 100
   return Math.round(curr - prev)

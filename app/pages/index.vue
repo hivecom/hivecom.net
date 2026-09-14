@@ -36,6 +36,7 @@ const events = computed<Tables<'events'>[]>(() => {
       return 'upcoming'
     if (now >= start && now <= end)
       return 'ongoing'
+
     return 'past'
   }
 
@@ -45,6 +46,7 @@ const events = computed<Tables<'events'>[]>(() => {
     const statusDiff = statusOrder[getStatus(a)] - statusOrder[getStatus(b)]
     if (statusDiff !== 0)
       return statusDiff
+
     // Past: most recent first; ongoing/upcoming: earliest first
     return getStatus(a) === 'past'
       ? new Date(b.date).getTime() - new Date(a.date).getTime()

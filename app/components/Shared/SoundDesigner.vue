@@ -42,6 +42,7 @@ function defaultTone(): EditableTone {
 function fromDesign(value: SoundDesign | null): EditableTone[] {
   if (!value || value.length === 0)
     return [defaultTone()]
+
   return value.map(t => ({
     freq: t.freq,
     glide: t.endFreq != null,

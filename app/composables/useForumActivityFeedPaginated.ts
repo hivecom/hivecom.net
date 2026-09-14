@@ -38,8 +38,10 @@ export interface UseForumActivityFeedPaginatedOptions {
   hiddenTopicIds: ComputedRef<Set<string>>
   /** Called when a topic item is clicked */
   onTopicClick: (id: string) => void
+
   /** When set, only return items created by the current signed-in user (maps to p_created_by RPC param) */
   createdByCurrentUser?: boolean
+
   /** When set, exclude items created by the current signed-in user (maps to p_exclude RPC param) */
   excludeCurrentUser?: boolean
 }
@@ -70,6 +72,7 @@ export function useForumActivityFeedPaginated({
       return `feed:mine:${uid}`
     if (excludeCurrentUser)
       return `feed:community:${uid}`
+
     return `feed:all:${uid}`
   }
 
@@ -270,6 +273,7 @@ export function useForumActivityFeedPaginated({
   async function loadMore() {
     if (loadingMore.value || exhausted.value)
       return
+
     loadingMore.value = true
     await fetchPage(offset.value, true)
     loadingMore.value = false

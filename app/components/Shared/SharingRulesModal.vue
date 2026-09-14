@@ -14,6 +14,7 @@ const props = defineProps<{
   confirmText?: string
   confirmLoading?: boolean
   cancelText?: string
+
   // When false, the modal is view-only (no agree/cancel footer). Defaults to
   // showing the agree footer.
   showAgreeButton?: boolean

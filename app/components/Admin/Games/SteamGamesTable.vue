@@ -92,6 +92,7 @@ function getSteamGamePlayers(steamId: number): number {
   const bySteam = metrics.value?.users.bySteamGame
   if (!bySteam)
     return 0
+
   return bySteam[String(steamId)] ?? 0
 }
 
@@ -121,6 +122,7 @@ function handleSort(col: 'name' | 'created_at') {
 function sortIcon(col: 'name' | 'created_at'): string {
   if (sortCol.value !== col)
     return 'ph:arrows-down-up'
+
   return sortDir.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'
 }
 
@@ -258,6 +260,7 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
       })
     if (error)
       throw error
+
     showGameForm.value = false
     await fetchTrackedIds()
     invalidateGamesCache()

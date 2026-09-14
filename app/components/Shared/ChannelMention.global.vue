@@ -10,6 +10,7 @@ const route = useRoute()
 
 function handleClick(e: MouseEvent) {
   e.preventDefault()
+
   // Join (or switch to) the channel.
   if (isConnected.value) {
     joinChannel(props.channel)
@@ -18,6 +19,7 @@ function handleClick(e: MouseEvent) {
     // Pre-fill the channel so the ConnectForm shows it; user still clicks Connect.
     seedChannel(props.channel.startsWith('#') ? props.channel : `#${props.channel}`)
   }
+
   // If on the dedicated chat page the app is already visible; otherwise open
   // the sheet so the user sees the result without a full navigation.
   if (route.name !== 'chat') {

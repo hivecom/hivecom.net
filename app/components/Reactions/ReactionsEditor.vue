@@ -22,6 +22,7 @@ const atMax = computed(() => props.modelValue.length >= props.max)
 function add(emote: string) {
   if (props.modelValue.includes(emote) || props.modelValue.length >= props.max)
     return
+
   emit('update:modelValue', [...props.modelValue, emote])
 }
 
@@ -38,6 +39,7 @@ function onDragStart(index: number, event: DragEvent) {
   draggingIndex.value = index
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
+
     // Firefox won't start a drag unless some data is set.
     event.dataTransfer.setData('text/plain', String(index))
   }
@@ -47,6 +49,7 @@ function onDragEnter(index: number) {
   const from = draggingIndex.value
   if (from === null || from === index)
     return
+
   const next = [...props.modelValue]
   const [moved] = next.splice(from, 1)
   next.splice(index, 0, moved!)

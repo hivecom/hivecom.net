@@ -79,6 +79,7 @@ export function useDataGameservers() {
         .order('name', { ascending: true })
       if (fetchError)
         throw fetchError
+
       return (data ?? []) as unknown as GameserverWithContainer[]
     }, { force })
     if (result !== null)

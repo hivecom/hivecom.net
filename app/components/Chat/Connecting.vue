@@ -48,6 +48,7 @@ let cy = 0
 let radius = 0
 
 let accentRgb = '99, 102, 241'
+
 // Resolved separately for offline (red) mode.
 let offlineRgb = '239, 68, 68'
 
@@ -79,6 +80,7 @@ function resolveRgb(name: string, fallback: string): string {
   const m = color.match(/\d+/g)
   if (!m)
     return fallback
+
   return `${m[0]}, ${m[1]}, ${m[2]}`
 }
 
@@ -96,6 +98,7 @@ function slerp(a: Vec3, b: Vec3, t: number): Vec3 {
   const omega = Math.acos(dot)
   if (omega < 1e-4)
     return { x: a.x, y: a.y, z: a.z }
+
   const so = Math.sin(omega)
   const k0 = Math.sin((1 - t) * omega) / so
   const k1 = Math.sin(t * omega) / so
@@ -111,6 +114,7 @@ function spawnArc() {
   let b = randomPoint()
   let dot = a.x * b.x + a.y * b.y + a.z * b.z
   let guard = 0
+
   // Bias toward endpoints that sit reasonably far apart.
   while (dot > 0.4 && guard < 8) {
     b = randomPoint()
@@ -118,6 +122,7 @@ function spawnArc() {
     guard++
   }
   arcs.push({ a, b, t: 0, speed: 0.004 + Math.random() * 0.005, life: 1 })
+
   // Each new connection sends a ripple across the sphere from its origin.
   pings.push({ c: a, ang: 0 })
 }
@@ -135,6 +140,7 @@ function project(v: Vec3): Proj {
 function drawNodeMarker(ctx: CanvasRenderingContext2D, p: Proj, life: number) {
   if (p.depth < -0.1)
     return
+
   const t = (p.depth + 1) / 2
   ctx.beginPath()
   ctx.fillStyle = `rgba(${accentRgb}, ${0.6 * t * life})`
@@ -148,6 +154,7 @@ function drawArc(ctx: CanvasRenderingContext2D, arc: Arc) {
   for (let s = 0; s <= ARC_SEGMENTS; s++) {
     const u = s / ARC_SEGMENTS
     const sp = slerp(arc.a, arc.b, u)
+
     // Lift the arc off the surface so it bulges outward.
     const scale = 1 + lift * Math.sin(u * Math.PI)
     sp.x *= scale
@@ -168,6 +175,7 @@ function drawArc(ctx: CanvasRenderingContext2D, arc: Arc) {
     const vis = Math.max(0, Math.min(1, depthAvg + 0.35))
     if (vis <= 0.01)
       continue
+
     ctx.beginPath()
     ctx.strokeStyle = `rgba(${accentRgb}, ${vis * 0.55 * arc.life})`
     ctx.moveTo(p0.sx, p0.sy)
@@ -206,6 +214,7 @@ function drawArc(ctx: CanvasRenderingContext2D, arc: Arc) {
 // expanding across the sphere surface, hidden where it wraps to the far side.
 function drawPing(ctx: CanvasRenderingContext2D, ping: Ping) {
   const c = ping.c
+
   // Tangent basis perpendicular to the origin point.
   const ref: Vec3 = Math.abs(c.y) < 0.95 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 }
   let ux = ref.y * c.z - ref.z * c.y
@@ -254,13 +263,16 @@ function resize() {
   const el = canvas.value
   if (!el)
     return
+
   const box = el.parentElement
   if (!box)
     return
+
   dpr = Math.min(2, window.devicePixelRatio || 1)
   size = box.clientWidth
   if (!size)
     return
+
   el.width = Math.round(size * dpr)
   el.height = Math.round(size * dpr)
   cx = size / 2
@@ -272,6 +284,7 @@ function loop(now: number) {
   const el = canvas.value
   if (!el)
     return
+
   const ctx = el.getContext('2d')
   if (!ctx)
     return

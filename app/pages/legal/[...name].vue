@@ -55,6 +55,7 @@ const { data: parentContent, error: parentError } = await useAsyncData(
 const isFutureRevision = computed(() => {
   if (!isRevisionPage.value || !content.value?.date)
     return false
+
   return content.value.date >= todayKey
 })
 

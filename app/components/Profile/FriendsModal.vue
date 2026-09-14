@@ -39,10 +39,13 @@ const currentTabData = computed(() => {
   switch (activeTab.value) {
     case 'friends':
       return props.friends
+
     case 'sent':
       return props.sentRequests
+
     case 'incoming':
       return props.incomingRequests
+
     default:
       return []
   }

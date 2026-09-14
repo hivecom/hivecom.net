@@ -53,6 +53,7 @@ if (import.meta.client) {
   watch(isHidden, (hidden) => {
     if (hidden || activeConsumers === 0)
       return
+
     if (Date.now() - lastFetchedAt >= METRICS_COLLECTION_INTERVAL)
       void refetchPresences?.()
     schedulePresencesRefresh()
@@ -72,6 +73,7 @@ export function useDataSteamPresences() {
     presencesLoading.value = false
     if (!data)
       return
+
     const bySteamId = new Map<number, string[]>()
     const byProfileId = new Map<string, SteamPresenceGame>()
     const recentByAppId = new Map<number, RecentlyPlayedGame>()
@@ -85,6 +87,7 @@ export function useDataSteamPresences() {
           appName: row.current_app_name,
         })
       }
+
       // Recently played is a generic aggregate on purpose - counts per game,
       // never which profile played it. Each profile contributes one game:
       // what they play now, else what they played last.
@@ -109,6 +112,7 @@ export function useDataSteamPresences() {
   async function fetchCurrentPlayers(): Promise<void> {
     if (inflight !== null)
       return inflight
+
     inflight = loadCurrentPlayers().finally(() => {
       inflight = null
     })
@@ -118,6 +122,7 @@ export function useDataSteamPresences() {
   function currentPlayersForSteamId(steamId: number | null | undefined): string[] {
     if (steamId == null)
       return []
+
     return currentPlayersBySteamId.value.get(steamId) ?? []
   }
 
@@ -126,6 +131,7 @@ export function useDataSteamPresences() {
   refetchPresences = async () => {
     if (!user.value)
       return
+
     await fetchCurrentPlayers()
   }
 

@@ -29,6 +29,7 @@ const runtimeConfig = useRuntimeConfig()
 function parseTab(val: unknown): StorageBucketId {
   if (typeof val === 'string' && (STORAGE_BUCKET_IDS as readonly string[]).includes(val))
     return val as StorageBucketId
+
   return CMS_BUCKET_ID
 }
 
@@ -55,6 +56,7 @@ const storageConsoleUrl = computed(() => {
   const projectRef = runtimeConfig.public?.supabaseProjectRef
   if (typeof projectRef !== 'string' || projectRef.length === 0)
     return ''
+
   return `https://supabase.com/dashboard/project/${projectRef}/storage/buckets/${activeTab.value}`
 })
 

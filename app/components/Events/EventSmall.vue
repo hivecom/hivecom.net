@@ -59,6 +59,7 @@ onBeforeMount(async () => {
 const linkedGames = computed(() => {
   if (!props.games || !props.data.games?.length)
     return []
+
   return props.data.games
     .map(id => props.games!.find(g => g.id === id))
     .filter((g): g is Tables<'games'> => g != null)

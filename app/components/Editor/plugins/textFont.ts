@@ -45,6 +45,7 @@ declare module '@tiptap/core' {
     textFont: {
       /** Apply a named system font stack to the selected text, e.g. "mono". */
       setTextFont: (font: TextFontName) => ReturnType
+
       /** Remove the text font mark from the selection. */
       unsetTextFont: () => ReturnType
     }
@@ -86,6 +87,7 @@ export const TextFont = Mark.create({
           const font = attributes.font
           if (typeof font !== 'string' || !isValidFontName(font))
             return {}
+
           return {
             'data-text-font': font,
             'style': `font-family: ${textFontValue(font)}`,
@@ -106,6 +108,7 @@ export const TextFont = Mark.create({
           const font = node.getAttribute('data-text-font')
           if (font !== null && font !== '' && isValidFontName(font))
             return { font }
+
           return false
         },
       },
@@ -116,10 +119,12 @@ export const TextFont = Mark.create({
           const raw = node.style.fontFamily
           if (!raw)
             return false
+
           const varMatch = CSS_VAR_FONT_RE.exec(raw)
           const name = varMatch?.[1] ?? null
           if (name !== null && isValidFontName(name))
             return { font: name }
+
           return false
         },
       },
@@ -140,6 +145,7 @@ export const TextFont = Mark.create({
           ({ commands }) => {
             if (!isValidFontName(font))
               return false
+
             return commands.setMark(this.name, { font })
           },
 
@@ -196,6 +202,7 @@ export const TextFont = Mark.create({
             i += 3
             continue
           }
+
           // Closing ::: - anything NOT followed by an opening-directive pattern
           // (letters then '[') counts as a close, including bare ':::' sequences
           // and text that happens to start with a letter but is not a directive.

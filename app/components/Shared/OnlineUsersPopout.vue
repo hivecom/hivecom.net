@@ -7,8 +7,10 @@ import UserDisplay from '@/components/Shared/UserDisplay.vue'
 const props = defineProps<{
   // Known user IDs to display (loaded after hover fetch)
   userIds?: string[]
+
   // Total count for the country (used for "+N more" and skeletons)
   count?: number
+
   // Whether the fetch is in progress (shows skeleton rows)
   loading?: boolean
   placement?: Placement

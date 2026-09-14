@@ -40,6 +40,7 @@ const { loading: loadingGames, getByIds } = useDataGames()
 const eventGames = computed(() => {
   if (!props.event?.games || props.event.games.length === 0)
     return []
+
   return getByIds(props.event.games)
 })
 
@@ -72,6 +73,7 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
         : next
       if (now >= next && now <= nextEnd)
         return { label: 'Ongoing', variant: 'success' }
+
       return { label: 'Recurring', variant: 'accent' }
     }
     return { label: 'Past', variant: 'neutral' }

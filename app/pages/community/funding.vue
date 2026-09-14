@@ -40,6 +40,7 @@ defineOgImage('Default', {
 const filteredExpenses = computed(() => {
   if (showPastExpenses.value)
     return expenses.value
+
   return expenses.value.filter(expense => expense.ended_at == null)
 })
 

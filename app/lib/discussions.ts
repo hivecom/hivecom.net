@@ -97,5 +97,6 @@ export function getDiscussionEntityContext(d: DiscussionEntityFields): Discussio
 export function getDiscussionEntityHref(d: DiscussionEntityFields): string | null {
   if (d.discussion_topic_id != null)
     return null
+
   return getDiscussionEntityContext(d)?.href ?? null
 }

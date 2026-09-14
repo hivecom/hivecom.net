@@ -69,6 +69,7 @@ onMounted(() => {
     .finally(() => { loadingHistory30d.value = false })
 
   scheduleRefresh(HISTORY_PERIOD)
+
   // The 30d set is fetched in isolation, so it needs the entries handed to it
   // rather than reading the shared history ref.
   scheduleRefresh(POPPED_OFF_PERIOD, (entries) => {
@@ -83,6 +84,7 @@ const gamePlaySums = computed(() => {
   for (const entry of metricsHistory.value) {
     if (!entry.usersByGame)
       continue
+
     for (const [id, count] of Object.entries(entry.usersByGame))
       totals.set(id, (totals.get(id) ?? 0) + count)
   }
@@ -94,6 +96,7 @@ const gamePlayTotals = computed(() => {
   for (const entry of metricsHistory.value) {
     if (!entry.usersByGame)
       continue
+
     for (const [id, count] of Object.entries(entry.usersByGame))
       totals.set(id, Math.max(totals.get(id) ?? 0, count))
   }
@@ -172,6 +175,7 @@ function gameserversForGame(gameId: number) {
 function gameserverPlayersForGame(gameId: number): number {
   if (!metrics.value)
     return 0
+
   const byServer = metrics.value.gameservers.byServer
   const servers = gameservers.value.filter(gs => gs.game === gameId && gs.query_protocol != null)
   let total = 0
@@ -228,11 +232,13 @@ watch(top3Games, list => list.length > 0 && loadAssetsForGames(list), { immediat
 const poppedOffGameId = computed<number | null>(() => {
   if (!metricsHistory30d.value.length || !games.value.length)
     return null
+
   let bestId: string | null = null
   let peak = 0
   for (const entry of metricsHistory30d.value) {
     if (!entry.usersByGame)
       continue
+
     for (const [id, count] of Object.entries(entry.usersByGame)) {
       if (count > peak) {
         peak = count
@@ -242,12 +248,14 @@ const poppedOffGameId = computed<number | null>(() => {
   }
   if (!bestId || peak < 2)
     return null
+
   return games.value.find(g => String(g.id) === bestId)?.id ?? null
 })
 
 watch(poppedOffGameId, async (id) => {
   if (id == null)
     return
+
   const game = games.value.find(g => g.id === id)
   if (game)
     await loadAssetsForGames([game])
@@ -258,10 +266,12 @@ const isPoppedOffLive = computed(() => {
   const gameId = poppedOffGameId.value
   if (gameId == null)
     return false
+
   const now = Date.now()
   return events.value.some((e) => {
     if (!e.games?.includes(gameId))
       return false
+
     const start = new Date(e.date).getTime()
     const end = start + (e.duration_minutes ?? 120) * 60 * 1000
     return now >= start && now <= end
@@ -284,6 +294,7 @@ const allCurrentPlayerIds = computed<string[]>(() => {
 const totalCurrentPlayers = computed<number | null>(() => {
   if (currentPlayersBySteamId.value.size === 0)
     return 0
+
   let total = 0
   for (const players of currentPlayersBySteamId.value.values())
     total += players.length
@@ -295,6 +306,7 @@ const metricsGameTotal = computed<number | null>(() => {
   const byGame = metrics.value?.users.byGame
   if (!byGame)
     return null
+
   return Object.values(byGame).reduce((a, b) => a + b, 0)
 })
 

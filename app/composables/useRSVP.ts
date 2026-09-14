@@ -73,6 +73,7 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
       return 'occurrence'
     if (seriesRow.value != null)
       return 'series'
+
     return null
   })
 

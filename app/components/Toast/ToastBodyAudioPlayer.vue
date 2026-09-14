@@ -47,12 +47,14 @@ let dockObserver: ResizeObserver | null = null
 onMounted(() => {
   if (!import.meta.client)
     return
+
   // A toast with a custom body renders the body component straight into the
   // toast list, with no .vui-toast-item wrapper, so our Card is the toast item.
   // There's only ever one audio toast, so the class is unique.
   const card = document.querySelector('.toast-audio') as HTMLElement | null
   if (!card)
     return
+
   dockObserver = new ResizeObserver(() => {
     // 32px is the toast wrapper's bottom offset, plus 8px of breathing room.
     document.documentElement.style.setProperty('--audio-dock-height', `${card.offsetHeight + 12}px`)

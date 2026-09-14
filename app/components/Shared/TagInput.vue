@@ -6,6 +6,7 @@ import { sanitizeTags } from '@/lib/utils/sanitize'
 const props = defineProps<{
   label?: string
   placeholder?: string
+
   /** Allow comma-separated bulk entry */
   allowBulk?: boolean
   disabled?: boolean
@@ -19,6 +20,7 @@ function addTags() {
   const raw = inputValue.value
   if (!raw.trim())
     return
+
   const newTags = sanitizeTags(raw, tags.value)
   if (newTags.length)
     tags.value = [...tags.value, ...newTags]

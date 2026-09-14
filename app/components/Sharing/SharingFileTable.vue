@@ -10,6 +10,7 @@ import { useSharingRulesGate } from '@/composables/useSharingRulesGate'
 
 // Bumped on upload/delete so the page's quota cards refetch.
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
+
 // Surfaced to the page so the quota row can show the upload count.
 const total = defineModel<number>('total', { default: 0 })
 
@@ -53,6 +54,7 @@ function uploadFiles(files: FileList | File[]) {
   const picked = Array.from(files)
   if (!picked.length)
     return
+
   runGated(() => void performUpload(picked))
 }
 
@@ -90,8 +92,10 @@ async function performUpload(picked: File[]) {
 function handleFilesPicked(event: Event) {
   const input = event.target as HTMLInputElement
   const picked = input.files ? Array.from(input.files) : []
+
   // Reset so picking the same file again still fires change.
   input.value = ''
+
   // pickFiles already passed the gate, so go straight to the upload.
   if (picked.length)
     void performUpload(picked)

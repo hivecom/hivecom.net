@@ -23,31 +23,40 @@ export type GlobeQualityTier = 'high' | 'medium' | 'low'
 export interface GlobePerfParams {
   /** Maximum simultaneous arcs. */
   maxArcs: number
+
   /**
    * H3 resolution level for hexed polygons. Default is 3.
    * Each level down (~2) cuts hex count by ~7x - big GPU savings.
    */
   hexResolution: number
+
   /**
    * Angular degrees of curvature resolution per hex polygon face.
    * Higher value = fewer faces = cheaper. Default in globe.gl is 5.
    */
   hexCurvatureResolution: number
+
   /**
    * Circle segment count for dot representation (hexPolygonUseDots=true).
    * Higher = smoother dots but more geometry. Default in globe.gl is 12.
    */
   hexDotResolution: number
+
   /** Enable UnrealBloom post-processing pass. */
   bloomEnabled: boolean
+
   /** Enable AfterimagePass (phosphor trails) post-processing pass. */
   afterimageEnabled: boolean
+
   /** Enable custom scanline ShaderPass. */
   scanlineEnabled: boolean
+
   /** AfterimagePass damp value (0–1). Higher = longer trails. */
   afterimageDamp: number
+
   /** UnrealBloomPass strength. */
   bloomStrength: number
+
   /**
    * Render resolution scale for the background shader canvas.
    * Applied as a multiplier to devicePixelRatio * element dimensions.
@@ -118,9 +127,11 @@ const VALID_TIERS = new Set<GlobeQualityTier>(['high', 'medium', 'low'])
 function readTierOverride(): GlobeQualityTier | null {
   if (typeof window === 'undefined')
     return null
+
   const raw = new URLSearchParams(window.location.search).get('globe_tier')
   if (raw != null && VALID_TIERS.has(raw as GlobeQualityTier))
     return raw as GlobeQualityTier
+
   return null
 }
 
@@ -169,6 +180,7 @@ function _applyTier(t: GlobeQualityTier) {
 function _ensureInitialised() {
   if (_initialised)
     return
+
   _initialised = true
   _applyTier(detectInitialTier())
 }
@@ -195,6 +207,7 @@ export function useGlobePerf() {
       return
     if (_probing || !import.meta.client)
       return
+
     _probing = true
 
     const samples: number[] = []
@@ -224,6 +237,7 @@ export function useGlobePerf() {
       else if (median > THRESHOLD_HIGH_MS && current === 'high') {
         _applyTier('medium')
       }
+
       // Never upgrade - only degrade. A slow device that starts at 'medium'
       // via the static hint stays at 'medium' even if the probe comes back
       // fast, because the probe itself adds load that wasn't there before.

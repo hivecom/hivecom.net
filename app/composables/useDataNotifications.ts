@@ -230,6 +230,7 @@ export function useDataNotifications() {
       return '99+'
     if (unreadCount.value > 0)
       return unreadCount.value.toString()
+
     return ''
   })
 
@@ -398,11 +399,13 @@ export function useDataNotifications() {
         },
         (payload: RealtimePostgresInsertPayload<NotificationRow>) => {
           const incoming = payload.new
+
           // Avoid duplicates if the row somehow arrives twice.
           if (unreadNotifications.value.some(n => n.id === incoming.id))
             return
 
           unreadNotifications.value = [incoming, ...unreadNotifications.value]
+
           // Mark surfaced so the re-subscribe catch-up poll won't re-notify.
           knownNotificationIds?.add(incoming.id)
 
@@ -531,6 +534,7 @@ export function useDataNotifications() {
         if (pausedUserId != null) {
           const uid = pausedUserId
           pausedUserId = null
+
           // Re-subscribe then catch up on any missed notifications.
           void subscribeRealtime(uid)
           void fetch()

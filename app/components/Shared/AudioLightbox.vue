@@ -44,6 +44,7 @@ function onWaveformSeekEnd() {
 useEventListener('keydown', (event) => {
   if (!player.fullscreen.value)
     return
+
   if (event.key === ' ' || event.code === 'Space') {
     event.preventDefault()
     player.togglePlayback()

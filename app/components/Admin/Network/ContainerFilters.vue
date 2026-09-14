@@ -12,10 +12,12 @@ const props = defineProps<{
   serverOptions: SelectOption[]
   statusOptions: SelectOption[]
 }>()
+
 // Emit is still needed for the clearFilters action
 const emit = defineEmits<{
   (e: 'clearFilters'): void
 }>()
+
 // Use defineModel with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
 const _serverFilter = defineModel<SelectOption[] | undefined>('serverFilter')

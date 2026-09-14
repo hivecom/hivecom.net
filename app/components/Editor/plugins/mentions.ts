@@ -104,6 +104,7 @@ export const MentionWithMarkdown = Mention.extend({
             view.dispatch(state.tr.deleteSelection())
             return true
           }
+
           // Non-mention selection – fall through to parent
           return parentShortcuts.Backspace?.({ editor }) ?? false
         }

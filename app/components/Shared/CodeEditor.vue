@@ -43,6 +43,7 @@ function updateCommentMarkers(monaco: MonacoModule, editor: MonacoEditor) {
 
   let match: RegExpExecArray | null
   COMMENT_RE.lastIndex = 0
+
   // eslint-disable-next-line no-cond-assign
   while ((match = COMMENT_RE.exec(text)) !== null) {
     const start = model.getPositionAt(match.index)

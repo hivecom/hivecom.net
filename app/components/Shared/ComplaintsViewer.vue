@@ -89,6 +89,7 @@ function getStatusVariant(complaint: Complaint) {
     return 'success'
   if (complaint.acknowledged)
     return 'info'
+
   return 'neutral'
 }
 
@@ -98,6 +99,7 @@ function getStatusText(complaint: Complaint) {
     return 'Responded'
   if (complaint.acknowledged)
     return 'Acknowledged'
+
   return 'Pending Review'
 }
 

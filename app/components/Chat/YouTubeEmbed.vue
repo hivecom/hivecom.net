@@ -3,8 +3,10 @@ import { computed, onMounted, ref } from 'vue'
 
 const props = defineProps<{
   url: string
+
   /** Constrain thumbnail to IRC-mode image dimensions (72x48px) */
   small?: boolean
+
   /** Render thumbnail inline at 1em height, matching IRC inline image mode */
   inline?: boolean
 }>()
@@ -15,9 +17,11 @@ function extractVideoId(url: string): string | null {
     const u = new URL(url)
     if (u.hostname === 'youtu.be')
       return u.pathname.slice(1).split('?')[0] ?? null
+
     if (u.hostname.endsWith('youtube.com')) {
       if (u.pathname.startsWith('/shorts/'))
         return u.pathname.split('/')[2] ?? null
+
       return u.searchParams.get('v')
     }
   }
@@ -40,6 +44,7 @@ const embedUrl = computed(() =>
 onMounted(async () => {
   if (!videoId.value)
     return
+
   try {
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId.value}`)}&format=json`
     const res = await fetch(oembedUrl)

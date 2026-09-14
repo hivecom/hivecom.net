@@ -11,30 +11,38 @@ export interface TimelineBucket {
 interface Props {
   /** ISO timestamp of the discussion's first reply / created_at */
   start: string
+
   /** ISO timestamp of the discussion's last activity */
   end: string
+
   /** Activity buckets from get_discussion_reply_activity_buckets */
   buckets?: TimelineBucket[]
+
   /** Off-topic-only activity buckets - rendered as a second layer in warning color */
   offtopicBuckets?: TimelineBucket[]
+
   /** When true, offtopic segments are not rendered on the track */
   offtopicHidden?: boolean
+
   /**
    * Time range of the unloaded gap, if one exists. Rendered as a dashed
    * region on the track so users can see what they'd be skipping.
    */
   gapRange?: { start: string, end: string } | null
+
   /**
    * Expected gap between consecutive buckets in milliseconds.
    * Used to detect whether adjacent buckets are part of a continuous active
    * period (gap <= interval) or separated by silence (gap > interval).
    */
   bucketIntervalMs?: number
+
   /**
    * Fractional position (0-1) of the current scroll position in the reply
    * area. Used to render a "you are here" indicator on the track.
    */
   currentFraction?: number | null
+
   /** Disables interaction while a navigate is in flight */
   loading?: boolean
 }
@@ -82,16 +90,22 @@ const maxOfftopicBucketCount = computed(() =>
 interface BucketSegment {
   /** Fraction (0-1) of the top edge of this segment on the track */
   topFraction: number
+
   /** Fraction (0-1) of the bottom edge. Equal to topFraction for a dot. */
   bottomFraction: number
+
   /** Peak reply count within the segment - used to scale size / opacity */
   maxCount: number
+
   /** True when this segment covers a single isolated bucket */
   isSingle: boolean
+
   /** Tooltip label shown on hover */
   label: string
+
   /** Opacity 0.25 (quiet) → 1.0 (peak) */
   opacity: number
+
   /**
    * The date to pass to navigateToDate when this segment is clicked.
    * - Dot: end of the bucket window (bucketStart + intervalMs) so that floor
@@ -197,6 +211,7 @@ const offtopicSegments = computed((): BucketSegment[] => {
 const gapFractions = computed((): { top: number, bottom: number } | null => {
   if (props.gapRange == null)
     return null
+
   return {
     top: toFraction(props.gapRange.start),
     bottom: toFraction(props.gapRange.end),
@@ -206,6 +221,7 @@ const gapFractions = computed((): { top: number, bottom: number } | null => {
 function onMouseMove(e: MouseEvent) {
   if (!trackRef.value)
     return
+
   const rect = trackRef.value.getBoundingClientRect()
   hoverFraction.value = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
 }
@@ -219,6 +235,7 @@ function nearestSegment(): BucketSegment | null {
   const allSegs = [...offtopicSegments.value, ...bucketSegments.value]
   if (!allSegs.length)
     return null
+
   const f = hoverFraction.value
   let best: BucketSegment | null = null
   let bestDist = Infinity
@@ -238,10 +255,13 @@ function nearestSegment(): BucketSegment | null {
 const hoveredSegment = computed((): BucketSegment | null => {
   if (!isHovering.value)
     return null
+
   const f = hoverFraction.value
+
   // For dot segments, use a larger proximity threshold so the full track width
   // is effectively clickable near a blob - not just the 6px blob itself.
   const DOT_THRESHOLD = 0.05
+
   // Check offtopic layer first - it renders on top
   for (const seg of offtopicSegments.value) {
     if (seg.isSingle) {
@@ -253,6 +273,7 @@ const hoveredSegment = computed((): BucketSegment | null => {
         return seg
     }
   }
+
   // Fall back to normal segments
   for (const seg of bucketSegments.value) {
     if (seg.isSingle) {
@@ -270,6 +291,7 @@ const hoveredSegment = computed((): BucketSegment | null => {
 function onTrackClick() {
   if (props.loading)
     return
+
   const seg = hoveredSegment.value ?? nearestSegment()
   if (seg)
     onSegmentClick(seg)
@@ -301,6 +323,7 @@ function formatLabel(isoDate: string): string {
   const d = new Date(isoDate)
   if (props.bucketIntervalMs <= 60 * 60 * 1000)
     return displayDateTime(d)
+
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(d)
 }
 
@@ -317,6 +340,7 @@ function navigateToEnd() {
 function formatTooltip(date: Date): string {
   if (props.bucketIntervalMs <= 60 * 60 * 1000)
     return fullDateTime(date)
+
   return fullDate(date)
 }
 
@@ -327,6 +351,7 @@ const tooltipText = computed((): string => {
   const date = formatTooltip(hoverDate.value)
   if (hoveredSegment.value != null)
     return `${date}\n${hoveredSegment.value.label}`
+
   return date
 })
 
@@ -350,6 +375,7 @@ function openJumpModal() {
 function onCalendarDateSelect(date: Date | null) {
   if (!date)
     return
+
   emit('navigate', date)
   showJumpModal.value = false
 }
@@ -357,6 +383,7 @@ function onCalendarDateSelect(date: Date | null) {
 function handleModalSegmentClick(seg: BucketSegment) {
   if (props.loading)
     return
+
   emit('navigate', seg.targetDate)
   showJumpModal.value = false
 }

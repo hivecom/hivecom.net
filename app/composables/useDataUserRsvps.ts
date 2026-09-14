@@ -57,6 +57,7 @@ export function useDataUserRsvps() {
     const uid = userId.value
     if (uid == null)
       return
+
     const result = await withCache(cacheKey(uid), async () => {
       const { data, error: fetchError } = await supabase
         .from('event_rsvps')
@@ -64,6 +65,7 @@ export function useDataUserRsvps() {
         .eq('user_id', uid)
       if (fetchError)
         throw fetchError
+
       return data ?? []
     }, { force, ttl: TTL })
     if (result !== null)

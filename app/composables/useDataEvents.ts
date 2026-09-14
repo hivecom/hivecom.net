@@ -53,6 +53,7 @@ export function useDataEvents() {
         .order('date', { ascending: true })
       if (fetchError)
         throw fetchError
+
       return data ?? []
     }, { force })
     if (result !== null)
@@ -79,6 +80,7 @@ export function useDataEvents() {
   // Bust cache and re-fetch when user signs in - auth state changes what events
   // are visible (e.g. private/restricted events), so stale guest cache must not persist.
   const currentUser = useSupabaseUser()
+
   // Initialize from current auth state so back-navigation doesn't falsely trigger
   // a cache invalidation (the watcher fires immediately with the already-resolved user).
   let _wasAuthed = currentUser.value != null

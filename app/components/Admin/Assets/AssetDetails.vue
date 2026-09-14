@@ -14,6 +14,7 @@ import { downloadAsset, formatBytes, isAudioAsset, isImageAsset, isTextAsset, is
 
 const props = defineProps<{
   asset: StorageAsset | null
+
   // Override the default asset-permission checks so other surfaces (e.g. Depot)
   // can reuse this drawer with their own capability. Falls back to canDeleteAssets.
   canDelete?: boolean
@@ -43,6 +44,7 @@ watch(() => props.asset, async (asset) => {
   textContent.value = null
   if (!asset || !isText.value || !asset.publicUrl)
     return
+
   textLoading.value = true
   try {
     const res = await fetch(asset.publicUrl)
@@ -78,12 +80,14 @@ function downloadCurrentAsset() {
 function requestDelete() {
   if (!props.asset)
     return
+
   emit('delete', props.asset)
 }
 
 function requestRename() {
   if (!props.asset)
     return
+
   emit('rename', props.asset)
 }
 </script>

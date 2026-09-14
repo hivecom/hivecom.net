@@ -113,6 +113,7 @@ export async function stripImageMetadata(file: File): Promise<File> {
 
     img.onerror = () => {
       URL.revokeObjectURL(img.src)
+
       // Can't load the image - just pass it through unchanged
       resolve(file)
     }
@@ -199,12 +200,16 @@ async function encodeCanvasBlob(
 export interface CompressImageOptions {
   /** Starting WebP quality (0..1). Default 0.95. */
   initialQuality?: number
+
   /** Lowest quality to try before stepping down resolution. Default 0.5. */
   minQuality?: number
+
   /** Smallest resolution scale (relative to original) to try. Default 0.2. */
   minScale?: number
+
   /** Quality decrement per attempt. Default 0.1. */
   qualityStep?: number
+
   /** Multiplicative scale reduction per resolution pass. Default 0.8. */
   scaleStep?: number
 }
@@ -630,6 +635,7 @@ export async function getTopicIconUrl(
 ): Promise<string | null> {
   try {
     const folder = `topics/${topicId}`
+
     // Preferred extension order - one list() call covers all of them
     const preferredOrder = ['icon.webp', 'icon.png', 'icon.jpg', 'icon.jpeg']
 
@@ -1025,6 +1031,7 @@ export async function getProjectBannerUrl(
     if (error) {
       if (isStorageNotFoundError(error))
         return null
+
       throw error
     }
 
@@ -1123,6 +1130,7 @@ export async function deleteUserAvatar(
             .list(userId, { search: `avatar.${ext}` })
           if (listError === null && data !== null && data.length > 0)
             return `${userId}/avatar.${ext}`
+
           return null
         }),
       )

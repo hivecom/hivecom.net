@@ -8,13 +8,17 @@ import AudioVolume from '@/components/Shared/AudioVolume.vue'
 const props = defineProps<{
   // The audio source URL.
   src: string
+
   // Filename or track title shown above the scrubber.
   title?: string
+
   // Optional secondary line (content type, size, uploader, whatever the caller has).
   subtitle?: string
+
   // Tighter single-row layout for lists and inline use. The full layout stacks
   // the title above the controls.
   compact?: boolean
+
   // Drop the player's own surface (background, border, padding) when it sits
   // inside a container that already provides one, like the asset drawer preview.
   bare?: boolean
@@ -50,6 +54,7 @@ function togglePlay() {
 function openFullscreen() {
   if (displayErrored.value)
     return
+
   player.openFullscreen({ src: props.src, title: props.title, subtitle: props.subtitle })
 }
 

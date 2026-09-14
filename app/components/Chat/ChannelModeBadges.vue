@@ -8,8 +8,10 @@ const props = defineProps<{
   modes?: Set<string> | undefined
   isBot?: boolean
   isService?: boolean
+
   /** When true, always shows icon badges - never the full native mode string. */
   compact?: boolean
+
   /** When true and chat_irc_native_modes is on, shows only the relevant mode chars (filtered to known modes) as a short string instead of icon badges. */
   shortform?: boolean
 }>()
@@ -44,6 +46,7 @@ const shortformModes = computed(() => {
   const modes = props.modes
   if (!modes || modes.size === 0)
     return ''
+
   const chars = [...modes].filter(m => RELEVANT_MODE_CHARS.has(m)).sort()
   return chars.length ? `+${chars.join('')}` : ''
 })
@@ -52,6 +55,7 @@ const activeBadges = computed(() => {
   const modes = props.modes
   if (!modes || modes.size === 0)
     return []
+
   return MODE_BADGES.filter(b => modes.has(b.mode))
 })
 

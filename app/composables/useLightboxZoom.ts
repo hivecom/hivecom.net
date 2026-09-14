@@ -62,6 +62,7 @@ export function useLightboxZoom(
   let pinchStartDist = 0
   let pinchStartScale = 1
   let gestureStartScale = 1
+
   // Touch double-tap tracking (touch devices don't reliably fire dblclick).
   let lastTapTime = 0
   let lastTapX = 0
@@ -86,6 +87,7 @@ export function useLightboxZoom(
     const wrap = container.value
     if (!el || !wrap)
       return
+
     const maxX = Math.max(0, (el.offsetWidth * scale.value - wrap.clientWidth) / 2)
     const maxY = Math.max(0, (el.offsetHeight * scale.value - wrap.clientHeight) / 2)
     offsetX.value = Math.min(maxX, Math.max(-maxX, offsetX.value))
@@ -100,6 +102,7 @@ export function useLightboxZoom(
     const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale))
     if (clamped === scale.value)
       return
+
     const ratio = clamped / scale.value
     offsetX.value = cx - (cx - offsetX.value) * ratio
     offsetY.value = cy - (cy - offsetY.value) * ratio
@@ -115,6 +118,7 @@ export function useLightboxZoom(
     const wrap = container.value
     if (!wrap)
       return { x: 0, y: 0 }
+
     const rect = wrap.getBoundingClientRect()
     return {
       x: clientX - rect.left - rect.width / 2,
@@ -148,6 +152,7 @@ export function useLightboxZoom(
   function onPointerMove(e: PointerEvent) {
     if (!pointers.has(e.pointerId))
       return
+
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
 
     if (mode === 'pinch' && pointers.size >= 2) {
@@ -215,6 +220,7 @@ export function useLightboxZoom(
   function onPointerUp(e: PointerEvent) {
     if (!pointers.has(e.pointerId))
       return
+
     pointers.delete(e.pointerId)
 
     if (mode === 'swipe') {
@@ -240,6 +246,7 @@ export function useLightboxZoom(
         offsetX.value = 0
         offsetY.value = 0
       }
+
       // Hand off to single-pointer pan if a finger remains.
       const remaining = [...pointers.entries()][0]
       if (remaining) {
@@ -325,6 +332,7 @@ export function useLightboxZoom(
   const slideStyle = computed(() => {
     if (isSwiping.value)
       return { transform: `translateX(${navOffset.value}px)`, transition: 'none' }
+
     if (isDismissing.value) {
       const progress = Math.min(Math.abs(dismissOffset.value) / SWIPE_DOWN_THRESHOLD, 1)
       const opacity = 1 - progress * 0.5

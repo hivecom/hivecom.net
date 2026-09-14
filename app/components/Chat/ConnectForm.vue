@@ -14,6 +14,7 @@ const props = defineProps<{
 
 const { connState, inputNick, inputChannel, connect, connectAsAnon, hadAccount } = useIrcChat()
 const route = useRoute()
+
 // Auto-connect is a regular user setting (DB-backed, reactive, shared with the
 // chat settings switch and the app-wide auto-connect in plugins/chat.client.ts),
 // so toggling it here applies everywhere immediately.
@@ -46,6 +47,7 @@ function enterAnonMode() {
 function onAnonConnect() {
   if (!anonNick.value.trim())
     return
+
   // Override the shared nick so openSocket uses the anon nick, not the
   // signed-in username that ensureNick may have seeded.
   inputNick.value = anonNick.value.trim()

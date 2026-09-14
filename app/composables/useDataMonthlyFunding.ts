@@ -59,7 +59,9 @@ export function useDataMonthlyFunding() {
         .order('month', { ascending: false })
       if (fetchError)
         throw fetchError
+
       const rows = data ?? []
+
       // Derive and cache the latest entry alongside the full list
       cache.set(CACHE_KEY_LATEST, rows[0] ?? null, CACHE_TTL)
       return rows

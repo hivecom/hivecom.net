@@ -19,6 +19,7 @@ const props = defineProps<{
 
 const NuxtLink = resolveComponent('NuxtLink')
 const el = ref<HTMLElement | null>(null)
+
 // CountdownTimer has min-width: 380px at wide viewports; side-by-side needs
 // ~600px to avoid squishing the text column beside it.
 const isMobile = useContainerBreakpoint(el, 600)
@@ -49,6 +50,7 @@ const effectiveDate = computed<string | null>(() => {
 const eventStub = computed(() => {
   if (effectiveDate.value == null)
     return null
+
   return {
     date: effectiveDate.value,
     duration_minutes: props.data.durationMinutes,
@@ -64,12 +66,14 @@ const eventStatus = computed(() => {
     return 'ongoing' as const
   if (eventIsUpcoming.value)
     return 'upcoming' as const
+
   return 'past' as const
 })
 
 function formatDate(date: string | null): string {
   if (date == null || date === '')
     return 'Unknown date'
+
   return fullDate(date)
 }
 </script>

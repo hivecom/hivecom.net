@@ -11,10 +11,13 @@ import { useUserId } from '@/composables/useUserId'
 interface Props {
   userId?: string | null
   size?: 's' | 'm' | 'l' | number
+
   /** Wrap the avatar in a NuxtLink to the user's profile. */
   linked?: boolean
+
   /** Wrap the avatar in a UserPreviewHover popout. */
   showPreview?: boolean
+
   /** Show an online/away indicator dot based on last_seen. */
   showOnlineIndicator?: boolean
 }
@@ -65,6 +68,7 @@ const profileLink = computed(() => {
 
   if (userData.value?.username_set && userData.value?.username)
     return `/profile/${userData.value.username}`
+
   return `/profile/${props.userId}`
 })
 
@@ -91,12 +95,14 @@ const indicatorSize = computed((): 's' | 'm' | 'l' => {
     return 's'
   if (props.size === 'l')
     return 'l'
+
   return 's'
 })
 
 function getSizePixels(size: 's' | 'm' | 'l' | number): string {
   if (typeof size === 'number')
     return `${size}px`
+
   switch (size) {
     case 's': return '28px'
     case 'm': return '40px'

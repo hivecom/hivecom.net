@@ -73,6 +73,7 @@ const introductionText = computed(() => {
     return
   if (intro.length > 160)
     return `${intro.slice(0, 157)}…`
+
   return intro
 })
 

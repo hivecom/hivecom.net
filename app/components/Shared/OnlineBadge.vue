@@ -9,6 +9,7 @@ interface Props {
   size?: 's' | 'm' | 'l'
   clickable?: boolean
   color?: string
+
   /** Extra text appended after the count, separated by a slash. */
   suffix?: string
 }
@@ -26,10 +27,12 @@ const isActive = computed(() => props.count != null && props.count > 0)
 const variant = computed(() => {
   if (props.color && isActive.value)
     return 'neutral'
+
   return isActive.value ? 'success' : 'neutral'
 })
 
 const iconSize = computed(() => props.size === 's' ? '8' : '12')
+
 // A null count means no data yet, which reads the same as zero on a badge.
 const shownCount = computed(() => props.count ?? 0)
 const displayLabel = computed(() => props.singular && shownCount.value === 1 ? props.singular : props.label)

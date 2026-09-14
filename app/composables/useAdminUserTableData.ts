@@ -32,6 +32,7 @@ export interface AdminUserRecord {
   public: boolean
   rich_presence_enabled: boolean
   has_teamspeak: boolean
+
   // joined fields
   role: string | null
   email: string | null
@@ -125,6 +126,7 @@ export function useAdminUserTableData({ perPage }: UseAdminUserTableDataParams) 
   async function fetchUsers(): Promise<void> {
     if (inflight.value)
       return
+
     inflight.value = true
     loading.value = true
     errorMessage.value = ''

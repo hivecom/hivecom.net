@@ -15,9 +15,11 @@ const props = withDefaults(defineProps<{
   modelValue: string
   placeholder?: string
   disabled?: boolean
+
   // Hide consumed markdown markers (** etc), matching the modern message log.
   // false keeps them visible (classic/IRC mode). Control codes are always hidden.
   stripMarkers?: boolean
+
   // Make a plain Enter insert a newline instead of handing off to the parent to
   // send. Used on touch where the keyboard's return key should grow the field,
   // not submit (the send button submits). Desktop keeps Enter-to-send.
@@ -49,6 +51,7 @@ function render(value: string) {
   const el = root.value
   if (!el)
     return
+
   const frag = document.createDocumentFragment()
   for (const tk of tokenizeForEditor(value, props.stripMarkers)) {
     const span = document.createElement('span')
@@ -63,12 +66,14 @@ function render(value: string) {
     }
     frag.appendChild(span)
   }
+
   // The browser collapses a trailing newline in pre-wrap content, so the caret
   // can't move onto the new (empty) last line and the box won't grow. A <br>
   // sentinel forces that line to render. It has no text content, so textContent
   // length and Range offsets stay 1:1 with the wire string - caret math intact.
   if (value.endsWith('\n')) {
     frag.appendChild(document.createElement('br'))
+
     // Empty text node on the new line so the caret has a downstream position to
     // land in. Without it, a caret at the end of the '\n' text node renders with
     // upstream affinity - clinging to the end of the line above (see nodeAt). It
@@ -84,6 +89,7 @@ function offsetOf(container: Node, nodeOffset: number): number {
   const r = document.createRange()
   r.selectNodeContents(el)
   r.setEnd(container, nodeOffset)
+
   // Range text length counts every character, including the zero-width control
   // spans, which is exactly the wire-string offset.
   return r.toString().length
@@ -95,9 +101,11 @@ function getCaret(): { start: number, end: number } {
   const sel = window.getSelection()
   if (!el || !sel || sel.rangeCount === 0)
     return { start: len, end: len }
+
   const rg = sel.getRangeAt(0)
   if (!el.contains(rg.startContainer) || !el.contains(rg.endContainer))
     return { start: len, end: len }
+
   return { start: offsetOf(rg.startContainer, rg.startOffset), end: offsetOf(rg.endContainer, rg.endOffset) }
 }
 
@@ -111,6 +119,7 @@ function nodeAt(target: number): { node: Node, offset: number } {
   while (n) {
     last = n
     const end = count + n.length
+
     // At a boundary right after a hard line break (the node ends with '\n'), fall
     // through to the next text node so the caret lands at the START of the new line
     // (downstream affinity) rather than clinging to the end of the line above. The
@@ -118,11 +127,13 @@ function nodeAt(target: number): { node: Node, offset: number } {
     // somewhere to go. Everywhere else, the earliest node reaching `target` wins.
     if (target < end || (target === end && !n.data.endsWith('\n')))
       return { node: n, offset: target - count }
+
     count = end
     n = walker.nextNode() as Text | null
   }
   if (last)
     return { node: last, offset: last.length }
+
   return { node: el, offset: 0 }
 }
 
@@ -130,10 +141,12 @@ function setCaret(start: number, end: number = start) {
   const el = root.value
   if (!el)
     return
+
   el.focus()
   const sel = window.getSelection()
   if (!sel)
     return
+
   const a = nodeAt(start)
   const b = nodeAt(end)
   const rg = document.createRange()
@@ -156,12 +169,15 @@ function getSelectionRect(): DOMRect | null {
   const sel = window.getSelection()
   if (!el || !sel || sel.rangeCount === 0)
     return null
+
   const rg = sel.getRangeAt(0)
   if (!el.contains(rg.startContainer) || !el.contains(rg.endContainer))
     return null
+
   const rect = rg.getBoundingClientRect()
   if (rect.width === 0 && rect.height === 0)
     return null
+
   return rect
 }
 
@@ -169,11 +185,14 @@ function getSelectionRect(): DOMRect | null {
 function syncFromDom() {
   if (composing)
     return
+
   const el = root.value
   if (!el)
     return
+
   const value = el.textContent ?? ''
   const caret = getCaret()
+
   // Re-apply formatting, then restore the caret by character offset (the
   // character sequence is unchanged by re-render, so the offset is stable).
   render(value)
@@ -190,6 +209,7 @@ function insertTextAtCaret(text: string) {
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0)
     return
+
   const rg = sel.getRangeAt(0)
   rg.deleteContents()
   const node = document.createTextNode(text)
@@ -212,29 +232,39 @@ function hasActiveFormatting(value: string, at: number): boolean {
   let mono = false
   let color = false
   let i = 0
+
   while (i < at) {
     const code = value.charCodeAt(i)
+
     if (code === 0x03) {
       // Color: optional fg[,bg] digits. An empty \x03 resets color.
       i++
+
       let hadColor = false
+
       if (i < at && /\d/.test(value[i]!)) {
         hadColor = true
         i++
+
         if (i < at && /\d/.test(value[i]!))
           i++
       }
+
       if (i < at && value[i] === ',') {
         i++
+
         if (i < at && /\d/.test(value[i]!)) {
           i++
+
           if (i < at && /\d/.test(value[i]!))
             i++
         }
       }
+
       color = hadColor
       continue
     }
+
     if (code === 0x02)
       bold = !bold
     else if (code === 0x1D)
@@ -247,8 +277,10 @@ function hasActiveFormatting(value: string, at: number): boolean {
       mono = !mono
     else if (code === 0x0F)
       bold = italic = underline = strike = mono = color = false
+
     i++
   }
+
   return bold || italic || underline || strike || mono || color
 }
 
@@ -297,17 +329,20 @@ function skipHiddenCaret(forward: boolean): boolean {
   const { start, end } = getCaret()
   if (start !== end)
     return false
+
   const hidden = hiddenAtOffsets(value, props.stripMarkers)
   let p = start
   if (forward) {
     if (p >= value.length || !hidden[p])
       return false
+
     while (p < value.length && hidden[p])
       p++
   }
   else {
     if (p <= 0 || !hidden[p - 1])
       return false
+
     while (p > 0 && hidden[p - 1])
       p--
   }
@@ -321,6 +356,7 @@ function onKeydown(e: KeyboardEvent) {
   // Either way the browser's own block insertion is prevented.
   if (e.key === 'Enter' && !e.isComposing) {
     e.preventDefault()
+
     // Shift+Enter always inserts a newline; on touch (enterNewline) a plain
     // Enter does too. Either way the parent never sees it as a send intent.
     if (e.shiftKey || props.enterNewline) {
@@ -328,6 +364,7 @@ function onKeydown(e: KeyboardEvent) {
       return
     }
   }
+
   // Plain Left/Right: jump over hidden formatting so the caret doesn't vanish on
   // a zero-width span. Modified arrows (shift/ctrl/alt/meta) keep native behavior.
   else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -348,6 +385,7 @@ function onCompositionEnd() {
 
 function onPaste(e: ClipboardEvent) {
   e.preventDefault()
+
   // Files on the clipboard (a screenshot, a copied image/file) go to the host as
   // attachments rather than into the text.
   const files = Array.from(e.clipboardData?.files ?? [])
@@ -355,10 +393,12 @@ function onPaste(e: ClipboardEvent) {
     emit('pasteFiles', files)
     return
   }
+
   // Normalize CRLF / lone CR to '\n' but keep the line breaks (multi-line paste).
   const text = (e.clipboardData?.getData('text/plain') ?? '').replace(/\r\n?/g, '\n')
   if (!text)
     return
+
   insertTextAtCaret(text)
 }
 
@@ -368,8 +408,10 @@ watch(() => props.modelValue, (val) => {
   const el = root.value
   if (!el || (el.textContent ?? '') === val)
     return
+
   const hadFocus = el.contains(document.activeElement)
   render(val)
+
   // Only touch the caret/focus when we already had focus, so a programmatic
   // clear or buffer switch doesn't steal it.
   if (hadFocus)
@@ -382,6 +424,7 @@ watch(() => props.stripMarkers, () => {
   const el = root.value
   if (!el)
     return
+
   const hadFocus = el.contains(document.activeElement)
   const caret = hadFocus ? getCaret() : null
   render(el.textContent ?? props.modelValue)

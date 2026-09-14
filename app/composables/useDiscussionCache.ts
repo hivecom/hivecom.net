@@ -48,6 +48,7 @@ function entityKey(type: string, entityId: string): string {
 export interface SetDiscussionOptions {
   /** Entity type that owns this discussion (e.g. 'event', 'referendum', 'gameserver'). */
   entityType?: string
+
   /** The entity's ID (e.g. the event UUID). */
   entityId?: string
 }
@@ -113,6 +114,7 @@ export function useDiscussionCache() {
   function setIfAbsent(discussion: Tables<'discussions'>, options: SetDiscussionOptions = {}): void {
     if (cache.has(idKey(discussion.id)))
       return
+
     set(discussion, options)
   }
 

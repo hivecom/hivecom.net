@@ -7,10 +7,13 @@ import ReactionsSelect from './ReactionsSelect.vue'
 export interface Reaction {
   // Url or a string content
   content: string
+
   // How many reactions are the same
   count: number
+
   // Whether the current user has reacted with this emote
   byMe: boolean
+
   // Which provider this reaction came from
   provider: string
 }
@@ -18,6 +21,7 @@ export interface Reaction {
 const props = defineProps<{
   table: ReactableTable
   rowId: string | null | undefined
+
   /**
    * The raw reactions JSONB value from the already-fetched row.
    * The composable keeps a local copy and updates optimistically.

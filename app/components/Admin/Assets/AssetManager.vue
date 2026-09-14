@@ -262,16 +262,21 @@ function sortFiles(a: CmsAsset, b: CmsAsset) {
   switch (sortOption.value) {
     case 'name-desc':
       return b.name.localeCompare(a.name)
+
     case 'size-desc':
       return b.size - a.size
+
     case 'size-asc':
       return a.size - b.size
+
     case 'newest':
       return new Date(b.updated_at ?? b.created_at ?? 0).getTime()
         - new Date(a.updated_at ?? a.created_at ?? 0).getTime()
+
     case 'oldest':
       return new Date(a.updated_at ?? a.created_at ?? 0).getTime()
         - new Date(b.updated_at ?? b.created_at ?? 0).getTime()
+
     case 'name-asc':
     default:
       return a.name.localeCompare(b.name)
@@ -279,6 +284,7 @@ function sortFiles(a: CmsAsset, b: CmsAsset) {
 }
 
 async function fetchAssets(silent = false) {
+  // A silent refresh keeps the current rows on screen; a normal load clears out.
   if (silent) {
     reloading.value = true
   }
@@ -288,7 +294,9 @@ async function fetchAssets(silent = false) {
     assets.value = []
     totalCount.value = 0
   }
+
   try {
+    // Flat view is always server-paged, since it spans every prefix.
     if (flatView.value) {
       const { assets: batch, totalCount: count } = await listStorageObjectsFlat(supabase, resolvedBucketId.value, {
         prefix: currentPrefix.value,
@@ -297,11 +305,13 @@ async function fetchAssets(silent = false) {
         search: searchQuery.value.trim() || undefined,
         sortBy: flatSortParams(),
       })
+
       assets.value = batch
       totalCount.value = count
     }
     else {
       const activeSearch = searchQuery.value.trim()
+
       if (activeSearch) {
         // Search uses the RPC to scan across all pages server-side.
         const { assets: batch, totalCount: count } = await listStorageObjectsFlat(supabase, resolvedBucketId.value, {
@@ -311,6 +321,7 @@ async function fetchAssets(silent = false) {
           search: activeSearch,
           sortBy: { column: 'name', order: 'asc' },
         })
+
         assets.value = batch
         totalCount.value = count
       }
@@ -319,8 +330,9 @@ async function fetchAssets(silent = false) {
         // listCmsDirectory already handles internal pagination (loops until done).
         // Paginate the result client-side so counts and offsets are always accurate.
         const allEntries = await listCmsDirectory(supabase, resolvedBucketId.value, { prefix: currentPrefix.value })
-        totalCount.value = allEntries.length
         const start = (page.value - 1) * PAGE_SIZE.value
+
+        totalCount.value = allEntries.length
         assets.value = allEntries.slice(start, start + PAGE_SIZE.value)
       }
     }
@@ -337,6 +349,7 @@ async function fetchAssets(silent = false) {
 
 function setPage(n: number) {
   page.value = n
+
   // fetch is driven by watch(page) below
 }
 
@@ -344,6 +357,7 @@ function changePrefix(path: string) {
   const normalized = normalizePrefix(path)
   if (normalized === currentPrefix.value)
     return
+
   currentPrefix.value = normalized
 }
 
@@ -355,17 +369,22 @@ function openFolder(asset: CmsAsset) {
 function openDetails(asset: CmsAsset) {
   if (asset.type !== 'file')
     return
+
   selectedAsset.value = asset
   showDetailsDrawer.value = true
 }
 
 async function performDeleteAsset(asset: CmsAsset) {
+  // Deleting a folder means deleting everything under it; storage has no
+  // directories of its own.
   if (asset.type === 'folder') {
     const files = await listCmsFilesRecursive(supabase, resolvedBucketId.value, asset.path)
+
     if (files.length) {
       const { error } = await supabase.storage
         .from(resolvedBucketId.value)
         .remove(files.map(file => file.path))
+
       if (error)
         throw error
     }
@@ -374,6 +393,7 @@ async function performDeleteAsset(asset: CmsAsset) {
     const { error } = await supabase.storage
       .from(resolvedBucketId.value)
       .remove([asset.path])
+
     if (error)
       throw error
   }
@@ -405,6 +425,7 @@ function promptDeleteAsset(asset: CmsAsset) {
 function confirmDeleteAsset() {
   if (!assetPendingDeletion.value)
     return
+
   deleteAsset(assetPendingDeletion.value)
   showDeleteConfirmModal.value = false
   assetPendingDeletion.value = null
@@ -464,6 +485,7 @@ function canRenameAsset(asset: CmsAsset): boolean {
 function promptRenameAsset(asset: CmsAsset) {
   if (!canRenameAsset(asset))
     return
+
   assetPendingRename.value = asset
   showRenameModal.value = true
 }
@@ -472,6 +494,7 @@ async function handleRenameSubmit(newName: string) {
   const target = assetPendingRename.value
   if (!target)
     return
+
   if (target.type !== 'file') {
     pushToast('Only files can be renamed at this time')
     return
@@ -560,6 +583,7 @@ function notifyPeers() {
 function getAssetBadgeVariant(asset: CmsAsset): BadgeVariant {
   if (asset.type === 'folder')
     return 'info'
+
   return isImageAsset(asset) ? 'success' : 'neutral'
 }
 
@@ -572,12 +596,14 @@ function getAssetTypeLabel(asset: CmsAsset): string {
     return 'Archive'
   if (documentExtensions.includes(asset.extension ?? ''))
     return 'Document'
+
   return 'File'
 }
 
 watch(flatView, (val) => {
   if (val) {
     currentPrefix.value = ''
+
     // Clear defineTable's client-side sort so server ordering is preserved in flat mode.
     setSort('', 'asc')
   }
@@ -587,6 +613,7 @@ watch(flatView, (val) => {
   }
   if (page.value !== 1) {
     page.value = 1
+
     // page watch triggers fetch
   }
   else {
@@ -598,6 +625,7 @@ watch(resolvedBucketId, () => {
   currentPrefix.value = ''
   if (page.value !== 1) {
     page.value = 1
+
     // page watch triggers fetch
   }
   else {
@@ -608,6 +636,7 @@ watch(resolvedBucketId, () => {
 watch(adminTablePerPage, () => {
   if (page.value !== 1) {
     page.value = 1
+
     // page watch will trigger fetch
   }
   else {
@@ -618,6 +647,7 @@ watch(adminTablePerPage, () => {
 watch(currentPrefix, () => {
   if (page.value !== 1) {
     page.value = 1
+
     // page watch triggers fetch
   }
   else {
@@ -628,6 +658,7 @@ watch(currentPrefix, () => {
 watchDebounced(searchQuery, () => {
   if (page.value !== 1) {
     page.value = 1
+
     // page watch triggers fetch
   }
   else {

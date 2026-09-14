@@ -152,6 +152,7 @@ export const LinkEmbed = Node.create({
   // internal-link paragraphs into linkEmbed nodes.
   addProseMirrorPlugins() {
     const nodeType = this.type
+
     // Grab supabase client once - available via Nuxt's auto-import at runtime.
     let supabase: SupabaseClient | null = null
     try {
@@ -160,6 +161,7 @@ export const LinkEmbed = Node.create({
     catch {
       // Not in a Nuxt context (e.g. SSR or tests) - skip UUID resolution.
     }
+
     // Mutable ref shared between the two plugins below so the async callback
     // can dispatch into the live EditorView after UUID resolution.
     const resolveViewRef: { view: EditorView | null } = { view: null }
@@ -174,6 +176,7 @@ export const LinkEmbed = Node.create({
 
           const tr = newState.tr
           let changed = false
+
           // Collect username-based profile hrefs that need UUID resolution.
           const toResolve: Array<{ username: string, originalHref: string }> = []
 
@@ -186,6 +189,7 @@ export const LinkEmbed = Node.create({
             const href = getStandaloneLinkHref(node)
             if (href == null || href === '')
               return
+
             replacements.push({ pos, nodeSize: node.nodeSize, href })
           })
 
@@ -217,12 +221,15 @@ export const LinkEmbed = Node.create({
                   .then(({ data }: { data: { id: string } | null }) => {
                     if (data?.id == null)
                       return
+
                     const uuid = data.id
                     const newHref = originalHref.replace(`/profile/${username}`, `/profile/${uuid}`)
+
                     // Re-read the editor state via the plugin's stored view ref.
                     const pluginState = resolveViewRef.view
                     if (!pluginState)
                       return
+
                     const currentState = pluginState.state
                     const updateTr = currentState.tr
                     let found = false

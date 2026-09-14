@@ -30,6 +30,7 @@ function onMouseEnter() {
   const overlay = overlayRef.value
   if (!overlay)
     return
+
   overlay.style.transition = 'none'
   overlay.style.transform = 'scale(0.5)'
   overlay.style.opacity = '0'
@@ -42,9 +43,11 @@ function onMouseEnter() {
 function onMouseLeave() {
   if (group)
     return
+
   const overlay = overlayRef.value
   if (!overlay)
     return
+
   overlay.style.opacity = '0'
 }
 
@@ -56,6 +59,7 @@ function onTouchStart() {
   const overlay = overlayRef.value
   if (!overlay)
     return
+
   overlay.style.transition = 'none'
   overlay.style.transform = 'scale(0.5)'
   overlay.style.opacity = '0'
@@ -68,9 +72,11 @@ function onTouchStart() {
 function onTouchEnd() {
   if (group)
     return
+
   const overlay = overlayRef.value
   if (!overlay)
     return
+
   overlay.style.opacity = '0'
 }
 </script>

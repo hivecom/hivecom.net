@@ -64,6 +64,7 @@ const {
       .order('created_at', { ascending: false })
     if (error)
       throw error
+
     return (data as ReservationRow[]) || []
   },
   transform: reservation => ({
@@ -151,6 +152,7 @@ function openDeleteConfirm(reservation: ReservationRow) {
 async function confirmDelete() {
   if (!reservationToDelete.value)
     return
+
   const id = reservationToDelete.value.id
   reservationToDelete.value = null
   await handleReservationDelete(id)

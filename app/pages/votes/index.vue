@@ -80,6 +80,7 @@ function mergeReferendums(
     const isAfter = r.date_end >= now
     if (isAfter !== afterDate)
       continue
+
     if (!seen.has(r.id)) {
       seen.add(r.id)
       result.push(r)
@@ -183,6 +184,7 @@ function handleDeleted(referendumId: number) {
 const isLoading = computed(() => {
   if (tab.value === 'Active')
     return activePublicLoading.value || loadingOwnActive.value || loadingVoted.value
+
   return concludedPublicLoading.value || loadingOwnConcluded.value || loadingVoted.value
 })
 

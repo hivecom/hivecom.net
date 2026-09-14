@@ -12,16 +12,22 @@ import GlowCard from '@/components/Shared/GlowCard.vue'
 const props = defineProps<{
   // 30d metrics history entries
   metricsHistory30d: MetricsHistoryEntry[]
+
   // Whether the 30d history is still loading
   loading: boolean
+
   // All games
   games: Tables<'games'>[]
+
   // All events
   events: Tables<'events'>[]
+
   // Pre-resolved background URL for the popped-off game (empty string if none)
   backgroundUrl: string
+
   // Pre-resolved cover URL for the popped-off game (empty string if none)
   coverUrl: string
+
   // True when the linked event is currently ongoing (popping off right now)
   live?: boolean
 }>()
@@ -42,6 +48,7 @@ const poppedOff = computed(() => {
   for (const entry of props.metricsHistory30d) {
     if (!entry.usersByGame)
       continue
+
     for (const [id, count] of Object.entries(entry.usersByGame)) {
       if (count > peakCount) {
         peakCount = count
@@ -64,6 +71,7 @@ const poppedOff = computed(() => {
 const linkedEvent = computed(() => {
   if (!poppedOff.value)
     return null
+
   const peakMs = new Date(poppedOff.value.peakEntry.capturedAt).getTime()
   const SIX_HOURS = 6 * 60 * 60 * 1000
   const gameId = poppedOff.value.game.id
@@ -71,6 +79,7 @@ const linkedEvent = computed(() => {
   return props.events.find((e) => {
     if (!e.games?.includes(gameId))
       return false
+
     const eventStart = new Date(e.date).getTime()
     const durationMs = (e.duration_minutes ?? 120) * 60 * 1000
     const eventEnd = eventStart + durationMs
@@ -81,6 +90,7 @@ const linkedEvent = computed(() => {
 const peakDateLabel = computed(() => {
   if (!poppedOff.value)
     return ''
+
   return dayjs(poppedOff.value.peakEntry.capturedAt).fromNow()
 })
 

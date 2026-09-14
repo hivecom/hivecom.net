@@ -55,6 +55,7 @@ function handleNewComplaint() {
 // Handle closing new complaint modal
 function handleCloseNewComplaint() {
   showNewComplaint.value = false
+
   // If we started with submit, close completely instead of showing viewer
   if (props.startWithSubmit) {
     open.value = false

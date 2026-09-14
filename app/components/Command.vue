@@ -91,12 +91,15 @@ const GROUP_TO_TYPES: Record<string, SearchType[]> = {
 
 const effectiveScope = computed<SearchType[] | null>(() => {
   const g = activeGroup.value
+
   // No DB search needed
   if (g === 'Navigation' || g === 'Commands' || g === 'Themes')
     return null
+
   // Specific DB group selected
   if (g != null && g !== 'All' && GROUP_TO_TYPES[g] != null)
     return GROUP_TO_TYPES[g]!
+
   // All or null - use the contextual scope
   return scope.value
 })
@@ -117,6 +120,7 @@ const navItems = computed(() =>
       return false
     if (link.requiresRole && (userRole.value == null || !link.requiresRole.includes(userRole.value)))
       return false
+
     return true
   }),
 )
@@ -127,11 +131,13 @@ function navScore(label: string, q: string): number {
     return 4
   if (label.startsWith(q))
     return 3
+
   const words = label.split(LABEL_SPLIT_RE).filter(Boolean)
   if (words.includes(q))
     return 2
   if (words.some(w => w.startsWith(q)))
     return 1
+
   return 0
 }
 
@@ -157,6 +163,7 @@ const themeCommands = computed<Command[]>(() => {
     group: 'Themes',
     handler: () => {
       setActiveTheme(theme.id)
+
       // Slight timeout so theme is applied by the time commands close
       setTimeout(() => {
         closeCommand()
@@ -172,6 +179,7 @@ const themeCommands = computed<Command[]>(() => {
       group: 'Themes',
       handler: () => {
         setActiveTheme(null)
+
         // Slight timeout so theme is applied by the time commands close
         setTimeout(() => {
           closeCommand()
@@ -421,18 +429,22 @@ function iconForCommand(command: Command): string {
   else if (command.group === 'Themes') {
     return 'ph:circle-half-tilt-fill'
   }
+
   // Differentiate discussions from topics within the Forum group
   else if (command.group === 'Forum') {
     const resultType = resultTypeByTitle.value.get(command.title)
     if (resultType === 'discussion')
       return 'ph:chat-circle'
+
     // Pre-populated topics and discussion_topic DB results both get folder
     return 'ph:folder'
   }
+
   // DB result groups map directly via TYPE_META
   const typeMeta = Object.values(TYPE_META).find(m => m.group === command.group)
   if (typeMeta != null)
     return typeMeta.icon
+
   // Navigation items: look up by title
   return NAV_GROUP_ICONS[command.title] ?? 'ph:arrow-right'
 }
@@ -458,6 +470,7 @@ const placeholder = computed(() => {
     return 'Search everything or type / for commands...'
   if (s.includes('discussion') || s.includes('discussion_topic'))
     return 'Search Forum...'
+
   return 'Search...'
 })
 

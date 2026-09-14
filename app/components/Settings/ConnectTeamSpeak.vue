@@ -265,6 +265,7 @@ async function handleUnlink(identity: TeamSpeakIdentityRecord) {
   const key = identityKey(identity)
   if (unlinking[key])
     return
+
   unlinking[key] = true
   formError.value = ''
 

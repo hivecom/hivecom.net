@@ -111,6 +111,7 @@ async function searchGames(query: string) {
     const { data, error } = await req
     if (error)
       throw error
+
     games.value = data ?? []
   }
   catch (err) {
@@ -168,6 +169,7 @@ const selectedRegionComputed = computed({
   get: () => {
     if (!gameserverForm.value.region)
       return []
+
     const option = regionOptions.find(opt => opt.value === gameserverForm.value.region)
     return option ? [option] : []
   },
@@ -180,6 +182,7 @@ const selectedContainerComputed = computed({
   get: () => {
     if (!gameserverForm.value.container)
       return []
+
     const option = containerOptions.value.find(opt => opt.value === gameserverForm.value.container)
     return option ? [option] : []
   },
@@ -192,14 +195,17 @@ const selectedQueryProtocolComputed = computed({
   get: () => {
     if (!gameserverForm.value.query_protocol)
       return []
+
     const option = queryProtocolOptions.find(opt => opt.value === gameserverForm.value.query_protocol)
     return option ? [option] : []
   },
   set: (value: SelectOption[] | null | undefined) => {
     gameserverForm.value.query_protocol = (value && value.length > 0) ? value[0]!.value : null
+
     // Clear query port when protocol is cleared
     if (!gameserverForm.value.query_protocol)
       gameserverForm.value.query_port = ''
+
     // Factorio-only fields are meaningless for other protocols
     if (gameserverForm.value.query_protocol !== 'factorio') {
       factorioUseLua.value = false
@@ -226,6 +232,7 @@ async function loadQuerySecretState(gameserverId: number) {
     })
     if (error)
       throw error
+
     querySecretExists.value = data === true
   }
   catch (err) {
@@ -244,6 +251,7 @@ async function fetchDropdownData() {
 
     if (containersError)
       throw containersError
+
     containers.value = containersData || []
   }
   catch (error) {
@@ -273,6 +281,7 @@ function applyGameserver(newGameserver: QueryGameserver | null) {
       container: newGameserver.container,
       administrator: newGameserver.administrator,
     }
+
     // Reset Factorio fields, then hydrate from the row / Vault state.
     const queryOptions = newGameserver.query_options as { factorioUseLua?: boolean } | null
     factorioUseLua.value = queryOptions?.factorioUseLua ?? false
@@ -390,6 +399,7 @@ async function handleSubmit() {
 function handleDelete() {
   if (!props.gameserver)
     return
+
   showDeleteConfirm.value = true
 }
 
@@ -397,6 +407,7 @@ function handleDelete() {
 function confirmDelete() {
   if (!props.gameserver)
     return
+
   emit('delete', props.gameserver.id)
 }
 

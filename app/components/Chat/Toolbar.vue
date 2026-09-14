@@ -13,6 +13,7 @@ import ChatStateBadge from './StateBadge.vue'
 defineProps<{
   // Shows the "expand to full page" link (used inside the navbar sheet).
   expandable?: boolean
+
   // Compact surfaces drop sidebar controls from the menubar.
   compact?: boolean
 }>()
@@ -34,6 +35,7 @@ const identityHasIssues = computed(() => {
     return false
   if (accountEmail.value === null || accountAlwaysOn.value === null)
     return false
+
   const unclaimed = accountEmail.value === ''
   const notAlwaysOn = accountAlwaysOn.value === false
   return unclaimed || notAlwaysOn

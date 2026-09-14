@@ -82,6 +82,7 @@ function formatBytes(bytes: number): string {
     return `${bytes} B`
   if (bytes < 1024 * 1024)
     return `${(bytes / 1024).toFixed(1)} KB`
+
   return `${Math.round(bytes / (1024 * 1024))} MB`
 }
 
@@ -89,6 +90,7 @@ async function refreshStorageStats() {
   const userKey = cacheNickKey()
   if (!userKey)
     return
+
   storageLoading.value = true
   storageStats.value = await getBufferStats(userKey)
   storageLoading.value = false
@@ -131,6 +133,7 @@ async function exportAll() {
   const userKey = cacheNickKey()
   if (!userKey || !storageStats.value.length)
     return
+
   exportingAll.value = true
   const buffers: ChatHistoryExport['buffers'] = []
   for (const stat of storageStats.value) {
@@ -165,29 +168,42 @@ async function onImportFile(event: Event) {
   const file = input.files?.[0]
   if (!file)
     return
+
   input.value = '' // allow re-selecting the same file
+
   const userKey = cacheNickKey()
+
   if (!userKey) {
     importError.value = 'Not connected - connect to chat first.'
     return
   }
+
   importLoading.value = true
   importError.value = null
+
   try {
     const parsed: unknown = JSON.parse(await file.text())
+
+    // Two accepted shapes: a bare message array from a single-buffer export, or
+    // the versioned envelope a full export produces.
     let buffersToImport: ChatHistoryExport['buffers']
+
     if (Array.isArray(parsed)) {
-      // Single-buffer export: bare StoredMessage[]
       const messages = parsed as StoredMessage[]
+
       if (!messages.length) {
         importError.value = 'File contains no messages.'
         importLoading.value = false
         return
       }
+
+      // Recover the buffer name from the first message's key, since a bare
+      // array carries no metadata of its own.
       const firstKey = messages[0]?.bufferKey ?? ''
       const colonIdx = firstKey.indexOf(':')
       const bufferName = colonIdx >= 0 ? firstKey.slice(colonIdx + 1) : firstKey
       const kind = bufferName.startsWith('#') ? 'channel' as const : 'pm' as const
+
       buffersToImport = [{ meta: { name: bufferName, kind }, messages }]
     }
     else if (
@@ -204,11 +220,16 @@ async function onImportFile(event: Event) {
       importLoading.value = false
       return
     }
+
+    // Re-key every message onto the current identity so an export taken under a
+    // different nick still lands in this session's buffers.
     for (const { meta, messages } of buffersToImport) {
       const newKey = makeBufferKey(userKey, meta.name)
+
       await upsertBufferMeta({ key: newKey, name: meta.name, kind: meta.kind, topic: meta.topic })
       await upsertMessages(messages.map(m => ({ ...m, bufferKey: newKey })))
     }
+
     await refreshStorageStats()
   }
   catch {
@@ -244,6 +265,7 @@ function addKeyword() {
   const value = keywordDraft.value.trim()
   if (!value)
     return
+
   const exists = settings.value.chat_mention_keywords.some(k => k.toLowerCase() === value.toLowerCase())
   if (!exists)
     settings.value.chat_mention_keywords = [...settings.value.chat_mention_keywords, value]

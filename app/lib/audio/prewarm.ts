@@ -13,6 +13,7 @@ import { computeWaveform } from '@/lib/audio/waveform'
 export function prewarmAudioVisuals(src: string): void {
   if (!import.meta.client)
     return
+
   void decodeAudio(src).catch(() => {})
   void computeWaveform(src).catch(() => {})
 }

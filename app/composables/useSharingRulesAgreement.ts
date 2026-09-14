@@ -51,6 +51,7 @@ export function useSharingRulesAgreement() {
           cache.delete(getCacheKey(id))
         }
         agreed.value = null
+
         // Supabase re-emits SIGNED_IN mid-session (a token refresh when the tab
         // regains focus counts), so this isn't only a login path. Re-fetch right
         // away, otherwise the value sits at null with nothing left to resolve it

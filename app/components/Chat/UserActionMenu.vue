@@ -18,17 +18,21 @@ import { useIrcChat } from '@/composables/useIrcChat'
 
 const props = defineProps<{
   nick: string
+
   /** IRC prefix string (e.g. "@+") for the targeted user; used for Op/Voice checks. */
   prefix?: string
+
   /** When true, mod actions (Op/Deop/Voice/Devoice/Kick/Ban) are rendered
    *  for users with sufficient channel privileges. */
   showModActions?: boolean
+
   /**
    * Override the nick used in the mention action. Useful for relay nicks where
    * the full IRC nick contains a bridge suffix (e.g. "user/cord") but the
    * mention should only insert the user part ("user").
    */
   mentionNick?: string
+
   /** When true, the "Message" (PM) and mod actions (Op/Voice/Kick/Ban) are hidden. Use for relay virtual nicks. */
   hideMessage?: boolean
 }>()
@@ -36,6 +40,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   /** Parent should open the WHOIS modal for this nick and close the menu. */
   openWhois: [nick: string]
+
   /** Parent should close the context menu / sheet. */
   close: []
 }>()
@@ -50,6 +55,7 @@ const canModerate = computed(() => {
   const ch = activeName.value
   if (!ch)
     return false
+
   const r = myChannelRole(ch)
   return r !== null && MOD_SYMBOLS.has(r.symbol)
 })

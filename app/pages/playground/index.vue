@@ -17,6 +17,7 @@ function openFile(file: File) {
     pushToast('Not an audio file', { description: file.name })
     return
   }
+
   // Drop the previous local URL so it doesn't leak when swapping tracks.
   if (objectUrl)
     URL.revokeObjectURL(objectUrl)

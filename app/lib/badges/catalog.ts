@@ -21,6 +21,7 @@ interface BadgeBase {
   label: string
   icon: string
   description: string
+
   /** Canonical display order - lower = shown first within same tier. */
   sortOrder: number
 }
@@ -33,18 +34,21 @@ export interface ManualBadge extends BadgeBase {
 export interface FlagBadge extends BadgeBase {
   kind: 'flag'
   defaultTier: BadgeVariant
+
   /** Column name on `profiles` that drives this badge. */
   driverColumn: string
 }
 
 export interface ComputedBadge extends BadgeBase {
   kind: 'computed'
+
   /**
    * Map of tier -> minimum value (count or years) required.
    * Tiers not listed are not awarded for this badge.
    */
   tiers: Partial<Record<BadgeVariant, number>>
   unit: 'years' | 'rsvps' | 'discussions' | 'replies' | 'replies_received'
+
   /**
    * When true, the numeric `progress` value is rendered inside the badge hex
    * instead of the default icon (e.g. the "One of Us" years badge).
@@ -69,6 +73,7 @@ export function getBadgeMemberSince(
   const memberSince = metadata?.member_since
   if (typeof memberSince === 'string' && memberSince.trim() !== '')
     return memberSince
+
   return earnedAt ?? null
 }
 
