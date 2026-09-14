@@ -143,9 +143,11 @@ export function usePushNotifications() {
     detect()
     if (!isSupported.value)
       return
+
     const registration = await getRegistration()
     if (!registration)
       return
+
     const subscription = await registration.pushManager.getSubscription()
     isSubscribed.value = Boolean(subscription)
   }
@@ -187,10 +189,13 @@ export function usePushNotifications() {
       const registration = await getRegistration()
       if (!registration)
         return
+
       const live = await registration.pushManager.getSubscription()
+
       // No live subscription means this device isn't opted in - nothing to do.
       if (!live)
         return
+
       json = live.toJSON()
     }
 
@@ -245,6 +250,7 @@ export function usePushNotifications() {
     }
     catch (err) {
       const isTimeout = err instanceof Error && err.message === 'push-subscribe-timeout'
+
       // Surface the underlying error name (e.g. `InvalidStateError`,
       // `NotAllowedError`, `AbortError`) so failures are diagnosable on devices
       // where a console isn't readily available, like an installed iOS PWA.

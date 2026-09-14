@@ -28,7 +28,7 @@ const PRESENCE_TTL_MS = 60 * 1000
 
 const {
   data: presence,
-  loading,
+  initialLoading,
   refetch: refetchPresence,
 } = useCachedFetch<SteamPresence>(
   () => ({
@@ -268,8 +268,9 @@ watch(() => props.profileId, () => {
     <template #trigger>
       <div class="activity-item">
         <Flex expand y-center x-between gap="s">
-          <!-- Loading state -->
-          <template v-if="loading">
+          <!-- Loading state - only before the first result, so a background
+               refresh doesn't blank a row we already have data for -->
+          <template v-if="initialLoading">
             <div>
               <span class="activity-item__label">
                 <Icon class="activity-item__icon" name="mdi:steam" size="13" />

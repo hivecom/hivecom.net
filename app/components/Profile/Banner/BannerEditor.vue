@@ -48,6 +48,7 @@ type FsDirHandle = FileSystemDirectoryHandle & {
 const props = defineProps<{
   /** Current user ID for storage paths */
   userId: string | null
+
   /** Whether the editor modal is open */
   open: boolean
 }>()
@@ -88,6 +89,7 @@ const FALLBACK_FONT_FAMILIES: SelectOption[] = [
 const systemFontFamilies = ref<string[]>([])
 const fontsLoaded = ref(false)
 const fontsPermissionDenied = ref(false)
+
 // When true, show a free-text Input instead of the Select dropdown
 const fontCustomMode = ref(false)
 
@@ -134,6 +136,7 @@ const storeAssetPaths = ref<boolean>(
 watch(storeAssetPaths, v => localStorage.setItem(ASSET_PATHS_KEY, String(v)))
 
 const hasDirPicker = typeof window !== 'undefined' && 'showDirectoryPicker' in window
+
 // webkitdirectory is supported everywhere including Firefox
 const hasWebkitDir = typeof window !== 'undefined'
 
@@ -214,6 +217,7 @@ function addBgStop() {
 function removeBgStop(index: number) {
   if (bgFillStops.value.length <= 2)
     return
+
   bgFillStops.value.splice(index, 1)
   redraw()
 }
@@ -222,6 +226,7 @@ function setBgStopColor(index: number, value: string) {
   const stop = bgFillStops.value[index]
   if (!stop)
     return
+
   stop.color = value
   redraw()
 }
@@ -230,6 +235,7 @@ function setBgStopPosition(index: number, value: number) {
   const stop = bgFillStops.value[index]
   if (!stop)
     return
+
   stop.position = Math.min(1, Math.max(0, value))
   bgFillStops.value.sort((a, b) => a.position - b.position)
   redraw()
@@ -240,9 +246,11 @@ const fontFamilyModel = computed<SelectOption[] | undefined>({
     const layer = selectedTextLayer.value
     if (!layer)
       return undefined
+
     const match = fontOptions.value.find(o => o.value === layer.fontFamily)
     if (match)
       return [match]
+
     // Family came from saved metadata and isn't in the list - show it as-is
     return layer.fontFamily ? [{ label: layer.fontFamily, value: layer.fontFamily }] : undefined
   },
@@ -250,6 +258,7 @@ const fontFamilyModel = computed<SelectOption[] | undefined>({
     const layer = selectedTextLayer.value
     if (!layer)
       return
+
     const next = selection?.[0]?.value
     if (next != null && next !== '')
       layer.fontFamily = next
@@ -262,16 +271,20 @@ const fillTypeModel = computed<SelectOption<FillType>[] | undefined>({
     const layer = selectedTextLayer.value
     if (!layer)
       return undefined
+
     return [FILL_TYPE_OPTIONS.find(o => o.value === layer.fillType) ?? FILL_TYPE_OPTIONS[0]!]
   },
   set(selection) {
     const layer = selectedTextLayer.value
     if (!layer)
       return
+
     const next = selection?.[0]?.value
     if (!next)
       return
+
     layer.fillType = next
+
     // Seed stops from fillColor when switching into gradient for the first time
     if (next !== 'solid' && layer.fillStops.length < 2) {
       layer.fillStops = [
@@ -297,6 +310,7 @@ function addFillStop(layer: TextLayer) {
 function removeFillStop(layer: TextLayer, index: number) {
   if (layer.fillStops.length <= 2)
     return
+
   layer.fillStops.splice(index, 1)
   redraw()
 }
@@ -305,6 +319,7 @@ function setFillStopColor(layer: TextLayer, index: number, value: string) {
   const stop = layer.fillStops[index]
   if (!stop)
     return
+
   stop.color = value
   redraw()
 }
@@ -313,6 +328,7 @@ function setFillStopPosition(layer: TextLayer, index: number, value: number) {
   const stop = layer.fillStops[index]
   if (!stop)
     return
+
   stop.position = Math.min(1, Math.max(0, value))
   layer.fillStops.sort((a, b) => a.position - b.position)
   redraw()
@@ -326,6 +342,7 @@ const fontFamilyCustom = computed<string>({
     const layer = selectedTextLayer.value
     if (!layer)
       return
+
     if (value.trim() !== '')
       layer.fontFamily = value.trim()
     redraw()
@@ -356,7 +373,9 @@ const displayScale = computed(() => fitScale.value * zoomLevel.value)
 function updateDisplayScale() {
   if (!canvasContainerRef.value)
     return
+
   const containerWidth = canvasContainerRef.value.clientWidth
+
   // Leave room for the zoom bar (48px) and some breathing room
   const containerHeight = canvasContainerRef.value.clientHeight - 48
   const scaleByWidth = containerWidth / WORKSPACE_WIDTH
@@ -428,6 +447,7 @@ function buildMetadata(): BannerMetadata {
 
 function applyMetadata(meta: BannerMetadata) {
   const bg = meta.background
+
   // Migrate legacy solid/gradient fields
   const legacyFillType: FillType = bg.type === 'gradient' ? 'linear' : 'solid'
   const legacyColor = bg.color ?? '#1a1a2e'
@@ -510,11 +530,13 @@ const loadedImages = new Map<string, HTMLImageElement>()
 function getOrLoadImage(src: string): HTMLImageElement | null {
   if (!src)
     return null
+
   const existing = loadedImages.get(src)
   if (existing?.complete)
     return existing
   if (existing)
     return null
+
   const img = new Image()
   img.onload = () => redraw()
   img.src = src
@@ -566,6 +588,7 @@ function redraw() {
   const canvas = canvasRef.value
   if (!canvas)
     return
+
   const ctx = canvas.getContext('2d')
   if (!ctx)
     return
@@ -613,6 +636,7 @@ function drawLayers(ctx: CanvasRenderingContext2D, opts: { forExport?: boolean }
     if (layer.type === 'image') {
       if (!layer.src)
         continue
+
       const img = opts.forExport ? loadedImages.get(layer.src) : getOrLoadImage(layer.src)
       if (!img?.complete)
         continue
@@ -640,6 +664,7 @@ function drawLayers(ctx: CanvasRenderingContext2D, opts: { forExport?: boolean }
     else if (layer.type === 'text') {
       if (!layer.content.trim())
         continue
+
       ctx.save()
       ctx.globalAlpha = layer.opacity
       ctx.translate(layer.x, layer.y)
@@ -720,6 +745,7 @@ function drawSelectionIndicators(ctx: CanvasRenderingContext2D) {
     if (layer.type === 'text') {
       if (!layer.content.trim())
         continue
+
       ctx.font = buildFontStyle(layer)
       const metrics = ctx.measureText(layer.content)
       const tw = metrics.width
@@ -773,6 +799,7 @@ function canvasToLocal(e: MouseEvent): { x: number, y: number } {
   const canvas = canvasRef.value
   if (!canvas)
     return { x: 0, y: 0 }
+
   const rect = canvas.getBoundingClientRect()
   const scaleX = WORKSPACE_WIDTH / rect.width
   const scaleY = WORKSPACE_HEIGHT / rect.height
@@ -787,6 +814,7 @@ function isOverCanvas(e: MouseEvent): boolean {
   const canvas = canvasRef.value
   if (!canvas)
     return false
+
   const rect = canvas.getBoundingClientRect()
   return e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom
 }
@@ -804,17 +832,21 @@ function rotatePoint(px: number, py: number, cx: number, cy: number, angleDeg: n
 function hitTestTextLayer(x: number, y: number, layer: TextLayer): boolean {
   if (!layer.content.trim())
     return false
+
   const canvas = canvasRef.value
   if (!canvas)
     return false
+
   const ctx = canvas.getContext('2d')
   if (!ctx)
     return false
+
   ctx.font = buildFontStyle(layer)
   const metrics = ctx.measureText(layer.content)
   const tw = metrics.width
   const th = layer.fontSize
   const pad = 6
+
   // Rotate the test point into layer-local (unrotated) space
   const local = rotatePoint(x, y, layer.x, layer.y, layer.rotation)
   return (
@@ -980,6 +1012,7 @@ function layerMatchesFile(layer: ImageLayer, file: File): boolean {
   const meta = layer.assetMeta
   if (!meta)
     return false
+
   const nameMatches = meta.originalName === file.name
   const sizeMatches = meta.size == null || meta.size === file.size
   const typeMatches = meta.type == null || meta.type === file.type
@@ -1007,6 +1040,7 @@ function processFileList(
     const match = entries.find(({ file }) => layerMatchesFile(layer, file))
     if (!match)
       continue
+
     const url = URL.createObjectURL(match.file)
     relinkLayer(layer, match.file, url, match.folderName, match.relativePath)
     linked++
@@ -1053,6 +1087,7 @@ async function scanFolder() {
       // Firefox / Safari fallback: trigger a hidden <input webkitdirectory>
       // Result is handled in onDirSelected
       dirInputRef.value?.click()
+
       // scanning stays true until onDirSelected finishes
     }
   }
@@ -1081,6 +1116,7 @@ function onDirSelected(e: Event) {
     // webkitRelativePath is "folderName/sub/file.png"
     const parts = file.webkitRelativePath.split('/')
     const folderName = parts[0] ?? ''
+
     // relativePath is everything after the top-level folder name
     const relativePath = parts.slice(1).join('/') || file.name
     return { file, relativePath, folderName }
@@ -1115,6 +1151,7 @@ function onImageSelected(e: Event) {
     const match = layers.value.find((layer): layer is ImageLayer => {
       if (layer.type !== 'image' || !!layer.src)
         return false
+
       return layerMatchesFile(layer, file)
     })
     if (match)
@@ -1160,6 +1197,7 @@ function onImageSelected(e: Event) {
     redraw()
   }
   img.src = url
+
   // Allow the same file to be selected again
   input.value = ''
 }
@@ -1168,6 +1206,7 @@ function removeLayer(id: string) {
   const idx = layers.value.findIndex(l => l.id === id)
   if (idx === -1)
     return
+
   const layer = layers.value[idx]
   if (layer?.type === 'image' && layer.src.startsWith('blob:')) {
     URL.revokeObjectURL(layer.src)
@@ -1188,6 +1227,7 @@ function duplicateLayer(id: string) {
   const src = layers.value.find(l => l.id === id)
   if (!src)
     return
+
   const newId = crypto.randomUUID()
   let clone: BannerLayer
   if (src.type === 'text') {
@@ -1206,6 +1246,7 @@ function setImageX(layer: ImageLayer, raw: string) {
   const v = Number.parseInt(raw, 10)
   if (!Number.isFinite(v))
     return
+
   layer.x = v
   redraw()
 }
@@ -1214,6 +1255,7 @@ function setImageY(layer: ImageLayer, raw: string) {
   const v = Number.parseInt(raw, 10)
   if (!Number.isFinite(v))
     return
+
   layer.y = v
   redraw()
 }
@@ -1222,6 +1264,7 @@ function setImageWidth(layer: ImageLayer, raw: string) {
   const v = Math.max(4, Number.parseInt(raw, 10))
   if (!Number.isFinite(v))
     return
+
   layer.width = v
   layer.height = Math.round(v / layer.aspect)
   redraw()
@@ -1231,6 +1274,7 @@ function setImageHeight(layer: ImageLayer, raw: string) {
   const v = Math.max(4, Number.parseInt(raw, 10))
   if (!Number.isFinite(v))
     return
+
   layer.height = v
   layer.width = Math.round(v * layer.aspect)
   redraw()
@@ -1453,6 +1497,7 @@ async function deleteBanner() {
 
   try {
     const supabase = useSupabaseClient<Database>()
+
     // Remove all possible banner extensions
     await Promise.all(['webp', 'webm', 'gif'].map(e =>
       supabase.storage.from(USERS_BUCKET_ID).remove([`${props.userId}/banner.${e}`]),
@@ -1509,6 +1554,7 @@ function copySelectedLayer() {
   const layer = selectedLayer.value
   if (!layer)
     return
+
   // Deep clone so mutations to the original don't affect the clipboard
   clipboardLayer.value = JSON.parse(JSON.stringify(layer)) as BannerLayer
 }
@@ -1517,6 +1563,7 @@ function pasteLayer() {
   const src = clipboardLayer.value
   if (!src)
     return
+
   const newId = crypto.randomUUID()
   let clone: BannerLayer
   if (src.type === 'text') {
@@ -1553,6 +1600,7 @@ const canvasCursor = computed(() => {
     return 'nw-resize'
   if (hoveredLayerId.value)
     return 'grab'
+
   // Show grab cursor on empty canvas to hint that panning is available
   return 'grab'
 })
@@ -1561,6 +1609,7 @@ const canvasCursor = computed(() => {
 
 watch([bgFillType, bgFillColor, bgFillAngle], () => redraw())
 watch(bgFillStops, () => redraw(), { deep: true })
+
 // Text fill changes are caught by the deep layers watcher below
 watch(layers, () => redraw(), { deep: true })
 
@@ -1627,6 +1676,7 @@ function onWindowKeyDownCapture(e: KeyboardEvent) {
 
   if (e.key !== 'Escape')
     return
+
   e.preventDefault()
   e.stopImmediatePropagation()
   if (selectedLayerId.value) {
@@ -1641,6 +1691,7 @@ function onWindowKeyDownCapture(e: KeyboardEvent) {
 onMounted(async () => {
   document.addEventListener('mousemove', onDocumentMouseMove)
   document.addEventListener('mouseup', onDocumentMouseUp)
+
   // Capture phase so we intercept before VUI's bubble-phase window listener
   window.addEventListener('keydown', onWindowKeyDownCapture, true)
 
@@ -1722,6 +1773,7 @@ function onDocumentMouseMove(e: MouseEvent) {
   const canvas = canvasRef.value
   if (!canvas)
     return
+
   const rect = canvas.getBoundingClientRect()
   if (
     e.clientX < rect.left || e.clientX > rect.right
@@ -1755,6 +1807,7 @@ function onDocumentMouseMove(e: MouseEvent) {
     const layer = layers.value[i]
     if (!layer)
       continue
+
     const hit = layer.type === 'image'
       ? hitTestImageLayer(pos.x, pos.y, layer)
       : hitTestTextLayer(pos.x, pos.y, layer)
@@ -1885,6 +1938,7 @@ function onTextLayerFillAngle(angle: number) {
 }
 
 defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
+
 // saveBanner is also used externally after importBanner when hadMetadata is true
 </script>
 

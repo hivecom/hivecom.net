@@ -18,15 +18,18 @@ function isSoloVideoASTNode(node: ASTNode): boolean {
     if (Array.isArray(cls))
       return (cls as string[]).includes('md-video-embed')
   }
+
   // Fallback: raw HTML node (type:'raw' or 'html') if MDC doesn't parse the HTML
   if ((node.type === 'raw' || node.type === 'html') && typeof node.value === 'string')
     return node.value.trimStart().startsWith('<div class="md-video-embed">')
+
   return false
 }
 
 function isSoloImageASTNode(node: ASTNode): boolean {
   if (node.type !== 'element' || node.tag !== 'p')
     return false
+
   const kids = (node.children ?? []).filter(
     c => !(c.type === 'text' && (c.value ?? '').trim() === ''),
   )
@@ -38,6 +41,7 @@ function isSoloImageASTNode(node: ASTNode): boolean {
 function splitMultiImageASTNode(node: ASTNode): ASTNode[] {
   if (node.type !== 'element' || node.tag !== 'p')
     return [node]
+
   const kids = (node.children ?? []).filter(
     c => !(c.type === 'text' && (c.value ?? '').trim() === ''),
   )
@@ -45,6 +49,7 @@ function splitMultiImageASTNode(node: ASTNode): ASTNode[] {
     return [node]
   if (!kids.every(c => c.type === 'element' && c.tag === 'img'))
     return [node]
+
   return kids.map(img => ({
     type: 'element',
     tag: 'p',
@@ -141,6 +146,7 @@ function splitMultiImageNode(node: HTMLElement, container: HTMLElement): void {
     return
   if (!kids.every(n => n instanceof HTMLElement && n.tagName === 'IMG'))
     return
+
   // Insert individual <p><img></p> wrappers before the original node.
   for (const img of kids) {
     const p = document.createElement('p')
@@ -184,6 +190,7 @@ export function groupImages(container: HTMLElement): void {
     const parent = group.parentNode
     if (!parent)
       continue
+
     while (group.firstChild) {
       parent.insertBefore(group.firstChild, group)
     }

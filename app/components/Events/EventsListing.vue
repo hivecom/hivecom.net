@@ -37,6 +37,7 @@ function matchesFilters(event: Tables<'events'>): boolean {
     return false
   if (props.gameFilter.length > 0 && !event.games?.some(id => props.gameFilter.includes(id)))
     return false
+
   return true
 }
 
@@ -58,12 +59,14 @@ function withEffectiveDate(event: Tables<'events'>, now: Date): Tables<'events'>
   const isoDate = start.toISOString()
   if (isoDate === event.date)
     return event
+
   return { ...event, date: isoDate }
 }
 
 const ongoingEvents = computed(() => {
   if (!props.events)
     return []
+
   const now = new Date()
   return props.events
     .filter((event) => {
@@ -80,6 +83,7 @@ const ongoingEvents = computed(() => {
 const upcomingEvents = computed(() => {
   if (!props.events)
     return []
+
   const now = new Date()
   return props.events
     .filter(event => effectiveDate(event, now) > now)

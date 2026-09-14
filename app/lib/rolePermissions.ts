@@ -116,10 +116,13 @@ export function getRoleColor(role: string): string {
   switch (role) {
     case 'admin':
       return 'var(--color-text-red)'
+
     case 'moderator':
       return 'var(--color-text-blue)'
+
     case 'user':
       return 'var(--color-text-green)'
+
     default:
       return 'var(--color-text)'
   }
@@ -132,10 +135,13 @@ export function getRoleVariant(role: string): RoleVariant {
   switch (role) {
     case 'admin':
       return 'danger'
+
     case 'moderator':
       return 'info'
+
     case 'user':
       return 'success'
+
     default:
       return 'neutral'
   }

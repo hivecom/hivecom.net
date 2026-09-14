@@ -40,6 +40,7 @@ export function useMetricsAdminIrcChannels() {
         .select('id, name, secret')
       if (error !== null || data === null)
         return
+
       lookup.value = new Map(data.map(row => [row.id, row]))
       loaded = true
     })().finally(() => {

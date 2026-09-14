@@ -161,6 +161,7 @@ function hslToRgbValues(hsl: Hsl): Rgb {
       return q
     if (tt < 2 / 3)
       return p + (q - p) * (2 / 3 - tt) * 6
+
     return p
   }
 
@@ -204,10 +205,12 @@ export function remapLightness(
   dstMax: number,
 ): number {
   const srcSpan = srcMax - srcMin
+
   // If the source range is degenerate, fall back to the midpoint of dst
   if (Math.abs(srcSpan) < 0.001) {
     return (dstMin + dstMax) / 2
   }
+
   // Compute relative position [0..1] within source range, clamp to avoid
   // out-of-range colors blowing out the destination
   const t = Math.max(0, Math.min(1, (l - srcMin) / srcSpan))
@@ -377,6 +380,7 @@ function adaptColor(
     const defaultColor = defaultSourcePalette[key]
     if (defaultColor != null && defaultColor !== '') {
       const defaultHsl = parseToHsl(defaultColor)
+
       // Build a range centered on the default value with +/-15% width
       const center = defaultHsl.l
       const halfWidth = 15
@@ -384,6 +388,7 @@ function adaptColor(
         Math.max(0, center - halfWidth),
         Math.min(100, center + halfWidth),
       ]
+
       // For the destination range, invert the center
       const dstCenter = 100 - center
       const dstRange: LightnessRange = [

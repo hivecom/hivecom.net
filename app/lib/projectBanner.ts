@@ -20,6 +20,7 @@ export function normalizeProjectId(projectId: number | string): number {
   const normalized = Number(projectId)
   if (!Number.isFinite(normalized))
     throw new Error('Invalid project id')
+
   return normalized
 }
 

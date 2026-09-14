@@ -35,6 +35,7 @@ let initialized = false
 function computeStandalone(): boolean {
   if (!import.meta.client)
     return false
+
   // `standalone` is the non-standard iOS Safari flag for home-screen apps.
   const nav = window.navigator as Navigator & { standalone?: boolean }
   return window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true
@@ -43,6 +44,7 @@ function computeStandalone(): boolean {
 function init(): void {
   if (initialized || !import.meta.client)
     return
+
   initialized = true
 
   isIOS.value = /iphone|ipad|ipod/i.test(window.navigator.userAgent)
@@ -77,6 +79,7 @@ export function usePwa() {
   async function install(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
     if (!deferredPrompt)
       return 'unavailable'
+
     await deferredPrompt.prompt()
     const { outcome } = await deferredPrompt.userChoice
     deferredPrompt = null

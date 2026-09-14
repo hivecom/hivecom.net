@@ -12,6 +12,7 @@ interface PeriodConfig {
   label: string
   hours: number
   bucketMs: number
+
   /**
    * Spans everything ever collected rather than a fixed lookback. `hours` is
    * only the fallback ceiling for when the earliest timestamp isn't known yet.
@@ -98,6 +99,7 @@ function bucketMsForDuration(durationMs: number): number {
     return 3 * hour
   if (durationMs <= 365 * day)
     return day
+
   return 7 * day
 }
 
@@ -194,6 +196,7 @@ async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>) {
     const res = await fetch(bustUrl, { cache: 'no-store' })
     if (!res.ok)
       return null
+
     text = await res.text()
   }
   catch {
@@ -280,6 +283,7 @@ async function coalesceHistory(
   const existing = inflightHistory.get(key)
   if (existing !== undefined)
     return existing
+
   const promise = fetcher().finally(() => inflightHistory.delete(key))
   inflightHistory.set(key, promise)
   return promise
@@ -294,6 +298,7 @@ export const metricsWindow = ref<{ start: Date, end: Date } | null>(null)
 // by period fetches so the brush always shows the full context.
 const metricsOverview = ref<MetricsHistoryEntry[]>([])
 const loadingOverview = ref(false)
+
 // How far back the overview currently reaches. Null until the first fetch.
 let overviewSinceMs: number | null = null
 
@@ -335,9 +340,11 @@ let activeConsumers = 0
 async function refreshSnapshot(): Promise<void> {
   if (metricsClient === null)
     return
+
   const snapshot = await fetchMetricsFromStorage(metricsClient)
   if (snapshot === null)
     return
+
   metrics.value = snapshot
   cacheSnapshot(snapshot)
 }
@@ -393,6 +400,7 @@ async function refreshPeriod(period: MetricsPeriod): Promise<void> {
   metricsCache.set(cacheKey, entries, msUntilNextCollection())
   if (sharedHistoryPeriod === period)
     metricsHistory.value = entries
+
   // Isolated consumers keep their own refs and never observe the shared one,
   // so hand them the entries directly.
   subscription?.listeners.forEach(listener => listener(entries))
@@ -402,6 +410,7 @@ function schedulePeriodRefresh(period: MetricsPeriod): void {
   const subscription = periodSubscriptions.get(period)
   if (subscription === undefined)
     return
+
   if (subscription.timer !== null)
     clearTimeout(subscription.timer)
 
@@ -432,11 +441,13 @@ function subscribePeriod(period: MetricsPeriod, listener?: MetricsRefreshListene
   return () => {
     if (released)
       return
+
     released = true
 
     const current = periodSubscriptions.get(period)
     if (current === undefined)
       return
+
     if (listener !== undefined)
       current.listeners.delete(listener)
     current.consumers--
@@ -485,6 +496,7 @@ export function useDataMetrics() {
   if (_initialCached !== null) {
     metrics.value ??= _initialCached
   }
+
   // Set lastFetchedAt from whatever snapshot is available - cache or already-loaded module ref.
   if (lastFetchedAt.value === null) {
     const source = _initialCached ?? metrics.value
@@ -625,6 +637,7 @@ export function useDataMetrics() {
     const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
     if (cached !== null)
       return cached
+
     try {
       return await fetchWindowEntries(start, end) ?? []
     }
@@ -639,6 +652,7 @@ export function useDataMetrics() {
     const cacheKey = `metrics:history:${period}`
     const entries = await coalesceHistory(cacheKey, async () => {
       const rows = await fetchMetricsHistoryFromDB(supabase, period)
+
       // Caching a failed fetch would pin an empty chart for the whole interval.
       if (rows !== null)
         metricsCache.set(cacheKey, rows, msUntilNextCollection())
@@ -683,6 +697,7 @@ export function useDataMetrics() {
     const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
     if (cached !== null)
       return cached
+
     try {
       return await fetchHistoryEntries(period)
     }
@@ -709,6 +724,7 @@ export function useDataMetrics() {
     })
     if (dbError !== null || data === null)
       return []
+
     const entries = (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
     metricsCache.set(cacheKey, entries, msUntilNextCollection())
     return entries
@@ -717,6 +733,7 @@ export function useDataMetrics() {
   const fetchLatestMetrics = async () => {
     if (latestMetrics.value != null)
       return latestMetrics.value
+
     loadingLatest.value = true
     try {
       const { data, error: dbError } = await supabase
@@ -785,6 +802,7 @@ export function useDataMetrics() {
     const startMs = isReset ? defaultStartMs : Math.min(since.getTime(), defaultStartMs)
     if (!isReset && overviewSinceMs !== null && startMs >= overviewSinceMs)
       return metricsOverview.value
+
     overviewSinceMs = startMs
 
     const start = new Date(startMs)

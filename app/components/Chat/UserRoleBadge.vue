@@ -6,6 +6,7 @@ import { useDataUserSettings } from '@/composables/useDataUserSettings'
 
 const props = defineProps<{
   role: ChannelRole | null
+
   /** Show the icon directly without a Badge wrapper. */
   icon?: boolean
 }>()

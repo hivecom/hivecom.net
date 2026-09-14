@@ -35,6 +35,7 @@ const activeTab = computed<GalleryTab>({
     const t = route.query.tab
     if (t === 'community' || t === 'created')
       return t
+
     return 'official'
   },
   set(value) {
@@ -98,9 +99,11 @@ function galleryPageKey(tab: GalleryTab, page: number, searchValue: string): str
   if (tab === 'community') {
     return `gallery:community:p${page}:q${q}:forks${showForks.value}:sort${communitySort.value}`
   }
+
   // created tab - user-specific, keyed by userId so different users don't share entries
   if (!userId.value)
     return null
+
   return `gallery:created:p${page}:q${q}:uid${userId.value}`
 }
 
@@ -136,12 +139,14 @@ async function fetchPage(tab: GalleryTab, page: number, searchValue: string) {
       case 'official':
         query = query.eq('is_official', true)
         break
+
       case 'community':
         query = query.eq('is_official', false).not('created_by', 'is', null)
         if (!showForks.value) {
           query = query.is('forked_from', null)
         }
         break
+
       case 'created':
         if (!userId.value) {
           items.value = []
@@ -232,6 +237,7 @@ const defaultCardMatchesSearch = computed(() => {
   const q = search.value.trim().toLowerCase()
   if (!q)
     return true
+
   return 'default theme'.includes(q) || 'the tried and tested default skin/theme of hivecom'.includes(q)
 })
 
@@ -298,6 +304,7 @@ onMounted(() => {
 watch(() => activeTheme.value?.id, (newId, oldId) => {
   if (activeTab.value !== 'official')
     return
+
   const affectsVisibility
     = items.value.some(t => t.id === newId && t.is_unmaintained)
       || items.value.some(t => t.id === oldId && t.is_unmaintained)

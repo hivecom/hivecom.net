@@ -36,6 +36,7 @@ const displayUsers = computed(() => {
 function userStyle(name: string) {
   if (name !== nick.value && settings.value.chat_colored_nicks)
     return { color: nickColor(name) }
+
   return undefined
 }
 
@@ -52,6 +53,7 @@ const canModerate = computed(() => {
   const ch = activeName.value
   if (!ch)
     return false
+
   const r = myChannelRole(ch)
   return r !== null && MOD_SYMBOLS.has(r.symbol)
 })

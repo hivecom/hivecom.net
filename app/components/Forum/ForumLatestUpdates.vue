@@ -12,6 +12,7 @@ const props = defineProps<{
   loading: boolean
   latestPosts: ActivityItem[]
   postSinceYesterday: number
+
   /**
    * Authoritative server-side count of new forum activity since the user's
    * last visit, excluding their own posts. Drives the "since last visit"
@@ -53,6 +54,7 @@ const isMobile = useBreakpoint('<s')
 const carouselPosts = computed<ActivityItem[]>(() => {
   if (userId.value == null)
     return props.latestPosts
+
   return props.latestPosts.filter(post => post.user !== userId.value)
 })
 
@@ -60,6 +62,7 @@ const carouselPosts = computed<ActivityItem[]>(() => {
 const visitedAt = computed<number | null>(() => {
   if (props.lastVisitedAt == null)
     return null
+
   return new Date(props.lastVisitedAt).getTime()
 })
 
@@ -73,11 +76,13 @@ const carouselSlice = computed<ActivityItem[]>(() => carouselPosts.value.slice(0
 const splitIndex = computed<number | null>(() => {
   if (visitedAt.value == null || props.loading)
     return null
+
   const idx = carouselSlice.value.findIndex(
     post => new Date(post.timestampRaw).getTime() <= visitedAt.value!,
   )
   if (idx <= 0 || idx >= carouselSlice.value.length)
     return null
+
   return idx
 })
 
@@ -91,6 +96,7 @@ const newSinceLastVisit = computed<number>(() => {
     return 0
   if (props.postsSinceLastVisit != null)
     return props.postsSinceLastVisit
+
   return carouselSlice.value.filter(
     post => new Date(post.timestampRaw).getTime() > visitedAt.value!,
   ).length
@@ -133,11 +139,13 @@ const {
 const sheetSplitIndex = computed<number | null>(() => {
   if (visitedAt.value == null || sheetLoading.value)
     return null
+
   const idx = sheetItems.value.findIndex(
     item => new Date(item.timestampRaw).getTime() <= visitedAt.value!,
   )
   if (idx <= 0 || idx >= sheetItems.value.length)
     return null
+
   return idx
 })
 
@@ -149,6 +157,7 @@ const sheetTrailingDivider = computed<boolean>(() => {
     return false
   if (sheetItems.value.length === 0)
     return false
+
   // All items are newer than the visit boundary
   const allNewer = sheetItems.value.every(
     item => new Date(item.timestampRaw).getTime() > visitedAt.value!,
@@ -216,6 +225,7 @@ async function ensureSheetLoaded() {
       )
       if (idx !== -1)
         break
+
       await loadMore()
     }
   }
@@ -224,6 +234,7 @@ async function ensureSheetLoaded() {
 async function ensureMineLoaded() {
   if (mineItems.value.length > 0 || mineExhausted.value)
     return
+
   await loadMine()
 }
 
@@ -238,6 +249,7 @@ async function reloadSheet() {
       )
       if (idx !== -1)
         break
+
       await loadMore()
     }
   }

@@ -35,6 +35,7 @@ const { params: perfParams } = useGlobePerf()
 // Current accent color as a [r, g, b] vec normalized to 0..1
 let baseColor: [number, number, number] = [0.655, 0.988, 0.184] // #a7fc2f fallback
 let altColor: [number, number, number] = [0.5, 0.92, 0.32]
+
 // Whether we've successfully read a real accent color from CSS vars yet.
 // If not, we retry each frame until the theme is applied.
 let accentResolved = false
@@ -46,6 +47,7 @@ function cssVar(name: string): string {
 function toVec3(color: string): [number, number, number] | null {
   if (color === '')
     return null
+
   const [r, g, b] = parseColor(color)
   return [r / 255, g / 255, b / 255]
 }
@@ -73,6 +75,7 @@ function readAccentColors() {
   const parsed = toVec3(rawAccent)
   if (parsed == null)
     return
+
   baseColor = parsed
   const raisedParsed = toVec3(rawRaised)
   altColor = blendVec3(baseColor, raisedParsed ?? baseColor, 0.35)
@@ -83,6 +86,7 @@ function createShader(context: WebGLRenderingContext, type: number, source: stri
   const shader = context.createShader(type)
   if (!shader)
     return null
+
   context.shaderSource(shader, source)
   context.compileShader(shader)
   if (!context.getShaderParameter(shader, context.COMPILE_STATUS)) {
@@ -98,9 +102,11 @@ function createProgram(context: WebGLRenderingContext, vert: string, frag: strin
   const fs = createShader(context, context.FRAGMENT_SHADER, frag)
   if (!vs || !fs)
     return null
+
   const prog = context.createProgram()
   if (!prog)
     return null
+
   context.attachShader(prog, vs)
   context.attachShader(prog, fs)
   context.linkProgram(prog)
@@ -117,6 +123,7 @@ function createProgram(context: WebGLRenderingContext, vert: string, frag: strin
 function resize() {
   if (!canvasEl.value || !gl)
     return
+
   const { width, height } = canvasEl.value.getBoundingClientRect()
   const dpr = (window.devicePixelRatio || 1) * perfParams.value.bgResScale
   const w = Math.max(1, Math.floor(width * dpr))
@@ -131,8 +138,10 @@ function resize() {
 function render(now: number) {
   if (!gl || !program || !canvasEl.value)
     return
+
   if (!lastFrame)
     lastFrame = now
+
   animTime += ((now - lastFrame) / 1000) * props.speed
   lastFrame = now
   const t = animTime + timeOffset
@@ -253,6 +262,7 @@ function handleContextRestored() {
 onMounted(() => {
   if (!import.meta.client)
     return
+
   const canvas = canvasEl.value
   if (!canvas)
     return

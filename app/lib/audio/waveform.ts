@@ -28,6 +28,7 @@ function analyze(buffer: AudioBuffer): WaveformData {
   const length = buffer.length
   const peaks = new Float32Array(BARS)
   const samplesPerBar = length / BARS
+
   // Hoist the channel views out of the loop; getChannelData is cheap but no
   // reason to call it per bar.
   const data: Float32Array[] = []
@@ -39,6 +40,7 @@ function analyze(buffer: AudioBuffer): WaveformData {
     const start = Math.floor(bar * samplesPerBar)
     const end = Math.min(length, Math.floor((bar + 1) * samplesPerBar))
     let peak = 0
+
     // Loudest sample in the window across every channel, so a hard-panned hit
     // reads as loud as a centered one.
     for (let c = 0; c < channels; c++) {

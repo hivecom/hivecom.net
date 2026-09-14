@@ -36,6 +36,7 @@ const container = computed((): GameserverWithContainer['container'] => {
   const gs = gameserver.value
   if (!gs)
     return null
+
   const cached = getGameserverById(gs.id)
   return cached?.container ?? null
 })
@@ -148,6 +149,7 @@ const displayError = computed(() => {
     return 'This game server was not found. It may have been removed or never existed.'
   if (error.value)
     return 'Unable to load game server details. Please try again later.'
+
   return null
 })
 
@@ -155,6 +157,7 @@ const displayError = computed(() => {
 const displayErrorDetail = computed(() => {
   if (error.value === 'Gameserver not found')
     return undefined
+
   return error.value ?? undefined
 })
 

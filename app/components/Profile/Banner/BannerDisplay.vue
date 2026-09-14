@@ -9,11 +9,13 @@ const props = defineProps<{
    * The display data for the post author. When null the component renders nothing.
    */
   user: UserDisplayData | null
+
   /**
    * When true, suppresses the default top padding so the banner sits flush
    * inside a container that already provides its own spacing (e.g. mobile footer).
    */
   flush?: boolean
+
   /**
    * When true, treats the banner as hovered from an external source (e.g. the
    * parent reply row is hovered). This allows the parent to drive the reveal
@@ -43,6 +45,7 @@ const isVideoBanner = computed(() => bannerExtension.value === 'webm')
 const bannerUrl = computed<string | null>(() => {
   if (!props.user?.has_banner || !props.user.id)
     return null
+
   const ext = bannerExtension.value
   const { data } = supabase.storage
     .from(USERS_BUCKET_ID)
@@ -79,6 +82,7 @@ function onTouchStart(e: TouchEvent) {
   const t = e.touches[0]
   if (!t)
     return
+
   touchStartX.value = t.clientX
   touchStartY.value = t.clientY
 }
@@ -87,8 +91,10 @@ function onTouchEnd(e: TouchEvent) {
   const t = e.changedTouches[0]
   if (!t)
     return
+
   const dx = Math.abs(t.clientX - touchStartX.value)
   const dy = Math.abs(t.clientY - touchStartY.value)
+
   // Only treat as a tap if the finger barely moved (not a scroll)
   if (dx < 10 && dy < 10) {
     e.preventDefault()

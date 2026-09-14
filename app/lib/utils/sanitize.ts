@@ -31,10 +31,13 @@ export function stripHtmlTags(input: string): string {
   return input
     // Remove HTML comments
     .replace(HTML_COMMENT_RE, '')
+
     // Remove script and style tags with their content
     .replace(SCRIPT_STYLE_RE, '')
+
     // Remove all other HTML tags but keep their content
     .replace(HTML_TAG_RE, '')
+
     // Decode common HTML entities
     .replace(AMP_RE, '&')
     .replace(LT_RE, '<')
@@ -43,6 +46,7 @@ export function stripHtmlTags(input: string): string {
     .replace(APOS_RE, '\'')
     .replace(SLASH_RE, '/')
     .replace(NBSP_RE, ' ')
+
     // Clean up extra whitespace while preserving newlines
     .replace(INLINE_SPACE_RE, ' ')
     .replace(MULTI_NEWLINE_RE, '\n\n')

@@ -11,6 +11,7 @@ function submitJoin() {
   const name = channelInput.value.trim()
   if (!name)
     return
+
   const target = name.startsWith('#') ? name : `#${name}`
   joinChannel(target)
   channelInput.value = ''

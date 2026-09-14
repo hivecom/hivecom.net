@@ -85,6 +85,7 @@ export default defineNuxtPlugin(() => {
     const username = currentUsername.value
     if (token === '' || username === '')
       return null
+
     return { username, token }
   })
 
@@ -96,6 +97,7 @@ export default defineNuxtPlugin(() => {
     ({ auto, username, uid }) => {
       if (autoConnected || !auto || uid == null || username === '')
         return
+
       if (connState.value === 'disconnected') {
         autoConnected = true
         void connect(true)

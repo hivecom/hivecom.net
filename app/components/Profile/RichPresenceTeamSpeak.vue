@@ -16,6 +16,7 @@ interface Props {
   hideOnlineIndicator?: boolean
   iconSize?: number
   useAccentColor?: boolean
+
   /** When provided, skips the internal fetch and uses this data directly. */
   presences?: PresenceRow[] | null
 }
@@ -117,9 +118,11 @@ const visible = ref(false)
 function formatLastSeen(lastSeenAt: string | null): string {
   if (!lastSeenAt)
     return 'Unknown'
+
   const date = new Date(lastSeenAt)
   if (Number.isNaN(date.getTime()))
     return 'Unknown'
+
   return fullDateTime(date)
 }
 </script>

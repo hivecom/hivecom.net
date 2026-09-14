@@ -143,6 +143,7 @@ const isValid = computed(() =>
 const isRemovingChoices = computed(() => {
   if (!isEditing.value || !props.editedItem)
     return false
+
   return props.editedItem.choices.some(c => !form.value.choices.includes(c))
 })
 

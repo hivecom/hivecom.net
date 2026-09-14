@@ -56,6 +56,7 @@ function onGroupLeave() {
   const overlay = overlayRef.value
   if (!overlay)
     return
+
   overlay.style.opacity = '0'
   overlayVisible = false
 }

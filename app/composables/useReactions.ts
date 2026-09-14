@@ -13,15 +13,18 @@ export interface UseReactionsOptions {
    * The table this reaction set belongs to.
    */
   table: ReactableTable
+
   /**
    * The UUID of the row being reacted to.
    */
   rowId: Ref<string | null | undefined> | string | null | undefined
+
   /**
    * The initial raw reactions JSONB from the already-fetched row.
    * The composable keeps a local copy and updates it optimistically.
    */
   initialReactions?: Ref<unknown> | unknown
+
   /**
    * Provider keys to surface in displayReactions.
    * Defaults to all providers present in the raw object.
@@ -173,6 +176,7 @@ export function useReactions(options: UseReactionsOptions) {
     const uid = userId.value
     if (uid == null || uid === '')
       return false
+
     const reactors = rawReactions.value[provider]?.[emote]
     return Array.isArray(reactors) && reactors.includes(uid)
   }

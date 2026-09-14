@@ -29,6 +29,7 @@ const showOperatorsOnlyNote = computed(() => {
   const buf = activeBuffer.value
   if (buf?.kind !== 'channel' || !buf.modes?.has('u'))
     return false
+
   const role = myChannelRole(buf.name)
   return !role || !OPERATOR_PREFIXES.has(role.symbol)
 })
@@ -74,6 +75,7 @@ function mention(name: string) {
 function userStyle(name: string) {
   if (name !== nick.value && settings.value.chat_colored_nicks)
     return { color: nickColor(name) }
+
   return undefined
 }
 
@@ -112,6 +114,7 @@ function onTouchStart(event: TouchEvent) {
   const touch = event.touches[0]
   if (!touch)
     return
+
   _touchStartX = touch.clientX
   _touchStartY = touch.clientY
 
@@ -137,9 +140,11 @@ function cancelLongPress() {
 function onTouchMove(event: TouchEvent) {
   if (_longPressTimer === null)
     return
+
   const touch = event.touches[0]
   if (!touch)
     return
+
   if (Math.abs(touch.clientX - _touchStartX) > LONG_PRESS_SLOP
     || Math.abs(touch.clientY - _touchStartY) > LONG_PRESS_SLOP) {
     cancelLongPress()
@@ -159,6 +164,7 @@ function onContextMenu(event: MouseEvent) {
 function closeMenu() {
   if (!import.meta.client)
     return
+
   mobileMenuOpen.value = false
   setTimeout(() => {
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))

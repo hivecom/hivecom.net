@@ -32,6 +32,7 @@ export function useAdminTabs<T extends string = string>(
       return val
     if (Array.isArray(val) && typeof val[0] === 'string')
       return val[0]
+
     return ''
   }
 

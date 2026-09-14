@@ -175,6 +175,7 @@ const localChartOptions: ChartOptions<'line'> = {
         maxRotation: 0,
         callback(val, index) {
           const label = this.getLabelForValue(index)
+
           // label is 'MMM YYYY' e.g. 'Apr 2025' - shorten to 'Apr '25'
           const parts = label.split(' ')
           const [month, year] = parts
@@ -219,10 +220,12 @@ const momGrowth = computed(() => {
   const data = monthlyData.value
   if (data.length < 2)
     return null
+
   const prev = data[data.length - 2]!.totalUsers
   const curr = data[data.length - 1]!.totalUsers
   if (prev === 0)
     return null
+
   return Math.round(((curr - prev) / prev) * 100)
 })
 
@@ -230,6 +233,7 @@ const currentDiff = computed(() => {
   const data = monthlyData.value
   if (data.length < 2)
     return null
+
   return data[data.length - 1]!.totalUsers - data[data.length - 2]!.totalUsers
 })
 

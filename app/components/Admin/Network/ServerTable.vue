@@ -51,6 +51,7 @@ function getServerStatus(server: Server): 'active' | 'inactive' | 'inaccessible'
     return 'inactive'
   if (server.docker_control && !server.accessible)
     return 'inaccessible'
+
   return 'active'
 }
 
@@ -81,6 +82,7 @@ const {
     const { data, error } = await supabase.from('network_servers').select('*')
     if (error)
       throw error
+
     return data ?? []
   },
   transform: server => ({
@@ -132,6 +134,7 @@ async function handleServerSave(serverData: TablesInsert<'network_servers'> | Ta
           modified_by: userId.value ?? null,
         })
         .eq('id', selectedServer.value.id)
+
       if (error)
         throw error
     }
@@ -148,10 +151,13 @@ async function handleServerSave(serverData: TablesInsert<'network_servers'> | Ta
         modified_at: new Date().toISOString(),
       }
       const { error } = await supabase.from('network_servers').insert([createData])
+
       if (error)
         throw error
     }
+
     showServerForm.value = false
+
     await fetchServers()
   }
   catch (err: unknown) {
@@ -164,6 +170,7 @@ async function handleServerDelete(serverId: number) {
     const { error } = await supabase.from('network_servers').delete().eq('id', serverId)
     if (error)
       throw error
+
     showServerForm.value = false
     await fetchServers()
   }

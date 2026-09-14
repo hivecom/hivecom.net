@@ -21,6 +21,7 @@ const redirectTarget = computed(() => {
   const redirectParam = route.query.redirect
   if (typeof redirectParam === 'string' && redirectParam.startsWith('/'))
     return redirectParam
+
   return '/profile/settings'
 })
 
@@ -29,6 +30,7 @@ function errorMessageOf(error: unknown): string {
     return error.message
   if (typeof error === 'string')
     return error
+
   return ''
 }
 
@@ -42,6 +44,7 @@ function friendlyLinkError(error: unknown): string {
     return LINK_SESSION_EXPIRED_MESSAGE
   if (/already linked|duplicate|23505/i.test(message))
     return LINK_ALREADY_USED_MESSAGE
+
   return message || GENERIC_LINK_ERROR_MESSAGE
 }
 
@@ -138,6 +141,7 @@ async function resolveOAuthSession() {
     const { error } = await supabase.auth.exchangeCodeForSession(href)
     if (error)
       throw error
+
     return
   }
 

@@ -77,6 +77,7 @@ const sortedBadges = computed(() => {
     const tierDiff = (TIER_RANK[a.tier] ?? 99) - (TIER_RANK[b.tier] ?? 99)
     if (tierDiff !== 0)
       return tierDiff
+
     const aOrder = BADGE_CATALOG[a.slug as keyof typeof BADGE_CATALOG]?.sortOrder ?? 99
     const bOrder = BADGE_CATALOG[b.slug as keyof typeof BADGE_CATALOG]?.sortOrder ?? 99
     return aOrder - bOrder
@@ -208,6 +209,7 @@ watch(() => userAction.value, (action) => {
     // If it's an edit action, emit edit event - let parent handle closing
     if (action.type === 'edit') {
       emit('edit', props.user)
+
       // Remove: isOpen.value = false - let parent handle this
       return
     }
@@ -225,6 +227,7 @@ watch(() => props.user, async (newUser) => {
   if (newUser?.id) {
     avatarUrl.value = null
     avatarUrl.value = await getUserAvatarUrl(supabase, newUser.id)
+
     // Refetch friends data when user changes
     await refetchFriendships()
   }
@@ -237,6 +240,7 @@ watch(() => props.user, async (newUser) => {
 const hasActiveBan = computed(() => {
   if (!props.user)
     return false
+
   return isBanActive(props.user.banned, props.user.ban_end)
 })
 
@@ -247,6 +251,7 @@ const userStatus = computed(() => (hasActiveBan.value ? 'banned' : 'active'))
 const activityStatus = computed(() => {
   if (!props.user?.last_seen)
     return null
+
   return getUserActivityStatus(props.user.last_seen)
 })
 

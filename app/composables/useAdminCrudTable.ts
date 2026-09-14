@@ -163,6 +163,7 @@ export function useAdminCrudTable<
     return Object.values(row).some((v) => {
       if (v == null)
         return false
+
       return String(v).toLowerCase().includes(term)
     })
   }
@@ -245,6 +246,7 @@ export function useAdminCrudTable<
         return
       if (route.query[resolvedParamKey] == null)
         return
+
       const rest = { ...route.query }
       delete rest[resolvedParamKey]
       void router.replace({ query: rest })
@@ -256,6 +258,7 @@ export function useAdminCrudTable<
       ([id, isLoading]) => {
         if (isLoading || id === null)
           return
+
         const match = items.value.find(item => item.id === id)
         if (match)
           viewItem(match)

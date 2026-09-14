@@ -28,14 +28,17 @@ export interface CacheEntry<T = unknown> {
 export interface CacheConfig {
   /** Default TTL in milliseconds. Default: 5 minutes. */
   ttl?: number
+
   /** Cleanup interval in milliseconds. Default: 30 seconds. */
   cleanupInterval?: number
+
   /**
    * Namespace prefix for localStorage keys. Should end with ':'.
    * KV entries land at `${prefix}kv:${key}`, query entries at `${prefix}q:${hash}`.
    * Default: 'hivecom:cache:'.
    */
   storagePrefix?: string
+
   /**
    * Maximum number of entries allowed in the kv namespace.
    * When the limit is reached during cleanup, or when a write fails due to
@@ -115,10 +118,12 @@ function lastAccessedOf(fullKey: string, entry: CacheEntry): number {
 function lsGet<T>(prefix: string, key: string): CacheEntry<T> | null {
   if (typeof window === 'undefined')
     return null
+
   try {
     const raw = window.localStorage.getItem(`${prefix}${key}`)
     if (raw == null)
       return null
+
     return JSON.parse(raw) as CacheEntry<T>
   }
   catch {
@@ -163,6 +168,7 @@ function lsSet<T>(
 function lsDelete(prefix: string, key: string): boolean {
   if (typeof window === 'undefined')
     return false
+
   const fullKey = `${prefix}${key}`
   const had = window.localStorage.getItem(fullKey) != null
   window.localStorage.removeItem(fullKey)
@@ -177,6 +183,7 @@ function lsDelete(prefix: string, key: string): boolean {
 function lsKeys(prefix: string): string[] {
   if (typeof window === 'undefined')
     return []
+
   const keys: string[] = []
   for (let i = 0; i < window.localStorage.length; i++) {
     const fullKey = window.localStorage.key(i)
@@ -189,6 +196,7 @@ function lsKeys(prefix: string): string[] {
 function lsClearPrefix(prefix: string): void {
   if (typeof window === 'undefined')
     return
+
   const keysToRemove: string[] = []
   for (let i = 0; i < window.localStorage.length; i++) {
     const k = window.localStorage.key(i)
@@ -204,6 +212,7 @@ function lsClearPrefix(prefix: string): void {
 function lsSize(prefix: string): number {
   if (typeof window === 'undefined')
     return 0
+
   let count = 0
   for (let i = 0; i < window.localStorage.length; i++) {
     const k = window.localStorage.key(i)
@@ -324,6 +333,7 @@ function cleanupAll(): void {
 function initializeCleanup(interval: number): void {
   if (cleanupTimer !== null)
     return
+
   if (typeof window !== 'undefined') {
     cleanupTimer = window.setInterval(cleanupAll, interval)
   }
@@ -359,6 +369,7 @@ function generateQueryHash(query: QueryCacheKey): string {
     single: query.single ?? false,
     maybeSingle: query.maybeSingle ?? false,
   }
+
   // encodeURIComponent ensures non-Latin1 characters (emoji, Unicode usernames
   // in filter values) are ASCII-safe before btoa encodes the string.
   return btoa(encodeURIComponent(JSON.stringify(normalizedQuery)))
@@ -411,6 +422,7 @@ export function useCache(config: CacheConfig = {}) {
     const entry = lsGet(kvPrefix, key)
     if (entry == null)
       return false
+
     if (!isEntryValid(entry)) {
       lsDelete(kvPrefix, key)
       return false
@@ -427,6 +439,7 @@ export function useCache(config: CacheConfig = {}) {
 
   function cacheQuery<T>(query: QueryCacheKey, data: T, customTtl?: number): void {
     const hash = generateQueryHash(query)
+
     // Query entries tend to be small; evict at a generous cap if quota is hit
     lsSet(qPrefix, hash, { data, timestamp: Date.now(), ttl: customTtl ?? ttl }, maxEntries)
   }
@@ -453,6 +466,7 @@ export function useCache(config: CacheConfig = {}) {
     const entry = lsGet(qPrefix, hash)
     if (entry == null)
       return false
+
     if (!isEntryValid(entry)) {
       lsDelete(qPrefix, hash)
       return false
@@ -581,6 +595,11 @@ export function useCachedFetch<T = unknown>(
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  // True only while we have nothing to show yet. Background refreshes keep
+  // `loading` true but leave this false, so views can hold the current data
+  // instead of flashing a placeholder and coming back with the same values.
+  const initialLoading = computed(() => loading.value && data.value === null)
+
   function resolvedQuery(): QueryCacheKey | null {
     return toValue(query)
   }
@@ -607,32 +626,41 @@ export function useCachedFetch<T = unknown>(
             case 'eq':
               queryBuilder = queryBuilder.eq(key, value)
               break
+
             case 'ilike':
               queryBuilder = queryBuilder.ilike(key, value as string)
               break
+
             case 'neq':
               queryBuilder = queryBuilder.neq(key, value)
               break
+
             case 'gt':
               queryBuilder = queryBuilder.gt(key, value)
               break
+
             case 'gte':
               queryBuilder = queryBuilder.gte(key, value)
               break
+
             case 'lt':
               queryBuilder = queryBuilder.lt(key, value)
               break
+
             case 'lte':
               queryBuilder = queryBuilder.lte(key, value)
               break
+
             case 'in':
               if (Array.isArray(value))
                 queryBuilder = queryBuilder.in(key, value)
               break
+
             case 'is':
               if (value === null || typeof value === 'boolean')
                 queryBuilder = queryBuilder.is(key, value)
               break
+
             default:
               queryBuilder = queryBuilder.eq(key, value)
           }
@@ -769,9 +797,11 @@ export function useCachedFetch<T = unknown>(
       return
     if (!event.key?.startsWith(_qPrefix))
       return
+
     const q = resolvedQuery()
     if (!q || !isEnabled())
       return
+
     if (event.key === `${_qPrefix}${generateQueryHash(q)}`)
       void fetch(true)
   }
@@ -787,6 +817,7 @@ export function useCachedFetch<T = unknown>(
   return {
     data: readonly(data),
     loading: readonly(loading),
+    initialLoading,
     error: readonly(error),
     fetch,
     refetch,

@@ -28,6 +28,7 @@ onMounted(() => {
     const el = inputComp.value?.getEl()
     if (!el)
       return
+
     if (isModernMode.value)
       el.style.removeProperty('--irc-input-font')
     else
@@ -54,6 +55,7 @@ const placeholder = computed(() => {
     return 'Join a channel to chat...'
   if (activeBuffer.value?.kind === 'server')
     return 'Type a /command (e.g. /join #channel)...'
+
   return `Message ${activeName.value}...`
 })
 
@@ -71,6 +73,7 @@ function onFilesPicked(event: Event) {
   const input = event.target as HTMLInputElement
   if (input.files?.length)
     addAttachments(input.files)
+
   // Reset so picking the same file again still fires change.
   input.value = ''
 }
@@ -146,6 +149,7 @@ const suggestions = computed<Suggestion[]>(() => {
       if (!channelList.value.length && !channelListLoading.value)
         listChannels()
       const joinedNames = new Set(buffers.value.filter(b => b.kind === 'channel' && b.joined).map(b => b.name.toLowerCase()))
+
       // Prefer channel list (from browser) if populated; otherwise fall back to all buffered channels.
       if (channelList.value.length) {
         return channelList.value
@@ -158,6 +162,7 @@ const suggestions = computed<Suggestion[]>(() => {
         .slice(0, MAX_SUGGESTIONS)
         .map(b => ({ value: b.name, label: b.name, hint: b.topic, colored: false }))
     }
+
     // General #channel reference: merge buffers + channelList, dedupe, sort alphabetically.
     const seen = new Set<string>()
     const merged: Suggestion[] = []
@@ -189,6 +194,7 @@ const triggerIcon = computed(() => {
     return 'ph:terminal-window'
   if (mode.value === 'channel')
     return 'ph:hash'
+
   return 'ph:at'
 })
 
@@ -236,6 +242,7 @@ function onInput() {
 function accept(item: Suggestion) {
   if (triggerStart.value < 0)
     return
+
   const caret = getCaret().end
   const before = inputMessage.value.slice(0, triggerStart.value)
   const after = inputMessage.value.slice(caret)
@@ -272,6 +279,7 @@ const selEnd = ref(-1)
 const colorPickerOpen = ref(false)
 const colorButtonRef = ref<HTMLElement | null>(null)
 const formatToolbarRef = ref<HTMLElement | null>(null)
+
 // Where the float toolbar sits, in pixels relative to the field (its offset
 // parent). Null falls back to the default "above the whole field, left-aligned".
 const formatPos = ref<{ left: number, top: number } | null>(null)
@@ -311,6 +319,7 @@ function updateFormatPos() {
     return
   }
   const f = field.getBoundingClientRect()
+
   // The toolbar is centered (translateX(-50%)); clamp its center so its edges
   // stay inside the field. Width is 0 until it's first rendered, then refines.
   const halfW = (formatToolbarRef.value?.offsetWidth ?? 0) / 2
@@ -327,6 +336,7 @@ function syncSelection() {
   const { start, end } = getCaret()
   selStart.value = start
   selEnd.value = end
+
   // Selection collapsed (toolbar will hide) - drop any open color picker so it
   // doesn't auto-reopen the next time text is selected.
   if (selEnd.value <= selStart.value) {
@@ -334,6 +344,7 @@ function syncSelection() {
     formatPos.value = null
     return
   }
+
   // Position now, then again after the toolbar renders so its measured width
   // feeds the clamp on the first selection too.
   updateFormatPos()
@@ -356,6 +367,7 @@ function wrapSelection(before: string, after: string) {
   const end = selEnd.value
   if (start < 0)
     return
+
   const value = inputMessage.value
   const wrappedBefore = start >= before.length && value.slice(start - before.length, start) === before
   const wrappedAfter = value.slice(end, end + after.length) === after
@@ -372,6 +384,7 @@ function wrapSelection(before: string, after: string) {
       nextTick(() => setCaret(ns, ne))
       return
     }
+
     // Toggle on: wrap and reselect the inner text so formats can be stacked.
     inputMessage.value = value.slice(0, start) + before + selected + after + value.slice(end)
     const innerStart = start + before.length
@@ -390,6 +403,7 @@ function wrapSelection(before: string, after: string) {
       nextTick(() => setCaret(caret))
       return
     }
+
     // Collapsed caret (e.g. a keybind with no selection): insert an empty pair
     // and drop the caret between the markers so the user can type inside.
     inputMessage.value = value.slice(0, start) + before + after + value.slice(start)
@@ -437,6 +451,7 @@ function formatKeybind(fn: () => void) {
 function handleFormatKeybind(event: KeyboardEvent): boolean {
   if ((!event.ctrlKey && !event.metaKey) || event.altKey)
     return false
+
   const k = event.key.toLowerCase()
   let fn: (() => void) | undefined
   if (event.shiftKey) {
@@ -456,6 +471,7 @@ function handleFormatKeybind(event: KeyboardEvent): boolean {
   }
   if (!fn)
     return false
+
   // Stop the browser's native contenteditable bold/italic/underline.
   event.preventDefault()
   formatKeybind(fn)
@@ -494,6 +510,7 @@ function tabComplete(event: KeyboardEvent) {
     const partial = value.slice(wordStart, wordEnd).replace(/^[@#]/, '').toLowerCase()
     if (!partial)
       return
+
     const matches = hasHash
       ? buffers.value
           .filter(b => b.kind === 'channel' && b.name.toLowerCase().slice(1).startsWith(partial))
@@ -503,6 +520,7 @@ function tabComplete(event: KeyboardEvent) {
           .map(u => u.name)
     if (!matches.length)
       return
+
     tabCycle = { matches, index: 0, wordStart, wordEnd, hasAt, hasHash }
   }
 
@@ -540,6 +558,7 @@ const HISTORY_LIMIT = 100
 const drafts = new Map<string, string>()
 const histories = new Map<string, string[]>()
 const historyIndex = ref(-1)
+
 // In-progress text stashed when the user starts walking history with ArrowUp.
 const historyDraft = ref('')
 
@@ -560,6 +579,7 @@ function getHistory(): string[] {
 function flushDrafts() {
   if (!import.meta.client)
     return
+
   const obj: Record<string, string> = {}
   for (const [k, v] of drafts) {
     if (v)
@@ -572,6 +592,7 @@ let _persistDraftsTimer: ReturnType<typeof setTimeout> | null = null
 function persistDrafts() {
   if (!import.meta.client)
     return
+
   if (_persistDraftsTimer !== null)
     clearTimeout(_persistDraftsTimer)
   _persistDraftsTimer = setTimeout(() => {
@@ -583,6 +604,7 @@ function persistDrafts() {
 function persistHistory() {
   if (!import.meta.client)
     return
+
   const obj: Record<string, string[]> = {}
   for (const [k, v] of histories) {
     if (v.length)
@@ -603,6 +625,7 @@ function saveDraft(name: string, value: string) {
 onMounted(() => {
   if (!import.meta.client)
     return
+
   try {
     const d = JSON.parse(localStorage.getItem(DRAFTS_KEY) ?? '{}')
     for (const [k, v] of Object.entries(d)) {
@@ -619,6 +642,7 @@ onMounted(() => {
     }
   }
   catch {}
+
   // Restore the draft for whichever buffer is active on load.
   const initial = drafts.get(bufKey())
   if (initial)
@@ -639,11 +663,14 @@ onUnmounted(() => {
 // 500ms debounce before the first 'active' send in each burst; prevents sending
 // for quick corrections the user immediately deletes.
 let _activeDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
 // 4s idle timer that sends 'paused' after the user stops typing.
 let _pauseTimer: ReturnType<typeof setTimeout> | null = null
+
 // True once 'active' has been sent for the current burst. Lets subsequent
 // keystrokes go straight to the composable's 3s throttle without re-debouncing.
 let _typingSessionActive = false
+
 // Set true just before sendMessage() clears the input so the watcher below
 // doesn't mistake the programmatic clear for the user wiping the field.
 let _skipTypingDone = false
@@ -672,11 +699,13 @@ watch(inputMessage, (newVal, oldVal) => {
     return
   }
   _skipTypingDone = false
+
   // Slash commands are not user messages - don't advertise typing.
   if (!settings.value.chat_typing_indicators || newVal.startsWith('/')) {
     clearTypingTimers()
     return
   }
+
   // Reset the 4s idle timer on every keystroke.
   if (_pauseTimer !== null) {
     clearTimeout(_pauseTimer)
@@ -699,6 +728,7 @@ watch(inputMessage, (newVal, oldVal) => {
       _activeDebounceTimer = null
       if (!inputMessage.value || inputMessage.value.startsWith('/') || !settings.value.chat_typing_indicators)
         return
+
       _typingSessionActive = true
       sendTyping('active')
     }, 500)
@@ -723,9 +753,11 @@ async function sendWithHistory() {
   if (attachments.value.length) {
     if (attachmentsUploading.value)
       return
+
     const urls = await uploadAttachments()
     if (!urls)
       return
+
     const base = inputMessage.value.trim()
     inputMessage.value = base ? `${base} ${urls.join(' ')}` : urls.join(' ')
     clearAttachments()
@@ -749,6 +781,7 @@ async function sendWithHistory() {
   if (msg)
     pushHistory(msg)
   sendMessage()
+
   // Sending clears the read markers - the user is caught up on this buffer.
   markBufferRead(activeName.value)
   historyIndex.value = -1
@@ -768,15 +801,18 @@ function onKeydown(event: KeyboardEvent) {
         event.preventDefault()
         activeIndex.value = (activeIndex.value + 1) % suggestions.value.length
         return
+
       case 'ArrowUp':
         event.preventDefault()
         activeIndex.value = (activeIndex.value - 1 + suggestions.value.length) % suggestions.value.length
         return
+
       case 'Enter':
       case 'Tab':
         event.preventDefault()
         accept(suggestions.value[activeIndex.value]!)
         return
+
       case 'Escape':
         event.preventDefault()
         closeSuggestions()
@@ -804,6 +840,7 @@ function onKeydown(event: KeyboardEvent) {
     const hist = getHistory()
     if (!hist.length)
       return
+
     event.preventDefault()
     if (historyIndex.value === -1)
       historyDraft.value = inputMessage.value
@@ -822,6 +859,7 @@ function onKeydown(event: KeyboardEvent) {
     }
     if (historyIndex.value === -1)
       return
+
     event.preventDefault()
     historyIndex.value--
     const hist = getHistory()
@@ -834,6 +872,7 @@ function onKeydown(event: KeyboardEvent) {
 function userStyle(name: string) {
   if (settings.value.chat_colored_nicks)
     return { color: nickColor(name) }
+
   return undefined
 }
 

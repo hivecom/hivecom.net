@@ -14,6 +14,7 @@ const reactions = computed<DisplayReaction[]>(() => {
   const raw = props.message.reactions
   if (!raw)
     return []
+
   return Object.entries(raw)
     .filter(([, reactors]) => reactors.length > 0)
     .map(([content, reactors]) => ({

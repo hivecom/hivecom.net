@@ -6,18 +6,25 @@
 export interface ScanPassUniforms {
   /** Distortion intensity. */
   strength: number
+
   /** Band scroll speed (fraction of screen per second). */
   speed: number
+
   /** Fractional screen-height of the scan band. */
   bandWidth: number
+
   /** Enable a second offset band (1.0 = on, 0.0 = off). */
   doubleBand: number
+
   /** Speed of the liquid ripple inside the band. */
   rippleSpeed: number
+
   /** Vertical ripple frequency (cycles). */
   rippleYFreq: number
+
   /** Horizontal ripple frequency (cycles). */
   rippleXFreq: number
+
   /** Chromatic-aberration spread in pixels. */
   chroma: number
 }

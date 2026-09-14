@@ -77,6 +77,7 @@ const HEX_COLOR_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
 function onColorChange(key: string, value: string) {
   if (!HEX_COLOR_RE.test(value))
     return
+
   themeForm.value[activeType.value][key] = value
   document.documentElement.style.setProperty(`--${activeType.value}-color-${key}`, value)
 }
@@ -112,6 +113,7 @@ function applyOtherTheme() {
     const value = adapted[key]
     if (value == null)
       continue
+
     const hex = colorToHex(value)
     themeForm.value[current][key] = hex
     document.documentElement.style.setProperty(`--${current}-color-${key}`, hex)
@@ -197,6 +199,7 @@ function openSubmitModal() {
       form.name = editingTheme.value.name ?? ''
       form.description = editingTheme.value.description ?? ''
     }
+
     // Forking someone else's theme -> set the original theme as the fork source
     else if (editingTheme.value.id !== '$default') {
       form.forked_from = editingTheme.value.id

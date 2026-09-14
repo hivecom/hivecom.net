@@ -92,6 +92,7 @@ function histogramTooltipLabel(index: number, value: number): string {
     return `${suffix} - today`
   if (diffDays === 1)
     return `${suffix} - yesterday`
+
   return `${suffix} - ${diffDays} days ago`
 }
 
@@ -104,8 +105,10 @@ interface SelectOption {
 
 interface Props {
   refreshInterval?: number
+
   /** Optional explicit server data for embedding/testing. */
   servers?: TeamSpeakServerSnapshot[] | null
+
   /** Optional specific server id to force selection and hide the server picker. */
   serverId?: string | null
 }
@@ -490,6 +493,7 @@ const selectedServer = computed(() => {
     return serversSorted.value.find(s => s.id === props.serverId) ?? serversSorted.value[0]
   if (!selectedServerId.value)
     return serversSorted.value[0]
+
   return serversSorted.value.find(s => s.id === selectedServerId.value) ?? serversSorted.value[0]
 })
 
@@ -519,12 +523,14 @@ const serverSelectModel = computed<SelectOption[] | undefined>({
       return serverOptions.value.filter(option => option.value === props.serverId)
     if (!selectedServerId.value)
       return undefined
+
     const selection = serverOptions.value.find(option => option.value === selectedServerId.value)
     return selection ? [selection] : undefined
   },
   set(value) {
     if (props.serverId)
       return
+
     const next = value?.[0]?.value ?? serversSorted.value[0]?.id ?? null
     selectedServerId.value = next
   },
@@ -562,6 +568,7 @@ const clientsByServerChannel = computed<Record<string, Map<string, TeamSpeakServ
     ;(server.clients ?? []).forEach((client) => {
       if (client.uniqueId === 'serveradmin')
         return
+
       const channelKey = client.channelId ?? '__unassigned__'
       const existing = channelMap.get(channelKey) ?? []
       existing.push(client)
@@ -637,6 +644,7 @@ function clientRole(serverId: string, client: TeamSpeakServerSnapshot['clients']
     return 'moderator'
   if (roles.registered && groups.includes(roles.registered))
     return 'registered'
+
   return null
 }
 
@@ -644,6 +652,7 @@ function isMusicBot(serverId: string, client: TeamSpeakServerSnapshot['clients']
   const roles = serverRoleMap.value[serverId]
   if (!roles?.musicBot)
     return false
+
   return (client.serverGroups ?? []).includes(roles.musicBot)
 }
 
@@ -657,13 +666,17 @@ function sortClients(serverId: string, clients: TeamSpeakServerSnapshot['clients
     switch (role) {
       case 'admin':
         return 0
+
       case 'moderator':
         return 1
+
       case 'registered':
       case 'supporter':
         return 2
+
       case 'music-bot':
         return 3
+
       default:
         return 4
     }
@@ -700,6 +713,7 @@ function serverClientCount(server: TeamSpeakServerSnapshot): number {
   const channelMap = clientsByServerChannel.value[server.id]
   if (!channelMap)
     return 0
+
   let total = 0
   channelMap.forEach((list) => {
     total += showMusicBots.value ? list.length : list.filter(client => !isMusicBot(server.id, client)).length
@@ -713,6 +727,7 @@ function regionForServer(serverId: string): 'eu' | 'na' | 'all' | null {
     return 'eu'
   if (id.startsWith('na'))
     return 'na'
+
   return null
 }
 
@@ -770,6 +785,7 @@ function serverClientCountNoBots(server: TeamSpeakServerSnapshot): number {
   const channelMap = clientsByServerChannel.value[server.id]
   if (!channelMap)
     return 0
+
   let total = 0
   channelMap.forEach((list) => {
     total += list.filter(client => !isMusicBot(server.id, client)).length

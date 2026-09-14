@@ -17,5 +17,6 @@ export function getExpenseStatus(startedAt: string, endedAt: string | null): 'Pl
     return 'Planned'
   if (endedAt != null && endedAt !== '')
     return 'Ended'
+
   return 'Active'
 }

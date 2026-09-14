@@ -16,11 +16,14 @@ type Rgb = [number, number, number]
 export function readThemeColor(name: string, fallback: Rgb, opts?: { normalized?: boolean }): Rgb {
   if (!import.meta.client)
     return fallback
+
   const raw = cssVar(name)
   if (!raw)
     return fallback
+
   const [r, g, b] = parseColor(raw)
   if (opts?.normalized)
     return [r / 255, g / 255, b / 255]
+
   return [r, g, b]
 }

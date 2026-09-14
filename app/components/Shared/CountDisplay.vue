@@ -6,11 +6,13 @@ defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
   value: number
+
   // Max characters before abbreviating, counting separators (commas).
   // 4 → abbreviate at 1,000  ("999" is 3 chars)
   // 5 → abbreviate at 10,000 (default, "9,999" is 5 chars)
   // 6 → abbreviate at 100,000 ("99,999" is 6 chars)
   maxChars?: number
+
   // Appends a '+' suffix directly to the formatted value (no gap).
   approx?: boolean
 }>()

@@ -53,6 +53,7 @@ export function useDataFriendRsvps(friendIds: MaybeRefOrGetter<string[]>) {
     const ids = toValue(friendIds)
     if (uid == null || ids.length === 0)
       return
+
     const result = await withCache(cacheKey(uid), async () => {
       const { data, error: fetchError } = await supabase
         .from('event_rsvps')
@@ -61,6 +62,7 @@ export function useDataFriendRsvps(friendIds: MaybeRefOrGetter<string[]>) {
         .in('user_id', ids)
       if (fetchError)
         throw fetchError
+
       return data ?? []
     }, { force, ttl: TTL })
     if (result !== null)

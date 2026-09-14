@@ -24,7 +24,9 @@ watch(key, () => {
 function submit() {
   if (!props.channel || !key.value.trim())
     return
+
   joinChannel(props.channel, key.value.trim())
+
   // Modal stays open - closes automatically on successful JOIN,
   // or shows an error if 475 comes back.
 }

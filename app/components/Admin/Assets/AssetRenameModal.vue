@@ -23,6 +23,7 @@ const errorMessage = ref('')
 watch(() => props.asset, (asset) => {
   if (!isOpen.value)
     return
+
   newPath.value = asset?.path ?? ''
   errorMessage.value = ''
 })
@@ -45,6 +46,7 @@ const isSubmitDisabled = computed(() => {
     return true
   if (trimmed === props.asset.path)
     return true
+
   return false
 })
 

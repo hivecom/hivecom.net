@@ -8,10 +8,12 @@ export type ChatAttachmentStatus = 'pending' | 'uploading' | 'done' | 'error'
 export interface ChatAttachment {
   id: string
   file: File
+
   // Object URL for image files (thumbnail preview), null otherwise. Revoked on
   // remove/clear.
   previewUrl: string | null
   status: ChatAttachmentStatus
+
   // Public Depot URL, set once the upload succeeds.
   url?: string
 }
@@ -64,6 +66,7 @@ export function useChatAttachments() {
     const snapshot = Array.from(files)
     if (!snapshot.length)
       return
+
     rulesGate.run(() => addToTray(snapshot))
   }
 
@@ -71,6 +74,7 @@ export function useChatAttachments() {
     const idx = attachments.value.findIndex(a => a.id === id)
     if (idx === -1)
       return
+
     const [removed] = attachments.value.splice(idx, 1)
     if (removed?.previewUrl)
       URL.revokeObjectURL(removed.previewUrl)

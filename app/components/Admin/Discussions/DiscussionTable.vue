@@ -50,6 +50,7 @@ interface RpcDiscussion {
   theme_id: string | null
   created_by: string | null
   modified_by: string | null
+
   // Joined flat fields
   created_by_username: string | null
   profile_username: string | null
@@ -59,9 +60,11 @@ interface RpcDiscussion {
   referendum_title: string | null
   discussion_topic_name: string | null
   theme_name: string | null
+
   // Last reply
   last_reply_at: string | null
   last_reply_by: string | null
+
   // Pagination
   total_count: number
 }
@@ -188,12 +191,15 @@ function getLastActiveText(discussion: RpcDiscussion): string {
   const lastActiveAt = getLastActiveAt(discussion)
   if (!lastActiveAt)
     return 'Never'
+
   const timestamp = new Date(lastActiveAt)
   if (Number.isNaN(timestamp.getTime()))
     return 'Never'
+
   const status = getUserActivityStatus(timestamp)
   if (status.isActive)
     return 'No'
+
   return status.lastSeenText.replace('Last online', '')
 }
 
@@ -212,6 +218,7 @@ function getContextType(discussion: RpcDiscussion): string {
     return 'themes'
   if (discussion.discussion_topic_id)
     return 'forum'
+
   return 'other'
 }
 
@@ -265,6 +272,7 @@ function getContextLink(discussion: RpcDiscussion): string | null {
     return `/themes/${discussion.theme_id}`
   if (discussion.discussion_topic_id)
     return `/forum?activeTopicId=${encodeURIComponent(discussion.discussion_topic_id)}`
+
   return null
 }
 
@@ -283,6 +291,7 @@ function handleSort(label: string) {
   const col = sortColMap[label]
   if (!col)
     return
+
   if (sortCol.value === col) {
     sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
   }
@@ -298,6 +307,7 @@ function sortIcon(label: string): string {
   const col = sortColMap[label]
   if (!col || sortCol.value !== col)
     return 'ph:arrows-down-up'
+
   return sortDir.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'
 }
 
@@ -367,10 +377,13 @@ function canRunBulkAction(discussion: RpcDiscussion, action: 'archive' | 'lock' 
   switch (action) {
     case 'archive':
       return discussion.is_archived !== true
+
     case 'lock':
       return discussion.is_locked !== true
+
     case 'delete':
       return true
+
     default:
       return false
   }
@@ -478,6 +491,7 @@ function openDiscussionById(discussionId: string): boolean {
   const match = discussions.value.find(d => d.id === discussionId)
   if (!match)
     return false
+
   openDiscussionDetails(match)
   return true
 }
@@ -530,6 +544,7 @@ watch(showDiscussionDetails, (isOpen) => {
 watch(focusedDiscussionId, (discussionId) => {
   if (loading.value || !discussionId)
     return
+
   openDiscussionById(discussionId)
 })
 
@@ -553,6 +568,7 @@ watch(authorFilter, () => {
 watch(adminTablePerPage, () => {
   if (page.value !== 1) {
     page.value = 1
+
     // fall through to explicit call below
   }
   void fetchDiscussions()
@@ -567,6 +583,7 @@ watch(() => refreshSignal.value, (val) => {
 
 onBeforeMount(async () => {
   await fetchDiscussions()
+
   // After the initial load, honour any ?discussion= query param
   const discussionId = focusedDiscussionId.value
   if (discussionId)

@@ -60,6 +60,7 @@ const statusBadgeVariant = computed(() => {
     return 'success'
   if (status === 'busy')
     return 'danger'
+
   return 'warning'
 })
 
@@ -75,12 +76,14 @@ const isPlaying = computed(() => {
 const displayedAppId = computed(() => {
   if (presenceRow.value?.current_app_id)
     return presenceRow.value.current_app_id
+
   return presenceRow.value?.last_app_id ?? null
 })
 
 const displayedAppName = computed(() => {
   if (presenceRow.value?.current_app_name)
     return presenceRow.value.current_app_name
+
   return presenceRow.value?.last_app_name ?? null
 })
 

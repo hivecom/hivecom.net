@@ -14,6 +14,7 @@ const props = defineProps<{
   // default post-sign-in navigation target. Used by embeds (e.g. chat) that want
   // the provider round-trip to land back on their own route.
   redirect?: string
+
   // When true, a successful password/passkey/MFA sign-in emits `success` instead
   // of navigating away. Used when the form is embedded and the host stays in
   // place (the chat connect form). OAuth/email still leave the SPA by nature.
@@ -281,6 +282,7 @@ async function signInWithPasskey() {
     // A cancelled browser prompt surfaces as an abort/NotAllowed error - stay quiet.
     if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError'))
       return
+
     errorMessage.value = err instanceof Error ? err.message : 'Passkey sign-in failed.'
   }
   finally {
@@ -469,6 +471,7 @@ async function verifyMfaCode() {
       console.warn('Unable to fetch upgraded MFA session:', sessionError)
 
     await persistVerifiedMfaSession(sessionResult?.session ?? null)
+
     // finishSignIn handles resetting the MFA state itself (only for the embedded
     // stay-put case); the navigate case keeps the card up to avoid a form flash.
     finishSignIn()
@@ -526,6 +529,7 @@ watch([email, password], () => {
 watch(mfaCode, (code) => {
   if (!requiresMfaChallenge.value)
     return
+
   const normalized = code.trim()
   if (normalized.length === 6 && !mfaVerifying.value)
     void verifyMfaCode()

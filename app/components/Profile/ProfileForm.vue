@@ -21,6 +21,7 @@ const props = defineProps<{
   isOpen: boolean
   submissionError?: string | null
 }>()
+
 // Define emits
 const emit = defineEmits<{
   'save': [profile: Partial<Tables<'profiles'>>]
@@ -211,6 +212,7 @@ async function handleAnimatedFile(e: Event) {
 async function handleImportFile(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
+
   // Reset so the same file can be re-selected next time
   input.value = ''
   if (!file || !props.profile?.id)

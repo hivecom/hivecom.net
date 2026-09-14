@@ -9,6 +9,7 @@ import FFT from 'fft.js'
 // real signal's spectrum is symmetric). Allocations happen once, not per call.
 export class RealFFT {
   readonly size: number
+
   // Number of usable frequency bins: half the window plus DC.
   readonly bins: number
   private readonly fft: FFT

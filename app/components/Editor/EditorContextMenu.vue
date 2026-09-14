@@ -11,13 +11,16 @@ const props = defineProps<{
 }>()
 
 const { guardedOpen } = useExternalLinkGuard()
-const { emojiOpen, emojiPos, closeMenu, writeClipboard, readClipboard, recordEmojiAnchor, openEmojiPicker } = useTextContextMenu()
+const { emojiOpen, emojiPos, closeMenu, writeClipboard, readClipboard, recordEmojiAnchor, openEmojiPicker, passThroughNative } = useTextContextMenu()
 
 const activeLinkHref = ref<string | null>(null)
 const hasSelection = ref(false)
 const emojiAnchor = useTemplateRef('emoji-anchor')
 
 function onContextMenu(event: MouseEvent) {
+  if (passThroughNative(event))
+    return
+
   const target = event.target as HTMLElement | null
   const anchor = target?.closest('a')
   activeLinkHref.value = anchor?.getAttribute('href') ?? null
@@ -140,6 +143,10 @@ function insertEmoji(emoji: string) {
           </template>
           Insert emoji
         </DropdownItem>
+        <Divider :size="0" />
+        <p class="editor-context-menu__hint text-xs text-color-lighter">
+          Shift + right-click for the browser menu
+        </p>
       </div>
     </template>
   </ContextMenu>
@@ -167,6 +174,11 @@ function insertEmoji(emoji: string) {
 // would without the context menu around it.
 .editor-context-menu__target {
   display: contents;
+}
+
+.editor-context-menu__hint {
+  margin: 0;
+  padding: var(--space-xs) var(--space-s);
 }
 
 // Invisible point the emoji Popout latches onto, positioned at the click spot.

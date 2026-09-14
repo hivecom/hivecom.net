@@ -150,6 +150,7 @@ function tick(ctx: CanvasRenderingContext2D, w: number, h: number) {
       const q = particles[j]!
       if (Math.abs(p.z - q.z) > 0.35)
         continue
+
       const dx = p.x - q.x
       const dy = p.y - q.y
       const distSq = dx * dx + dy * dy
@@ -223,6 +224,7 @@ function resize() {
   const el = canvas.value
   if (!el)
     return
+
   el.width = window.innerWidth
   el.height = window.innerHeight
   initBuffers(el.width, el.height)
@@ -233,6 +235,7 @@ onMounted(() => {
   const el = canvas.value
   if (!el)
     return
+
   const ctx = el.getContext('2d')
   if (!ctx)
     return

@@ -21,6 +21,7 @@ const sortedBadges = computed(() => {
     const tierDiff = (TIER_RANK[a.tier] ?? 99) - (TIER_RANK[b.tier] ?? 99)
     if (tierDiff !== 0)
       return tierDiff
+
     const aOrder = BADGE_CATALOG[a.slug as keyof typeof BADGE_CATALOG]?.sortOrder ?? 99
     const bOrder = BADGE_CATALOG[b.slug as keyof typeof BADGE_CATALOG]?.sortOrder ?? 99
     return aOrder - bOrder

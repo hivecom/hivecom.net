@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
+import { useNow } from '@/composables/useNow'
 import {
   displayDate,
   displayDateTime,
@@ -11,6 +12,7 @@ import {
   fullDateTimeWeekday,
   fullMonth,
   timestamp,
+  timestampDetail,
   yearOnly,
 } from '@/lib/utils/date'
 
@@ -28,17 +30,23 @@ export type DateDisplayType
 const props = withDefaults(defineProps<{
   // The date string to format
   date: string | null
+
   // Which named format to use (defaults to fullDateTime)
   type?: DateDisplayType
+
   // Render a human-readable relative time (e.g. "5 minutes ago") instead of a
   // formatted date. The tooltip still shows the precise timestamp.
   relative?: boolean
+
   // Enable tooltip with detailed information on hover
   tooltip?: boolean
+
   // Text to show if date is null
   fallback?: string
+
   // Tooltip placement
   placement?: 'top' | 'right' | 'bottom' | 'left'
+
   // Use smaller font size
   size?: 'xxs' | 'xs' | 's' | 'm' | 'l' | 'xl' | 'xxl' | 'xxxl'
 }>(), {
@@ -62,41 +70,35 @@ const formatters: Record<DateDisplayType, (d: string | Date | null | undefined) 
   year: yearOnly,
 }
 
+// Shared tick so relative labels age on their own rather than freezing at
+// whatever the first render computed.
+const { now } = useNow()
+
+const relativeText = computed(() => (props.date ? fromNow(props.date, now.value) : ''))
+
 const formattedDate = computed(() => {
   if (!props.date)
     return props.fallback
   if (props.relative)
-    return fromNow(props.date)
+    return relativeText.value
+
   return formatters[props.type](props.date)
 })
 
-// Generate the detailed tooltip text with full timestamp information
-const tooltipText = computed(() => {
-  if (!props.tooltip || !props.date)
-    return ''
-
-  const d = new Date(props.date)
-  if (Number.isNaN(d.getTime()))
-    return ''
-
-  const detailed = d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '')
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-  const offset = d.getTimezoneOffset()
-  const offsetSign = offset <= 0 ? '+' : '-'
-  const offsetHours = String(Math.abs(Math.floor(offset / 60))).padStart(2, '0')
-  const offsetMinutes = String(Math.abs(offset % 60)).padStart(2, '0')
-
-  return `${detailed} UTC (UTC${offsetSign}${offsetHours}:${offsetMinutes}, ${timezone})`
-})
+// Exact instant plus the viewer's zone, shown on hover.
+const detail = computed(() => (props.tooltip ? timestampDetail(props.date) : null))
 
 const attrs = useAttrs()
 </script>
 
 <template>
-  <Tooltip v-if="tooltip && date" :placement="placement">
+  <Tooltip v-if="tooltip && date && detail" :placement="placement">
     <template #tooltip>
       <div class="text-xs">
-        {{ tooltipText }}
+        {{ detail.absolute }}<span v-if="relativeText"> ({{ relativeText }})</span>
+      </div>
+      <div class="text-xs text-color-lightest">
+        {{ detail.zone }}
       </div>
     </template>
     <slot>

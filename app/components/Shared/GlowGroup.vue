@@ -45,6 +45,7 @@ function recomputeRects() {
     const el = card.getEl()
     if (!el)
       continue
+
     const rect = el.getBoundingClientRect()
     cachedRects.push({ card, left: rect.left, top: rect.top })
   }
@@ -65,6 +66,7 @@ function renderFrame() {
 function schedule() {
   if (frame)
     return
+
   frame = requestAnimationFrame(renderFrame)
 }
 
@@ -92,6 +94,7 @@ function handleTouchMove(e: TouchEvent) {
   const touch = e.touches[0]
   if (!touch)
     return
+
   pointerX = touch.clientX
   pointerY = touch.clientY
   schedule()

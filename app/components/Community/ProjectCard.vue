@@ -40,6 +40,7 @@ function onBannerLoaded() {
 watchEffect(() => {
   if (!projectBannerUrl.value)
     return
+
   bannerBgLoaded.value = false
   const img = new Image()
   img.onload = onBannerLoaded

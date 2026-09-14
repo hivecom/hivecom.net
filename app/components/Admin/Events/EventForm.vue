@@ -234,12 +234,14 @@ function doFork() {
 function handleDelete() {
   if (!props.event)
     return
+
   showDeleteConfirm.value = true
 }
 
 function confirmDelete() {
   if (!props.event)
     return
+
   deleteLoading.value = true
   emit('delete', props.event.id)
 }

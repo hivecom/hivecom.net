@@ -65,10 +65,12 @@ onMounted(() => {
 function getPlayersForGame(gameId: number): number | null {
   if (!metrics.value || !props.gameservers)
     return null
+
   const byServer = metrics.value.gameservers.byServer
   const servers = props.gameservers.filter(gs => gs.game === gameId && gs.query_protocol != null)
   if (!servers.length)
     return null
+
   let total = 0
   for (const gs of servers) {
     total += metricsPlayerCount(byServer[String(gs.id)]) ?? 0
@@ -109,6 +111,7 @@ function getServerCountForGame(gameId: number) {
 // Get game cover image using the cached composable
 async function getGameCover(game: Tables<'games'>) {
   const coverUrl = await getGameCoverUrl(game)
+
   // Return empty string if no cover to show only the small logo
   return coverUrl || ''
 }
@@ -134,6 +137,7 @@ watch(() => props.filteredGames, async (newGames) => {
         }
         catch (error) {
           console.error(`Failed to load cover for game ${game.id}:`, error)
+
           // On error, don't fall back to anything - just show the small logo
           gameCovers.value.set(game.id, '')
         }

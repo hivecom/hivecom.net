@@ -52,6 +52,7 @@ export interface ListFilesOptions {
   offset?: number
   sort?: 'uploaded_at' | 'file_size'
   order?: 'asc' | 'desc'
+
   /** Case-insensitive substring on the original filename. */
   q?: string
 }
@@ -99,6 +100,7 @@ export type UploaderSort = 'file_count' | 'file_size'
 
 export interface MintKeyOptions {
   scopes?: string[]
+
   /** RFC3339 or YYYY-MM-DD; omit for a key that never expires. */
   expiresAt?: string
 }
@@ -158,14 +160,34 @@ export function useDepot() {
   async function authHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
     const { data: { session } } = await supabase.auth.getSession()
     const token = session?.access_token
+
     if (!token)
       throw new Error('You are not signed in.')
+
     return { Authorization: `Bearer ${token}`, ...extra }
   }
 
+  // Depot puts its own message in an `error` field. Fall back to the status code
+  // when the body isn't JSON at all (a gateway 502, say).
   async function fail(res: Response, fallback: string): Promise<Error> {
     const data = await res.json().catch(() => ({})) as { error?: string }
+
     return new Error(data?.error ?? `${fallback} (HTTP ${res.status})`)
+  }
+
+  // Query builder shared by every listing endpoint. Undefined and empty values
+  // are dropped, since Depot reads an absent param as "no filter".
+  function queryString(params: Record<string, string | number | undefined>): string {
+    const search = new URLSearchParams()
+
+    for (const [key, value] of Object.entries(params)) {
+      if (value != null && value !== '')
+        search.set(key, String(value))
+    }
+
+    const qs = search.toString()
+
+    return qs ? `?${qs}` : ''
   }
 
   // One-shot multipart upload. Depot proxies the bytes and returns the public
@@ -181,8 +203,10 @@ export function useDepot() {
       headers: await authHeaders(),
       body,
     })
+
     if (!res.ok)
       throw await fail(res, 'Upload failed')
+
     return res.json() as Promise<DepotUpload>
   }
 
@@ -193,16 +217,21 @@ export function useDepot() {
       headers: await authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ label, scopes: opts.scopes, expires_at: opts.expiresAt }),
     })
+
     if (!res.ok)
       throw await fail(res, 'Could not mint key')
+
     return res.json() as Promise<DepotMintedKey>
   }
 
   async function listKeys(): Promise<DepotApiKey[]> {
     const res = await fetch(`${baseUrl}/keys`, { headers: await authHeaders() })
+
     if (!res.ok)
       throw await fail(res, 'Could not load keys')
+
     const data = await res.json() as { keys?: DepotApiKey[] }
+
     return data.keys ?? []
   }
 
@@ -211,6 +240,7 @@ export function useDepot() {
       method: 'DELETE',
       headers: await authHeaders(),
     })
+
     // Success is 204 No Content; anything else carries an error body.
     if (!res.ok)
       throw await fail(res, 'Could not revoke key')
@@ -220,23 +250,21 @@ export function useDepot() {
   // gateway forces the owner to the authenticated subject, so this only ever
   // returns your files. Requires a signed-in identity (no anonymous listing).
   async function listFiles(opts: ListFilesOptions = {}): Promise<DepotFilePage<DepotFile>> {
-    const params = new URLSearchParams()
-    if (opts.limit != null)
-      params.set('limit', String(opts.limit))
-    if (opts.offset != null)
-      params.set('offset', String(opts.offset))
-    if (opts.sort)
-      params.set('sort', opts.sort)
-    if (opts.order)
-      params.set('order', opts.order)
-    if (opts.q)
-      params.set('q', opts.q)
+    const qs = queryString({
+      limit: opts.limit,
+      offset: opts.offset,
+      sort: opts.sort,
+      order: opts.order,
+      q: opts.q,
+    })
 
-    const qs = params.toString()
-    const res = await fetch(`${baseUrl}/files${qs ? `?${qs}` : ''}`, { headers: await authHeaders() })
+    const res = await fetch(`${baseUrl}/files${qs}`, { headers: await authHeaders() })
+
     if (!res.ok)
       throw await fail(res, 'Could not load files')
+
     const data = await res.json() as { files?: DepotFile[], total?: number }
+
     return { files: data.files ?? [], total: data.total ?? 0 }
   }
 
@@ -244,9 +272,12 @@ export function useDepot() {
   // (or unlimited) means no cap. Requires a signed-in identity.
   async function getQuota(): Promise<DepotQuota> {
     const res = await fetch(`${baseUrl}/quota`, { headers: await authHeaders() })
+
     if (!res.ok)
       throw await fail(res, 'Could not load quota')
+
     const data = await res.json() as Partial<DepotQuota>
+
     return {
       used: data.used ?? 0,
       limit: data.limit ?? 0,
@@ -257,29 +288,24 @@ export function useDepot() {
   // adminListFiles lists uploads across all owners. Requires an admin caller
   // (an OIDC login whose configured claim matched); Depot returns 403 otherwise.
   async function adminListFiles(opts: AdminListFilesOptions = {}): Promise<DepotFilePage<DepotAdminFile>> {
-    const params = new URLSearchParams()
-    if (opts.limit != null)
-      params.set('limit', String(opts.limit))
-    if (opts.offset != null)
-      params.set('offset', String(opts.offset))
-    if (opts.sort)
-      params.set('sort', opts.sort)
-    if (opts.order)
-      params.set('order', opts.order)
-    if (opts.q)
-      params.set('q', opts.q)
-    if (opts.account)
-      params.set('account', opts.account)
-    if (opts.issuer)
-      params.set('issuer', opts.issuer)
-    if (opts.contentType)
-      params.set('content_type', opts.contentType)
+    const qs = queryString({
+      limit: opts.limit,
+      offset: opts.offset,
+      sort: opts.sort,
+      order: opts.order,
+      q: opts.q,
+      account: opts.account,
+      issuer: opts.issuer,
+      content_type: opts.contentType,
+    })
 
-    const qs = params.toString()
-    const res = await fetch(`${baseUrl}/admin/files${qs ? `?${qs}` : ''}`, { headers: await authHeaders() })
+    const res = await fetch(`${baseUrl}/admin/files${qs}`, { headers: await authHeaders() })
+
     if (!res.ok)
       throw await fail(res, 'Could not load files')
+
     const data = await res.json() as { files?: DepotAdminFile[], total?: number }
+
     return { files: data.files ?? [], total: data.total ?? 0 }
   }
 
@@ -287,21 +313,20 @@ export function useDepot() {
   // content-type filters as adminListFiles, so passing an account scopes the
   // numbers to one user. Admin only.
   async function adminMetrics(opts: AdminListFilesOptions = {}): Promise<DepotMetrics> {
-    const params = new URLSearchParams()
-    if (opts.account)
-      params.set('account', opts.account)
-    if (opts.issuer)
-      params.set('issuer', opts.issuer)
-    if (opts.contentType)
-      params.set('content_type', opts.contentType)
-    if (opts.q)
-      params.set('q', opts.q)
+    const qs = queryString({
+      account: opts.account,
+      issuer: opts.issuer,
+      content_type: opts.contentType,
+      q: opts.q,
+    })
 
-    const qs = params.toString()
-    const res = await fetch(`${baseUrl}/admin/metrics${qs ? `?${qs}` : ''}`, { headers: await authHeaders() })
+    const res = await fetch(`${baseUrl}/admin/metrics${qs}`, { headers: await authHeaders() })
+
     if (!res.ok)
       throw await fail(res, 'Could not load metrics')
+
     const data = await res.json() as Partial<DepotMetrics>
+
     return {
       total_files: data.total_files ?? 0,
       total_size: data.total_size ?? 0,
@@ -313,21 +338,20 @@ export function useDepot() {
   // with each uploader's file count. sort/order let the table order by upload
   // count (file_count) or storage (file_size) server-side. Admin only.
   async function adminListUploaders(opts: { limit?: number, offset?: number, sort?: UploaderSort, order?: 'asc' | 'desc' } = {}): Promise<{ users: DepotUploader[], total: number }> {
-    const params = new URLSearchParams()
-    if (opts.limit != null)
-      params.set('limit', String(opts.limit))
-    if (opts.offset != null)
-      params.set('offset', String(opts.offset))
-    if (opts.sort)
-      params.set('sort', opts.sort)
-    if (opts.order)
-      params.set('order', opts.order)
+    const qs = queryString({
+      limit: opts.limit,
+      offset: opts.offset,
+      sort: opts.sort,
+      order: opts.order,
+    })
 
-    const qs = params.toString()
-    const res = await fetch(`${baseUrl}/admin/users${qs ? `?${qs}` : ''}`, { headers: await authHeaders() })
+    const res = await fetch(`${baseUrl}/admin/users${qs}`, { headers: await authHeaders() })
+
     if (!res.ok)
       throw await fail(res, 'Could not load uploaders')
+
     const data = await res.json() as { users?: DepotUploader[], total?: number }
+
     return { users: data.users ?? [], total: data.total ?? 0 }
   }
 
@@ -335,9 +359,12 @@ export function useDepot() {
   // the admin file-type filter dropdown. Admin only.
   async function adminContentTypes(): Promise<string[]> {
     const res = await fetch(`${baseUrl}/admin/content-types`, { headers: await authHeaders() })
+
     if (!res.ok)
       throw await fail(res, 'Could not load content types')
+
     const data = await res.json() as { content_types?: string[] }
+
     return data.content_types ?? []
   }
 
@@ -351,9 +378,12 @@ export function useDepot() {
       method: 'DELETE',
       headers: await authHeaders(),
     })
+
     if (!res.ok)
       throw await fail(res, 'Could not wipe uploads')
+
     const data = await res.json() as { deleted?: number }
+
     return { deleted: data.deleted ?? 0 }
   }
 
@@ -362,17 +392,21 @@ export function useDepot() {
   // account is the user's Supabase id (the OIDC subject); issuer is optional and
   // narrows the wipe to one tenant when given. Returns the count removed.
   async function adminWipeUserFiles(account: string, issuer?: string): Promise<{ deleted: number }> {
-    const params = new URLSearchParams({ account })
-    if (issuer)
-      params.set('issuer', issuer)
+    // An empty account would drop the filter entirely and widen this DELETE to
+    // every upload in the gateway, so refuse it before it goes out.
+    if (!account)
+      throw new Error('Cannot wipe uploads without an account.')
 
-    const res = await fetch(`${baseUrl}/admin/files?${params.toString()}`, {
+    const res = await fetch(`${baseUrl}/admin/files${queryString({ account, issuer })}`, {
       method: 'DELETE',
       headers: await authHeaders(),
     })
+
     if (!res.ok)
       throw await fail(res, 'Could not wipe uploads')
+
     const data = await res.json() as { deleted?: number }
+
     return { deleted: data.deleted ?? 0 }
   }
 
@@ -381,10 +415,12 @@ export function useDepot() {
   // is a slash-separated path, so encode each segment but keep the separators.
   async function deleteFile(objectKey: string): Promise<void> {
     const path = objectKey.split('/').map(encodeURIComponent).join('/')
+
     const res = await fetch(`${baseUrl}/file/${path}`, {
       method: 'DELETE',
       headers: await authHeaders(),
     })
+
     // Success is 204 No Content; anything else carries an error body.
     if (!res.ok)
       throw await fail(res, 'Could not delete file')

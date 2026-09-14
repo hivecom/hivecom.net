@@ -49,6 +49,7 @@ watch(
   ([isAuthReady]) => {
     if (!isAuthReady)
       return
+
     if (!isAuthenticated.value)
       navigateToSignIn()
   },
@@ -85,6 +86,7 @@ const { isAdminOrMod: isPrivileged } = useEffectiveRole()
 const canManage = computed(() => {
   if (!referendum.value || !userId.value)
     return false
+
   return isOwnReferendum.value || isPrivileged.value
 })
 
@@ -245,6 +247,7 @@ watch([userVote], ([vote]) => {
 const isActive = computed(() => {
   if (!referendum.value)
     return false
+
   const now = dayjs()
   const start = dayjs(referendum.value.date_start)
   const end = dayjs(referendum.value.date_end)
@@ -254,6 +257,7 @@ const isActive = computed(() => {
 const isUpcoming = computed(() => {
   if (!referendum.value)
     return false
+
   const now = dayjs()
   const start = dayjs(referendum.value.date_start)
   return now.isBefore(start)
@@ -262,12 +266,14 @@ const isUpcoming = computed(() => {
 const statusVariant = computed(() => {
   if (isUpcoming.value)
     return 'warning'
+
   return isActive.value ? 'success' : 'neutral'
 })
 
 const statusLabel = computed(() => {
   if (isUpcoming.value)
     return 'Upcoming'
+
   return isActive.value ? 'Active' : 'Concluded'
 })
 
@@ -368,6 +374,7 @@ async function submitVote() {
   }
   catch (error) {
     console.error('Error submitting vote:', error)
+
     // TODO: Show error message to user
   }
   finally {
@@ -415,6 +422,7 @@ async function confirmRemoveVote() {
   }
   catch (error) {
     console.error('Error removing vote:', error)
+
     // TODO: Show error message to user
   }
   finally {

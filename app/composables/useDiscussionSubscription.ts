@@ -30,6 +30,7 @@ export function useDiscussionSubscription(
     const e = options?.enabled
     if (e == null)
       return true
+
     return typeof e === 'boolean' ? e : e.value
   })
 
@@ -102,6 +103,7 @@ export function useDiscussionSubscription(
     ([id, on]) => {
       if (!on || !id || !userId.value)
         return
+
       void fetchSubscription(id)
     },
     { immediate: true },

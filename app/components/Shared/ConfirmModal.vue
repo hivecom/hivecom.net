@@ -17,6 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const open = defineModel<boolean>('open', { default: false })
+
 // FIXME: get rid of this, use emit instead
 const confirmOld = defineModel<() => void>('confirm', { default: () => {}, required: false })
 const isBelowSmall = useBreakpoint('<xs')

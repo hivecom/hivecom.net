@@ -56,9 +56,11 @@ function queueIcon(file: File): string {
     return 'ph:video'
   if (file.type.startsWith('audio/'))
     return 'ph:music-notes'
+
   const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
   if (ARCHIVE_EXTENSIONS.includes(extension))
     return 'ph:file-zip'
+
   return 'ph:file'
 }
 
@@ -179,6 +181,7 @@ function ensureUniqueName(name: string): string {
 function removeFile(id: string) {
   if (uploading.value)
     return
+
   fileQueue.value = fileQueue.value.filter(file => file.id !== id)
   delete uploadProgress.value[id]
 }
@@ -200,6 +203,7 @@ function sanitizeFileName(filename: string): string {
 function closeDrawer() {
   if (uploading.value)
     return
+
   isOpen.value = false
 }
 

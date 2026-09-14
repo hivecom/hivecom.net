@@ -17,8 +17,10 @@ export function formatCurrency(
   options: {
     /** Include decimal places (defaults to false for whole units) */
     showDecimals?: boolean
+
     /** Number of decimal places to show (defaults to 2) */
     decimalPlaces?: number
+
     /** BCP 47 locale string (defaults to browser locale) */
     locale?: string
   } = {},

@@ -20,5 +20,6 @@ export function getContainerStatus(
     return 'healthy'
   if (running && !healthy)
     return 'unhealthy'
+
   return 'stopped'
 }

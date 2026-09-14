@@ -32,6 +32,7 @@ function setPosition(x: number, y: number) {
   const el = wrapperRef.value
   if (!el)
     return
+
   el.style.setProperty('--mouse-x', `${x}px`)
   el.style.setProperty('--mouse-y', `${y}px`)
 }
@@ -40,7 +41,9 @@ function activate() {
   const el = wrapperRef.value
   if (!el || isActive.value)
     return
+
   isActive.value = true
+
   // Defer by one frame so the position is painted before the glow fades in
   requestAnimationFrame(() => el.classList.add('glow-active'))
 }
@@ -49,6 +52,7 @@ function deactivate() {
   const el = wrapperRef.value
   if (!el)
     return
+
   isActive.value = false
   el.classList.remove('glow-active')
 }
@@ -57,6 +61,7 @@ function clearPosition() {
   const el = wrapperRef.value
   if (!el)
     return
+
   el.style.removeProperty('--mouse-x')
   el.style.removeProperty('--mouse-y')
 }
@@ -73,9 +78,11 @@ if (group) {
 function handleMouseMove(e: MouseEvent) {
   if (group)
     return
+
   const el = wrapperRef.value
   if (!el)
     return
+
   const rect = el.getBoundingClientRect()
   setPosition(e.clientX - rect.left, e.clientY - rect.top)
   activate()
@@ -84,18 +91,22 @@ function handleMouseMove(e: MouseEvent) {
 function handleMouseLeave() {
   if (group)
     return
+
   deactivate()
 }
 
 function handleTouchMove(e: TouchEvent) {
   if (group)
     return
+
   const touch = e.touches[0]
   if (!touch)
     return
+
   const el = wrapperRef.value
   if (!el)
     return
+
   const rect = el.getBoundingClientRect()
   setPosition(touch.clientX - rect.left, touch.clientY - rect.top)
   activate()
@@ -104,6 +115,7 @@ function handleTouchMove(e: TouchEvent) {
 function handleTouchEnd() {
   if (group)
     return
+
   deactivate()
 }
 </script>

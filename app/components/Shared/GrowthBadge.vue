@@ -5,6 +5,7 @@ import { formatPercent } from '@/lib/utils/formatting'
 
 interface Props {
   growth: number | null
+
   // Pre-formatted display value (e.g. from formatCurrency or formatCount).
   // Pass null to render the growth badge alone without a value badge.
   value?: string | null
@@ -25,6 +26,7 @@ function getGrowthIndicator(growth: number | null) {
     return { variant: 'success' as const, icon: 'ph:trend-up', text: `+${formatPercent(growth)}` }
   if (growth < 0)
     return { variant: 'danger' as const, icon: 'ph:trend-down', text: formatPercent(growth) }
+
   return { variant: 'neutral' as const, icon: 'ph:minus', text: formatPercent(0) }
 }
 
@@ -33,6 +35,7 @@ const iconSize = computed(() => {
     return 16
   if (props.size === 'm')
     return 14
+
   return 12
 })
 
@@ -41,11 +44,13 @@ const indicator = computed(() => getGrowthIndicator(props.growth))
 const valueVariant = computed(() => {
   if (props.value === null || props.value === undefined)
     return 'neutral'
+
   // Infer sentiment from sign prefix on the formatted string
   if (props.value.startsWith('+'))
     return 'success'
   if (props.value.startsWith('-'))
     return 'danger'
+
   return 'neutral'
 })
 </script>

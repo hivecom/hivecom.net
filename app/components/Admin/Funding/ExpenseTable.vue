@@ -70,6 +70,7 @@ const {
       .order('started_at', { ascending: false })
     if (error)
       throw error
+
     return (data as Expense[]) || []
   },
   transform: expense => ({

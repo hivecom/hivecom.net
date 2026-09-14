@@ -48,6 +48,7 @@ const usernameError = computed(() => {
     return 'Username must be 32 characters or less'
   if (!USERNAME_RE.test(value))
     return 'Username can only contain letters, numbers, and underscores'
+
   return ''
 })
 
@@ -95,12 +96,14 @@ watch(isOpen, (open) => {
 function handleDelete() {
   if (!props.reservation)
     return
+
   showDeleteConfirm.value = true
 }
 
 function confirmDelete() {
   if (!props.reservation)
     return
+
   emit('delete', props.reservation.id)
 }
 </script>

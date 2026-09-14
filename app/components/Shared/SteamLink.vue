@@ -14,6 +14,7 @@ const { guardedOpen } = useExternalLinkGuard()
 const steamStoreUrl = computed(() => {
   if (!props.steamId)
     return null
+
   return `https://store.steampowered.com/app/${props.steamId}`
 })
 

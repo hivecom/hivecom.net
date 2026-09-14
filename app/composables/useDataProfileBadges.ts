@@ -94,6 +94,7 @@ export function useDataProfileBadges(
   function invalidate(id: string | null | undefined): void {
     if (!hasValidId(id))
       return
+
     cache.delete(getCacheKey(id.trim()))
   }
 
@@ -101,6 +102,7 @@ export function useDataProfileBadges(
     const id = unref(profileId)
     if (!hasValidId(id))
       return
+
     invalidate(id)
     await load(id.trim(), true)
   }

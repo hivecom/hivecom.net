@@ -5,6 +5,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 defineProps<{
   /** Whether the picker is shown. Controlled by the host. */
   open: boolean
+
   /** Element the desktop Popout anchors to. Ignored on mobile (uses a Drawer). */
   anchor?: HTMLElement | null
 }>()

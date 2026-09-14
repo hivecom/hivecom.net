@@ -8,8 +8,10 @@ import { CUSTOM_SOUND_ID, DESIGN_SOUND_ID, NONE_SOUND_ID, playNotificationSound,
 const props = withDefaults(defineProps<{
   label: string
   description?: string
+
   // 0-100, used only for the preview button.
   volume?: number
+
   // Label text size token; defaults to `m` (general settings). The chat modal
   // passes `s` to match its denser sibling labels.
   labelSize?: 'xs' | 's' | 'm'
@@ -21,8 +23,10 @@ const props = withDefaults(defineProps<{
 
 // Preset id, NONE_SOUND_ID, CUSTOM_SOUND_ID, or DESIGN_SOUND_ID.
 const choice = defineModel<string>({ required: true })
+
 // Only meaningful when choice is CUSTOM_SOUND_ID.
 const url = defineModel<string>('url', { default: '' })
+
 // Only meaningful when choice is DESIGN_SOUND_ID.
 const design = defineModel<SoundDesign | null>('design', { default: null })
 

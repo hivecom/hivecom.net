@@ -3,14 +3,18 @@
 function getRippleDuration(): number {
   if (typeof window === 'undefined')
     return 600
+
   const raw = getComputedStyle(document.documentElement).getPropertyValue('--transition').trim()
+
   // VUI token format: "0.11s cubic-bezier(...)" - grab the first time value
   const match = raw.match(/([\d.]+)(m?s)/)
   if (!match)
     return 600
+
   const value = Number.parseFloat(match[1] ?? '0')
   const unit = match[2] ?? 'ms'
   const ms = unit === 's' ? value * 1000 : value
+
   // Scale up: ripple should be noticeably longer than a standard transition,
   // but still respect the user's preference (e.g. ultra-short = snappy ripple).
   return Math.max(ms * 8, 100)

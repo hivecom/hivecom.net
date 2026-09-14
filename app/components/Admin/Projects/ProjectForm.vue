@@ -43,6 +43,7 @@ interface QueryProject {
 const isOpen = defineModel<boolean>('open', { default: false })
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+
 // Form state
 const projectForm = ref({
   title: '',
@@ -210,6 +211,7 @@ watch(isOpen, (open) => {
 function handleDelete() {
   if (!props.project)
     return
+
   showDeleteConfirm.value = true
 }
 
@@ -217,6 +219,7 @@ function handleDelete() {
 function confirmDelete() {
   if (!props.project)
     return
+
   emit('delete', props.project.id)
 }
 </script>

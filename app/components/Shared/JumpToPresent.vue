@@ -4,15 +4,19 @@
 withDefaults(defineProps<{
   /** Controls visibility; the fade transition is handled internally. */
   visible: boolean
+
   /** Pill label. */
   label?: string
+
   /** Leading icon name. */
   icon?: string
+
   /**
    * `absolute` anchors to the nearest positioned ancestor (chat's scroll area);
    * `fixed` anchors to the viewport (forum, which scrolls the whole window).
    */
   position?: 'absolute' | 'fixed'
+
   /**
    * Extra bottom offset in px, applied in `fixed` mode only. Used to lift the
    * pill above the forum's floating reply composer so they don't overlap.

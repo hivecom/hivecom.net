@@ -32,6 +32,7 @@ export interface GlobeBaseOptions {
   autoRotateSpeed?: number
   enableZoom?: boolean
   pointOfView?: { lat: number, lng: number, altitude: number }
+
   /** Called after every resize with the new width/height (e.g. for post-processing passes). */
   onResize?: (width: number, height: number) => void
 }
@@ -39,6 +40,7 @@ export interface GlobeBaseOptions {
 export interface GlobeBaseResult {
   globeInstance: GlobeInstance
   globeMaterial: import('three').MeshStandardMaterial
+
   /**
    * Re-runs hexPolygonColor with the supplied color function.
    * Pass undefined to reset to the plain base-color function.
@@ -113,6 +115,7 @@ export function useGlobeBase() {
   function applyGlobeColor() {
     if (!globeMaterial)
       return
+
     globeMaterial.color.set(getGlobeColor())
   }
 
@@ -178,6 +181,7 @@ export function useGlobeBase() {
       const { width, height } = container.getBoundingClientRect()
       if (width === 0 || height === 0)
         return
+
       globeInstance?.width(width).height(height)
       onResize?.(width, height)
     }
@@ -231,6 +235,7 @@ export function useGlobeBase() {
 
     globeInstance.controls().autoRotate = true
     globeInstance.controls().autoRotateSpeed = autoRotateSpeed
+
     // Disable built-in zoom - OrbitControls dolly is instant with no easing path.
     // We drive zoom ourselves via a smooth rAF lerp on pointOfView altitude.
     globeInstance.controls().enableZoom = false
@@ -254,6 +259,7 @@ export function useGlobeBase() {
       const animateZoom = () => {
         if (!globeInstance)
           return
+
         const current = globeInstance.pointOfView().altitude
         const delta = targetAlt - current
         if (Math.abs(delta) < 0.0001) {
@@ -270,6 +276,7 @@ export function useGlobeBase() {
         e.preventDefault()
         e.stopPropagation()
         const current = globeInstance?.pointOfView().altitude ?? targetAlt
+
         // normalise deltaY across deltaMode (DOM_DELTA_LINE, DOM_DELTA_PAGE)
         let dy = e.deltaY
         if (e.deltaMode === 1)
@@ -305,6 +312,7 @@ export function useGlobeBase() {
       wheelCleanup = null
 
       globeInstance?.pauseAnimation?.()
+
       // Free the WebGL renderer/context. Without this every mount leaks a
       // context and browsers cap live contexts, eventually breaking the globe.
       globeInstance?._destructor?.()
@@ -341,6 +349,7 @@ export function useGlobeBase() {
     themeObserver = null
 
     globeInstance?.pauseAnimation?.()
+
     // Free the WebGL renderer/context. Without this every mount leaks a
     // context and browsers cap live contexts, eventually breaking the globe.
     globeInstance?._destructor?.()

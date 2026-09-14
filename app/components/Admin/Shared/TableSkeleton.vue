@@ -5,10 +5,13 @@ import TableContainer from '@/components/Shared/TableContainer.vue'
 interface Props {
   // Number of header columns to show skeletons for
   columns?: number
+
   // Number of rows to show skeletons for
   rows?: number
+
   // Whether to show an actions column
   showActions?: boolean
+
   // Whether to use compact column widths for tables with many columns
   compact?: boolean
 }

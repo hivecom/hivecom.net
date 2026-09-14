@@ -29,18 +29,24 @@ export type MagSize = 4096 | 8192 | 16384
 export interface AnalysisFrame {
   // The rAF timestamp for this frame (ms), for dt and the engine's time clock.
   now: number
+
   // Decoded sample rate, so a panel can map frequencies to bins. 0 until decode
   // finishes.
   sampleRate: number
+
   // Extrapolated 0..1 playhead, computed once for every panel this frame.
   playhead: number
+
   // Whether the engine is playing right now. Panels that idle on pause read it.
   playing: boolean
+
   // Whether the engine is buffering/seeking. The spectrum idles its bars on it.
   loading: boolean
+
   // Smoke features, folded from the 4096 mags. Same object each frame, don't
   // hold it across frames.
   features: AudioFeatures
+
   // Magnitudes for a window size, computed once per frame and memoized on the
   // frame's integer sample index. The same Float32Array is handed to every
   // subscriber, so don't mutate it.
@@ -52,6 +58,7 @@ export interface SharedAnalysis {
   // single rAF while it has subscribers and playback is live (plus a coast
   // window so the smoke dissolves); the last unsubscribe parks it.
   subscribe: (fn: (frame: AnalysisFrame) => void) => () => void
+
   // Force at least one more frame even while paused and past the coast window.
   // Panels call this on resize / theme flip so they redraw while the loop would
   // otherwise be parked, the way each used to nudge its own loop.
@@ -70,6 +77,7 @@ class SizedFft {
   private readonly fft: RealFFT
   private readonly frame: Float32Array
   readonly mags: Float32Array
+
   // The integer sample index the cached mags were computed at, or -1 when stale.
   computedAt = -1
 
@@ -111,6 +119,7 @@ class Provider implements SharedAnalysis {
 
   private rafId: number | null = null
   private coastUntil = 0
+
   // Set by requestFrame so the next tick runs once even when parked, then clears.
   private nudge = false
 
@@ -145,6 +154,7 @@ class Provider implements SharedAnalysis {
       this.sampleRate = buffer.sampleRate
       this.analyzer.setSamples(this.samples, this.sampleCount, buffer.sampleRate)
       this.ready = true
+
       // A panel may have subscribed while we decoded; kick the loop if so.
       if (this.subscribers.size > 0)
         this.startLoop()

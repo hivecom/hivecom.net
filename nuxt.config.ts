@@ -676,8 +676,16 @@ export default defineNuxtConfig({
     // types: './types/database.types.ts',
     clientOptions: {
       auth: {
-        // Opt in to the experimental passkey (WebAuthn) API in supabase-js.
-        experimental: { passkey: true },
+        experimental: {
+          // Opt in to the experimental passkey (WebAuthn) API in supabase-js.
+          passkey: true,
+          // Tag every email/OAuth redirect with its PKCE flow id so the callback
+          // picks the matching verifier. Without this, each new link request
+          // overwrites the single verifier and every older link in the inbox
+          // stops working. Redirect allow-list entries must be wildcards
+          // (/auth/*) so the extra query param still matches.
+          appendPkceFlowIdToRedirects: true,
+        },
       },
     },
   },

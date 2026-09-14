@@ -14,8 +14,10 @@ import { BADGE_CATALOG } from '@/lib/badges/catalog'
 const props = withDefaults(defineProps<{
   slug: string
   tier?: BadgeVariant
+
   /** Numeric progress value (count or years) for computed badges. */
   progress?: number | null
+
   /** ISO date string used for "member since" description on one_of_us. */
   earnedAt?: string | null
   compact?: boolean
@@ -36,6 +38,7 @@ const resolvedTier = computed<BadgeVariant>(() => {
     return props.tier
   if (entry.value && entry.value.kind !== 'computed')
     return entry.value.defaultTier
+
   return 'bronze'
 })
 

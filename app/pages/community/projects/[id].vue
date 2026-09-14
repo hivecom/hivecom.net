@@ -81,6 +81,7 @@ const displayError = computed(() => {
     return 'This project was not found. It may have been removed or never existed.'
   if (error.value)
     return 'Unable to load project details. Please try again later.'
+
   return null
 })
 
@@ -88,6 +89,7 @@ const displayError = computed(() => {
 const displayErrorDetail = computed(() => {
   if (error.value === 'Project not found')
     return undefined
+
   return error.value ?? undefined
 })
 

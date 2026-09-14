@@ -44,26 +44,34 @@ type BandKey = (typeof BANDS)[number]['key']
 export interface AudioFeatures {
   // Smoothed overall loudness, 0..1. Drives turbulence and brightness.
   energy: number
+
   // Instantaneous loudness this frame, 0..1.
   level: number
+
   // Per-band energy, each 0..1 after adaptive normalization.
   bands: Record<BandKey, number>
   // Overall transient strength this frame, 0..1 (spectral flux).
   onset: number
+
   // Transient strength in the low end (kick / DnB blast), 0..1.
   bassHit: number
+
   // Transient strength up top (snare / hat / click), 0..1.
   highHit: number
+
   // Spectral tilt: 0 dark/bass-heavy, 1 bright/airy.
   brightness: number
+
   // Mood weights, each 0..1, roughly summing to 1. The engine cross-fades style
   // between them: slow lines, splotchy blasts, sharp geometry.
   flow: number
   splatter: number
   geometry: number
+
   // Estimated tempo in BPM, smoothed, 0 until we're confident. Derived from the
   // low-band onset envelope by autocorrelation.
   bpm: number
+
   // Phase within the current beat, 0..1, advancing with the estimated tempo.
   // Stays 0 while bpm is 0. A visual can pulse on it instead of raw flux.
   beatPhase: number
@@ -164,9 +172,11 @@ export class FeatureAnalyzer {
   private readonly onsetRing = new Float32Array(TEMPO_RING)
   private ringPos = 0
   private ringCount = 0
+
   // Frames since the last autocorrelation, so we run it every ~few hundred ms
   // instead of every frame.
   private sinceTempo = 0
+
   // Smoothed BPM estimate and the phase within the current beat.
   private bpm = 0
   private beatPhase = 0
@@ -247,6 +257,7 @@ export class FeatureAnalyzer {
         if (m > peak)
           peak = m
       }
+
       // Compand into a friendlier range; the tracker handles final scaling.
       const v = this.bandTrackers[i]!.push(Math.log10(1 + peak / FFT_SIZE * 64))
       out.bands[BANDS[i]!.key] = v
@@ -350,6 +361,7 @@ export class FeatureAnalyzer {
     this.sinceTempo++
     if (this.sinceTempo < TEMPO_INTERVAL || this.ringCount < MAX_LAG * 3)
       return
+
     this.sinceTempo = 0
 
     // Autocorrelate the buffered envelope over the candidate lag range. Read the
@@ -370,6 +382,7 @@ export class FeatureAnalyzer {
         const b = this.onsetRing[(this.ringPos + i - lag) % TEMPO_RING]! - mean
         score += a * b
       }
+
       // Normalize by the overlap so long lags aren't penalized for fewer terms.
       score /= (n - lag)
       if (score > bestScore) {
@@ -388,6 +401,7 @@ export class FeatureAnalyzer {
     }
 
     let bpm = (60 * ONSET_RATE) / bestLag
+
     // Resolve half/double-time toward the range most tracks sit in, and prefer
     // continuity with the last estimate so it locks instead of octave-jumping.
     bpm = this.foldTempo(bpm)
@@ -407,6 +421,7 @@ export class FeatureAnalyzer {
       b *= 2
     while (b > 180)
       b /= 2
+
     // If we already have a lock, check the octave neighbours and keep whichever
     // lands closest to it, so a track doesn't flip between 75 and 150.
     if (this.bpm > 0) {
@@ -416,6 +431,7 @@ export class FeatureAnalyzer {
       for (const c of candidates) {
         if (c < MIN_BPM || c > MAX_BPM)
           continue
+
         const gap = Math.abs(c - this.bpm)
         if (gap < bestGap) {
           bestGap = gap

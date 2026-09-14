@@ -55,9 +55,11 @@ const resolvedChannelName = computed(() => {
   const v = search.value.trim()
   if (!v)
     return null
+
   const name = /^[#&+!]/.test(v) ? v : `#${v}`
   if (IRC_CHANNEL_INVALID.test(name))
     return null
+
   return name
 })
 
@@ -66,6 +68,7 @@ const canConnect = computed(() => resolvedChannelName.value !== null)
 function connectToInput() {
   if (!resolvedChannelName.value)
     return
+
   join(resolvedChannelName.value)
 }
 

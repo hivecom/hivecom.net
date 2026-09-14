@@ -60,17 +60,20 @@ const enforcementValue = computed(() => account.value?.enforcementStatus ?? 'Unk
 const sendingVariant = computed(() => {
   if (!account.value)
     return 'gray'
+
   return sendingEnabled.value ? 'success' : 'danger'
 })
 
 const enforcementVariant = computed(() => {
   if (!account.value)
     return 'gray'
+
   return enforcementHealthy.value && productionAccess.value ? 'success' : 'danger'
 })
 const enforcementDescription = computed(() => {
   if (!productionAccess.value)
     return 'The account has no production access, so SES only delivers to verified addresses.'
+
   return 'SES account standing. HEALTHY means bounce and complaint rates are inside the review thresholds.'
 })
 
@@ -80,6 +83,7 @@ const quotaValue = computed(() => {
   const quota = account.value?.quota
   if (!quota)
     return 'Unknown'
+
   return `${formatCount(quota.sentLast24Hours)} / ${formatCount(quota.max24HourSend)}`
 })
 
@@ -87,6 +91,7 @@ const quotaUsage = computed(() => {
   const quota = account.value?.quota
   if (!quota || quota.sentLast24Hours === null || !quota.max24HourSend)
     return null
+
   return quota.sentLast24Hours / quota.max24HourSend
 })
 
@@ -98,6 +103,7 @@ const quotaVariant = computed(() => {
     return 'danger'
   if (usage >= 0.75)
     return 'warning'
+
   return 'primary'
 })
 
@@ -105,6 +111,7 @@ const quotaDescription = computed(() => {
   const usage = quotaUsage.value
   if (usage === null)
     return 'Messages sent in the rolling 24 hour window against the account cap.'
+
   return `${Math.round(usage * 100)}% of the rolling 24 hour cap used.`
 })
 
@@ -125,12 +132,14 @@ const identityVariant = computed(() => {
     return 'warning'
   if (identity.value.verifiedForSending && dkimVerified.value)
     return 'success'
+
   return 'warning'
 })
 
 const identityDescription = computed(() => {
   if (!identity.value)
     return 'No SES identity exists for the sending domain, so nothing will deliver.'
+
   const verified = identity.value.verifiedForSending ? 'Verified for sending' : 'Not verified for sending'
   return `${verified}. DKIM ${identity.value.dkimStatus ?? 'unknown'}.`
 })

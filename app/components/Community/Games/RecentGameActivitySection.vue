@@ -14,10 +14,13 @@ const props = defineProps<{
   currentPlayersBySteamId: Map<number, string[]>
   // Full games list to cross-reference steam_id -> game
   games: Tables<'games'>[]
+
   // Whether the current user is authenticated
   isLoggedIn: boolean
+
   // Whether the presences data is still loading
   loading: boolean
+
   // Metrics history buckets for "recently played" fallback
   metricsHistory?: MetricsHistoryEntry[]
 }>()
@@ -65,13 +68,16 @@ function buildRecentlyPlayedMap(history: MetricsHistoryEntry[]): Map<number, { l
   for (const entry of sortedHistory) {
     if (!entry.usersByGame)
       continue
+
     const capturedAt = new Date(entry.capturedAt).getTime()
     for (const [idStr, count] of Object.entries(entry.usersByGame)) {
       if (!count || count < 1)
         continue
+
       const id = Number(idStr)
       if (Number.isNaN(id))
         continue
+
       const existing = byGameId.get(id)
       if (existing === undefined || capturedAt > existing.lastSeen) {
         byGameId.set(id, { lastSeen: capturedAt, peakCount: count })
@@ -96,9 +102,11 @@ const recentlyPlayed = computed<RecentlyPlayedEntry[]>(() => {
   for (const [gameId, { lastSeen, peakCount }] of byGameId) {
     if (liveGameIds.value.has(gameId))
       continue
+
     const game = props.games.find(g => g.id === gameId)
     if (!game)
       continue
+
     entries.push({ game, playerIds: [], live: false, lastSeen, peakCount })
   }
 
@@ -116,6 +124,7 @@ const sectionTitle = computed(() => {
     return null
   if (allEntries.value.length === 0)
     return null
+
   return 'Most Recently Played'
 })
 
@@ -145,6 +154,7 @@ const allEntriesSheet = computed<PlayingEntry[]>(() => {
     const game = props.games.find(g => g.id === gameId)
     if (!game)
       continue
+
     recent.push({ game, playerIds: [], live: false, lastSeen, peakCount })
   }
   recent.sort((a, b) => b.lastSeen - a.lastSeen)
@@ -161,6 +171,7 @@ const sheetExhausted = computed(() => sheetVisible.value.length >= allEntriesShe
 function setupSentinel() {
   if (!sentinel.value)
     return
+
   observer = new IntersectionObserver(
     (entries) => {
       if (entries[0]?.isIntersecting && !sheetExhausted.value)

@@ -76,6 +76,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     const now = Date.now()
     if (now - lastCheck < VERSION_CHECK_THROTTLE_MS)
       return
+
     lastCheck = now
 
     try {

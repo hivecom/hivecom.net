@@ -51,6 +51,7 @@ async function fetchProfiles(query: string) {
     const { data, error } = await req
     if (error)
       throw error
+
     results.value = (data ?? []) as ProfileResult[]
   }
   catch (err) {
@@ -70,6 +71,7 @@ async function fetchProfileById(id: string) {
 
   if (!error && data) {
     selectedProfile.value = data as ProfileResult
+
     // Ensure it appears in the list too
     if (!results.value.some(r => r.id === id))
       results.value = [data as ProfileResult, ...results.value]
@@ -95,6 +97,7 @@ watch(() => props.modelValue, async (val) => {
   }
   if (selectedProfile.value?.id === val)
     return
+
   // Check results first
   const found = results.value.find(r => r.id === val)
   if (found) {

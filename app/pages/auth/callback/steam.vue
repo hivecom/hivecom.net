@@ -106,6 +106,7 @@ function cleanCallbackParams() {
     return
 
   const url = new URL(window.location.href)
+
   // Clear all openid params and state
   for (const key of [...url.searchParams.keys()]) {
     if (key.startsWith('openid.') || key === 'state') {

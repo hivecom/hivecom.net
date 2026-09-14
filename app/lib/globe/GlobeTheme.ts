@@ -22,6 +22,7 @@ function getCanvasCtx(): CanvasRenderingContext2D | null {
     return _ctx
   if (typeof document === 'undefined')
     return null
+
   _canvas = document.createElement('canvas')
   _canvas.width = 1
   _canvas.height = 1
@@ -80,6 +81,7 @@ function colorToRgbString(color: string): string {
 export function isLightTheme(): boolean {
   if (typeof window === 'undefined')
     return false
+
   const root = document.documentElement
   const dataTheme = root.getAttribute('data-theme')?.toLowerCase()
   if (dataTheme === 'light')
@@ -90,6 +92,7 @@ export function isLightTheme(): boolean {
     return true
   if (root.classList.contains('dark'))
     return false
+
   const media = window.matchMedia?.('(prefers-color-scheme: light)')
   return Boolean(media?.matches)
 }

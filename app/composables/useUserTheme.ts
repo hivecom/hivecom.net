@@ -105,6 +105,7 @@ function computeThemeChecksum(theme: Tables<'themes'>): string {
 function computeCssChecksum(css: string | null | undefined): string {
   if (css == null || css.trim().length === 0)
     return ''
+
   return btoa(css.trim())
 }
 
@@ -161,6 +162,7 @@ export function useUserTheme() {
     get(): ThemeOption[] {
       if (!activeTheme.value)
         return [{ label: 'Default', value: null }]
+
       return [{ label: activeTheme.value.name, value: activeTheme.value.id }]
     },
     set(options: ThemeOption[]) {
@@ -198,6 +200,7 @@ export function useUserTheme() {
             if (cachedTheme?.id != null) {
               applyTheme(cachedTheme)
               activeTheme.value = cachedTheme
+
               // Also restore custom CSS if it was previously allowed
               if (cachedTheme.custom_css != null && cachedTheme.custom_css.trim().length > 0) {
                 applyCustomCss(cachedTheme.custom_css)
@@ -320,6 +323,7 @@ export function useUserTheme() {
 
     activeTheme.value = theme
     applyTheme(theme)
+
     // withCss explicitly controls CSS application when called from preview keep.
     // Falls back to the user's persistent setting when not specified.
     const applyCss = withCss ?? settings.value.allow_custom_css
@@ -397,6 +401,7 @@ export function useUserTheme() {
   function confirmPendingPreviewTheme(withCss: boolean): void {
     if (!pendingPreviewTheme.value)
       return
+
     const { onConfirm } = pendingPreviewTheme.value
     pendingPreviewTheme.value = null
     onConfirm(withCss)
@@ -405,6 +410,7 @@ export function useUserTheme() {
   function cancelPendingPreviewTheme(): void {
     if (!pendingPreviewTheme.value)
       return
+
     const { onCancel } = pendingPreviewTheme.value
     pendingPreviewTheme.value = null
     onCancel()
@@ -413,6 +419,7 @@ export function useUserTheme() {
   async function confirmPendingTheme(): Promise<void> {
     if (!pendingTheme.value)
       return
+
     const { theme } = pendingTheme.value
     pendingTheme.value = null
     settings.value.allow_custom_css = true
@@ -422,6 +429,7 @@ export function useUserTheme() {
   async function confirmPendingThemeWithoutCss(): Promise<void> {
     if (!pendingTheme.value)
       return
+
     const { theme } = pendingTheme.value
     pendingTheme.value = null
     settings.value.allow_custom_css = false
@@ -431,6 +439,7 @@ export function useUserTheme() {
   async function confirmCssChange(): Promise<void> {
     if (!pendingCssChange.value)
       return
+
     const { theme } = pendingCssChange.value
     pendingCssChange.value = null
     settings.value.allow_custom_css = true
@@ -443,7 +452,9 @@ export function useUserTheme() {
   async function dismissCssChange(): Promise<void> {
     if (!pendingCssChange.value)
       return
+
     pendingCssChange.value = null
+
     // Do not update the CSS checksum - user wants to keep old behavior
     applyCustomCss(null)
   }

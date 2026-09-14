@@ -37,6 +37,7 @@ async function loadGameIcon() {
   finally {
     isLoading.value = false
     isImageReady.value = false
+
     // Handle cached images: if the browser already has the asset, the @load
     // event may fire before Vue attaches the listener. Check `complete` after
     // the DOM updates and flip ready manually in that case.

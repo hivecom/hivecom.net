@@ -163,14 +163,17 @@ export function useCacheModule(config: CacheConfig = {}) {
       // SSR safety guard - storage events only make sense on the client
       if (typeof window === 'undefined')
         return
+
       // Deletions only
       if (event.newValue !== null)
         return
+
       // Ignore unrelated keys
       if (event.key == null)
         return
       if (!event.key.startsWith(kvPrefix))
         return
+
       // Strip prefix so caller receives the same key they passed to withCache
       const logicalKey = event.key.slice(kvPrefix.length)
       handler(logicalKey)
@@ -179,12 +182,14 @@ export function useCacheModule(config: CacheConfig = {}) {
     onMounted(() => {
       if (typeof window === 'undefined')
         return
+
       window.addEventListener('storage', handleStorage)
     })
 
     onUnmounted(() => {
       if (typeof window === 'undefined')
         return
+
       window.removeEventListener('storage', handleStorage)
     })
   }

@@ -67,9 +67,11 @@ function seededRng(seed: number) {
 // Smooth eased interpolation between two target positions using a sine wave
 function animatedPosition(index: number): { x: number, y: number } {
   const t = animTime.value
+
   // Each blob oscillates independently with a phase offset
   const phase = (index / ANIM_TARGETS.length)
   const tPhased = (t + phase) % 1
+
   // Use sine to ease back and forth smoothly
   const ease = (Math.sin(tPhased * Math.PI * 2) + 1) / 2
   const target = ANIM_TARGETS[index] ?? ANIM_TARGETS[0]!

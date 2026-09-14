@@ -51,6 +51,7 @@ const activityStatus = useUserActivityStatus(
 )
 
 const countryInfo = computed(() => getCountryInfo(props.profile?.country ?? null))
+
 // Treat YYYY-MM-DD birthdays as date-only values so timezone offsets do not shift the day
 function parseBirthdayDate(value: string | null): Date | null {
   if (!value)
@@ -113,6 +114,7 @@ const birthdayTooltipText = computed(() => {
       return 'Happy birth?'
     if (birthdayInfo.value.age < 6)
       return 'Happy Birthday?'
+
     return 'Happy birthday!'
   }
 
@@ -139,6 +141,7 @@ const joinedTooltip = computed(() => {
 const profileUrl = computed(() => {
   if (typeof window === 'undefined')
     return ''
+
   const identifier = props.profile?.username || props.profile?.id
   return `${window.location.origin}/profile/${identifier}`
 })
@@ -185,9 +188,11 @@ function getRoleInfo(role: string | null) {
     case 'admin':
       variant = 'danger'
       break
+
     case 'moderator':
       variant = 'info'
       break
+
     default:
       variant = 'success'
   }
@@ -251,11 +256,13 @@ function drawConfettiParticle(ctx: CanvasRenderingContext2D, p: ConfettiParticle
     case 'rect':
       ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2)
       break
+
     case 'circle':
       ctx.beginPath()
       ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2)
       ctx.fill()
       break
+
     case 'diamond':
       ctx.beginPath()
       ctx.moveTo(0, -p.size / 2)
@@ -380,9 +387,11 @@ function stopConfetti() {
 function onCardMouseMove(event: MouseEvent) {
   if (!isBirthdayToday.value)
     return
+
   const wrapper = wrapperRef.value
   if (!wrapper)
     return
+
   const rect = wrapper.getBoundingClientRect()
   mouseX = event.clientX - rect.left
   mouseY = event.clientY - rect.top

@@ -134,6 +134,7 @@ function handleSort(label: string) {
   const col = sortColMap[label]
   if (!col)
     return
+
   if (sortCol.value === col) {
     sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
   }
@@ -148,6 +149,7 @@ function sortIcon(label: string): string {
   const col = sortColMap[label]
   if (!col || sortCol.value !== col)
     return 'ph:arrows-down-up'
+
   return sortDir.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'
 }
 
@@ -219,8 +221,10 @@ function getEventStatus(event: RpcEvent): { label: string, variant: 'accent' | '
         : next
       if (now >= next && now <= nextEnd)
         return { label: 'Ongoing', variant: 'success' }
+
       return { label: 'Recurring', variant: 'accent' }
     }
+
     // No future occurrences - series ended
     return { label: 'Past', variant: 'neutral' }
   }
@@ -234,6 +238,7 @@ function getEventStatus(event: RpcEvent): { label: string, variant: 'accent' | '
     return { label: 'Upcoming', variant: 'accent' }
   if (now >= eventStart && now <= eventEnd)
     return { label: 'Ongoing', variant: 'success' }
+
   return { label: 'Past', variant: 'neutral' }
 }
 
@@ -359,6 +364,7 @@ watch(showEventDetails, (isOpen) => {
     return
   if (route.query.event == null)
     return
+
   const { event: _event, ...rest } = route.query
   void router.replace({ query: rest })
 })
@@ -397,6 +403,7 @@ watch(page, () => {
 watch(adminTablePerPage, () => {
   if (page.value !== 1) {
     setPage(1)
+
     // page watch fires fetch
   }
   else {
@@ -408,13 +415,16 @@ watch(adminTablePerPage, () => {
 
 onBeforeMount(async () => {
   await fetchEvents()
+
   // Honour any ?event= query param present on initial load
   const eventId = route.query.event
   if (!eventId)
     return
+
   const id = Number.parseInt(String(eventId), 10)
   if (Number.isNaN(id))
     return
+
   const match = items.value.find(e => e.id === id)
   if (match)
     viewEventDetails(match)

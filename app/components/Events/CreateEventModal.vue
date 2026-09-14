@@ -141,6 +141,7 @@ const { isAdminOrMod: isPrivileged } = useEffectiveRole()
 const canDelete = computed(() => {
   if (!props.event || !userId.value)
     return false
+
   const isOwner = props.event.created_by === userId.value && !props.event.is_official
   return isOwner || isPrivileged.value
 })

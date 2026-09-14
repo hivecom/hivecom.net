@@ -83,10 +83,12 @@ async function generateDiff() {
       // Only consider ins/del rows - skip context and hunk header rows.
       if (!row.includes('d2h-ins') && !row.includes('d2h-del'))
         return row
+
       // Extract the content span and strip tags to see if there's actual text.
       const contentMatch = row.match(DIFF_CONTENT_RE)
       if (!contentMatch)
         return row
+
       const innerText = (contentMatch[1] ?? '').replace(DIFF_TAG_RE, '').trim()
       return innerText === '' ? '' : row
     })

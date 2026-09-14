@@ -43,6 +43,7 @@ const participationBadges = computed((): BadgePreviewEntry[] => {
   for (const [slug, entry] of participationSlugs) {
     if (entry.kind !== 'computed')
       continue
+
     const tiers = entry.tiers as Partial<Record<BadgeVariant, number>>
     // Iterate from lowest tier to highest for display order
     for (const tier of [...BADGE_VARIANT_ORDER].reverse()) {

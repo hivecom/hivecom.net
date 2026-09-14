@@ -27,6 +27,7 @@ const pendingDm = ref<string | null>(null)
 function applyPending() {
   if (!isConnected.value)
     return
+
   if (pendingChannel.value) {
     joinChannel(pendingChannel.value)
     setActive(pendingChannel.value)
@@ -45,6 +46,7 @@ function applyPending() {
 function maybeConnectFromNotification(notifyParam: unknown) {
   if (notifyParam !== '1')
     return
+
   if (!isConnected.value && connState.value !== 'connecting')
     void connect()
 }
@@ -54,6 +56,7 @@ function consumeQueryParams() {
   if (typeof channelParam === 'string' && channelParam) {
     const name = channelParam.startsWith('#') ? channelParam : `#${channelParam}`
     pendingChannel.value = name
+
     // Seed so a connect that fires after this still auto-joins the right channel.
     seedChannel(name)
   }

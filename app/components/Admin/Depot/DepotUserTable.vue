@@ -85,6 +85,7 @@ function handleSort(col: UploaderSort) {
 function sortIcon(col: UploaderSort): string {
   if (sortCol.value !== col)
     return 'ph:arrows-down-up'
+
   return sortDir.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'
 }
 
@@ -112,6 +113,7 @@ async function confirmWipe() {
   const target = userToWipe.value
   if (!target)
     return
+
   wiping.value = true
   try {
     const { deleted } = await adminWipeUserFiles(target.account, target.issuer || undefined)

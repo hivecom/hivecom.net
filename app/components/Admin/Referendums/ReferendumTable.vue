@@ -138,6 +138,7 @@ function handleSort(label: string) {
   const col = sortColMap[label]
   if (!col)
     return
+
   if (sortCol.value === col) {
     sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
   }
@@ -152,6 +153,7 @@ function sortIcon(label: string): string {
   const col = sortColMap[label]
   if (!col || sortCol.value !== col)
     return 'ph:arrows-down-up'
+
   return sortDir.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'
 }
 
@@ -310,6 +312,7 @@ watch(showReferendumDetails, (isOpen) => {
     return
   if (route.query.referendum == null)
     return
+
   const { referendum: _referendum, ...rest } = route.query
   void router.replace({ query: rest })
 })
@@ -321,9 +324,11 @@ watch(
   (referendumId) => {
     if (loading.value || !referendumId)
       return
+
     const id = Number.parseInt(String(referendumId), 10)
     if (Number.isNaN(id))
       return
+
     const match = items.value.find(r => r.id === id)
     if (match)
       viewReferendum(match)
@@ -354,6 +359,7 @@ watch(page, () => {
 watch(adminTablePerPage, () => {
   if (page.value !== 1) {
     setPage(1)
+
     // page watch fires fetch
   }
   else {
@@ -370,13 +376,16 @@ watch(() => refreshSignal.value, (newValue, oldValue) => {
 
 onBeforeMount(async () => {
   await fetchReferendums()
+
   // Honour any ?referendum= query param present on initial load
   const referendumId = route.query.referendum
   if (!referendumId)
     return
+
   const id = Number.parseInt(String(referendumId), 10)
   if (Number.isNaN(id))
     return
+
   const match = items.value.find(r => r.id === id)
   if (match)
     viewReferendum(match)

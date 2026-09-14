@@ -94,6 +94,7 @@ export function useEventTiming(
     const ev = toValue(event)
     if (!ev || !eventStart.value)
       return null
+
     if (ev.duration_minutes != null) {
       return new Date(eventStart.value.getTime() + ev.duration_minutes * 60 * 1000)
     }
@@ -106,18 +107,21 @@ export function useEventTiming(
   const hasEventEnded = computed<boolean>(() => {
     if (!eventEnd.value)
       return false
+
     return now.value >= eventEnd.value
   })
 
   const isUpcoming = computed<boolean>(() => {
     if (!eventStart.value)
       return false
+
     return eventStart.value > now.value
   })
 
   const isOngoing = computed<boolean>(() => {
     if (!eventStart.value || !eventEnd.value)
       return false
+
     return eventStart.value <= now.value && now.value <= eventEnd.value
   })
 
@@ -127,6 +131,7 @@ export function useEventTiming(
   const timeAgo = computed<string>(() => {
     if (!eventEnd.value || isUpcoming.value || isOngoing.value)
       return ''
+
     const diff = now.value.getTime() - eventEnd.value.getTime()
     return formatTimeAgo(diff)
   })
@@ -138,6 +143,7 @@ export function useEventTiming(
       return { ...ZERO_COUNTDOWN }
     if (!eventStart.value)
       return null
+
     const diff = eventStart.value.getTime() - now.value.getTime()
     return msToCountdown(diff)
   })

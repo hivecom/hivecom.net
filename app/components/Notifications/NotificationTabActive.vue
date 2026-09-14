@@ -144,6 +144,7 @@ const actionableNotifications = computed(() => [
 const hasPinned = computed(() => {
   if (isDev && devFixturesActive.value)
     return true
+
   return (
     pendingRequestIds.value.length > 0
     || Boolean(birthdayWidget.value)
@@ -160,6 +161,7 @@ const hasAnyNotifications = computed(() =>
 const loadingCount = computed(() => {
   if (!loading.value)
     return 0
+
   const total = pendingRequestIds.value.length
     + (birthdayWidget.value ? 1 : 0)
     + pendingComplaintCount.value
@@ -172,6 +174,7 @@ const loadingCount = computed(() => {
 const showEmpty = computed(() => {
   if (isDev && (devFixturesActive.value || devFixtureError.value || devFixtureLoading.value))
     return false
+
   return !loading.value
     && !error.value
     && pendingRequestIds.value.length === 0

@@ -19,6 +19,7 @@ const PROJECT_BANNER_UPDATED_EVENT = 'project-banner-updated'
 
 export interface ProjectBannerUpdatedPayload {
   projectId: number
+
   /** New public URL, or null if the banner was deleted */
   url: string | null
 }

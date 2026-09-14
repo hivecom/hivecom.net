@@ -18,11 +18,14 @@ import { DEFAULT_SMOKE_CONFIG } from '@/lib/audio/smoke-field'
 const props = defineProps<{
   // Track URL. Swapping it re-subscribes to that track's shared analysis.
   src: string
+
   // Playback position as a 0..1 fraction. The provider reads playback state
   // directly, so this is only here for the shared prop shape the lightbox binds.
   progress: number
+
   // Total duration in seconds.
   duration: number
+
   // Whether the engine is playing.
   playing: boolean
 }>()
@@ -130,14 +133,17 @@ function onFrame(frame: AnalysisFrame) {
 async function ensureEngine() {
   if (engine || engineLoading || !import.meta.client)
     return
+
   const el = canvas.value
   if (!el)
     return
+
   engineLoading = true
   try {
     const { SmokeField } = await import('@/lib/audio/smoke-field')
     if (el !== canvas.value)
       return
+
     engine = await SmokeField.create(el, readColors(), config)
   }
   finally {
@@ -173,12 +179,14 @@ onThemeChange(() => {
 watch(canvas, async (el) => {
   if (!el)
     return
+
   await ensureEngine()
   resizeObserver?.disconnect()
   if (import.meta.client && 'ResizeObserver' in window) {
     resizeObserver = new ResizeObserver(() => analysis?.requestFrame())
     resizeObserver.observe(el)
   }
+
   // Render at least one frame so the field is visible before playback starts.
   analysis?.requestFrame()
 })

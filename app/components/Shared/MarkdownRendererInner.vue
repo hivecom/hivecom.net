@@ -52,6 +52,7 @@ const processedMarkdown = computed(() => processMarkdown(props.md))
 function applyTransforms(body: MDCRoot | undefined): MDCRoot | undefined {
   if (!body)
     return body
+
   let result = groupImagesAST(body as Parameters<typeof groupImagesAST>[0])
   result = transformLinkEmbeds(result as Parameters<typeof transformLinkEmbeds>[0]) as typeof result
   result = wrapTablesAST(result as Parameters<typeof wrapTablesAST>[0]) as typeof result
@@ -73,11 +74,13 @@ async function runParse(val: string) {
     const mod = await import('@nuxtjs/mdc/runtime')
     if (destroyed)
       return
+
     parseMarkdownFn = mod.parseMarkdown as unknown as ParseMarkdownFn
   }
   const result = await parseMarkdownFn!(val, { toc: false, contentHeading: false })
   if (destroyed)
     return
+
   parsed.value = {
     body: applyTransforms(result.body),
     data: result.data as Record<string, unknown>,
@@ -91,8 +94,10 @@ async function runParse(val: string) {
 function setupVideoErrorHandlers() {
   if (!container.value)
     return
+
   container.value.querySelectorAll('.md-video-embed video').forEach((video) => {
     const el = video as HTMLVideoElement
+
     // blob: URLs are session-scoped and always broken on reload
     if (el.src.startsWith('blob:') || el.getAttribute('src')?.startsWith('blob:')) {
       markVideoMissing(el)
@@ -105,6 +110,7 @@ function setupVideoErrorHandlers() {
 function setupExternalLinkTargets() {
   if (!container.value)
     return
+
   container.value.querySelectorAll('a[href]').forEach((el) => {
     const anchor = el as HTMLAnchorElement
     const href = anchor.getAttribute('href')
@@ -119,6 +125,7 @@ function markVideoMissing(video: HTMLVideoElement) {
   const wrapper = video.closest('.md-video-embed') as HTMLElement | null
   if (!wrapper || wrapper.classList.contains('md-video-missing'))
     return
+
   wrapper.classList.add('md-video-missing')
   wrapper.innerHTML = '<span class="md-missing-label">Missing or deleted media</span>'
 }

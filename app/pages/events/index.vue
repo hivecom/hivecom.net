@@ -27,6 +27,7 @@ const officialFilter = computed<boolean | null>(() => {
     return true
   if (val === 'unofficial')
     return false
+
   return null
 })
 
@@ -74,6 +75,7 @@ watch(
     const current = gameFilterIds.value
     if (ids.length === current.length && ids.every((id, i) => id === current[i]))
       return
+
     gameFilterIds.value = ids
   },
   { immediate: true },
@@ -88,6 +90,7 @@ watch(gameFilterIds, (ids) => {
     .filter(id => !Number.isNaN(id) && id > 0)
   if (ids.length === current.length && ids.every((id, i) => id === current[i]))
     return
+
   const { game: _game, ...rest } = route.query
   void router.replace({ query: ids.length > 0 ? { ...rest, game: ids.map(String) } : rest })
 })

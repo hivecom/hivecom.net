@@ -35,6 +35,7 @@ const filteredGames = computed(() => {
     return props.games
   if (!searchQuery.value)
     return props.games
+
   const query = searchQuery.value.toLowerCase()
   return props.games.filter(game =>
     searchString([game.name ?? '', game.shorthand ?? ''], query),
@@ -47,6 +48,7 @@ let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 watch(searchQuery, (query) => {
   if (!props.onSearch)
     return
+
   if (searchDebounceTimer !== null)
     clearTimeout(searchDebounceTimer)
   searchDebounceTimer = setTimeout(() => {

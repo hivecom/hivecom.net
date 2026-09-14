@@ -142,6 +142,7 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
       .filter((item) => {
         if (seenDiscussionIds.has(item.discussionId))
           return false
+
         seenDiscussionIds.add(item.discussionId)
         return true
       })

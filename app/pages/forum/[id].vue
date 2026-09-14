@@ -131,16 +131,20 @@ function handlePostUpdate(updated: Tables<'discussions'> | Tables<'discussion_to
 // the unread markers. Callers handle the entity-redirect short-circuit first.
 function applyLoadedPost(data: DiscussionWithContext) {
   post.value = data
+
   // Warm all cache keys (id, slug, entity) so the Discussion composable's
   // fetchById(post.id) is a cache hit instead of racing a duplicate SELECT *.
   discussionCache.set(data)
+
   // Show the NSFW overlay only when the post is NSFW and warnings are enabled. If
   // show_nsfw_content is disabled entirely, the watchEffect below redirects instead.
   showNSFWWarning.value = !!data.is_nsfw && settings.value.show_nsfw_warning
   nsfwRevealed.value = !data.is_nsfw || !settings.value.show_nsfw_warning
   void loadTopicBreadcrumbs(data.discussion_topic_id)
+
   // Mark seen in localStorage so the unread dot clears on direct URL visits.
   forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
+
   // Advance the parent topic's seenActivityAt to this discussion's last activity
   // timestamp - not now, so we don't shadow concurrent activity in other
   // discussions that may have happened more recently.
@@ -265,6 +269,7 @@ const seoDescription = computed(() => {
   const source = post.value ?? seoPost.value
   if (!source)
     return 'A forum post on Hivecom'
+
   return source.description
     || stripMarkdown(source.markdown, 160)
     || 'A forum post on Hivecom'
@@ -298,9 +303,11 @@ useHead({
 const postModifierId = computed(() => {
   if (!post.value)
     return null
+
   const { modified_at, created_at, modified_by, created_by } = post.value
   if (modified_at === created_at || !modified_by || modified_by === created_by)
     return null
+
   return modified_by
 })
 const { user: postModifierUser } = useDataUser(postModifierId, { userTtl: 10 * 60 * 1000 })
@@ -340,6 +347,7 @@ function publish() {
  */
 function handleReplySubmitted(newReplyCount: number, discussionId: string) {
   forumUnread.markDiscussionSeen(discussionId, newReplyCount)
+
   // Advance the topic watermark to now - your reply just became the latest
   // activity, so any dot that appears after returning to the forum index would
   // be from concurrent activity that happened after you posted.
@@ -357,6 +365,7 @@ const isPageTitleVisible = useElementVisibility(pageTitle)
 const stickyScrollOffset = computed(() => {
   if (!scrollHeaderReady.value || isPageTitleVisible.value)
     return 0
+
   return scrollHeader.value?.offsetHeight ?? 0
 })
 
@@ -390,11 +399,13 @@ watch(
   () => discussionRef.value?.navigatingToComment,
   (val) => {
     scrollingToReply.value = val ?? false
+
     // Lock scroll immediately when navigation starts. It stays locked until
     // the overlay's fade-out transition fully completes (handled by @after-leave)
     // so programmatic scrollToIdWhenStable isn't aborted by a stray event.
     if (!import.meta.client)
       return
+
     if (val) {
       window.addEventListener('wheel', preventScroll, { passive: false })
       window.addEventListener('touchmove', preventScroll, { passive: false })

@@ -6,12 +6,14 @@ import { useGameConnect } from '@/composables/useGameConnect'
 interface Props {
   addresses: string[] | null | undefined
   port: string | null | undefined
+
   /** Resolved connect templates, from buildConnectContext(game, gameserver) */
   connect: ConnectContext
   variant?: 'accent' | 'gray' | 'success' | 'danger' | 'link'
   size?: 's' | 'm' | 'l'
   plain?: boolean
   outline?: boolean
+
   /** Passed through to the wrapper to stop click propagation (e.g. inside a NuxtLink) */
   stopPropagation?: boolean
 }
@@ -57,6 +59,7 @@ function copyAddress(action: ConnectAction) {
 function copyCommand(action: ConnectAction) {
   if (action.command == null)
     return
+
   copy(action.command)
   pushToast('Copied command', { description: action.command, timeout: 3000 })
 }
@@ -64,6 +67,7 @@ function copyCommand(action: ConnectAction) {
 function copyLauncherCommand(action: ConnectAction) {
   if (action.launcherCommand == null)
     return
+
   copy(action.launcherCommand)
   pushToast('Copied launcher command', { description: action.launcherCommand, timeout: 3000 })
 }

@@ -77,6 +77,7 @@ watch(
             return entry.value
           if (entry.value === null || entry.value === undefined)
             return undefined
+
           const parsed = Number(entry.value)
           return Number.isNaN(parsed) ? undefined : parsed
         })()
@@ -84,12 +85,14 @@ watch(
         form.value.stringValue = ''
         form.value.jsonValue = '{ }'
         break
+
       case 'BOOLEAN':
         form.value.booleanValue = Boolean(entry.value)
         form.value.numberValue = undefined
         form.value.stringValue = ''
         form.value.jsonValue = '{ }'
         break
+
       case 'JSON':
         form.value.jsonValue = (() => {
           try {
@@ -103,6 +106,7 @@ watch(
         form.value.numberValue = undefined
         form.value.stringValue = ''
         break
+
       case 'STRING':
       default:
         form.value.stringValue = entry.value !== null && entry.value !== undefined ? String(entry.value) : ''
@@ -154,23 +158,30 @@ function parseValue(): { ok: true, value: unknown } | { ok: false, message: stri
   switch (form.value.type) {
     case 'STRING':
       return { ok: true, value: form.value.stringValue }
+
     case 'NUMBER': {
       if (form.value.numberValue === undefined)
         return { ok: false, message: 'Enter a number' }
+
       const parsed = Number(form.value.numberValue)
       if (Number.isNaN(parsed))
         return { ok: false, message: 'Value must be a valid number' }
+
       return { ok: true, value: parsed }
     }
+
     case 'BOOLEAN':
       return { ok: true, value: form.value.booleanValue }
+
     case 'JSON': {
       validateJson()
       if (jsonError.value)
         return { ok: false, message: jsonError.value }
+
       const parsed = JSON.parse(form.value.jsonValue || '{}')
       return { ok: true, value: parsed }
     }
+
     default:
       return { ok: false, message: 'Unsupported type' }
   }
@@ -208,6 +219,7 @@ const isSaveDisabled = computed(() => {
     return true
   if (form.value.type === 'JSON' && !!jsonError.value)
     return true
+
   return false
 })
 

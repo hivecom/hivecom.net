@@ -40,6 +40,7 @@ onMounted(async () => {
 
 // Bumped by the file table after an upload/delete so the quota row refetches.
 const refreshSignal = ref(0)
+
 // Surfaced from the file table so the quota row can show the upload count.
 const totalFiles = ref(0)
 

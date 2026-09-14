@@ -40,6 +40,7 @@ async function fetchSteamClientIcon(appId: string) {
   steamClientIconUrl.value = null
   if (!appId)
     return
+
   steamClientIconLoading.value = true
   try {
     const { data, error } = await supabase.functions.invoke(`admin-steam-icon-fetch?app_id=${encodeURIComponent(appId)}`, {
@@ -126,6 +127,7 @@ function suggestShorthand(name: string): string {
     return ''
   if (words.length === 1)
     return words[0]!
+
   return words.map(w => w[0]!).join('')
 }
 
@@ -206,6 +208,7 @@ const selectedTopicLabel = computed(() => {
   const id = gameForm.value.discussion_topic_id
   if (!id)
     return null
+
   return topicOptions.value.find(o => o.id === id)?.label ?? id
 })
 
@@ -266,6 +269,7 @@ const steamAssetLinks = computed(() => {
 const steamAssetPreviews = computed(() => {
   if (!steamAssetLinks.value)
     return null
+
   return {
     // Use fetched client icon if available, fall back to logo once loading is done
     icon: steamClientIconUrl.value ?? (!steamClientIconLoading.value ? steamAssetLinks.value.logo : null),
@@ -288,12 +292,14 @@ async function importSteamAsset(assetType: 'icon' | 'cover' | 'background', url:
     )
     if (!resp.ok)
       return
+
     blob = await resp.blob()
   }
   else {
     const resp = await fetch(url)
     if (!resp.ok)
       return
+
     blob = await resp.blob()
   }
   const ext = url.split('.').pop()?.split('?')[0] ?? 'jpg'
@@ -316,6 +322,7 @@ const importingAllIgdbAssets = ref(false)
 async function importAllIgdbAssets() {
   if (!igdbAssetLinks.value)
     return
+
   importingAllIgdbAssets.value = true
   try {
     await Promise.all([
@@ -414,6 +421,7 @@ async function importRemoteAsset(assetType: 'icon' | 'cover' | 'background', url
   const resp = await fetch(url)
   if (!resp.ok)
     return
+
   const blob = await resp.blob()
   const ext = url.split('.').pop()?.split('?')[0] ?? 'jpg'
   const file = new File([blob], `${assetType}.${ext}`, { type: blob.type })
@@ -424,6 +432,7 @@ const importingAllAssets = ref(false)
 async function importAllSteamAssets() {
   if (!steamAssetLinks.value)
     return
+
   importingAllAssets.value = true
   try {
     await Promise.all([
@@ -466,6 +475,7 @@ watch(
         release_date: newGame.release_date ?? '',
         discussion_topic_id: newGame.discussion_topic_id ?? '',
       }
+
       // Existing game - shorthand is already set, treat as manual
       shorthandManuallySet.value = !!newGame.shorthand
 
@@ -520,6 +530,7 @@ watch(
   (newPrefill) => {
     if (props.game)
       return
+
     const prefillName = newPrefill?.name ?? ''
     shorthandManuallySet.value = false
     gameForm.value = {
@@ -642,6 +653,7 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
 
     if (result.success && result.url) {
       assetsUrl.value[assetType] = result.url
+
       // Clear cache for this game to ensure fresh data
       clearGameAssets(props.game?.id ?? null, shorthand)
     }
@@ -678,6 +690,7 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
     if (result.success) {
       assetsUrl.value[assetType] = null
       assetsError.value[assetType] = null
+
       // Clear cache for this game to ensure fresh data
       clearGameAssets(props.game?.id ?? null, shorthand)
     }

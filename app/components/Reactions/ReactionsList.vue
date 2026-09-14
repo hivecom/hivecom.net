@@ -9,8 +9,10 @@ const props = defineProps<{
   reactions: DisplayReaction[]
   capped?: ReadonlySet<string>
   disabled?: boolean
+
   /** Render chips at a smaller size (e.g. for dense chat contexts). */
   small?: boolean
+
   /** When true, reactors are IRC nicks rather than user UUIDs - renders plain labels instead of avatars. */
   nickReactors?: boolean
 }>()
@@ -59,6 +61,7 @@ const LONG_PRESS_DURATION = 500
 const drawerOpen = ref(false)
 const drawerReaction = ref<DisplayReaction | null>(null)
 const longPressTimers = ref(new Map<string, ReturnType<typeof setTimeout>>())
+
 // Tracks whether a long press was consumed so the click handler can bail out
 const longPressConsumed = ref(new Map<string, boolean>())
 
@@ -72,6 +75,7 @@ function onPointerDown(reaction: DisplayReaction, event: PointerEvent) {
   const timer = setTimeout(() => {
     if (reaction.reactors.length === 0)
       return
+
     longPressConsumed.value.set(key, true)
     drawerReaction.value = reaction
     drawerOpen.value = true

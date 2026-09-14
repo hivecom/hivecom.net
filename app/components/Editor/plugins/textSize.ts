@@ -41,11 +41,12 @@ function isValidSizeName(value: string): value is TextSizeName {
 declare module '@tiptap/core' {
 
   // Module augmentation, typescript-eslint 8.69 reports it as unused
-  // eslint-disable-next-line unused-imports/no-unused-vars
+
   interface Commands<ReturnType> {
     textSize: {
       /** Apply a named size step to the selected text, e.g. "xl". */
       setTextSize: (size: TextSizeName) => ReturnType
+
       /** Remove the text size mark from the selection. */
       unsetTextSize: () => ReturnType
     }
@@ -87,6 +88,7 @@ export const TextSize = Mark.create({
           const size = attributes.size
           if (typeof size !== 'string' || !isValidSizeName(size))
             return {}
+
           return {
             'data-text-size': size,
             'style': `font-size: ${textSizeValue(size)}`,
@@ -107,6 +109,7 @@ export const TextSize = Mark.create({
           const size = node.getAttribute('data-text-size')
           if (size !== null && size !== '' && isValidSizeName(size))
             return { size }
+
           return false
         },
       },
@@ -117,10 +120,12 @@ export const TextSize = Mark.create({
           const raw = node.style.fontSize
           if (!raw)
             return false
+
           const varMatch = CSS_VAR_SIZE_RE.exec(raw)
           const name = varMatch?.[1] ?? null
           if (name !== null && isValidSizeName(name))
             return { size: name }
+
           return false
         },
       },
@@ -141,6 +146,7 @@ export const TextSize = Mark.create({
           ({ commands }) => {
             if (!isValidSizeName(size))
               return false
+
             return commands.setMark(this.name, { size })
           },
 
@@ -197,6 +203,7 @@ export const TextSize = Mark.create({
             i += 3
             continue
           }
+
           // Closing ::: - anything NOT followed by an opening-directive pattern
           // (letters then '[') counts as a close, including bare ':::' sequences
           // and text that happens to start with a letter but is not a directive.

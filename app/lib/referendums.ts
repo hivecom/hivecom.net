@@ -14,6 +14,7 @@ export function getReferendumStatus(referendum: { date_start: string, date_end: 
     return 'upcoming'
   if (now > end)
     return 'concluded'
+
   return 'active'
 }
 
@@ -32,8 +33,10 @@ export function getReferendumStatusVariant(status: ReferendumStatus): Referendum
   switch (status) {
     case 'active':
       return 'success'
+
     case 'upcoming':
       return 'warning'
+
     case 'concluded':
       return 'neutral'
   }

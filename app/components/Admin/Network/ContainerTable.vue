@@ -64,6 +64,7 @@ interface TransformedContainer {
     }[] | null
   }
 }
+
 // Define interface for Select options
 interface SelectOption {
   label: string
@@ -178,10 +179,12 @@ const filteredData = computed<TransformedContainer[]>(() => {
     const status = isDockerControlEnabled
       ? getContainerStatus(item.reported_at, item.running, item.healthy, isControlOffline, isRestarting)
       : 'unknown'
+
     // Filter by search term
     if (search.value && !Object.values(item).some((value) => {
       if (value === null || value === undefined)
         return false
+
       return String(value).toLowerCase().includes(search.value.toLowerCase())
     })) {
       return false
@@ -262,6 +265,7 @@ watch(containerAction, async (newAction) => {
     else {
       await handleControl(newAction.container, newAction.type)
     }
+
     // Reset the action
     containerAction.value = null
   }
@@ -276,6 +280,7 @@ watch(refreshLogsConfig, async (newConfig) => {
       newConfig.from,
       newConfig.to,
     )
+
     // Reset the config
     refreshLogsConfig.value = null
   }
@@ -296,6 +301,7 @@ watch(showContainerDetails, (isOpen) => {
     return
   if (!route.query.container)
     return
+
   const { container, ...rest } = route.query
   router.replace({ query: rest })
 })
@@ -348,6 +354,7 @@ async function fetchContainers() {
     }
 
     containers.value = data || []
+
     // Increment the refresh signal to notify the parent
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
@@ -480,6 +487,7 @@ async function handlePrune(container: ContainerWithServer) {
   }
   catch (error: unknown) {
     console.error(`Error pruning container ${container.name}:`, error)
+
     // Show error message
     errorMessage.value = error instanceof Error ? error.message : 'Failed to prune container'
     setTimeout(() => {
@@ -523,6 +531,7 @@ async function fetchContainerLogs(tail = 100, since: string | null = null, from:
       if (to)
         params.append('to', to)
     }
+
     // Otherwise use since if provided
     else if (since && since !== 'all') {
       params.append('since', since)
@@ -570,12 +579,16 @@ function canRunBulkAction(
   switch (action) {
     case 'start':
       return status === 'stopped'
+
     case 'stop':
       return ['running', 'healthy', 'unhealthy'].includes(status)
+
     case 'restart':
       return ['running', 'healthy', 'unhealthy'].includes(status)
+
     case 'prune':
       return status === 'stale'
+
     default:
       return false
   }
@@ -628,6 +641,7 @@ watch(
   ([focusContainerName, isLoading]) => {
     if (isLoading)
       return
+
     openContainerByName(focusContainerName)
   },
   { immediate: true },

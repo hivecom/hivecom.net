@@ -65,6 +65,7 @@ const isVideoPreview = computed(() => {
   const url = currentPreviewUrl.value
   if (!url)
     return false
+
   // Check blob URL via local file type or extension hint in URL
   if (localPreviewUrl.value) {
     // We stash the MIME type when creating the object URL
@@ -154,12 +155,14 @@ function handleDragLeave() {
 function isAcceptedType(file: File): boolean {
   if (allowedTypes.value.length === 0 || allowedTypes.value.includes('*'))
     return true
+
   const extension = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`
   return allowedTypes.value.some((type) => {
     if (type.startsWith('.'))
       return type.toLowerCase() === extension
     if (type.endsWith('/*'))
       return Boolean(file.type) && file.type.startsWith(type.slice(0, -2))
+
     return type === file.type
   })
 }
@@ -200,6 +203,7 @@ function processFile(file: File) {
     cropModalOpen.value = true
     return
   }
+
   // GIF/WebM - skip cropping, commit directly
 
   commitFile(file)
@@ -277,6 +281,7 @@ function deleteFile() {
 function formatFileSize(bytes: number): string {
   if (bytes === 0)
     return '0 Bytes'
+
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))

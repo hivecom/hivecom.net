@@ -30,17 +30,21 @@ const navigateToComment = inject(DISCUSSION_KEYS.navigateToComment)
 interface Props {
   data: Comment
   model?: 'comment' | 'forum'
+
   /** ID prefix for the wrapper element. Defaults to 'comment'. Use a different
    *  value (e.g. 'pinned-comment') for pinned duplicates so querySelector
    *  can distinguish the list instance from the pinned banner. */
   idPrefix?: string
+
   // Flat mode: the node for this comment (used for inline reply preview)
   threadNode?: ThreadNode
+
   // Threaded mode: pre-resolved direct children to render recursively
   children?: ThreadNode[]
   depth?: number
   showOfftopic?: boolean
   staggerIndex?: number
+
   // When true (propagated from a flat-mode inline expansion), this item
   // auto-expands inline and passes the flag to its own children so the
   // whole subtree opens without manual clicks.
@@ -74,6 +78,7 @@ onMounted(async () => {
 watch(isActive, async (active) => {
   if (!active)
     return
+
   await scrollToIdWhenStable(`#${idPrefix}-${data.id}`, 'center', 12000, 500)
 }, { immediate: false })
 
@@ -87,10 +92,12 @@ function copyLink() {
 function copyLinkForComment(id: string) {
   const url = new URL(window.location.href)
   url.searchParams.set('comment', id)
+
   // A comment link is reachable in either view and resolves its own page, so it
   // shouldn't pin the recipient's view or page. Drop both from the copied URL.
   url.searchParams.delete('view')
   url.searchParams.delete('page')
+
   // Anchor the link on this comment's timestamp. In chronological (ascending
   // forum) view a reply's position is stable, so the deep-link load can fetch
   // the target block straight from this timestamp and skip the page-lookup RPC.
@@ -175,6 +182,7 @@ function computeThreadCollapsed() {
     return false
   if (depth > 0)
     return false
+
   return !showThreadRepliesInjected.value
 }
 
@@ -185,6 +193,7 @@ function onOpenReplies() {
     repliesExpanded.value = true
     return
   }
+
   // threaded: always expand inline - the subtree renders here, no sheet needed.
   threadCollapsed.value = false
   flatInlineExpanded.value = true
@@ -271,6 +280,7 @@ watch(
   ([visible, mode]) => {
     if (!visible || mode !== 'threaded' || childrenRequested.value || loadChildren == null || threadCollapsed.value)
       return
+
     childrenRequested.value = true
     void loadChildren(data.id)
   },
@@ -291,6 +301,7 @@ const supabase = useSupabaseClient()
 watch(openThreadSheetId, async (id) => {
   if (id !== data.id)
     return
+
   openThreadSheetId.value = null
   if (viewMode.value === 'threaded' && showThreadRepliesInjected.value) {
     // Expanded threads: reveal inline. If this root is collapsed, load its
@@ -304,6 +315,7 @@ watch(openThreadSheetId, async (id) => {
     }
     return
   }
+
   // Flat, or threaded with reply threads collapsed: use the sheet.
   repliesExpanded.value = true
 })
@@ -312,7 +324,9 @@ async function openFullThread() {
   const { data: rootId, error } = await supabase.rpc('get_thread_root', { p_reply_id: data.id })
   if (error || !rootId)
     return
+
   repliesExpanded.value = false
+
   // Ensure the root item is loaded (may be on a different page) before signalling.
   // nextTick lets Vue mount the newly loaded DiscussionItem components so their
   // watch is set up before we write the signal.

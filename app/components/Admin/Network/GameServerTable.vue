@@ -96,6 +96,7 @@ const {
     const { data, error } = await gameserversQuery
     if (error)
       throw error
+
     return data ?? []
   },
   transform: gameserver => ({
@@ -149,6 +150,7 @@ function getServerPlayers(gameserverId: number): number | null {
   const byServer = latestMetrics.value?.gameservers?.byServer
   if (!byServer)
     return null
+
   return metricsPlayerCount(byServer[String(gameserverId)])
 }
 
@@ -213,6 +215,7 @@ watch(showGameserverDetails, (isOpen) => {
     return
   if (route.query.gameserver == null)
     return
+
   const rest = { ...route.query }
   delete rest.gameserver
   void router.replace({ query: rest })
@@ -223,6 +226,7 @@ watch(
   ([id, isLoading]) => {
     if (isLoading || id === null)
       return
+
     const match = gameservers.value.find(gs => gs.id === id)
     if (match)
       viewGameserver(match)
@@ -233,6 +237,7 @@ watch(
 interface GameserverSecretPayload {
   // New secret to store (Vault), or null to leave the existing one untouched.
   secret: string | null
+
   // Remove any stored secret.
   clear: boolean
 }
@@ -246,6 +251,7 @@ async function persistGameserverSecret(gameserverId: number, payload: Gameserver
     })
     if (error)
       throw error
+
     return
   }
   if (payload.secret) {
@@ -276,6 +282,7 @@ async function handleGameserverSave(
         .eq('id', selectedGameserver.value.id)
       if (error)
         throw error
+
       gameserverId = selectedGameserver.value.id
     }
     else {
@@ -291,6 +298,7 @@ async function handleGameserverSave(
         .single()
       if (error)
         throw error
+
       gameserverId = data?.id ?? null
 
       if (userId.value)

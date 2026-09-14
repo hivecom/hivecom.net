@@ -311,6 +311,7 @@ const {
     })
     if (rpcError != null || data == null)
       return []
+
     const items = await fetchSheetPage(data as FeedRow[])
     if (items.length > 0)
       profileCache.set(cacheKey, items, SHEET_TTL)
@@ -325,6 +326,7 @@ const {
     })
     if (rpcError != null || data == null)
       return []
+
     return fetchSheetPage(data as FeedRow[])
   },
 })

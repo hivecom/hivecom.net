@@ -26,6 +26,7 @@ const { settings } = useDataUserSettings()
 const buf = computed(() => {
   if (!props.channel)
     return null
+
   return buffers.value.find(b => b.name.toLowerCase() === props.channel!.toLowerCase()) ?? null
 })
 
@@ -40,12 +41,14 @@ const canEdit = computed(() => OP_PREFIXES.has(role.value?.symbol ?? ''))
 const isSubchannel = computed(() => {
   if (!props.channel)
     return false
+
   return props.channel.replace(/^[#&]/, '').split('/').filter(Boolean).length > 1
 })
 
 const parentChannelName = computed(() => {
   if (!isSubchannel.value || !props.channel)
     return null
+
   const prefix = props.channel[0]!
   const segments = props.channel.slice(1).split('/').filter(Boolean)
   return `${prefix}${segments.slice(0, -1).join('/')}`
@@ -54,6 +57,7 @@ const parentChannelName = computed(() => {
 const leafSegment = computed(() => {
   if (!isSubchannel.value || !props.channel)
     return null
+
   const segments = props.channel.slice(1).split('/').filter(Boolean)
   return segments[segments.length - 1]!
 })
@@ -61,6 +65,7 @@ const leafSegment = computed(() => {
 const isAuthorizedByParent = computed(() => {
   if (!parentChannelName.value || !leafSegment.value)
     return false
+
   const lc = parentChannelName.value.toLowerCase()
   const meta = buffers.value.find(b => b.name.toLowerCase() === lc)?.metadata ?? channelMetaCache.value.get(lc)
   return (meta?.get('subchannels') ?? '')
@@ -73,6 +78,7 @@ const isAuthorizedByParent = computed(() => {
 function registerWithParent() {
   if (!parentChannelName.value || !leafSegment.value)
     return
+
   const lc = parentChannelName.value.toLowerCase()
   const meta = buffers.value.find(b => b.name.toLowerCase() === lc)?.metadata ?? channelMetaCache.value.get(lc)
   const existing = meta?.get('subchannels') ?? ''
@@ -86,9 +92,11 @@ const canHalfOp = computed(() => HALFOP_PREFIXES.has(role.value?.symbol ?? ''))
 const canEditTopic = computed(() => {
   if (!canHalfOp.value)
     return false
+
   // If +t is set, only ops can change the topic
   if (buf.value?.modes?.has('t') && !canEdit.value)
     return false
+
   return true
 })
 
@@ -128,6 +136,7 @@ const draftRenameName = ref('')
 function populateDraft() {
   if (!buf.value)
     return
+
   draftTopic.value = buf.value.topic ?? ''
   draftRenameName.value = buf.value.name.replace(/^[#&]/, '')
   draftDisplayName.value = buf.value.metadata?.get('display-name') ?? ''
@@ -142,6 +151,7 @@ function populateDraft() {
 function populateModeDraft() {
   if (!buf.value)
     return
+
   draftFlags.value = {
     i: buf.value.modes?.has('i') ?? false,
     m: buf.value.modes?.has('m') ?? false,
@@ -206,6 +216,7 @@ const myRankValue = computed(() => prefixRankOf(role.value?.symbol ?? ''))
 function canActionUser(targetPrefix: string): boolean {
   if (!canEdit.value)
     return false
+
   const targetSymbol = channelRole(targetPrefix)?.symbol ?? ''
   return prefixRankOf(targetSymbol) > myRankValue.value
 }
@@ -235,12 +246,14 @@ function closeMemberSheet() {
 function kickUser(targetNick: string) {
   if (!props.channel)
     return
+
   send(`KICK ${props.channel} ${targetNick}`)
 }
 
 function banKickUser(targetNick: string) {
   if (!props.channel)
     return
+
   send(`MODE ${props.channel} +b ${targetNick}!*@*`)
   send(`KICK ${props.channel} ${targetNick}`)
 }
@@ -248,6 +261,7 @@ function banKickUser(targetNick: string) {
 function toggleVoice(targetNick: string, currentPrefix: string) {
   if (!props.channel)
     return
+
   const flag = hasVoice(currentPrefix) ? '-v' : '+v'
   send(`MODE ${props.channel} ${flag} ${targetNick}`)
 }
@@ -255,6 +269,7 @@ function toggleVoice(targetNick: string, currentPrefix: string) {
 function toggleOp(targetNick: string, currentPrefix: string) {
   if (!props.channel)
     return
+
   const flag = hasOp(currentPrefix) ? '-o' : '+o'
   send(`MODE ${props.channel} ${flag} ${targetNick}`)
 }
@@ -262,6 +277,7 @@ function toggleOp(targetNick: string, currentPrefix: string) {
 function registerChannel() {
   if (!props.channel || !buf.value)
     return
+
   buf.value.registered = true
   suppressChanServResponse(props.channel)
   send(`PRIVMSG ChanServ :REGISTER ${props.channel}`)
@@ -270,6 +286,7 @@ function registerChannel() {
 function dropChannel() {
   if (!props.channel || !buf.value)
     return
+
   buf.value.registered = undefined
   initiateDrop(props.channel)
 }
@@ -281,9 +298,11 @@ const canRename = computed(() => canEdit.value && buf.value?.registered === fals
 const renameValid = computed(() => {
   if (!props.channel)
     return false
+
   const slug = draftRenameName.value.trim().replace(/^[#&]+/, '')
   if (!slug)
     return false
+
   return `${props.channel[0]}${slug}` !== props.channel
 })
 
@@ -292,12 +311,14 @@ const renameConfirmOpen = ref(false)
 function promptRename() {
   if (!canRename.value || !renameValid.value)
     return
+
   renameConfirmOpen.value = true
 }
 
 function renameChannelAction() {
   if (!props.channel || !renameValid.value)
     return
+
   renameChannel(props.channel, draftRenameName.value)
   renameConfirmOpen.value = false
 }
@@ -305,30 +326,35 @@ function renameChannelAction() {
 function unban(mask: string) {
   if (!props.channel)
     return
+
   send(`MODE ${props.channel} -b ${mask}`)
 }
 
 function removeException(mask: string) {
   if (!props.channel)
     return
+
   send(`MODE ${props.channel} -e ${mask}`)
 }
 
 function removeInvite(mask: string) {
   if (!props.channel)
     return
+
   send(`MODE ${props.channel} -I ${mask}`)
 }
 
 function formatBanTs(ts: number): string {
   if (!ts)
     return ''
+
   return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 function save() {
   if (!props.channel || !buf.value)
     return
+
   const ch = props.channel
 
   // Topic

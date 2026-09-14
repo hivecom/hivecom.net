@@ -313,6 +313,7 @@ watch(showComplaintDetails, (isOpen) => {
     return
   if (!route.query.complaint)
     return
+
   const { complaint, ...rest } = route.query
   router.replace({ query: rest })
 })
@@ -324,6 +325,7 @@ watch(
       return
     if (complaintId === null)
       return
+
     openComplaintById(complaintId)
   },
   { immediate: true },
@@ -354,6 +356,7 @@ watch(currentPage, () => {
 watch(adminTablePerPage, () => {
   if (currentPage.value !== 1) {
     currentPage.value = 1
+
     // currentPage watch fires fetch
   }
   else {

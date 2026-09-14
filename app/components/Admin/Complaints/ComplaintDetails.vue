@@ -100,18 +100,21 @@ const statusConfig = computed(() => {
         variant: 'warning' as const,
         icon: 'ph:bell',
       }
+
     case 'acknowledged':
       return {
         label: 'Acknowledged',
         variant: 'info' as const,
         icon: 'ph:check-circle',
       }
+
     case 'responded':
       return {
         label: 'Responded',
         variant: 'success' as const,
         icon: 'ph:chat-circle-dots',
       }
+
     default:
       return {
         label: 'Unknown',
@@ -133,6 +136,7 @@ watch(() => props.complaint, (newComplaint) => {
   else {
     responseText.value = ''
   }
+
   // Reset editing state when complaint changes
   isEditingResponse.value = false
 
@@ -163,6 +167,7 @@ function handleClose() {
 function handleAcknowledge() {
   if (!props.complaint)
     return
+
   emit('acknowledge', props.complaint.id)
 }
 
@@ -215,6 +220,7 @@ function handleCancelEdit() {
 function handleRemoveResponse() {
   if (!props.complaint?.response)
     return
+
   showRemoveConfirm.value = true
 }
 
@@ -241,6 +247,7 @@ function confirmDeleteComplaint() {
 
   emit('deleteComplaint', props.complaint.id)
   showDeleteConfirm.value = false
+
   // Close the sheet and reset state after deletion
   isOpen.value = false
   emit('close')

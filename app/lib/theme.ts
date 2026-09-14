@@ -197,12 +197,16 @@ export const VUI_COLOR_KEYS = [
 export interface ScaleConfig {
   /** Minimum percentage (at DB value 0) */
   minPercent: number
+
   /** Maximum percentage (at DB value 100) */
   maxPercent: number
+
   /** The DB value that maps to exactly 100% (the VUI default). Must be an integer. */
   defaultDb: number
+
   /** CSS variable names and their default pixel/time values */
   tokens: { varName: string, defaultValue: number }[]
+
   /** Unit suffix for the generated CSS values */
   unit: string
 }
@@ -361,6 +365,7 @@ export function applyScale(
       // Transitions need the full shorthand: `<duration> all <easing>`
       const shorthand = scaleTransition(token, dbValue)
       target.style.setProperty(token.varName, shorthand)
+
       // Also set the companion duration-only token so it can be used in
       // places like transition-delay where a bare time value is required
       const companion = TRANSITION_DURATION_COMPANIONS[token.varName] ?? null
@@ -369,6 +374,7 @@ export function applyScale(
     }
     else {
       const scaled = scaleToken(token.defaultValue, dbValue, key)
+
       // Spacing and rounding are simple pixel values (round to 1 decimal)
       target.style.setProperty(token.varName, `${Math.round(scaled * 10) / 10}${cfg.unit}`)
     }
@@ -400,6 +406,7 @@ export function themeToCustomProperties(theme: Theme): Record<string, string> {
   for (const [key, value] of Object.entries(theme)) {
     if (THEME_META_KEYS.has(key))
       continue
+
     vars[columnToCssVar(key)] = value as string
   }
 
@@ -428,6 +435,7 @@ export function themeToScopedProperties(t: Theme, palette: 'dark' | 'light'): Re
     // DB column: `dark_bg_raised` / `light_bg_raised` (hyphens -> underscores)
     const col = `${palette}_${key.replace(HYPHEN_RE, '_')}` as keyof Theme
     const value = t[col]
+
     // Fall back to the VUI built-in default so a theme with no overrides
     vars[`--color-${key}`] = (value ?? defaults[key]) as string
   }
@@ -474,6 +482,7 @@ export function applyTheme(theme: Theme | null, target: HTMLElement = document.d
   for (const scaleKey of THEME_SCALE_KEYS) {
     for (const token of SCALE_CONFIGS[scaleKey].tokens) {
       target.style.removeProperty(token.varName)
+
       // Also clear any companion duration tokens so they fall back to the
       // values defined in index.scss rather than stale theme overrides
       if (scaleKey === 'transitions') {
@@ -555,6 +564,7 @@ export function getCssVarAsHex(varName: string, fallback: string = '#000000'): s
       const [r, g, b] = hex
       return `#${r}${r}${g}${g}${b}${b}`
     }
+
     // Truncate to 6 digits in case an 8-digit (#rrggbbaa) value slips through
     return `#${hex.slice(0, 6)}`
   }
@@ -573,10 +583,13 @@ export function sanitizeCustomCss(css: string | null | undefined): string {
   return css
     // Strip @import rules entirely - external CSS loading is not allowed
     .replace(/@import\s[^;]+;?/gi, '')
+
     // Strip javascript: URI scheme wherever it appears
     .replace(/javascript\s*:/gi, '')
+
     // Strip expression() - old IE JS execution in CSS
     .replace(/expression\s*\(/gi, '')
+
     // Strip url() that reference data: or javascript: schemes
     // Note: \s+ avoids backtracking exchange with adjacent \s*; quote capture used in replacement
     .replace(/url\s*\(\s*(['"]?)(?:data:|javascript:)/gi, 'url($1about:')

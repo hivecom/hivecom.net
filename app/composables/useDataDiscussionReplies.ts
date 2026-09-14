@@ -10,8 +10,10 @@ import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubs
 export interface ReplyGap {
   /** ID of the last item in the block that precedes the gap. */
   afterId: string
+
   /** Approximate number of replies sitting in the gap (not yet loaded). */
   count: number
+
   /** Cursor pointing to the first unloaded page inside the gap. */
   cursor: PageCursor
 }
@@ -93,11 +95,13 @@ export function useDataDiscussionReplies(
   const offtopicCount = computed(() => comments.value.filter(c => c.is_offtopic).length)
 
   const ascending = computed(() => props.model !== 'comment')
+
   // Pagination vs infinite-scroll/gap loading. Independent of ordering: the
   // forum stays ascending whether or not it paginates. Comment model is always
   // paginated; the forum model follows the user's setting (passed in).
   const paginated = computed(() => props.paginated?.value ?? (props.model === 'comment'))
   const pageSize = computed(() => props.model === 'forum' ? PAGE_SIZE_FORUM : PAGE_SIZE_COMMENT)
+
   // Threaded mode paginates root replies only; flat mode paginates all replies.
   // navigateToComment always uses rootOnly=false so deep links work regardless of mode.
   const rootOnly = computed(() => props.viewMode?.value === 'threaded')
@@ -111,11 +115,13 @@ export function useDataDiscussionReplies(
   // cursorHistory[n] = cursor needed to fetch page n+1.
   const currentPage = ref(1)
   const cursorHistory = ref<Array<PageCursor | null>>([null])
+
   // Count of top-level (root) replies. Used as the pagination total in threaded
   // view, where reply_count (which includes children) would invent phantom pages
   // that fetch empty. Populated asynchronously by fetchRootCount.
   const rootCount = ref(0)
   const rootCountLoaded = ref(false)
+
   // Items the pagination control pages through: every reply in flat view, only
   // top-level entries in threaded view. Until the exact root count loads, fall
   // back to reply_count (an overcount) rather than 0 - otherwise totalPages would
@@ -124,12 +130,14 @@ export function useDataDiscussionReplies(
   const paginationTotal = computed(() => {
     if (!rootOnly.value)
       return discussion.value?.reply_count ?? 0
+
     return rootCountLoaded.value ? rootCount.value : (discussion.value?.reply_count ?? 0)
   })
   const totalPages = computed(() => {
     const total = paginationTotal.value
     if (total <= 0)
       return 1
+
     return Math.max(1, Math.ceil(total / pageSize.value))
   })
 
@@ -175,10 +183,12 @@ export function useDataDiscussionReplies(
     // Threaded mode: reply_count includes children, so the number is misleading.
     if (rootOnly.value)
       return 0
+
     // Gap exists: the "remaining" for the load-more strip is items after the
     // late block end, not the gap itself (the gap has its own banner).
     if (!hasMore.value)
       return 0
+
     const total = discussion.value?.reply_count ?? 0
     return Math.max(0, total - comments.value.length - (gap.value?.count ?? 0))
   })
@@ -258,6 +268,7 @@ export function useDataDiscussionReplies(
     const targetPage = Math.max(1, Math.min(page, totalPages.value))
 
     loadingMore.value = true
+
     // Jumping to an explicit page replaces the visible set, so any deep-link gap
     // (from infinite/anchor navigation) no longer applies.
     gap.value = null
@@ -277,6 +288,7 @@ export function useDataDiscussionReplies(
         })
         if (fetched == null)
           break
+
         if (cursorHistory.value.length <= cursorIdx + 1 && fetched.nextCursor != null)
           cursorHistory.value.push(fetched.nextCursor)
         else
@@ -300,6 +312,7 @@ export function useDataDiscussionReplies(
         cursorHistory.value.push(result.nextCursor)
 
       currentPage.value = targetPage
+
       // Clear childrenMap so re-opening a reply sheet after a page change
       // re-fetches rather than using stale entries that are no longer in comments.
       childrenMap.value = new Map()
@@ -468,6 +481,7 @@ export function useDataDiscussionReplies(
           // Discard if a newer navigation replaced the gap in the meantime.
           if (res == null || gap.value == null || _gapGeneration !== gapGen)
             return
+
           const exact = res.predecessorCount - firstPage.rows.length
           gap.value = exact > 0 ? { ...gap.value, count: exact } : null
         })
@@ -553,6 +567,7 @@ export function useDataDiscussionReplies(
         })
         if (rootResult == null)
           return false
+
         pageIndex = rootResult.pageIndex
       }
       if (!options?.soft)
@@ -678,6 +693,7 @@ export function useDataDiscussionReplies(
           return ascending.value ? diff : -diff
         })
         const ceil = sorted.find(c => new Date(c.created_at).getTime() >= targetMs)
+
         // Nothing at or after the target - clamp to the last reply in sort order.
         return (ceil ?? sorted.at(-1)!).id
       }
@@ -1025,6 +1041,7 @@ export function useDataDiscussionReplies(
         // If the fast-path already loaded page 1 and it happens to contain the
         // target, navigateToComment short-circuits (returns immediately).
         const found = await navigateToComment(initialTargetId, { soft: true, anchorTs: initialAnchorTs })
+
         // Target not found (deleted / RLS-filtered) and the fast-path didn't
         // already populate the list: fall back to a normal page-1 load so the
         // thread still renders instead of showing an empty list.
@@ -1084,9 +1101,11 @@ export function useDataDiscussionReplies(
     watch(props.viewMode, async () => {
       if (!discussion.value)
         return
+
       nextCursor.value = null
       hasMore.value = false
       childrenMap.value = new Map()
+
       // Refresh the top-level count when entering threaded view (paginates roots).
       if (rootOnly.value)
         void fetchRootCount(discussion.value.id)
@@ -1190,10 +1209,12 @@ export function useDataDiscussionReplies(
       const rootNode = nodeMap.get(rootId)
       if (rootNode == null)
         continue
+
       for (const child of children) {
         // Skip if already wired up from the flat list to avoid duplicates.
         if (nodeMap.has(child.id))
           continue
+
         const childComment: Comment = { ...child, reply: null }
         const childNode: ThreadNode = { comment: childComment, children: [] }
         nodeMap.set(child.id, childNode)

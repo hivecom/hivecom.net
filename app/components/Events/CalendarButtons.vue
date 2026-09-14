@@ -18,6 +18,7 @@ interface CalendarButtonsProps {
    * Show labels on buttons
    */
   showLabels?: boolean
+
   /**
    * Whether this UI is shown in the admin dashboard
    */

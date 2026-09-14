@@ -48,9 +48,11 @@ const { handleContentClick } = useExternalLinkGuard()
 const timeAgoParts = computed(() => {
   if (!props.timeAgo)
     return null
+
   const match = props.timeAgo.match(/^(\d+) ([a-z]+) ago$/i)
   if (!match)
     return { number: props.timeAgo, label: '' }
+
   return { number: match[1], label: match[2] }
 })
 
@@ -75,9 +77,11 @@ const seriesUntilDate = computed<string | null>(() => {
   const rule = props.event.recurrence_rule
   if (!rule)
     return null
+
   const match = rule.match(/UNTIL=(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/)
   if (!match)
     return null
+
   return `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}Z`
 })
 

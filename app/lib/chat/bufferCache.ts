@@ -20,6 +20,7 @@ const MSG_INDEX = 'by_buffer_ts'
 
 export interface StoredMessage {
   bufferKey: string
+
   /**
    * Compound-key id within a buffer. Chat/tagmsg lines use the server msgid;
    * presence events (join/part) have none, so they're keyed on a synthetic
@@ -34,6 +35,7 @@ export interface StoredMessage {
   replyTo?: string
   action?: boolean
   tag?: string
+
   /** Must be a plain object (not a Vue reactive proxy) before passing in. */
   reactions?: Record<string, string[]>
   redacted?: boolean
@@ -57,6 +59,7 @@ async function openDb(): Promise<IDBDatabase | null> {
     return null
   if (dbPromise)
     return dbPromise
+
   dbPromise = new Promise((resolve) => {
     let req: IDBOpenDBRequest
     try {
@@ -68,6 +71,7 @@ async function openDb(): Promise<IDBDatabase | null> {
     }
     req.onupgradeneeded = () => {
       const db = req.result
+
       // Remove old v1 store if present
       if (db.objectStoreNames.contains('buffers'))
         db.deleteObjectStore('buffers')
@@ -98,9 +102,11 @@ export function makeBufferKey(userKey: string, bufferName: string): string {
 export async function upsertMessages(msgs: StoredMessage[]): Promise<void> {
   if (!msgs.length)
     return
+
   const db = await openDb()
   if (!db)
     return
+
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(MSG_STORE, 'readwrite')
@@ -130,6 +136,7 @@ export async function loadRecentMessages(
   const db = await openDb()
   if (!db)
     return []
+
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(MSG_STORE, 'readonly')
@@ -174,6 +181,7 @@ export async function loadOlderMessages(
   const db = await openDb()
   if (!db)
     return []
+
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(MSG_STORE, 'readonly')
@@ -218,6 +226,7 @@ export async function loadNewerMessages(
   const db = await openDb()
   if (!db)
     return []
+
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(MSG_STORE, 'readonly')
@@ -252,6 +261,7 @@ export async function deleteBufferMessages(bufferKey: string): Promise<void> {
   const db = await openDb()
   if (!db)
     return
+
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(MSG_STORE, 'readwrite')
@@ -276,6 +286,7 @@ export async function upsertBufferMeta(meta: StoredBufferMeta): Promise<void> {
   const db = await openDb()
   if (!db)
     return
+
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(META_STORE, 'readwrite')
@@ -295,6 +306,7 @@ export async function loadAllBufferMeta(userKey: string): Promise<StoredBufferMe
   const db = await openDb()
   if (!db)
     return []
+
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(META_STORE, 'readonly')
@@ -314,6 +326,7 @@ export async function deleteBufferMeta(key: string): Promise<void> {
   const db = await openDb()
   if (!db)
     return
+
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(META_STORE, 'readwrite')
@@ -344,6 +357,7 @@ export async function getBufferStats(userKey: string): Promise<Array<{
   const metas = await loadAllBufferMeta(userKey)
   if (!metas.length)
     return []
+
   const db = await openDb()
   if (!db)
     return []
@@ -393,6 +407,7 @@ export async function pruneBuffer(bufferKey: string, keepCount: number): Promise
   const db = await openDb()
   if (!db)
     return
+
   const total = await new Promise<number>((resolve) => {
     try {
       const tx = db.transaction(MSG_STORE, 'readonly')
@@ -407,6 +422,7 @@ export async function pruneBuffer(bufferKey: string, keepCount: number): Promise
   const toDelete = total - keepCount
   if (toDelete <= 0)
     return
+
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(MSG_STORE, 'readwrite')
@@ -439,6 +455,7 @@ export async function exportBufferMessages(bufferKey: string): Promise<StoredMes
   const db = await openDb()
   if (!db)
     return []
+
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(MSG_STORE, 'readonly')
@@ -468,6 +485,7 @@ export async function clearChatCache(userKey?: string): Promise<void> {
   const db = await openDb()
   if (!db)
     return
+
   if (!userKey) {
     // Wipe both stores entirely
     return new Promise((resolve) => {
@@ -484,6 +502,7 @@ export async function clearChatCache(userKey?: string): Promise<void> {
       }
     })
   }
+
   // User-scoped clear: load all metas then delete messages + metas per buffer
   const metas = await loadAllBufferMeta(userKey)
   for (const m of metas) {

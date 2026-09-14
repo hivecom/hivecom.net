@@ -10,6 +10,7 @@ import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 
 const props = defineProps<{
   open: boolean
+
   /** When provided, show info for this channel name instead of the active buffer. */
   channelName?: string
 }>()
@@ -24,6 +25,7 @@ const { activeBuffer, buffers, joinChannel, openPm, myChannelRole, channelSettin
 const displayChannelBuffer = computed(() => {
   if (props.channelName)
     return buffers.value.find(b => b.name === props.channelName) ?? null
+
   return activeBuffer.value?.kind === 'channel' ? activeBuffer.value : null
 })
 const { resolved: resolvedNicks, resolve: resolveNick } = useIrcNickResolver()
@@ -36,12 +38,14 @@ watch(activeBuffer, (buf) => {
 const pmUserId = computed(() => {
   if (activeBuffer.value?.kind !== 'pm')
     return null
+
   return resolvedNicks.value.get(activeBuffer.value.name.toLowerCase())?.id ?? null
 })
 
 const pmIsBot = computed(() => {
   if (activeBuffer.value?.kind !== 'pm')
     return false
+
   const name = activeBuffer.value.name.toLowerCase()
   return buffers.value.some(b => b.users?.some(u => u.name.toLowerCase() === name && u.bot))
 })
@@ -49,6 +53,7 @@ const pmIsBot = computed(() => {
 const pmIsService = computed(() => {
   if (activeBuffer.value?.kind !== 'pm')
     return false
+
   return SERVICE_NICKS.has(activeBuffer.value.name.toLowerCase())
 })
 
@@ -57,6 +62,7 @@ const canEdit = computed(() => {
   const buf = displayChannelBuffer.value
   if (!buf)
     return false
+
   const r = myChannelRole(buf.name)
   return r !== null && OP_PREFIXES.has(r.symbol)
 })
@@ -65,6 +71,7 @@ const hasInfo = computed(() => {
   const buf = displayChannelBuffer.value
   if (!buf)
     return false
+
   return !!(
     buf.topic
     || buf.metadata?.get('markdown')
@@ -76,6 +83,7 @@ const hasInfo = computed(() => {
 const pmWhois = computed(() => {
   if (activeBuffer.value?.kind !== 'pm')
     return null
+
   return whoisStore.value.get(activeBuffer.value.name.toLowerCase()) ?? null
 })
 

@@ -84,6 +84,7 @@ const { metrics, fetchMetrics, metricsHistory, loadingHistory, fetchMetricsHisto
 // Releasing our own subscription on switch and teardown keeps this chart's
 // unmount from cancelling a refresh another consumer still depends on.
 let stopRefresh: (() => void) | null = null
+
 // Guards against a superseded load re-subscribing after a faster later one.
 let loadToken = 0
 
@@ -136,6 +137,7 @@ function isGroupedKey(key: string): boolean {
 function channelLabel(key: string): string {
   if (key === SECRET_GROUP_KEY)
     return 'Secret channels'
+
   const row = resolveChannel(key)
   return row ? `${row.name} (secret)` : key
 }
@@ -145,6 +147,7 @@ function channelValue(map: Record<string, number> | null | undefined, key: strin
     return null
   if (key !== SECRET_GROUP_KEY)
     return map[key] ?? null
+
   let sum: number | null = null
   for (const [k, v] of Object.entries(map)) {
     if (isGroupedKey(k))
@@ -172,6 +175,7 @@ const channelOptions = computed<ChannelOption[]>(() => {
   metricsHistory.value.forEach((e) => {
     if (!e.ircByChannel)
       return
+
     Object.keys(e.ircByChannel).forEach((k) => {
       if (isGroupedKey(k))
         hasGrouped = true
@@ -209,6 +213,7 @@ watch(channelOptions, (options) => {
 const messagesLabel = computed(() => {
   if (!metricsHistory.value.length)
     return undefined
+
   const names = selectedChannelNames.value
   let total: number | null = null
   for (const e of metricsHistory.value) {
@@ -225,6 +230,7 @@ const messagesLabel = computed(() => {
   }
   if (total === null)
     return undefined
+
   return formatMessageCount(total)
 })
 
@@ -235,9 +241,11 @@ const scopedOnline = computed<number | null>(() => {
   const names = selectedChannelNames.value
   if (names === null)
     return currentCount.value ?? null
+
   const latest = [...metricsHistory.value].reverse().find(e => e.ircByChannel !== null)
   if (!latest)
     return null
+
   let sum: number | null = null
   for (const name of names) {
     const v = channelValue(latest.ircByChannel, name)
@@ -267,6 +275,7 @@ const chartData = computed(() => {
 
   const palette = getChartPalette()
   const alphas = [0.6, 0.45, 0.33, 0.24]
+
   // Online users are muted gray bars so they read as background, and messages
   // draw as a colored line on their own axis, since a concurrent count and a
   // per-interval rate live on different scales. Per-channel lines take the
@@ -346,6 +355,7 @@ const computedBarThickness = computed(() => {
   const width = chartWrapperWidth.value
   if (!count || !width)
     return undefined
+
   const raw = (width / count) * 0.7
   return Math.max(1, Math.floor(raw))
 })
@@ -361,6 +371,7 @@ const localChartOptions = computed<ChartOptions<'bar'>>(() => ({
           const raw = item.raw as { y: number | null } | null | undefined
           if (raw === null || raw === undefined || raw.y === null)
             return ''
+
           return `${item.dataset.label}: ${item.parsed.y}`
         },
         afterBody(items: import('chart.js').TooltipItem<'bar'>[]) {
@@ -440,6 +451,7 @@ watch(chartData, () => {
     const chart = chartRef.value?.chart
     if (!width || !chart)
       return
+
     const containerHeight = chartWrapperRef.value?.clientHeight
     chart.resize(Math.floor(width), containerHeight)
   })

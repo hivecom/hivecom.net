@@ -18,14 +18,18 @@ const props = defineProps<{
 
 const message = defineModel<string>({ required: true })
 
-const { emojiOpen, emojiPos, closeMenu, writeClipboard, readClipboard, recordEmojiAnchor, openEmojiPicker } = useTextContextMenu()
+const { emojiOpen, emojiPos, closeMenu, writeClipboard, readClipboard, recordEmojiAnchor, openEmojiPicker, passThroughNative } = useTextContextMenu()
 const emojiAnchor = useTemplateRef('emoji-anchor')
 const hasSelection = ref(false)
+
 // Unlike TipTap, a contenteditable loses its selection the moment the menu steals
 // focus, so capture the caret at right-click time and operate against that.
 const savedCaret = ref({ start: 0, end: 0 })
 
 function onContextMenu(event: MouseEvent) {
+  if (passThroughNative(event))
+    return
+
   const caret = props.input?.getCaret() ?? { start: message.value.length, end: message.value.length }
   savedCaret.value = caret
   hasSelection.value = caret.start !== caret.end
@@ -120,6 +124,10 @@ function insertEmoji(emoji: string) {
           </template>
           Insert emoji
         </DropdownItem>
+        <Divider :size="0" />
+        <p class="composer-context-menu__hint text-xs text-color-lighter">
+          Shift + right-click for the browser menu
+        </p>
       </div>
     </template>
   </ContextMenu>
@@ -154,6 +162,11 @@ function insertEmoji(emoji: string) {
 
 .composer-context-menu__target {
   display: contents;
+}
+
+.composer-context-menu__hint {
+  margin: 0;
+  padding: var(--space-xs) var(--space-s);
 }
 
 // Invisible point the emoji Popout latches onto, positioned at the click spot.

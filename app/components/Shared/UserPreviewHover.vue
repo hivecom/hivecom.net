@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<{
 
 const anchorRef = ref<HTMLElement | null>(null)
 const visible = ref(false)
+
 // Only activate the useDataUser fetch after first hover - this prevents
 // N individual profile queries racing against the useBulkDataUser batch load.
 // Once hovered, the bulk cache is warm and useDataUser will hit it instantly.
@@ -50,9 +51,11 @@ const canShowPopout = computed(() => {
     return false
   if (loading.value || user.value)
     return true
+
   // Unauthenticated + no user data = show the sign-in prompt card
   if (!currentUser.value)
     return true
+
   return false
 })
 

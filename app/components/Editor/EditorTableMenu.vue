@@ -51,6 +51,7 @@ function updatePosition() {
 
   const rect = tableDom.getBoundingClientRect()
   const editorRect = props.editor.view.dom.getBoundingClientRect()
+
   // Span the full editor width, positioned above the table
   menuPos.value = {
     top: rect.top - 42, // 42 ≈ menu height + gap
@@ -66,6 +67,7 @@ function onTransaction() {
 
 onMounted(() => {
   props.editor.on('transaction', onTransaction)
+
   // Also update on scroll/resize so the position tracks the editor
   window.addEventListener('scroll', updatePosition, { passive: true, capture: true })
   window.addEventListener('resize', updatePosition, { passive: true })

@@ -16,6 +16,7 @@ const { init, destroy } = useGlobeRenderer()
 onMounted(async () => {
   if (!import.meta.client)
     return
+
   const container = globeEl.value
   if (!container)
     return

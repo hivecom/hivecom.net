@@ -89,6 +89,7 @@ const tilt = {
 function prefersReducedMotion() {
   if (typeof window === 'undefined')
     return false
+
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 }
 
@@ -176,6 +177,7 @@ function tick(ts: number) {
 function ensureTicking() {
   if (rafId != null)
     return
+
   lastFrameTs = 0
   rafId = window.requestAnimationFrame(tick)
 }
@@ -257,6 +259,7 @@ function positionTouchTooltip() {
 
   const rect = el.getBoundingClientRect()
   const gap = 8
+
   // Prefer placing below the badge; flip above when near the viewport bottom.
   const estimatedHeight = 64
   const placeBelow = rect.bottom + gap + estimatedHeight <= window.innerHeight
@@ -308,6 +311,7 @@ function onDocumentPointerDown(event: PointerEvent) {
     return
   if (badgeEl.value?.contains(event.target as Node))
     return
+
   isTouchTooltipOpen.value = false
 }
 

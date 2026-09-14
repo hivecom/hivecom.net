@@ -10,6 +10,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 const props = defineProps<{
   // When true, render a plain (mobile) trigger instead of the tooltip button.
   mobile?: boolean
+
   // When true, the trigger button is disabled and the sheet cannot be opened.
   disabled?: boolean
 }>()
@@ -27,6 +28,7 @@ watch(open, val => setChatVisible(val))
 const showBadge = computed(() => {
   if (open.value || !isConnected.value)
     return false
+
   return settings.value.chat_notify_only_mentions ? hasMention.value : hasUnread.value
 })
 

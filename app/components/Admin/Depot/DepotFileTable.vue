@@ -40,6 +40,7 @@ const perPage = computed(() => (adminTablePerPage.value > 10 ? 50 : 25))
 const gridColumns = computed(() => {
   if (isBelowMedium.value)
     return 2
+
   return adminTablePerPage.value > 10 ? 8 : 4
 })
 

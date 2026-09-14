@@ -23,6 +23,7 @@ const dragging = ref(false)
 function onDragOver(event: DragEvent) {
   if (props.disabled || !event.dataTransfer?.types.includes('Files'))
     return
+
   event.preventDefault()
   dragging.value = true
 }
@@ -32,6 +33,7 @@ function onDragLeave(event: DragEvent) {
   // so the overlay doesn't flicker.
   if (event.currentTarget instanceof Node && event.relatedTarget instanceof Node && (event.currentTarget as Node).contains(event.relatedTarget))
     return
+
   dragging.value = false
 }
 
@@ -40,6 +42,7 @@ function onDrop(event: DragEvent) {
   const files = event.dataTransfer?.files
   if (props.disabled || !files?.length)
     return
+
   event.preventDefault()
   emit('drop', files)
 }

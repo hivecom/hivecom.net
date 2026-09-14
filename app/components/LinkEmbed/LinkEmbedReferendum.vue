@@ -29,6 +29,7 @@ const voteStatusVariant = computed(() => {
     return 'info' as const
   if (voteStatus.value === 'upcoming')
     return 'warning' as const
+
   return 'neutral' as const
 })
 
@@ -36,14 +37,17 @@ const voteStatusLabel = computed(() => {
   if (voteStatus.value === 'active') {
     if (props.data.dateEnd == null)
       return 'Active'
+
     const diff = new Date(props.data.dateEnd).getTime() - now.value.getTime()
     if (diff <= 0)
       return 'Concluded'
+
     const formatted = formatDuration(diff)
     return formatted ? `${formatted} left` : 'Less than 1 minute left'
   }
   if (voteStatus.value === 'upcoming')
     return 'Upcoming'
+
   return 'Concluded'
 })
 
@@ -84,6 +88,7 @@ watch(
   async ([d]) => {
     if (!userId.value)
       return
+
     const { data: existing } = await supabase
       .from('referendum_votes')
       .select('id, choices')
@@ -120,6 +125,7 @@ function toggleChoice(index: number) {
 async function submitVote() {
   if (!user.value || selectedChoices.value.length === 0)
     return
+
   isSubmitting.value = true
   hasVoted.value = true
   try {
@@ -135,6 +141,7 @@ async function submitVote() {
       .maybeSingle()
     if (error)
       throw error
+
     if (upserted != null)
       voteId.value = upserted.id
     await fetchAllVotes(props.data.referendumId)
@@ -151,6 +158,7 @@ async function submitVote() {
 async function removeVote() {
   if (!voteId.value)
     return
+
   isRemoving.value = true
   try {
     const { error } = await supabase
@@ -159,6 +167,7 @@ async function removeVote() {
       .eq('id', voteId.value)
     if (error)
       throw error
+
     hasVoted.value = false
     voteId.value = null
     selectedChoices.value = []

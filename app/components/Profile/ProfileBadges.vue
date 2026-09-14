@@ -25,6 +25,7 @@ const sortedBadges = computed(() => {
     const tierDiff = (TIER_RANK[a.tier] ?? 99) - (TIER_RANK[b.tier] ?? 99)
     if (tierDiff !== 0)
       return tierDiff
+
     const aOrder = BADGE_CATALOG[a.slug as keyof typeof BADGE_CATALOG]?.sortOrder ?? 99
     const bOrder = BADGE_CATALOG[b.slug as keyof typeof BADGE_CATALOG]?.sortOrder ?? 99
     return aOrder - bOrder
@@ -36,6 +37,7 @@ const hasBadges = computed(() => sortedBadges.value.length > 0)
 const emptyStateText = computed(() => {
   if (props.isOwnProfile)
     return 'Earn badges by participating in the community!'
+
   return 'This user has not earned any badges yet.'
 })
 

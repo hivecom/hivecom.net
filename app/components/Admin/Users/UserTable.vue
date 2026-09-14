@@ -238,6 +238,7 @@ function handleSort(col: AdminUserSortCol) {
 function sortIcon(col: AdminUserSortCol): string {
   if (sortCol.value !== col)
     return 'ph:arrows-down-up'
+
   return sortDir.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'
 }
 
@@ -328,6 +329,7 @@ watch(page, () => {
 watch(adminTablePerPage, () => {
   if (page.value !== 1) {
     setPage(1)
+
     // page watch in composable will trigger fetch
   }
   else {

@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
   initialLatex?: string
+
   /**
    * When provided the modal is in "edit" mode and the type selector is hidden
    * because you cannot change an existing node's type.

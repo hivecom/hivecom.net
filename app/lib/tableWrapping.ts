@@ -27,9 +27,11 @@ export function wrapTablesAST(body: ASTNode): ASTNode {
           children: [node],
         }
       }
+
       // Recurse into any other element that may contain tables
       if (node.type === 'element' && (node.children?.length ?? 0) > 0)
         return wrapTablesAST(node)
+
       return node
     }),
   }

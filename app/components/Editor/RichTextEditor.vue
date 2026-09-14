@@ -115,27 +115,32 @@ interface Props {
   showAttachmentButton?: boolean
   showExpandButton?: boolean
   alwaysShowExpandButton?: boolean
+
   /**
    * When true, automatically opens the fullscreen editor modal on mobile
    * breakpoints. Useful inside modals where the small editor is impractical.
    */
   fullscreenOnMobile?: boolean
   showSubmitOptions?: boolean
+
   /**
    * External loading state - when true, disables the editor and shows spinner
    * on the send button. Useful when the parent handles async work after submit.
    */
   loading?: boolean
   contentRulesOverlayText?: string
+
   /**
    * If provided, it will enable media upload via pasting/dragging media files
    * into the editor. Providing a context helps with file management
    */
   mediaContext?: string
+
   /**
    * Optional storage bucket for uploads (defaults to forums bucket).
    */
   mediaBucketId?: StorageBucketId
+
   /**
    * Strip EXIF and other metadata from images before upload. Defaults to true.
    * Set to false if the original metadata must be preserved.
@@ -162,6 +167,7 @@ const content = defineModel<string>()
 // ------------------------------------------------------------------------
 const minHeightPlain = computed(() => {
   const cssValue = Number(minHeight.slice(0, -2))
+
   //                vv The height & margin of the now static menu
   return `${cssValue - 28}px`
 })
@@ -182,6 +188,7 @@ function resizePlainTextarea() {
   const el = plainTextarea.value
   if (!el)
     return
+
   el.style.height = 'auto'
   el.style.height = `${el.scrollHeight}px`
 }
@@ -215,6 +222,7 @@ function extractStoragePath(src: string, bucketId: string): string | null {
   const idx = src.indexOf(marker)
   if (idx === -1)
     return null
+
   // Strip any query-string parameters that Supabase may append
   return decodeURIComponent((src.slice(idx + marker.length).split('?').at(0)) ?? '')
 }
@@ -242,12 +250,15 @@ const videoModalOpen = ref(false)
 // the mutable blob src so async conversion/upload can never lose track of a
 // node even if its src changes (or a src-walk fails to find it) mid-flight.
 const pendingBlobs = new Map<string, { file: File, blobUrl: string }>()
+
 // In-flight background conversions (processPendingFile). flushPendingUploads must
 // await these before snapshotting pendingBlobs - otherwise a conversion that
 // swaps a node's blob src mid-upload would leave the placeholder blob in the doc.
 const pendingConversions = new Set<Promise<void>>()
+
 // Per-upload progress 0-100, keyed by uploadId. ref so template can react.
 const uploadProgress = ref(new Map<string, number>())
+
 // True only while flushPendingUploads is running - drives shimmer animation.
 const isUploading = ref(false)
 
@@ -484,8 +495,10 @@ const editor = useEditor({
                 state.doc.descendants((node, pos) => {
                   if (!node.isText || !node.text)
                     return
+
                   CHANNEL_RE.lastIndex = 0
                   let match: RegExpExecArray | null
+
                   // eslint-disable-next-line no-cond-assign
                   while ((match = CHANNEL_RE.exec(node.text)) !== null) {
                     const from = pos + match.index
@@ -530,6 +543,7 @@ const editor = useEditor({
       function marksEqual(a: MarkEntry | undefined, b: MarkEntry | undefined): boolean {
         if (!a || !b)
           return a === b
+
         return a.type === b.type && JSON.stringify(a.attrs ?? {}) === JSON.stringify(b.attrs ?? {})
       }
 
@@ -549,6 +563,7 @@ const editor = useEditor({
           const b = nodes[idx + 1]
           if (!a || !b || a.type !== 'text' || b.type !== 'text')
             continue
+
           const aMarks = (a.marks ?? []) as MarkEntry[]
           const bMarks = (b.marks ?? []) as MarkEntry[]
           for (const am of aMarks) {
@@ -698,6 +713,7 @@ const editor = useEditor({
   },
   onUpdate: () => {
     editorIsEmpty.value = editor.value?.isEmpty ?? true
+
     // @tiptap/extension-paragraph serialises an empty paragraph as "&nbsp;"
     // so that round-trip parsing keeps the paragraph intact. We never want
     // that sentinel to leak into the content model – an empty editor should
@@ -777,6 +793,7 @@ const editor = useEditor({
 function getEditorMarkdown(): string {
   if (!editor.value || editor.value.isEmpty)
     return ''
+
   const raw = editor.value.getMarkdown() ?? ''
 
   // @tiptap/extension-paragraph emits "&nbsp;" for every empty paragraph -
@@ -788,9 +805,11 @@ function getEditorMarkdown(): string {
   const stripped = raw
     .replace(NBSP_TRAILING_RE, '')
     .replace(NBSP_SINGLE_RE, '')
+
     // Collapse [url](url) self-links (label === href) to bare URLs so that
     // the markdown renderer can promote standalone internal links to rich embeds.
     .replace(SELF_LINK_RE, '$1')
+
     // Escape any HTML tag-like sequences (<...>) so they are stored and rendered
     // as visible literal text rather than being interpreted as HTML by the
     // markdown renderer. Tiptap now stores these as raw angle-bracket text nodes
@@ -806,6 +825,7 @@ const avgUploadProgress = computed(() => {
   const vals = [...uploadProgress.value.values()]
   if (vals.length === 0)
     return 0
+
   return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
 })
 
@@ -890,6 +910,7 @@ async function processPendingFile(originalFile: File, uploadId: string, currentB
     editor.value.state.doc.descendants((node, nodePos) => {
       if (swapped)
         return false
+
       const isMedia = MEDIA_NODE_TYPES.has(node.type.name)
       if (isMedia && node.attrs.uploadId === uploadId) {
         editor.value!
@@ -950,6 +971,7 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     const isVideo = allowedVideoTypes.includes(originalFile.type)
     const isAudio = allowedAudioTypes.includes(originalFile.type)
     const nodeType = isVideo ? 'video' : isAudio ? 'audio' : 'image'
+
     // Video and audio upload as-is; only images go through conversion/strip.
     const skipImageProcessing = isVideo || isAudio
 
@@ -1157,6 +1179,7 @@ async function flushPendingUploads(): Promise<boolean> {
               const publicUrl = urlMap.get(node.attrs.uploadId)
               if (publicUrl) {
                 tr.setNodeAttribute(nodePos, 'src', publicUrl)
+
                 // Clear the transient id now that the node points at storage.
                 tr.setNodeAttribute(nodePos, 'uploadId', null)
               }
@@ -1191,6 +1214,7 @@ async function flushPendingUploads(): Promise<boolean> {
     editorRef?.state.doc.descendants((node) => {
       if (hasBlobRemaining)
         return false
+
       const isMedia = MEDIA_NODE_TYPES.has(node.type.name)
       if (isMedia && typeof node.attrs.src === 'string' && node.attrs.src.startsWith('blob:')) {
         hasBlobRemaining = true
@@ -1217,6 +1241,7 @@ async function flushPendingUploads(): Promise<boolean> {
 function handleReplacePendingBlob(oldBlobUrl: string, newFile: File) {
   if (!editor.value)
     return
+
   const newBlobUrl = URL.createObjectURL(newFile)
 
   // Locate the placeholder by its current blob src and read its stable uploadId,
@@ -1225,6 +1250,7 @@ function handleReplacePendingBlob(oldBlobUrl: string, newFile: File) {
   editor.value.state.doc.descendants((node, nodePos) => {
     if (uploadId !== null)
       return false
+
     if (node.type.name === 'image' && node.attrs.src === oldBlobUrl) {
       uploadId = typeof node.attrs.uploadId === 'string' ? node.attrs.uploadId : null
       editor.value!
@@ -1367,6 +1393,7 @@ function handleMathConfirm(payload: { latex: string, type: 'inline' | 'block', e
 function handleYoutubeConfirm(url: string) {
   if (!editor.value || !url.trim())
     return
+
   editor.value.commands.setYoutubeVideo({ src: url.trim() })
 }
 
@@ -1379,6 +1406,7 @@ function handleInsertTable() {
 function handleVideoConfirm(url: string) {
   if (!editor.value || !url.trim())
     return
+
   editor.value.commands.insertVideo({ src: url.trim() })
 }
 

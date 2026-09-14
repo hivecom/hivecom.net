@@ -50,6 +50,7 @@ const statusConfig = computed(() => {
         icon: 'ph:bell',
         color: 'var(--color-text-yellow)',
       }
+
     case 'acknowledged':
       return {
         label: 'Acknowledged',
@@ -57,6 +58,7 @@ const statusConfig = computed(() => {
         icon: 'ph:check-circle',
         color: 'var(--color-text-blue)',
       }
+
     case 'responded':
       return {
         label: 'Responded',
@@ -64,6 +66,7 @@ const statusConfig = computed(() => {
         icon: 'ph:chat-circle-dots',
         color: 'var(--color-text-green)',
       }
+
     default:
       return {
         label: 'Unknown',
@@ -93,6 +96,7 @@ const contextType = computed(() => {
     return { label: null, icon: 'ph:user', userId: props.complaint.context_user as string, isServer: false }
   if (props.complaint.context_gameserver)
     return { label: null, icon: 'ph:hard-drives', userId: null, isServer: true }
+
   return null
 })
 

@@ -86,6 +86,7 @@ watch(
   async (id) => {
     if (!id)
       return
+
     associatedDiscussion.value = await discussionCache.fetchByEntity('event', String(id))
   },
   { immediate: true },
@@ -136,6 +137,7 @@ const displayError = computed(() => {
   if (isNoRowsError(error.value)) {
     if (isAuthenticated.value)
       return 'This event was not found. It may have been removed or the link may be incorrect.'
+
     return 'This event could not be loaded. It may be a private community event - sign in to view it.'
   }
 
@@ -149,6 +151,7 @@ const displayErrorDetail = computed(() => {
     return undefined
   if (isNoRowsError(error.value))
     return undefined
+
   return error.value
 })
 
@@ -173,6 +176,7 @@ watch(
 const canEdit = computed(() => {
   if (!event.value || !userId.value)
     return false
+
   const isOwner = event.value.created_by === userId.value && !event.value.is_official
   return isOwner || isPrivileged.value
 })

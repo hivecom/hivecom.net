@@ -566,6 +566,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
       const roleIdsToFetch = includeRole && currentUser.value
         ? ids.filter(id => !cache.has(`user:role:${id}`))
         : []
+
       // Don't attempt to fetch avatars when the user is not authenticated -
       // RLS will block the storage list call and the null result would be
       // cached, preventing avatars from loading once the user signs in.
@@ -743,6 +744,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
     for (const id of ids) {
       if (_bulkRefetchFns.has(id))
         continue
+
       const fn = async () => refetchForId(id)
       _bulkRefetchFns.set(id, fn)
       if (!_activeInstances.has(id))
@@ -756,6 +758,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
       const fn = _bulkRefetchFns.get(id)
       if (!fn)
         continue
+
       _bulkRefetchFns.delete(id)
       const set = _activeInstances.get(id)
       if (set) {

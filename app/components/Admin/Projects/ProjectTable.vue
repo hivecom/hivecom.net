@@ -73,6 +73,7 @@ const {
     const { data, error } = await projectsQuery
     if (error)
       throw error
+
     return data ?? []
   },
   transform: project => ({

@@ -88,6 +88,7 @@ onBeforeMount(async () => {
 
   if (route.query.connected === 'steam') {
     maybePromptRichPresence()
+
     // Clean query param without navigation
     const url = new URL(window.location.href)
     url.searchParams.delete('connected')

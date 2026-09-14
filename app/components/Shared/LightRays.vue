@@ -2,16 +2,22 @@
 const props = withDefaults(defineProps<{
   /** Number of rays for layer A */
   raysA?: number
+
   /** Number of rays for layer B (defaults to raysA + 1) */
   raysB?: number
+
   /** Size of the rays element in px */
   size?: number
+
   /** Peak opacity of each ray (0-1) */
   intensity?: number
+
   /** Ray color as r,g,b string e.g. "255, 215, 0" */
   color?: string
+
   /** Spin duration for layer A in seconds */
   spinDuration?: number
+
   /** Scale/shimmer pulse duration in seconds */
   pulseDuration?: number
 }>(), {

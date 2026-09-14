@@ -10,6 +10,7 @@ const props = defineProps<{
   playing: boolean
   loading: boolean
   errored: boolean
+
   // Bump the button and glyph up a size. Used on mobile, where it's the primary
   // touch target.
   large?: boolean

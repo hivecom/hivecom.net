@@ -60,6 +60,7 @@ export async function fetchAudioBytes(src: string): Promise<ArrayBuffer> {
     const res = await fetch(url)
     if (!res.ok)
       throw new Error(`Failed to fetch audio: ${res.status}`)
+
     return res.arrayBuffer()
   })()
 

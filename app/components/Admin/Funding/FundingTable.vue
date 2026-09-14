@@ -120,6 +120,7 @@ watch([allFunding, fundingLoading, fundingError], () => {
   if (!fundingLoading.value) {
     monthlyFundings.value = allFunding.value as MonthlyFunding[]
     loading.value = false
+
     // Notify parent charts that data is ready - track this so the re-fetch watcher ignores it
     const next = (refreshSignal.value || 0) + 1
     lastSelfEmittedSignal.value = next
@@ -160,6 +161,7 @@ watch(showFundingDetails, (isOpen) => {
     return
   if (!route.query.funding)
     return
+
   const { funding, ...rest } = route.query
   router.replace({ query: rest })
 })
@@ -171,6 +173,7 @@ watch(
       return
     if (!fundingMonth)
       return
+
     openFundingByMonth(fundingMonth)
   },
   { immediate: true },

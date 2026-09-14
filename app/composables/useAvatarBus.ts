@@ -19,6 +19,7 @@ const AVATAR_UPDATED_EVENT = 'avatar-updated'
 
 export interface AvatarUpdatedPayload {
   userId: string
+
   /** New public URL, or null if the avatar was deleted */
   url: string | null
 }

@@ -57,6 +57,7 @@ export interface LinkPreviewEvent {
   durationMinutes: number | null
   location: string | null
   recurrenceRule: string | null
+
   /** True when the event could not be fetched because the user is not authenticated. */
   requiresAuth?: boolean
 }
@@ -141,6 +142,7 @@ export function parseInternalUrl(raw: string): ParsedInternalUrl | null {
         || (import.meta.dev && (host === 'localhost' || host === '127.0.0.1' || host === '::1'))
       if (!isKnownHost)
         return null
+
       pathname = u.pathname
       search = u.search
       href = pathname + search
@@ -360,6 +362,7 @@ export function useDataLinkPreview(url: string) {
 
     if (!row) {
       const user = useSupabaseUser()
+
       // Unauthenticated users may be blocked by RLS (e.g. recurring events require
       // sign-in). Return an auth-gated stub so the embed renders a sign-in nudge
       // instead of a bare URL fallback.

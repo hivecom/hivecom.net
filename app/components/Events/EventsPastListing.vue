@@ -37,6 +37,7 @@ const columns = computed(() => {
     return 1
   if (isTablet.value)
     return 2
+
   return 3
 })
 

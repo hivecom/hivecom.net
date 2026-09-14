@@ -177,6 +177,7 @@ function handleStick(mode: 'stick' | 'unstick') {
 const showEditModal = ref(false)
 const showCreateSubTopicModal = ref(false)
 const showCreateDiscussionModal = ref(false)
+
 // function handleEdit() {}
 
 const linkedDiscussionReason = computed(() => {
@@ -202,6 +203,7 @@ const recreateLoading = ref(false)
 const recreateDescription = computed(() => {
   if (props.table !== 'discussions')
     return ''
+
   const discussion = props.data as Tables<'discussions'>
   const created = new Date(discussion.created_at)
   const suffix = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`
@@ -224,6 +226,7 @@ async function handleRecreate() {
   const oldTitle = discussion.title ?? 'Untitled'
   const archivedTitle = `${oldTitle} (${suffix})`
   const baseSlug = discussion.slug ?? slugify(oldTitle)
+
   // Strip any existing YYYY-MM-DD prefix from the slug before prepending
   const cleanSlug = baseSlug.replace(SLUG_DATE_PREFIX_RE, '')
   const archivedSlugBase = `${suffix}-${cleanSlug}`
@@ -241,6 +244,7 @@ async function handleRecreate() {
         .limit(1)
       if (!existing || existing.length === 0)
         break
+
       counter++
       archivedSlug = `${archivedSlugBase}-${counter}`
     }
@@ -259,6 +263,7 @@ async function handleRecreate() {
         .limit(1)
       if (!existing || existing.length === 0)
         break
+
       counter++
       newSlug = `${baseSlug}-${counter}`
     }
@@ -288,6 +293,7 @@ async function handleRecreate() {
     // Invalidate the old slug key now that the slug has changed - the old URL
     // should no longer serve a cache hit for the pre-rename data.
     discussionCache.invalidate(discussion.id, discussion.slug)
+
     // Warm the cache with the renamed archived record so /forum/YYYY-MM-DD-slug
     // is a cache hit if someone navigates there.
     discussionCache.set(archivedData)

@@ -108,9 +108,11 @@ export function useDataEventsPaged(
       return false
     if (recurringFilter?.value === true && event.recurrence_rule != null)
       return false
+
     const ids = gameFilter?.value ?? []
     if (ids.length > 0 && !(event.games ?? []).some(id => ids.includes(id)))
       return false
+
     return true
   }
 

@@ -85,6 +85,7 @@ export const ImageGroup = Extension.create({
           apply(tr, old) {
             if (!tr.docChanged)
               return old.map(tr.mapping, tr.doc)
+
             return buildDecorations(tr.doc)
           },
         },

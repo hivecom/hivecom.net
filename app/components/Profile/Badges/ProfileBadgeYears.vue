@@ -16,6 +16,7 @@ const variant = computed<BadgeVariant>(() => {
     return 'gold'
   if (props.years >= 5)
     return 'silver'
+
   return 'bronze'
 })
 
@@ -41,6 +42,7 @@ const formattedSince = computed(() => {
 const description = computed(() => {
   if (!formattedSince.value)
     return `User for ${subtitle.value}`
+
   return `User for ${subtitle.value} (since ${formattedSince.value})`
 })
 </script>

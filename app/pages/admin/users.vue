@@ -85,6 +85,7 @@ const canViewUserEmails = computed(() => isAdmin.value)
 const pageSubtitle = computed(() => {
   if (activeTab.value === 'Roles')
     return 'View role-based permissions and access control matrix'
+
   return 'Manage user accounts, permissions, and ban status'
 })
 
@@ -163,6 +164,7 @@ watch(() => selectedUser.value?.id, () => {
 watch(userAction, (action) => {
   if (action && action.type) {
     handleUserAction(action)
+
     // Reset the action after handling it
     userAction.value = null
   }
@@ -204,6 +206,7 @@ async function handleUserAction(action: UserAction) {
     }
     catch (error: unknown) {
       console.error('Error banning user:', (error as Error).message)
+
       // You might want to show an error toast/notification here
     }
     return
@@ -230,6 +233,7 @@ async function handleUserAction(action: UserAction) {
     }
     catch (error: unknown) {
       console.error('Error unbanning user:', (error as Error).message)
+
       // You might want to show an error toast/notification here
     }
     return
@@ -262,6 +266,7 @@ async function handleUserAction(action: UserAction) {
     }
     catch (error: unknown) {
       console.error('Error deleting user:', (error as Error).message)
+
       // You might want to show an error toast/notification here
     }
     return
@@ -386,6 +391,7 @@ async function handleUserSave(userData: UserFormData, badges: string[], currentB
   }
   catch (error: unknown) {
     console.error('Error updating user:', (error as Error).message)
+
     // Handle error (you might want to show error message to user)
   }
 }

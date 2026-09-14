@@ -34,14 +34,17 @@ const modalSubtitle = computed(() => {
   const scope = summary.value?.scope
   if (scope === undefined || scope === 'whole network')
     return 'Across the whole IRC network'
+
   return `Filtered to ${scope}`
 })
+
 // The picker sits in the brush controls row up in the modal, so the selection
 // and the options the chart found live here and get handed back down.
 const channelOptions = ref<ChannelOption[]>([])
 const selectedChannels = ref<ChannelOption[] | undefined>([])
 
 const activityModalOpen = ref(false)
+
 // Resolved at runtime because the brush paints it onto a canvas, where a
 // var() reference wouldn't work.
 const accentColor = computed(() => getCSSVariable('--color-text-purple'))

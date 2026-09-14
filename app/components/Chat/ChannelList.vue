@@ -20,8 +20,10 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 const props = defineProps<{
   // Horizontal strip layout for the compact navbar sheet.
   horizontal?: boolean
+
   // Move the create/join input above the list (used in the mobile nav sheet).
   inputTop?: boolean
+
   // Size the list to its content instead of filling/scrolling internally, so a
   // parent surface can own the scroll (used in the mobile nav sheet).
   noScroll?: boolean
@@ -36,6 +38,7 @@ watch(buffers, () => {
   for (const buf of buffers.value) {
     if (buf.kind !== 'channel')
       continue
+
     const prefix = buf.name[0] ?? '#'
     const segments = buf.name.replace(/^[#&]/, '').split('/').filter(Boolean)
     for (let i = 1; i < segments.length; i++)
@@ -58,15 +61,18 @@ function getListEl(): HTMLElement | null {
     return null
   if (v instanceof HTMLElement)
     return v
+
   return (v as ComponentPublicInstance).$el as HTMLElement
 }
 
 function scrollActiveIntoView() {
   if (!props.horizontal)
     return
+
   const el = getListEl()
   if (!el)
     return
+
   const active = el.querySelector<HTMLElement>('.chat-channels__item--active')
   active?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
 }
@@ -90,10 +96,12 @@ const overflowStyle = computed(() =>
 function onWheel(e: WheelEvent) {
   if (!props.horizontal || e.deltaX !== 0)
     return
+
   e.preventDefault()
   const el = getListEl()
   if (!el)
     return
+
   // Overflow's actual scroller is .overflow-content (not the root or its first child).
   const scroller = el.querySelector<HTMLElement>('.overflow-content') ?? el
   scroller.scrollLeft += e.deltaY
@@ -120,6 +128,7 @@ function bufferLabel(buf: ChatBuffer) {
     return 'Server'
   if (buf.kind === 'pm' && isSelfBuffer(buf.name))
     return SELF_SPACE_LABEL
+
   return buf.metadata?.get('display-name') ?? buf.name.replace(/^#/, '')
 }
 
@@ -137,6 +146,7 @@ function bufferIcon(kind: string) {
     return 'ph:user'
   if (kind === 'server')
     return 'ph:hard-drives'
+
   return 'ph:hash'
 }
 
@@ -144,6 +154,7 @@ function onJoin() {
   const value = joinInput.value.trim()
   if (!value)
     return
+
   joinChannel(value)
   joinInput.value = ''
 }
@@ -204,12 +215,15 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
     const resolvedKey1 = `#${parentPath}`.toLowerCase()
     const resolvedKey2 = parentPath.toLowerCase()
     const meta = channelMeta(parentPath)
+
     // Metadata not yet received (joined or not) - assume authorized (pending).
     if (!meta && !channelMetaResolved.value.has(resolvedKey1) && !channelMetaResolved.value.has(resolvedKey2))
       return true
+
     const raw = channelMeta(parentPath)?.get('subchannels')
     if (!raw)
       return false
+
     return raw
       .split(',')
       .map(s => s.trim().toLowerCase())
@@ -278,12 +292,15 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
     const raw = meta?.get('subchannels')
     if (!raw)
       return []
+
     return raw.split(',').map(s => s.trim()).filter(Boolean)
   }
 
   function injectGhosts(nodes: ChannelTreeNode[]): ChannelTreeNode[] {
     const result: ChannelTreeNode[] = []
+
     for (const node of nodes) {
+      // A group already on screen may be missing subchannels we've never joined.
       if (node.type === 'group') {
         const meta = node.meta ?? node.parentBuffer?.metadata
         const subs = getSubchannelSegments(meta)
@@ -292,8 +309,10 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
             return c.name.toLowerCase()
           if (c.type === 'channel')
             return c.displayName.toLowerCase()
+
           return (c as ChannelGhostNode).name.toLowerCase()
         }))
+
         for (const seg of subs) {
           if (!existingNames.has(seg.toLowerCase())) {
             node.children.push({
@@ -307,10 +326,14 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
         node.children = injectGhosts(node.children)
         result.push(node)
       }
+      // A joined channel that advertises subchannels becomes a group, so its
+      // children have somewhere to hang.
       else if (node.type === 'channel' && node.buffer.kind === 'channel') {
         const subs = getSubchannelSegments(node.buffer.metadata)
+
         if (subs.length > 0) {
           const rawName = node.buffer.name.replace(/^#/, '')
+
           const group: ChannelGroupNode = {
             type: 'group',
             name: node.displayName,
@@ -334,6 +357,7 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
         result.push(node)
       }
     }
+
     return result
   }
 
@@ -345,6 +369,7 @@ function treeNodeKey(node: ChannelTreeNode): string {
     return `group:${node.fullPath}`
   if (node.type === 'ghost')
     return `ghost:${node.fullChannelName}`
+
   return node.buffer.name
 }
 
@@ -364,6 +389,7 @@ function onTouchStart(event: TouchEvent) {
   const touch = event.touches[0]
   if (!touch)
     return
+
   _touchStartX = touch.clientX
   _touchStartY = touch.clientY
 
@@ -392,9 +418,11 @@ function cancelLongPress() {
 function onTouchMove(event: TouchEvent) {
   if (_longPressTimer === null)
     return
+
   const touch = event.touches[0]
   if (!touch)
     return
+
   if (Math.abs(touch.clientX - _touchStartX) > LONG_PRESS_SLOP
     || Math.abs(touch.clientY - _touchStartY) > LONG_PRESS_SLOP) {
     cancelLongPress()
@@ -437,6 +465,7 @@ function onContextMenu(event: MouseEvent) {
 function closeMenu() {
   if (!import.meta.client)
     return
+
   mobileMenuOpen.value = false
   setTimeout(() => {
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
@@ -464,6 +493,7 @@ async function copyText(text: string, label: string) {
 function canEditBuffer(buf: ChatBuffer): boolean {
   if (buf.kind !== 'channel')
     return false
+
   const r = myChannelRole(buf.name)
   return r !== null && ['~', '&', '@'].includes(r.symbol)
 }
@@ -515,7 +545,9 @@ function confirmCreateSubchannel() {
   const slug = createSubchannelInput.value.trim().replace(/^[#&/]+/, '').replace(/\//g, '-')
   if (!parent || !slug)
     return
+
   const fullName = `${parent.name}/${slug}`
+
   // Update parent subchannels metadata.
   const existing = parent.metadata?.get('subchannels') ?? channelMetaCache.value.get(parent.name.toLowerCase())?.get('subchannels') ?? ''
   const list = existing ? existing.split(',').map(s => s.trim()).filter(Boolean) : []
@@ -542,6 +574,7 @@ const renameChannelValid = computed(() => {
   const slug = renameChannelInput.value.trim().replace(/^[#&]+/, '')
   if (!target || !slug)
     return false
+
   return `${target.name[0]}${slug}` !== target.name
 })
 
@@ -550,6 +583,7 @@ const renameConfirmOpen = ref(false)
 function confirmRenameChannel() {
   if (!renameChannelTarget.value || !renameChannelValid.value)
     return
+
   renameConfirmOpen.value = true
 }
 
@@ -557,6 +591,7 @@ function executeRenameChannel() {
   const target = renameChannelTarget.value
   if (!target || !renameChannelValid.value)
     return
+
   renameChannel(target.name, renameChannelInput.value)
   renameConfirmOpen.value = false
   renameChannelTarget.value = null

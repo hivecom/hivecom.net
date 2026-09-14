@@ -142,6 +142,7 @@ export function useDataUserSettings() {
     }
 
     hasFetched.value = true
+
     // Defer clearing isFetching until the next tick so the deep settings watcher
     // (which is also deferred) still sees isFetching=true and skips the auto-save.
     // Without this, the watcher fires after isFetching is already false and
@@ -196,6 +197,7 @@ export function useDataUserSettings() {
     if (isNil(newUser)) {
       hasFetched.value = false
       isFetching.value = true
+
       // Reset to defaults then restore any persisted guest settings.
       const merged = { ...getDefaultUserSettings() }
       const stored = localStorage.getItem(GUEST_SETTINGS_KEY)

@@ -29,6 +29,7 @@ function sortByPriority(
   if (aHas && bHas) {
     if (a.priority === b.priority)
       return a.name.localeCompare(b.name)
+
     return b.priority - a.priority
   }
 

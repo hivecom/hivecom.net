@@ -10,6 +10,7 @@ import { bridgeInfo } from '@/lib/chat/bridgeInfo'
 const props = defineProps<{
   nick: string | null
   open: boolean
+
   /**
    * When set, this nick is a relaymsg spoofed nick. relayedBy is the actual
    * IRC bot nick that sent the RELAYMSG - the real user to WHOIS.
@@ -28,6 +29,7 @@ const { resolved, resolve } = useIrcNickResolver()
 const displayNick = computed(() => {
   if (!props.nick)
     return null
+
   if (relaySeparator.value) {
     const idx = props.nick.indexOf(relaySeparator.value)
     if (idx > 0)
@@ -40,9 +42,11 @@ const displayNick = computed(() => {
 const bridgeName = computed(() => {
   if (!props.nick || !relaySeparator.value)
     return null
+
   const idx = props.nick.indexOf(relaySeparator.value)
   if (idx <= 0)
     return null
+
   return props.nick.slice(idx + relaySeparator.value.length)
 })
 
@@ -63,24 +67,28 @@ watch(() => [props.open, props.nick] as [boolean, string | null], ([open]) => {
 const userId = computed(() => {
   if (!whoisNick.value)
     return null
+
   return resolved.value.get(whoisNick.value.toLowerCase())?.id ?? null
 })
 
 const whois = computed(() => {
   if (!whoisNick.value)
     return null
+
   return whoisStore.value.get(whoisNick.value.toLowerCase()) ?? null
 })
 
 const isService = computed(() => {
   if (!whoisNick.value)
     return false
+
   return SERVICE_NICKS.has(whoisNick.value.toLowerCase())
 })
 
 const isBot = computed(() => {
   if (!whoisNick.value)
     return false
+
   const nameLower = whoisNick.value.toLowerCase()
   return buffers.value.some(b => b.users?.some(u => u.name.toLowerCase() === nameLower && u.bot))
 })

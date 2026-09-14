@@ -5,6 +5,7 @@ import GameServerConnectButton from '@/components/GameServers/GameServerConnectB
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { metricsPlayerCount } from '@/types/metrics'
+
 // useGameConnect is consumed inside GameServerConnectButton
 
 type GameserverData = NonNullable<ReturnType<typeof useDataLinkPreview>['data']['value']> & { type: 'gameserver' }
@@ -56,6 +57,7 @@ onMounted(() => {
 const playerCount = computed((): number | null => {
   if (!metrics.value)
     return null
+
   return metricsPlayerCount(metrics.value.gameservers.byServer[String(props.data.id)])
 })
 </script>

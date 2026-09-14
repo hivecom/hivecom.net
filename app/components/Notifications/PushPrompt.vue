@@ -19,6 +19,7 @@ const { isSupported, permission, isSubscribed, loading, subscribe, refresh } = u
 const userId = useUserId()
 
 const dismissed = ref(true)
+
 // `refresh()` sets `isSupported`/`permission` synchronously but only updates
 // `isSubscribed` after the async subscription lookup resolves. Without this gate
 // an already-subscribed user sees the prompt flash for a frame. Stay hidden
@@ -59,6 +60,7 @@ function ignore() {
 
 async function enable() {
   const ok = await subscribe()
+
   // Persist dismissal once they've acted. `isSubscribed` is re-derived per mount
   // and silently falls back to `false` whenever the service-worker lookup in
   // `refresh()` returns null (SW not yet active, or the 5s timeout), which would
@@ -66,6 +68,7 @@ async function enable() {
   // is the durable signal that keeps it gone.
   if (ok)
     ignore()
+
   // If the user blocked the permission prompt, also stop nagging.
   else if (permission.value === 'denied')
     ignore()

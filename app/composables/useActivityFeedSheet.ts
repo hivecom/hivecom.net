@@ -39,6 +39,7 @@ export function useActivityFeedSheet(options: UseActivityFeedSheetOptions) {
   async function openLoad() {
     if (sheetLoading.value)
       return
+
     sheetLoading.value = true
     sheetExhausted.value = false
     sheetItems.value = []
@@ -61,6 +62,7 @@ export function useActivityFeedSheet(options: UseActivityFeedSheetOptions) {
   async function appendMore() {
     if (sheetLoadingMore.value || sheetExhausted.value)
       return
+
     sheetLoadingMore.value = true
 
     const rows = await loadMoreFn(sheetItems.value.length)

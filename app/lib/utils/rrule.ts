@@ -179,6 +179,7 @@ export function expandRecurringEvent(
           const dayIndex = DAY_CODE_TO_INDEX[dayCode]
           if (dayIndex === undefined)
             continue
+
           const occurrence = new Date(cursor)
           occurrence.setDate(cursor.getDate() + dayIndex)
           if (occurrence >= originDate) {
@@ -188,6 +189,7 @@ export function expandRecurringEvent(
           if (count >= MAX_OCCURRENCES)
             break
         }
+
         // Advance by interval weeks
         addDays(cursor, 7 * parsed.interval)
       }
@@ -205,12 +207,14 @@ export function expandRecurringEvent(
   }
   else if (parsed.freq === 'MONTHLY') {
     const targetDay = parsed.byMonthDay ?? originDate.getDate()
+
     // Walk month by month from origin
     let cursorTime = new Date(originDate).getTime()
     let count = 0
     while (cursorTime <= effectiveEndTime && count < MAX_OCCURRENCES) {
       const cursor = new Date(cursorTime)
       const candidate = withDate(originDate, cursor.getFullYear(), cursor.getMonth(), targetDay)
+
       // Make sure the day didn't overflow (e.g. Feb 31 -> March)
       if (candidate.getMonth() === cursor.getMonth()) {
         if (candidate >= originDate) {
@@ -258,6 +262,7 @@ export function expandRecurringEvent(
 export function nextOccurrenceDate(event: EventRow, after: Date = new Date()): Date | null {
   if (event.recurrence_rule == null || event.recurrence_rule === '')
     return null
+
   const occurrences = expandRecurringEvent(
     event,
     after,
@@ -285,11 +290,13 @@ export function currentOrNextOccurrenceDate(event: EventRow, now: Date = new Dat
 export function isSeriesActive(event: EventRow, now: Date = new Date()): boolean {
   if (event.recurrence_rule == null || event.recurrence_rule === '' || event.recurrence_parent_id != null)
     return false
+
   const parsed = parseRRule(event.recurrence_rule)
   if (!parsed)
     return false
   if (parsed.until != null && parsed.until < now)
     return false
+
   return true
 }
 
@@ -303,6 +310,7 @@ export function humanizeRrule(rule: string): string {
   if (freq === 'DAILY') {
     if (interval === 1)
       return 'Repeats daily'
+
     return `Repeats every ${interval} days`
   }
 
@@ -315,23 +323,27 @@ export function humanizeRrule(rule: string): string {
         const dayLabel = dayNames.join(', ')
         if (interval === 1)
           return `Repeats every ${dayLabel}`
+
         return `Repeats every ${interval} weeks on ${dayLabel}`
       }
     }
     if (interval === 1)
       return 'Repeats weekly'
+
     return `Repeats every ${interval} weeks`
   }
 
   if (freq === 'MONTHLY') {
     if (interval === 1)
       return 'Repeats monthly'
+
     return `Repeats every ${interval} months`
   }
 
   if (freq === 'YEARLY') {
     if (interval === 1)
       return 'Repeats yearly'
+
     return `Repeats every ${interval} years`
   }
 

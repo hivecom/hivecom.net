@@ -23,6 +23,7 @@ const state = computed<CalloutState>(() => {
     return 'link'
   if (!profile.value.rich_presence_enabled)
     return 'enable-presence'
+
   return null
 })
 
@@ -31,6 +32,7 @@ const title = computed(() => {
     return 'Show what you\'re playing'
   if (state.value === 'enable-presence')
     return 'Turn on rich presence'
+
   return ''
 })
 
@@ -39,6 +41,7 @@ const body = computed(() => {
     return 'Link your Steam account to show your game activity alongside the rest of the community.'
   if (state.value === 'enable-presence')
     return 'Steam is linked but rich presence is off. Enable it to show your current game on Hivecom.'
+
   return ''
 })
 
@@ -47,6 +50,7 @@ const buttonLabel = computed(() => {
     return 'Link Steam'
   if (state.value === 'enable-presence')
     return 'Enable Rich Presence'
+
   return ''
 })
 

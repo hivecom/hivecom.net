@@ -16,6 +16,7 @@
 function parse(date: string | Date | null | undefined): Date | null {
   if (date == null || date === '')
     return null
+
   const d = typeof date === 'string' ? new Date(date) : date
   return Number.isNaN(d.getTime()) ? null : d
 }
@@ -28,13 +29,16 @@ function parse(date: string | Date | null | undefined): Date | null {
  * Returns a locale-aware relative time string, e.g. "3 minutes ago" or
  * "il y a 3 minutes" for a French browser.
  * Returns an empty string for null/invalid values.
+ *
+ * Pass `now` (usually the shared tick from useNow) to keep the result live.
+ * Without it the value is computed once and never ages.
  */
-export function fromNow(date: string | Date | null | undefined): string {
+export function fromNow(date: string | Date | null | undefined, now: number = Date.now()): string {
   const d = parse(date)
   if (!d)
     return ''
 
-  const diffMs = d.getTime() - Date.now()
+  const diffMs = d.getTime() - now
   const diffSecs = Math.round(diffMs / 1000)
   const absSecs = Math.abs(diffSecs)
 
@@ -65,6 +69,7 @@ export function displayDate(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
     return 'Unknown'
+
   return new Intl.DateTimeFormat(undefined, {
     day: '2-digit',
     month: '2-digit',
@@ -80,6 +85,7 @@ export function displayDateTime(date: string | Date | null | undefined): string 
   const d = parse(date)
   if (!d)
     return 'Unknown'
+
   return new Intl.DateTimeFormat(undefined, {
     day: '2-digit',
     month: '2-digit',
@@ -97,6 +103,7 @@ export function fullDate(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
     return 'Unknown'
+
   return new Intl.DateTimeFormat(undefined, {
     month: 'short',
     day: 'numeric',
@@ -112,6 +119,7 @@ export function fullDateTime(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
     return 'Unknown'
+
   return new Intl.DateTimeFormat(undefined, {
     month: 'short',
     day: 'numeric',
@@ -129,6 +137,7 @@ export function fullDateLong(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
     return 'Unknown'
+
   return new Intl.DateTimeFormat(undefined, {
     month: 'long',
     day: 'numeric',
@@ -146,6 +155,7 @@ export function calendarDateLong(date: string | Date | null | undefined): string
   const d = parse(date)
   if (!d)
     return 'Unknown'
+
   return new Intl.DateTimeFormat(undefined, {
     month: 'long',
     day: 'numeric',
@@ -168,6 +178,7 @@ export function fullMonth(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
     return 'Unknown'
+
   return new Intl.DateTimeFormat(undefined, {
     month: 'long',
     year: 'numeric',
@@ -183,6 +194,7 @@ export function fullDateTimeWeekday(date: string | Date | null | undefined): str
   const d = parse(date)
   if (!d)
     return 'Unknown'
+
   return new Intl.DateTimeFormat(undefined, {
     weekday: 'long',
     month: 'short',
@@ -201,6 +213,7 @@ export function yearOnly(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
     return 'Unknown'
+
   return new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
   }).format(d)
@@ -214,7 +227,36 @@ export function timestamp(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
     return ''
+
   return d.toISOString()
+}
+
+export interface TimestampDetail {
+  /** The precise instant in UTC, e.g. "2026-09-13 16:09:18 UTC". */
+  absolute: string
+
+  /** The viewer's zone and offset, e.g. "UTC-06:00, America/Edmonton". */
+  zone: string
+}
+
+/**
+ * Splits a date into the two halves a detail tooltip wants: the exact UTC
+ * instant and the viewer's own timezone. Returns null for null/invalid values.
+ */
+export function timestampDetail(date: string | Date | null | undefined): TimestampDetail | null {
+  const d = parse(date)
+  if (!d)
+    return null
+
+  const offset = d.getTimezoneOffset()
+  const offsetSign = offset <= 0 ? '+' : '-'
+  const offsetHours = String(Math.abs(Math.floor(offset / 60))).padStart(2, '0')
+  const offsetMinutes = String(Math.abs(offset % 60)).padStart(2, '0')
+
+  return {
+    absolute: `${d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '')} UTC`,
+    zone: `UTC${offsetSign}${offsetHours}:${offsetMinutes}, ${new Intl.DateTimeFormat().resolvedOptions().timeZone}`,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -257,6 +299,7 @@ export function getBirthdayPatterns(): string[] {
 export function isBirthdayDateToday(birthday: string | null | undefined): boolean {
   if (birthday == null || birthday === '')
     return false
+
   const mmdd = birthday.slice(5) // "YYYY-MM-DD" → "MM-DD"
   return getBirthdayPatterns().includes(mmdd)
 }
@@ -271,6 +314,7 @@ export function formatTime(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
     return 'Unknown'
+
   return new Intl.DateTimeFormat(undefined, {
     hour: '2-digit',
     minute: '2-digit',

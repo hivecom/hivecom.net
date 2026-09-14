@@ -70,6 +70,7 @@ function handleLogsScroll(el: HTMLElement | null) {
 const formattedLogs = computed(() => {
   if (!props.logs)
     return ''
+
   return ansiConverter.toHtml(props.logs)
 })
 
@@ -179,6 +180,7 @@ watch(
       return
     if (!props.logs)
       return
+
     void scrollLogsToBottom()
   },
   { immediate: true, flush: 'post' },

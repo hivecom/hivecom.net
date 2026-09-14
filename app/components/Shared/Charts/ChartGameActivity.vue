@@ -90,6 +90,7 @@ function gameLabel(id: string): string {
 // This chart reads history through the isolated fetchers, so refreshes have to
 // arrive via the subscription listener - the shared ref never updates for us.
 let stopRefresh: (() => void) | null = null
+
 // Guards against a superseded load re-subscribing after a faster later one.
 let loadToken = 0
 
@@ -140,6 +141,7 @@ const currentCount = computed(() => {
     const bySteam = metrics.value?.users.bySteamGame
     if (bySteam !== undefined)
       return bySteam[String(props.steamGameId)] ?? 0
+
     return [...metricsHistory.value].reverse().find(e => e.usersBySteamGame?.[String(props.steamGameId!)] !== undefined)?.usersBySteamGame?.[String(props.steamGameId!)]
       ?? undefined
   }
@@ -147,9 +149,11 @@ const currentCount = computed(() => {
     const byGame = metrics.value?.users.byGame
     if (byGame !== undefined)
       return byGame[String(props.gameId)] ?? 0
+
     return [...metricsHistory.value].reverse().find(e => e.usersByGame?.[String(props.gameId!)] !== undefined)?.usersByGame?.[String(props.gameId!)]
       ?? undefined
   }
+
   // Sum across all tracked game IDs
   const byGame = metrics.value?.users.byGame
   if (byGame) {
@@ -289,6 +293,7 @@ const computedBarThickness = computed(() => {
   const width = chartWrapperWidth.value
   if (!count || !width)
     return undefined
+
   const raw = (width / count) * 0.7
   return Math.max(1, Math.floor(raw))
 })
@@ -305,6 +310,7 @@ const localChartOptions = computed(() => ({
           const raw = item.raw as { y: number | null } | null | undefined
           if (raw === null || raw === undefined || raw.y === null || raw.y === 0)
             return ''
+
           return `${item.dataset.label}: ${item.parsed.y}`
         },
         afterBody() {
@@ -371,6 +377,7 @@ watch(chartData, () => {
     const chart = chartRef.value?.chart
     if (!width || !chart)
       return
+
     const containerHeight = chartWrapperRef.value?.clientHeight
     chart.resize(Math.floor(width), containerHeight)
   })

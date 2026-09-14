@@ -32,6 +32,7 @@ const {
   () => {
     if (!isSeriesActive(props.event))
       return null
+
     const next = nextOccurrenceDate(props.event)
     return next != null ? next.toISOString() : props.event.date
   },
@@ -83,9 +84,11 @@ const rsvpDisabled = computed(() => {
     return true
   if (!user.value || !props.event)
     return true
+
   // Recurring series never closes - new occurrences always upcoming
   if (isRecurringSeries.value)
     return false
+
   return hasEventEnded.value
 })
 
@@ -107,6 +110,7 @@ function handleStatusPick(status: RSVPStatus) {
 function confirmScope(scope: 'occurrence' | 'series') {
   if (pendingStatus.value == null)
     return
+
   void updateRsvp(pendingStatus.value, scope)
   showScopeModal.value = false
   pendingStatus.value = null

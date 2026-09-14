@@ -17,6 +17,7 @@ import { computed } from 'vue'
  */
 export function useContainerBreakpoint(el: Ref<HTMLElement | null>, threshold: number) {
   const { width } = useElementSize(el, { width: 0, height: 0 })
+
   // width.value === 0 before mount - guard keeps it false (desktop) during SSR
   return computed(() => width.value > 0 && width.value < threshold)
 }

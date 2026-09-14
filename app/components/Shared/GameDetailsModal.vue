@@ -111,6 +111,7 @@ const websiteUrl = computed(() => {
 const gameServersForGame = computed(() => {
   if (!props.gameId)
     return []
+
   return gameservers.value.filter(gs => gs.game === props.gameId)
 })
 
@@ -122,11 +123,13 @@ const currentPlayerIds = computed(() => {
 const serverPlayerCount = computed(() => {
   if (!metrics.value || !props.gameId)
     return 0
+
   const byServer = metrics.value.gameservers.byServer
   let total = 0
   for (const gs of gameServersForGame.value) {
     if (!gs.query_protocol)
       continue
+
     total += metricsPlayerCount(byServer[String(gs.id)]) ?? 0
   }
   return total
@@ -136,6 +139,7 @@ const serverPlayerCount = computed(() => {
 const peakPlayers = computed(() => {
   if (!props.gameId)
     return 0
+
   let peak = 0
   for (const entry of isolatedHistory.value) {
     const count = entry.usersByGame?.[String(props.gameId)] ?? 0
@@ -150,9 +154,11 @@ function formatMinutesPlayed(minutes: number): string {
     return '0m'
   if (minutes < 60)
     return `${minutes}m`
+
   const hours = Math.round(minutes / 60)
   if (hours < 24)
     return `${hours}h`
+
   const days = Math.floor(hours / 24)
   const remainingHours = hours % 24
   return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`
@@ -176,6 +182,7 @@ function getServerState(gs: typeof gameServersForGame.value[0]): ServerState {
     return 'healthy'
   if (container.running && !container.healthy)
     return 'unhealthy'
+
   return 'offline'
 }
 
@@ -187,12 +194,15 @@ function isServerOnline(gs: typeof gameServersForGame.value[0]): boolean {
 function getServerPlayerCounts(gs: typeof gameServersForGame.value[0]): { current: number, max: number | null } | null {
   if (!metrics.value)
     return null
+
   const detail = metrics.value.gameservers.byServer[String(gs.id)]
   if (!detail?.data)
     return null
+
   const current = metricsPlayerCount(detail)
   if (current === null)
     return null
+
   return { current, max: metricsMaxPlayers(detail) }
 }
 
@@ -312,6 +322,7 @@ function handleClose() {
 async function handleChartChange(period: MetricsPeriod, window: { start: Date, end: Date }) {
   if (!props.gameId)
     return
+
   activePeriod.value = period
   activeWindow.value = window
   const [history] = await Promise.all([
@@ -320,6 +331,7 @@ async function handleChartChange(period: MetricsPeriod, window: { start: Date, e
   ])
   isolatedHistory.value = history
 }
+
 // Re-attempt lookup when games list populates
 watch(games, () => {
   if (props.gameId && isOpen.value && !currentDetails.value)

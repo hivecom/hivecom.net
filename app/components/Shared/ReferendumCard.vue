@@ -30,6 +30,7 @@ interface Props {
   status: ReferendumStatus
   voterIds?: string[]
   isPrivate?: boolean
+
   /** Highlight that the current user voted in this vote */
   hasVoted?: boolean
   compact?: boolean
@@ -53,6 +54,7 @@ const statusVariant = computed(() => {
     return 'info'
   if (props.status === 'upcoming')
     return 'warning'
+
   return 'neutral'
 })
 
@@ -61,6 +63,7 @@ const statusText = computed(() => {
     return getTimeRemaining(props.referendum.date_end)
   if (props.status === 'upcoming')
     return 'Upcoming'
+
   return null
 })
 

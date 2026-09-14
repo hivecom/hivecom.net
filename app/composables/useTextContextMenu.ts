@@ -7,6 +7,7 @@ import { ref } from 'vue'
 // insert) differ per backend and stay in each component.
 export function useTextContextMenu() {
   const emojiOpen = ref(false)
+
   // Where the right-click happened, so the picker can anchor at the menu spot.
   const emojiPos = ref({ x: 0, y: 0 })
 
@@ -42,8 +43,22 @@ export function useTextContextMenu() {
     emojiPos.value = { x: event.clientX, y: event.clientY }
   }
 
+  // Shift+right-click skips the custom menu so the browser's own one can open.
+  // That's the only place spelling suggestions live, and there's no API to tell
+  // whether the word under the cursor is misspelled, so it can't be automatic.
+  // Stopping propagation keeps the event from reaching the VUI ContextMenu root,
+  // which is where preventDefault happens. Firefox already does this natively.
+  function passThroughNative(event: MouseEvent) {
+    if (!event.shiftKey)
+      return false
+
+    event.stopPropagation()
+    return true
+  }
+
   function openEmojiPicker() {
     closeMenu()
+
     // Open after the synthetic body click that closes the context menu, so the
     // picker's own click-outside guard isn't tripped by that same click.
     if (import.meta.client)
@@ -52,5 +67,5 @@ export function useTextContextMenu() {
       emojiOpen.value = true
   }
 
-  return { emojiOpen, emojiPos, closeMenu, writeClipboard, readClipboard, recordEmojiAnchor, openEmojiPicker }
+  return { emojiOpen, emojiPos, closeMenu, writeClipboard, readClipboard, recordEmojiAnchor, openEmojiPicker, passThroughNative }
 }

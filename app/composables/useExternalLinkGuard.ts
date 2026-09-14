@@ -81,6 +81,7 @@ export function useExternalLinkGuard() {
 
     event.preventDefault()
     event.stopPropagation()
+
     // anchor.href resolves to the absolute URL.
     requestNavigation(anchor.href)
   }

@@ -135,12 +135,14 @@ export function useDepotFileTable<T extends DepotFile>(options: UseDepotFileTabl
   function sortIcon(col: DepotFileSortCol): string {
     if (sortCol.value !== col)
       return 'ph:arrows-down-up'
+
     return sortDir.value === 'asc' ? 'ph:arrow-up' : 'ph:arrow-down'
   }
 
   // ─── Details drawer ───────────────────────────────────────────────────────────
 
   const selectedAsset = ref<StorageAsset | null>(null)
+
   // Kept alongside the mapped asset so the drawer can show the original file
   // (the admin table reads the uploader off it).
   const selectedFile = ref<T | null>(null) as Ref<T | null>
@@ -186,14 +188,17 @@ export function useDepotFileTable<T extends DepotFile>(options: UseDepotFileTabl
     const target = fileToDelete.value
     if (!target)
       return
+
     deleting.value = true
     try {
       await deleteFile(target.object_key)
       pushToast('Upload deleted')
       fileToDelete.value = null
+
       // Close the drawer if it was showing the file we just removed.
       if (selectedAsset.value?.path === target.object_key)
         showDetailsDrawer.value = false
+
       // Stepping back a page when the last row on a non-first page is removed
       // avoids landing on an empty page.
       if (files.value.length === 1 && page.value > 1)
@@ -221,6 +226,7 @@ export function useDepotFileTable<T extends DepotFile>(options: UseDepotFileTabl
     const targets = selectedRows.value.map(row => row._original)
     if (!targets.length)
       return
+
     bulkDeleting.value = true
     try {
       for (const file of targets)

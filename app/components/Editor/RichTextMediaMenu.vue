@@ -48,9 +48,11 @@ function getSelectedNodeType(): MediaNodeType | null {
   const { selection } = props.editor.state
   if (!(selection instanceof NodeSelection))
     return null
+
   const name = selection.node?.type?.name
   if (name === 'image' || name === 'video' || name === 'audio')
     return name
+
   return null
 }
 
@@ -59,6 +61,7 @@ function shouldShow({ state, view }: ShouldShowMenuProps): boolean {
   const node = (selection as { node?: { type?: { name?: string }, attrs?: { src?: string } } }).node
   const name = node?.type?.name
   const src = node?.attrs?.src ?? ''
+
   // Show for blob images (crop available) and all uploaded media
   // Hide for blob videos (no crop, no useful actions while pending)
   // Hide for errored/missing images
@@ -66,12 +69,15 @@ function shouldShow({ state, view }: ShouldShowMenuProps): boolean {
     const domNode = view.nodeDOM((selection as { from: number }).from) as HTMLElement | null
     if (domNode?.querySelector('img.img-error'))
       return false
+
     return true
   }
+
   // Video and audio: show once uploaded (no crop, no useful actions while
   // the placeholder blob is still pending).
   if (name === 'video' || name === 'audio')
     return !src.startsWith('blob:')
+
   return false
 }
 
@@ -164,6 +170,7 @@ function getStoragePath(src: string): string | null {
   const filename = decodeURIComponent(src.slice(src.lastIndexOf('/') + 1))
   if (!filename)
     return null
+
   return `${props.mediaContext}/${filename}`
 }
 
@@ -174,9 +181,11 @@ function openCropModal() {
   const { selection } = props.editor.state
   if (!(selection instanceof NodeSelection))
     return
+
   const src = (selection.node.attrs as { src?: string }).src ?? ''
   if (!src.startsWith('blob:'))
     return
+
   cropBlobSrc.value = src
   cropModalOpen.value = true
 }

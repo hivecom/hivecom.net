@@ -10,6 +10,7 @@ const { settings } = useDataUserSettings()
 const typingNicks = computed(() => {
   if (!settings.value.chat_typing_indicators)
     return []
+
   return (activeBuffer.value?.typing ?? []).filter(n => n !== nick.value)
 })
 
@@ -21,6 +22,7 @@ const label = computed(() => {
     return `${nicks[0]} is typing`
   if (nicks.length === 2)
     return `${nicks[0]} and ${nicks[1]} are typing`
+
   return 'Several people are typing'
 })
 </script>

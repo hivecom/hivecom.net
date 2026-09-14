@@ -65,9 +65,11 @@ const supabaseUser = useSupabaseUser()
 const isClaimed = computed(() => {
   if (!accountInfoFetched.value)
     return false
+
   const email = accountEmail.value
   if (!email)
     return false
+
   const userEmail = (supabaseUser.value as Record<string, unknown> | null)?.email as string | undefined
   return !userEmail || email === userEmail
 })
@@ -75,9 +77,11 @@ const isClaimed = computed(() => {
 const isEmailMismatch = computed(() => {
   if (!accountInfoFetched.value)
     return false
+
   const email = accountEmail.value
   if (!email)
     return false
+
   const userEmail = (supabaseUser.value as Record<string, unknown> | null)?.email as string | undefined
   return !!userEmail && email !== userEmail
 })
@@ -97,6 +101,7 @@ function startClaim() {
 function submitEmail() {
   if (!emailInput.value.trim())
     return
+
   claimError.value = ''
   claimEmail(emailInput.value.trim())
   claimStep.value = 'code'
@@ -105,6 +110,7 @@ function submitEmail() {
 function submitCode() {
   if (!codeInput.value.trim() || verifying.value)
     return
+
   claimError.value = ''
   verifying.value = true
   verifyClaimCode(codeInput.value.trim())
@@ -117,6 +123,7 @@ function submitCode() {
 watch(accountEmail, (val) => {
   if (claimStep.value !== 'code')
     return
+
   if (val && val !== '') {
     if (verifyTimer)
       clearTimeout(verifyTimer)

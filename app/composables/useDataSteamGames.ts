@@ -33,6 +33,7 @@ export function useDataSteamGames() {
         .order('name', { ascending: true })
       if (fetchError)
         throw fetchError
+
       return data ?? []
     }, { force })
     if (result !== null)
