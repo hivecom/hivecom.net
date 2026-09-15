@@ -16,7 +16,19 @@ const user = useSupabaseUser()
 // or query - everyone lands at / regardless.
 // const showLanding = ref(false)
 const activeTab = ref<'home' | 'dashboard'>('dashboard')
-const showDashboard = computed(() => !!user.value && activeTab.value === 'dashboard')
+
+// The prerendered `/` is built without a session, so its HTML is always the
+// marketing branch. The supabase client plugin resolves the session before the
+// app mounts though, so a logged-in cold load would hydrate the dashboard onto
+// marketing markup and leave the transition holding element references Vue
+// never rendered. Hold the dashboard back until after hydration so the first
+// client render matches the static HTML, then swap on a normal patch.
+const hydrated = ref(false)
+onMounted(() => {
+  hydrated.value = true
+})
+
+const showDashboard = computed(() => hydrated.value && !!user.value && activeTab.value === 'dashboard')
 
 watch(activeTab, () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
