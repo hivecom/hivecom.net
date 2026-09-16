@@ -20,6 +20,10 @@
   overflow-wrap: break-word;
 
   &.inline {
+    // vui ships a global `.inline { display: inline }` utility at the same
+    // specificity as `.home-item`, so whichever stylesheet lands last wins.
+    // Restating display here makes this `.home-item.inline` and settles it.
+    display: flex;
     flex-direction: row;
     justify-content: space-between;
   }
