@@ -10,6 +10,17 @@ export interface SteamPresenceGame {
 export interface RecentlyPlayedGame {
   appName: string | null
   count: number
+  /** How many of those members are in it right now. */
+  playing: number
+  /** Most recent time a member stopped playing it, for when nobody is on. */
+  lastPlayedAt: string | null
+}
+
+/** Shape of the entries worker-sync-steam writes into presences_steam.recent_apps. */
+export interface SteamRecentApp {
+  app_id: number
+  app_name: string | null
+  last_played_at: string
 }
 
 // Module-level singleton so all consumers share one cache and one request
@@ -20,6 +31,14 @@ const presencesLoading = ref(false)
 let fetched = false
 let inflight: Promise<void> | null = null
 let lastFetchedAt = 0
+
+// My own recent apps live on a single presence row, so they get their own
+// query and their own guards. Keyed by profile so a different account signing
+// in doesn't inherit the previous one's list.
+const myRecentApps = ref<SteamRecentApp[]>([])
+const myRecentAppsLoading = ref(false)
+let myRecentAppsProfileId: string | null = null
+let myRecentAppsInflight: Promise<void> | null = null
 
 // Presences come from the same cron as metrics, so they go stale on the same
 // five-minute cadence. Without this the first mount of the session was the only
@@ -63,12 +82,13 @@ if (import.meta.client) {
 export function useDataSteamPresences() {
   const supabase = useSupabaseClient<Database>()
   const user = useSupabaseUser()
+  const userId = useUserId()
 
   async function loadCurrentPlayers(): Promise<void> {
     presencesLoading.value = true
     const { data } = await supabase
       .from('presences_steam')
-      .select('profile_id, current_app_id, current_app_name, last_app_id, last_app_name')
+      .select('profile_id, current_app_id, current_app_name, last_app_id, last_app_name, last_app_ended_at')
       .or('current_app_id.not.is.null,last_app_id.not.is.null')
     presencesLoading.value = false
     if (!data)
@@ -91,14 +111,32 @@ export function useDataSteamPresences() {
       // Recently played is a generic aggregate on purpose - counts per game,
       // never which profile played it. Each profile contributes one game:
       // what they play now, else what they played last.
+      const isPlayingNow = row.current_app_id != null
       const recentAppId = row.current_app_id ?? row.last_app_id
-      const recentAppName = row.current_app_id != null ? row.current_app_name : row.last_app_name
+      const recentAppName = isPlayingNow ? row.current_app_name : row.last_app_name
       if (recentAppId != null) {
         const entry = recentByAppId.get(recentAppId)
-        if (entry === undefined)
-          recentByAppId.set(recentAppId, { appName: recentAppName, count: 1 })
-        else
+        if (entry === undefined) {
+          recentByAppId.set(recentAppId, {
+            appName: recentAppName,
+            count: 1,
+            playing: isPlayingNow ? 1 : 0,
+            lastPlayedAt: isPlayingNow ? null : row.last_app_ended_at,
+          })
+        }
+        else {
           entry.count += 1
+          entry.appName ??= recentAppName
+
+          if (isPlayingNow) {
+            entry.playing += 1
+          }
+          // Newest wins, so the line reads as when the game was last touched
+          // rather than whichever row the query happened to return first.
+          else if (row.last_app_ended_at != null && (entry.lastPlayedAt == null || row.last_app_ended_at > entry.lastPlayedAt)) {
+            entry.lastPlayedAt = row.last_app_ended_at
+          }
+        }
       }
     }
     currentPlayersBySteamId.value = bySteamId
@@ -119,6 +157,43 @@ export function useDataSteamPresences() {
     return inflight
   }
 
+  async function loadMyRecentApps(profileId: string): Promise<void> {
+    myRecentAppsLoading.value = true
+    const { data, error } = await supabase
+      .from('presences_steam')
+      .select('recent_apps')
+      .eq('profile_id', profileId)
+      .maybeSingle()
+    myRecentAppsLoading.value = false
+
+    // A failed read leaves the previous list alone rather than blanking the
+    // card, and stays uncached so the next tick retries.
+    if (error != null)
+      return
+
+    myRecentApps.value = (data?.recent_apps as unknown as SteamRecentApp[] | null) ?? []
+    myRecentAppsProfileId = profileId
+  }
+
+  // The roster query only returns members who are in a game, so it can't
+  // double as the source for my own recent list.
+  async function fetchMyRecentApps(force = false): Promise<void> {
+    const profileId = userId.value
+    if (profileId == null)
+      return
+
+    if (!force && myRecentAppsProfileId === profileId)
+      return
+
+    if (myRecentAppsInflight !== null)
+      return myRecentAppsInflight
+
+    myRecentAppsInflight = loadMyRecentApps(profileId).finally(() => {
+      myRecentAppsInflight = null
+    })
+    return myRecentAppsInflight
+  }
+
   function currentPlayersForSteamId(steamId: number | null | undefined): string[] {
     if (steamId == null)
       return []
@@ -132,17 +207,29 @@ export function useDataSteamPresences() {
     if (!user.value)
       return
 
-    await fetchCurrentPlayers()
+    await Promise.all([fetchCurrentPlayers(), fetchMyRecentApps(true)])
   }
 
   onMounted(() => {
-    if (user.value && !fetched)
+    if (!user.value)
+      return
+
+    if (!fetched)
       void fetchCurrentPlayers()
+    void fetchMyRecentApps()
   })
 
   watch(user, (u) => {
-    if (u && !fetched)
+    // Signing out clears the per-user list so the next account never sees it.
+    if (!u) {
+      myRecentApps.value = []
+      myRecentAppsProfileId = null
+      return
+    }
+
+    if (!fetched)
       void fetchCurrentPlayers()
+    void fetchMyRecentApps()
   })
 
   if (getCurrentScope() !== undefined) {
@@ -165,8 +252,12 @@ export function useDataSteamPresences() {
     currentGameByProfileId,
     /** Generic aggregate: app id -> name + how many members play it now or played it last. */
     recentlyPlayedByAppId,
+    /** The signed-in user's own recent games, newest first. */
+    myRecentApps,
     presencesLoading,
+    myRecentAppsLoading,
     fetchCurrentPlayers,
+    fetchMyRecentApps,
     currentPlayersForSteamId,
   }
 }

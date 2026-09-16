@@ -9,15 +9,22 @@ defineOgImage('Default', {
 </script>
 
 <template>
-  <LayoutNavigation />
+  <div class="layout-root">
+    <!-- Single element root, and it has to stay that way. The layout transition
+         animates this node, and a fragment root gives it an anchor comment to
+         animate instead, which silently does nothing (NUXT_E4002). The comment
+         lives inside the root on purpose: the dev compiler keeps template
+         comments, so one sitting above the div makes the root a fragment again. -->
+    <LayoutNavigation />
 
-  <slot name="hero" />
+    <slot name="hero" />
 
-  <!-- <div class="container-l"> -->
-  <main>
-    <slot />
-  </main>
-  <!-- </div> -->
+    <!-- <div class="container-l"> -->
+    <main>
+      <slot />
+    </main>
+    <!-- </div> -->
 
-  <LayoutFooter />
+    <LayoutFooter />
+  </div>
 </template>

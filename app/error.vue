@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Button, Card, Divider } from '@dolanske/vui'
+import LayoutLoading from '@/components/Layout/Loading.vue'
 
 // Error state setup
 const error = useError()

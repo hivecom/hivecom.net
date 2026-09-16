@@ -1,126 +1,262 @@
 <script setup lang="ts">
-import type { Database } from '@/types/database.types'
-import { Flex } from '@dolanske/vui'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
+import type { RecentlyPlayedGame } from '@/composables/useDataSteamPresences'
+import { Flex, PopoutHover, Skeleton } from '@dolanske/vui'
+import { defineAsyncComponent } from 'vue'
+import HomeDashboardCardHeader from '@/components/Home/HomeDashboardCardHeader.vue'
+import HomeDashboardGameItem from '@/components/Home/HomeDashboardGameItem.vue'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
+import HomeDashboardSkeleton from '@/components/Home/HomeDashboardSkeleton.vue'
+import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
+import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
+import { useDataGames } from '@/composables/useDataGames'
 import { useDataNotifications } from '@/composables/useDataNotifications'
 import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
 import { useUserId } from '@/composables/useUserId'
+import { fromNow } from '@/lib/utils/date'
 
-dayjs.extend(relativeTime)
+const ChartGameActivity = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameActivity.vue'))
+const ChartActivityHistogramModal = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartActivityHistogramModal.vue'))
+const GameDetailsModal = defineAsyncComponent(() => import('@/components/Shared/GameDetailsModal.vue'))
 
-// Raw data pass for the Games card: my recent games with who's in them right
-// now, friends playing at this moment, the community aggregate, and games I
-// haven't touched that others play.
+// Games card: my recent games, a short community aggregate, and a couple of
+// games I haven't touched that others play. Whoever is in a game right now
+// rides along on that game's own row as avatars, so the card never spends a
+// section repeating a name it already shows. Friends lead the clusters and pin
+// their games to the top. Counts stay small on purpose so this reads as a
+// glance rather than a list to work through.
 
-// Shape of the entries worker-sync-steam writes into presences_steam.recent_apps.
-interface RecentApp {
-  app_id: number
-  app_name: string | null
-  last_played_at: string
+const SHOWN_COMMUNITY = 3
+const SHOWN_UNPLAYED = 2
+
+interface CommunityGame extends RecentlyPlayedGame {
+  appId: number
+  /** Mutual friends in it right now, which is what pins it to the top. */
+  friends: number
 }
 
-const supabase = useSupabaseClient<Database>()
 const userId = useUserId()
+const { games } = useDataGames()
 const { mutualFriendIds } = useDataNotifications()
-const { currentPlayersBySteamId, currentGameByProfileId, recentlyPlayedByAppId } = useDataSteamPresences()
+const {
+  currentPlayersBySteamId,
+  currentGameByProfileId,
+  recentlyPlayedByAppId,
+  myRecentApps,
+  presencesLoading,
+  myRecentAppsLoading,
+} = useDataSteamPresences()
 
-// My own recent apps off my presence row (bounded list, newest first).
-const myRecentApps = ref<RecentApp[]>([])
+// Steam hands us app ids, the details modal wants our own games row, and only
+// the games we actually track can bridge the two.
+const gameIdBySteamId = computed(() => {
+  const map = new Map<number, number>()
 
-watch(userId, async (uid) => {
-  if (uid == null)
-    return
-  const { data } = await supabase
-    .from('presences_steam')
-    .select('recent_apps')
-    .eq('profile_id', uid)
-    .maybeSingle()
-  myRecentApps.value = (data?.recent_apps as unknown as RecentApp[] | null) ?? []
-}, { immediate: true })
-
-// "You like this game, here's people playing it": first of my recent games
-// that someone else is in right now.
-const likedGameWithPlayers = computed(() => {
-  for (const app of myRecentApps.value) {
-    const players = (currentPlayersBySteamId.value.get(app.app_id) ?? []).filter(id => id !== userId.value)
-    if (players.length > 0)
-      return { app, players }
+  for (const game of games.value) {
+    if (game.steam_id != null)
+      map.set(game.steam_id, game.id)
   }
-  return null
+
+  return map
 })
 
-const friendsPlaying = computed(() =>
-  [...currentGameByProfileId.value.entries()]
-    .filter(([profileId]) => profileId !== userId.value && mutualFriendIds.value.includes(profileId))
-    .map(([profileId, game]) => ({ profileId, game })),
-)
+function gameIdFor(appId: number): number | null {
+  return gameIdBySteamId.value.get(appId) ?? null
+}
 
-const communityRecent = computed(() =>
+const detailsGameId = ref<number | null>(null)
+const detailsOpen = ref(false)
+const activityModalOpen = ref(false)
+
+function openDetails(gameId: number): void {
+  detailsGameId.value = gameId
+  detailsOpen.value = true
+}
+
+// Badge count: everyone the roster has in a game right now, me included.
+const playingNow = computed(() => currentGameByProfileId.value.size)
+const playingIds = computed(() => [...currentGameByProfileId.value.keys()])
+
+function playersIn(appId: number): string[] {
+  return currentPlayersBySteamId.value.get(appId) ?? []
+}
+
+// My own tiles drop me from the cluster. I know I play my games, and the row is
+// there to say who else showed up.
+function othersIn(appId: number): string[] {
+  return playersIn(appId).filter(id => id !== userId.value)
+}
+
+function friendsIn(appId: number): number {
+  return playersIn(appId).filter(id => id !== userId.value && mutualFriendIds.value.includes(id)).length
+}
+
+// Friends first, then live players, then headcount, so the top of the list is
+// where the people I know actually are rather than where anyone was.
+const rankedCommunity = computed<CommunityGame[]>(() =>
   [...recentlyPlayedByAppId.value.entries()]
-    .map(([appId, entry]) => ({ appId, ...entry }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5),
+    .map(([appId, entry]) => ({ appId, ...entry, friends: friendsIn(appId) }))
+    .sort((a, b) => {
+      if (a.friends !== b.friends)
+        return b.friends - a.friends
+
+      if (a.playing !== b.playing)
+        return b.playing - a.playing
+
+      return b.count - a.count
+    }),
 )
 
-// Games the community plays that aren't in my recent list.
+// The slice grows to cover every game a friend is in, since dropping a friend
+// off the bottom is the one thing this list shouldn't do.
+const communityRecent = computed(() => {
+  const withFriends = rankedCommunity.value.filter(entry => entry.friends > 0).length
+
+  return rankedCommunity.value.slice(0, Math.max(SHOWN_COMMUNITY, withFriends))
+})
+
+// Games the community plays that aren't in my recent list. Anything the
+// section above already shows is skipped, since repeating a row twice in one
+// card is what made this feel like a wall.
 const unplayedByMe = computed(() => {
   const mine = new Set(myRecentApps.value.map(a => a.app_id))
-  return [...recentlyPlayedByAppId.value.entries()]
-    .filter(([appId]) => !mine.has(appId))
-    .map(([appId, entry]) => ({ appId, ...entry }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 3)
+  const shown = new Set(communityRecent.value.map(entry => entry.appId))
+
+  return rankedCommunity.value
+    .filter(entry => !mine.has(entry.appId) && !shown.has(entry.appId))
+    .slice(0, SHOWN_UNPLAYED)
 })
+
+// Right-hand line per row, same shape as the gameservers card. A row with
+// people in it right now says so with their avatars, so the count line would
+// only repeat them and drops out.
+function activityLabel(entry: CommunityGame): string | undefined {
+  if (entry.playing > 0)
+    return undefined
+
+  const players = `${entry.count} player${entry.count === 1 ? '' : 's'}`
+
+  return entry.lastPlayedAt
+    ? `${players}, ${fromNow(entry.lastPlayedAt, Date.now(), 'narrow')}`
+    : players
+}
 </script>
 
 <template>
   <Flex column gap="m">
-    <HomeDashboardSection v-if="likedGameWithPlayers" label="People playing your game">
-      <div class="home-item">
-        <strong>{{ likedGameWithPlayers.app.app_name ?? likedGameWithPlayers.app.app_id }}</strong>
-        <Flex gap="xs" wrap>
-          <UserDisplay v-for="id in likedGameWithPlayers.players" :key="id" :user-id="id" size="s" />
+    <HomeDashboardCardHeader title="Games" icon="ph:game-controller" to="/community/games">
+      <Skeleton v-if="presencesLoading && !rankedCommunity.length" :height="20" :width="90" :radius="999" />
+      <PopoutHover v-else :disabled="playingNow === 0" placement="bottom-end">
+        <template #trigger>
+          <OnlineBadge
+            :count="playingNow"
+            label="Playing"
+            size="s"
+            clickable
+            @click="activityModalOpen = true"
+          />
+        </template>
+        <Flex column gap="xs" class="px-m py-s">
+          <UserDisplay
+            v-for="id in playingIds"
+            :key="id"
+            :user-id="id"
+            size="s"
+            show-profile-preview
+          />
         </Flex>
-      </div>
-    </HomeDashboardSection>
+      </PopoutHover>
+    </HomeDashboardCardHeader>
 
-    <HomeDashboardSection v-if="myRecentApps.length" label="Your recent games">
+    <HomeDashboardSkeleton v-if="myRecentAppsLoading && !myRecentApps.length" variant="grid" :count="4" />
+    <HomeDashboardSection v-else-if="myRecentApps.length" label="Your recent games">
       <div class="home-item-list">
-        <div v-for="app in myRecentApps.slice(0, 4)" :key="app.app_id" class="home-item">
-          <strong>{{ app.app_name ?? app.app_id }}</strong>
-          <span>{{ dayjs(app.last_played_at).fromNow() }}</span>
-        </div>
+        <HomeDashboardGameItem
+          v-for="app in myRecentApps.slice(0, 4)"
+          :key="app.app_id"
+          :name="String(app.app_name ?? app.app_id)"
+          :game-id="gameIdFor(app.app_id)"
+          :meta="fromNow(app.last_played_at, Date.now(), 'narrow')"
+          :players="othersIn(app.app_id)"
+          :friend-ids="mutualFriendIds"
+          @open="openDetails"
+        />
       </div>
     </HomeDashboardSection>
 
-    <HomeDashboardSection v-if="friendsPlaying.length" label="Friends playing right now">
+    <HomeDashboardSkeleton v-if="presencesLoading && !communityRecent.length" variant="rows" :count="SHOWN_COMMUNITY" />
+    <HomeDashboardSection v-else-if="communityRecent.length" label="Community plays these">
       <Flex column gap="xs">
-        <li v-for="{ profileId, game } in friendsPlaying" :key="profileId" class="home-item inline">
-          <UserDisplay :user-id="profileId" size="s" inline />
-          <span>{{ game.appName ?? game.appId }}</span>
-        </li>
-      </Flex>
-    </HomeDashboardSection>
-
-    <HomeDashboardSection v-if="communityRecent.length" label="Community plays these">
-      <Flex column gap="xs">
-        <div v-for="entry in communityRecent" :key="entry.appId" class="home-item inline">
-          <strong>{{ entry.appName ?? entry.appId }}</strong>
-          <span>{{ entry.count }} player{{ entry.count === 1 ? '' : 's' }}</span>
-        </div>
+        <HomeDashboardGameItem
+          v-for="entry in communityRecent"
+          :key="entry.appId"
+          inline
+          :name="String(entry.appName ?? entry.appId)"
+          :game-id="gameIdFor(entry.appId)"
+          :meta="activityLabel(entry)"
+          :players="playersIn(entry.appId)"
+          :friend-ids="mutualFriendIds"
+          @open="openDetails"
+        />
       </Flex>
     </HomeDashboardSection>
 
     <HomeDashboardSection v-if="unplayedByMe.length" label="You haven't tried these yet">
       <Flex column gap="xs">
-        <div v-for="entry in unplayedByMe" :key="entry.appId" class="home-item inline">
-          <strong>{{ entry.appName ?? entry.appId }}</strong>
-          <span>{{ entry.count }} players{{ entry.count === 1 ? '' : 's' }}</span>
-        </div>
+        <HomeDashboardGameItem
+          v-for="entry in unplayedByMe"
+          :key="entry.appId"
+          inline
+          :name="String(entry.appName ?? entry.appId)"
+          :game-id="gameIdFor(entry.appId)"
+          :meta="activityLabel(entry)"
+          :players="playersIn(entry.appId)"
+          :friend-ids="mutualFriendIds"
+          @open="openDetails"
+        />
       </Flex>
     </HomeDashboardSection>
+
+    <ChartActivityHistogramModal
+      v-model:open="activityModalOpen"
+      title="Game Activity"
+      :count="playingNow"
+      count-label="Playing"
+      count-singular="Playing"
+      :series="['usersGameActivity']"
+      :initial-period="playingNow ? '24h' : '14d'"
+    >
+      <template v-if="playingIds.length" #above-chart>
+        <Flex expand wrap gap="xs" class="playing-users__grid" y-center x-center>
+          <UserAvatar
+            v-for="id in playingIds"
+            :key="id"
+            :user-id="id"
+            size="m"
+            linked
+            show-preview
+          />
+        </Flex>
+      </template>
+      <template #default="{ period, window, utc, color }">
+        <ChartGameActivity :period :window :utc :color hide-title />
+      </template>
+    </ChartActivityHistogramModal>
+
+    <GameDetailsModal
+      v-model:open="detailsOpen"
+      :game-id="detailsGameId"
+      @close="detailsOpen = false"
+    />
   </Flex>
 </template>
+
+<style scoped lang="scss">
+.playing-users__grid {
+  max-height: 148px;
+  overflow-y: auto;
+  padding: var(--space-xs);
+  background: var(--color-bg-card);
+  border-radius: var(--border-radius-m);
+}
+</style>

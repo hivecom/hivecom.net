@@ -142,6 +142,22 @@ function openCreate() {
   modalOpen.value = true
 }
 
+// ?create=1 opens the form straight away, so links that promise "start a vote"
+// land on the form rather than on the list next to the button. The query is
+// dropped again so a refresh doesn't reopen it.
+const route = useRoute()
+const router = useRouter()
+
+onMounted(() => {
+  if (!route.query.create || !user.value)
+    return
+
+  openCreate()
+
+  const { create: _create, ...rest } = route.query
+  router.replace({ query: rest })
+})
+
 function handleModalClose() {
   modalOpen.value = false
   editingReferendum.value = null

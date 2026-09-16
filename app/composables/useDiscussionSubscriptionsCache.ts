@@ -41,11 +41,23 @@ import { useCacheModule } from './useCacheModule'
 // Shared type
 // ------------------------------------------------------------------------
 /**
+ * The select every subscription fetch uses. Shared because all of them write
+ * into the same cached list, so a select that drops a column would hand the
+ * next reader a half-filled row.
+ */
+export const SUBSCRIPTION_SELECT = 'id, discussion_id, last_seen_at, discussion:discussions(title, slug, discussion_topic_id, last_activity_at, last_activity_by, profile_id, event_id, gameserver_id, project_id, referendum_id, theme_id)'
+
+/**
  * A single subscription row with its nested discussion join.
  *
  * Exported so callers don't need to redeclare the shape locally.
- * Mirrors the Supabase select:
- *   `id, discussion_id, last_seen_at, discussion:discussions(title, slug, profile_id, event_id, gameserver_id, project_id, referendum_id, theme_id)`
+ * Mirrors `SUBSCRIPTION_SELECT`.
+ *
+ * `last_seen_at` is when the subscriber last opened the discussion, so it moves
+ * on every visit. Anything showing "updated X ago" wants `last_activity_at`.
+ *
+ * `last_activity_at` against `last_seen_at` is the unread check, and
+ * `last_activity_by` is what keeps your own reply from dotting your own thread.
  */
 export interface SubscriptionRow {
   id: string
@@ -54,6 +66,9 @@ export interface SubscriptionRow {
   discussion: {
     title: string
     slug: string | null
+    discussion_topic_id: string | null
+    last_activity_at: string
+    last_activity_by: string | null
     profile_id: string | null
     event_id: number | null
     gameserver_id: number | null

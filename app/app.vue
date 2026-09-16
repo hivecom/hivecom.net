@@ -81,8 +81,12 @@ const layoutName = computed(() => {
   if (path.startsWith('/admin'))
     return 'admin'
 
-  if (path === '/')
-    return 'landing'
+  // `/` deliberately stays on the default layout. Nuxt keys the layout provider
+  // by name, so a layout swap unmounts the <NuxtPage> transition on the way out
+  // and mounts a fresh one on the way in, and a fresh Transition skips its enter
+  // hooks - navigating to or from a route with its own layout gets no transition
+  // at either end. The landing layout was default minus an unused hero slot, and
+  // the navbar already keys its landing styling off the path itself.
 
   // Chat is exclusive (full-screen, no chrome) on desktop, but keeps the navbar
   // on mobile where it's the primary way to move around the site.
@@ -336,6 +340,20 @@ function onConfirmPreviewTheme(withCss: boolean, close: () => void) {
 .page-leave-from {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Layout swaps (admin, chat) fade only. The navbar is position: fixed inside the
+   layout, and a transform on the animating wrapper would re-anchor it to that
+   wrapper for the length of the transition. */
+.layout-enter-active,
+.layout-leave-active {
+  transition: var(--transition);
+  transition-property: opacity;
+}
+
+.layout-enter-from,
+.layout-leave-to {
+  opacity: 0;
 }
 
 .theme-custom-css-viewer {

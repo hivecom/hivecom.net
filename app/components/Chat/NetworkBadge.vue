@@ -45,9 +45,16 @@ const selectedChannels = ref<ChannelOption[] | undefined>([])
 
 const activityModalOpen = ref(false)
 
-// Resolved at runtime because the brush paints it onto a canvas, where a
-// var() reference wouldn't work.
-const accentColor = computed(() => getCSSVariable('--color-text-purple'))
+// The badge is plain CSS, so it takes the variable straight through. Resolving
+// it here instead would read '' on the server and the real color on the
+// client, which is a hydration mismatch, and it would freeze on whatever the
+// theme was at first paint.
+const badgeColor = 'var(--color-text-purple)'
+
+// The brush paints onto a canvas, where a var() reference wouldn't work, so the
+// chart gets the computed value. Only read once the modal opens, which is
+// always client-side.
+const chartColor = computed(() => getCSSVariable('--color-text-purple'))
 
 onMounted(() => {
   if (metrics.value === null)
@@ -56,19 +63,29 @@ onMounted(() => {
 </script>
 
 <template>
-  <OnlineBadge
-    :count="count"
-    label=""
-    size="s"
-    :color="accentColor"
-    clickable
-    @click="activityModalOpen = true"
-  />
+  <!-- Client only because the count comes from the metrics cache in the
+       browser, which the server has no view of. Server-render it and a visitor
+       with a warm cache hydrates 6 over a server-rendered 0. The fallback is
+       what the server used to emit anyway, so a cold load looks unchanged. -->
+  <ClientOnly>
+    <OnlineBadge
+      :count="count"
+      label=""
+      size="s"
+      :color="badgeColor"
+      clickable
+      @click="activityModalOpen = true"
+    />
+
+    <template #fallback>
+      <OnlineBadge :count="null" label="" size="s" />
+    </template>
+  </ClientOnly>
 
   <ChartActivityHistogramModal
     v-model:open="activityModalOpen"
     title="IRC Activity"
-    :color="accentColor"
+    :color="chartColor"
     :count="modalCount"
     :subtitle="modalSubtitle"
     count-label="online"

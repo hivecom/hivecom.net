@@ -14,6 +14,9 @@ import { shuffleArray } from '@/lib/utils/random'
 
 interface Props {
   userIds: string[]
+
+  /** Sorted to the front of the list, so a cut-off cluster keeps them. */
+  friendIds?: string[]
   maxUsers?: number
   avatarSize?: Sizes | number
   showNames?: boolean
@@ -38,6 +41,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  friendIds: () => [],
   maxUsers: 10,
   avatarSize: 40,
   showNames: true,
@@ -77,12 +81,18 @@ const {
   avatarTtl: 30 * 60 * 1000, // 30 minutes
 })
 
-// Determine user ordering (optionally randomized)
+const friendIdSet = computed(() => new Set(props.friendIds))
+
+// Determine user ordering (optionally randomized). Friends lead, since they're
+// the reason to look at the cluster at all, and a cut-off list should lose
+// strangers first.
 const orderedUserIds = computed(() => {
-  if (props.random) {
-    return shuffleArray(props.userIds)
-  }
-  return [...props.userIds]
+  const ids = props.random ? shuffleArray(props.userIds) : [...props.userIds]
+
+  if (friendIdSet.value.size === 0)
+    return ids
+
+  return ids.sort((a, b) => Number(friendIdSet.value.has(b)) - Number(friendIdSet.value.has(a)))
 })
 
 // Get remaining count

@@ -249,10 +249,15 @@ export default defineNuxtConfig({
     pageTransition: {
       name: 'page',
     },
-    // layoutTransition: {
-    //   name: 'layout',
-    //   mode: 'out-in',
-    // },
+    // Routes that change chrome (admin, chat) swap the layout, and Nuxt keys the
+    // layout provider by name, so the <NuxtPage> transition inside it is torn
+    // down and rebuilt with nothing to animate. This covers those navigations.
+    // out-in because two layouts are both full-height block elements: overlap
+    // them and the second one stacks below the first instead of over it.
+    layoutTransition: {
+      name: 'layout',
+      mode: 'out-in',
+    },
   },
   devtools: {
     enabled: false,

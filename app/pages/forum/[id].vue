@@ -154,6 +154,18 @@ function applyLoadedPost(data: DiscussionWithContext) {
 
 let loadingTimer: ReturnType<typeof setTimeout> | null = null
 
+// Entity-linked discussions bounce to the page that actually hosts them. The
+// skeleton stays up for the trip: dropping `loading` here paints the "failed to
+// load this post" card for however long the destination page takes to resolve.
+function redirectToEntity(href: string) {
+  if (loadingTimer) {
+    clearTimeout(loadingTimer)
+    loadingTimer = null
+  }
+
+  void router.replace(href)
+}
+
 onBeforeMount(async () => {
   loading.value = true
 
@@ -185,8 +197,7 @@ onBeforeMount(async () => {
     else {
       const entityHref = getDiscussionEntityHref(data)
       if (entityHref != null) {
-        void router.replace(entityHref)
-        loading.value = false
+        redirectToEntity(entityHref)
         return
       }
 
@@ -233,8 +244,7 @@ onBeforeMount(async () => {
         // Redirect to the entity page if we can, otherwise treat as not found.
         const entityHref = getDiscussionEntityHref(data)
         if (entityHref != null) {
-          void router.replace(entityHref)
-          loading.value = false
+          redirectToEntity(entityHref)
           return
         }
 

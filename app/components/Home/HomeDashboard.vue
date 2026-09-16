@@ -40,23 +40,14 @@ const navTiles = [
       <!-- Primary card row: Events, Forum, Games -->
       <Grid :columns="3" gap="m" expand y-stretch class="dashboard__grid">
         <Card class="h-100">
-          <h2 class="dashboard__card-title">
-            Events
-          </h2>
           <HomeDashboardEvents />
         </Card>
 
         <Card class="h-100">
-          <h2 class="dashboard__card-title">
-            Forum
-          </h2>
           <HomeDashboardForum />
         </Card>
 
         <Card class="h-100">
-          <h2 class="dashboard__card-title">
-            Games
-          </h2>
           <HomeDashboardGames />
         </Card>
       </Grid>
@@ -64,16 +55,10 @@ const navTiles = [
       <!-- Secondary card row: Gameservers, Votes -->
       <Grid :columns="2" gap="m" expand y-stretch class="dashboard__grid">
         <Card class="h-100">
-          <h2 class="dashboard__card-title">
-            Gameservers
-          </h2>
           <HomeDashboardGameservers />
         </Card>
 
         <Card class="h-100">
-          <h2 class="dashboard__card-title">
-            Votes
-          </h2>
           <HomeDashboardVotes />
         </Card>
       </Grid>
@@ -123,11 +108,25 @@ const navTiles = [
   }
 }
 
-.dashboard__card-title {
-  font-size: var(--font-size-s);
-  text-transform: uppercase;
-  color: var(--color-text-light);
-  margin-bottom: var(--space-m);
+// Cards stretch to the tallest one in their row, but the body inside stays
+// top-aligned, so an empty state ends up pinned under the header. Push the
+// height down through the card, but only when the body is an empty state -
+// doing it to a populated card squeezes its sections instead.
+.dashboard__grid :deep(.vui-card:has(.dashboard-empty)) {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard__grid :deep(.vui-card-content:has(.dashboard-empty)) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard__grid :deep(.vui-card-content > *:has(> .dashboard-empty)) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 @media screen and (max-width: $breakpoint-m) {

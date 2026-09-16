@@ -2,10 +2,11 @@
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Divider, Flex, Skeleton } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import EventHostAvatar from '@/components/Events/EventHostAvatar.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
-import { useCache } from '@/composables/useCache'
+import { useDataEventAttendees } from '@/composables/useDataEventAttendees'
+import { useEventOrganizer } from '@/composables/useEventOrganizer'
 import { useEventTiming } from '@/composables/useEventTiming'
-import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { fromNow } from '@/lib/utils/date'
 import { truncate } from '@/lib/utils/formatting'
 import BulkAvatarDisplay from '../Shared/BulkAvatarDisplay.vue'
@@ -23,39 +24,9 @@ const isUpcoming = computed(() => {
 
 const user = useSupabaseUser()
 const { hasEventEnded, isOngoing } = useEventTiming(() => props.data)
-const userIds = ref<string[]>([])
-const rsvpCount = ref(0)
-const loadingRsvps = ref(false)
-const supabase = useSupabaseClient()
+const { userIds, count: rsvpCount, loading: loadingRsvps } = useDataEventAttendees(() => props.data.id)
 
-const _rsvpCache = useCache(CACHE_NAMESPACES.events)
-
-onBeforeMount(async () => {
-  const cacheKey = `event-rsvps:${props.data.id}`
-  const cached = _rsvpCache.get<string[]>(cacheKey)
-  if (cached !== null) {
-    rsvpCount.value = cached.length
-    if (user.value)
-      userIds.value = cached
-    return
-  }
-
-  loadingRsvps.value = true
-  const { data } = await supabase.from('event_rsvps')
-    .select('user_id')
-    .eq('rsvp', 'yes')
-    .eq('event_id', props.data.id)
-  loadingRsvps.value = false
-
-  // Deduplicate (should probably be fixed in query)
-  const ids = data
-    ? Array.from(new Set(data.map(({ user_id }) => user_id)))
-    : []
-  _rsvpCache.set(cacheKey, ids)
-  rsvpCount.value = ids.length
-  if (user.value)
-    userIds.value = ids
-})
+const { organizerId, showOrganizer, attendees } = useEventOrganizer(() => props.data, userIds)
 
 const linkedGames = computed(() => {
   if (!props.games || !props.data.games?.length)
@@ -91,15 +62,18 @@ const linkedGames = computed(() => {
         <p class="event-description">
           {{ truncate(props.data.description, 108) }}
         </p>
-        <Flex v-if="loadingRsvps" x-start class="event-people">
-          <Skeleton :height="28" :width="80" :radius="4" />
-        </Flex>
-        <Flex v-else-if="rsvpCount > 0" x-start class="event-people" y-center>
-          <BulkAvatarDisplay v-if="user" :user-ids :max-users="4" avatar-size="s" :expand="false" :gap="6" cluster />
-          <Badge v-else :variant="hasEventEnded ? 'neutral' : 'accent'">
-            <Icon name="ph:users" />
-            {{ rsvpCount }} {{ hasEventEnded ? 'Went' : 'Going' }}
-          </Badge>
+        <Flex v-if="loadingRsvps || rsvpCount > 0 || showOrganizer" x-start class="event-people" y-center>
+          <Flex y-center :gap="4" class="event-attendees">
+            <EventHostAvatar v-if="showOrganizer" :user-id="organizerId!" size="s" />
+            <Skeleton v-if="loadingRsvps" :height="28" :width="80" :radius="4" />
+            <template v-else>
+              <BulkAvatarDisplay v-if="user && attendees.length > 0" :user-ids="attendees" :max-users="4" avatar-size="s" :expand="false" :gap="6" cluster :hide-generic-users="false" />
+              <Badge v-else-if="!user && rsvpCount > 0" :variant="hasEventEnded ? 'neutral' : 'accent'">
+                <Icon name="ph:users" />
+                {{ rsvpCount }} {{ hasEventEnded ? 'Went' : 'Going' }}
+              </Badge>
+            </template>
+          </Flex>
 
           <template v-if="linkedGames.length > 0">
             <Divider vertical :height="16" />
@@ -159,6 +133,12 @@ const linkedGames = computed(() => {
   .event-people {
     margin-top: var(--space-xs);
     filter: grayscale(1);
+  }
+
+  // Host and attendees read as one group, so they sit tighter than the rest of
+  // the row.
+  .event-attendees {
+    flex: 0 0 auto;
   }
 
   .event-title {

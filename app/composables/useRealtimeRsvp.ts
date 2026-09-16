@@ -4,6 +4,12 @@ import { useRsvpBus } from '@/composables/useRsvpBus'
 
 type RSVPStatus = Database['public']['Enums']['events_rsvp_status']
 
+// Each instance subscribes under its own topic. supabase.channel() hands back
+// the existing channel for a topic that's still registered, and removeChannel()
+// only deregisters once its unsubscribe resolves, so remounting on the same
+// event would otherwise attach handlers to a channel already on its way out.
+let instanceCounter = 0
+
 /**
  * Subscribes to Supabase realtime changes on `event_rsvps` for a specific event.
  *
@@ -23,6 +29,7 @@ type RSVPStatus = Database['public']['Enums']['events_rsvp_status']
  */
 export function useRealtimeRsvp(eventId: MaybeRef<number | null | undefined>) {
   const supabase = useSupabaseClient()
+  const instanceKey = ++instanceCounter
   const { dispatch } = useRsvpBus()
 
   let channel: RealtimeChannel | null = null
@@ -34,7 +41,7 @@ export function useRealtimeRsvp(eventId: MaybeRef<number | null | undefined>) {
     }
 
     channel = supabase
-      .channel(`event_rsvps:event_id=eq.${id}`)
+      .channel(`event_rsvps:event_id=eq.${id}:${instanceKey}`)
       .on(
         'postgres_changes',
         {

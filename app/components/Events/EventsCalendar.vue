@@ -51,79 +51,138 @@ const resolvedOfficialFilter = computed<boolean | null>(() => {
 const supabase = useSupabaseClient<Database>()
 
 // ─── Windowed data fetch ──────────────────────────────────────────────────────
-// Fetches only the events visible in the current calendar window (startMonth +
-// calendarColumns months). Re-fetches when the window changes. A simple
-// Map-based cache avoids repeat network calls for months already visited.
+// Events are cached a month at a time rather than a window at a time. Stepping
+// one month forward keeps the months already in hand and only fetches the one
+// that came into view, and the columns paint from cache before the request for
+// the missing month even goes out.
 
 const windowedEvents = ref<Tables<'events'>[]>([])
 const fetching = ref(false)
 const errorMessage = ref('')
 
-// Persistent cache keyed by "calendar:YYYY-MM:columns". Survives back-navigation
-// within the TTL window unlike the previous in-memory Map.
 const windowCache = useCache(CACHE_NAMESPACES.events)
 
-async function fetchWindow(start: dayjs.Dayjs, columns: number) {
-  const cacheKey = `calendar:${start.format('YYYY-MM')}:${columns}`
-  const cachedWindow = windowCache.get<Tables<'events'>[]>(cacheKey)
-  if (cachedWindow !== null) {
-    windowedEvents.value = cachedWindow
-    return
+// Recurring parents are few and needed by every window, so they are one entry
+// rather than a slice of each month.
+const RECURRING_KEY = 'calendar:recurring'
+
+function monthKey(month: dayjs.Dayjs): string {
+  return `calendar:month:${month.format('YYYY-MM')}`
+}
+
+// One month of lead-in, so an event that starts before the window but runs into
+// it still lands on the calendar.
+function windowMonths(start: dayjs.Dayjs, columns: number): dayjs.Dayjs[] {
+  return createArray(columns + 2).map((_, index) =>
+    start.subtract(1, 'month').add(index, 'month').startOf('month'),
+  )
+}
+
+function windowId(start: dayjs.Dayjs, columns: number): string {
+  return `${start.format('YYYY-MM')}:${columns}`
+}
+
+// The window the calendar is currently showing, so a slow response can't
+// overwrite the list after the user has paged on.
+let activeWindow = ''
+
+function windowRange(start: dayjs.Dayjs, columns: number): { from: dayjs.Dayjs, to: dayjs.Dayjs } {
+  return {
+    from: start.subtract(1, 'month').startOf('month'),
+    to: start.add(columns, 'month').endOf('month'),
   }
+}
+
+// Build the visible list out of whatever is cached. Months still in flight
+// simply contribute nothing until they land.
+function applyWindow(start: dayjs.Dayjs, columns: number): void {
+  activeWindow = windowId(start, columns)
+
+  const cached = windowMonths(start, columns)
+    .flatMap(month => windowCache.get<Tables<'events'>[]>(monthKey(month)) ?? [])
+
+  const recurring = windowCache.get<Tables<'events'>[]>(RECURRING_KEY) ?? []
+
+  const seen = new Set<number>()
+  const merged: Tables<'events'>[] = []
+  for (const row of [...cached, ...recurring]) {
+    if (!seen.has(row.id)) {
+      seen.add(row.id)
+      merged.push(row)
+    }
+  }
+
+  // Recurring events are a single row - expand them into the occurrences that
+  // actually fall inside the window.
+  const { from, to } = windowRange(start, columns)
+  const rows = merged.flatMap(event =>
+    expandRecurringEvent(event, from.toDate(), to.toDate()),
+  )
+
+  rows.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+  windowedEvents.value = rows
+}
+
+async function fetchWindow(start: dayjs.Dayjs, columns: number) {
+  const missing = windowMonths(start, columns).filter(month => !windowCache.has(monthKey(month)))
+  const needsRecurring = !windowCache.has(RECURRING_KEY)
+
+  if (missing.length === 0 && !needsRecurring)
+    return
+
   fetching.value = true
   errorMessage.value = ''
 
   try {
-    // Expand the window slightly: events that *start* up to a month before the
-    // visible range but have a duration that overlaps should still appear.
-    const windowStart = start.subtract(1, 'month').startOf('month').toISOString()
-    const windowEnd = start.add(columns, 'month').endOf('month').toISOString()
+    // Missing months are contiguous in practice (they arrive at the edge of the
+    // window), so one range query covers them.
+    const rangeStart = missing[0]?.startOf('month')
+    const rangeEnd = missing.at(-1)?.endOf('month')
 
-    // Fetch two sets and merge:
-    // 1. Events with date in [windowStart, windowEnd] (one-offs and first occurrences)
-    // 2. Recurring parents whose first occurrence may predate the window
-    const [inWindowResult, recurringResult] = await Promise.all([
-      supabase
-        .from('events')
-        .select('*')
-        .gte('date', windowStart)
-        .lte('date', windowEnd)
-        .order('date', { ascending: true }),
-      supabase
-        .from('events')
-        .select('*')
-        .not('recurrence_rule', 'is', null)
-        .lt('date', windowStart)
-        .lte('date', windowEnd)
-        .order('date', { ascending: true }),
+    const [monthResult, recurringResult] = await Promise.all([
+      rangeStart != null && rangeEnd != null
+        ? supabase
+            .from('events')
+            .select('*')
+            .gte('date', rangeStart.toISOString())
+            .lte('date', rangeEnd.toISOString())
+            .order('date', { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
+      needsRecurring
+        ? supabase
+            .from('events')
+            .select('*')
+            .not('recurrence_rule', 'is', null)
+            .order('date', { ascending: true })
+        : Promise.resolve({ data: null, error: null }),
     ])
 
-    if (inWindowResult.error)
-      throw inWindowResult.error
+    if (monthResult.error)
+      throw monthResult.error
     if (recurringResult.error)
       throw recurringResult.error
 
-    // Deduplicate by id
-    const seen = new Set<number>()
-    const merged: Tables<'events'>[] = []
-    for (const row of [...(inWindowResult.data ?? []), ...(recurringResult.data ?? [])]) {
-      if (!seen.has(row.id)) {
-        seen.add(row.id)
-        merged.push(row as Tables<'events'>)
-      }
+    // Bucket by month so each one caches on its own, including the months that
+    // came back empty - otherwise a quiet month re-queries on every visit.
+    const byMonth = new Map<string, Tables<'events'>[]>()
+    for (const month of missing)
+      byMonth.set(monthKey(month), [])
+
+    for (const row of (monthResult.data ?? []) as Tables<'events'>[]) {
+      const key = monthKey(dayjs(row.date))
+      byMonth.get(key)?.push(row)
     }
 
-    // Expand recurring events into virtual occurrences within the window
-    const winStartDate = new Date(windowStart)
-    const winEndDate = new Date(windowEnd)
-    const rows: Tables<'events'>[] = merged.flatMap(event =>
-      expandRecurringEvent(event, winStartDate, winEndDate),
-    )
+    for (const [key, rows] of byMonth)
+      windowCache.set(key, rows)
 
-    rows.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    if (needsRecurring)
+      windowCache.set(RECURRING_KEY, (recurringResult.data ?? []) as Tables<'events'>[])
 
-    windowCache.set(cacheKey, rows)
-    windowedEvents.value = rows
+    // The user may have paged on while this was in flight.
+    if (windowId(start, columns) === activeWindow)
+      applyWindow(start, columns)
   }
   catch (err) {
     errorMessage.value = err instanceof Error ? err.message : 'Failed to load events'
@@ -326,7 +385,12 @@ const debouncedFetch = useDebounceFn(
 
 watch(
   [startMonth, calendarColumns] as const,
-  ([start, columns]) => { void debouncedFetch(start, columns) },
+  ([start, columns]) => {
+    // Paint from cache on the spot. Only the months we don't have yet wait for
+    // the debounce and the request behind it.
+    applyWindow(start, columns)
+    void debouncedFetch(start, columns)
+  },
   { immediate: true },
 )
 
@@ -451,7 +515,7 @@ const pageTitle = computed(() => {
     </div>
 
     <ClientOnly v-else>
-      <div class="events-calendar__layout" :class="{ 'events-calendar__layout--fetching': fetching }">
+      <div class="events-calendar__layout" :class="{ 'events-calendar__layout--fetching': fetching && windowedEvents.length === 0 }">
         <!-- There are no slots to put content to the footer of a VC calendar column. So we teleport them there instead.
              VCalendar replaces its pane DOM on every move, which would leave a mounted Teleport rendering into a
              detached element. Keying on the pane epoch (and window) remounts the teleports once the transition is

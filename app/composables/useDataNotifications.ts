@@ -42,7 +42,22 @@ const pendingComplaintCount = ref(0)
 // Realtime - single channels shared across all composable instances.
 let notificationChannel: RealtimeChannel | null = null
 let friendChannel: RealtimeChannel | null = null
-let subscribedUserId: string | null = null
+
+// Who realtime should be attached to. Assigned synchronously so overlapping
+// callers agree on the target before anything awaits: several components mount
+// in the same tick on the dashboard, and the tab can flip hidden and back.
+let desiredUserId: string | null = null
+
+// Attach and detach run one at a time. supabase.channel() hands back the
+// existing channel while a topic is still registered, and .on() throws once
+// that channel has subscribed, so a detach has to finish before the next
+// attach starts.
+let realtimeQueue: Promise<void> = Promise.resolve()
+
+// Consumers share the channels, so realtime only tears down when the last one
+// disposes. Without the count, the bell unmounting would drop the subscription
+// for the sheet and the dashboard widgets too.
+let consumerCount = 0
 
 // Ids of notifications we've already surfaced, so background-poll catch-ups
 // only fire an OS notification for genuinely-new rows. `null` until the first
@@ -378,15 +393,14 @@ export function useDataNotifications() {
     }
   }
 
-  async function subscribeRealtime(uid: string) {
-    if (subscribedUserId === uid && notificationChannel != null)
-      return
+  async function enqueueRealtime(task: () => Promise<void>) {
+    realtimeQueue = realtimeQueue.then(task, task)
+    return realtimeQueue
+  }
 
-    // Mark intent immediately so concurrent calls for same uid exit above.
-    subscribedUserId = uid
-
-    await unsubscribeRealtime()
-
+  // Builds both channels. Stays synchronous on purpose: every .on() has to be
+  // registered before the channel subscribes.
+  function attachChannels(uid: string) {
     notificationChannel = supabase
       .channel(`notifications:${uid}`)
       .on(
@@ -473,26 +487,49 @@ export function useDataNotifications() {
         },
       )
       .subscribe()
-
-    subscribedUserId = uid
   }
 
-  async function unsubscribeRealtime() {
-    const channels: Promise<unknown>[] = []
+  async function detachChannels() {
+    const pending: Promise<unknown>[] = []
 
     if (notificationChannel != null) {
       const ch = notificationChannel
       notificationChannel = null
-      channels.push(supabase.removeChannel(ch))
+      pending.push(supabase.removeChannel(ch))
     }
 
     if (friendChannel != null) {
       const ch = friendChannel
       friendChannel = null
-      channels.push(supabase.removeChannel(ch))
+      pending.push(supabase.removeChannel(ch))
     }
 
-    await Promise.allSettled(channels)
+    // Awaited, not fired off: the topic stays registered on the client until
+    // the unsubscribe resolves, and re-attaching before then reuses the old
+    // channel.
+    await Promise.allSettled(pending)
+  }
+
+  async function subscribeRealtime(uid: string) {
+    if (desiredUserId === uid)
+      return realtimeQueue
+
+    desiredUserId = uid
+
+    return enqueueRealtime(async () => {
+      // A later call may have moved the target while this waited its turn.
+      if (desiredUserId !== uid)
+        return
+
+      await detachChannels()
+      attachChannels(uid)
+    })
+  }
+
+  async function unsubscribeRealtime() {
+    desiredUserId = null
+
+    return enqueueRealtime(detachChannels)
   }
 
   // Wire realtime to userId lifecycle - subscribe when logged in, tear down on logout.
@@ -500,10 +537,16 @@ export function useDataNotifications() {
     userId,
     (uid) => {
       if (uid != null) {
-        void subscribeRealtime(uid)
+        // While the tab is hidden we hold no socket on purpose. A component
+        // mounting in the meantime shouldn't bring it back up, so hand the new
+        // id to the resume path instead.
+        if (pausedUserId != null)
+          pausedUserId = uid
+        else
+          void subscribeRealtime(uid)
       }
       else {
-        subscribedUserId = null
+        pausedUserId = null
         void unsubscribeRealtime()
       }
     },
@@ -511,42 +554,56 @@ export function useDataNotifications() {
   )
 
   // Pause channels when tab is hidden; background-poll instead.
-  // Guard ensures this only runs once across all composable instances.
+  // Runs once across all composable instances, in a detached scope so it
+  // outlives whichever component happened to instantiate first.
   if (import.meta.client && !visibilityInitialized) {
     visibilityInitialized = true
     const { isHidden } = usePageVisibility()
 
-    watch(isHidden, (hidden) => {
-      if (hidden) {
-        if (subscribedUserId != null) {
-          pausedUserId = subscribedUserId
-          void unsubscribeRealtime()
-          backgroundPollTimer ??= setInterval(() => {
-            void fetch()
-          }, BACKGROUND_POLL_INTERVAL_MS)
+    effectScope(true).run(() => {
+      watch(isHidden, (hidden) => {
+        if (hidden) {
+          if (desiredUserId != null) {
+            pausedUserId = desiredUserId
+            void unsubscribeRealtime()
+            backgroundPollTimer ??= setInterval(() => {
+              void fetch()
+            }, BACKGROUND_POLL_INTERVAL_MS)
+          }
         }
-      }
-      else {
-        if (backgroundPollTimer != null) {
-          clearInterval(backgroundPollTimer)
-          backgroundPollTimer = null
-        }
-        if (pausedUserId != null) {
-          const uid = pausedUserId
-          pausedUserId = null
+        else {
+          if (backgroundPollTimer != null) {
+            clearInterval(backgroundPollTimer)
+            backgroundPollTimer = null
+          }
+          if (pausedUserId != null) {
+            const uid = pausedUserId
+            pausedUserId = null
 
-          // Re-subscribe then catch up on any missed notifications.
-          void subscribeRealtime(uid)
-          void fetch()
+            // Re-subscribe then catch up on any missed notifications.
+            void subscribeRealtime(uid)
+            void fetch()
+          }
         }
-      }
+      })
     })
   }
 
-  onScopeDispose(() => {
-    subscribedUserId = null
-    void unsubscribeRealtime()
-  })
+  // Only the last consumer standing tears realtime down. The plugin calls this
+  // outside a scope, so the registration is guarded.
+  if (getCurrentScope() != null) {
+    consumerCount++
+
+    onScopeDispose(() => {
+      consumerCount--
+      if (consumerCount > 0)
+        return
+
+      consumerCount = 0
+      pausedUserId = null
+      void unsubscribeRealtime()
+    })
+  }
 
   function reset() {
     friendships.value = []

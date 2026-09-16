@@ -325,228 +325,233 @@ watch(() => route.path, () => {
 </script>
 
 <template>
-  <!-- Show loading spinner while checking authorization -->
-  <div v-if="isLoading" class="admin-layout__loading">
-    <Spinner />
-  </div>
-
-  <!-- Show admin layout only if authorized -->
-  <div v-else-if="isAuthorized" class="admin-layout vui-sidebar-layout">
-    <div v-if="isMobile" class="admin-layout__mobile-bar">
-      <div class="admin-layout__mobile-bar-items">
-        <div class="admin-layout__mobile-left-group">
-          <Button square aria-label="Open admin navigation" @click="mobileNavOpen = true">
-            <Icon name="ph:list" size="2rem" />
-          </Button>
-          <Button square plain aria-label="Search" class="pl-4 vui-button-accent-weak vui-button-rounded" @click="openCommand()">
-            <Icon name="ph:magnifying-glass" size="20" />
-          </Button>
-        </div>
-
-        <SharedLogo class="admin-layout__mobile-logo" />
-
-        <div class="admin-layout__mobile-right-group" />
-      </div>
-
-      <Sheet
-        class="admin-layout__mobile-sheet"
-        :open="mobileNavOpen"
-        position="left"
-        :card="{ separators: true }"
-        @close="mobileNavOpen = false"
-      >
-        <template #header>
-          <Flex x-between style="padding-top:3px">
-            <SharedLogo class="admin-layout__sheet-logo" />
-          </Flex>
-        </template>
-        <template #header-end />
-
-        <div class="admin-layout__mobile-menu">
-          <template
-            v-for="item in accessibleMenuItems"
-            :key="item.path"
-          >
-            <NuxtLink
-              :to="item.path"
-              class="admin-layout__mobile-menu-item"
-              :class="{ 'router-link-active': route.path === item.path }"
-              @click.prevent="handleNavigation(item.path)"
-            >
-              <Icon v-if="item.icon" :name="item.icon" />
-              {{ item.name }}
-            </NuxtLink>
-            <Divider v-if="item.dividerAfter" class="my-xs" />
-          </template>
-        </div>
-
-        <template #footer>
-          <Flex x-between y-center>
-            <NuxtLink to="/">
-              <Button expand outline>
-                <template #start>
-                  <Icon name="ph:caret-left" />
-                </template>
-                Return to home
-              </Button>
-            </NuxtLink>
-            <ThemeToggle no-text small button />
-          </Flex>
-        </template>
-      </Sheet>
+  <div class="layout-root">
+    <!-- Single element root for the layout transition, same as default.vue.
+         It also keeps the loading/authorized swap below from inheriting the
+         transition hooks and fading the whole console once auth resolves. -->
+    <!-- Show loading spinner while checking authorization -->
+    <div v-if="isLoading" class="admin-layout__loading">
+      <Spinner />
     </div>
 
-    <div v-else class="admin-layout__sidebar-wrapper">
-      <ClientOnly>
-        <Sidebar v-model="open" :mini="miniSidebar" class="admin-layout__sidebar">
+    <!-- Show admin layout only if authorized -->
+    <div v-else-if="isAuthorized" class="admin-layout vui-sidebar-layout">
+      <div v-if="isMobile" class="admin-layout__mobile-bar">
+        <div class="admin-layout__mobile-bar-items">
+          <div class="admin-layout__mobile-left-group">
+            <Button square aria-label="Open admin navigation" @click="mobileNavOpen = true">
+              <Icon name="ph:list" size="2rem" />
+            </Button>
+            <Button square plain aria-label="Search" class="pl-4 vui-button-accent-weak vui-button-rounded" @click="openCommand()">
+              <Icon name="ph:magnifying-glass" size="20" />
+            </Button>
+          </div>
+
+          <SharedLogo class="admin-layout__mobile-logo" />
+
+          <div class="admin-layout__mobile-right-group" />
+        </div>
+
+        <Sheet
+          class="admin-layout__mobile-sheet"
+          :open="mobileNavOpen"
+          position="left"
+          :card="{ separators: true }"
+          @close="mobileNavOpen = false"
+        >
           <template #header>
-            <Flex y-center class="sidebar-header">
-              <Flex y-center gap="s" expand>
-                <LogoIcon />
-              </Flex>
-              <Flex gap="xxs">
-                <Tooltip placement="bottom">
-                  <Button square plain aria-label="Search" @click="openCommand()">
-                    <Icon name="ph:magnifying-glass" />
-                  </Button>
-                  <template #tooltip>
-                    <p>
-                      Search <KbdGroup>
-                        <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
-                        <Kbd keys="K" />
-                      </KbdGroup>
-                    </p>
-                  </template>
-                </Tooltip>
-                <Tooltip placement="bottom">
-                  <Button v-if="!isBelowExtraLarge" square plain :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
-                    <Icon :name="expandToggleIcon" />
-                  </Button>
-                  <template #tooltip>
-                    <p>{{ expandToggleLabel }}</p>
-                  </template>
-                </Tooltip>
-                <Tooltip v-if="!miniSidebar" placement="bottom">
-                  <Button square plain @click="miniSidebar = !miniSidebar">
-                    <Icon name="tabler:layout-sidebar-left-collapse" />
-                  </Button>
-                  <template #tooltip>
-                    <p>Collapse sidebar</p>
-                  </template>
-                </Tooltip>
-              </Flex>
+            <Flex x-between style="padding-top:3px">
+              <SharedLogo class="admin-layout__sheet-logo" />
             </Flex>
-            <Divider />
           </template>
+          <template #header-end />
 
-          <!-- Only show menu items the user has permissions for -->
-          <template
-            v-for="item in accessibleMenuItems"
-            :key="item.path"
-          >
-            <Tooltip
-              :disabled="!miniSidebar"
-              placement="right"
+          <div class="admin-layout__mobile-menu">
+            <template
+              v-for="item in accessibleMenuItems"
+              :key="item.path"
             >
-              <NuxtLink :to="item.path" class="admin-layout__mobile-nav-link" @click.prevent="handleNavigation(item.path)">
-                <DropdownItem
-                  :class="{ selected: route.path === item.path }"
-                >
-                  <template v-if="item.icon" #icon>
-                    <Icon :name="item.icon" />
-                  </template>
-                  {{ item.name }}
-                </DropdownItem>
+              <NuxtLink
+                :to="item.path"
+                class="admin-layout__mobile-menu-item"
+                :class="{ 'router-link-active': route.path === item.path }"
+                @click.prevent="handleNavigation(item.path)"
+              >
+                <Icon v-if="item.icon" :name="item.icon" />
+                {{ item.name }}
               </NuxtLink>
-              <template #tooltip>
-                <p>{{ item.name }}</p>
-              </template>
-            </Tooltip>
-            <Divider v-if="item.dividerAfter" class="my-xs" />
-          </template>
-
-          <template v-if="miniSidebar">
-            <Divider class="my-m" />
-            <Tooltip placement="right">
-              <DropdownItem square aria-label="Search" @click="openCommand()">
-                <template #icon>
-                  <Icon name="ph:magnifying-glass" />
-                </template>
-              </DropdownItem>
-              <template #tooltip>
-                <p>Search</p>
-              </template>
-            </Tooltip>
-            <Tooltip placement="right">
-              <DropdownItem square @click="miniSidebar = !miniSidebar">
-                <template #icon>
-                  <Icon name="tabler:layout-sidebar-left-expand" />
-                </template>
-              </DropdownItem>
-              <template #tooltip>
-                <p>Expand sidebar</p>
-              </template>
-            </Tooltip>
-            <Tooltip v-if="!isBelowExtraLarge" placement="right">
-              <DropdownItem square :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
-                <template #icon>
-                  <Icon :name="expandToggleIcon" />
-                </template>
-              </DropdownItem>
-              <template #tooltip>
-                {{ expandToggleLabel }}
-              </template>
-            </Tooltip>
-          </template>
+              <Divider v-if="item.dividerAfter" class="my-xs" />
+            </template>
+          </div>
 
           <template #footer>
-            <Divider />
-            <div class="sidebar-footer">
-              <Flex v-if="miniSidebar" column x-center y-center gap="m">
-                <ThemeToggle no-text button />
-
-                <Tooltip placement="right">
-                  <DropdownItem square aria-label="Close admin console" @click="navigateTo('/')">
-                    <template #icon>
-                      <Icon name="ph:caret-left" />
-                    </template>
-                  </DropdownItem>
-                  <template #tooltip>
-                    <p>Close admin console</p>
+            <Flex x-between y-center>
+              <NuxtLink to="/">
+                <Button expand outline>
+                  <template #start>
+                    <Icon name="ph:caret-left" />
                   </template>
-                </Tooltip>
-              </Flex>
-              <Flex v-else x-between y-center gap="xs">
-                <NuxtLink to="/" class="w-100">
-                  <Button size="m" outline expand>
-                    <template #start>
-                      <Icon name="ph:caret-left" />
-                    </template>
-                    Return to home
-                  </Button>
-                </NuxtLink>
-                <ThemeToggle no-text button />
-              </Flex>
-            </div>
+                  Return to home
+                </Button>
+              </NuxtLink>
+              <ThemeToggle no-text small button />
+            </Flex>
           </template>
-        </Sidebar>
-      </ClientOnly>
-    </div>
-    <main class="admin-layout__content">
-      <div
-        class="admin-layout__page-inner pt-xl pb-l"
-        :class="!expandedLayout ? 'container-l' : null"
-        :style="expandedLayout ? expandedContentStyle : undefined"
-      >
-        <ClientOnly>
-          <slot />
+        </Sheet>
+      </div>
 
-          <template #fallback>
-            <Spinner />
-          </template>
+      <div v-else class="admin-layout__sidebar-wrapper">
+        <ClientOnly>
+          <Sidebar v-model="open" :mini="miniSidebar" class="admin-layout__sidebar">
+            <template #header>
+              <Flex y-center class="sidebar-header">
+                <Flex y-center gap="s" expand>
+                  <LogoIcon />
+                </Flex>
+                <Flex gap="xxs">
+                  <Tooltip placement="bottom">
+                    <Button square plain aria-label="Search" @click="openCommand()">
+                      <Icon name="ph:magnifying-glass" />
+                    </Button>
+                    <template #tooltip>
+                      <p>
+                        Search <KbdGroup>
+                          <Kbd :keys="isMac ? '⌘' : 'Ctrl'" class="mr-xxs" />
+                          <Kbd keys="K" />
+                        </KbdGroup>
+                      </p>
+                    </template>
+                  </Tooltip>
+                  <Tooltip placement="bottom">
+                    <Button v-if="!isBelowExtraLarge" square plain :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
+                      <Icon :name="expandToggleIcon" />
+                    </Button>
+                    <template #tooltip>
+                      <p>{{ expandToggleLabel }}</p>
+                    </template>
+                  </Tooltip>
+                  <Tooltip v-if="!miniSidebar" placement="bottom">
+                    <Button square plain @click="miniSidebar = !miniSidebar">
+                      <Icon name="tabler:layout-sidebar-left-collapse" />
+                    </Button>
+                    <template #tooltip>
+                      <p>Collapse sidebar</p>
+                    </template>
+                  </Tooltip>
+                </Flex>
+              </Flex>
+              <Divider />
+            </template>
+
+            <!-- Only show menu items the user has permissions for -->
+            <template
+              v-for="item in accessibleMenuItems"
+              :key="item.path"
+            >
+              <Tooltip
+                :disabled="!miniSidebar"
+                placement="right"
+              >
+                <NuxtLink :to="item.path" class="admin-layout__mobile-nav-link" @click.prevent="handleNavigation(item.path)">
+                  <DropdownItem
+                    :class="{ selected: route.path === item.path }"
+                  >
+                    <template v-if="item.icon" #icon>
+                      <Icon :name="item.icon" />
+                    </template>
+                    {{ item.name }}
+                  </DropdownItem>
+                </NuxtLink>
+                <template #tooltip>
+                  <p>{{ item.name }}</p>
+                </template>
+              </Tooltip>
+              <Divider v-if="item.dividerAfter" class="my-xs" />
+            </template>
+
+            <template v-if="miniSidebar">
+              <Divider class="my-m" />
+              <Tooltip placement="right">
+                <DropdownItem square aria-label="Search" @click="openCommand()">
+                  <template #icon>
+                    <Icon name="ph:magnifying-glass" />
+                  </template>
+                </DropdownItem>
+                <template #tooltip>
+                  <p>Search</p>
+                </template>
+              </Tooltip>
+              <Tooltip placement="right">
+                <DropdownItem square @click="miniSidebar = !miniSidebar">
+                  <template #icon>
+                    <Icon name="tabler:layout-sidebar-left-expand" />
+                  </template>
+                </DropdownItem>
+                <template #tooltip>
+                  <p>Expand sidebar</p>
+                </template>
+              </Tooltip>
+              <Tooltip v-if="!isBelowExtraLarge" placement="right">
+                <DropdownItem square :aria-label="expandToggleLabel" @click="expandedLayout = !expandedLayout">
+                  <template #icon>
+                    <Icon :name="expandToggleIcon" />
+                  </template>
+                </DropdownItem>
+                <template #tooltip>
+                  {{ expandToggleLabel }}
+                </template>
+              </Tooltip>
+            </template>
+
+            <template #footer>
+              <Divider />
+              <div class="sidebar-footer">
+                <Flex v-if="miniSidebar" column x-center y-center gap="m">
+                  <ThemeToggle no-text button />
+
+                  <Tooltip placement="right">
+                    <DropdownItem square aria-label="Close admin console" @click="navigateTo('/')">
+                      <template #icon>
+                        <Icon name="ph:caret-left" />
+                      </template>
+                    </DropdownItem>
+                    <template #tooltip>
+                      <p>Close admin console</p>
+                    </template>
+                  </Tooltip>
+                </Flex>
+                <Flex v-else x-between y-center gap="xs">
+                  <NuxtLink to="/" class="w-100">
+                    <Button size="m" outline expand>
+                      <template #start>
+                        <Icon name="ph:caret-left" />
+                      </template>
+                      Return to home
+                    </Button>
+                  </NuxtLink>
+                  <ThemeToggle no-text button />
+                </Flex>
+              </div>
+            </template>
+          </Sidebar>
         </ClientOnly>
       </div>
-    </main>
+      <main class="admin-layout__content">
+        <div
+          class="admin-layout__page-inner pt-xl pb-l"
+          :class="!expandedLayout ? 'container-l' : null"
+          :style="expandedLayout ? expandedContentStyle : undefined"
+        >
+          <ClientOnly>
+            <slot />
+
+            <template #fallback>
+              <Spinner />
+            </template>
+          </ClientOnly>
+        </div>
+      </main>
+    </div>
   </div>
 </template>
 

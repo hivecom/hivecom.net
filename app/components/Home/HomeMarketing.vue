@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AtypeName } from '@/lib/atype.generated'
 import type { Tables } from '@/types/database.types'
-import { Marquee } from '@dolanske/vui'
+import { Marquee, pushToast } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import EventSmall from '@/components/Events/EventSmall.vue'
 import LandingHero from '@/components/Landing/LandingHero.vue'
@@ -14,6 +14,9 @@ import GlowGroup from '@/components/Shared/GlowGroup.vue'
 
 // Fetch the latest 6 forum posts and their title & description
 const supabase = useSupabaseClient()
+const user = useSupabaseUser()
+const nuxtApp = useNuxtApp()
+const runtimeConfig = useRuntimeConfig()
 const maruqeeItems = ref<{ id: number, title: string, description: string | null }[]>([])
 
 const MARQUEE_SPEED = 20
@@ -45,6 +48,44 @@ onBeforeMount(() => {
       }
     })
 })
+
+// The closing section pitches signing up, which is nothing to someone who
+// already has an account. Members get the invite angle instead.
+//
+// `/` is prerendered with no session, so reading `user` on the hydrating render
+// would swap the copy out from under the server's markup. Hold the guest branch
+// for that one frame. A logged-in user only reaches the landing by way of the
+// Home tab anyway, which is a fresh mount well past hydration.
+//
+// `isHydrating` is client-only, so the server needs saying explicitly. Prod
+// prerenders with no session and lands on the guest branch by itself, but a dev
+// request carries the auth cookie and would render the member branch server-side,
+// which the client's hydrating render then contradicts. Same pin as index.vue.
+const hydrating = ref(import.meta.server || nuxtApp.isHydrating)
+
+onMounted(() => {
+  hydrating.value = false
+})
+
+const isMember = computed(() => !hydrating.value && !!user.value)
+
+// Straight to sign-up rather than the landing, so whoever gets this link lands
+// on the form instead of having to find it.
+const signUpLink = computed(() => {
+  const baseUrl = (runtimeConfig.public.baseUrl as string) || 'https://hivecom.net'
+
+  return new URL('/auth/sign-up', baseUrl).toString()
+})
+
+async function copySignUpLink() {
+  try {
+    await navigator.clipboard.writeText(signUpLink.value)
+    pushToast('Sign-up link copied', { description: signUpLink.value, timeout: 3000 })
+  }
+  catch {
+    pushToast('Could not copy to clipboard', { description: signUpLink.value })
+  }
+}
 
 // About card flips between the "about us" story and our mantra. Clicking the
 // barcode glitch-swaps the copy in place, same letter-jitter feel as LandingMotd.
@@ -352,16 +393,31 @@ const MOBILE_STARS = [
       <div class="home-join">
         <LandingSun class="home-join__sun" />
         <FocusTarget class="container-s">
-          <h2>Join the community</h2>
-          <p>
-            Join us but also dont have to but it wo be cool if you did just thinkig about it, ok i'll sit down for a sec don't
-            let me disturb you just ponder on it for a second.
-          </p>
-          <NuxtLink to="/auth/sign-up" class="join-button">
-            Sign Up
-          </NuxtLink>
+          <template v-if="isMember">
+            <h2>Bring someone along</h2>
+            <p>
+              Everyone here got in because somebody thought to mention it. If you know someone who'd
+              fit, send them the link.
+            </p>
+            <button type="button" class="join-button" @click="copySignUpLink">
+              Copy sign-up link
+            </button>
 
-          <p>Or you can visit...</p>
+            <p>Or point them at...</p>
+          </template>
+
+          <template v-else>
+            <h2>Come hang out</h2>
+            <p>
+              Chat via an actual account, share your favorite plant fact on the forum and RSVP
+              for the next game night. No cost or privacy implications attached!
+            </p>
+            <NuxtLink to="/auth/sign-up" class="join-button">
+              Sign up
+            </NuxtLink>
+
+            <p>Or find us on...</p>
+          </template>
         </FocusTarget>
 
         <div class="constellation">
@@ -574,8 +630,13 @@ const MOBILE_STARS = [
     }
   }
 
+  // Renders as a link for guests and a button for members, so reset the button
+  // chrome the global styles leave alone.
   .join-button {
     display: flex;
+    border: none;
+    font-family: inherit;
+    font-size: inherit;
     height: 40px;
     justify-content: center;
     align-items: center;

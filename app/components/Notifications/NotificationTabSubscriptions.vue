@@ -3,7 +3,8 @@ import type { SubscriptionRow } from '@/composables/useDiscussionSubscriptionsCa
 import type { Database } from '@/types/database.types'
 import { Flex } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
+import { SUBSCRIPTION_SELECT, useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
+import { getDiscussionHref } from '@/lib/discussions'
 import NotificationCardEmpty from './NotificationCardEmpty.vue'
 import NotificationCardError from './NotificationCardError.vue'
 import NotificationCardLoading from './NotificationCardLoading.vue'
@@ -32,19 +33,19 @@ const DEV_FIXTURE_SUBSCRIPTIONS: SubscriptionRow[] = import.meta.dev
         id: 'dev-sub-1',
         discussion_id: 'dev-discussion-1',
         last_seen_at: new Date().toISOString(),
-        discussion: { title: 'General Discussion', slug: 'general-discussion', profile_id: null, event_id: null, gameserver_id: null, project_id: null, referendum_id: null, theme_id: null },
+        discussion: { title: 'General Discussion', slug: 'general-discussion', discussion_topic_id: 'dev-topic-1', last_activity_at: new Date().toISOString(), last_activity_by: null, profile_id: null, event_id: null, gameserver_id: null, project_id: null, referendum_id: null, theme_id: null },
       },
       {
         id: 'dev-sub-2',
         discussion_id: 'dev-discussion-2',
         last_seen_at: new Date(Date.now() - 86400000).toISOString(),
-        discussion: { title: 'Site Feedback', slug: 'site-feedback', profile_id: null, event_id: null, gameserver_id: null, project_id: null, referendum_id: null, theme_id: null },
+        discussion: { title: 'Site Feedback', slug: 'site-feedback', discussion_topic_id: 'dev-topic-1', last_activity_at: new Date(Date.now() - 86400000).toISOString(), last_activity_by: null, profile_id: null, event_id: null, gameserver_id: null, project_id: null, referendum_id: null, theme_id: null },
       },
       {
         id: 'dev-sub-3',
         discussion_id: 'dev-discussion-3',
         last_seen_at: new Date(Date.now() - 172800000).toISOString(),
-        discussion: { title: 'A very long discussion title that should get truncated', slug: 'long-title', profile_id: null, event_id: null, gameserver_id: null, project_id: null, referendum_id: null, theme_id: null },
+        discussion: { title: 'A very long discussion title that should get truncated', slug: 'long-title', discussion_topic_id: 'dev-topic-1', last_activity_at: new Date(Date.now() - 172800000).toISOString(), last_activity_by: null, profile_id: null, event_id: null, gameserver_id: null, project_id: null, referendum_id: null, theme_id: null },
       },
     ]
   : []
@@ -81,7 +82,7 @@ async function load() {
 
   try {
     const { data, error: fetchError } = await supabase.from('discussion_subscriptions')
-      .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug, profile_id, event_id, gameserver_id, project_id, referendum_id, theme_id)')
+      .select(SUBSCRIPTION_SELECT)
       .eq('user_id', userId.value as string)
       .order('last_seen_at', { ascending: false })
 
@@ -205,7 +206,7 @@ defineExpose({ load, reset, triggerClearAll, clearAllLoading, hasSubscriptions }
         :key="`sub-${sub.id}`"
         :title="getSubscriptionTitle(sub)"
         :icon="getSubscriptionIcon(sub)"
-        :href="sub.discussion?.profile_id ? `/profile/${sub.discussion.profile_id}` : sub.discussion?.theme_id ? `/themes/${sub.discussion.theme_id}` : `/forum/${sub.discussion?.slug ?? sub.discussion_id}`"
+        :href="getDiscussionHref(sub.discussion, sub.discussion_id)"
         :loading="!!unsubscribeLoading[sub.id]"
         @click="emit('navigate')"
         @unsubscribe="handleUnsubscribe(sub)"

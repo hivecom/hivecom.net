@@ -2,7 +2,7 @@ import type { Ref } from 'vue'
 import type { SubscriptionRow } from '@/composables/useDiscussionSubscriptionsCache'
 import type { Database } from '@/types/database.types'
 import { computed, ref, watch } from 'vue'
-import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
+import { SUBSCRIPTION_SELECT, useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 
 /**
  * Subscribe / unsubscribe state for a single discussion.
@@ -79,7 +79,7 @@ export function useDiscussionSubscription(
       const { data, error } = await supabase
         .from('discussion_subscriptions')
         .insert({ user_id: userId.value, discussion_id: id })
-        .select('id, discussion_id, last_seen_at, discussion:discussions(title, slug, profile_id, event_id, gameserver_id, project_id, referendum_id, theme_id)')
+        .select(SUBSCRIPTION_SELECT)
         .single()
 
       if (!error && data) {

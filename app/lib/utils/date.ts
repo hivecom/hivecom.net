@@ -32,8 +32,15 @@ function parse(date: string | Date | null | undefined): Date | null {
  *
  * Pass `now` (usually the shared tick from useNow) to keep the result live.
  * Without it the value is computed once and never ages.
+ *
+ * `style` maps straight onto Intl: 'long' reads "3 hours ago", 'narrow' reads
+ * "3h ago" for places too tight to spell it out.
  */
-export function fromNow(date: string | Date | null | undefined, now: number = Date.now()): string {
+export function fromNow(
+  date: string | Date | null | undefined,
+  now: number = Date.now(),
+  style: Intl.RelativeTimeFormatStyle = 'long',
+): string {
   const d = parse(date)
   if (!d)
     return ''
@@ -42,7 +49,7 @@ export function fromNow(date: string | Date | null | undefined, now: number = Da
   const diffSecs = Math.round(diffMs / 1000)
   const absSecs = Math.abs(diffSecs)
 
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto', style })
 
   if (absSecs < 60)
     return rtf.format(diffSecs, 'second')

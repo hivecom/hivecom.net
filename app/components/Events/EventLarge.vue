@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
 import { Badge, Card, Flex, Tooltip } from '@dolanske/vui'
+import EventHostAvatar from '@/components/Events/EventHostAvatar.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
+import { useDataEventAttendees } from '@/composables/useDataEventAttendees'
 import { useDataGames } from '@/composables/useDataGames'
+import { useEventOrganizer } from '@/composables/useEventOrganizer'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { humanizeRrule } from '@/lib/utils/rrule'
@@ -55,25 +58,14 @@ useIntervalFn(updateTime, 1000, { immediate: true })
 updateTime()
 
 const user = useSupabaseUser()
-const supabase = useSupabaseClient()
-const rsvpUserIds = ref<string[]>([])
-const rsvpCount = ref(0)
+const { userIds: rsvpUserIds, count: rsvpCount } = useDataEventAttendees(() => props.data.id)
 
-onBeforeMount(() => {
-  supabase.from('event_rsvps')
-    .select('user_id')
-    .eq('rsvp', 'yes')
-    .eq('event_id', props.data.id)
-    .then(({ data }) => {
-      const ids = data
-        ? Array.from(new Set(data.map(({ user_id }) => user_id)))
-        : []
-      rsvpCount.value = ids.length
-      if (user.value) {
-        rsvpUserIds.value = ids
-      }
-    })
-})
+const { organizerId, showOrganizer, attendees } = useEventOrganizer(() => props.data, rsvpUserIds)
+
+// Avatars scale with the card, so the host avatar has to track them.
+const avatarSize = computed(() => isBelowMedium.value
+  ? (props.isHighlight ? 'l' : 'm')
+  : 's')
 </script>
 
 <template>
@@ -101,20 +93,24 @@ onBeforeMount(() => {
             <!-- Meta row: attendees left, badges right -->
             <Flex x-between :y-center="!isBelowMedium" :y-start="isBelowMedium" gap="xs" :wrap="isBelowMedium">
               <Flex y-center gap="s" x-start class="event-large__people" wrap>
-                <BulkAvatarDisplay
-                  v-if="user && rsvpCount > 0"
-                  :user-ids="rsvpUserIds"
-                  :max-users="6"
-                  :avatar-size="isBelowMedium ? (props.isHighlight ? 'l' : 'm') : 's'"
-                  :expand="false"
-                  :gap="6"
-                  cluster
-                  :show-names="false"
-                />
-                <Badge v-else-if="rsvpCount > 0" :variant="hasEventEnded ? 'neutral' : 'accent'">
-                  <Icon name="ph:users" />
-                  {{ rsvpCount }} {{ hasEventEnded ? 'Went' : 'Going' }}
-                </Badge>
+                <Flex y-center :gap="4" class="event-large__attendees">
+                  <EventHostAvatar v-if="showOrganizer" :user-id="organizerId!" :size="avatarSize" />
+                  <BulkAvatarDisplay
+                    v-if="user && attendees.length > 0"
+                    :user-ids="attendees"
+                    :max-users="6"
+                    :avatar-size="avatarSize"
+                    :expand="false"
+                    :gap="6"
+                    cluster
+                    :show-names="false"
+                    :hide-generic-users="false"
+                  />
+                  <Badge v-else-if="!user && rsvpCount > 0" :variant="hasEventEnded ? 'neutral' : 'accent'">
+                    <Icon name="ph:users" />
+                    {{ rsvpCount }} {{ hasEventEnded ? 'Went' : 'Going' }}
+                  </Badge>
+                </Flex>
 
                 <Tooltip v-if="games.length > 0">
                   <Badge outline>
@@ -233,6 +229,11 @@ onBeforeMount(() => {
 
   &__people {
     transition: filter var(--transition);
+  }
+
+  // Host and attendees read as one group, tighter than the badges beside them.
+  &__attendees {
+    flex: 0 0 auto;
   }
 
   &__countdown-wrap {

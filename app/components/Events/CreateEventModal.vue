@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue'
 import EventFormFields from '@/components/Events/EventFormFields.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useEffectiveRole } from '@/composables/useEffectiveRole'
+import { rsvpEventOrganizer } from '@/lib/events'
 import { STATIC_BUCKET_ID } from '@/lib/storageAssets'
 import { expandRecurringEvent } from '@/lib/utils/rrule'
 
@@ -210,14 +211,18 @@ async function doSave() {
         throw error
     }
     else {
-      const { error } = await supabase.from('events').insert({
+      const { data, error } = await supabase.from('events').insert({
         ...payload,
         is_official: isPrivileged.value ? isOfficial.value : false,
         created_by: userId.value,
-      })
+      }).select('id').single()
 
       if (error)
         throw error
+
+      // The organizer attends by default.
+      if (data && userId.value)
+        await rsvpEventOrganizer(data.id, userId.value, payload.recurrence_rule != null)
     }
 
     open.value = false
@@ -275,14 +280,18 @@ async function doFork() {
 
     // Insert new forked event - use the user's chosen date/time from the form
     // as the new series start date, not the computed next old occurrence.
-    const { error: insertError } = await supabase.from('events').insert({
+    const { data: forked, error: insertError } = await supabase.from('events').insert({
       ...payload,
       is_official: isPrivileged.value ? isOfficial.value : false,
       created_by: userId.value,
-    })
+    }).select('id').single()
 
     if (insertError)
       throw insertError
+
+    // Same default as a fresh create - the organizer attends the new series.
+    if (forked && userId.value)
+      await rsvpEventOrganizer(forked.id, userId.value, payload.recurrence_rule != null)
 
     open.value = false
     emit('saved')

@@ -16,6 +16,7 @@ import { invalidateEventsCache } from '@/composables/useDataEvents'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useTableActions } from '@/composables/useTableActions'
+import { rsvpEventOrganizer } from '@/lib/events'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { nextOccurrenceDate } from '@/lib/utils/rrule'
 import EventDetails from './EventDetails.vue'
@@ -294,13 +295,17 @@ async function handleEventSave(eventData: Partial<Event>) {
         modified_by: userId.value ?? null,
         modified_at: new Date().toISOString(),
       }
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('events')
         .insert(createData)
         .select('id')
         .single()
       if (error)
         throw error
+
+      // The organizer attends by default.
+      if (data && userId.value)
+        await rsvpEventOrganizer(data.id, userId.value, createData.recurrence_rule != null)
 
       if (userId.value)
         subscriptionsCache.invalidateList(userId.value)

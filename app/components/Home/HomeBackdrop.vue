@@ -13,12 +13,20 @@ withDefaults(defineProps<{
   variant: 'landing',
 })
 
+// Everything below reads the viewport, so none of it can exist until the
+// component is actually in a browser. `import.meta.client` isn't enough of a
+// guard: it's already true while Vue is hydrating, so computing here would hand
+// the hydrating render values the server never produced and mismatch the whole
+// subtree. Gating on mount holds the first client render identical to the HTML
+// and fills things in a tick later.
+const mounted = ref(false)
+
 // The nebula drifts down a touch and fades as you scroll off the first viewport,
 // so it reads as a fixed backdrop dissolving into the page rather than scrolling
 // away with it. Applied without a transition so the parallax stays snappy.
 const { y: scrollY } = useWindowScroll()
 const nebulaVars = computed<CSSProperties | undefined>(() => {
-  if (!import.meta.client)
+  if (!mounted.value)
     return undefined
   const vh = window.innerHeight || 1
   const fade = Math.max(0, 1 - scrollY.value / (vh * 1.6))
@@ -33,7 +41,7 @@ const STAR_COUNT = 75
 const STAR_TRANSFORM_THRESHOLD = 0.4
 const stars = shallowRef<CSSProperties[]>([])
 
-onBeforeMount(() => {
+onMounted(() => {
   const _stars: CSSProperties[] = []
   for (let i = 0; i < STAR_COUNT; i++) {
     const size = Math.random() * 2 + 0.5
@@ -54,6 +62,7 @@ onBeforeMount(() => {
   }
 
   stars.value = _stars
+  mounted.value = true
 })
 </script>
 

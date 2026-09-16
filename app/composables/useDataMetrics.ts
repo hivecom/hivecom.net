@@ -350,6 +350,14 @@ async function refreshSnapshot(): Promise<void> {
 }
 
 function scheduleSnapshotRefresh(): void {
+  // Never on the server. The refs above are module state, so one process is
+  // shared by every request: a timer here bakes whatever it last fetched into
+  // the HTML of visitors who never asked for metrics, and the client starts
+  // from null and hydrates over the top of it. It also never stops, since
+  // nothing on the server unmounts.
+  if (import.meta.server)
+    return
+
   if (snapshotRefreshTimer !== null)
     clearTimeout(snapshotRefreshTimer)
 
@@ -407,6 +415,10 @@ async function refreshPeriod(period: MetricsPeriod): Promise<void> {
 }
 
 function schedulePeriodRefresh(period: MetricsPeriod): void {
+  // Client only, same reason as scheduleSnapshotRefresh.
+  if (import.meta.server)
+    return
+
   const subscription = periodSubscriptions.get(period)
   if (subscription === undefined)
     return
@@ -689,6 +701,15 @@ export function useDataMetrics() {
     }
   }
 
+  /**
+   * Synchronous read of a period already in the cache. The fetchers are async
+   * even on a warm cache, which costs a render, so consumers that would rather
+   * paint real data than a placeholder can seed themselves during setup and
+   * let the fetch confirm it. Returns null when the cache is cold.
+   */
+  const getCachedHistory = (period: MetricsPeriod): MetricsHistoryEntry[] | null =>
+    metricsCache.get<MetricsHistoryEntry[]>(`metrics:history:${period}`)
+
   // Like fetchMetricsHistory but returns data without writing to the shared ref.
   // Use this when you need history data in an isolated context (e.g. a modal)
   // that should not affect other consumers of metricsHistory.
@@ -887,6 +908,7 @@ export function useDataMetrics() {
     loadingHistory,
     fetchMetricsHistory,
     fetchMetricsHistoryIsolated,
+    getCachedHistory,
     fetchMetricsWindow,
     fetchMetricsWindowIsolated,
     metricsWindow,

@@ -1,6 +1,13 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.overrides'
 
+// Each instance subscribes under its own topic. supabase.channel() hands back
+// the existing channel for a topic that's still registered, and removeChannel()
+// only deregisters once its unsubscribe resolves, so remounting on the same
+// referendum would otherwise attach handlers to a channel already on its way
+// out.
+let instanceCounter = 0
+
 /**
  * Subscribes to Supabase realtime changes on `referendum_votes` for a specific
  * referendum, keeping a local reactive copy of the vote list in sync.
@@ -20,6 +27,7 @@ export function useRealtimeReferendumVotes(
   initialVotes: MaybeRef<Tables<'referendum_votes'>[] | null | undefined> = [],
 ) {
   const supabase = useSupabaseClient()
+  const instanceKey = ++instanceCounter
 
   // Local reactive copy of votes - starts from initialVotes and stays live.
   const votes = ref<Tables<'referendum_votes'>[]>([])
@@ -44,7 +52,7 @@ export function useRealtimeReferendumVotes(
     }
 
     channel = supabase
-      .channel(`referendum_votes:referendum_id=eq.${id}`)
+      .channel(`referendum_votes:referendum_id=eq.${id}:${instanceKey}`)
       .on(
         'postgres_changes',
         {
