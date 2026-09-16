@@ -3,7 +3,7 @@ import type { ComponentPublicInstance } from 'vue'
 import type { ChannelGhostNode, ChannelGroupNode, ChannelItemNode, ChannelTreeNode } from '@/components/Chat/ChannelTreeItem.vue'
 import type { ChatBuffer } from '@/composables/useIrcChat'
 import { Badge, Button, ContextMenu, Divider, Drawer, DropdownItem, Flex, Input, Modal, Overflow, pushToast, Tooltip } from '@dolanske/vui'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ChannelInfoModal from '@/components/Chat/ChannelInfoModal.vue'
 import ChannelModeBadges from '@/components/Chat/ChannelModeBadges.vue'
 import ChannelTreeItem from '@/components/Chat/ChannelTreeItem.vue'
@@ -82,28 +82,100 @@ function scrollActiveIntoView() {
 watch([activeName, () => buffers.value.length], () => nextTick(scrollActiveIntoView))
 onMounted(() => nextTick(scrollActiveIntoView))
 
-// Accent shadow when any buffer has unread mentions or unread PM messages.
-const hasNotification = computed(() =>
-  buffers.value.some(b => b.mentions > 0 || (b.kind === 'pm' && b.unread > 0)),
+// Overflow's actual scroller is .overflow-content (not the root or its first child).
+function getScroller(): HTMLElement | null {
+  const el = getListEl()
+  if (!el)
+    return null
+
+  return el.querySelector<HTMLElement>('.overflow-content') ?? el
+}
+
+// Unread mentions, plus any unread PM.
+function hasNotification(buf: ChatBuffer): boolean {
+  return buf.mentions > 0 || (buf.kind === 'pm' && buf.unread > 0)
+}
+
+// Accent only the edge a hidden notification sits behind, so the glow says
+// which way to scroll instead of lighting up both sides at once.
+const notifyLeft = ref(false)
+const notifyRight = ref(false)
+
+function measureNotifications() {
+  if (!props.horizontal) {
+    notifyLeft.value = false
+    notifyRight.value = false
+    return
+  }
+
+  const scroller = getScroller()
+  if (!scroller)
+    return
+
+  const view = scroller.getBoundingClientRect()
+  let left = false
+  let right = false
+
+  for (const item of scroller.querySelectorAll<HTMLElement>('.chat-channels__item--notify')) {
+    const rect = item.getBoundingClientRect()
+
+    // A couple of pixels of slack so an item flush with the edge isn't called hidden.
+    if (rect.right <= view.left + 2)
+      left = true
+    else if (rect.left >= view.right - 2)
+      right = true
+  }
+
+  notifyLeft.value = left
+  notifyRight.value = right
+}
+
+// Changing counts don't move anything, but they change which items count as
+// notifying, so remeasure whenever that set changes.
+const notifyKey = computed(() =>
+  sortedBuffers.value.filter(hasNotification).map(b => b.name).join(','),
 )
 
-const overflowStyle = computed(() =>
-  props.horizontal && hasNotification.value
-    ? { '--vui-overflow-shadow-color': 'var(--color-accent)' }
-    : undefined,
-)
+watch(notifyKey, () => nextTick(measureNotifications))
+
+let boundScroller: HTMLElement | null = null
+let resizeObserver: ResizeObserver | null = null
+
+function unbindNotifyWatchers() {
+  boundScroller?.removeEventListener('scroll', measureNotifications)
+  boundScroller = null
+  resizeObserver?.disconnect()
+  resizeObserver = null
+}
+
+onMounted(() => nextTick(() => {
+  if (!props.horizontal)
+    return
+
+  boundScroller = getScroller()
+  if (!boundScroller)
+    return
+
+  boundScroller.addEventListener('scroll', measureNotifications, { passive: true })
+
+  // Resizing the strip changes what fits, and so which mentions are hidden.
+  resizeObserver = new ResizeObserver(measureNotifications)
+  resizeObserver.observe(boundScroller)
+
+  measureNotifications()
+}))
+
+onBeforeUnmount(unbindNotifyWatchers)
 
 function onWheel(e: WheelEvent) {
   if (!props.horizontal || e.deltaX !== 0)
     return
 
   e.preventDefault()
-  const el = getListEl()
-  if (!el)
+  const scroller = getScroller()
+  if (!scroller)
     return
 
-  // Overflow's actual scroller is .overflow-content (not the root or its first child).
-  const scroller = el.querySelector<HTMLElement>('.overflow-content') ?? el
   scroller.scrollLeft += e.deltaY
 }
 
@@ -622,9 +694,10 @@ function executeRenameChannel() {
         ref="listRef"
         :horizontal="horizontal || undefined"
         :hide-scrollbar="horizontal || undefined"
-        :style="overflowStyle"
         class="chat-channels__list"
-        :class="{ 'chat-channels__list--horizontal': horizontal }"
+        :class="{ 'chat-channels__list--horizontal': horizontal,
+                  'chat-channels__list--notify-left': notifyLeft,
+                  'chat-channels__list--notify-right': notifyRight }"
         @wheel="onWheel"
       >
         <Flex :gap="horizontal ? 'xxs' : 0" :column="!horizontal" :expand="!horizontal" @contextmenu.prevent="onContextMenu" @touchstart.passive="onTouchStart" @touchmove.passive="onTouchMove" @touchend="cancelLongPress" @touchcancel="cancelLongPress">
@@ -651,7 +724,8 @@ function executeRenameChannel() {
               <button
                 type="button"
                 class="chat-channels__item"
-                :class="{ 'chat-channels__item--active': buf.name.toLowerCase() === activeName.toLowerCase() }"
+                :class="{ 'chat-channels__item--active': buf.name.toLowerCase() === activeName.toLowerCase(),
+                          'chat-channels__item--notify': hasNotification(buf) }"
                 :data-channel-name="buf.name"
                 @click="setActive(buf.name)"
                 @mousedown.middle.prevent
@@ -1107,6 +1181,12 @@ function executeRenameChannel() {
 
     &--horizontal {
       padding: 0;
+    }
+
+    // Tint only the edge that has a mention behind it.
+    &--notify-left :deep(.overflow-shadow-left),
+    &--notify-right :deep(.overflow-shadow-right) {
+      --vui-overflow-shadow-color: var(--color-accent);
     }
   }
 

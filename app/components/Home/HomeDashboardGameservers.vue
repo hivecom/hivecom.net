@@ -204,19 +204,19 @@ const loading = computed(() =>
             v-for="entry in shown"
             :key="entry.gs.id"
             :to="`/servers/gameservers/${entry.gs.id}`"
-            class="home-item inline gameserver-row"
-            :class="{ 'gameserver-row--connectable': hasConnect(entry) }"
+            class="home-item inline home-gameserver"
+            :class="{ 'home-gameserver--connectable': hasConnect(entry) }"
           >
-            <Flex y-center gap="s" class="gameserver-row__name">
+            <Flex y-center gap="s" class="home-gameserver__name">
               <GameIcon v-if="entry.game" :game="entry.game" size="s" />
               <strong>{{ entry.gs.name }}</strong>
             </Flex>
 
-            <div class="gameserver-row__action">
-              <span class="gameserver-row__activity">{{ activityLabel(entry) }}</span>
+            <div class="home-gameserver__action">
+              <span class="home-gameserver__activity">{{ activityLabel(entry) }}</span>
 
               <GameServerConnectButton
-                class="gameserver-row__connect"
+                class="home-gameserver__connect"
                 :addresses="entry.gs.addresses"
                 :port="entry.gs.port"
                 :connect="connectFor(entry)"
@@ -232,7 +232,7 @@ const loading = computed(() =>
 
       <HomeDashboardSection v-if="hopIn" label="Hop in">
         <NuxtLink :to="`/servers/gameservers/${hopIn.gs.id}`" class="home-item inline">
-          <Flex y-center gap="s" class="gameserver-row__name">
+          <Flex y-center gap="s" class="home-gameserver__name">
             <GameIcon v-if="hopIn.game" :game="hopIn.game" size="s" />
             <strong>{{ hopIn.gs.name }}</strong>
           </Flex>
@@ -267,13 +267,13 @@ const loading = computed(() =>
 </template>
 
 <style scoped lang="scss">
-.gameserver-row__name {
+.home-gameserver__name {
   min-width: 0;
 }
 
 // The activity line and the launch button share one cell, so the row is sized
 // for the wider of the two and swapping them on hover doesn't shift the name.
-.gameserver-row__action {
+.home-gameserver__action {
   display: grid;
   flex-shrink: 0;
 
@@ -284,36 +284,36 @@ const loading = computed(() =>
   }
 }
 
-.gameserver-row__connect {
+.home-gameserver__connect {
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--transition-duration) ease;
 }
 
-.gameserver-row__activity {
+.home-gameserver__activity {
   transition: opacity var(--transition-duration) ease;
   white-space: nowrap;
 }
 
-.gameserver-row--connectable:hover,
-.gameserver-row--connectable:focus-within {
-  .gameserver-row__connect {
+.home-gameserver--connectable:hover,
+.home-gameserver--connectable:focus-within {
+  .home-gameserver__connect {
     opacity: 1;
     pointer-events: auto;
   }
 
-  .gameserver-row__activity {
+  .home-gameserver__activity {
     opacity: 0;
   }
 }
 
 // No hover to reveal on touch, so the row keeps showing what it knows.
 @media (hover: none) {
-  .gameserver-row__connect {
+  .home-gameserver__connect {
     display: none;
   }
 
-  .gameserver-row--connectable:hover .gameserver-row__activity {
+  .home-gameserver--connectable:hover .home-gameserver__activity {
     opacity: 1;
   }
 }
