@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { CSSProperties } from 'vue'
 import type { AtypeName } from '@/lib/atype.generated'
 import type { Tables } from '@/types/database.types'
 import { Marquee, pushToast } from '@dolanske/vui'
@@ -196,6 +197,120 @@ const MOBILE_STARS = [
   [169.192, 222.192],
   [255.192, 329.192],
 ]
+
+// The stars that foreshadow the diamonds. They parallax the way the backdrop
+// stars do: held near-fixed on screen while the page slides under them. Each
+// one waits at the spot where its diamond will land, so the constellation is
+// already in the sky while the join copy scrolls past over it, and the
+// diamonds climb up to meet the stars.
+
+// How much of the climb each star holds against. 1 keeps the star dead still
+// on screen, a touch under drifts up slowly like the backdrop's moving stars.
+// Fixed rather than random so the constellation always drifts the same way.
+const STAR_LEAD = [1, 0.96, 0.98, 1, 0.97]
+// Where the block lands: the diamonds reach the stars once the block's bottom
+// has climbed to this fraction of the viewport height. Landing at the bottom
+// edge instead would hold the stars right on that edge, barely on screen.
+const SETTLE_AT = 0.65
+// Over the last few px of climb the star gives up its lead and picks up the
+// page's motion, so it lands instead of snapping.
+const LEAD_EASE = 24
+// The join section clips anything above its top edge, so a star's lead is
+// capped at the room between it and that edge. Past the cap the star rides up
+// with the page instead of holding. That's how it comes into view: it arrives
+// with the section, parks at its hold spot, and waits for the diamond. Kept a
+// little inside the edge so the dot never touches the clip.
+const HEADROOM_MARGIN = 16
+// Width of the blend between riding and holding, so the hand-off is smooth.
+const CAP_BLEND = 40
+// How long a star takes to glide into its diamond on hover.
+const GLIDE_MS = 300
+// Flicker delay and duration per star, so they don't twinkle in unison.
+const STAR_FLICKER = [[0, 2400], [1300, 3100], [2600, 2700], [700, 3500], [2000, 2900]]
+
+const joinEl = ref<HTMLElement | null>(null)
+const constellationEl = ref<HTMLElement | null>(null)
+// Pixels the block still has to climb before it lands.
+const climb = ref(0)
+// Pixels between the block's top and the join section's clip edge.
+const headroom = ref(0)
+const reducedMotion = usePreferredReducedMotion()
+const { y: scrollY } = useWindowScroll()
+const { height: viewportHeight } = useWindowSize()
+
+function measureClimb() {
+  const host = constellationEl.value
+  const join = joinEl.value
+  if (!host || !join)
+    return
+
+  const rect = host.getBoundingClientRect()
+  climb.value = Math.max(0, rect.bottom - window.innerHeight * SETTLE_AT)
+  headroom.value = Math.max(0, rect.top - join.getBoundingClientRect().top - HEADROOM_MARGIN)
+}
+
+// min(a, b) with the corner rounded off over about k px either side.
+function softMin(a: number, b: number, k: number): number {
+  return Math.min(a, b) - k * Math.log(1 + Math.exp(-Math.abs(a - b) / k))
+}
+
+// Tracks the climb 1:1 and rounds off over the last LEAD_EASE px. No cap: the
+// join section's overflow clips whatever sits above its top edge, so the stars
+// simply come into view as the section does.
+const starLead = computed(() => {
+  if (reducedMotion.value === 'reduce')
+    return 0
+
+  const d = climb.value
+
+  return (d * d) / (d + LEAD_EASE)
+})
+
+// Hovering or focusing a link pulls its star into the diamond even if the block
+// hasn't settled yet, so the flare lights up around a star that's actually
+// there. The glide class stays on for a beat after leaving so it eases back out
+// too, then comes off so scroll tracking is instant again.
+const alignedStar = ref<number | null>(null)
+const glidingStar = ref<number | null>(null)
+let glideTimer: ReturnType<typeof setTimeout> | undefined
+
+function alignStar(index: number) {
+  clearTimeout(glideTimer)
+  alignedStar.value = index
+  glidingStar.value = index
+}
+
+function releaseStar(index: number) {
+  if (alignedStar.value !== index)
+    return
+
+  alignedStar.value = null
+  glideTimer = setTimeout(() => {
+    glidingStar.value = null
+  }, GLIDE_MS)
+}
+
+function starStyle(star: number[], index: number): CSSProperties {
+  const [x = 0, y = 0] = star
+  const [delay = 0, duration = 2000] = STAR_FLICKER[index] ?? []
+  // Room to the clip edge grows with how far down the block the star sits.
+  const room = headroom.value + y
+  const lead = alignedStar.value === index
+    ? 0
+    : Math.max(0, softMin(starLead.value * (STAR_LEAD[index] ?? 1), room, CAP_BLEND))
+
+  return {
+    'left': `${x}px`,
+    'top': `${y}px`,
+    '--star-lead': `${lead}px`,
+    '--star-animation-offset': `${delay}ms`,
+    '--star-animation-duration': `${duration}ms`,
+  }
+}
+
+onMounted(measureClimb)
+onBeforeUnmount(() => clearTimeout(glideTimer))
+watch([scrollY, viewportHeight], measureClimb)
 </script>
 
 <template>
@@ -390,7 +505,7 @@ const MOBILE_STARS = [
           </div>
         </section>
       </GlowGroup>
-      <div class="home-join">
+      <div ref="joinEl" class="home-join">
         <LandingSun class="home-join__sun" />
         <FocusTarget class="container-s">
           <template v-if="isMember">
@@ -420,8 +535,20 @@ const MOBILE_STARS = [
           </template>
         </FocusTarget>
 
-        <div class="constellation">
-          <a v-for="link in constants.LINKS" :key="link.name" target="_blank" rel="noreferer noopener" :href="link.url">
+        <div ref="constellationEl" class="constellation">
+          <!-- The links have to stay the first children: their positions and the
+               flare hover both key off nth-child. -->
+          <a
+            v-for="(link, _name, index) in constants.LINKS"
+            :key="link.name"
+            target="_blank"
+            rel="noreferer noopener"
+            :href="link.url"
+            @mouseenter="alignStar(index)"
+            @mouseleave="releaseStar(index)"
+            @focus="alignStar(index)"
+            @blur="releaseStar(index)"
+          >
             {{ link.name }}
           </a>
 
@@ -462,6 +589,14 @@ const MOBILE_STARS = [
               <path class="flare-core-hot" d="M0 -4L4 0L0 4L-4 0Z" />
             </g>
           </svg>
+
+          <!-- One set of stars per layout, shown and hidden with the matching SVG. -->
+          <div class="constellation-stars constellation-stars--desktop" aria-hidden="true">
+            <div v-for="(star, index) in DESKTOP_STARS" :key="index" class="constellation-star" :class="{ 'is-gliding': glidingStar === index }" :style="starStyle(star, index)" />
+          </div>
+          <div class="constellation-stars constellation-stars--mobile" aria-hidden="true">
+            <div v-for="(star, index) in MOBILE_STARS" :key="index" class="constellation-star" :class="{ 'is-gliding': glidingStar === index }" :style="starStyle(star, index)" />
+          </div>
         </div>
       </div>
     </FocusFrame>
@@ -666,11 +801,14 @@ const MOBILE_STARS = [
 
     display: inline-block;
     margin: auto;
+    // No z-index on purpose: this must not be a stacking context, so the star
+    // layer's negative z-index can drop behind the join copy above. The links
+    // and SVG still paint over the sun by tree order.
     position: relative;
-    z-index: 1;
     margin-top: 164px;
 
-    .mobile-constellation {
+    .mobile-constellation,
+    .constellation-stars--mobile {
       display: none;
     }
 
@@ -678,11 +816,13 @@ const MOBILE_STARS = [
       padding-bottom: 128px;
       margin-top: 96px;
 
-      .desktop-constellation {
+      .desktop-constellation,
+      .constellation-stars--desktop {
         display: none;
       }
 
-      .mobile-constellation {
+      .mobile-constellation,
+      .constellation-stars--mobile {
         display: block;
       }
 
@@ -772,6 +912,41 @@ const MOBILE_STARS = [
       color: var(--constellation-ink);
     }
 
+    // Overlays the SVG exactly, so the diamond coordinates work as px offsets.
+    // The negative z-index resolves against the page, so the stars sit behind
+    // everything on it like the backdrop stars do: labels, the join copy and
+    // the flare all paint over them.
+    .constellation-stars {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    // Same dot as the backdrop stars, sized to sit inside the diamond.
+    .constellation-star {
+      --star-lead: 0px;
+      --star-animation-offset: 0ms;
+      --star-animation-duration: 2000ms;
+      --star-base-opacity: 1;
+
+      position: absolute;
+      width: 2.5px;
+      height: 2.5px;
+      // Centre on the diamond, then sit ahead of it by the scroll lead.
+      transform: translate(-50%, -50%) translateY(calc(var(--star-lead) * -1));
+      background-color: var(--color-text);
+      border-radius: 50%;
+      animation: star-flicker var(--star-animation-duration) infinite linear;
+      animation-delay: var(--star-animation-offset);
+
+      // Only while gliding into or out of a hovered diamond. Scroll tracking
+      // stays instant otherwise.
+      &.is-gliding {
+        transition: transform 0.3s ease;
+      }
+    }
+
     stop {
       stop-color: var(--color-accent);
 
@@ -823,6 +998,8 @@ const MOBILE_STARS = [
     }
   }
 }
+
+@include star-flicker;
 
 @keyframes constellation-flicker {
   0% {

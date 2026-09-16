@@ -12,3 +12,57 @@
   /* Standard property for modern browsers */
   line-clamp: $lines;
 }
+
+// Twinkle shared by the backdrop stars and the landing constellation stars.
+// Reads --star-base-opacity off the element. Included from scoped styles, so
+// each component gets its own hashed copy of the keyframes.
+@mixin star-flicker {
+  @keyframes star-flicker {
+    0%,
+    15%,
+    35%,
+    55%,
+    75%,
+    100% {
+      opacity: calc(var(--star-base-opacity) * 1);
+      background: white;
+      filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+    }
+
+    10% {
+      opacity: calc(var(--star-base-opacity) * 0.75);
+    }
+
+    20% {
+      opacity: calc(var(--star-base-opacity) * 0.85);
+      background: rgb(160, 210, 255);
+      filter: drop-shadow(0 0 8px rgba(120, 190, 255, 1));
+    }
+
+    25% {
+      opacity: calc(var(--star-base-opacity) * 1);
+      background: white;
+      filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+    }
+
+    45% {
+      opacity: calc(var(--star-base-opacity) * 0.7);
+    }
+
+    60% {
+      opacity: calc(var(--star-base-opacity) * 0.85);
+      background: rgb(255, 190, 190);
+      filter: drop-shadow(0 0 8px rgba(255, 120, 120, 1));
+    }
+
+    65% {
+      opacity: calc(var(--star-base-opacity) * 1);
+      background: white;
+      filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
+    }
+
+    85% {
+      opacity: calc(var(--star-base-opacity) * 0.8);
+    }
+  }
+}

@@ -96,6 +96,8 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+@use '@/assets/mixins' as *;
+
 // Self-contained stacking context behind the page content (which sits at z-index
 // 1). pointer-events off so it never intercepts clicks.
 .home-backdrop {
@@ -221,52 +223,7 @@ onMounted(() => {
   animation-duration: var(--star-animation-duration);
 }
 
-@keyframes star-flicker {
-  0%,
-  15%,
-  35%,
-  55%,
-  75%,
-  100% {
-    opacity: calc(var(--star-base-opacity) * 1);
-    background: white;
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
-  }
-
-  10% {
-    opacity: calc(var(--star-base-opacity) * 0.75);
-  }
-
-  20% {
-    opacity: calc(var(--star-base-opacity) * 0.85);
-    background: rgb(160, 210, 255);
-    filter: drop-shadow(0 0 8px rgba(120, 190, 255, 1));
-  }
-
-  25% {
-    opacity: calc(var(--star-base-opacity) * 1);
-    background: white;
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
-  }
-
-  45% {
-    opacity: calc(var(--star-base-opacity) * 0.7);
-  }
-
-  60% {
-    opacity: calc(var(--star-base-opacity) * 0.85);
-    background: rgb(255, 190, 190);
-    filter: drop-shadow(0 0 8px rgba(255, 120, 120, 1));
-  }
-
-  65% {
-    opacity: calc(var(--star-base-opacity) * 1);
-    background: white;
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
-  }
-
-  85% {
-    opacity: calc(var(--star-base-opacity) * 0.8);
-  }
-}
+// Keyframes live in the shared mixin so the landing constellation stars can
+// twinkle the same way.
+@include star-flicker;
 </style>
