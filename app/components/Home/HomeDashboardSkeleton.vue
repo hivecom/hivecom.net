@@ -3,12 +3,13 @@ import { Flex, Skeleton } from '@dolanske/vui'
 
 // Placeholder for a dashboard card section while its data is still cold.
 // Mirrors the geometry of the real items so the card doesn't jump when the
-// content lands: `grid` matches `.home-item-list`, `rows` matches the stacked
+// content lands: `grid` matches `.home-item-list`, `cover` matches the same
+// grid filled with artwork cards, `rows` matches the stacked
 // `.home-item.inline` lists, `card` matches a stack of compact cards with a
 // title, a line of body and a badge row, `block` matches a single full-width
 // item.
 withDefaults(defineProps<{
-  variant?: 'grid' | 'rows' | 'card' | 'block'
+  variant?: 'grid' | 'cover' | 'rows' | 'card' | 'block'
   /** How many placeholder items to draw. Ignored by `block`. */
   count?: number
   /** Draw the section label bar above the items. */
@@ -32,6 +33,10 @@ withDefaults(defineProps<{
         <Skeleton :height="16" :width="`${60 + ((i * 17) % 35)}%`" :radius="4" />
         <Skeleton :height="10" :width="`${35 + ((i * 11) % 25)}%`" :radius="4" />
       </div>
+    </div>
+
+    <div v-else-if="variant === 'cover'" class="home-item-list">
+      <Skeleton v-for="i in count" :key="i" :height="108" width="100%" :radius="8" />
     </div>
 
     <Flex v-else-if="variant === 'rows'" column gap="xs">

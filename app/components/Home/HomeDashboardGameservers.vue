@@ -40,18 +40,27 @@ interface ServerEntry {
 
 const { gameservers, loading: gameserversLoading } = useDataGameservers()
 const { getById: getGameById } = useDataGames()
-const { metrics, fetchMetrics, fetchMetricsHistoryIsolated, getCachedHistory, loading: metricsLoading } = useDataMetrics()
+const { metrics, fetchMetrics, fetchMetricsHistoryIsolated, getCachedHistory } = useDataMetrics()
 
 // Two windows, because one can't do both jobs. The 90d pass buckets by day, so
 // it reaches back far enough that a server nobody has touched in weeks still
 // says when it last had someone on it. The 24h pass buckets by 15 minutes and
 // overwrites it, so anything recent is accurate to the quarter hour instead of
 // rounding out to "a day ago". Both are smaller than a single 30d fetch.
-// Seeded from the cache during setup rather than awaited in onMounted. Both
-// fetchers are async even on a warm cache, and that one render is the
-// difference between a returning visitor seeing the card and seeing skeletons.
-const coarseHistory = ref<MetricsHistoryEntry[]>(getCachedHistory('90d') ?? [])
-const fineHistory = ref<MetricsHistoryEntry[]>(getCachedHistory('24h') ?? [])
+const cachedCoarse = getCachedHistory('90d')
+const cachedFine = getCachedHistory('24h')
+
+const coarseHistory = ref<MetricsHistoryEntry[]>(cachedCoarse ?? [])
+const fineHistory = ref<MetricsHistoryEntry[]>(cachedFine ?? [])
+
+// The snapshot decides who is busiest and the two history windows decide who
+// was busiest last, so all three feed the sort. Painting as soon as the first
+// one lands leaves the rows to reshuffle a beat later when the rest arrive.
+// Warm caches satisfy this during setup, which is why the refs seed
+// synchronously: the fetchers are async even on a warm cache, and that one
+// render is the difference between a returning visitor seeing the card and
+// seeing skeletons.
+const ready = ref(metrics.value !== null && cachedCoarse !== null && cachedFine !== null)
 
 // Rolled once at setup so the pick holds still: re-rolling per render would
 // reshuffle it every time a snapshot lands, and rolling on mount would make it
@@ -59,15 +68,18 @@ const fineHistory = ref<MetricsHistoryEntry[]>(getCachedHistory('24h') ?? [])
 const rollSeed = Math.floor(Math.random() * 100000)
 
 onMounted(async () => {
-  void fetchMetrics()
-
-  const [coarse, fine] = await Promise.all([
+  // fetchMetrics rethrows on failure, and a dead snapshot still shouldn't leave
+  // the card stuck on skeletons, so it's swallowed rather than rejecting the
+  // batch.
+  const [, coarse, fine] = await Promise.all([
+    fetchMetrics().catch(() => null),
     fetchMetricsHistoryIsolated('90d'),
     fetchMetricsHistoryIsolated('24h'),
   ])
 
   coarseHistory.value = coarse
   fineHistory.value = fine
+  ready.value = true
 })
 
 // Buckets come back oldest first and each bucket holds that window's peak, so
@@ -160,10 +172,11 @@ const hopIn = computed<ServerEntry | null>(() => {
   return candidates[rollSeed % candidates.length] ?? null
 })
 
-// The list needs both the server rows and a metrics snapshot to say anything,
-// so it stays a placeholder until whichever is slower arrives.
+// The metrics gate above covers the ordering, and the server rows arrive on
+// their own clock, so the placeholder waits on both. Once the card has rows a
+// later gameservers refresh doesn't knock it back to skeletons.
 const loading = computed(() =>
-  (gameserversLoading.value || metricsLoading.value) && shown.value.length === 0,
+  !ready.value || (gameserversLoading.value && shown.value.length === 0),
 )
 </script>
 
@@ -189,7 +202,6 @@ const loading = computed(() =>
 
     <HomeDashboardEmpty
       v-else-if="!shown.length"
-      icon="ph:game-controller"
       message="Every server is empty. Somebody has to go first."
     >
       <Button size="s" variant="gray" @click="navigateTo('/servers/gameservers')">

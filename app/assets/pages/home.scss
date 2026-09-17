@@ -5,6 +5,12 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-s);
   width: 100%;
+
+  // A lone item takes the row rather than sitting in half of it with a hole
+  // next to it.
+  > *:only-child {
+    grid-column: 1 / -1;
+  }
 }
 
 .home-item {

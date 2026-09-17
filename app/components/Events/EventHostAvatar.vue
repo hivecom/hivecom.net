@@ -15,7 +15,7 @@ const badgeSize = computed(() => {
     ? props.size
     : { s: 28, m: 40, l: 48 }[props.size]
 
-  return Math.round(Math.max(14, Math.min(20, avatar * 0.45)))
+  return Math.round(Math.max(12, Math.min(20, avatar * 0.45)))
 })
 </script>
 

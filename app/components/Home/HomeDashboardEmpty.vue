@@ -4,12 +4,11 @@ import { Flex } from '@dolanske/vui'
 // Empty state for a dashboard card. Quiet by design: the card has nothing to
 // say, so it should read as a nudge rather than compete with the cards that do
 // have something. The default slot takes the call to action.
-defineProps<{ icon: string, message: string }>()
+defineProps<{ message: string }>()
 </script>
 
 <template>
   <Flex column y-center x-center gap="s" expand class="dashboard-empty">
-    <Icon :name="icon" class="dashboard-empty__icon" />
     <p class="dashboard-empty__message">
       {{ message }}
     </p>
@@ -24,12 +23,6 @@ defineProps<{ icon: string, message: string }>()
   flex: 1;
   padding: var(--space-l) var(--space-m);
   text-align: center;
-}
-
-.dashboard-empty__icon {
-  font-size: 24px;
-  color: var(--color-text-lighter);
-  opacity: 0.5;
 }
 
 .dashboard-empty__message {

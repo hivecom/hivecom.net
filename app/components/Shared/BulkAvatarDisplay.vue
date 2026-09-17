@@ -38,6 +38,21 @@ interface Props {
    * the active threshold (~15 minutes).
    */
   showOnlineIndicator?: boolean
+
+  /**
+   * Ids that get the online dot regardless of last_seen, for clusters where
+   * "live" means something other than being on the site (in a game, say).
+   */
+  liveIds?: string[]
+
+  /** Tooltip on the dot for liveIds. */
+  liveLabel?: string
+
+  /**
+   * The id list itself is still on its way. Draws a few skeleton avatars so
+   * the cluster holds its spot instead of popping in once the ids land.
+   */
+  pending?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -52,6 +67,9 @@ const props = withDefaults(defineProps<Props>(), {
   expand: true,
   cluster: false,
   showOnlineIndicator: false,
+  liveIds: () => [],
+  liveLabel: 'Online',
+  pending: false,
 })
 
 const emit = defineEmits<{
@@ -82,6 +100,7 @@ const {
 })
 
 const friendIdSet = computed(() => new Set(props.friendIds))
+const liveIdSet = computed(() => new Set(props.liveIds))
 
 // Determine user ordering (optionally randomized). Friends lead, since they're
 // the reason to look at the cluster at all, and a cut-off list should lose
@@ -155,9 +174,11 @@ const usersList = computed<UserListEntry[]>(() => {
   return entries
 })
 
+const PENDING_PLACEHOLDERS = 3
+
 const loadingPlaceholderCount = computed(() => {
   if (userIdsRef.value.length === 0)
-    return 0
+    return props.pending ? Math.min(PENDING_PLACEHOLDERS, props.maxUsers) : 0
 
   return Math.max(1, Math.min(userIdsRef.value.length, props.maxUsers))
 })
@@ -208,7 +229,7 @@ defineExpose({
   <Flex :expand="props.expand" class="bulk-avatar-display" :class="{ 'bulk-avatar-display--cluster': cluster }">
     <!-- Loading State -->
     <Flex
-      v-if="loading && userIds.length > 0"
+      v-if="(loading && userIds.length > 0) || (pending && userIds.length === 0)"
       class="bulk-avatar-display__list bulk-avatar-display__list--loading"
       wrap
       x-center
@@ -287,7 +308,19 @@ defineExpose({
               {{ entry.profile ? getUserInitials(entry.profile.username || 'User') : '?' }}
             </AvatarMedia>
 
-            <Tooltip v-if="showOnlineIndicator && (getActivityStatus(entry.profile)?.isActive || getActivityStatus(entry.profile)?.isAway)">
+            <Tooltip v-if="liveIdSet.has(entry.id)">
+              <template #tooltip>
+                <p>{{ liveLabel }}</p>
+              </template>
+              <Indicator
+                variant="online"
+                class="bulk-avatar-display__online-indicator z-active"
+                outline
+                size="s"
+              />
+            </Tooltip>
+
+            <Tooltip v-else-if="showOnlineIndicator && (getActivityStatus(entry.profile)?.isActive || getActivityStatus(entry.profile)?.isAway)">
               <template #tooltip>
                 <p>{{ getActivityStatus(entry.profile)!.lastSeenText }}</p>
               </template>

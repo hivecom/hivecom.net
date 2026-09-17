@@ -155,6 +155,20 @@ function handleContentRulesConfirmed() {
   showCreateEventModal.value = true
 }
 
+// ?create=1 opens the create flow straight away, so links that promise
+// "organize something" land on the form rather than on the list next to the
+// button. Goes through the same handler as the button so the content rules
+// gate still applies. The query is dropped again so a refresh doesn't reopen it.
+onMounted(() => {
+  if (!route.query.create || !user.value)
+    return
+
+  handleCreateEventClick()
+
+  const { create: _create, ...rest } = route.query
+  router.replace({ query: rest })
+})
+
 useSeoMeta({
   title: 'Events',
   description: 'Discover upcoming, ongoing, and past events in the Hivecom community.',

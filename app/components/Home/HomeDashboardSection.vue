@@ -7,9 +7,12 @@ defineProps<{ label: string }>()
 
 <template>
   <section class="dashboard-section">
-    <h3 class="dashboard-section__label">
-      {{ label }}
-    </h3>
+    <div class="dashboard-section__head">
+      <h3 class="dashboard-section__label">
+        {{ label }}
+      </h3>
+      <slot name="action" />
+    </div>
     <slot />
   </section>
 </template>
@@ -37,11 +40,22 @@ defineProps<{ label: string }>()
   }
 }
 
+// The label keeps its own row so a section can hang an action off the right of
+// it without the action landing on top of the items.
+.dashboard-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-s);
+  min-height: 20px;
+  margin-bottom: var(--space-xs);
+}
+
 .dashboard-section__label {
   font-size: var(--font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-text-lighter);
-  margin-bottom: var(--space-xs);
+  margin: 0;
 }
 </style>

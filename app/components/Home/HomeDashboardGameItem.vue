@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.overrides'
 import { Flex } from '@dolanske/vui'
 import { computed, useSlots } from 'vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
+import GameIcon from '@/components/Shared/GameIcon.vue'
 
 // One game in the Games card. When the Steam app matches a game we track, the
 // row opens the same details modal the games page uses, so a name on the
@@ -11,6 +13,8 @@ const props = withDefaults(defineProps<{
   name: string
   /** Our games table id, or null when the Steam app isn't one we track. */
   gameId?: number | null
+  /** Our games row, when the row should lead with the game's icon. */
+  game?: Tables<'games'> | null
   /** Right-hand line on inline rows, second line on grid tiles. */
   meta?: string
   /** Profile ids in this game right now, drawn as the same avatar cluster the
@@ -29,11 +33,16 @@ const emit = defineEmits<{ open: [gameId: number] }>()
 
 const slots = useSlots()
 
-// A row that carries its own links (the avatars of who's playing) can't be a
-// button, so there the name takes the click on its own.
-const hasOwnContent = computed(() => slots.default !== undefined || props.players.length > 0)
 const clickable = computed(() => props.gameId != null)
-const rootIsButton = computed(() => clickable.value && !hasOwnContent.value)
+const hasSlot = computed(() => slots.default !== undefined)
+
+// The row itself is the button when nothing inside it is a link. Player avatars
+// link to profiles, so those rows hand the click to the name and stretch its hit
+// area over the whole row instead, with the avatars lifted back on top. Slotted
+// content isn't ours to lift, so it keeps the plain name-only click.
+const rootIsButton = computed(() => clickable.value && !hasSlot.value && props.players.length === 0)
+const stretched = computed(() => clickable.value && !hasSlot.value && props.players.length > 0)
+const nameIsButton = computed(() => clickable.value && !rootIsButton.value)
 
 function open(): void {
   if (props.gameId != null)
@@ -46,19 +55,24 @@ function open(): void {
     :is="rootIsButton ? 'button' : 'div'"
     class="home-item"
     :class="{ inline,
-              'home-game-item--clickable': rootIsButton }"
+              'home-game-item--clickable': rootIsButton,
+              'home-game-item--stretched': stretched }"
     :type="rootIsButton ? 'button' : undefined"
     @click="rootIsButton && open()"
   >
-    <button
-      v-if="clickable && hasOwnContent"
-      type="button"
-      class="home-game-item__name"
-      @click="open"
-    >
-      <strong>{{ name }}</strong>
-    </button>
-    <strong v-else>{{ name }}</strong>
+    <Flex y-center gap="s" class="home-game-item__lead">
+      <GameIcon v-if="game" :game="game" size="s" />
+
+      <button
+        v-if="nameIsButton"
+        type="button"
+        class="home-game-item__name"
+        @click="open"
+      >
+        <strong>{{ name }}</strong>
+      </button>
+      <strong v-else>{{ name }}</strong>
+    </Flex>
 
     <slot>
       <Flex
@@ -73,6 +87,7 @@ function open(): void {
 
         <BulkAvatarDisplay
           v-if="players.length"
+          class="home-game-item__players"
           :user-ids="players"
           :friend-ids="friendIds"
           :max-users="4"
@@ -106,6 +121,30 @@ function open(): void {
   color: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+// Rows we can't make a button still open from anywhere: the name's click target
+// stretches over the whole row behind the content, and the avatars sit above it
+// so their profile links still work.
+.home-game-item--stretched {
+  position: relative;
+
+  .home-game-item__name::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .home-game-item__players {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+// The icon and the name share the left of the row, and the group has to be
+// allowed to shrink or a long name pushes the meta line off the end.
+.home-game-item__lead {
+  min-width: 0;
 }
 
 // Tiles put the meta line and the avatars on one line under the name, so the

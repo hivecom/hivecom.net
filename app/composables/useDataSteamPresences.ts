@@ -27,8 +27,11 @@ export interface SteamRecentApp {
 const currentPlayersBySteamId = ref<Map<number, string[]>>(new Map())
 const currentGameByProfileId = ref<Map<string, SteamPresenceGame>>(new Map())
 const recentlyPlayedByAppId = ref<Map<number, RecentlyPlayedGame>>(new Map())
+const recentPlayersBySteamId = ref<Map<number, string[]>>(new Map())
 const presencesLoading = ref(false)
-let fetched = false
+// True once the roster has landed at least once. Consumers skeleton on this
+// rather than on presencesLoading, which also flips during background refetches.
+const presencesReady = ref(false)
 let inflight: Promise<void> | null = null
 let lastFetchedAt = 0
 
@@ -88,7 +91,7 @@ export function useDataSteamPresences() {
     presencesLoading.value = true
     const { data } = await supabase
       .from('presences_steam')
-      .select('profile_id, current_app_id, current_app_name, last_app_id, last_app_name, last_app_ended_at')
+      .select('profile_id, current_app_id, current_app_name, last_app_id, last_app_name, last_app_ended_at, recent_apps')
       .or('current_app_id.not.is.null,last_app_id.not.is.null')
     presencesLoading.value = false
     if (!data)
@@ -97,6 +100,7 @@ export function useDataSteamPresences() {
     const bySteamId = new Map<number, string[]>()
     const byProfileId = new Map<string, SteamPresenceGame>()
     const recentByAppId = new Map<number, RecentlyPlayedGame>()
+    const recentSessions: { steamId: number, profileId: string, lastPlayedAt: string }[] = []
     for (const row of data) {
       if (row.current_app_id != null) {
         const existing = bySteamId.get(row.current_app_id) ?? []
@@ -108,8 +112,9 @@ export function useDataSteamPresences() {
         })
       }
 
-      // Recently played is a generic aggregate on purpose - counts per game,
-      // never which profile played it. Each profile contributes one game:
+      // Recently played here is a count per game, since the home surfaces only
+      // need headcounts. Who played a given game is a separate per-game lookup
+      // in fetchRecentPlayersForSteamId. Each profile contributes one game:
       // what they play now, else what they played last.
       const isPlayingNow = row.current_app_id != null
       const recentAppId = row.current_app_id ?? row.last_app_id
@@ -138,11 +143,34 @@ export function useDataSteamPresences() {
           }
         }
       }
+
+      // Who played what: the per-profile recent list flattened so it can be
+      // regrouped by game below. The column is jsonb, so the shape is checked.
+      const apps = row.recent_apps as unknown
+      if (Array.isArray(apps)) {
+        for (const app of apps as SteamRecentApp[]) {
+          if (typeof app?.app_id === 'number' && typeof app.last_played_at === 'string')
+            recentSessions.push({ steamId: app.app_id, profileId: row.profile_id, lastPlayedAt: app.last_played_at })
+        }
+      }
     }
+
+    // Newest session first within each game, so a cut-off cluster keeps the
+    // people who were in it most recently.
+    recentSessions.sort((a, b) => b.lastPlayedAt.localeCompare(a.lastPlayedAt))
+
+    const recentBySteamId = new Map<number, string[]>()
+    for (const session of recentSessions) {
+      const ids = recentBySteamId.get(session.steamId) ?? []
+      ids.push(session.profileId)
+      recentBySteamId.set(session.steamId, ids)
+    }
+
     currentPlayersBySteamId.value = bySteamId
     currentGameByProfileId.value = byProfileId
     recentlyPlayedByAppId.value = recentByAppId
-    fetched = true
+    recentPlayersBySteamId.value = recentBySteamId
+    presencesReady.value = true
     lastFetchedAt = Date.now()
   }
 
@@ -201,6 +229,14 @@ export function useDataSteamPresences() {
     return currentPlayersBySteamId.value.get(steamId) ?? []
   }
 
+  /** Members with this app in their recent list, newest session first. */
+  function recentPlayersForSteamId(steamId: number | null | undefined): string[] {
+    if (steamId == null)
+      return []
+
+    return recentPlayersBySteamId.value.get(steamId) ?? []
+  }
+
   // Signed-out visitors can't read the table, so the scheduled refetch is a
   // no-op for them rather than a stream of rejected queries.
   refetchPresences = async () => {
@@ -214,7 +250,7 @@ export function useDataSteamPresences() {
     if (!user.value)
       return
 
-    if (!fetched)
+    if (!presencesReady.value)
       void fetchCurrentPlayers()
     void fetchMyRecentApps()
   })
@@ -227,7 +263,7 @@ export function useDataSteamPresences() {
       return
     }
 
-    if (!fetched)
+    if (!presencesReady.value)
       void fetchCurrentPlayers()
     void fetchMyRecentApps()
   })
@@ -252,12 +288,16 @@ export function useDataSteamPresences() {
     currentGameByProfileId,
     /** Generic aggregate: app id -> name + how many members play it now or played it last. */
     recentlyPlayedByAppId,
+    /** Reverse index: steam app id -> members who played it recently, newest first. */
+    recentPlayersBySteamId,
     /** The signed-in user's own recent games, newest first. */
     myRecentApps,
     presencesLoading,
+    presencesReady,
     myRecentAppsLoading,
     fetchCurrentPlayers,
     fetchMyRecentApps,
     currentPlayersForSteamId,
+    recentPlayersForSteamId,
   }
 }

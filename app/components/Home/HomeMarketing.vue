@@ -13,14 +13,46 @@ import FocusTarget from '@/components/Shared/FocusTarget.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 
-// Fetch the latest 6 forum posts and their title & description
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const nuxtApp = useNuxtApp()
 const runtimeConfig = useRuntimeConfig()
-const maruqeeItems = ref<{ id: number, title: string, description: string | null }[]>([])
 
+interface MarqueePost {
+  id: number
+  title: string
+  description: string | null
+}
+
+// Latest forum posts feeding the marquee. Two posts share a row so a short
+// title doesn't end up as the only thing repeating across the strip.
+const MARQUEE_ROWS = 5
+const MARQUEE_POSTS_PER_ROW = 2
 const MARQUEE_SPEED = 20
+
+// The marquee lays the row out twice and scrolls by half, so the row itself has
+// to be wider than the card or the loop shows a gap. Short rows get repeated
+// until they hit this many characters, which at 64px bold clears the card width.
+const MARQUEE_MIN_ROW_CHARS = 40
+
+const marqueePosts = ref<MarqueePost[]>([])
+
+function marqueePostLabel(post: MarqueePost) {
+  return post.description ? `${post.title}: ${post.description}` : post.title
+}
+
+const marqueeRows = computed(() => {
+  const rows: { posts: MarqueePost[], copies: number }[] = []
+
+  for (let i = 0; i < marqueePosts.value.length; i += MARQUEE_POSTS_PER_ROW) {
+    const posts = marqueePosts.value.slice(i, i + MARQUEE_POSTS_PER_ROW)
+    const chars = posts.reduce((sum, post) => sum + marqueePostLabel(post).length, 0)
+
+    rows.push({ posts, copies: Math.max(1, Math.ceil(MARQUEE_MIN_ROW_CHARS / Math.max(1, chars))) })
+  }
+
+  return rows
+})
 
 const events = ref<Tables<'events'>[]>([])
 
@@ -30,10 +62,10 @@ onBeforeMount(() => {
     .eq('is_draft', false)
     .not('discussion_topic_id', 'is', null)
     .order('created_at', { ascending: false })
-    .limit(5)
+    .limit(MARQUEE_ROWS * MARQUEE_POSTS_PER_ROW)
     .then(({ data }) => {
       if (data) {
-        maruqeeItems.value = data
+        marqueePosts.value = data
       }
     })
 
@@ -121,6 +153,7 @@ const SIDES: AboutSide[] = [
       { text: 'We run on a non-profit basis. Every donation goes back into server hosting and our projects, nothing else.' },
       { text: 'We aim to know as little about you as possible, and we will never sell out to a larger entity that would change that.' },
       { text: 'What you make stays yours. We don\'t claim it, sell it, or profit from it.' },
+      { text: 'There are no ads, no investors, and nobody to answer to but the people who use the place. If something changes, it\'s because the community wanted it to.' },
       { text: 'Non-profit, open source, built for anyone and everyone.', strong: true },
     ],
   },
@@ -198,119 +231,149 @@ const MOBILE_STARS = [
   [255.192, 329.192],
 ]
 
+// Heights of the two SVGs. Each star's hold is measured up from the bottom edge.
+const DESKTOP_HEIGHT = 112
+const MOBILE_HEIGHT = 339
+
 // The stars that foreshadow the diamonds. They parallax the way the backdrop
-// stars do: held near-fixed on screen while the page slides under them. Each
-// one waits at the spot where its diamond will land, so the constellation is
+// stars do: held fixed on screen while the page slides under them. Each one
+// waits at the spot where its diamond will land, so the constellation is
 // already in the sky while the join copy scrolls past over it, and the
 // diamonds climb up to meet the stars.
+//
+// The hold is position: sticky, so the compositor carries the stars with the
+// scroll. Driving it from a scroll listener left them a frame behind the page
+// on every step, which read as jitter next to the backdrop stars, worst on touch.
 
-// How much of the climb each star holds against. 1 keeps the star dead still
-// on screen, a touch under drifts up slowly like the backdrop's moving stars.
-// Fixed rather than random so the constellation always drifts the same way.
-const STAR_LEAD = [1, 0.96, 0.98, 1, 0.97]
-// Where the block lands: the diamonds reach the stars once the block's bottom
-// has climbed to this fraction of the viewport height. Landing at the bottom
-// edge instead would hold the stars right on that edge, barely on screen.
+// Where the block lands: the diamonds reach the stars once the SVG's bottom
+// edge has climbed to this fraction of the viewport height. Landing at the
+// bottom edge instead would hold the stars right on that edge, barely on screen.
 const SETTLE_AT = 0.65
-// Over the last few px of climb the star gives up its lead and picks up the
-// page's motion, so it lands instead of snapping.
-const LEAD_EASE = 24
-// The join section clips anything above its top edge, so a star's lead is
-// capped at the room between it and that edge. Past the cap the star rides up
-// with the page instead of holding. That's how it comes into view: it arrives
-// with the section, parks at its hold spot, and waits for the diamond. Kept a
-// little inside the edge so the dot never touches the clip.
+// The join section clips anything above its top edge, so a star can hold no
+// higher than the room between the block and that edge. Past that it rides up
+// with the page instead. That's how it comes into view: it arrives with the
+// section, parks at its hold spot, and waits for the diamond. Kept a little
+// inside the edge so the dot never touches the clip.
 const HEADROOM_MARGIN = 16
-// Width of the blend between riding and holding, so the hand-off is smooth.
-const CAP_BLEND = 40
+// Half the dot, so the sticky edge lands the star's centre on the diamond.
+const STAR_RADIUS = 1.25
 // How long a star takes to glide into its diamond on hover.
 const GLIDE_MS = 300
 // Flicker delay and duration per star, so they don't twinkle in unison.
 const STAR_FLICKER = [[0, 2400], [1300, 3100], [2600, 2700], [700, 3500], [2000, 2900]]
 
+// Distance from the viewport bottom the stars hold at, before each one's own
+// offset within the block. dvh so it follows the browser chrome on phones.
+const HOLD_FROM_BOTTOM = `${(100 - SETTLE_AT * 100).toFixed(2)}dvh`
+
 const joinEl = ref<HTMLElement | null>(null)
 const constellationEl = ref<HTMLElement | null>(null)
-// Pixels the block still has to climb before it lands.
-const climb = ref(0)
 // Pixels between the block's top and the join section's clip edge.
 const headroom = ref(0)
-const reducedMotion = usePreferredReducedMotion()
-const { y: scrollY } = useWindowScroll()
-const { height: viewportHeight } = useWindowSize()
 
-function measureClimb() {
+// Only layout moves this, never scroll. The join copy swaps after hydration and
+// reflows between layouts, so the section is observed rather than measured once.
+function measureHeadroom() {
   const host = constellationEl.value
   const join = joinEl.value
   if (!host || !join)
     return
 
-  const rect = host.getBoundingClientRect()
-  climb.value = Math.max(0, rect.bottom - window.innerHeight * SETTLE_AT)
-  headroom.value = Math.max(0, rect.top - join.getBoundingClientRect().top - HEADROOM_MARGIN)
+  headroom.value = Math.max(0, host.getBoundingClientRect().top - join.getBoundingClientRect().top - HEADROOM_MARGIN)
 }
 
-// min(a, b) with the corner rounded off over about k px either side.
-function softMin(a: number, b: number, k: number): number {
-  return Math.min(a, b) - k * Math.log(1 + Math.exp(-Math.abs(a - b) / k))
-}
-
-// Tracks the climb 1:1 and rounds off over the last LEAD_EASE px. No cap: the
-// join section's overflow clips whatever sits above its top edge, so the stars
-// simply come into view as the section does.
-const starLead = computed(() => {
-  if (reducedMotion.value === 'reduce')
-    return 0
-
-  const d = climb.value
-
-  return (d * d) / (d + LEAD_EASE)
-})
+useResizeObserver(joinEl, measureHeadroom)
 
 // Hovering or focusing a link pulls its star into the diamond even if the block
 // hasn't settled yet, so the flare lights up around a star that's actually
-// there. The glide class stays on for a beat after leaving so it eases back out
-// too, then comes off so scroll tracking is instant again.
+// there. A pinned star drops the sticky hold and rides with the page. position
+// can't transition, so the glide is a FLIP: let the star jump, measure how far,
+// put it back with a transform and ease that out to zero. The transition stays
+// on for a beat after leaving so it eases back out too, then comes off so the
+// hold is instant again.
 const alignedStar = ref<number | null>(null)
+// Which star carries the FLIP offset, and whether it's easing right now.
 const glidingStar = ref<number | null>(null)
+const glideOffset = ref(0)
+const glideEasing = ref(false)
 let glideTimer: ReturnType<typeof setTimeout> | undefined
+
+// Both layouts render a star per link. Only the one on screen has a box.
+function visibleStar(index: number): HTMLElement | null {
+  const stars = constellationEl.value?.querySelectorAll<HTMLElement>(`.constellation-star[data-star='${index}']`)
+
+  return Array.from(stars ?? []).find(el => el.offsetParent !== null) ?? null
+}
+
+async function glideStar(index: number, el: HTMLElement | null, from: number) {
+  // Let the pin (or unpin) land in the DOM first, then measure the jump.
+  await nextTick()
+  if (!el)
+    return
+
+  glideOffset.value = from - el.getBoundingClientRect().top
+  await nextTick()
+
+  // Flush the untransitioned transform before switching the transition on, so
+  // the ease runs from the old spot instead of skipping to the new one.
+  void el.offsetHeight
+  glideEasing.value = true
+  glideOffset.value = 0
+}
 
 function alignStar(index: number) {
   clearTimeout(glideTimer)
-  alignedStar.value = index
+  const el = visibleStar(index)
+  const from = el?.getBoundingClientRect().top ?? 0
+
+  glideEasing.value = false
   glidingStar.value = index
+  alignedStar.value = index
+  void glideStar(index, el, from)
 }
 
 function releaseStar(index: number) {
   if (alignedStar.value !== index)
     return
 
+  const el = visibleStar(index)
+  const from = el?.getBoundingClientRect().top ?? 0
+
+  glideEasing.value = false
+  glidingStar.value = index
   alignedStar.value = null
+  void glideStar(index, el, from)
+
   glideTimer = setTimeout(() => {
-    glidingStar.value = null
+    glideEasing.value = false
   }, GLIDE_MS)
 }
 
-function starStyle(star: number[], index: number): CSSProperties {
+// The column a star holds in: zero wide, reaching from the join's clip edge
+// down to the diamond, with the star sat at its bottom.
+function slotStyle(star: number[]): CSSProperties {
   const [x = 0, y = 0] = star
-  const [delay = 0, duration = 2000] = STAR_FLICKER[index] ?? []
-  // Room to the clip edge grows with how far down the block the star sits.
-  const room = headroom.value + y
-  const lead = alignedStar.value === index
-    ? 0
-    : Math.max(0, softMin(starLead.value * (STAR_LEAD[index] ?? 1), room, CAP_BLEND))
 
   return {
-    'left': `${x}px`,
-    'top': `${y}px`,
-    '--star-lead': `${lead}px`,
+    left: `${x}px`,
+    height: `calc(var(--star-headroom) + ${(y + STAR_RADIUS).toFixed(3)}px)`,
+  }
+}
+
+function starStyle(star: number[], index: number, height: number): CSSProperties {
+  const [, y = 0] = star
+  const [delay = 0, duration = 2000] = STAR_FLICKER[index] ?? []
+
+  return {
+    // Sticky edge, measured so every star lands the moment the block settles.
+    '--star-hold': `calc(${HOLD_FROM_BOTTOM} + ${(height - y - STAR_RADIUS).toFixed(3)}px)`,
+    '--star-glide': glidingStar.value === index ? `${glideOffset.value}px` : '0px',
     '--star-animation-offset': `${delay}ms`,
     '--star-animation-duration': `${duration}ms`,
   }
 }
 
-onMounted(measureClimb)
 onBeforeUnmount(() => clearTimeout(glideTimer))
-watch([scrollY, viewportHeight], measureClimb)
 </script>
 
 <template>
@@ -480,19 +543,24 @@ watch([scrollY, viewportHeight], measureClimb)
                   <div class="home-card home-card--forum">
                     <Marquee :speed="MARQUEE_SPEED" direction="left">
                       <p>
-                        <NuxtLink to="/forum">
-                          LATEST FORUM POSTS LATEST FORUM POSTS LATEST FORUM POSTS
+                        <NuxtLink v-for="copy in 3" :key="copy" to="/forum" :class="{ 'is-alt': copy % 2 === 0 }">
+                          LATEST FORUM POSTS
                         </NuxtLink>
                       </p>
                     </Marquee>
                     <Marquee
-                      v-for="(item, index) in maruqeeItems" :key="item.id" :speed="MARQUEE_SPEED"
+                      v-for="(row, index) in marqueeRows" :key="row.posts[0]?.id" :speed="MARQUEE_SPEED"
                       :direction="index % 2 === 0 ? 'right' : 'left'"
                     >
                       <p>
-                        <NuxtLink v-for="copy in 3" :key="copy" :to="`/forum/${item.id}`">
-                          {{ item.title }}{{ item.description ? `: ${item.description}` : '' }}
-                        </NuxtLink>
+                        <template v-for="copy in row.copies" :key="copy">
+                          <NuxtLink
+                            v-for="(post, position) in row.posts" :key="post.id" :to="`/forum/${post.id}`"
+                            :class="{ 'is-alt': position % 2 === 1 }"
+                          >
+                            {{ marqueePostLabel(post) }}
+                          </NuxtLink>
+                        </template>
                       </p>
                     </Marquee>
                   </div>
@@ -591,11 +659,21 @@ watch([scrollY, viewportHeight], measureClimb)
           </svg>
 
           <!-- One set of stars per layout, shown and hidden with the matching SVG. -->
-          <div class="constellation-stars constellation-stars--desktop" aria-hidden="true">
-            <div v-for="(star, index) in DESKTOP_STARS" :key="index" class="constellation-star" :class="{ 'is-gliding': glidingStar === index }" :style="starStyle(star, index)" />
+          <div class="constellation-stars constellation-stars--desktop" aria-hidden="true" :style="{ '--star-headroom': `${headroom}px` }">
+            <div v-for="(star, index) in DESKTOP_STARS" :key="index" class="constellation-star-slot" :style="slotStyle(star)">
+              <div
+                class="constellation-star" :data-star="index" :class="{ 'is-aligned': alignedStar === index,
+                                                                        'is-gliding': glideEasing && glidingStar === index }" :style="starStyle(star, index, DESKTOP_HEIGHT)"
+              />
+            </div>
           </div>
-          <div class="constellation-stars constellation-stars--mobile" aria-hidden="true">
-            <div v-for="(star, index) in MOBILE_STARS" :key="index" class="constellation-star" :class="{ 'is-gliding': glidingStar === index }" :style="starStyle(star, index)" />
+          <div class="constellation-stars constellation-stars--mobile" aria-hidden="true" :style="{ '--star-headroom': `${headroom}px` }">
+            <div v-for="(star, index) in MOBILE_STARS" :key="index" class="constellation-star-slot" :style="slotStyle(star)">
+              <div
+                class="constellation-star" :data-star="index" :class="{ 'is-aligned': alignedStar === index,
+                                                                        'is-gliding': glideEasing && glidingStar === index }" :style="starStyle(star, index, MOBILE_HEIGHT)"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -732,7 +810,9 @@ watch([scrollY, viewportHeight], measureClimb)
   word-wrap: balanced;
   width: 100%;
   position: relative;
-  overflow: hidden;
+  // clip rather than hidden: hidden makes this a scroll container, and the
+  // constellation's sticky stars would then hold against it instead of the viewport.
+  overflow: clip;
   padding-bottom: 420px;
 
   // The sun band sits behind the join content and crests the bottom edge.
@@ -917,31 +997,58 @@ watch([scrollY, viewportHeight], measureClimb)
     // everything on it like the backdrop stars do: labels, the join copy and
     // the flare all paint over them.
     .constellation-stars {
+      --star-headroom: 0px;
+
       position: absolute;
       inset: 0;
       z-index: -1;
       pointer-events: none;
     }
 
+    // Zero-width column per star, from the join's clip edge down to the diamond.
+    // It's the box the sticky hold is confined to, so a star never rises past
+    // the clip. Inline style sets left and height.
+    .constellation-star-slot {
+      position: absolute;
+      top: calc(var(--star-headroom) * -1);
+      width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
     // Same dot as the backdrop stars, sized to sit inside the diamond.
     .constellation-star {
-      --star-lead: 0px;
+      --star-hold: 0px;
+      --star-glide: 0px;
       --star-animation-offset: 0ms;
       --star-animation-duration: 2000ms;
       --star-base-opacity: 1;
 
-      position: absolute;
+      // Sticky against the viewport bottom: the star holds its spot on screen
+      // while the diamond is still below it, and rides with the page once the
+      // diamond climbs up to it.
+      position: sticky;
+      bottom: var(--star-hold);
+      flex: none;
       width: 2.5px;
       height: 2.5px;
-      // Centre on the diamond, then sit ahead of it by the scroll lead.
-      transform: translate(-50%, -50%) translateY(calc(var(--star-lead) * -1));
+      // Centre on the diamond. The glide is the FLIP offset while a hover pulls
+      // the star in or lets it go.
+      transform: translate(-50%, var(--star-glide));
       background-color: var(--color-text);
       border-radius: 50%;
       animation: star-flicker var(--star-animation-duration) infinite linear;
       animation-delay: var(--star-animation-offset);
 
-      // Only while gliding into or out of a hovered diamond. Scroll tracking
-      // stays instant otherwise.
+      // Pinned to its diamond by a hover on the link: drop the hold and ride.
+      &.is-aligned {
+        position: relative;
+        bottom: auto;
+      }
+
+      // Only while gliding into or out of a hovered diamond. The hold is
+      // instant otherwise.
       &.is-gliding {
         transition: transform 0.3s ease;
       }
@@ -994,6 +1101,12 @@ watch([scrollY, viewportHeight], measureClimb)
     @media (prefers-reduced-motion: reduce) {
       .constellation-flare {
         animation: none !important;
+      }
+
+      // No hold: the stars just sit in their diamonds.
+      .constellation-star {
+        position: relative;
+        bottom: auto;
       }
     }
   }
@@ -1358,6 +1471,8 @@ watch([scrollY, viewportHeight], measureClimb)
 // already landed, all of it on steps() so the frames snap instead of easing.
 .about-swap {
   grid-area: 1 / 1;
+  // The shorter side sits mid-card instead of leaving its slack at the bottom.
+  align-self: center;
   opacity: 0;
   pointer-events: none;
 
@@ -1409,13 +1524,15 @@ watch([scrollY, viewportHeight], measureClimb)
 .about-tear {
   grid-area: 1 / 1;
   position: relative;
+  // Same grid as the stack so the bands land exactly on the centered copy.
+  display: grid;
   pointer-events: none;
   z-index: 2;
   mix-blend-mode: screen;
 
   &__band {
-    position: absolute;
-    inset: 0;
+    grid-area: 1 / 1;
+    align-self: center;
     color: var(--color-accent);
     animation: about-tear-band 150ms steps(1, end) var(--tear-delay) both;
     will-change: transform, opacity;
@@ -1474,6 +1591,7 @@ watch([scrollY, viewportHeight], measureClimb)
   grid-template-rows: repeat(6, 64px);
   gap: 0;
 
+  // Stays under .home-card--forum so it outranks the generic .home-card p sizing
   p {
     font-size: 64px;
     line-height: 64px;
@@ -1485,9 +1603,20 @@ watch([scrollY, viewportHeight], measureClimb)
     a {
       text-decoration: none;
       color: inherit;
+      // Breathing room so back-to-back posts don't read as one word
+      margin-right: 0.4em;
 
       &:hover {
         color: var(--color-accent);
+      }
+    }
+
+    // Every other entry in a row sits back so neighbours read as separate items
+    a.is-alt {
+      opacity: 0.5;
+
+      &:hover {
+        opacity: 1;
       }
     }
   }

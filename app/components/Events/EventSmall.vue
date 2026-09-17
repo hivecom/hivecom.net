@@ -28,6 +28,10 @@ const { userIds, count: rsvpCount, loading: loadingRsvps } = useDataEventAttende
 
 const { organizerId, showOrganizer, attendees } = useEventOrganizer(() => props.data, userIds)
 
+const showPeople = computed(() =>
+  loadingRsvps.value || rsvpCount.value > 0 || showOrganizer.value,
+)
+
 const linkedGames = computed(() => {
   if (!props.games || !props.data.games?.length)
     return []
@@ -62,8 +66,8 @@ const linkedGames = computed(() => {
         <p class="event-description">
           {{ truncate(props.data.description, 108) }}
         </p>
-        <Flex v-if="loadingRsvps || rsvpCount > 0 || showOrganizer" x-start class="event-people" y-center>
-          <Flex y-center :gap="4" class="event-attendees">
+        <Flex v-if="showPeople || linkedGames.length > 0" x-start class="event-people" y-center>
+          <Flex v-if="showPeople" y-center :gap="4" class="event-attendees">
             <EventHostAvatar v-if="showOrganizer" :user-id="organizerId!" size="s" />
             <Skeleton v-if="loadingRsvps" :height="28" :width="80" :radius="4" />
             <template v-else>
@@ -76,7 +80,7 @@ const linkedGames = computed(() => {
           </Flex>
 
           <template v-if="linkedGames.length > 0">
-            <Divider vertical :height="16" />
+            <Divider v-if="showPeople" vertical :height="16" />
             <EventGames :games="linkedGames" :show-label="false" :max-visible="4" />
           </template>
         </Flex>

@@ -79,7 +79,6 @@ const isEmpty = computed(() =>
 
     <HomeDashboardEmpty
       v-if="isEmpty"
-      icon="ph:gavel"
       message="Nothing on the ballot. Got something the community should settle?"
     >
       <Button size="s" variant="gray" @click="navigateTo('/votes?create=1')">

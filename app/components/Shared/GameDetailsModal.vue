@@ -9,7 +9,6 @@ import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActi
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
-import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import RegionIndicator from '@/components/Shared/RegionIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
@@ -44,7 +43,7 @@ const { games, getById: getGameById } = useDataGames()
 const { getGameCoverUrl, getGameBackgroundUrl } = useDataGameAssets()
 const { gameservers } = useDataGameservers()
 const { metrics, fetchMetricsHistoryIsolated, fetchMetricsWindowIsolated } = useDataMetrics()
-const { currentPlayersForSteamId } = useDataSteamPresences()
+const { currentPlayersForSteamId, recentPlayersForSteamId, presencesReady } = useDataSteamPresences()
 const { handleContentClick } = useExternalLinkGuard()
 const supabase = useSupabaseClient<Database>()
 const user = useSupabaseUser()
@@ -118,6 +117,23 @@ const gameServersForGame = computed(() => {
 const currentPlayerIds = computed(() => {
   const steamId = currentDetails.value?.game.steam_id
   return currentPlayersForSteamId(steamId)
+})
+
+const recentPlayerIds = computed(() => recentPlayersForSteamId(currentDetails.value?.game.steam_id))
+
+// The roster is one shared fetch, so the first modal of a session can open
+// before it lands. Skeleton the corner until then rather than popping it in.
+const playersPending = computed(() => Boolean(user.value) && !presencesReady.value && currentDetails.value?.game.steam_id != null)
+
+// Who's in the game leads, then everyone who played it recently. The live
+// list is also what gets the green dot, so someone in both only shows once.
+const artworkPlayerIds = computed(() => {
+  const live = new Set(currentPlayerIds.value)
+
+  return [
+    ...currentPlayerIds.value,
+    ...recentPlayerIds.value.filter(id => !live.has(id)),
+  ]
 })
 
 const serverPlayerCount = computed(() => {
@@ -423,6 +439,31 @@ watch(
                 <Icon name="ph:image" size="32" />
                 <span>No artwork available</span>
               </div>
+
+              <!-- Who's in it now, then who played it lately, on the art
+                   itself. Clicks stay on the avatars rather than toggling the
+                   accordion behind them. -->
+              <Flex v-if="user && (playersPending || artworkPlayerIds.length > 0 || serverPlayerCount > 0)" gap="s" y-center class="game-details-modal__media-players" @click.stop>
+                <BulkAvatarDisplay
+                  v-if="playersPending || artworkPlayerIds.length > 0"
+                  :user-ids="artworkPlayerIds"
+                  :pending="playersPending"
+                  :live-ids="currentPlayerIds"
+                  live-label="Playing now"
+                  :max-users="8"
+                  :avatar-size="32"
+                  :gap="-8"
+                  :show-names="false"
+                  :expand="false"
+                  cluster
+                  no-empty-state
+                />
+                <Badge v-if="serverPlayerCount > 0" variant="neutral" size="s">
+                  <Icon name="ph:hard-drives" size="12" />
+                  {{ serverPlayerCount }} on servers
+                </Badge>
+              </Flex>
+              <div v-if="user && (playersPending || artworkPlayerIds.length > 0 || serverPlayerCount > 0)" class="game-details-modal__media-scrim" />
               <div class="game-details-modal__media-hint">
                 <Icon :name="metaOpen ? 'ph:caret-up' : 'ph:info'" size="14" />
               </div>
@@ -486,32 +527,30 @@ watch(
             <Icon name="ph:image" size="32" />
             <span>No artwork available</span>
           </div>
-        </div>
 
-        <!-- Live activity row (logged in only) -->
-        <Flex v-if="user && (currentPlayerIds.length > 0 || serverPlayerCount > 0)" gap="m" y-center wrap>
-          <Flex v-if="currentPlayerIds.length > 0" gap="s" y-center class="game-details-modal__live-row">
-            <OnlineBadge
-              :count="currentPlayerIds.length"
-              label="playing now"
-              singular="playing now"
-              size="m"
-            />
+          <!-- Who's in it now, then who played it lately, on the art itself. -->
+          <Flex v-if="user && (playersPending || artworkPlayerIds.length > 0 || serverPlayerCount > 0)" gap="s" y-center class="game-details-modal__media-players">
             <BulkAvatarDisplay
-              :user-ids="currentPlayerIds"
+              v-if="playersPending || artworkPlayerIds.length > 0"
+              :user-ids="artworkPlayerIds"
+              :pending="playersPending"
+              :live-ids="currentPlayerIds"
+              live-label="Playing now"
               :max-users="8"
-              :avatar-size="36"
+              :avatar-size="32"
               :gap="-8"
               :show-names="false"
+              :expand="false"
               cluster
               no-empty-state
             />
+            <Badge v-if="serverPlayerCount > 0" variant="neutral" size="s">
+              <Icon name="ph:hard-drives" size="12" />
+              {{ serverPlayerCount }} on servers
+            </Badge>
           </Flex>
-          <Badge v-if="serverPlayerCount > 0" variant="neutral" size="m">
-            <Icon name="ph:hard-drives" size="12" />
-            {{ serverPlayerCount }} on servers
-          </Badge>
-        </Flex>
+          <div v-if="user && (playersPending || artworkPlayerIds.length > 0 || serverPlayerCount > 0)" class="game-details-modal__media-scrim" />
+        </div>
 
         <!-- Stats grid -->
         <div class="game-details-modal__stats-grid">
@@ -751,6 +790,25 @@ watch(
     opacity: 1 !important;
   }
 
+  // Bottom-left of the art. Above the scrim and the artwork so the avatars are
+  // still real links, and clear of the info hint in the opposite corner.
+  &__media-players {
+    position: absolute;
+    bottom: var(--space-s);
+    left: var(--space-s);
+    z-index: 1;
+  }
+
+  // Darkens the bottom of the art under the avatars so they read on bright
+  // frames without dulling the whole image.
+  &__media-scrim {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 96px;
+    pointer-events: none;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent);
+  }
+
   &__media-skeleton {
     position: absolute;
     inset: 0;
@@ -795,10 +853,6 @@ watch(
     :deep(.y-axis-skeleton) {
       height: 150px !important;
     }
-  }
-
-  &__live-row {
-    flex-wrap: nowrap;
   }
 
   &__stats-grid {

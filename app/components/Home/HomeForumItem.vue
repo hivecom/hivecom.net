@@ -1,14 +1,23 @@
 <script setup lang="ts">
 import type { ActivityItem } from '@/composables/useForumActivityFeed'
-import { Divider, Flex } from '@dolanske/vui'
+import { Flex } from '@dolanske/vui'
 import MarkdownPreview from '@/components/Shared/MarkdownPreview.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserName from '@/components/Shared/UserName.vue'
+import { useNow } from '@/composables/useNow'
+import { fromNow } from '@/lib/utils/date'
 
 const props = defineProps<{
   post: ActivityItem
   mentionLookup: Record<string, string>
 }>()
+
+const { now } = useNow()
+
+// Narrow ("3d ago") like the gameserver card's activity line, because the row
+// splits its width with the thread name. The item's own `timestamp` is baked at
+// fetch time and never ages, so this re-derives off the shared tick instead.
+const timeLabel = computed(() => fromNow(props.post.timestampRaw, now.value, 'narrow'))
 </script>
 
 <template>
@@ -21,19 +30,22 @@ const props = defineProps<{
       <MarkdownPreview v-if="post.type === 'Reply'" :markdown="post.title" :mention-lookup="props.mentionLookup" />
       <template v-else>{{ post.title }}</template>
     </strong>
-    <Flex y-center x-between class="forum__latest-footer" expand @click.stop>
+    <Flex y-center x-between gap="s" class="forum__latest-footer" expand @click.stop>
       <Flex y-center gap="xs" class="forum__latest-user">
         <UserAvatar :user-id="post.user" :size="18" linked show-preview />
         <UserName :user-id="post.user" inherit show-preview />
+        <span class="forum__latest-time">{{ timeLabel }}</span>
       </Flex>
-      <Divider vertical :height="12" />
-      <span class="forum__latest-type">
-        <template v-if="post.type === 'Reply'">
-          {{ post.typeLabel }} <strong>{{ post.typeContext }}</strong>
-        </template>
-        <template v-else>
-          {{ post.typeLabel ?? post.type }}
-        </template>
+
+      <!-- Replies push the thread to the far edge with the reply arrow standing
+           in for "Reply in". Topics and discussions have no thread to point at,
+           so they keep the plain label. -->
+      <span v-if="post.type === 'Reply'" class="forum__latest-thread">
+        <Icon name="ph:arrow-bend-up-left" :size="12" class="forum__latest-thread-icon" />
+        <span class="forum__latest-thread-name">{{ post.typeContext }}</span>
+      </span>
+      <span v-else class="forum__latest-type">
+        {{ post.typeLabel ?? post.type }}
       </span>
     </Flex>
   </NuxtLink>
@@ -76,27 +88,81 @@ const props = defineProps<{
 }
 
 .forum__latest-type {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
-  display: block;
-  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
 
-  strong {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-bold);
-  }
+// Right-aligned and dimmed: the thread is context for the message, so it sits
+// a step under the author line rather than competing with it. Qualified by the
+// row class because the blanket `span` rule above would otherwise out-specify
+// the colour.
+.forum__latest-item .forum__latest-thread {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  color: var(--color-text-lightest);
+}
+
+.forum__latest-thread-icon {
+  flex-shrink: 0;
+}
+
+.forum__latest-item .forum__latest-thread-name {
+  min-width: 0;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.forum__latest-item .forum__latest-time {
+  flex-shrink: 0;
+  color: var(--color-text-lighter);
+  font-weight: var(--font-weight-regular);
 }
 
 // The name sits at the same weight and size as the rest of the footer, so
 // UserName inherits instead of carrying its own scale.
 .forum__latest-user {
+  flex: 0 1 auto;
   min-width: 0;
+  // Never more than two thirds of the row, so a long name can't crowd the
+  // thread out entirely.
+  max-width: 66%;
+  overflow: hidden;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   color: var(--color-text);
+
+  // Avatar keeps its 18px whatever else happens.
+  > :first-child {
+    flex-shrink: 0;
+  }
+
+  // UserName wraps by default and its text has no truncation of its own, so
+  // without this the name either wraps to a second line or spills over the
+  // thread once the row runs out of room.
+  :deep(.user-name) {
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  :deep(.user-name__link) {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  :deep(.user-name__text) {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .forum__latest-title {

@@ -54,7 +54,13 @@ defineOgImage('Default', {
   description: 'Discover the games played in the Hivecom community.',
 })
 
-const { currentPlayersBySteamId, presencesLoading, currentPlayersForSteamId } = useDataSteamPresences()
+const { currentPlayersBySteamId, presencesLoading, presencesReady, currentPlayersForSteamId } = useDataSteamPresences()
+
+// The recent section draws from presences (live), history (recently played)
+// and the games list, so it stays on its skeleton until all three have landed.
+// presencesReady rather than presencesLoading, since the latter starts false
+// and flips during background refetches.
+const recentActivityLoading = computed(() => !presencesReady.value || loadingHistory.value || gamesLoading.value)
 
 function currentPlayersForGame(game: Tables<'games'>): string[] {
   return currentPlayersForSteamId(game.steam_id)
@@ -405,7 +411,7 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
           :current-players-by-steam-id="currentPlayersBySteamId"
           :games="games"
           :is-logged-in="!!user"
-          :loading="presencesLoading"
+          :loading="recentActivityLoading"
           :metrics-history="metricsHistory"
         />
       </section>

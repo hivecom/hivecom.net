@@ -10,6 +10,8 @@ const props = defineProps<{
   playerIds?: string[]
   lastSeen?: number
   peakCount?: number
+  /** Replaces the community headcount line, for lists about one person. */
+  subtitle?: string
 }>()
 
 function timeAgo(ts: number): string {
@@ -26,6 +28,9 @@ function timeAgo(ts: number): string {
 }
 
 const subtitle = computed(() => {
+  if (props.subtitle != null)
+    return props.subtitle
+
   if (props.live) {
     const count = props.playerIds?.length ?? 0
     return count === 1 ? '1 playing now' : `${count} playing now`

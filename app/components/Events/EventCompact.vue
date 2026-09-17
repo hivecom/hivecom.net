@@ -35,10 +35,10 @@ const { organizerId, showOrganizer, attendees } = useEventOrganizer(() => props.
         </strong>
         <Flex x-start y-center>
           <Flex v-if="loadingRsvps || rsvpCount > 0 || showOrganizer" x-start class="event-people" y-center :gap="4">
-            <EventHostAvatar v-if="showOrganizer" :user-id="organizerId!" size="s" />
-            <Skeleton v-if="loadingRsvps" :height="28" :width="80" :radius="4" />
+            <EventHostAvatar v-if="showOrganizer" :user-id="organizerId!" :size="18" />
+            <Skeleton v-if="loadingRsvps" :height="18" :width="80" :radius="4" />
             <template v-else>
-              <BulkAvatarDisplay v-if="user && attendees.length > 0" :user-ids="attendees" :max-users="4" avatar-size="s" :expand="false" :gap="6" cluster :hide-generic-users="false" />
+              <BulkAvatarDisplay v-if="user && attendees.length > 0" :user-ids="attendees" :max-users="4" :avatar-size="18" :expand="false" :gap="6" cluster :hide-generic-users="false" />
               <Badge v-else-if="!user && rsvpCount > 0" :variant="hasEventEnded ? 'neutral' : 'accent'">
                 <Icon name="ph:users" />
                 {{ rsvpCount }} {{ hasEventEnded ? 'Went' : 'Going' }}

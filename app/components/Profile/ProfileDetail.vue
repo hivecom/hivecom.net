@@ -7,6 +7,7 @@ import ProfileBadges from '@/components/Profile/ProfileBadges.vue'
 import ProfileBanStatus from '@/components/Profile/ProfileBanStatus.vue'
 import ProfileForm from '@/components/Profile/ProfileForm.vue'
 import ProfileFriends from '@/components/Profile/ProfileFriends.vue'
+import ProfileGames from '@/components/Profile/ProfileGames.vue'
 import ProfileHeader from '@/components/Profile/ProfileHeader.vue'
 import ComplaintsManager from '@/components/Shared/ComplaintsManager.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
@@ -458,6 +459,8 @@ function openFriendsModal() {
 
         <!-- (Right) -->
         <Flex column gap="m" class="profile-sidebar-col">
+          <ProfileTheme v-if="profile.theme_id" :theme-id="profile.theme_id" />
+
           <!-- Activity section -->
           <ProfileActivity
             v-if="profile.steam_id !== null || profile.teamspeak_identities?.toString() !== ''"
@@ -466,7 +469,15 @@ function openFriendsModal() {
             :is-logged-in="isLoggedIn"
           />
 
-          <ProfileTheme v-if="profile.theme_id" :theme-id="profile.theme_id" />
+          <!-- Recent games, off the same Steam presence row the activity
+               widget above reads. Rich presence being off is a deliberate
+               opt-out, so the card doesn't exist rather than showing a locked
+               shell. -->
+          <ProfileGames
+            v-if="profile.steam_id && profile.rich_presence_enabled"
+            :profile="profile"
+            :is-logged-in="isLoggedIn"
+          />
 
           <!-- Recent Discussions -->
           <ProfileDiscussions :profile-id="profile.id" :username="profile.username" />
