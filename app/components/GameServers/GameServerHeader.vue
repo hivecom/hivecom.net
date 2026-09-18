@@ -225,7 +225,7 @@ const currentMap = computed<string | null>(() => {
                       <TimestampDate size="xs" :date="container.reported_at" :tooltip="false" />
                     </Flex>
                   </template>
-                  <Badge :variant="container.healthy ? 'success' : 'warning'" :size="isMobile ? 's' : undefined">
+                  <Badge :variant="container.healthy ? 'success' : 'warning'">
                     <Icon :name="container.healthy ? 'ph:check' : 'ph:warning'" />
                     Healthy
                   </Badge>

@@ -191,19 +191,18 @@ const {
 </template>
 
 <style scoped lang="scss">
-// Same dot as the forum index uses for a topic with new posts, so the two
-// places agree on what "unread" looks like.
+// The dot alone marks unread. The brighter outline is reserved for hover so
+// the two states don't read the same.
 .home-item--unread {
   position: relative;
-  border-color: var(--color-border);
 
   &::after {
     content: '';
     position: absolute;
     top: var(--space-xs);
     right: var(--space-xs);
-    width: 8px;
-    height: 8px;
+    width: 4px;
+    height: 4px;
     border-radius: var(--border-radius-pill);
     background: var(--color-accent);
   }

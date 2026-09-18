@@ -119,7 +119,7 @@ function channelActivity(entry: ChannelEntry): string {
   const parts: string[] = []
 
   if (entry.here > 0)
-    parts.push(`${entry.here} here`)
+    parts.push(`${entry.here} user${entry.here === 1 ? '' : 's'}`)
 
   if (entry.messages > 0)
     parts.push(`${entry.messages} message${entry.messages === 1 ? '' : 's'} today`)
@@ -282,7 +282,7 @@ function hourLabel(index: number): string {
 
 <template>
   <Flex column gap="m" class="dashboard-fill">
-    <HomeDashboardCardHeader title="Chat / Voice" icon="ph:chat-circle" to="/chat" />
+    <HomeDashboardCardHeader title="Chat / Voice" icon="ph:hash" to="/chat" />
 
     <HomeDashboardSkeleton v-if="!ircReady && !shownChannels.length" variant="grid" :count="SHOWN_CHANNELS" />
     <HomeDashboardSection v-else label="Chat activity">
