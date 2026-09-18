@@ -222,5 +222,11 @@ function onDayClick(day: DayClickPayload) {
   :deep(.vc-pane-layout) {
     border: none;
   }
+
+  // The library insets the week grid by default, so the days sat a few pixels
+  // in from the section edges. The grid should run flush with them.
+  :deep(.vc-weeks) {
+    padding: 0;
+  }
 }
 </style>
