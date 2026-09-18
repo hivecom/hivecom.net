@@ -1036,10 +1036,8 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
       // Centre on the diamond. The glide is the FLIP offset while a hover pulls
       // the star in or lets it go.
       transform: translate(-50%, var(--star-glide));
-      background-color: var(--color-text);
       border-radius: 50%;
-      animation: star-flicker var(--star-animation-duration) infinite linear;
-      animation-delay: var(--star-animation-offset);
+      @include star-flicker-layers;
 
       // Pinned to its diamond by a hover on the link: drop the hold and ride.
       &.is-aligned {

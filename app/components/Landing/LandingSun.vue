@@ -28,6 +28,20 @@ let observer: IntersectionObserver | null = null
 let active = false
 let lastNow = 0
 
+// Host size, cached by the resize observer below so the frame loop doesn't
+// read clientWidth/clientHeight (layout) every tick. The engine's own resize
+// bails when nothing changed, so passing the cached size per frame is free.
+let hostWidth = 0
+let hostHeight = 0
+
+useResizeObserver(wrap, (entries) => {
+  const rect = entries[0]?.contentRect
+  if (!rect)
+    return
+  hostWidth = rect.width
+  hostHeight = rect.height
+})
+
 function readColors(): SunColors {
   return {
     accent: readThemeColor('--color-accent', [0.65, 0.99, 0.18], { normalized: true }) as [number, number, number],
@@ -57,10 +71,8 @@ const { start: startLoop, stop: stopLoop } = useCanvasLoop((now) => {
   const dt = lastNow ? (now - lastNow) / 1000 : 1 / 60
   lastNow = now
 
-  const w = host.clientWidth
-  const h = host.clientHeight
-  if (w > 0 && h > 0)
-    engine.resize(w, h, Math.min(window.devicePixelRatio || 1, 2))
+  if (hostWidth > 0 && hostHeight > 0)
+    engine.resize(hostWidth, hostHeight, Math.min(window.devicePixelRatio || 1, 2))
 
   engine.setRise(computeRise())
   engine.frame(dt, now / 1000)

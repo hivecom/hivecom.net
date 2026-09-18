@@ -38,9 +38,18 @@ const props = withDefaults(defineProps<{
 const EASE = 0.16
 const SETTLE_PX = 0.5
 
+// Must match the corner size in the styles below. The box is drawn by
+// translating three of the corners rather than sizing the overlay, so the
+// travel never touches width/height - those dirty layout every frame of an
+// ease and register as layout shifts, right when scroll needs the budget.
+const CORNER_SIZE = 18
+
 const ZERO: Rect = { x: 0, y: 0, w: 0, h: 0 }
 
 const overlayRef = ref<HTMLElement | null>(null)
+const cornerTrRef = ref<HTMLElement | null>(null)
+const cornerBlRef = ref<HTMLElement | null>(null)
+const cornerBrRef = ref<HTMLElement | null>(null)
 const visible = ref(false)
 const isHovered = ref(false)
 
@@ -51,6 +60,7 @@ let scrolled: FocusTargetHandle | null = null
 let lastFocused: FocusTargetHandle | null = null
 let lastGoal: Rect | null = null
 let offset: Rect = ZERO
+let lastWritten: Rect = { x: Number.NaN, y: Number.NaN, w: Number.NaN, h: Number.NaN }
 let frame = 0
 let resizeObserver: ResizeObserver | null = null
 
@@ -98,10 +108,23 @@ function notifyLeave(target: FocusTargetHandle) {
 provide(focusFrameKey, { register, unregister, notifyEnter, notifyLeave })
 
 // The fixed nav covers the top strip of the viewport, so visibility is judged
-// against the part below it.
+// against the part below it. The nav doesn't move with scroll, so its bottom
+// edge is measured once (and again on resize) rather than queried every tick -
+// the tick runs per scroll event, and a querySelector plus rect read there
+// forces layout right when the frame budget is tightest.
+let navBottomCache: number | null = null
+
 function navBottom(): number {
-  const nav = document.querySelector('.navigation')
-  return nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0
+  if (navBottomCache == null) {
+    const nav = document.querySelector('.navigation')
+    navBottomCache = nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0
+  }
+  return navBottomCache
+}
+
+function invalidateNavBottom() {
+  navBottomCache = null
+  schedule()
 }
 
 function targetRect(target: FocusTargetHandle): Rect | null {
@@ -193,10 +216,26 @@ function tick() {
       offset = ZERO
   }
 
-  // Write phase.
-  overlay.style.transform = `translate3d(${goal.x + offset.x}px, ${goal.y + offset.y}px, 0)`
-  overlay.style.width = `${goal.w + offset.w}px`
-  overlay.style.height = `${goal.h + offset.h}px`
+  // Write phase: transforms only, so the whole update stays on the compositor.
+  // The overlay carries the box position; the three far corners carry the box
+  // size as translate offsets from the top-left one.
+  const x = goal.x + offset.x
+  const y = goal.y + offset.y
+  const w = goal.w + offset.w
+  const h = goal.h + offset.h
+  if (x !== lastWritten.x || y !== lastWritten.y)
+    overlay.style.transform = `translate3d(${x}px, ${y}px, 0)`
+  if (w !== lastWritten.w || h !== lastWritten.h) {
+    const dx = w - CORNER_SIZE
+    const dy = h - CORNER_SIZE
+    if (cornerTrRef.value)
+      cornerTrRef.value.style.transform = `translate3d(${dx}px, 0, 0)`
+    if (cornerBlRef.value)
+      cornerBlRef.value.style.transform = `translate3d(0, ${dy}px, 0)`
+    if (cornerBrRef.value)
+      cornerBrRef.value.style.transform = `translate3d(${dx}px, ${dy}px, 0)`
+  }
+  lastWritten = { x, y, w, h }
   visible.value = true
 
   if (offset !== ZERO)
@@ -219,13 +258,13 @@ onMounted(() => {
       resizeObserver.observe(el)
   }
   window.addEventListener('scroll', schedule, { passive: true, capture: true })
-  window.addEventListener('resize', schedule, { passive: true })
+  window.addEventListener('resize', invalidateNavBottom, { passive: true })
   schedule()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', schedule, { capture: true })
-  window.removeEventListener('resize', schedule)
+  window.removeEventListener('resize', invalidateNavBottom)
   resizeObserver?.disconnect()
   resizeObserver = null
   if (frame) {
@@ -249,9 +288,9 @@ onBeforeUnmount(() => {
         aria-hidden="true"
       >
         <span class="focus-frame__corner focus-frame__corner--tl" />
-        <span class="focus-frame__corner focus-frame__corner--tr" />
-        <span class="focus-frame__corner focus-frame__corner--bl" />
-        <span class="focus-frame__corner focus-frame__corner--br" />
+        <span ref="cornerTrRef" class="focus-frame__corner focus-frame__corner--tr" />
+        <span ref="cornerBlRef" class="focus-frame__corner focus-frame__corner--bl" />
+        <span ref="cornerBrRef" class="focus-frame__corner focus-frame__corner--br" />
       </div>
     </Teleport>
   </ClientOnly>
@@ -269,7 +308,7 @@ onBeforeUnmount(() => {
   transition:
     opacity 0.4s ease,
     color 0.3s ease;
-  will-change: transform, width, height;
+  will-change: transform;
 
   &.is-visible {
     opacity: 1;
@@ -280,37 +319,35 @@ onBeforeUnmount(() => {
   }
 }
 
+// All four corners sit at the overlay's origin; the tick translates the far
+// three out to the box's width and height. Keep the size in sync with
+// CORNER_SIZE in the script.
 .focus-frame__corner {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 18px;
   height: 18px;
   border-color: currentColor;
   border-style: solid;
+  will-change: transform;
 
   &--tl {
-    top: 0;
-    left: 0;
     border-width: 2px 0 0 2px;
     border-radius: var(--border-radius-xs) 0 0 0;
   }
 
   &--tr {
-    top: 0;
-    right: 0;
     border-width: 2px 2px 0 0;
     border-radius: 0 var(--border-radius-xs) 0 0;
   }
 
   &--bl {
-    bottom: 0;
-    left: 0;
     border-width: 0 0 2px 2px;
     border-radius: 0 0 0 var(--border-radius-xs);
   }
 
   &--br {
-    bottom: 0;
-    right: 0;
     border-width: 0 2px 2px 0;
     border-radius: 0 0 var(--border-radius-xs) 0;
   }

@@ -11,7 +11,12 @@ const isGlobeVisible = ref(false)
 
 const { loadGlobeData } = useGlobeData()
 const { params: perfParams, startProbe, stopProbe } = useGlobePerf()
-const { init, destroy } = useGlobeRenderer()
+const { init, destroy, pause, resume } = useGlobeRenderer()
+
+// Parks the globe (render loop, tick, arc spawning) while the hero is scrolled
+// off screen - the post chain is far too expensive to run for nobody. Same
+// pattern as LandingSun's observer.
+let visibilityObserver: IntersectionObserver | null = null
 
 onMounted(async () => {
   if (!import.meta.client)
@@ -46,6 +51,20 @@ onMounted(async () => {
     // real render load rather than initialisation overhead.
     startProbe()
 
+    // rootMargin keeps a little slack so the globe is already turning again by
+    // the time it scrolls back into view.
+    visibilityObserver = new IntersectionObserver((entries) => {
+      const entry = entries[0]
+      if (!entry)
+        return
+
+      if (entry.isIntersecting)
+        resume()
+      else
+        pause()
+    }, { rootMargin: '100px 0px' })
+    visibilityObserver.observe(container)
+
     // Wait for two animation frames so the first WebGL frame has actually
     // been painted before we signal readiness. Without this the planet ghost
     // can fade out a tick before the globe shows up.
@@ -62,6 +81,8 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  visibilityObserver?.disconnect()
+  visibilityObserver = null
   stopProbe()
   destroy()
   if (globeEl.value)

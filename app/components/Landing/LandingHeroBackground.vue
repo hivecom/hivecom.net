@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useGlobePerf } from '@/composables/useGlobePerf'
 import { isLightTheme, parseColor } from '@/lib/globe/GlobeTheme'
 import fragSrc from './LandingHeroBackgroundShader.frag.glsl?raw'
 import vertSrc from './LandingHeroBackgroundShader.vert.glsl?raw'
 
 // Playback speed multiplier for the drift. 1 is the original rate; the dashboard
-// runs it slower so the backdrop is calmer behind the cards.
+// runs it slower so the backdrop is calmer behind the cards. `paused` parks the
+// render loop while the canvas is invisible (e.g. scroll-faded to zero); the
+// accumulated animTime survives, so unpausing continues rather than jumping.
 const props = withDefaults(defineProps<{
   speed?: number
+  paused?: boolean
 }>(), {
   speed: 1,
+  paused: false,
 })
 
 const canvasEl = ref<HTMLCanvasElement | null>(null)
@@ -30,6 +34,7 @@ let lastFrame = 0
 let timeOffset = 0
 let themeObserver: MutationObserver | null = null
 let themeMedia: MediaQueryList | null = null
+let resizeObserver: ResizeObserver | null = null
 const { params: perfParams } = useGlobePerf()
 
 // Current accent color as a [r, g, b] vec normalized to 0..1
@@ -152,14 +157,10 @@ function render(now: number) {
   if (!accentResolved)
     readAccentColors()
 
-  resize()
-
-  gl.useProgram(program)
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-  const positionLoc = gl.getAttribLocation(program, 'a_position')
-  gl.enableVertexAttribArray(positionLoc)
-  gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0)
-
+  // Program, buffer and vertex attribs are set up once in initGL and this
+  // context draws nothing else, so the frame is just uniforms and the draw.
+  // Sizing lives with the resize observers, not here: getBoundingClientRect
+  // every frame forces a layout.
   gl.uniform1f(timeUniform, t)
   gl.uniform2f(resolutionUniform, canvasEl.value.width, canvasEl.value.height)
   gl.uniform3f(baseColorUniform, ...baseColor)
@@ -232,6 +233,13 @@ function initGL(): boolean {
     1,
   ]), gl.STATIC_DRAW)
 
+  // One program, one buffer, nothing else touches this context: bind the
+  // vertex state here once instead of re-looking it up every frame.
+  gl.useProgram(program)
+  const positionLoc = gl.getAttribLocation(program, 'a_position')
+  gl.enableVertexAttribArray(positionLoc)
+  gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0)
+
   accentResolved = false
   readAccentColors()
   resize()
@@ -241,7 +249,8 @@ function initGL(): boolean {
   // Reset frame timing, but keep animTime so a context restore doesn't jump the
   // noise phase.
   lastFrame = 0
-  rafId = requestAnimationFrame(render)
+  if (!props.paused)
+    rafId = requestAnimationFrame(render)
   return true
 }
 
@@ -274,14 +283,40 @@ onMounted(() => {
   canvas.addEventListener('webglcontextrestored', handleContextRestored, false)
 
   setupThemeWatcher()
+  // The element resize (layout) and window resize (devicePixelRatio changes on
+  // zoom or display moves) don't fully overlap, so listen to both.
   window.addEventListener('resize', resize)
+  resizeObserver = new ResizeObserver(resize)
+  resizeObserver.observe(canvas)
   initGL()
+})
+
+// The perf probe can lower bgResScale after mount; re-size the backing store
+// when it does.
+watch(perfParams, resize)
+
+watch(() => props.paused, (paused) => {
+  if (paused) {
+    if (rafId != null) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
+    return
+  }
+
+  if (rafId == null && gl != null) {
+    // Reset frame timing so the pause doesn't count as elapsed drift time.
+    lastFrame = 0
+    rafId = requestAnimationFrame(render)
+  }
 })
 
 onBeforeUnmount(() => {
   if (rafId)
     cancelAnimationFrame(rafId)
   window.removeEventListener('resize', resize)
+  resizeObserver?.disconnect()
+  resizeObserver = null
   canvasEl.value?.removeEventListener('webglcontextlost', handleContextLost)
   canvasEl.value?.removeEventListener('webglcontextrestored', handleContextRestored)
   themeMedia?.removeEventListener('change', onThemeChange)

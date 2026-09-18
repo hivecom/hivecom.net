@@ -85,7 +85,41 @@ export function useGlobeRenderer() {
   let bloomThemeMedia: MediaQueryList | null = null
   let bloomThemeObserver: MutationObserver | null = null
 
+  // Held so pause/resume can restart the tick loop with the same closure.
+  let tickRefreshHexes: (() => void) | null = null
+  let paused = false
+
   const highlighted = new Map<string, { started: number, duration: number }>()
+
+  // ---------------------------------------------------------------------------
+  // Theme color cache
+  // ------------------------------------------------------------------------
+  // The hex color accessor runs once per country per digest, and the ring
+  // interpolator runs every frame. Reading the colors live from CSS vars there
+  // means hundreds of getComputedStyle calls a frame, so they're cached here
+  // and refreshed by the theme observers instead.
+  let themeColors = {
+    hexBase: '#333333',
+    highlight: '#69b103',
+    text: '#eeeeee',
+    textRgb: [238, 238, 238] as [number, number, number],
+    ringRgb: '167,252,47',
+    arc: '#a7fc2f',
+    light: false,
+  }
+
+  function refreshThemeColors() {
+    const text = getTextColor()
+    themeColors = {
+      hexBase: getHexBaseColor(),
+      highlight: getHighlightColor(),
+      text,
+      textRgb: parseColor(text),
+      ringRgb: getRingRgb(),
+      arc: getArcColor(),
+      light: isLightTheme(),
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Timer teardown
@@ -296,6 +330,14 @@ export function useGlobeRenderer() {
       maybeAfterimage.enabled = !light
   }
 
+  function handleThemeChange() {
+    refreshThemeColors()
+    applyPostProcessingTheme()
+    // Repaint the hexes once with the new palette. The tick only refreshes
+    // them while a highlight fade is running, so a theme swap has to ask.
+    tickRefreshHexes?.()
+  }
+
   // ---------------------------------------------------------------------------
   // Arc + ring logic
   // ------------------------------------------------------------------------
@@ -415,12 +457,27 @@ export function useGlobeRenderer() {
   // ---------------------------------------------------------------------------
   // Animation tick
   // ------------------------------------------------------------------------
+  // Re-feeding the hex data re-runs three-globe's digest over every country,
+  // which is real main-thread work. While arcs are flying, highlights are
+  // active almost continuously, so this would otherwise run every frame.
+  // The fades run over 1.2-2s on tiny dots; stepping the color at 20Hz is
+  // indistinguishable and drops the digest cost by two thirds and more.
+  const HEX_REFRESH_MS = 50
+  let lastHexRefresh = 0
+
   function startTick(refreshHexes: () => void) {
+    tickRefreshHexes = refreshHexes
+
     const tick = () => {
-      refreshHexes()
+      // Only needed while a highlight is actually fading. The accessor deletes
+      // entries once they've run out, so this goes quiet on its own.
+      const now = performance.now()
+      if (highlighted.size > 0 && now - lastHexRefresh >= HEX_REFRESH_MS) {
+        lastHexRefresh = now
+        refreshHexes()
+      }
 
       if (scanlinePass) {
-        const now = performance.now()
         if (!scanlineStart)
           scanlineStart = now
         const uniforms = scanlinePass.material.uniforms
@@ -448,6 +505,8 @@ export function useGlobeRenderer() {
   ): Promise<GlobeInstance> {
     const startLng = Math.random() * 360 - 180
     const startLat = 10 + Math.random() * 50
+
+    refreshThemeColors()
 
     const baseResult = await base.init({
       container,
@@ -477,7 +536,7 @@ export function useGlobeRenderer() {
             ?? feat.id
             ?? feat.properties.ADMIN
             ?? feat.properties.name
-        const baseHex = getHexBaseColor()
+        const baseHex = themeColors.hexBase
         if (iso == null || iso === '')
           return baseHex
 
@@ -488,19 +547,19 @@ export function useGlobeRenderer() {
             highlighted.delete(iso)
           }
           else {
-            return blendHex(getHighlightColor(), baseHex, elapsed / entry.duration)
+            return blendHex(themeColors.highlight, baseHex, elapsed / entry.duration)
           }
         }
 
         // Dim ambient highlight for countries with users (max 25% alpha)
         const userCount = countryUserCounts.get(iso.toUpperCase())
         if (userCount != null && userCount > 0) {
-          if (isLightTheme()) {
+          if (themeColors.light) {
             const t = (userCount / maxUserCount) * 0.25
-            return blendHex(baseHex, getTextColor(), t)
+            return blendHex(baseHex, themeColors.text, t)
           }
           const alpha = (userCount / maxUserCount) * 0.05
-          const [r, g, b] = parseColor(getTextColor())
+          const [r, g, b] = themeColors.textRgb
           return `rgba(${r},${g},${b},${alpha})`
         }
         return baseHex
@@ -508,7 +567,7 @@ export function useGlobeRenderer() {
       .showAtmosphere(false)
       .atmosphereColor(ATMOSPHERE_COLOR)
       .arcsData([])
-      .arcColor(() => getArcColor())
+      .arcColor(() => themeColors.arc)
       .arcStroke(0.4)
       .arcDashLength(ARC_REL_LEN)
       .arcDashGap(2)
@@ -517,7 +576,7 @@ export function useGlobeRenderer() {
       .arcsTransitionDuration(0)
       .ringColor(() => (t: number) => {
         const alpha = Math.max(0, 2 - t * 4)
-        return `rgba(${getRingRgb()},${alpha})`
+        return `rgba(${themeColors.ringRgb},${alpha})`
       })
       .ringMaxRadius(RING_MAX_R)
       .ringPropagationSpeed(RING_PROPAGATION_SPEED)
@@ -535,19 +594,23 @@ export function useGlobeRenderer() {
       updateScanlinePassResolution(width, height)
     }
 
-    // Also re-apply bloom/afterimage toggling when theme changes
+    // Re-apply bloom/afterimage toggling and the color cache when the theme
+    // changes. 'style' is in the filter because custom themes apply their
+    // tokens as inline style on the root without touching class or data-theme.
     bloomThemeMedia = window.matchMedia?.('(prefers-color-scheme: light)') ?? null
-    bloomThemeMedia?.addEventListener('change', applyPostProcessingTheme)
-    bloomThemeObserver = new MutationObserver(applyPostProcessingTheme)
+    bloomThemeMedia?.addEventListener('change', handleThemeChange)
+    bloomThemeObserver = new MutationObserver(handleThemeChange)
     bloomThemeObserver.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['class', 'data-theme'],
+      attributeFilter: ['class', 'data-theme', 'style'],
     })
 
     startTick(refreshHexes)
 
     arcInterval = setInterval(() => {
-      if (globeInstance != null) {
+      // No new arcs while the globe is off screen; the digest work they
+      // trigger would be spent on frames nobody renders.
+      if (globeInstance != null && !paused) {
         const arcsData = globeInstance.arcsData() as ArcDatum[]
         if (arcsData.length < maxConcurrentArcs)
           spawnArc()
@@ -567,11 +630,39 @@ export function useGlobeRenderer() {
   }
 
   // ---------------------------------------------------------------------------
+  // Visibility pause
+  // ------------------------------------------------------------------------
+  // Parks the globe's render loop (globe.gl's own rAF plus our tick) while the
+  // hero is scrolled off screen. The arc/ring timers keep running so the state
+  // stays consistent, but they stop producing new work while paused.
+  function pause() {
+    if (paused)
+      return
+
+    paused = true
+    globeInstance?.pauseAnimation()
+    if (animationFrame != null) {
+      cancelAnimationFrame(animationFrame)
+      animationFrame = null
+    }
+  }
+
+  function resume() {
+    if (!paused)
+      return
+
+    paused = false
+    globeInstance?.resumeAnimation()
+    if (animationFrame == null && tickRefreshHexes != null)
+      startTick(tickRefreshHexes)
+  }
+
+  // ---------------------------------------------------------------------------
   // Teardown
   // ------------------------------------------------------------------------
   function destroy() {
     clearTimers()
-    bloomThemeMedia?.removeEventListener('change', applyPostProcessingTheme)
+    bloomThemeMedia?.removeEventListener('change', handleThemeChange)
     bloomThemeMedia = null
     bloomThemeObserver?.disconnect()
     bloomThemeObserver = null
@@ -582,10 +673,12 @@ export function useGlobeRenderer() {
     bloomPass = null
     afterimagePass = null
     scanlineStart = 0
+    tickRefreshHexes = null
+    paused = false
     highlighted.clear()
   }
 
   onBeforeUnmount(destroy)
 
-  return { init, destroy }
+  return { init, destroy, pause, resume }
 }

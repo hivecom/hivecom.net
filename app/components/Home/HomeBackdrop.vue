@@ -25,30 +25,59 @@ const mounted = ref(false)
 // so it reads as a fixed backdrop dissolving into the page rather than scrolling
 // away with it. Applied without a transition so the parallax stays snappy.
 const { y: scrollY } = useWindowScroll()
+const heroFade = computed(() => {
+  if (!mounted.value)
+    return 1
+  const vh = window.innerHeight || 1
+  return Math.max(0, 1 - scrollY.value / (vh * 1.6))
+})
+
+// The star parallax offset lives here too: it's the same value for every star
+// (each one scales it by its own multiplier), so one write on the container
+// beats patching 75 inline styles per scroll tick.
 const nebulaVars = computed<CSSProperties | undefined>(() => {
   if (!mounted.value)
     return undefined
-  const vh = window.innerHeight || 1
-  const fade = Math.max(0, 1 - scrollY.value / (vh * 1.6))
   return {
-    '--hero-fade': `${fade}`,
+    '--hero-fade': `${heroFade.value}`,
     '--hero-shift': `${scrollY.value * 0.1}px`,
+    '--vertical-offset': `${scrollY.value * -0.05}px`,
   }
 })
 
 // Randomly scatter stars across the viewport, client-side so we can read its size.
 const STAR_COUNT = 75
 const STAR_TRANSFORM_THRESHOLD = 0.4
-const stars = shallowRef<CSSProperties[]>([])
+
+// The parallax depths stars can sit at. Each star used to carry its own
+// continuous multiplier, but that made every scroll frame recompute 75 element
+// transforms. Snapping the random multiplier to a few shared planes lets the
+// wrapper divs carry the transform instead: scroll moves 5 layers, not 75
+// elements. The depths are random decoration, so the quantisation doesn't read.
+const PLANE_MULTIPLIERS = [0, 0.225, 0.45, 0.675, 0.9]
+
+interface StarPlane {
+  multiplier: number
+  stars: CSSProperties[]
+}
+
+const planes = shallowRef<StarPlane[]>([])
 
 onMounted(() => {
-  const _stars: CSSProperties[] = []
+  const _planes: StarPlane[] = PLANE_MULTIPLIERS.map(multiplier => ({ multiplier, stars: [] }))
+  const maxMultiplier = PLANE_MULTIPLIERS[PLANE_MULTIPLIERS.length - 1] ?? 1
+
   for (let i = 0; i < STAR_COUNT; i++) {
     const size = Math.random() * 2 + 0.5
     const verticalRandom = Math.random()
     const baseOpacity = Math.random() * 0.45 + 0.55
 
-    _stars.push({
+    // Same distribution as before (40% hold still, the rest spread over
+    // (0, 0.9]), rounded to the nearest plane.
+    const multiplier = verticalRandom < STAR_TRANSFORM_THRESHOLD ? 0 : (verticalRandom - STAR_TRANSFORM_THRESHOLD) * 1.5
+    const planeIndex = Math.round((multiplier / maxMultiplier) * (PLANE_MULTIPLIERS.length - 1))
+
+    _planes[planeIndex]!.stars.push({
       'left': `${Math.random() * window.innerWidth}px`,
       'top': `${Math.random() * window.innerHeight}px`,
       'width': `${size}px`,
@@ -56,12 +85,10 @@ onMounted(() => {
       '--star-animation-offset': `${Math.random() * 10000}ms`,
       '--star-animation-duration': `${Math.random() * 2000 + 2000}ms`,
       '--star-base-opacity': `${baseOpacity}`,
-      '--vertical-random-multiplier': `${verticalRandom < STAR_TRANSFORM_THRESHOLD ? 0 : (verticalRandom - STAR_TRANSFORM_THRESHOLD) * 1.5}`,
-      '--vertical-offset': 0,
     })
   }
 
-  stars.value = _stars
+  planes.value = _planes
   mounted.value = true
 })
 </script>
@@ -76,8 +103,10 @@ onMounted(() => {
     <div class="home-backdrop__nebula">
       <div class="home-backdrop__nebula-fx">
         <ClientOnly>
-          <!-- Dashboard runs the drift at half speed for a calmer backdrop. -->
-          <LandingHeroShader class="home-backdrop__shader" :speed="variant === 'dashboard' ? 0.5 : 1" />
+          <!-- Dashboard runs the drift at half speed for a calmer backdrop.
+               Paused once the scroll fade has taken it fully transparent, so
+               the GL loop isn't burning frames on an invisible canvas. -->
+          <LandingHeroShader class="home-backdrop__shader" :speed="variant === 'dashboard' ? 0.5 : 1" :paused="heroFade === 0" />
         </ClientOnly>
         <!-- Both treatments are always present and crossfade on variant change. -->
         <div class="home-backdrop__overlay home-backdrop__overlay--landing" />
@@ -86,12 +115,18 @@ onMounted(() => {
     </div>
 
     <div
-      v-for="star in stars"
-      :key="`${star.left} ${star.top}`"
-      class="home-backdrop__star"
-      :style="{ ...star,
-                '--vertical-offset': `${scrollY * -0.05}px` }"
-    />
+      v-for="plane in planes"
+      :key="plane.multiplier"
+      class="home-backdrop__star-plane"
+      :style="{ '--plane-multiplier': plane.multiplier }"
+    >
+      <div
+        v-for="star in plane.stars"
+        :key="`${star.left} ${star.top}`"
+        class="home-backdrop__star"
+        :style="star"
+      />
+    </div>
   </div>
 </template>
 
@@ -101,6 +136,11 @@ onMounted(() => {
 // Self-contained stacking context behind the page content (which sits at z-index
 // 1). pointer-events off so it never intercepts clicks.
 .home-backdrop {
+  // Scroll parallax offset the stars inherit; the inline style overrides this
+  // once mounted. Declared here rather than on the star so the per-scroll write
+  // stays a single style change on the container.
+  --vertical-offset: 0px;
+
   position: fixed;
   inset: 0;
   z-index: 0;
@@ -204,23 +244,29 @@ onMounted(() => {
   }
 }
 
+// One layer per parallax depth. The scroll offset lands here as a single
+// composited transform, so the stars inside ride along without any per-star
+// style work.
+.home-backdrop__star-plane {
+  --plane-multiplier: 0;
+
+  position: absolute;
+  inset: 0;
+  // Above the nebula, below the page content (the whole backdrop is z-index 0).
+  z-index: 1;
+  pointer-events: none;
+  transform: translateY(calc(var(--vertical-offset) * var(--plane-multiplier)));
+  will-change: transform;
+}
+
 .home-backdrop__star {
   --star-animation-offset: 0ms;
   --star-animation-duration: 2000ms;
   --star-base-opacity: 1;
-  --vertical-random-multiplier: 0;
-  --vertical-offset: 0px;
 
-  transform: translateY(calc(var(--vertical-offset) * var(--vertical-random-multiplier)));
-
-  position: fixed;
-  // Above the nebula, below the page content (the whole backdrop is z-index 0).
-  z-index: 1;
-  background-color: var(--color-text);
+  position: absolute;
   border-radius: 50%;
-  animation: star-flicker 2000ms infinite linear;
-  animation-delay: var(--star-animation-offset);
-  animation-duration: var(--star-animation-duration);
+  @include star-flicker-layers;
 }
 
 // Keyframes live in the shared mixin so the landing constellation stars can

@@ -16,53 +16,105 @@
 // Twinkle shared by the backdrop stars and the landing constellation stars.
 // Reads --star-base-opacity off the element. Included from scoped styles, so
 // each component gets its own hashed copy of the keyframes.
+//
+// Everything here animates opacity only, so the flicker stays off the main
+// thread. The old keyframes animated background and drop-shadow too, which
+// repainted every star every frame for the life of the page - with ~80 stars
+// that was most of the compositing budget on a 120Hz display. The dot itself
+// is white with a static glow; the blue and red glints are pseudo-element
+// layers fading in over it on the same clock.
 @mixin star-flicker {
   @keyframes star-flicker {
     0%,
     15%,
+    25%,
     35%,
     55%,
+    65%,
     75%,
     100% {
       opacity: calc(var(--star-base-opacity) * 1);
-      background: white;
-      filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
     }
 
     10% {
       opacity: calc(var(--star-base-opacity) * 0.75);
     }
 
-    20% {
+    20%,
+    60% {
       opacity: calc(var(--star-base-opacity) * 0.85);
-      background: rgb(160, 210, 255);
-      filter: drop-shadow(0 0 8px rgba(120, 190, 255, 1));
-    }
-
-    25% {
-      opacity: calc(var(--star-base-opacity) * 1);
-      background: white;
-      filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
     }
 
     45% {
       opacity: calc(var(--star-base-opacity) * 0.7);
     }
 
-    60% {
-      opacity: calc(var(--star-base-opacity) * 0.85);
-      background: rgb(255, 190, 190);
-      filter: drop-shadow(0 0 8px rgba(255, 120, 120, 1));
-    }
-
-    65% {
-      opacity: calc(var(--star-base-opacity) * 1);
-      background: white;
-      filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
-    }
-
     85% {
       opacity: calc(var(--star-base-opacity) * 0.8);
     }
+  }
+
+  @keyframes star-flash-blue {
+    0%,
+    15%,
+    25%,
+    100% {
+      opacity: 0;
+    }
+
+    20% {
+      opacity: calc(var(--star-base-opacity) * 0.85);
+    }
+  }
+
+  @keyframes star-flash-red {
+    0%,
+    55%,
+    65%,
+    100% {
+      opacity: 0;
+    }
+
+    60% {
+      opacity: calc(var(--star-base-opacity) * 0.85);
+    }
+  }
+}
+
+// The layered star itself: white dot plus the two glint overlays. Applied
+// inside a star's selector, alongside its own sizing and positioning. Expects
+// the star-flicker keyframes from the mixin above in the same component.
+@mixin star-flicker-layers {
+  // box-shadow, not filter: drop-shadow. On a circle they draw the same halo,
+  // but a filter turns every one of these layers into its own render surface,
+  // and ~150 flash pseudos with filters was enough to drop frames on its own.
+  background: white;
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+  animation: star-flicker var(--star-animation-duration, 2000ms) infinite linear;
+  animation-delay: var(--star-animation-offset, 0ms);
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    animation-duration: var(--star-animation-duration, 2000ms);
+    animation-delay: var(--star-animation-offset, 0ms);
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+
+  &::before {
+    background: rgb(160, 210, 255);
+    box-shadow: 0 0 8px rgb(120, 190, 255);
+    animation-name: star-flash-blue;
+  }
+
+  &::after {
+    background: rgb(255, 190, 190);
+    box-shadow: 0 0 8px rgb(255, 120, 120);
+    animation-name: star-flash-red;
   }
 }

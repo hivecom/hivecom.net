@@ -276,16 +276,24 @@ export class SunField {
   private rise = 0
   private riseTarget = 0
 
+  // Current backing-store size, so the per-frame resize call can bail when
+  // nothing changed. Three's setSize writes canvas.width/height every call,
+  // and re-assigning those resets the drawing buffer even at the same value.
+  private bufWidth = 0
+  private bufHeight = 0
+
   private disposed = false
 
   private constructor(t: typeof THREE, canvas: HTMLCanvasElement, colors: SunColors) {
     this.THREE = t
 
+    // No antialias: the only geometry is a fullscreen quad, so MSAA has no
+    // edges to smooth and just multiplies the framebuffer memory and fill.
     const renderer = new t.WebGLRenderer({
       canvas,
       alpha: true,
       premultipliedAlpha: true,
-      antialias: true,
+      antialias: false,
       powerPreference: 'low-power',
     })
     renderer.setClearColor(new t.Color(0, 0, 0), 0)
@@ -349,6 +357,10 @@ export class SunField {
     const pr = Math.min(dpr, MAX_PIXEL_RATIO)
     const bw = Math.max(1, Math.round(width * pr))
     const bh = Math.max(1, Math.round(height * pr))
+    if (bw === this.bufWidth && bh === this.bufHeight)
+      return
+    this.bufWidth = bw
+    this.bufHeight = bh
     this.renderer.setPixelRatio(1)
     this.renderer.setSize(bw, bh, false)
     this.mat.uniforms.uAspect!.value = width / height

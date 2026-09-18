@@ -176,6 +176,14 @@ export function useGlobeBase() {
       metalness: 0,
     })
 
+    // three-render-objects runs the renderer at min(devicePixelRatio, 2), and
+    // the post-processing chain (scanline, bloom, afterimage) pays that cost
+    // per pass. Cap at 1.5 like the sun does - on a 2x display that's less
+    // than half the fragment work, and the dotted globe doesn't show it.
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5)
+    globeInstance.renderer()?.setPixelRatio(pixelRatio)
+    globeInstance.postProcessingComposer()?.setPixelRatio(pixelRatio)
+
     // -------------------------------------------------------------------------
     // Resize handling
     // ----------------------------------------------------------------------
@@ -241,6 +249,26 @@ export function useGlobeBase() {
     // Disable built-in zoom - OrbitControls dolly is instant with no easing path.
     // We drive zoom ourselves via a smooth rAF lerp on pointOfView altitude.
     globeInstance.controls().enableZoom = false
+
+    // Even with zoom off, OrbitControls keeps its wheel listener, and it's
+    // registered non-passively - so once the globe exists, every wheel event
+    // over the canvas has to wait on the main thread before the compositor is
+    // allowed to scroll. With the globe rendering every frame that wait is
+    // most of a frame, which reads as scroll going unresponsive the moment
+    // the globe finishes loading. Zoom is driven by our own listeners
+    // everywhere, so drop OrbitControls' one entirely.
+    const rawControls = globeInstance.controls() as unknown as {
+      domElement?: HTMLElement | null
+      _onMouseWheel?: (event: WheelEvent) => void
+    }
+    if (rawControls.domElement != null && typeof rawControls._onMouseWheel === 'function')
+      rawControls.domElement.removeEventListener('wheel', rawControls._onMouseWheel)
+
+    // OrbitControls also sets touch-action: none on the canvas, which turns a
+    // decorative full-bleed globe into a touch scroll trap. When zoom is off,
+    // let vertical pans scroll the page; horizontal drags still rotate.
+    if (!enableZoom && rawControls.domElement != null)
+      rawControls.domElement.style.touchAction = 'pan-y'
 
     if (pointOfView) {
       globeInstance.pointOfView(pointOfView, 0)
