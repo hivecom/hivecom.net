@@ -74,13 +74,18 @@ const gameserverForm = ref({
 // Address input for managing multiple addresses
 const newAddress = ref('')
 
-// Factorio query configuration. The RCON password is a secret stored in Vault
-// via the set/get_gameserver_query_secret RPCs - never persisted on the row -
-// while factorioUseLua is non-secret config kept in query_options.
+// Query secret and options. The secret (Factorio's RCON password, Trackmania's
+// User password) is stored in Vault via the set/get_gameserver_query_secret
+// RPCs and never persisted on the row. factorioUseLua is non-secret config
+// kept in query_options.
 const factorioUseLua = ref(false)
 const querySecret = ref('')
 const querySecretExists = ref(false)
 const clearQuerySecret = ref(false)
+
+// Protocols that log in with a per-server secret
+const secretProtocols = ['factorio', 'trackmania']
+const usesQuerySecret = computed(() => secretProtocols.includes(gameserverForm.value.query_protocol ?? ''))
 
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
@@ -140,6 +145,7 @@ const queryProtocolOptions = [
   { label: 'GameSpy v1 (UT99/UT2004)', value: 'gamespy1' },
   { label: 'Satisfactory (status only)', value: 'satisfactory' },
   { label: 'Factorio (RCON)', value: 'factorio' },
+  { label: 'Trackmania (GBXRemote)', value: 'trackmania' },
 ]
 
 // Region options
@@ -206,9 +212,12 @@ const selectedQueryProtocolComputed = computed({
     if (!gameserverForm.value.query_protocol)
       gameserverForm.value.query_port = ''
 
-    // Factorio-only fields are meaningless for other protocols
-    if (gameserverForm.value.query_protocol !== 'factorio') {
+    // Factorio-only field is meaningless for other protocols
+    if (gameserverForm.value.query_protocol !== 'factorio')
       factorioUseLua.value = false
+
+    // Secret input only applies to protocols that log in
+    if (!usesQuerySecret.value) {
       querySecret.value = ''
       clearQuerySecret.value = false
     }
@@ -282,13 +291,13 @@ function applyGameserver(newGameserver: QueryGameserver | null) {
       administrator: newGameserver.administrator,
     }
 
-    // Reset Factorio fields, then hydrate from the row / Vault state.
+    // Reset query fields, then hydrate from the row / Vault state.
     const queryOptions = newGameserver.query_options as { factorioUseLua?: boolean } | null
     factorioUseLua.value = queryOptions?.factorioUseLua ?? false
     querySecret.value = ''
     clearQuerySecret.value = false
     querySecretExists.value = false
-    if (newGameserver.query_protocol === 'factorio')
+    if (secretProtocols.includes(newGameserver.query_protocol ?? ''))
       void loadQuerySecretState(newGameserver.id)
   }
   else {
@@ -384,11 +393,11 @@ async function handleSubmit() {
   }
 
   // Secret handling is delegated to the parent (it owns insert/update and the
-  // resulting id). Only Factorio uses a secret today.
+  // resulting id).
   const trimmedSecret = querySecret.value.trim()
   const secretPayload = {
-    secret: gameserverForm.value.query_protocol === 'factorio' && trimmedSecret ? trimmedSecret : null,
-    clear: gameserverForm.value.query_protocol === 'factorio' && clearQuerySecret.value,
+    secret: usesQuerySecret.value && trimmedSecret ? trimmedSecret : null,
+    clear: usesQuerySecret.value && clearQuerySecret.value,
   }
 
   saveLoading.value = true
@@ -552,16 +561,16 @@ onMounted(() => {
           />
         </Flex>
 
-        <!-- Factorio RCON configuration. Query Port above should be the RCON port. -->
-        <Flex v-if="gameserverForm.query_protocol === 'factorio'" column gap="s" expand>
+        <!-- Login secret for protocols that need one. Query Port above should be the RCON port (Factorio) or the xmlrpc_port (Trackmania). -->
+        <Flex v-if="usesQuerySecret" column gap="s" expand>
           <Input
             v-model="querySecret"
             expand
             type="password"
-            name="rcon_password"
-            label="RCON Password"
+            name="query_secret"
+            :label="gameserverForm.query_protocol === 'factorio' ? 'RCON Password' : 'User Password'"
             :disabled="clearQuerySecret"
-            :placeholder="querySecretExists ? 'Leave blank to keep current password' : 'Enter Factorio RCON password'"
+            :placeholder="querySecretExists ? 'Leave blank to keep current password' : (gameserverForm.query_protocol === 'factorio' ? 'Enter Factorio RCON password' : 'Enter the User level password from dedicated_cfg.txt')"
           />
           <Flex y-center gap="s" wrap>
             <Badge v-if="querySecretExists" variant="success">
@@ -569,7 +578,7 @@ onMounted(() => {
             </Badge>
             <Switch v-if="querySecretExists" v-model="clearQuerySecret" label="Remove stored secret on save" />
           </Flex>
-          <Switch v-model="factorioUseLua" label="Use Lua command (also fetch player names + max players; disables save achievements)" />
+          <Switch v-if="gameserverForm.query_protocol === 'factorio'" v-model="factorioUseLua" label="Use Lua command (also fetch player names + max players; disables save achievements)" />
         </Flex>
       </Flex>
 

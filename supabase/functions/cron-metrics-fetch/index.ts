@@ -72,6 +72,12 @@ function stripPlayerNames(snapshot: MetricsSnapshot): MetricsSnapshot {
           data: { ...detail.data, players: null },
         };
         break;
+      case "trackmania":
+        byServer[key] = detail.data === null ? detail : {
+          ...detail,
+          data: { ...detail.data, players: null },
+        };
+        break;
       default:
         byServer[key] = detail;
     }
@@ -335,6 +341,25 @@ interface DockerFactorioQueryResult {
   players: string[] | null;
 }
 
+interface DockerTrackmaniaQueryResult {
+  success: boolean;
+  numPlayers: number | null;
+  maxPlayers: number | null;
+  map: string | null;
+  hostName: string | null;
+  gameType: string | null;
+  players:
+    | {
+      name: string;
+      login: string;
+      spectator: boolean;
+      rank: number | null;
+      bestTime: number | null;
+    }[]
+    | null;
+  extra?: Record<string, string>;
+}
+
 // Stable per-protocol "null" detail used when a server can't be reached.
 function buildNullDetail(
   protocol: NonNullable<GameserverRow["query_protocol"]>,
@@ -386,6 +411,19 @@ function buildNullDetail(
       return {
         protocol,
         data: { numPlayers: null, maxPlayers: null, players: null },
+      };
+    case "trackmania":
+      return {
+        protocol,
+        data: {
+          numPlayers: null,
+          maxPlayers: null,
+          map: null,
+          hostName: null,
+          gameType: null,
+          players: null,
+          extra: null,
+        },
       };
     case "source":
     default:
@@ -706,14 +744,15 @@ Deno.serve(async (req: Request) => {
 
           const protocol = gs.query_protocol!;
 
-          // Build request headers. Factorio needs an RCON password, which lives
-          // in Vault and is read via a service_role-only RPC. We pass it (and
-          // the non-secret useLua flag) to docker-control through the
-          // X-Query-Options header so it never appears in the URL/access logs.
+          // Build request headers. Factorio needs an RCON password and
+          // Trackmania the server's User password. Both live in Vault and are
+          // read via a service_role-only RPC. We pass them (and the non-secret
+          // useLua flag) to docker-control through the X-Query-Options header
+          // so they never appear in the URL/access logs.
           const headers: Record<string, string> = {
             Authorization: `Bearer ${DOCKER_CONTROL_TOKEN}`,
           };
-          if (protocol === "factorio") {
+          if (protocol === "factorio" || protocol === "trackmania") {
             const queryOptions: Record<string, unknown> = {};
             const { data: secret, error: secretError } = await supabaseClient
               .rpc("get_gameserver_query_secret", { p_gameserver_id: gs.id });
@@ -721,10 +760,12 @@ Deno.serve(async (req: Request) => {
               console.warn(
                 `Failed to read query secret for gameserver ${gs.id} (${gs.name}): ${secretError.message}`,
               );
-            } else if (secret) {
+            } else if (secret && protocol === "factorio") {
               queryOptions.rconPassword = secret;
+            } else if (secret) {
+              queryOptions.userPassword = secret;
             }
-            if (gs.query_options?.factorioUseLua) {
+            if (protocol === "factorio" && gs.query_options?.factorioUseLua) {
               queryOptions.factorioUseLua = true;
             }
             if (Object.keys(queryOptions).length > 0) {
@@ -805,6 +846,21 @@ Deno.serve(async (req: Request) => {
                   numPlayers: body.numPlayers ?? null,
                   maxPlayers: body.maxPlayers ?? null,
                   players: body.players ?? null,
+                },
+              };
+            } else if (protocol === "trackmania") {
+              const body = await res.json() as DockerTrackmaniaQueryResult;
+              if (!body.success) return nullDetail;
+              detail = {
+                protocol,
+                data: {
+                  numPlayers: body.numPlayers ?? null,
+                  maxPlayers: body.maxPlayers ?? null,
+                  map: body.map ?? null,
+                  hostName: body.hostName ?? null,
+                  gameType: body.gameType ?? null,
+                  players: body.players ?? null,
+                  extra: body.extra ?? null,
                 },
               };
             } else {

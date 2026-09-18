@@ -79,6 +79,31 @@ export interface MetricsServerDetailFactorio {
   }
 }
 
+export interface TrackmaniaPlayer {
+  // Nickname with TM formatting stripped
+  name: string
+  login: string
+  spectator: boolean
+  // Rank and best time (ms) on the current track this session. null until the
+  // player finishes a run.
+  rank: number | null
+  bestTime: number | null
+}
+
+// Same top-level fields as GameSpy: the point is who's on and which track runs.
+export interface MetricsServerDetailTrackmania {
+  protocol: 'trackmania'
+  data: {
+    numPlayers: number | null
+    maxPlayers: number | null
+    map: string | null
+    hostName: string | null
+    gameType: string | null
+    players: TrackmaniaPlayer[] | null
+    extra: Record<string, string> | null
+  }
+}
+
 // Servers with no query protocol configured
 export interface MetricsServerDetailNone {
   protocol: null
@@ -92,6 +117,7 @@ export type MetricsServerDetail
     | MetricsServerDetailGameSpy
     | MetricsServerDetailSatisfactory
     | MetricsServerDetailFactorio
+    | MetricsServerDetailTrackmania
     | MetricsServerDetailNone
 
 // ---------------------------------------------------------------------------
@@ -113,6 +139,7 @@ export function metricsPlayerCount(
     case 'minecraft':
     case 'gamespy1':
     case 'factorio':
+    case 'trackmania':
       return detail.data.numPlayers
     case 'satisfactory':
       return null
@@ -132,6 +159,7 @@ export function metricsMaxPlayers(
     case 'minecraft':
     case 'gamespy1':
     case 'factorio':
+    case 'trackmania':
       return detail.data.maxPlayers
     case 'satisfactory':
       return null
@@ -146,7 +174,7 @@ export function metricsCurrentMap(
 ): string | null {
   if (!detail?.data)
     return null
-  if (detail.protocol === 'source' || detail.protocol === 'gamespy1')
+  if (detail.protocol === 'source' || detail.protocol === 'gamespy1' || detail.protocol === 'trackmania')
     return detail.data.map
   return null
 }

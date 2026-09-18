@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MetricsServerDetailMinecraft, MetricsServerDetailSource, SourcePlayer } from '@/types/metrics'
+import type { MetricsServerDetailMinecraft, MetricsServerDetailSource, MetricsServerDetailTrackmania, SourcePlayer, TrackmaniaPlayer } from '@/types/metrics'
 import { Button, Card, Flex, Grid } from '@dolanske/vui'
 import { computed, defineAsyncComponent, onMounted, ref, shallowRef } from 'vue'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
@@ -80,8 +80,16 @@ const sourceDetail = computed<MetricsServerDetailSource | null>(() => {
   return null
 })
 
-// Unified player list: Minecraft gives string[], source gives SourcePlayer[]
-// Normalize both to { name: string, detail?: string }
+const trackmaniaDetail = computed<MetricsServerDetailTrackmania | null>(() => {
+  const detail = metrics.value?.gameservers.byServer[String(props.id)]
+  if (detail?.protocol === 'trackmania')
+    return detail
+
+  return null
+})
+
+// Unified player list: Minecraft gives string[], source gives SourcePlayer[],
+// Trackmania gives TrackmaniaPlayer[]. Normalize to { name: string, detail?: string }
 interface PlayerEntry {
   name: string
   detail?: string
@@ -96,6 +104,24 @@ function formatDuration(seconds: number): string {
   return `${m}m`
 }
 
+// Track times the way the game shows them: m:ss.hh
+function formatTrackTime(ms: number): string {
+  const minutes = Math.floor(ms / 60000)
+  const seconds = Math.floor((ms % 60000) / 1000)
+  const hundredths = Math.floor((ms % 1000) / 10)
+  return `${minutes}:${String(seconds).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}`
+}
+
+function trackmaniaPlayerDetail(player: TrackmaniaPlayer): string {
+  if (player.spectator)
+    return 'Spectating'
+  if (player.bestTime === null)
+    return 'No time yet'
+
+  const rank = player.rank !== null ? `#${player.rank} ` : ''
+  return `${rank}${formatTrackTime(player.bestTime)}`
+}
+
 const playerList = computed<PlayerEntry[]>(() => {
   if (minecraftDetail.value?.data?.players?.length) {
     return minecraftDetail.value.data.players.map(name => ({ name }))
@@ -108,6 +134,12 @@ const playerList = computed<PlayerEntry[]>(() => {
     return (sourceDetail.value.data.playerList as SourcePlayer[]).map(p => ({
       name: p.name,
       detail: `Score: ${p.score} - ${formatDuration(p.duration + extrapolatedSeconds)}`,
+    }))
+  }
+  if (trackmaniaDetail.value?.data?.players?.length) {
+    return trackmaniaDetail.value.data.players.map(p => ({
+      name: p.name,
+      detail: trackmaniaPlayerDetail(p),
     }))
   }
   return []

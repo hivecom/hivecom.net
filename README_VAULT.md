@@ -49,7 +49,7 @@ The incoming webhook URL for the Discord channel that receives system notificati
 
 ## `gameserver_query_secret_<id>` (dynamic, per-gameserver)
 
-Per-gameserver query secrets, one Vault entry per game server that needs one, named `gameserver_query_secret_<gameserver id>`. Currently this holds the **Factorio RCON password**, which docker-control needs to query Factorio player counts over RCON. The secret is passed to docker-control transiently in the `X-Query-Options` request header and is never persisted there.
+Per-gameserver query secrets, one Vault entry per game server that needs one, named `gameserver_query_secret_<gameserver id>`. This holds the **Factorio RCON password** or the **Trackmania User password**, which docker-control needs to log in and read player counts. The secret is passed to docker-control transiently in the `X-Query-Options` request header and is never persisted there.
 
 Unlike the singleton secrets above, these are written and read through dedicated `SECURITY DEFINER` functions rather than referenced by a fixed name in SQL:
 
@@ -61,4 +61,4 @@ Unlike the singleton secrets above, these are written and read through dedicated
 
 Note: non-secret query configuration (e.g. Factorio's `factorioUseLua` flag) is **not** stored in Vault - it lives in the `network_gameservers.query_options` JSONB column.
 
-**Used by:** `cron-metrics-fetch` (Factorio RCON queries via docker-control); written/managed by the admin Network game server form.
+**Used by:** `cron-metrics-fetch` (Factorio RCON and Trackmania GBXRemote queries via docker-control); written/managed by the admin Network game server form.

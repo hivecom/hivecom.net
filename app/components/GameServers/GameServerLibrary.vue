@@ -124,29 +124,44 @@ function handleCoverLoad(event: Event) {
   }
 }
 
+// How many cover lookups run at once. Each one is up to four storage list
+// calls, so fully parallel would flood storage on a fresh grid, while one at a
+// time made the covers pop in strictly left to right.
+const COVER_CONCURRENCY = 4
+
+async function loadCover(game: Tables<'games'>) {
+  coverLoadingStates.value.add(game.id)
+
+  try {
+    gameCovers.value.set(game.id, await getGameCover(game))
+  }
+  catch (error) {
+    console.error(`Failed to load cover for game ${game.id}:`, error)
+
+    // On error, don't fall back to anything - just show the small logo
+    gameCovers.value.set(game.id, '')
+  }
+  finally {
+    coverLoadingStates.value.delete(game.id)
+  }
+}
+
 // Load game covers when filtered games change
 watch(() => props.filteredGames, async (newGames) => {
-  if (newGames && newGames.length > 0) {
-    for (const game of newGames) {
-      // Load cover if not cached
-      if (!gameCovers.value.has(game.id)) {
-        coverLoadingStates.value.add(game.id)
-        try {
-          const coverUrl = await getGameCover(game)
-          gameCovers.value.set(game.id, coverUrl)
-        }
-        catch (error) {
-          console.error(`Failed to load cover for game ${game.id}:`, error)
+  const queue = (newGames ?? []).filter(game =>
+    !gameCovers.value.has(game.id) && !coverLoadingStates.value.has(game.id),
+  )
+  if (queue.length === 0)
+    return
 
-          // On error, don't fall back to anything - just show the small logo
-          gameCovers.value.set(game.id, '')
-        }
-        finally {
-          coverLoadingStates.value.delete(game.id)
-        }
-      }
-    }
+  // Worker pool over a shared queue: each cover resolves at its own pace and a
+  // slow one only holds up its own slot, not the rest of the grid.
+  async function worker() {
+    for (let game = queue.shift(); game; game = queue.shift())
+      await loadCover(game)
   }
+
+  await Promise.all(Array.from({ length: Math.min(COVER_CONCURRENCY, queue.length) }, () => worker()))
 }, { immediate: true })
 
 // Helper function to get cached game cover
