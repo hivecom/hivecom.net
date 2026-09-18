@@ -1,0 +1,234 @@
+// VCalendar's theme mapped onto our tokens: container, header, weekdays, day
+// cells, today, dots, highlights and the per-status event colours.
+//
+// This lives in assets rather than in EventsCalendar.vue because a component's
+// style block only ships while that component is mounted. The dashboard month
+// grid needs the same theme and never mounts the events page calendar, so
+// keeping it there would leave the dashboard on v-calendar's defaults.
+
+@use './breakpoints.scss' as *;
+
+.vc-container {
+  --vc-border-color: var(--color-border);
+  --vc-accent-50: var(--color-accent-muted);
+  --vc-accent-100: var(--color-accent-muted);
+  --vc-accent-200: var(--color-accent);
+  --vc-accent-300: var(--color-accent);
+  --vc-accent-400: var(--color-accent);
+  --vc-accent-500: var(--color-accent);
+  --vc-accent-600: var(--color-accent);
+  --vc-accent-700: var(--color-accent);
+  --vc-accent-800: var(--color-accent);
+  --vc-accent-900: var(--color-accent);
+
+  border-radius: var(--border-radius-m);
+  background: var(--color-bg);
+}
+
+.vc-popover-content {
+  background: var(--color-bg) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--border-radius-m) !important;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15) !important;
+}
+
+.vc-header {
+  padding: var(--space-m);
+  margin-top: 0;
+  margin-bottom: var(--space-m);
+
+  @media (max-width: $breakpoint-s) {
+    padding: var(--space-s);
+  }
+}
+
+.vc-pane-layout {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-m);
+}
+
+// Hide headers for second and third month rows
+.vc-pane.row-2 .vc-weekday,
+.vc-pane.row-3 .vc-weekday {
+  display: none;
+}
+
+.vc-title {
+  span {
+    color: var(--color-text);
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-l);
+  }
+
+  @media (max-width: $breakpoint-s) {
+    font-size: var(--font-size-m);
+  }
+}
+
+.vc-arrow {
+  color: var(--color-text-lighter);
+
+  &:hover {
+    color: var(--color-text);
+  }
+}
+
+.vc-weekday {
+  color: var(--color-text-lightest);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-xs);
+  padding: var(--space-s) var(--space-xs);
+
+  @media (max-width: $breakpoint-s) {
+    font-size: var(--font-size-xxs);
+    padding: var(--space-xxs);
+  }
+}
+
+.vc-day {
+  min-height: 36px;
+
+  &:hover .vc-day-content {
+    background-color: var(--color-surface-lighter);
+  }
+}
+
+.vc-day-content {
+  color: var(--color-text);
+  border-radius: var(--border-radius-s);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: var(--color-surface-lighter);
+  }
+
+  @media (max-width: $breakpoint-s) {
+    font-size: var(--font-size-xs);
+    min-height: 32px;
+  }
+
+  &.is-disabled {
+    color: var(--color-text-lighter);
+  }
+}
+
+// Highlight today - target the day that contains today's date
+.vc-day.is-today .vc-day-content {
+  background-color: var(--color-bg) !important;
+  color: var(--color-accent) !important;
+  font-weight: var(--font-weight-semibold) !important;
+  border: 2px solid var(--color-accent) !important;
+
+  &:hover {
+    background-color: var(--color-accent) !important;
+    color: var(--color-bg) !important;
+  }
+}
+
+.vc-dot {
+  width: 6px;
+  height: 6px;
+
+  @media (max-width: $breakpoint-s) {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+.vc-highlight {
+  border-radius: var(--border-radius-s);
+
+  // Multi-day event styling
+  &.vc-highlight-base-start {
+    border-radius: var(--border-radius-s) 0 0 var(--border-radius-s);
+  }
+
+  &.vc-highlight-base-middle {
+    border-radius: 0;
+  }
+
+  &.vc-highlight-base-end {
+    border-radius: 0 var(--border-radius-s) var(--border-radius-s) 0;
+  }
+}
+
+// Custom event color overrides
+// Past events
+.vc-past {
+  .vc-highlight {
+    background-color: var(--color-border) !important;
+  }
+
+  &.vc-day-content {
+    background-color: var(--color-border) !important;
+    color: var(--color-text-lighter) !important;
+  }
+}
+
+.vc-dots .vc-dot.vc-past {
+  background-color: var(--color-border-strong) !important;
+  border-color: var(--color-border) !important;
+}
+
+// Ongoing events
+.vc-ongoing {
+  .vc-highlight {
+    background-color: var(--color-bg-accent-lowered) !important;
+  }
+
+  &.vc-day-content {
+    background-color: var(--color-bg-accent-lowered) !important;
+    color: var(--color-text) !important;
+  }
+}
+
+:root.dark {
+  .vc-ongoing {
+    .vc-highlight {
+      background-color: var(--color-bg-accent-lowered) !important;
+    }
+
+    &.vc-day-content {
+      background-color: var(--color-bg-accent-lowered) !important;
+      color: var(--dark-color-text) !important;
+    }
+  }
+}
+
+.vc-dots .vc-dot.vc-ongoing {
+  background-color: var(--color-bg) !important;
+}
+
+// Future events
+.vc-future {
+  .vc-highlight {
+    background-color: var(--color-bg-raised) !important;
+    z-index: 2;
+  }
+
+  &.vc-day-content {
+    border: none !important;
+    color: var(--color-text) !important;
+  }
+}
+
+.vc-dots .vc-dot.vc-future {
+  background-color: var(--color-accent) !important;
+}
+
+// Community (non-official) upcoming events - green
+.vc-community {
+  .vc-highlight {
+    background-color: var(--color-bg-green-lowered) !important;
+    z-index: 2;
+  }
+
+  &.vc-day-content {
+    border: none !important;
+    color: var(--color-text) !important;
+  }
+}
+
+.vc-dots .vc-dot.vc-community {
+  background-color: var(--color-text-green) !important;
+}

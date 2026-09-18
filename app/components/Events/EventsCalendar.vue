@@ -10,6 +10,7 @@ import { useBreakpoint } from '@/lib/mediaQuery'
 import { createArray } from '@/lib/utils/common'
 import { expandRecurringEvent } from '@/lib/utils/rrule'
 import EventCalendarColumnList from './EventCalendarColumnList.vue'
+import EventCalendarDayPopover from './EventCalendarDayPopover.vue'
 
 interface SelectOption {
   label: string
@@ -22,6 +23,7 @@ interface Props {
 
 interface Emits {
   (e: 'openEvent', event: Tables<'events'>): void
+  (e: 'create', date: Date): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -277,78 +279,29 @@ const calendarAttributes = computed(() => {
   })
 })
 
-// Format event duration for display
-function formatEventDuration(event: Tables<'events'>) {
-  if (!event.duration_minutes)
-    return ''
-
-  const eventStart = dayjs(event.date)
-  const eventEnd = eventStart.add(event.duration_minutes, 'minute')
-
-  // If it spans multiple days, show the date range
-  if (eventEnd.format('YYYY-MM-DD') !== eventStart.format('YYYY-MM-DD')) {
-    const daysDiff = Math.ceil(eventEnd.diff(eventStart, 'day', true))
-    return `${daysDiff} day${daysDiff > 1 ? 's' : ''}`
-  }
-
-  // Otherwise show hours/minutes
-  const hours = Math.floor(event.duration_minutes / 60)
-  const minutes = event.duration_minutes % 60
-
-  if (hours === 0)
-    return `${minutes}m`
-  if (minutes === 0)
-    return `${hours}h`
-
-  return `${hours}h ${minutes}m`
-}
-
 // Handle day click events
-function onDayClick(day: { attributes?: Array<{ customData?: Tables<'events'> }> }) {
-  // Find events for this day
-  const dayEvents = day.attributes
-    ?.filter(attr => attr.customData)
-    ?.map(attr => attr.customData!)
+// The hour a new event lands on when someone picks a day off the grid. Evening
+// is when most of ours run, and the form is right there to change it.
+const DEFAULT_EVENT_HOUR = 20
 
-  if (dayEvents && dayEvents.length > 0 && dayEvents[0]) {
-    // If only one event, open it directly
-    if (dayEvents.length === 1) {
-      emit('openEvent', dayEvents[0])
-    }
-    else {
-      // If multiple events, could show a list or open the first one
-      emit('openEvent', dayEvents[0])
-    }
-  }
-}
+const user = useSupabaseUser()
 
-// Navigate to event page
-function navigateToEvent(event: Tables<'events'>) {
-  navigateTo(`/events/${event.id}`)
-}
+function onDayClick(day: { date: Date, attributes?: Array<{ customData?: Tables<'events'> }> }) {
+  const event = day.attributes?.find(attr => attr.customData)?.customData
 
-// Format event time for display
-function formatEventTime(event: Tables<'events'>) {
-  const eventDate = dayjs(event.date)
-  return eventDate.format('h:mm A')
-}
-
-// Check if we should show time for this event on this day
-function shouldShowTime(event: Tables<'events'>, dayTitle: string) {
-  const eventStart = dayjs(event.date)
-  const eventEnd = event.duration_minutes
-    ? eventStart.add(event.duration_minutes, 'minute')
-    : null
-
-  // If it's not a multi-day event, always show time
-  if (!eventEnd || eventEnd.toString() === eventStart.toString()) {
-    return true
+  // A day with something on it opens the first thing. More than one is what
+  // the hover popover is for.
+  if (event) {
+    emit('openEvent', event)
+    return
   }
 
-  // For multi-day events, only show time on the start day
-  // Parse the dayTitle to get the date (format is like "Monday, Jun 16, 2025")
-  const dayDate = dayjs(dayTitle)
-  return dayDate.format('YYYY-MM-DD') === eventStart.format('YYYY-MM-DD')
+  // Empty days are the create affordance, same as the dashboard grid, so there
+  // is nothing to offer on a day that's gone or to someone signed out.
+  if (!user.value || dayjs(day.date).isBefore(dayjs(), 'day'))
+    return
+
+  emit('create', dayjs(day.date).hour(DEFAULT_EVENT_HOUR).minute(0).second(0).millisecond(0).toDate())
 }
 
 // Dropdown to select how many months to display in calendar. This option is
@@ -493,7 +446,7 @@ const pageTitle = computed(() => {
         <Switch v-model="hideRecurring" />
       </Flex>
       <Select
-        v-if="useSupabaseUser().value"
+        v-if="user"
         v-model="officialFilterOption"
         :options="officialFilterOptions"
         placeholder="Official"
@@ -555,48 +508,7 @@ const pageTitle = computed(() => {
           </template>
 
           <template #day-popover="{ dayTitle, attributes }">
-            <div class="event-popover">
-              <div v-if="attributes.length === 0" class="event-popover__empty">
-                No events scheduled
-              </div>
-              <div v-else class="event-popover__content">
-                <div class="event-popover__count">
-                  <Icon name="ph:calendar-check" size="16" class="event-popover__icon" />
-                  {{ attributes.length }} event{{ attributes.length > 1 ? 's' : '' }}
-                </div>
-                <ul class="event-popover__list">
-                  <li
-                    v-for="{ key, customData } in attributes"
-                    :key="key"
-                    class="event-popover__item"
-                    @click="navigateToEvent(customData)"
-                  >
-                    <div class="event-popover__item-header">
-                      <div class="event-popover__title">
-                        {{ customData.title }}
-                      </div>
-                      <div v-if="shouldShowTime(customData, dayTitle)" class="event-popover__time">
-                        {{ formatEventTime(customData) }}
-                      </div>
-                    </div>
-                    <Flex y-center>
-                      <div v-if="customData.location" class="event-popover__location">
-                        <Icon name="ph:map-pin" size="12" />
-                        {{ customData.location }}
-                      </div>                  <div v-if="customData.duration_minutes" class="event-popover__duration">
-                        <Icon name="ph:clock" size="12" />
-                        {{ formatEventDuration(customData) }}
-                      </div>
-                    </Flex>
-
-                    <div class="event-popover__action">
-                      <Icon name="ph:arrow-right" size="12" />
-                      View details
-                    </div>
-                  </li>
-                </ul>
-              </div>
-            </div>
+            <EventCalendarDayPopover :day-title="dayTitle" :attributes="attributes" />
           </template>
         </VCalendar>
       </div>
@@ -605,6 +517,9 @@ const pageTitle = computed(() => {
 </template>
 
 <style lang="scss">
+// The .vc-* theme moved to assets so the dashboard month grid can share it.
+@use '@/assets/calendar.scss';
+
 .events-calendar {
   display: flex;
   align-items: center;
@@ -672,418 +587,10 @@ const pageTitle = computed(() => {
   }
 }
 
-.event-popover {
-  padding: 0;
-  min-width: 288px;
-  max-width: 340px;
-  overflow: hidden;
-
-  &__header {
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text);
-    font-size: var(--font-size-s);
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    text-align: left;
-  }
-
-  &__icon {
-    color: var(--color-accent);
-  }
-
-  &__content {
-    padding: var(--space-s);
-    background: var(--color-bg);
-  }
-
-  &__count {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    font-size: var(--font-size-xs);
-    color: var(--color-text-lighter);
-    margin-bottom: var(--space-s);
-    font-weight: var(--font-weight-medium);
-  }
-
-  &__empty {
-    padding: var(--space-l);
-    text-align: center;
-    color: var(--color-text-lighter);
-    font-size: var(--font-size-s);
-    font-style: italic;
-  }
-
-  &__list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
-  }
-
-  &__item {
-    padding: var(--space-s);
-    cursor: pointer;
-    border-radius: var(--border-radius-s);
-    transition: all 0.15s ease;
-    background: var(--color-bg-medium);
-    border: 1px solid var(--color-border);
-
-    &:hover {
-      background-color: var(--color-bg-raised);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  &__item-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: var(--space-xs);
-    gap: var(--space-s);
-  }
-
-  &__title {
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text);
-    font-size: var(--font-size-s);
-    line-height: 1.3;
-    flex: 1;
-    text-align: left;
-  }
-
-  &__time {
-    color: var(--color-accent);
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    white-space: nowrap;
-    background: var(--color-accent-muted);
-    padding: 2px 6px;
-    border-radius: var(--border-radius-xs);
-  }
-
-  &__location,
-  &__duration {
-    color: var(--color-text-lighter);
-    font-size: var(--font-size-xs);
-    display: flex;
-    align-items: center;
-    gap: var(--space-xxs);
-    margin-bottom: var(--space-xxs);
-    line-height: 1.3;
-  }
-
-  &__rsvp {
-    margin-bottom: var(--space-xxs);
-
-    // Override badge styling to fit popover
-    .vui-badge {
-      font-size: var(--font-size-xxs);
-      padding: 2px 6px;
-    }
-  }
-
-  &__action {
-    color: var(--color-accent);
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    display: flex;
-    align-items: center;
-    gap: var(--space-xxs);
-    margin-top: var(--space-xs);
-    opacity: 0.7;
-    transition: opacity 0.15s ease;
-  }
-
-  &__item:hover &__action {
-    opacity: 1;
-  }
-}
-
-// Custom VCalendar styling
-.vc-container {
-  --vc-border-color: var(--color-border);
-  --vc-accent-50: var(--color-accent-muted);
-  --vc-accent-100: var(--color-accent-muted);
-  --vc-accent-200: var(--color-accent);
-  --vc-accent-300: var(--color-accent);
-  --vc-accent-400: var(--color-accent);
-  --vc-accent-500: var(--color-accent);
-  --vc-accent-600: var(--color-accent);
-  --vc-accent-700: var(--color-accent);
-  --vc-accent-800: var(--color-accent);
-  --vc-accent-900: var(--color-accent);
-
-  border-radius: var(--border-radius-m);
-  background: var(--color-bg);
-}
-
-.vc-popover-content {
-  background: var(--color-bg) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: var(--border-radius-m) !important;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15) !important;
-}
-
-.vc-header {
-  padding: var(--space-m);
-  margin-top: 0;
-  margin-bottom: var(--space-m);
-
-  @media (max-width: $breakpoint-s) {
-    padding: var(--space-s);
-  }
-}
-
-.vc-pane-layout {
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-m);
-}
-
-// Hide headers for second and third month rows
-.vc-pane.row-2 .vc-weekday,
-.vc-pane.row-3 .vc-weekday {
-  display: none;
-}
-
-.vc-title {
-  span {
-    color: var(--color-text);
-    font-weight: var(--font-weight-medium);
-    font-size: var(--font-size-l);
-  }
-
-  @media (max-width: $breakpoint-s) {
-    font-size: var(--font-size-m);
-  }
-}
-
-.vc-arrow {
-  color: var(--color-text-lighter);
-
-  &:hover {
-    color: var(--color-text);
-  }
-}
-
-.vc-weekday {
-  color: var(--color-text-lightest);
-  font-weight: var(--font-weight-medium);
-  font-size: var(--font-size-xs);
-  padding: var(--space-s) var(--space-xs);
-
-  @media (max-width: $breakpoint-s) {
-    font-size: var(--font-size-xxs);
-    padding: var(--space-xxs);
-  }
-}
-
-.vc-day {
-  min-height: 36px;
-
-  &:hover .vc-day-content {
-    background-color: var(--color-surface-lighter);
-  }
-}
-
-.vc-day-content {
-  color: var(--color-text);
-  border-radius: var(--border-radius-s);
-  transition: all 0.2s ease;
-
-  &:hover {
-    background-color: var(--color-surface-lighter);
-  }
-
-  @media (max-width: $breakpoint-s) {
-    font-size: var(--font-size-xs);
-    min-height: 32px;
-  }
-
-  &.is-disabled {
-    color: var(--color-text-lighter);
-  }
-}
-
-// Highlight today - target the day that contains today's date
-.vc-day.is-today .vc-day-content {
-  background-color: var(--color-bg) !important;
-  color: var(--color-accent) !important;
-  font-weight: var(--font-weight-semibold) !important;
-  border: 2px solid var(--color-accent) !important;
-
-  &:hover {
-    background-color: var(--color-accent) !important;
-    color: var(--color-bg) !important;
-  }
-}
-
-.vc-dot {
-  width: 6px;
-  height: 6px;
-
-  @media (max-width: $breakpoint-s) {
-    width: 4px;
-    height: 4px;
-  }
-}
-
-.vc-highlight {
-  border-radius: var(--border-radius-s);
-
-  // Multi-day event styling
-  &.vc-highlight-base-start {
-    border-radius: var(--border-radius-s) 0 0 var(--border-radius-s);
-  }
-
-  &.vc-highlight-base-middle {
-    border-radius: 0;
-  }
-
-  &.vc-highlight-base-end {
-    border-radius: 0 var(--border-radius-s) var(--border-radius-s) 0;
-  }
-}
-
-// Custom event color overrides
-// Past events
-.vc-past {
-  .vc-highlight {
-    background-color: var(--color-border) !important;
-  }
-
-  &.vc-day-content {
-    background-color: var(--color-border) !important;
-    color: var(--color-text-lighter) !important;
-  }
-}
-
-.vc-dots .vc-dot.vc-past {
-  background-color: var(--color-border-strong) !important;
-  border-color: var(--color-border) !important;
-}
-
-// Ongoing events
-.vc-ongoing {
-  .vc-highlight {
-    background-color: var(--color-bg-accent-lowered) !important;
-  }
-
-  &.vc-day-content {
-    background-color: var(--color-bg-accent-lowered) !important;
-    color: var(--color-text) !important;
-  }
-}
-
-:root.dark {
-  .vc-ongoing {
-    .vc-highlight {
-      background-color: var(--color-bg-accent-lowered) !important;
-    }
-
-    &.vc-day-content {
-      background-color: var(--color-bg-accent-lowered) !important;
-      color: var(--dark-color-text) !important;
-    }
-  }
-}
-
-.vc-dots .vc-dot.vc-ongoing {
-  background-color: var(--color-bg) !important;
-}
-
-// Future events
-.vc-future {
-  .vc-highlight {
-    background-color: var(--color-bg-raised) !important;
-    z-index: 2;
-  }
-
-  &.vc-day-content {
-    border: none !important;
-    color: var(--color-text) !important;
-  }
-}
-
-.vc-dots .vc-dot.vc-future {
-  background-color: var(--color-accent) !important;
-}
-
-// Community (non-official) upcoming events - green
-.vc-community {
-  .vc-highlight {
-    background-color: var(--color-bg-green-lowered) !important;
-    z-index: 2;
-  }
-
-  &.vc-day-content {
-    border: none !important;
-    color: var(--color-text) !important;
-  }
-}
-
-.vc-dots .vc-dot.vc-community {
-  background-color: var(--color-text-green) !important;
-}
-
 // Mobile optimizations
 @media (max-width: $breakpoint-s) {
   .events-calendar {
     min-height: 300px;
-  }
-
-  .event-popover {
-    min-width: 280px;
-    max-width: 300px;
-
-    &__header {
-      padding: var(--space-s) var(--space-s) var(--space-xs);
-      font-size: var(--font-size-xs);
-    }
-
-    &__content {
-      padding: var(--space-xs) var(--space-s) var(--space-s);
-    }
-
-    &__count {
-      font-size: var(--font-size-xxs);
-    }
-
-    &__title {
-      font-size: var(--font-size-xs);
-    }
-
-    &__time {
-      font-size: var(--font-size-xxs);
-      padding: 1px 4px;
-    }
-
-    &__location,
-    &__duration {
-      font-size: var(--font-size-xxs);
-    }
-
-    &__rsvp {
-      .vui-badge {
-        font-size: var(--font-size-xxs);
-        padding: 1px 4px;
-      }
-    }
-
-    &__action {
-      font-size: var(--font-size-xxs);
-    }
-
-    &__item {
-      padding: var(--space-xs);
-    }
   }
 }
 </style>

@@ -45,6 +45,7 @@ const timeLabel = computed(() => fromNow(props.post.timestampRaw, now.value, 'na
         <span class="forum__latest-thread-name">{{ post.typeContext }}</span>
       </span>
       <span v-else class="forum__latest-type">
+        <Icon name="ph:plus" :size="12" class="forum__latest-thread-icon" />
         {{ post.typeLabel ?? post.type }}
       </span>
     </Flex>
@@ -90,6 +91,9 @@ const timeLabel = computed(() => fromNow(props.post.timestampRaw, now.value, 'na
 .forum__latest-type {
   flex: 0 1 auto;
   min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

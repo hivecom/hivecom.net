@@ -79,6 +79,61 @@ const DETECT_MATH_RE = /\$\$[\s\S]*?\$\$|\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/
 const DETECT_TABLE_RE = /^\s*\|(?:[^\n|]+\|)+\s*$/m
 const DETECT_DETAILS_RE = /:::details\b/
 
+// Opening/closing fence of a code block, and an inline code span. Used by
+// replaceOutsideCode below.
+const CODE_FENCE_RE = /^[ \t]*(`{3,}|~{3,})/
+const INLINE_CODE_SPAN_RE = /(`+)[^`]*\1(?!`)/g
+
+// ---------------------------------------------------------------------------
+// Code-aware text rewriting
+// ------------------------------------------------------------------------
+/**
+ * Runs `transform` over every stretch of `markdown` that is not inside a
+ * fenced code block or an inline code span.
+ *
+ * Markdown treats entity references as literal text inside code, so a blanket
+ * `<` -> `&lt;` pass over a whole document renders as a visible `&lt;` in every
+ * code sample. Anything that rewrites raw markdown text has to step around
+ * those regions.
+ */
+export function replaceOutsideCode(markdown: string, transform: (text: string) => string): string {
+  if (!markdown)
+    return markdown
+
+  let openFence: string | null = null
+
+  const lines = markdown.split('\n').map((line) => {
+    const fence = CODE_FENCE_RE.exec(line)?.[1]
+
+    // Inside a block: pass everything through, and close only on a fence of
+    // the same character that is at least as long as the one that opened it.
+    if (openFence) {
+      if (fence && fence[0] === openFence[0] && fence.length >= openFence.length)
+        openFence = null
+
+      return line
+    }
+
+    if (fence) {
+      openFence = fence
+      return line
+    }
+
+    // Outside a block: transform the gaps between inline code spans.
+    let out = ''
+    let cursor = 0
+
+    for (const span of line.matchAll(INLINE_CODE_SPAN_RE)) {
+      out += transform(line.slice(cursor, span.index)) + span[0]
+      cursor = span.index + span[0].length
+    }
+
+    return out + transform(line.slice(cursor))
+  })
+
+  return lines.join('\n')
+}
+
 // ---------------------------------------------------------------------------
 // YouTube directive pre-processor
 // ------------------------------------------------------------------------

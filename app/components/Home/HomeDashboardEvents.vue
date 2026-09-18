@@ -2,10 +2,14 @@
 import { Button, Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import CreateEventModal from '@/components/Events/CreateEventModal.vue'
+import HomeDashboardCalendar from '@/components/Home/HomeDashboardCalendar.vue'
 import HomeDashboardCardHeader from '@/components/Home/HomeDashboardCardHeader.vue'
 import HomeDashboardPlaceholder from '@/components/Home/HomeDashboardPlaceholder.vue'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
 import HomeDashboardSkeleton from '@/components/Home/HomeDashboardSkeleton.vue'
+import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
+import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataEvents } from '@/composables/useDataEvents'
 import { useDataFriendRsvps } from '@/composables/useDataFriendRsvps'
 import { useDataNotifications } from '@/composables/useDataNotifications'
@@ -25,7 +29,7 @@ dayjs.extend(relativeTime)
 const SHOWN_ATTENDING = 2
 const SHOWN_OPEN = 3
 
-const { events, loading: eventsLoading } = useDataEvents()
+const { events, loading: eventsLoading, refresh } = useDataEvents()
 const { rsvpByEventId, loading: rsvpsLoading } = useDataUserRsvps()
 const { mutualFriendIds } = useDataNotifications()
 const { attendingByEventId, loading: friendRsvpsLoading } = useDataFriendRsvps(mutualFriendIds)
@@ -58,20 +62,49 @@ const attending = computed(() =>
     .slice(0, SHOWN_ATTENDING),
 )
 
-// Everything upcoming I haven't answered, whether or not anyone I know is on
-// it. Friends first, since "someone you know is going" is the reason to look,
-// and the avatars on those rows say so without a section header having to.
+// Everything upcoming I haven't answered, friends first, since "someone you
+// know is going" is the reason to look.
 const openToJoin = computed(() => {
   const unanswered = upcoming.value.filter(e => !rsvpByEventId.value.has(e.id))
   const withFriends = unanswered.filter(e => (attendingByEventId.value.get(e.id)?.length ?? 0) > 0)
   const rest = unanswered.filter(e => (attendingByEventId.value.get(e.id)?.length ?? 0) === 0)
 
-  return [...withFriends, ...rest].slice(0, SHOWN_OPEN)
+  return [...withFriends, ...rest]
 })
+
+// Sections swap rather than grow. The tile grid is mine when I'm going to
+// something, with the open events as rows under it. When I'm not, the open
+// events take the grid instead and the rows section goes away.
+const gridIsMine = computed(() => attending.value.length > 0)
+const gridEvents = computed(() => gridIsMine.value ? attending.value : openToJoin.value.slice(0, SHOWN_ATTENDING))
+const rowEvents = computed(() => gridIsMine.value ? openToJoin.value.slice(0, SHOWN_OPEN) : [])
+
+// The calendar only reports which day was clicked, so the create flow lives
+// here. It's the same gate the events page puts in front of the button: agree
+// to the content rules once, then the form opens.
+const showCreateEventModal = ref(false)
+const showContentRulesModal = ref(false)
+const createDate = ref<Date | null>(null)
+
+const { agreed: contentRulesAgreed, markAgreed } = useContentRulesAgreement()
+
+function openCreate(date: Date) {
+  createDate.value = date
+
+  if (contentRulesAgreed.value === true)
+    showCreateEventModal.value = true
+  else
+    showContentRulesModal.value = true
+}
+
+function handleContentRulesConfirmed() {
+  markAgreed()
+  showCreateEventModal.value = true
+}
 </script>
 
 <template>
-  <Flex column gap="m">
+  <Flex column gap="m" class="dashboard-fill">
     <HomeDashboardCardHeader title="Events" icon="ph:calendar" to="/events" />
 
     <HomeDashboardSkeleton v-if="loading" variant="cover" :count="SHOWN_ATTENDING" />
@@ -84,11 +117,11 @@ const openToJoin = computed(() => {
         </div>
       </HomeDashboardSection>
 
-      <HomeDashboardSection label="Your upcoming events">
+      <HomeDashboardSection :label="gridIsMine ? 'Your upcoming events' : 'You could join these'">
         <div class="home-item-list">
-          <HomeDashboardEventItem v-for="event in attending" :key="event.id" :data="event" />
+          <HomeDashboardEventItem v-for="event in gridEvents" :key="event.id" :data="event" />
 
-          <HomeDashboardPlaceholder v-if="!attending.length" full message="Nothing on your calendar yet.">
+          <HomeDashboardPlaceholder v-if="!gridEvents.length" full message="Nothing on the calendar yet.">
             <Button size="s" variant="gray" @click="navigateTo('/events')">
               <template #start>
                 <Icon name="ph:calendar-plus" />
@@ -100,19 +133,45 @@ const openToJoin = computed(() => {
       </HomeDashboardSection>
     </template>
 
+    <!-- Nothing to join means no section. The calendar underneath already
+         says the month is open, so a placeholder here would say it twice. -->
     <HomeDashboardSkeleton v-if="loading" variant="rows" :count="SHOWN_OPEN" />
-    <HomeDashboardSection v-else label="You could join these">
+    <HomeDashboardSection v-else-if="rowEvents.length" label="You could join these">
       <Flex column gap="xs">
-        <HomeDashboardEventItem v-for="event in openToJoin" :key="event.id" inline :data="event" />
-        <HomeDashboardPlaceholder v-if="!openToJoin.length" inline>
-          <template #message>
-            Nothing else on the calendar.
-            <NuxtLink to="/events?create=1" class="link-line">
-              Go organize something?
-            </NuxtLink>
-          </template>
-        </HomeDashboardPlaceholder>
+        <HomeDashboardEventItem v-for="event in rowEvents" :key="event.id" inline :data="event" />
       </Flex>
     </HomeDashboardSection>
+
+    <!-- The grid is the card's floor. However few events exist, the month is
+         always the same height, and an empty day is a place to start one. -->
+    <HomeDashboardSection :label="dayjs().format('MMMM')" class="home-calendar-section">
+      <HomeDashboardCalendar @create="openCreate" />
+    </HomeDashboardSection>
   </Flex>
+
+  <CreateEventModal
+    v-model:open="showCreateEventModal"
+    :initial-date="createDate"
+    @saved="refresh"
+  />
+
+  <ContentRulesModal
+    v-model:open="showContentRulesModal"
+    :show-agree-button="true"
+    @confirm="handleContentRulesConfirmed"
+  />
 </template>
+
+<style scoped lang="scss">
+// The month grid takes whatever height the cards beside this one leave. The
+// sections above it size to content (see the same override in the chat card).
+.dashboard-fill > .dashboard-section {
+  height: auto;
+}
+
+.home-calendar-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+</style>

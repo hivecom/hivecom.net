@@ -189,6 +189,30 @@ const avatarStyleVars = computed(() => ({
   '--avatar-size': `${props.avatarSize}px`,
 }))
 
+// Cluster avatars overlap, and DOM order alone paints each one over the avatar
+// before it, which clips the leading player's online dot. Hand every avatar a
+// stack index so the cluster reads left over right, with the +N bubble on top
+// of the lot so its count stays legible.
+function avatarStackVars(index: number) {
+  if (!props.cluster)
+    return avatarStyleVars.value
+
+  return {
+    ...avatarStyleVars.value,
+    '--stack-index': String(usersList.value.length - index),
+  }
+}
+
+const overflowStackVars = computed(() => {
+  if (!props.cluster)
+    return avatarStyleVars.value
+
+  return {
+    ...avatarStyleVars.value,
+    '--stack-index': String(usersList.value.length + 1),
+  }
+})
+
 const isSupporter = (profile?: UserDisplayData | null) => Boolean(profile?.supporter_lifetime || profile?.supporter_patreon)
 
 const currentUserId = useUserId()
@@ -272,13 +296,13 @@ defineExpose({
       :gap="gapValue"
     >
       <div
-        v-for="entry in usersList"
+        v-for="(entry, index) in usersList"
         :key="entry.id"
         class="bulk-avatar-display__avatar"
         :class="{
           'bulk-avatar-display__avatar--supporter': supporterHighlight && isSupporter(entry.profile),
         }"
-        :style="avatarStyleVars"
+        :style="avatarStackVars(index)"
       >
         <UserPreviewHover :user-id="entry.profile?.id || entry.id" class="bulk-avatar-display__hover">
           <div class="bulk-avatar-display__avatar-wrap">
@@ -337,7 +361,8 @@ defineExpose({
 
       <div
         v-if="displayedRemainingCount > 0"
-        :style="avatarStyleVars"
+        class="bulk-avatar-display__overflow"
+        :style="overflowStackVars"
         :role="cluster ? undefined : 'button'"
         :tabindex="cluster ? undefined : 0"
         @click="!cluster && emit('remainingClick')"
@@ -358,6 +383,17 @@ defineExpose({
     .bulk-avatar-display__avatar:not(:first-child),
     .vui-badge {
       margin-left: calc(var(--space-s, 0px) * -1);
+    }
+
+    .bulk-avatar-display__avatar,
+    .bulk-avatar-display__overflow {
+      z-index: var(--stack-index, 0);
+    }
+
+    // Whatever's hovered comes forward, otherwise the scale-up gets cut off by
+    // the avatar sitting on top of it.
+    .bulk-avatar-display__avatar:hover {
+      z-index: 30;
     }
   }
 
@@ -393,6 +429,22 @@ defineExpose({
     height: var(--avatar-size, 40px);
     border-radius: var(--border-radius-pill);
     overflow: visible;
+  }
+
+  &__overflow {
+    position: relative;
+    flex: 0 0 auto;
+
+    // Outside cluster mode the bubble is a button that opens the full list.
+    .bulk-avatar-display:not(.bulk-avatar-display--cluster) & {
+      cursor: pointer;
+      border-radius: var(--border-radius-pill);
+
+      &:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+      }
+    }
   }
 
   &__online-indicator {
@@ -456,50 +508,6 @@ defineExpose({
 
   &__hover {
     display: block;
-    width: 100%;
-    height: 100%;
-  }
-
-  &__remaining {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--avatar-size, 40px);
-    height: var(--avatar-size, 40px);
-    border-radius: var(--border-radius-pill);
-    background: var(--color-bg-medium);
-    border: 1px solid var(--color-border-weak);
-    font-size: calc(var(--avatar-size, 40px) * 0.5);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text-light);
-    transition: background-color 0.2s ease;
-
-    .bulk-avatar-display:not(.bulk-avatar-display--cluster) & {
-      cursor: pointer;
-      font-size: calc(var(--avatar-size, 40px) * 0.5);
-
-      &:hover {
-        background: var(--color-bg-raised);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--color-accent);
-        outline-offset: 2px;
-      }
-    }
-
-    .bulk-avatar-display--cluster & {
-      background: var(--color-bg-subtle);
-      border: 2px solid var(--color-bg);
-      font-size: calc(var(--avatar-size, 40px) * 0.3);
-    }
-  }
-
-  &__remaining-count {
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     width: 100%;
     height: 100%;
   }

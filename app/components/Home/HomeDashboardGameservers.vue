@@ -7,9 +7,11 @@ import { defineAsyncComponent } from 'vue'
 import GameServerConnectButton from '@/components/GameServers/GameServerConnectButton.vue'
 import HomeDashboardCardHeader from '@/components/Home/HomeDashboardCardHeader.vue'
 import HomeDashboardEmpty from '@/components/Home/HomeDashboardEmpty.vue'
+import HomeDashboardGameserverItem from '@/components/Home/HomeDashboardGameserverItem.vue'
+import HomeDashboardPlaceholder from '@/components/Home/HomeDashboardPlaceholder.vue'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
 import HomeDashboardSkeleton from '@/components/Home/HomeDashboardSkeleton.vue'
-import GameIcon from '@/components/Shared/GameIcon.vue'
+import GameArtCard from '@/components/Shared/GameArtCard.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
@@ -22,13 +24,17 @@ import { metricsPlayerCount } from '@/types/metrics'
 const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameserversPlayers.vue'))
 const ChartActivityHistogramModal = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartActivityHistogramModal.vue'))
 
-// Gameservers card: a short list led by whoever is busiest, then whoever was
-// busy most recently, so an empty snapshot still says where people actually
-// play. Each row carries its game icon and a launch action on hover.
+// Gameservers card: the two busiest servers as artwork, then one server per
+// game for everything else we host, then a single random pick to hop into. The
+// tiles answer "is anyone on right now", which is the only reason to sort by
+// activity at all. The rows are deliberately one-per-game: ranked by activity
+// alone a weekend of Cobalt takes half the card, so a newcomer never finds out
+// what else is running and a regular only sees what he already played.
 
 const activityModalOpen = ref(false)
 
-const SHOWN_SERVERS = 6
+const SHOWN_LIVE = 2
+const SHOWN_SELECTION = 3
 
 interface ServerEntry {
   gs: GameserverWithContainer
@@ -101,20 +107,20 @@ const lastActiveByServer = computed(() => {
   return found
 })
 
+// Every server is a candidate, including ones no metrics run has ever seen. The
+// rows are about what we host rather than what moved this week, and
+// activityLabel already says `quiet lately` for a server with no reading.
 const entries = computed<ServerEntry[]>(() =>
-  gameservers.value
-    .map((gs) => {
-      const players = metricsPlayerCount(metrics.value?.gameservers.byServer[String(gs.id)])
+  gameservers.value.map((gs) => {
+    const players = metricsPlayerCount(metrics.value?.gameservers.byServer[String(gs.id)])
 
-      return {
-        gs,
-        game: isNil(gs.game) ? null : getGameById(gs.game),
-        players: players ?? 0,
-        lastActive: lastActiveByServer.value.get(String(gs.id)) ?? null,
-      }
-    })
-    // A server with no reading at all has nothing to report either way.
-    .filter(entry => !isNil(metrics.value?.gameservers.byServer[String(entry.gs.id)]) || entry.lastActive !== null),
+    return {
+      gs,
+      game: isNil(gs.game) ? null : getGameById(gs.game),
+      players: players ?? 0,
+      lastActive: lastActiveByServer.value.get(String(gs.id)) ?? null,
+    }
+  }),
 )
 
 // Busiest now, then most recently busy, then alphabetical so the tail is stable
@@ -133,7 +139,73 @@ const ranked = computed(() =>
   }),
 )
 
-const shown = computed(() => ranked.value.slice(0, SHOWN_SERVERS))
+// The tiles are the top of the ranking whether or not anyone is on. With an
+// empty snapshot that falls through to whoever was busy most recently, which
+// beats two empty cells.
+const live = computed(() => ranked.value.slice(0, SHOWN_LIVE))
+
+// Nobody on means the tiles are showing the last people who were, so the label
+// follows instead of claiming a live server that isn't.
+const liveLabel = computed(() =>
+  live.value.some(entry => entry.players > 0) ? 'Live right now' : 'Where people played last',
+)
+
+interface GameGroup {
+  /** Game id, or the server's own id when it isn't tied to a game. */
+  key: string
+  name: string
+  servers: ServerEntry[]
+  /** Most recent activity anywhere in the group, for ordering the groups. */
+  lastActiveAt: number
+}
+
+// One server per game, games ordered by how many of them we run and then by how
+// recently anyone was in one. A game already on a tile drops out entirely,
+// otherwise the busiest game takes a tile and a row and says the same thing
+// twice.
+const selection = computed<ServerEntry[]>(() => {
+  const liveIds = new Set(live.value.map(entry => entry.gs.id))
+  const liveGames = new Set(live.value.flatMap(entry => entry.game ? [entry.game.id] : []))
+
+  const groups = new Map<string, GameGroup>()
+
+  // Grouping walks the ranking, so the first server into a group is the one it
+  // leads with: busiest, then most recently busy.
+  for (const entry of ranked.value) {
+    if (liveIds.has(entry.gs.id) || (entry.game !== null && liveGames.has(entry.game.id)))
+      continue
+
+    const key = entry.game === null ? `server:${entry.gs.id}` : `game:${entry.game.id}`
+    const at = entry.lastActive ? Date.parse(entry.lastActive.at) : 0
+    const group = groups.get(key)
+
+    if (group) {
+      group.servers.push(entry)
+      group.lastActiveAt = Math.max(group.lastActiveAt, at)
+      continue
+    }
+
+    groups.set(key, {
+      key,
+      name: entry.game?.name ?? entry.gs.name,
+      servers: [entry],
+      lastActiveAt: at,
+    })
+  }
+
+  return [...groups.values()]
+    .sort((a, b) => {
+      if (a.servers.length !== b.servers.length)
+        return b.servers.length - a.servers.length
+
+      if (a.lastActiveAt !== b.lastActiveAt)
+        return b.lastActiveAt - a.lastActiveAt
+
+      return a.name.localeCompare(b.name)
+    })
+    .slice(0, SHOWN_SELECTION)
+    .flatMap(group => group.servers[0] ?? [])
+})
 
 const totalPlayers = computed(() => metrics.value?.gameservers.players ?? null)
 
@@ -161,10 +233,10 @@ function hasConnect(entry: ServerEntry): boolean {
 }
 
 // The "Hop in" pick is a nudge towards something that isn't already on the
-// list, so it draws from what the slice left behind.
+// card, so it draws from whatever the tiles and the rows left behind.
 const hopIn = computed<ServerEntry | null>(() => {
-  const shownIds = new Set(shown.value.map(entry => entry.gs.id))
-  const candidates = ranked.value.filter(entry => !shownIds.has(entry.gs.id) && hasConnect(entry))
+  const takenIds = new Set([...live.value, ...selection.value].map(entry => entry.gs.id))
+  const candidates = ranked.value.filter(entry => !takenIds.has(entry.gs.id) && hasConnect(entry))
 
   if (candidates.length === 0)
     return null
@@ -176,12 +248,12 @@ const hopIn = computed<ServerEntry | null>(() => {
 // their own clock, so the placeholder waits on both. Once the card has rows a
 // later gameservers refresh doesn't knock it back to skeletons.
 const loading = computed(() =>
-  !ready.value || (gameserversLoading.value && shown.value.length === 0),
+  !ready.value || (gameserversLoading.value && entries.value.length === 0),
 )
 </script>
 
 <template>
-  <div>
+  <Flex column gap="m">
     <HomeDashboardCardHeader title="Gameservers" icon="ph:hard-drives" to="/servers/gameservers">
       <Skeleton v-if="loading" :height="20" :width="110" :radius="999" />
       <OnlineBadge
@@ -196,13 +268,14 @@ const loading = computed(() =>
     </HomeDashboardCardHeader>
 
     <template v-if="loading">
-      <HomeDashboardSkeleton variant="rows" :count="SHOWN_SERVERS" icon />
+      <HomeDashboardSkeleton variant="cover" :count="SHOWN_LIVE" />
+      <HomeDashboardSkeleton variant="rows" :count="SHOWN_SELECTION" icon />
       <HomeDashboardSkeleton variant="rows" :count="1" icon />
     </template>
 
     <HomeDashboardEmpty
-      v-else-if="!shown.length"
-      message="Every server is empty. Somebody has to go first."
+      v-else-if="!entries.length"
+      message="No servers configured yet."
     >
       <Button size="s" variant="gray" @click="navigateTo('/servers/gameservers')">
         Browse servers
@@ -210,55 +283,54 @@ const loading = computed(() =>
     </HomeDashboardEmpty>
 
     <template v-else>
-      <HomeDashboardSection label="Servers, busiest first">
+      <HomeDashboardSection :label="liveLabel">
+        <div class="home-item-list">
+          <template v-for="entry in live" :key="entry.gs.id">
+            <GameArtCard
+              v-if="entry.game"
+              :game="entry.game"
+              :title="entry.gs.name"
+              :to="`/servers/gameservers/${entry.gs.id}`"
+              :meta="activityLabel(entry)"
+            >
+              <template v-if="hasConnect(entry)" #action>
+                <GameServerConnectButton
+                  :addresses="entry.gs.addresses"
+                  :port="entry.gs.port"
+                  :connect="connectFor(entry)"
+                  size="s"
+                  variant="accent"
+                  plain
+                  stop-propagation
+                />
+              </template>
+            </GameArtCard>
+
+            <!-- No game means no artwork to borrow, so the tile falls back to
+                 the same row the section below is made of. -->
+            <HomeDashboardGameserverItem v-else :gs="entry.gs" :meta="activityLabel(entry)" />
+          </template>
+
+          <!-- Only one server exists at all. Pad the grid so the lone tile keeps
+               its half instead of stretching across the card. -->
+          <HomeDashboardPlaceholder v-if="live.length < SHOWN_LIVE" />
+        </div>
+      </HomeDashboardSection>
+
+      <HomeDashboardSection v-if="selection.length" label="Other games we host">
         <Flex column gap="xs">
-          <NuxtLink
-            v-for="entry in shown"
+          <HomeDashboardGameserverItem
+            v-for="entry in selection"
             :key="entry.gs.id"
-            :to="`/servers/gameservers/${entry.gs.id}`"
-            class="home-item inline home-gameserver"
-            :class="{ 'home-gameserver--connectable': hasConnect(entry) }"
-          >
-            <Flex y-center gap="s" class="home-gameserver__name">
-              <GameIcon v-if="entry.game" :game="entry.game" size="s" />
-              <strong>{{ entry.gs.name }}</strong>
-            </Flex>
-
-            <div class="home-gameserver__action">
-              <span class="home-gameserver__activity">{{ activityLabel(entry) }}</span>
-
-              <GameServerConnectButton
-                class="home-gameserver__connect"
-                :addresses="entry.gs.addresses"
-                :port="entry.gs.port"
-                :connect="connectFor(entry)"
-                size="s"
-                variant="accent"
-                plain
-                stop-propagation
-              />
-            </div>
-          </NuxtLink>
+            :gs="entry.gs"
+            :game="entry.game"
+            :meta="activityLabel(entry)"
+          />
         </Flex>
       </HomeDashboardSection>
 
       <HomeDashboardSection v-if="hopIn" label="Hop in">
-        <NuxtLink :to="`/servers/gameservers/${hopIn.gs.id}`" class="home-item inline">
-          <Flex y-center gap="s" class="home-gameserver__name">
-            <GameIcon v-if="hopIn.game" :game="hopIn.game" size="s" />
-            <strong>{{ hopIn.gs.name }}</strong>
-          </Flex>
-
-          <GameServerConnectButton
-            :addresses="hopIn.gs.addresses"
-            :port="hopIn.gs.port"
-            :connect="connectFor(hopIn)"
-            size="s"
-            variant="accent"
-            plain
-            stop-propagation
-          />
-        </NuxtLink>
+        <HomeDashboardGameserverItem :gs="hopIn.gs" :game="hopIn.game" />
       </HomeDashboardSection>
     </template>
 
@@ -275,58 +347,5 @@ const loading = computed(() =>
         <ChartGameserversPlayers :period :window :utc :color hide-title />
       </template>
     </ChartActivityHistogramModal>
-  </div>
+  </Flex>
 </template>
-
-<style scoped lang="scss">
-.home-gameserver__name {
-  min-width: 0;
-}
-
-// The activity line and the launch button share one cell, so the row is sized
-// for the wider of the two and swapping them on hover doesn't shift the name.
-.home-gameserver__action {
-  display: grid;
-  flex-shrink: 0;
-
-  > * {
-    grid-area: 1 / 1;
-    align-self: center;
-    justify-self: end;
-  }
-}
-
-.home-gameserver__connect {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--transition-duration) ease;
-}
-
-.home-gameserver__activity {
-  transition: opacity var(--transition-duration) ease;
-  white-space: nowrap;
-}
-
-.home-gameserver--connectable:hover,
-.home-gameserver--connectable:focus-within {
-  .home-gameserver__connect {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .home-gameserver__activity {
-    opacity: 0;
-  }
-}
-
-// No hover to reveal on touch, so the row keeps showing what it knows.
-@media (hover: none) {
-  .home-gameserver__connect {
-    display: none;
-  }
-
-  .home-gameserver--connectable:hover .home-gameserver__activity {
-    opacity: 1;
-  }
-}
-</style>

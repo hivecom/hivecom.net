@@ -7,10 +7,10 @@ import { Flex, Skeleton } from '@dolanske/vui'
 // grid filled with artwork cards, `rows` matches the stacked
 // `.home-item.inline` lists, `card` matches a stack of compact cards with a
 // title, a line of body and a badge row, `block` matches a single full-width
-// item.
+// item, `strip` matches the 72px activity histogram.
 withDefaults(defineProps<{
-  variant?: 'grid' | 'cover' | 'rows' | 'card' | 'block'
-  /** How many placeholder items to draw. Ignored by `block`. */
+  variant?: 'grid' | 'cover' | 'rows' | 'card' | 'block' | 'strip'
+  /** How many placeholder items to draw. Ignored by `block` and `strip`. */
   count?: number
   /** Draw the section label bar above the items. */
   label?: boolean
@@ -59,6 +59,8 @@ withDefaults(defineProps<{
         </Flex>
       </div>
     </Flex>
+
+    <Skeleton v-else-if="variant === 'strip'" :height="72" width="100%" :radius="8" />
 
     <div v-else class="home-item">
       <Skeleton :height="16" width="70%" :radius="4" />

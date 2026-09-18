@@ -281,6 +281,17 @@ function computeFlagEmoji(code: string): string {
   return String.fromCodePoint(base + first, base + second)
 }
 
+// A flag for any two-letter region, not just the countries in the map. The EU
+// is the one we actually need: the voice server is "Europe", and a regional
+// indicator pair renders as its flag everywhere the country flags do.
+export function getRegionFlagEmoji(code: string | null | undefined): string {
+  const normalized = code?.trim().toUpperCase() ?? ''
+  if (!COUNTRY_CODE_RE.test(normalized))
+    return ''
+
+  return computeFlagEmoji(normalized)
+}
+
 export function getCountryName(code: string | null | undefined): string | null {
   const normalized = normalizeCountryCode(code)
   if (normalized == null)

@@ -26,6 +26,7 @@ import { onBeforeRouteLeave, useSupabaseClient, useSupabaseUser } from '#imports
 import ContentRulesModal from '@/components/Shared/ContentRulesModal.vue'
 import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
+import { replaceOutsideCode } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { allowedAudioTypes, allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, compressImageToFit, convertImageToWebP, stripImageMetadata } from '@/lib/storage'
 import { BUCKET_SIZE_LIMITS, formatBytes, FORUMS_BUCKET_ID } from '@/lib/storageAssets'
@@ -80,7 +81,6 @@ const LazyImage = Image.extend({
 
 const ENCODE_AMP_RE = /&/g
 const ENCODE_LT_RE = /</g
-const ENCODE_GT_RE = />/g
 const DECODE_GT_RE = /&gt;/g
 const DECODE_LT_RE = /&lt;/g
 const DECODE_AMP_RE = /&amp;/g
@@ -172,12 +172,22 @@ const minHeightPlain = computed(() => {
   return `${cssValue - 28}px`
 })
 
+// Both directions skip code spans and fenced blocks. Markdown never decodes
+// entities inside code, so escaping there would leave the reader looking at a
+// literal "&lt;" instead of the tag they typed into their code sample.
+//
+// Only "<" is escaped, never ">". Escaping "<" is already enough to stop the
+// renderer parsing a tag, and ">" is the blockquote marker - rewriting it to
+// "&gt;" turned every quote typed in plain-text mode into a plain paragraph,
+// and flattened rich-mode quotes on a round trip through the textarea.
 function encodeHtmlEntities(str: string): string {
-  return str.replace(ENCODE_AMP_RE, '&amp;').replace(ENCODE_LT_RE, '&lt;').replace(ENCODE_GT_RE, '&gt;')
+  return replaceOutsideCode(str, text =>
+    text.replace(ENCODE_AMP_RE, '&amp;').replace(ENCODE_LT_RE, '&lt;'))
 }
 
 function decodeHtmlEntities(str: string): string {
-  return str.replace(DECODE_GT_RE, '>').replace(DECODE_LT_RE, '<').replace(DECODE_AMP_RE, '&')
+  return replaceOutsideCode(str, text =>
+    text.replace(DECODE_GT_RE, '>').replace(DECODE_LT_RE, '<').replace(DECODE_AMP_RE, '&'))
 }
 
 // Decoded version of `content` used exclusively by the plain-text textarea.
@@ -810,14 +820,16 @@ function getEditorMarkdown(): string {
     // the markdown renderer can promote standalone internal links to rich embeds.
     .replace(SELF_LINK_RE, '$1')
 
-    // Escape any HTML tag-like sequences (<...>) so they are stored and rendered
-    // as visible literal text rather than being interpreted as HTML by the
-    // markdown renderer. Tiptap now stores these as raw angle-bracket text nodes
-    // (the noHtmlMarked inline interceptor prevents them from being parsed as
-    // real HTML on input), so we must re-escape them on the way out.
-    .replace(HTML_ANGLE_RE, '&lt;$1&gt;')
+  // Escape any HTML tag-like sequences (<...>) so they are stored and rendered
+  // as visible literal text rather than being interpreted as HTML by the
+  // markdown renderer. Tiptap now stores these as raw angle-bracket text nodes
+  // (the noHtmlMarked inline interceptor prevents them from being parsed as
+  // real HTML on input), so we must re-escape them on the way out. Code spans
+  // and fenced blocks are left alone - the renderer already shows those
+  // verbatim, and escaping them puts a literal "&lt;" on the page.
+  const escaped = replaceOutsideCode(stripped, text => text.replace(HTML_ANGLE_RE, '&lt;$1&gt;'))
 
-  return stripped.trim() === '' ? '' : stripped
+  return escaped.trim() === '' ? '' : escaped
 }
 
 const hasPendingUploads = computed(() => pendingBlobs.size > 0)

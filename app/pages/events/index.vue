@@ -141,6 +141,20 @@ const user = useSupabaseUser()
 
 const { agreed: contentRulesAgreed, markAgreed } = useContentRulesAgreement()
 
+// Set by a calendar day click so the form opens on that day. Cleared when the
+// modal closes so the next plain "create" starts blank.
+const createDate = ref<Date | null>(null)
+
+watch(showCreateEventModal, (open) => {
+  if (!open)
+    createDate.value = null
+})
+
+function openCreateOn(date: Date) {
+  createDate.value = date
+  handleCreateEventClick()
+}
+
 function handleCreateEventClick() {
   if (contentRulesAgreed.value === true) {
     showCreateEventModal.value = true
@@ -255,11 +269,12 @@ defineOgImage('Default', {
 
         <!-- Calendar View -->
         <!-- EventsCalendar self-fetches only the visible month window -->
-        <EventsCalendar v-else-if="activeTab === 'calendar'" />
+        <EventsCalendar v-else-if="activeTab === 'calendar'" @create="openCreateOn" />
       </section>
 
       <CreateEventModal
         v-model:open="showCreateEventModal"
+        :initial-date="createDate"
         @saved="refresh"
       />
 

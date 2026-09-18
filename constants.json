@@ -96,6 +96,7 @@
         {
           "id": "eu",
           "title": "Europe",
+          "region": "EU",
           "queryHost": "eu.ts.hivecom.net",
           "queryPort": 10011,
           "voicePort": 9987,

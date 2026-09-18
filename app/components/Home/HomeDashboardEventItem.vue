@@ -52,7 +52,10 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
       </Badge>
       <span v-if="inline" class="home-event-item__date">{{ timing }}</span>
 
-      <Flex v-if="showPeople" y-center :gap="4" class="home-event-item__people">
+      <!-- Rows are one line, so the faces give way to a count. -->
+      <span v-if="inline && rsvpCount > 0" class="home-event-item__count">+{{ rsvpCount }}</span>
+
+      <Flex v-else-if="!inline && showPeople" y-center :gap="4" class="home-event-item__people">
         <EventHostAvatar v-if="showOrganizer" :user-id="organizerId!" :size="18" />
         <Skeleton v-if="loadingRsvps" :height="18" :width="56" :radius="4" />
         <template v-else>
@@ -115,6 +118,16 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
     @include line-clamp(2);
   }
 
+  // A row gets one line and truncates. Wrapping the title is what pushed the
+  // date and the count onto a second line.
+  .inline & strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    -webkit-line-clamp: unset;
+  }
+
   // Only the tile stacks the date over the title. On a row it rides in the foot
   // next to the avatars, where a bottom margin would knock it off centre.
   .home-event-item__date {
@@ -139,6 +152,12 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
 .home-event-item__foot {
   flex-shrink: 0;
   margin-top: auto;
+}
+
+.home-event-item__count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-lighter);
+  white-space: nowrap;
 }
 
 // Above the stretched title link, so a face is still a way into that profile.

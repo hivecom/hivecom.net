@@ -6,11 +6,19 @@ import { useDataGameAssets } from '@/composables/useDataGameAssets'
 
 // A game as artwork rather than a row, for the surfaces that want a game to
 // read as a cover at a glance instead of as one more line in a list. Opens the
-// same details modal every other game name on the site does.
+// same details modal every other game name on the site does, unless it's been
+// given a title and route of its own, which is how a gameserver borrows the art
+// of the game it runs.
 const props = withDefaults(defineProps<{
   game: Tables<'games'>
   /** Line under the title. */
   meta?: string
+  /** Overrides the game name as the tile's title, for a tile that stands for a
+   * server running the game rather than for the game itself. */
+  title?: string
+  /** Route the title leads to. When set the title is a link instead of a button
+   * that emits `open`. */
+  to?: string
   /** Profile ids in this game right now, drawn as an avatar cluster. */
   players?: string[]
   /** Subset of players that are mutual friends, so a cut-off cluster keeps them. */
@@ -92,12 +100,23 @@ function onError(): void {
     <div class="game-art-card__body">
       <!-- The name carries the click and stretches over the whole card, so the
            avatars stay real profile links instead of being swallowed by an
-           outer button. -->
-      <button type="button" class="game-art-card__name" @click="emit('open', game.id)">
-        <strong>{{ game.name }}</strong>
+           outer button. A tile with a route navigates instead of opening the
+           details modal, but it stretches the same way. -->
+      <NuxtLink v-if="to" :to class="game-art-card__name">
+        <strong>{{ title ?? game.name }}</strong>
+      </NuxtLink>
+
+      <button v-else type="button" class="game-art-card__name" @click="emit('open', game.id)">
+        <strong>{{ title ?? game.name }}</strong>
       </button>
 
       <span v-if="meta" class="game-art-card__meta">{{ meta }}</span>
+    </div>
+
+    <!-- Corner action, lifted above the stretched link the same way the avatars
+         are. It shares that corner with them, so a tile passes one or the other. -->
+    <div v-if="$slots.action" class="game-art-card__action">
+      <slot name="action" />
     </div>
   </div>
 </template>
@@ -214,7 +233,8 @@ function onError(): void {
   color: var(--color-text-lighter);
 }
 
-.game-art-card__players {
+.game-art-card__players,
+.game-art-card__action {
   position: absolute;
   top: var(--space-s);
   right: var(--space-s);

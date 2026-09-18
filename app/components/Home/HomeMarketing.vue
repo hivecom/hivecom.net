@@ -249,12 +249,6 @@ const MOBILE_HEIGHT = 339
 // edge has climbed to this fraction of the viewport height. Landing at the
 // bottom edge instead would hold the stars right on that edge, barely on screen.
 const SETTLE_AT = 0.65
-// The join section clips anything above its top edge, so a star can hold no
-// higher than the room between the block and that edge. Past that it rides up
-// with the page instead. That's how it comes into view: it arrives with the
-// section, parks at its hold spot, and waits for the diamond. Kept a little
-// inside the edge so the dot never touches the clip.
-const HEADROOM_MARGIN = 16
 // Half the dot, so the sticky edge lands the star's centre on the diamond.
 const STAR_RADIUS = 1.25
 // How long a star takes to glide into its diamond on hover.
@@ -266,23 +260,7 @@ const STAR_FLICKER = [[0, 2400], [1300, 3100], [2600, 2700], [700, 3500], [2000,
 // offset within the block. dvh so it follows the browser chrome on phones.
 const HOLD_FROM_BOTTOM = `${(100 - SETTLE_AT * 100).toFixed(2)}dvh`
 
-const joinEl = ref<HTMLElement | null>(null)
 const constellationEl = ref<HTMLElement | null>(null)
-// Pixels between the block's top and the join section's clip edge.
-const headroom = ref(0)
-
-// Only layout moves this, never scroll. The join copy swaps after hydration and
-// reflows between layouts, so the section is observed rather than measured once.
-function measureHeadroom() {
-  const host = constellationEl.value
-  const join = joinEl.value
-  if (!host || !join)
-    return
-
-  headroom.value = Math.max(0, host.getBoundingClientRect().top - join.getBoundingClientRect().top - HEADROOM_MARGIN)
-}
-
-useResizeObserver(joinEl, measureHeadroom)
 
 // Hovering or focusing a link pulls its star into the diamond even if the block
 // hasn't settled yet, so the flare lights up around a star that's actually
@@ -349,14 +327,16 @@ function releaseStar(index: number) {
   }, GLIDE_MS)
 }
 
-// The column a star holds in: zero wide, reaching from the join's clip edge
-// down to the diamond, with the star sat at its bottom.
+// The column a star holds in: zero wide, reaching a full viewport above the
+// diamond down to the diamond itself, with the star sat at its bottom. The
+// sticky hold is confined to this box, so the viewport of lead-in is what lets
+// the star reach its spot on screen while the diamond is still below the fold.
 function slotStyle(star: number[]): CSSProperties {
   const [x = 0, y = 0] = star
 
   return {
     left: `${x}px`,
-    height: `calc(var(--star-headroom) + ${(y + STAR_RADIUS).toFixed(3)}px)`,
+    height: `calc(var(--star-lead) + ${(y + STAR_RADIUS).toFixed(3)}px)`,
   }
 }
 
@@ -573,8 +553,13 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
           </div>
         </section>
       </GlowGroup>
-      <div ref="joinEl" class="home-join">
-        <LandingSun class="home-join__sun" />
+      <div class="home-join">
+        <!-- The sun crests the section's bottom edge, so it gets its own clip.
+             The section itself can't clip vertically without cutting off the
+             constellation stars, which hold a viewport above their diamonds. -->
+        <div class="home-join__sun-clip">
+          <LandingSun class="home-join__sun" />
+        </div>
         <FocusTarget class="container-s">
           <template v-if="isMember">
             <h2>Bring someone along</h2>
@@ -659,7 +644,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
           </svg>
 
           <!-- One set of stars per layout, shown and hidden with the matching SVG. -->
-          <div class="constellation-stars constellation-stars--desktop" aria-hidden="true" :style="{ '--star-headroom': `${headroom}px` }">
+          <div class="constellation-stars constellation-stars--desktop" aria-hidden="true">
             <div v-for="(star, index) in DESKTOP_STARS" :key="index" class="constellation-star-slot" :style="slotStyle(star)">
               <div
                 class="constellation-star" :data-star="index" :class="{ 'is-aligned': alignedStar === index,
@@ -667,7 +652,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
               />
             </div>
           </div>
-          <div class="constellation-stars constellation-stars--mobile" aria-hidden="true" :style="{ '--star-headroom': `${headroom}px` }">
+          <div class="constellation-stars constellation-stars--mobile" aria-hidden="true">
             <div v-for="(star, index) in MOBILE_STARS" :key="index" class="constellation-star-slot" :style="slotStyle(star)">
               <div
                 class="constellation-star" :data-star="index" :class="{ 'is-aligned': alignedStar === index,
@@ -810,19 +795,30 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
   word-wrap: balanced;
   width: 100%;
   position: relative;
-  // clip rather than hidden: hidden makes this a scroll container, and the
-  // constellation's sticky stars would then hold against it instead of the viewport.
-  overflow: clip;
+  // Horizontal only, and clip rather than hidden: hidden makes this a scroll
+  // container, and the constellation's sticky stars would then hold against it
+  // instead of the viewport. Clipping vertically would cut the stars off at the
+  // section's top edge, which is what used to leave them hanging there until
+  // the page had scrolled far enough to release them.
+  overflow-x: clip;
   padding-bottom: 420px;
 
-  // The sun band sits behind the join content and crests the bottom edge.
+  // The sun band sits behind the join content and crests the bottom edge, so it
+  // carries the vertical clip the section itself can't have.
+  .home-join__sun-clip {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    z-index: 0;
+    pointer-events: none;
+  }
+
   .home-join__sun {
     position: absolute;
     left: 0;
     bottom: -80px;
     width: 100%;
     height: 760px;
-    z-index: 0;
   }
 
   @media screen and (max-width: $breakpoint-m) {
@@ -997,7 +993,10 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
     // everything on it like the backdrop stars do: labels, the join copy and
     // the flare all paint over them.
     .constellation-stars {
-      --star-headroom: 0px;
+      // How far above its diamond a star's sticky column reaches. A full
+      // viewport is the least that lets every star settle at its hold spot
+      // before the constellation itself comes into view.
+      --star-lead: 100dvh;
 
       position: absolute;
       inset: 0;
@@ -1005,12 +1004,13 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
       pointer-events: none;
     }
 
-    // Zero-width column per star, from the join's clip edge down to the diamond.
-    // It's the box the sticky hold is confined to, so a star never rises past
-    // the clip. Inline style sets left and height.
+    // Zero-width column per star, from a viewport above the constellation down
+    // to the diamond. It's the box the sticky hold is confined to, so its top
+    // edge is the highest point a star can hold at. Inline style sets left and
+    // height.
     .constellation-star-slot {
       position: absolute;
-      top: calc(var(--star-headroom) * -1);
+      top: calc(var(--star-lead) * -1);
       width: 0;
       display: flex;
       flex-direction: column;

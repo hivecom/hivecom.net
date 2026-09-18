@@ -12,6 +12,9 @@ import { expandRecurringEvent } from '@/lib/utils/rrule'
 
 const props = defineProps<{
   event?: Tables<'events'> | null
+  /** Seeds the date when opening in create mode, for entry points that already
+   *  know the day (the dashboard calendar). Ignored in edit mode. */
+  initialDate?: Date | null
 }>()
 
 const emit = defineEmits<{
@@ -120,6 +123,11 @@ watch(open, (val) => {
     }
     else {
       resetForm()
+
+      // resetForm blanks the date, so a caller that already knows the day has
+      // to put it back after the reset rather than before it.
+      if (props.initialDate)
+        eventForm.value.date = props.initialDate
     }
   }
   else {

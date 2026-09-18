@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Card, Flex, Grid } from '@dolanske/vui'
 import DashboardNavTile from '@/components/Admin/Dashboard/DashboardNavTile.vue'
+import HomeDashboardChat from '@/components/Home/HomeDashboardChat.vue'
 import HomeDashboardEvents from '@/components/Home/HomeDashboardEvents.vue'
 import HomeDashboardForum from '@/components/Home/HomeDashboardForum.vue'
 import HomeDashboardGames from '@/components/Home/HomeDashboardGames.vue'
 import HomeDashboardGameservers from '@/components/Home/HomeDashboardGameservers.vue'
-import HomeDashboardVotes from '@/components/Home/HomeDashboardVotes.vue'
+import HomeDashboardVotesBanner from '@/components/Home/HomeDashboardVotesBanner.vue'
 
 // Mobile-only quick nav mirrors the top-level site navigation so the dashboard
 // is a full jumping-off point on small screens.
@@ -37,8 +38,17 @@ const navTiles = [
         </Grid>
       </div>
 
-      <!-- Primary card row: Events, Forum, Games -->
+      <!-- Votes only ever amount to a line or two, and most days to nothing at
+           all, so they sit above the grid and hide themselves when there is
+           nothing running or nothing recent to report. -->
+      <HomeDashboardVotesBanner />
+
+      <!-- Top row: the three cards that always have something to say. -->
       <Grid :columns="3" gap="m" expand y-stretch class="dashboard__grid">
+        <Card class="h-100">
+          <HomeDashboardChat />
+        </Card>
+
         <Card class="h-100">
           <HomeDashboardEvents />
         </Card>
@@ -46,20 +56,16 @@ const navTiles = [
         <Card class="h-100">
           <HomeDashboardForum />
         </Card>
+      </Grid>
 
+      <!-- Bottom row: the two game cards, side by side so they read as one pair. -->
+      <Grid :columns="2" gap="m" expand y-stretch class="dashboard__grid">
         <Card class="h-100">
           <HomeDashboardGames />
         </Card>
-      </Grid>
 
-      <!-- Secondary card row: Gameservers, Votes -->
-      <Grid :columns="2" gap="m" expand y-stretch class="dashboard__grid">
         <Card class="h-100">
           <HomeDashboardGameservers />
-        </Card>
-
-        <Card class="h-100">
-          <HomeDashboardVotes />
         </Card>
       </Grid>
     </div>
@@ -112,18 +118,21 @@ const navTiles = [
 // top-aligned, so an empty state ends up pinned under the header. Push the
 // height down through the card, but only when the body is an empty state -
 // doing it to a populated card squeezes its sections instead.
-.dashboard__grid :deep(.vui-card:has(.dashboard-empty)) {
+// `.dashboard-fill` is the same ask from a populated card: its root wants the
+// full height so a trailing section can grow into it (the chat card's chart).
+.dashboard__grid :deep(.vui-card:has(.dashboard-empty, .dashboard-fill)) {
   display: flex;
   flex-direction: column;
 }
 
-.dashboard__grid :deep(.vui-card-content:has(.dashboard-empty)) {
+.dashboard__grid :deep(.vui-card-content:has(.dashboard-empty, .dashboard-fill)) {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
-.dashboard__grid :deep(.vui-card-content > *:has(> .dashboard-empty)) {
+.dashboard__grid :deep(.vui-card-content > *:has(> .dashboard-empty)),
+.dashboard__grid :deep(.vui-card-content > .dashboard-fill) {
   flex: 1;
   display: flex;
   flex-direction: column;
