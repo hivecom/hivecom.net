@@ -46,13 +46,11 @@ const upcoming = computed(() => events.value.filter(e => dayjs(e.date).isAfter(d
 // Every section here is derived from events plus RSVP state, so the card is
 // only settled once both have landed. A cache hit fills `events` on the first
 // tick and skips the skeleton entirely.
-// TEMP: forced on to look at the skeleton. Restore the gate below before shipping.
-const loading = computed(() => true)
-// const loading = computed(() =>
-//   (eventsLoading.value || rsvpsLoading.value || friendRsvpsLoading.value)
-//   && upcoming.value.length === 0
-//   && happeningNow.value.length === 0,
-// )
+const loading = computed(() =>
+  (eventsLoading.value || rsvpsLoading.value || friendRsvpsLoading.value)
+  && upcoming.value.length === 0
+  && happeningNow.value.length === 0,
+)
 
 // Upcoming events I said yes or tentative to, soonest first.
 const attending = computed(() =>
