@@ -143,6 +143,13 @@ onMounted(() => {
 
   position: fixed;
   inset: 0;
+  // inset alone tracks the visual viewport, which shrinks and grows with the
+  // browser chrome on phones. Every scroll step then resizes the shader canvas,
+  // and a canvas resize clears it until the next frame paints, so the nebula
+  // flickers all the way down the page. lvh pins the height to the large
+  // viewport, so scrolling never resizes the backdrop.
+  height: 100vh;
+  height: 100lvh;
   z-index: 0;
   pointer-events: none;
 }

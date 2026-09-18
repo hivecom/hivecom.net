@@ -780,6 +780,12 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
   // Sit above the persistent page backdrop (HomeBackdrop, z-index 0).
   position: relative;
   z-index: 1;
+  // The card pointer decorations reach 317px out from the cards, past the
+  // viewport edge on anything narrower than a wide desktop, and that overhang
+  // is horizontally scrollable. clip rather than hidden, for the same reason
+  // as .home-join: hidden would make this a scroll container and the
+  // constellation's sticky stars would hold against it instead of the viewport.
+  overflow-x: clip;
 
   * {
     user-select: none;
@@ -822,8 +828,14 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
   }
 
   @media screen and (max-width: $breakpoint-m) {
+    // The desktop band leaves most of a screen of empty page under the join
+    // copy on a phone. The sun's crest is ~45% of the band height, so these
+    // keep the same proportions at roughly half the size.
+    padding-bottom: 240px;
+
     .home-join__sun {
       bottom: 0;
+      height: 480px;
     }
   }
 

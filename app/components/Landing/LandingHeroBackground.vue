@@ -137,7 +137,28 @@ function resize() {
     canvasEl.value.width = w
     canvasEl.value.height = h
     gl.viewport(0, 0, w, h)
+    // Setting the backing size clears the canvas, and waiting for the next raf
+    // to repaint leaves a blank frame in between. A run of resizes (the browser
+    // chrome animating away on phones) turns that into visible flicker, so
+    // repaint in the same task.
+    drawFrame()
   }
+}
+
+// Program, buffer and vertex attribs are set up once in initGL and this
+// context draws nothing else, so a frame is just uniforms and the draw.
+// Sizing lives with the resize observers, not here: getBoundingClientRect
+// every frame forces a layout.
+function drawFrame() {
+  if (!gl || !program || !canvasEl.value)
+    return
+
+  gl.uniform1f(timeUniform, animTime + timeOffset)
+  gl.uniform2f(resolutionUniform, canvasEl.value.width, canvasEl.value.height)
+  gl.uniform3f(baseColorUniform, ...baseColor)
+  gl.uniform3f(altColorUniform, ...altColor)
+
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
 
 function render(now: number) {
@@ -149,7 +170,6 @@ function render(now: number) {
 
   animTime += ((now - lastFrame) / 1000) * props.speed
   lastFrame = now
-  const t = animTime + timeOffset
 
   // Retry until the theme CSS vars are actually resolved. On a hard reload the
   // loading screen is still fading in while this canvas is already ticking, so
@@ -157,16 +177,7 @@ function render(now: number) {
   if (!accentResolved)
     readAccentColors()
 
-  // Program, buffer and vertex attribs are set up once in initGL and this
-  // context draws nothing else, so the frame is just uniforms and the draw.
-  // Sizing lives with the resize observers, not here: getBoundingClientRect
-  // every frame forces a layout.
-  gl.uniform1f(timeUniform, t)
-  gl.uniform2f(resolutionUniform, canvasEl.value.width, canvasEl.value.height)
-  gl.uniform3f(baseColorUniform, ...baseColor)
-  gl.uniform3f(altColorUniform, ...altColor)
-
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+  drawFrame()
 
   rafId = requestAnimationFrame(render)
 }
