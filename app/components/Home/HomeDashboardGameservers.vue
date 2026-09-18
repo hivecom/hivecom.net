@@ -269,8 +269,8 @@ const loading = computed(() =>
 
     <template v-if="loading">
       <HomeDashboardSkeleton variant="cover" :count="SHOWN_LIVE" />
-      <HomeDashboardSkeleton variant="rows" :count="SHOWN_SELECTION" icon />
-      <HomeDashboardSkeleton variant="rows" :count="1" icon />
+      <HomeDashboardSkeleton variant="rows" :count="SHOWN_SELECTION" icon action />
+      <HomeDashboardSkeleton variant="rows" :count="1" icon action />
     </template>
 
     <HomeDashboardEmpty

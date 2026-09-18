@@ -306,7 +306,7 @@ function hourLabel(index: number): string {
       </div>
     </HomeDashboardSection>
 
-    <HomeDashboardSkeleton v-if="voiceLoading && !voiceServers.length" variant="rows" :count="1" />
+    <HomeDashboardSkeleton v-if="voiceLoading && !voiceServers.length" variant="rows" :count="1" action />
     <HomeDashboardSection v-else label="Voice servers" to="/servers/voiceservers">
       <Flex column gap="xs">
         <!-- The title carries the click and stretches over the row, so the

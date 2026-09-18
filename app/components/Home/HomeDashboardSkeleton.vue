@@ -16,17 +16,24 @@ withDefaults(defineProps<{
   label?: boolean
   /** Lead each row with a square, for lists whose items carry an icon. */
   icon?: boolean
+  /** End each row with room for a small button, for lists whose items carry a
+   *  connect action. The button is what sets those rows' height, so without
+   *  this the placeholder comes out shorter than the real row. */
+  action?: boolean
 }>(), {
   variant: 'grid',
   count: 4,
   label: true,
   icon: false,
+  action: false,
 })
 </script>
 
 <template>
   <div class="dashboard-skeleton">
-    <Skeleton v-if="label" class="dashboard-skeleton__label" :height="12" :width="90" :radius="4" />
+    <div v-if="label" class="dashboard-skeleton__head">
+      <Skeleton :height="12" :width="90" :radius="4" />
+    </div>
 
     <div v-if="variant === 'grid'" class="home-item-list">
       <div v-for="i in count" :key="i" class="home-item">
@@ -45,7 +52,9 @@ withDefaults(defineProps<{
           <Skeleton v-if="icon" :height="24" :width="24" :radius="6" />
           <Skeleton :height="16" :width="`${120 + ((i * 37) % 90)}px`" :radius="4" />
         </Flex>
-        <Skeleton :height="12" :width="60" :radius="4" />
+        <div class="dashboard-skeleton__tail" :class="{ 'dashboard-skeleton__tail--action': action }">
+          <Skeleton :height="12" :width="60" :radius="4" />
+        </div>
       </div>
     </Flex>
 
@@ -78,7 +87,13 @@ withDefaults(defineProps<{
   }
 }
 
-.dashboard-skeleton__label {
+// Same box as .dashboard-section__head. The bar is shorter than the label's
+// line, so without the box the items start eight pixels above where the real
+// section's do and every section below drifts up by that much again.
+.dashboard-skeleton__head {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
   margin-bottom: var(--space-xs);
 }
 
@@ -97,6 +112,18 @@ withDefaults(defineProps<{
 
 .dashboard-skeleton__lead {
   min-width: 0;
+}
+
+.dashboard-skeleton__tail {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+// The real cell holds a size-s button, outright or behind hover, and the
+// button rather than the text is what sets the row's height.
+.dashboard-skeleton__tail--action {
+  height: var(--interactive-el-height-s);
 }
 
 // Roughly a compact ReferendumCard: title, a line of body, then its badges.
