@@ -307,7 +307,7 @@ function hourLabel(index: number): string {
     </HomeDashboardSection>
 
     <HomeDashboardSkeleton v-if="voiceLoading && !voiceServers.length" variant="rows" :count="1" />
-    <HomeDashboardSection v-else label="Voice servers">
+    <HomeDashboardSection v-else label="Voice servers" to="/servers/voiceservers">
       <Flex column gap="xs">
         <!-- The title carries the click and stretches over the row, so the
              connect button stays a real link instead of an anchor in an anchor. -->

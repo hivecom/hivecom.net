@@ -4,6 +4,7 @@ import NotificationTabActive from '@/components/Notifications/NotificationTabAct
 import NotificationTabPast from '@/components/Notifications/NotificationTabPast.vue'
 import NotificationTabSubscriptions from '@/components/Notifications/NotificationTabSubscriptions.vue'
 import { useDataNotifications } from '@/composables/useDataNotifications'
+import { useNotificationSheet } from '@/composables/useNotificationSheet'
 
 // FIXME: on mobile, the tabs are offset and show two horizontal lines - change minus margin to fix it
 
@@ -11,8 +12,8 @@ const { badgeText, fetch, reset } = useDataNotifications()
 const userId = useUserId()
 const hasUser = computed(() => Boolean(userId.value))
 
-const open = ref(false)
-const activeTab = ref<'active' | 'past' | 'subscriptions'>('active')
+// Shared so the dashboard can open the sheet straight onto a tab.
+const { open, activeTab } = useNotificationSheet()
 const isDev = import.meta.dev
 
 // Dev fixture state passed down to tab components

@@ -10,6 +10,7 @@ import HomeDashboardSkeleton from '@/components/Home/HomeDashboardSkeleton.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { SUBSCRIPTION_SELECT, useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 import { useForumFeedPreview } from '@/composables/useForumFeedPreview'
+import { useNotificationSheet } from '@/composables/useNotificationSheet'
 import { usePageVisibility } from '@/composables/usePageVisibility'
 import { useUserId } from '@/composables/useUserId'
 import { getDiscussionEntityHref } from '@/lib/discussions'
@@ -26,6 +27,7 @@ const REFRESH_INTERVAL_MS = 60 * 1000
 const supabase = useSupabaseClient<Database>()
 const userId = useUserId()
 const { settings } = useDataUserSettings()
+const { openTo: openNotifications } = useNotificationSheet()
 
 // My subscriptions with their discussion titles, out of the same cache the
 // notification sheet subscriptions tab fills.
@@ -159,7 +161,13 @@ const {
     <HomeDashboardCardHeader title="Forum" icon="ph:chats-circle" to="/forum" />
 
     <HomeDashboardSkeleton v-if="subscriptionsLoading && !subscriptions.length" variant="grid" :count="4" />
-    <HomeDashboardSection v-else-if="subscriptions.length" :label="unreadSubscriptionCount ? `Your subscriptions (${unreadSubscriptionCount} new)` : 'Your subscriptions'">
+    <!-- The full list lives in the notification sheet, so the label opens
+         that rather than a page. -->
+    <HomeDashboardSection
+      v-else-if="subscriptions.length"
+      :label="unreadSubscriptionCount ? `Your subscriptions (${unreadSubscriptionCount} new)` : 'Your subscriptions'"
+      @click="openNotifications('subscriptions')"
+    >
       <div class="home-item-list">
         <NuxtLink
           v-for="{ sub, unread } in subscriptions"

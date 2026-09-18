@@ -105,6 +105,10 @@ const detailsOpen = ref(false)
 const activityModalOpen = ref(false)
 const communitySheetOpen = ref(false)
 
+function openCommunitySheet(): void {
+  communitySheetOpen.value = true
+}
+
 function openDetails(gameId: number): void {
   detailsGameId.value = gameId
   detailsOpen.value = true
@@ -174,6 +178,10 @@ const communityRecent = computed(() => {
 
   return communityPool.value.slice(0, Math.max(SHOWN_COMMUNITY, withFriends))
 })
+
+// The card shows a slice of the community list. Only when there's more behind
+// it does the section label become the way to the full sheet.
+const hasMoreCommunity = computed(() => rankedCommunity.value.length > communityRecent.value.length)
 
 // Rotates the discovery pick so the slot isn't the same game every time the
 // dashboard loads. Seeded once on mount rather than read inline, so a presence
@@ -266,16 +274,13 @@ function activityLabel(entry: CommunityGame): string | undefined {
     </HomeDashboardSection>
 
     <HomeDashboardSkeleton v-if="(presencesLoading || gamesLoading) && !communityRecent.length" variant="rows" icon :count="SHOWN_COMMUNITY" />
-    <HomeDashboardSection v-else-if="communityRecent.length" label="What everyone's been playing">
-      <template v-if="rankedCommunity.length > communityRecent.length" #action>
-        <Button size="s" plain @click="communitySheetOpen = true">
-          View all
-          <template #end>
-            <Icon name="ph:caret-up-down" />
-          </template>
-        </Button>
-      </template>
-
+    <!-- Listener only attached when there's more than the card shows, so the
+         label stays plain text otherwise. -->
+    <HomeDashboardSection
+      v-else-if="communityRecent.length"
+      label="What everyone's been playing"
+      :on-click="hasMoreCommunity ? openCommunitySheet : undefined"
+    >
       <Flex column gap="xs">
         <HomeDashboardGameItem
           v-for="entry in communityRecent"

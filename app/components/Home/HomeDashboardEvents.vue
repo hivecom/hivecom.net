@@ -144,7 +144,9 @@ function handleContentRulesConfirmed() {
 
     <!-- The grid is the card's floor. However few events exist, the month is
          always the same height, and an empty day is a place to start one. -->
-    <HomeDashboardSection :label="dayjs().format('MMMM')" class="home-calendar-section">
+    <!-- The month name is the way to the full calendar. Same query the events
+         page writes when its calendar tab is picked, so it lands on that tab. -->
+    <HomeDashboardSection :label="dayjs().format('MMMM')" to="/events?tab=calendar" class="home-calendar-section">
       <HomeDashboardCalendar @create="openCreate" />
     </HomeDashboardSection>
   </Flex>
