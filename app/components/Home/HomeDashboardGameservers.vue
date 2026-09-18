@@ -15,7 +15,7 @@ import GameArtCard from '@/components/Shared/GameArtCard.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
-import { useDataMetrics } from '@/composables/useDataMetrics'
+import { PERIOD_CONFIGS, useDataMetrics } from '@/composables/useDataMetrics'
 import { buildConnectContext } from '@/composables/useGameConnect'
 import { isNil } from '@/lib/utils/common'
 import { fromNow } from '@/lib/utils/date'
@@ -46,7 +46,7 @@ interface ServerEntry {
 
 const { gameservers, loading: gameserversLoading } = useDataGameservers()
 const { getById: getGameById } = useDataGames()
-const { metrics, fetchMetrics, fetchMetricsHistoryIsolated, getCachedHistory } = useDataMetrics()
+const { metrics, fetchMetrics, fetchMetricsHistoryIsolated, getCachedHistory, scheduleRefresh } = useDataMetrics()
 
 // Two windows, because one can't do both jobs. The 90d pass buckets by day, so
 // it reaches back far enough that a server nobody has touched in weeks still
@@ -86,6 +86,19 @@ onMounted(async () => {
   coarseHistory.value = coarse
   fineHistory.value = fine
   ready.value = true
+
+  // The snapshot keeps itself current through useDataMetrics for as long as
+  // the card is mounted, so the player counts already track the cron. The
+  // history is fetched in isolation and has to ask. Each window refetches when
+  // one of its own buckets rolls over: a new reading can't show up in the fine
+  // set before the quarter hour, or in the coarse set before the day.
+  scheduleRefresh('90d', (entries) => {
+    coarseHistory.value = entries
+  }, { cadenceMs: PERIOD_CONFIGS['90d'].bucketMs })
+
+  scheduleRefresh('24h', (entries) => {
+    fineHistory.value = entries
+  }, { cadenceMs: PERIOD_CONFIGS['24h'].bucketMs })
 })
 
 // Buckets come back oldest first and each bucket holds that window's peak, so

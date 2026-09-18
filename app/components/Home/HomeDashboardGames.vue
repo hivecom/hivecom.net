@@ -25,7 +25,7 @@ const ChartActivityHistogramModal = defineAsyncComponent(() => import('@/compone
 const GameDetailsModal = defineAsyncComponent(() => import('@/components/Shared/GameDetailsModal.vue'))
 
 // Games card: the two games I played last as artwork, a short community
-// aggregate as rows, and one game I haven't touched that others play. Whoever
+// aggregate as rows, and one game from our catalog I haven't touched. Whoever
 // is in a game right now rides along on that game's own row as avatars, so the
 // card never spends a section repeating a name it already shows. Friends lead
 // the clusters and pin their games to the top. Counts stay small on purpose so
@@ -192,20 +192,68 @@ onMounted(() => {
   discoverSeed.value = Math.floor(Math.random() * 1000)
 })
 
-// One game the community plays that I haven't touched. Anything the section
-// above already shows is skipped, since repeating a row twice in one card is
-// what made this feel like a wall.
-const discoverGame = computed<CommunityGame | null>(() => {
-  const shown = new Set(communityRecent.value.map(entry => entry.appId))
-  const pool = communityPool.value.filter(entry => !shown.has(entry.appId))
+// Genres I've been in lately, read off every tracked game on my recent list
+// rather than just the two tiles, so the pick leans toward what I actually play.
+const myRecentGenres = computed(() => {
+  const tags = new Set<string>()
 
-  return pool.length ? pool[discoverSeed.value % pool.length] ?? null : null
+  for (const app of myRecentApps.value) {
+    for (const tag of trackedGame(app.app_id)?.genre_tags ?? [])
+      tags.add(tag)
+  }
+
+  return tags
 })
+
+// One game from the whole catalog that isn't already on the card: not on my
+// recent list, not in the community rows above. Candidates rank by how many
+// genre tags they share with my recent games and the rotation runs inside the
+// top bucket, so the slot still changes between loads. With no overlap anywhere
+// (untagged games, or a fresh account) the bucket is the whole pool.
+const discoverGame = computed<Tables<'games'> | null>(() => {
+  const onCard = new Set<number>()
+
+  for (const app of myRecentApps.value) {
+    const game = trackedGame(app.app_id)
+
+    if (game)
+      onCard.add(game.id)
+  }
+
+  for (const entry of communityRecent.value)
+    onCard.add(entry.game.id)
+
+  const candidates = games.value.filter(game => !onCard.has(game.id))
+
+  if (!candidates.length)
+    return null
+
+  const overlap = (game: Tables<'games'>): number =>
+    (game.genre_tags ?? []).filter(tag => myRecentGenres.value.has(tag)).length
+
+  const best = Math.max(...candidates.map(overlap))
+  const bucket = candidates.filter(game => overlap(game) === best)
+
+  return bucket[discoverSeed.value % bucket.length] ?? null
+})
+
+// The discover row comes from the games table, so its community stats are a
+// lookup by Steam app rather than fields on the entry. Nothing there means the
+// row stands on its name and icon alone.
+const discoverActivity = computed<RecentlyPlayedGame | undefined>(() =>
+  discoverGame.value?.steam_id != null
+    ? recentlyPlayedByAppId.value.get(discoverGame.value.steam_id)
+    : undefined,
+)
+
+const discoverPlayers = computed(() =>
+  discoverGame.value?.steam_id != null ? playersIn(discoverGame.value.steam_id) : [],
+)
 
 // Right-hand line per row, same shape as the gameservers card. A row with
 // people in it right now says so with their avatars, so the count line would
 // only repeat them and drops out.
-function activityLabel(entry: CommunityGame): string | undefined {
+function activityLabel(entry: RecentlyPlayedGame): string | undefined {
   if (entry.playing > 0)
     return undefined
 
@@ -300,11 +348,11 @@ function activityLabel(entry: CommunityGame): string | undefined {
     <HomeDashboardSection v-if="discoverGame" label="Discover something new">
       <HomeDashboardGameItem
         inline
-        :name="discoverGame.appName"
-        :game="discoverGame.game"
-        :game-id="discoverGame.game.id"
-        :meta="activityLabel(discoverGame)"
-        :players="playersIn(discoverGame.appId)"
+        :name="discoverGame.name ?? discoverGame.shorthand ?? String(discoverGame.id)"
+        :game="discoverGame"
+        :game-id="discoverGame.id"
+        :meta="discoverActivity ? activityLabel(discoverActivity) : undefined"
+        :players="discoverPlayers"
         :friend-ids="mutualFriendIds"
         @open="openDetails"
       />

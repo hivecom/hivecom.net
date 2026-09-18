@@ -43,7 +43,7 @@ interface ChannelEntry {
   messages: number
 }
 
-const { metrics, fetchMetrics, fetchMetricsHistoryIsolated, getCachedHistory } = useDataMetrics()
+const { metrics, fetchMetrics, fetchMetricsHistoryIsolated, getCachedHistory, scheduleRefresh } = useDataMetrics()
 
 // The snapshot says who is in a channel now, the 24h history says whether it
 // said anything today. Both seed synchronously from cache, because the fetchers
@@ -52,6 +52,13 @@ const { metrics, fetchMetrics, fetchMetricsHistoryIsolated, getCachedHistory } =
 const cachedDay = getCachedHistory('24h')
 const dayHistory = ref<MetricsHistoryEntry[]>(cachedDay ?? [])
 const ircReady = ref(metrics.value !== null && cachedDay !== null)
+
+// The snapshot keeps itself current through useDataMetrics for as long as the
+// card is mounted. The history is fetched in isolation, so it has to ask.
+// Everything drawn from it is folded to the hour, so a new hour is the only
+// time it can look different; if another card holds the same window at a
+// tighter cadence the entries arrive with that fetch instead.
+const HOUR_MS = 60 * 60 * 1000
 
 onMounted(async () => {
   // fetchMetrics rethrows on failure, and a dead snapshot shouldn't leave the
@@ -63,6 +70,10 @@ onMounted(async () => {
 
   dayHistory.value = day
   ircReady.value = true
+
+  scheduleRefresh('24h', (entries) => {
+    dayHistory.value = entries
+  }, { cadenceMs: HOUR_MS })
 })
 
 // Each bucket carries the messages sent during that bucket, so today's total is
@@ -175,8 +186,11 @@ function confirmJoin() {
 
 // Voice servers: one row per server the snapshot reports, with its headcount.
 // The viewer on /servers/voiceservers has the channel tree; this only answers
-// "is anyone there" and hands you the door.
-const { data: snapshot, status: snapshotStatus } = useDataTeamSpeakSnapshot()
+// "is anyone there" and hands you the door. Same five-minute check the viewer
+// runs, since without it the count is whatever was true when the page loaded.
+const { data: snapshot, status: snapshotStatus } = useDataTeamSpeakSnapshot({
+  refreshInterval: 5 * 60 * 1000,
+})
 
 type ServerConfig = (typeof constants.PLATFORMS.TEAMSPEAK.servers)[number]
 

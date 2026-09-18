@@ -65,7 +65,15 @@ const nextUpdateLabel = computed(() => {
     </Tooltip>
     <span v-if="dataFromLabel">Data from {{ dataFromLabel }}</span>
     <span v-if="dataFromLabel && nextUpdateLabel">-</span>
-    <span v-if="nextUpdateLabel">Next update in {{ nextUpdateLabel }}</span>
+    <!-- The countdown sits in a slot sized by the widest value it can take, so
+         "4m 9s" ticking over from "4m 10s" doesn't shift everything to its left. -->
+    <span v-if="nextUpdateLabel">
+      Next update in
+      <span class="metrics-refresh-countdown__slot">
+        <span>{{ nextUpdateLabel }}</span>
+        <span aria-hidden="true" class="metrics-refresh-countdown__widest">0m 00s</span>
+      </span>
+    </span>
   </Flex>
 </template>
 
@@ -78,6 +86,21 @@ const nextUpdateLabel = computed(() => {
   span {
     font-size: var(--font-size-xxs);
     color: var(--color-text-lightest);
+    font-variant-numeric: tabular-nums;
+  }
+
+  // Both spans share one grid cell: the hidden one holds the width, the live
+  // one paints over it from the left.
+  &__slot {
+    display: inline-grid;
+
+    > span {
+      grid-area: 1 / 1;
+    }
+  }
+
+  &__widest {
+    visibility: hidden;
   }
 }
 </style>

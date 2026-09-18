@@ -7,6 +7,7 @@ import HomeDashboardForum from '@/components/Home/HomeDashboardForum.vue'
 import HomeDashboardGames from '@/components/Home/HomeDashboardGames.vue'
 import HomeDashboardGameservers from '@/components/Home/HomeDashboardGameservers.vue'
 import HomeDashboardVotesBanner from '@/components/Home/HomeDashboardVotesBanner.vue'
+import MetricsRefreshCountdown from '@/components/Shared/Charts/MetricsRefreshCountdown.vue'
 
 // Mobile-only quick nav mirrors the top-level site navigation so the dashboard
 // is a full jumping-off point on small screens.
@@ -68,6 +69,11 @@ const navTiles = [
           <HomeDashboardGameservers />
         </Card>
       </Grid>
+
+      <!-- Same footer the games page has, so the cards say how fresh they are. -->
+      <Flex x-end>
+        <MetricsRefreshCountdown />
+      </Flex>
     </div>
   </div>
 </template>

@@ -376,17 +376,40 @@ function scheduleSnapshotRefresh(): void {
 // another still depends on, and each period owns its own timer, so two charts
 // on different periods both stay current instead of whichever mounted last
 // silently winning.
+//
+// Every timer still fires on the five-minute collection boundary, but a
+// consumer can ask for a slower cadence. A card folding a day into hourly bars
+// gains nothing from refetching twelve times an hour, and a daily-bucketed 90d
+// window changes once a day. The period refreshes at the tightest cadence any
+// live consumer asked for, so a slow consumer never starves a fast one.
 
 export type MetricsRefreshListener = (entries: MetricsHistoryEntry[]) => void
+
+export interface MetricsRefreshOptions {
+  /** Refetch only once a window this wide has rolled over. Default: every collection. */
+  cadenceMs?: number
+}
 
 interface PeriodSubscription {
   consumers: number
   listeners: Set<MetricsRefreshListener>
+  /** One entry per live consumer; the smallest wins. */
+  cadences: number[]
   timer: ReturnType<typeof setTimeout> | null
   lastRefreshedAt: number
 }
 
 const periodSubscriptions = new Map<MetricsPeriod, PeriodSubscription>()
+
+// Due when the last refresh and now fall in different cadence windows. Windows
+// are measured from the collection boundary plus buffer, so a timer firing
+// right on that mark counts as the new window rather than a hair short of it.
+function periodDue(subscription: PeriodSubscription): boolean {
+  const cadence = Math.min(...subscription.cadences)
+  const windowOf = (at: number) => Math.floor((at - METRICS_REFRESH_BUFFER_MS) / cadence)
+
+  return windowOf(subscription.lastRefreshedAt) !== windowOf(Date.now())
+}
 
 async function refreshPeriod(period: MetricsPeriod): Promise<void> {
   if (metricsClient === null)
@@ -427,7 +450,11 @@ function schedulePeriodRefresh(period: MetricsPeriod): void {
     clearTimeout(subscription.timer)
 
   subscription.timer = setTimeout(() => {
-    void refreshPeriod(period).finally(() => {
+    // The timer always lands on the boundary; the cadence decides whether this
+    // one is a fetch or a pass.
+    const work = periodDue(subscription) ? refreshPeriod(period) : Promise.resolve()
+
+    void work.finally(() => {
       // Re-arm only while someone is still listening.
       if (periodSubscriptions.has(period))
         schedulePeriodRefresh(period)
@@ -435,15 +462,20 @@ function schedulePeriodRefresh(period: MetricsPeriod): void {
   }, msUntilNextCollection() + METRICS_REFRESH_BUFFER_MS)
 }
 
-function subscribePeriod(period: MetricsPeriod, listener?: MetricsRefreshListener): () => void {
+function subscribePeriod(
+  period: MetricsPeriod,
+  listener?: MetricsRefreshListener,
+  cadenceMs: number = METRICS_COLLECTION_INTERVAL,
+): () => void {
   let subscription = periodSubscriptions.get(period)
   if (subscription === undefined) {
     // Subscribing follows a load, so treat now as the last refresh.
-    subscription = { consumers: 0, listeners: new Set(), timer: null, lastRefreshedAt: Date.now() }
+    subscription = { consumers: 0, listeners: new Set(), cadences: [], timer: null, lastRefreshedAt: Date.now() }
     periodSubscriptions.set(period, subscription)
   }
 
   subscription.consumers++
+  subscription.cadences.push(cadenceMs)
   if (listener !== undefined)
     subscription.listeners.add(listener)
   if (subscription.timer === null)
@@ -462,6 +494,12 @@ function subscribePeriod(period: MetricsPeriod, listener?: MetricsRefreshListene
 
     if (listener !== undefined)
       current.listeners.delete(listener)
+
+    // Drop this consumer's cadence only, since another may have asked for the same one.
+    const cadenceIndex = current.cadences.indexOf(cadenceMs)
+    if (cadenceIndex !== -1)
+      current.cadences.splice(cadenceIndex, 1)
+
     current.consumers--
     if (current.consumers > 0)
       return
@@ -492,7 +530,7 @@ if (import.meta.client) {
     }
 
     for (const [period, subscription] of periodSubscriptions) {
-      if (isStale(subscription.lastRefreshedAt))
+      if (periodDue(subscription))
         void refreshPeriod(period)
       schedulePeriodRefresh(period)
     }
@@ -527,8 +565,12 @@ export function useDataMetrics() {
    * observe the shared `metricsHistory` ref. Returns an unsubscribe; calling it
    * is optional since teardown releases anything left over.
    */
-  const scheduleRefresh = (period: MetricsPeriod, onRefresh?: MetricsRefreshListener): (() => void) => {
-    const release = subscribePeriod(period, onRefresh)
+  const scheduleRefresh = (
+    period: MetricsPeriod,
+    onRefresh?: MetricsRefreshListener,
+    options: MetricsRefreshOptions = {},
+  ): (() => void) => {
+    const release = subscribePeriod(period, onRefresh, options.cadenceMs)
     const stop = () => {
       ownedSubscriptions.delete(stop)
       release()
