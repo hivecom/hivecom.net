@@ -364,7 +364,7 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
                       style="min-width: 78px"
                     />
                     <ChartActivityHistogram
-                      v-if="!localHistoryLoading"
+                      :loading="localHistoryLoading"
                       :data="getSteamGameHistogram(game.steam_id)"
                       :timestamps="getSteamGameTimestamps()"
                       :height="28"

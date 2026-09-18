@@ -142,9 +142,12 @@ function open(): void {
 }
 
 // The icon and the name share the left of the row, and the group has to be
-// allowed to shrink or a long name pushes the meta line off the end.
+// allowed to shrink or a long name pushes the meta line off the end. The floor
+// is the small button height so these rows sit level with gameserver rows,
+// which carry a connect button that sets theirs.
 .home-game-item__lead {
   min-width: 0;
+  min-height: var(--interactive-el-height-s);
 }
 
 // Tiles put the meta line and the avatars on one line under the name, so the

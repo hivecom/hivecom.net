@@ -472,7 +472,7 @@ async function handleBulkDelete() {
                     style="min-width: 78px"
                   />
                   <ChartActivityHistogram
-                    v-if="!localHistoryLoading"
+                    :loading="localHistoryLoading"
                     :data="getServerHistogram((gameserver._original as QueryGameserver).id)"
                     :timestamps="getServerTimestamps()"
                     :height="28"

@@ -45,7 +45,7 @@ const identityHasIssues = computed(() => {
 <template>
   <Flex y-center x-between expand gap="s" class="chat-toolbar">
     <Flex y-center gap="s">
-      <ChatMenubar :compact="compact" />
+      <ChatMenubar :compact="compact" @open-identity="identityOpen = true" />
     </Flex>
     <Flex y-center gap="s">
       <ChatNetworkBadge />

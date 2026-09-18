@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MetricsHistoryEntry } from '@/composables/useDataMetrics'
 import type { TeamSpeakServerSnapshot } from '@/types/teamspeak'
-import { Button, Flex } from '@dolanske/vui'
+import { Button, Flex, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import constants from '~~/constants.json'
@@ -10,11 +10,14 @@ import HomeDashboardPlaceholder from '@/components/Home/HomeDashboardPlaceholder
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
 import HomeDashboardSkeleton from '@/components/Home/HomeDashboardSkeleton.vue'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
+import ChartIrcModal from '@/components/Shared/Charts/ChartIrcModal.vue'
+import ChartTeamSpeakOnlineModal from '@/components/Shared/Charts/ChartTeamSpeakOnlineModal.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataTeamSpeakSnapshot } from '@/composables/useDataTeamSpeakSnapshot'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { isOpaqueIrcChannelKey } from '@/composables/useMetricsAdminIrcChannels'
+import { getCSSVariable } from '@/lib/utils/common'
 import { getRegionFlagEmoji } from '@/lib/utils/country'
 
 dayjs.extend(relativeTime)
@@ -239,6 +242,24 @@ const voiceLoading = computed(() =>
 
 const fallbackConnectUrl = computed(() => constants.PLATFORMS?.TEAMSPEAK?.urls?.[0]?.url ?? null)
 
+// Same address the chat menubar's connect guide gives out, for the hover on
+// the section label.
+const ircAddress = constants.PLATFORMS.IRC.urls.find(url => url.id === 'irc')?.url.replace('irc://', '') ?? 'irc.hivecom.net:6697'
+
+// The legend doubles as the way into the full charts: messages open the IRC
+// activity modal, voice opens the TeamSpeak one. Counts feed the modal headers
+// and pick the initial period the same way the badges elsewhere do.
+const ircModalOpen = ref(false)
+const voiceModalOpen = ref(false)
+
+const ircOnline = computed(() => metrics.value?.irc.online ?? null)
+const voiceOnline = computed(() => snapshot.value ? voiceServers.value.reduce((sum, server) => sum + server.online, 0) : null)
+
+// The modals draw on canvas, so they get the strip's colours resolved rather
+// than as var() references. Empty on the server, where nothing is drawn.
+const messagesColor = computed(() => getCSSVariable('--color-text') || undefined)
+const voiceColor = computed(() => getCSSVariable('--color-text-blue') || undefined)
+
 // The last day as two strips of hourly bars, one for messages and one for
 // people in voice. The 24h history buckets by quarter hour, which is too many
 // bars for a card column, so it's folded to the hour: messages add up, voice
@@ -286,6 +307,17 @@ function hourLabel(index: number): string {
 
     <HomeDashboardSkeleton v-if="!ircReady && !shownChannels.length" variant="grid" :count="SHOWN_CHANNELS" />
     <HomeDashboardSection v-else label="Chat activity">
+      <template #action>
+        <Tooltip placement="top">
+          <Icon name="ph:info" :size="12" class="home-chat__info" />
+          <template #tooltip>
+            <p class="text-s">
+              {{ ircAddress }}
+            </p>
+          </template>
+        </Tooltip>
+      </template>
+
       <div class="home-item-list">
         <button
           v-for="entry in shownChannels"
@@ -349,8 +381,12 @@ function hourLabel(index: number): string {
     <HomeDashboardSection v-else-if="hourly.length" label="Last 24 hours" class="home-activity-section">
       <template #action>
         <div class="home-activity__legend">
-          <span><i class="home-activity__swatch home-activity__swatch--messages" />Messages</span>
-          <span><i class="home-activity__swatch home-activity__swatch--voice" />In voice</span>
+          <button type="button" class="home-activity__legend-item" @click="ircModalOpen = true">
+            <i class="home-activity__swatch home-activity__swatch--messages" />Messages
+          </button>
+          <button type="button" class="home-activity__legend-item" @click="voiceModalOpen = true">
+            <i class="home-activity__swatch home-activity__swatch--voice" />In voice
+          </button>
         </div>
       </template>
 
@@ -360,6 +396,9 @@ function hourLabel(index: number): string {
         </template>
       </ChartActivityHistogram>
     </HomeDashboardSection>
+
+    <ChartIrcModal v-model:open="ircModalOpen" :count="ircOnline" :color="messagesColor" />
+    <ChartTeamSpeakOnlineModal v-model:open="voiceModalOpen" :count="voiceOnline" :color="voiceColor" />
 
     <ConfirmModal
       v-model:open="joinConfirmOpen"
@@ -443,18 +482,33 @@ function hourLabel(index: number): string {
   }
 }
 
+.home-chat__info {
+  color: var(--color-text-lightest);
+}
+
 .home-activity__legend {
   display: flex;
   gap: var(--space-s);
   color: var(--color-text-lighter);
+}
 
-  // The size goes on the span itself: VUI's reset sets `span { font-size }`
-  // globally, so a size on the wrapper never reaches the text.
-  span {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xxs);
-    font-size: var(--font-size-xxs);
+// Each entry is a button into its chart, so the button chrome comes off and it
+// keeps reading as a legend until hovered.
+.home-activity__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  font: inherit;
+  font-size: var(--font-size-xxs);
+  color: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-text);
   }
 }
 

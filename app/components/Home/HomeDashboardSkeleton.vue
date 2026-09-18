@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Flex, Skeleton } from '@dolanske/vui'
+import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
 
 // Placeholder for a dashboard card section while its data is still cold.
 // Mirrors the geometry of the real items so the card doesn't jump when the
@@ -7,7 +8,7 @@ import { Flex, Skeleton } from '@dolanske/vui'
 // grid filled with artwork cards, `rows` matches the stacked
 // `.home-item.inline` lists, `card` matches a stack of compact cards with a
 // title, a line of body and a badge row, `block` matches a single full-width
-// item, `strip` matches the 72px activity histogram.
+// item, `strip` matches the 72px hourly activity histogram, bar for bar.
 withDefaults(defineProps<{
   variant?: 'grid' | 'cover' | 'rows' | 'card' | 'block' | 'strip'
   /** How many placeholder items to draw. Ignored by `block` and `strip`. */
@@ -69,7 +70,7 @@ withDefaults(defineProps<{
       </div>
     </Flex>
 
-    <Skeleton v-else-if="variant === 'strip'" :height="72" width="100%" :radius="8" />
+    <ChartActivityHistogram v-else-if="variant === 'strip'" loading :count="24" :height="72" gap="xxs" expand compact />
 
     <div v-else class="home-item">
       <Skeleton :height="16" width="70%" :radius="4" />

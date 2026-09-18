@@ -526,7 +526,7 @@ onBeforeMount(async () => {
                       style="min-width: 78px"
                     />
                     <ChartActivityHistogram
-                      v-if="!localHistoryLoading"
+                      :loading="localHistoryLoading"
                       :data="getGameHistogram(game.id)"
                       :timestamps="getGameTimestamps()"
                       :height="28"

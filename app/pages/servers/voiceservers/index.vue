@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Flex, Tooltip } from '@dolanske/vui'
-import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivityHistogramModal.vue'
-import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
+import ChartTeamSpeakOnlineModal from '@/components/Shared/Charts/ChartTeamSpeakOnlineModal.vue'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import TeamSpeakViewer from '@/components/Shared/TeamSpeakViewer.vue'
 
@@ -46,18 +45,6 @@ defineOgImage('Default', {
 
     <TeamSpeakViewer @update:total-online="onTotalOnlineUpdate" />
 
-    <ChartActivityHistogramModal
-      v-model:open="activityModalOpen"
-      title="TeamSpeak Activity"
-      :count="totalOnline"
-      count-label="online"
-      count-singular="online"
-      :series="['teamspeakOnline']"
-      :initial-period="totalOnline ? '24h' : '14d'"
-    >
-      <template #default="{ period, window, utc, color }">
-        <ChartTeamSpeakOnline :period :window :utc :color hide-title />
-      </template>
-    </ChartActivityHistogramModal>
+    <ChartTeamSpeakOnlineModal v-model:open="activityModalOpen" :count="totalOnline" />
   </div>
 </template>

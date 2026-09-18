@@ -3,11 +3,16 @@ import { Button, DropdownItem, DropdownTitle, Flex, Menubar, MenuItem, Sheet, To
 import { computed, ref } from 'vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import ChatNativeClientModal from './NativeClientModal.vue'
 
 defineProps<{
   // Compact surfaces (the navbar sheet) have no sidebar, so hide its toggle.
   compact?: boolean
 }>()
+
+// The Identity modal lives in the toolbar, so bubble the request up instead of
+// mounting a second copy here.
+const emit = defineEmits<{ openIdentity: [] }>()
 
 const router = useRouter()
 
@@ -26,6 +31,17 @@ const { isConnected, connState, connect, disconnect, sidebarHidden, toggleSideba
 const isMobile = useBreakpoint('<s')
 
 const connectionDrawerOpen = ref(false)
+const nativeOpen = ref(false)
+
+function openNative() {
+  connectionDrawerOpen.value = false
+  nativeOpen.value = true
+}
+
+function openIdentity() {
+  nativeOpen.value = false
+  emit('openIdentity')
+}
 
 const latencyLabel = computed(() => {
   if (latencyMs.value == null)
@@ -87,10 +103,12 @@ function run(action: () => void) {
           </template>
           Server log
         </DropdownItem>
-        <DropdownTitle>About</DropdownTitle>
-        <p class="chat-menubar__server">
-          irc.hivecom.net:6697
-        </p>
+        <DropdownItem @click="openNative">
+          <template #icon>
+            <Icon name="ph:question" />
+          </template>
+          Connect via IRC
+        </DropdownItem>
         <template v-if="connState === 'connected' && latencyLabel">
           <DropdownTitle>Latency</DropdownTitle>
           <p class="chat-menubar__server chat-menubar__latency">
@@ -136,10 +154,12 @@ function run(action: () => void) {
               </template>
               Server log
             </DropdownItem>
-            <DropdownTitle>About</DropdownTitle>
-            <p class="chat-menubar__server">
-              irc.hivecom.net:6697
-            </p>
+            <DropdownItem @click="run(openNative)">
+              <template #icon>
+                <Icon name="ph:question" />
+              </template>
+              Connect via IRC
+            </DropdownItem>
           </div>
         </template>
       </MenuItem>
@@ -160,6 +180,8 @@ function run(action: () => void) {
       </MenuItem>
     </Menubar>
   </Flex>
+
+  <ChatNativeClientModal :open="nativeOpen" @close="nativeOpen = false" @open-identity="openIdentity" />
 </template>
 
 <style lang="scss" scoped>

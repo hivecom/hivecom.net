@@ -35,6 +35,10 @@ const { fetchMetricsHistory } = useDataMetrics()
 const histogramHistory = shallowRef<{ capturedAt: string, max: number }[]>([])
 const histogramData = computed(() => histogramHistory.value.map(e => e.max))
 
+// The header holds the histogram's space with placeholder bars until the
+// history is in, so the strip doesn't pop in beside the connect button.
+const histogramLoading = ref(true)
+
 onMounted(() => {
   fetchMetricsHistory('14d').then((entries) => {
     const byDay = new Map<string, { capturedAt: string, max: number }>()
@@ -48,6 +52,8 @@ onMounted(() => {
         byDay.get(key)!.max = Math.max(byDay.get(key)!.max, val)
     }
     histogramHistory.value = Array.from(byDay.values()).slice(-14)
+  }).finally(() => {
+    histogramLoading.value = false
   })
 })
 
@@ -834,8 +840,9 @@ function _openRawSnapshot() {
           </Flex>
           <Flex gap="xs" y-center x-end>
             <ChartActivityHistogram
-              v-if="selectedServer && histogramData.length"
+              v-if="selectedServer && (histogramLoading || histogramData.length)"
               :data="histogramData"
+              :loading="histogramLoading"
               :height="24"
               gap="xxs"
               clickable
@@ -904,8 +911,9 @@ function _openRawSnapshot() {
             </Grid>
           </PopoutHover>
           <ChartActivityHistogram
-            v-if="histogramData.length"
+            v-if="histogramLoading || histogramData.length"
             :data="histogramData"
+            :loading="histogramLoading"
             :height="24"
             gap="xxs"
             clickable

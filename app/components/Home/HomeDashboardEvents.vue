@@ -46,11 +46,13 @@ const upcoming = computed(() => events.value.filter(e => dayjs(e.date).isAfter(d
 // Every section here is derived from events plus RSVP state, so the card is
 // only settled once both have landed. A cache hit fills `events` on the first
 // tick and skips the skeleton entirely.
-const loading = computed(() =>
-  (eventsLoading.value || rsvpsLoading.value || friendRsvpsLoading.value)
-  && upcoming.value.length === 0
-  && happeningNow.value.length === 0,
-)
+// TEMP: forced on to look at the skeleton. Restore the gate below before shipping.
+const loading = computed(() => true)
+// const loading = computed(() =>
+//   (eventsLoading.value || rsvpsLoading.value || friendRsvpsLoading.value)
+//   && upcoming.value.length === 0
+//   && happeningNow.value.length === 0,
+// )
 
 // Upcoming events I said yes or tentative to, soonest first.
 const attending = computed(() =>
@@ -134,9 +136,12 @@ function handleContentRulesConfirmed() {
     </template>
 
     <!-- Nothing to join means no section. The calendar underneath already
-         says the month is open, so a placeholder here would say it twice. -->
-    <HomeDashboardSkeleton v-if="loading" variant="rows" :count="SHOWN_OPEN" />
-    <HomeDashboardSection v-else-if="rowEvents.length" label="You could join these">
+         says the month is open, so a placeholder here would say it twice.
+         No skeleton for it either: the rows only exist in one of the card's
+         two states, and the month grid can't give up height to make room, so
+         a placeholder here pushed the whole row taller than the cards beside
+         it while loading. -->
+    <HomeDashboardSection v-if="!loading && rowEvents.length" label="You could join these">
       <Flex column gap="xs">
         <HomeDashboardEventItem v-for="event in rowEvents" :key="event.id" inline :data="event" />
       </Flex>

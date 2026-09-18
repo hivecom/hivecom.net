@@ -37,6 +37,10 @@ const props = defineProps<{
   hideTitle?: boolean
   showYAxis?: boolean
   showXAxis?: boolean
+
+  // Colour for the messages line. Defaults to purple; extra channels keep the
+  // palette order after it.
+  color?: string
 }>()
 
 // Lets a parent (the modal header, for one) follow the channel filter instead
@@ -283,7 +287,7 @@ const chartData = computed(() => {
   // stacked channels still separate.
   const onlineColor = palette.textLighter
   const lineColors = [
-    palette.datasets[6] ?? '', // purple
+    props.color ?? palette.datasets[6] ?? '', // purple
     palette.datasets[1] ?? '', // green
     palette.datasets[0] ?? '', // blue
     palette.datasets[3] ?? '', // yellow

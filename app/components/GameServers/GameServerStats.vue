@@ -24,6 +24,7 @@ const { gameservers } = useDataGameservers()
 
 const data = shallowRef<number[]>([])
 const history = shallowRef<{ capturedAt: string, players: number | null }[]>([])
+const historyLoading = ref(true)
 const showModal = ref(false)
 const clickedWindow = ref<{ start: Date, end: Date } | null>(null)
 const isMobile = useBreakpoint('<xs')
@@ -119,9 +120,14 @@ onMounted(async () => {
   if (metrics.value === null)
     fetchMetrics()
 
-  const serverHistory = await fetchMetricsForServer(props.id, 14)
-  history.value = serverHistory
-  data.value = serverHistory.map(e => e.players ?? 0)
+  try {
+    const serverHistory = await fetchMetricsForServer(props.id, 14)
+    history.value = serverHistory
+    data.value = serverHistory.map(e => e.players ?? 0)
+  }
+  finally {
+    historyLoading.value = false
+  }
 })
 </script>
 
@@ -137,7 +143,7 @@ onMounted(async () => {
         </template>
       </Flex>
 
-      <ChartActivityHistogram :compact="isMobile" :data :timestamps="history.map(e => e.capturedAt)" :height="32" :expand="isMobile" clickable @click="onHistogramClick">
+      <ChartActivityHistogram :compact="isMobile" :data :loading="historyLoading" :timestamps="history.map(e => e.capturedAt)" :height="32" :expand="isMobile" clickable @click="onHistogramClick">
         <template #tooltip="{ value, daysAgo }">
           <p>
             {{ value }} player{{ value === 1 ? '' : 's' }}<template v-if="daysAgo">
