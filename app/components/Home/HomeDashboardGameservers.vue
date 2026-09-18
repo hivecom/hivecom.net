@@ -141,8 +141,16 @@ const ranked = computed(() =>
 
 // The tiles are the top of the ranking whether or not anyone is on. With an
 // empty snapshot that falls through to whoever was busy most recently, which
-// beats two empty cells.
-const live = computed(() => ranked.value.slice(0, SHOWN_LIVE))
+// beats two empty cells. With exactly one server live the second tile goes
+// instead: "Live right now" over a server nobody is on reads as a lie, and a
+// lone tile takes the full row anyway. The server it displaces falls through
+// to the rows below.
+const live = computed(() => {
+  const top = ranked.value.slice(0, SHOWN_LIVE)
+  const populated = top.filter(entry => entry.players > 0)
+
+  return populated.length === 1 ? populated : top
+})
 
 // Nobody on means the tiles are showing the last people who were, so the label
 // follows instead of claiming a live server that isn't.
@@ -299,7 +307,7 @@ const loading = computed(() =>
                   :port="entry.gs.port"
                   :connect="connectFor(entry)"
                   size="s"
-                  variant="accent"
+                  variant="gray"
                   plain
                   stop-propagation
                 />
@@ -312,8 +320,9 @@ const loading = computed(() =>
           </template>
 
           <!-- Only one server exists at all. Pad the grid so the lone tile keeps
-               its half instead of stretching across the card. -->
-          <HomeDashboardPlaceholder v-if="live.length < SHOWN_LIVE" />
+               its half instead of stretching across the card. A single live
+               tile is trimmed on purpose and does want the full row. -->
+          <HomeDashboardPlaceholder v-if="entries.length < SHOWN_LIVE" />
         </div>
       </HomeDashboardSection>
 

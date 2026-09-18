@@ -47,7 +47,7 @@ const hasConnect = computed(() => (props.gs.addresses?.length ?? 0) > 0)
         :port="gs.port"
         :connect="connect"
         size="s"
-        variant="accent"
+        variant="gray"
         plain
         stop-propagation
       />
