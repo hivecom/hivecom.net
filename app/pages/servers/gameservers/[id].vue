@@ -22,24 +22,24 @@ function goBack() {
 }
 const gameserverId = Number.parseInt(route.params.id as string)
 
-// Reactive data
-const gameserver = ref<Tables<'network_gameservers'> | null>(null)
-const game = ref<Tables<'games'> | null>(null)
-const error = ref<string | null>(null)
 const gameBackground = ref<string | null>(null)
 
 const { gameservers, loading, error: gameserversError, getById: getGameserverById } = useDataGameservers()
 const { getById: getGameById } = useDataGames()
 
-// Derive container from the cached gameserver entry
-const container = computed((): GameserverWithContainer['container'] => {
-  const gs = gameserver.value
-  if (!gs)
-    return null
+// Both lists come from the shared caches and land independently. Deriving
+// instead of copying into refs means a games fetch that resolves after the
+// gameservers one still fills in the icon and the banner.
+const gameserver = computed(() => getGameserverById(gameserverId))
 
-  const cached = getGameserverById(gs.id)
-  return cached?.container ?? null
+const game = computed((): Tables<'games'> | null => {
+  const id = gameserver.value?.game
+  return id != null ? getGameById(id) : null
 })
+
+const container = computed((): GameserverWithContainer['container'] =>
+  gameserver.value?.container ?? null,
+)
 
 // Typed as Tables<'network_containers'> for GameServerHeader prop - the joined shape is compatible
 const containerForHeader = computed((): Tables<'network_containers'> | null =>
@@ -109,35 +109,24 @@ const stateConfig = computed(() => {
   return configs[state.value] || configs.unknown
 })
 
-// Resolve gameserver and related game from cache once loaded
-watch([gameservers, loading], () => {
-  const found = getGameserverById(gameserverId)
-  if (found != null) {
-    gameserver.value = found
-    game.value = found.game != null ? getGameById(found.game) : null
-  }
-  else if (!loading.value && gameservers.value.length > 0) {
-    // Only report not-found after the fetch has completed and returned data
-    error.value = 'Gameserver not found'
-  }
-}, { immediate: true })
-
-// Propagate fetch error
-watch(gameserversError, (err) => {
-  if (err != null)
-    error.value = err
-})
+// Only report not-found once the fetch has completed and returned data
+const notFound = computed(() =>
+  !loading.value && gameservers.value.length > 0 && gameserver.value === null,
+)
 
 // Load game background when game data is available
 watch(game, async (newGame) => {
-  if (newGame) {
-    try {
-      const { getGameBackgroundUrl } = useDataGameAssets()
-      gameBackground.value = await getGameBackgroundUrl(newGame)
-    }
-    catch {
-      gameBackground.value = null
-    }
+  if (!newGame) {
+    gameBackground.value = null
+    return
+  }
+
+  try {
+    const { getGameBackgroundUrl } = useDataGameAssets()
+    gameBackground.value = await getGameBackgroundUrl(newGame)
+  }
+  catch {
+    gameBackground.value = null
   }
 }, { immediate: true })
 
@@ -145,21 +134,16 @@ watch(game, async (newGame) => {
 const displayError = computed(() => {
   if (loading.value)
     return null
-  if (error.value === 'Gameserver not found')
-    return 'This game server was not found. It may have been removed or never existed.'
-  if (error.value)
+  if (gameserversError.value != null)
     return 'Unable to load game server details. Please try again later.'
+  if (notFound.value)
+    return 'This game server was not found. It may have been removed or never existed.'
 
   return null
 })
 
 // Raw error shown as copyable technical detail only for unexpected fetch errors.
-const displayErrorDetail = computed(() => {
-  if (error.value === 'Gameserver not found')
-    return undefined
-
-  return error.value ?? undefined
-})
+const displayErrorDetail = computed(() => gameserversError.value ?? undefined)
 
 // Fetch minimal gameserver data at SSR/prerender time so meta tags are
 // populated. useDataGameservers fetches client-only (onMounted), so during
@@ -215,7 +199,7 @@ useHead({
     />
 
     <!-- Gameserver Content -->
-    <div v-if="gameserver && !loading && !error" class="page-content">
+    <div v-if="gameserver && !loading && !displayError" class="page-content">
       <!-- Back button -->
       <Flex x-start>
         <NuxtLink to="/servers/gameservers">

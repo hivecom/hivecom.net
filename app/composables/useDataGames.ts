@@ -41,7 +41,7 @@ export function useDataGames() {
 
   const games = ref<Tables<'games'>[]>([])
 
-  const _initialCached = cache.get<Tables<'games'>[]>(CACHE_KEY)
+  const _initialCached = cache.getInitial<Tables<'games'>[]>(CACHE_KEY)
   if (_initialCached !== null)
     games.value = _initialCached
 

@@ -552,17 +552,33 @@ export function useDataMetrics() {
   const supabase = useSupabaseClient<Database>()
   metricsClient = supabase
 
-  // Pre-populate synchronously so first render has data on warm cache.
-  const _initialCached = metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
-  if (_initialCached !== null) {
-    metrics.value ??= _initialCached
+  // Pre-populate synchronously so first render has data on warm cache. While
+  // hydrating the seed has to wait for mount - the cache is localStorage, which
+  // the server never saw, so applying it during the first client render gives
+  // Vue markup that disagrees with what came off the server.
+  const hydrating = tryUseNuxtApp()?.isHydrating === true
+  const _initialCached = hydrating ? null : metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
+
+  function applySnapshot(snapshot: MetricsSnapshot | null): void {
+    if (snapshot !== null)
+      metrics.value ??= snapshot
+
+    // lastFetchedAt follows whatever snapshot is available - cache or already-loaded module ref.
+    if (lastFetchedAt.value === null) {
+      const source = snapshot ?? metrics.value
+      if (source !== null)
+        lastFetchedAt.value = new Date(source.collectedAt)
+    }
   }
 
-  // Set lastFetchedAt from whatever snapshot is available - cache or already-loaded module ref.
-  if (lastFetchedAt.value === null) {
-    const source = _initialCached ?? metrics.value
-    if (source !== null)
-      lastFetchedAt.value = new Date(source.collectedAt)
+  applySnapshot(_initialCached)
+
+  // Consumers don't all fetch on mount, so the deferred seed has to happen here
+  // rather than being left to the next fetchMetrics call.
+  if (hydrating && getCurrentInstance() !== null) {
+    onMounted(() => {
+      applySnapshot(metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY))
+    })
   }
 
   // Refresh subscriptions owned by this instance, released together on

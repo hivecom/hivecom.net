@@ -67,7 +67,7 @@ export function useDataVotes() {
   const concludedPublicLoading = ref(false)
 
   // Pre-populate first page synchronously from cache on warm nav.
-  const _cachedActivePage0 = cache.get<Tables<'referendums'>[]>(keyActivePublic(0))
+  const _cachedActivePage0 = cache.getInitial<Tables<'referendums'>[]>(keyActivePublic(0))
   if (_cachedActivePage0 !== null) {
     activePublicItems.value = _cachedActivePage0
     activePublicOffset.value = _cachedActivePage0.length
@@ -75,7 +75,7 @@ export function useDataVotes() {
       activePublicExhausted.value = true
   }
 
-  const _cachedConcludedPage0 = cache.get<Tables<'referendums'>[]>(keyConcludedPublic(0))
+  const _cachedConcludedPage0 = cache.getInitial<Tables<'referendums'>[]>(keyConcludedPublic(0))
   if (_cachedConcludedPage0 !== null) {
     concludedPublicItems.value = _cachedConcludedPage0
     concludedPublicOffset.value = _cachedConcludedPage0.length

@@ -418,6 +418,22 @@ export function useCache(config: CacheConfig = {}) {
     return entry.data
   }
 
+  /**
+   * Read an entry for seeding reactive state during setup.
+   *
+   * Returns null while Nuxt is hydrating. Entries live in localStorage, which
+   * the server never saw, so seeding a ref from one on the first client render
+   * produces markup the server didn't send and Vue reports a hydration
+   * mismatch. Callers pair this with their existing onMounted fetch, which
+   * re-reads the same entry a tick later and patches the DOM normally.
+   */
+  function cacheGetInitial<T>(key: string): T | null {
+    if (tryUseNuxtApp()?.isHydrating === true)
+      return null
+
+    return cacheGet<T>(key)
+  }
+
   function cacheHas(key: string): boolean {
     const entry = lsGet(kvPrefix, key)
     if (entry == null)
@@ -541,6 +557,7 @@ export function useCache(config: CacheConfig = {}) {
     // Key-value
     set: cacheSet,
     get: cacheGet,
+    getInitial: cacheGetInitial,
     has: cacheHas,
     delete: cacheDelete,
 

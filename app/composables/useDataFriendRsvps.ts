@@ -43,7 +43,7 @@ export function useDataFriendRsvps(friendIds: MaybeRefOrGetter<string[]>) {
   // Pre-populate synchronously from cache so the first render has data.
   const _uid = userId.value
   if (_uid != null) {
-    const cached = cache.get<FriendRsvpRow[]>(cacheKey(_uid))
+    const cached = cache.getInitial<FriendRsvpRow[]>(cacheKey(_uid))
     if (cached !== null)
       applyRows(cached)
   }

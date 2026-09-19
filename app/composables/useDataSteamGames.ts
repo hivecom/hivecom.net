@@ -21,7 +21,7 @@ export function useDataSteamGames() {
 
   const steamGames = ref<Tables<'data_steam_games'>[]>([])
 
-  const _initialCached = cache.get<Tables<'data_steam_games'>[]>(CACHE_KEY)
+  const _initialCached = cache.getInitial<Tables<'data_steam_games'>[]>(CACHE_KEY)
   if (_initialCached !== null)
     steamGames.value = _initialCached
 

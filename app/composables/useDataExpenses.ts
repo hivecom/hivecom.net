@@ -28,7 +28,7 @@ export function useDataExpenses() {
   const supabase = useSupabaseClient<Database>()
 
   // Pre-populate synchronously so fundingProgress computes correctly on first render.
-  const _initialCached = cache.get<Tables<'funding_expenses'>[]>(CACHE_KEY)
+  const _initialCached = cache.getInitial<Tables<'funding_expenses'>[]>(CACHE_KEY)
   const expenses = ref<Tables<'funding_expenses'>[]>(_initialCached ?? [])
   const loading = ref(false)
   const error = ref<string | null>(null)

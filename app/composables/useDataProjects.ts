@@ -37,7 +37,7 @@ export function useDataProjects() {
 
   const projects = ref<Tables<'projects'>[]>([])
 
-  const _initialCached = cache.get<Tables<'projects'>[]>(CACHE_KEY)
+  const _initialCached = cache.getInitial<Tables<'projects'>[]>(CACHE_KEY)
   if (_initialCached !== null)
     projects.value = _initialCached
 

@@ -34,7 +34,7 @@ export function useDataForumTopics() {
 
   const topics = ref<Tables<'discussion_topics'>[]>([])
 
-  const _initialCached = cache.get<Tables<'discussion_topics'>[]>(CACHE_KEY)
+  const _initialCached = cache.getInitial<Tables<'discussion_topics'>[]>(CACHE_KEY)
   if (_initialCached !== null)
     topics.value = _initialCached
 

@@ -262,6 +262,25 @@ export default defineNuxtConfig({
   devtools: {
     enabled: false,
   },
+  unhead: {
+    // nuxt-seo-utils enables unhead's dev-time head validator, and it's all or
+    // nothing - no way to pick which rules run. Everything it flagged here is
+    // either deliberate or out of our hands, so it was pure console noise:
+    //
+    // - the two blocking inline scripts in `app.head`, which have to stay inline
+    // - `user-scalable=no` from useZoomPreference, our default for the
+    //   "Allow browser zoom" setting
+    // - `twitter:card`, which the rule calls deprecated but is what gets X to
+    //   render a large-image card
+    // - `tagPriority: 35` and the legacy `twitter:image:*` tags, both pushed by
+    //   nuxt-og-image
+    //
+    // The tree-shake, useSeoMeta and minify transforms still run; only the
+    // validator is off.
+    vite: {
+      validate: false,
+    },
+  },
   components: false,
   compatibilityDate: '2024-09-25',
   typescript: {

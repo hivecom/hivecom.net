@@ -37,7 +37,7 @@ export function useDataEvents() {
 
   // Pre-populate synchronously from cache so the first render has data -
   // avoids a flash of empty/skeleton state on back-navigation within TTL.
-  const _initialCached = cache.get<Tables<'events'>[]>(CACHE_KEY)
+  const _initialCached = cache.getInitial<Tables<'events'>[]>(CACHE_KEY)
   if (_initialCached !== null)
     events.value = _initialCached
 

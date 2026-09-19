@@ -48,7 +48,7 @@ export function useDataUserRsvps() {
   // Pre-populate synchronously from cache so the first render has data.
   const _uid = userId.value
   if (_uid != null) {
-    const cached = cache.get<RsvpRow[]>(cacheKey(_uid))
+    const cached = cache.getInitial<RsvpRow[]>(cacheKey(_uid))
     if (cached !== null)
       applyRows(cached)
   }

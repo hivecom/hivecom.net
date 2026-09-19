@@ -54,7 +54,7 @@ export function useDataGameservers() {
 
   const gameservers = ref<GameserverWithContainer[]>([])
 
-  const _initialCached = cache.get<GameserverWithContainer[]>(CACHE_KEY)
+  const _initialCached = cache.getInitial<GameserverWithContainer[]>(CACHE_KEY)
   if (_initialCached !== null)
     gameservers.value = _initialCached
 

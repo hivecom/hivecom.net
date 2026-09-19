@@ -27,7 +27,7 @@ export function useDataSupporters() {
   const supabase = useSupabaseClient<Database>()
 
   // Pre-populate synchronously from cache to avoid loading flash on warm nav.
-  const _initialCached = cache.get<string[]>(CACHE_KEY)
+  const _initialCached = cache.getInitial<string[]>(CACHE_KEY)
   const supporterIds = ref<string[]>(_initialCached ?? [])
   const loading = ref(_initialCached === null)
   const error = ref<string | null>(null)

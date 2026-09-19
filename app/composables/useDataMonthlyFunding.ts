@@ -34,7 +34,7 @@ export function useDataMonthlyFunding() {
   const latestFunding = ref<Tables<'funding_history'> | null>(null)
 
   // Pre-populate synchronously from cache so the first render has data.
-  const _initialAll = cache.get<Tables<'funding_history'>[]>(CACHE_KEY_ALL)
+  const _initialAll = cache.getInitial<Tables<'funding_history'>[]>(CACHE_KEY_ALL)
   if (_initialAll !== null) {
     allFunding.value = _initialAll
     latestFunding.value = cache.get<Tables<'funding_history'>>(CACHE_KEY_LATEST)
