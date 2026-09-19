@@ -5,12 +5,7 @@ import { computed } from 'vue'
 import ReactionsList from '@/components/Reactions/ReactionsList.vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 
-const props = defineProps<{
-  message: ChatMessage
-
-  /** Rendered inside the IRC text line rather than on its own row. */
-  inline?: boolean
-}>()
+const props = defineProps<{ message: ChatMessage }>()
 
 const { nick, toggleReaction } = useIrcChat()
 
@@ -43,41 +38,6 @@ function onToggle(emote: string, _provider: string) {
     :reactions="reactions"
     small
     nick-reactors
-    class="chat-reactions"
-    :class="{ 'chat-reactions--inline': props.inline }"
     @toggle="onToggle"
   />
 </template>
-
-<style lang="scss" scoped>
-.chat-reactions {
-  display: inline-flex;
-  vertical-align: middle;
-  margin-left: var(--space-xs);
-}
-
-// In the IRC row the chips sit inside the text line, and they're taller than
-// that line box. Pinning the container to a height the line box already has
-// room for and letting the chips overflow it keeps rows the same height
-// whether or not they carry a reaction.
-.chat-reactions--inline {
-  align-items: center;
-  gap: 2px;
-  height: 1em;
-  vertical-align: -0.15em;
-  margin-left: var(--space-xxs);
-
-  :deep(.reactions__button) {
-    height: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
-    min-width: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
-    width: auto;
-    padding: 0 var(--space-xxs);
-    font-size: var(--chat-font-size, var(--font-size-s));
-    line-height: 1;
-  }
-
-  :deep(.reactions__counter) {
-    font-size: calc(var(--chat-font-size, var(--font-size-s)) * 0.85);
-  }
-}
-</style>

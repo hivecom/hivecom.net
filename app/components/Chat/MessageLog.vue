@@ -1515,7 +1515,7 @@ onBeforeUnmount(() => {
                       {{ seg.value }}
                     </template>
                   </template>
-                  <ChatMessageReactions v-if="!msg.redacted && msg.reactions && settings.chat_irc_reactions" :message="msg" inline />
+                  <ChatMessageReactions v-if="!msg.redacted && msg.reactions && settings.chat_irc_reactions" :message="msg" />
                   <ChatUndeliveredNotice v-if="msg.failed" :message="msg" />
                 </div>
                 <Flex v-if="!msg.redacted && !settings.chat_irc_inline_images && imageUrls(msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">
@@ -2384,6 +2384,34 @@ onBeforeUnmount(() => {
     min-width: 0;
     font-size: inherit;
     white-space: pre-wrap;
+
+    // Reactions on the IRC row live inside the text line, and reactions__list
+    // is display:contents globally, so the chips land straight in the line box
+    // and stretch the row by a few pixels. Wrap them in an atomic inline box
+    // the line already has room for and let the chips overflow it, so a line
+    // is the same height whether or not anyone reacted to it. Only the IRC row
+    // nests reactions in here; the modern row keeps them as a sibling.
+    :deep(.reactions__list) {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      height: 1em;
+      vertical-align: -0.15em;
+      margin-left: var(--space-xxs);
+
+      .reactions__button {
+        height: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
+        min-width: calc(var(--chat-font-size, var(--font-size-s)) * 1.5);
+        width: auto;
+        padding: 0 var(--space-xxs);
+        font-size: var(--chat-font-size, var(--font-size-s));
+        line-height: 1;
+      }
+
+      .reactions__counter {
+        font-size: calc(var(--chat-font-size, var(--font-size-s)) * 0.85);
+      }
+    }
   }
 
   &__redacted {
