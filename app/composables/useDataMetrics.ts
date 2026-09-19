@@ -112,6 +112,16 @@ function msToPgInterval(ms: number): string {
   return `${hours} hours ${minutes} minutes ${seconds} seconds`
 }
 
+// Bucket origin for the RPC: local midnight today, so day-sized buckets are
+// local days rather than UTC days. The day histograms label bars relative to
+// the local date and open local midnight-to-midnight windows on click, and
+// both only line up when the buckets are cut the same way. Sub-day buckets
+// are unaffected beyond aligning to the local hour.
+function localDayOrigin(): Date {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
 const METRICS_BUCKET = 'hivecom-content-static'
 const METRICS_LATEST_PATH = 'metrics/latest.json'
 
@@ -258,6 +268,7 @@ async function fetchMetricsHistoryFromDB(
     p_since: since,
     p_until: until,
     p_bucket_interval: bucketInterval,
+    p_origin: localDayOrigin().toISOString(),
   })
 
   if (error !== null || data === null)
@@ -773,7 +784,8 @@ export function useDataMetrics() {
   // Intentionally separate from fetchMetricsHistory so it always uses daily granularity
   // regardless of what PERIOD_CONFIGS['14d'].bucketMs is set to.
   const fetchDailyHistory = async (): Promise<MetricsHistoryEntry[]> => {
-    const cacheKey = 'metrics:history:14d-daily'
+    const origin = localDayOrigin()
+    const cacheKey = `metrics:history:14d-daily:${origin.getTime()}`
     const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
     if (cached !== null)
       return cached
@@ -784,6 +796,7 @@ export function useDataMetrics() {
       p_since: since,
       p_until: until,
       p_bucket_interval: '24 hours',
+      p_origin: origin.toISOString(),
     })
     if (dbError !== null || data === null)
       return []
@@ -911,7 +924,8 @@ export function useDataMetrics() {
     serverId: number,
     days: number = 14,
   ): Promise<{ capturedAt: string, players: number | null }[]> => {
-    const cacheKey = `metrics:server:${serverId}:${days}d`
+    const origin = localDayOrigin()
+    const cacheKey = `metrics:server:${serverId}:${days}d:${origin.getTime()}`
     const cached = metricsCache.get<{ capturedAt: string, players: number | null }[]>(cacheKey)
     if (cached !== null)
       return cached
@@ -923,6 +937,7 @@ export function useDataMetrics() {
       p_since: since,
       p_until: until,
       p_bucket_interval: '24 hours',
+      p_origin: origin.toISOString(),
     })
 
     if (dbError !== null || data === null)

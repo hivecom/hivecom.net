@@ -18,7 +18,7 @@ import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useUserTheme } from '@/composables/useUserTheme'
-import { getBarChartDefaults, getChartPalette, getColorizedPalette } from '@/lib/charts'
+import { futureShadePlugin, getBarChartDefaults, getChartPalette, getColorizedPalette } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
 interface GameOption {
@@ -47,6 +47,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
+  futureShadePlugin,
 )
 
 const { metrics, fetchMetrics, fetchMetricsHistoryIsolated, fetchMetricsWindowIsolated, scheduleRefresh } = useDataMetrics()

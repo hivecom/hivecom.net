@@ -54,10 +54,12 @@ function getDaysAgo(index: number): string | null {
   if (!iso)
     return null
 
+  // Buckets are cut at local midnight (see localDayOrigin in useDataMetrics),
+  // so the label counts local calendar days.
   const entryDate = new Date(iso)
-  const entryDay = Date.UTC(entryDate.getUTCFullYear(), entryDate.getUTCMonth(), entryDate.getUTCDate())
+  const entryDay = Date.UTC(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate())
   const now = new Date()
-  const todayDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const todayDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
   const diffDays = Math.round((todayDay - entryDay) / (1000 * 60 * 60 * 24))
   if (diffDays === 0)
     return 'today'

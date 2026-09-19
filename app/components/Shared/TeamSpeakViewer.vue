@@ -43,8 +43,9 @@ onMounted(() => {
   fetchMetricsHistory('14d').then((entries) => {
     const byDay = new Map<string, { capturedAt: string, max: number }>()
     for (const e of entries) {
+      // Buckets are cut at local midnight, so fold by local date.
       const d = new Date(e.capturedAt)
-      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       const val = e.teamspeakOnline ?? 0
       if (!byDay.has(key))
         byDay.set(key, { capturedAt: e.capturedAt, max: val })
@@ -64,12 +65,10 @@ function onHistogramClick(index: number) {
   if (index >= 0) {
     const entry = histogramHistory.value[index]
     if (entry) {
-      // capturedAt is UTC midnight. Convert to local date, then use local midnight boundaries
-      // so the chart window aligns with midnight-to-midnight in the user's timezone.
-      const d = new Date(entry.capturedAt)
-      const localDate = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-      const start = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 0, 0, 0, 0)
-      const end = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 1, 0, 0, 0, 0)
+      // capturedAt is the bucket start, cut at local midnight, so the window
+      // is that local day.
+      const start = new Date(entry.capturedAt)
+      const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1)
       clickedWindow.value = { start, end }
     }
     else {
@@ -89,9 +88,9 @@ function histogramTooltipLabel(index: number, value: number): string {
     return suffix
 
   const entryDate = new Date(entry.capturedAt)
-  const entryDay = Date.UTC(entryDate.getUTCFullYear(), entryDate.getUTCMonth(), entryDate.getUTCDate())
+  const entryDay = Date.UTC(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate())
   const now = new Date()
-  const todayDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const todayDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
   const diffDays = Math.round((todayDay - entryDay) / (1000 * 60 * 60 * 24))
 
   if (diffDays === 0)

@@ -3029,7 +3029,12 @@ export type Database = {
         Returns: string
       }
       get_metrics_bucketed: {
-        Args: { p_bucket_interval: string; p_since: string; p_until: string }
+        Args: {
+          p_bucket_interval: string
+          p_origin?: string
+          p_since: string
+          p_until: string
+        }
         Returns: {
           captured_at: string
           discussions_new_replies: number
@@ -3378,6 +3383,10 @@ export type Database = {
               updated_at: string
             }[]
           }
+      metrics_gameserver_player_count: {
+        Args: { p_detail: Json }
+        Returns: number
+      }
       normalize_mentions: { Args: { input_text: string }; Returns: string }
       pgmq_delete: {
         Args: { msg_id: number; queue_name: string }

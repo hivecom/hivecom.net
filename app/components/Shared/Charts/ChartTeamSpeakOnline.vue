@@ -18,7 +18,7 @@ import { Bar } from 'vue-chartjs'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useUserTheme } from '@/composables/useUserTheme'
-import { barGapPlugin, getBarChartDefaults, getChartPalette } from '@/lib/charts'
+import { barGapPlugin, barGapTooltipText, futureShadePlugin, getBarChartDefaults, getChartPalette } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 
 interface ServerOption {
@@ -45,6 +45,7 @@ ChartJS.register(
   Tooltip,
   Legend,
   barGapPlugin,
+  futureShadePlugin,
 )
 
 const { metrics, fetchMetrics, metricsHistory, loadingHistory, fetchMetricsHistory, fetchMetricsWindow, scheduleRefresh } = useDataMetrics()
@@ -210,13 +211,7 @@ const localChartOptions = computed<ChartOptions<'bar'>>(() => ({
 
           return `${item.dataset.label}: ${item.parsed.y}`
         },
-        afterBody(items: import('chart.js').TooltipItem<'bar'>[]) {
-          const allNull = items.every((i) => {
-            const raw = i.raw as { y: number | null } | null | undefined
-            return raw === null || raw === undefined || raw.y === null
-          })
-          return allNull ? 'No data was collected for this period - collection may not have started yet or encountered an error.' : ''
-        },
+        afterBody: barGapTooltipText,
       },
     },
   },

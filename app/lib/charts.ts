@@ -1,4 +1,4 @@
-import type { Chart, ChartOptions, Plugin, TooltipModel } from 'chart.js'
+import type { Chart, ChartOptions, Plugin, TooltipItem, TooltipModel } from 'chart.js'
 import { parseColor } from './globe/GlobeTheme'
 import { getCSSVariable } from './utils/common'
 import 'chartjs-scale-timestack'
@@ -299,6 +299,15 @@ function barPointY(value: unknown): number | null {
   return value as number | null
 }
 
+function barPointX(point: unknown): number | null {
+  if (point !== null && typeof point === 'object' && 'x' in point) {
+    const x = point.x
+    return typeof x === 'number' ? x : null
+  }
+
+  return null
+}
+
 /**
  * Chart.js plugin that draws a faint fill over bar chart columns where every
  * dataset has a null y-value, visually indicating a data gap without polluting
@@ -345,6 +354,7 @@ export const barGapPlugin: Plugin<'bar'> = {
     const top = yAxis.top
     const bottom = yAxis.bottom
     const height = bottom - top
+    const now = Date.now()
 
     ctx.save()
     ctx.fillStyle = `${color}44`
@@ -352,6 +362,14 @@ export const barGapPlugin: Plugin<'bar'> = {
     for (let index = 0; index < pointCount; index++) {
       const isGap = visible.every(({ dataset }) => barPointY(dataset.data[index]) === null)
       if (!isGap)
+        continue
+
+      // A bucket that hasn't happened yet isn't missing data. futureShadePlugin
+      // covers that part of the axis instead.
+      const bucketStart = visible
+        .map(({ dataset }) => barPointX(dataset.data[index]))
+        .find(x => x !== null)
+      if (bucketStart !== undefined && bucketStart > now)
         continue
 
       // Geometry comes from whichever visible dataset has a bar laid out here.
@@ -372,6 +390,70 @@ export const barGapPlugin: Plugin<'bar'> = {
       const x = bar.x - barWidth / 2
 
       ctx.fillRect(x, top, barWidth, height)
+    }
+
+    ctx.restore()
+  },
+}
+
+/**
+ * Tooltip footer for a bar column with no data. Empty when any series has a
+ * value, and empty for buckets that start in the future, since those aren't
+ * gaps. Pairs with barGapPlugin, which paints the same columns.
+ */
+export function barGapTooltipText(items: TooltipItem<'bar'>[]): string {
+  const allNull = items.every(item => barPointY(item.raw) === null)
+  if (!allNull)
+    return ''
+
+  const bucketStart = items.map(item => barPointX(item.raw)).find(x => x !== null)
+  if (bucketStart !== undefined && bucketStart > Date.now())
+    return ''
+
+  return 'No data was collected for this period - collection may not have started yet or encountered an error.'
+}
+
+/**
+ * Chart.js plugin that dims the part of a time axis that lies in the future
+ * and draws a marker at the present. Windows are whole days, so a chart opened
+ * mid-day would otherwise show hours of empty columns that read as missing
+ * data. Does nothing when the axis ends at or before now.
+ *
+ * Register alongside barGapPlugin on charts that take a window:
+ *   ChartJS.register(futureShadePlugin)
+ */
+export const futureShadePlugin: Plugin<'bar'> = {
+  id: 'futureShadePlugin',
+  afterDatasetsDraw(chart: Chart<'bar'>) {
+    const xAxis = chart.scales.x
+    const yAxis = chart.scales.y
+    if (!xAxis || !yAxis)
+      return
+
+    const now = Date.now()
+    if (now >= xAxis.max)
+      return
+
+    const nowX = now <= xAxis.min ? xAxis.left : xAxis.getPixelForValue(now)
+    const top = yAxis.top
+    const height = yAxis.bottom - top
+    const ctx = chart.ctx
+
+    ctx.save()
+
+    // Wash over the future.
+    ctx.fillStyle = withAlpha(getCSSVariable('--color-bg-raised') || getCSSVariable('--color-border'), 0.35)
+    ctx.fillRect(nowX, top, xAxis.right - nowX, height)
+
+    // Present marker, only when it falls inside the axis.
+    if (now > xAxis.min) {
+      ctx.strokeStyle = withAlpha(getCSSVariable('--color-text-lighter'), 0.8)
+      ctx.lineWidth = 1
+      ctx.setLineDash([3, 3])
+      ctx.beginPath()
+      ctx.moveTo(nowX, top)
+      ctx.lineTo(nowX, top + height)
+      ctx.stroke()
     }
 
     ctx.restore()

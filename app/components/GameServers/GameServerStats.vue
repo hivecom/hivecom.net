@@ -33,12 +33,10 @@ function onHistogramClick(index: number) {
   if (!isMobile.value && index >= 0) {
     const entry = history.value[index]
     if (entry) {
-      // capturedAt is UTC midnight. Convert to local date, then use local midnight boundaries
-      // so the chart window aligns with midnight-to-midnight in the user's timezone.
-      const d = new Date(entry.capturedAt)
-      const localDate = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-      const start = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 0, 0, 0, 0)
-      const end = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate() + 1, 0, 0, 0, 0)
+      // capturedAt is the bucket start, cut at local midnight, so the window
+      // is that local day.
+      const start = new Date(entry.capturedAt)
+      const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1)
       clickedWindow.value = { start, end }
     }
     else {
