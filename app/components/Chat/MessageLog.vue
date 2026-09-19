@@ -26,6 +26,7 @@ import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { mentionsSelf, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useNow } from '@/composables/useNow'
+import { findUrls, stripUrls, urlsIn } from '@/lib/chat/linkify'
 import { applyMarkdown, parseIrcFormatting, segStyle } from '@/lib/ircFormat'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { fromNow, fullDate } from '@/lib/utils/date'
@@ -192,7 +193,6 @@ useEventListener('mouseup', () => {
 })
 
 const SERVICE_NICKS = new Set(['histserv', 'nickserv', 'chanserv'])
-const URL_RE = /(https?:\/\/\S+)/g
 const IMAGE_RE = /[./](?:png|jpe?g|gif|webp|avif|svg)(?:[?#]\S*)?$/i
 const VIDEO_RE = /\.(?:mp4|webm|mov|m4v)(?:\?\S*)?$/i
 const AUDIO_RE = /\.(?:mp3|wav|flac|aac|m4a|oga|opus|weba|wma)(?:\?\S*)?$/i
@@ -443,12 +443,11 @@ function segments(text: string): Segment[] {
   for (const seg of base) {
     const { value, type: _type, ...style } = seg
     let last = 0
-    for (const m of value.matchAll(new RegExp(URL_RE.source, 'g'))) {
-      const idx = m.index ?? 0
-      if (idx > last)
-        afterUrl.push({ type: 'text', value: value.slice(last, idx), ...style })
-      afterUrl.push({ type: 'link', value: m[0], ...style })
-      last = idx + m[0].length
+    for (const { index, value: url } of findUrls(value)) {
+      if (index > last)
+        afterUrl.push({ type: 'text', value: value.slice(last, index), ...style })
+      afterUrl.push({ type: 'link', value: url, ...style })
+      last = index + url.length
     }
     if (last < value.length)
       afterUrl.push({ type: 'text', value: value.slice(last), ...style })
@@ -539,7 +538,7 @@ function imageUrls(text: string): string[] {
   if (!settings.value.chat_show_previews)
     return []
 
-  return (text.match(URL_RE) ?? []).filter(u => IMAGE_RE.test(u))
+  return urlsIn(text).filter(u => IMAGE_RE.test(u))
 }
 
 function isImageOnlyMessage(text: string): boolean {
@@ -547,7 +546,7 @@ function isImageOnlyMessage(text: string): boolean {
   if (!imgs.length)
     return false
 
-  return text.replace(URL_RE, '').trim() === ''
+  return stripUrls(text).trim() === ''
 }
 
 interface GalleryEntry { url: string, msgId: number }
@@ -608,14 +607,14 @@ function youtubeUrls(text: string): string[] {
   if (!settings.value.chat_show_previews)
     return []
 
-  return (text.match(URL_RE) ?? []).filter(u => youtubeVideoId(u) !== null)
+  return urlsIn(text).filter(u => youtubeVideoId(u) !== null)
 }
 
 function videoUrls(text: string): string[] {
   if (!settings.value.chat_show_previews)
     return []
 
-  return (text.match(URL_RE) ?? []).filter(u => VIDEO_RE.test(u))
+  return urlsIn(text).filter(u => VIDEO_RE.test(u))
 }
 
 // Audio is a media preview like images/video, so it's gated on the same
@@ -626,7 +625,7 @@ function audioUrls(text: string): string[] {
   if (!settings.value.chat_show_previews)
     return []
 
-  return (text.match(URL_RE) ?? []).filter(u => AUDIO_RE.test(u))
+  return urlsIn(text).filter(u => AUDIO_RE.test(u))
 }
 
 // Best-effort track title for the audio player: the file name from the URL.
@@ -687,7 +686,7 @@ function previewUrls(text: string): string[] {
   if (!settings.value.chat_show_inline_embeds)
     return []
 
-  const urls = text.match(URL_RE) ?? []
+  const urls = urlsIn(text)
   const seen = new Set<string>()
   const out: string[] = []
   for (const u of urls) {
@@ -707,9 +706,9 @@ function previewUrls(text: string): string[] {
 const chatMediaItems = computed((): MediaItem[] => {
   const items: MediaItem[] = []
   for (const msg of messages.value) {
-    for (const url of (msg.text.match(URL_RE) ?? []).filter(u => IMAGE_RE.test(u)))
+    for (const url of urlsIn(msg.text).filter(u => IMAGE_RE.test(u)))
       items.push({ type: 'image', url })
-    for (const url of (msg.text.match(URL_RE) ?? []).filter(u => VIDEO_RE.test(u)))
+    for (const url of urlsIn(msg.text).filter(u => VIDEO_RE.test(u)))
       items.push({ type: 'video', url })
   }
   return items
@@ -1516,7 +1515,7 @@ onBeforeUnmount(() => {
                       {{ seg.value }}
                     </template>
                   </template>
-                  <ChatMessageReactions v-if="!msg.redacted && msg.reactions && settings.chat_irc_reactions" :message="msg" />
+                  <ChatMessageReactions v-if="!msg.redacted && msg.reactions && settings.chat_irc_reactions" :message="msg" inline />
                   <ChatUndeliveredNotice v-if="msg.failed" :message="msg" />
                 </div>
                 <Flex v-if="!msg.redacted && !settings.chat_irc_inline_images && imageUrls(msg.text).filter(u => !brokenImages.has(u)).length" wrap gap="xs" class="chat-log__embeds">

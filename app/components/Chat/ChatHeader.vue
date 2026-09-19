@@ -8,6 +8,7 @@ import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useChatNavSheet } from '@/composables/useChatNavSheet'
 import { SELF_SPACE_LABEL, SERVICE_NICKS, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
+import { topicSegments } from '@/lib/chat/linkify'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 defineProps<{
@@ -68,31 +69,6 @@ function openPmInfo() {
   if (activeBuffer.value?.kind === 'pm')
     requestWhois(activeBuffer.value.name)
   infoOpen.value = true
-}
-
-const TOPIC_RE = /(https?:\/\/\S+|#[^\s,]+|@\S+)/g
-
-interface TopicSegment { type: 'text' | 'link' | 'channel' | 'mention', value: string }
-
-function topicSegments(topic: string): TopicSegment[] {
-  const out: TopicSegment[] = []
-  let last = 0
-  for (const m of topic.matchAll(TOPIC_RE)) {
-    const idx = m.index ?? 0
-    if (idx > last)
-      out.push({ type: 'text', value: topic.slice(last, idx) })
-    const val = m[0]
-    if (val.startsWith('#'))
-      out.push({ type: 'channel', value: val })
-    else if (val.startsWith('@'))
-      out.push({ type: 'mention', value: val })
-    else
-      out.push({ type: 'link', value: val })
-    last = idx + val.length
-  }
-  if (last < topic.length)
-    out.push({ type: 'text', value: topic.slice(last) })
-  return out
 }
 </script>
 

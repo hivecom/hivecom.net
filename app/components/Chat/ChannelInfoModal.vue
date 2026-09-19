@@ -7,6 +7,7 @@ import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
 import UserPreviewCard from '@/components/Shared/UserPreviewCard.vue'
 import { SERVICE_NICKS, useIrcChat, whoisStore } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
+import { topicSegments } from '@/lib/chat/linkify'
 
 const props = defineProps<{
   open: boolean
@@ -86,31 +87,6 @@ const pmWhois = computed(() => {
 
   return whoisStore.value.get(activeBuffer.value.name.toLowerCase()) ?? null
 })
-
-const TOPIC_RE = /(https?:\/\/\S+|#[^\s,]+|@\S+)/g
-
-interface TopicSegment { type: 'text' | 'link' | 'channel' | 'mention', value: string }
-
-function topicSegments(topic: string): TopicSegment[] {
-  const out: TopicSegment[] = []
-  let last = 0
-  for (const m of topic.matchAll(TOPIC_RE)) {
-    const idx = m.index ?? 0
-    if (idx > last)
-      out.push({ type: 'text', value: topic.slice(last, idx) })
-    const val = m[0]
-    if (val.startsWith('#'))
-      out.push({ type: 'channel', value: val })
-    else if (val.startsWith('@'))
-      out.push({ type: 'mention', value: val })
-    else
-      out.push({ type: 'link', value: val })
-    last = idx + val.length
-  }
-  if (last < topic.length)
-    out.push({ type: 'text', value: topic.slice(last) })
-  return out
-}
 </script>
 
 <template>
