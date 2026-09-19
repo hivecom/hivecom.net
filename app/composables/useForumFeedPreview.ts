@@ -8,6 +8,7 @@ import { useCache } from '@/composables/useCache'
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
+import { useUserId } from '@/composables/useUserId'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { extractMentionIds } from '@/lib/markdownProcessors'
 
@@ -37,6 +38,8 @@ export interface UseForumFeedPreviewOptions {
   cacheKey: string
   /** Row cache TTL in ms. */
   ttl?: number
+  /** Drop rows authored by the signed-in user. */
+  excludeOwn?: boolean
 }
 
 /**
@@ -49,16 +52,18 @@ export interface UseForumFeedPreviewOptions {
  * `ForumLatestItem` can render directly.
  */
 export function useForumFeedPreview(options: UseForumFeedPreviewOptions) {
-  const { limit, cacheKey, ttl = DEFAULT_TTL } = options
+  const { limit, cacheKey, ttl = DEFAULT_TTL, excludeOwn = false } = options
 
   const supabase = useSupabaseClient<Database>()
   const discussionCache = useDiscussionCache()
   const cache = useCache(CACHE_NAMESPACES.forum)
   const { settings } = useDataUserSettings()
+  const userId = useUserId()
 
   // Overfetch so NSFW and unresolvable rows can drop out without leaving the
-  // preview short.
-  const FETCH_LIMIT = limit * 3
+  // preview short. Dropping my own posts burns through rows faster, so reserve
+  // extra when that's on. A reply spree of mine shouldn't empty the card.
+  const FETCH_LIMIT = limit * (excludeOwn ? 6 : 3)
 
   const rows = ref<FeedRow[]>([])
   const loading = ref(true)
@@ -150,26 +155,52 @@ export function useForumFeedPreview(options: UseForumFeedPreviewOptions) {
     return null
   }
 
-  const items = computed<ActivityItem[]>(() => {
+  // My own posts are the one thing on the dashboard I already know about, so
+  // they're dead weight in a "what's new" list.
+  const otherRows = computed(() => {
+    const uid = userId.value
+    if (!excludeOwn || uid == null)
+      return rows.value
+
+    return rows.value.filter(row => row.created_by !== uid)
+  })
+
+  function mapRows(source: FeedRow[]): ActivityItem[] {
     const mapped: ActivityItem[] = []
-    for (const row of rows.value) {
+    for (const row of source) {
       const item = mapRow(row)
       if (item != null)
         mapped.push(item)
     }
     return mapped.slice(0, limit)
+  }
+
+  // Carries the rows the items came out of, so the author and mention warming
+  // below follows the same fallback instead of guessing at it.
+  const resolved = computed<{ items: ActivityItem[], source: FeedRow[] }>(() => {
+    const others = mapRows(otherRows.value)
+    if (others.length > 0 || !excludeOwn)
+      return { items: others, source: otherRows.value }
+
+    // Nobody else posted inside the window we fetched. Showing my own post back
+    // to me is weak, but it beats the section disappearing and leaving a card
+    // with nothing under its header.
+    return { items: mapRows(rows.value), source: rows.value }
   })
+
+  const items = computed(() => resolved.value.items)
+  const visibleRows = computed(() => resolved.value.source)
 
   // ── Author and mention pre-warming ─────────────────────────────────────────
 
   const authorIds = computed(() =>
-    [...new Set(rows.value.map(row => row.created_by).filter((id): id is string => id != null && id !== ''))],
+    [...new Set(visibleRows.value.map(row => row.created_by).filter((id): id is string => id != null && id !== ''))],
   )
   useBulkDataUser(authorIds, { includeAvatar: true, includeRole: true })
 
   const mentionIds = computed(() =>
     [...new Set(
-      rows.value
+      visibleRows.value
         .filter(row => row.item_type === 'reply' && row.body != null)
         .flatMap(row => extractMentionIds(row.body!)),
     )],

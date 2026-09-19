@@ -715,6 +715,11 @@ const currentScrollFraction = ref<number | null>(null)
 // composer/footer below it keeps us off the document's pixel-bottom).
 const atLatest = ref(false)
 
+// True once the top of the reply area has scrolled under the navbar, i.e. the
+// reader is actually in the replies. Until then the main post is still on
+// screen and the fixed "Jump to latest" pill would just sit on top of it.
+const inReplies = ref(false)
+
 // Infinite scroll: auto-load the next page when the sentinel enters the viewport.
 // Only active for forum model - comment model uses traditional pagination instead.
 if (props.model !== 'comment') {
@@ -804,6 +809,8 @@ const paginationInView = ref(false)
 // from the newest reply.
 const showJumpToPresent = computed(() => {
   if (!showTimeline.value)
+    return false
+  if (!inReplies.value)
     return false
   if (atLatest.value || paginationInView.value)
     return false
@@ -987,8 +994,17 @@ function updatePaginationInView() {
 
 function updateScrollFraction() {
   updatePaginationInView()
-  if (replyAreaEl.value == null || !discussion.value)
+  if (replyAreaEl.value == null || !discussion.value) {
+    inReplies.value = false
     return
+  }
+
+  const replyAreaRect = replyAreaEl.value.getBoundingClientRect()
+
+  // Only count as "in the replies" once their top edge has passed under the
+  // navbar. Above that the main post is still on screen and the fixed pill
+  // would overlap it.
+  inReplies.value = replyAreaRect.top <= NAVBAR_OFFSET
 
   // Hide "Jump to latest" once the newest reply is visible and nothing newer is
   // left to load. Skipped mid-navigation, when page height is in flux.
@@ -1014,8 +1030,6 @@ function updateScrollFraction() {
     currentScrollFraction.value = 1
     return
   }
-
-  const replyAreaRect = replyAreaEl.value.getBoundingClientRect()
 
   // Reply area top is still below the navbar - we're above the loaded replies.
   if (replyAreaRect.top > NAVBAR_OFFSET) {

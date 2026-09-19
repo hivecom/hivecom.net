@@ -145,7 +145,8 @@ watch(isHidden, (hidden) => {
     void fetchSubscriptions(uid)
 })
 
-// Latest activity across the whole forum.
+// Latest activity across the whole forum, minus my own posts. I already know
+// what I wrote, and three slots are too few to spend on it.
 const {
   items: latestItems,
   loading: latestLoading,
@@ -153,6 +154,7 @@ const {
 } = useForumFeedPreview({
   limit: PREVIEW_LIMIT,
   cacheKey: 'dashboard-forum:latest',
+  excludeOwn: true,
 })
 </script>
 
