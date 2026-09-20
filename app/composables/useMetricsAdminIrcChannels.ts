@@ -2,14 +2,21 @@ import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
 import { useEffectiveRole } from '@/composables/useEffectiveRole'
+import { metricsChannelKey } from '@/lib/chat/metricsChannelKey'
 
 export type MetricsAdminIrcChannel = Pick<Tables<'metrics_admin_irc_channels'>, 'id' | 'name' | 'secret'>
 
-// Public metrics key secret (+s) IRC channels by the id from
-// metrics_admin_irc_channels instead of the name. Only metrics_admin.read can
-// select that table, so this lookup stays empty for everyone else and the
-// charts fall back to a collapsed "secret channels" entry.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// Public metrics key secret (+s) IRC channels by sha256 of the lowercased name
+// instead of the name itself. Only metrics_admin.read can select the lookup
+// table, so this composable stays empty for everyone else and the charts fall
+// back to a collapsed "secret channels" entry. It hashes the names it reads
+// rather than selecting the generated `key` column, so the admin path and the
+// member path derive their keys through the exact same code.
+const DERIVED_KEY_RE = /^[0-9a-f]{64}$/i
+
+// Pre-derivation scheme. Still matched so a row written before the switch never
+// renders its raw uuid as if it were a channel name.
+const LEGACY_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // Module-level so every chart on a page shares one fetch.
 const lookup = ref<Map<string, MetricsAdminIrcChannel>>(new Map())
@@ -17,7 +24,7 @@ let loaded = false
 let inflight: Promise<void> | null = null
 
 export function isOpaqueIrcChannelKey(key: string): boolean {
-  return UUID_RE.test(key)
+  return DERIVED_KEY_RE.test(key) || LEGACY_UUID_RE.test(key)
 }
 
 export function useMetricsAdminIrcChannels() {
@@ -41,7 +48,11 @@ export function useMetricsAdminIrcChannels() {
       if (error !== null || data === null)
         return
 
-      lookup.value = new Map(data.map(row => [row.id, row]))
+      const entries = await Promise.all(
+        data.map(async row => [await metricsChannelKey(row.name), row] as const),
+      )
+
+      lookup.value = new Map(entries)
       loaded = true
     })().finally(() => {
       inflight = null

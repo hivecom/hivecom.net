@@ -15,6 +15,7 @@ import ChartTeamSpeakOnlineModal from '@/components/Shared/Charts/ChartTeamSpeak
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataTeamSpeakSnapshot } from '@/composables/useDataTeamSpeakSnapshot'
+import { useIrcChannelNames } from '@/composables/useIrcChannelNames'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { isOpaqueIrcChannelKey } from '@/composables/useMetricsAdminIrcChannels'
 import { getCSSVariable } from '@/lib/utils/common'
@@ -26,8 +27,8 @@ dayjs.extend(relativeTime)
 // we host it. Channels come from the metrics snapshot rather than the live IRC
 // connection. The chat page opens a socket when you go there, and the dashboard
 // should never be the thing that connects you. Secret channels come through
-// keyed by an opaque id with no name attached, so they're dropped here instead
-// of showing up as a row of UUIDs.
+// keyed by a hash of their name, which resolves for the ones you're in and for
+// nobody else, so the rest are dropped rather than rendered as a row of hex.
 
 const SHOWN_CHANNELS = 4
 
@@ -98,6 +99,22 @@ function channelDisplayName(key: string): string {
   return key.startsWith('#') ? key : `#${key}`
 }
 
+// Secret channels arrive under a hash of their name. Being in one is what lets
+// you recompute that hash, so your own channels get a name here and everything
+// else stays anonymous and drops out.
+const { load: loadChannelNames, resolve: resolveChannelName } = useIrcChannelNames()
+
+onMounted(() => {
+  void loadChannelNames()
+})
+
+function channelName(key: string): string | null {
+  if (!isOpaqueIrcChannelKey(key))
+    return channelDisplayName(key)
+
+  return resolveChannelName(key)?.name ?? null
+}
+
 function channelScore(entry: ChannelEntry): number {
   return entry.here * USER_WEIGHT + entry.messages
 }
@@ -109,10 +126,11 @@ const rankedChannels = computed<ChannelEntry[]>(() => {
   const keys = new Set([...Object.keys(here), ...messagesToday.value.keys()])
 
   return [...keys]
-    .filter(key => !isOpaqueIrcChannelKey(key))
-    .map(key => ({
+    .map(key => ({ key, name: channelName(key) }))
+    .filter((entry): entry is { key: string, name: string } => entry.name !== null)
+    .map(({ key, name }) => ({
       key,
-      name: channelDisplayName(key),
+      name,
       here: here[key] ?? 0,
       messages: messagesToday.value.get(key) ?? 0,
     }))

@@ -26,6 +26,7 @@
 
 import type { StoredBufferMeta, StoredMessage } from '@/lib/chat/bufferCache'
 import type { SoundDesign } from '@/types/sound'
+import { rememberIrcChannel } from '@/composables/useIrcChannelNames'
 import { clearChatCache, deleteBufferMessages, deleteBufferMeta, loadAllBufferMeta, loadNewerMessages, loadOlderMessages, loadRecentMessages, makeBufferKey, pruneBuffer, upsertBufferMeta, upsertMessages } from '@/lib/chat/bufferCache'
 import { markdownToIrc } from '@/lib/ircFormat'
 import { NONE_SOUND_ID, playNotificationSound } from '@/lib/notificationSound'
@@ -2900,6 +2901,12 @@ function handleMessage(raw: string) {
       }
 
       buf.joined = true
+
+      // Secret channels show up in public metrics under a hash of their name,
+      // never the name. Remembering the ones we're in is what lets the
+      // dashboard and the charts label those rows later, long after chat has
+      // been closed.
+      rememberIrcChannel(channel)
 
       // A channel arrived (restore or manual join). Push the default-channel
       // fallback out so it only fires once the restore burst is quiet, and not

@@ -19,7 +19,8 @@ import { computed, nextTick, onMounted, ref, watch, watchEffect } from 'vue'
 import { Bar } from 'vue-chartjs'
 import OnlineBadge from '@/components/Shared/OnlineBadge.vue'
 import { formatMessageCount, IRC_MESSAGES_INFO, useDataMetrics } from '@/composables/useDataMetrics'
-import { isOpaqueIrcChannelKey, useMetricsAdminIrcChannels } from '@/composables/useMetricsAdminIrcChannels'
+import { useIrcChannelNames } from '@/composables/useIrcChannelNames'
+import { isOpaqueIrcChannelKey } from '@/composables/useMetricsAdminIrcChannels'
 import { useUserTheme } from '@/composables/useUserTheme'
 import { barGapPlugin, barGapTooltipText, futureShadePlugin, getBarChartDefaults, getChartPalette, withAlpha } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
@@ -124,15 +125,16 @@ const chartRef = ref<ChartComponentRef<'bar'> | null>(null)
 const { width: chartWrapperWidth } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
 const { activeTheme } = useUserTheme()
 
-// Secret channels arrive keyed by an opaque id. Admins resolve those back to
-// names through the lookup table, and any id that doesn't resolve falls into a
-// single "Secret channels" entry so the picker never shows raw ids. Non-admins
-// don't get either one, so secret channels stay out of the filter for them.
+// Secret channels arrive keyed by a hash of their name. You resolve that for
+// the channels you're in, since being in one is how you know the name, and
+// admins resolve all of them through the lookup table. Anything still
+// unresolved falls into a single "Secret channels" entry, admin-only, so the
+// picker never shows raw keys and never hands out a bucket of channels the
+// viewer has no part in.
 const SECRET_GROUP_KEY = '__secret__'
-const { isAdmin, load: loadChannelLookup, resolve: resolveChannel } = useMetricsAdminIrcChannels()
-watch(isAdmin, (admin) => {
-  if (admin)
-    loadChannelLookup()
+const { isAdmin, load: loadChannelNames, resolve: resolveChannel } = useIrcChannelNames()
+watch(isAdmin, () => {
+  void loadChannelNames()
 }, { immediate: true })
 
 function isGroupedKey(key: string): boolean {
@@ -143,8 +145,8 @@ function channelLabel(key: string): string {
   if (key === SECRET_GROUP_KEY)
     return 'Secret channels'
 
-  const row = resolveChannel(key)
-  return row ? `${row.name} (secret)` : key
+  const resolved = resolveChannel(key)
+  return resolved ? `${resolved.name} (secret)` : key
 }
 
 function channelValue(map: Record<string, number> | null | undefined, key: string): number | null {

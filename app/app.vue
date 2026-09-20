@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button, Flex, Modal, Toasts } from '@dolanske/vui'
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import Command from '@/components/Command.vue'
 import LayoutLoading from '@/components/Layout/Loading.vue'
 import AudioLightbox from '@/components/Shared/AudioLightbox.vue'
@@ -124,28 +124,38 @@ if (import.meta.client) {
   })
 }
 
-// Favicon - single source of truth for all favicon state
+// Favicon - single source of truth for all favicon state. This goes through
+// useHead rather than VueUse's useFavicon: unhead owns the <link rel="icon">
+// declared in nuxt.config, so anything that writes to that element directly
+// gets reverted the next time unhead patches the head (every route change,
+// since the title and canonical link are reactive).
 const { hasMention, hasUnread } = useIrcChat()
-const icon = useFavicon()
 
-watch(() => ({
-  onChatPage: route.path.replace(/\/+$/, '') === '/chat',
-  notification: unreadCount.value > 0 || realtimeActivityWhileHidden.value,
-  mention: hasMention.value,
-  unread: hasUnread.value,
-}), ({ onChatPage, notification, mention, unread }) => {
+const faviconHref = computed(() => {
+  const onChatPage = route.path.replace(/\/+$/, '') === '/chat'
+
   if (onChatPage) {
-    if (mention)
-      icon.value = '/favicon-chat-mention.ico'
-    else if (unread)
-      icon.value = '/favicon-chat-activity.ico'
-    else
-      icon.value = '/favicon-chat.ico'
+    if (hasMention.value)
+      return '/favicon-chat-mention.ico'
+
+    if (hasUnread.value)
+      return '/favicon-chat-activity.ico'
+
+    return '/favicon-chat.ico'
   }
-  else {
-    icon.value = notification ? '/favicon-notification.ico' : '/favicon.ico'
-  }
-}, { immediate: true, deep: false })
+
+  const notification = unreadCount.value > 0 || realtimeActivityWhileHidden.value
+
+  return notification ? '/favicon-notification.ico' : '/favicon.ico'
+})
+
+// Keyed to match the icon link in nuxt.config so unhead merges the two into a
+// single <link> instead of leaving a stale one behind.
+useHead({
+  link: [
+    { rel: 'icon', key: 'favicon', href: faviconHref, type: 'image/x-icon' },
+  ],
+})
 
 // Load and apply the user's custom theme (if any) from their profile
 const { pendingTheme, confirmPendingTheme, confirmPendingThemeWithoutCss, pendingCssChange, confirmCssChange, dismissCssChange, pendingPreviewTheme, confirmPendingPreviewTheme, cancelPendingPreviewTheme } = useUserTheme()
