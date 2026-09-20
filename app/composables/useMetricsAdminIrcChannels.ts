@@ -48,11 +48,18 @@ export function useMetricsAdminIrcChannels() {
       if (error !== null || data === null)
         return
 
-      const entries = await Promise.all(
+      const derived = await Promise.all(
         data.map(async row => [await metricsChannelKey(row.name), row] as const),
       )
 
-      lookup.value = new Map(entries)
+      // Rows written before the key switch are still keyed by the lookup row's
+      // id. The remap migrations clear those out of history, so keeping the id
+      // as an alias is only here so a row they somehow miss still resolves for
+      // an admin instead of landing in the charts' unresolved bucket.
+      lookup.value = new Map([
+        ...data.map(row => [row.id, row] as const),
+        ...derived,
+      ])
       loaded = true
     })().finally(() => {
       inflight = null
