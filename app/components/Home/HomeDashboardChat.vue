@@ -146,7 +146,10 @@ const rankedChannels = computed<ChannelEntry[]>(() => {
 const shownChannels = computed(() => rankedChannels.value.slice(0, SHOWN_CHANNELS))
 
 // Second line per channel. Whichever half is zero drops out, and a channel with
-// neither says so rather than printing two zeroes.
+// neither says so rather than printing two zeroes. Half a tile is around twenty
+// characters, so messages are abbreviated and the timeframe is left to the
+// title: a busy channel spelling out "62 messages today" wrapped to two lines
+// and pushed its row out of line with the tile beside it.
 function channelActivity(entry: ChannelEntry): string {
   const parts: string[] = []
 
@@ -154,9 +157,22 @@ function channelActivity(entry: ChannelEntry): string {
     parts.push(`${entry.here} user${entry.here === 1 ? '' : 's'}`)
 
   if (entry.messages > 0)
-    parts.push(`${entry.messages} message${entry.messages === 1 ? '' : 's'} today`)
+    parts.push(`${entry.messages} msg${entry.messages === 1 ? '' : 's'}`)
 
   return parts.length ? parts.join(', ') : 'quiet today'
+}
+
+// The abbreviated line on hover, spelled out.
+function channelActivityTitle(entry: ChannelEntry): string {
+  const parts: string[] = []
+
+  if (entry.here > 0)
+    parts.push(`${entry.here} user${entry.here === 1 ? '' : 's'} here now`)
+
+  if (entry.messages > 0)
+    parts.push(`${entry.messages} message${entry.messages === 1 ? '' : 's'} today`)
+
+  return parts.length ? parts.join(', ') : 'No messages today'
 }
 
 // Clicking a channel lands you in it inside the chat sheet, the same way a
@@ -356,6 +372,7 @@ function hourLabel(index: number): string {
           :key="entry.key"
           type="button"
           class="home-item home-channel"
+          :title="channelActivityTitle(entry)"
           @click="openChannel(entry)"
         >
           <strong>{{ entry.name }}</strong>
@@ -451,6 +468,16 @@ function hourLabel(index: number): string {
   color: inherit;
   text-align: left;
   cursor: pointer;
+
+  // Counts have no ceiling, so the abbreviation alone isn't a guarantee. One
+  // line per tile, clipped if it comes to that, keeps the row aligned with
+  // whatever sits next to it.
+  span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
 }
 
 .home-voice {
