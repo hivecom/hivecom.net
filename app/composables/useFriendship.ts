@@ -130,7 +130,10 @@ export function useFriendship(
 
   async function fetchAllFriendships() {
     const pid = profileId.value
-    if (pid == null) {
+
+    // profile_friends is authenticated-only, and the profile route is public, so
+    // without this a signed-out visitor just earns a 42501 on every profile view.
+    if (!isLoggedIn.value || pid == null) {
       friendsLoading.value = false
       return
     }

@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database, Json } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
 import { timingSafeEqualString } from "../_shared/auth.ts";
+import { getSecretKey } from "../_shared/env.ts";
 
 // Steam API constants
 const STEAM_API_KEY = Deno.env.get("STEAM_API_KEY");
@@ -103,8 +104,7 @@ function pushRecentApp(
 // Create Supabase client with service role
 function createServiceClient() {
   const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-    Deno.env.get("SUPABASE_KEY");
+  const key = getSecretKey();
 
   if (!url || !key) {
     throw new Error("Missing Supabase configuration");

@@ -1,4 +1,4 @@
-import { getPublishableKey } from "../_shared/env.ts";
+import { getPublishableKey, getSecretKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -78,8 +78,7 @@ Deno.serve(async (req: Request) => {
     const lastfmUsername = session.name;
 
     // Write the username to the user's profile using the service role client
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-      Deno.env.get("SUPABASE_KEY") ?? "";
+    const serviceRoleKey = getSecretKey();
     const adminClient = createClient<Database>(supabaseUrl, serviceRoleKey);
 
     // lastfm_username is a new column not yet in the generated types;

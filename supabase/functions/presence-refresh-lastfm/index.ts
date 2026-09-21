@@ -1,4 +1,4 @@
-import { getPublishableKey } from "../_shared/env.ts";
+import { getPublishableKey, getSecretKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -128,8 +128,7 @@ Deno.serve(async (req: Request) => {
     // Fetch from Last.fm
     const track = await fetchRecentTrack(lastfmUsername, apiKey);
 
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-      Deno.env.get("SUPABASE_KEY") ?? "";
+    const serviceRoleKey = getSecretKey();
     const adminClient = createClient<Database>(supabaseUrl, serviceRoleKey);
     // Use untyped alias for presences_lastfm writes (table not yet in generated types).
     const anyAdminClient = adminClient as AnyClient;

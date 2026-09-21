@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
 import { timingSafeEqualString } from "../_shared/auth.ts";
+import { getSecretKey } from "../_shared/env.ts";
 import { fetchRecentTrack, resolveAlbumArt } from "../_shared/lastfm.ts";
 
 // Convenience alias - used for queries against tables/columns not yet in
@@ -49,8 +50,7 @@ interface QueueMessage {
 
 function createServiceClient() {
   const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-    Deno.env.get("SUPABASE_KEY");
+  const key = getSecretKey();
 
   if (!url || !key) {
     throw new Error("Missing Supabase configuration");

@@ -1,4 +1,4 @@
-import { getPublishableKey } from "../_shared/env.ts";
+import { getPublishableKey, getSecretKey } from "../_shared/env.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -122,7 +122,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Create service role client for queue operations
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const serviceRoleKey = getSecretKey();
     if (!serviceRoleKey) {
       throw new Error("Missing service role key");
     }
