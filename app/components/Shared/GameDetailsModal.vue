@@ -42,7 +42,7 @@ const isOpen = defineModel<boolean>('open', { default: false })
 const { games, getById: getGameById } = useDataGames()
 const { getGameCoverUrl, getGameBackgroundUrl } = useDataGameAssets()
 const { gameservers } = useDataGameservers()
-const { metrics, fetchMetricsHistoryIsolated, fetchMetricsWindowIsolated } = useDataMetrics()
+const { metrics, fetchMetricsHistoryIsolated, fetchMetricsWindowIsolated, getCachedHistory } = useDataMetrics()
 const { currentPlayersForSteamId, recentPlayersForSteamId, presencesReady } = useDataSteamPresences()
 const { handleContentClick } = useExternalLinkGuard()
 const supabase = useSupabaseClient<Database>()
@@ -80,13 +80,18 @@ const eventsLoading = ref(false)
 // ── Playtime cache ────────────────────────────────────────────────────────────
 const playtimeCache = new Map<number, number>()
 const minutesPlayed = ref(0)
-const playtimeLoading = ref(false)
 
 // ── Active chart window (driven by brush) ────────────────────────────────────
 const activePeriod = ref<MetricsPeriod>('14d')
 const activeWindow = ref<{ start: Date, end: Date } | null>(null)
 const isolatedHistory = ref<MetricsHistoryEntry[]>([])
 const hadActivity = ref(false)
+
+// Peak reads the history and time played is its own RPC, so neither tile means
+// anything until both have landed. They share one flag because releasing them
+// separately puts a 0 peak on screen next to a real playtime.
+const statsReady = ref(false)
+let statsToken = 0
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 const isModalVisible = computed(() => Boolean(props.gameId) && isOpen.value)
@@ -229,23 +234,25 @@ async function loadPlaytime(gameId: number, window?: { start: Date, end: Date })
     minutesPlayed.value = playtimeCache.get(cacheKey) ?? 0
     return
   }
-  playtimeLoading.value = true
-  try {
-    const since = window ? window.start.toISOString() : new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
-    const until = window ? window.end.toISOString() : new Date().toISOString()
-    const { data } = await supabase.rpc('get_game_playtime_minutes', {
-      p_game_id: gameId,
-      p_since: since,
-      p_until: until,
-    })
-    const result = Math.round(data ?? 0)
-    if (cacheKey !== null)
-      playtimeCache.set(cacheKey, result)
-    minutesPlayed.value = result
+
+  const since = window ? window.start.toISOString() : new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+  const until = window ? window.end.toISOString() : new Date().toISOString()
+  const { data, error: rpcError } = await supabase.rpc('get_game_playtime_minutes', {
+    p_game_id: gameId,
+    p_since: since,
+    p_until: until,
+  })
+
+  // A failed lookup shouldn't leave the previous game's number sitting there.
+  if (rpcError) {
+    minutesPlayed.value = 0
+    return
   }
-  finally {
-    playtimeLoading.value = false
-  }
+
+  const result = Math.round(data ?? 0)
+  if (cacheKey !== null)
+    playtimeCache.set(cacheKey, result)
+  minutesPlayed.value = result
 }
 
 async function loadRecentEvents(gameId: number) {
@@ -361,6 +368,7 @@ watch(
       currentDetails.value = null
       recentEvents.value = []
       minutesPlayed.value = 0
+      statsReady.value = false
       error.value = ''
       loading.value = false
       return
@@ -375,14 +383,40 @@ watch(
       activePeriod.value = '14d'
       activeWindow.value = null
       hadActivity.value = false
-      void fetchMetricsHistoryIsolated('14d').then((h) => {
-        isolatedHistory.value = h
+
+      // Both fetchers are async even on a warm cache, and that one render is
+      // the difference between reopening a game to its numbers and reopening
+      // it to a skeleton, so the refs seed synchronously and the fetch below
+      // confirms them.
+      const statsRun = ++statsToken
+      const cachedHistory = getCachedHistory('14d')
+      const cachedPlaytime = playtimeCache.get(gameId)
+
+      isolatedHistory.value = cachedHistory ?? []
+      if (cachedPlaytime !== undefined)
+        minutesPlayed.value = cachedPlaytime
+      statsReady.value = cachedHistory !== null && cachedPlaytime !== undefined
+
+      void Promise.all([
+        cachedHistory === null
+          ? fetchMetricsHistoryIsolated('14d').then((h) => {
+              if (statsRun === statsToken)
+                isolatedHistory.value = h
+            })
+          : null,
+        // A thrown RPC would otherwise leave the tiles stuck on skeletons.
+        loadPlaytime(gameId).catch(() => {
+          minutesPlayed.value = 0
+        }),
+      ]).then(() => {
+        if (statsRun === statsToken)
+          statsReady.value = true
       })
+
       void fetchMetricsHistoryIsolated('90d').then((h) => {
         if (!hadActivity.value)
           hadActivity.value = h.some(e => (e.usersByGame?.[String(gameId)] ?? 0) > 0)
       })
-      void loadPlaytime(gameId)
     }
   },
   { immediate: true },
@@ -557,14 +591,14 @@ watch(
           <Card v-if="currentDetails.game.steam_id" class="stat-card">
             <Flex column gap="xs">
               <span class="stat-card__label">Peak players ({{ activePeriod }})</span>
-              <Skeleton v-if="playtimeLoading" height="20px" width="40px" :radius="3" />
+              <Skeleton v-if="!statsReady" height="20px" width="40px" :radius="3" />
               <span v-else class="stat-card__value">{{ peakPlayers }}</span>
             </Flex>
           </Card>
           <Card v-if="currentDetails.game.steam_id" class="stat-card">
             <Flex column gap="xs">
               <span class="stat-card__label">Time played ({{ activePeriod }})</span>
-              <Skeleton v-if="playtimeLoading" height="20px" width="40px" :radius="3" />
+              <Skeleton v-if="!statsReady" height="20px" width="40px" :radius="3" />
               <span v-else class="stat-card__value">{{ formatMinutesPlayed(minutesPlayed) }}</span>
             </Flex>
           </Card>
