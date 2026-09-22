@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { ForumLatestPane } from '@/components/Forum/ForumLatestSheet.vue'
 import type { SubscriptionRow } from '@/composables/useDiscussionSubscriptionsCache'
 import type { Database } from '@/types/database.types'
 import { Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import ForumLatestSheet from '@/components/Forum/ForumLatestSheet.vue'
 import HomeDashboardCardHeader from '@/components/Home/HomeDashboardCardHeader.vue'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
 import HomeDashboardSkeleton from '@/components/Home/HomeDashboardSkeleton.vue'
@@ -149,13 +151,35 @@ watch(isHidden, (hidden) => {
 // what I wrote, and three slots are too few to spend on it.
 const {
   items: latestItems,
+  allItems: latestAllItems,
   loading: latestLoading,
+  loadingMore: latestLoadingMore,
+  exhausted: latestExhausted,
+  loadMore: loadMoreLatest,
   mentionLookup: latestMentionLookup,
 } = useForumFeedPreview({
   limit: PREVIEW_LIMIT,
   cacheKey: 'dashboard-forum:latest',
   excludeOwn: true,
 })
+
+// The rest of the feed behind the three rows, in the same sheet the forum page
+// opens off its carousel. It pages on from the preview's own fetch, so opening
+// it costs nothing until you scroll. No tabs, no visit divider: the dashboard
+// doesn't track a last visit to the forum, and your own posts are what this
+// card leaves out on purpose.
+const latestSheetOpen = ref(false)
+
+const latestPane = computed<ForumLatestPane>(() => ({
+  items: latestAllItems.value,
+  loading: latestLoading.value,
+  loadingMore: latestLoadingMore.value,
+  exhausted: latestExhausted.value,
+}))
+
+function openLatestSheet(): void {
+  latestSheetOpen.value = true
+}
 </script>
 
 <template>
@@ -187,7 +211,11 @@ const {
     </HomeDashboardSection>
 
     <HomeDashboardSkeleton v-if="latestLoading && !latestItems.length" variant="rows" :count="3" />
-    <HomeDashboardSection v-else-if="latestItems.length" label="Latest across the forum">
+    <HomeDashboardSection
+      v-else-if="latestItems.length"
+      label="Latest across the forum"
+      @click="openLatestSheet"
+    >
       <Flex column gap="xs">
         <HomeForumItem
           v-for="item in latestItems"
@@ -197,6 +225,15 @@ const {
         />
       </Flex>
     </HomeDashboardSection>
+
+    <ForumLatestSheet
+      :open="latestSheetOpen"
+      title="Latest across the forum"
+      :feed="latestPane"
+      :mention-lookup="latestMentionLookup"
+      @close="latestSheetOpen = false"
+      @load-more="loadMoreLatest"
+    />
   </Flex>
 </template>
 

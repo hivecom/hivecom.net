@@ -179,10 +179,6 @@ const communityRecent = computed(() => {
   return communityPool.value.slice(0, Math.max(SHOWN_COMMUNITY, withFriends))
 })
 
-// The card shows a slice of the community list. Only when there's more behind
-// it does the section label become the way to the full sheet.
-const hasMoreCommunity = computed(() => rankedCommunity.value.length > communityRecent.value.length)
-
 // Rotates the discovery pick so the slot isn't the same game every time the
 // dashboard loads. Seeded once on mount rather than read inline, so a presence
 // refetch elsewhere can't swap the game out from under the cursor.
@@ -322,12 +318,10 @@ function activityLabel(entry: RecentlyPlayedGame): string | undefined {
     </HomeDashboardSection>
 
     <HomeDashboardSkeleton v-if="(presencesLoading || gamesLoading) && !communityRecent.length" variant="rows" icon :count="SHOWN_COMMUNITY" />
-    <!-- Listener only attached when there's more than the card shows, so the
-         label stays plain text otherwise. -->
     <HomeDashboardSection
       v-else-if="communityRecent.length"
       label="What everyone's been playing"
-      :on-click="hasMoreCommunity ? openCommunitySheet : undefined"
+      @click="openCommunitySheet"
     >
       <Flex column gap="xs">
         <HomeDashboardGameItem

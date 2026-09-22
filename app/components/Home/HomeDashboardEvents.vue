@@ -5,6 +5,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import CreateEventModal from '@/components/Events/CreateEventModal.vue'
 import HomeDashboardCalendar from '@/components/Home/HomeDashboardCalendar.vue'
 import HomeDashboardCardHeader from '@/components/Home/HomeDashboardCardHeader.vue'
+import HomeDashboardEventsSheet from '@/components/Home/HomeDashboardEventsSheet.vue'
 import HomeDashboardPlaceholder from '@/components/Home/HomeDashboardPlaceholder.vue'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
 import HomeDashboardSkeleton from '@/components/Home/HomeDashboardSkeleton.vue'
@@ -52,15 +53,16 @@ const loading = computed(() =>
   && happeningNow.value.length === 0,
 )
 
-// Upcoming events I said yes or tentative to, soonest first.
-const attending = computed(() =>
-  upcoming.value
-    .filter((e) => {
-      const status = rsvpByEventId.value.get(e.id)
-      return status === 'yes' || status === 'tentative'
-    })
-    .slice(0, SHOWN_ATTENDING),
+// Upcoming events I said yes or tentative to, soonest first. The card takes
+// the first two; the sheet gets all of them.
+const allAttending = computed(() =>
+  upcoming.value.filter((e) => {
+    const status = rsvpByEventId.value.get(e.id)
+    return status === 'yes' || status === 'tentative'
+  }),
 )
+
+const attending = computed(() => allAttending.value.slice(0, SHOWN_ATTENDING))
 
 // Everything upcoming I haven't answered, friends first, since "someone you
 // know is going" is the reason to look.
@@ -78,6 +80,13 @@ const openToJoin = computed(() => {
 const gridIsMine = computed(() => attending.value.length > 0)
 const gridEvents = computed(() => gridIsMine.value ? attending.value : openToJoin.value.slice(0, SHOWN_ATTENDING))
 const rowEvents = computed(() => gridIsMine.value ? openToJoin.value.slice(0, SHOWN_OPEN) : [])
+
+// Every upcoming event, where the card only has room for a handful.
+const eventsSheetOpen = ref(false)
+
+function openEventsSheet(): void {
+  eventsSheetOpen.value = true
+}
 
 // The calendar only reports which day was clicked, so the create flow lives
 // here. It's the same gate the events page puts in front of the button: agree
@@ -117,7 +126,10 @@ function handleContentRulesConfirmed() {
         </div>
       </HomeDashboardSection>
 
-      <HomeDashboardSection :label="gridIsMine ? 'Your upcoming events' : 'You could join these'">
+      <HomeDashboardSection
+        :label="gridIsMine ? 'Your upcoming events' : 'You could join these'"
+        @click="openEventsSheet"
+      >
         <div class="home-item-list">
           <HomeDashboardEventItem v-for="event in gridEvents" :key="event.id" :data="event" />
 
@@ -153,6 +165,14 @@ function handleContentRulesConfirmed() {
       <HomeDashboardCalendar @create="openCreate" />
     </HomeDashboardSection>
   </Flex>
+
+  <HomeDashboardEventsSheet
+    :open="eventsSheetOpen"
+    :ongoing="ongoingEvents"
+    :attending="allAttending"
+    :open-to-join="openToJoin"
+    @close="eventsSheetOpen = false"
+  />
 
   <CreateEventModal
     v-model:open="showCreateEventModal"

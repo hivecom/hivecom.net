@@ -4,7 +4,9 @@
 // layout gets designed on top of it. Pass `to` and the label doubles as the
 // way into the fuller view of what the section shows, same as the card title.
 // Listen for `click` instead when the fuller view is a sheet or modal rather
-// than a page.
+// than a page: that swaps the label's arrow for a caret button on the right of
+// the head row, so a section that opens in place never wears the arrow that
+// means "this navigates".
 defineProps<{ label: string, to?: string }>()
 const emit = defineEmits<{ click: [] }>()
 
@@ -28,13 +30,26 @@ function clickable() {
         </NuxtLink>
         <button v-else-if="clickable()" type="button" class="dashboard-section__link" @click="emit('click')">
           {{ label }}
-          <Icon name="ph:arrow-right" class="dashboard-section__arrow" />
         </button>
         <template v-else>
           {{ label }}
         </template>
       </h3>
-      <slot name="action" />
+
+      <div class="dashboard-section__actions">
+        <!-- Sits ahead of the slot so a section with both (the chat card's
+             address hint) keeps the caret next to the label it belongs to. -->
+        <button
+          v-if="clickable()"
+          type="button"
+          class="dashboard-section__expand"
+          :aria-label="`Open ${label}`"
+          @click="emit('click')"
+        >
+          <Icon name="ph:caret-up-down" />
+        </button>
+        <slot name="action" />
+      </div>
     </div>
     <slot />
   </section>
@@ -72,6 +87,13 @@ function clickable() {
   gap: var(--space-s);
   min-height: 20px;
   margin-bottom: var(--space-xs);
+}
+
+.dashboard-section__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
 }
 
 .dashboard-section__label {
@@ -116,5 +138,41 @@ function clickable() {
   transition:
     opacity var(--transition-duration) ease,
     transform var(--transition-duration) ease;
+}
+
+// Same idea as the arrow, scoped to the whole section rather than the label:
+// the caret is the section's handle, so reaching anywhere inside it is enough
+// to bring the handle out. Touch has no hover to spend, so there it just sits.
+.dashboard-section__expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--color-text-lighter);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--transition-duration) ease,
+    color var(--transition-duration) ease;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-text);
+  }
+
+  &:focus-visible {
+    opacity: 1;
+  }
+
+  .dashboard-section:hover & {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+  }
 }
 </style>

@@ -12,7 +12,7 @@ const props = defineProps<{
   mentionLookup: Record<string, string>
 }>()
 
-const { now } = useNow()
+const { now } = useNow(() => props.post.timestampRaw)
 
 // Narrow ("3d ago") like the gameserver card's activity line, because the row
 // splits its width with the thread name. The item's own `timestamp` is baked at

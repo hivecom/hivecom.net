@@ -21,31 +21,40 @@ const hasError = ref(false)
 const isImageReady = ref(false)
 const imgRef = ref<HTMLImageElement | null>(null)
 
-async function loadGameIcon() {
-  try {
-    isLoading.value = true
-    hasError.value = false
+// Incremented per load so a slower lookup for the previous game can't land
+// after a cached one for the current game and put the wrong icon next to the
+// name.
+let loadToken = 0
 
-    const url = await getGameIconUrl(props.game)
-    iconUrl.value = url || '/icon.svg'
+async function loadGameIcon() {
+  const token = ++loadToken
+  isLoading.value = true
+  hasError.value = false
+
+  let url: string | null = null
+  try {
+    url = await getGameIconUrl(props.game)
   }
   catch (error) {
     console.error(`Failed to load icon for game ${props.game.id}:`, error)
-    hasError.value = true
-    iconUrl.value = '/icon.svg'
+    if (token === loadToken)
+      hasError.value = true
   }
-  finally {
-    isLoading.value = false
-    isImageReady.value = false
 
-    // Handle cached images: if the browser already has the asset, the @load
-    // event may fire before Vue attaches the listener. Check `complete` after
-    // the DOM updates and flip ready manually in that case.
-    await nextTick()
-    const el = imgRef.value
-    if (el && el.complete && el.naturalWidth > 0)
-      isImageReady.value = true
-  }
+  if (token !== loadToken)
+    return
+
+  iconUrl.value = url || '/icon.svg'
+  isLoading.value = false
+  isImageReady.value = false
+
+  // Handle cached images: if the browser already has the asset, the @load
+  // event may fire before Vue attaches the listener. Check `complete` after
+  // the DOM updates and flip ready manually in that case.
+  await nextTick()
+  const el = imgRef.value
+  if (token === loadToken && el && el.complete && el.naturalWidth > 0)
+    isImageReady.value = true
 }
 
 function handleImageLoad() {

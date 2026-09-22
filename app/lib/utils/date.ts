@@ -238,32 +238,21 @@ export function timestamp(date: string | Date | null | undefined): string {
   return d.toISOString()
 }
 
-export interface TimestampDetail {
-  /** The precise instant in UTC, e.g. "2026-09-13 16:09:18 UTC". */
-  absolute: string
-
-  /** The viewer's zone and offset, e.g. "UTC-06:00, America/Edmonton". */
-  zone: string
-}
-
 /**
- * Splits a date into the two halves a detail tooltip wants: the exact UTC
- * instant and the viewer's own timezone. Returns null for null/invalid values.
+ * The precise instant in the viewer's local time for detail tooltips, e.g.
+ * "2026-09-13 10:09:18". Returns null for null/invalid values.
  */
-export function timestampDetail(date: string | Date | null | undefined): TimestampDetail | null {
+export function timestampDetail(date: string | Date | null | undefined): string | null {
   const d = parse(date)
   if (!d)
     return null
 
-  const offset = d.getTimezoneOffset()
-  const offsetSign = offset <= 0 ? '+' : '-'
-  const offsetHours = String(Math.abs(Math.floor(offset / 60))).padStart(2, '0')
-  const offsetMinutes = String(Math.abs(offset % 60)).padStart(2, '0')
+  const pad = (n: number) => String(n).padStart(2, '0')
 
-  return {
-    absolute: `${d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '')} UTC`,
-    zone: `UTC${offsetSign}${offsetHours}:${offsetMinutes}, ${new Intl.DateTimeFormat().resolvedOptions().timeZone}`,
-  }
+  const day = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+
+  return `${day} ${time}`
 }
 
 // ---------------------------------------------------------------------------

@@ -18,18 +18,30 @@ const gameBackground = ref<string | null>(null)
 
 watch(
   () => props.data,
-  async (d) => {
+  async (d, _, onCleanup) => {
+    // A newer preview replaces this one, so a lookup still in flight for the
+    // old game drops its result instead of painting the wrong background.
+    let stale = false
+    onCleanup(() => {
+      stale = true
+    })
+
     if (d.gameShorthand == null || d.gameShorthand === '') {
       gameBackground.value = null
       return
     }
+
+    let url: string | null = null
     try {
       const { getGameBackgroundUrlByShorthand } = useDataGameAssets()
-      gameBackground.value = await getGameBackgroundUrlByShorthand(d.gameShorthand)
+      url = await getGameBackgroundUrlByShorthand(d.gameShorthand)
     }
     catch {
-      gameBackground.value = null
+      url = null
     }
+
+    if (!stale)
+      gameBackground.value = url
   },
   { immediate: true },
 )

@@ -278,6 +278,10 @@ async function loadRecentEvents(gameId: number) {
 }
 
 async function loadGameDetails(gameId: number) {
+  // Bumped before the cache check too, so an uncached game still in flight
+  // can't land on top of a cached one opened after it.
+  const currentFetchToken = ++fetchToken
+
   if (detailsCache.has(gameId)) {
     currentDetails.value = detailsCache.get(gameId) ?? null
     loading.value = false
@@ -287,7 +291,6 @@ async function loadGameDetails(gameId: number) {
 
   loading.value = true
   error.value = ''
-  const currentFetchToken = ++fetchToken
 
   try {
     const data = getGameById(gameId)
@@ -308,7 +311,9 @@ async function loadGameDetails(gameId: number) {
 
     const entry: GameDetailsEntry = { game: data, coverUrl, backgroundUrl }
     detailsCache.set(gameId, entry)
-    currentDetails.value = entry
+
+    if (currentFetchToken === fetchToken)
+      currentDetails.value = entry
   }
   catch (err) {
     if (currentFetchToken === fetchToken) {

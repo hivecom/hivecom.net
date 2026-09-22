@@ -15,6 +15,7 @@ import { PAGE_SIZE_COMMENT, PAGE_SIZE_FORUM, useDiscussionRepliesCache } from '@
 import { useDiscussionSubscription } from '@/composables/useDiscussionSubscription'
 import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useRealtimeDiscussion } from '@/composables/useRealtimeDiscussion'
+import { useReplyDraft } from '@/composables/useReplyDraft'
 import { wrapInBlockquote } from '@/lib/markdownProcessors'
 import { getRouteQueryStringOrNull, scrollToId, scrollToIdWhenStable, waitForLayoutStability } from '@/lib/utils/common'
 import { normalizeTipTapOutput } from '@/lib/utils/formatting'
@@ -1377,6 +1378,45 @@ const form = reactive({
   is_nsfw: false,
 })
 
+// Reply target coming back from a saved draft. Skips the focus that picking a
+// target normally triggers, so a restore doesn't yank the page to the composer.
+let restoredReplyToId: string | null = null
+
+async function restoreReplyingTo(id: string) {
+  const loaded = modelledComments.value.find(c => c.id === id)
+  if (loaded != null) {
+    restoredReplyToId = id
+    replyingTo.value = loaded
+    return
+  }
+
+  // Usually not on the loaded page yet. A reply that's been deleted since the
+  // draft was saved is dropped and the text restores on its own.
+  const { data } = await supabase
+    .from('discussion_replies')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (data == null || data.is_deleted || replyingTo.value != null)
+    return
+
+  restoredReplyToId = id
+  replyingTo.value = { ...(data as RawComment), reply: null }
+}
+
+// Back the composer up to localStorage per user and discussion (and per vote
+// answer, since those share one discussion) so a closed tab doesn't eat it.
+useReplyDraft(() => {
+  if (userId.value == null || props.hideInput)
+    return null
+
+  return [userId.value, props.type, props.id, props.hash].filter(Boolean).join(':')
+}, form, {
+  replyToId: () => replyingTo.value?.id ?? null,
+  restoreReplyTo: restoreReplyingTo,
+})
+
 provide(DISCUSSION_KEYS.setReplyToComment, (comment: Comment) => replyingTo.value = comment)
 
 const textareaRef = useTemplateRef<{ focus: () => void, rootEl: HTMLElement | null }>('textarea')
@@ -1399,7 +1439,14 @@ function focusTextarea() {
     textareaRef.value.focus()
 }
 
-watch(replyingTo, focusTextarea)
+watch(replyingTo, (comment) => {
+  if (comment != null && comment.id === restoredReplyToId) {
+    restoredReplyToId = null
+    return
+  }
+
+  focusTextarea()
+})
 
 provide(DISCUSSION_KEYS.setQuoteOfComment, (comment: Comment) => {
   const quoted = wrapInBlockquote(`@{${comment.created_by}} said\n\n${comment.markdown}`)

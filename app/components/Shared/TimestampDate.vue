@@ -71,8 +71,9 @@ const formatters: Record<DateDisplayType, (d: string | Date | null | undefined) 
 }
 
 // Shared tick so relative labels age on their own rather than freezing at
-// whatever the first render computed.
-const { now } = useNow()
+// whatever the first render computed. Only a relative label or the tooltip
+// ever shows the relative text, so skip the fast tick when neither is on.
+const { now } = useNow(() => (props.relative || props.tooltip ? props.date : null))
 
 const relativeText = computed(() => (props.date ? fromNow(props.date, now.value) : ''))
 
@@ -85,8 +86,17 @@ const formattedDate = computed(() => {
   return formatters[props.type](props.date)
 })
 
-// Exact instant plus the viewer's zone, shown on hover.
+// Exact instant in the viewer's local time, shown on hover.
 const detail = computed(() => (props.tooltip ? timestampDetail(props.date) : null))
+
+// One text node on purpose. VUI's reset gives every span the medium font size,
+// so wrapping the relative part in a span made it outgrow the absolute part.
+const detailLine = computed(() => {
+  if (!detail.value)
+    return ''
+
+  return relativeText.value ? `${detail.value} (${relativeText.value})` : detail.value
+})
 
 const attrs = useAttrs()
 </script>
@@ -95,10 +105,7 @@ const attrs = useAttrs()
   <Tooltip v-if="tooltip && date && detail" :placement="placement">
     <template #tooltip>
       <div class="text-xs">
-        {{ detail.absolute }}<span v-if="relativeText"> ({{ relativeText }})</span>
-      </div>
-      <div class="text-xs text-color-lightest">
-        {{ detail.zone }}
+        {{ detailLine }}
       </div>
     </template>
     <slot>

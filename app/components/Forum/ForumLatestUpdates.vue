@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { ForumLatestPane } from '@/components/Forum/ForumLatestSheet.vue'
 import type { ActivityItem } from '@/composables/useForumActivityFeed'
 import type { UseForumActivityFeedPaginatedOptions } from '@/composables/useForumActivityFeedPaginated'
-import { Badge, Button, Carousel, Flex, Sheet, Skeleton, Spinner, Tab, Tabs, Tooltip } from '@dolanske/vui'
+import { Badge, Button, Carousel, Flex, Skeleton, Tooltip } from '@dolanske/vui'
 import ForumLatestItem from '@/components/Forum/ForumLatestItem.vue'
+import ForumLatestSheet from '@/components/Forum/ForumLatestSheet.vue'
 
 import { useBulkDataUser } from '@/composables/useDataUser'
 import { useForumActivityFeedPaginated } from '@/composables/useForumActivityFeedPaginated'
@@ -36,9 +38,6 @@ const user = useSupabaseUser()
 const userId = useUserId()
 
 const sheetOpen = ref(false)
-const activeTab = ref<'feed' | 'mine'>('feed')
-const sentinel = ref<HTMLElement | null>(null)
-const mineSentinel = ref<HTMLElement | null>(null)
 
 // Close sheet if user signs out mid-session
 watch(user, (u) => {
@@ -135,35 +134,21 @@ const {
   createdByCurrentUser: true,
 })
 
-// Divider index for the community feed - same visit boundary logic
-const sheetSplitIndex = computed<number | null>(() => {
-  if (visitedAt.value == null || sheetLoading.value)
-    return null
+// What the sheet renders. Its dividers, tabs and scroll sentinels live in
+// ForumLatestSheet, so all this side hands over is the state of each feed.
+const feedPane = computed<ForumLatestPane>(() => ({
+  items: sheetItems.value,
+  loading: sheetLoading.value,
+  loadingMore: sheetLoadingMore.value,
+  exhausted: sheetExhausted.value,
+}))
 
-  const idx = sheetItems.value.findIndex(
-    item => new Date(item.timestampRaw).getTime() <= visitedAt.value!,
-  )
-  if (idx <= 0 || idx >= sheetItems.value.length)
-    return null
-
-  return idx
-})
-
-// True when all loaded sheet items are newer than the visit boundary -
-// meaning the divider belongs after the last visible item, not inline.
-// Only show this trailing divider when there are actually new items to indicate.
-const sheetTrailingDivider = computed<boolean>(() => {
-  if (visitedAt.value == null || sheetLoading.value || sheetSplitIndex.value !== null)
-    return false
-  if (sheetItems.value.length === 0)
-    return false
-
-  // All items are newer than the visit boundary
-  const allNewer = sheetItems.value.every(
-    item => new Date(item.timestampRaw).getTime() > visitedAt.value!,
-  )
-  return allNewer && newSinceLastVisit.value > 0
-})
+const minePane = computed<ForumLatestPane>(() => ({
+  items: mineItems.value,
+  loading: mineLoading.value,
+  loadingMore: mineLoadingMore.value,
+  exhausted: mineExhausted.value,
+}))
 
 // ── Mention / author cache ─────────────────────────────────────────────────
 
@@ -191,25 +176,7 @@ const combinedMentionLookup = computed<Record<string, string>>(() => {
   return lookup
 })
 
-// ── Infinite scroll sentinels ──────────────────────────────────────────────
-
-let observer: IntersectionObserver | null = null
-let mineObserver: IntersectionObserver | null = null
-
-function setupSentinelObserver(
-  el: HTMLElement,
-  onIntersect: () => void,
-): IntersectionObserver {
-  const obs = new IntersectionObserver(
-    (entries) => {
-      if (entries[0]?.isIntersecting)
-        onIntersect()
-    },
-    { threshold: 0.1 },
-  )
-  obs.observe(el)
-  return obs
-}
+// ── Sheet fetching ─────────────────────────────────────────────────────────
 
 async function ensureSheetLoaded() {
   if (sheetItems.value.length > 0)
@@ -255,65 +222,22 @@ async function reloadSheet() {
   }
 }
 
-// Re-attach sentinels when tab changes
-watch(activeTab, async (tab) => {
-  await nextTick()
+function onSheetRequest(tab: 'feed' | 'mine') {
+  if (tab === 'feed')
+    void ensureSheetLoaded()
+  else
+    void ensureMineLoaded()
+}
 
-  if (tab === 'feed') {
-    mineObserver?.disconnect()
-    mineObserver = null
+function onLoadMore() {
+  if (!sheetLoadingMore.value && !sheetExhausted.value)
+    void loadMore()
+}
 
-    await ensureSheetLoaded()
-    await nextTick()
-
-    if (sentinel.value != null) {
-      observer = setupSentinelObserver(sentinel.value, () => {
-        if (!sheetLoadingMore.value && !sheetExhausted.value)
-          void loadMore()
-      })
-    }
-  }
-  else {
-    observer?.disconnect()
-    observer = null
-
-    await ensureMineLoaded()
-    await nextTick()
-
-    if (mineSentinel.value != null) {
-      mineObserver = setupSentinelObserver(mineSentinel.value, () => {
-        if (!mineLoadingMore.value && !mineExhausted.value)
-          void loadMoreMine()
-      })
-    }
-  }
-})
-
-watch(sheetOpen, async (open) => {
-  if (!open) {
-    observer?.disconnect()
-    observer = null
-    mineObserver?.disconnect()
-    mineObserver = null
-    activeTab.value = 'feed'
-    return
-  }
-
-  await ensureSheetLoaded()
-  await nextTick()
-
-  if (sentinel.value != null) {
-    observer = setupSentinelObserver(sentinel.value, () => {
-      if (!sheetLoadingMore.value && !sheetExhausted.value)
-        void loadMore()
-    })
-  }
-})
-
-onUnmounted(() => {
-  observer?.disconnect()
-  mineObserver?.disconnect()
-})
+function onLoadMoreMine() {
+  if (!mineLoadingMore.value && !mineExhausted.value)
+    void loadMoreMine()
+}
 </script>
 
 <template>
@@ -380,119 +304,28 @@ onUnmounted(() => {
       </template>
     </Carousel>
 
-    <Sheet v-if="user" :open="sheetOpen" :size="456" @close="sheetOpen = false">
-      <template #header>
-        <Flex y-center x-between expand class="mb-s">
-          <h4>
-            Recent activity
-          </h4>
-          <Button
-            v-if="activeTab === 'feed' && (props.feedPendingCount ?? 0) > 0"
-            size="s"
-            variant="accent"
-            outline
-            @click="reloadSheet"
-          >
-            <template #start>
-              <Icon name="ph:arrow-counter-clockwise" />
-            </template>
-            {{ props.feedPendingCount }} new
-          </Button>
-        </Flex>
-
-        <Tabs v-model="activeTab" class="forum__latest-sheet-tabs">
-          <Tab value="feed">
-            Feed
-          </Tab>
-          <Tab value="mine">
-            My Activity
-          </Tab>
-        </Tabs>
-      </template>
-
-      <!-- Community feed tab -->
-      <Flex v-if="activeTab === 'feed'" column gap="m" class="pt-s">
-        <template v-if="sheetLoading">
-          <Skeleton v-for="i in 6" :key="i" width="100%" height="96px" />
-        </template>
-
-        <template v-else>
-          <template v-for="(post, index) in sheetItems" :key="post.id">
-            <Tooltip v-if="sheetSplitIndex !== null && index === sheetSplitIndex" :disabled="isMobile">
-              <div class="forum__latest-divider forum__latest-divider--sheet">
-                <Icon name="ph:clock" :size="16" />
-              </div>
-              <template #tooltip>
-                <p>You've caught up</p>
-              </template>
-            </Tooltip>
-            <ForumLatestItem
-              :post="post"
-              :mention-lookup="combinedMentionLookup"
-              expand
-            />
-          </template>
-
-          <Tooltip v-if="sheetTrailingDivider" :disabled="isMobile">
-            <div class="forum__latest-divider forum__latest-divider--sheet">
-              <Icon name="ph:clock" :size="16" />
-            </div>
-            <template #tooltip>
-              <p>Older posts start here</p>
-            </template>
-          </Tooltip>
-
-          <div ref="sentinel" class="forum__latest-sentinel">
-            <Spinner v-if="sheetLoadingMore" />
-            <span v-else-if="sheetExhausted" class="text-xs text-color-lighter">All caught up</span>
-          </div>
-        </template>
-      </Flex>
-
-      <!-- My activity tab -->
-      <Flex v-else-if="activeTab === 'mine'" column gap="m" class="pt-s">
-        <template v-if="mineLoading">
-          <Skeleton v-for="i in 6" :key="i" width="100%" height="96px" />
-        </template>
-
-        <template v-else-if="!mineLoading && mineItems.length === 0 && mineExhausted">
-          <Flex column x-center y-center class="forum__latest-empty">
-            <Icon name="ph:pencil-slash" :size="32" />
-            <p>Nothing posted yet</p>
-          </Flex>
-        </template>
-
-        <template v-else>
-          <ForumLatestItem
-            v-for="post in mineItems"
-            :key="post.id"
-            :post="post"
-            :mention-lookup="combinedMentionLookup"
-            expand
-          />
-
-          <div ref="mineSentinel" class="forum__latest-sentinel">
-            <Spinner v-if="mineLoadingMore" />
-            <span v-else-if="mineExhausted" class="text-xs text-color-lighter">That's everything</span>
-          </div>
-        </template>
-      </Flex>
-    </Sheet>
+    <ForumLatestSheet
+      v-if="user"
+      :open="sheetOpen"
+      title="Recent activity"
+      :feed="feedPane"
+      :mine="minePane"
+      :mention-lookup="combinedMentionLookup"
+      :visited-at="visitedAt"
+      :new-since-last-visit="newSinceLastVisit"
+      :pending-count="props.feedPendingCount"
+      @close="sheetOpen = false"
+      @request="onSheetRequest"
+      @load-more="onLoadMore"
+      @load-more-mine="onLoadMoreMine"
+      @reload="reloadSheet"
+    />
   </section>
 </template>
 
 <style lang="scss" scoped>
 .forum__latest {
   margin-bottom: var(--space-xl);
-}
-
-.forum__latest-sentinel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: var(--space-m) 0;
-  min-height: 48px;
 }
 
 :deep(.overflow.is-horizontal .overflow-content > *) {
@@ -557,30 +390,5 @@ onUnmounted(() => {
     z-index: 2;
     color: var(--color-accent);
   }
-
-  &--sheet {
-    width: 100%;
-    flex-direction: row;
-    align-self: unset;
-
-    &:after {
-      height: 3px;
-      width: 34px;
-    }
-  }
-}
-
-.forum__latest-empty {
-  padding: var(--space-xl) 0;
-  gap: var(--space-s);
-  color: var(--color-text-lighter);
-
-  p {
-    font-size: var(--font-size-s);
-  }
-}
-
-.forum__latest-sheet-tabs {
-  margin-bottom: -13px;
 }
 </style>

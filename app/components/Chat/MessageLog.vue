@@ -15,6 +15,7 @@ import ReactionsSelect from '@/components/Reactions/ReactionsSelect.vue'
 import AudioPlayer from '@/components/Shared/AudioPlayer.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import EmojiPickerMenu from '@/components/Shared/EmojiPickerMenu.vue'
 import JumpToPresent from '@/components/Shared/JumpToPresent.vue'
 import Lightbox from '@/components/Shared/Lightbox.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
@@ -26,6 +27,7 @@ import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
 import { mentionsSelf, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
 import { useNow } from '@/composables/useNow'
+import { useTextContextMenu } from '@/composables/useTextContextMenu'
 import { findUrls, stripUrls, urlsIn } from '@/lib/chat/linkify'
 import { applyMarkdown, parseIrcFormatting, segStyle } from '@/lib/ircFormat'
 import { useBreakpoint } from '@/lib/mediaQuery'
@@ -333,7 +335,7 @@ function fmtTime(d: Date): string {
 
 // Header line for the mobile long-press sheet. The relative part rides the
 // shared tick, so a sheet left open doesn't sit on a stale "1 minute ago".
-const { now } = useNow()
+const { now } = useNow(() => activeMessage.value?.ts)
 
 function fmtDateTime(d: Date): string {
   return `${fullDate(d)} at ${fmtTime(d)} (${fromNow(d, now.value)})`
@@ -815,7 +817,30 @@ function linkAt(target: EventTarget | null): string | null {
   return anchor?.href || null
 }
 
+// The full reaction picker lives outside the ContextMenu. Mounted inside it, a
+// click on an emoji lands outside the menu's popout, which closes the menu and
+// unmounts the picker before its select fires. The picker outlives the menu, so
+// pin the message it was opened for.
+const { emojiOpen: reactionPickerOpen, emojiPos: reactionPickerPos, recordEmojiAnchor, openEmojiPicker } = useTextContextMenu()
+const reactionPickerAnchor = useTemplateRef('reaction-picker-anchor')
+const reactionTarget = ref<ChatMessage | null>(null)
+
+function openReactionPicker() {
+  reactionTarget.value = activeMessage.value
+  openEmojiPicker()
+}
+
+function pickPickerReaction(emote: string) {
+  if (reactionTarget.value)
+    toggleReaction(reactionTarget.value, emote)
+
+  reactionPickerOpen.value = false
+  reactionTarget.value = null
+}
+
 function onContextMenu(event: MouseEvent) {
+  recordEmojiAnchor(event)
+
   const el = (event.target as HTMLElement | null)?.closest('[data-msg-id]') as HTMLElement | null
   const id = el?.dataset.msgId
   activeMessage.value = id ? messages.value.find(m => m.id === Number(id)) ?? null : null
@@ -1916,13 +1941,9 @@ onBeforeUnmount(() => {
               >
                 {{ emote }}
               </button>
-              <ReactionsSelect :quick="false" @reaction="pickReaction">
-                <template #default="{ toggle }">
-                  <button type="button" class="chat-log__menu-react-btn chat-log__menu-react-btn--more" aria-label="More reactions" @click.stop="toggle">
-                    <Icon name="ph:plus" :size="16" />
-                  </button>
-                </template>
-              </ReactionsSelect>
+              <button type="button" class="chat-log__menu-react-btn chat-log__menu-react-btn--more" aria-label="More reactions" @click.stop="openReactionPicker">
+                <Icon name="ph:plus" :size="16" />
+              </button>
             </div>
             <Divider />
           </template>
@@ -2091,9 +2112,35 @@ onBeforeUnmount(() => {
     destructive
     @confirm="confirmRedact"
   />
+
+  <!-- Zero-size anchor at the right-click point so the reaction picker opens there. -->
+  <div
+    ref="reaction-picker-anchor"
+    class="chat-log__reaction-picker-anchor"
+    :style="{
+      left: `${reactionPickerPos.x}px`,
+      top: `${reactionPickerPos.y}px`,
+    }"
+  />
+
+  <EmojiPickerMenu
+    :open="reactionPickerOpen"
+    :anchor="reactionPickerAnchor"
+    @select="pickPickerReaction"
+    @close="reactionPickerOpen = false"
+  />
 </template>
 
 <style lang="scss" scoped>
+// Invisible point the reaction picker Popout latches onto. It sits outside the
+// .chat-log root, so it can't nest under it.
+.chat-log__reaction-picker-anchor {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
 .chat-log {
   display: flex;
   flex: 1;
@@ -2881,6 +2928,18 @@ onBeforeUnmount(() => {
     .chat-log__modern-line & {
       border-left: none;
     }
+
+    // On the IRC row the quote takes exactly one text line, same as the message
+    // under it, so a reply doesn't stretch the log out of its line grid. The
+    // quote's own font is smaller, so size it off the chat font, not 1.4em.
+    // The bottom margin matches the space between two rows: 1px padding on
+    // each side plus the 2px gap on the message list.
+    .chat-log__msg--irc & {
+      height: calc(var(--chat-font-size, var(--font-size-s)) * 1.4);
+      padding-block: 0;
+      margin-bottom: 4px;
+    }
+
     margin-bottom: var(--space-xxs);
     overflow: hidden;
     white-space: nowrap;

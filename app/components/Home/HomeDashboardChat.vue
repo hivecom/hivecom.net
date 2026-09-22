@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import type { MetricsHistoryEntry } from '@/composables/useDataMetrics'
+import type { ChannelEntry } from '@/lib/chat/channelActivity'
 import type { TeamSpeakServerSnapshot } from '@/types/teamspeak'
 import { Button, Flex, Tooltip } from '@dolanske/vui'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import constants from '~~/constants.json'
+import ChatIdentityModal from '@/components/Chat/IdentityModal.vue'
+import ChatNativeClientModal from '@/components/Chat/NativeClientModal.vue'
 import HomeDashboardCardHeader from '@/components/Home/HomeDashboardCardHeader.vue'
+import HomeDashboardChannelsSheet from '@/components/Home/HomeDashboardChannelsSheet.vue'
 import HomeDashboardPlaceholder from '@/components/Home/HomeDashboardPlaceholder.vue'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
 import HomeDashboardSkeleton from '@/components/Home/HomeDashboardSkeleton.vue'
@@ -18,6 +22,8 @@ import { useDataTeamSpeakSnapshot } from '@/composables/useDataTeamSpeakSnapshot
 import { useIrcChannelNames } from '@/composables/useIrcChannelNames'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { isOpaqueIrcChannelKey } from '@/composables/useMetricsAdminIrcChannels'
+import { channelActivity, channelActivityTitle, channelScore } from '@/lib/chat/channelActivity'
+import { useBreakpoint } from '@/lib/mediaQuery'
 import { getCSSVariable } from '@/lib/utils/common'
 import { getRegionFlagEmoji } from '@/lib/utils/country'
 
@@ -31,18 +37,6 @@ dayjs.extend(relativeTime)
 // nobody else, so the rest are dropped rather than rendered as a row of hex.
 
 const SHOWN_CHANNELS = 4
-
-// A person in the channel is worth this many messages when ranking. Someone
-// sitting there is a reason to join; a burst of messages from an hour ago is
-// only evidence that people were.
-const USER_WEIGHT = 10
-
-interface ChannelEntry {
-  key: string
-  name: string
-  here: number
-  messages: number
-}
 
 const { metrics, fetchMetrics, fetchMetricsHistoryIsolated, getCachedHistory, scheduleRefresh } = useDataMetrics()
 
@@ -115,10 +109,6 @@ function channelName(key: string): string | null {
   return resolveChannelName(key)?.name ?? null
 }
 
-function channelScore(entry: ChannelEntry): number {
-  return entry.here * USER_WEIGHT + entry.messages
-}
-
 // One score per channel, then alphabetical so the tail holds still instead of
 // reshuffling every time a snapshot lands.
 const rankedChannels = computed<ChannelEntry[]>(() => {
@@ -145,34 +135,11 @@ const rankedChannels = computed<ChannelEntry[]>(() => {
 
 const shownChannels = computed(() => rankedChannels.value.slice(0, SHOWN_CHANNELS))
 
-// Second line per channel. Whichever half is zero drops out, and a channel with
-// neither says so rather than printing two zeroes. Half a tile is around twenty
-// characters, so messages are abbreviated and the timeframe is left to the
-// title: a busy channel spelling out "62 messages today" wrapped to two lines
-// and pushed its row out of line with the tile beside it.
-function channelActivity(entry: ChannelEntry): string {
-  const parts: string[] = []
+// The card shows the top four, the sheet shows every channel with a name.
+const channelsSheetOpen = ref(false)
 
-  if (entry.here > 0)
-    parts.push(`${entry.here} user${entry.here === 1 ? '' : 's'}`)
-
-  if (entry.messages > 0)
-    parts.push(`${entry.messages} msg${entry.messages === 1 ? '' : 's'}`)
-
-  return parts.length ? parts.join(', ') : 'quiet today'
-}
-
-// The abbreviated line on hover, spelled out.
-function channelActivityTitle(entry: ChannelEntry): string {
-  const parts: string[] = []
-
-  if (entry.here > 0)
-    parts.push(`${entry.here} user${entry.here === 1 ? '' : 's'} here now`)
-
-  if (entry.messages > 0)
-    parts.push(`${entry.messages} message${entry.messages === 1 ? '' : 's'} today`)
-
-  return parts.length ? parts.join(', ') : 'No messages today'
+function openChannelsSheet(): void {
+  channelsSheetOpen.value = true
 }
 
 // Clicking a channel lands you in it inside the chat sheet, the same way a
@@ -294,6 +261,20 @@ const fallbackConnectUrl = computed(() => constants.PLATFORMS?.TEAMSPEAK?.urls?.
 // the section label.
 const ircAddress = constants.PLATFORMS.IRC.urls.find(url => url.id === 'irc')?.url.replace('irc://', '') ?? 'irc.hivecom.net:6697'
 
+// Touch has no hover, so on a phone that hint was an icon that did nothing.
+// It's a button on every size now: the tooltip still carries the address where
+// there's a pointer to hover with, and the tap opens the same native-client
+// guide the chat menubar links to, which is what the address was for. The
+// identity modal comes along because the guide's first step points at it.
+const isMobile = useBreakpoint('<s')
+const nativeOpen = ref(false)
+const identityOpen = ref(false)
+
+function openIdentityFromNative() {
+  nativeOpen.value = false
+  identityOpen.value = true
+}
+
 // The legend doubles as the way into the full charts: messages open the IRC
 // activity modal, voice opens the TeamSpeak one. Counts feed the modal headers
 // and pick the initial period the same way the badges elsewhere do.
@@ -354,10 +335,21 @@ function hourLabel(index: number): string {
     <HomeDashboardCardHeader title="Chat / Voice" icon="ph:hash" to="/chat" />
 
     <HomeDashboardSkeleton v-if="!ircReady && !shownChannels.length" variant="grid" :count="SHOWN_CHANNELS" />
-    <HomeDashboardSection v-else label="Chat activity">
+    <HomeDashboardSection
+      v-else
+      label="Chat activity"
+      @click="openChannelsSheet"
+    >
       <template #action>
-        <Tooltip placement="top">
-          <Icon name="ph:info" :size="12" class="home-chat__info" />
+        <Tooltip placement="top" :disabled="isMobile">
+          <button
+            type="button"
+            class="home-chat__info"
+            aria-label="Connect with an IRC client"
+            @click="nativeOpen = true"
+          >
+            <Icon name="ph:info" :size="12" />
+          </button>
           <template #tooltip>
             <p class="text-s">
               {{ ircAddress }}
@@ -445,6 +437,16 @@ function hourLabel(index: number): string {
         </template>
       </ChartActivityHistogram>
     </HomeDashboardSection>
+
+    <HomeDashboardChannelsSheet
+      :open="channelsSheetOpen"
+      :channels="rankedChannels"
+      @close="channelsSheetOpen = false"
+      @open="(entry) => { channelsSheetOpen = false; openChannel(entry) }"
+    />
+
+    <ChatNativeClientModal :open="nativeOpen" @close="nativeOpen = false" @open-identity="openIdentityFromNative" />
+    <ChatIdentityModal :open="identityOpen" @close="identityOpen = false" />
 
     <ChartIrcModal v-model:open="ircModalOpen" :count="ircOnline" :color="messagesColor" />
     <ChartTeamSpeakOnlineModal v-model:open="voiceModalOpen" :count="voiceOnline" :color="voiceColor" />
@@ -542,7 +544,19 @@ function hourLabel(index: number): string {
 }
 
 .home-chat__info {
+  display: inline-flex;
+  align-items: center;
   color: var(--color-text-lightest);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transition: color var(--transition-duration) ease;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-text-light);
+  }
 }
 
 .home-activity__legend {

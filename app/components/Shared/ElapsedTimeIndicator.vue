@@ -69,7 +69,7 @@ const displayText = computed(() => {
 })
 
 // The label already carries the relative time, so the tooltip only adds the
-// exact instant and the viewer's zone.
+// exact instant in the viewer's local time.
 const detail = computed(() => timestampDetail(props.date))
 </script>
 
@@ -77,10 +77,7 @@ const detail = computed(() => timestampDetail(props.date))
   <Tooltip v-if="detail" placement="top">
     <template #tooltip>
       <div class="text-xs">
-        {{ detail.absolute }}
-      </div>
-      <div class="text-xs text-color-lightest">
-        {{ detail.zone }}
+        {{ detail }}
       </div>
     </template>
     <Flex gap="xs" y-center class="elapsed-time-indicator">

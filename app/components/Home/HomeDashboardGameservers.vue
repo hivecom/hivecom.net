@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { GameserverSheetRow } from '@/components/Home/HomeDashboardGameserversSheet.vue'
 import type { GameserverWithContainer } from '@/composables/useDataGameservers'
 import type { MetricsHistoryEntry } from '@/composables/useDataMetrics'
 import type { Tables } from '@/types/database.overrides'
@@ -8,6 +9,7 @@ import GameServerConnectButton from '@/components/GameServers/GameServerConnectB
 import HomeDashboardCardHeader from '@/components/Home/HomeDashboardCardHeader.vue'
 import HomeDashboardEmpty from '@/components/Home/HomeDashboardEmpty.vue'
 import HomeDashboardGameserverItem from '@/components/Home/HomeDashboardGameserverItem.vue'
+import HomeDashboardGameserversSheet from '@/components/Home/HomeDashboardGameserversSheet.vue'
 import HomeDashboardPlaceholder from '@/components/Home/HomeDashboardPlaceholder.vue'
 import HomeDashboardSection from '@/components/Home/HomeDashboardSection.vue'
 import HomeDashboardSkeleton from '@/components/Home/HomeDashboardSkeleton.vue'
@@ -265,6 +267,18 @@ const hopIn = computed<ServerEntry | null>(() => {
   return candidates[rollSeed % candidates.length] ?? null
 })
 
+// The card shows at most the two tiles, three rows and the hop-in pick. The
+// sheet has every server, including the ones one-per-game leaves out.
+const serversSheetOpen = ref(false)
+
+const sheetServers = computed<GameserverSheetRow[]>(() =>
+  ranked.value.map(entry => ({ gs: entry.gs, game: entry.game, meta: activityLabel(entry) })),
+)
+
+function openServersSheet(): void {
+  serversSheetOpen.value = true
+}
+
 // The metrics gate above covers the ordering, and the server rows arrive on
 // their own clock, so the placeholder waits on both. Once the card has rows a
 // later gameservers refresh doesn't knock it back to skeletons.
@@ -339,7 +353,11 @@ const loading = computed(() =>
         </div>
       </HomeDashboardSection>
 
-      <HomeDashboardSection v-if="selection.length" label="Other games we host">
+      <HomeDashboardSection
+        v-if="selection.length"
+        label="Other games we host"
+        @click="openServersSheet"
+      >
         <Flex column gap="xs">
           <HomeDashboardGameserverItem
             v-for="entry in selection"
@@ -355,6 +373,12 @@ const loading = computed(() =>
         <HomeDashboardGameserverItem :gs="hopIn.gs" :game="hopIn.game" />
       </HomeDashboardSection>
     </template>
+
+    <HomeDashboardGameserversSheet
+      :open="serversSheetOpen"
+      :servers="sheetServers"
+      @close="serversSheetOpen = false"
+    />
 
     <ChartActivityHistogramModal
       v-model:open="activityModalOpen"

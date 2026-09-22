@@ -50,6 +50,10 @@ export interface UseForumFeedPreviewOptions {
  * the discussion index up front. It fetches the feed, warms the discussion
  * cache for the rows it got back, and maps them into `ActivityItem`s that
  * `ForumLatestItem` can render directly.
+ *
+ * `items` is the preview slice. `allItems` and `loadMore` are for the surface
+ * that opens the rest of the feed behind it (the dashboard's sheet), paging on
+ * from wherever the preview's fetch stopped.
  */
 export function useForumFeedPreview(options: UseForumFeedPreviewOptions) {
   const { limit, cacheKey, ttl = DEFAULT_TTL, excludeOwn = false } = options
@@ -67,6 +71,8 @@ export function useForumFeedPreview(options: UseForumFeedPreviewOptions) {
 
   const rows = ref<FeedRow[]>([])
   const loading = ref(true)
+  const loadingMore = ref(false)
+  const exhausted = ref(false)
 
   // The RPC doesn't join discussion titles or slugs, so pull the referenced
   // discussions in one go. Also warms the cache for the page we link to.
@@ -172,7 +178,7 @@ export function useForumFeedPreview(options: UseForumFeedPreviewOptions) {
       if (item != null)
         mapped.push(item)
     }
-    return mapped.slice(0, limit)
+    return mapped
   }
 
   // Carries the rows the items came out of, so the author and mention warming
@@ -188,7 +194,8 @@ export function useForumFeedPreview(options: UseForumFeedPreviewOptions) {
     return { items: mapRows(rows.value), source: rows.value }
   })
 
-  const items = computed(() => resolved.value.items)
+  const allItems = computed(() => resolved.value.items)
+  const items = computed(() => allItems.value.slice(0, limit))
   const visibleRows = computed(() => resolved.value.source)
 
   // ── Author and mention pre-warming ─────────────────────────────────────────
@@ -218,33 +225,64 @@ export function useForumFeedPreview(options: UseForumFeedPreviewOptions) {
 
   // ── Fetching ───────────────────────────────────────────────────────────────
 
+  async function fetchPage(offset: number): Promise<FeedRow[] | null> {
+    const { data, error } = await supabase.rpc('get_forum_activity_feed', {
+      p_limit: FETCH_LIMIT,
+      p_offset: offset,
+    })
+
+    if (error != null) {
+      console.error('[useForumFeedPreview] fetch error:', error.message)
+      return null
+    }
+
+    const fetched = (data ?? []) as FeedRow[]
+    await warmDiscussions(fetched)
+
+    // A short page is the end of the feed.
+    exhausted.value = fetched.length < FETCH_LIMIT
+
+    return fetched
+  }
+
+  // Only the first page is cached. Later pages are whatever the sheet scrolled
+  // to, and they'd be stale the moment anyone posts.
   async function load(force = false) {
     const cached = force ? null : cache.get<FeedRow[]>(cacheKey)
     if (cached !== null) {
       await warmDiscussions(cached)
       rows.value = cached
+      exhausted.value = cached.length < FETCH_LIMIT
       loading.value = false
       return
     }
 
     loading.value = true
 
-    const { data, error } = await supabase.rpc('get_forum_activity_feed', {
-      p_limit: FETCH_LIMIT,
-      p_offset: 0,
-    })
+    const fetched = await fetchPage(0)
 
-    if (error != null) {
-      console.error('[useForumFeedPreview] fetch error:', error.message)
-      loading.value = false
-      return
+    if (fetched !== null) {
+      rows.value = fetched
+      cache.set(cacheKey, fetched, ttl)
     }
 
-    const fetched = (data ?? []) as FeedRow[]
-    await warmDiscussions(fetched)
-    rows.value = fetched
-    cache.set(cacheKey, fetched, ttl)
     loading.value = false
+  }
+
+  // Pages on by raw row count rather than mapped items, since the offset is
+  // the RPC's and it knows nothing about the rows we drop.
+  async function loadMore() {
+    if (loading.value || loadingMore.value || exhausted.value)
+      return
+
+    loadingMore.value = true
+
+    const fetched = await fetchPage(rows.value.length)
+
+    if (fetched !== null)
+      rows.value = [...rows.value, ...fetched]
+
+    loadingMore.value = false
   }
 
   onMounted(() => {
@@ -253,8 +291,12 @@ export function useForumFeedPreview(options: UseForumFeedPreviewOptions) {
 
   return {
     items,
+    allItems,
     loading,
+    loadingMore,
+    exhausted,
     mentionLookup,
+    loadMore,
     refresh: async () => load(true),
   }
 }
