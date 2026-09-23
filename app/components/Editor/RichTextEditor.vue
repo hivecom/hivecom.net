@@ -28,6 +28,7 @@ import { useContentRulesAgreement } from '@/composables/useContentRulesAgreement
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { replaceOutsideCode } from '@/lib/markdownProcessors'
 import { useBreakpoint } from '@/lib/mediaQuery'
+import { forgetPendingMedia, livePendingMedia, loadPendingMedia, rememberPendingMedia } from '@/lib/pendingMedia'
 import { allowedAudioTypes, allowedDataExtensions, allowedDataTypes, allowedMediaExtensions, allowedMediaTypes, allowedVideoTypes, compressImageToFit, convertImageToWebP, stripImageMetadata } from '@/lib/storage'
 import { BUCKET_SIZE_LIMITS, formatBytes, FORUMS_BUCKET_ID } from '@/lib/storageAssets'
 import EditorContextMenu from './EditorContextMenu.vue'
@@ -762,6 +763,7 @@ const editor = useEditor({
 
       if (src.startsWith('blob:')) {
         URL.revokeObjectURL(src)
+        forgetPendingMedia(src)
         if (uploadId !== null) {
           pendingBlobs.delete(uploadId)
           uploadProgress.value.delete(uploadId)
@@ -942,6 +944,7 @@ async function processPendingFile(originalFile: File, uploadId: string, currentB
     // Bookkeeping is keyed on uploadId, so we only update the stored blobUrl /
     // file - the key stays stable across the conversion swap.
     pendingBlobs.set(uploadId, { file, blobUrl: newBlobUrl })
+    rememberPendingMedia(newBlobUrl, file)
   }
   else {
     // Placeholder gone (user deleted it) - drop the converted blob and the
@@ -952,6 +955,7 @@ async function processPendingFile(originalFile: File, uploadId: string, currentB
     uploadProgress.value = new Map(uploadProgress.value)
   }
   URL.revokeObjectURL(currentBlobUrl)
+  forgetPendingMedia(currentBlobUrl)
 }
 
 function handleFileUpload(files: File[] | null, pos?: number) {
@@ -1021,6 +1025,7 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     // hasPendingUploads. processPendingFile will replace the file ref with
     // the optimised bytes when ready.
     pendingBlobs.set(uploadId, { file: originalFile, blobUrl })
+    rememberPendingMedia(blobUrl, originalFile)
     uploadProgress.value.set(uploadId, 0)
 
     queue.push({ originalFile, uploadId, blobUrl, skipImageProcessing })
@@ -1207,6 +1212,7 @@ async function flushPendingUploads(): Promise<boolean> {
     for (const r of results) {
       if (r.publicUrl !== null) {
         URL.revokeObjectURL(r.blobUrl)
+        forgetPendingMedia(r.blobUrl)
         pendingBlobs.delete(r.uploadId)
         uploadProgress.value.delete(r.uploadId)
       }
@@ -1277,10 +1283,146 @@ function handleReplacePendingBlob(oldBlobUrl: string, newFile: File) {
 
   if (uploadId !== null) {
     pendingBlobs.set(uploadId, { file: newFile, blobUrl: newBlobUrl })
+    rememberPendingMedia(newBlobUrl, newFile)
     uploadProgress.value.set(uploadId, 0)
     uploadProgress.value = new Map(uploadProgress.value)
   }
   URL.revokeObjectURL(oldBlobUrl)
+  forgetPendingMedia(oldBlobUrl)
+}
+
+interface AdoptedMedia {
+  uploadId: string
+  file: File
+  blobUrl: string
+}
+
+// Find the file behind a blob src this instance isn't tracking. A URL still
+// alive on this page keeps its src. One from an earlier page load is dead, so
+// the same bytes get a fresh URL.
+async function resolveOrphanMedia(src: string): Promise<AdoptedMedia | null> {
+  for (const [uploadId, entry] of pendingBlobs) {
+    if (entry.blobUrl === src)
+      return { uploadId, ...entry }
+  }
+
+  const liveFile = livePendingMedia(src)
+  if (liveFile)
+    return { uploadId: crypto.randomUUID(), file: liveFile, blobUrl: src }
+
+  const storedFile = await loadPendingMedia(src)
+  if (storedFile)
+    return { uploadId: crypto.randomUUID(), file: storedFile, blobUrl: URL.createObjectURL(storedFile) }
+
+  return null
+}
+
+// Content loaded from outside the editor can carry blob: media this instance
+// never registered: a reply draft restored after the tab closed, the fullscreen
+// editor opening on the same content, or a plain-text round trip that rebuilt
+// every node without its uploadId. Link each one back to its file so it uploads
+// on submit. Media whose file is gone gets removed, since posting it would only
+// store a dead link.
+async function adoptOrphanMedia() {
+  if (!editor.value || !props.mediaContext)
+    return
+
+  const blobSrcs = new Set<string>()
+  const orphans = new Set<string>()
+  editor.value.state.doc.descendants((node) => {
+    const { src, uploadId } = node.attrs
+    if (!MEDIA_NODE_TYPES.has(node.type.name) || typeof src !== 'string' || !src.startsWith('blob:'))
+      return
+
+    blobSrcs.add(src)
+    if (typeof uploadId !== 'string' || !pendingBlobs.has(uploadId))
+      orphans.add(src)
+  })
+
+  // Pending entries whose media left the doc through the content model (a
+  // reset, or the fullscreen editor uploading or deleting it) would otherwise
+  // hold the submit gate and upload a file nobody references.
+  for (const [uploadId, { blobUrl }] of pendingBlobs) {
+    if (blobSrcs.has(blobUrl))
+      continue
+
+    URL.revokeObjectURL(blobUrl)
+    forgetPendingMedia(blobUrl)
+    pendingBlobs.delete(uploadId)
+    uploadProgress.value.delete(uploadId)
+  }
+
+  if (orphans.size === 0) {
+    uploadProgress.value = new Map(uploadProgress.value)
+    return
+  }
+
+  const resolved = new Map(await Promise.all([...orphans].map(async src => [src, await resolveOrphanMedia(src)] as const)))
+
+  // Stamp or swap every matching node in one transaction, deleting back to
+  // front so earlier positions stay valid. Kept out of undo history so undo
+  // can't bring a dead src back.
+  const applied = new Set<string>()
+  let dropped = false
+
+  editor.value
+    ?.chain()
+    .command(({ tr }) => {
+      const targets: Array<{ pos: number, size: number, src: string }> = []
+      tr.doc.descendants((node, pos) => {
+        const src = node.attrs.src
+        if (MEDIA_NODE_TYPES.has(node.type.name) && typeof src === 'string' && resolved.has(src))
+          targets.push({ pos, size: node.nodeSize, src })
+      })
+
+      for (const { pos, size, src } of targets.toReversed()) {
+        const media = resolved.get(src)
+        if (media == null) {
+          tr.delete(pos, pos + size)
+          dropped = true
+          continue
+        }
+
+        tr.setNodeAttribute(pos, 'src', media.blobUrl)
+        tr.setNodeAttribute(pos, 'uploadId', media.uploadId)
+        applied.add(src)
+      }
+
+      tr.setMeta('addToHistory', false)
+      return true
+    })
+    .run()
+
+  // Register what landed. A result with no node left to land on (the user
+  // deleted it, or a concurrent pass already adopted it) only frees its URL.
+  for (const [src, media] of resolved) {
+    if (media == null)
+      continue
+
+    if (!applied.has(src)) {
+      if (media.blobUrl !== src)
+        URL.revokeObjectURL(media.blobUrl)
+
+      continue
+    }
+
+    pendingBlobs.set(media.uploadId, { file: media.file, blobUrl: media.blobUrl })
+    if (!uploadProgress.value.has(media.uploadId))
+      uploadProgress.value.set(media.uploadId, 0)
+
+    if (media.blobUrl !== src) {
+      rememberPendingMedia(media.blobUrl, media.file)
+      forgetPendingMedia(src)
+    }
+  }
+
+  uploadProgress.value = new Map(uploadProgress.value)
+
+  if (dropped) {
+    pushToast('Some media is no longer available', {
+      description: 'An attachment in your draft couldn\'t be restored and was removed.',
+    })
+  }
 }
 
 const fileInput = useTemplateRef('file-input')
@@ -1436,6 +1578,7 @@ watch(
 watch(() => editor.value, (value) => {
   if (value) {
     hydrateMentionLabels(value, supabase, content.value ?? '')
+    void adoptOrphanMedia()
   }
 }, { immediate: true })
 
@@ -1498,6 +1641,7 @@ watch(content, async (newContent) => {
   editorIsEmpty.value = editor.value?.isEmpty ?? true
 
   void hydrateMentionLabels(editor.value, supabase, newContent ?? '')
+  void adoptOrphanMedia()
 
   // Only focus at the end if this editor doesn't already have focus - otherwise
   // a shared v-model (e.g. the expanded modal editor) will steal focus back on
@@ -1534,6 +1678,8 @@ watch(expandedOpen, async (isOpen) => {
   })
   externalContentUpdate = false
   editorIsEmpty.value = editor.value.isEmpty ?? true
+
+  void adoptOrphanMedia()
 })
 
 const elementId = useId()
@@ -1600,6 +1746,7 @@ async function handleEditorModeSwitch() {
     editorIsEmpty.value = editor.value?.isEmpty ?? true
 
     void hydrateMentionLabels(editor.value, supabase, newContent)
+    void adoptOrphanMedia()
 
     return
   }

@@ -62,7 +62,7 @@ const placeholder = computed(() => {
 // --- Depot attachments -------------------------------------------------------
 // Files queued for the next send. On send they're uploaded to Depot and their
 // URLs are folded into the outgoing message (where the log auto-embeds images).
-const { attachments, uploading: attachmentsUploading, add: addAttachments, remove: removeAttachment, clear: clearAttachments, uploadAll: uploadAttachments } = useChatAttachments()
+const { attachments, uploading: attachmentsUploading, select: selectAttachmentTray, add: addAttachments, remove: removeAttachment, clear: clearAttachments, uploadAll: uploadAttachments } = useChatAttachments()
 const fileInput = ref<HTMLInputElement>()
 
 function openFilePicker() {
@@ -754,8 +754,12 @@ async function sendWithHistory() {
     if (attachmentsUploading.value)
       return
 
+    // Switching buffers mid-upload would fold the URLs into the other buffer's
+    // draft. Stop there instead. The uploaded files keep their URLs, so sending
+    // from the original buffer later doesn't upload them again.
+    const sentFrom = bufKey()
     const urls = await uploadAttachments()
-    if (!urls)
+    if (!urls || bufKey() !== sentFrom)
       return
 
     const base = inputMessage.value.trim()
@@ -890,6 +894,7 @@ watch(activeName, (newName, oldName) => {
   historyDraft.value = ''
 })
 watch(activeName, clearReply)
+watch(activeName, name => selectAttachmentTray(bufKey(name)), { immediate: true })
 </script>
 
 <template>
