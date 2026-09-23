@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
-import { getUserActivityStatus } from '@/lib/lastSeen'
+import { useUserActivityStatus } from '@/composables/useUserActivityStatus'
 
 // Presence combines IRC membership with website activity. The dot encodes:
 //   'online'  - a Hivecom account active on the site (solid green)
@@ -14,6 +14,9 @@ const props = withDefaults(defineProps<{
 
   /** IRC away flag (only meaningful when onIrc). */
   away?: boolean
+
+  /** Resolved Hivecom account id, if any. The signed-in user always reads as online. */
+  userId?: string | null
 
   /** Resolved Hivecom account's last website activity (ISO string), if any. */
   lastSeen?: string | null
@@ -30,8 +33,9 @@ const props = withDefaults(defineProps<{
 
 type Presence = 'online' | 'irc' | 'away' | 'offline'
 
-const activity = computed(() =>
-  props.lastSeen ? getUserActivityStatus(props.lastSeen) : null,
+const activity = useUserActivityStatus(
+  () => props.userId,
+  () => props.lastSeen,
 )
 
 const state = computed<Presence>(() => {

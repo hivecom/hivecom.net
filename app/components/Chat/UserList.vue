@@ -11,6 +11,7 @@ import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { channelRole, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
+import { useNow } from '@/composables/useNow'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
@@ -39,11 +40,14 @@ function ircMeta(name: string) {
 }
 const { settings } = useDataUserSettings()
 const { resolved, resolve } = useIrcNickResolver()
+const { now } = useNow()
 const isMobile = useBreakpoint('<s')
 
 const userListOpen = ref(false)
 
-watch(users, (newUsers) => {
+// Re-run on the clock tick too. resolve() only refetches nicks whose entry has
+// expired, so most ticks are a no-op and last_seen refreshes every 5 minutes.
+watch([users, now], ([newUsers]) => {
   resolve(newUsers.map(u => u.name.toLowerCase()))
 }, { immediate: true })
 
@@ -229,6 +233,7 @@ const menuUserData = computed(() =>
               </AvatarMedia>
               <ChatPresenceDot
                 :away="user.away"
+                :user-id="resolvedUserId(user.name)"
                 :last-seen="resolvedLastSeen(user.name)"
                 :no-tooltip="isMobile"
                 :size="6"

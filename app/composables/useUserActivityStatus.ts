@@ -1,6 +1,7 @@
 import type { MaybeRefOrGetter } from 'vue'
 import type { UserActivityStatus } from '@/lib/lastSeen'
 import { computed, toValue } from 'vue'
+import { useNow } from '@/composables/useNow'
 import { useUserId } from '@/composables/useUserId'
 import { getUserActivityStatus } from '@/lib/lastSeen'
 
@@ -23,6 +24,10 @@ export function useUserActivityStatus(
 ) {
   const currentUserId = useUserId()
 
+  // Shared clock tick, so a user drops from online to offline as their
+  // last_seen ages instead of holding whatever state the first render saw.
+  const { now } = useNow()
+
   return computed<UserActivityStatus | null>(() => {
     const id = toValue(userId)
 
@@ -42,6 +47,6 @@ export function useUserActivityStatus(
     if (!ls)
       return null
 
-    return getUserActivityStatus(ls)
+    return getUserActivityStatus(ls, now.value)
   })
 }

@@ -8,6 +8,7 @@ import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { channelRole, nickColor, useIrcChat } from '@/composables/useIrcChat'
 import { useIrcNickResolver } from '@/composables/useIrcNickResolver'
+import { useNow } from '@/composables/useNow'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 defineProps<{ open: boolean }>()
@@ -16,11 +17,13 @@ const emit = defineEmits<{ close: [] }>()
 const { users, nick, openPm, send, activeName, myChannelRole } = useIrcChat()
 const { settings } = useDataUserSettings()
 const { resolved, resolve } = useIrcNickResolver()
+const { now } = useNow()
 const isMobile = useBreakpoint('<s')
 
 const search = ref('')
 
-watch(users, newUsers => resolve(newUsers.map(u => u.name.toLowerCase())), { immediate: true })
+// Clock tick lets resolve() refetch nicks whose last_seen has expired.
+watch([users, now], ([newUsers]) => resolve(newUsers.map(u => u.name.toLowerCase())), { immediate: true })
 
 function resolvedUser(name: string) {
   return resolved.value.get(name.toLowerCase()) ?? null
@@ -192,6 +195,7 @@ function devoiceUser(name: string) {
           </AvatarMedia>
           <ChatPresenceDot
             :away="user.away"
+            :user-id="resolvedUser(user.name)?.id ?? null"
             :last-seen="resolvedUser(user.name)?.last_seen ?? null"
             :no-tooltip="isMobile"
             :size="8"

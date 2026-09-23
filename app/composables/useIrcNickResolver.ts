@@ -17,6 +17,14 @@ const NICK_TTL = 5 * 60 * 1000 // 5 minutes
 const _pending = new Set<string>()
 const _resolved = ref<Map<string, ResolvedNick | null>>(new Map())
 
+// When each nick was last resolved. Entries past NICK_TTL get refetched on the
+// next resolve() so last_seen doesn't freeze at whatever the first fetch saw.
+const _resolvedAt = new Map<string, number>()
+
+function isStale(nick: string): boolean {
+  return Date.now() - (_resolvedAt.get(nick) ?? 0) > NICK_TTL
+}
+
 export function useIrcNickResolver() {
   const supabase = useSupabaseClient<Database>()
 
@@ -35,13 +43,14 @@ export function useIrcNickResolver() {
     for (const n of normalized) {
       if (!next.has(n) && cache.has(`nick:${n}`)) {
         next.set(n, cache.get<ResolvedNick>(`nick:${n}`))
+        _resolvedAt.set(n, Date.now())
         changed = true
       }
     }
     if (changed)
       _resolved.value = next
 
-    const toFetch = normalized.filter(n => !_resolved.value.has(n) && !_pending.has(n))
+    const toFetch = normalized.filter(n => (!_resolved.value.has(n) || isStale(n)) && !_pending.has(n))
     if (!toFetch.length)
       return
 
@@ -71,6 +80,7 @@ export function useIrcNickResolver() {
         // the network round-trip.
         cache.set(`nick:${nick}`, entry, NICK_TTL)
         final.set(nick, entry)
+        _resolvedAt.set(nick, Date.now())
         _pending.delete(nick)
       }
       _resolved.value = final
