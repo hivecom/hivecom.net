@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import type { ChannelEntry } from '@/lib/chat/channelActivity'
 import { Flex, Sheet } from '@dolanske/vui'
+import { computed } from 'vue'
 import { channelActivity, channelActivityTitle } from '@/lib/chat/channelActivity'
 
-// Every channel the metrics snapshot knows about, opened from the four the
-// chat card has room for. Ranking and the join flow stay in the card, since
-// joining a channel is a thing that happens to your connection rather than to
-// this list.
-defineProps<{
+// Every channel with someone in it or something said today, opened from the
+// four the chat card has room for. Ranking and the join flow stay in the card,
+// since joining a channel is a thing that happens to your connection rather
+// than to this list.
+const props = defineProps<{
   open: boolean
   channels: ChannelEntry[]
 }>()
 
 const emit = defineEmits<{ close: [], open: [entry: ChannelEntry] }>()
+
+const activeChannels = computed(() => props.channels.filter(entry => entry.here > 0 || entry.messages > 0))
 </script>
 
 <template>
@@ -23,7 +26,7 @@ const emit = defineEmits<{ close: [], open: [entry: ChannelEntry] }>()
 
     <Flex column gap="xs" class="pt-s">
       <button
-        v-for="entry in channels"
+        v-for="entry in activeChannels"
         :key="entry.key"
         type="button"
         class="home-item inline home-channel-row"
@@ -34,8 +37,8 @@ const emit = defineEmits<{ close: [], open: [entry: ChannelEntry] }>()
         <span>{{ channelActivity(entry) }}</span>
       </button>
 
-      <p v-if="!channels.length" class="text-s text-color-lighter">
-        No channels reported.
+      <p v-if="!activeChannels.length" class="text-s text-color-lighter">
+        No channel activity today.
       </p>
     </Flex>
   </Sheet>

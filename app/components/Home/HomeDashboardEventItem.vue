@@ -42,7 +42,10 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
     <!-- The title carries the click and stretches over the whole item, so the
          attendee avatars stay real profile links rather than nested anchors. -->
     <NuxtLink :to="`/events/${data.id}`" class="home-event-item__title" :draggable="false">
-      <span v-if="!inline" class="home-event-item__date">{{ timing }}</span>
+      <span v-if="!inline" class="home-event-item__date">
+        <span v-if="isOngoing" class="home-event-item__live-dot" />
+        {{ timing }}
+      </span>
       <strong>{{ data.title }}</strong>
     </NuxtLink>
 
@@ -50,7 +53,10 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
       <Badge v-if="!inline && user" :variant="data.is_official ? 'accent' : 'neutral'" size="s">
         {{ data.is_official ? 'Official' : 'Community' }}
       </Badge>
-      <span v-if="inline" class="home-event-item__date">{{ timing }}</span>
+      <span v-if="inline" class="home-event-item__date">
+        <span v-if="isOngoing" class="home-event-item__live-dot" />
+        {{ timing }}
+      </span>
 
       <!-- Rows are one line, so the faces give way to a count. -->
       <span v-if="inline && rsvpCount > 0" class="home-event-item__count">+{{ rsvpCount }}</span>
@@ -138,7 +144,9 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
 // The date leads the tile and trails the row, so it reads as the first thing in
 // a grid and the last thing in a list.
 .home-event-item__date {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xxs);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   text-transform: uppercase;
@@ -146,6 +154,23 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
 
   .home-event-item--upcoming & {
     color: var(--color-accent);
+  }
+}
+
+// Ongoing events share the grid with upcoming ones now, so the dot is what
+// tells "you should be there" apart from "coming up".
+.home-event-item__live-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--border-radius-pill);
+  background-color: var(--color-text-red);
+  animation: home-event-live 1.5s ease-in-out infinite;
+}
+
+@keyframes home-event-live {
+  50% {
+    opacity: 0.35;
   }
 }
 

@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import type { GameserverWithContainer } from '@/composables/useDataGameservers'
 import type { Tables } from '@/types/database.overrides'
-import { Button, Flex } from '@dolanske/vui'
+import { Button, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
 import Discussion from '@/components/Discussions/Discussion.vue'
+import GameServerEditModal from '@/components/GameServers/GameServerEditModal.vue'
 import GameServerHeader from '@/components/GameServers/GameServerHeader.vue'
 import GameServerMarkdown from '@/components/GameServers/GameServerMarkdown.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
+import { usePermissions } from '@/composables/usePermissions'
 
 // Get route parameter
 const route = useRoute()
@@ -24,7 +26,7 @@ const gameserverId = Number.parseInt(route.params.id as string)
 
 const gameBackground = ref<string | null>(null)
 
-const { gameservers, loading, error: gameserversError, getById: getGameserverById } = useDataGameservers()
+const { gameservers, loading, error: gameserversError, getById: getGameserverById, refresh: refreshGameservers } = useDataGameservers()
 const { getById: getGameById } = useDataGames()
 
 // Both lists come from the shared caches and land independently. Deriving
@@ -36,6 +38,11 @@ const game = computed((): Tables<'games'> | null => {
   const id = gameserver.value?.game
   return id != null ? getGameById(id) : null
 })
+
+// Quick edit for addresses and content. network.* is admin-only by default.
+const { hasPermission } = usePermissions()
+const canManage = computed(() => hasPermission('network.update'))
+const showEditModal = ref(false)
 
 const container = computed((): GameserverWithContainer['container'] =>
   gameserver.value?.container ?? null,
@@ -201,7 +208,7 @@ useHead({
     <!-- Gameserver Content -->
     <div v-if="gameserver && !loading && !displayError" class="page-content">
       <!-- Back button -->
-      <Flex x-start>
+      <Flex x-between y-center>
         <NuxtLink to="/servers/gameservers">
           <Button
             variant="gray"
@@ -215,6 +222,20 @@ useHead({
             Game Servers
           </Button>
         </NuxtLink>
+
+        <Dropdown v-if="canManage">
+          <template #trigger="{ toggle }">
+            <Button variant="gray" size="s" @click="toggle">
+              Manage
+            </Button>
+          </template>
+          <DropdownItem @click="showEditModal = true">
+            Edit
+          </DropdownItem>
+          <DropdownItem @click="navigateTo(`/admin/network?tab=Gameservers&gameserver=${gameserver.id}`)">
+            Open in admin
+          </DropdownItem>
+        </Dropdown>
       </Flex>
 
       <!-- Background Image -->
@@ -242,6 +263,13 @@ useHead({
         :id="String(gameserver.id)"
         type="gameserver"
         class="gameserver-discussion"
+      />
+
+      <GameServerEditModal
+        v-if="canManage"
+        v-model:open="showEditModal"
+        :gameserver="gameserver"
+        @saved="refreshGameservers"
       />
     </div>
   </div>

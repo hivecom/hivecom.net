@@ -14,11 +14,6 @@ const props = defineProps<{
 }>()
 
 // Define emits
-// NOTE: EventTable.vue only handles 'save' and 'delete'. When fork detection
-// triggers, a 'fork' event is emitted. EventTable.vue needs a @fork handler
-// to: (1) cap the existing event's recurrence_rule with UNTIL, and (2) insert
-// the new event. Until that handler is added, fork submissions will be silently
-// ignored by the parent.
 const emit = defineEmits<{
   save: [eventData: object]
   delete: [id: number]
@@ -51,6 +46,7 @@ const eventForm = ref({
   is_official: false,
   recurrence_rule: '' as string | null,
   recurrence_exception: false,
+  excluded_dates: [] as string[],
 })
 
 // Bridge computed: maps between full eventForm and EventFormFields' FormState
@@ -67,6 +63,7 @@ const eventFormFields = computed<FormState>({
     link: eventForm.value.link,
     markdown: eventForm.value.markdown,
     recurrence_rule: eventForm.value.recurrence_rule ?? null,
+    excluded_dates: eventForm.value.excluded_dates,
     games: eventForm.value.games,
   }),
   set: (val) => {
@@ -95,6 +92,15 @@ const deleteLoading = ref(false)
 const showForkConfirm = ref(false)
 let pendingEventData: ReturnType<typeof buildEventData> | null = null
 
+// The loaded form minus excluded_dates. A save that only removes occurrences
+// doesn't change the series, so it skips the fork prompt and updates in place.
+let loadedSnapshot: string | null = null
+
+function scheduleSnapshot() {
+  const { excluded_dates: _excluded, ...rest } = eventForm.value
+  return JSON.stringify(rest)
+}
+
 // ── Form data helpers ─────────────────────────────────────────────────────────
 
 function updateFormData(newEvent: Tables<'events'> | null) {
@@ -119,6 +125,7 @@ function updateFormData(newEvent: Tables<'events'> | null) {
       is_official: newEvent.is_official ?? false,
       recurrence_rule: newEvent.recurrence_rule || '',
       recurrence_exception: newEvent.recurrence_exception ?? false,
+      excluded_dates: newEvent.excluded_dates ?? [],
     }
   }
   else {
@@ -137,8 +144,11 @@ function updateFormData(newEvent: Tables<'events'> | null) {
       is_official: false,
       recurrence_rule: '',
       recurrence_exception: false,
+      excluded_dates: [],
     }
   }
+
+  loadedSnapshot = scheduleSnapshot()
 }
 
 watch(() => props.event, updateFormData)
@@ -166,6 +176,7 @@ function buildEventData() {
     is_official: eventForm.value.is_official,
     recurrence_rule: (eventForm.value.recurrence_rule ?? '').trim() || null,
     recurrence_exception: eventForm.value.recurrence_exception,
+    excluded_dates: eventForm.value.excluded_dates,
   }
 }
 
@@ -187,7 +198,8 @@ async function handleSubmit() {
   }
 
   // Fork detection: editing a recurring parent that has already started
-  if (props.isEditMode && props.event && props.event.recurrence_rule) {
+  const onlyExclusionsChanged = scheduleSnapshot() === loadedSnapshot
+  if (props.isEditMode && props.event && props.event.recurrence_rule && !onlyExclusionsChanged) {
     const pastOccurrences = expandRecurringEvent(props.event, props.event.date, new Date())
     if (pastOccurrences.length > 0) {
       pendingEventData = buildEventData()

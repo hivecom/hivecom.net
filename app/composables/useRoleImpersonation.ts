@@ -1,7 +1,5 @@
 import type { Component, ComputedRef, Ref } from 'vue'
-import type { Database } from '@/types/database.types'
 import { pushToast, removeToast } from '@dolanske/vui'
-import { DEFAULT_USER_PERMISSIONS } from '@/lib/rolePermissions'
 
 export type ImpersonatableRole = 'moderator' | 'user'
 
@@ -47,29 +45,6 @@ export function useRoleImpersonation() {
     })
   }
 
-  /**
-   * Resolves the permissions for the given impersonated role.
-   * For 'user' returns the hardcoded baseline; for 'moderator' fetches from DB.
-   */
-  async function resolvePermissions(role: ImpersonatableRole): Promise<string[]> {
-    if (role === 'user') {
-      return [...DEFAULT_USER_PERMISSIONS]
-    }
-
-    const supabase = useSupabaseClient<Database>()
-    const { data, error } = await supabase
-      .from('role_permissions')
-      .select('permission')
-      .eq('role', role)
-
-    if (error) {
-      console.error('useRoleImpersonation: failed to fetch permissions', error)
-      return []
-    }
-
-    return data?.map((p: { permission: string }) => p.permission) ?? []
-  }
-
   function effectiveRole(realRole: Ref<string | null> | ComputedRef<string | null>): ComputedRef<string | null> {
     return computed(() => isImpersonating.value ? impersonatedRole.value : realRole.value)
   }
@@ -79,7 +54,6 @@ export function useRoleImpersonation() {
     isImpersonating,
     start,
     stop,
-    resolvePermissions,
     effectiveRole,
   }
 }

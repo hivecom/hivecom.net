@@ -4,6 +4,11 @@ import type { Tables } from '@/types/database.overrides'
 
 type EventRow = Tables<'events'>
 
+/** The fields expansion reads, so unsaved form state can be expanded too. */
+type ExpandableEvent = Pick<EventRow, 'date' | 'recurrence_rule'> & {
+  excluded_dates?: readonly string[] | null
+}
+
 interface ParsedRRule {
   freq: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'
   interval: number
@@ -108,6 +113,24 @@ function addYears(d: Date, n: number): Date {
   return result
 }
 
+// ─── Excluded dates ───────────────────────────────────────────────────────────
+
+// Occurrences are stepped in the viewer's local time, so the same occurrence can
+// land an hour or two apart in UTC depending on who computed it and which side
+// of a DST change it falls on. Match removals within a window instead of exactly.
+// Six hours absorbs any DST drift and stays well under the one day minimum gap
+// between occurrences. The excluded_dates RSVP cleanup trigger uses the same value.
+const EXCLUSION_TOLERANCE_MS = 6 * 60 * 60 * 1000
+
+/** Whether `date` matches one of the removed occurrence times in `excludedDates`. */
+export function isOccurrenceExcluded(date: Date | string, excludedDates: readonly string[] | null | undefined): boolean {
+  if (excludedDates == null || excludedDates.length === 0)
+    return false
+
+  const time = new Date(date).getTime()
+  return excludedDates.some(excluded => Math.abs(new Date(excluded).getTime() - time) < EXCLUSION_TOLERANCE_MS)
+}
+
 // ─── Expand ───────────────────────────────────────────────────────────────────
 
 const MAX_OCCURRENCES = 500
@@ -115,13 +138,14 @@ const MAX_OCCURRENCES = 500
 /**
  * Expands a recurring event into virtual occurrences within [windowStart, windowEnd].
  * For non-recurring events (no recurrence_rule), returns [event] unchanged.
+ * Occurrences listed in `excluded_dates` are skipped.
  * Each synthetic occurrence is a spread of the original with `date` overridden.
  */
-export function expandRecurringEvent(
-  event: EventRow,
+export function expandRecurringEvent<T extends ExpandableEvent>(
+  event: T,
   windowStart: Date | string,
   windowEnd: Date | string,
-): EventRow[] {
+): T[] {
   if (event.recurrence_rule == null || event.recurrence_rule === '')
     return [event]
 
@@ -140,9 +164,12 @@ export function expandRecurringEvent(
   if (originDate > winEnd)
     return []
 
-  const results: EventRow[] = []
+  const results: T[] = []
 
   const pushIfInWindow = (d: Date) => {
+    if (isOccurrenceExcluded(d, event.excluded_dates))
+      return null
+
     if (d >= winStart && d <= effectiveWinEnd && results.length < MAX_OCCURRENCES) {
       results.push({ ...event, date: d.toISOString() })
       return true

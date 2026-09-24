@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Tables } from '@/types/database.overrides'
-import { Button, Card, Divider, Flex } from '@dolanske/vui'
+import { Button, Card, Divider, Dropdown, DropdownItem, Flex } from '@dolanske/vui'
 import { onMounted } from 'vue'
+import ProjectModal from '@/components/Community/ProjectModal.vue'
 import Discussion from '@/components/Discussions/Discussion.vue'
 import DetailStates from '@/components/Shared/DetailStates.vue'
 import MarkdownRenderer from '@/components/Shared/MarkdownRenderer.vue'
@@ -10,6 +11,7 @@ import MetadataCard from '@/components/Shared/MetadataCard.vue'
 import UserDisplay from '@/components/Shared/UserDisplay.vue'
 import { useDataProjectBanner } from '@/composables/useDataProjectBanner'
 import { useDataProjects } from '@/composables/useDataProjects'
+import { usePermissions } from '@/composables/usePermissions'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { getPlaceholderBannerProject } from '@/lib/projectBannerPlaceholders'
 
@@ -20,7 +22,7 @@ const route = useRoute()
 const projectId = Number.parseInt(route.params.id as string)
 
 // Reactive data
-const { projects, loading, error: projectsError, getById } = useDataProjects()
+const { projects, loading, error: projectsError, getById, refresh } = useDataProjects()
 const project = ref<Tables<'projects'> | null>(null)
 const error = ref<string | null>(null)
 
@@ -65,6 +67,16 @@ if (import.meta.server) {
 }
 else {
   onMounted(resolveProject)
+}
+
+// Staff only. Owners can't edit their own project yet, RLS checks projects.update.
+const { hasPermission } = usePermissions()
+const canManage = computed(() => hasPermission('projects.update'))
+// Saving refreshes the list, and the resolve watcher above picks the new row out of it
+const showEditModal = ref(false)
+
+async function handleDeleted() {
+  await navigateTo('/community/projects')
 }
 
 // Propagate projects fetch error
@@ -163,6 +175,17 @@ defineOgImage('Project', {
               Back to Projects
             </Button>
           </NuxtLink>
+
+          <Dropdown v-if="canManage">
+            <template #trigger="{ toggle }">
+              <Button variant="gray" size="s" @click="toggle">
+                Manage
+              </Button>
+            </template>
+            <DropdownItem @click="showEditModal = true">
+              Edit
+            </DropdownItem>
+          </Dropdown>
         </Flex>
 
         <!-- Header -->
@@ -247,6 +270,14 @@ defineOgImage('Project', {
           :id="String(project.id)"
           class="project-discussion"
           type="project"
+        />
+
+        <ProjectModal
+          v-if="canManage"
+          v-model:open="showEditModal"
+          :project="project"
+          @saved="refresh"
+          @deleted="handleDeleted"
         />
       </div>
     </div>

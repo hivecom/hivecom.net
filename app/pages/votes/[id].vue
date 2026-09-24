@@ -11,7 +11,7 @@ import VoteLoadingSkeleton from '@/components/Votes/VoteLoadingSkeleton.vue'
 import VoteResults from '@/components/Votes/VoteResults.vue'
 import { useAuthRedirect } from '@/composables/useAuthRedirect'
 import { useCachedFetch } from '@/composables/useCache'
-import { useEffectiveRole } from '@/composables/useEffectiveRole'
+import { usePermissions } from '@/composables/usePermissions'
 import { useRealtimeReferendumVotes } from '@/composables/useRealtimeReferendumVotes'
 import { useSessionReady } from '@/composables/useSessionReady'
 
@@ -81,13 +81,13 @@ const isOwnReferendum = computed(() =>
   !!userId.value && referendum.value?.created_by === userId.value,
 )
 
-const { isAdminOrMod: isPrivileged } = useEffectiveRole()
+const { hasPermission } = usePermissions()
 
 const canManage = computed(() => {
   if (!referendum.value || !userId.value)
     return false
 
-  return isOwnReferendum.value || isPrivileged.value
+  return isOwnReferendum.value || hasPermission('referendums.update')
 })
 
 // Page-level delete

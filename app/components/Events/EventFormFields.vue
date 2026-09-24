@@ -7,7 +7,8 @@ import RecurrenceBuilder from '@/components/Events/RecurrenceBuilder.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useDataGames } from '@/composables/useDataGames'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { displayDateTime } from '@/lib/utils/date'
+import { displayDateTime, fullDateTimeWeekday } from '@/lib/utils/date'
+import { expandRecurringEvent, isOccurrenceExcluded } from '@/lib/utils/rrule'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ export interface FormState {
   link: string
   markdown: string
   recurrence_rule: string | null
+  excluded_dates: string[]
   games: number[]
 }
 
@@ -97,6 +99,42 @@ function onDateUpdate(val: Date | null) {
   const currentMs = props.modelValue.date?.getTime() ?? null
   if (inMs !== currentMs)
     emit('update:modelValue', { ...props.modelValue, date: val })
+}
+
+// ── Upcoming occurrences ─────────────────────────────────────────────────────
+// Lists the series from the form's own date and rule so pending edits preview
+// immediately. Removals are staged in excluded_dates and land with the save.
+
+const OCCURRENCE_PAGE_SIZE = 8
+const OCCURRENCE_HORIZON_MS = 5 * 365 * 24 * 60 * 60 * 1000
+
+const occurrenceLimit = ref(OCCURRENCE_PAGE_SIZE)
+
+const upcomingOccurrences = computed(() => {
+  const { date, recurrence_rule, excluded_dates } = props.modelValue
+  if (!props.isEditMode || !props.showRecurrenceBuilder || date == null || recurrence_rule == null || recurrence_rule === '')
+    return []
+
+  // Expand without exclusions so removed dates stay listed and can be restored.
+  const now = new Date()
+  const series = { date: date.toISOString(), recurrence_rule }
+
+  return expandRecurringEvent(series, now, new Date(now.getTime() + OCCURRENCE_HORIZON_MS))
+    .map(occurrence => ({
+      date: occurrence.date,
+      removed: isOccurrenceExcluded(occurrence.date, excluded_dates),
+    }))
+})
+
+const visibleOccurrences = computed(() => upcomingOccurrences.value.slice(0, occurrenceLimit.value))
+
+function toggleOccurrence(date: string, removed: boolean) {
+  const excluded = props.modelValue.excluded_dates
+
+  if (removed)
+    update('excluded_dates', excluded.filter(x => !isOccurrenceExcluded(x, [date])))
+  else
+    update('excluded_dates', [...excluded, date])
 }
 
 // ── Computed validation (fallback all-true when not provided) ──────────────────
@@ -231,6 +269,48 @@ defineExpose({ flushPendingUploads })
       :event-date="modelValue.date"
       @update:model-value="update('recurrence_rule', $event)"
     />
+
+    <!-- Upcoming occurrences, individually removable -->
+    <Flex v-if="upcomingOccurrences.length > 0" column gap="xs" expand>
+      <span class="text-s font-medium">Upcoming occurrences</span>
+      <span class="text-xs text-color-light">Removed dates drop out of the series when you save.</span>
+
+      <Flex
+        v-for="occurrence in visibleOccurrences"
+        :key="occurrence.date"
+        x-between
+        y-center
+        expand
+      >
+        <span
+          class="text-s"
+          :class="{ 'event-form-fields__occurrence--removed': occurrence.removed }"
+        >
+          {{ fullDateTimeWeekday(occurrence.date) }}
+        </span>
+        <Button
+          size="s"
+          variant="gray"
+          plain
+          @click="toggleOccurrence(occurrence.date, occurrence.removed)"
+        >
+          <template #start>
+            <Icon :name="occurrence.removed ? 'ph:arrow-counter-clockwise' : 'ph:trash'" />
+          </template>
+          {{ occurrence.removed ? 'Restore' : 'Remove' }}
+        </Button>
+      </Flex>
+
+      <Button
+        v-if="upcomingOccurrences.length > occurrenceLimit"
+        size="s"
+        variant="gray"
+        plain
+        @click="occurrenceLimit += OCCURRENCE_PAGE_SIZE"
+      >
+        Show more
+      </Button>
+    </Flex>
     <Switch
       v-if="showRecurrenceException"
       :model-value="recurrenceException"
@@ -321,6 +401,11 @@ defineExpose({ flushPendingUploads })
     display: flex;
     flex-direction: column;
     gap: var(--space-xs);
+  }
+
+  &__occurrence--removed {
+    color: var(--color-text-lighter);
+    text-decoration: line-through;
   }
 
   &__label {

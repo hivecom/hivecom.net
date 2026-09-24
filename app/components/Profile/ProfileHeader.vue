@@ -3,6 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import type { ProfileFriendshipStatus } from '@/types/profile.ts'
 import { Badge, Button, Card, CopyClipboard, Flex, Grid, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed } from 'vue'
+import ProfileManageMenu from '@/components/Profile/ProfileManageMenu.vue'
 import AvatarMedia from '@/components/Shared/AvatarMedia.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useUserActivityStatus } from '@/composables/useUserActivityStatus'
@@ -28,6 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   openEditSheet: []
   openComplaintModal: []
+  moderated: []
 }>()
 
 const BIRTHDAY_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -556,6 +558,7 @@ onUnmounted(() => stopConfetti())
                   </template>
                 </Tooltip>
               </CopyClipboard>
+              <ProfileManageMenu v-if="!isOwnProfile" :profile="profile" @updated="emit('moderated')" />
             </Flex>
 
             <!-- Introduction (Full Width) -->

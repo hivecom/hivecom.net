@@ -49,6 +49,7 @@ interface RpcEvent {
   recurrence_rule: string | null
   recurrence_parent_id: number | null
   recurrence_exception: boolean
+  excluded_dates: string[]
 }
 
 // ─── Signals & routing ────────────────────────────────────────────────────────
@@ -285,30 +286,7 @@ async function handleEventSave(eventData: Partial<Event>) {
         throw error
     }
     else {
-      const createData: TablesInsert<'events'> = {
-        ...eventData,
-        title: eventData.title || '',
-        description: eventData.description || '',
-        date: eventData.date || '',
-        is_official: eventData.is_official ?? false,
-        created_by: userId.value ?? null,
-        modified_by: userId.value ?? null,
-        modified_at: new Date().toISOString(),
-      }
-      const { data, error } = await supabase
-        .from('events')
-        .insert(createData)
-        .select('id')
-        .single()
-      if (error)
-        throw error
-
-      // The organizer attends by default.
-      if (data && userId.value)
-        await rsvpEventOrganizer(data.id, userId.value, createData.recurrence_rule != null)
-
-      if (userId.value)
-        subscriptionsCache.invalidateList(userId.value)
+      await insertEvent(eventData)
     }
 
     showEventForm.value = false
@@ -318,6 +296,59 @@ async function handleEventSave(eventData: Partial<Event>) {
   catch (err: unknown) {
     errorMessage.value = err instanceof Error ? err.message : 'An error occurred while saving the event'
   }
+}
+
+async function handleEventFork({ oldId, cappedRule, newEventData }: { oldId: number, cappedRule: string, newEventData: Partial<Event> }) {
+  try {
+    // Cap the old series before inserting, so a failed insert leaves one
+    // ended series behind instead of two overlapping ones.
+    const { error } = await supabase
+      .from('events')
+      .update({
+        recurrence_rule: cappedRule,
+        modified_at: new Date().toISOString(),
+        modified_by: userId.value ?? null,
+      })
+      .eq('id', oldId)
+    if (error)
+      throw error
+
+    await insertEvent(newEventData)
+
+    showEventForm.value = false
+    invalidateEventsCache()
+    await fetchEvents()
+  }
+  catch (err: unknown) {
+    errorMessage.value = err instanceof Error ? err.message : 'An error occurred while creating the new series'
+  }
+}
+
+async function insertEvent(eventData: Partial<Event>) {
+  const createData: TablesInsert<'events'> = {
+    ...eventData,
+    title: eventData.title || '',
+    description: eventData.description || '',
+    date: eventData.date || '',
+    is_official: eventData.is_official ?? false,
+    created_by: userId.value ?? null,
+    modified_by: userId.value ?? null,
+    modified_at: new Date().toISOString(),
+  }
+  const { data, error } = await supabase
+    .from('events')
+    .insert(createData)
+    .select('id')
+    .single()
+  if (error)
+    throw error
+
+  // The organizer attends by default.
+  if (data && userId.value)
+    await rsvpEventOrganizer(data.id, userId.value, createData.recurrence_rule != null)
+
+  if (userId.value)
+    subscriptionsCache.invalidateList(userId.value)
 }
 
 async function handleEventsDelete(eventIds: number[]) {
@@ -625,6 +656,7 @@ onBeforeMount(async () => {
         :event="selectedEvent"
         :is-edit-mode="isEditMode"
         @save="handleEventSave"
+        @fork="handleEventFork"
         @delete="(id: number) => handleEventsDelete([id])"
       />
 

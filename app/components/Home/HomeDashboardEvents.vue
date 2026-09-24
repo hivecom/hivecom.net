@@ -40,8 +40,6 @@ const { attendingByEventId, loading: friendRsvpsLoading } = useDataFriendRsvps(m
 // one thing the card won't show you.
 const { ongoingEvents } = useOngoingEvents()
 
-const happeningNow = computed(() => ongoingEvents.value.slice(0, 2))
-
 const upcoming = computed(() => events.value.filter(e => dayjs(e.date).isAfter(dayjs())))
 
 // Every section here is derived from events plus RSVP state, so the card is
@@ -50,7 +48,7 @@ const upcoming = computed(() => events.value.filter(e => dayjs(e.date).isAfter(d
 const loading = computed(() =>
   (eventsLoading.value || rsvpsLoading.value || friendRsvpsLoading.value)
   && upcoming.value.length === 0
-  && happeningNow.value.length === 0,
+  && ongoingEvents.value.length === 0,
 )
 
 // Upcoming events I said yes or tentative to, soonest first. The card takes
@@ -78,8 +76,24 @@ const openToJoin = computed(() => {
 // something, with the open events as rows under it. When I'm not, the open
 // events take the grid instead and the rows section goes away.
 const gridIsMine = computed(() => attending.value.length > 0)
-const gridEvents = computed(() => gridIsMine.value ? attending.value : openToJoin.value.slice(0, SHOWN_ATTENDING))
 const rowEvents = computed(() => gridIsMine.value ? openToJoin.value.slice(0, SHOWN_OPEN) : [])
+
+// Anything running right now jumps the queue into the grid rather than getting
+// a section of its own, which made the card taller than the two beside it.
+// The grid keeps its two tiles and whatever was next fills the space left.
+const isLive = computed(() => ongoingEvents.value.length > 0)
+const gridEvents = computed(() => {
+  const next = gridIsMine.value ? attending.value : openToJoin.value
+
+  return [...ongoingEvents.value, ...next].slice(0, SHOWN_ATTENDING)
+})
+
+const gridLabel = computed(() => {
+  if (isLive.value)
+    return 'On the radar'
+
+  return gridIsMine.value ? 'Your upcoming events' : 'You could join these'
+})
 
 // Every upcoming event, where the card only has room for a handful.
 const eventsSheetOpen = ref(false)
@@ -117,33 +131,20 @@ function handleContentRulesConfirmed() {
     <HomeDashboardCardHeader title="Events" icon="ph:calendar" to="/events" />
 
     <HomeDashboardSkeleton v-if="loading" variant="cover" :count="SHOWN_ATTENDING" />
-    <template v-else>
-      <!-- Only shows when something is actually running. Nothing is the normal
-           state here, so a standing "nothing right now" would be permanent. -->
-      <HomeDashboardSection v-if="happeningNow.length" label="Happening now">
-        <div class="home-item-list">
-          <HomeDashboardEventItem v-for="event in happeningNow" :key="event.id" :data="event" />
-        </div>
-      </HomeDashboardSection>
+    <HomeDashboardSection v-else :label="gridLabel" @click="openEventsSheet">
+      <div class="home-item-list">
+        <HomeDashboardEventItem v-for="event in gridEvents" :key="event.id" :data="event" />
 
-      <HomeDashboardSection
-        :label="gridIsMine ? 'Your upcoming events' : 'You could join these'"
-        @click="openEventsSheet"
-      >
-        <div class="home-item-list">
-          <HomeDashboardEventItem v-for="event in gridEvents" :key="event.id" :data="event" />
-
-          <HomeDashboardPlaceholder v-if="!gridEvents.length" full message="Nothing on the calendar yet.">
-            <Button size="s" variant="gray" @click="navigateTo('/events')">
-              <template #start>
-                <Icon name="ph:calendar-plus" />
-              </template>
-              Find an event
-            </Button>
-          </HomeDashboardPlaceholder>
-        </div>
-      </HomeDashboardSection>
-    </template>
+        <HomeDashboardPlaceholder v-if="!gridEvents.length" full message="Nothing on the calendar yet.">
+          <Button size="s" variant="gray" @click="navigateTo('/events')">
+            <template #start>
+              <Icon name="ph:calendar-plus" />
+            </template>
+            Find an event
+          </Button>
+        </HomeDashboardPlaceholder>
+      </div>
+    </HomeDashboardSection>
 
     <!-- Nothing to join means no section. The calendar underneath already
          says the month is open, so a placeholder here would say it twice.

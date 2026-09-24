@@ -2,8 +2,9 @@
 import type { MetricsHistoryEntry, MetricsPeriod } from '@/composables/useDataMetrics'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
-import { Accordion, Badge, Button, Card, Flex, Grid, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
+import { Accordion, Badge, Button, Card, Dropdown, DropdownItem, Flex, Grid, Indicator, Modal, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import GameEditModal from '@/components/Community/Games/GameEditModal.vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import ChartActivityHistogramControls from '@/components/Shared/Charts/ChartActivityHistogramControls.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
@@ -17,6 +18,7 @@ import { useDataGameservers } from '@/composables/useDataGameservers'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { useDataSteamPresences } from '@/composables/useDataSteamPresences'
 import { useExternalLinkGuard } from '@/composables/useExternalLinkGuard'
+import { usePermissions } from '@/composables/usePermissions'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { fullDate, fullMonth } from '@/lib/utils/date'
 import { metricsMaxPlayers, metricsPlayerCount } from '@/types/metrics'
@@ -39,7 +41,7 @@ interface Props {
 
 const isOpen = defineModel<boolean>('open', { default: false })
 
-const { games, getById: getGameById } = useDataGames()
+const { games, getById: getGameById, refresh: refreshGames } = useDataGames()
 const { getGameCoverUrl, getGameBackgroundUrl } = useDataGameAssets()
 const { gameservers } = useDataGameservers()
 const { metrics, fetchMetricsHistoryIsolated, fetchMetricsWindowIsolated, getCachedHistory } = useDataMetrics()
@@ -347,6 +349,21 @@ function handleClose() {
   emit('close')
 }
 
+// Quick edit for staff. The full form, assets included, stays in the admin panel.
+const { hasPermission } = usePermissions()
+const canManage = computed(() => hasPermission('games.update'))
+const showEditModal = ref(false)
+
+// detailsCache holds the pre-edit row, so drop it and re-resolve from the fresh list
+async function handleGameSaved() {
+  if (!props.gameId)
+    return
+
+  detailsCache.delete(props.gameId)
+  await refreshGames()
+  await loadGameDetails(props.gameId)
+}
+
 async function handleChartChange(period: MetricsPeriod, window: { start: Date, end: Date }) {
   if (!props.gameId)
     return
@@ -431,16 +448,32 @@ watch(
 <template>
   <Modal :open="isModalVisible" centered :size="isBelowSmall ? 'screen' : 'l'" :card="{ separators: true }" @close="handleClose">
     <template #header>
-      <Flex gap="m" y-center>
-        <GameIcon v-if="currentDetails?.game" :game="currentDetails.game" size="m" />
-        <h3 class="game-details-modal__title">
-          {{ gameName }}
-        </h3>
-        <Tooltip v-if="currentDetails?.game.created_at" placement="top">
-          <template #tooltip>
-            <p>Tracked since {{ fullMonth(currentDetails.game.created_at) }}</p>
+      <Flex x-between y-center expand>
+        <Flex gap="m" y-center>
+          <GameIcon v-if="currentDetails?.game" :game="currentDetails.game" size="m" />
+          <h3 class="game-details-modal__title">
+            {{ gameName }}
+          </h3>
+          <Tooltip v-if="currentDetails?.game.created_at" placement="top">
+            <template #tooltip>
+              <p>Tracked since {{ fullMonth(currentDetails.game.created_at) }}</p>
+            </template>
+          </Tooltip>
+        </Flex>
+
+        <Dropdown v-if="canManage && currentDetails?.game">
+          <template #trigger="{ toggle }">
+            <Button variant="gray" size="s" @click="toggle">
+              Manage
+            </Button>
           </template>
-        </Tooltip>
+          <DropdownItem @click="showEditModal = true">
+            Edit
+          </DropdownItem>
+          <DropdownItem @click="navigateTo(`/admin/games?game=${currentDetails.game.id}`)">
+            Open in admin
+          </DropdownItem>
+        </Dropdown>
       </Flex>
     </template>
 
@@ -753,6 +786,13 @@ watch(
       </Flex>
     </template>
   </Modal>
+
+  <GameEditModal
+    v-if="canManage && currentDetails?.game"
+    v-model:open="showEditModal"
+    :game="currentDetails.game"
+    @saved="handleGameSaved"
+  />
 </template>
 
 <style scoped lang="scss">

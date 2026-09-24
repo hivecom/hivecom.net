@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import type { GameServerDetailsFormState } from '@/lib/gameservers'
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
 import type { Json } from '@/types/database.types'
-import { Badge, Button, Flex, Input, Sheet, Switch, Textarea, Tooltip } from '@dolanske/vui'
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { Badge, Button, Flex, Input, Sheet, Switch, Tooltip } from '@dolanske/vui'
+import { computed, onMounted, ref, watch } from 'vue'
+import GameServerDetailsFields from '@/components/GameServers/GameServerDetailsFields.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
 import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
-import { STATIC_BUCKET_ID } from '@/lib/storageAssets'
+import { gameServerDetailsPayload } from '@/lib/gameservers'
 
 const props = defineProps<{
   gameserver: QueryGameserver | null
@@ -17,9 +19,7 @@ const props = defineProps<{
 // Define emits
 const emit = defineEmits(['save', 'delete'])
 
-const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
-
-const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
+const formFieldsRef = ref<InstanceType<typeof GameServerDetailsFields> | null>(null)
 
 // Interface for gameserver query result
 interface QueryGameserver {
@@ -71,8 +71,18 @@ const gameserverForm = ref({
   administrator: null as string | null, // UUID of the administrator
 })
 
-// Address input for managing multiple addresses
-const newAddress = ref('')
+// Addresses and content live in GameServerDetailsFields, shared with the quick
+// edit on the server page. This bridges them onto gameserverForm.
+const detailsModel = computed<GameServerDetailsFormState>({
+  get: () => ({
+    addresses: gameserverForm.value.addresses,
+    description: gameserverForm.value.description,
+    markdown: gameserverForm.value.markdown,
+  }),
+  set: (value) => {
+    Object.assign(gameserverForm.value, value)
+  },
+})
 
 // Query secret and options. The secret (Factorio's RCON password, Trackmania's
 // User password) is stored in Vault via the set/get_gameserver_query_secret
@@ -273,8 +283,6 @@ async function fetchDropdownData() {
 
 // Seed the form from a gameserver row, or wipe it back to defaults for a new one
 function applyGameserver(newGameserver: QueryGameserver | null) {
-  newAddress.value = ''
-
   if (newGameserver) {
     gameserverForm.value = {
       name: newGameserver.name || '',
@@ -326,20 +334,6 @@ function applyGameserver(newGameserver: QueryGameserver | null) {
 // Update form data when gameserver prop changes
 watch(() => props.gameserver, applyGameserver, { immediate: true })
 
-// Handle adding a new address
-function addAddress() {
-  if (newAddress.value.trim()) {
-    const newAddressValue = newAddress.value.trim()
-    gameserverForm.value.addresses = [...gameserverForm.value.addresses, newAddressValue]
-    newAddress.value = ''
-  }
-}
-
-// Handle removing an address
-function removeAddress(index: number) {
-  gameserverForm.value.addresses = gameserverForm.value.addresses.filter((_, i) => i !== index)
-}
-
 // Handle closing the sheet
 function handleClose() {
   isOpen.value = false
@@ -369,17 +363,15 @@ async function handleSubmit() {
   // Upload any pending blob-placeholder media before reading the markdown,
   // otherwise blob: URLs get persisted and render as missing media. The editor
   // surfaces its own error toast on failure, so we just abort here.
-  const uploaded = await markdownEditor.value?.flushPendingUploads()
+  const uploaded = await formFieldsRef.value?.flushPendingUploads()
   if (uploaded === false)
     return
 
   // Prepare the data to save
   const gameserverData: TablesInsert<'network_gameservers'> | TablesUpdate<'network_gameservers'> = {
+    ...gameServerDetailsPayload(detailsModel.value),
     name: gameserverForm.value.name,
-    description: gameserverForm.value.description || null,
-    markdown: gameserverForm.value.markdown || null,
     region: gameserverForm.value.region,
-    addresses: gameserverForm.value.addresses.length > 0 ? gameserverForm.value.addresses : null,
     port: gameserverForm.value.port || null,
     connect_command: gameserverForm.value.connect_command.trim() || null,
     query_protocol: gameserverForm.value.query_protocol as TablesInsert<'network_gameservers'>['query_protocol'],
@@ -582,75 +574,11 @@ onMounted(() => {
         </Flex>
       </Flex>
 
-      <!-- Addresses Section -->
-      <Flex column gap="m" expand>
-        <h4>Addresses</h4>
-
-        <!-- Add new address -->
-        <Flex gap="xs">
-          <Input
-            v-model="newAddress"
-            expand
-            placeholder="Enter server address"
-            @keyup.enter="addAddress"
-          />
-          <Button :disabled="!newAddress.trim()" @click.stop="addAddress">
-            <template #start>
-              <Icon name="ph:plus" />
-            </template>
-            Add
-          </Button>
-        </Flex>
-
-        <!-- Address list -->
-        <Flex v-if="gameserverForm.addresses.length > 0" gap="xs" wrap>
-          <Flex
-            v-for="(address, index) in gameserverForm.addresses"
-            :key="`address-${index}`"
-            gap="xs"
-            y-center
-            class="address-item"
-          >
-            <span class="flex-1 address-text">{{ address }}</span>
-            <Button
-              size="s"
-              variant="danger"
-              square
-              @click.stop="removeAddress(index)"
-            >
-              <Icon name="ph:trash" />
-            </Button>
-          </Flex>
-        </Flex>
-      </Flex>
-
-      <!-- Markdown Content -->
-      <Flex column gap="m" expand>
-        <h4>Content</h4>
-
-        <Textarea
-          v-model="gameserverForm.description"
-          expand
-          name="description"
-          label="Description"
-          placeholder="Enter game server description (optional)"
-          :rows="3"
-        />
-
-        <RichTextEditor
-          ref="markdownEditor"
-          v-model="gameserverForm.markdown"
-          label="Content"
-          hint="You can use markdown and add media by drag-and-drop"
-          placeholder="Enter markdown content (optional)"
-          min-height="216px"
-          show-expand-button
-          always-show-expand-button
-          :media-context="props.gameserver?.id ? `gameservers/${props.gameserver.id}/markdown/media` : undefined"
-          :media-bucket-id="STATIC_BUCKET_ID"
-          :show-attachment-button="!!props.gameserver?.id"
-        />
-      </Flex>
+      <GameServerDetailsFields
+        ref="formFieldsRef"
+        v-model="detailsModel"
+        :gameserver-id="props.gameserver?.id"
+      />
     </Flex>
     <template #footer>
       <Flex gap="xs" class="form-actions">
@@ -718,18 +646,5 @@ onMounted(() => {
 
 .flex-1 {
   flex: 1;
-}
-
-.address-item {
-  padding: var(--space-xs) var(--space-s);
-  background-color: var(--color-bg-raised);
-  border-radius: var(--border-radius-s);
-  border: 1px solid var(--color-border);
-}
-
-.address-text {
-  font-family: monospace;
-  font-size: var(--font-size-s);
-  color: var(--color-text);
 }
 </style>

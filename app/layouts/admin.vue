@@ -8,13 +8,13 @@ import ThemeToggle from '@/components/Shared/ThemeToggle.vue'
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useEffectiveRole } from '@/composables/useEffectiveRole'
+import { usePermissions } from '@/composables/usePermissions'
 import { useRoleImpersonation } from '@/composables/useRoleImpersonation'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const route = useRoute()
 const { openCommand } = useCommand()
 const isMac = import.meta.client && /Mac/i.test(navigator.platform)
-const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
 
@@ -22,21 +22,10 @@ const userId = useUserId()
 // before running the auth check, so no sessionUserId fallback is needed.
 const resolvedUserId = userId
 
-// Initialize user role and permissions from database
-const userPermissions = ref<string[]>([])
-const realPermissions = ref<string[]>([])
+// Permissions follow the effective role, so impersonation swaps them too
+const { permissions: userPermissions, ready: permissionsReady, hasPermission, hasAnyPermission } = usePermissions()
+const { impersonatedRole, isImpersonating, stop: stopImpersonation } = useRoleImpersonation()
 
-const { impersonatedRole, isImpersonating, resolvePermissions, stop: stopImpersonation } = useRoleImpersonation()
-
-// When impersonation changes, swap the injected permissions
-watch(impersonatedRole, async (role) => {
-  if (role) {
-    userPermissions.value = await resolvePermissions(role)
-  }
-  else {
-    userPermissions.value = [...realPermissions.value]
-  }
-})
 const isLoading = ref(true)
 const isAuthorized = ref(false)
 
@@ -86,27 +75,8 @@ onMounted(async () => {
       return
     }
 
-    // Fetch role permissions from role_permissions table
-    const { data: permissionsData, error: permissionsError } = await supabase
-      .from('role_permissions')
-      .select('permission')
-      .eq('role', role as 'admin' | 'moderator')
-
-    if (permissionsError) {
-      console.error('Error fetching role permissions:', permissionsError)
-    }
-    else {
-      realPermissions.value = permissionsData?.map(p => p.permission) ?? []
-
-      // If already impersonating when the layout mounts, apply the impersonated
-      // permissions immediately - the watch won't fire for a pre-existing value.
-      if (impersonatedRole.value) {
-        userPermissions.value = await resolvePermissions(impersonatedRole.value)
-      }
-      else {
-        userPermissions.value = [...realPermissions.value]
-      }
-    }
+    // Hold the sidebar until the role's grants are in, so menu items don't pop in
+    await until(permissionsReady).toBe(true, { timeout: 8000 }).catch(() => null)
 
     isAuthorized.value = true
   }
@@ -127,16 +97,6 @@ watch(user, async (newUser) => {
     await navigateTo('/')
   }
 })
-
-// Helper function to check if user has specific permission
-function hasPermission(permission: AppPermission): boolean {
-  return userPermissions.value.includes(permission)
-}
-
-// Helper function to check if user has any of the provided permissions
-function hasAnyPermission(permissions: AppPermission[]): boolean {
-  return permissions.some(permission => userPermissions.value.includes(permission))
-}
 
 // Menu items with their required permissions
 interface MenuItem {

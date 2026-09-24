@@ -272,6 +272,47 @@ function initializeGoogleAuth(serviceAccountKey: string) {
   return auth;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function formatIcalUtc(date: Date): string {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
+function buildGoogleRecurrence(
+  eventData: EventData,
+  eventStart: Date,
+): string[] {
+  if (!eventData.recurrence_rule) {
+    return [];
+  }
+
+  const recurrence = [`RRULE:${eventData.recurrence_rule}`];
+  if (eventData.excluded_dates.length === 0) {
+    return recurrence;
+  }
+
+  // Google expands the series in UTC, so every occurrence shares the start's
+  // UTC time of day. Removed dates were computed in the remover's local time
+  // and can sit an hour off across DST, which Google wouldn't match. Snap each
+  // one to the nearest UTC day at the series' time of day.
+  const timeOfDay = eventStart.getTime() % DAY_MS;
+  const exdates = eventData.excluded_dates.map((excluded) => {
+    const time = new Date(excluded).getTime();
+    let snapped = time - (time % DAY_MS) + timeOfDay;
+
+    if (snapped - time > DAY_MS / 2) {
+      snapped -= DAY_MS;
+    } else if (time - snapped > DAY_MS / 2) {
+      snapped += DAY_MS;
+    }
+
+    return formatIcalUtc(new Date(snapped));
+  });
+
+  recurrence.push(`EXDATE:${exdates.join(",")}`);
+  return recurrence;
+}
+
 function buildGoogleEventPayload(eventData: EventData) {
   const eventStart = new Date(eventData.date);
   const eventEnd = eventData.duration_minutes
@@ -299,9 +340,7 @@ function buildGoogleEventPayload(eventData: EventData) {
       timeZone: "UTC",
     },
     // Pass RRULE to Google Calendar when set, or clear it when removed.
-    recurrence: eventData.recurrence_rule
-      ? [`RRULE:${eventData.recurrence_rule}`]
-      : [],
+    recurrence: buildGoogleRecurrence(eventData, eventStart),
     location: eventData.location || undefined,
     status: "confirmed",
     transparency: "opaque",

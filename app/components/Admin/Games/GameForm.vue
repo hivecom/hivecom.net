@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import type { IgdbGameDetails } from '@/composables/useIgdb'
+import type { GameDetailsFormState } from '@/lib/games/details'
 import type { Tables } from '@/types/database.overrides'
 import { Alert, Button, ButtonGroup, Calendar, Dropdown, DropdownItem, DropdownTitle, Flex, Input, searchString, Select, Sheet, Tooltip } from '@dolanske/vui'
-import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useSupabaseClient, useSupabaseUser } from '#imports'
 import IGDBLookupModal from '@/components/Admin/Games/IGDBLookupModal.vue'
-import ColorPicker from '@/components/Shared/ColorPicker.vue'
+import GameDetailsFields from '@/components/Community/Games/GameDetailsFields.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
-import TagInput from '@/components/Shared/TagInput.vue'
 import { useDataForumTopics } from '@/composables/useDataForumTopics'
+import { gameDetailsPayload, validateGameDetails } from '@/lib/games/details'
 import { deleteGameAsset, uploadGameAsset } from '@/lib/storage'
 import { flattenTopicsTree } from '@/lib/topics'
 import { sanitizeTag } from '@/lib/utils/sanitize'
@@ -22,8 +23,6 @@ const props = defineProps<{
 
 // Define emits
 const emit = defineEmits(['save', 'delete'])
-
-const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
 // Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
@@ -67,7 +66,6 @@ const multiplayerModeOptions: SelectOption[] = [
   { value: 'singleplayer', label: 'Singleplayer' },
 ]
 
-const DESCRIPTION_MAX = 160
 const RELEASE_DATE_MIN = new Date(1970, 0, 1)
 const RELEASE_DATE_MAX = new Date(new Date().getFullYear() + 2, 11, 31)
 
@@ -182,18 +180,30 @@ watch(() => gameForm.value.shorthand, (value) => {
   }, 300)
 })
 
+// The links, copy, tags and color live in GameDetailsFields, shared with the
+// quick edit on the game details modal. This bridges them onto gameForm.
+const detailsModel = computed<GameDetailsFormState>({
+  get: () => ({
+    website: gameForm.value.website,
+    connect_uri: gameForm.value.connect_uri,
+    connect_command: gameForm.value.connect_command,
+    description: gameForm.value.description,
+    markdown: gameForm.value.markdown,
+    genre_tags: gameForm.value.genre_tags,
+    color: gameForm.value.color,
+  }),
+  set: (value) => {
+    Object.assign(gameForm.value, value)
+  },
+})
+
+const detailsValidation = computed(() => validateGameDetails(detailsModel.value))
+
 // Form validation
-const HEX_COLOR_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
-
-// Mirrors games_connect_uri_scheme_check so a bad scheme fails here rather than
-// on insert. The URI ends up in window.location, so the allowlist matters.
-const CONNECT_URI_RE = /^(?:steam|minecraft|ts3server|https):\/\//
-
 const validation = computed(() => ({
   name: !!gameForm.value.name.trim(),
   shorthand: !shorthandTaken.value,
-  color: !gameForm.value.color || HEX_COLOR_RE.test(gameForm.value.color),
-  connect_uri: !gameForm.value.connect_uri.trim() || CONNECT_URI_RE.test(gameForm.value.connect_uri.trim()),
+  ...detailsValidation.value,
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
@@ -594,17 +604,11 @@ function handleSubmit() {
 
   // Prepare the data to save
   const gameData = {
+    ...gameDetailsPayload(detailsModel.value),
     name: gameForm.value.name,
     shorthand: gameForm.value.shorthand || null,
     steam_id: gameForm.value.steam_id ? Number(gameForm.value.steam_id) : null,
-    website: gameForm.value.website?.trim() ? gameForm.value.website.trim() : null,
-    connect_uri: gameForm.value.connect_uri.trim() || null,
-    connect_command: gameForm.value.connect_command.trim() || null,
-    description: gameForm.value.description.trim() || null,
-    markdown: gameForm.value.markdown.trim() || null,
-    genre_tags: gameForm.value.genre_tags.length > 0 ? gameForm.value.genre_tags : null,
     multiplayer_modes: gameForm.value.multiplayer_modes?.length ? gameForm.value.multiplayer_modes.map(o => o.value) : null,
-    color: gameForm.value.color.trim() || null,
     release_date: gameForm.value.release_date || null,
     discussion_topic_id: gameForm.value.discussion_topic_id.trim() || null,
   }
@@ -773,72 +777,13 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
           type="number"
           placeholder="Enter Steam app ID (optional)"
         />
-
-        <Input
-          v-model="gameForm.website"
-          expand
-          name="website"
-          label="Website"
-          type="url"
-          placeholder="https://example.com (optional)"
-        />
-
-        <Input
-          v-model="gameForm.connect_uri"
-          expand
-          name="connect_uri"
-          label="Connect URI"
-          placeholder="steam://connect/{address}:{port} (optional)"
-          hint="Launch template. Tokens: {address} {port} {steam_id} {command}. Leave empty for copy-only servers."
-          :error="validation.connect_uri ? undefined : 'Must start with steam://, minecraft://, ts3server:// or https://'"
-        />
-
-        <Input
-          v-model="gameForm.connect_command"
-          expand
-          name="connect_command"
-          label="Connect Command"
-          placeholder="+connect {address}:{port} (optional)"
-          hint="Console or launch arguments players can copy. Tokens: {address} {port}."
-        />
       </Flex>
 
       <!-- Game Details Section -->
       <Flex column gap="m" expand>
         <h4>Game Details</h4>
 
-        <!-- Tagline -->
-        <Flex column gap="xxs" expand>
-          <Input
-            v-model="gameForm.description"
-            expand
-            name="description"
-            label="Tagline"
-            placeholder="A short one-liner about the game"
-            :maxlength="DESCRIPTION_MAX"
-          />
-          <span class="text-xs text-color-lighter" :class="{ 'text-color-red': gameForm.description.length >= DESCRIPTION_MAX }">
-            {{ gameForm.description.length }} / {{ DESCRIPTION_MAX }}
-          </span>
-        </Flex>
-
-        <!-- Markdown body -->
-        <RichTextEditor
-          v-model="gameForm.markdown"
-          label="Content"
-          hint="You can use markdown and add media by drag-and-drop"
-          placeholder="Write a longer description of the game..."
-          min-height="180px"
-          show-expand-button
-          always-show-expand-button
-        />
-
-        <!-- Genre tags -->
-        <TagInput
-          v-model="gameForm.genre_tags"
-          label="Genre Tags"
-          placeholder="e.g. FPS, Survival, Co-op"
-        />
+        <GameDetailsFields v-model="detailsModel" :validation="detailsValidation" />
 
         <!-- Multiplayer modes -->
         <Flex expand>
@@ -851,15 +796,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
             :single="false"
           />
         </Flex>
-
-        <!-- Accent color -->
-        <ColorPicker
-          v-model="gameForm.color"
-          label="Accent Color"
-          stacked
-          clearable
-          :error="validation.color ? undefined : 'Must be a valid hex color (e.g. #ff0000)'"
-        />
 
         <!-- Release year -->
         <Flex column gap="xs" expand>

@@ -15,5 +15,9 @@ export function useEffectiveRole() {
   const isAdmin = computed(() => role.value === 'admin')
   const isModerator = computed(() => role.value === 'moderator')
 
-  return { role, isAdminOrMod, isAdmin, isModerator, isImpersonating, impersonatedRole, realRole }
+  // role reads null both for a plain user and while the lookup is in flight.
+  // This tells them apart: signed out, impersonating, or the user row has landed.
+  const roleResolved = computed(() => !userId.value || isImpersonating.value || userData.value !== null)
+
+  return { role, roleResolved, isAdminOrMod, isAdmin, isModerator, isImpersonating, impersonatedRole, realRole }
 }

@@ -135,7 +135,8 @@ const rankedChannels = computed<ChannelEntry[]>(() => {
 
 const shownChannels = computed(() => rankedChannels.value.slice(0, SHOWN_CHANNELS))
 
-// The card shows the top four, the sheet shows every channel with a name.
+// The card shows the top four, the sheet shows every named channel that isn't
+// quiet.
 const channelsSheetOpen = ref(false)
 
 function openChannelsSheet(): void {

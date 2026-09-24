@@ -12,8 +12,8 @@ import { useCachedFetch } from '@/composables/useCache'
 import { useDataForumUnread } from '@/composables/useDataForumUnread'
 import { useDataGames } from '@/composables/useDataGames'
 import { useDiscussionCache } from '@/composables/useDiscussionCache'
-import { useEffectiveRole } from '@/composables/useEffectiveRole'
 import { useEventTiming } from '@/composables/useEventTiming'
+import { usePermissions } from '@/composables/usePermissions'
 import { useSessionReady } from '@/composables/useSessionReady'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { currentOrNextOccurrenceDate, expandRecurringEvent } from '@/lib/utils/rrule'
@@ -112,7 +112,7 @@ onMounted(async () => {
 
 // Edit permissions
 const userId = useUserId()
-const { isAdminOrMod: isPrivileged } = useEffectiveRole()
+const { hasPermission } = usePermissions()
 
 // True once auth has settled; uses both the reactive user and the resolved
 // session to avoid false negatives during the session-restore window.
@@ -178,7 +178,7 @@ const canEdit = computed(() => {
     return false
 
   const isOwner = event.value.created_by === userId.value && !event.value.is_official
-  return isOwner || isPrivileged.value
+  return isOwner || hasPermission('events.update')
 })
 
 const showEditModal = ref(false)

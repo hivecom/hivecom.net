@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import type { ReferendumFormState } from '@/lib/referendums'
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Badge, Button, Calendar, Checkbox, Flex, Grid, Input, Modal, Textarea, Tooltip } from '@dolanske/vui'
+import { Button, Flex, Modal, Tooltip } from '@dolanske/vui'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
+import ReferendumFormFields from '@/components/Votes/ReferendumFormFields.vue'
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
-import { useEffectiveRole } from '@/composables/useEffectiveRole'
-import { useBreakpoint } from '@/lib/mediaQuery'
+import { usePermissions } from '@/composables/usePermissions'
+import { emptyReferendumForm, referendumFormFromRow, referendumFormPayload, validateReferendumForm } from '@/lib/referendums'
 
 interface Props {
   open: boolean
@@ -25,14 +27,12 @@ const userId = useUserId()
 const subscriptionsCache = useDiscussionSubscriptionsCache()
 
 // ─── Permission check ─────────────────────────────────────────────────────────
-// Use the cached user data composable instead of raw DB queries - role is
-// already fetched and shared across the page. referendums.update and
-// referendums.delete are granted to admin and moderator only.
+// Anyone can create a private vote. Going public and deleting are staff grants.
 
-const { isAdminOrMod } = useEffectiveRole()
+const { hasPermission } = usePermissions()
 
-const canMakePublic = isAdminOrMod
-const canDelete = isAdminOrMod
+const canMakePublic = computed(() => hasPermission('referendums.update'))
+const canDelete = computed(() => hasPermission('referendums.delete'))
 
 // ─── Mode ─────────────────────────────────────────────────────────────────────
 
@@ -40,46 +40,18 @@ const isEditing = computed(() => !!props.editedItem)
 
 // ─── Form state ───────────────────────────────────────────────────────────────
 
-const form = ref({
-  title: '',
-  description: '',
-  date_start: new Date() as Date | null,
-  date_end: null as Date | null,
-  multiple_choice: false,
-  is_public: false,
-  choices: [] as string[],
-})
+const form = ref<ReferendumFormState>(emptyReferendumForm())
 
-const newChoiceInput = ref('')
 const saveLoading = ref(false)
 const showDeleteConfirm = ref(false)
 const deleteLoading = ref(false)
-const calendarTouched = ref(false)
 
 function resetForm() {
-  form.value = {
-    title: '',
-    description: '',
-    date_start: new Date(),
-    date_end: null,
-    multiple_choice: false,
-    is_public: false,
-    choices: [],
-  }
-  newChoiceInput.value = ''
+  form.value = emptyReferendumForm()
 }
 
 function populateForm(referendum: Tables<'referendums'>) {
-  form.value = {
-    title: referendum.title,
-    description: referendum.description ?? '',
-    date_start: referendum.date_start ? new Date(referendum.date_start) : new Date(),
-    date_end: referendum.date_end ? new Date(referendum.date_end) : null,
-    multiple_choice: referendum.multiple_choice,
-    is_public: referendum.is_public,
-    choices: [...referendum.choices],
-  }
-  newChoiceInput.value = ''
+  form.value = referendumFormFromRow(referendum)
 }
 
 watch(
@@ -119,54 +91,9 @@ watch(
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
-const validation = computed(() => {
-  const { date_start, date_end } = form.value
-  return {
-    title: !!form.value.title.trim(),
-    date_start: !!date_start,
-    date_end: !!date_end,
-    choices: form.value.choices.length >= 2,
-    dateRange: date_end != null ? date_end > new Date() : false,
-    startBeforeEnd: date_start != null && date_end != null ? date_end > date_start : true,
-  }
-})
+const validation = computed(() => validateReferendumForm(form.value))
 
-const isValid = computed(() =>
-  validation.value.title
-  && validation.value.date_start
-  && validation.value.date_end
-  && validation.value.choices
-  && validation.value.dateRange
-  && validation.value.startBeforeEnd,
-)
-
-const isRemovingChoices = computed(() => {
-  if (!isEditing.value || !props.editedItem)
-    return false
-
-  return props.editedItem.choices.some(c => !form.value.choices.includes(c))
-})
-
-// ─── Choices ──────────────────────────────────────────────────────────────────
-
-function addChoice() {
-  const choice = newChoiceInput.value.trim()
-  if (choice !== '' && !form.value.choices.includes(choice)) {
-    form.value.choices.push(choice)
-    newChoiceInput.value = ''
-  }
-}
-
-function removeChoice(index: number) {
-  form.value.choices.splice(index, 1)
-}
-
-function handleChoiceKeydown(event: KeyboardEvent) {
-  if (event.key === 'Enter') {
-    event.preventDefault()
-    addChoice()
-  }
-}
+const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
 // ─── Submit ───────────────────────────────────────────────────────────────────
 
@@ -174,9 +101,8 @@ async function handleSubmit() {
   if (!isValid.value || !userId.value)
     return
 
-  const dateStart = form.value.date_start?.toISOString()
-  const dateEnd = form.value.date_end?.toISOString()
-  if (!dateStart || !dateEnd)
+  const fields = referendumFormPayload(form.value)
+  if (!fields)
     return
 
   saveLoading.value = true
@@ -184,13 +110,7 @@ async function handleSubmit() {
   try {
     if (isEditing.value && props.editedItem != null) {
       const payload: TablesUpdate<'referendums'> = {
-        title: form.value.title.trim(),
-        description: form.value.description.trim() || null,
-        date_start: dateStart,
-        date_end: dateEnd,
-        multiple_choice: form.value.multiple_choice,
-        is_public: form.value.is_public,
-        choices: form.value.choices,
+        ...fields,
         modified_at: new Date().toISOString(),
         modified_by: userId.value,
       }
@@ -209,13 +129,7 @@ async function handleSubmit() {
     }
     else {
       const payload: TablesInsert<'referendums'> = {
-        title: form.value.title.trim(),
-        description: form.value.description.trim() || null,
-        date_start: dateStart,
-        date_end: dateEnd,
-        multiple_choice: form.value.multiple_choice,
-        is_public: form.value.is_public,
-        choices: form.value.choices,
+        ...fields,
         created_by: userId.value,
         modified_by: userId.value,
         modified_at: new Date().toISOString(),
@@ -276,8 +190,6 @@ async function confirmDelete() {
 function handleClose() {
   emit('close')
 }
-
-const isMobile = useBreakpoint('<s')
 </script>
 
 <template>
@@ -301,185 +213,12 @@ const isMobile = useBreakpoint('<s')
       {{ isEditing ? 'Update the details of your vote.' : 'Create a vote for others to participate in. You can share the link once created.' }}
     </p>
 
-    <Flex column gap="m">
-      <!-- Title -->
-      <Input
-        v-model="form.title"
-        expand
-        label="Title"
-        name="title"
-        placeholder="What are you voting on?"
-        required
-        :valid="form.title.trim() !== '' ? validation.title : undefined"
-        error="Title is required"
-      />
-
-      <!-- Description -->
-      <Textarea
-        v-model="form.description"
-        expand
-        label="Description"
-        name="description"
-        placeholder="Add more context (optional)"
-        :rows="3"
-      />
-
-      <!-- Dates -->
-      <Grid :columns="isMobile ? 1 : 2" expand gap="m">
-        <Flex column expand :gap="0">
-          <label class="vui-label required">
-            Start Date
-          </label>
-          <Calendar
-            v-model="form.date_start"
-            expand
-            enable-time-picker
-            time-picker-inline
-            enable-minutes
-            is24
-            format="yyyy-MM-dd HH:mm"
-          >
-            <template #trigger>
-              <Button
-                expand
-                outline
-                :class="{ error: form.date_start == null }"
-              >
-                {{ form.date_start ? form.date_start.toLocaleString(undefined, {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false,
-                }) : 'Choose start date' }}
-                <template #start>
-                  <Icon name="ph:calendar" :size="18" />
-                </template>
-              </Button>
-            </template>
-          </Calendar>
-        </Flex>
-
-        <Flex column expand :gap="0">
-          <label class="vui-label required">
-            End Date
-          </label>
-          <Calendar
-            v-model="form.date_end"
-            expand
-            enable-time-picker
-            time-picker-inline
-            enable-minutes
-            is24
-            format="yyyy-MM-dd HH:mm"
-            @click="calendarTouched = true"
-          >
-            <template #trigger>
-              <Button
-                expand
-                outline
-                :class="{ error: (form.date_end == null || !validation.dateRange || !validation.startBeforeEnd) && calendarTouched }"
-              >
-                {{ form.date_end ? form.date_end.toLocaleString(undefined, {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false,
-                }) : 'Choose end date' }}
-                <template #start>
-                  <Icon name="ph:calendar" :size="18" />
-                </template>
-              </Button>
-            </template>
-          </Calendar>
-          <span v-if="form.date_end != null && !validation.startBeforeEnd" class="form-error">
-            End date must be after start date
-          </span>
-          <span v-else-if="form.date_end != null && !validation.dateRange" class="form-error">
-            End date must be in the future
-          </span>
-        </Flex>
-      </Grid>
-
-      <!-- Options -->
-      <Checkbox
-        v-model="form.multiple_choice"
-        name="multiple_choice"
-        label="Allow multiple choice"
-      />
-
-      <Flex v-if="canMakePublic" gap="xs" y-center>
-        <Checkbox
-          v-model="form.is_public"
-          name="is_public"
-          label="Show on public votes page"
-        />
-        <Tooltip>
-          <Icon name="ph:info" class="text-color-lighter" />
-          <template #tooltip>
-            <p>Public votes appear in the votes listing for all users.</p>
-          </template>
-        </Tooltip>
-      </Flex>
-
-      <!-- Choices -->
-      <Flex column :gap="0" expand class="mt-s">
-        <label class="vui-label required">
-          Voting choices
-        </label>
-        <p class="vui-hint">
-          (minimum 2)
-        </p>
-
-        <!-- Warning when removing choices in edit mode -->
-        <Flex v-if="isRemovingChoices" gap="xs" y-center class="choices-warning mb-s">
-          <Icon name="ph:warning" class="choices-warning__icon" />
-          <p class="choices-warning__text">
-            Removing choices will delete all existing votes cast on this item.
-          </p>
-        </Flex>
-
-        <Flex gap="xs" y-center expand class="mb-xs">
-          <Input
-            v-model="newChoiceInput"
-            expand
-            name="new-choice"
-            placeholder="Add a choice and press Enter"
-            @keydown="handleChoiceKeydown"
-          />
-          <Button
-            variant="fill"
-            square
-            :disabled="!newChoiceInput.trim()"
-            @click="addChoice"
-          >
-            <Icon name="ph:plus" />
-          </Button>
-        </Flex>
-
-        <Flex v-if="form.choices.length > 0" gap="xs" wrap class="mt-xs">
-          <Badge
-            v-for="(choice, index) in form.choices"
-            :key="index"
-            variant="neutral"
-            size="s"
-            class="choice-badge"
-          >
-            {{ choice }}
-            <button class="choice-remove" type="button" @click="removeChoice(index)">
-              <Icon name="ph:x" />
-            </button>
-          </Badge>
-        </Flex>
-
-        <span v-if="form.choices.length > 0 && !validation.choices" class="form-error mt-xs">
-          At least 2 choices are required
-        </span>
-      </Flex>
-    </Flex>
+    <ReferendumFormFields
+      v-model="form"
+      :validation="validation"
+      :can-make-public="canMakePublic"
+      :original-choices="props.editedItem?.choices"
+    />
 
     <template #footer>
       <Flex gap="xs" x-between expand>
@@ -527,77 +266,3 @@ const isMobile = useBreakpoint('<s')
     :confirm="confirmDelete"
   />
 </template>
-
-<style scoped lang="scss">
-.form-required {
-  color: var(--color-text-red);
-}
-
-.form-error {
-  color: var(--color-text-red);
-  font-size: var(--font-size-xs);
-  margin-top: var(--space-xs);
-  display: block;
-}
-
-.choices-warning {
-  padding: var(--space-s) var(--space-m);
-  background-color: var(--color-bg-lowered);
-  border: 1px solid var(--color-text-red);
-  border-radius: var(--border-radius-s);
-  margin-bottom: var(--space-s);
-
-  &__icon {
-    color: var(--color-text-red);
-    flex-shrink: 0;
-  }
-
-  &__text {
-    font-size: var(--font-size-s);
-    color: var(--color-text);
-    margin: 0;
-  }
-}
-
-.choice-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
-.choice-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--color-text-lighter);
-  line-height: 1;
-
-  &:hover {
-    color: var(--color-text-red);
-  }
-}
-
-.mb-s {
-  margin-bottom: var(--space-s);
-}
-
-.mb-l {
-  margin-bottom: var(--space-l);
-}
-
-.mt-xs {
-  margin-top: var(--space-xs);
-}
-
-.mb-xs {
-  margin-bottom: var(--space-xs);
-}
-
-.error {
-  border-color: var(--color-text-red) !important;
-}
-</style>

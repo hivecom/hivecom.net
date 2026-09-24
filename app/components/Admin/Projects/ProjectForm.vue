@@ -1,14 +1,11 @@
 <script setup lang="ts">
+import type { ProjectFormState } from '@/lib/projects'
 import type { TablesInsert, TablesUpdate } from '@/types/database.overrides'
-import { Button, Flex, Input, Sheet, Textarea, Tooltip } from '@dolanske/vui'
-import { computed, defineAsyncComponent, ref, watch } from 'vue'
-import { useSupabaseClient, useSupabaseUser } from '#imports'
+import { Button, Flex, Sheet, Tooltip } from '@dolanske/vui'
+import { computed, ref, watch } from 'vue'
+import ProjectFormFields from '@/components/Community/ProjectFormFields.vue'
 import ConfirmModal from '@/components/Shared/ConfirmModal.vue'
-import FileUpload from '@/components/Shared/FileUpload.vue'
-import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
-import TagInput from '@/components/Shared/TagInput.vue'
-import { deleteProjectBanner, getProjectBannerUrl, uploadProjectBanner } from '@/lib/storage'
-import { STATIC_BUCKET_ID } from '@/lib/storageAssets'
+import { emptyProjectForm, projectFormFromRow, projectFormPayload, validateProjectForm } from '@/lib/projects'
 
 const props = defineProps<{
   project: QueryProject | null
@@ -19,10 +16,6 @@ const emit = defineEmits<{
   (e: 'save', project: TablesInsert<'projects'> | TablesUpdate<'projects'>): void
   (e: 'delete', projectId: number): void
 }>()
-
-const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
-
-const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
 // Interface for project query result
 interface QueryProject {
@@ -41,134 +34,27 @@ interface QueryProject {
 }
 
 const isOpen = defineModel<boolean>('open', { default: false })
-const supabase = useSupabaseClient()
-const user = useSupabaseUser()
+
+const formFieldsRef = ref<InstanceType<typeof ProjectFormFields> | null>(null)
 
 // Form state
-const projectForm = ref({
-  title: '',
-  description: '',
-  markdown: '',
-  link: '',
-  owner: null as string | null, // UUID of the owner
-  tags: [] as string[],
-  github: '',
-})
-
-const bannerUrl = ref<string | null>(null)
-const bannerUploading = ref(false)
-const bannerDeleting = ref(false)
-const bannerError = ref<string | null>(null)
-const canManageBanner = computed(() => !!props.project)
+const projectForm = ref<ProjectFormState>(emptyProjectForm())
 
 // State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 const saveLoading = ref(false)
 
-// GitHub repository format validation (username/repository)
-const githubRegex = /^\w[\w.-]*\/\w[\w.-]*$/
-
-// Form validation
-const validation = computed(() => ({
-  title: !!projectForm.value.title.trim(),
-  markdown: !!projectForm.value.markdown.trim(),
-  github: !projectForm.value.github.trim() || githubRegex.test(projectForm.value.github.trim()),
-}))
-
+const validation = computed(() => validateProjectForm(projectForm.value))
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
 // Update form data when project prop changes
 watch(
   () => props.project,
   (newProject) => {
-    if (newProject) {
-      projectForm.value = {
-        title: newProject.title || '',
-        description: newProject.description || '',
-        markdown: newProject.markdown || '',
-        link: newProject.link || '',
-        owner: newProject.owner || null,
-        tags: newProject.tags || [],
-        github: newProject.github || '',
-      }
-      void refreshBannerPreview(newProject.id)
-    }
-    else {
-      projectForm.value = {
-        title: '',
-        description: '',
-        markdown: '',
-        link: '',
-        owner: null,
-        tags: [],
-        github: '',
-      }
-      bannerUrl.value = null
-      bannerError.value = null
-    }
+    projectForm.value = newProject ? projectFormFromRow(newProject) : emptyProjectForm()
   },
   { immediate: true },
 )
-
-async function refreshBannerPreview(projectId: number | null | undefined) {
-  if (!projectId) {
-    bannerUrl.value = null
-    return
-  }
-
-  try {
-    bannerError.value = null
-    bannerUrl.value = await getProjectBannerUrl(supabase, projectId)
-  }
-  catch (error) {
-    console.error('Error loading project banner:', error)
-    bannerUrl.value = null
-  }
-}
-
-async function handleBannerUpload(file: File) {
-  if (!props.project) {
-    bannerError.value = 'Save the project before uploading a banner.'
-    return
-  }
-
-  try {
-    bannerUploading.value = true
-    bannerError.value = null
-    await uploadProjectBanner(supabase, props.project.id, file, user.value?.id)
-    await refreshBannerPreview(props.project.id)
-  }
-  catch (error) {
-    console.error('Error uploading project banner:', error)
-    bannerError.value = 'Failed to upload banner. Please try again.'
-  }
-  finally {
-    bannerUploading.value = false
-  }
-}
-
-async function handleBannerDelete() {
-  if (!props.project)
-    return
-
-  try {
-    bannerDeleting.value = true
-    bannerError.value = null
-    await deleteProjectBanner(supabase, props.project.id)
-    bannerUrl.value = null
-  }
-  catch (error) {
-    console.error('Error deleting project banner:', error)
-    bannerError.value = 'Failed to delete banner. Please try again.'
-  }
-  finally {
-    bannerDeleting.value = false
-  }
-}
-
-function handleBannerInvalid(message: string) {
-  bannerError.value = message
-}
 
 // Handle closing the sheet
 function handleClose() {
@@ -183,23 +69,12 @@ async function handleSubmit() {
   // Upload any pending blob-placeholder media before reading the markdown,
   // otherwise blob: URLs get persisted and render as missing media. The editor
   // surfaces its own error toast on failure, so we just abort here.
-  const uploaded = await markdownEditor.value?.flushPendingUploads()
+  const uploaded = await formFieldsRef.value?.flushPendingUploads()
   if (uploaded === false)
     return
 
-  // Prepare the data to save
-  const projectData: TablesInsert<'projects'> | TablesUpdate<'projects'> = {
-    title: projectForm.value.title,
-    description: projectForm.value.description || null,
-    markdown: projectForm.value.markdown,
-    link: projectForm.value.link || null,
-    owner: projectForm.value.owner || null,
-    tags: projectForm.value.tags.length > 0 ? projectForm.value.tags : null,
-    github: projectForm.value.github.trim() || null,
-  }
-
   saveLoading.value = true
-  emit('save', projectData)
+  emit('save', projectFormPayload(projectForm.value))
 }
 
 watch(isOpen, (open) => {
@@ -242,108 +117,14 @@ function confirmDelete() {
       </Flex>
     </template>
 
-    <!-- Project Form Section -->
-    <Flex column gap="l" class="project-form">
-      <!-- Basic Information -->
-      <Flex column gap="m" expand>
-        <h4>Basic Information</h4>
-
-        <Input
-          v-model="projectForm.title"
-          expand
-          name="title"
-          label="Title"
-          required
-          :valid="validation.title"
-          error="Project title is required"
-          placeholder="Enter project title"
-        />
-
-        <Textarea
-          v-model="projectForm.description"
-          expand
-          name="description"
-          label="Description"
-          placeholder="Enter project description (optional)"
-          :rows="3"
-        />
-
-        <Flex expand column gap="s">
-          <label class="input-label">Banner Image</label>
-          <FileUpload
-            expand
-            label="Upload banner"
-            :preview-url="bannerUrl"
-            :loading="bannerUploading"
-            :deleting="bannerDeleting"
-            :error="bannerError"
-            :disabled="!canManageBanner"
-            :show-delete="!!bannerUrl && canManageBanner"
-            :aspect-ratio="16 / 5"
-            @upload="handleBannerUpload"
-            @delete="handleBannerDelete"
-            @invalid="handleBannerInvalid"
-          />
-          <p v-if="!canManageBanner" class="banner-upload__notice">
-            Save the project before uploading a banner.
-          </p>
-        </Flex>
-
-        <Input
-          v-model="projectForm.link"
-          expand
-          name="link"
-          label="Link"
-          placeholder="Enter external link (optional)"
-        />
-
-        <div>
-          <label class="input-label">Owner</label>
-          <ProfileSelect
-            v-model="projectForm.owner"
-            placeholder="Select owner"
-            expand
-          />
-        </div>
-
-        <TagInput
-          v-model="projectForm.tags"
-          label="Tags"
-          placeholder="Enter a tag"
-        />
-
-        <!-- GitHub Repository -->
-        <Input
-          v-model="projectForm.github"
-          expand
-          name="github"
-          label="GitHub Repository"
-          placeholder="username/repository (optional)"
-          :valid="validation.github"
-          error="Invalid format. Use 'username/repository' format"
-        />
-      </Flex>
-
-      <!-- Content Section -->
-      <Flex column gap="m" expand>
-        <h4>Content</h4>
-
-        <RichTextEditor
-          ref="markdownEditor"
-          v-model="projectForm.markdown"
-          label="Content"
-          hint="You can use markdown and add media by drag-and-drop"
-          placeholder="Enter markdown content"
-          min-height="216px"
-          :errors="validation.markdown ? [] : ['Markdown content is required']"
-          :media-context="props.project?.id ? `projects/${props.project.id}/markdown/media` : undefined"
-          :media-bucket-id="STATIC_BUCKET_ID"
-          :show-attachment-button="!!props.project?.id"
-          show-expand-button
-          always-show-expand-button
-        />
-      </Flex>
-    </Flex>
+    <div class="project-form">
+      <ProjectFormFields
+        ref="formFieldsRef"
+        v-model="projectForm"
+        :validation="validation"
+        :project-id="props.project?.id"
+      />
+    </div>
 
     <!-- Form Actions -->
     <template #footer>
@@ -406,28 +187,5 @@ function confirmDelete() {
 
 .flex-1 {
   flex: 1;
-}
-
-.required {
-  color: var(--color-danger);
-}
-
-.input-label {
-  font-size: var(--font-size-m);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
-  margin-bottom: var(--space-xs);
-}
-
-.banner-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.banner-upload__notice {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-subtle);
-  margin-top: var(--space-xs);
 }
 </style>

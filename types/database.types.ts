@@ -715,6 +715,7 @@ export type Database = {
           discord_event_id: string | null
           discord_last_synced_at: string | null
           duration_minutes: number | null
+          excluded_dates: string[]
           games: number[] | null
           google_community_event_id: string | null
           google_community_last_synced_at: string | null
@@ -741,6 +742,7 @@ export type Database = {
           discord_event_id?: string | null
           discord_last_synced_at?: string | null
           duration_minutes?: number | null
+          excluded_dates?: string[]
           games?: number[] | null
           google_community_event_id?: string | null
           google_community_last_synced_at?: string | null
@@ -767,6 +769,7 @@ export type Database = {
           discord_event_id?: string | null
           discord_last_synced_at?: string | null
           duration_minutes?: number | null
+          excluded_dates?: string[]
           games?: number[] | null
           google_community_event_id?: string | null
           google_community_last_synced_at?: string | null
@@ -993,6 +996,7 @@ export type Database = {
         Row: {
           first_seen: string
           id: string
+          key: string | null
           last_seen: string
           name: string
           secret: boolean
@@ -1000,6 +1004,7 @@ export type Database = {
         Insert: {
           first_seen?: string
           id?: string
+          key?: string | null
           last_seen?: string
           name: string
           secret?: boolean
@@ -1007,6 +1012,7 @@ export type Database = {
         Update: {
           first_seen?: string
           id?: string
+          key?: string | null
           last_seen?: string
           name?: string
           secret?: boolean
@@ -2634,6 +2640,7 @@ export type Database = {
           discord_event_id: string
           discord_last_synced_at: string
           duration_minutes: number
+          excluded_dates: string[]
           games: number[]
           google_community_event_id: string
           google_community_last_synced_at: string
@@ -3099,6 +3106,7 @@ export type Database = {
               discord_event_id: string | null
               discord_last_synced_at: string | null
               duration_minutes: number | null
+              excluded_dates: string[]
               games: number[] | null
               google_community_event_id: string | null
               google_community_last_synced_at: string | null
@@ -3139,6 +3147,7 @@ export type Database = {
               discord_event_id: string | null
               discord_last_synced_at: string | null
               duration_minutes: number | null
+              excluded_dates: string[]
               games: number[] | null
               google_community_event_id: string | null
               google_community_last_synced_at: string | null
@@ -3180,6 +3189,7 @@ export type Database = {
               discord_event_id: string | null
               discord_last_synced_at: string | null
               duration_minutes: number | null
+              excluded_dates: string[]
               games: number[] | null
               google_community_event_id: string | null
               google_community_last_synced_at: string | null
@@ -3222,6 +3232,7 @@ export type Database = {
               discord_event_id: string | null
               discord_last_synced_at: string | null
               duration_minutes: number | null
+              excluded_dates: string[]
               games: number[] | null
               google_community_event_id: string | null
               google_community_last_synced_at: string | null
@@ -3264,6 +3275,7 @@ export type Database = {
               discord_event_id: string | null
               discord_last_synced_at: string | null
               duration_minutes: number | null
+              excluded_dates: string[]
               games: number[] | null
               google_community_event_id: string | null
               google_community_last_synced_at: string | null

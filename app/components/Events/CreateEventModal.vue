@@ -39,6 +39,7 @@ const eventForm = ref<FormState>({
   link: '',
   markdown: '',
   recurrence_rule: null,
+  excluded_dates: [],
   games: [],
 })
 
@@ -64,6 +65,15 @@ const validation = computed(() => ({
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
+// The loaded form minus excluded_dates. A save that only removes occurrences
+// doesn't change the series, so it skips the fork prompt and updates in place.
+let loadedSnapshot: string | null = null
+
+function scheduleSnapshot() {
+  const { excluded_dates: _excluded, ...rest } = eventForm.value
+  return JSON.stringify({ ...rest, isOfficial: isOfficial.value })
+}
+
 function populateForm(event: Tables<'events'>) {
   const totalMinutes = event.duration_minutes ?? 0
   const days = Math.floor(totalMinutes / (24 * 60))
@@ -82,10 +92,12 @@ function populateForm(event: Tables<'events'>) {
     link: event.link ?? '',
     markdown: event.markdown ?? '',
     recurrence_rule: event.recurrence_rule ?? null,
+    excluded_dates: event.excluded_dates ?? [],
     games: Array.isArray(event.games) ? (event.games as number[]) : [],
   }
 
   isOfficial.value = event.is_official ?? false
+  loadedSnapshot = scheduleSnapshot()
   saveError.value = null
   deleteError.value = null
 }
@@ -103,9 +115,11 @@ function resetForm() {
     link: '',
     markdown: '',
     recurrence_rule: null,
+    excluded_dates: [],
     games: [],
   }
   isOfficial.value = false
+  loadedSnapshot = null
   saveError.value = null
   deleteError.value = null
   showDeleteConfirm.value = false
@@ -171,6 +185,7 @@ function buildPayload() {
     link: eventForm.value.link.trim() || null,
     markdown: eventForm.value.markdown.trim() || null,
     recurrence_rule: eventForm.value.recurrence_rule || null,
+    excluded_dates: eventForm.value.excluded_dates,
     is_official: isPrivileged.value ? isOfficial.value : undefined,
     games: eventForm.value.games.length > 0 ? eventForm.value.games : null,
     modified_by: userId.value,
@@ -183,7 +198,8 @@ async function handleSubmit() {
     return
 
   // Fork detection: if editing a recurring event that has already had occurrences
-  if (isEditMode.value && props.event && props.event.recurrence_rule) {
+  const onlyExclusionsChanged = scheduleSnapshot() === loadedSnapshot
+  if (isEditMode.value && props.event && props.event.recurrence_rule && !onlyExclusionsChanged) {
     const now = new Date()
     const occurrences = expandRecurringEvent(props.event, new Date(props.event.date), now)
     if (occurrences.length >= 1) {

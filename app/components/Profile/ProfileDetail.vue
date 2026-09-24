@@ -454,6 +454,7 @@ function openFriendsModal() {
             :is-logged-in="isLoggedIn"
             @open-edit-sheet="openEditSheet"
             @open-complaint-modal="openComplaintModal"
+            @moderated="refetchProfile"
           />
         </Flex>
 
