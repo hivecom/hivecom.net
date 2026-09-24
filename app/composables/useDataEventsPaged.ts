@@ -6,12 +6,11 @@ import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { expandRecurringEvent } from '@/lib/utils/rrule'
 
-// Module-level singleton - same namespace as useDataEvents so invalidateEventsCache()
-// (which calls clearCache on this namespace) also busts paged results.
+// Shares the events namespace so invalidateEventsCache() also busts paged results.
 const _pagedEventsCache = useCache(CACHE_NAMESPACES.events)
 
-// Typed helper to call RPCs that have a no-arg overload first in the union,
-// which causes TypeScript to reject the args object. This avoids `any`.
+// RPCs with a no-arg overload first in the union make TypeScript reject the
+// args object. This cast avoids `any`.
 async function rpc<T>(
   client: SupabaseClient<Database>,
   fn: string,
@@ -21,23 +20,9 @@ async function rpc<T>(
 }
 
 /**
- * Server-side paginated events composable for the listing view.
- *
- * Splits events into three buckets using separate queries:
- * - `ongoingEvents`  – events whose window straddles now (start <= now <= end)
- * - `upcomingEvents` – events that haven't started yet (start > now)
- * - `pastEvents`     – events that have fully ended (end < now), paginated server-side
- *
- * Past events are fetched one page at a time via `limit`/`range` so we never
- * pull the full history. A lightweight `count` query runs once (and again after
- * any page change) to keep `pastTotalCount` accurate for the pagination control.
- *
- * Ongoing and upcoming are fetched together in a single query - there will never
- * be enough of them to warrant pagination.
- *
- * Optional `search` and `officialFilter` refs are respected by all three buckets:
- * - Active/upcoming: filtered client-side after fetch
- * - Past: passed as params to the server-side RPCs
+ * Past events are paginated server-side with the filters passed to the RPCs.
+ * Ongoing and upcoming are too few to paginate, so they come from one fetch and
+ * are filtered client-side.
  */
 export function useDataEventsPaged(
   pageSize: Ref<number>,
@@ -263,7 +248,6 @@ export function useDataEventsPaged(
     void fetchPast(1)
   })
 
-  // Re-fetch past when filters change; reset to page 1
   if (search) {
     watchDebounced(search, () => {
       pastPage.value = 1
@@ -308,22 +292,18 @@ export function useDataEventsPaged(
   const error = computed(() => errorActive.value ?? errorPast.value)
 
   return {
-    // Active (computed, filtered)
     ongoingEvents,
     upcomingEvents,
     loadingActive,
 
-    // Past
     pastEvents,
     pastTotalCount,
     pastPage,
     loadingPast,
 
-    // Combined
     loading,
     error,
 
-    // Actions
     setPage,
     refreshActive: fetchActive,
     refreshPast: async () => fetchPast(pastPage.value),

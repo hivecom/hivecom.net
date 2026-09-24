@@ -84,7 +84,6 @@ async function findUserIdByEmail(
 }
 
 Deno.serve(async (req: Request) => {
-  // This is needed if you're planning to invoke your function from a browser. Which we are.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -117,7 +116,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify user has permission to read broadcast state (includes ban + aal2 checks)
+    // Also enforces the ban and aal2 checks
     const authResponse = await authorizeAuthenticatedHasPermissionAal2(
       req,
       ["broadcasts.read"],
@@ -211,10 +210,8 @@ Deno.serve(async (req: Request) => {
       };
     });
 
-    // Profiles flagged by the webhook (a DeliveryDelay never creates an SES
-    // suppression entry) would otherwise be invisible here, so the first page
-    // unions them in. Later pages skip this; the client dedupes by email in
-    // case an SES page repeats one of these addresses.
+    // A DeliveryDelay never creates an SES suppression entry, so the first page
+    // unions in webhook-flagged profiles. The client dedupes by email.
     if (body.nextToken === undefined) {
       const sesEmails = new Set(entries.map((entry) => entry.email));
       const { data: flagged, error: flaggedError } = await supabase.rpc(

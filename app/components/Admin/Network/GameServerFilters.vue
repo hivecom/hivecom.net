@@ -33,7 +33,6 @@ function clearFilters() {
 
 <template>
   <Flex gap="s" x-start wrap expand>
-    <!-- Search input -->
     <Input
       v-model="search"
       placeholder="Search game servers..."
@@ -44,7 +43,6 @@ function clearFilters() {
       </template>
     </Input>
 
-    <!-- Game filter -->
     <GameSelect
       v-model="gameFilter"
       :games="props.gameEntries"
@@ -52,7 +50,6 @@ function clearFilters() {
       :expand="isBelowMedium"
     />
 
-    <!-- Region filter -->
     <ExpandableSelect
       v-model="regionFilter"
       :options="props.regionOptions"
@@ -62,7 +59,6 @@ function clearFilters() {
       show-clear
     />
 
-    <!-- Clear all filters -->
     <Button
       v-if="search || regionFilter.length > 0 || gameFilter.length > 0"
       plain

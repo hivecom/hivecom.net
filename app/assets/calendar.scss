@@ -1,10 +1,5 @@
-// VCalendar's theme mapped onto our tokens: container, header, weekdays, day
-// cells, today, dots, highlights and the per-status event colours.
-//
-// This lives in assets rather than in EventsCalendar.vue because a component's
-// style block only ships while that component is mounted. The dashboard month
-// grid needs the same theme and never mounts the events page calendar, so
-// keeping it there would leave the dashboard on v-calendar's defaults.
+// Global rather than in EventsCalendar.vue: a component's styles only ship while
+// it's mounted, and the dashboard month grid needs this theme without it.
 
 @use './breakpoints.scss' as *;
 
@@ -112,7 +107,6 @@
   }
 }
 
-// Highlight today - target the day that contains today's date
 .vc-day.is-today .vc-day-content {
   background-color: var(--color-bg) !important;
   color: var(--color-accent) !important;
@@ -152,8 +146,6 @@
   }
 }
 
-// Custom event color overrides
-// Past events
 .vc-past {
   .vc-highlight {
     background-color: var(--color-border) !important;
@@ -170,7 +162,6 @@
   border-color: var(--color-border) !important;
 }
 
-// Ongoing events
 .vc-ongoing {
   .vc-highlight {
     background-color: var(--color-bg-accent-lowered) !important;
@@ -199,7 +190,6 @@
   background-color: var(--color-bg) !important;
 }
 
-// Future events
 .vc-future {
   .vc-highlight {
     background-color: var(--color-bg-raised) !important;
@@ -216,7 +206,7 @@
   background-color: var(--color-accent) !important;
 }
 
-// Community (non-official) upcoming events - green
+// Community (non-official) upcoming events
 .vc-community {
   .vc-highlight {
     background-color: var(--color-bg-green-lowered) !important;

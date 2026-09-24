@@ -6,10 +6,8 @@ import ComplaintList from '@/components/Admin/Complaints/ComplaintList.vue'
 
 definePageMeta({ layout: 'admin' })
 
-// Refresh signal coordination between components
 const refreshSignal = ref(0)
 
-// Handle refresh signal updates
 function handleRefreshSignal(value: number) {
   refreshSignal.value = value
 }
@@ -24,10 +22,8 @@ function handleRefreshSignal(value: number) {
       </p>
     </Flex>
 
-    <!-- KPIs Section -->
     <ComplaintKPIs v-model:refresh-signal="refreshSignal" />
 
-    <!-- Complaints List -->
     <ComplaintList
       v-model:refresh-signal="refreshSignal"
       @update:refresh-signal="handleRefreshSignal"

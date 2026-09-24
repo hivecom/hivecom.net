@@ -97,7 +97,6 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
       </Flex>
     </template>
 
-    <!-- Skeleton State -->
     <Flex v-if="skeleton" gap="s" wrap y-center x-center>
       <div
         v-for="i in 6"
@@ -108,7 +107,6 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
       </div>
     </Flex>
 
-    <!-- Unauthenticated State -->
     <div v-else-if="!isLoggedIn" class="friends-empty">
       <Flex column y-center x-center gap="s">
         <Icon name="ph:lock" size="32" class="text-color-light" />
@@ -118,7 +116,6 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
       </Flex>
     </div>
 
-    <!-- Loading State -->
     <Flex v-else-if="loading" x-center>
       <Flex :gap="8">
         <div
@@ -131,7 +128,6 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
       </Flex>
     </Flex>
 
-    <!-- Friends Avatar Display -->
     <Flex v-else-if="friends.length > 0 && isLoggedIn" column gap="m">
       <Alert v-if="pendingUsers.size > 0 && props.isOwnProfile" icon-align="start">
         <p>
@@ -153,7 +149,6 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
       />
     </Flex>
 
-    <!-- Empty State -->
     <div v-else-if="isLoggedIn" class="friends-empty">
       <Flex column y-center x-center gap="s">
         <Icon name="ph:users" size="32" class="text-color-light" />
@@ -166,7 +161,6 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
           </template>
         </p>
 
-        <!-- Show pending requests even if no friends (only for own profile) -->
         <Alert v-if="isOwnProfile && pendingUsers.size > 0">
           <p>
             You have {{ pendingUsers.size }} pending friend request{{ pendingUsers.size > 1 ? 's' : '' }} from
@@ -178,7 +172,6 @@ const { users: pendingUsers } = useBulkDataUser(pendingRequests)
       </Flex>
     </div>
 
-    <!-- Action Buttons for friend-ship management (only for logged-in users viewing others' profiles) -->
     <template v-if="!props.isOwnProfile && props.isLoggedIn" #footer>
       <Flex x-center gap="m">
         <Button

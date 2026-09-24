@@ -34,7 +34,7 @@ const { waitForSessionReady } = useSessionReady()
 const isLoggedIn = computed(() => !!user.value)
 const authReady = ref(false)
 const sessionUser = ref<{ id: string } | null>(null)
-const userId = useUserId() // Use helper to get ID from JWT claims
+const userId = useUserId()
 const { navigateToSignIn } = useAuthRedirect()
 type ProfileRecord = Tables<'profiles'>
 
@@ -45,14 +45,12 @@ const showComplaintModal = ref(false)
 const showFriendsModal = ref(false)
 const profileSubmissionError = ref<string | null>(null)
 
-// Add refresh functionality for avatar updates
 const refreshTrigger = ref(0)
 
 function cloneProfileRecord(record: ProfileRecord): ProfileRecord {
   return { ...record }
 }
 
-// Computed property to check if this is the user's own profile
 const isOwnProfile = computed(() => {
   if (!userId.value || !profile.value)
     return false
@@ -62,7 +60,6 @@ const isOwnProfile = computed(() => {
 
 const profileUserId = computed(() => profile.value?.id ?? null)
 
-// Get current user's data with caching
 const {
   user: currentUserData,
 } = useDataUser(
@@ -70,11 +67,10 @@ const {
   {
     includeRole: true,
     includeAvatar: false,
-    userTtl: 15 * 60 * 1000, // 15 minutes
+    userTtl: 15 * 60 * 1000,
   },
 )
 
-// Get profile user's data with caching (once we have the profile ID)
 const {
   user: _profileUserData,
   refetch: refetchProfileUserData,
@@ -83,15 +79,13 @@ const {
   {
     includeRole: true,
     includeAvatar: true,
-    userTtl: 10 * 60 * 1000, // 10 minutes for viewed profiles
-    avatarTtl: 60 * 60 * 1000, // 1 hour for avatars
+    userTtl: 10 * 60 * 1000,
+    avatarTtl: 60 * 60 * 1000,
   },
 )
 
-// Computed properties to get cached data
 const currentUserRole = computed(() => currentUserData.value?.role || null)
 
-// Computed property to check if the current user is an admin
 const isCurrentUserAdmin = computed(() => {
   return currentUserRole.value === 'admin'
 })
@@ -111,7 +105,6 @@ const {
   ignoreFriendRequest,
 } = useFriendship(userId, profileUserId, isOwnProfile, isLoggedIn)
 
-// Fetch profile data with caching based on props (fallback to current user if none provided)
 const profileQuery = computed(() => {
   if (props.userId) {
     return {
@@ -122,8 +115,7 @@ const profileQuery = computed(() => {
     }
   }
   else if (props.username) {
-    // For case-insensitive username lookup, normalize the cache key by using lowercase
-    // but search with ilike to match any case in the database
+    // Lowercase the cache key but search with ilike so any stored case matches
     const normalizedUsername = props.username.toLowerCase()
     return {
       table: 'profiles' as const,
@@ -134,7 +126,6 @@ const profileQuery = computed(() => {
     }
   }
   else if (user.value?.id) {
-    // Fallback: show current user's profile when no explicit props provided
     return {
       table: 'profiles' as const,
       select: '*',
@@ -155,7 +146,7 @@ const {
   profileQuery,
   {
     enabled: computed(() => !!(props.userId || props.username || user.value?.id)),
-    ttl: 10 * 60 * 1000, // 10 minutes for profile data
+    ttl: 10 * 60 * 1000,
   },
 )
 
@@ -164,21 +155,17 @@ const hydratedProfileData = computed<ProfileRecord | null>(() => profileData.val
 const fetchSettled = ref(false)
 const loading = computed(() => profileLoading.value || !fetchSettled.value)
 
-// Set profile from cached data
 watch(hydratedProfileData, (newData) => {
   if (newData) {
     const hydratedProfile = cloneProfileRecord(newData as ProfileRecord)
     profile.value = hydratedProfile
 
-    // Check friendship status after profile is loaded
     checkFriendshipStatus()
   }
 }, { immediate: true })
 
-// Resolve the auth session once on mount so we know whether the user is truly
-// unauthenticated before running the private-profile guard. Without this, a hard
-// reload causes useSupabaseUser() to be null while the session is still being
-// restored, triggering a false redirect to sign-in.
+// Resolve the session on mount before the private-profile guard trusts it. On a hard
+// reload useSupabaseUser() is null while the session restores, which would redirect to sign-in.
 onMounted(async () => {
   await waitForSessionReady()
   const result = await supabase.auth.getSession().catch(() => null)
@@ -186,13 +173,8 @@ onMounted(async () => {
   authReady.value = true
 })
 
-// Private-profile guard: redirect unauthenticated visitors away from private profiles.
-// This replaces the duplicate guard-only query that used to live in pages/profile/[id].vue.
-// We only act once the profile has loaded (so we know the public flag) and only when
-// the caller passed explicit userId/username props (i.e. we're on a public profile route,
-// not the "my own profile" fallback path).
-// We also wait for authReady so we don't fire before the session has been restored on
-// a hard reload - otherwise a signed-in user would get redirected to sign-in.
+// Private-profile guard: send signed-out visitors to sign-in. Only acts on explicit
+// userId/username routes, after the profile has loaded and auth is ready.
 watch(
   [hydratedProfileData, user, authReady, sessionUser],
   ([loadedProfile, currentUser, isAuthReady]) => {
@@ -203,9 +185,8 @@ watch(
     if (!isExplicitRoute || !loadedProfile)
       return
 
-    // Use either the reactive user (auth listener) or the session resolved on mount
-    // to avoid a race condition where useSupabaseUser is still null after getSession()
-    // resolves on a hard reload, causing a false redirect to sign-in.
+    // useSupabaseUser can still be null after getSession() resolves on a hard reload,
+    // so fall back to the session resolved on mount
     const isAuthenticated = !!(currentUser ?? sessionUser.value)
     if (!loadedProfile.public && !isAuthenticated) {
       navigateToSignIn()
@@ -214,7 +195,6 @@ watch(
   { immediate: true },
 )
 
-// Handle profile errors
 watch(profileError, (error) => {
   if (error) {
     if (error.includes('JSON object requested, multiple (or no) rows returned')) {
@@ -223,7 +203,7 @@ watch(profileError, (error) => {
         : 'User not found'
     }
     else if (!isLoggedIn.value) {
-      // RLS blocks unauthenticated reads on private profiles - surface a friendly hint
+      // RLS blocks signed-out reads on private profiles, so hint at signing in
       errorMessage.value = 'This profile could not be loaded. It may be private - sign in to view it.'
     }
     else {
@@ -235,23 +215,19 @@ watch(profileError, (error) => {
   }
 }, { immediate: true })
 
-// Handle missing identifiers (only error if we can't infer current user)
 watch(() => [props.userId, props.username, user.value?.id], ([userId, username, currentUserId]) => {
   if (!userId && !username && !currentUserId) {
     errorMessage.value = 'No user ID or username provided'
     fetchSettled.value = true
   }
   else {
-    // Clear message when we have enough info to load
     if (errorMessage.value === 'No user ID or username provided')
       errorMessage.value = ''
   }
 }, { immediate: true })
 
-// Set loading state
-// profileLoading starts as false before the first fetch fires. When data comes
-// from cache, loading never goes true at all. loading is computed so it stays
-// true until fetchSettled flips, which happens when data or error is non-null.
+// profileLoading is false before the first fetch and never goes true on a cache
+// hit, so loading waits for fetchSettled (data or error arrived) instead.
 watch(profileData, (data) => {
   if (data !== null)
     fetchSettled.value = true
@@ -261,8 +237,6 @@ watch(profileError, (err) => {
     fetchSettled.value = true
 }, { immediate: true })
 
-// Typed avatar bus - replaces the raw window.addEventListener('avatar-updated') +
-// the redundant window.addEventListener('storage') double-listener pattern
 const { onAvatarUpdated } = useAvatarBus()
 onAvatarUpdated(({ userId }) => {
   if (userId === profile.value?.id) {
@@ -270,7 +244,6 @@ onAvatarUpdated(({ userId }) => {
   }
 })
 
-// Profile editing functions
 function openEditSheet() {
   isEditSheetOpen.value = true
 }
@@ -278,7 +251,6 @@ function openEditSheet() {
 function closeEditSheet() {
   isEditSheetOpen.value = false
 
-  // Clear any submission errors when closing
   profileSubmissionError.value = null
 }
 
@@ -290,7 +262,6 @@ function handleProfilePatch(patch: Partial<Tables<'profiles'>>) {
   if (!profile.value)
     return
 
-  // Patch local state immediately so the UI updates without waiting
   profile.value = cloneProfileRecord({ ...profile.value, ...patch })
 
   // Bust the localStorage cache so reloads don't serve stale has_banner state
@@ -301,7 +272,6 @@ async function handleProfileSave(updatedProfile: Partial<Tables<'profiles'>>) {
   if (!profile.value)
     return
 
-  // Clear any previous errors
   profileSubmissionError.value = null
 
   try {
@@ -315,44 +285,33 @@ async function handleProfileSave(updatedProfile: Partial<Tables<'profiles'>>) {
     if (error)
       throw error
 
-    // Update local profile data
     profile.value = cloneProfileRecord(data)
 
     // Bust the profile cache so reloads serve fresh data (markdown, etc.)
     void refetchProfile()
 
-    // Refresh cached user data in case it was updated
     await refetchProfileUserData()
 
-    // Defer closing the sheet to the next tick so Tiptap can finish any
-    // pending transactions before the editor is unmounted. Closing immediately
-    // after a profile.value update (which triggers the form watcher) causes
-    // ProseMirror to throw a RangeError because it receives a content update
-    // and an unmount in the same flush.
+    // Close on the next tick. Unmounting Tiptap in the same flush as the profile.value
+    // update makes ProseMirror throw a RangeError.
     await nextTick()
     closeEditSheet()
   }
   catch (error: unknown) {
     console.error('Error updating profile:', error)
 
-    // Handle specific database errors
     const errorObj = error as { code?: string, message?: string }
     if (errorObj?.code === '23505' && errorObj?.message?.includes('profiles_username_key')) {
-      // Set error for duplicate username
       profileSubmissionError.value = 'This username is already taken (usernames are case-insensitive). Please choose a different one.'
     }
     else {
-      // Set generic error
       profileSubmissionError.value = 'An error occurred while saving your profile. Please try again.'
     }
   }
 }
 
-// Complaint modal functions
 function openComplaintModal() {
-  // Check if user is authenticated
   if (!user.value) {
-    // Redirect to sign-in page if not authenticated
     navigateToSignIn()
     return
   }
@@ -361,29 +320,23 @@ function openComplaintModal() {
 }
 
 function handleComplaintSubmit(_complaintData: { message: string }) {
-  // Could show a success toast here in the future
-  // For now, just handle the successful submission
+  // Nothing to do on success yet
 }
 
-// Function to refresh avatar URL
 async function refreshAvatar() {
   if (profile.value?.id) {
-    // Force refresh by refetching cached user data
     await refetchProfileUserData()
   }
 }
 
-// Function to trigger avatar refresh (can be called from external components)
 function triggerAvatarRefresh() {
   refreshTrigger.value++
 }
 
-// Watch for refresh trigger changes
 watch(refreshTrigger, () => {
   refreshAvatar()
 })
 
-// Watch for profile changes to update cached data if needed
 watch(() => profile.value?.id, async (newId, oldId) => {
   if (newId && newId !== oldId) {
     await checkFriendshipStatus()
@@ -391,14 +344,12 @@ watch(() => profile.value?.id, async (newId, oldId) => {
   }
 })
 
-// Watch for user authentication changes to recheck friendship status
 watch(() => userId.value, async (newUserId, oldUserId) => {
   if (newUserId !== oldUserId) {
     await checkFriendshipStatus()
   }
 })
 
-// Expose function for parent components to trigger refresh
 defineExpose({
   triggerAvatarRefresh,
   refreshAvatar,
@@ -411,17 +362,14 @@ function openFriendsModal() {
 
 <template>
   <div class="profile-view">
-    <!-- Error State -->
     <template v-if="errorMessage">
       <ErrorAlert standalone :message="errorMessage" />
     </template>
 
-    <!-- No Profile Found -->
     <template v-else-if="!loading && !profile">
       <ErrorAlert message="No profile found." />
     </template>
 
-    <!-- Loading skeleton layout -->
     <template v-else-if="loading">
       <div class="profile-sections">
         <Flex column gap="l" class="profile-header-col">
@@ -438,9 +386,7 @@ function openFriendsModal() {
       </div>
     </template>
 
-    <!-- Profile Content -->
     <template v-else-if="profile">
-      <!-- Ban Status Callout -->
       <ProfileBanStatus v-if="profile.banned" :profile="profile" />
 
       <!-- Profile Sections -->
@@ -458,11 +404,9 @@ function openFriendsModal() {
           />
         </Flex>
 
-        <!-- (Right) -->
         <Flex column gap="m" class="profile-sidebar-col">
           <ProfileTheme v-if="profile.theme_id" :theme-id="profile.theme_id" />
 
-          <!-- Activity section -->
           <ProfileActivity
             v-if="profile.steam_id !== null || profile.teamspeak_identities?.toString() !== ''"
             :profile="profile"
@@ -470,17 +414,13 @@ function openFriendsModal() {
             :is-logged-in="isLoggedIn"
           />
 
-          <!-- Recent games, off the same Steam presence row the activity
-               widget above reads. Rich presence being off is a deliberate
-               opt-out, so the card doesn't exist rather than showing a locked
-               shell. -->
+          <!-- Rich presence off is a deliberate opt-out, so the card is hidden rather than shown locked -->
           <ProfileGames
             v-if="profile.steam_id && profile.rich_presence_enabled"
             :profile="profile"
             :is-logged-in="isLoggedIn"
           />
 
-          <!-- Recent Discussions -->
           <ProfileDiscussions :profile-id="profile.id" :username="profile.username" />
 
           <!-- Friends Section -->
@@ -499,11 +439,10 @@ function openFriendsModal() {
             @remove-friend="removeFriend"
           />
 
-          <!-- Badges -->
           <ProfileBadges :profile-id="profile.id" :is-own-profile="isOwnProfile" />
         </Flex>
 
-        <!-- Profile comments - full width on mobile, below header on desktop -->
+        <!-- Profile comments: full width on mobile, below the header on desktop -->
         <Discussion
           :id="profile.id"
           class="profile-discussion-col"
@@ -512,7 +451,6 @@ function openFriendsModal() {
           :placeholder="`Leave a shout for ${profile.username} here! Or not...`"
         />
 
-        <!-- Admin-only UUID display -->
         <Flex x-center expand>
           <CopyClipboard :text="profile.id" confirm>
             <Tooltip v-if="isCurrentUserAdmin">
@@ -531,7 +469,6 @@ function openFriendsModal() {
       </div>
     </template>
 
-    <!-- Friends Modal -->
     <FriendsModal
       v-model:open="showFriendsModal"
       :friends="friends"
@@ -542,7 +479,6 @@ function openFriendsModal() {
       @close="showFriendsModal = false"
     />
 
-    <!-- Profile Edit Form Sheet -->
     <ProfileForm
       :profile="profile || null"
       :is-open="isEditSheetOpen"
@@ -554,7 +490,6 @@ function openFriendsModal() {
       @profile-patch="handleProfilePatch"
     />
 
-    <!-- Complaints Manager -->
     <ComplaintsManager
       v-model:open="showComplaintModal"
       :target-user-id="profile?.id"

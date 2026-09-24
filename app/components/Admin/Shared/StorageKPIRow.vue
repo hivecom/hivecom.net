@@ -5,10 +5,7 @@ import KPICard from '@/components/Admin/KPICard.vue'
 import KPIContainer from '@/components/Admin/KPIContainer.vue'
 import { formatBytes } from '@/lib/storageAssets'
 
-// Presentational KPI row shared by the Assets and Depot pages. Both surface the
-// same three metrics (count, storage, images) with the same icons and variants;
-// only the copy and the data source differ, so callers pass values and labels
-// and keep their own fetching.
+// Presentational only. Callers pass values and labels and keep their own fetching.
 withDefaults(defineProps<{
   total: number
   storage: number

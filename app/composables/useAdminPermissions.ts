@@ -1,8 +1,6 @@
 /**
- * Composable for accessing user permissions in admin pages.
- * Intended for use within the admin layout context, but returns safe all-false
- * defaults when called outside it (e.g. during a layout transition or from a
- * component that renders briefly before the admin layout's provide() is in scope).
+ * Reads the permissions the admin layout provides. Outside the layout, e.g.
+ * during a layout transition, everything comes back false.
  */
 import type { Ref } from 'vue'
 import type { AppPermission } from '@/types/database.overrides'
@@ -14,9 +12,7 @@ const _noop = (_: AppPermission) => false
 const _noopAny = (_: AppPermission[]) => false
 
 export function useAdminPermissions() {
-  // Inject the permissions provided by the admin layout. Pass defaults so Vue
-  // does not emit injection-not-found warnings when this composable is used
-  // outside the admin layout (e.g. during a layout transition).
+  // The defaults keep Vue from warning about a missing injection outside the layout.
   const userPermissions = inject<Readonly<Ref<string[]>>>('userPermissions', _falsePermissions)
   const userRole = inject<Readonly<Ref<string | null>>>('userRole', _nullRole)
   const hasPermission = inject<(permission: AppPermission) => boolean>('hasPermission', _noop)
@@ -33,7 +29,6 @@ export function useAdminPermissions() {
     hasPermission: resolvedHasPermission,
     hasAnyPermission: resolvedHasAnyPermission,
 
-    // Convenience helpers for common permission checks
     canManageUsers: computed(() => resolvedHasAnyPermission(['users.create', 'users.update', 'users.delete'])),
     canViewUsers: computed(() => resolvedHasPermission('users.read')),
     canModifyUsers: computed(() => resolvedHasPermission('users.update')),
@@ -68,7 +63,6 @@ export function useAdminPermissions() {
     canViewEmail: computed(() => resolvedHasPermission('broadcasts.read')),
     canSendBroadcasts: computed(() => resolvedHasPermission('broadcasts.create')),
 
-    // Check if user is an admin (highest privilege level)
     isAdmin: computed(() => resolvedRole.value === 'admin'),
     isModerator: computed(() => resolvedRole.value === 'moderator'),
   }

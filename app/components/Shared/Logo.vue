@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-// No props needed - compact/full switching is handled via CSS
-// to avoid SSR hydration mismatch from useMediaQuery initial false value
+// No props needed. Compact/full switching is handled in CSS to avoid an SSR
+// hydration mismatch from useMediaQuery's initial false value.
 </script>
 
 <template>

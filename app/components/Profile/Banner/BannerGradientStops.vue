@@ -68,7 +68,6 @@ const emit = defineEmits<{
       Add stop
     </Button>
   </Flex>
-  <!-- Angle (linear + conic only) -->
   <Flex v-if="fillType !== 'radial'" y-center gap="s" expand>
     <span class="banner-editor__field-label">Angle</span>
     <input

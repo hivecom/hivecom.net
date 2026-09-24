@@ -1,9 +1,6 @@
 /*
- * Hivecom service worker.
- *
- * Hand-rolled and dependency-free. Its sole job today is Web Push delivery for
- * platform notifications (non-chat). No offline/precaching is implemented - if
- * that's wanted later, consider migrating to a generated Workbox SW.
+ * Hivecom service worker. Hand-rolled and dependency-free, for Web Push delivery
+ * of platform (non-chat) notifications. No offline/precaching.
  */
 
 globalThis.addEventListener('install', () => {
@@ -56,11 +53,9 @@ globalThis.addEventListener('push', (event) => {
 })
 
 globalThis.addEventListener('pushsubscriptionchange', (event) => {
-  // The browser rotated this device's subscription. Re-subscribe immediately so
-  // pushes keep flowing, then ask any open client to persist the new endpoint
-  // (the page has the auth needed to write to the DB). If no client is open,
-  // the page reconciles on its next open by comparing the live subscription
-  // against the stored row.
+  // The browser rotated this device's subscription. Re-subscribe, then ask an
+  // open client to persist the new endpoint (the page has the DB auth). With no
+  // client open, the page reconciles on its next open.
   event.waitUntil((async () => {
     const oldSubscription = event.oldSubscription
     let newSubscription = event.newSubscription

@@ -9,9 +9,9 @@ main {
   // scrollbar on pages which don't need to be more than 100vh tall
   min-height: 100vh;
 
-  // Make sure that when scrolling to anchor links, we take the top padding into account
+  // Clear the fixed nav when jumping to anchors
   :target {
-    scroll-margin-top: 92px; // Slightly more than the nav height (64px) for better visual spacing
+    scroll-margin-top: 92px; // Nav height (64px) plus breathing room
   }
 
   // Common anchor targets that might not be :target

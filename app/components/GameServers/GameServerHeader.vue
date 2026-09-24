@@ -37,22 +37,16 @@ interface Props {
   stateConfig: unknown // TODO: add type
 }
 
-// Get current user for authentication check
 const user = useSupabaseUser()
 
-// Complaint modal state
 const showComplaintModal = ref(false)
 
-// Handle complaint submission
 function handleComplaintSubmit(_complaintData: { message: string }) {
-  // Could show a success toast here in the future
-  // For now, just handle the successful submission
+  // Nothing to do on success yet
 }
 
 function openComplaintModal() {
-  // Check if user is authenticated
   if (!user.value) {
-    // Redirect to sign-in page if not authenticated
     navigateToSignIn()
     return
   }
@@ -84,7 +78,6 @@ const currentMap = computed<string | null>(() => {
 
 <template>
   <div class="gameserver-header">
-    <!-- Title and actions row -->
     <Flex x-between align="start" gap="l" class="gameserver-header__title-row">
       <div class="gameserver-header__title-section">
         <Flex :gap="isMobile ? 'm' : 'l'" y-start class="gameserver-header__title-container">
@@ -157,9 +150,7 @@ const currentMap = computed<string | null>(() => {
 
     <Flex y-start x-between gap="l" expand>
       <Flex column gap="xs" expand>
-        <!-- Quick info badges and status -->
         <div class="gameserver-header__info-section">
-          <!-- Status Information -->
           <Flex gap="m" wrap y-end>
             <div v-if="game" class="gameserver-header__status-item">
               <span class="gameserver-header__status-label">Game</span>
@@ -255,7 +246,6 @@ const currentMap = computed<string | null>(() => {
     </Flex>
   </div>
 
-  <!-- Complaints Manager -->
   <ComplaintsManager
     v-model:open="showComplaintModal"
     :context-gameserver-id="gameserver.id"

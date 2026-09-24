@@ -19,11 +19,9 @@ const props = defineProps<Props>()
 
 const supabase = useSupabaseClient()
 
-// Auto-refresh interval (1 minute)
 const REFRESH_INTERVAL_MS = 60 * 1000
 
-// Cache presence with a short TTL - presence is transient but we don't need
-// to hit Supabase every time the sheet opens
+// Presence is transient, but there's no need to hit Supabase every time the sheet opens
 const PRESENCE_TTL_MS = 60 * 1000
 
 const {
@@ -45,7 +43,6 @@ const {
 const refreshing = ref(false)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
-// Format the status for display
 const statusLabel = computed(() => {
   if (!presence.value?.status)
     return null
@@ -63,7 +60,6 @@ const statusLabel = computed(() => {
   return statusMap[presence.value.status] || presence.value.status
 })
 
-// Status color for the indicator
 const statusColor = computed(() => {
   if (!presence.value?.status)
     return 'var(--color-text-lighter)'
@@ -81,7 +77,6 @@ const statusColor = computed(() => {
   return colorMap[presence.value.status] || 'var(--color-text-lighter)'
 })
 
-// Check if currently playing a game
 const isPlaying = computed(() => {
   return presence.value?.status
     && presence.value?.status !== 'offline'
@@ -98,7 +93,6 @@ const currentAppUrl = computed(() => {
 
 const gameIconIndex = ref(0)
 
-// Lazy-load fade-in for the game icon (mirrors GameIcon.vue behaviour)
 const gameIconReady = ref(false)
 const gameIconRef = ref<HTMLImageElement | null>(null)
 
@@ -138,7 +132,6 @@ const gameIconSources = computed(() => {
   return sources
 })
 
-// Get game icon URL from Steam CDN (with fallbacks)
 const gameIconUrl = computed(() => {
   return gameIconSources.value[gameIconIndex.value] || null
 })
@@ -169,7 +162,6 @@ watch(gameIconUrl, async () => {
     gameIconReady.value = true
 })
 
-// Request a refresh of Steam data (called automatically)
 async function refreshSteamData() {
   if (refreshing.value || !props.isOwnProfile)
     return
@@ -196,7 +188,6 @@ async function refreshSteamData() {
   }
 }
 
-// Format last online time
 const lastOnlineFormatted = computed(() => {
   if (!presence.value?.last_online_at)
     return null
@@ -220,7 +211,6 @@ const lastOnlineFormatted = computed(() => {
   return displayDate(date)
 })
 
-// Start auto-refresh timer
 function startAutoRefresh() {
   stopAutoRefresh()
   if (props.isOwnProfile) {
@@ -230,7 +220,6 @@ function startAutoRefresh() {
   }
 }
 
-// Stop auto-refresh timer
 function stopAutoRefresh() {
   if (refreshTimer) {
     clearInterval(refreshTimer)
@@ -238,7 +227,6 @@ function stopAutoRefresh() {
   }
 }
 
-// Auto-refresh on mount (only for own profile)
 onMounted(() => {
   if (props.isOwnProfile) {
     void refreshSteamData()
@@ -246,12 +234,11 @@ onMounted(() => {
   }
 })
 
-// Cleanup on unmount
 onUnmounted(() => {
   stopAutoRefresh()
 })
 
-// Watch for profile changes - refetch bypasses cache to get fresh data
+// Refetch bypasses the cache when the profile changes
 watch(() => props.profileId, () => {
   stopAutoRefresh()
   void refetchPresence()
@@ -268,8 +255,8 @@ watch(() => props.profileId, () => {
     <template #trigger>
       <div class="activity-item">
         <Flex expand y-center x-between gap="s">
-          <!-- Loading state - only before the first result, so a background
-               refresh doesn't blank a row we already have data for -->
+          <!-- Only before the first result, so a background refresh doesn't blank
+               a row we already have data for -->
           <template v-if="initialLoading">
             <div>
               <span class="activity-item__label">
@@ -280,7 +267,6 @@ watch(() => props.profileId, () => {
             </div>
           </template>
 
-          <!-- Has presence data -->
           <template v-else-if="presence">
             <div>
               <span class="activity-item__label">
@@ -314,7 +300,6 @@ watch(() => props.profileId, () => {
               </strong>
             </div>
 
-            <!-- Right side: game icon -->
             <a
               v-if="isPlaying && gameIconUrl"
               :href="currentAppUrl ?? undefined"
@@ -338,7 +323,6 @@ watch(() => props.profileId, () => {
             </a>
           </template>
 
-          <!-- No presence data -->
           <template v-else>
             <div>
               <span class="activity-item__label">

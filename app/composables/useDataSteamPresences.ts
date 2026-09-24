@@ -44,8 +44,7 @@ let myRecentAppsProfileId: string | null = null
 let myRecentAppsInflight: Promise<void> | null = null
 
 // Presences come from the same cron as metrics, so they go stale on the same
-// five-minute cadence. Without this the first mount of the session was the only
-// fetch that ever ran and only a full reload showed new players.
+// five-minute cadence and need their own refresh timer.
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
 let activeConsumers = 0
 
@@ -112,10 +111,8 @@ export function useDataSteamPresences() {
         })
       }
 
-      // Recently played here is a count per game, since the home surfaces only
-      // need headcounts. Who played a given game is a separate per-game lookup
-      // in fetchRecentPlayersForSteamId. Each profile contributes one game:
-      // what they play now, else what they played last.
+      // Headcounts only. Who played what is a separate lookup. Each profile
+      // counts once: what they play now, else what they played last.
       const isPlayingNow = row.current_app_id != null
       const recentAppId = row.current_app_id ?? row.last_app_id
       const recentAppName = isPlayingNow ? row.current_app_name : row.last_app_name
@@ -284,11 +281,10 @@ export function useDataSteamPresences() {
 
   return {
     currentPlayersBySteamId,
-    /** Reverse index: profile id -> the game they are in right now. */
     currentGameByProfileId,
-    /** Generic aggregate: app id -> name + how many members play it now or played it last. */
+    /** Counts members who play it now or played it last. */
     recentlyPlayedByAppId,
-    /** Reverse index: steam app id -> members who played it recently, newest first. */
+    /** Newest session first. */
     recentPlayersBySteamId,
     /** The signed-in user's own recent games, newest first. */
     myRecentApps,

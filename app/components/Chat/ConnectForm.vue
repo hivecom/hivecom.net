@@ -15,9 +15,8 @@ const props = defineProps<{
 const { connState, inputNick, inputChannel, connect, connectAsAnon, hadAccount } = useIrcChat()
 const route = useRoute()
 
-// Auto-connect is a regular user setting (DB-backed, reactive, shared with the
-// chat settings switch and the app-wide auto-connect in plugins/chat.client.ts),
-// so toggling it here applies everywhere immediately.
+// Auto-connect is a regular DB-backed user setting, so toggling it here applies
+// everywhere immediately.
 const { settings } = useDataUserSettings()
 
 const userId = useUserId()
@@ -29,10 +28,9 @@ const connecting = computed(() => connState.value === 'connecting')
 const anonMode = ref(false)
 const anonNick = ref('')
 
-// Inline sign-in (signed-out surfaces only). A returning user - one who has
-// connected with an account on this browser before - defaults straight to the
-// sign-in form so an expired session doesn't strand them on the guest form. The
-// "Continue as guest" button below the form clears this and stays cleared.
+// Inline sign-in (signed-out surfaces only). A user who has connected with an
+// account on this browser before defaults to the sign-in form, so an expired
+// session doesn't strand them on the guest form.
 const signInMode = ref(false)
 onMounted(() => {
   if (props.inlineSignIn && hadAccount.value && !user.value)
@@ -54,7 +52,7 @@ function onAnonConnect() {
   connectAsAnon()
 }
 
-// For the signed-out form - channel input stays shared.
+// Signed-out form. The channel input stays shared.
 function onSignedOutConnect() {
   if (inputNick.value.trim())
     connectAsAnon()
@@ -64,14 +62,10 @@ function onSignedOutConnect() {
 <template>
   <Flex column expand>
     <!--
-      Client-only: branch selection here depends entirely on client state
-      (`user` seeded from the client-side profile cache, `inputNick`/`inputChannel`
-      from localStorage). During SSR none of that exists, so the server renders
-      the signed-out branch - whose Connect button is `:disabled` because the
-      inputs are empty server-side. On a warm-cache reload the client's first
-      render is the auth branch instead, and that hydration mismatch strands the
-      server's `disabled` attribute on the rendered button. Skipping SSR for the
-      form removes the divergence entirely.
+      Client-only: the branch depends on client state (`user` from the profile
+      cache, nick/channel from localStorage). SSR renders the signed-out branch
+      with a disabled Connect button, and on a warm-cache reload the hydration
+      mismatch strands that `disabled` attribute on the auth branch's button.
     -->
     <ClientOnly>
       <Transition name="connect-state" mode="out-in">

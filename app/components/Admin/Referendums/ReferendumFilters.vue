@@ -14,20 +14,18 @@ const props = defineProps<{
   visibilityOptions: SelectOption[]
 }>()
 
-// Emit is still needed for the clearFilters action
 const emit = defineEmits<{
   (e: 'clearFilters'): void
 }>()
 
 const isBelowMedium = useBreakpoint('<m')
 
-// Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
 const _statusFilter = defineModel<SelectOption[] | undefined>('statusFilter', { default: () => [] })
 const _typeFilter = defineModel<SelectOption[] | undefined>('typeFilter', { default: () => [] })
 const _visibilityFilter = defineModel<SelectOption[] | undefined>('visibilityFilter', { default: () => [] })
 
-// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+// VUI <Select show-clear> sets the model to undefined on clear. Coerce it back to [].
 const statusFilter = computed({
   get: () => _statusFilter.value ?? [],
   set: (v) => { _statusFilter.value = v ?? [] },
@@ -41,12 +39,10 @@ const visibilityFilter = computed({
   set: (v) => { _visibilityFilter.value = v ?? [] },
 })
 
-// Clear filters handler
 function clearFilters() {
   emit('clearFilters')
 }
 
-// Check if any filters are active
 const hasActiveFilters = computed(() =>
   search.value.length > 0
   || (statusFilter.value && statusFilter.value.length > 0)
@@ -57,7 +53,6 @@ const hasActiveFilters = computed(() =>
 
 <template>
   <Flex gap="s" x-start wrap expand>
-    <!-- Search input -->
     <Input
       v-model="search"
       placeholder="Search referendums..."
@@ -68,7 +63,6 @@ const hasActiveFilters = computed(() =>
       </template>
     </Input>
 
-    <!-- Status filter -->
     <ExpandableSelect
       v-model="statusFilter"
       :options="props.statusOptions"
@@ -78,7 +72,6 @@ const hasActiveFilters = computed(() =>
       :single="false"
     />
 
-    <!-- Type filter -->
     <ExpandableSelect
       v-model="typeFilter"
       :options="props.typeOptions"
@@ -88,7 +81,6 @@ const hasActiveFilters = computed(() =>
       :single="false"
     />
 
-    <!-- Visibility filter -->
     <ExpandableSelect
       v-model="visibilityFilter"
       :options="props.visibilityOptions"
@@ -98,7 +90,6 @@ const hasActiveFilters = computed(() =>
       :single="false"
     />
 
-    <!-- Clear all filters -->
     <Button
       v-if="hasActiveFilters"
       plain

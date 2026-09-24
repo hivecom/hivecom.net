@@ -15,8 +15,7 @@ import { downloadAsset, formatBytes, isAudioAsset, isImageAsset, isTextAsset, is
 const props = defineProps<{
   asset: StorageAsset | null
 
-  // Override the default asset-permission checks so other surfaces (e.g. Depot)
-  // can reuse this drawer with their own capability. Falls back to canDeleteAssets.
+  // Lets a caller swap in its own delete capability. Falls back to canDeleteAssets.
   canDelete?: boolean
   canRename?: boolean
 }>()
@@ -181,7 +180,7 @@ function requestRename() {
         <DetailRow label="Updated">
           <TimestampDate :date="props.asset.updated_at ?? null" />
         </DetailRow>
-        <!-- Lets callers (e.g. Depot) append context rows like the uploader. -->
+        <!-- Callers can append context rows here, like the uploader. -->
         <slot name="overview" />
       </DetailTable>
 

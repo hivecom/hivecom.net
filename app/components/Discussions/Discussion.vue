@@ -52,9 +52,7 @@ interface Props extends Partial<DiscussionSettings> {
    */
   model?: 'comment' | 'forum'
 
-  /**
-   * The type of entity this discussion is attached to
-   */
+  /** Entity type the discussion is attached to */
   type: string
 
   /**
@@ -76,11 +74,7 @@ interface Props extends Partial<DiscussionSettings> {
    */
   placeholder?: string
 
-  /**
-   * Additional scroll offset in px added on top of the default navbar offset.
-   * Use this when a page has an extra sticky element (e.g. a fixed post header)
-   * that would otherwise obscure the scrolled-to comment.
-   */
+  /** Extra px on top of the navbar offset, for pages with another sticky header */
   additionalScrollOffset?: number
 }
 
@@ -100,10 +94,6 @@ const userId = useUserId()
 
 const { isAdminOrMod: canBypassLock } = useEffectiveRole()
 
-// Re-export from Discussion.types.ts for backward compatibility with consumers
-// that import these types from Discussion.vue directly.
-export type { Comment, DiscussionSettings, ProvidedDiscussion, RawComment, ThreadNode } from './Discussion.types'
-
 const supabase = useSupabaseClient()
 
 // ── Reply form state (declared early - referenced in useDataDiscussionReplies callback) ──
@@ -122,11 +112,9 @@ const discussion = ref<Tables<'discussions'>>()
 const route = useRoute()
 const router = useRouter()
 
-// Pre-warm user cache for all reply authors so each DiscussionModelForum
-// instance gets a cache hit instead of firing its own user_roles + profiles
-// queries. Same pattern as forum/index.vue does for post authors.
-// We use a stable ref (not computed) to avoid spurious bulk re-fetches when
-// the array reference changes but the contents don't.
+// Pre-warm the user cache so each DiscussionModelForum gets a cache hit instead
+// of querying user_roles and profiles itself. A stable ref, not a computed, so a
+// new array with the same authors doesn't trigger a bulk re-fetch.
 const replyAuthorIds = ref<string[]>([])
 let _lastAuthorKey = ''
 
@@ -160,8 +148,7 @@ const realtime = useRealtimeDiscussion(
   discussion,
   modelRef,
   props.hash,
-  // Lazily delegate to pushRealtimeReplies once the data composable has
-  // initialised - avoids a circular initialisation dependency.
+  // Delegates lazily to break the circular initialisation
   (newReplies, ascending) => pushRealtimeReplies(newReplies, ascending),
   userId,
 )
@@ -178,11 +165,9 @@ const { isSubscribed, subscriptionLoading, toggleSubscription: handleToggleSubsc
 const { settings } = useDataUserSettings()
 type ViewMode = 'flat' | 'threaded'
 
-// Shared-link state captured once at mount from the URL. A copied paginated link
-// carries ?page (and ?view) so a recipient lands on the same page and view even
-// when their own defaults differ - a page number means different content in flat
-// vs threaded (which paginates top-level entries). Parsers are defensive: an
-// absent/invalid value falls back to the viewer's settings.
+// A copied paginated link carries ?page and ?view, so the recipient lands on the
+// same content even with different defaults. A page number means different
+// content in flat and threaded view. Invalid values fall back to the viewer's settings.
 function parseView(value: string | null | (string | null)[] | undefined): ViewMode | undefined {
   const raw = getRouteQueryStringOrNull(value)
   return raw === 'flat' || raw === 'threaded' ? raw : undefined
@@ -197,21 +182,13 @@ function parsePage(value: string | null | (string | null)[] | undefined): number
 }
 const initialPage = ref<number | undefined>(parsePage(route.query.page))
 
-// A bare ?page link implies paginated intent: honor it for this visit even when
-// the viewer's setting is infinite, so the shared page resolves. Non-reactive so
-// it doesn't flip back when later navigation strips ?page from the URL.
-// BUT a ?comment deep link takes precedence - comment links carry ?page from the
-// copy, and forcing pagination there would switch the viewer's mode instead of
-// just taking them to the comment (which works in either mode). So don't force
-// when a ?comment is present.
+// A ?page link forces pagination for this visit, even for infinite-scroll
+// viewers. Non-reactive so it doesn't flip back once ?page leaves the URL. A
+// ?comment link wins: it works in either mode, so it shouldn't switch the viewer's.
 const hasCommentLink = getRouteQueryStringOrNull(route.query.comment) != null
 const sharedPaginatedLink = initialPage.value != null && !hasCommentLink
 
-// A ?comment deep link is reachable in either view, so it must not switch the
-// recipient's view - the same reasoning as sharedPaginatedLink above. Only honor
-// a link's ?view when it isn't a comment link (e.g. a shared ?page link, where
-// page means different content per view). Otherwise fall back to the viewer's
-// own setting.
+// A ?comment link works in either view, so its ?view is ignored
 const viewMode = ref<ViewMode>(
   (hasCommentLink ? undefined : parseView(route.query.view))
   ?? settings.value.discussion_view_mode
@@ -219,10 +196,8 @@ const viewMode = ref<ViewMode>(
 )
 const discussionPageSize = computed(() => props.model === 'forum' ? PAGE_SIZE_FORUM : PAGE_SIZE_COMMENT)
 
-// Whether to use traditional pagination (page controls + loadPage) over infinite
-// scroll. Comment model is always paginated; the forum model follows the user's
-// setting; a shared ?page link forces it for the visit. Only changes how replies
-// load - the forum keeps its own look and every feature.
+// Page controls instead of infinite scroll. The comment model always paginates,
+// the forum follows the user's setting, and a shared ?page link forces it.
 const usePagination = computed(() =>
   props.model === 'comment'
   || sharedPaginatedLink
@@ -234,19 +209,14 @@ watch(() => settings.value.discussion_view_mode, (val) => {
 
 // ── Comment data ──────────────────────────────────────────────────────────────
 
-// Deep-link target present at mount (?comment=<id>). Passed into the data
-// composable so its initial load jumps straight to the target's page instead
-// of loading page 1 first. Kept as a ref so the composable reads it at
-// load-start; we don't keep it in sync afterwards - later ?comment changes are
-// handled by the navigateToLinkedComment watcher below.
+// Deep-link target at mount, so the initial load jumps straight to its page.
+// Not kept in sync: later ?comment changes go through navigateToLinkedComment.
 const initialCommentId = ref<string | undefined>(
   getRouteQueryStringOrNull(route.query.comment) ?? undefined,
 )
 
-// Optional `?ts=<created_at ms>` anchor that copied comment links carry. In
-// chronological (ascending forum) view a reply's position is stable, so this
-// timestamp lets the initial load fetch the target block directly and skip the
-// page-lookup RPC. Parsed defensively; absent/invalid means "use the RPC path".
+// Copied comment links carry ?ts=<created_at ms>. A reply's position is stable
+// in ascending forum view, so the initial load can skip the page-lookup RPC.
 function parseAnchorTs(value: string | null | (string | null)[] | undefined): number | undefined {
   const raw = getRouteQueryStringOrNull(value)
   if (raw == null)
@@ -306,7 +276,6 @@ const {
     realtime.pendingReplyCount.value = 0
   },
   (deletedId: string) => {
-    // Clear replyingTo if the deleted comment was being quoted
     if (replyingTo.value?.id === deletedId) {
       replyingTo.value = undefined
     }
@@ -314,28 +283,18 @@ const {
 )
 pushRealtimeReplies = _pushRealtimeReplies
 
-// When the user flips the loading mode mid-thread, reset to the first page so the
-// control and the loaded set agree: an infinite-scrolled list spans many pages
-// the pagination control can't represent, and a paginated view has no sentinel
-// for infinite scroll to resume from. loadPage(1) resets the list in both modes.
+// Flipping the loading mode resets to page 1. An infinite list spans pages the
+// control can't represent, and a paginated view has no sentinel to resume from.
 watch(usePagination, () => {
   if (discussion.value)
     void loadPage(1)
 })
 
-// Reflect pagination/view in the URL so a reload or shared link reproduces them.
-// - ?view=threaded whenever threaded (the non-default): any shared link, comment
-//   or page, switches the recipient to threaded so the content is interpreted the
-//   same way. Flat is the default and carries no param.
-// - ?page=N while paginating past page 1 (a page number means different content
-//   per view, so it always travels with ?view). Infinite mode writes no page.
-// router.replace keeps it out of history. Covers every change (control, timeline,
-// deep link, view toggle).
+// Mirror page and view into the URL so a reload or shared link reproduces them.
+// Flat is the default and carries no ?view. ?page only appears past page 1.
 //
-// Changing page from the pagination control also strips the one-shot ?comment
-// (and its ?ts) anchor: once you've paged away the linked comment is stale, and
-// leaving it in the URL would re-scroll to that comment every time you returned
-// to its page. goToPage raises this flag; the sync consumes it on its next run.
+// Paging from the control also drops the one-shot ?comment and ?ts anchor, or
+// returning to that page would re-scroll to the comment. goToPage sets the flag.
 let dropAnchorOnPageSync = false
 watch([currentPage, usePagination, viewMode], () => {
   const paginating = usePagination.value && currentPage.value > 1
@@ -378,18 +337,15 @@ const pinnedComment = computed((): Comment | null => {
   if (pinnedId == null)
     return null
 
-  // Don't show the pinned banner if the reply is already the first item in the
-  // list - it would appear twice, one immediately above the other.
+  // Already first in the list, so the banner would show it twice
   const listIndex = modelledComments.value.findIndex(c => c.id === pinnedId)
   if (listIndex === 0)
     return null
 
-  // Reply is in the loaded pages - use the modelled version (reply ref resolved).
   if (listIndex > 0)
     return modelledComments.value[listIndex]!
 
-  // Not in the loaded pages yet - use the independently fetched raw row.
-  // The reply reference won't be resolved but the pinned banner still displays.
+  // Not loaded yet. The separately fetched row leaves its reply reference unresolved.
   if (fetchedPinnedReply.value != null)
     return { ...fetchedPinnedReply.value, reply: null }
 
@@ -412,20 +368,11 @@ function handleShowThreadRepliesUpdate(val: boolean) {
   settings.value.show_thread_replies = val
 }
 
-// If the URL targets a specific comment, ensure it's visible even if it's
-// off-topic. We watch modelledComments so this fires once data has loaded -
-// the query param is already there on mount but comments may not be yet.
-//
-// We also watch route.query.comment reactively so that notification clicks
-// while already on this page (which only change the query param) still
-// trigger the deep-link navigation.
+// Deep links (?comment) reveal the target even when it's off-topic. Watching the
+// query also catches notification clicks while already on this page.
 const navigatingToComment = ref(false)
 
-// Safety: never leave the reply area dimmed if a deep-link navigation stalls (a
-// wait that never resolves, a missing target, a hung layout-stability check). The
-// normal path clears navigatingToComment when it finishes; this caps how long the
-// dim can persist. The timer is reset on each new navigation and cancelled on a
-// clean clear.
+// Caps the dim so a stalled deep-link navigation never leaves the reply area dimmed
 let navigatingToCommentTimer: ReturnType<typeof setTimeout> | null = null
 watch(navigatingToComment, (val) => {
   if (navigatingToCommentTimer != null) {
@@ -443,14 +390,9 @@ onUnmounted(() => {
     clearTimeout(navigatingToCommentTimer)
 })
 
-// A nested reply doesn't reliably render in the threaded main tree on its own:
-// in paginated view it has no page (only roots are paged), and in infinite view
-// it loads but sits under collapsed ancestors. Resolve its root, navigate to that
-// root (loads its page in paged mode, its window in infinite), then signal the
-// root to reveal its subtree. With reply threads expanded the root opens in place;
-// with them collapsed it opens in the sheet (inline expansion only loads one
-// level). Either way the target self-scrolls once rendered (its id is still in
-// ?comment). No-ops when the target is itself a root.
+// A nested reply doesn't reliably render in the threaded tree: paginated view
+// only pages roots, and infinite view loads it under collapsed ancestors. Go to
+// its root and open the root's subtree. The target self-scrolls once rendered.
 async function revealThreadedChild(childId: string) {
   const { data: rootId, error } = await supabase.rpc('get_thread_root', { p_reply_id: childId })
   if (error != null || rootId == null || rootId === childId)
@@ -462,13 +404,11 @@ async function revealThreadedChild(childId: string) {
 }
 
 async function navigateToLinkedComment(commentId: string) {
-  // If the target element is already in the DOM, the scroll will be instant -
-  // no need to dim the page.
+  // Already in the DOM means an instant scroll, so skip the dim
   const alreadyInDom = document.querySelector(`#comment-${commentId}`) != null
   if (!alreadyInDom)
     navigatingToComment.value = true
 
-  // If discussion isn't loaded yet, wait for it first.
   if (discussion.value == null) {
     await new Promise<void>((resolve) => {
       const unwatch = watch(discussion, (disc) => {
@@ -481,20 +421,14 @@ async function navigateToLinkedComment(commentId: string) {
     })
   }
 
-  // When this is the deep-link target present at mount, the data composable's
-  // initial load OWNS the navigation - it jumps straight to the target's page
-  // as the initial content (no page-1 load, no dead time). We must NOT also run
-  // navigateToComment here: that would race the composable's own navigation
-  // (duplicate cursor RPC + page fetch, _listGeneration collisions). Instead we
-  // just wait for that load to settle, then fall through to the scroll handling.
+  // The data composable's initial load owns navigation to the mount-time target.
+  // Calling navigateToComment here too would race it (duplicate cursor RPC and
+  // page fetch, _listGeneration collisions), so only wait for it to settle.
   const isInitialTarget = commentId === initialCommentId.value
 
   if (isInitialTarget) {
-    // Wait until the composable's initial load has placed the target into the
-    // list (it navigates straight to the target's page) OR has fully settled.
-    // We watch the comment set rather than only the loading flag because the
-    // synchronous cache fast-path can leave loading=false while the composable's
-    // own navigateToComment is still awaiting the target page.
+    // Watch the comment set, not just loading: the sync cache fast path can leave
+    // loading false while the composable is still awaiting the target page.
     const present = () => modelledComments.value.some(c => c.id === commentId)
     if (!present() && loading.value) {
       await new Promise<void>((resolve) => {
@@ -508,12 +442,8 @@ async function navigateToLinkedComment(commentId: string) {
       })
     }
 
-    // Nested reply in threaded view. With auto-expand on in infinite mode the
-    // reply already renders inline (its thread is expanded from the loaded window)
-    // and self-scrolls, so jumping to its root would only disrupt it. Reveal via
-    // the root only when the reply won't be inline: paginated (it has no page) or
-    // auto-expand off (its thread is collapsed). revealThreadedChild no-ops when
-    // the target is itself a root.
+    // Infinite mode with auto-expand already renders a nested reply inline.
+    // Only reveal via the root when paginated or auto-expand is off.
     if (viewMode.value === 'threaded') {
       const tc = modelledComments.value.find(c => c.id === commentId)
       const inlineExpanded = !usePagination.value && showThreadReplies.value
@@ -522,11 +452,8 @@ async function navigateToLinkedComment(commentId: string) {
     }
   }
   else {
-    // Other target (e.g. a notification click that changes ?comment while
-    // already on the page). Wait for any in-flight initial load to finish first:
-    // otherwise navigateToComment races loadFirstPage, whose applyPage(reset: true)
-    // would overwrite the target and leave it absent from the DOM, so the scroll
-    // never fires. Then explicitly navigate to the new target.
+    // A later target, like a notification click. Wait out the initial load, or
+    // loadFirstPage's applyPage(reset: true) overwrites the target and the scroll never fires.
     if (loading.value) {
       await new Promise<void>((resolve) => {
         const unwatch = watch(loading, (isLoading) => {
@@ -540,10 +467,7 @@ async function navigateToLinkedComment(commentId: string) {
     }
     const found = await navigateToComment(commentId, { soft: true, anchorTs: parseAnchorTs(route.query.ts) })
 
-    // Nested reply in threaded view. Skip the root-jump when it already renders
-    // inline (infinite + auto-expand); only reveal when it won't be inline -
-    // paginated (no page for it) or auto-expand off (thread collapsed). A root
-    // falls through to the normal scroll; a genuinely missing target bails.
+    // Same nested-reply rule as above. A missing root-level target bails.
     const tc = modelledComments.value.find(c => c.id === commentId)
     const inlineExpanded = !usePagination.value && showThreadReplies.value
     const nestedThreaded = viewMode.value === 'threaded' && !inlineExpanded && (tc == null || tc.reply_to_id != null)
@@ -568,7 +492,6 @@ async function navigateToLinkedComment(commentId: string) {
 watch(
   () => getRouteQueryStringOrNull(route.query.comment),
   async (commentId, prevCommentId) => {
-    // Only act on genuine changes (skip same-value updates and clears).
     if (!commentId || commentId === prevCommentId)
       return
 
@@ -591,9 +514,8 @@ async function handleGoToPinnedReply() {
   scrollToId(`#comment-${pinned.id}`, 'center', true, props.additionalScrollOffset)
 }
 
-// Keep in sync if the global setting changes (e.g. user visits settings page
-// in another tab) but do not overwrite a manual per-session choice made after
-// the component has mounted.
+// Follow the global setting, which can change from another tab, unless the user
+// switched manually this session
 watch(
   () => settings.value.show_offtopic_replies,
   (val) => {
@@ -613,15 +535,8 @@ function handleShowOfftopicUpdate(val: boolean) {
   showOfftopic.value = val
 }
 
-/**
- * Set of comment IDs after which a run of hidden offtopic replies begins.
- * Used to insert the inline offtopic banner at the right position in the list.
- * Only populated when showOfftopic is false and there are offtopic replies loaded.
- */
-/**
- * Maps boundary comment IDs to the count of offtopic replies in that run.
- * A "boundary" is the last visible (non-offtopic) comment before a hidden offtopic run begins.
- */
+// Last visible comment before each hidden off-topic run, mapped to the run's
+// length. Places the inline off-topic banners.
 const offtopicBannerAfterIds = computed((): Map<string, number> => {
   if (showOfftopic.value || offtopicCount.value === 0)
     return new Map()
@@ -632,9 +547,7 @@ const offtopicBannerAfterIds = computed((): Map<string, number> => {
     const curr = list[i]!
     const next = list[i + 1]!
 
-    // Find the start of an offtopic run after a visible comment
     if (!curr.is_offtopic && next.is_offtopic) {
-      // Count how many consecutive offtopic replies follow
       let runCount = 0
       for (let j = i + 1; j < list.length && list[j]!.is_offtopic; j++) {
         runCount++
@@ -645,7 +558,6 @@ const offtopicBannerAfterIds = computed((): Map<string, number> => {
   return map
 })
 
-/** True when the first loaded comment is already offtopic (banner goes before everything) */
 const offtopicBannerAtStart = computed((): boolean => {
   if (showOfftopic.value || offtopicCount.value === 0)
     return false
@@ -654,7 +566,6 @@ const offtopicBannerAtStart = computed((): boolean => {
   return first != null && first.is_offtopic
 })
 
-/** Count of offtopic replies in the leading run (when the list starts with offtopic replies) */
 const offtopicBannerAtStartCount = computed((): number => {
   if (!offtopicBannerAtStart.value)
     return 0
@@ -670,12 +581,10 @@ const offtopicBannerAtStartCount = computed((): number => {
   return count
 })
 
-// Whether the current user is the discussion author (OP)
 const isDiscussionAuthor = computed(() =>
   !!userId.value && !!discussion.value && discussion.value.created_by === userId.value,
 )
 
-// Can mark replies as off-topic
 const canMarkOfftopic = computed(() => isDiscussionAuthor.value || canBypassLock.value)
 
 // ── Provide context ───────────────────────────────────────────────────────────
@@ -691,15 +600,13 @@ provide(DISCUSSION_KEYS.toggleOfftopic, toggleOfftopic)
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-/** Height of the sticky navbar in px - used to offset scroll position tracking. */
+/** Sticky navbar height in px */
 const NAVBAR_OFFSET = 148
 const navigateToDateLoading = ref(false)
 const navigating = ref(false)
 
-// True while any navigation that should dim/freeze the reply area is in flight:
-// pagination/timeline (navigating) or a deep-link to a specific comment
-// (navigatingToComment). Drives the dim overlay and suspends scroll-fraction
-// updates so the timeline cursor doesn't jump mid-navigation.
+// Dims the reply area and pauses scroll-fraction updates so the timeline cursor
+// doesn't jump mid-navigation
 const isNavigating = computed(() => navigating.value || navigatingToComment.value)
 const replyAreaEl = ref<HTMLElement | null>(null)
 const bottomSentinelEl = ref<HTMLElement | null>(null)
@@ -709,20 +616,16 @@ const activeSentinel = computed(() =>
 )
 const currentScrollFraction = ref<number | null>(null)
 
-// True when the newest loaded reply is on screen and nothing newer remains to
-// load. Drives the "Jump to latest" button independently of the timeline
-// fraction (which tracks the topmost-visible comment and can read < 1 even when
-// the last reply is fully visible - e.g. a tall final reply, or the
-// composer/footer below it keeps us off the document's pixel-bottom).
+// Separate from the timeline fraction, which follows the topmost visible comment
+// and can read below 1 with the last reply fully visible (a tall final reply, or
+// the composer below it).
 const atLatest = ref(false)
 
-// True once the top of the reply area has scrolled under the navbar, i.e. the
-// reader is actually in the replies. Until then the main post is still on
-// screen and the fixed "Jump to latest" pill would just sit on top of it.
+// Until the reply area passes under the navbar the main post is on screen, and
+// the fixed "Jump to latest" pill would sit on top of it.
 const inReplies = ref(false)
 
-// Infinite scroll: auto-load the next page when the sentinel enters the viewport.
-// Only active for forum model - comment model uses traditional pagination instead.
+// Infinite scroll. The comment model always paginates.
 if (props.model !== 'comment') {
   useIntersectionObserver(activeSentinel, ([entry]) => {
     if (entry?.isIntersecting && hasMore.value && !loadingMore.value) {
@@ -730,10 +633,8 @@ if (props.model !== 'comment') {
     }
   }, { rootMargin: '0px 0px 300px 0px' })
 
-  // After a content rebuild (e.g. timeline navigation), the sentinel may already
-  // be in the viewport but the intersection observer won't re-fire because the
-  // element's intersection state didn't change. Manually check when hasMore
-  // becomes true so we don't strand the user at a dead-end page.
+  // After a rebuild the sentinel can already be in view, and the observer won't
+  // re-fire because its intersection state didn't change.
   watch(hasMore, async (val) => {
     if (!val || loadingMore.value)
       return
@@ -749,9 +650,7 @@ if (props.model !== 'comment') {
     }
   })
 
-  // Also check sentinel visibility whenever modelledComments changes - if the
-  // loaded set is short enough that the sentinel is still in viewport after a
-  // page loads, the intersection observer won't re-fire for the next page.
+  // Same for a loaded set short enough to leave the sentinel in view
   watch(modelledComments, async () => {
     if (!hasMore.value || loadingMore.value)
       return
@@ -767,20 +666,13 @@ if (props.model !== 'comment') {
     }
   })
 
-  // Recompute scroll state after the loaded set or hasMore changes, so the
-  // "Jump to latest" button hides when the final page loads while the newest
-  // reply is already on screen (no scroll event fires to trigger the update).
+  // No scroll event fires when the final page loads with the newest reply on screen
   watch([hasMore, modelledComments], async () => {
     await nextTick()
     updateScrollFraction()
   })
 }
 
-/**
- * Show the timeline scrubber when:
- * - forum model (ascending, replies grow at the bottom)
- * - discussion has more than 1 reply
- */
 const timelineSpanMs = computed(() => {
   const d = discussion.value
   if (d == null)
@@ -802,12 +694,9 @@ const showTimeline = computed(() => {
   return d.reply_count > 1
 })
 
-// Tracks whether the pagination control is on screen. The "Jump to latest" bubble
-// hides while it is: with the page controls right there, the bubble is redundant.
+// The "Jump to latest" bubble is redundant while the page controls are on screen
 const paginationInView = ref(false)
 
-// "Jump to present" bubble: shown once the reader has scrolled meaningfully away
-// from the newest reply.
 const showJumpToPresent = computed(() => {
   if (!showTimeline.value)
     return false
@@ -823,7 +712,6 @@ const showJumpToPresent = computed(() => {
 const timelineStart = computed(() => discussion.value?.created_at ?? '')
 const timelineEnd = computed(() => discussion.value?.last_activity_at ?? '')
 
-// Pick bucket granularity based on the discussion span.
 const timelineBucketInterval = computed((): string => {
   const ms = timelineSpanMs.value
   if (ms >= 30 * 24 * 60 * 60 * 1000)
@@ -846,21 +734,13 @@ const timelineBuckets = ref<TimelineBucket[]>([])
 const timelineOfftopicBuckets = ref<TimelineBucket[]>([])
 
 /**
- * The unloaded gap's time range as ISO strings.
+ * The unloaded time range as ISO strings, for the timeline's dashed region.
  *
- * There are two kinds of unloaded regions:
- *
- * 1. Explicit gap - two loaded blocks with unloaded replies between them
- *    (created by navigateToComment). The gap starts just after the boundary
- *    comment and extends to timelineEnd, because everything beyond the early
- *    block is still unloaded until the gap is fully closed.
- *
- * 2. Trailing unloaded zone - no explicit gap, but hasMore is true, meaning
- *    the loaded page(s) cover only the oldest replies. The unloaded region
- *    starts just after the last loaded comment and extends to timelineEnd.
- *
- * In both cases the dashed region runs to the discussion's end timestamp so
- * the user can see at a glance how much of the timeline is still unloaded.
+ * 1. Explicit gap between two loaded blocks (from navigateToComment): runs
+ *    from the boundary comment to the first tail reply, or to timelineEnd when
+ *    no tail is loaded.
+ * 2. Trailing zone when hasMore is true: runs from the last loaded comment to
+ *    timelineEnd.
  */
 const timelineGapRange = computed((): { start: string, end: string } | null => {
   const end = timelineEnd.value
@@ -875,29 +755,22 @@ const timelineGapRange = computed((): { start: string, end: string } | null => {
     if (afterIdx !== -1) {
       const afterComment = list[afterIdx]
       if (afterComment != null) {
-        // Always cap the dashed zone at the first tail-block reply - the tail
-        // is already loaded, so painting dashes over it is wrong regardless of
-        // whether hasMore is still true. When hasMore IS true, Case 2 below
-        // will independently show a trailing dashed zone after the tail block.
+        // Stop at the first tail-block reply, since the tail is loaded. Case 2
+        // adds its own trailing zone after the tail when hasMore.
         const firstTailComment = list[afterIdx + 1]
         if (firstTailComment != null)
           return { start: afterComment.created_at, end: firstTailComment.created_at }
 
-        // No tail item found (edge case) - fall back to discussion end.
         return { start: afterComment.created_at, end }
       }
     }
   }
 
-  // Case 2: simple trailing unloaded zone (page 1 loaded, more pages exist).
-  // Suppress if the last loaded reply IS the final reply of the discussion -
-  // i.e. its created_at matches last_activity_at (timelineEnd). In that case
-  // there is nothing after it to show as unloaded, regardless of hasMore.
+  // Case 2: trailing unloaded zone. Suppressed when the last loaded reply is
+  // within 1s of last_activity_at, since nothing follows it.
   if (hasMore.value && list.length > 0) {
     const lastComment = list.at(-1)
     if (lastComment != null) {
-      // Suppress the dashed region if the last loaded reply is within 1 second
-      // of the discussion's last_activity_at - close enough to consider it "the end".
       const lastMs = new Date(lastComment.created_at).getTime()
       const endMs2 = new Date(end).getTime()
       if (Math.abs(lastMs - endMs2) > 1000)
@@ -937,7 +810,6 @@ async function fetchTimelineBuckets() {
   }
 }
 
-// Fetch activity buckets once the timeline becomes visible.
 watch(showTimeline, async (visible) => {
   if (!visible)
     return
@@ -945,22 +817,19 @@ watch(showTimeline, async (visible) => {
   await fetchTimelineBuckets()
 }, { immediate: true })
 
-// Re-fetch when view mode changes - threaded uses root-only buckets, flat uses all replies.
+// Threaded view uses root-only buckets
 watch(viewMode, async () => {
   currentScrollFraction.value = null
   await fetchTimelineBuckets()
 })
 
-/** True when the newest loaded reply's bottom edge is within the viewport. */
 function lastReplyInView(): boolean {
   const root = replyAreaEl.value
   if (root == null)
     return false
 
-  // Walk backwards to the last *rendered* comment. The inactive view (flat vs
-  // threaded) stays mounted via v-show, so the literal last element may be a
-  // hidden duplicate with a zero rect (bottom 0) that would falsely read as
-  // "in view". Skip those and check the last comment that actually has height.
+  // The inactive view stays mounted via v-show, so the last element can be a
+  // hidden zero-rect duplicate that reads as in view. Use the last one with height.
   const items = root.querySelectorAll<HTMLElement>('[id^="comment-"]')
   for (let i = items.length - 1; i >= 0; i--) {
     const rect = items[i]!.getBoundingClientRect()
@@ -970,16 +839,13 @@ function lastReplyInView(): boolean {
   return true
 }
 
-// Detect whether the (paginated) page control is within the viewport so the
-// "Jump to latest" bubble can step aside while it's visible.
 function updatePaginationInView() {
   if (!import.meta.client || replyAreaEl.value == null) {
     paginationInView.value = false
     return
   }
 
-  // The inactive view (flat vs threaded) stays mounted via v-show with zero
-  // height, so skip 0-height rows and test the one that's actually laid out.
+  // The inactive view stays mounted via v-show with zero height
   const rows = replyAreaEl.value.querySelectorAll<HTMLElement>('.discussion__pagination')
   let inView = false
   for (const row of rows) {
@@ -1002,13 +868,9 @@ function updateScrollFraction() {
 
   const replyAreaRect = replyAreaEl.value.getBoundingClientRect()
 
-  // Only count as "in the replies" once their top edge has passed under the
-  // navbar. Above that the main post is still on screen and the fixed pill
-  // would overlap it.
   inReplies.value = replyAreaRect.top <= NAVBAR_OFFSET
 
-  // Hide "Jump to latest" once the newest reply is visible and nothing newer is
-  // left to load. Skipped mid-navigation, when page height is in flux.
+  // Skipped mid-navigation, when page height is in flux
   atLatest.value = !isNavigating.value && !hasMore.value && lastReplyInView()
 
   const startMs = new Date(discussion.value.created_at).getTime()
@@ -1016,15 +878,9 @@ function updateScrollFraction() {
   if (endMs === startMs)
     return
 
-  // If we are scrolled to (or past) the very bottom of the page, always pin the
-  // indicator to 1 so it sits at the bottom of the track even when the last reply
-  // is small and the normal topmost-element logic would leave it short.
-  // Skip this during active navigation: the page height is in flux while new
-  // pages load, so a temporarily short scrollHeight can cause a false atBottom
-  // signal that pegs the indicator to 1 for the rest of the navigation.
-  // Skip in paginated mode too: there the document bottom is only the end of the
-  // current page, not the thread, so pinning to 1 would wrongly peg the marker to
-  // the bottom. The timestamp-based logic below positions it within the thread.
+  // Pin to 1 at the page bottom, where a small last reply would leave the
+  // topmost-element logic short. Not mid-navigation, where a briefly short
+  // scrollHeight fakes it. Not when paginated, where the page end isn't the thread end.
   const atBottom = !isNavigating.value && !usePagination.value
     && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4
   if (atBottom) {
@@ -1032,12 +888,10 @@ function updateScrollFraction() {
     return
   }
 
-  // Reply area top is still below the navbar - we're above the loaded replies.
+  // Above the loaded replies
   if (replyAreaRect.top > NAVBAR_OFFSET) {
-    // On page 1 (or infinite) the top of the loaded set is the start of the
-    // thread, so pin to 0. In paginated mode past page 1 the top of the page is
-    // mid-thread - map the first loaded comment's timestamp instead so the cursor
-    // reflects the page's position rather than snapping to the start of the track.
+    // Past page 1 the top of the page is mid-thread, so map the first loaded
+    // comment's timestamp instead of pinning to 0
     if (usePagination.value && currentPage.value > 1) {
       const firstComment = comments.value[0]
       currentScrollFraction.value = firstComment != null
@@ -1050,7 +904,6 @@ function updateScrollFraction() {
     return
   }
 
-  // Find the topmost comment element that is at least partially below the navbar.
   const items = replyAreaEl.value.querySelectorAll<HTMLElement>('[id^="comment-"]')
   let topmostEl: HTMLElement | null = null
   let topmostId: string | null = null
@@ -1063,11 +916,9 @@ function updateScrollFraction() {
   }
 
   if (topmostId == null || topmostEl == null) {
-    // Tail zone: all loaded comments scrolled above the navbar.
+    // Tail zone: every loaded comment is above the navbar
     if (usePagination.value) {
-      // Paginated: this is the end of the current page, not the thread. Map the
-      // last loaded comment's timestamp into the timeline so the marker reflects
-      // that page's position rather than jumping to the bottom of the track.
+      // The page end isn't the thread end, so map the last comment's timestamp
       const lastComment = comments.value.at(-1)
       currentScrollFraction.value = lastComment != null
         ? Math.max(0, Math.min(1, (new Date(lastComment.created_at).getTime() - startMs) / (endMs - startMs)))
@@ -1075,8 +926,8 @@ function updateScrollFraction() {
       return
     }
 
-    // Infinite: the tail of the loaded set is the tail of the thread - use a
-    // scroll-based fraction that reaches 1 at the very bottom.
+    // Infinite: the loaded tail is the thread's tail, so use a scroll fraction
+    // that reaches 1 at the bottom
     const totalScrollable = replyAreaRect.height - (window.innerHeight - NAVBAR_OFFSET)
     if (totalScrollable <= 0) {
       currentScrollFraction.value = 1
@@ -1096,13 +947,12 @@ function updateScrollFraction() {
   const buckets = timelineBuckets.value
   const bucketIntervalMs = timelineBucketIntervalMs.value
 
-  // No bucket data yet - fall back to raw timestamp fraction.
+  // No bucket data yet, so use the raw timestamp fraction
   if (buckets.length === 0 || bucketIntervalMs === 0) {
     currentScrollFraction.value = Math.max(0, Math.min(1, (commentMs - startMs) / (endMs - startMs)))
     return
   }
 
-  // Find the bucket this comment falls into.
   let bucketIdx = -1
   for (let i = 0; i < buckets.length; i++) {
     const bMs = new Date(buckets[i]!.bucketStart).getTime()
@@ -1112,7 +962,7 @@ function updateScrollFraction() {
     }
   }
 
-  // Comment doesn't match any bucket - fall back to raw timestamp fraction.
+  // No matching bucket, same fallback
   if (bucketIdx === -1) {
     currentScrollFraction.value = Math.max(0, Math.min(1, (commentMs - startMs) / (endMs - startMs)))
     return
@@ -1124,12 +974,10 @@ function updateScrollFraction() {
     ? new Date(buckets[bucketIdx + 1]!.bucketStart).getTime()
     : endMs
 
-  // Map bucket boundaries to timeline fractions - the marker is clamped to this range.
+  // The marker stays clamped to this bucket's range
   const bucketStartFraction = (bucketStartMs - startMs) / (endMs - startMs)
   const nextBucketFraction = (nextBucketStartMs - startMs) / (endMs - startMs)
 
-  // Find the topmost comment's index among loaded comments within this bucket.
-  // Combined with the bucket's total reply count, this gives us the scale.
   const bucketComments = comments.value.filter((c) => {
     const ms = new Date(c.created_at).getTime()
     return ms >= bucketStartMs && ms < bucketStartMs + bucketIntervalMs
@@ -1137,15 +985,12 @@ function updateScrollFraction() {
   const commentIndexInBucket = Math.max(0, bucketComments.findIndex(c => c.id === topmostId))
   const bucketCount = Math.max(1, bucket.replyCount)
 
-  // Sub-step: how far we've scrolled past the top of the current comment element.
-  // This lets the marker move smoothly within a single comment's screen space.
+  // Moves the marker smoothly within a single comment's screen space
   const topmostRect = topmostEl.getBoundingClientRect()
   const scrolledPast = Math.max(0, NAVBAR_OFFSET - topmostRect.top)
   const scrollWithinComment = Math.min(1, scrolledPast / Math.max(1, topmostEl.offsetHeight))
 
-  // (commentIndex + scrollWithinComment) / bucketCount = fractional position within bucket.
-  // Restricted to [bucketStartFraction, nextBucketFraction] - can't leave the bucket
-  // until the next comment (in a different bucket) becomes topmost.
+  // Can't leave the bucket until a comment from the next one becomes topmost
   const fractionWithinBucket = Math.min(1, (commentIndexInBucket + scrollWithinComment) / bucketCount)
   currentScrollFraction.value = Math.max(0, Math.min(1, bucketStartFraction + fractionWithinBucket * (nextBucketFraction - bucketStartFraction)))
 }
@@ -1162,11 +1007,9 @@ onUnmounted(() => {
   window.removeEventListener('scroll', updateScrollFraction)
 })
 
-// The reply area grows after first paint as async content settles (avatars,
-// markdown images, lazy media). Each height change can flip whether the last
-// reply is in view or whether we're at the document bottom, so recompute the
-// scroll state - otherwise a thread opened at the top can measure as "at latest"
-// before it has grown and never show the Jump-to-latest button.
+// The reply area keeps growing after first paint (avatars, images, lazy media).
+// Without this a thread opened at the top can measure as at-latest too early and
+// never show "Jump to latest".
 useResizeObserver(replyAreaEl, () => updateScrollFraction())
 
 async function handleTimelineNavigate(date: Date) {
@@ -1178,65 +1021,48 @@ async function handleTimelineNavigate(date: Date) {
   try {
     const replyId = await navigateToDate(date, { findFirst: true })
     if (replyId != null) {
-      // If the target reply is offtopic and hidden, reveal it so the element
-      // actually exists in the DOM before we try to scroll to it.
+      // A hidden off-topic target has to be revealed before it can be scrolled to
       const target = modelledComments.value.find(c => c.id === replyId)
       if (target?.is_offtopic && !showOfftopic.value) {
         showOfftopic.value = true
         hasManuallySwitched.value = true
       }
 
-      // Two-phase scroll:
-      // 1. Wait for the DOM to flush and the page rebuild to fully settle
-      //    (scrollHeight stable). This prevents scrollToIdWhenStable from
-      //    catching the element mid-rebuild at absoluteTop ~0 and locking
-      //    the scroll to the top of the page.
-      // 2. Once the layout is stable, hand off to scrollToIdWhenStable which
-      //    re-anchors on every rAF to handle any remaining content shifts
-      //    (lazy images, markdown renders) that occur after the initial settle.
+      // Let the rebuild settle first, or scrollToIdWhenStable can catch the
+      // element mid-rebuild near the top and lock the scroll there
       await nextTick()
       await waitForLayoutStability(5000)
       await scrollToIdWhenStable(`#comment-${replyId}`, 'start', 3000, 150, props.additionalScrollOffset)
     }
   }
   finally {
-    // Clear loading *after* the scroll call so the dim stays up until the
-    // target is actually in view - not while waitForImages is still running.
+    // Cleared after the scroll so the dim stays up until the target is in view
     navigateToDateLoading.value = false
     setTimeout(() => {
       navigating.value = false
 
-      // Recompute now that navigation settled: the scroll events fired mid-jump
-      // all saw navigating=true (so atLatest stayed false), and a jump-to-end
-      // that lands on the newest reply produces no further scroll to retrigger it.
+      // Mid-jump scroll events all saw navigating=true, and a jump that lands on
+      // the newest reply fires no further scroll
       updateScrollFraction()
     }, 350)
   }
 }
 
-// Whether the top pagination control (in the toolbar row) should show. Same gate
-// as the bottom controls; also drives the toolbar's mobile second-line layout.
+// Same gate as the bottom controls. Also drives the toolbar's mobile second line.
 const showTopPagination = computed(() => usePagination.value && (hasMore.value || currentPage.value > 1))
 
-// Page changes from the pagination control. Toggling `navigating` dims the reply
-// area (and suspends scroll-fraction updates) while the new page loads, giving
-// the same "loading" feedback the timeline navigation does. The short trailing
-// delay keeps the dim visible long enough to register even for instant cached
-// pages, and the final recompute repositions the timeline cursor for the new page.
+// The trailing delay keeps the dim visible even for instant cached pages
 async function goToPage(page: number) {
   if (page === currentPage.value || navigating.value)
     return
 
   navigating.value = true
 
-  // Paging from the control drops the stale ?comment anchor (the URL-sync watcher
-  // does the actual strip) so returning to its page later doesn't re-scroll to it.
   dropAnchorOnPageSync = true
   try {
     await loadPage(page)
 
-    // Fresh page, fresh content: jump to the top of the listing rather than
-    // leaving the viewport parked where the (bottom) control was clicked.
+    // Otherwise the viewport stays parked at the bottom control
     await nextTick()
     scrollToId(`#discussion-top-${props.id}`, 'start', false, props.additionalScrollOffset)
   }
@@ -1250,9 +1076,7 @@ async function goToPage(page: number) {
 }
 
 async function handleTimelineNavigateToStart() {
-  // In paginated mode the top of the current page is not the start of the thread,
-  // so load page 1 first (which also updates the page control). loadPage resets
-  // the list, then we scroll to the top.
+  // Past page 1 the page top isn't the thread start
   if (usePagination.value && currentPage.value > 1) {
     await loadPage(1)
     await nextTick()
@@ -1264,11 +1088,8 @@ async function handleTimelineNavigateToEnd() {
   if (!timelineEnd.value || navigateToDateLoading.value)
     return
 
-  // Fast path: when nothing newer remains to load (hasMore is false), the tail
-  // block is already in memory, so the newest reply is just the last loaded one.
-  // Anchor-scroll straight to it instead of round-tripping through
-  // navigateToDate, which rebuilds the page and stalls behind a network load
-  // even though the content is already present.
+  // Fast path: with nothing newer to load, the newest reply is already in memory.
+  // navigateToDate would rebuild the page and stall on a network load.
   if (!hasMore.value) {
     const lastReplyId = modelledComments.value.at(-1)?.id
     if (lastReplyId != null) {
@@ -1279,10 +1100,8 @@ async function handleTimelineNavigateToEnd() {
         await nextTick()
       }
 
-      // No navigating flag here: the content is already present, so this is a
-      // pure scroll - dimming the reply area would make it look like a reload.
-      // The scroll events keep atLatest (and the button) in sync; recompute once
-      // more after settling in case the jump fired no final scroll event.
+      // No navigating flag: this is a pure scroll, and dimming would look like a
+      // reload. Recompute after in case the jump fired no final scroll event.
       await scrollToIdWhenStable(`#comment-${lastReplyId}`, 'start', 6000, 500, props.additionalScrollOffset)
       updateScrollFraction()
       return
@@ -1292,8 +1111,7 @@ async function handleTimelineNavigateToEnd() {
   navigateToDateLoading.value = true
   navigating.value = true
   try {
-    // Floor semantics: navigate to the last reply at or before the discussion end.
-    // This loads the final page if it isn't already in memory.
+    // Floor semantics: the last reply at or before the discussion end
     const replyId = await navigateToDate(new Date(timelineEnd.value), { findFirst: false })
     if (replyId != null) {
       const target = modelledComments.value.find(c => c.id === replyId)
@@ -1304,13 +1122,10 @@ async function handleTimelineNavigateToEnd() {
       await nextTick()
       await waitForLayoutStability(5000)
 
-      // The date-navigated reply can be one short of the true last reply (the
-      // floor lands on the last reply at/before the bucket end). Scroll to the
-      // actual last loaded reply so "go to end" always lands on the newest one.
+      // The floor can land one short of the true last reply
       const lastReplyId = modelledComments.value.at(-1)?.id ?? replyId
 
-      // Use a long stability window so the re-anchoring loop keeps correcting
-      // as lazy-loaded images above the target load in and shift the layout.
+      // Long stability window so re-anchoring keeps up with lazy images above
       await scrollToIdWhenStable(`#comment-${lastReplyId}`, 'start', 6000, 500, props.additionalScrollOffset)
     }
   }
@@ -1319,9 +1134,8 @@ async function handleTimelineNavigateToEnd() {
     setTimeout(() => {
       navigating.value = false
 
-      // Recompute now that navigation settled: the scroll events fired mid-jump
-      // all saw navigating=true (so atLatest stayed false), and a jump-to-end
-      // that lands on the newest reply produces no further scroll to retrigger it.
+      // Mid-jump scroll events all saw navigating=true, and a jump that lands on
+      // the newest reply fires no further scroll
       updateScrollFraction()
     }, 350)
   }
@@ -1421,12 +1235,8 @@ provide(DISCUSSION_KEYS.setReplyToComment, (comment: Comment) => replyingTo.valu
 
 const textareaRef = useTemplateRef<{ focus: () => void, rootEl: HTMLElement | null }>('textarea')
 
-// Height of the floating reply composer, used to lift the "jump to latest" pill
-// above it. Only tracked while the floating editor setting is on; otherwise the
-// composer sits in normal flow and never overlaps the fixed pill, so offset 0.
-// Measure the border box so the composer's own padding counts too, including the
-// --audio-dock-height reservation it adds while the audio mini-player is docked.
-// That keeps the pill above both the composer and the player.
+// Lifts the "Jump to latest" pill above the floating composer. The border box
+// includes the composer's --audio-dock-height padding while the mini-player is docked.
 const { height: composerHeight } = useElementSize(
   () => (settings.value.editor_floating ? textareaRef.value?.rootEl ?? null : null),
   { width: 0, height: 0 },
@@ -1512,7 +1322,6 @@ async function submitReply() {
       else {
         reset()
 
-        // Increment the reply count for the parent before clearing replyingTo.
         const parentId = replyingTo.value?.id
         if (parentId != null) {
           replyCountMap.value.set(parentId, (replyCountMap.value.get(parentId) ?? 0) + 1)
@@ -1525,23 +1334,19 @@ async function submitReply() {
         else
           comments.value.push(res.data as RawComment)
 
-        // Invalidate the cached discussion row - the DB trigger has incremented
-        // reply_count server-side so the cached value is now stale.
+        // A DB trigger bumped reply_count, so the cached discussion row is stale
         if (discussion.value) {
           useDiscussionCache().invalidate(discussion.value.id, discussion.value.slug)
 
-          // Invalidate the replies page cache so a reload fetches fresh data
-          // instead of serving the stale pages that predate this new reply.
+          // The replies page cache too, or a reload serves pages from before this reply
           useDiscussionRepliesCache().invalidate(discussion.value.id)
         }
 
-        // The realtime INSERT event for our own post may arrive before or after
-        // the optimistic push. Reset pendingReplyCount so our own reply never
-        // shows up as a "new reply" indicator.
+        // Our own realtime INSERT can land before or after the optimistic push,
+        // and must not count as a new reply
         realtime.pendingReplyCount.value = 0
 
-        // Notify parent so the forum unread state can be updated, preventing
-        // a spurious activity indicator when the user was the last poster.
+        // Keeps the poster's own reply from showing as unread forum activity
         emit('replySubmitted', (discussion.value.reply_count ?? 0) + 1, discussion.value.id)
       }
 
@@ -1611,7 +1416,6 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
 
     <!-- Listing view -->
     <template v-else>
-      <!-- Comment model: input at top, then comments (newest first) -->
       <template v-if="props.model === 'comment'">
         <DiscussionReplyInput
           v-if="props.hideInput !== true"
@@ -1634,10 +1438,9 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
         <div class="mb-m" />
       </template>
 
-      <!-- Scroll anchor: the pagination control jumps here ("the top") on a page change. -->
+      <!-- The pagination control scrolls here on a page change -->
       <div :id="`discussion-top-${props.id}`" class="discussion__top-anchor" />
 
-      <!-- Toolbar: view mode selector + off-topic toggle -->
       <DiscussionToolbar
         :view-mode="viewMode"
         :has-comments="modelledComments.length > 0"
@@ -1657,8 +1460,7 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
         @open-timeline="timelineRef?.openJumpModal()"
         @go-to-end="handleTimelineNavigateToEnd"
       >
-        <!-- Top pagination - shares the toolbar row with the view-mode switcher.
-             One control here covers both views (flat/threaded paginate the same). -->
+        <!-- One control covers both views, since they paginate the same -->
         <template #center>
           <Pagination
             v-if="showTopPagination"
@@ -1668,7 +1470,6 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
         </template>
       </DiscussionToolbar>
 
-      <!-- Pending banner for comment model: sits between toolbar and comments -->
       <DiscussionPendingBanner
         v-if="props.model === 'comment' && realtime.pendingReplyCount.value > 0"
         model="comment"
@@ -1677,7 +1478,7 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
         @load="realtime.loadPendingReplies()"
       />
 
-      <!-- Reply area: position:relative so the timeline's absolute top aligns with the first card -->
+      <!-- position: relative so the timeline's absolute top aligns with the first card -->
       <div
         ref="replyAreaEl"
         class="discussion__reply-area"
@@ -1694,11 +1495,9 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
           id-prefix="pinned-comment"
         />
 
-        <!-- Flat view: all comments chronologically with inline reply previews -->
-        <!-- v-show (not v-if) keeps items mounted across mode switches so MarkdownRenderer -->
-        <!-- never re-suspends and the skeleton/fade-in flash doesn't appear. -->
+        <!-- v-show keeps items mounted across mode switches, so MarkdownRenderer never
+             re-suspends and flashes the skeleton -->
         <div v-show="viewMode === 'flat' && modelledComments.length > 0">
-          <!-- Offtopic banner at the very start when all leading replies are offtopic -->
           <DiscussionOfftopicBanner
             v-if="offtopicBannerAtStart"
             :count="offtopicBannerAtStartCount"
@@ -1713,13 +1512,11 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
               :show-offtopic="showOfftopic"
               :stagger-index="Math.min(index, 10)"
             />
-            <!-- Offtopic banner: appears after the last visible comment before a hidden offtopic run -->
             <DiscussionOfftopicBanner
               v-if="offtopicBannerAfterIds.has(comment.id)"
               :count="offtopicBannerAfterIds.get(comment.id)!"
               @show="handleShowOfftopicUpdate(true)"
             />
-            <!-- Gap banner: appears after the last item of the early block -->
             <DiscussionGapBanner
               v-if="gap != null && gap.count > 0 && comment.id === gap.afterId"
               :count="gap.count"
@@ -1730,10 +1527,8 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
             />
           </template>
 
-          <!-- Infinite scroll sentinel (flat mode) - infinite loading only -->
           <div v-if="!usePagination" ref="bottomSentinelEl" />
 
-          <!-- Load more (flat mode) - infinite loading only, explicit fallback / status strip -->
           <DiscussionLoadMore
             v-if="!usePagination && hasMore"
             :loading="loadingMore"
@@ -1741,7 +1536,6 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
             @load="loadMore()"
           />
 
-          <!-- Traditional pagination (flat mode) - paginated loading -->
           <Flex x-center expand y-center class="mb-l discussion__pagination">
             <Pagination
               v-if="usePagination && (hasMore || currentPage > 1)"
@@ -1751,7 +1545,6 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
           </Flex>
         </div>
 
-        <!-- Threaded view: only roots rendered, children nest recursively -->
         <div v-show="viewMode === 'threaded' && threadRoots.length > 0">
           <DiscussionOfftopicBanner
             v-if="offtopicBannerAtStart"
@@ -1768,13 +1561,11 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
               :depth="0"
               :stagger-index="Math.min(index, 10)"
             />
-            <!-- Offtopic banner: appears after the last visible root before a hidden offtopic run -->
             <DiscussionOfftopicBanner
               v-if="offtopicBannerAfterIds.has(node.comment.id)"
               :count="offtopicBannerAfterIds.get(node.comment.id)!"
               @show="handleShowOfftopicUpdate(true)"
             />
-            <!-- Gap banner (threaded mode - roots only pagination) -->
             <DiscussionGapBanner
               v-if="gap != null && gap.count > 0 && node.comment.id === gap.afterId"
               :count="gap.count"
@@ -1785,17 +1576,14 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
             />
           </template>
 
-          <!-- Infinite scroll sentinel (threaded mode) - infinite loading only -->
           <div v-if="!usePagination" ref="bottomSentinelThreadedEl" />
 
-          <!-- Load more (threaded mode) - infinite loading only, explicit fallback -->
           <DiscussionLoadMore
             v-if="!usePagination && hasMore"
             :loading="loadingMore"
             @load="loadMore()"
           />
 
-          <!-- Traditional pagination (threaded mode) - paginated loading -->
           <Flex x-center expand y-center class="mb-l discussion__pagination">
             <Pagination
               v-if="usePagination && (hasMore || currentPage > 1)"
@@ -1805,7 +1593,6 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
           </Flex>
         </div>
 
-        <!-- Pending replies banner - forum model: sits below comments (newest appended at bottom) -->
         <DiscussionPendingBanner
           v-if="realtime.pendingReplyCount.value > 0"
           model="forum"
@@ -1814,7 +1601,6 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
           @load="realtime.loadPendingReplies()"
         />
 
-        <!-- Forum model: input at bottom -->
         <template v-if="props.model !== 'comment'">
           <DiscussionReplyInput
             v-if="props.hideInput !== true"
@@ -1835,7 +1621,6 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
           />
         </template>
 
-        <!-- Timeline scrubber: sits just outside the right edge of the reply area -->
         <DiscussionTimeline
           v-if="showTimeline"
           ref="timelineRef"
@@ -1897,7 +1682,6 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
   }
 
   &__offtopic-switch {
-    // Compact the switch so it fits neatly in the bar
     :deep(.vui-switch__track) {
       transform: scale(0.85);
     }
@@ -1918,15 +1702,11 @@ defineExpose({ navigatingToComment, openTimeline, goToEnd, showTimeline })
       bottom: 0;
       z-index: var(--z-sticky);
       padding-top: var(--space-s);
-      // The persistent audio mini-player floats over the bottom of the viewport,
-      // right where this sticky input sits. While it's docked it publishes its
-      // height as --audio-dock-height; reserve that so the player stops covering
-      // the input. The solid part of the background below fills the gap so the
-      // player sits over it cleanly. 0 when nothing's playing.
+      // The docked audio mini-player publishes its height as --audio-dock-height.
+      // Reserving it keeps the player off this sticky input. 0 when nothing's playing.
       padding-bottom: var(--audio-dock-height, 0px);
       background: linear-gradient(to bottom, transparent, var(--color-bg) var(--space-s));
 
-      // Keep the replying-to alert visually consistent when floating
       &:deep(.vui-alert) {
         background-color: var(--color-bg-medium);
       }

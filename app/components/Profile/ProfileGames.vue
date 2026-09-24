@@ -11,10 +11,8 @@ import { useCachedFetch } from '@/composables/useCache'
 import { useDataGames } from '@/composables/useDataGames'
 import { fromNow } from '@/lib/utils/date'
 
-// What this member has been playing, read off the same presence row the Steam
-// activity widget above uses. Only games we track get a slot: everything here
-// clicks through to our own details modal, so a Steam app with no row of ours
-// would be a dead end.
+// Only games we track get a slot. Everything here clicks through to our own details
+// modal, so a Steam app with no row of ours would be a dead end.
 
 interface Props {
   profile: Tables<'profiles'>
@@ -30,9 +28,8 @@ interface RecentGame {
 
 const PRESENCE_TTL_MS = 3 * 60 * 1000
 
-// Mirrors RECENT_APPS_MAX in worker-sync-steam, which is what caps the stored
-// list. Only the skeleton uses it, so it's the shape the row settles into
-// rather than a limit this card enforces.
+// Mirrors RECENT_APPS_MAX in worker-sync-steam, which caps the stored list.
+// Only the skeleton uses it, this card doesn't enforce it.
 const SKELETON_ICONS = 8
 
 // RLS keeps presences_steam behind an authenticated role, so a signed-out
@@ -115,8 +112,6 @@ const emptyStateText = computed(() =>
       </Flex>
     </template>
 
-    <!-- Signed out: the presence table isn't readable, so say that rather than
-         showing an empty list. -->
     <Flex v-if="!canRead" column y-center x-center gap="s" class="profile-games__locked">
       <Icon name="ph:lock" size="32" class="text-color-light" />
       <p class="text-color-light text-s text-center">
@@ -140,10 +135,8 @@ const emptyStateText = computed(() =>
         />
       </GameDetailsModalTrigger>
 
-      <!-- The whole list as icons, lead game included, so the row reads as the
-           complete set rather than as leftovers. Names are a hover away and the
-           timestamps are one click away, which keeps the card the height of one
-           cover instead of growing with the history. -->
+      <!-- The whole list as icons, lead game included. Names are a hover away and
+           timestamps a click away, so the card doesn't grow with the history. -->
       <Flex wrap gap="xs" class="profile-games__icons">
         <GameDetailsModalTrigger
           v-for="entry in recentGames"
@@ -207,10 +200,8 @@ const emptyStateText = computed(() =>
     }
   }
 
-  // Two levels, so the row recedes until it's being looked at. The card coming
-  // under the cursor brings the icons up to full strength, and the one icon
-  // under the cursor gets its colour back. Opacity sits on the button rather
-  // than the image so GameIcon's own fade-in is left alone.
+  // Hovering the card brings the icons to full strength and the hovered icon gets its
+  // colour back. Opacity sits on the button so GameIcon's own fade-in is left alone.
   &__icon {
     display: flex;
     padding: 0;

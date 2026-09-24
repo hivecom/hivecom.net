@@ -53,10 +53,8 @@ const resolvedOfficialFilter = computed<boolean | null>(() => {
 const supabase = useSupabaseClient<Database>()
 
 // ─── Windowed data fetch ──────────────────────────────────────────────────────
-// Events are cached a month at a time rather than a window at a time. Stepping
-// one month forward keeps the months already in hand and only fetches the one
-// that came into view, and the columns paint from cache before the request for
-// the missing month even goes out.
+// Events are cached per month. Paging keeps the months already in hand, fetches
+// only the new one, and paints the columns from cache before that request goes out.
 
 const windowedEvents = ref<Tables<'events'>[]>([])
 const fetching = ref(false)
@@ -114,7 +112,7 @@ function applyWindow(start: dayjs.Dayjs, columns: number): void {
     }
   }
 
-  // Recurring events are a single row - expand them into the occurrences that
+  // Recurring events are a single row. Expand them into the occurrences that
   // actually fall inside the window.
   const { from, to } = windowRange(start, columns)
   const rows = merged.flatMap(event =>
@@ -165,8 +163,8 @@ async function fetchWindow(start: dayjs.Dayjs, columns: number) {
     if (recurringResult.error)
       throw recurringResult.error
 
-    // Bucket by month so each one caches on its own, including the months that
-    // came back empty - otherwise a quiet month re-queries on every visit.
+    // Bucket by month so each one caches on its own, empty months included.
+    // Otherwise a quiet month re-queries on every visit.
     const byMonth = new Map<string, Tables<'events'>[]>()
     for (const month of missing)
       byMonth.set(monthKey(month), [])
@@ -196,10 +194,8 @@ async function fetchWindow(start: dayjs.Dayjs, columns: number) {
 
 const calendarRef = useTemplateRef<{ move: (page: { year: number, month: number }) => void }>('calendar')
 
-// Initialize with current date and ensure it updates properly
 const date = ref(dayjs().startOf('day'))
 
-// Theme detection
 const isDark = computed(() => theme.value === 'dark')
 
 const hideRecurring = ref(false)
@@ -214,7 +210,6 @@ const filteredEvents = computed(() => {
   return events
 })
 
-// Convert events to calendar attributes
 const calendarAttributes = computed(() => {
   const now = dayjs()
 
@@ -233,8 +228,7 @@ const calendarAttributes = computed(() => {
     })()
     const isPast = eventEnd ? eventEnd.isBefore(now) : eventStart.isBefore(now)
 
-    // Determine color based on event status
-    // Official upcoming events use 'future' (accent), community events use 'community' (green)
+    // Official upcoming events use 'future' (accent), community events 'community' (green)
     const isOfficial = event.is_official
     let color = 'green'
 
@@ -248,7 +242,6 @@ const calendarAttributes = computed(() => {
       color = 'past'
     }
 
-    // Create dates object - use range if event has duration, single date otherwise
     const dates = eventEnd
       ? { start: eventStart.toDate(), end: eventEnd.toDate() }
       : eventStart.toDate()
@@ -279,7 +272,6 @@ const calendarAttributes = computed(() => {
   })
 })
 
-// Handle day click events
 // The hour a new event lands on when someone picks a day off the grid. Evening
 // is when most of ours run, and the form is right there to change it.
 const DEFAULT_EVENT_HOUR = 20
@@ -384,7 +376,6 @@ const upcomingEvents = computed(() => {
   }, initial)
 })
 
-// Page title depending on position relative to now
 const pageTitle = computed(() => {
   const totalColumns = calendarColumns.value * calendarRowCount.value
 
@@ -398,7 +389,6 @@ const pageTitle = computed(() => {
   // Month offset from now to the start of the visible window (0 = current month)
   const startOffset = startMonth.value.diff(now, 'month')
 
-  // Month offset from now to the end of the visible window
   const endOffset = endMonth.diff(now, 'month')
 
   // Entirely in the past, more than a year ago
@@ -417,15 +407,15 @@ const pageTitle = computed(() => {
     return `In ${startMonth.value.format('YYYY')} - ${endMonth.format('YYYY')}`
   }
 
-  // Window contains the current month - describe how far it reaches
+  // Window contains the current month, so describe how far it reaches
   if (startOffset <= 0 && endOffset >= 0)
     return `The next ${endOffset + 1} months`
 
-  // Window is entirely in the past - 1-indexed months ago
+  // Window is entirely in the past, 1-indexed months ago
   if (endOffset < 0)
     return `${Math.abs(endOffset)}-${Math.abs(startOffset)} months ago`
 
-  // Window is entirely in the future - 1-indexed from next month
+  // Window is entirely in the future, 1-indexed from next month
   return `The next ${startOffset + 1}-${endOffset + 1} months`
 })
 </script>
@@ -469,10 +459,8 @@ const pageTitle = computed(() => {
 
     <ClientOnly v-else>
       <div class="events-calendar__layout" :class="{ 'events-calendar__layout--fetching': fetching && windowedEvents.length === 0 }">
-        <!-- There are no slots to put content to the footer of a VC calendar column. So we teleport them there instead.
-             VCalendar replaces its pane DOM on every move, which would leave a mounted Teleport rendering into a
-             detached element. Keying on the pane epoch (and window) remounts the teleports once the transition is
-             done so they re-resolve their targets in the fresh panes. -->
+        <!-- VCalendar has no column footer slot, so these teleport in. It replaces the pane DOM on every
+             move, so the key includes paneEpoch to remount the teleports into the fresh panes. -->
         <template v-for="(upcoming, index) in upcomingEvents" :key="`${paneEpoch}-${startMonth.format('YYYY-MM')}-${calendarColumns}-${index}`">
           <Teleport v-if="upcoming.length > 0" :to="`.vc-pane.column-${index + 1}`" defer>
             <EventCalendarColumnList :data="upcoming" />
@@ -517,7 +505,7 @@ const pageTitle = computed(() => {
 </template>
 
 <style lang="scss">
-// The .vc-* theme moved to assets so the dashboard month grid can share it.
+// The .vc-* theme lives in assets so the dashboard month grid can share it
 @use '@/assets/calendar.scss';
 
 .events-calendar {
@@ -587,7 +575,6 @@ const pageTitle = computed(() => {
   }
 }
 
-// Mobile optimizations
 @media (max-width: $breakpoint-s) {
   .events-calendar {
     min-height: 300px;

@@ -2,9 +2,8 @@
 import type { ChatMessage } from '@/composables/useIrcChat'
 import { useIrcChat } from '@/composables/useIrcChat'
 
-// Marker shown next to a message the server never confirmed, with the two ways
-// out: put it back on the wire, or drop it. Nothing here happens on its own - a
-// message that failed to send waits for the user to decide.
+// Marker for a message the server never confirmed, offering resend or discard.
+// Nothing happens on its own: a failed message waits for the user to decide.
 const props = defineProps<{ message: ChatMessage }>()
 
 const { canResend, resendMessage, discardMessage } = useIrcChat()

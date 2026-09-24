@@ -20,9 +20,9 @@ const props = withDefaults(defineProps<{
 const anchorRef = ref<HTMLElement | null>(null)
 const visible = ref(false)
 
-// Only activate the useDataUser fetch after first hover - this prevents
-// N individual profile queries racing against the useBulkDataUser batch load.
-// Once hovered, the bulk cache is warm and useDataUser will hit it instantly.
+// Only activate the useDataUser fetch after the first hover. That keeps N profile
+// queries from racing the useBulkDataUser batch load, and by then the bulk cache
+// is warm so useDataUser hits it instantly.
 const everHovered = ref(false)
 
 watch(() => props.userId, (newId) => {
@@ -32,8 +32,8 @@ watch(() => props.userId, (newId) => {
   }
 })
 
-// Supply the ID lazily - resolves to null until the first hover event, at
-// which point useBulkDataUser will have already populated the shared cache.
+// Supply the ID lazily. It resolves to null until the first hover, when
+// useBulkDataUser will already have populated the shared cache.
 const lazyUserId = computed(() => everHovered.value ? (props.userId ?? null) : null)
 
 const { user, loading } = useDataUser(lazyUserId, {

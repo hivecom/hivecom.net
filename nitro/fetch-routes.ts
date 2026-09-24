@@ -10,17 +10,11 @@ export interface FetchRoutesResult {
   sitemapUrls: SitemapUrl[]
 }
 
-/**
- * Fetches dynamic routes from Supabase for pre-rendering and sitemap generation.
- * This is used in nuxt.config.ts to populate nitro.prerender.routes and sitemap.urls.
- */
 export default async function fetchRoutes(): Promise<FetchRoutesResult> {
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY
 
   if (!supabaseUrl || !supabaseKey) {
-    // Only warn if we're in a CI/production build where these should be present.
-    // In dev, we might not care about pre-rendering everything.
     if (process.env.NODE_ENV === 'production') {
       console.warn('SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY is missing. Skipping dynamic route fetching.')
     }
@@ -46,7 +40,7 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
         ? `${supabaseUrl}/rest/v1/${table}?select=${select}&${filter}`
         : `${supabaseUrl}/rest/v1/${table}?select=${select}`
 
-      // Using REST API directly to avoid instantiating a full Supabase client in the config
+      // Plain REST so the config doesn't instantiate a Supabase client
       const response = await fetch(query, {
         headers,
       })
@@ -61,20 +55,15 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
         for (const item of data) {
           const { route, lastmod, extraRoutes, skipSitemap } = getEntry(item)
 
-          // Always add the canonical route to prerender.
           routes.push(route)
 
-          // Only add to sitemap if not explicitly skipped.
-          // Sitemap URLs get a trailing slash to match what GitHub Pages actually serves,
-          // avoiding the 301 redirect that Google would otherwise follow.
+          // Trailing slash matches what GitHub Pages serves, avoiding a 301 for crawlers
           if (skipSitemap !== true) {
             sitemapUrls.push({ loc: route.endsWith('/') ? route : `${route}/`, lastmod })
           }
 
-          // Extra routes (e.g. UUID aliases) go into prerender only - never the sitemap.
-          // This ensures old UUID-based URLs that Google or external sites have cached
-          // resolve to a real HTML file instead of a hard 404. The SPA then does a
-          // client-side redirect to the canonical URL.
+          // Extra routes are prerender-only aliases so old cached URLs get a real
+          // HTML file instead of a 404. The SPA then redirects to the canonical URL.
           if (extraRoutes != null) {
             for (const extra of extraRoutes) {
               routes.push(extra)
@@ -90,9 +79,6 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
     }
   }
 
-  // Fetch all dynamic content types
-  // Note: We are fetching IDs for all items to generate static pages for them.
-  // This allows crawlers to index these pages even though we are an SPA.
   await Promise.all([
     fetchIds<{ id: number, created_at: string, modified_at: string | null, is_official: boolean }>(
       'events',
@@ -113,14 +99,8 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
       }),
     ),
 
-    // Pre-render all discussions that have a discussion_topic_id. This covers pure forum
-    // threads and any entity-linked discussion that has been assigned a topic. Discussions
-    // without a topic redirect to their parent entity and should not be indexed.
-    //
-    // When a discussion has a slug, the slug is the canonical URL (goes into both prerender
-    // and sitemap). The UUID is also prerendered as an alias so that old links from Google
-    // or external sites resolve to a real HTML file instead of a hard 404 - the SPA then
-    // does a client-side redirect to the canonical slug URL.
+    // Only discussions with a topic are indexed. Topicless ones redirect to their
+    // parent entity. A slug, when set, is the canonical URL.
     fetchIds<{ id: string, slug: string | null, created_at: string, modified_at: string }>(
       'discussions',
       'id,slug,created_at,modified_at',
@@ -132,7 +112,6 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
           return {
             route: `/forum/${discussionSlug}`,
             lastmod: item.modified_at,
-            // UUID alias: prerender only, not in sitemap
             extraRoutes: [`/forum/${item.id}`],
           }
         }
@@ -145,10 +124,8 @@ export default async function fetchRoutes(): Promise<FetchRoutesResult> {
       'discussion_topic_id=not.is.null&is_draft=eq.false&is_nsfw=eq.false',
     ),
 
-    // Also prerender UUID routes for entity-linked discussions that have no topic
-    // (null discussion_topic_id). These are not indexed - they redirect client-side
-    // to their parent entity page - but they need a real HTML file so GitHub Pages
-    // doesn't serve a hard 404 to crawlers that have old UUID links cached.
+    // Topicless discussions aren't indexed, but crawlers with old UUID links still
+    // need a real HTML file instead of a GitHub Pages 404
     fetchIds<{ id: string, created_at: string, modified_at: string }>(
       'discussions',
       'id,created_at,modified_at',

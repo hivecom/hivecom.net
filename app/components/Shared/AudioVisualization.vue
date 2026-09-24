@@ -6,14 +6,9 @@ import { onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { getSharedAnalysis } from '@/lib/audio/analysis'
 import { DEFAULT_SMOKE_CONFIG } from '@/lib/audio/smoke-field'
 
-// The fullscreen-player smoke visualizer. It doesn't run any FFTs of its own:
-// the shared analysis provider (lib/audio/analysis) decodes the track once,
-// extrapolates the playhead, and hands every panel a per-frame feature set, so
-// this component just drives a 3D feedback-buffer smoke field off it. Bass hits
-// blast splotches and kick the camera, high hits flash ghost geometry, calm
-// passages draw slow lines. The heavy lifting lives in lib/audio/smoke-field
-// (Three, loaded client-side only). If WebGL is unavailable it degrades to an
-// empty panel, audio untouched.
+// The fullscreen-player smoke visualizer. The shared analysis provider hands it a
+// per-frame feature set, and lib/audio/smoke-field (Three, client-side only) does
+// the heavy lifting. Without WebGL it degrades to an empty panel, audio untouched.
 
 const props = defineProps<{
   // Track URL. Swapping it re-subscribes to that track's shared analysis.
@@ -23,10 +18,8 @@ const props = defineProps<{
   // directly, so this is only here for the shared prop shape the lightbox binds.
   progress: number
 
-  // Total duration in seconds.
   duration: number
 
-  // Whether the engine is playing.
   playing: boolean
 }>()
 
@@ -72,7 +65,6 @@ const CONTROL_GROUPS: { group: string, items: Control[] }[] = [
     { key: 'bassPush', label: 'Bass shove', min: 0, max: 4, step: 0.1 },
     { key: 'bigFlashSize', label: 'Big flash', min: 0, max: 8, step: 0.1 },
     { key: 'bigPush', label: 'Big shove', min: 0, max: 4, step: 0.1 },
-    { key: 'cutouts', label: 'Cutouts', min: 0, max: 3, step: 0.05 },
     { key: 'lines', label: 'Streak lines', min: 0, max: 3, step: 0.05 },
     { key: 'lineAccent', label: 'Line cut/accent', min: 0, max: 1, step: 0.05 },
   ] },
@@ -110,7 +102,7 @@ function readColors(): SmokeColors {
 
 // Draw one frame from the shared analysis: resize to the panel and feed the
 // engine the features the provider already computed. dt comes off the frame's
-// rAF timestamp, the same as before.
+// rAF timestamp.
 function onFrame(frame: AnalysisFrame) {
   const host = wrap.value
   if (!engine || !host)
@@ -170,7 +162,7 @@ watch(config, () => analysis?.requestFrame(), { deep: true })
 
 let resizeObserver: ResizeObserver | null = null
 
-// Re-read the palette and repaint when the theme flips, the way the globe does.
+// Re-read the palette and repaint when the theme flips.
 onThemeChange(() => {
   engine?.setColors(readColors())
   analysis?.requestFrame()

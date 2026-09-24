@@ -25,7 +25,6 @@ import { deepMergePlainObjects } from '@/lib/utils/common'
 import { formatCurrency } from '@/lib/utils/currency'
 import { fullMonth } from '@/lib/utils/date'
 
-// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -36,26 +35,21 @@ ChartJS.register(
   Legend,
 )
 
-// Monthly funding table type
 type MonthlyFunding = Database['public']['Tables']['funding_history']['Row']
 
-// Setup state
 const loading = ref(true)
 const errorMessage = ref('')
 const monthlyFundings = ref<MonthlyFunding[]>([])
 
-// monthly_funding served from shared cache
 const { allFunding, loading: fundingLoading, error: fundingError } = useDataMonthlyFunding()
 const chartWrapperRef = ref<HTMLElement | null>(null)
 const chartRef = ref<ChartComponentRef<'line'> | null>(null)
 const { width: chartWrapperWidth, height: chartWrapperHeight } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
 const { activeTheme } = useUserTheme()
 
-// Chart data
 const chartData = computed(() => {
-  // Track both theme (light/dark switch) and activeTheme (custom palette applied
-  // after async fetch). getCSSVariable reads the DOM directly - not reactive -
-  // so we need explicit deps to re-run after applyTheme() writes to :root.
+  // getCSSVariable reads the DOM directly and isn't reactive. Touching theme and
+  // activeTheme re-runs this after applyTheme() writes to :root.
   void theme.value
   void activeTheme.value
 
@@ -66,7 +60,6 @@ const chartData = computed(() => {
     }
   }
 
-  // Sort data by month ascending for chronological display
   const sortedData = monthlyFundings.value.toSorted((a, b) => {
     return dayjs(a.month).valueOf() - dayjs(b.month).valueOf()
   })
@@ -75,7 +68,6 @@ const chartData = computed(() => {
     return fullMonth(funding.month)
   })
 
-  // Calculate monthly total income (Patreon + donations)
   const monthlyIncomeData = sortedData.map((funding) => {
     const patreonAmount = (funding.patreon_month_amount_cents || 0) / 100
     const donationAmount = (funding.donation_month_amount_cents || 0) / 100
@@ -115,7 +107,6 @@ const chartData = computed(() => {
   }
 })
 
-// Chart options
 const localChartOptions: ChartOptions<'line'> = {
   plugins: {
     title: {
@@ -161,7 +152,7 @@ const localChartOptions: ChartOptions<'line'> = {
         callback(val, index) {
           const label = this.getLabelForValue(index)
 
-          // label is 'MMM YYYY' e.g. 'Apr 2025' - shorten to 'Apr '25'
+          // label is 'MMM YYYY' (e.g. 'Apr 2025'), shortened to 'Apr '25'
           const parts = label.split(' ')
           const [month, year] = parts
           return month && year ? `${month} '${year.slice(2)}` : label
@@ -187,7 +178,7 @@ function refreshChartOptions() {
 onMounted(() => refreshChartOptions())
 watch(theme, () => refreshChartOptions())
 
-// Sync from shared cache - allFunding is ordered descending, chart needs ascending
+// allFunding is ordered descending and the chart needs ascending.
 watch([allFunding, fundingLoading, fundingError], () => {
   if (fundingError.value) {
     errorMessage.value = fundingError.value
@@ -201,7 +192,6 @@ watch([allFunding, fundingLoading, fundingError], () => {
   }
 }, { immediate: true })
 
-// Month-over-month income growth %
 const momGrowth = computed(() => {
   const data = monthlyFundings.value
   if (data.length < 2)
@@ -245,20 +235,16 @@ watchEffect(() => {
   <div class="chart-container">
     <div v-if="loading" class="chart-loading">
       <div class="chart-skeleton">
-        <!-- Chart area skeleton -->
         <div class="chart-area-skeleton">
-          <!-- Y-axis labels -->
           <div class="y-axis-skeleton">
             <Skeleton v-for="i in 5" :key="i" :width="30" :height="10" :radius="2" />
           </div>
 
-          <!-- Chart lines simulation -->
           <div class="chart-lines-skeleton">
             <Skeleton :height="120" :radius="8" style="opacity: 0.3;" />
           </div>
         </div>
 
-        <!-- X-axis labels -->
         <div class="x-axis-skeleton">
           <Skeleton v-for="i in 6" :key="i" :width="44" :height="10" :radius="2" />
         </div>

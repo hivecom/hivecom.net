@@ -2,18 +2,9 @@
 import type { SunColors, SunField } from '@/lib/landing/sun-field'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
-// The procedural sun at the bottom of the landing page. The heavy lifting lives
-// in lib/landing/sun-field (Three, client-only); this component owns the canvas,
-// the theme colours, and the two things that keep it cheap:
-//
-//  - It only runs while the sun band is on screen. An IntersectionObserver wakes
-//    the engine and the raf loop when the band scrolls near the viewport and
-//    parks them the moment it leaves, so nothing renders while you're up top.
-//  - The sun rises with scroll: how far the band has climbed into view drives the
-//    engine's rise, so the sun crests the bottom edge as you reach the page end.
-//
-// Degrades to a static CSS sun when WebGL is missing or the user prefers reduced
-// motion, so it's never blank.
+// Rendering lives in lib/landing/sun-field (Three, client-only). The loop only runs
+// while the band is near the viewport, and it falls back to a static CSS sun without
+// WebGL or with reduced motion.
 
 const canvas = ref<HTMLCanvasElement | null>(null)
 const wrap = ref<HTMLElement | null>(null)
@@ -51,9 +42,8 @@ function readColors(): SunColors {
   }
 }
 
-// Rise 0..1 as the band scrolls up: 0 when its top touches the bottom of the
-// viewport, 1 once it has climbed ~0.6 of a viewport further, so the sun is well
-// up by the time you reach the constellation rather than only at the page end.
+// Rise 0..1: 0 when the band's top touches the viewport bottom, 1 once it has climbed
+// ~0.6 of a viewport further, so the sun is up by the time you reach the constellation.
 function computeRise(): number {
   const host = wrap.value
   if (!host)
@@ -77,7 +67,6 @@ const { start: startLoop, stop: stopLoop } = useCanvasLoop((now) => {
   engine.setRise(computeRise())
   engine.frame(dt, now / 1000)
 
-  // Park the moment the band leaves the viewport.
   return active
 })
 
@@ -130,7 +119,6 @@ onMounted(() => {
   observer.observe(host)
 })
 
-// Repaint on light/dark flip, the way the globe and smoke field do.
 onThemeChange(() => {
   engine?.setColors(readColors())
   if (active)

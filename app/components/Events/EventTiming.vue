@@ -21,7 +21,6 @@ defineProps<Props>()
 <template>
   <Card class="event-timing">
     <Flex column gap="l">
-      <!-- Event Date -->
       <div class="event-timing__date-section">
         <h3 class="event-timing__section-title">
           <Icon name="ph:calendar" />
@@ -32,7 +31,6 @@ defineProps<Props>()
         </div>
       </div>
 
-      <!-- Countdown for upcoming events -->
       <div v-if="isUpcoming && countdown" class="event-timing__countdown-section">
         <h4 class="event-timing__countdown-title">
           Time Remaining
@@ -73,7 +71,6 @@ defineProps<Props>()
         </Grid>
       </div>
 
-      <!-- Time ago for past events -->
       <div v-else-if="!isUpcoming && timeAgo" class="event-timing__time-ago-section">
         <h4 class="event-timing__time-ago-title">
           Event Completed

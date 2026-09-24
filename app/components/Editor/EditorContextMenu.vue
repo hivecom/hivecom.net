@@ -151,7 +151,7 @@ function insertEmoji(emoji: string) {
     </template>
   </ContextMenu>
 
-  <!-- Zero-size anchor placed at the right-click point so the picker opens there. -->
+  <!-- Zero-size anchor at the right-click point so the picker opens there -->
   <div
     ref="emoji-anchor"
     class="editor-context-menu__emoji-anchor"
@@ -170,8 +170,6 @@ function insertEmoji(emoji: string) {
 </template>
 
 <style scoped lang="scss">
-// Keep the wrapper transparent to layout so the editor renders exactly as it
-// would without the context menu around it.
 .editor-context-menu__target {
   display: contents;
 }
@@ -181,7 +179,6 @@ function insertEmoji(emoji: string) {
   padding: var(--space-xs) var(--space-s);
 }
 
-// Invisible point the emoji Popout latches onto, positioned at the click spot.
 .editor-context-menu__emoji-anchor {
   position: fixed;
   width: 0;

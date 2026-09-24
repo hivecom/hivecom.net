@@ -64,7 +64,6 @@ function handleDelete(theme: Tables<'themes'>) {
     </template>
 
     <Flex v-if="props.theme" column gap="m" class="theme-details">
-      <!-- Basic info -->
       <DetailTable>
         <template #header>
           <Icon name="ph:paint-brush" />
@@ -104,7 +103,6 @@ function handleDelete(theme: Tables<'themes'>) {
         </DetailRow>
       </DetailTable>
 
-      <!-- Scale settings -->
       <Card separators class="card-bg">
         <template #header>
           <h6>Scale Settings</h6>

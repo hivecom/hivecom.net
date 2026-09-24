@@ -9,41 +9,29 @@ export interface TimelineBucket {
 }
 
 interface Props {
-  /** ISO timestamp of the discussion's first reply / created_at */
+  /** ISO timestamp */
   start: string
 
-  /** ISO timestamp of the discussion's last activity */
+  /** ISO timestamp of the last activity */
   end: string
 
-  /** Activity buckets from get_discussion_reply_activity_buckets */
+  /** From get_discussion_reply_activity_buckets */
   buckets?: TimelineBucket[]
 
-  /** Off-topic-only activity buckets - rendered as a second layer in warning color */
+  /** Drawn as a second layer in the warning color */
   offtopicBuckets?: TimelineBucket[]
 
-  /** When true, offtopic segments are not rendered on the track */
   offtopicHidden?: boolean
 
-  /**
-   * Time range of the unloaded gap, if one exists. Rendered as a dashed
-   * region on the track so users can see what they'd be skipping.
-   */
+  /** Unloaded range, drawn dashed so users see what they'd skip */
   gapRange?: { start: string, end: string } | null
 
-  /**
-   * Expected gap between consecutive buckets in milliseconds.
-   * Used to detect whether adjacent buckets are part of a continuous active
-   * period (gap <= interval) or separated by silence (gap > interval).
-   */
+  /** Expected spacing between buckets. Wider gaps mean silence between active periods. */
   bucketIntervalMs?: number
 
-  /**
-   * Fractional position (0-1) of the current scroll position in the reply
-   * area. Used to render a "you are here" indicator on the track.
-   */
+  /** Scroll position in the reply area, 0-1 */
   currentFraction?: number | null
 
-  /** Disables interaction while a navigate is in flight */
   loading?: boolean
 }
 
@@ -88,40 +76,28 @@ const maxOfftopicBucketCount = computed(() =>
 )
 
 interface BucketSegment {
-  /** Fraction (0-1) of the top edge of this segment on the track */
+  /** 0-1 along the track */
   topFraction: number
 
-  /** Fraction (0-1) of the bottom edge. Equal to topFraction for a dot. */
+  /** Equals topFraction for a dot */
   bottomFraction: number
 
-  /** Peak reply count within the segment - used to scale size / opacity */
   maxCount: number
 
-  /** True when this segment covers a single isolated bucket */
+  /** A single isolated bucket, drawn as a dot */
   isSingle: boolean
 
-  /** Tooltip label shown on hover */
   label: string
 
-  /** Opacity 0.25 (quiet) → 1.0 (peak) */
+  /** 0.25 when quiet, 1 at peak */
   opacity: number
 
-  /**
-   * The date to pass to navigateToDate when this segment is clicked.
-   * - Dot: end of the bucket window (bucketStart + intervalMs) so that floor
-   *   semantics ("last reply at or before target") land inside this bucket,
-   *   not the one before it.
-   * - Box: midpoint of the run, which is well inside the active period.
-   */
+  /** Where a click navigates: the start of the segment's first bucket. */
   targetDate: Date
 }
 
-/**
- * Group consecutive buckets into segments.
- * "Consecutive" means the gap between two bucket_start timestamps is no
- * greater than 1.5x the expected bucket interval (allows for DST jitter).
- * Isolated buckets become dots; runs become boxes.
- */
+// Buckets up to 1.5x the interval apart count as consecutive (DST jitter).
+// Isolated buckets become dots and runs become boxes.
 function buildSegments(buckets: TimelineBucket[], max: number, clampLastToEnd = true): BucketSegment[] {
   if (buckets.length === 0)
     return []
@@ -150,14 +126,8 @@ function buildSegments(buckets: TimelineBucket[], max: number, clampLastToEnd = 
       ? `${runMaxCount} ${runMaxCount === 1 ? 'reply' : 'replies'}`
       : `${runTotalCount} ${runTotalCount === 1 ? 'reply' : 'replies'} (${runLength} ${intervalMs >= 86400000 ? 'days' : 'periods'})`
 
-    // Use the START of the first bucket as the target date.
-    // navigateToDate is called with findFirst: true, which uses ceiling
-    // semantics in the RPC ("first reply at or after target"). Passing the
-    // bucket start time means the RPC returns the very first reply in the
-    // segment - exactly what the user expects when clicking a block.
-    // The old approach of passing firstMs + intervalMs with floor semantics
-    // returned the LAST reply in the first bucket instead, causing the
-    // viewport to land on reply #2 (or later) rather than reply #1.
+    // The bucket start, since navigateToDate runs with findFirst: true (first
+    // reply at or after the target). The click lands on the segment's first reply.
     const firstMs = new Date(first.bucketStart).getTime()
     const targetDate = new Date(firstMs)
 
@@ -207,7 +177,6 @@ const offtopicSegments = computed((): BucketSegment[] => {
   return buildSegments(props.offtopicBuckets, maxOfftopicBucketCount.value, false)
 })
 
-/** Fractional range [top, bottom] of the unloaded gap on the track, or null. */
 const gapFractions = computed((): { top: number, bottom: number } | null => {
   if (props.gapRange == null)
     return null
@@ -240,7 +209,6 @@ function nearestSegment(): BucketSegment | null {
   let best: BucketSegment | null = null
   let bestDist = Infinity
   for (const seg of allSegs) {
-    // Distance from cursor to nearest edge of segment
     const dist = seg.isSingle
       ? Math.abs(f - seg.topFraction)
       : Math.max(0, seg.topFraction - f, f - seg.bottomFraction)
@@ -258,11 +226,10 @@ const hoveredSegment = computed((): BucketSegment | null => {
 
   const f = hoverFraction.value
 
-  // For dot segments, use a larger proximity threshold so the full track width
-  // is effectively clickable near a blob - not just the 6px blob itself.
+  // Makes the track clickable near a dot, not just on the 6px dot itself
   const DOT_THRESHOLD = 0.05
 
-  // Check offtopic layer first - it renders on top
+  // The off-topic layer renders on top
   for (const seg of offtopicSegments.value) {
     if (seg.isSingle) {
       if (Math.abs(f - seg.topFraction) <= DOT_THRESHOLD)
@@ -274,7 +241,6 @@ const hoveredSegment = computed((): BucketSegment | null => {
     }
   }
 
-  // Fall back to normal segments
   for (const seg of bucketSegments.value) {
     if (seg.isSingle) {
       if (Math.abs(f - seg.topFraction) <= DOT_THRESHOLD)
@@ -301,9 +267,7 @@ function onSegmentClick(seg: BucketSegment) {
   if (props.loading)
     return
 
-  // For a box segment, use the hover position to pick a date proportionally
-  // within the segment's time range, so clicking the middle of a tall group
-  // navigates to the middle, not always the top.
+  // Clicking the middle of a box navigates to the middle of its time range
   if (!seg.isSingle && seg.topFraction < seg.bottomFraction) {
     const segSpan = seg.bottomFraction - seg.topFraction
     const relFraction = Math.max(0, Math.min(1, (hoverFraction.value - seg.topFraction) / segSpan))
@@ -317,8 +281,8 @@ function onSegmentClick(seg: BucketSegment) {
   emit('navigate', seg.targetDate)
 }
 
-// "Mar 26" - month + day, always. Two dates in the same month year become
-// indistinguishable with "Mar '26 / Mar '26", day disambiguates them.
+// "Mar 26": month and day, since "Mar '26" twice can't tell two dates apart.
+// Hourly buckets show the time too.
 function formatLabel(isoDate: string): string {
   const d = new Date(isoDate)
   if (props.bucketIntervalMs <= 60 * 60 * 1000)
@@ -344,7 +308,7 @@ function formatTooltip(date: Date): string {
   return fullDate(date)
 }
 
-/** Always true when hovering - any click will find the nearest segment. */
+/** Any click finds the nearest segment */
 const isOverSegment = computed(() => isHovering.value)
 
 const tooltipText = computed((): string => {
@@ -392,10 +356,7 @@ defineExpose({ openJumpModal })
 </script>
 
 <template>
-  <!-- Outer: absolute, full height of .discussion (position: relative parent).
-       Sits just outside the discussion's right edge in the dead-zone margin. -->
   <div class="discussion-timeline" aria-hidden="true">
-    <!-- Inner: sticky so the scrubber stays in viewport while scrolling. -->
     <div class="discussion-timeline__inner">
       <button
         class="discussion-timeline__jump-btn"
@@ -424,8 +385,6 @@ defineExpose({ openJumpModal })
         @mouseleave="isHovering = false"
         @click="onTrackClick"
       >
-        <!-- Track bar: split into solid/dashed/solid segments around the gap.
-             When no gap exists, a single full-height solid bar is rendered. -->
         <template v-if="gapFractions != null">
           <div
             class="discussion-timeline__bar" :style="{ top: '0%',
@@ -441,9 +400,7 @@ defineExpose({ openJumpModal })
           />
         </template>
         <div v-else class="discussion-timeline__bar" style="top: 0%; height: 100%;" />
-        <!-- Static dot at the very start of the timeline - same action as the start label -->
         <div class="discussion-timeline__segment discussion-timeline__segment--dot" style="top: 0%; opacity: 1; cursor: pointer;" @click="navigateToStart" />
-        <!-- Activity segments: dots for isolated buckets, boxes for consecutive runs -->
         <div
           v-for="(seg, i) in bucketSegments"
           :key="`main-${i}`"
@@ -456,9 +413,7 @@ defineExpose({ openJumpModal })
           }"
         />
 
-        <!-- Off-topic segments: second layer in warning color.
-             When offtopic is hidden, render only dots (no boxes) so position
-             is hinted but the extent of the hidden run is not shown. -->
+        <!-- Hidden off-topic runs show as dots only, hinting position without extent -->
         <template v-for="(seg, i) in offtopicSegments" :key="`offtopic-${i}`">
           <div
             class="discussion-timeline__segment discussion-timeline__segment--offtopic"
@@ -471,21 +426,18 @@ defineExpose({ openJumpModal })
           />
         </template>
 
-        <!-- Current position indicator: shows where in the timeline you are -->
         <div
           v-if="currentFraction != null"
           class="discussion-timeline__position"
           :style="{ top: `${currentFraction * 100}%` }"
         />
 
-        <!-- Cursor indicator: tracks mouse position along the track -->
         <div
           v-show="isHovering && !loading"
           class="discussion-timeline__dot"
           :style="{ top: `${hoverFraction * 100}%` }"
         />
 
-        <!-- Merged tooltip: appears to the right of the track on hover -->
         <div
           v-show="isHovering && !loading"
           class="discussion-timeline__tooltip"
@@ -516,7 +468,7 @@ defineExpose({ openJumpModal })
     </div>
   </div>
 
-  <!-- Jump-to-date modal - sits outside aria-hidden wrapper -->
+  <!-- Outside the aria-hidden wrapper -->
   <Modal
     :open="showJumpModal"
     :size="isMobile ? 'screen' : 'm'"
@@ -550,14 +502,11 @@ defineExpose({ openJumpModal })
     </template>
 
     <Flex column gap="l" class="timeline-jump-modal">
-      <!-- Expanded timeline: centred two-column layout -->
       <div class="timeline-jump-modal__track-area">
-        <!-- Start anchor above the shared row -->
         <span class="timeline-jump-modal__anchor">{{ formatLabel(start) }}</span>
 
-        <!-- inner-row: track-col and labels-col share identical height -->
+        <!-- Track and label columns share one height -->
         <div class="timeline-jump-modal__inner-row">
-          <!-- Left column: the vertical track -->
           <div class="timeline-jump-modal__track-col">
             <div class="timeline-jump-modal__track">
               <template v-if="gapFractions != null">
@@ -620,7 +569,6 @@ defineExpose({ openJumpModal })
             </div>
           </div>
 
-          <!-- Right column: always-visible labels -->
           <div class="timeline-jump-modal__labels-col">
             <button
               v-for="(seg, i) in bucketSegments"
@@ -645,7 +593,6 @@ defineExpose({ openJumpModal })
           </div>
         </div>
 
-        <!-- End anchor below the shared row -->
         <span class="timeline-jump-modal__anchor">{{ formatLabel(end) }}</span>
       </div>
     </Flex>
@@ -691,7 +638,6 @@ defineExpose({ openJumpModal })
     position: relative;
   }
 
-  // Bigger segments inside the modal
   &__segment {
     &.discussion-timeline__segment--dot {
       width: 12px !important;
@@ -761,20 +707,16 @@ defineExpose({ openJumpModal })
 }
 
 .discussion-timeline {
-  // Positioned just outside the right edge of .discussion (which is position: relative).
-  // .discussion is width: 100% of its container, so left: 100% is at the container's right wall.
-  // The space between the container wall and the viewport edge is the "dead zone" this lives in.
+  // Sits in the dead zone past the container's right wall, relative to .discussion
   position: absolute;
   left: calc(100% + var(--space-m));
   top: 0;
   bottom: 0;
-  // Wide enough for the track + hit area; labels overflow to the left naturally.
   width: 24px;
-  // Outer shell is pointer-events: none so it doesn't intercept page clicks.
-  // The inner re-enables it.
+  // The inner element re-enables pointer events
   pointer-events: none;
 
-  // Only show when there is actual dead-zone space to the right.
+  // No dead zone to live in below this width
   @media screen and (max-width: $breakpoint-m) {
     display: none;
   }
@@ -808,10 +750,7 @@ defineExpose({ openJumpModal })
   }
 
   &__inner {
-    // Sticky so the scrubber floats in the viewport while the user scrolls.
-    // Vertically centered: top at 20vh, height 60vh → sits at 20-80% of viewport.
-    // max-height: 100% ensures it never overflows the absolute outer container
-    // on short discussions where the discussion is less than 80vh tall.
+    // max-height keeps it inside the outer container on discussions shorter than 80vh
     position: sticky;
     top: 20vh;
     height: 60vh;
@@ -833,12 +772,9 @@ defineExpose({ openJumpModal })
     transition:
       opacity var(--transition),
       color var(--transition);
-    // Vertical text so "Mar 26" fits without forcing width.
     writing-mode: vertical-rl;
-    // writing-mode: vertical-rl alone reads top-to-bottom naturally.
     transform: rotate(0deg);
 
-    // Reset button defaults
     background: none;
     border: none;
     padding: 0;
@@ -857,7 +793,6 @@ defineExpose({ openJumpModal })
       cursor: default;
     }
 
-    // End label matches start - both read top-to-bottom with vertical-rl.
     &--end {
       transform: rotate(0deg);
     }
@@ -869,7 +804,7 @@ defineExpose({ openJumpModal })
 
   &__track {
     flex: 1;
-    // Wide transparent hit area - makes the 2px bar actually clickable.
+    // Transparent hit area so the 2px bar is clickable
     width: 20px;
     background: transparent;
     position: relative;
@@ -894,7 +829,7 @@ defineExpose({ openJumpModal })
     cursor: pointer;
     z-index: 1;
 
-    // Isolated bucket: small centred dot, size reflects activity weight
+    // Isolated bucket
     &--dot {
       width: 6px;
       height: 6px;
@@ -902,7 +837,6 @@ defineExpose({ openJumpModal })
       transform: translate(-50%, -50%);
     }
 
-    // Consecutive run: a rounded bar spanning the active period
     &--box {
       width: 6px;
       border-radius: var(--border-radius-xs);
@@ -910,8 +844,7 @@ defineExpose({ openJumpModal })
       min-height: 6px;
     }
 
-    // Off-topic overlay: slightly wider so it's visible even when overlapping
-    // a normal segment, and uses the warning color token.
+    // Off-topic overlay, drawn above normal segments in the warning color.
     &--offtopic {
       background-color: var(--color-text-yellow);
       width: 4px;
@@ -960,7 +893,6 @@ defineExpose({ openJumpModal })
   }
 
   &__position {
-    // "You are here" line - a horizontal rule across the track
     position: absolute;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -973,7 +905,6 @@ defineExpose({ openJumpModal })
   }
 
   &__dot {
-    // Hover cursor indicator: larger accent dot that follows the mouse.
     position: absolute;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -981,15 +912,12 @@ defineExpose({ openJumpModal })
     height: 8px;
     border-radius: var(--border-radius-pill);
     background-color: var(--color-accent);
-    // Ring cutout to visually separate from the track bar
     box-shadow: 0 0 0 2px var(--color-bg);
     pointer-events: none;
     z-index: 2;
   }
 
   &__tooltip {
-    // Appears to the RIGHT of the track. left: 100% = left edge past the 20px track,
-    // then an extra gap, then the tooltip box.
     position: absolute;
     left: calc(100% + var(--space-xs));
     transform: translateY(-50%);

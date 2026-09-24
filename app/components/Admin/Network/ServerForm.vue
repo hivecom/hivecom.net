@@ -12,8 +12,6 @@ const props = defineProps<{
 const emit = defineEmits(['save', 'delete'])
 const isOpen = defineModel<boolean>('isOpen')
 
-// Form state
-
 const serverForm = ref<TablesInsert<'network_servers'>>({
   address: '',
   active: true,
@@ -46,20 +44,17 @@ const showDeleteConfirm = ref(false)
 const showEditConfirm = ref(false)
 const saveLoading = ref(false)
 
-// Validation
 const validation = computed(() => ({
   address: !!serverForm.value.address.trim(),
 }))
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
-// Confirm modal handler for edit
 function handleEditConfirm() {
   showEditConfirm.value = false
   saveLoading.value = true
   emit('save', { ...serverForm.value })
 }
 
-// Watch for prop changes
 watch(
   () => props.server,
   (newServer) => {
@@ -86,7 +81,6 @@ watch(
       }
     }
 
-    // Reset confirm modals when opening form
     showEditConfirm.value = false
     showDeleteConfirm.value = false
   },
@@ -136,7 +130,6 @@ watch(isOpen, (open) => {
     </template>
 
     <Flex column gap="l" class="server-form">
-      <!-- Basic Information -->
       <Flex column gap="m" expand>
         <h4>Basic Information</h4>
         <Input
@@ -152,7 +145,6 @@ watch(isOpen, (open) => {
         <Switch v-model="serverForm.active" label="Active" />
       </Flex>
 
-      <!-- Docker Configuration -->
       <Flex column gap="m" expand>
         <h4>Docker Configuration</h4>
         <Switch v-model="serverForm.docker_control" label="Docker Control Enabled" />

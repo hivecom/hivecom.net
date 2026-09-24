@@ -12,7 +12,6 @@ import { responseMethodNotAllowed } from "../_shared/response.ts";
 import type { Database } from "database-types";
 
 Deno.serve(async (req: Request) => {
-  // This is needed if you're planning to invoke your function from a browser.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -22,7 +21,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Get container name from request path
     const containerName = extractContainerNameFromPath(req);
 
     if (!containerName) {
@@ -38,7 +36,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify user has permission to manage containers
     const authResponse = await authorizeAuthenticatedHasPermissionAal2(
       req,
       ["network.read"],
@@ -48,16 +45,14 @@ Deno.serve(async (req: Request) => {
       return authResponse;
     }
 
-    // Get the Docker Control token from environment variables
     const DOCKER_CONTROL_TOKEN = getDockerControlToken();
 
-    // Create a Supabase client
+    // Service role client, created only after the permission check
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       getSecretKey(),
     );
 
-    // Get container details including the server it's hosted on
     const { container, error: containerError } = await getContainerWithServer(
       supabaseClient,
       containerName,
@@ -67,28 +62,27 @@ Deno.serve(async (req: Request) => {
       return containerError;
     }
 
-    // Process URL query parameters for log options
     const url = new URL(req.url);
-    const tail = url.searchParams.get("tail") || "100"; // Default 100 lines
+    const tail = url.searchParams.get("tail") || "100";
     const since = url.searchParams.get("since");
 
-    // Build the Docker control URL for container logs
     const dockerControlUrl = buildDockerControlActionUrl(
       container!.server,
       containerName,
-      `logs?tail=${tail}${since ? `&since=${since}` : ""}`,
+      `logs?tail=${encodeURIComponent(tail)}${
+        since ? `&since=${encodeURIComponent(since)}` : ""
+      }`,
     );
 
     console.log(`Making request to Docker Control at: ${dockerControlUrl}`);
 
-    // Send the request to docker-control service
     const apiResponse = await fetch(dockerControlUrl, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${DOCKER_CONTROL_TOKEN}`,
         "Content-Type": "application/json",
       },
-      signal: AbortSignal.timeout(10000), // 10 seconds timeout - logs can be large
+      signal: AbortSignal.timeout(10000), // Logs can be large
     });
 
     if (!apiResponse.ok) {
@@ -105,10 +99,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get the logs from the response
     const logsData = await apiResponse.text();
 
-    // Return success response with logs
     return new Response(
       JSON.stringify({
         success: true,

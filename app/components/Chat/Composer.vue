@@ -41,7 +41,7 @@ watch(activeBuffer, (buf) => {
     resolveNick([buf.name.toLowerCase()])
 }, { immediate: true })
 
-// /whois modal - independent of the active PM buffer
+// /whois modal, independent of the active PM buffer
 const whoisModalNick = ref<string | null>(null)
 const whoisModalData = computed(() =>
   whoisModalNick.value ? (whoisStore.value.get(whoisModalNick.value.toLowerCase()) ?? null) : null,
@@ -163,7 +163,6 @@ const suggestions = computed<Suggestion[]>(() => {
         .map(b => ({ value: b.name, label: b.name, hint: b.topic, colored: false }))
     }
 
-    // General #channel reference: merge buffers + channelList, dedupe, sort alphabetically.
     const seen = new Set<string>()
     const merged: Suggestion[] = []
     for (const b of buffers.value) {
@@ -268,11 +267,9 @@ function accept(item: Suggestion) {
 }
 
 // --- selection formatting toolbar (desktop) --------------------------------
-// When the user selects text in the composer we float a small toolbar above
-// it. Each button wraps the selection with an IRC control code AND keeps the
-// readable markdown-style markers (** etc) literally in the message, so plain
-// IRC clients still see the emphasis while our renderer styles it for real.
-// Colors are code-only since there's no marker convention for them.
+// Selecting text floats a small toolbar above it. Buttons wrap the selection in
+// markdown markers (see formatBold below). Colors insert a control code
+// directly since there's no marker convention for them.
 
 const selStart = ref(-1)
 const selEnd = ref(-1)
@@ -337,8 +334,8 @@ function syncSelection() {
   selStart.value = start
   selEnd.value = end
 
-  // Selection collapsed (toolbar will hide) - drop any open color picker so it
-  // doesn't auto-reopen the next time text is selected.
+  // Selection collapsed (the toolbar hides): drop any open color picker so it
+  // doesn't reopen the next time text is selected.
   if (selEnd.value <= selStart.value) {
     colorPickerOpen.value = false
     formatPos.value = null
@@ -357,11 +354,9 @@ function clearSelectionState() {
   colorPickerOpen.value = false
 }
 
-// Toggle the `before`/`after` wrapper around the tracked selection. If the
-// selection is already flanked by this exact wrapper, strip it (toggle off);
-// otherwise add it (toggle on). The inner text is reselected either way so
-// formats stack and the toolbar stays visible. Toggle-off matches the wrapper
-// this same function produces, so apply-then-reapply cleanly removes it.
+// Toggle the `before`/`after` wrapper around the tracked selection: strip it if
+// the selection is already flanked by it, otherwise add it. The inner text is
+// reselected either way so formats stack and the toolbar stays visible.
 function wrapSelection(before: string, after: string) {
   const start = selStart.value
   const end = selEnd.value
@@ -414,12 +409,10 @@ function wrapSelection(before: string, after: string) {
   }
 }
 
-// Formatting uses real markdown markers (** * __ ~~ `). They're real characters in
-// the field - navigable in both modes, visible in IRC mode, hidden in modern mode -
-// so the caret never snags on an invisible toggle. wrapSelection handles both a real
-// selection (wraps it, toggles off on re-apply) and a collapsed caret (drops an empty
-// pair with the caret between). On send these are converted to IRC control codes so
-// other clients still render the emphasis (see markdownToIrc).
+// Formatting uses real markdown markers (** * __ ~~ `). They're real characters
+// in the field, visible in IRC mode and hidden in modern mode, so the caret never
+// snags on an invisible toggle. On send they become IRC control codes
+// (markdownToIrc) so other clients render the emphasis.
 const formatBold = () => wrapSelection('**', '**')
 const formatItalic = () => wrapSelection('*', '*')
 const formatUnderline = () => wrapSelection('__', '__')
@@ -547,9 +540,7 @@ function tabComplete(event: KeyboardEvent) {
 }
 
 // --- per-buffer drafts + command history (persisted to localStorage) --------
-// Each buffer (channel/PM/server) keeps its own composer draft and command
-// history, so switching channels preserves what you were typing and your
-// per-channel recall. Keyed by lowercased buffer name.
+// Each buffer keeps its own draft and command history, keyed by lowercased name.
 
 const DRAFTS_KEY = 'hivecom.chat.drafts'
 const HISTORY_KEY = 'hivecom.chat.history'
@@ -700,7 +691,7 @@ watch(inputMessage, (newVal, oldVal) => {
   }
   _skipTypingDone = false
 
-  // Slash commands are not user messages - don't advertise typing.
+  // Slash commands aren't messages, so don't advertise typing.
   if (!settings.value.chat_typing_indicators || newVal.startsWith('/')) {
     clearTypingTimers()
     return
@@ -718,7 +709,7 @@ watch(inputMessage, (newVal, oldVal) => {
       sendTyping('paused')
   }, 4000)
   if (_typingSessionActive) {
-    // Already inside a burst - let the composable's 3s throttle gate re-sends.
+    // Already inside a burst: the composable's 3s throttle gates re-sends.
     sendTyping('active')
   }
   else if (_activeDebounceTimer === null) {
@@ -786,7 +777,7 @@ async function sendWithHistory() {
     pushHistory(msg)
   sendMessage()
 
-  // Sending clears the read markers - the user is caught up on this buffer.
+  // Sending clears the read markers, since the user is caught up on this buffer.
   markBufferRead(activeName.value)
   historyIndex.value = -1
 }
@@ -1072,10 +1063,9 @@ watch(activeName, name => selectAttachmentTray(bufKey(name)), { immediate: true 
 .chat-composer {
   position: relative;
 
-  // The persistent audio mini-player floats over the bottom of the viewport,
-  // right where the composer lives. While it's docked it publishes its height as
-  // --audio-dock-height; reserve that here so the floating player never covers
-  // the input, on every layout (full-page chat included). 0 when nothing plays.
+  // The audio mini-player floats over the bottom of the viewport and publishes
+  // its height as --audio-dock-height while docked. Reserve it so the player never
+  // covers the input. 0 when nothing plays.
   padding-bottom: var(--audio-dock-height, 0px);
 
   // On phones the composer also sits flush to the bottom edge, so stack the

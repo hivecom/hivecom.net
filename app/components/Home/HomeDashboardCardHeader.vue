@@ -1,11 +1,8 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
 
-// Title row for a dashboard card. The default slot sits flush right of the
-// title, which is where cards put their at-a-glance badge (players online,
-// votes in progress). Pass `to` and the title doubles as the way into the
-// section the card is summarising. The icon matches whatever the section uses
-// in the nav, so a card is recognisable before the title is read.
+// The default slot holds the card's at-a-glance badge. `to` makes the title a link
+// into the section.
 defineProps<{ title: string, icon?: string, to?: string }>()
 </script>
 
@@ -64,8 +61,7 @@ defineProps<{ title: string, icon?: string, to?: string }>()
   }
 }
 
-// Held back until the title is hovered, so a row of five cards isn't a row of
-// five arrows competing with the badges.
+// Hidden until hover, so a row of cards isn't a row of arrows competing with the badges
 .dashboard-card-header__arrow {
   font-size: 14px;
   opacity: 0;

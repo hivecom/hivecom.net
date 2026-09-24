@@ -7,22 +7,18 @@ import GameServerConnectButton from '@/components/GameServers/GameServerConnectB
 import GameIcon from '@/components/Shared/GameIcon.vue'
 import { buildConnectContext } from '@/composables/useGameConnect'
 
-// One server as a row in the Gameservers card. The row is the link to the
-// server's page; the connect button rides on the right and stops the click so
-// launching doesn't also navigate. With a meta line the button hides behind it
-// until hover, since the activity is what you scan a list for. Without one
-// (the hop-in pick) the button is the point, so it stays out.
+// The connect button stops the click so launching doesn't also navigate. It hides
+// behind the meta line until hover, since activity is what you scan a list for.
 const props = defineProps<{
   gs: GameserverWithContainer
   game?: Tables<'games'> | null
-  /** Right-hand line, swapped for the connect button on hover. */
+  /** Swapped for the connect button on hover */
   meta?: string
 }>()
 
 const connect = computed(() => buildConnectContext(props.game, props.gs))
 
-// With no address there is no connect action to reveal, so the row keeps
-// showing its activity line on hover rather than fading into nothing.
+// Without an address there's nothing to reveal, so the activity line stays on hover
 const hasConnect = computed(() => (props.gs.addresses?.length ?? 0) > 0)
 </script>
 
@@ -60,8 +56,7 @@ const hasConnect = computed(() => (props.gs.addresses?.length ?? 0) > 0)
   min-width: 0;
 }
 
-// The activity line and the launch button share one cell, so the row is sized
-// for the wider of the two and swapping them on hover doesn't shift the name.
+// One shared cell, so swapping on hover doesn't shift the name
 .home-gameserver__action {
   display: grid;
   flex-shrink: 0;
@@ -78,8 +73,6 @@ const hasConnect = computed(() => (props.gs.addresses?.length ?? 0) > 0)
   white-space: nowrap;
 }
 
-// Only a row with a meta line hides its button. The swap runs on hover and on
-// keyboard focus landing inside the row.
 .home-gameserver--reveal {
   .home-gameserver__connect {
     opacity: 0;
@@ -99,7 +92,7 @@ const hasConnect = computed(() => (props.gs.addresses?.length ?? 0) > 0)
     }
   }
 
-  // No hover to reveal on touch, so the row keeps showing what it knows.
+  // No hover on touch, so keep showing the activity
   @media (hover: none) {
     .home-gameserver__connect {
       display: none;

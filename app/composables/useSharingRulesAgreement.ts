@@ -1,38 +1,26 @@
 /**
- * Cached sharing-rules agreement status for the current user.
- *
- * Mirrors {@link useContentRulesAgreement}: `agreed_sharing_rules` is a
- * write-once boolean on `profiles` gating uploads to Orbit Depot. The caching
- * strategy is identical (24h TTL, write-once fast path, evict on SIGNED_IN).
- *
- * ## Usage
- *
- *   const { agreed, loading, refresh, markAgreed } = useSharingRulesAgreement()
+ * agreed_sharing_rules is a write-once boolean on profiles that gates uploads
+ * to Orbit Depot.
  */
 
 import type { Database } from '@/types/database.types'
 import { readonly, ref, watch } from 'vue'
 import { useCache } from './useCache'
 
-const TTL = 24 * 60 * 60 * 1000 // 24 hours
+const TTL = 24 * 60 * 60 * 1000
 
 function getCacheKey(userId: string): string {
   return `sharing-rules:agreed:${userId}`
 }
 
-// Shared state. Unlike content rules (which mount many editor instances and
-// want per-instance refs), the sharing gate is consulted from several places at
-// once (chat composer, chat app, sharing page) and a single agree must be
-// visible to all of them immediately. Module-level refs make markAgreed()
-// reactive everywhere; the per-instance watch/listener below stay cheap because
-// fetches are cache-deduped and short-circuit on the write-once fast path.
+// Module-level so a single agree shows up at once everywhere the gate is
+// consulted. The per-instance watch stays cheap since fetches are cache-deduped
+// and true short-circuits.
 const agreed = ref<boolean | null>(null)
 const loading = ref(false)
 
-// Bound once for the module rather than once per instance. The state it touches
-// is shared and several components hold this composable at the same time, so
-// per-instance binding piles up handlers that never unsubscribe and each redo
-// the same work.
+// Bound once per module. The state is shared, and binding per instance piles up
+// handlers that never unsubscribe.
 let authListenerBound = false
 
 export function useSharingRulesAgreement() {
@@ -111,11 +99,7 @@ export function useSharingRulesAgreement() {
     }
   }
 
-  /**
-   * Called by SharingRulesModal after the DB write succeeds. Warms the cache to
-   * `true` so other consumers on the same page reflect the change without a
-   * re-fetch.
-   */
+  // Call after the DB write succeeds. Other consumers update without a refetch.
   function markAgreed(): void {
     const id = userId.value
     if (id == null || id === '')
@@ -141,7 +125,6 @@ export function useSharingRulesAgreement() {
     return agreed.value === true
   }
 
-  // Re-fetch when the user changes (account switch or sign-in)
   watch(userId, (id, prevId) => {
     if (id !== prevId) {
       agreed.value = null

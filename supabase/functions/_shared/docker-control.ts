@@ -2,13 +2,11 @@ import type { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "./cors.ts";
 import type { Database, Tables } from "database-types";
 
-// Interface for container with its server details
 export interface ContainerWithServer {
   container: Tables<"network_containers">;
   server: Tables<"network_servers">;
 }
 
-// Interface for Docker control container response
 export interface DockerControlContainer {
   id: string;
   name: string;
@@ -19,9 +17,6 @@ export interface DockerControlContainer {
 
 export type DockerControlResponse = DockerControlContainer[];
 
-/**
- * Builds a Docker control URL for server-wide actions
- */
 export function buildDockerControlServerUrl(
   server: Tables<"network_servers">,
   endpoint: string = "status",
@@ -35,29 +30,21 @@ export function buildDockerControlServerUrl(
   }/${endpoint}`;
 }
 
-/**
- * Builds a Docker control URL for a specific container and action
- */
 export function buildDockerControlActionUrl(
   server: Tables<"network_servers">,
   containerName: string,
   action: string,
 ): string {
-  // Use the server URL builder as a base, with a specific endpoint for container actions
   return buildDockerControlServerUrl(
     server,
     `control/name/${containerName}/${action}`,
   );
 }
 
-/**
- * Fetches container details along with its associated server
- */
 export async function getContainerWithServer(
   supabaseClient: ReturnType<typeof createClient<Database>>,
   containerName: string,
 ): Promise<{ container: ContainerWithServer | null; error: Response | null }> {
-  // Get container details including the server it's hosted on
   const { data: container, error: containerError } = await supabaseClient
     .from("network_containers")
     .select("*, server(*)")
@@ -80,7 +67,6 @@ export async function getContainerWithServer(
     };
   }
 
-  // Get the server that hosts this container
   const server = container.server as Tables<"network_servers">;
 
   if (!server) {
@@ -99,7 +85,6 @@ export async function getContainerWithServer(
     };
   }
 
-  // Check if docker-control is enabled on the server
   if (!server.docker_control || !server.active) {
     return {
       container: null,
@@ -122,9 +107,6 @@ export async function getContainerWithServer(
   };
 }
 
-/**
- * Updates container status in the database
- */
 export async function updateContainerStatus(
   supabaseClient: ReturnType<typeof createClient<Database>>,
   containerName: string,
@@ -157,9 +139,6 @@ export async function updateContainerStatus(
   }
 }
 
-/**
- * Performs a Docker control API request and handles the response
- */
 export async function performDockerControlAction(
   url: string,
   method: string = "POST",
@@ -181,9 +160,6 @@ export async function performDockerControlAction(
   }
 }
 
-/**
- * Get all active Docker control enabled servers
- */
 export async function getActiveDockerControlServers(
   supabaseClient: ReturnType<typeof createClient<Database>>,
 ): Promise<
@@ -245,20 +221,12 @@ export async function getActiveDockerControlServers(
   }
 }
 
-/**
- * Extracts container name from URL path
- */
 export function extractContainerNameFromPath(req: Request): string | null {
   const url = new URL(req.url);
   const pathParts = url.pathname.split("/");
-  // Extract container name from path - assuming the path is like /.../container-name
-  // The last part of the path should be the container name
   return pathParts[pathParts.length - 1] || null;
 }
 
-/**
- * Gets Docker control token from environment variables
- */
 export function getDockerControlToken(): string {
   const token = Deno.env.get("DOCKER_CONTROL_TOKEN");
   if (!token) {

@@ -51,7 +51,6 @@ function computeBadge(now = dayjs()) {
   badge.value = formatDurationCompact(diffMs) || null
 }
 
-// Recompute badge whenever the events list populates or changes
 watch(events, () => computeBadge(), { immediate: true })
 
 let intervalId: number | null = null

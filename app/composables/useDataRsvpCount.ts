@@ -6,8 +6,7 @@ import { useRsvpBus } from '@/composables/useRsvpBus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { isSeriesActive, nextOccurrenceDate } from '@/lib/utils/rrule'
 
-// Module-level singleton so all instances for the same event share one cache entry
-// and don't issue duplicate network requests on the same page load.
+// Module-level so every instance for an event shares one cache entry.
 const _rsvpCountCache = useCache(CACHE_NAMESPACES.rsvps)
 
 function countCacheKey(eventId: number): string {
@@ -15,22 +14,15 @@ function countCacheKey(eventId: number): string {
 }
 
 /**
- * Cached RSVP "yes" count for a single event occurrence.
- *
- * For recurring events uses get_effective_rsvps_for_occurrence RPC which
- * applies occurrence-window + series fallback logic. For one-off events
- * falls back to a simple direct count.
- *
- * - Force-refreshes when useRsvpBus fires for this event (covers same-tab writes
- *   and cross-tab changes bridged by useRealtimeRsvp).
- * - `loading` starts true so consumers can show a skeleton on the first render
- *   before onMounted fires.
+ * Recurring events count through get_effective_rsvps_for_occurrence, which
+ * applies the occurrence window and series fallback. One-off events use a
+ * direct count.
  */
 export function useDataRsvpCount(eventSource: MaybeRefOrGetter<Tables<'events'> | null | undefined>) {
   const supabase = useSupabaseClient<Database>()
 
   const goingCount = ref(0)
-  const loading = ref(true) // starts true so skeleton shows before onMounted fires
+  const loading = ref(true) // so the skeleton shows before onMounted fires
   const error = ref<string | null>(null)
 
   async function fetch(force = false): Promise<void> {

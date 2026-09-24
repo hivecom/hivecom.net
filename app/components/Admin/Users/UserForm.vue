@@ -42,7 +42,6 @@ const props = defineProps<{
   isEditMode: boolean
 }>()
 
-// Define emits
 const emit = defineEmits<{
   save: [userData: Record<string, unknown>, badges: string[], currentBadges: string[]]
   delete: [userId: string]
@@ -52,7 +51,6 @@ const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/Ri
 
 const markdownEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
-// Interface for Select options
 interface SelectOption {
   label: string
   value: string
@@ -63,10 +61,9 @@ const BADGE_VALUES = ['builder', 'earlybird', 'founder', 'host'] as const
 type ManualBadgeSlug = typeof BADGE_VALUES[number]
 type AdminUserFormState = UserFormState & { badges: ManualBadgeSlug[] }
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
-// Declare saveLoading early - used in isOpen watcher below
+// Declared early because the isOpen watcher below uses it.
 const saveLoading = ref(false)
 
 watch(isOpen, (open) => {
@@ -74,24 +71,16 @@ watch(isOpen, (open) => {
     saveLoading.value = false
 })
 
-// Get current user and admin permissions
 const currentUser = useSupabaseUser()
 const currentUserId = useUserId()
 const { canModifyUsers, canDeleteUsers, canUpdateRoles } = useAdminPermissions()
 
-// Supabase client for role operations
 const supabase = useSupabaseClient()
 
-// permissionVerified mirrors canUpdateRoles so canEditRoles stays reactive to impersonation.
-// The old approach queried the DB directly (bypassing the injected effective permissions).
-const permissionVerified = computed(() => canUpdateRoles.value)
-const permissionVerifying = ref(false)
-
-// Avatar state
 const avatarUrl = ref<string | null>(null)
 const avatarDeleting = ref(false)
 
-// Badge state from DB - source of truth for current manual badges
+// Badge state from the DB is the source of truth for current manual badges.
 const editingUserId = computed(() => props.user?.id ?? null)
 const { badges: dbBadges } = useDataProfileBadges(editingUserId)
 const currentDbManualSlugs = computed(() =>
@@ -101,7 +90,6 @@ const currentDbManualSlugs = computed(() =>
     .filter((s): s is typeof BADGE_VALUES[number] => (BADGE_VALUES as readonly string[]).includes(s)),
 )
 
-// Form state
 function createDefaultUserFormState(): AdminUserFormState {
   return {
     username: '',
@@ -136,7 +124,7 @@ const {
   isValid,
 } = useUserFormValidation(userForm)
 
-// Available roles - "User" means no role in database
+// "User" means no role in the database.
 const availableRoles = [
   { value: 'user', label: 'User', description: 'Standard user with no admin privileges' },
   { value: 'admin', label: 'Admin', description: 'Full administrative access' },
@@ -162,7 +150,6 @@ const badgeLabelMap = BADGE_VALUES.reduce<Record<ManualBadgeSlug, string>>((acc,
   return acc
 }, {} as Record<ManualBadgeSlug, string>)
 
-// Convert roles to Select component options format
 const roleSelectOptions = computed(() =>
   availableRoles.map(role => ({
     label: role.label,
@@ -170,15 +157,12 @@ const roleSelectOptions = computed(() =>
   })),
 )
 
-// Role management state
 const selectedRole = ref<string>('user')
 const originalRole = ref<string>('user')
 const rolesLoading = ref(false)
 const rolesError = ref('')
 
-// Permission verification state - now derived from canUpdateRoles (see above)
-
-// Computed property to handle VUI Select format (expects array of selected options)
+// VUI Select expects an array of selected options.
 const selectedRoleComputed = computed({
   get: (): SelectOption[] => {
     const option = roleSelectOptions.value.find(opt => opt.value === selectedRole.value)
@@ -189,7 +173,6 @@ const selectedRoleComputed = computed({
   },
 })
 
-// State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 const deleteLoading = ref(false)
 
@@ -216,22 +199,15 @@ const badgeSummaryText = computed(() => {
   return `Assigned badges: ${labels.join(', ')}`
 })
 
-// Permission-based access control
 const canEditForm = computed(() => {
   if (!props.isEditMode)
-    return canModifyUsers.value // Creating new user
+    return canModifyUsers.value
 
-  return canModifyUsers.value // Editing existing user
+  return canModifyUsers.value
 })
 
 const canEditRoles = computed(() => {
-  // Basic permission check from the admin permissions composable
   if (!canUpdateRoles.value) {
-    return false
-  }
-
-  // Additional database verification check
-  if (!permissionVerified.value) {
     return false
   }
 
@@ -247,7 +223,6 @@ const canDeleteUser = computed(() => canDeleteUsers.value)
 
 const showDeleteButton = computed(() => props.isEditMode && canDeleteUser.value)
 
-// Role management functions
 async function fetchUserRoles() {
   if (!props.user?.id)
     return
@@ -264,7 +239,6 @@ async function fetchUserRoles() {
     if (error)
       throw error
 
-    // If user has a role in the database, use it; otherwise default to 'user'
     const role = data?.[0]?.role || 'user'
     selectedRole.value = role
     originalRole.value = role
@@ -278,7 +252,6 @@ async function fetchUserRoles() {
   }
 }
 
-// Update form data when user prop changes
 watch(
   () => props.user,
   async (newUser) => {
@@ -304,27 +277,20 @@ watch(
         badges: sanitizedBadges,
       }
 
-      // Fetch user roles when editing existing user
       if (props.isEditMode) {
         fetchUserRoles()
       }
 
-      // Fetch user avatar when editing existing user
       if (props.isEditMode && newUser.id) {
         avatarUrl.value = await getUserAvatarUrl(supabase, newUser.id)
       }
-
-      // Verify role permissions when user changes - now handled reactively via canUpdateRoles
     }
     else {
-      // Reset form for new user
       userForm.value = createDefaultUserFormState()
 
-      // Reset role for new user
       selectedRole.value = 'user'
       originalRole.value = 'user'
 
-      // Reset avatar for new user
       avatarUrl.value = null
     }
   },
@@ -341,24 +307,21 @@ watch(
   },
 )
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle form submission
 async function handleSubmit() {
   if (!isValid.value)
     return
 
-  // Upload any pending blob-placeholder media before reading the markdown,
-  // otherwise blob: URLs get persisted and render as missing media. The editor
-  // surfaces its own error toast on failure, so we just abort here.
+  // Flush pending blob-placeholder media first, or blob: URLs get persisted and
+  // render as missing media. The editor shows its own error toast, so just abort.
   const uploaded = await markdownEditor.value?.flushPendingUploads()
   if (uploaded === false)
     return
 
-  // Prepare the data to save with HTML sanitization
+  // Introduction and markdown get their HTML stripped before saving.
   const userData = {
     username: userForm.value.username.trim(),
     introduction: userForm.value.introduction.trim() ? stripHtmlTags(userForm.value.introduction.trim()) : null,
@@ -381,7 +344,6 @@ async function handleSubmit() {
   emit('save', userData, dedupeBadges(userForm.value.badges), currentDbManualSlugs.value)
 }
 
-// Open confirmation modal for deletion
 function handleDelete() {
   if (!props.user)
     return
@@ -389,7 +351,6 @@ function handleDelete() {
   showDeleteConfirm.value = true
 }
 
-// Perform actual deletion when confirmed
 function confirmDelete() {
   if (!props.user)
     return
@@ -401,7 +362,6 @@ function confirmDelete() {
   emit('delete', props.user.id)
 }
 
-// Handle avatar deletion
 async function handleAvatarDelete() {
   if (!props.user?.id)
     return
@@ -411,13 +371,9 @@ async function handleAvatarDelete() {
   try {
     await deleteUserAvatar(supabase, props.user.id)
     avatarUrl.value = null
-
-    // You might want to emit an event here to notify parent component
   }
   catch (error) {
     console.error('Error deleting avatar:', error)
-
-    // Handle error state if needed
   }
   finally {
     avatarDeleting.value = false
@@ -501,9 +457,7 @@ function clearBirthday() {
       </Flex>
     </template>
 
-    <!-- User Info Section -->
     <Flex column gap="l" class="user-form" expand>
-      <!-- Admin Guidelines -->
       <Flex v-if="props.isEditMode" column gap="s" class="admin-guidelines" expand>
         <h5>⚠️ Admin Guidelines</h5>
         <ul class="guidelines-list text-s">
@@ -551,7 +505,6 @@ function clearBirthday() {
           :errors="usernameValidation.error ? [usernameValidation.error] : undefined"
         />
 
-        <!-- Role Management Section -->
         <Flex column gap="m" expand>
           <div v-if="rolesLoading" class="roles-loading">
             <Icon name="ph:spinner" spin />
@@ -580,10 +533,6 @@ function clearBirthday() {
               <span v-else-if="!canUpdateRoles">
                 Requires 'roles.update' permission to modify user roles
               </span>
-              <span v-else-if="!permissionVerified">
-                <span v-if="permissionVerifying">Verifying permissions...</span>
-                <span v-else>Role modification permissions not verified</span>
-              </span>
               <span v-else>
                 Role modification not permitted
               </span>
@@ -605,7 +554,6 @@ function clearBirthday() {
 
           <Flex column gap="xs">
             <label class="text-m">Avatar</label>
-            <!-- Avatar Management (Edit Mode Only) -->
             <AvatarDelete
               v-if="props.isEditMode && props.user"
               :size="98"
@@ -710,7 +658,6 @@ function clearBirthday() {
         />
       </Flex>
 
-      <!-- External IDs Section -->
       <Flex column gap="m" expand>
         <h4>External IDs</h4>
 
@@ -750,7 +697,6 @@ function clearBirthday() {
         </div>
       </Flex>
 
-      <!-- Supporter Status Section -->
       <Flex column gap="m" expand>
         <h4>Supporter Status</h4>
 
@@ -836,7 +782,6 @@ function clearBirthday() {
     </template>
   </Sheet>
 
-  <!-- Delete Confirmation Modal -->
   <ConfirmModal
     v-model:open="showDeleteConfirm"
     :confirm="confirmDelete"

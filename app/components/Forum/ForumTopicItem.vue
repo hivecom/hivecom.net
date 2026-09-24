@@ -43,12 +43,8 @@ const { iconUrl } = useTopicIcon(topicId)
 
 <template>
   <li class="forum__category-post">
-    <!--
-      NuxtLink gives us a real <a> so middle-click / ctrl-click opens a new tab.
-      Left-clicks are intercepted via @click.prevent so the parent's @click
-      handler (which calls setActiveTopicFromTopic) drives navigation instead,
-      allowing us to push a proper history entry.
-    -->
+    <!-- A real <a> keeps middle-click and ctrl-click opening a new tab. Plain
+         left-clicks go to the parent's handler, which pushes a proper history entry. -->
     <NuxtLink
       class="forum__category-post--item topic"
       :to="href ?? '#'"
@@ -121,8 +117,6 @@ const { iconUrl } = useTopicIcon(topicId)
     color: var(--color-text);
   }
 
-  // When the topic has a custom icon, layer the image behind the folder icon
-  // and animate on hover
   &.has-topic-icon {
     .topic-icon__image {
       position: absolute;

@@ -27,10 +27,8 @@ const eventId = Number.parseInt(route.params.id as string)
 // Supabase client
 const supabase = useSupabaseClient()
 
-// Games from shared cache
 const { getByIds } = useDataGames()
 
-// Fetch event with caching
 const { data: event, loading, error, refetch: refetchEvent } = useCachedFetch<Tables<'events'>>(
   () => ({
     table: 'events',
@@ -41,7 +39,6 @@ const { data: event, loading, error, refetch: refetchEvent } = useCachedFetch<Ta
   { ttl: 60000 },
 )
 
-// Derive event games from the cached list
 const games = computed(() => event.value?.games ? getByIds(event.value.games as number[]) : [])
 
 defineOgImage('Event', {
@@ -63,7 +60,7 @@ const effectiveEventForTiming = computed(() => {
   if (next)
     return { ...ev, date: next.toISOString() }
 
-  // No next occurrence - series ended. Find the last past occurrence so
+  // No next occurrence, so the series ended. Use the last past occurrence so
   // timeAgo is relative to when it actually last ran, not the origin date.
   const now = new Date()
   const past = expandRecurringEvent(ev, new Date(ev.date), now)
@@ -96,8 +93,7 @@ function handleReplySubmitted(newReplyCount: number, discussionId: string) {
   forumUnread.markDiscussionSeen(discussionId, newReplyCount)
 }
 
-// Auth state - resolved on mount to avoid race conditions on hard reload
-// (useSupabaseUser starts as null while the session is still being restored)
+// Resolved on mount because useSupabaseUser is null while the session restores on a hard reload
 const { waitForSessionReady } = useSessionReady()
 const { navigateToSignIn } = useAuthRedirect()
 const authReady = ref(false)
@@ -110,7 +106,6 @@ onMounted(async () => {
   authReady.value = true
 })
 
-// Edit permissions
 const userId = useUserId()
 const { hasPermission } = usePermissions()
 
@@ -155,10 +150,8 @@ const displayErrorDetail = computed(() => {
   return error.value
 })
 
-// Redirect unauthenticated users to sign-in when an event can't be loaded -
-// it is likely hidden by RLS (community/private event). After signing in they
-// are returned here; if the event still isn't found they see the not-found
-// message above.
+// Send signed-out users to sign-in when an event can't load, since RLS likely hides
+// it. If it's still missing after sign-in they get the not-found message.
 watch(
   [error, userId, authReady, sessionUser],
   ([eventError, , isAuthReady]) => {
@@ -183,7 +176,6 @@ const canEdit = computed(() => {
 
 const showEditModal = ref(false)
 
-// Delete
 const deleteLoading = ref(false)
 const deleteConfirm = ref(false)
 
@@ -210,10 +202,8 @@ async function handleDelete() {
   }
 }
 
-// Fetch minimal event data at SSR/prerender time so meta tags are populated.
-// The full interactive fetch (useCachedFetch) is client-only, so during
-// prerendering event.value stays null and every card falls back to
-// "Event Details" / "Event details" - the doubled label crawlers were seeing.
+// Minimal SSR/prerender fetch for meta tags. useCachedFetch is client-only, so
+// prerendered pages would otherwise all fall back to "Event Details".
 const { data: seoEvent } = await useAsyncData(`event-seo-${eventId}`, async () => {
   const { data } = await supabase
     .from('events')

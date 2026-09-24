@@ -12,7 +12,6 @@ const props = defineProps<Props>()
 </script>
 
 <template>
-  <!-- Event Details -->
   <Card v-if="props.event.markdown" class="event-markdown card-bg">
     <div class="event-markdown__content">
       <MarkdownRenderer :md="props.event.markdown" />

@@ -25,16 +25,13 @@ interface ContainerWithServer {
   } | null
 }
 
-// Get admin permissions
 const { hasPermission } = useAdminPermissions()
 const route = useRoute()
 
-// Check permissions for each resource type
 const canReadServers = computed(() => hasPermission('network.read'))
 const canReadGameservers = computed(() => hasPermission('network.read'))
 const canReadContainers = computed(() => hasPermission('network.read'))
 
-// Tab management
 const availableTabs = computed(() => {
   const tabs = []
   if (canReadContainers.value)
@@ -48,23 +45,18 @@ const availableTabs = computed(() => {
 
 const { activeTab } = useAdminTabs(availableTabs)
 
-// Focused container from query string
 const focusedContainerName = computed(() => getRouteQueryString(route.query.container))
 
 const supabase = useSupabaseClient()
 
-// Refresh signals for each tab
 const refreshSignal = ref(0)
 const serverRefreshSignal = ref(0)
 const gameserverRefreshSignal = ref(0)
 
-// Handle refresh events from ContainerTable
 function handleRefreshSignal(value: number) {
-  // Update the refresh signal for KPIs when containers are updated
   refreshSignal.value = value
 }
 
-// Container control actions
 async function handleContainerControl(container: ContainerWithServer, action: 'start' | 'stop' | 'restart') {
   try {
     const endpoint = `admin-docker-control-container-${action}/${container.name}`
@@ -92,29 +84,23 @@ async function handleContainerControl(container: ContainerWithServer, action: 's
       </p>
     </Flex>
 
-    <!-- Only show tabs if there are available tabs -->
     <Tabs v-if="availableTabs.length > 0" v-model="activeTab">
       <Tab v-for="tab in availableTabs" :key="tab.value" :value="tab.value">
         {{ tab.label }}
       </Tab>
     </Tabs>
 
-    <!-- Servers Tab -->
     <Flex v-if="canReadServers" v-show="activeTab === 'Servers'" column gap="m" expand>
       <ServerTable v-model:refresh-signal="serverRefreshSignal" />
     </Flex>
 
-    <!-- Gameservers Tab -->
     <Flex v-if="canReadGameservers" v-show="activeTab === 'Gameservers'" column gap="m" expand>
       <GameserverTable v-model:refresh-signal="gameserverRefreshSignal" />
     </Flex>
 
-    <!-- Containers Tab -->
     <Flex v-if="canReadContainers" v-show="activeTab === 'Containers'" column gap="m" expand>
-      <!-- Container KPIs with v-model for refresh -->
       <ContainerKPIs v-model:refresh-signal="refreshSignal" />
 
-      <!-- Container Table with v-model for refresh -->
       <ContainerTable
         v-model:refresh-signal="refreshSignal"
         :control-container="handleContainerControl"
@@ -123,7 +109,6 @@ async function handleContainerControl(container: ContainerWithServer, action: 's
       />
     </Flex>
 
-    <!-- No access message -->
     <Alert v-if="availableTabs.length === 0" variant="info">
       You don't have permission to view any network resources.
     </Alert>

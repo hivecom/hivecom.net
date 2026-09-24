@@ -4,10 +4,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Flex, Sheet } from '@dolanske/vui'
 import HomeDashboardGameserverItem from '@/components/Home/HomeDashboardGameserverItem.vue'
 
-// Every server we host, opened from the one-per-game rows the gameservers card
-// has room for. Same rows and same order as the card (busiest now, then most
-// recently busy), just without the one-per-game cut, so a game with three
-// servers finally shows all three. The list is short enough to render whole.
+// The card's rows without the one-per-game cut. Short enough to render whole.
 export interface GameserverSheetRow {
   gs: GameserverWithContainer
   game: Tables<'games'> | null

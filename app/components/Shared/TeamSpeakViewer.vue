@@ -380,7 +380,6 @@ async function _handleRefresh() {
 const selectedServerId = ref<string | null>(props.serverId ?? null)
 const showMusicBots = ref(true)
 
-// Fetch users with TeamSpeak identities to enable UserLink
 const supabase = useSupabaseClient()
 const rawSnapshotUrl = computed<string | null>(() => {
   const { data: publicUrlData } = supabase.storage
@@ -419,7 +418,6 @@ const { data: teamspeakUsers } = await useAsyncData(
   },
 )
 
-// Create a map of TeamSpeak uniqueId -> user ID for quick lookups
 const teamspeakToUserId = computed<Map<string, string>>(() => {
   const map = new Map<string, string>()
 
@@ -442,7 +440,6 @@ const teamspeakToUserId = computed<Map<string, string>>(() => {
   return map
 })
 
-// Helper to get user ID for a TeamSpeak client
 function getUserIdForClient(serverId: string, uniqueId: string): string | null {
   return teamspeakToUserId.value.get(`${serverId}:${uniqueId}`) ?? null
 }
@@ -604,8 +601,6 @@ const errorMessage = computed(() => {
 
   return 'Unable to load TeamSpeak status.'
 })
-
-// Local formatDuration removed - use formatDurationMs from utility
 
 function flattenChannels(tree: TeamSpeakNormalizedChannel[]): TeamSpeakNormalizedChannel[] {
   const rows: TeamSpeakNormalizedChannel[] = []
@@ -818,7 +813,6 @@ function _openRawSnapshot() {
 <template>
   <Card class="ts-viewer" separators>
     <template #header>
-      <!-- Mobile layout -->
       <template v-if="isMobile">
         <Flex expand gap="s" x-between y-center>
           <Flex y-center gap="s">
@@ -865,7 +859,6 @@ function _openRawSnapshot() {
         </Flex>
       </template>
 
-      <!-- Desktop layout -->
       <Flex v-else expand x-between y-center gap="s">
         <Flex expand y-center gap="s">
           <div v-if="serversSorted.length <= 1 || props.serverId">

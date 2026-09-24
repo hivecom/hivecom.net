@@ -1,14 +1,8 @@
-/**
- * Pure helper functions for role permission display formatting.
- * Extracted from Admin/Roles/RolesGrid.vue - no Vue dependency.
- */
-
 export type RoleVariant = 'danger' | 'info' | 'success' | 'neutral'
 
 /**
- * Permissions implicitly granted to all authenticated users (the 'user' role).
- * These are not stored in role_permissions - they are the hardcoded baseline.
- * Shared between RolesGrid display and role impersonation.
+ * Implicit baseline for every authenticated user. These aren't stored in
+ * role_permissions.
  */
 export const DEFAULT_USER_PERMISSIONS: string[] = [
   'discussion_topics.read',
@@ -34,15 +28,11 @@ export const DEFAULT_USER_PERMISSIONS: string[] = [
   'referendum_votes.delete.own',
 ]
 
-/**
- * Formats a raw permission string (e.g. "complaints.create.own") into a
- * human-readable label.
- */
 export function formatPermissionName(permission: string): string {
   const parts = permission.split('.')
   const [category, action, scope] = parts
 
-  // Fully-qualified overrides for pseudo-permissions on the user role
+  // Pseudo-permissions on the user role read badly when generated.
   if (permission === 'discussion_replies.update')
     return 'Update any reply'
   if (permission === 'discussion_replies.delete')
@@ -79,10 +69,6 @@ export function formatPermissionName(permission: string): string {
   return categoryLabel
 }
 
-/**
- * Maps known category slugs to clean human-readable display names.
- * Falls back to capitalising and splitting underscores for unknown categories.
- */
 export function formatCategoryName(category: string): string {
   const names: Record<string, string> = {
     alerts: 'Alerts',
@@ -109,9 +95,6 @@ export function formatCategoryName(category: string): string {
     ?? category.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
-/**
- * Maps a role name to a CSS colour token string.
- */
 export function getRoleColor(role: string): string {
   switch (role) {
     case 'admin':
@@ -128,9 +111,6 @@ export function getRoleColor(role: string): string {
   }
 }
 
-/**
- * Maps a role name to its corresponding VUI badge variant.
- */
 export function getRoleVariant(role: string): RoleVariant {
   switch (role) {
     case 'admin':
@@ -147,9 +127,6 @@ export function getRoleVariant(role: string): RoleVariant {
   }
 }
 
-/**
- * Maps a permission category name to its corresponding Phosphor icon string.
- */
 export function getCategoryIcon(category: string): string {
   const icons: Record<string, string> = {
     alerts: 'ph:warning-octagon',

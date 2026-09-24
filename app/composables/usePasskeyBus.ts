@@ -1,25 +1,9 @@
-/**
- * Typed bus for the `passkey-updated` custom window event.
- *
- * Passkey enrollment lives in `Settings/PasskeyCard.vue`, but the sibling
- * `Settings/MfaCard.vue` also needs to know the current passkey count so it can
- * reflect "Protected by passkey" status without a full reload. This bus lets the
- * passkey card broadcast changes (add / remove) to any interested component.
- *
- * Usage:
- *   // Dispatching:
- *   const { dispatchPasskeysChanged } = usePasskeyBus()
- *   dispatchPasskeysChanged({ count })
- *
- *   // Listening (inside a component setup context):
- *   const { onPasskeysChanged } = usePasskeyBus()
- *   onPasskeysChanged(({ count }) => { ... })
- */
+// Typed bus for the `passkey-updated` window event.
 
 const PASSKEY_UPDATED_EVENT = 'passkey-updated'
 
 export interface PasskeysChangedPayload {
-  /** Number of passkeys the current user has enrolled after the change. */
+  /** Enrolled passkeys after the change. */
   count: number
 }
 

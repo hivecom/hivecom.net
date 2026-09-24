@@ -21,13 +21,10 @@ const props = defineProps<{
   isEditMode: boolean
 }>()
 
-// Define emits
 const emit = defineEmits(['save', 'delete'])
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
-// Form state
 const expenseForm = ref({
   name: '',
   description: '',
@@ -37,11 +34,9 @@ const expenseForm = ref({
   url: '',
 })
 
-// State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 const saveLoading = ref(false)
 
-// Form validation
 const validation = computed(() => {
   const hasValidEndDate = !expenseForm.value.ended_at
     || !expenseForm.value.started_at
@@ -57,7 +52,6 @@ const validation = computed(() => {
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
-// Check if this is a planned expense (start date in the future)
 const isPlannedExpense = computed(() => {
   if (!expenseForm.value.started_at)
     return false
@@ -69,7 +63,6 @@ const isPlannedExpense = computed(() => {
   return startDate > today
 })
 
-// Update form data when expense prop changes
 watch(
   () => props.expense,
   (newExpense) => {
@@ -84,7 +77,6 @@ watch(
       }
     }
     else {
-      // Reset form for new expense
       expenseForm.value = {
         name: '',
         description: '',
@@ -98,17 +90,14 @@ watch(
   { immediate: true },
 )
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle form submission
 function handleSubmit() {
   if (!isValid.value)
     return
 
-  // Prepare the data to save
   const expenseData = {
     name: expenseForm.value.name,
     description: expenseForm.value.description || null,
@@ -127,7 +116,6 @@ watch(isOpen, (open) => {
     saveLoading.value = false
 })
 
-// Open confirmation modal for deletion
 function handleDelete() {
   if (!props.expense)
     return
@@ -135,7 +123,6 @@ function handleDelete() {
   showDeleteConfirm.value = true
 }
 
-// Perform actual deletion when confirmed
 function confirmDelete() {
   if (!props.expense)
     return
@@ -170,7 +157,6 @@ function confirmDelete() {
       </Flex>
     </template>
 
-    <!-- Expense Info Section -->
     <Flex column gap="l" class="expense-form">
       <Flex column gap="m" expand>
         <h4>Expense Information</h4>
@@ -289,7 +275,6 @@ function confirmDelete() {
       </Flex>
     </Flex>
 
-    <!-- Form Actions -->
     <template #footer>
       <Flex gap="xs" class="form-actions">
         <Button
@@ -326,7 +311,6 @@ function confirmDelete() {
       </Flex>
     </template>
 
-    <!-- Confirmation Modal for Delete Action -->
     <ConfirmModal
       v-model:open="showDeleteConfirm"
       :confirm="confirmDelete"

@@ -89,7 +89,7 @@ function gameLabel(id: string): string {
 }
 
 // This chart reads history through the isolated fetchers, so refreshes have to
-// arrive via the subscription listener - the shared ref never updates for us.
+// arrive via the subscription listener. The shared ref never updates for us.
 let stopRefresh: (() => void) | null = null
 
 // Guards against a superseded load re-subscribing after a faster later one.
@@ -155,7 +155,6 @@ const currentCount = computed(() => {
       ?? undefined
   }
 
-  // Sum across all tracked game IDs
   const byGame = metrics.value?.users.byGame
   if (byGame) {
     return Object.values(byGame).reduce((acc: number, n: number) => acc + n, 0)
@@ -163,7 +162,7 @@ const currentCount = computed(() => {
   return undefined
 })
 
-// Game filter - VUI Select options. Only tracked community games (usersByGame).
+// Game filter options: only tracked community games (usersByGame).
 const gameOptions = computed<GameOption[]>(() => {
   const ids = new Set<string>()
   for (const e of metricsHistory.value) {
@@ -368,10 +367,9 @@ watchEffect(() => {
   chart.resize(Math.floor(width), containerHeight)
 })
 
-// Force resize after data loads - computeMinSampleSize (bar width) is calculated
-// during the first render and may use stale scale dimensions if data arrives
-// after the initial layout pass. Resizing in the next tick after data changes
-// ensures bars are sized correctly.
+// Force a resize after data loads. computeMinSampleSize (bar width) is calculated
+// during the first render and can use stale scale dimensions if data arrives
+// after the initial layout pass.
 watch(chartData, () => {
   nextTick(() => {
     const width = chartWrapperRef.value?.clientWidth

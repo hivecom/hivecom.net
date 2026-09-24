@@ -38,7 +38,6 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// Calculate time remaining for active votes
 function getTimeRemaining(dateEnd: string) {
   const diff = dayjs(dateEnd).diff(dayjs())
 
@@ -67,7 +66,6 @@ const statusText = computed(() => {
   return null
 })
 
-// Navigate to vote detail
 function goToReferendum() {
   navigateTo(`/votes/${props.referendum.id}`)
 }

@@ -21,9 +21,8 @@ const DETAILS_WORD_AFTER_RE = /^(\w*)/
 const DATAFILE_DIRECTIVE_RE = /:::dataFile(?:\s+\{([^}]*)\})?\s*:::/g
 const CHANNEL_MENTION_RE = /(?<![`\w#])#([a-z][\w-]*)/gi
 
-// Matches a bare currency dollar sign: $ followed by a digit (e.g. $3, $10).
-// These must be escaped before remark-math sees them so they are not treated
-// as inline math delimiters.
+// A $ followed by a digit is currency. Escape it before remark-math reads it as
+// an inline math delimiter.
 const CURRENCY_DOLLAR_RE = /\$(?=\d)/g
 const ORDERED_LIST_ITEM_RE = /^(\d+)\.\s/
 const UNORDERED_SUB_ITEM_RE = /^(\s+)([-*+]\s)/
@@ -79,8 +78,6 @@ const DETECT_MATH_RE = /\$\$[\s\S]*?\$\$|\$(?!\d|\s)(?:[^$\n]|\n(?!\n))*\$/
 const DETECT_TABLE_RE = /^\s*\|(?:[^\n|]+\|)+\s*$/m
 const DETECT_DETAILS_RE = /:::details\b/
 
-// Opening/closing fence of a code block, and an inline code span. Used by
-// replaceOutsideCode below.
 const CODE_FENCE_RE = /^[ \t]*(`{3,}|~{3,})/
 const INLINE_CODE_SPAN_RE = /(`+)[^`]*\1(?!`)/g
 
@@ -88,13 +85,9 @@ const INLINE_CODE_SPAN_RE = /(`+)[^`]*\1(?!`)/g
 // Code-aware text rewriting
 // ------------------------------------------------------------------------
 /**
- * Runs `transform` over every stretch of `markdown` that is not inside a
- * fenced code block or an inline code span.
- *
- * Markdown treats entity references as literal text inside code, so a blanket
- * `<` -> `&lt;` pass over a whole document renders as a visible `&lt;` in every
- * code sample. Anything that rewrites raw markdown text has to step around
- * those regions.
+ * Runs `transform` over every stretch of `markdown` outside fenced code blocks
+ * and inline code spans. Entities are literal inside code, so a blanket
+ * `<` -> `&lt;` pass would show a visible `&lt;` in every code sample.
  */
 export function replaceOutsideCode(markdown: string, transform: (text: string) => string): string {
   if (!markdown)
@@ -105,8 +98,8 @@ export function replaceOutsideCode(markdown: string, transform: (text: string) =
   const lines = markdown.split('\n').map((line) => {
     const fence = CODE_FENCE_RE.exec(line)?.[1]
 
-    // Inside a block: pass everything through, and close only on a fence of
-    // the same character that is at least as long as the one that opened it.
+    // A block only closes on a fence of the same character that's at least as
+    // long as the opener.
     if (openFence) {
       if (fence && fence[0] === openFence[0] && fence.length >= openFence.length)
         openFence = null
@@ -119,7 +112,6 @@ export function replaceOutsideCode(markdown: string, transform: (text: string) =
       return line
     }
 
-    // Outside a block: transform the gaps between inline code spans.
     let out = ''
     let cursor = 0
 
@@ -137,15 +129,21 @@ export function replaceOutsideCode(markdown: string, transform: (text: string) =
 // ---------------------------------------------------------------------------
 // YouTube directive pre-processor
 // ------------------------------------------------------------------------
-/**
- * Parses a TipTap attribute string like `src="..." width="640"` into a plain
- * object. Only double-quoted string values are supported (which is all TipTap
- * ever emits from `serializeAttributes`).
- */
+// Only double-quoted values are supported, which is all TipTap's
+// `serializeAttributes` emits.
+// Directive attribute values come straight from user markdown and get
+// interpolated into raw HTML, so they're escaped at every emit site.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 function parseTiptapAttrs(attrString: string): Record<string, string> {
   const attrs: Record<string, string> = {}
 
-  // Match key="value" pairs (value may be empty)
   const attrPattern = TIPTAP_ATTR_RE
   for (const match of attrString.matchAll(attrPattern)) {
     const key = match[1]
@@ -157,20 +155,14 @@ function parseTiptapAttrs(attrString: string): Record<string, string> {
   return attrs
 }
 
-/**
- * Converts a plain YouTube watch/share URL (as stored by the TipTap Youtube
- * extension in its `src` attribute) into a youtube-nocookie.com embed URL.
- * Returns `null` if the URL isn't recognised as a YouTube URL.
- */
+// Returns a youtube-nocookie.com embed URL, or null if `src` isn't a YouTube URL.
 function youtubeUrlToEmbedUrl(src: string, start?: string): string | null {
   if (!src)
     return null
 
-  // Already an embed URL – use as-is
   if (src.includes('/embed/'))
     return src
 
-  // youtu.be short URLs
   const shortMatch = src.match(YOUTUBE_SHORT_RE)
   const shortId = shortMatch?.[1] ?? ''
   if (shortId) {
@@ -178,7 +170,6 @@ function youtubeUrlToEmbedUrl(src: string, start?: string): string | null {
     return `https://www.youtube-nocookie.com/embed/${shortId}${startParam}`
   }
 
-  // Standard watch URLs (v=…) and /shorts/
   const idMatch = src.match(YOUTUBE_ID_RE)
   const videoId = idMatch?.[1] ?? ''
   if (videoId) {
@@ -190,10 +181,9 @@ function youtubeUrlToEmbedUrl(src: string, start?: string): string | null {
 }
 
 /**
- * Converts TipTap's `:::details` / `:::detailsSummary` / `:::detailsContent`
- * nested block directives into native HTML `<details>/<summary>` elements so
- * that remark-mdc passes them through as raw HTML instead of trying to resolve
- * unknown block components.
+ * Converts TipTap's nested `:::details` directives into native
+ * `<details>/<summary>` so remark-mdc passes them through as raw HTML instead
+ * of resolving unknown block components.
  *
  * Serialized format (from @tiptap/markdown createBlockMarkdownSpec):
  *
@@ -214,11 +204,8 @@ function youtubeUrlToEmbedUrl(src: string, start?: string): string | null {
  *   :::
  */
 export function processDetailsDirectives(markdown: string): string {
-  // Regex-based approaches fail because the outer :::details block contains
-  // nested :::detailsSummary and :::detailsContent blocks, each with their own
-  // closing :::. We use a depth-counting scan instead: find :::details openings,
-  // track nesting depth by counting all ::: openers/closers, and extract the
-  // full outer block before converting it to native HTML.
+  // A regex can't pair the outer closing ::: with its opener because the nested
+  // blocks have their own closers, so this counts depth instead.
   const result: string[] = []
   let i = 0
 
@@ -229,16 +216,12 @@ export function processDetailsDirectives(markdown: string): string {
       break
     }
 
-    // Push everything before this :::details block unchanged
     result.push(markdown.slice(i, openIdx))
 
-    // Find the matching outer closing ::: by tracking nesting depth.
-    // Every ::: followed by word characters opens a new block (depth++).
-    // Every bare ::: (no word chars immediately after) closes one (depth--).
+    // ::: followed by word characters opens a block, a bare ::: closes one.
     let depth = 1
     let pos = openIdx + ':::details'.length
 
-    // Advance past the rest of the opening line
     const nlAfterOpen = markdown.indexOf('\n', pos)
     if (nlAfterOpen === -1) {
       result.push(markdown.slice(openIdx))
@@ -252,7 +235,6 @@ export function processDetailsDirectives(markdown: string): string {
       if (nextTriple === -1)
         break
 
-      // Determine whether this ::: opens (has word chars) or closes (bare)
       const afterTriple = markdown.slice(nextTriple + 3).match(DETAILS_WORD_AFTER_RE)
       const wordAfter = afterTriple?.[1] ?? ''
       if (wordAfter.length > 0) {
@@ -267,7 +249,6 @@ export function processDetailsDirectives(markdown: string): string {
     }
 
     if (closePos === -1) {
-      // Unmatched block - pass through as-is
       result.push(markdown.slice(openIdx))
       break
     }
@@ -287,14 +268,8 @@ export function processDetailsDirectives(markdown: string): string {
   return result.join('')
 }
 
-/**
- * Converts TipTap's proprietary `:::video {src="..." ...} :::` directive
- * syntax into an HTML <video> block. Must run before the markdown is handed
- * to `<MDC>`.
- *
- * TipTap format:
- *   :::video {src="URL" width="640" height="360"} :::
- */
+// `:::video {src="URL" width="640" height="360"} :::` to a raw <video> block.
+// Must run before the markdown reaches `<MDC>`.
 export function processVideoDirectives(markdown: string): string {
   const DIRECTIVE = VIDEO_DIRECTIVE_RE
 
@@ -305,19 +280,12 @@ export function processVideoDirectives(markdown: string): string {
     if (!src)
       return ''
 
-    return `\n<div class="md-video-embed"><video src="${src}" controls></video></div>\n`
+    return `\n<div class="md-video-embed"><video src="${escapeHtml(src)}" controls></video></div>\n`
   })
 }
 
-/**
- * Converts TipTap's proprietary `:::audio {src="..."} :::` directive syntax
- * into a raw <audio> block. MarkdownRendererInner maps the <audio> tag to the
- * AudioPlayer component, so the player UI renders rather than native controls.
- * Must run before the markdown is handed to `<MDC>`.
- *
- * TipTap format:
- *   :::audio {src="URL"} :::
- */
+// `:::audio {src="URL"} :::` to a raw <audio> block, which MarkdownRendererInner
+// maps to AudioPlayer. Must run before the markdown reaches `<MDC>`.
 export function processAudioDirectives(markdown: string): string {
   return markdown.replace(AUDIO_DIRECTIVE_RE, (_full, attrString: string = '') => {
     const attrs = parseTiptapAttrs(attrString)
@@ -326,15 +294,12 @@ export function processAudioDirectives(markdown: string): string {
     if (!src)
       return ''
 
-    return `\n<div class="md-audio-embed"><audio src="${src}"></audio></div>\n`
+    return `\n<div class="md-audio-embed"><audio src="${escapeHtml(src)}"></audio></div>\n`
   })
 }
 
-/**
- * Converts TipTap's `:::dataFile {src="..." name="..." type="csv"} :::` directive
- * into an HTML attachment card block that MDC passes through as raw HTML.
- * Must run before the markdown is handed to `<MDC>`.
- */
+// `:::dataFile {src="..." name="..." type="csv"} :::` to a raw HTML attachment
+// card. Must run before the markdown reaches `<MDC>`.
 export function processDataFileDirectives(markdown: string): string {
   return markdown.replace(DATAFILE_DIRECTIVE_RE, (_full, attrString: string = '') => {
     const attrs = parseTiptapAttrs(attrString)
@@ -346,23 +311,17 @@ export function processDataFileDirectives(markdown: string): string {
     if (!src)
       return ''
 
-    return `\n<div class="md-datafile-card" data-type="${type}"><span class="md-datafile-card__icon">${icon}</span><span class="md-datafile-card__name">${name}</span><a class="md-datafile-card__link" href="${src}" target="_blank" rel="noopener noreferrer">Download</a></div>\n`
+    return `\n<div class="md-datafile-card" data-type="${type}"><span class="md-datafile-card__icon">${icon}</span><span class="md-datafile-card__name">${escapeHtml(name)}</span><a class="md-datafile-card__link" href="${escapeHtml(src)}" target="_blank" rel="noopener noreferrer">Download</a></div>\n`
   })
 }
 
 /**
- * Converts TipTap's proprietary `:::youtube {src="..." ...} :::` directive
- * syntax into an HTML iframe block that MDC / remark will pass through as raw
- * HTML.  This must run **before** the markdown is handed to `<MDC>`.
- *
- * TipTap's format (from `createAtomBlockMarkdownSpec`):
- *   :::youtube {src="URL" width="640" height="360" start="0"} :::
- *
- * Note: this is NOT the same as MDC's `:::name{props}` container syntax,
- * hence we preprocess it here instead of relying on a content component.
+ * `:::youtube {src="URL" width="640" height="360" start="0"} :::` to a raw
+ * iframe block. Must run before the markdown reaches `<MDC>`. TipTap's syntax
+ * isn't MDC's `:::name{props}` container syntax, so a content component can't
+ * handle it.
  */
 export function processYoutubeDirectives(markdown: string): string {
-  // Matches the full `:::youtube { ... } :::` token on a single line
   const DIRECTIVE = YOUTUBE_DIRECTIVE_RE
 
   return markdown.replace(DIRECTIVE, (_full, attrString: string = '') => {
@@ -375,16 +334,12 @@ export function processYoutubeDirectives(markdown: string): string {
     const width = attrs.width ?? '640'
     const height = attrs.height ?? '360'
 
-    // Wrap in a block-level div so remark treats it as an HTML block, not
-    // inline HTML. The surrounding blank lines are important for remark to
-    // recognise the opening tag as the start of an HTML block.
-    return `\n<div class="md-youtube-embed"><iframe src="${embedUrl}" width="${width}" height="${height}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>\n`
+    // remark only treats this as an HTML block with the block-level div and
+    // the surrounding newlines.
+    return `\n<div class="md-youtube-embed"><iframe src="${escapeHtml(embedUrl)}" width="${escapeHtml(width)}" height="${escapeHtml(height)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>\n`
   })
 }
 
-/**
- * Extracts unique mention IDs stored as @{uuid} from markdown.
- */
 export function extractMentionIds(markdown: string): string[] {
   if (!markdown)
     return []
@@ -410,16 +365,11 @@ export function extractMentionIds(markdown: string): string[] {
   return [...ids]
 }
 
-/**
- * Processes markdown text to convert @username mentions into proper markdown links
- * @param markdown The markdown content to process
- * @returns The processed markdown with mentions converted to links
- */
 // ---------------------------------------------------------------------------
 // Color tag pre-processor
 // ------------------------------------------------------------------------
-// The canonical palette names must match those exported by the textColor plugin
-// and the CSS custom properties defined in app/assets/index.scss.
+// Must match the textColor plugin's palette and the CSS custom properties in
+// app/assets/index.scss.
 const TEXT_COLOR_NAMES = new Set([
   'red',
   'orange',
@@ -440,15 +390,10 @@ const TEXT_COLOR_NAMES = new Set([
 ])
 
 /**
- * Converts :::color[name]text::: directives into inline HTML spans that
- * MDC / rehype-raw will render as styled text.  Only palette color names
- * defined in TEXT_COLOR_NAMES are accepted; anything else is left untouched
- * so no arbitrary CSS expressions can be injected.
- *
- * The span carries both a data attribute (for the TipTap editor to round-trip
- * the name cleanly) and an inline CSS variable reference (for static renders).
- *
- * Nesting is intentionally not supported - the outer directive wins.
+ * Converts :::color[name]text::: into an inline span. Only names in
+ * TEXT_COLOR_NAMES pass, so no arbitrary CSS can be injected through the
+ * style attribute. The data attribute lets TipTap round-trip the name.
+ * Nesting isn't supported: the outer directive wins.
  */
 export function processColorTags(markdown: string): string {
   if (!markdown)
@@ -477,10 +422,7 @@ const TEXT_FONT_NAMES = new Set([
   'fantasy',
 ])
 
-/**
- * Converts :::font[name]text::: directives into inline HTML spans.
- * Only palette font names defined in TEXT_FONT_NAMES are accepted.
- */
+// Allowlisted like processColorTags, so no arbitrary CSS reaches the style attribute.
 export function processFontTags(markdown: string): string {
   if (!markdown)
     return ''
@@ -508,10 +450,7 @@ const TEXT_SIZE_NAMES = new Set([
   'xxl',
 ])
 
-/**
- * Converts :::size[name]text::: directives into inline HTML spans.
- * Only palette size names defined in TEXT_SIZE_NAMES are accepted.
- */
+// Allowlisted like processColorTags, so no arbitrary CSS reaches the style attribute.
 export function processSizeTags(markdown: string): string {
   if (!markdown)
     return ''
@@ -529,23 +468,18 @@ export function processSizeTags(markdown: string): string {
 }
 
 /**
- * CommonMark requires sub-list items to be indented by at least as many
- * characters as the parent list item's content start column.
- * e.g. `1. ` prefix is 3 chars, so nested bullets need >= 3 spaces of indent.
- * Many editors (including our own) emit 2-space indented sub-items, which
- * remark treats as a new top-level list instead of nesting.
- * This function bumps those under-indented sub-items to the correct depth.
+ * CommonMark nests a sub-item only if it's indented to the parent's content
+ * column, so `1. ` needs 3 spaces. TipTap emits 2, which remark reads as a new
+ * top-level list. This pads under-indented sub-items to the right depth.
  */
 function normalizeListIndentation(markdown: string): string {
   const lines = markdown.split('\n')
   const result: string[] = []
 
-  // Stack of required indent widths per nesting level
   const indentStack: number[] = []
   let inFencedCode = false
 
   for (const line of lines) {
-    // Don't touch fenced code blocks
     if (FENCED_CODE_RE.test(line)) {
       inFencedCode = !inFencedCode
       result.push(line)
@@ -558,7 +492,6 @@ function normalizeListIndentation(markdown: string): string {
 
     const orderedMatch = ORDERED_LIST_ITEM_RE.exec(line)
     if (orderedMatch) {
-      // Content starts after "N. " - that many chars is required indent for children
       const requiredChildIndent = orderedMatch[1]!.length + 2 // digits + ". "
       indentStack.push(requiredChildIndent)
       result.push(line)
@@ -570,14 +503,12 @@ function normalizeListIndentation(markdown: string): string {
       const currentIndent = unorderedMatch[1]!.length
       const requiredIndent = indentStack[indentStack.length - 1]!
       if (currentIndent < requiredIndent) {
-        // Pad to required indent
         result.push(' '.repeat(requiredIndent) + unorderedMatch[2]! + line.slice(unorderedMatch[0].length))
         continue
       }
     }
 
-    // Nested ordered item (has leading whitespace + digits + ". ")
-    // e.g. Tiptap emits "  1. Nested" (2 spaces) under a "1. Parent" (needs 3)
+    // TipTap emits "  1. Nested" (2 spaces) under "1. Parent", which needs 3.
     const nestedOrderedMatch = /^(\s+)(\d+\.\s)/.exec(line)
     if (nestedOrderedMatch && indentStack.length > 0) {
       const currentIndent = nestedOrderedMatch[1]!.length
@@ -588,7 +519,7 @@ function normalizeListIndentation(markdown: string): string {
       }
     }
 
-    // Non-list line: if it's not blank and not indented, clear the stack
+    // An unindented, non-blank line ends the list.
     if (line.trim().length > 0 && !/^\s/.test(line)) {
       indentStack.length = 0
     }
@@ -603,86 +534,51 @@ export function processMarkdown(markdown: string): string {
   if (!markdown)
     return ''
 
-  // Escape bare currency dollar signs (e.g. $3, $10) before any remark/MDC
-  // processing so that remark-math does not treat them as inline math delimiters.
-  // Normalize list indentation so nested bullet items under ordered list items
-  // are indented enough for remark (CommonMark) to treat them as children.
   markdown = normalizeListIndentation(markdown)
 
   markdown = markdown.replace(CURRENCY_DOLLAR_RE, '\\$')
 
-  // Convert TipTap details/spoiler directives to native <details> HTML first
-  // so that MDC doesn't try to resolve them as unknown block components.
+  // TipTap directives become raw HTML before MDC sees syntax it can't parse.
   markdown = processDetailsDirectives(markdown)
 
-  // Convert TipTap YouTube directives to raw HTML iframes first so that MDC
-  // doesn't see the `:::youtube` syntax it cannot parse.
   markdown = processYoutubeDirectives(markdown)
 
-  // Convert TipTap video directives to raw HTML <video> blocks.
   markdown = processVideoDirectives(markdown)
 
-  // Convert TipTap audio directives to raw HTML <audio> blocks (rendered as
-  // the AudioPlayer component via the MDC components map).
   markdown = processAudioDirectives(markdown)
 
-  // Convert TipTap dataFile directives to raw HTML attachment cards.
   markdown = processDataFileDirectives(markdown)
 
-  // Convert :::color[name]text::: directives into inline HTML spans.
   markdown = processColorTags(markdown)
 
-  // Convert :::font[name]text::: directives into inline HTML spans.
   markdown = processFontTags(markdown)
 
-  // Convert :::size[name]text::: directives into inline HTML spans.
   markdown = processSizeTags(markdown)
 
-  // Pattern to match mention IDs stored as @{uuid}
   const mentionIdPatternBraced = MENTION_BRACED_RE
   const mentionIdPatternLegacy = MENTION_LEGACY_RE
 
   const resolvedMarkdown = markdown
-    // remark-mdc parses any `:word` sequence (after whitespace or at line start) as an
-    // inline component reference, even single-letter names like `:D` or `:C`. Unknown
-    // components are silently dropped, eating emoticons and other colon-prefixed text.
-    // We escape those patterns with a CommonMark backslash escape (\:) so the colon is
-    // treated as a literal character.
-    //
-    // IMPORTANT: this must run BEFORE the mention substitution below. The mention
-    // substitution adds `:shared-user-mention{...}` to the string, and a negative
-    // lookahead approach to skip it is defeated by regex backtracking. Running this
-    // step first means the source string only contains user-authored text - no
-    // `:shared-user-mention{...}` patterns can exist yet - so the simple replacement
-    // is safe and correct.
+    // remark-mdc reads any `:word` as an inline component, even `:D`, and drops
+    // unknown ones, eating emoticons. Escape the colon. This must run before the
+    // mention substitution: a lookahead to skip `:shared-user-mention{...}` gets
+    // defeated by backtracking.
     .replace(COLON_COMPONENT_RE, '$1\\:$2')
     .replace(mentionIdPatternBraced, (_match, id: string) => {
-      // Use MDC inline component syntax (:name{props}) instead of raw HTML tags.
-      // When a raw <SharedUserMention> tag starts a line, remark-mdc treats it as a
-      // block-level component, consuming all following text on that line as its children
-      // and applying block-level (heading-like) styling. The :name{} inline syntax
-      // explicitly marks the component as inline, regardless of its position in a paragraph.
+      // Inline :name{} syntax on purpose. A raw <SharedUserMention> at line start
+      // becomes a block component that swallows the rest of the line.
       return `:shared-user-mention{user-id="${id}"}`
     })
     .replace(mentionIdPatternLegacy, (_match, id: string) => {
       return `:shared-user-mention{user-id="${id}"}`
     })
 
-  // Convert #channelname mentions into inline channel mention components,
-  // but only outside backtick-fenced code spans (the lookbehind in the regex
-  // guards against `` `#channel` `` inline code; fenced blocks are a best-effort
-  // exclusion matching the same approach used for user mentions above).
-  return resolvedMarkdown.replace(CHANNEL_MENTION_RE, (_match, name: string) => {
-    return `:shared-channel-mention{channel="${name}"}`
-  })
+  // #channel becomes a mention component everywhere except code, where it has
+  // to stay literal.
+  return replaceOutsideCode(resolvedMarkdown, text =>
+    text.replace(CHANNEL_MENTION_RE, (_match, name: string) => `:shared-channel-mention{channel="${name}"}`))
 }
 
-/**
- * Processes markdown text to convert @mentions to plain text usernames
- * @param markdown The markdown content to process
- * @param mentionIdToUsername Lookup map for mention IDs to usernames
- * @returns The processed text with mentions converted to @Username
- */
 export function processMentionsToText(markdown: string, mentionIdToUsername: Record<string, string> = {}): string {
   if (!markdown)
     return ''
@@ -711,13 +607,8 @@ export function processMentionsToText(markdown: string, mentionIdToUsername: Rec
     .replace(MENTION_LEGACY_RE, replaceCallback)
 }
 
-/**
- * Validates if a username is valid for mentions
- * @param username The username to validate
- * @returns true if the username is valid for mentions
- */
 export function isValidMentionUsername(username: string): boolean {
-  // Same validation as in ProfileForm - only letters, numbers, and underscores
+  // Keep in step with the username rule in ProfileForm.
   return WORD_ONLY_RE.test(username) && username.length <= 32
 }
 
@@ -727,11 +618,8 @@ export function isValidMentionUsername(username: string): boolean {
  * @param content Content to strip markdown out of
  * @param truncateAmount (optional) Optionally truncate the string to make the operation less expensive
  */
-// Iteratively strips nested :::color/font/size[name]text::: directives, keeping
-// only the inner text. The regex matches the innermost directive first by
-// requiring that the captured content contains no `:::` sequences - this ensures
-// we peel one layer at a time from the inside out, correctly handling arbitrary
-// nesting (e.g. :::size[xxl]:::font[serif]text:::::: → Test! in two passes).
+// Matches only the innermost directive (content can't contain `:::`), so
+// stripInlineDirectives peels nested ones one layer per pass.
 const INLINE_DIRECTIVE_RE = /:::(?:color|font|size)\[[a-z0-9#-]+\]((?:(?!:::)[\s\S])*?):::(?![a-z[])/gi
 
 function stripInlineDirectives(s: string): string {
@@ -752,80 +640,57 @@ export function stripMarkdown(content?: string | null, truncateAmount = 0) {
     content = truncate(content, truncateAmount)
   }
 
-  // Convert :::details blocks to HTML so the summary label and body text
-  // survive as plain text; STRIP_HTML_TAGS_RE below then removes the tags.
+  // Turn :::details into HTML so the summary and body survive as text once the
+  // tags are stripped below.
   content = processDetailsDirectives(content)
 
-  // 0b-pre. Remove inline directives: :::color/font/size[name]text::: → keep inner text
-  // Must run before the chain since it needs iterative application for nested directives.
   content = stripInlineDirectives(content)
 
-  // Strip directives/math/tags, then decode HTML entities before further processing.
   let stripped = content
-    // 0a. Remove YouTube directives: :::youtube {src="..." ...} :::
     .replace(STRIP_YOUTUBE_RE, '')
 
-    // 0b2. Remove video directives: :::video {src="..." ...} :::
     .replace(STRIP_VIDEO_RE, '')
 
-    // 0b2b. Remove audio directives: :::audio {src="..."} :::
     .replace(STRIP_AUDIO_RE, '')
 
-    // 0b3. Remove data file directives: :::dataFile {src="..." ...} :::
     .replace(STRIP_DATAFILE_RE, '')
 
-    // 0b. Remove block math: $$...$$
     .replace(STRIP_BLOCK_MATH_RE, '')
 
-    // 0c. Remove inline math: $...$  (avoid matching lone $ signs like currency $5)
+    // Skips lone $ signs like currency $5.
     .replace(STRIP_INLINE_MATH_RE, '')
 
     // 1. Remove HTML tags
     .replace(STRIP_HTML_TAGS_RE, '')
 
-  // 1b. Decode HTML entities left behind after tag removal
-  // (e.g. &gt; -> > from Tiptap-generated HTML stored in the DB)
+  // TipTap HTML stored in the DB leaves entities like &gt; behind.
   stripped = decodeHtmlEntities(stripped)
 
   return stripped
-    // 2. Normalize non-breaking spaces
     .replace(STRIP_NBSP_RE, ' ')
 
-    // 3. Remove horizontal rules
     .replace(STRIP_HR_RE, '')
 
-    // 4. Remove headers (###)
     .replace(STRIP_HEADERS_RE, '')
 
-    // 5. Remove blockquote markers (> )
     .replace(STRIP_BLOCKQUOTE_RE, '')
 
-    // 6. Remove unordered list markers (- or * at start of line)
     .replace(STRIP_LIST_MARKERS_RE, '')
 
-    // 7. Remove bold/italic (** or __)
     .replace(STRIP_BOLD_ITALIC_RE, '$2')
 
-    // 8. Remove links [text](url) -> "text"
     .replace(STRIP_LINKS_RE, '$1')
 
-    // 9. Remove code blocks and inline code
     .replace(STRIP_CODE_RE, '$2')
 
-    // 10. Remove images ![alt](url)
     .replace(STRIP_IMAGES_RE, '$1')
 
-    // 11. Trim extra whitespace
     .replace(STRIP_NEWLINES_RE, ' ')
     .trim()
 }
 
-/**
- * Removes all :::details blocks (and their nested :::detailsSummary /
- * :::detailsContent sub-blocks) from a markdown string so that only the text
- * outside* any spoiler blocks remains. Uses depth-counting to handle nesting,
- * mirroring the approach in processDetailsDirectives.
- */
+// Drops every :::details block with its nested sub-blocks, leaving only text
+// outside spoilers.
 function stripDetailsBlocks(markdown: string): string {
   const result: string[] = []
   let i = 0
@@ -837,10 +702,8 @@ function stripDetailsBlocks(markdown: string): string {
       break
     }
 
-    // Keep everything before this :::details block
     result.push(markdown.slice(i, openIdx))
 
-    // Walk past the opening line
     const nlAfterOpen = markdown.indexOf('\n', openIdx + ':::details'.length)
     if (nlAfterOpen === -1)
       break
@@ -870,7 +733,6 @@ function stripDetailsBlocks(markdown: string): string {
     if (closePos === -1)
       break
 
-    // Skip past the closing :::
     i = closePos + 3
   }
 
@@ -878,18 +740,10 @@ function stripDetailsBlocks(markdown: string): string {
 }
 
 /**
- * Formats a markdown string into a plain-text preview suitable for display in
- * compact UI elements (activity feeds, profile sections, etc.).
- *
- * - Processes mention UUIDs into readable @username strings first
- * - Strips all markdown syntax (images, links, bold, etc.) before truncating,
- *   avoiding broken partial patterns from early truncation
- * - Falls back to a descriptive label when the entire content was media/links
- *
- * @param markdown Raw markdown content
- * @param mentionLookup Optional map of mention UUID -> username for resolving mentions
- * @param maxLength Optional character limit applied after stripping (default: 0 = no limit)
- * @returns Plain-text preview string, never empty
+ * Plain-text preview for compact UI. Strips before truncating so a cut never
+ * leaves a broken partial pattern. Never empty: content that was all media
+ * falls back to a label like `#image`. `maxLength` applies after stripping,
+ * and 0 means no limit.
  */
 export function formatMarkdownPreview(
   markdown: string | null | undefined,
@@ -901,19 +755,16 @@ export function formatMarkdownPreview(
 
   const processed = processMentionsToText(markdown, mentionLookup)
 
-  // If a spoiler block is present, only show the spoiler label when there is no
-  // meaningful plain text *outside* the spoiler block. If there is text outside,
-  // strip the spoiler blocks and let the normal preview logic handle the rest.
+  // Spoiler text never leaks into a preview. Show only what's outside the
+  // spoiler, or the label if nothing is.
   if (DETECT_DETAILS_RE.test(markdown)) {
     const outsideSpoiler = stripDetailsBlocks(markdown).trim()
     if (!outsideSpoiler || !stripMarkdown(processMentionsToText(outsideSpoiler, mentionLookup)))
       return '#spoiler'
 
-    // There is real text outside the spoiler - continue with that content only
     return formatMarkdownPreview(outsideSpoiler, mentionLookup, maxLength)
   }
 
-  // Prioritize table detection: if a table is present, always show table preview
   if (DETECT_TABLE_RE.test(markdown))
     return '#table'
 
@@ -923,7 +774,6 @@ export function formatMarkdownPreview(
     return maxLength > 0 ? stripped.slice(0, maxLength) : stripped
   }
 
-  // Content stripped to nothing - detect what kind of media it was
   if (DETECT_IMAGE_RE.test(markdown))
     return '#image'
 

@@ -1,20 +1,7 @@
 /**
- * Entity-link resolution for discussions.
- *
- * A discussion can be attached to another entity (a profile, project, event,
- * gameserver, referendum, or theme). Three views of that link are needed:
- *
- * - `getDiscussionEntityContext` returns the label/href/icon for the linking
- *   card shown on a forum thread, regardless of whether the discussion also has
- *   a topic.
- * - `getDiscussionEntityHref` returns the entity page href only for entity
- *   discussions that have NO topic - these aren't browseable as forum threads
- *   and should redirect to their parent entity. A discussion with a topic is a
- *   real thread and returns null (no redirect).
- * - `getDiscussionHref` is the list-side version of the same call: where a link
- *   to this discussion should actually point.
- *
- * All three read from the same resolver table so the mapping lives in one place.
+ * Entity-link resolution for discussions attached to a profile, project,
+ * event, gameserver, referendum or theme. Everything reads ENTITY_RESOLVERS so
+ * the mapping lives in one place.
  */
 
 interface DiscussionEntityFields {
@@ -98,10 +85,7 @@ const ENTITY_RESOLVERS: Array<{
   },
 ]
 
-/**
- * Returns the linking context (label, href, icon) for the first entity this
- * discussion is attached to, or null if it isn't linked to any entity.
- */
+// The first matching entity wins, whether or not the discussion has a topic.
 export function getDiscussionEntityContext(d: DiscussionEntityFields): DiscussionEntityContext | null {
   for (const resolver of ENTITY_RESOLVERS) {
     if (resolver.has(d))
@@ -111,9 +95,8 @@ export function getDiscussionEntityContext(d: DiscussionEntityFields): Discussio
 }
 
 /**
- * Returns the entity page href for entity-linked discussions that have no
- * topic. A discussion with a topic is a legitimate forum thread and renders
- * normally, so this returns null for it (no redirect).
+ * A topic-less entity discussion isn't browseable as a forum thread, so it
+ * redirects to its entity. With a topic it's a real thread and this is null.
  */
 export function getDiscussionEntityHref(d: DiscussionEntityFields): string | null {
   if (d.discussion_topic_id != null)
@@ -122,12 +105,7 @@ export function getDiscussionEntityHref(d: DiscussionEntityFields): string | nul
   return getDiscussionEntityContext(d)?.href ?? null
 }
 
-/**
- * Where a link to this discussion should point from a list: the entity page for
- * topic-less entity discussions, the thread itself for everything else.
- *
- * `discussionId` is the fallback for threads without a slug.
- */
+// `discussionId` is the fallback for threads without a slug.
 export function getDiscussionHref(d: DiscussionEntityFields | null, discussionId: string): string {
   const entityHref = d != null ? getDiscussionEntityHref(d) : null
 

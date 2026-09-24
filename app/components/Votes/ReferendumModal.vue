@@ -74,7 +74,6 @@ watch(
   },
 )
 
-// Re-populate when editedItem changes while modal is open
 watch(
   () => props.editedItem,
   (item) => {

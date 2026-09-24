@@ -2,10 +2,7 @@
 import { Button, Dropzone, Flex, pushToast } from '@dolanske/vui'
 import { ref } from 'vue'
 
-// Visualizer playground: drop a local audio file and it opens in the fullscreen
-// lightbox (the smoke visualizer, spectrum and waveform) so the visuals can be
-// tried against real tracks without uploading anything. The file never leaves
-// the browser, it's handed to the shared player as a blob: URL.
+// The dropped file never leaves the browser, it's handed to the shared player as a blob: URL
 
 const player = useAudioPlayer()
 

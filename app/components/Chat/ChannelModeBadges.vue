@@ -9,7 +9,7 @@ const props = defineProps<{
   isBot?: boolean
   isService?: boolean
 
-  /** When true, always shows icon badges - never the full native mode string. */
+  /** Always show icon badges, never the full native mode string. */
   compact?: boolean
 
   /** When true and chat_irc_native_modes is on, shows only the relevant mode chars (filtered to known modes) as a short string instead of icon badges. */

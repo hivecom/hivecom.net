@@ -247,8 +247,7 @@ function sortNameFolderFirst(a: (typeof tableRows.value)[number], b: (typeof tab
 }
 
 const tableRowsFolderFirst = computed(() => {
-  // In flat mode the server already returned rows in the requested sort order;
-  // skip any client-side re-sort so we don't clobber the server ordering.
+  // Flat mode is already server-sorted, so don't re-sort client-side.
   if (flatView.value)
     return tableRows.value
 
@@ -326,9 +325,8 @@ async function fetchAssets(silent = false) {
         totalCount.value = count
       }
       else {
-        // Fetch all direct children at this prefix level via the Storage API.
-        // listCmsDirectory already handles internal pagination (loops until done).
-        // Paginate the result client-side so counts and offsets are always accurate.
+        // listCmsDirectory loops through the Storage pages itself. Paging the result
+        // client-side keeps counts and offsets accurate.
         const allEntries = await listCmsDirectory(supabase, resolvedBucketId.value, { prefix: currentPrefix.value })
         const start = (page.value - 1) * PAGE_SIZE.value
 
@@ -608,7 +606,6 @@ watch(flatView, (val) => {
     setSort('', 'asc')
   }
   else {
-    // Restore default name-asc sort for non-flat table view.
     setSort('Name', 'asc')
   }
   if (page.value !== 1) {
@@ -666,7 +663,6 @@ watchDebounced(searchQuery, () => {
   }
 }, { debounce: 300 })
 
-// Page change drives silent re-fetch
 watch(page, () => {
   void fetchAssets(true)
 })

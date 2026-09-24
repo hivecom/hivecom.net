@@ -17,7 +17,6 @@ const props = withDefaults(defineProps<Props>(), {
   public: false,
 })
 
-// Use the cached user data composable
 const {
   user,
   loading,
@@ -27,8 +26,8 @@ const {
   {
     includeRole: false, // We only need username for this component
     includeAvatar: props.showAvatar,
-    userTtl: 10 * 60 * 1000, // 10 minutes
-    avatarTtl: 30 * 60 * 1000, // 30 minutes
+    userTtl: 10 * 60 * 1000,
+    avatarTtl: 30 * 60 * 1000,
   },
 )
 

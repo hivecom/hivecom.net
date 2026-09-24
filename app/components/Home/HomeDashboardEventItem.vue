@@ -10,14 +10,10 @@ import { useEventOrganizer } from '@/composables/useEventOrganizer'
 import { useEventTiming } from '@/composables/useEventTiming'
 import { fromNow } from '@/lib/utils/date'
 
-// One event in the Events card. The dashboard used to bend EventSmall into this
-// shape with a `compact` flag, which left it neither a real event card nor the
-// same thing the forum and games cards put in their grids. This is the
-// dashboard's own item, built on the shared `.home-item` so all three cards
-// read as one surface.
+// Built on the shared `.home-item` so the events, forum and games cards read as one surface
 const props = defineProps<{
   data: Tables<'events'>
-  /** Row rather than tile, for the sections that are a list to scan. */
+  /** Row rather than tile */
   inline?: boolean
 }>()
 
@@ -29,8 +25,7 @@ const { organizerId, showOrganizer, attendees } = useEventOrganizer(() => props.
 const isUpcoming = computed(() => dayjs(props.data.date).isAfter(dayjs()))
 const timing = computed(() => isOngoing.value ? 'Ongoing' : fromNow(props.data.date))
 
-// Signed out there are no avatars to draw, so the headcount badge stands in for
-// the row instead.
+// Signed out, the headcount badge stands in for the avatar row.
 const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || showOrganizer.value)
 </script>
 
@@ -39,8 +34,7 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
     class="home-item home-event-item" :class="{ inline,
                                                 'home-event-item--upcoming': isUpcoming || isOngoing }"
   >
-    <!-- The title carries the click and stretches over the whole item, so the
-         attendee avatars stay real profile links rather than nested anchors. -->
+    <!-- The title's click stretches over the item, so the avatars aren't nested anchors -->
     <NuxtLink :to="`/events/${data.id}`" class="home-event-item__title" :draggable="false">
       <span v-if="!inline" class="home-event-item__date">
         <span v-if="isOngoing" class="home-event-item__live-dot" />
@@ -58,7 +52,6 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
         {{ timing }}
       </span>
 
-      <!-- Rows are one line, so the faces give way to a count. -->
       <span v-if="inline && rsvpCount > 0" class="home-event-item__count">+{{ rsvpCount }}</span>
 
       <Flex v-else-if="!inline && showPeople" y-center :gap="4" class="home-event-item__people">
@@ -92,13 +85,11 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
 .home-event-item {
   position: relative;
   justify-content: space-between;
-  // `.home-item` is sized for a one-line title. This one wraps to two and sits
-  // over a date and an avatar row, so it needs the room to breathe.
+  // `.home-item` is sized for a one-line title. This one wraps to two.
   gap: var(--space-xs);
   padding: var(--space-s);
 
-  // Matches the block the forum subscriptions and the games art cards make, so
-  // the three cards line up across the row.
+  // Lines up with the forum and games cards across the row
   &:not(.inline) {
     min-height: 108px;
   }
@@ -109,7 +100,7 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
   min-width: 0;
   color: inherit;
 
-  // Click target covers the item, behind the avatars that lift above it.
+  // Covers the item, behind the avatars
   &::after {
     content: '';
     position: absolute;
@@ -124,8 +115,6 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
     @include line-clamp(2);
   }
 
-  // A row gets one line and truncates. Wrapping the title is what pushed the
-  // date and the count onto a second line.
   .inline & strong {
     white-space: nowrap;
     overflow: hidden;
@@ -134,15 +123,12 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
     -webkit-line-clamp: unset;
   }
 
-  // Only the tile stacks the date over the title. On a row it rides in the foot
-  // next to the avatars, where a bottom margin would knock it off centre.
+  // Only the tile stacks the date over the title. In a row's foot the margin would knock it off centre.
   .home-event-item__date {
     margin-bottom: var(--space-xxs);
   }
 }
 
-// The date leads the tile and trails the row, so it reads as the first thing in
-// a grid and the last thing in a list.
 .home-event-item__date {
   display: flex;
   align-items: center;
@@ -157,8 +143,7 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
   }
 }
 
-// Ongoing events share the grid with upcoming ones now, so the dot is what
-// tells "you should be there" apart from "coming up".
+// Tells ongoing events apart from upcoming ones in the same grid
 .home-event-item__live-dot {
   flex-shrink: 0;
   width: 6px;
@@ -185,15 +170,15 @@ const showPeople = computed(() => loadingRsvps.value || rsvpCount.value > 0 || s
   white-space: nowrap;
 }
 
-// Above the stretched title link, so a face is still a way into that profile.
+// Above the stretched title link, so the avatars still link to profiles
 .home-event-item__people {
   position: relative;
   z-index: 1;
   flex: 0 0 auto;
 }
 
-// Grey until the item is hovered, same as the event cards elsewhere, so a wall
-// of avatars doesn't pull the eye before the titles do.
+// Past events keep their avatars grey until hovered, so a wall of avatars
+// doesn't pull the eye before the titles do.
 .home-event-item:not(.home-event-item--upcoming) .home-event-item__people {
   filter: grayscale(1);
 }

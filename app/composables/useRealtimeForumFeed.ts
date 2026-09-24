@@ -15,16 +15,14 @@ type DiscussionRow = Tables<'discussions'>
 type TopicRow = Tables<'discussion_topics'>
 
 export interface UseRealtimeForumFeedOptions {
-  /** Called when a new reply arrives - prepend it to the carousel feed */
   onReply: (item: ActivityItem) => void
 
-  /** Called when a new discussion arrives - prepend it to the carousel feed */
   onDiscussion: (item: ActivityItem) => void
 
-  /** Emits count of incoming items not yet reflected in the sheet feed */
+  /** Count of incoming items not yet reflected in the sheet feed. */
   onPendingSheet: (delta: number) => void
 
-  /** Called when a topic's last_activity_at changes - used for unread dot updates */
+  /** Fires when a topic's last_activity_at changes, for the unread dots. */
   onTopicActivity?: (topicId: string, lastActivityAt: string) => void
 
   /** Current discussion lookup for resolving reply context labels */
@@ -38,15 +36,10 @@ export interface UseRealtimeForumFeedOptions {
 }
 
 /**
- * Subscribes to INSERT events on `discussion_replies` and `discussions` tables
- * and maps them into ActivityItems for the forum index feed.
- *
- * Channels are shared at module level and ref-counted. Only one instance of
- * the forum page exists at a time, but on fast back-navigation the previous
- * scope may not have finished tearing down when the new scope calls subscribe().
- * Using module-level singletons prevents the "cannot add postgres_changes
- * callbacks after subscribe()" error that occurs when supabase.channel()
- * returns an already-subscribed instance by name.
+ * Channels are module-level and ref-counted. On fast back-navigation the old
+ * scope may not have torn down when the new one subscribes, and
+ * supabase.channel() returning the already-subscribed instance by name throws
+ * "cannot add postgres_changes callbacks after subscribe()".
  */
 
 // ---------------------------------------------------------------------------
@@ -174,7 +167,7 @@ export function useRealtimeForumFeed({
     if (row.discussion_id == null)
       return null
 
-    // Respect forum reply flag - the feed only shows forum-mode replies
+    // The feed only shows forum-mode replies.
     if (row.is_forum_reply === false)
       return null
 

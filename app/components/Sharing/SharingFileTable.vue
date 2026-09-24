@@ -20,9 +20,7 @@ const { listFiles, uploadFile, deleteFile, wipeMyFiles } = useDepot()
 // covers the standalone sharing page.
 const perPage = inject<Ref<number>>('adminTablePerPage', computed(() => 12))
 
-// The base table owns all the listing/sort/delete state; we drive it for the
-// upload and wipe-all actions that are specific to your own files. Typed by the
-// methods it exposes, since a generic component has no usable InstanceType.
+// Typed by its exposed methods, since a generic component has no usable InstanceType
 const table = useTemplateRef<{
   handleUploaded: () => Promise<void>
   handleExternalWipe: () => Promise<void>
@@ -33,8 +31,7 @@ const table = useTemplateRef<{
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 const uploading = ref(false)
 
-// Uploads are gated on agreeing to the sharing rules via the shared gate. The
-// gate owns the modal + agreement state; here we just funnel actions through it.
+// Uploads are gated on agreeing to the sharing rules
 const {
   open: rulesModalOpen,
   agreed: agreedToRules,
@@ -48,8 +45,7 @@ function pickFiles() {
   runGated(() => fileInput.value?.click())
 }
 
-// Public entry for the button (after picking) and the page-level dropzone.
-// Prompts first if the rules aren't agreed yet, then runs the upload.
+// Prompts for the rules first if they aren't agreed yet
 function uploadFiles(files: FileList | File[]) {
   const picked = Array.from(files)
   if (!picked.length)
@@ -58,8 +54,6 @@ function uploadFiles(files: FileList | File[]) {
   runGated(() => void performUpload(picked))
 }
 
-// Uploads each file in turn, surfacing per-file failures, then has the table
-// jump to the newest and refresh.
 async function performUpload(picked: File[]) {
   if (uploading.value)
     return
@@ -101,8 +95,6 @@ function handleFilesPicked(event: Event) {
     void performUpload(picked)
 }
 
-// Exposed so the sharing page's dropzone can funnel dropped files through the
-// same gated upload path as the button.
 defineExpose({ uploadFiles })
 
 // ─── Wipe all ─────────────────────────────────────────────────────────────────
@@ -110,9 +102,6 @@ defineExpose({ uploadFiles })
 const showWipeModal = ref(false)
 const wiping = ref(false)
 
-// Wipes every one of your uploads in a single gateway call, then resets the
-// table. The nuclear option behind a confirm, distinct from the per-file and
-// bulk-selection deletes the base table owns.
 async function handleWipeAll() {
   wiping.value = true
   try {

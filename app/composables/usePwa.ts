@@ -1,22 +1,9 @@
 import { readonly, ref } from 'vue'
 
 /**
- * PWA install + display-mode detection.
- *
- * Tells the app whether it's running as an installed standalone app vs. a plain
- * browser tab, and (where the platform supports it) exposes a programmatic
- * install prompt.
- *
- * - `isStandalone`: running from the home screen / installed app. iOS exposes
- *   this via the non-standard `navigator.standalone`; everyone else via the
- *   `display-mode: standalone` media query (kept reactive to live changes).
- * - `canInstall`: a `beforeinstallprompt` event was captured, so `install()`
- *   can show the native prompt (Chromium browsers only).
- * - `isIOS`: iOS Safari has no programmatic install, so callers fall back to
- *   showing "Add to Home Screen" instructions.
- *
- * State is module-level so the one-shot `beforeinstallprompt` event is captured
- * regardless of which component mounts first.
+ * State is module-level so the one-shot `beforeinstallprompt` is captured
+ * whichever component mounts first. iOS Safari has no programmatic install, so
+ * callers show "Add to Home Screen" instructions when `isIOS` is set.
  */
 
 interface BeforeInstallPromptEvent extends Event {

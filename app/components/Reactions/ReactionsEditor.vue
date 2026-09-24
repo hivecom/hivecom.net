@@ -30,9 +30,8 @@ function remove(emote: string) {
   emit('update:modelValue', props.modelValue.filter(e => e !== emote))
 }
 
-// Drag-to-reorder. Native HTML5 drag, matching the file-drop pattern used
-// elsewhere - the list is short so a sortable library isn't worth it. A real
-// drag suppresses the click, so click-to-remove still works.
+// Native HTML5 drag, since the list is short and a sortable library isn't worth it.
+// A real drag suppresses the click, so click-to-remove still works.
 const draggingIndex = ref<number | null>(null)
 
 function onDragStart(index: number, event: DragEvent) {
@@ -165,7 +164,6 @@ function reset() {
     }
   }
 
-  // The chip being dragged fades so the live reorder is easy to follow.
   &--dragging {
     opacity: 0.4;
   }

@@ -338,13 +338,11 @@ function handleClose() {
   isOpen.value = false
 }
 
-// Orphan reassignment
 const isOrphaned = computed(() => !!props.discussion && contextLinks.value.length === 0)
 
 const reassignLoading = ref(false)
 const reassignSearch = ref('')
 
-// Topics served from shared cache
 const { topics: reassignTopics } = useDataForumTopics()
 
 const filteredReassignTopics = computed(() => {
@@ -354,7 +352,7 @@ const filteredReassignTopics = computed(() => {
     .sort((a, b) => a.name.localeCompare(b.name))
 })
 
-// Topics are pre-loaded by useDataForumTopics - no explicit fetch needed
+// useDataForumTopics preloads the topics, so there's nothing to fetch here.
 async function loadReassignTopics() {}
 
 async function reassignToTopic(topicId: string) {

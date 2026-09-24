@@ -20,21 +20,17 @@ const props = defineProps<{
   event: Tables<'events'> | null
 }>()
 
-// Define emits
 const emit = defineEmits<{
   edit: [event: Tables<'events'>]
   delete: [event: Tables<'events'>]
 }>()
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
 const { handleContentClick } = useExternalLinkGuard()
 
-// RSVP modal state
 const showRSVPModal = ref(false)
 
-// Games data
 const { loading: loadingGames, getByIds } = useDataGames()
 
 const eventGames = computed(() => {
@@ -44,24 +40,20 @@ const eventGames = computed(() => {
   return getByIds(props.event.games)
 })
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle edit action from AdminActions
 function handleEdit(event: Tables<'events'>) {
   emit('edit', event)
   isOpen.value = false
 }
 
-// Handle delete action from AdminActions
 function handleDelete(event: Tables<'events'>) {
   emit('delete', event)
   isOpen.value = false
 }
 
-// Helper function to get event status
 function getEventStatus(event: Tables<'events'>): { label: string, variant: 'accent' | 'success' | 'neutral' } {
   const now = new Date()
 
@@ -126,7 +118,6 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
 
     <Flex v-if="props.event" column gap="m" class="event-detail">
       <Flex column gap="m" expand>
-        <!-- Basic info -->
         <DetailTable>
           <template #header>
             <Icon name="ph:calendar" />
@@ -209,11 +200,9 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
           </DetailRow>
 
           <DetailRow label="Games" :hidden="!(props.event.games && props.event.games.length > 0)">
-            <!-- Loading state -->
             <div v-if="loadingGames" class="game-skeleton-container">
               <div v-for="n in (props.event.games?.length || 1)" :key="n" class="game-skeleton" />
             </div>
-            <!-- Games icons -->
             <template v-else>
               <GameIcon
                 v-for="game in eventGames"
@@ -225,7 +214,6 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
           </DetailRow>
         </DetailTable>
 
-        <!-- Description -->
         <Card v-if="props.event.description" separators class="card-bg">
           <template #header>
             <Flex gap="xs" y-center>
@@ -239,7 +227,6 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
           </p>
         </Card>
 
-        <!-- Markdown Content -->
         <Card v-if="props.event.markdown" separators class="card-bg">
           <template #header>
             <Flex x-between y-center expand>
@@ -254,14 +241,12 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
           <MarkdownRenderer :md="props.event.markdown" class="event-markdown-content" />
         </Card>
 
-        <!-- Sync status -->
         <DetailTable>
           <template #header>
             <Icon name="ph:arrows-clockwise" />
             <h6>Sync Status</h6>
           </template>
 
-          <!-- Discord -->
           <DetailRow label="Discord">
             <Flex column :gap="0">
               <CopyClipboard v-if="props.event.discord_event_id" :text="props.event.discord_event_id">
@@ -274,7 +259,6 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
             </Flex>
           </DetailRow>
 
-          <!-- Google Calendar (official) -->
           <DetailRow label="Google (official)">
             <Flex column :gap="0">
               <CopyClipboard v-if="props.event.google_event_id" :text="props.event.google_event_id">
@@ -287,7 +271,6 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
             </Flex>
           </DetailRow>
 
-          <!-- Google Calendar (community) -->
           <DetailRow label="Google (community)">
             <Flex column :gap="0">
               <CopyClipboard v-if="props.event.google_community_event_id" :text="props.event.google_community_event_id">
@@ -301,7 +284,6 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
           </DetailRow>
         </DetailTable>
 
-        <!-- Metadata -->
         <Metadata
           :created-at="props.event.created_at"
           :created-by="props.event.created_by"
@@ -311,7 +293,6 @@ function getEventStatus(event: Tables<'events'>): { label: string, variant: 'acc
       </Flex>
     </Flex>
 
-    <!-- RSVP Modal -->
     <EventRSVPModal
       v-if="props.event"
       v-model:open="showRSVPModal"

@@ -9,8 +9,7 @@ import HomeDashboardGameservers from '@/components/Home/HomeDashboardGameservers
 import HomeDashboardVotesBanner from '@/components/Home/HomeDashboardVotesBanner.vue'
 import MetricsRefreshCountdown from '@/components/Shared/Charts/MetricsRefreshCountdown.vue'
 
-// Mobile-only quick nav mirrors the top-level site navigation so the dashboard
-// is a full jumping-off point on small screens.
+// Mirrors the top-level nav, which collapses on mobile
 const navTiles = [
   { name: 'Chat', path: '/chat', icon: 'ph:chat-circle' },
   { name: 'Events', path: '/events', icon: 'ph:calendar-dots' },
@@ -23,8 +22,6 @@ const navTiles = [
 
 <template>
   <div class="dashboard">
-    <!-- Nebula + stars are rendered once at the page level (HomeBackdrop) so they
-         persist across the landing swap. -->
     <div class="dashboard__content container-l">
       <Flex x-center y-center gap="m" expand>
         <h1 class="dashboard__greeting">
@@ -32,19 +29,15 @@ const navTiles = [
         </h1>
       </Flex>
 
-      <!-- Top-level nav tiles only show on mobile, where the global nav collapses. -->
       <div class="dashboard__nav">
         <Grid :columns="2" gap="s" expand>
           <DashboardNavTile v-for="tile in navTiles" :key="tile.path" v-bind="tile" />
         </Grid>
       </div>
 
-      <!-- Votes only ever amount to a line or two, and most days to nothing at
-           all, so they sit above the grid and hide themselves when there is
-           nothing running or nothing recent to report. -->
+      <!-- Votes are a line or two at most, so they sit above the grid and hide when there's nothing -->
       <HomeDashboardVotesBanner />
 
-      <!-- Top row: the three cards that always have something to say. -->
       <Grid :columns="3" gap="m" expand y-stretch class="dashboard__grid">
         <Card class="h-100">
           <HomeDashboardChat />
@@ -59,7 +52,6 @@ const navTiles = [
         </Card>
       </Grid>
 
-      <!-- Bottom row: the two game cards, side by side so they read as one pair. -->
       <Grid :columns="2" gap="m" expand y-stretch class="dashboard__grid">
         <Card class="h-100">
           <HomeDashboardGames />
@@ -70,7 +62,6 @@ const navTiles = [
         </Card>
       </Grid>
 
-      <!-- Same footer the games page has, so the cards say how fresh they are. -->
       <Flex x-end>
         <MetricsRefreshCountdown />
       </Flex>
@@ -81,7 +72,7 @@ const navTiles = [
 <style lang="scss" scoped>
 .dashboard {
   position: relative;
-  // Sit above the persistent page backdrop (HomeBackdrop, z-index 0).
+  // Above the HomeBackdrop layer at z-index 0
   z-index: 1;
   width: 100%;
   min-height: 100vh;
@@ -120,12 +111,9 @@ const navTiles = [
   }
 }
 
-// Cards stretch to the tallest one in their row, but the body inside stays
-// top-aligned, so an empty state ends up pinned under the header. Push the
-// height down through the card, but only when the body is an empty state -
-// doing it to a populated card squeezes its sections instead.
-// `.dashboard-fill` is the same ask from a populated card: its root wants the
-// full height so a trailing section can grow into it (the chat card's chart).
+// Stretched cards keep their body top-aligned, pinning an empty state under the
+// header. Only empty states and .dashboard-fill get the height, since a populated
+// card would squeeze its sections.
 .dashboard__grid :deep(.vui-card:has(.dashboard-empty, .dashboard-fill)) {
   display: flex;
   flex-direction: column;

@@ -11,7 +11,6 @@ import ComplaintCard from './ComplaintCard.vue'
 import ComplaintDetails from './ComplaintDetails.vue'
 import ComplaintFilters from './ComplaintFilters.vue'
 
-// Interface for Select options
 interface SelectOption {
   label: string
   value: string
@@ -33,29 +32,24 @@ interface RpcComplaint {
   total_count: number
 }
 
-// Props
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 const route = useRoute()
 const router = useRouter()
 
-// Setup Supabase client
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
 
-// Data states
 const loading = ref(true)
 const initialLoad = ref(true)
 const complaints = ref<RpcComplaint[]>([])
 const totalCount = ref(0)
 const errorMessage = ref('')
 
-// Filter states
 const search = ref('')
 const statusFilter = ref<SelectOption[]>([])
 const contextFilter = ref<SelectOption[]>([])
 
-// Detail states
 const selectedComplaint = ref<Tables<'complaints'> | null>(null)
 const showComplaintDetails = ref(false)
 
@@ -66,7 +60,6 @@ const focusedComplaintId = computed(() => {
   return Number.isNaN(parsed) ? null : parsed
 })
 
-// Action loading states
 const actionLoading = ref<Record<number, boolean>>({})
 
 const isBelowMedium = useBreakpoint('<m')
@@ -80,7 +73,6 @@ const gridColumns = computed(() => {
   return adminTablePerPage.value > 10 ? 3 : 2
 })
 
-// Pagination
 const currentPage = ref(1)
 
 const paginationState = computed(() =>
@@ -91,7 +83,6 @@ const shouldShowPagination = computed(() =>
   totalCount.value > adminTablePerPage.value,
 )
 
-// Fetch complaints data via server-side paginated RPC
 async function fetchComplaints() {
   try {
     loading.value = true
@@ -125,7 +116,6 @@ async function fetchComplaints() {
   }
 }
 
-// Handle complaint selection
 function handleComplaintSelect(complaint: Tables<'complaints'>) {
   selectedComplaint.value = complaint
   showComplaintDetails.value = true
@@ -144,7 +134,6 @@ function openComplaintById(complaintId: number | null): boolean {
   return true
 }
 
-// Handle acknowledge action
 const { fetch: fetchNotifications } = useDataNotifications()
 
 async function handleAcknowledge(complaintId: number) {
@@ -174,7 +163,6 @@ async function handleAcknowledge(complaintId: number) {
   }
 }
 
-// Handle response action
 async function handleRespond(data: { id: number, response: string }) {
   if (!user.value)
     return
@@ -206,7 +194,6 @@ async function handleRespond(data: { id: number, response: string }) {
   }
 }
 
-// Handle update response action
 async function handleUpdateResponse(data: { id: number, response: string }) {
   if (!user.value)
     return
@@ -237,7 +224,6 @@ async function handleUpdateResponse(data: { id: number, response: string }) {
   }
 }
 
-// Handle remove response action
 async function handleRemoveResponse(complaintId: number) {
   if (!user.value)
     return
@@ -269,7 +255,6 @@ async function handleRemoveResponse(complaintId: number) {
   }
 }
 
-// Handle delete complaint action
 async function handleDeleteComplaint(complaintId: number) {
   if (!user.value)
     return
@@ -299,7 +284,6 @@ async function handleDeleteComplaint(complaintId: number) {
   }
 }
 
-// Sync complaint query params with details sheet state
 watch(showComplaintDetails, (isOpen) => {
   if (isOpen && selectedComplaint.value) {
     const nextQuery = {
@@ -335,24 +319,20 @@ function handlePageChange(page: number) {
   currentPage.value = page
 }
 
-// Search: debounced fetch
 watchDebounced(search, () => {
   currentPage.value = 1
   void fetchComplaints()
 }, { debounce: 300 })
 
-// Status + context filters: immediate fetch
 watch([statusFilter, contextFilter], () => {
   currentPage.value = 1
   void fetchComplaints()
 }, { deep: true })
 
-// Page: fetch on change
 watch(currentPage, () => {
   void fetchComplaints()
 })
 
-// Per-page: reset and fetch
 watch(adminTablePerPage, () => {
   if (currentPage.value !== 1) {
     currentPage.value = 1
@@ -364,26 +344,22 @@ watch(adminTablePerPage, () => {
   }
 })
 
-// Refresh signal from KPIs or external actions
 watch(() => refreshSignal.value, (val) => {
   if (val > 0)
     void fetchComplaints()
 })
 
-// Initial data fetch
 onBeforeMount(() => void fetchComplaints())
 </script>
 
 <template>
   <Flex column gap="l" expand>
-    <!-- Filters -->
     <ComplaintFilters
       v-model:search="search"
       v-model:status-filter="statusFilter"
       v-model:context-filter="contextFilter"
     />
 
-    <!-- Loading skeleton (initial load only) -->
     <Grid v-if="initialLoad" :columns="gridColumns" gap="m" expand>
       <Card v-for="i in 6" :key="i" separators>
         <template #header>
@@ -404,17 +380,14 @@ onBeforeMount(() => void fetchComplaints())
       </Card>
     </Grid>
 
-    <!-- Error message -->
     <Alert v-else-if="errorMessage" variant="danger">
       {{ errorMessage }}
     </Alert>
 
-    <!-- No complaints message -->
     <Alert v-else-if="!loading && complaints.length === 0" variant="info">
       No complaints found
     </Alert>
 
-    <!-- Complaints grid -->
     <Flex v-else column gap="l" expand>
       <div class="complaints-loading-wrapper" :class="{ 'complaints-loading': loading && !initialLoad }">
         <Grid :columns="gridColumns" gap="m" class="complaints-grid" expand>
@@ -428,7 +401,6 @@ onBeforeMount(() => void fetchComplaints())
         </Grid>
       </div>
 
-      <!-- Pagination -->
       <Pagination
         v-if="shouldShowPagination"
         :pagination="paginationState"
@@ -436,7 +408,6 @@ onBeforeMount(() => void fetchComplaints())
       />
     </Flex>
 
-    <!-- Complaint Details -->
     <ComplaintDetails
       v-model:is-open="showComplaintDetails"
       :complaint="selectedComplaint"

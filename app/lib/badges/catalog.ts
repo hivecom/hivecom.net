@@ -1,8 +1,6 @@
 /**
- * Badge catalog - single source of truth for badge metadata, icons, labels,
- * descriptions, and tier thresholds.
- *
- * "kind" describes how a badge is earned:
+ * Single source of truth for badge metadata and tier thresholds. `kind` is how
+ * a badge gets earned:
  *  - manual:   granted by admin via admin_set_profile_badge RPC
  *  - flag:     driven by a boolean column on profiles (supporter_patreon, etc.)
  *  - computed: derived from a count or date, upserted by DB triggers / cron
@@ -10,7 +8,7 @@
 
 export type BadgeVariant = 'shiny' | 'gold' | 'silver' | 'bronze'
 
-// Ordered from highest to lowest prestige - used for sorting badge lists.
+// Highest prestige first.
 export const BADGE_VARIANT_ORDER: BadgeVariant[] = ['shiny', 'gold', 'silver', 'bronze']
 
 // ---------------------------------------------------------------------------
@@ -22,7 +20,7 @@ interface BadgeBase {
   icon: string
   description: string
 
-  /** Canonical display order - lower = shown first within same tier. */
+  /** Lower shows first within the same tier. */
   sortOrder: number
 }
 
@@ -35,36 +33,26 @@ export interface FlagBadge extends BadgeBase {
   kind: 'flag'
   defaultTier: BadgeVariant
 
-  /** Column name on `profiles` that drives this badge. */
+  /** Column on `profiles`. */
   driverColumn: string
 }
 
 export interface ComputedBadge extends BadgeBase {
   kind: 'computed'
 
-  /**
-   * Map of tier -> minimum value (count or years) required.
-   * Tiers not listed are not awarded for this badge.
-   */
+  /** Minimum count or years per tier. Unlisted tiers aren't awarded. */
   tiers: Partial<Record<BadgeVariant, number>>
   unit: 'years' | 'rsvps' | 'discussions' | 'replies' | 'replies_received'
 
-  /**
-   * When true, the numeric `progress` value is rendered inside the badge hex
-   * instead of the default icon (e.g. the "One of Us" years badge).
-   */
+  /** Renders `progress` inside the badge hex instead of the icon. */
   hexShowsProgress?: boolean
 }
 
 export type BadgeCatalogEntry = ManualBadge | FlagBadge | ComputedBadge
 
 /**
- * Resolve the "member since" date for a badge's "since" description.
- *
- * For computed date badges (e.g. `one_of_us`) the DB stores the user's actual
- * join date in `metadata.member_since`. The row's `earned_at` is just when the
- * badge was (re)computed, so it must NOT be used as the join date. Falls back
- * to `earned_at` only when no member_since is present.
+ * For date badges like `one_of_us`, `earned_at` is when the badge was last
+ * recomputed, not the join date. Prefer `metadata.member_since`.
  */
 export function getBadgeMemberSince(
   metadata: Record<string, unknown> | null | undefined,
@@ -183,13 +171,10 @@ export const BADGE_CATALOG = {
 export type BadgeSlug = keyof typeof BADGE_CATALOG
 
 // ---------------------------------------------------------------------------
-// Threshold helpers (replaces the scattered per-badge functions)
+// Threshold helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Resolve the earned tier for a computed badge given a progress value.
- * Returns undefined if the value doesn't meet the lowest threshold.
- */
+/** Undefined when `progress` is below the lowest threshold. */
 export function getComputedBadgeTier(
   slug: BadgeSlug,
   progress: number,
@@ -206,9 +191,6 @@ export function getComputedBadgeTier(
   return undefined
 }
 
-/**
- * Minimum progress value required to earn any tier of a computed badge.
- */
 export function getComputedBadgeMinProgress(slug: BadgeSlug): number {
   const entry = BADGE_CATALOG[slug]
   if (entry.kind !== 'computed')
@@ -221,7 +203,7 @@ export function getComputedBadgeMinProgress(slug: BadgeSlug): number {
 }
 
 // ---------------------------------------------------------------------------
-// Backwards-compatible wrappers (preserves existing call-sites until step 3)
+// Backwards-compatible wrappers
 // ---------------------------------------------------------------------------
 
 export const DISCUSSION_STARTER_THRESHOLDS = BADGE_CATALOG.forum_regular.tiers as Record<'gold' | 'silver' | 'bronze', number>

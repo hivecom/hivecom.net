@@ -25,15 +25,13 @@ const { adminListFiles, adminContentTypes, deleteFile } = useDepot()
 const { canModerateDepot } = useAdminPermissions()
 const { settings } = useDataUserSettings()
 
-// Persisted across sessions in user settings, same as the assets view mode.
 const viewMode = ref<'table' | 'grid'>(settings.value.admin_depot_view_mode ?? 'grid')
 watch(viewMode, (mode) => {
   settings.value.admin_depot_view_mode = mode
 })
 
-// The admin layout provides 10 (compact) or 20 (expanded). The grid view packs
-// far more per row than the row-based tables, so we scale up to match the Assets
-// manager: 25/50 per page and a fixed 4/8 column grid (2 on mobile).
+// The grid packs far more per row than the tables, so the layout's 10 or 20 per
+// page scales up to 25 or 50, with a fixed 4 or 8 column grid (2 on mobile).
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 const isBelowMedium = useBreakpoint('<m')
 const perPage = computed(() => (adminTablePerPage.value > 10 ? 50 : 25))

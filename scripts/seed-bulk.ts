@@ -1,26 +1,15 @@
 #!/usr/bin/env node
 
 /**
- * Runs supabase/seed.bulk.sql against the local database.
+ * Adds volume on top of seed.sql's fixtures. Additive and idempotent.
  *
- * seed.sql gives you fixtures - specific rows for specific UI states. This adds
- * volume on top, so you can see what the forum, profile lists and RSVP panels do
- * with a few thousand rows instead of a few dozen. It is additive and idempotent:
- * run it after a reset, run it twice, run it again with bigger numbers to top up.
- *
- *   npm run seed:bulk
  *   npm run seed:bulk -- --users=2000 --discussions=3000 --replies=40000
  *
- * Flags map straight onto psql variables of the same name, so the SQL file stays
- * the single source of truth for the defaults.
+ * Flags map onto psql variables of the same name, so the SQL file owns the
+ * defaults. Runs psql through `docker exec` to keep a Postgres driver out of the app.
  *
- * Talks to the database through `docker exec` rather than a client library,
- * because psql is already in the Supabase db container and there is no reason to
- * add a Postgres driver to the app's dependency tree for a dev-only script.
- *
- * Connects as supabase_admin rather than postgres. The SQL briefly disables the
- * auth.users trigger that auto-creates profiles, and that table is owned by
- * supabase_auth_admin, so plain postgres cannot touch its triggers.
+ * Connects as supabase_admin: the SQL disables a trigger on auth.users, which is
+ * owned by supabase_auth_admin and out of reach for plain postgres.
  */
 
 import { spawn } from 'node:child_process'
@@ -102,7 +91,7 @@ async function main() {
   const code = await run('docker', [
     'exec',
     '-i',
-    // Local Supabase always uses this password. It is not a secret.
+    // Local Supabase's fixed password, not a secret
     '-e',
     'PGPASSWORD=postgres',
     container,

@@ -8,7 +8,6 @@ const props = defineProps<{
   small?: boolean
 }>()
 
-// Format the GitHub URL if a github repo exists
 const githubUrl = computed(() => {
   if (!props.github)
     return null
@@ -16,7 +15,6 @@ const githubUrl = computed(() => {
   return `https://github.com/${props.github}`
 })
 
-// Navigate to GitHub repository page
 function navigateToGitHub() {
   if (githubUrl.value) {
     window.open(githubUrl.value, '_blank', 'noopener,noreferrer')

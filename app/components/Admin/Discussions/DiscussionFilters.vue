@@ -29,7 +29,7 @@ const search = defineModel<string>('search', { default: '' })
 const _statusFilter = defineModel<SelectOption[] | undefined>('statusFilter')
 const _contextFilter = defineModel<SelectOption[] | undefined>('contextFilter')
 
-// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+// VUI <Select show-clear> sets the model to undefined on clear. Coerce it back to [].
 const statusFilter = computed({
   get: () => _statusFilter.value ?? [],
   set: (v) => { _statusFilter.value = v ?? [] },

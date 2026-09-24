@@ -2,6 +2,7 @@ import * as constants from "constants" with { type: "json" };
 import { corsHeaders } from "../_shared/cors.ts";
 import { createPublicServiceRoleClient } from "../_shared/serviceRoleClients.ts";
 import { sendDiscordNotification } from "../_shared/discord.ts";
+import { timingSafeEqualString } from "../_shared/auth.ts";
 import type { Database, Tables } from "database-types";
 
 type MonthlyFunding = Database["public"]["Tables"]["funding_history"]["Row"];
@@ -24,14 +25,13 @@ Deno.serve(async (req: Request) => {
   });
 
   try {
-    // Verify token
     const kofiToken = Deno.env.get("KOFI_VERIFICATION_TOKEN");
     if (!kofiToken) {
       console.error("KOFI_VERIFICATION_TOKEN env var is not set");
       return jsonResponse({ error: constants.default.API_ERROR }, 500);
     }
 
-    // Parse form data - Ko-fi sends application/x-www-form-urlencoded with a `data` field
+    // Ko-fi posts application/x-www-form-urlencoded with the JSON in a `data` field
     const formData = await req.formData();
     const raw = formData.get("data");
     if (!raw || typeof raw !== "string") {
@@ -48,13 +48,14 @@ Deno.serve(async (req: Request) => {
       message?: string;
     };
 
-    // Validate verification token
-    if (payload.verification_token !== kofiToken) {
+    if (
+      typeof payload.verification_token !== "string" ||
+      !timingSafeEqualString(payload.verification_token, kofiToken)
+    ) {
       console.warn("Ko-fi token mismatch");
       return jsonResponse({ error: "Forbidden" }, 403);
     }
 
-    // Only process Donation type
     if (payload.type !== "Donation") {
       console.log("Ko-fi event ignored - not a Donation", {
         type: payload.type,
@@ -62,7 +63,7 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ ok: true, ignored: payload.type }, 200);
     }
 
-    // Parse amount (string like "3.00") to cents
+    // Amount arrives as a string like "3.00"
     const amountCents = Math.round(parseFloat(payload.amount) * 100);
     if (isNaN(amountCents) || amountCents <= 0) {
       console.warn("Invalid Ko-fi amount", { amount: payload.amount });
@@ -71,7 +72,6 @@ Deno.serve(async (req: Request) => {
 
     console.log("Ko-fi donation parsed", { amountCents, type: payload.type });
 
-    // Read points rate from kvstore
     const { data: kvRow } = await supabase
       .from("kvstore")
       .select("value")
@@ -87,13 +87,11 @@ Deno.serve(async (req: Request) => {
     const points = Math.round(amountCents * rate);
     console.log("Points computed", { rate, points });
 
-    // Current month date YYYY-MM-01
     const now = new Date();
     const monthDate = `${now.getFullYear()}-${
       String(now.getMonth() + 1).padStart(2, "0")
     }-01`;
 
-    // Fetch existing funding_history row
     const { data: existingMonth, error: monthFetchError } = await supabase
       .from("funding_history")
       .select("*")
@@ -144,7 +142,6 @@ Deno.serve(async (req: Request) => {
 
     console.log("monthly_funding updated", { monthDate, amountCents });
 
-    // Email match
     let userMatched = false;
     let userId: string | undefined;
 
@@ -162,16 +159,12 @@ Deno.serve(async (req: Request) => {
         userId = rows?.[0]?.id ?? undefined;
       }
 
-      console.log("Email match result", {
-        email,
-        userId: userId ?? "not found",
-      });
+      console.log("Email match result", { matched: !!userId });
     }
 
     if (userId) {
       userMatched = true;
 
-      // Fetch existing profile_points row
       const { data: existingPoints, error: pointsFetchError } = await supabase
         .from("profile_points")
         .select("*")
@@ -219,7 +212,7 @@ Deno.serve(async (req: Request) => {
 
       console.log("Points awarded", { userId, points });
 
-      // Best-effort: write history row
+      // Best-effort
       const { error: historyInsertError } = await supabase
         .from("profile_point_history")
         .insert({
@@ -235,7 +228,7 @@ Deno.serve(async (req: Request) => {
         );
       }
     } else if (payload.email) {
-      // No matched profile - store as a pending claim keyed by donor email
+      // No matched profile, so store a pending claim keyed by donor email
       const email = payload.email.trim().toLowerCase();
       const { error: claimInsertError } = await supabase
         .from("profile_point_claims")
@@ -247,14 +240,13 @@ Deno.serve(async (req: Request) => {
           claimInsertError,
         );
       } else {
-        console.log("Pending claim created", { email, points });
+        console.log("Pending claim created", { points });
       }
     }
 
-    // Best-effort: notify Discord
+    // Best-effort
     const amountFormatted = `€${(amountCents / 100).toFixed(2)}`;
 
-    // Fetch updated month total for the notification
     const { data: updatedMonth } = await supabase
       .from("funding_history")
       .select("donation_month_amount_cents")

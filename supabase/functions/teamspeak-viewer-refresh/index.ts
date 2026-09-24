@@ -36,7 +36,6 @@ if (!supabaseKey) {
 const supabase = createClient<Database>(supabaseUrl, supabaseKey);
 
 Deno.serve(async (req) => {
-  // This is needed if you're planning to invoke your function from a browser. Which we are.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }

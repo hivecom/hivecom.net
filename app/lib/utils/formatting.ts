@@ -24,11 +24,11 @@ export function slugify(text: string): string {
     .toString()
     .toLowerCase()
     .trim()
-    .replace(SPACES_RE, '-') // Replace spaces with -
-    .replace(NON_WORD_HYPHEN_RE, '') // Remove all non-word chars
-    .replace(MULTI_HYPHEN_RE, '-') // Replace multiple - with single -
-    .replace(LEADING_HYPHEN_RE, '') // Trim - from start of text
-    .replace(TRAILING_HYPHEN_RE, '') // Trim - from end of text
+    .replace(SPACES_RE, '-')
+    .replace(NON_WORD_HYPHEN_RE, '')
+    .replace(MULTI_HYPHEN_RE, '-')
+    .replace(LEADING_HYPHEN_RE, '')
+    .replace(TRAILING_HYPHEN_RE, '')
 }
 
 export function capitalize(str: string) {
@@ -43,13 +43,8 @@ export function capitalize(str: string) {
  * 3. Preserves all internal spacing.
  */
 /**
- * Formats a count for compact display using the browser locale.
- *
- * - Below `abbreviateAbove`: rendered with locale thousands separator (e.g. "2,345" or "2.345")
- * - `abbreviateAbove` and above: locale-aware compact notation (e.g. "58.6K", "58,6K", "1.2M")
- *
- * `abbreviateAbove` defaults to 10,000.
- * Pass 1_000 for a 4-char max (e.g. leaderboard badges, podium counts).
+ * "2,345" below `abbreviateAbove`, compact "58.6K" at or above it. Pass 1_000
+ * for a 4-character max.
  */
 export function formatCount(value: number, abbreviateAbove = 10_000): string {
   if (value < abbreviateAbove)
@@ -61,13 +56,7 @@ export function formatCount(value: number, abbreviateAbove = 10_000): string {
   }).format(value)
 }
 
-/**
- * Formats a percentage value (0–100) for locale-aware display.
- * e.g. formatPercent(58.6) → "58.6%" (en) or "58,6 %" (fr)
- *
- * @param value - Percentage value in the range 0–100
- * @param decimalPlaces - Maximum decimal places to show (defaults to 1)
- */
+/** Takes 0-100, not 0-1. */
 export function formatPercent(value: number, decimalPlaces = 1): string {
   return new Intl.NumberFormat(undefined, {
     style: 'percent',

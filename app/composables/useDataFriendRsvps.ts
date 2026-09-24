@@ -7,21 +7,15 @@ import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 type FriendRsvpRow = Pick<Database['public']['Tables']['event_rsvps']['Row'], 'event_id' | 'user_id'>
 
-const TTL = 3 * 60 * 1000 // 3 min - matches the user's own RSVP cache
+const TTL = 3 * 60 * 1000
 
-// Keyed by the current user - the friend set derives from them, so a changed
-// friend list within TTL is served stale until the next refresh.
+// Keyed by the current user, not the friend set. A changed friend list is
+// served stale until the TTL runs out or something refreshes.
 function cacheKey(userId: string): string {
   return `friend-rsvps:${userId}`
 }
 
-/**
- * Yes-RSVPs of the given users (typically the current user's mutual friends,
- * see mutualFriendIds on useDataNotifications) grouped by event id.
- *
- * Feeds "friends are attending X" surfaces: cross-reference with events the
- * current user has not RSVPed to via useDataUserRsvps.
- */
+// Yes-RSVPs of the given users, grouped by event id.
 export function useDataFriendRsvps(friendIds: MaybeRefOrGetter<string[]>) {
   const { withCache, cache, loading, error } = useCacheModule(CACHE_NAMESPACES.rsvps)
   const supabase = useSupabaseClient<Database>()

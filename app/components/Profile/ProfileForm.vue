@@ -22,7 +22,6 @@ const props = defineProps<{
   submissionError?: string | null
 }>()
 
-// Define emits
 const emit = defineEmits<{
   'save': [profile: Partial<Tables<'profiles'>>]
   'close': []
@@ -31,7 +30,6 @@ const emit = defineEmits<{
   'profilePatch': [patch: Partial<Tables<'profiles'>>]
 }>()
 
-// Form state
 const profileForm = ref({
   username: '',
   introduction: '',
@@ -55,13 +53,11 @@ const {
   isValid,
 } = useUserFormValidation(profileForm, { submissionError: submissionErrorRef })
 
-// Avatar upload state
 const avatarUploading = ref(false)
 const avatarError = ref<string | null>(null)
 
 const isMobile = useBreakpoint('<s')
 
-// Banner state
 const bannerEditorOpen = ref(false)
 const bannerUrl = ref<string | null>(null)
 const bannerDeleting = ref(false)
@@ -159,7 +155,7 @@ function onBannerDeleted() {
   emit('profilePatch', { has_banner: false })
 }
 
-const BANNER_MAX_SIZE = 1 * 1024 * 1024 // 1MB
+const BANNER_MAX_SIZE = 1 * 1024 * 1024
 
 async function handleAnimatedFile(e: Event) {
   const input = e.target as HTMLInputElement
@@ -181,7 +177,6 @@ async function handleAnimatedFile(e: Event) {
     const supabase = useSupabaseClient()
     const filePath = `${props.profile.id}/banner.${ext}`
 
-    // Remove stale banner files with other extensions
     const otherExts = ['webp', 'webm', 'gif'].filter(e => e !== ext)
     await Promise.all(otherExts.map(e =>
       supabase.storage.from(USERS_BUCKET_ID).remove([`${props.profile!.id}/banner.${e}`]),
@@ -225,19 +220,17 @@ async function handleImportFile(e: Event) {
     return
   }
 
-  // Check for embedded metadata without touching the editor
   const bytes = new Uint8Array(await file.arrayBuffer())
   const text = new TextDecoder().decode(bytes)
   const hasMetadata = text.includes('<!-- HIVECOM_BANNER_META:')
 
   if (hasMetadata) {
-    // Upload the file directly - no need to re-render through the editor
+    // Upload directly, no need to re-render through the editor
     try {
       bannerUploading.value = true
       const supabase = useSupabaseClient()
       const filePath = `${props.profile.id}/banner.webp`
 
-      // Remove stale animated banner files if any
       await Promise.all(['webm', 'gif'].map(e =>
         supabase.storage.from(USERS_BUCKET_ID).remove([`${props.profile!.id}/banner.${e}`]),
       ))
@@ -264,7 +257,7 @@ async function handleImportFile(e: Event) {
     }
   }
   else if (isMobile.value) {
-    // On mobile skip the editor - upload the plain image directly as webp
+    // Mobile skips the editor and uploads the plain image as webp
     try {
       bannerUploading.value = true
       const supabase = useSupabaseClient()
@@ -296,7 +289,6 @@ async function handleImportFile(e: Event) {
     }
   }
   else {
-    // No metadata - load as an image layer and let the user edit first
     await bannerEditorRef.value?.importBanner(file)
     bannerEditorOpen.value = true
   }
@@ -318,7 +310,6 @@ async function handleBannerDelete() {
     bannerDeleting.value = true
     const supabase = useSupabaseClient()
 
-    // Remove all possible banner extensions
     await Promise.all(['webp', 'webm', 'gif'].map(e =>
       supabase.storage.from(USERS_BUCKET_ID).remove([`${props.profile!.id}/banner.${e}`]),
     ))
@@ -340,7 +331,6 @@ async function handleBannerDelete() {
 }
 const avatarUrl = ref<string | null>(null)
 
-// Avatar delete confirmation state
 const showDeleteConfirm = ref(false)
 const avatarDeleting = ref(false)
 
@@ -400,7 +390,6 @@ function clearBirthday() {
   profileForm.value.birthday = ''
 }
 
-// Update form data when profile prop changes
 watch(
   () => props.profile,
   async (newProfile) => {
@@ -408,9 +397,8 @@ watch(
       const normalizedCountry = newProfile.country?.toUpperCase() ?? ''
       const hasValidCountry = COUNTRY_SELECT_OPTIONS.some(option => option.value === normalizedCountry)
 
-      // Update each field individually - skip markdown if unchanged to avoid
-      // Tiptap crashing with a RangeError when the editor doc is replaced while
-      // the cursor is at a position that no longer exists after the content swap.
+      // Skip markdown when unchanged. Replacing the Tiptap doc while the cursor sits
+      // past the end of the new content throws a RangeError.
       profileForm.value.username = newProfile.username
       profileForm.value.introduction = newProfile.introduction || ''
       profileForm.value.website = (newProfile as Tables<'profiles'> & { website?: string }).website || ''
@@ -422,11 +410,9 @@ watch(
         profileForm.value.markdown = incomingMarkdown
       }
 
-      // Initialize avatar URL
       const supabase = useSupabaseClient()
       avatarUrl.value = await getUserAvatarUrl(supabase, newProfile.id)
 
-      // Initialize banner URL from has_banner flag
       if (newProfile.has_banner) {
         const ext = newProfile.banner_extension ?? 'webp'
         const { data } = supabase.storage
@@ -439,7 +425,6 @@ watch(
       }
     }
     else {
-      // Reset form
       profileForm.value = {
         username: '',
         introduction: '',
@@ -463,27 +448,23 @@ const usernameChanged = computed(() =>
   && profileForm.value.username.trim() !== props.profile.username,
 )
 
-// Clear submission error when username changes
 watch(() => profileForm.value.username, () => {
   if (props.submissionError) {
     emit('clearError')
   }
 })
 
-// Handle closing the sheet
 function handleClose() {
   emit('update:isOpen', false)
   emit('close')
 }
 
-// Handle form submission
 async function handleSubmit() {
   if (!isValid.value)
     return
 
-  // Upload any pending blob-placeholder media before reading the markdown,
-  // otherwise blob: URLs get persisted and render as missing media. The editor
-  // surfaces its own error toast on failure, so we just abort here.
+  // Upload pending blob-placeholder media before reading the markdown, or blob: URLs
+  // get persisted. The editor shows its own error toast on failure, so just abort.
   const uploaded = await markdownEditor.value?.flushPendingUploads()
   if (uploaded === false)
     return
@@ -505,7 +486,6 @@ async function handleSubmit() {
   emit('save', profileData)
 }
 
-// Handle avatar upload
 async function handleAvatarUpload(file: File) {
   if (!props.profile)
     return
@@ -533,18 +513,15 @@ async function handleAvatarUpload(file: File) {
   }
 }
 
-// Handle avatar removal
 function handleAvatarRemove() {
   avatarUrl.value = null
   avatarError.value = null
 }
 
-// Handle avatar delete confirmation
 function handleAvatarDeleteConfirm() {
   showDeleteConfirm.value = true
 }
 
-// Handle avatar deletion
 async function handleAvatarDelete() {
   if (!props.profile)
     return
@@ -572,7 +549,6 @@ async function handleAvatarDelete() {
   }
 }
 
-// Wrapper function for the confirm modal
 async function confirmAvatarDelete() {
   await handleAvatarDelete()
 }
@@ -597,7 +573,6 @@ async function confirmAvatarDelete() {
 
     <Flex ref="sheetContentRef" tabindex="-1" column gap="l" class="profile-edit-form" expand>
       <Flex gap="l" expand :column="isMobile">
-        <!-- Avatar -->
         <Flex column gap="m" class="profile-edit-form__avatar-section" :expand="isMobile">
           <h4>Avatar</h4>
           <FileUpload
@@ -617,7 +592,7 @@ async function confirmAvatarDelete() {
             @delete="handleAvatarDeleteConfirm"
             @invalid="(msg) => avatarError = msg"
           />
-          <!-- Mobile avatar actions - shown below avatar for touch accessibility -->
+          <!-- Mobile avatar actions sit below the avatar for touch accessibility -->
           <Flex v-if="isMobile && avatarUrl" expand gap="xs" class="profile-edit-form__avatar-mobile-actions">
             <Button
               expand
@@ -644,7 +619,6 @@ async function confirmAvatarDelete() {
           </Flex>
         </Flex>
 
-        <!-- Basic Information -->
         <Flex column gap="m" expand>
           <h4>Basic Information</h4>
 
@@ -699,7 +673,6 @@ async function confirmAvatarDelete() {
         </Flex>
       </Flex>
 
-      <!-- Birthday & Country -->
       <Flex gap="m" expand :column="isMobile">
         <Flex column :gap="0" expand class="profile-edit-form__birthday-container">
           <label class="vui-label">Birthday</label>
@@ -755,7 +728,6 @@ async function confirmAvatarDelete() {
         </Flex>
       </Flex>
 
-      <!-- About Section -->
       <Flex column gap="m" expand>
         <h4>About</h4>
 
@@ -783,7 +755,6 @@ async function confirmAvatarDelete() {
           always-show-expand-button
         />
 
-        <!-- Banner / Signature -->
         <Flex column gap="s" expand>
           <Flex x-between y-center expand>
             <label class="profile-edit-form__banner-label">Forum Signature</label>
@@ -950,7 +921,6 @@ async function confirmAvatarDelete() {
       </Flex>
     </template>
 
-    <!-- Banner Editor Modal -->
     <BannerEditor
       v-if="bannerEditorOpen"
       ref="bannerEditorRef"
@@ -961,7 +931,6 @@ async function confirmAvatarDelete() {
       @close="bannerEditorOpen = false"
     />
 
-    <!-- Delete Banner Confirmation Modal -->
     <ConfirmModal
       v-model:open="showBannerDeleteConfirm"
       :confirm="handleBannerDelete"
@@ -972,7 +941,6 @@ async function confirmAvatarDelete() {
       :destructive="true"
     />
 
-    <!-- Banner Media Tips Modal -->
     <Modal :open="showFfmpegInfo" size="l" centered scrollable @close="showFfmpegInfo = false">
       <template #header>
         <h4>Banner media tips</h4>
@@ -1008,7 +976,6 @@ async function confirmAvatarDelete() {
       </template>
     </Modal>
 
-    <!-- Import Banner Confirmation Modal -->
     <ConfirmModal
       v-model:open="showImportConfirm"
       :confirm="confirmImport"
@@ -1024,7 +991,6 @@ async function confirmAvatarDelete() {
       </Alert>
     </ConfirmModal>
 
-    <!-- Delete Avatar Confirmation Modal -->
     <ConfirmModal
       v-model:open="showDeleteConfirm"
       :confirm="confirmAvatarDelete"

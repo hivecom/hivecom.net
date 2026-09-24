@@ -14,8 +14,8 @@ export type MetricsAdminIrcChannel = Pick<Tables<'metrics_admin_irc_channels'>, 
 // member path derive their keys through the exact same code.
 const DERIVED_KEY_RE = /^[0-9a-f]{64}$/i
 
-// Pre-derivation scheme. Still matched so a row written before the switch never
-// renders its raw uuid as if it were a channel name.
+// Older rows are keyed by uuid. Still matched so one never renders its raw uuid
+// as if it were a channel name.
 const LEGACY_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // Module-level so every chart on a page shares one fetch.
@@ -52,10 +52,9 @@ export function useMetricsAdminIrcChannels() {
         data.map(async row => [await metricsChannelKey(row.name), row] as const),
       )
 
-      // Rows written before the key switch are still keyed by the lookup row's
-      // id. The remap migrations clear those out of history, so keeping the id
-      // as an alias is only here so a row they somehow miss still resolves for
-      // an admin instead of landing in the charts' unresolved bucket.
+      // Older rows are keyed by the lookup row's id. The remap migrations clear
+      // those from history, and the id alias catches any they miss so an admin
+      // still sees a name instead of the unresolved bucket.
       lookup.value = new Map([
         ...data.map(row => [row.id, row] as const),
         ...derived,

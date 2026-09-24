@@ -8,13 +8,10 @@ import { useAdminPermissions } from '@/composables/useAdminPermissions'
 
 definePageMeta({ layout: 'admin' })
 
-// Get admin permissions
 const { hasPermission } = useAdminPermissions()
 
-// Permission checks
 const canViewEvents = computed(() => hasPermission('events.read'))
 
-// State for refresh coordination between components
 const refreshSignal = ref(0)
 </script>
 
@@ -27,16 +24,12 @@ const refreshSignal = ref(0)
       </p>
     </Flex>
 
-    <!-- Show content only if user can view events -->
     <template v-if="canViewEvents">
-      <!-- Event KPIs -->
       <EventKPIs />
 
-      <!-- Events Table -->
       <EventTable v-model:refresh-signal="refreshSignal" />
     </template>
 
-    <!-- No permission message -->
     <div v-else class="no-permission">
       <p>You don't have permission to view events.</p>
     </div>

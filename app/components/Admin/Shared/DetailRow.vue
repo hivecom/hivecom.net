@@ -3,26 +3,15 @@ import { Grid } from '@dolanske/vui'
 import { computed } from 'vue'
 
 interface Props {
-  /**
-   * The label text displayed in the left column.
-   */
   label: string
 
-  /**
-   * Column layout. Use "wide" for a 1fr/2fr split (label narrower, value wider).
-   * Use "equal" for a 50/50 split. Defaults to "wide".
-   */
+  /** "wide" is a 1fr/2fr split, "equal" is 50/50. Defaults to "wide". */
   split?: 'wide' | 'equal'
 
-  /**
-   * When true, the row is not rendered. Useful for conditionally hiding rows
-   * without wrapping every row in a v-if at the call site.
-   */
+  /** Skips rendering, so call sites don't need a v-if on every row. */
   hidden?: boolean
 
-  /**
-   * Allow the row to wrap onto multiple lines (passes `wrap` to the Grid).
-   */
+  /** Passes `wrap` to the Grid. */
   wrap?: boolean
 }
 

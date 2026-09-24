@@ -22,7 +22,6 @@ const isOpen = defineModel<boolean>('open', { default: false })
 const latex = ref('')
 const selectedType = ref<'inline' | 'block'>('inline')
 
-// Sync inputs when the modal opens
 watch(isOpen, (open) => {
   if (open) {
     latex.value = props.initialLatex ?? ''
@@ -64,8 +63,8 @@ function handleConfirm() {
     </template>
 
     <Flex column gap="m">
-      <!-- Type selector – only shown when inserting a new node -->
-      <ButtonGroup if="!isEditing">
+      <!-- Type selector: only shown when inserting a new node -->
+      <ButtonGroup v-if="!isEditing">
         <Button
           size="s"
           :variant="selectedType === 'inline' ? 'accent' : 'gray'"

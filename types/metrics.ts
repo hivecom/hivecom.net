@@ -1,4 +1,3 @@
-// Protocol-specific server detail shapes
 export interface SourcePlayer {
   name: string
   score: number
@@ -55,8 +54,8 @@ export interface MetricsServerDetailGameSpy {
 
 export type SatisfactoryServerState = 'offline' | 'idle' | 'loading' | 'playing' | 'unknown'
 
-// Satisfactory's lightweight query protocol does NOT expose player counts -
-// only run state and server name. Player totals therefore treat it as 0.
+// Satisfactory's lightweight query protocol has no player counts, only run state
+// and server name. Player totals count it as 0.
 export interface MetricsServerDetailSatisfactory {
   protocol: 'satisfactory'
   data: {
@@ -90,7 +89,6 @@ export interface TrackmaniaPlayer {
   bestTime: number | null
 }
 
-// Same top-level fields as GameSpy: the point is who's on and which track runs.
 export interface MetricsServerDetailTrackmania {
   protocol: 'trackmania'
   data: {
@@ -104,13 +102,11 @@ export interface MetricsServerDetailTrackmania {
   }
 }
 
-// Servers with no query protocol configured
 export interface MetricsServerDetailNone {
   protocol: null
   data: null
 }
 
-// Union - extend with new protocol interfaces as they are implemented
 export type MetricsServerDetail
   = | MetricsServerDetailSource
     | MetricsServerDetailMinecraft
@@ -123,11 +119,8 @@ export type MetricsServerDetail
 // ---------------------------------------------------------------------------
 // Cross-protocol accessors
 // ---------------------------------------------------------------------------
-// Different query protocols expose player data under different field names
-// (and Satisfactory not at all). These helpers centralise the per-protocol
-// mapping so call sites don't each re-implement the protocol switch.
+// Protocols name player fields differently, and Satisfactory has none
 
-/** Current online player count, or null when unknown/unsupported. */
 export function metricsPlayerCount(
   detail: MetricsServerDetail | null | undefined,
 ): number | null {
@@ -148,7 +141,6 @@ export function metricsPlayerCount(
   }
 }
 
-/** Configured max player count, or null when unknown/unsupported. */
 export function metricsMaxPlayers(
   detail: MetricsServerDetail | null | undefined,
 ): number | null {
@@ -168,7 +160,6 @@ export function metricsMaxPlayers(
   }
 }
 
-/** Current map/level name, or null when the protocol doesn't report one. */
 export function metricsCurrentMap(
   detail: MetricsServerDetail | null | undefined,
 ): string | null {
@@ -184,7 +175,7 @@ export interface MetricsUsers {
   online: number
   byCountry: Record<string, number>
   byGame: Record<string, number>
-  /** Maps Steam app ID (as string) to player count. Only includes users with rich_presence_enabled. */
+  /** Keyed by Steam app ID. Only users with rich_presence_enabled. */
   bySteamGame: Record<string, number>
 }
 
@@ -205,15 +196,14 @@ export interface MetricsTeamSpeak {
 }
 
 export interface MetricsIrc {
-  /** Users connected to the IRC network right now. */
   online: number
-  /** Number of publicly listable channels. */
+  /** Publicly listable channels only */
   channels: number
-  /** Messages sent across all channels during the collection interval. */
+  /** During the collection interval */
   messages: number
-  /** Channel name to current user count. Listable channels only. */
+  /** Listable channels only */
   byChannel: Record<string, number>
-  /** Channel name to messages during the collection interval. Listable channels only. */
+  /** Listable channels only, during the collection interval */
   messagesByChannel: Record<string, number>
 }
 
@@ -224,15 +214,13 @@ export interface MetricsGameServers {
 }
 
 export interface MetricsStorageBucket {
-  /** Total number of objects in the bucket */
   totalFiles: number
-  /** Total size of all objects in bytes */
+  /** Bytes */
   totalSize: number
-  /** Number of image objects */
   totalImages: number
-  /** Delta in file count since previous snapshot */
+  /** Since the previous snapshot */
   deltaFiles: number
-  /** Delta in total size (bytes) since previous snapshot */
+  /** Bytes, since the previous snapshot */
   deltaSize: number
 }
 

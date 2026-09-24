@@ -4,15 +4,14 @@ import { ref, watch } from 'vue'
 import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
-// TTLs
-const TTL_ACTIVE = 3 * 60 * 1000 // 3 min - active referendums change infrequently
-const TTL_CONCLUDED = 10 * 60 * 1000 // 10 min - concluded are immutable
+const TTL_ACTIVE = 3 * 60 * 1000
+const TTL_CONCLUDED = 10 * 60 * 1000 // concluded referendums are immutable
 const TTL_PRIVATE = 3 * 60 * 1000
-const TTL_VOTE_COUNTS = 2 * 60 * 1000 // 2 min - vote counts change on interaction
+const TTL_VOTE_COUNTS = 2 * 60 * 1000
 
 const PAGE_SIZE = 12
 
-// Module-level cache so invalidation can be called from outside (e.g. after voting).
+// Module-level so invalidation can come from outside, e.g. after voting.
 const _votesCache = useCache(CACHE_NAMESPACES.votes)
 
 function keyActivePublic(page: number): string {
@@ -66,7 +65,7 @@ export function useDataVotes() {
   const concludedPublicExhausted = ref(false)
   const concludedPublicLoading = ref(false)
 
-  // Pre-populate first page synchronously from cache on warm nav.
+  // Fill page 0 synchronously from cache on warm nav.
   const _cachedActivePage0 = cache.getInitial<Tables<'referendums'>[]>(keyActivePublic(0))
   if (_cachedActivePage0 !== null) {
     activePublicItems.value = _cachedActivePage0
@@ -87,7 +86,7 @@ export function useDataVotes() {
     if (activePublicLoading.value || activePublicExhausted.value)
       return
 
-    // Only skip on warm cache for the first page fetch (offset = 0).
+    // Only page 0 is cached.
     if (!force && activePublicOffset.value === 0) {
       const cached = cache.get<Tables<'referendums'>[]>(keyActivePublic(0))
       if (cached !== null) {
@@ -121,7 +120,6 @@ export function useDataVotes() {
       if (rows.length < PAGE_SIZE)
         activePublicExhausted.value = true
 
-      // Cache first page for back-nav pre-population.
       if (isFirstPage)
         cache.set(keyActivePublic(0), rows, TTL_ACTIVE)
     }
@@ -222,11 +220,7 @@ export function useDataVotes() {
       userVotedReferendumIds.value = cachedVotedIds
   }
 
-  /**
-   * Fetch just the ids of every referendum the current user has voted in,
-   * public and private. Cheaper than fetchVotedPrivate when a consumer only
-   * needs hasVoted, e.g. an unvoted count on the home dashboard.
-   */
+  // Public and private. Cheaper than fetchVotedPrivate when only hasVoted matters.
   async function fetchUserVotedIds(force = false): Promise<void> {
     const id = userId.value
     if (id == null || id === '')
@@ -425,15 +419,14 @@ export function useDataVotes() {
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-  // Load public active on first available user (matches original behavior).
-  // Initialize _wasAuthed from current state to avoid spurious force-refetch.
+  // Seeded from the current state so the first run doesn't force a refetch.
   let _wasAuthed = currentUser.value != null
   watch(currentUser, (u) => {
     const isAuthed = u != null
     const justSignedIn = !_wasAuthed && isAuthed
     _wasAuthed = isAuthed
     if (justSignedIn) {
-      // Bust public cache on sign-in - auth may change visible referendums.
+      // Signing in can change which referendums are visible.
       cache.delete(keyActivePublic(0))
       cache.delete(keyConcludedPublic(0))
       resetAndLoadActivePublic()
@@ -465,10 +458,9 @@ export function useDataVotes() {
     return userVotedReferendumIds.value.includes(referendumId)
   }
 
-  // Invalidate vote counts for a specific referendum (e.g. after voting).
   function invalidateVoteCountsFor(referendumId: number): void {
-    // Vote count cache keys are based on the full visible ID set, so clear
-    // all vote count entries - they're cheap to refetch.
+    // Count keys cover the whole visible id set, so clear them all. They're
+    // cheap to refetch.
     cache.invalidateByPattern('referendum:vote-counts:')
 
     // Optimistically mark as voted so hasVoted is consistent until next fetch.

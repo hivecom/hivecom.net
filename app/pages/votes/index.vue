@@ -40,7 +40,6 @@ const {
   hasVoted,
 } = useDataVotes()
 
-// When tab changes, load the other tab's first page if not yet started
 watch(tab, (newTab) => {
   if (newTab === 'Active' && activePublicItems.value.length === 0 && !activePublicLoading.value) {
     resetAndLoadActivePublic()
@@ -142,9 +141,8 @@ function openCreate() {
   modalOpen.value = true
 }
 
-// ?create=1 opens the form straight away, so links that promise "start a vote"
-// land on the form rather than on the list next to the button. The query is
-// dropped again so a refresh doesn't reopen it.
+// ?create=1 opens the form straight away. The query is dropped so a refresh
+// doesn't reopen it.
 const route = useRoute()
 const router = useRouter()
 
@@ -264,7 +262,6 @@ const currentReferendums = computed(() => {
         </span>
       </Flex>
 
-      <!-- Active tab -->
       <template v-if="tab === 'Active'">
         <ReferendumGrid
           :referendums="currentReferendums"
@@ -282,7 +279,6 @@ const currentReferendums = computed(() => {
         </Flex>
       </template>
 
-      <!-- Concluded tab -->
       <template v-else>
         <ReferendumGrid
           :referendums="currentReferendums"

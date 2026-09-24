@@ -5,49 +5,34 @@ import { useTableActions } from '@/composables/useTableActions'
 
 const TRAILING_S_RE = /s$/
 
-/**
- * Options for configuring the admin CRUD table composable.
- *
- * T = raw row type (e.g. Tables<'games'>)
- * R = display row type - the columns shown in the table (the composable merges _original automatically)
- */
+// T is the raw row, R the display columns. _original is merged into R here.
 export interface UseAdminCrudTableOptions<T extends { id: number }, R extends Record<string, unknown>> {
-  /**
-   * Resource type string - the entity label, used for the URL query param key
-   * and error messages (e.g. 'games', 'network_gameservers').
-   */
+  /** Also the default URL param key and the label in error messages. */
   resourceType: string
 
   /**
-   * Permission group used for create/update/delete checks. Defaults to
-   * `resourceType`. Set this when the entity name differs from its permission
-   * group - e.g. network_gameservers / network_servers both gate on 'network'.
+   * Defaults to resourceType. Set it when the permission group differs, e.g.
+   * network_gameservers and network_servers both gate on 'network'.
    */
   permissionResource?: PermissionResource
 
-  /** Fetches the raw data. Caller owns the Supabase query shape. */
   fetch: () => Promise<T[]>
 
-  /** Maps a raw row to display columns. Do NOT include _original - the composable adds it. */
+  /** Leave _original out, it's added here. */
   transform: (item: T) => R
 
-  /** Optional custom filter function. Receives raw item and current search string. Defaults to searching all transformed column values. */
+  /** Defaults to searching every transformed column. */
   filterFn?: (item: T, search: string) => boolean
 
-  /** Default sort column and direction */
   defaultSort?: { column: keyof R & string, direction: 'asc' | 'desc' }
 
   /**
-   * If provided, enables URL query param deep-linking for the details sheet.
-   * Defaults to resourceType with trailing 's' stripped (e.g. 'games' -> 'game').
-   * Pass false to disable entirely.
+   * Deep-link param for the details sheet. Defaults to resourceType without the
+   * trailing 's' (games -> game). false disables it.
    */
   queryParamKey?: string | false
 
-  /**
-   * Optional external ref to increment after each successful fetch (for driving KPI components).
-   * Pass the ref returned by defineModel('refreshSignal') in the component.
-   */
+  /** Bumped after each successful fetch to drive KPI components. */
   refreshSignal?: Ref<number>
 }
 
@@ -112,37 +97,28 @@ export function useAdminCrudTable<
     refreshSignal,
   } = options
 
-  // Resolve the URL param key. Strip trailing 's' by default (games -> game).
   const resolvedParamKey: string | false = queryParamKey === false
     ? false
     : (queryParamKey ?? resourceType.replace(TRAILING_S_RE, ''))
 
-  // Permissions. The permission group defaults to the entity resourceType,
-  // but can be overridden when they differ (e.g. network sub-resources).
   const { canManageResource, canCreate, canUpdate, canDelete } = useTableActions(
     permissionResource ?? (resourceType as PermissionResource),
   )
 
-  // Router (only used when deep-link is enabled)
   const route = resolvedParamKey !== false ? useRoute() : null
   const router = resolvedParamKey !== false ? useRouter() : null
 
-  // Supabase client (available in composable via auto-import)
-  // Not used directly here - the caller's fetch() handles the query.
-
-  // Core state
   const items = ref<T[]>([]) as Ref<T[]>
   const loading = ref(true)
   const errorMessage = ref('')
   const search = ref('')
 
-  // Sheet / form state
   const selectedItem = ref<T | null>(null) as Ref<T | null>
   const showDetails = ref(false)
   const showForm = ref(false)
   const isEditMode = ref(false)
 
-  // Per-row action loading: { [id]: { [action]: boolean } }
+  // { [id]: { [action]: boolean } }
   const actionLoadingMap = ref<Record<number, Record<string, boolean>>>({})
 
   function isActionLoading(id: number, action: string): boolean {
@@ -154,10 +130,8 @@ export function useAdminCrudTable<
     actionLoadingMap.value[id][action] = value
   }
 
-  // adminTablePerPage inject
   const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 
-  // Default search filter: match against all display column string values
   function defaultFilterFn(item: T, term: string): boolean {
     const row = transform(item)
     return Object.values(row).some((v) => {
@@ -168,7 +142,6 @@ export function useAdminCrudTable<
     })
   }
 
-  // Filtered + transformed rows
   const filteredRows = computed<TransformedRow<T, R>[]>(() => {
     const term = search.value.toLowerCase().trim()
     const source = term
@@ -182,7 +155,6 @@ export function useAdminCrudTable<
   const filteredCount = computed(() => filteredRows.value.length)
   const isFiltered = computed(() => search.value.trim() !== '')
 
-  // Fetch
   async function refresh(): Promise<void> {
     loading.value = true
     errorMessage.value = ''
@@ -203,7 +175,6 @@ export function useAdminCrudTable<
     }
   }
 
-  // Selection actions
   function viewItem(item: T): void {
     selectedItem.value = item
     showDetails.value = true
@@ -227,7 +198,6 @@ export function useAdminCrudTable<
     openEdit(item)
   }
 
-  // URL param deep-linking
   if (resolvedParamKey !== false && route !== null && router !== null) {
     const focusedId = computed(() => {
       const raw = route.query[resolvedParamKey]
@@ -236,7 +206,6 @@ export function useAdminCrudTable<
       return Number.isNaN(parsed) ? null : parsed
     })
 
-    // Sync details sheet open/close -> URL
     watch(showDetails, (isOpen) => {
       if (isOpen && selectedItem.value) {
         void router.replace({ query: { ...route.query, [resolvedParamKey]: selectedItem.value.id } })
@@ -252,7 +221,7 @@ export function useAdminCrudTable<
       void router.replace({ query: rest })
     })
 
-    // On load: open details if URL has a matching param
+    // Open the details sheet once the linked item has loaded.
     watch(
       () => [focusedId.value, loading.value] as const,
       ([id, isLoading]) => {

@@ -36,7 +36,6 @@ interface PatreonUserData {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -54,7 +53,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get the authentication token from the header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -66,13 +64,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient(
-      // Supabase API URL - env var exported by default
       Deno.env.get("SUPABASE_URL") ?? "",
-      // Supabase publishable API key, resolved from the platform-injected env
       getPublishableKey(),
-      // Create client with Auth context of the user that called the function
       {
         global: {
           headers: { Authorization: authHeader },
@@ -80,7 +74,6 @@ Deno.serve(async (req) => {
       },
     );
 
-    // Get user information from the token
     const auth = await getAuthenticatedUserId(supabaseClient, authHeader);
     if ("response" in auth) return auth.response;
     const user = { id: auth.userId };
@@ -96,7 +89,6 @@ Deno.serve(async (req) => {
       throw new Error("PATREON_CLIENT_SECRET is not set");
     }
 
-    // Ensure the code is properly encoded
     const encodedCode = encodeURIComponent(code.trim());
 
     // Exchange the authorization code for an access token
@@ -121,7 +113,6 @@ Deno.serve(async (req) => {
       const errorText = await tokenResponse.text();
       console.error("Patreon token exchange error:", errorText);
 
-      // Provide more specific error messages based on common issues
       let errorMessage = "Failed to exchange authorization code";
       try {
         const errorData = JSON.parse(errorText);
@@ -135,7 +126,7 @@ Deno.serve(async (req) => {
           errorMessage = `Patreon error: ${errorData.error_description}`;
         }
       } catch (_) {
-        // If we can't parse the error, just use the generic message
+        // Not JSON, keep the generic message
       }
 
       return new Response(
@@ -149,7 +140,6 @@ Deno.serve(async (req) => {
 
     const tokenData = await tokenResponse.json() as PatreonTokenResponse;
 
-    // Fetch the user's Patreon data using the access token
     const patreonUserResponse = await fetch(
       "https://www.patreon.com/api/oauth2/v2/identity?include=memberships,memberships.currently_entitled_tiers&fields[user]=full_name,email,is_email_verified",
       {
@@ -174,13 +164,12 @@ Deno.serve(async (req) => {
     const patreonUser = await patreonUserResponse.json() as PatreonUserData;
     const patreonId = patreonUser.data.id;
 
-    // Create Supabase admin client for database operations
+    // Service role client for the profile write
     const supabaseAdmin = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       getSecretKey(),
     );
 
-    // Update the user's profile with Patreon data
     const { error: updateError } = await supabaseAdmin
       .from("profiles")
       .update({

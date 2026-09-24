@@ -18,7 +18,6 @@ interface SelectOption {
   value: string | number
 }
 
-// Filters
 const search = ref('')
 const officialFilterOption = ref<SelectOption[] | undefined>(undefined)
 const officialFilter = computed<boolean | null>(() => {
@@ -39,14 +38,13 @@ const officialFilterOptions: SelectOption[] = [
 const hideRecurring = ref(false)
 const recurringFilter = computed<boolean | null>(() => hideRecurring.value ? true : null)
 
-// Tab management
 const activeTab = ref('list')
 const route = useRoute()
 const router = useRouter()
 
 const { games } = useDataGames()
 
-// Fetch data for the listing view only - the calendar self-fetches its own windowed data
+// Listing data only. The calendar fetches its own windowed data.
 const { events, loading, error, refresh } = useDataEvents()
 const errorMessage = computed(() => error.value ?? '')
 
@@ -134,7 +132,6 @@ onMounted(() => {
 
 const isMobile = useBreakpoint('<m')
 
-// Create event modal
 const showCreateEventModal = ref(false)
 const showContentRulesModal = ref(false)
 const user = useSupabaseUser()
@@ -169,10 +166,8 @@ function handleContentRulesConfirmed() {
   showCreateEventModal.value = true
 }
 
-// ?create=1 opens the create flow straight away, so links that promise
-// "organize something" land on the form rather than on the list next to the
-// button. Goes through the same handler as the button so the content rules
-// gate still applies. The query is dropped again so a refresh doesn't reopen it.
+// ?create=1 opens the create flow through the button's handler, so the content rules
+// gate still applies. The query is dropped so a refresh doesn't reopen it.
 onMounted(() => {
   if (!route.query.create || !user.value)
     return
@@ -198,7 +193,6 @@ defineOgImage('Default', {
 
 <template>
   <div class="page container-l">
-    <!-- Hero section -->
     <section class="page-title">
       <h1>
         Events
@@ -209,7 +203,6 @@ defineOgImage('Default', {
     </section>
 
     <ClientOnly>
-      <!-- Tabs Navigation -->
       <Tabs v-model="activeTab" class="mb-m">
         <Tab value="list">
           List
@@ -227,7 +220,6 @@ defineOgImage('Default', {
       </Tabs>
 
       <section>
-        <!-- Filters (list view only) -->
         <Flex v-if="activeTab === 'list'" gap="s" wrap class="mb-l" y-center expand>
           <Input v-model="search" placeholder="Search events..." style="min-width: 200px" :expand="isMobile">
             <template #start>
@@ -255,7 +247,6 @@ defineOgImage('Default', {
           </Flex>
         </Flex>
 
-        <!-- Listing View -->
         <EventsListing
           v-if="activeTab === 'list'"
           :events="events"
@@ -267,8 +258,6 @@ defineOgImage('Default', {
           :game-filter="gameFilter"
         />
 
-        <!-- Calendar View -->
-        <!-- EventsCalendar self-fetches only the visible month window -->
         <EventsCalendar v-else-if="activeTab === 'calendar'" @create="openCreateOn" />
       </section>
 

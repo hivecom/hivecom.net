@@ -52,7 +52,6 @@ const totalCount = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-// Community tab filters
 const showForks = ref(false)
 
 type SortValue = 'newest' | 'popular' | 'forks'
@@ -81,14 +80,7 @@ const galleryCache = useCache(CACHE_NAMESPACES.themes)
 
 interface GalleryPageCache { items: GalleryTheme[], totalCount: number }
 
-/**
- * Returns a stable cache key for a gallery page, or null when the result is
- * not safe to cache (created tab - user-specific data).
- *
- * For the official tab, the active theme ID is only included in the key when
- * that theme is unmaintained, because an unmaintained active theme is the only
- * case where the query result differs from a no-active-theme query.
- */
+/** Returns null when the result is user-specific and unsafe to cache */
 function galleryPageKey(tab: GalleryTab, page: number, searchValue: string): string | null {
   const q = searchValue.trim()
   if (tab === 'official') {
@@ -100,7 +92,7 @@ function galleryPageKey(tab: GalleryTab, page: number, searchValue: string): str
     return `gallery:community:p${page}:q${q}:forks${showForks.value}:sort${communitySort.value}`
   }
 
-  // created tab - user-specific, keyed by userId so different users don't share entries
+  // The created tab is user-specific, so key by userId
   if (!userId.value)
     return null
 
@@ -245,7 +237,6 @@ const pagination = computed(() =>
   paginate(totalCount.value, currentPage.value, PER_PAGE),
 )
 
-// Reset page and re-fetch when tab changes; also reset community-specific filters
 watch(activeTab, () => {
   currentPage.value = 1
   search.value = ''
@@ -294,7 +285,6 @@ function deleteTheme(id: string) {
   })
 }
 
-// Initial load
 onMounted(() => {
   void fetchPage(activeTab.value, currentPage.value, search.value)
 })
@@ -314,7 +304,6 @@ watch(() => activeTheme.value?.id, (newId, oldId) => {
 
 const isMobile = useBreakpoint('<s')
 
-// Expose refresh so ThemeEditor can trigger a re-fetch after writes
 function refresh() {
   void fetchPage(activeTab.value, currentPage.value, search.value)
 }
@@ -380,7 +369,7 @@ defineExpose({ refresh, switchToCreated })
         </template>
 
         <template v-else>
-          <!-- Fake default theme card - always first in the official tab -->
+          <!-- Fake default theme card, always first in the official tab -->
           <ThemeCard
             v-if="activeTab === 'official' && currentPage === 1 && defaultCardMatchesSearch"
             :item="DEFAULT_THEME"

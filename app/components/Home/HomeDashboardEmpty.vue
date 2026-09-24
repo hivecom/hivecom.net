@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { Flex } from '@dolanske/vui'
 
-// Empty state for a dashboard card. Quiet by design: the card has nothing to
-// say, so it should read as a nudge rather than compete with the cards that do
-// have something. The default slot takes the call to action.
+// Quiet on purpose, so it doesn't compete with cards that have something to say.
+// The default slot takes the call to action.
 defineProps<{ message: string }>()
 </script>
 
@@ -18,8 +17,7 @@ defineProps<{ message: string }>()
 
 <style scoped lang="scss">
 .dashboard-empty {
-  // Take the leftover height in the card so the message lands in the middle
-  // instead of hanging off the header.
+  // Centres the message in the leftover height instead of hanging off the header
   flex: 1;
   padding: var(--space-l) var(--space-m);
   text-align: center;

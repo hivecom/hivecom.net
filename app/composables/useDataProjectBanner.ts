@@ -1,5 +1,3 @@
-// Banner URL is wrapped in an object when stored so that a cached null (no banner)
-// is distinguishable from a cache miss (useCache.get returns null for both otherwise).
 import type { Ref } from 'vue'
 import type { Database } from '@/types/database.types'
 import { onMounted, readonly, ref, unref, watchEffect } from 'vue'
@@ -8,12 +6,12 @@ import { useProjectBannerBus } from '@/composables/useProjectBannerBus'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { getProjectBannerUrl } from '@/lib/storage'
 
+// Wrapped so a cached "no banner" isn't mistaken for a miss. useCache.get returns
+// null for both.
 interface BannerCacheEntry { value: string | null }
 
-// Module-level singleton cache for project banners.
-// Intentionally shared across all useDataProjectBanner instances and the exported
-// invalidateProjectBannerData helper. Uses the projects namespace to stay within
-// its entry budget. Positive and negative results use different TTLs (passed per-set-call).
+// Module-level so invalidateProjectBannerData can reach it. Lives in the projects
+// namespace to stay inside its entry budget.
 const _bannerCache = useCache(CACHE_NAMESPACES.projects)
 
 const CACHE_PREFIX = 'project-banner:'
@@ -29,10 +27,7 @@ export interface UseProjectBannerOptions {
 
 type MaybeRef<T> = T | Ref<T>
 
-/**
- * Invalidate the cached banner for a specific project.
- * Exported so callers outside the composable (e.g. admin upload flows) can bust the cache.
- */
+// For callers outside the composable, like admin upload flows.
 export function invalidateProjectBannerData(projectId: number) {
   _bannerCache.delete(getCacheKey(projectId))
 }

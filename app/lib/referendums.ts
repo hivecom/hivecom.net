@@ -4,9 +4,6 @@ export type ReferendumStatus = 'active' | 'upcoming' | 'concluded'
 
 export type ReferendumStatusVariant = 'success' | 'warning' | 'neutral'
 
-/**
- * Determines the current status of a referendum based on its start and end dates.
- */
 export function getReferendumStatus(referendum: { date_start: string, date_end: string }): ReferendumStatus {
   const now = new Date()
   const start = new Date(referendum.date_start)
@@ -20,17 +17,10 @@ export function getReferendumStatus(referendum: { date_start: string, date_end: 
   return 'active'
 }
 
-/**
- * Extracts the vote count from a referendum's aggregated vote_count relation.
- * Returns 0 when the relation is absent or empty.
- */
 export function getVoteCount(referendum: { vote_count?: Array<{ count: number }> }): number {
   return referendum.vote_count?.[0]?.count ?? 0
 }
 
-/**
- * Maps a referendum status to its corresponding VUI badge variant.
- */
 export function getReferendumStatusVariant(status: ReferendumStatus): ReferendumStatusVariant {
   switch (status) {
     case 'active':
@@ -43,8 +33,6 @@ export function getReferendumStatusVariant(status: ReferendumStatus): Referendum
       return 'neutral'
   }
 }
-
-// Form state shared by the votes modal and the admin sheet
 
 export interface ReferendumFormState {
   title: string
@@ -102,10 +90,7 @@ export function validateReferendumForm(form: ReferendumFormState): ReferendumFor
   }
 }
 
-/**
- * Builds the columns both editors write. Returns null while either date is
- * missing, which validation already blocks.
- */
+// Null while either date is missing, which validation already blocks.
 export function referendumFormPayload(form: ReferendumFormState) {
   const dateStart = form.date_start?.toISOString()
   const dateEnd = form.date_end?.toISOString()

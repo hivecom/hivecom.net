@@ -1,30 +1,7 @@
 /**
- * Per-record discussion cache composable.
- *
- * Caches individual `discussions` rows by ID, slug, and entity type+id with a
- * 3-minute TTL, consistent with the expected freshness of live discussion data.
- *
- * Design notes:
- * - Stores the base `Tables<'discussions'>` row (no joined relations).
- *   Callers that need joined data (e.g. forum/[id].vue with profile/project/etc.)
- *   fetch their own enriched type and call `set()` with the base row to warm
- *   the cache as a side effect.
- * - `set()` writes three cache keys atomically: `discussion:id:${id}`,
- *   `discussion:slug:${slug}` (if slug present), and
- *   `discussion:entity:${type}:${entityId}` (if entityId present).
- *   Any of the three lookup paths will be a cache hit after one fetch.
- * - `ProfileDiscussions.vue` fetches a batch projection (id, title, slug only)
- *   and calls `set()` for each resolved row, so subsequent Discussion.vue
- *   renders of the same discussion are cache hits.
- * - `invalidate(id, slug?, entityType?, entityId?)` removes all known keys atomically.
- * - `refresh*(...)` helpers force a cache-busting re-fetch and return the updated record.
- *
- * TTL: 3 minutes - discussion content can change (edits, lock/delete status),
- * so we don't cache aggressively. Matches ProfileDiscussions.vue TTL.
- *
- * Call sites that should migrate to this composable:
- * - components/Discussions/Discussion.vue (fetches base row by entity type/id)
- * - pages/forum/[id].vue (fetches base row + joins by slug/id)
+ * Caches base `discussions` rows (no joins) under id, slug and entity keys, so
+ * any lookup path hits after one fetch. Callers that fetch joined data warm it
+ * by passing the base row to `set()`.
  */
 
 import type { Tables } from '@/types/database.overrides'
@@ -49,7 +26,6 @@ export interface SetDiscussionOptions {
   /** Entity type that owns this discussion (e.g. 'event', 'referendum', 'gameserver'). */
   entityType?: string
 
-  /** The entity's ID (e.g. the event UUID). */
   entityId?: string
 }
 
@@ -60,40 +36,18 @@ export function useDiscussionCache() {
   // ---------------------------------------------------------------------------
   // Cache primitives
   // ------------------------------------------------------------------------
-  /**
-   * Read a cached discussion by ID. Returns null if cold or expired.
-   */
   function getById(id: string): Tables<'discussions'> | null {
     return cache.get<Tables<'discussions'>>(idKey(id))
   }
 
-  /**
-   * Read a cached discussion by slug. Returns null if cold or expired.
-   */
   function getBySlug(slug: string): Tables<'discussions'> | null {
     return cache.get<Tables<'discussions'>>(slugKey(slug))
   }
 
-  /**
-   * Read a cached discussion by entity type + entity ID.
-   * Returns null if cold or expired.
-   *
-   * Example: `getByEntity('event', eventId)`
-   */
   function getByEntity(type: string, entityId: string): Tables<'discussions'> | null {
     return cache.get<Tables<'discussions'>>(entityKey(type, entityId))
   }
 
-  /**
-   * Populate (or update) the cache for a discussion. Writes up to three keys:
-   * - `discussion:id:${id}` (always)
-   * - `discussion:slug:${slug}` (when slug is present)
-   * - `discussion:entity:${entityType}:${entityId}` (when options are provided)
-   *
-   * Call this as a side effect whenever you fetch a discussions row elsewhere
-   * (e.g. ProfileDiscussions batch query, forum/[id].vue joined fetch) so that
-   * subsequent Discussion.vue renders don't need to re-fetch.
-   */
   function set(discussion: Tables<'discussions'>, options: SetDiscussionOptions = {}): void {
     cache.set(idKey(discussion.id), discussion)
     if (discussion.slug != null) {
@@ -105,11 +59,8 @@ export function useDiscussionCache() {
   }
 
   /**
-   * Populate the cache for a discussion only when no valid entry exists yet.
-   * Use this when writing partial projections (e.g. from the forum index or
-   * profile discussions batch query) so that a full row already in the cache
-   * (written by forum/[id].vue with markdown + joins) is never overwritten with
-   * a stripped row that would cause the content to disappear on the next visit.
+   * Use for partial projections, so a full cached row (markdown and joins) is
+   * never replaced by a stripped one that blanks the content on the next visit.
    */
   function setIfAbsent(discussion: Tables<'discussions'>, options: SetDiscussionOptions = {}): void {
     if (cache.has(idKey(discussion.id)))
@@ -118,10 +69,7 @@ export function useDiscussionCache() {
     set(discussion, options)
   }
 
-  /**
-   * Remove cached entries for a discussion. Pass optional slug, entityType,
-   * and entityId when known to ensure all keys are cleared atomically.
-   */
+  /** Pass slug and entity when known so every key gets cleared. */
   function invalidate(id: string, slug?: string | null, entityType?: string, entityId?: string): void {
     cache.delete(idKey(id))
     if (slug != null) {
@@ -132,9 +80,6 @@ export function useDiscussionCache() {
     }
   }
 
-  /**
-   * Remove all discussion cache entries (e.g. after a bulk admin operation).
-   */
   function invalidateAll(): void {
     cache.invalidateByPattern('discussion:')
   }
@@ -142,12 +87,6 @@ export function useDiscussionCache() {
   // ---------------------------------------------------------------------------
   // Fetch helpers
   // ------------------------------------------------------------------------
-  /**
-   * Fetch the base discussions row by entity type + entity ID, consulting the
-   * cache first. Sets all three cache keys on success.
-   *
-   * Example: `fetchByEntity('event', eventId)`
-   */
   async function fetchByEntity(type: string, entityId: string, force = false): Promise<Tables<'discussions'> | null> {
     return withCache(entityKey(type, entityId), async () => {
       const { data, error: fetchError } = await supabase
@@ -163,7 +102,6 @@ export function useDiscussionCache() {
         return null
 
       const row = data as Tables<'discussions'>
-      // Warm id and slug keys as side effects
       cache.set(idKey(row.id), row)
       if (row.slug != null)
         cache.set(slugKey(row.slug), row)
@@ -171,10 +109,6 @@ export function useDiscussionCache() {
     }, { force })
   }
 
-  /**
-   * Fetch the base discussions row by ID, consulting the cache first.
-   * Sets both cache keys on success.
-   */
   async function fetchById(id: string, force = false): Promise<Tables<'discussions'> | null> {
     return withCache(idKey(id), async () => {
       const { data, error: fetchError } = await supabase
@@ -190,17 +124,12 @@ export function useDiscussionCache() {
         return null
 
       const row = data as Tables<'discussions'>
-      // Warm the slug key as a side effect
       if (row.slug != null)
         cache.set(slugKey(row.slug), row)
       return row
     }, { force })
   }
 
-  /**
-   * Fetch the base discussions row by slug, consulting the cache first.
-   * Sets both cache keys on success.
-   */
   async function fetchBySlug(slug: string, force = false): Promise<Tables<'discussions'> | null> {
     return withCache(slugKey(slug), async () => {
       const { data, error: fetchError } = await supabase
@@ -216,47 +145,33 @@ export function useDiscussionCache() {
         return null
 
       const row = data as Tables<'discussions'>
-      // Warm the id key as a side effect
       cache.set(idKey(row.id), row)
       return row
     }, { force })
   }
 
-  /**
-   * Force a re-fetch by ID, bypassing and replacing the cached entry.
-   */
   async function refresh(id: string): Promise<Tables<'discussions'> | null> {
     return fetchById(id, true)
   }
 
-  /**
-   * Force a re-fetch by slug, bypassing and replacing the cached entry.
-   */
   async function refreshBySlug(slug: string): Promise<Tables<'discussions'> | null> {
     return fetchBySlug(slug, true)
   }
 
-  /**
-   * Force a re-fetch by entity type + entity ID, bypassing and replacing the cached entry.
-   */
   async function refreshByEntity(type: string, entityId: string): Promise<Tables<'discussions'> | null> {
     return fetchByEntity(type, entityId, true)
   }
 
   onExternalInvalidation((_key) => {
-    // Another tab invalidated a discussion entry - the key will be something like
-    // 'discussion:id:123'. We can't know which entry it was without parsing, but
-    // since discussions are short-TTL (3 min) we can ignore cross-tab for now.
-    // This is intentionally a no-op placeholder for future use.
+    // No-op on purpose. Discussions are short-TTL, so cross-tab invalidation
+    // isn't worth mapping the key back to an entry.
   })
 
   // ------------------------------------------------------------------------
   return {
-    // State
     loading,
     error: readonly(error),
 
-    // Cache primitives
     getById,
     getBySlug,
     getByEntity,
@@ -265,7 +180,6 @@ export function useDiscussionCache() {
     invalidate,
     invalidateAll,
 
-    // Fetch helpers
     fetchById,
     fetchBySlug,
     fetchByEntity,

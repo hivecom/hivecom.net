@@ -19,8 +19,7 @@ function channelModes(name: string): Set<string> | undefined {
   )
 }
 
-// Unread count from the joined buffer, when we're in the channel. Channels we
-// haven't joined have no buffer (and so no unread state) - return 0 for those.
+// Unread count from the joined buffer. Unjoined channels have no buffer, so 0.
 function channelUnread(name: string): number {
   const lower = name.toLowerCase()
   return buffers.value.find(b => b.name.toLowerCase() === lower)?.unread ?? 0

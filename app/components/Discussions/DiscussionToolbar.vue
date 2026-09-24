@@ -6,14 +6,13 @@ interface Props {
   viewMode: 'flat' | 'threaded'
   hasComments: boolean
 
-  /** Whether the #center slot holds a pagination control (drives mobile wrap) */
+  /** The #center slot holds a pagination control, which wraps on mobile */
   hasPagination?: boolean
   offtopicCount: number
   showOfftopic: boolean
   showThreadReplies: boolean
   showTimelineButton?: boolean
 
-  /** Show the subscribe/unsubscribe bell button (comment model only) */
   showSubscribeButton?: boolean
   isSubscribed?: boolean
   subscriptionLoading?: boolean
@@ -37,7 +36,6 @@ const isBelowSmall = useBreakpoint('<s')
 <template>
   <Flex y-center x-between gap="xs" class="mb-m discussion-toolbar" :class="{ 'discussion-toolbar--paginated': hasPagination }">
     <Flex y-center gap="xs">
-      <!-- View mode segmented control - hidden when there are no replies -->
       <ButtonGroup v-if="hasComments" size="s">
         <Tooltip :disabled="isBelowSmall">
           <Button
@@ -67,7 +65,6 @@ const isBelowSmall = useBreakpoint('<s')
         </Tooltip>
       </ButtonGroup>
 
-      <!-- Expand threads toggle - threaded view only -->
       <Tooltip v-if="hasComments && viewMode === 'threaded'" :disabled="isBelowSmall">
         <Button
           square
@@ -83,7 +80,6 @@ const isBelowSmall = useBreakpoint('<s')
         </template>
       </Tooltip>
 
-      <!-- Off-topic toggle - only shown when relevant -->
       <Tooltip v-if="offtopicCount > 0" :disabled="isBelowSmall">
         <Button
           size="s"
@@ -103,7 +99,6 @@ const isBelowSmall = useBreakpoint('<s')
       </Tooltip>
     </Flex>
 
-    <!-- Centered slot - the pagination control rides on this row (see Discussion.vue) -->
     <Flex x-center y-center class="discussion-toolbar__center">
       <slot name="center" />
     </Flex>
@@ -156,16 +151,11 @@ const isBelowSmall = useBreakpoint('<s')
 </template>
 
 <style scoped lang="scss">
-// Grow to fill the row between the left controls and the right group so the
-// pagination slot sits centered in the leftover space.
 .discussion-toolbar__center {
   flex: 1;
 }
 
-// On mobile the timeline buttons join the row, so the pagination gets crowded.
-// Drop it onto its own full-width line below the switcher/timeline controls.
-// The container's gap supplies the spacing between the two lines. Only the
-// paginated state wraps, so a single-page toolbar keeps its empty centre inline.
+// On mobile the timeline buttons crowd the row, so pagination drops to its own line
 @media screen and (max-width: $breakpoint-m) {
   .discussion-toolbar--paginated {
     flex-wrap: wrap;

@@ -99,9 +99,8 @@ function onScaleChange(key: ThemeScaleKey, value: number) {
   applyScale(key, intValue)
 }
 
-// Apply the opposite theme's palette onto the current active theme,
-// intelligently remapping lightness values to suit the target variant while
-// preserving hue and saturation so custom-tinted themes stay coherent.
+// Remaps lightness to suit the target variant but keeps hue and saturation, so
+// custom-tinted themes stay coherent
 function applyOtherTheme() {
   const current = activeType.value
   const other: ThemeType = current === 'light' ? 'dark' : 'light'
@@ -141,7 +140,6 @@ watch(customCss, (css) => {
 
 function reset() {
   if (editingTheme.value) {
-    // Restore to the saved state of the theme being edited
     themeToForm(editingTheme.value)
     applyPaletteLocal('dark', themeForm.value.dark)
     applyPaletteLocal('light', themeForm.value.light)

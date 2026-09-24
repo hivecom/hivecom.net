@@ -62,12 +62,10 @@ function parseRRule(rule: string): ParsedRRule | null {
   const byMonthDayRaw = parts.BYMONTHDAY
   const byMonthDay = byMonthDayRaw != null && byMonthDayRaw !== '' ? Number.parseInt(byMonthDayRaw, 10) : null
 
-  // UNTIL can be UTC datetime (20250615T120000Z) or date-only (20250615).
-  // The value is already uppercased by the loop above.
+  // UNTIL can be a UTC datetime (20250615T120000Z) or date-only (20250615).
   const untilRaw = parts.UNTIL
   let until: Date | null = null
   if (untilRaw != null && untilRaw !== '') {
-    // Normalise date-only to an ISO-like string so Date can parse it
     const normalised = untilRaw.includes('T')
       ? untilRaw.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/, '$1-$2-$3T$4:$5:$6$7')
       : untilRaw.replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3')
@@ -86,27 +84,25 @@ function parseRRule(rule: string): ParsedRRule | null {
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
-/** Clone a Date and set its UTC date part, preserving the time-of-day. */
+/** Sets the local date part on a copy, keeping the time of day. */
 function withDate(original: Date, year: number, month: number, day: number): Date {
   const d = new Date(original)
   d.setFullYear(year, month, day)
   return d
 }
 
-/** Advance `d` by `n` days in-place and return it. */
+/** Mutates `d`. */
 function addDays(d: Date, n: number): Date {
   d.setDate(d.getDate() + n)
   return d
 }
 
-/** Return a new Date advanced by `n` months from `d`. */
 function addMonths(d: Date, n: number): Date {
   const result = new Date(d)
   result.setMonth(result.getMonth() + n)
   return result
 }
 
-/** Return a new Date advanced by `n` years from `d`. */
 function addYears(d: Date, n: number): Date {
   const result = new Date(d)
   result.setFullYear(result.getFullYear() + n)
@@ -115,14 +111,12 @@ function addYears(d: Date, n: number): Date {
 
 // ─── Excluded dates ───────────────────────────────────────────────────────────
 
-// Occurrences are stepped in the viewer's local time, so the same occurrence can
-// land an hour or two apart in UTC depending on who computed it and which side
-// of a DST change it falls on. Match removals within a window instead of exactly.
-// Six hours absorbs any DST drift and stays well under the one day minimum gap
-// between occurrences. The excluded_dates RSVP cleanup trigger uses the same value.
+// Occurrences step in the viewer's local time, so the same one can land an hour
+// or two apart in UTC across DST. Six hours absorbs that and stays well under
+// the one day minimum gap. The excluded_dates RSVP cleanup trigger must use the
+// same value.
 const EXCLUSION_TOLERANCE_MS = 6 * 60 * 60 * 1000
 
-/** Whether `date` matches one of the removed occurrence times in `excludedDates`. */
 export function isOccurrenceExcluded(date: Date | string, excludedDates: readonly string[] | null | undefined): boolean {
   if (excludedDates == null || excludedDates.length === 0)
     return false
@@ -136,10 +130,8 @@ export function isOccurrenceExcluded(date: Date | string, excludedDates: readonl
 const MAX_OCCURRENCES = 500
 
 /**
- * Expands a recurring event into virtual occurrences within [windowStart, windowEnd].
- * For non-recurring events (no recurrence_rule), returns [event] unchanged.
- * Occurrences listed in `excluded_dates` are skipped.
- * Each synthetic occurrence is a spread of the original with `date` overridden.
+ * Occurrences within [windowStart, windowEnd], each a spread of the original
+ * with `date` overridden. A non-recurring event comes back as [event].
  */
 export function expandRecurringEvent<T extends ExpandableEvent>(
   event: T,
@@ -160,7 +152,6 @@ export function expandRecurringEvent<T extends ExpandableEvent>(
   const effectiveWinEnd = new Date(effectiveEndTime)
   const originDate = new Date(event.date)
 
-  // If the origin is after the window, there's nothing to generate.
   if (originDate > winEnd)
     return []
 
@@ -178,7 +169,6 @@ export function expandRecurringEvent<T extends ExpandableEvent>(
   }
 
   if (parsed.freq === 'DAILY') {
-    // Start from originDate, step forward by interval days until we pass effectiveEndTime
     const cursor = new Date(originDate)
     let count = 0
     while (cursor.getTime() <= effectiveEndTime && count < MAX_OCCURRENCES) {
@@ -189,8 +179,6 @@ export function expandRecurringEvent<T extends ExpandableEvent>(
   }
   else if (parsed.freq === 'WEEKLY') {
     if (parsed.byDay.length > 0) {
-      // Generate one occurrence per listed weekday per week-interval
-      // Find the start of the week containing originDate (Sunday=0)
       const cursor = new Date(originDate)
       cursor.setDate(cursor.getDate() - cursor.getDay()) // rewind to Sunday
       cursor.setHours(
@@ -217,12 +205,11 @@ export function expandRecurringEvent<T extends ExpandableEvent>(
             break
         }
 
-        // Advance by interval weeks
         addDays(cursor, 7 * parsed.interval)
       }
     }
     else {
-      // No BYDAY - use the event's own weekday, step by interval weeks
+      // No BYDAY, so the event's own weekday.
       const cursor = new Date(originDate)
       let count = 0
       while (cursor.getTime() <= effectiveEndTime && count < MAX_OCCURRENCES) {
@@ -235,14 +222,13 @@ export function expandRecurringEvent<T extends ExpandableEvent>(
   else if (parsed.freq === 'MONTHLY') {
     const targetDay = parsed.byMonthDay ?? originDate.getDate()
 
-    // Walk month by month from origin
     let cursorTime = new Date(originDate).getTime()
     let count = 0
     while (cursorTime <= effectiveEndTime && count < MAX_OCCURRENCES) {
       const cursor = new Date(cursorTime)
       const candidate = withDate(originDate, cursor.getFullYear(), cursor.getMonth(), targetDay)
 
-      // Make sure the day didn't overflow (e.g. Feb 31 -> March)
+      // Skip months where the day overflows, e.g. Feb 31 into March.
       if (candidate.getMonth() === cursor.getMonth()) {
         if (candidate >= originDate) {
           pushIfInWindow(candidate)
@@ -268,24 +254,7 @@ export function expandRecurringEvent<T extends ExpandableEvent>(
 
 // ─── Humanize ─────────────────────────────────────────────────────────────────
 
-/**
- * Converts an iCal RRULE string into a human-readable recurrence label.
- *
- * Examples:
- *   "FREQ=DAILY"               -> "Repeats daily"
- *   "FREQ=DAILY;INTERVAL=2"    -> "Repeats every 2 days"
- *   "FREQ=WEEKLY"              -> "Repeats weekly"
- *   "FREQ=WEEKLY;INTERVAL=2"   -> "Repeats every 2 weeks"
- *   "FREQ=WEEKLY;BYDAY=SA"     -> "Repeats every Saturday"
- *   "FREQ=WEEKLY;BYDAY=MO,WE"  -> "Repeats every Monday, Wednesday"
- *   "FREQ=MONTHLY"             -> "Repeats monthly"
- *   "FREQ=YEARLY"              -> "Repeats yearly"
- *   fallback                   -> "Repeats"
- */
-/**
- * Returns the next occurrence of a recurring event at or after `after`.
- * Returns null if the series has ended (UNTIL passed) or is non-recurring.
- */
+/** Null once the series has ended or when it isn't recurring. */
 export function nextOccurrenceDate(event: EventRow, after: Date = new Date()): Date | null {
   if (event.recurrence_rule == null || event.recurrence_rule === '')
     return null
@@ -299,21 +268,15 @@ export function nextOccurrenceDate(event: EventRow, after: Date = new Date()): D
 }
 
 /**
- * Returns the occurrence the series is currently in, or the next one if none is
- * in progress. Looks back by `duration_minutes` so an occurrence that already
- * started is still returned instead of being skipped for the following one.
- * Returns null for non-recurring events or once the series has ended.
+ * Looks back by `duration_minutes` so an occurrence already in progress is
+ * returned instead of skipped for the next one.
  */
 export function currentOrNextOccurrenceDate(event: EventRow, now: Date = new Date()): Date | null {
   const lookbackMs = (event.duration_minutes ?? 0) * 60 * 1000
   return nextOccurrenceDate(event, new Date(now.getTime() - lookbackMs))
 }
 
-/**
- * Returns true when the event is a recurring series parent that still has
- * future occurrences (i.e. not capped with a past UNTIL).
- * Used by RSVP components to avoid treating ended series as active.
- */
+/** True for a recurring series parent that isn't capped with a past UNTIL. */
 export function isSeriesActive(event: EventRow, now: Date = new Date()): boolean {
   if (event.recurrence_rule == null || event.recurrence_rule === '' || event.recurrence_parent_id != null)
     return false

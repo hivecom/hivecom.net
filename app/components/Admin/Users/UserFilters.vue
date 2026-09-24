@@ -33,7 +33,7 @@ const platformFilter = defineModel<string>('platformFilter', { default: '' })
 const supporterFilter = defineModel<string>('supporterFilter', { default: '' })
 const countryFilter = defineModel<string>('countryFilter', { default: '' })
 
-// VUI Select speaks SelectOption[] - bridge to/from plain string models
+// VUI Select speaks SelectOption[], so bridge it to the plain string models.
 
 const roleSelectModel = computed({
   get: () => roleFilter.value !== '' ? props.roleOptions.filter(o => o.value === roleFilter.value) : [],

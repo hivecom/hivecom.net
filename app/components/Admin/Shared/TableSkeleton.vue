@@ -3,16 +3,12 @@ import { Flex, Skeleton, Table } from '@dolanske/vui'
 import TableContainer from '@/components/Shared/TableContainer.vue'
 
 interface Props {
-  // Number of header columns to show skeletons for
   columns?: number
 
-  // Number of rows to show skeletons for
   rows?: number
 
-  // Whether to show an actions column
   showActions?: boolean
 
-  // Whether to use compact column widths for tables with many columns
   compact?: boolean
 }
 
@@ -23,19 +19,17 @@ const props = withDefaults(defineProps<Props>(), {
   compact: false,
 })
 
-// Generate random widths for more realistic skeleton appearance
 function getRandomWidth(): number {
   if (props.compact) {
-    return Math.floor(Math.random() * 60) + 40 // Between 40-100px for compact mode
+    return Math.floor(Math.random() * 60) + 40
   }
-  return Math.floor(Math.random() * 120) + 80 // Between 80-200px for normal mode
+  return Math.floor(Math.random() * 120) + 80
 }
 </script>
 
 <template>
   <TableContainer>
     <Table.Root separate-cells :class="{ 'table-compact': props.compact }">
-      <!-- Header Skeleton -->
       <template #header>
         <Table.Head v-for="i in props.columns" :key="`header-${i}`">
           <Skeleton :width="getRandomWidth()" :height="20" :radius="4" />
@@ -45,7 +39,6 @@ function getRandomWidth(): number {
         </Table.Head>
       </template>
 
-      <!-- Body Skeleton -->
       <template #body>
         <tr v-for="row in props.rows" :key="`row-${row}`">
           <Table.Cell v-for="col in props.columns" :key="`cell-${row}-${col}`">
@@ -65,7 +58,7 @@ function getRandomWidth(): number {
 </template>
 
 <style scoped lang="scss">
-/* Compact mode for tables with many columns - only affects widths/spacing */
+/* Compact mode only affects widths and spacing */
 :deep(.table-compact td) {
   padding-left: var(--space-xs);
   padding-right: var(--space-xs);
@@ -76,7 +69,6 @@ function getRandomWidth(): number {
   padding-right: var(--space-s);
 }
 
-/* Additional responsive adjustments for compact mode */
 @media (max-width: 1200px) {
   :deep(.table-compact td),
   :deep(.table-compact th) {

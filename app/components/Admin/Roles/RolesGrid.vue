@@ -32,9 +32,8 @@ const permissionsByRole = computed(() => {
   grouped.user = [...defaultUserPermissions]
     .filter(permission => searchString([permission], search.value))
 
-  // Inject implied discussion_replies permissions for roles that can manage discussions.
-  // The DB policies for reply UPDATE/DELETE gate on discussions.update/delete respectively,
-  // so these aren't seeded as separate permissions but are functionally granted.
+  // The reply UPDATE/DELETE policies gate on discussions.update/delete, so roles
+  // that manage discussions get the implied discussion_replies permissions here.
   for (const role of Object.keys(grouped)) {
     const perms = grouped[role]
     if (!perms)
@@ -106,10 +105,8 @@ onBeforeMount(fetchRolePermissions)
 </script>
 
 <template>
-  <!-- KPIs Section -->
   <RoleKPIs v-model:refresh-signal="refreshSignal" />
 
-  <!-- Loading state -->
   <template v-if="loading">
     <Grid :columns="isBelowMedium ? 1 : 3" gap="l" expand>
       <template v-for="i in 3" :key="i">

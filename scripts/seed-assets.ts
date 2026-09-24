@@ -1,31 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Uploads private assets to local Supabase storage after a db reset.
+ * Uploads private assets to local storage after `npm run reset`. Target paths
+ * must match what getGameAssetUrl() and getUserAvatarUrl() resolve.
  *
- * Game assets in private/gameservers/ are mapped to the hivecom-content-static bucket
- * under games/{shorthand}/{assetType}.{ext} - matching the paths that
- * getGameAssetUrl() in app/lib/storage.ts resolves.
+ *   private/gameservers/{shorthand}-card.{ext} -> hivecom-content-static games/{shorthand}/cover.{ext}
+ *   private/gameservers/{shorthand}-hero.{ext} -> hivecom-content-static games/{shorthand}/background.{ext}
+ *   private/profile/{username}.{ext}           -> hivecom-content-users {userId}/avatar.{ext}
  *
- * File naming convention in private/gameservers/:
- *   {shorthand}-card.{ext}  -> games/{shorthand}/cover.{ext}
- *   {shorthand}-hero.{ext}  -> games/{shorthand}/background.{ext}
- *
- * User avatars in private/profile/ are mapped to the hivecom-content-users bucket
- * under {userId}/avatar.{ext} - matching the paths that getUserAvatarUrl() resolves.
- *
- * File naming convention in private/profile/:
- *   {username}.{ext}  -> {userId}/avatar.{ext}
- *   (username is looked up against the local DB to resolve the user ID)
- *
- * Metrics snapshot (metrics/latest.json in hivecom-content-static) is seeded
- * from the latest row in the local `metrics` table, normalized to the current
- * MetricsSnapshot schema in types/metrics.ts (legacy field names like
- * `members` are mapped to `users`, missing fields padded with empty defaults).
- * Typing here is enforced so schema drift in MetricsSnapshot is caught at
- * lint time rather than at runtime.
- *
- * Run via: npm run reset  (db reset + this script)
+ * Also seeds metrics/latest.json from the newest local `metrics` row.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -38,7 +21,7 @@ import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 
-// Local Supabase always binds to these values - they are not secret.
+// Local Supabase's fixed values, not secrets
 const SUPABASE_URL = 'http://127.0.0.1:54321'
 const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'
 
@@ -196,7 +179,6 @@ async function uploadUserAvatars(supabase: Supabase): Promise<TaskResult> {
     return { success: 0, fail: 0 }
   }
 
-  // Resolve usernames to user IDs via the profiles table.
   const usernames = candidates.map(c => c.username)
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
@@ -256,17 +238,8 @@ async function uploadUserAvatars(supabase: Supabase): Promise<TaskResult> {
 
 // ── Metrics latest.json ──────────────────────────────────────────────────────
 
-/**
- * Normalizes a metrics row payload from the local DB into the current
- * `MetricsSnapshot` shape defined in `types/metrics.ts`. Older seeded rows
- * may use legacy field names (e.g. `members` instead of `users`) or be
- * missing newer fields - we map and pad them here so the seeded
- * `metrics/latest.json` is always shape-correct for consumers like the
- * status banner renderer.
- *
- * The return type is `MetricsSnapshot`, so any drift in that interface will
- * surface here at typecheck time.
- */
+// Older seeded rows can use legacy names or miss newer fields. The return type
+// makes MetricsSnapshot drift fail typecheck here.
 function asObj(v: unknown): Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {}
 }

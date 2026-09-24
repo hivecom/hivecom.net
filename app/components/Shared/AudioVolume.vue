@@ -5,10 +5,6 @@ import { computed, ref } from 'vue'
 // Volume control. The trigger opens a vertical fader on hover via a teleported
 // VUI popout, so it never gets clipped or vanishes mid-reach. Scroll over the
 // trigger or fader to nudge the level, click to mute. Engine-controlled.
-//
-// Default trigger is a square button (matches the play toggle in the fullscreen
-// player). `bare` swaps it for a plain icon that sits inline next to other small
-// affordances, like the inline player's expand glyph.
 
 const props = defineProps<{
   // 0..1 output level.
@@ -120,7 +116,7 @@ function onWheel(event: WheelEvent) {
 </template>
 
 <style scoped lang="scss">
-// Bare trigger: a small inline icon that matches the inline player's expand glyph.
+// Bare trigger: a small inline icon.
 .audio-volume__trigger {
   display: inline-flex;
   align-items: center;

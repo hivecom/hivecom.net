@@ -3,9 +3,7 @@ import type { Tables } from '@/types/database.overrides'
 import { Flex } from '@dolanske/vui'
 import dayjs from 'dayjs'
 
-// The hover card VCalendar shows for a day. Shared by the events page calendar
-// and the dashboard month grid, so a day reads the same wherever it's drawn.
-// Takes the `day-popover` slot payload as is.
+// Takes VCalendar's `day-popover` slot payload as is
 defineProps<{
   dayTitle: string
   attributes: { key: string, customData: Tables<'events'> }[]

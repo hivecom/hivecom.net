@@ -1,25 +1,12 @@
 <script setup lang="ts">
+import type { Tables } from '@/types/database.overrides'
 import { Badge, Button, Divider, Flex, Popout } from '@dolanske/vui'
 import { computed, ref } from 'vue'
 import { displayDate } from '@/lib/utils/date'
 
-// Local type until migration is applied and database.types.ts is regenerated
-interface LastfmPresence {
-  profile_id: string
-  lastfm_username: string
-  now_playing: boolean
-  track_name: string | null
-  artist_name: string | null
-  album_name: string | null
-  album_art_url: string | null
-  track_url: string | null
-  played_at: string | null
-  updated_at: string
-}
-
 interface Props {
   lastfmUsername?: string | null
-  presence?: LastfmPresence | null
+  presence?: Tables<'presences_lastfm'> | null
   richPresenceEnabled?: boolean
   hideNowPlayingIndicator?: boolean
   iconSize?: number

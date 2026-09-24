@@ -96,10 +96,8 @@ const timeProgressPercentage = computed(() => {
 
     :style="{ '--time-progress': `${timeProgressPercentage}%` }"
   >
-    <!-- Show "NOW" when event is ongoing or countdown finishes -->
     <span v-if="shouldShowNow" class="countdown-timer__now-text" :class="[{ 'countdown-timer__now-text--simple': simple }]">Ongoing</span>
 
-    <!-- Regular countdown grid -->
     <template v-else>
       <Flex gap="s" y-center x-center>
         <Flex column y-center x-center gap="xxs" class="countdown-timer__item" data-unit="days">

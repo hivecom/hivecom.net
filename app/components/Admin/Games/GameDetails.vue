@@ -16,7 +16,6 @@ const props = defineProps<{
   game: Tables<'games'> | null
 }>()
 
-// Define emits
 const emit = defineEmits<{
   edit: [item: Tables<'games'>]
   delete: [item: Tables<'games'>]
@@ -24,34 +23,28 @@ const emit = defineEmits<{
 
 const ChartGameActivity = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameActivity.vue'))
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
 const { handleContentClick } = useExternalLinkGuard()
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle edit action from AdminActions
 function handleEdit(item: Record<string, unknown>) {
   emit('edit', item as Tables<'games'>)
   isOpen.value = false
 }
 
-// Handle delete action from AdminActions
 function handleDelete(item: Record<string, unknown>) {
   emit('delete', item as Tables<'games'>)
   isOpen.value = false
 }
 
-// Gameservers data fetching
 const supabase = useSupabaseClient()
 const gameserversLoading = ref(false)
 const gameserversError = ref('')
 
-// Game assets composable
 const { getGameIconUrl, getGameCoverUrl, getGameBackgroundUrl } = useDataGameAssets()
 
 interface GameServerWithContainer {
@@ -71,7 +64,6 @@ interface GameServerWithContainer {
 
 const gameservers = ref<GameServerWithContainer[]>([])
 
-// Game assets state
 const assetsLoading = ref(false)
 const assetsUrl = ref({
   icon: null as string | null,
@@ -79,7 +71,6 @@ const assetsUrl = ref({
   background: null as string | null,
 })
 
-// Fetch gameservers and assets when game changes
 watchEffect(async () => {
   if (!props.game?.id) {
     gameservers.value = []
@@ -91,15 +82,12 @@ watchEffect(async () => {
     return
   }
 
-  // Load gameservers
   gameserversLoading.value = true
   gameserversError.value = ''
 
-  // Load assets if shorthand exists
   if (props.game.shorthand) {
     assetsLoading.value = true
 
-    // Load all assets in parallel using the composable
     const [iconUrl, coverUrl, backgroundUrl] = await Promise.all([
       getGameIconUrl(props.game),
       getGameCoverUrl(props.game),
@@ -187,7 +175,6 @@ watchEffect(async () => {
     </template>
 
     <Flex v-if="props.game" column gap="m" expand class="game-details">
-      <!-- Basic info -->
       <DetailTable>
         <template #header>
           <Icon name="ph:game-controller" />
@@ -268,7 +255,6 @@ watchEffect(async () => {
         </DetailRow>
       </DetailTable>
 
-      <!-- Content (Markdown) -->
       <Card v-if="props.game.markdown" separators class="card-bg" expand>
         <template #header>
           <Flex x-between y-center expand>
@@ -282,7 +268,6 @@ watchEffect(async () => {
         <MarkdownRenderer :md="props.game.markdown" />
       </Card>
 
-      <!-- Related Game Servers -->
       <Card separators class="card-bg" expand>
         <template #header>
           <Flex y-center gap="xs">
@@ -291,7 +276,6 @@ watchEffect(async () => {
           </Flex>
         </template>
 
-        <!-- Loading state -->
         <Flex v-if="gameserversLoading" column gap="s" expand>
           <Flex v-for="i in 3" :key="i" class="game-details__gameserver-item" expand>
             <Flex y-center x-between gap="m" expand>
@@ -301,17 +285,14 @@ watchEffect(async () => {
           </Flex>
         </Flex>
 
-        <!-- Error state -->
         <div v-else-if="gameserversError" class="game-details__placeholder-text game-details__placeholder-text--error">
           Error: {{ gameserversError }}
         </div>
 
-        <!-- No gameservers -->
         <div v-else-if="gameservers.length === 0" class="game-details__placeholder-text">
           No gameservers associated with this game.
         </div>
 
-        <!-- Gameservers list -->
         <Flex v-else column gap="s" expand>
           <Flex v-for="gameserver in gameservers" :key="gameserver.id" class="game-details__gameserver-item" expand>
             <Flex y-center x-between gap="m" expand>
@@ -322,7 +303,6 @@ watchEffect(async () => {
                 {{ gameserver.name }}
               </NuxtLink>
 
-              <!-- Addresses -->
               <Flex v-if="gameserver.addresses && gameserver.addresses.length > 0" y-center gap="xs">
                 <span v-for="address in gameserver.addresses.slice(0, 1)" :key="address" class="game-details__gameserver-address">
                   {{ address }}{{ gameserver.port ? `:${gameserver.port}` : '' }}
@@ -336,7 +316,6 @@ watchEffect(async () => {
         </Flex>
       </Card>
 
-      <!-- Activity -->
       <Card separators class="card-bg" expand>
         <template #header>
           <Flex y-center gap="xs">
@@ -351,7 +330,6 @@ watchEffect(async () => {
         </ChartActivityHistogramControls>
       </Card>
 
-      <!-- Game Assets -->
       <Card v-if="props.game.shorthand" separators class="card-bg">
         <template #header>
           <Flex y-center gap="xs">
@@ -360,30 +338,24 @@ watchEffect(async () => {
           </Flex>
         </template>
 
-        <!-- Loading state -->
         <Flex v-if="assetsLoading" column gap="m" expand>
-          <!-- Game Icon Skeleton -->
           <Flex column gap="s" expand>
             <Skeleton :width="32" :height="14" :radius="4" />
             <Skeleton :width="64" :height="64" :radius="8" />
           </Flex>
 
-          <!-- Game Cover Skeleton -->
           <Flex column gap="s" expand>
             <Skeleton :width="40" :height="14" :radius="4" />
             <Skeleton :width="133" :height="200" :radius="8" />
           </Flex>
 
-          <!-- Game Background Skeleton -->
           <Flex column gap="s" expand>
             <Skeleton :width="70" :height="14" :radius="4" />
             <Skeleton :height="108" :radius="8" />
           </Flex>
         </Flex>
 
-        <!-- Assets display -->
         <Flex v-else column gap="m" expand>
-          <!-- Game Icon -->
           <Flex column gap="s" expand>
             <span class="game-details__asset-label">Icon</span>
             <Flex v-if="assetsUrl.icon" y-center>
@@ -396,7 +368,6 @@ watchEffect(async () => {
             <span v-else class="game-details__asset-missing">No icon uploaded</span>
           </Flex>
 
-          <!-- Game Cover -->
           <Flex column gap="s" expand>
             <span class="game-details__asset-label">Cover</span>
             <Flex v-if="assetsUrl.cover" y-center expand>
@@ -409,7 +380,6 @@ watchEffect(async () => {
             <span v-else class="game-details__asset-missing">No cover uploaded</span>
           </Flex>
 
-          <!-- Game Background -->
           <Flex column gap="s" expand>
             <span class="game-details__asset-label">Background</span>
             <Flex v-if="assetsUrl.background" y-center>
@@ -424,7 +394,6 @@ watchEffect(async () => {
         </Flex>
       </Card>
 
-      <!-- No shorthand notice -->
       <Card v-else-if="props.game" class="card-bg">
         <Flex y-center gap="s" class="game-details__placeholder-text">
           <Icon name="ph:info" />
@@ -432,7 +401,6 @@ watchEffect(async () => {
         </Flex>
       </Card>
 
-      <!-- Metadata -->
       <Metadata
         :created-at="props.game.created_at"
         :created-by="props.game.created_by"

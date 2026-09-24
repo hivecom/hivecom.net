@@ -1,33 +1,10 @@
-/**
- * database.overrides.ts
- *
- * Hand-maintained type overrides that sit on top of the generated
- * `database.types.ts`.  When Supabase regenerates that file, only THIS file
- * needs to be updated - the generated file stays untouched.
- *
- * ## How to use
- *
- * Import `Tables`, `TablesInsert`, `TablesUpdate`, `Enums`, and
- * `CompositeTypes` from HERE instead of from `database.types.ts`:
- *
- *   import type { Tables } from '@/types/database.overrides'
- *
- * `Database` and `Json` should still be imported directly from
- * `database.types.ts` when needed at the Supabase client level.
- *
- * ## Adding overrides
- *
- * 1. Define the concrete column type below (see `ReactionData`).
- * 2. Add an entry to `TableColumnOverrides` mapping
- *    `tableName -> { columnName: ConcreteType }`.
- * 3. The `Tables<T>` helper below will automatically apply the override.
- */
+// Hand-maintained overrides on top of the generated database.types.ts, which is
+// never edited. Import the table helpers from here instead of the generated file.
 
 import type { Database, Json } from './database.types'
 import type { MetricsSnapshot } from './metrics'
 import type { SoundDesign } from './sound'
 
-// Re-export pass-throughs so callers only need one import source.
 export type { Database, Json }
 export type { CompositeTypes, Enums } from './database.types'
 export { Constants } from './database.types'
@@ -36,57 +13,26 @@ export { Constants } from './database.types'
 // Permissions
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Every permission string defined by the `app_permission` enum,
- * e.g. 'network.update'. This is the source of truth - it is regenerated
- * from the database whenever permissions change.
- */
 export type AppPermission = Database['public']['Enums']['app_permission']
 
-/**
- * The resource half of a permission key, e.g. 'network' from 'network.update'.
- *
- * Type permission-group identifiers as this so a stale or misspelled group
- * (like the pre-consolidation 'containers' / 'network_gameservers') becomes a
- * compile error instead of a silently failing string lookup.
- */
+// Type permission groups as this so a stale or misspelled group is a compile
+// error instead of a silently failing string lookup.
 export type PermissionResource = AppPermission extends `${infer R}.${string}` ? R : never
 
-/** Permission actions that exist on resource groups. */
 export type PermissionAction = 'create' | 'read' | 'update' | 'delete'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Concrete column types
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Concrete type for the `reactions` JSONB column.
- *
- * Shape stored in the DB:
- *   {
- *     "<provider>": {           e.g. "hivecom", "xdd"
- *       "<emote>": ["<uuid>"]   emote key → array of user UUIDs who reacted
- *     }
- *   }
- *
- * Using a non-recursive type (instead of the generated `Json`) avoids
- * TS2589 "type instantiation excessively deep" errors when the type is spread
- * inside computed properties or complex generics.
- */
+// { provider: { emote: userIds[] } }, e.g. provider "hivecom" or "xdd". Non-recursive
+// because the generated Json hits TS2589 (instantiation too deep) inside generics.
 export type ReactionData = Record<string, Record<string, string[]>>
 
-/**
- * Concrete type for the `network_gameservers.query_options` JSONB column.
- *
- * Non-secret, per-gameserver query configuration. Secrets (e.g. the Factorio
- * RCON password) live in Vault, not here.
- */
+// Non-secret only. Secrets like the Factorio RCON password live in Vault.
 export interface GameserverQueryOptions {
-  /**
-   * Factorio only: opt into the RCON `/silent-command` Lua mode that also
-   * returns player names and the configured max-player limit. Disables save
-   * achievements, so it is off by default.
-   */
+  // Factorio RCON `/silent-command` Lua mode. It also returns player names and the
+  // max-player limit, but disables save achievements, so it's off by default.
   factorioUseLua?: boolean
 }
 
@@ -94,16 +40,7 @@ export interface GameserverQueryOptions {
 // Override map
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Declare column-level overrides here.
- *
- * Each key is a public table or view name; the value is a partial record of
- * column names mapped to their desired TypeScript type.  The override is
- * applied to all three variants (Row, Insert, Update).
- *
- * Add new entries here whenever a JSONB column needs a precise type that the
- * generator cannot infer.
- */
+// Applied to Row, Insert and Update. Add JSONB columns the generator can't type.
 interface TableColumnOverrides {
   discussions: {
     reactions: ReactionData
@@ -124,12 +61,8 @@ interface TableColumnOverrides {
       show_offtopic_replies: boolean
       show_thread_replies: boolean
       discussion_view_mode: 'flat' | 'threaded'
-      // Emoji shown as a quick-access strip above the full reaction picker, and
-      // in chat's floating reaction toolbar. User-curated, order preserved.
+      // User-curated, order preserved
       quick_reactions: string[]
-      // How forum threads page through replies: 'infinite' = auto-load on scroll,
-      // 'paginated' = traditional page controls. Does not change how the forum
-      // looks, only how more replies are loaded.
       forum_pagination_mode: 'infinite' | 'paginated'
       show_forum_updates: boolean
       show_forum_recently_visited: boolean
@@ -179,10 +112,7 @@ interface TableColumnOverrides {
       chat_irc_native_modes: boolean
       chat_irc_pure_relay_nicks: boolean
       chat_cache_max_messages_per_buffer: number
-      // Output level (0-100) for the shared site audio player (depot tracks,
-      // embeds, the fullscreen lightbox), persisted so it carries across
-      // sessions and every player. Mobile ignores it and plays at full, leaving
-      // the device volume as the only control.
+      // 0-100, shared by every site audio player. Mobile ignores it and plays at full.
       audio_player_volume: number
     }
   }
@@ -210,7 +140,6 @@ type RawRow<T extends PublicTableName> = PublicTablesAndViews[T] extends { Row: 
 type RawInsert<T extends keyof PublicSchema['Tables']> = PublicSchema['Tables'][T] extends { Insert: infer I } ? I : never
 type RawUpdate<T extends keyof PublicSchema['Tables']> = PublicSchema['Tables'][T] extends { Update: infer U } ? U : never
 
-/** Replace override columns; keep everything else untouched. */
 type ApplyOverrides<Base, Overrides> = Omit<Base, keyof Overrides> & Overrides
 
 type OverriddenRow<T extends PublicTableName>
@@ -232,25 +161,8 @@ type OverriddenUpdate<T extends keyof PublicSchema['Tables']>
 // Public helpers - import these instead of the generated ones
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Drop-in replacement for the generated `Tables<T>` helper.
- * Returns the Row type with any declared column overrides applied.
- *
- * @example
- *   import type { Tables } from '@/types/database.overrides'
- *   const reply: Tables<'discussion_replies'>
- *   reply.reactions // → ReactionData instead of Json
- */
 export type Tables<T extends PublicTableName> = OverriddenRow<T>
 
-/**
- * Drop-in replacement for the generated `TablesInsert<T>` helper.
- * Only writable tables (not views) are accepted.
- */
 export type TablesInsert<T extends keyof PublicSchema['Tables']> = OverriddenInsert<T>
 
-/**
- * Drop-in replacement for the generated `TablesUpdate<T>` helper.
- * Only writable tables (not views) are accepted.
- */
 export type TablesUpdate<T extends keyof PublicSchema['Tables']> = OverriddenUpdate<T>

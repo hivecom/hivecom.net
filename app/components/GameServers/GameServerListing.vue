@@ -103,12 +103,10 @@ function setLiveIndicatorRef(gameId: number, el: HTMLElement | null) {
 
 <template>
   <div class="game-listing">
-    <!-- Error message -->
     <template v-if="errorMessage">
       <ErrorAlert message="An error occurred while fetching game servers." :error="errorMessage" />
     </template>
 
-    <!-- Loading skeletons -->
     <Flex v-if="loading" column>
       <Flex>
         <Skeleton :width="240" :height="32" :radius="8" />
@@ -120,9 +118,7 @@ function setLiveIndicatorRef(gameId: number, el: HTMLElement | null) {
     </Flex>
 
     <template v-if="!loading && !errorMessage">
-      <!-- Content -->
       <template v-if="games && gameservers && games.length !== 0 && gameservers.length !== 0">
-        <!-- Inputs -->
         <Flex gap="s" x-start class="mb-m" :column="isCompactLayout" expand>
           <Input
             :model-value="search"
@@ -226,7 +222,6 @@ function setLiveIndicatorRef(gameId: number, el: HTMLElement | null) {
             </Card>
           </template>
 
-          <!-- Gameservers without a game -->
           <Card v-if="sortedGameserversWithoutGame.length > 0">
             <h3 class="mb-s">
               <Flex gap="m" y-center>
@@ -247,7 +242,6 @@ function setLiveIndicatorRef(gameId: number, el: HTMLElement | null) {
           </Card>
         </Flex>
       </template>
-      <!-- No content -->
       <template v-else>
         <Alert variant="info">
           No game servers found.

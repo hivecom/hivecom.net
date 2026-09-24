@@ -40,7 +40,6 @@ const emit = defineEmits<{
           single
           @update:model-value="emit('update:fillTypeModel', $event)"
         />
-        <!-- Solid: single colour swatch -->
         <Color
           v-if="fillType === 'solid'"
           :model-value="fillColor"
@@ -48,7 +47,6 @@ const emit = defineEmits<{
           expand
           @update:model-value="emit('update:fillColor', $event ?? ''); redraw()"
         />
-        <!-- Gradient: preview bar -->
         <span
           v-else
           class="banner-editor__gradient-preview"
@@ -58,7 +56,6 @@ const emit = defineEmits<{
         />
       </Flex>
 
-      <!-- Gradient stops -->
       <template v-if="fillType !== 'solid'">
         <BannerGradientStops
           :stops="fillStops"
@@ -73,7 +70,6 @@ const emit = defineEmits<{
         />
       </template>
 
-      <!-- Border -->
       <Flex y-center gap="xs" expand>
         <Tooltip>
           <Button

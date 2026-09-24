@@ -126,12 +126,10 @@ async function applyResult(result: IgdbSearchResult, overwrite: boolean) {
     </template>
 
     <Flex column gap="m">
-      <!-- Error -->
       <p v-if="searchError" class="text-s text-color-red">
         {{ searchError }}
       </p>
 
-      <!-- Skeleton cards while searching -->
       <Flex v-if="searching" column expand gap="xs">
         <Flex v-for="i in 3" :key="i" expand class="igdb-modal__result igdb-modal__result--skeleton">
           <Skeleton width="48px" height="64px" :radius="4" />
@@ -143,7 +141,6 @@ async function applyResult(result: IgdbSearchResult, overwrite: boolean) {
         </Flex>
       </Flex>
 
-      <!-- Results -->
       <Flex v-else-if="results.length" column gap="xs">
         <Flex
           v-for="result in results"
@@ -151,7 +148,6 @@ async function applyResult(result: IgdbSearchResult, overwrite: boolean) {
           expand
           class="igdb-modal__result"
         >
-          <!-- Cover thumb -->
           <div class="igdb-modal__cover">
             <img
               v-if="result.cover_url"
@@ -164,7 +160,6 @@ async function applyResult(result: IgdbSearchResult, overwrite: boolean) {
             </div>
           </div>
 
-          <!-- Info -->
           <Flex column :gap="0" class="igdb-modal__info">
             <p class="text-s font-weight-medium">
               {{ result.name }}
@@ -178,7 +173,6 @@ async function applyResult(result: IgdbSearchResult, overwrite: boolean) {
             </p>
           </Flex>
 
-          <!-- Action buttons -->
           <ButtonGroup class="igdb-modal__actions">
             <Tooltip>
               <Button

@@ -98,7 +98,7 @@ async function applyPeriod(period: MetricsPeriod) {
   const end = new Date()
   const fallback = new Date(Date.now() - config.hours * 60 * 60 * 1000)
 
-  // All Time has no fixed lookback - anchor it to the first snapshot we hold,
+  // All Time has no fixed lookback, so anchor it to the first snapshot we hold,
   // falling back to the ceiling in the config if that lookup fails.
   const start = config.allTime
     ? (await fetchMetricsEarliest() ?? fallback)
@@ -119,7 +119,7 @@ watch(calendarRange, (val) => {
   if (!rawStart || !rawEnd)
     return
 
-  // same day clicked twice - expand to full day
+  // Same day clicked twice, so expand to the full day
   let start = rawStart
   let end = rawEnd
   if (rawStart.toDateString() === rawEnd.toDateString() && rawStart.getTime() === rawEnd.getTime()) {
@@ -493,7 +493,7 @@ const endMs = computed(() => {
   return a !== null && b !== null ? Math.max(a, b) : null
 })
 
-// Relative label - shown in footer
+// Relative label for the footer
 const startLabel = computed(() => {
   return startMs.value !== null ? formatTimestamp(startMs.value) : ''
 })

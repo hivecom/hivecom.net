@@ -100,11 +100,9 @@ export interface BroadcastResult {
 type EdgeEnvelope<T> = T & { success: boolean, error?: string }
 
 /**
- * Client for the four admin email edge functions (SES account health, the
- * suppression list, un-suppressing an address, and broadcasts). Auth rides
- * along with the invoke, so the caller must be signed in and hold the matching
- * broadcasts permission. Errors throw as `Error` carrying the function's own
- * message; callers own their loading state and toasts.
+ * Client for the admin email edge functions. Auth rides along with the invoke,
+ * so the caller must be signed in and hold the broadcasts permission. Errors
+ * throw with the function's own message.
  */
 export function useEmailAdmin() {
   const supabase = useSupabaseClient<Database>()
@@ -150,7 +148,6 @@ export function useEmailAdmin() {
       throw new Error(data.error ?? fallback)
   }
 
-  // Account sending health plus the sending domain's identity state.
   async function fetchOverview(): Promise<EmailOverview> {
     const fallback = 'Could not load email status'
     const data = await invokeEdge<EdgeEnvelope<EmailOverview>>('admin-email-overview', {}, fallback)
@@ -159,8 +156,7 @@ export function useEmailAdmin() {
     return { account: data.account, identity: data.identity, recipients: data.recipients ?? null }
   }
 
-  // One page of suppressed addresses. Pass the previous page's nextToken to
-  // continue; there's no way to page backwards.
+  // Pass the previous page's nextToken to continue. There's no paging backwards.
   async function fetchSuppressionPage(pageSize?: number, nextToken?: string): Promise<SuppressionPage> {
     const fallback = 'Could not load the suppression list'
     const data = await invokeEdge<EdgeEnvelope<SuppressionPage>>(

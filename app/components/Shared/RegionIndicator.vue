@@ -1,18 +1,8 @@
 <script setup lang="ts">
-/**
- * RegionIndicator component displays a region code with an appropriate flag emoji
- */
-
-// Define props
 const props = defineProps<{
-  /**
-   * Region code: 'eu' (Europe), 'na' (North America), 'all' (Multi-Region)
-   */
+  /** 'eu' (Europe), 'na' (North America), 'all' (Multi-Region) */
   region: 'eu' | 'na' | 'all' | null | undefined
 
-  /**
-   * Optional - Show text label alongside flag
-   */
   showLabel?: boolean
 
   /**
@@ -21,7 +11,6 @@ const props = defineProps<{
   size?: 'm' | 'l' | 'xxl'
 }>()
 
-// Computed properties to determine emoji and label
 const regionEmoji = computed(() => {
   switch (props.region) {
     case 'eu': return '🇪🇺'

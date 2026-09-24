@@ -10,14 +10,12 @@ import { normalizeInternalRedirect } from '@/lib/utils/common'
 import '@/assets/elements/auth.scss'
 
 const props = defineProps<{
-  // Overrides `?redirect=` when building the OAuth/email confirm URLs and the
-  // default post-sign-in navigation target. Used by embeds (e.g. chat) that want
-  // the provider round-trip to land back on their own route.
+  // Overrides `?redirect=` for the OAuth/email confirm URLs and the post-sign-in
+  // target, so embeds can bring the provider round-trip back to their own route.
   redirect?: string
 
-  // When true, a successful password/passkey/MFA sign-in emits `success` instead
-  // of navigating away. Used when the form is embedded and the host stays in
-  // place (the chat connect form). OAuth/email still leave the SPA by nature.
+  // Password/passkey/MFA success emits `success` instead of navigating.
+  // OAuth and email still leave the SPA.
   stayOnSuccess?: boolean
 }>()
 
@@ -75,12 +73,8 @@ const passkeySupported = ref(false)
 const postSignInRedirect = computed(() => normalizeInternalRedirect(props.redirect ?? route.query.redirect))
 const resolvedPostSignInRedirect = computed(() => postSignInRedirect.value ?? '/profile')
 
-// A successful password/passkey/MFA sign-in either navigates to the resolved
-// redirect (default page behaviour) or, for embedded use, stays put and lets the
-// host react via the `success` event.
 function finishSignIn() {
   if (props.stayOnSuccess) {
-    // Embedded host stays put, so return the form to its initial state.
     resetMfaState()
     emit('success')
   }
@@ -279,7 +273,7 @@ async function signInWithPasskey() {
     finishSignIn()
   }
   catch (err) {
-    // A cancelled browser prompt surfaces as an abort/NotAllowed error - stay quiet.
+    // A cancelled browser prompt surfaces as an abort/NotAllowed error, so stay quiet
     if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError'))
       return
 
@@ -322,9 +316,8 @@ async function restorePendingMfaChallenge() {
 }
 
 async function ensureMfaQueryFlag() {
-  // Embedded use stays put across a reload, so don't leak `?mfa=1` onto the host
-  // route (e.g. the chat page) - the flag only exists to restore the challenge
-  // after a full page reload of the dedicated sign-in page.
+  // Don't leak `?mfa=1` onto an embedding host's route. The flag only restores the
+  // challenge after a full reload of the dedicated sign-in page.
   if (props.stayOnSuccess)
     return
   if (route.query.mfa === '1')
@@ -472,8 +465,6 @@ async function verifyMfaCode() {
 
     await persistVerifiedMfaSession(sessionResult?.session ?? null)
 
-    // finishSignIn handles resetting the MFA state itself (only for the embedded
-    // stay-put case); the navigate case keeps the card up to avoid a form flash.
     finishSignIn()
   }
   catch (error) {

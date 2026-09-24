@@ -21,38 +21,30 @@ const emit = defineEmits<{
 
 const open = defineModel<boolean>('open', { default: false })
 
-// Get current user for authentication check
 const user = useSupabaseUser()
 const { navigateToSignIn } = useAuthRedirect()
 
-// State for nested modals
-const showViewer = ref(!props.startWithSubmit) // Show viewer by default unless startWithSubmit is true
-const showNewComplaint = ref(props.startWithSubmit || false) // Show new complaint form if startWithSubmit is true
+const showViewer = ref(!props.startWithSubmit)
+const showNewComplaint = ref(props.startWithSubmit || false)
 
-// Watch for modal opening to check authentication and reset states
 watch(open, (isOpen) => {
   if (isOpen) {
-    // Check if user is authenticated
     if (!user.value) {
-      // Redirect to sign-in page if not authenticated
       navigateToSignIn()
       open.value = false
       return
     }
 
-    // Reset states based on startWithSubmit when modal opens
     showViewer.value = !props.startWithSubmit
     showNewComplaint.value = props.startWithSubmit || false
   }
 })
 
-// Handle opening new complaint modal
 function handleNewComplaint() {
   showViewer.value = false
   showNewComplaint.value = true
 }
 
-// Handle closing new complaint modal
 function handleCloseNewComplaint() {
   showNewComplaint.value = false
 
@@ -65,24 +57,19 @@ function handleCloseNewComplaint() {
   }
 }
 
-// Handle complaint submission
 function handleComplaintSubmit(data: { message: string }) {
   emit('submit', data)
 
-  // Show success toast notification
   pushToast('Complaint submitted successfully', {
     description: 'Your complaint has been submitted and will be reviewed by our staff team.',
   })
 
-  // Close both modals
   showNewComplaint.value = false
   showViewer.value = false
   open.value = false
 }
 
-// Handle closing the main modal
 function handleClose() {
-  // Reset states based on startWithSubmit prop
   showViewer.value = !props.startWithSubmit
   showNewComplaint.value = props.startWithSubmit || false
   open.value = false

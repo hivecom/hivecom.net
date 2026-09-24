@@ -48,7 +48,6 @@ const forumUnread = useDataForumUnread()
 
 const identifier = route.params.id as string
 
-// UUID regex pattern to detect if the identifier is a UUID
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const isUuid = uuidRegex.test(identifier)
 
@@ -60,7 +59,6 @@ const errorMessage = ref<string | null>(null)
 const post = ref<DiscussionWithContext | null>(null)
 const topicBreadcrumbs = ref<TopicBreadcrumb[]>([])
 
-// Bulk-fetch icons for all breadcrumb topics
 const breadcrumbTopicIds = computed(() => topicBreadcrumbs.value.map(t => t.id))
 const { icons: breadcrumbTopicIcons } = useBulkTopicIcons(breadcrumbTopicIds)
 
@@ -88,10 +86,9 @@ const nsfwRevealed = ref(false)
 
 const isMobile = useBreakpoint('<s')
 
-// Reporting
 const showReportModal = ref(false)
 
-// Subscription - status is fetched automatically once post.id resolves.
+// Subscription status fetches itself once post.id resolves
 const { isSubscribed, subscriptionLoading, toggleSubscription } = useDiscussionSubscription(
   computed(() => post.value?.id ?? null),
 )
@@ -126,14 +123,12 @@ function handlePostUpdate(updated: Tables<'discussions'> | Tables<'discussion_to
   post.value = post.value ? { ...post.value, ...updated } : { ...updated }
 }
 
-// Shared post-load processing for both the cache-hit and DB-fetch paths: store
-// the row, warm the cache, set the NSFW gate state, load breadcrumbs, and advance
-// the unread markers. Callers handle the entity-redirect short-circuit first.
+// Callers must handle the entity redirect before calling this
 function applyLoadedPost(data: DiscussionWithContext) {
   post.value = data
 
-  // Warm all cache keys (id, slug, entity) so the Discussion composable's
-  // fetchById(post.id) is a cache hit instead of racing a duplicate SELECT *.
+  // Warm every cache key (id, slug, entity) so Discussion's fetchById(post.id)
+  // is a cache hit instead of racing a duplicate SELECT *.
   discussionCache.set(data)
 
   // Show the NSFW overlay only when the post is NSFW and warnings are enabled. If
@@ -145,18 +140,16 @@ function applyLoadedPost(data: DiscussionWithContext) {
   // Mark seen in localStorage so the unread dot clears on direct URL visits.
   forumUnread.markDiscussionSeen(data.id, data.reply_count ?? 0)
 
-  // Advance the parent topic's seenActivityAt to this discussion's last activity
-  // timestamp - not now, so we don't shadow concurrent activity in other
-  // discussions that may have happened more recently.
+  // Advance the topic's seenActivityAt to this discussion's last activity rather
+  // than now, so newer activity in other discussions still shows as unread.
   if (data.discussion_topic_id)
     forumUnread.markTopicSeen(data.discussion_topic_id, data.last_activity_at ?? undefined)
 }
 
 let loadingTimer: ReturnType<typeof setTimeout> | null = null
 
-// Entity-linked discussions bounce to the page that actually hosts them. The
-// skeleton stays up for the trip: dropping `loading` here paints the "failed to
-// load this post" card for however long the destination page takes to resolve.
+// Keep the skeleton up while bouncing to the entity page. Dropping `loading` here
+// paints the "failed to load this post" card until the destination resolves.
 function redirectToEntity(href: string) {
   if (loadingTimer) {
     clearTimeout(loadingTimer)
@@ -169,8 +162,7 @@ function redirectToEntity(href: string) {
 onBeforeMount(async () => {
   loading.value = true
 
-  // Safety valve: if data hasn't arrived after 10 seconds, stop showing the
-  // skeleton so the user isn't trapped indefinitely on slow connections.
+  // Stop showing the skeleton after 10 seconds so slow connections aren't stuck on it
   loadingTimer = setTimeout(() => {
     if (loading.value) {
       loading.value = false
@@ -179,10 +171,8 @@ onBeforeMount(async () => {
     }
   }, 10_000)
 
-  // Fast-path: use the cached discussion row if it's still within TTL.
-  // The cache stores the enriched DiscussionWithContext shape (extra join fields
-  // are carried along even though the cache type is Tables<'discussions'>),
-  // so a cache hit is sufficient to render the full page without a DB round-trip.
+  // Cached rows carry the enriched DiscussionWithContext join fields even though the
+  // cache type is Tables<'discussions'>, so a hit renders the page without a round-trip.
   const cached = isUuid
     ? (discussionCache.getById(identifier) ?? discussionCache.getBySlug(identifier))
     : discussionCache.getBySlug(identifier)
@@ -255,10 +245,8 @@ onBeforeMount(async () => {
     })
 })
 
-// Fetch minimal discussion data at SSR/prerender time so meta tags are populated.
-// The full interactive fetch still happens in onBeforeMount (client-only), but
-// during prerendering onBeforeMount never runs, leaving post.value null and
-// producing "Forum Post" / "Forum post details" for every page.
+// Minimal SSR/prerender fetch for meta tags. onBeforeMount never runs during
+// prerender, so post.value is null there and every page would get generic meta.
 const { data: seoPost } = await useAsyncData(`discussion-seo-${identifier}`, async () => {
   let query = supabase
     .from('discussions')
@@ -358,9 +346,8 @@ function publish() {
 function handleReplySubmitted(newReplyCount: number, discussionId: string) {
   forumUnread.markDiscussionSeen(discussionId, newReplyCount)
 
-  // Advance the topic watermark to now - your reply just became the latest
-  // activity, so any dot that appears after returning to the forum index would
-  // be from concurrent activity that happened after you posted.
+  // Advance the topic watermark to now. Your reply is the latest activity, so any
+  // dot on the forum index afterwards comes from activity after you posted.
   if (post.value?.discussion_topic_id)
     forumUnread.markTopicSeen(post.value.discussion_topic_id)
 }
@@ -386,9 +373,8 @@ watch(isPageTitleVisible, () => {
 const page = useTemplateRef('page')
 const discussionRef = useTemplateRef<InstanceType<typeof Discussion>>('discussion')
 
-// Start dimmed immediately if there's a comment deep-link in the URL so the
-// overlay is up before the page content even renders, preventing the flash of
-// unloaded content before Discussion.vue picks up the navigation.
+// Start dimmed when the URL has a comment deep-link, so the overlay is up before
+// content renders and there's no flash before Discussion.vue takes over.
 const scrollingToReply = ref(
   import.meta.client
     && !!getRouteQueryStringOrNull(route.query.comment),
@@ -399,7 +385,6 @@ function preventScroll(e: Event) {
   e.stopImmediatePropagation()
 }
 
-// If we started dimmed, lock scroll right away.
 if (scrollingToReply.value) {
   window.addEventListener('wheel', preventScroll, { passive: false })
   window.addEventListener('touchmove', preventScroll, { passive: false })
@@ -432,7 +417,6 @@ watch(discussionRef, (ref) => {
 })
 
 function handleScrollOverlayLeave() {
-  // intentional - called from template @after-leave
   window.removeEventListener('wheel', preventScroll)
   window.removeEventListener('touchmove', preventScroll)
 }
@@ -463,9 +447,8 @@ watchEffect(() => {
   }
 })
 
-// Provide a flag to all descendant discussion reply components so they can
-// skip their individual per-reply NSFW gates when the thread overlay has
-// already been dismissed (or warnings are turned off in settings).
+// Lets descendant replies skip their own NSFW gates once the thread overlay is
+// dismissed or warnings are off
 provide(DISCUSSION_KEYS.threadNsfwRevealed, nsfwRevealed)
 
 function revealNsfw() {
@@ -563,7 +546,6 @@ function revealNsfw() {
                 />
               </template>
               <template v-else-if="isMobile">
-                <!-- Back Button -->
                 <Flex x-between>
                   <NuxtLink to="/forum">
                     <Button

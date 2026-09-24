@@ -1,12 +1,5 @@
-/**
- * Disables the browser's own zoom gestures (trackpad pinch on macOS, Safari
- * pinch, ctrl/cmd + wheel) everywhere except inside lightboxes, which manage
- * their own pan/zoom. Keyboard zoom (cmd/ctrl +/-/0) is intentionally left
- * alone for accessibility.
- *
- * Can be turned off per-user via the "Allow browser zoom" setting, tracked by
- * the shared `useBrowserZoomDisabled` flag.
- */
+// Blocks pinch and ctrl/cmd + wheel zoom outside lightboxes, which do their own
+// pan/zoom. Keyboard zoom stays on for accessibility.
 import { useBrowserZoomDisabled } from '@/composables/useZoomPreference'
 
 export default defineNuxtPlugin(() => {

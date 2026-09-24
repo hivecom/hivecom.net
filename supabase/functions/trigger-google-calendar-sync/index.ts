@@ -8,15 +8,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { authorizeSystemTrigger } from "../_shared/auth.ts";
 import { responseMethodNotAllowed } from "../_shared/response.ts";
 
-/*
- * This function syncs events with Google Calendar based on changes in the Supabase database.
- * It handles INSERT, UPDATE, and DELETE operations for events.
- * Requires service role access to Supabase and Google Calendar API credentials.
- *
- * Some important notes:
- * - The calendar requires the service account to have been added as a writer or owner.
- * - The Google Calendar ID and service account key must be set in environment variables.
- */
+// The service account has to be added to each calendar as a writer or owner.
 
 type EventData = Tables<"events">;
 type SupabaseClientType = ReturnType<typeof createClient<Database>>;
@@ -25,8 +17,8 @@ interface SyncRequest {
   action: "INSERT" | "UPDATE" | "DELETE";
   eventId: number;
   timestamp?: string;
-  google_event_id?: string; // Used for DELETE - official calendar.
-  google_community_event_id?: string; // Used for DELETE - community calendar.
+  google_event_id?: string; // DELETE only, official calendar
+  google_community_event_id?: string; // DELETE only, community calendar
   // Passed on UPDATE so we can detect an is_official flip.
   old_is_official?: boolean;
   old_google_event_id?: string;
@@ -39,18 +31,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Authorize the request using the system trigger authorization function
     const authResponse = authorizeSystemTrigger(req);
     if (authResponse) {
       console.error("Authorization failed:", authResponse.statusText);
       return authResponse;
     }
 
-    // Read the request body once and store it
     const requestData = await req.json();
     const { action, eventId } = requestData as SyncRequest;
 
-    // Validate request data
     if (!action || !eventId) {
       return new Response(
         JSON.stringify({
@@ -79,7 +68,6 @@ Deno.serve(async (req) => {
 
     console.log(`Processing ${action} for event ${eventId}`);
 
-    // Get Google Calendar credentials
     const googleCalendarId = Deno.env.get("GOOGLE_CALENDAR_ID");
     const googleCommunityCalendarId = Deno.env.get(
       "GOOGLE_COMMUNITY_CALENDAR_ID",
@@ -93,15 +81,13 @@ Deno.serve(async (req) => {
       throw new Error("Missing Google Calendar configuration");
     }
 
-    // Initialize Google Calendar API client
     const auth = await initializeGoogleAuth(googleServiceAccountKey);
     const calendar = google.calendar({ version: "v3", auth });
 
     let result;
 
-    // For DELETE, use the data provided in the request since the row is already deleted
+    // The row is already gone on DELETE, so the request carries the IDs
     if (action === "DELETE") {
-      // Use the already parsed request data - check both calendar IDs
       const officialEventId = requestData.google_event_id;
       const communityEventId = requestData.google_community_event_id;
 
@@ -118,7 +104,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Delete from whichever calendar(s) the event was synced to
       if (officialEventId) {
         console.log("Deleting event from official calendar:", officialEventId);
         result = await deleteGoogleEvent(
@@ -142,7 +127,6 @@ Deno.serve(async (req) => {
         );
       }
     } else {
-      // For INSERT/UPDATE, fetch the data from the database
       const supabase = createClient<Database>(
         Deno.env.get("SUPABASE_URL") ?? "",
         getSecretKey(),
@@ -158,7 +142,6 @@ Deno.serve(async (req) => {
         throw new Error(`Event not found: ${eventError?.message}`);
       }
 
-      // Route to the correct calendar based on is_official
       const calendarId = event_data.is_official
         ? googleCalendarId
         : googleCommunityCalendarId;
@@ -182,7 +165,6 @@ Deno.serve(async (req) => {
           oldIsOfficial !== event_data.is_official;
 
         if (isOfficialFlip) {
-          // Event moved between calendars - delete from old, create in new.
           const oldCalendarId = oldIsOfficial
             ? googleCalendarId
             : googleCommunityCalendarId;
@@ -203,7 +185,6 @@ Deno.serve(async (req) => {
               undefined,
             );
 
-            // Clear the stale ID column from the old calendar
             const clearPayload = oldIsOfficial
               ? { google_event_id: null, google_last_synced_at: null }
               : {
@@ -217,7 +198,6 @@ Deno.serve(async (req) => {
               .eq("id", event_data.id);
           }
 
-          // Create fresh in the new calendar
           result = await createGoogleEvent(
             calendar,
             calendarId,
@@ -317,7 +297,7 @@ function buildGoogleEventPayload(eventData: EventData) {
   const eventStart = new Date(eventData.date);
   const eventEnd = eventData.duration_minutes
     ? new Date(eventStart.getTime() + eventData.duration_minutes * 60000)
-    : new Date(eventStart.getTime() + 60 * 60000); // Default 1 hour if no duration
+    : new Date(eventStart.getTime() + 60 * 60000); // 1 hour when there's no duration
   const eventPageUrl = `https://hivecom.net/events/${eventData.id}`;
   const eventLink = eventData.link?.trim();
   const descriptionParts = [
@@ -380,7 +360,6 @@ async function createGoogleEvent(
       requestBody: googleEvent,
     });
 
-    // Write back to the correct ID column based on which calendar was used
     const updatePayload = isOfficial
       ? {
         google_event_id: response.data.id,
@@ -410,13 +389,12 @@ async function updateGoogleEvent(
   supabase: SupabaseClientType,
   isOfficial: boolean,
 ) {
-  // Pick the correct existing event ID based on which calendar we're targeting
   const existingEventId = isOfficial
     ? eventData.google_event_id
     : eventData.google_community_event_id;
 
   if (!existingEventId) {
-    // No existing entry in this calendar - create instead
+    // Never synced to this calendar, so create it
     return await createGoogleEvent(
       calendar,
       calendarId,
@@ -435,7 +413,6 @@ async function updateGoogleEvent(
       requestBody: googleEvent,
     });
 
-    // Update the correct sync timestamp
     const updatePayload = isOfficial
       ? { google_last_synced_at: new Date().toISOString() }
       : { google_community_last_synced_at: new Date().toISOString() };
@@ -459,7 +436,6 @@ async function deleteGoogleEvent(
   _supabase?: SupabaseClientType | null,
 ) {
   if (!eventData.google_event_id) {
-    // Nothing to delete in Google Calendar
     return { message: "No Google event ID found, nothing to delete" };
   }
 
@@ -471,7 +447,7 @@ async function deleteGoogleEvent(
 
     return { message: "Event deleted from Google Calendar" };
   } catch (error) {
-    // If the event doesn't exist (404), that's fine - it's already "deleted"
+    // A 404 means it's already gone
     if (
       error instanceof Error && "code" in error &&
       (error as { code: number }).code === 404

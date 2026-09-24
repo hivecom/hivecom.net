@@ -31,28 +31,24 @@ const userId = useUserId()
 const { settings } = useDataUserSettings()
 const { openTo: openNotifications } = useNotificationSheet()
 
-// My subscriptions with their discussion titles, out of the same cache the
-// notification sheet subscriptions tab fills.
+// Shares its cache with the notification sheet's subscriptions tab
 const subscriptionsCache = useDiscussionSubscriptionsCache()
 const allSubscriptions = ref<SubscriptionRow[]>([])
 const subscriptionsLoading = ref(true)
 
-// Zero until we've talked to the database ourselves. A cache hit doesn't count
-// - the rows behind it can already be most of the cache TTL old, so the first
-// tab-back should still go and look.
+// A cache hit doesn't count: its rows can be most of the TTL old, so the first
+// tab-back still refetches
 let lastFetchedAt = 0
 
-// Only real threads belong in the forum card. A subscription to a profile,
-// gameserver, vote or theme lives on that entity's page, so it reads as a
-// broken thread here - those stay in the notification sheet's tab.
+// Entity discussions (profiles, gameservers, votes) read as broken threads here.
+// They stay in the notification sheet.
 const visibleSubscriptions = computed(() =>
   allSubscriptions.value
     .filter(sub => sub.discussion != null && getDiscussionEntityHref(sub.discussion) === null),
 )
 
-// A thread is unread when it moved on after the last time I opened it. Own
-// replies don't count - `last_seen_at` only advances on a visit, so posting and
-// walking away would otherwise dot my own thread.
+// Own replies don't count. `last_seen_at` only advances on a visit, so posting
+// and walking away would otherwise dot my own thread.
 function hasNewActivity(sub: SubscriptionRow): boolean {
   const activity = sub.discussion?.last_activity_at
   if (activity == null || activity === '')
@@ -64,8 +60,7 @@ function hasNewActivity(sub: SubscriptionRow): boolean {
   return dayjs(activity).isAfter(dayjs(sub.last_seen_at))
 }
 
-// Unread first, then newest activity. The card only has room for four, so the
-// threads that moved since I last looked are the ones worth the slots.
+// Unread first, since the card only has four slots
 const subscriptions = computed(() =>
   visibleSubscriptions.value
     .map(sub => ({ sub, unread: hasNewActivity(sub) }))
@@ -78,21 +73,18 @@ const subscriptions = computed(() =>
     .slice(0, SUBSCRIPTION_LIMIT),
 )
 
-// The forum index setting owns whether unread gets a dot at all. Ordering isn't
-// gated on it - a quiet reshuffle costs nothing and still puts the live threads
-// first.
+// Only the dot follows this setting. The unread-first ordering always applies.
 const showUnreadMarkers = computed(() => settings.value.show_forum_unread_bubbles)
 
-// Counts every unread subscription, not just the four on screen, so the label
-// doesn't undercount what's waiting behind the cut.
+// Counts past the four on screen
 const unreadSubscriptionCount = computed(() =>
   showUnreadMarkers.value
     ? visibleSubscriptions.value.filter(hasNewActivity).length
     : 0,
 )
 
-// Same select and order as the notification sheet, unlimited on purpose: a
-// limited fetch written into the shared cache would truncate the sheet's list.
+// Unlimited on purpose: a limited fetch in the shared cache would truncate the
+// notification sheet's list
 async function fetchSubscriptions(uid: string) {
   const { data, error } = await supabase.from('discussion_subscriptions')
     .select(SUBSCRIPTION_SELECT)
@@ -117,8 +109,6 @@ watch(userId, async (uid) => {
     return
   }
 
-  // A cache hit paints immediately, so the skeleton never gets a chance to
-  // flash on a warm load.
   const cached = subscriptionsCache.getList(uid)
   if (cached !== null) {
     allSubscriptions.value = cached
@@ -131,11 +121,8 @@ watch(userId, async (uid) => {
   subscriptionsLoading.value = false
 }, { immediate: true })
 
-// Nothing pushes subscription activity at us, so a dashboard sitting in a
-// background tab keeps showing whatever was true when it loaded. Catch up when
-// the tab comes back. Deliberately silent: the list is already on screen, and
-// blanking it into a skeleton for a refresh is what the old notification
-// section did wrong.
+// Nothing pushes subscription activity, so catch up on tab-back. Silent on
+// purpose: the list is on screen, and a skeleton flash would be worse.
 const { isHidden } = usePageVisibility()
 
 watch(isHidden, (hidden) => {
@@ -147,8 +134,7 @@ watch(isHidden, (hidden) => {
     void fetchSubscriptions(uid)
 })
 
-// Latest activity across the whole forum, minus my own posts. I already know
-// what I wrote, and three slots are too few to spend on it.
+// Minus my own posts, since three slots are too few to spend on them
 const {
   items: latestItems,
   allItems: latestAllItems,
@@ -163,11 +149,8 @@ const {
   excludeOwn: true,
 })
 
-// The rest of the feed behind the three rows, in the same sheet the forum page
-// opens off its carousel. It pages on from the preview's own fetch, so opening
-// it costs nothing until you scroll. No tabs, no visit divider: the dashboard
-// doesn't track a last visit to the forum, and your own posts are what this
-// card leaves out on purpose.
+// Pages on from the preview's own fetch. No tabs or visit divider, since the
+// dashboard doesn't track forum visits.
 const latestSheetOpen = ref(false)
 
 const latestPane = computed<ForumLatestPane>(() => ({
@@ -187,8 +170,7 @@ function openLatestSheet(): void {
     <HomeDashboardCardHeader title="Forum" icon="ph:chats-circle" to="/forum" />
 
     <HomeDashboardSkeleton v-if="subscriptionsLoading && !subscriptions.length" variant="grid" :count="4" />
-    <!-- The full list lives in the notification sheet, so the label opens
-         that rather than a page. -->
+    <!-- The full list lives in the notification sheet -->
     <HomeDashboardSection
       v-else-if="subscriptions.length"
       :label="unreadSubscriptionCount ? `Your subscriptions (${unreadSubscriptionCount} new)` : 'Your subscriptions'"
@@ -238,8 +220,7 @@ function openLatestSheet(): void {
 </template>
 
 <style scoped lang="scss">
-// The dot alone marks unread. The brighter outline is reserved for hover so
-// the two states don't read the same.
+// The dot alone marks unread. The brighter outline is for hover.
 .home-item--unread {
   position: relative;
 
@@ -255,7 +236,7 @@ function openLatestSheet(): void {
   }
 
   strong {
-    // Leave the dot its corner instead of running the title underneath it.
+    // Leaves the dot its corner
     padding-right: var(--space-m);
   }
 

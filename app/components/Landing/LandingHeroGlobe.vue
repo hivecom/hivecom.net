@@ -13,9 +13,8 @@ const { loadGlobeData } = useGlobeData()
 const { params: perfParams, startProbe, stopProbe } = useGlobePerf()
 const { init, destroy, pause, resume } = useGlobeRenderer()
 
-// Parks the globe (render loop, tick, arc spawning) while the hero is scrolled
-// off screen - the post chain is far too expensive to run for nobody. Same
-// pattern as LandingSun's observer.
+// Parks the globe (render loop, tick, arc spawning) while the hero is off screen.
+// The post chain is far too expensive to run for nobody.
 let visibilityObserver: IntersectionObserver | null = null
 
 onMounted(async () => {
@@ -112,12 +111,9 @@ onBeforeUnmount(() => {
   // instead of popping in (--transition-slow is only 0.15s).
   transition: opacity 1400ms ease;
 
-  // The canvas stops dead on the hero's bottom edge, and the bloom pass puts
-  // real light right up against it: arcs flaring off the limb, the phosphor
-  // trail they leave behind. Cut flat, that glow draws a straight line across
-  // the page at the section boundary. Fading the layer out over the last slice
-  // lets it die into the backdrop instead. The stops are eased rather than a
-  // straight ramp, since a linear fade leaves a visible corner where it starts.
+  // The canvas stops dead at the hero's bottom edge while bloom puts real light
+  // against it, which draws a straight line at the section boundary. Fade the layer
+  // out over the last slice, eased because a linear ramp leaves a visible corner.
   --hero-globe-fade: linear-gradient(
     to bottom,
     #000 0%,

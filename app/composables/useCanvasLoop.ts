@@ -1,15 +1,8 @@
 import { onBeforeUnmount } from 'vue'
 
-// The requestAnimationFrame plumbing all three canvas visualizers repeat: hold
-// one rafId, start it idempotently (never stack two loops), cancel on teardown.
-// The per-frame work and the "keep looping?" decision differ per component, so
-// they stay in the component: the frame callback gets the `now` timestamp and
-// returns whether to schedule another frame. We just own the bookkeeping so the
-// loop parks itself the moment the callback says it's done (paused and settled,
-// coast window elapsed, ...).
-//
-// Client-only: start() is a no-op on the server, so callers don't have to guard
-// it. Self-cleaning: cancels any pending frame on unmount.
+// rAF bookkeeping for the canvas visualizers. start() never stacks two loops and
+// is a no-op on the server. The frame callback returns whether to keep going, so
+// the loop parks itself as soon as the component is done.
 export function useCanvasLoop(frame: (now: number) => boolean) {
   let rafId: number | null = null
 
@@ -37,10 +30,8 @@ export function useCanvasLoop(frame: (now: number) => boolean) {
   return { start, stop }
 }
 
-// DPR-aware canvas backing-store resize the three visualizers share. Caps the
-// device pixel ratio at 2 (past that costs fill rate for no visible gain) and
-// only writes width/height when they actually change, since assigning either
-// clears the canvas. Returns the dpr so the caller can setTransform with it.
+// DPR is capped at 2, past that costs fill rate for no visible gain. width and
+// height are only written on change, since assigning either clears the canvas.
 export function resizeCanvasToDisplay(canvas: HTMLCanvasElement, w: number, h: number): number {
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   const cw = Math.round(w * dpr)

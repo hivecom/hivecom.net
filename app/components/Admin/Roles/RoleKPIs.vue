@@ -6,7 +6,6 @@ import KPIContainer from '../KPIContainer.vue'
 
 const refreshSignal = defineModel<number>('refreshSignal')
 
-// Role metrics
 const metrics = ref({
   totalRoles: 0,
   permissionGroups: 0,
@@ -15,14 +14,11 @@ const metrics = ref({
   userUsers: 0,
 })
 
-// Data fetch state
 const loading = ref(true)
 const errorMessage = ref('')
 
-// Get Supabase client
 const supabase = useSupabaseClient()
 
-// Fetch role metrics
 async function fetchRoleMetrics() {
   loading.value = true
   errorMessage.value = ''
@@ -84,12 +80,10 @@ async function fetchRoleMetrics() {
   }
 }
 
-// Watch for refresh signal from parent
 watch(() => refreshSignal.value, () => {
   fetchRoleMetrics()
 })
 
-// Fetch data on component mount
 onBeforeMount(fetchRoleMetrics)
 </script>
 

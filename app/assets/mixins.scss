@@ -13,16 +13,10 @@
   line-clamp: $lines;
 }
 
-// Twinkle shared by the backdrop stars and the landing constellation stars.
-// Reads --star-base-opacity off the element. Included from scoped styles, so
-// each component gets its own hashed copy of the keyframes.
-//
-// Everything here animates opacity only, so the flicker stays off the main
-// thread. The old keyframes animated background and drop-shadow too, which
-// repainted every star every frame for the life of the page - with ~80 stars
-// that was most of the compositing budget on a 120Hz display. The dot itself
-// is white with a static glow; the blue and red glints are pseudo-element
-// layers fading in over it on the same clock.
+// Included from scoped styles, so each component gets its own hashed keyframes.
+// Opacity only, so the flicker stays off the main thread. Animating background
+// and drop-shadow repainted every star each frame, which with ~80 stars ate most
+// of the compositing budget at 120Hz.
 @mixin star-flicker {
   @keyframes star-flicker {
     0%,
@@ -81,13 +75,10 @@
   }
 }
 
-// The layered star itself: white dot plus the two glint overlays. Applied
-// inside a star's selector, alongside its own sizing and positioning. Expects
-// the star-flicker keyframes from the mixin above in the same component.
+// Needs star-flicker included in the same component for the keyframes
 @mixin star-flicker-layers {
-  // box-shadow, not filter: drop-shadow. On a circle they draw the same halo,
-  // but a filter turns every one of these layers into its own render surface,
-  // and ~150 flash pseudos with filters was enough to drop frames on its own.
+  // box-shadow, not filter: drop-shadow. A filter makes every layer its own
+  // render surface, and ~150 filtered pseudos dropped frames on their own.
   background: white;
   box-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
   animation: star-flicker var(--star-animation-duration, 2000ms) infinite linear;

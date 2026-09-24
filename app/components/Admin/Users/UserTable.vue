@@ -44,7 +44,7 @@ interface UserActionInternal {
   banReason?: string
 }
 
-// Emitted action shape - uses full AdminUserProfile
+// Emitted action shape, with the full AdminUserProfile
 interface UserAction {
   user: AdminUserProfile
   type: 'ban' | 'unban' | 'edit' | 'delete' | null
@@ -116,7 +116,6 @@ const {
 // (TableSelectionProvideSymbol). All pagination/sorting is server-driven.
 const { rows, selectedRows, deselectAllRows } = defineTable(users, { pagination: { enabled: false }, select: true })
 
-// Sync external countryFilter into internal state
 watch(externalCountryFilter, (val) => {
   if (val !== countryFilter.value)
     countryFilter.value = val
@@ -302,30 +301,25 @@ function openUserById(userId: string | null | undefined): boolean {
 
 // ─── Watches ──────────────────────────────────────────────────────────────────
 
-// Search: debounced so we don't fire on every keystroke
 watchDebounced(search, () => {
   page.value = 1
   void fetchUsers()
 }, { debounce: 300 })
 
-// Filters: immediate re-fetch on change
 watch([roleFilter, statusFilter, providerFilter, platformFilter, supporterFilter, countryFilter], () => {
   page.value = 1
   void fetchUsers()
 })
 
-// Sort: immediate re-fetch on change
 watch([sortCol, sortDir], () => {
   page.value = 1
   void fetchUsers()
 })
 
-// Page: re-fetch when page changes (driven by setPage calls)
 watch(page, () => {
   void fetchUsers()
 })
 
-// When per-page changes, reset to page 1 and re-fetch
 watch(adminTablePerPage, () => {
   if (page.value !== 1) {
     setPage(1)
@@ -337,7 +331,6 @@ watch(adminTablePerPage, () => {
   }
 })
 
-// Action: forward to parent, set loading, refresh after delay
 watch(() => userAction.value, (action) => {
   if (action == null || action.type == null)
     return
@@ -368,14 +361,12 @@ watch(() => userAction.value, (action) => {
   }, 1500)
 })
 
-// Refresh signal from parent
 watch(() => refreshSignal.value, (newValue, oldValue) => {
   if (newValue !== oldValue && newValue > 0) {
     void fetchUsers()
   }
 }, { immediate: false })
 
-// Focus a user by id once data loads
 watch(
   () => props.focusUserId,
   (focusUserId) => {
@@ -397,12 +388,11 @@ defineExpose({ refresh: fetchUsers })
 
 <template>
   <Flex column expand>
-    <!-- Error state -->
     <Alert v-if="errorMessage" variant="danger">
       {{ errorMessage }}
     </Alert>
 
-    <!-- Loading state - skeleton only on initial load to avoid destroying DOM (and focus) on refetches -->
+    <!-- Skeleton only on initial load, so refetches don't destroy the DOM (and focus) -->
     <Flex v-else-if="initialLoad" gap="s" column expand>
       <UserFilters
         v-model:search="search"
@@ -429,7 +419,6 @@ defineExpose({ refresh: fetchUsers })
     </Flex>
 
     <Flex v-else gap="s" column expand>
-      <!-- Filters + count row -->
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <UserFilters
           v-model:search="search"
@@ -469,7 +458,6 @@ defineExpose({ refresh: fetchUsers })
             <template #header>
               <th v-if="canModifyUsers || canDeleteUsers" class="vui-table-interactive-cell" />
 
-              <!-- Username -->
               <Table.Head class="sortable-head" @click="handleSort('username')">
                 <Flex gap="xs" y-center>
                   Username
@@ -485,15 +473,12 @@ defineExpose({ refresh: fetchUsers })
                 </Flex>
               </Table.Head>
 
-              <!-- Email - only when permitted -->
               <Table.Head v-if="props.canViewUserEmails">
                 Email
               </Table.Head>
 
-              <!-- UUID - not sortable -->
               <Table.Head>UUID</Table.Head>
 
-              <!-- Role -->
               <Table.Head class="sortable-head" @click="handleSort('role')">
                 <Flex gap="xs" y-center>
                   Role
@@ -501,7 +486,6 @@ defineExpose({ refresh: fetchUsers })
                 </Flex>
               </Table.Head>
 
-              <!-- Status -->
               <Table.Head class="sortable-head" @click="handleSort('status')">
                 <Flex gap="xs" y-center>
                   Status
@@ -509,10 +493,8 @@ defineExpose({ refresh: fetchUsers })
                 </Flex>
               </Table.Head>
 
-              <!-- Providers - not sortable -->
               <Table.Head>Providers</Table.Head>
 
-              <!-- Last Seen -->
               <Table.Head class="sortable-head" @click="handleSort('last_seen')">
                 <Flex gap="xs" y-center>
                   Last Seen
@@ -520,7 +502,6 @@ defineExpose({ refresh: fetchUsers })
                 </Flex>
               </Table.Head>
 
-              <!-- Platforms -->
               <Table.Head class="sortable-head" @click="handleSort('platforms')">
                 <Flex gap="xs" y-center>
                   Platforms
@@ -528,7 +509,6 @@ defineExpose({ refresh: fetchUsers })
                 </Flex>
               </Table.Head>
 
-              <!-- Supporter -->
               <Table.Head class="sortable-head" @click="handleSort('supporter')">
                 <Flex gap="xs" y-center>
                   Supporter
@@ -536,7 +516,6 @@ defineExpose({ refresh: fetchUsers })
                 </Flex>
               </Table.Head>
 
-              <!-- Joined -->
               <Table.Head class="sortable-head" @click="handleSort('created_at')">
                 <Flex gap="xs" y-center>
                   Joined
@@ -544,7 +523,6 @@ defineExpose({ refresh: fetchUsers })
                 </Flex>
               </Table.Head>
 
-              <!-- Actions - not sortable -->
               <Table.Head>Actions</Table.Head>
             </template>
 
@@ -552,7 +530,6 @@ defineExpose({ refresh: fetchUsers })
               <tr v-for="user in rows" :key="user.id" class="clickable-row">
                 <Table.SelectRow v-if="canModifyUsers || canDeleteUsers" :row="user" />
 
-                <!-- Username -->
                 <Table.Cell class="username-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
                   <Flex expand y-center gap="xs">
                     <UserAvatar :user-id="user.id" :size="20" show-preview />
@@ -581,7 +558,6 @@ defineExpose({ refresh: fetchUsers })
                   </Tooltip>
                 </Table.Cell>
 
-                <!-- Email -->
                 <Table.Cell v-if="props.canViewUserEmails" class="email-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
                   <template v-if="user.email != null && user.email !== ''">
                     <CopyValue :text="user.email" />
@@ -589,22 +565,18 @@ defineExpose({ refresh: fetchUsers })
                   <span v-else class="text-color-light text-xxs">No email on file</span>
                 </Table.Cell>
 
-                <!-- UUID -->
                 <Table.Cell class="uuid-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
                   <CopyValue :text="user.id" />
                 </Table.Cell>
 
-                <!-- Role -->
                 <Table.Cell class="role-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
                   <RoleIndicator :role="user.role" size="m" />
                 </Table.Cell>
 
-                <!-- Status -->
                 <Table.Cell class="status-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
                   <UserStatusIndicator :status="user.is_banned ? 'banned' : 'active'" :show-label="true" />
                 </Table.Cell>
 
-                <!-- Providers -->
                 <Table.Cell class="providers-cell" @click="handleUserClick(user as unknown as AdminUserRecord)" @click.stop>
                   <Flex gap="xs" y-center :wrap="false">
                     <template
@@ -629,12 +601,10 @@ defineExpose({ refresh: fetchUsers })
                   </Flex>
                 </Table.Cell>
 
-                <!-- Last Seen -->
                 <Table.Cell class="last-seen-cell" @click="handleUserClick(user as unknown as AdminUserRecord)">
                   <ElapsedTimeIndicator :date="user.last_seen" />
                 </Table.Cell>
 
-                <!-- Platform connections -->
                 <Table.Cell class="platform-connections-cell" @click.stop>
                   <Flex gap="xs" y-center>
                     <Tooltip v-if="user.steam_id != null && user.steam_id !== ''" placement="top">
@@ -707,7 +677,6 @@ defineExpose({ refresh: fetchUsers })
                   </Flex>
                 </Table.Cell>
 
-                <!-- Supporter -->
                 <Table.Cell class="supporter-cell">
                   <span
                     :class="{ 'text-color-lightest text-s': !user.is_supporter,
@@ -717,12 +686,10 @@ defineExpose({ refresh: fetchUsers })
                   </span>
                 </Table.Cell>
 
-                <!-- Joined -->
                 <Table.Cell class="joined-cell">
                   <ElapsedTimeIndicator :date="user.created_at" :active-label="null" />
                 </Table.Cell>
 
-                <!-- Actions -->
                 <Table.Cell class="actions-cell" @click.stop>
                   <UserActions
                     v-model="(userAction as UserActionInternal | null)"

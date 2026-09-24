@@ -29,8 +29,7 @@ export interface NotificationRow {
   modified_by: string | null
 }
 
-// Singleton state - shared across all callers so the sheet and bell button
-// stay in sync without double-fetching.
+// Singleton state, so the sheet and bell button stay in sync without double-fetching.
 const loading = ref(false)
 const error = ref<string | null>(null)
 const unreadNotifications = ref<NotificationRow[]>([])
@@ -39,7 +38,7 @@ const profileMeta = ref<{ birthday: string | null, username: string } | null>(nu
 const inviteActionLoading = ref<Record<string, boolean>>({})
 const pendingComplaintCount = ref(0)
 
-// Realtime - single channels shared across all composable instances.
+// Realtime channels are shared across all composable instances.
 let notificationChannel: RealtimeChannel | null = null
 let friendChannel: RealtimeChannel | null = null
 
@@ -54,13 +53,11 @@ let desiredUserId: string | null = null
 // attach starts.
 let realtimeQueue: Promise<void> = Promise.resolve()
 
-// Consumers share the channels, so realtime only tears down when the last one
-// disposes. Without the count, the bell unmounting would drop the subscription
-// for the sheet and the dashboard widgets too.
+// Consumers share the channels, so realtime only tears down when the last one disposes.
 let consumerCount = 0
 
 // Ids of notifications we've already surfaced, so background-poll catch-ups
-// only fire an OS notification for genuinely-new rows. `null` until the first
+// only fire an OS notification for genuinely new rows. `null` until the first
 // fetch establishes a baseline (so pre-existing unread on load never notifies).
 let knownNotificationIds: Set<string> | null = null
 
@@ -127,11 +124,9 @@ export function useDataNotifications() {
     )
   }
 
-  // Fires an OS notification for a backgrounded notification, mirroring the chat
-  // browser-notification pattern. Only when enabled, permitted, and the tab is
-  // actually hidden - foreground activity already surfaces a toast. Because we
-  // intentionally drop the socket while hidden, this is driven by the background
-  // poll, so delivery can lag by up to one poll interval.
+  // Only fires while the tab is hidden, since foreground activity already gets a
+  // toast. The socket is dropped while hidden, so this runs off the background
+  // poll and can lag by up to one poll interval.
   function notifyOS(notification: NotificationRow) {
     if (!settings.value.app_browser_notifications)
       return
@@ -197,9 +192,8 @@ export function useDataNotifications() {
       .map(entry => entry.friender)
   })
 
-  // Mutual friends: both sides have a row pointing at each other. Derived from
-  // the friendship rows already fetched here so consumers (e.g. friend
-  // presence on the home dashboard) don't need a second profile_friends query.
+  // Mutual friends have a row pointing each way. Derived here so consumers don't
+  // need a second profile_friends query.
   const mutualFriendIds = computed(() => {
     if (userId.value == null)
       return []
@@ -299,9 +293,9 @@ export function useDataNotifications() {
         : (notificationsResponse.data ?? [])
       unreadNotifications.value = fetchedNotifications
 
-      // Establish a baseline on the first fetch (never notify for pre-existing
-      // unread). On later fetches - notably the background poll while hidden -
-      // fire an OS notification for any id we haven't surfaced yet.
+      // The first fetch only sets a baseline, so pre-existing unread never
+      // notifies. Later fetches, notably the hidden-tab poll, notify for any id
+      // not surfaced yet.
       if (knownNotificationIds == null) {
         knownNotificationIds = new Set(fetchedNotifications.map(n => n.id))
       }
@@ -532,7 +526,6 @@ export function useDataNotifications() {
     return enqueueRealtime(detachChannels)
   }
 
-  // Wire realtime to userId lifecycle - subscribe when logged in, tear down on logout.
   watch(
     userId,
     (uid) => {
@@ -553,9 +546,8 @@ export function useDataNotifications() {
     { immediate: true },
   )
 
-  // Pause channels when tab is hidden; background-poll instead.
-  // Runs once across all composable instances, in a detached scope so it
-  // outlives whichever component happened to instantiate first.
+  // Pause channels while the tab is hidden and poll instead. Runs once, in a
+  // detached scope so it outlives whichever component instantiated it first.
   if (import.meta.client && !visibilityInitialized) {
     visibilityInitialized = true
     const { isHidden } = usePageVisibility()
@@ -616,7 +608,6 @@ export function useDataNotifications() {
   }
 
   return {
-    // State
     loading: readonly(loading),
     error: readonly(error),
     unreadNotifications: readonly(unreadNotifications),
@@ -627,17 +618,14 @@ export function useDataNotifications() {
     pendingComplaintCount: readonly(pendingComplaintCount),
     inviteActionLoading: readonly(inviteActionLoading),
 
-    // Categorised unread
     discussionNotifications,
     mentionNotifications,
     replyNotifications,
     genericNotifications,
 
-    // Badge
     unreadCount,
     badgeText,
 
-    // Actions
     fetch,
     reset,
     markRead,

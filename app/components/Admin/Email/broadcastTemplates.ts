@@ -1,10 +1,7 @@
 /**
- * Starting points for the broadcast composer. Picking one fills the subject and
- * the editor, then the admin edits from there. Anything in square brackets is a
- * placeholder that has to be replaced before sending.
- *
- * The subject is rendered as the heading at the top of the email, so the bodies
- * here start at the second level and never repeat the subject.
+ * Starting points for the broadcast composer. Square-bracketed text is a
+ * placeholder that has to be replaced before sending. The subject renders as
+ * the email's top heading, so bodies start at the second level and never repeat it.
  */
 export interface BroadcastTemplate {
   id: string

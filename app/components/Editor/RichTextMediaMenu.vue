@@ -36,8 +36,7 @@ const saving = ref(false)
 const cropModalOpen = ref(false)
 const cropBlobSrc = ref('')
 
-// Snapshot of node info captured when the modal is opened, so changes to the
-// selection mid-edit don't corrupt the operation.
+// Captured on open so a selection change mid-edit can't redirect the operation
 const capturedNodeType = ref<MediaNodeType | null>(null)
 const capturedSrc = ref<string | null>(null)
 
@@ -62,9 +61,6 @@ function shouldShow({ state, view }: ShouldShowMenuProps): boolean {
   const name = node?.type?.name
   const src = node?.attrs?.src ?? ''
 
-  // Show for blob images (crop available) and all uploaded media
-  // Hide for blob videos (no crop, no useful actions while pending)
-  // Hide for errored/missing images
   if (name === 'image') {
     const domNode = view.nodeDOM((selection as { from: number }).from) as HTMLElement | null
     if (domNode?.querySelector('img.img-error'))
@@ -73,8 +69,7 @@ function shouldShow({ state, view }: ShouldShowMenuProps): boolean {
     return true
   }
 
-  // Video and audio: show once uploaded (no crop, no useful actions while
-  // the placeholder blob is still pending).
+  // Pending video and audio blobs have no useful actions yet
   if (name === 'video' || name === 'audio')
     return !src.startsWith('blob:')
 
@@ -87,8 +82,7 @@ const isBlobImage = computed(() => {
   return node?.type?.name === 'image' && (node?.attrs?.src ?? '').startsWith('blob:')
 })
 
-// The tag/label modal only edits alt (image) or label (video). Audio nodes
-// store just a src, so the tag button is hidden for them.
+// Audio nodes store only a src, so there's nothing to tag
 const canTagSelected = computed(() => {
   const { selection } = props.editor.state
   const name = (selection as { node?: { type?: { name?: string } } }).node?.type?.name
@@ -96,7 +90,7 @@ const canTagSelected = computed(() => {
 })
 
 // ---------------------------------------------------------------------------
-// Virtual anchor - positions the bubble trigger just below the selected node
+// Virtual anchor that puts the bubble trigger just below the selected node
 // ------------------------------------------------------------------------
 function getReferencedVirtualElement() {
   const { state, view } = props.editor
@@ -135,7 +129,6 @@ function openModal() {
 
   const src = (selection.node.attrs as { src?: string }).src ?? null
 
-  // Read current alt/label into the field
   const current = (selection.node.attrs as { alt?: string }).alt ?? ''
 
   capturedNodeType.value = nodeType
@@ -203,7 +196,7 @@ function handleCropCancel() {
 }
 
 function removeMedia() {
-  // Storage cleanup handled by onTransaction in RichTextEditor
+  // RichTextEditor's onTransaction handles storage cleanup
   props.editor.chain().deleteSelection().focus().run()
   modalOpen.value = false
 }
@@ -228,7 +221,7 @@ async function updateMedia() {
   const storagePath = src.startsWith('blob:') ? null : getStoragePath(src)
 
   if (!props.bucketId || !storagePath) {
-    // No bucket - just update alt attribute best-effort
+    // No bucket or storage path, so only the alt text can change
     if (nodeType === 'image') {
       props.editor.chain().updateAttributes('image', { alt: trimmedSlug }).focus().run()
     }
@@ -291,7 +284,6 @@ async function updateMedia() {
 </script>
 
 <template>
-  <!-- Bubble trigger: small unobtrusive button shown when image/video selected -->
   <BubbleMenu
     :editor="editor"
     :options="{
@@ -316,7 +308,6 @@ async function updateMedia() {
     </Flex>
   </BubbleMenu>
 
-  <!-- Modal: opened via the trigger button above -->
   <Modal
     :open="modalOpen"
     centered

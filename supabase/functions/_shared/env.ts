@@ -1,8 +1,5 @@
-/**
- * Resolves an API key from the new-style plural env var (a JSON object keyed
- * by key name, e.g. SUPABASE_SECRET_KEYS='{"default":"sb_secret_..."}'),
- * falling back through the given legacy var names.
- */
+// The plural var is a JSON object keyed by name, e.g.
+// SUPABASE_SECRET_KEYS='{"default":"sb_secret_..."}'
 function readNamedKey(
   pluralVar: string,
   fallbackVars: string[],
@@ -13,7 +10,7 @@ function readNamedKey(
       const parsed = JSON.parse(plural);
       if (typeof parsed?.default === "string") return parsed.default;
     } catch {
-      // Not JSON - fall through to the legacy vars
+      // Not JSON, fall through to the legacy vars
     }
   }
 
@@ -23,12 +20,8 @@ function readNamedKey(
   }
 }
 
-/**
- * Publishable (client-privilege) API key for user-context clients. Prefers
- * SUPABASE_PUBLISHABLE_KEYS; falls back to SUPABASE_ANON_KEY, which the
- * platform populates with the publishable key now that legacy keys are
- * disabled, and which local dev still injects as a JWT.
- */
+// Client privilege. With legacy keys disabled the platform puts the publishable
+// key in SUPABASE_ANON_KEY, while local dev still injects a JWT there.
 export function getPublishableKey(): string {
   return readNamedKey("SUPABASE_PUBLISHABLE_KEYS", [
     "SUPABASE_PUBLISHABLE_KEY",
@@ -36,11 +29,7 @@ export function getPublishableKey(): string {
   ]) ?? "";
 }
 
-/**
- * Secret (service-privilege) API key for admin clients. Prefers
- * SUPABASE_SECRET_KEYS; falls back to SUPABASE_SERVICE_ROLE_KEY, same
- * platform behavior as above.
- */
+// Service privilege, for admin clients only
 export function getSecretKey(): string {
   return readNamedKey("SUPABASE_SECRET_KEYS", [
     "SUPABASE_SECRET_KEY",

@@ -58,7 +58,7 @@ export interface LinkPreviewEvent {
   location: string | null
   recurrenceRule: string | null
 
-  /** True when the event could not be fetched because the user is not authenticated. */
+  /** Set when the event couldn't be fetched because the user isn't signed in. */
   requiresAuth?: boolean
 }
 
@@ -124,10 +124,7 @@ export interface ParsedVoteUrl {
 
 export type ParsedInternalUrl = ParsedForumUrl | ParsedProfileUrl | ParsedGameserverUrl | ParsedEventUrl | ParsedVoteUrl
 
-/**
- * Returns structured info if the URL is a recognised internal hivecom path,
- * or null if it is external / unrecognised.
- */
+// null for external or unrecognised URLs.
 export function parseInternalUrl(raw: string): ParsedInternalUrl | null {
   let pathname: string
   let search: string
@@ -197,12 +194,7 @@ export function parseInternalUrl(raw: string): ParsedInternalUrl | null {
 // ---------------------------------------------------------------------------
 // Composable
 // ------------------------------------------------------------------------
-/**
- * Fetches a rich preview for a single internal hivecom URL.
- *
- * Usage:
- *   const { data, loading, error } = useDataLinkPreview(url)
- */
+// Rich preview for a single internal hivecom URL.
 export function useDataLinkPreview(url: string) {
   const supabase = useSupabaseClient<Database>()
   const data = ref<LinkPreviewData | null>(null)
@@ -308,7 +300,6 @@ export function useDataLinkPreview(url: string) {
       connect = buildConnectContext(gameRow, row)
     }
 
-    // Derive container state the same way the gameserver detail page does
     interface ContainerJoin {
       running: boolean
       healthy: boolean | null
@@ -363,9 +354,8 @@ export function useDataLinkPreview(url: string) {
     if (!row) {
       const user = useSupabaseUser()
 
-      // Unauthenticated users may be blocked by RLS (e.g. recurring events require
-      // sign-in). Return an auth-gated stub so the embed renders a sign-in nudge
-      // instead of a bare URL fallback.
+      // RLS can hide events from signed-out users (recurring events need sign-in).
+      // The stub makes the embed show a sign-in nudge instead of a bare URL.
       if (!user.value) {
         data.value = {
           type: 'event',
@@ -399,8 +389,8 @@ export function useDataLinkPreview(url: string) {
   async function fetchVote(id: number, href: string) {
     const user = useSupabaseUser()
 
-    // Unauthenticated users cannot interact with votes - skip the fetch and
-    // return a minimal stub so the embed can render a sign-in prompt instead.
+    // Signed-out users can't interact with votes. Skip the fetch and return a
+    // stub so the embed renders a sign-in prompt.
     if (!user.value) {
       data.value = {
         type: 'vote',
@@ -470,9 +460,9 @@ export function useDataLinkPreview(url: string) {
     if (fetchError)
       throw new Error(fetchError.message)
 
-    // Private profiles are invisible to anon via RLS (row is null) and also
-    // explicitly marked public=false for authenticated users. In both cases
-    // we still want to render a profile embed - just without real data.
+    // Private profiles are hidden from anon by RLS (null row) and come back with
+    // public=false for signed-in users. Either way the embed still renders,
+    // without the real data.
     if (!row || !row.public) {
       const fallbackUserId = row?.id ?? parsed.userId ?? ''
       data.value = {

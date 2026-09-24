@@ -24,7 +24,6 @@ withDefaults(defineProps<Props>(), {
       Featured Games
     </div>
     <Flex gap="xs" wrap class="event-games__list">
-      <!-- Game icons -->
       <GameDetailsModalTrigger
         v-for="game in games"
         :key="game.id"

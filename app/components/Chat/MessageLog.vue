@@ -56,10 +56,6 @@ function ircAvatarUrl(nickLower: string | null | undefined): string | undefined 
 }
 const { settings } = useDataUserSettings()
 
-// Unknown TAGMSG events are kept in the buffer but only rendered when the user
-// opts in. Filtering here (not at ingestion) makes the toggle instant and also
-// retroactively hides messages already in scrollback.
-
 /** Max nicks spelled out individually before "and N others" in join/part summaries. */
 const JOINPART_MAX_NAMES = 3
 
@@ -73,9 +69,8 @@ function fmtNickList(nicks: string[], verb: string): string {
 }
 
 /**
- * Collapse consecutive runs of 2+ backlog join/part messages into a single
- * summary line per type (joins and parts are summarised separately so colours
- * and styling are preserved). Single events and live activity are left intact.
+ * Collapse runs of 2+ backlog join/part messages into one summary line per type.
+ * Single events and live activity are left intact.
  */
 function collapseBacklogJoinParts(msgs: ChatMessage[]): ChatMessage[] {
   const out: ChatMessage[] = []
@@ -102,7 +97,7 @@ function collapseBacklogJoinParts(msgs: ChatMessage[]): ChatMessage[] {
     }
     const anchor = msgs[runStart]!
     if (i - runStart === 1) {
-      // Single message - nothing to collapse.
+      // Single message: nothing to collapse.
       out.push(anchor)
     }
     else {
@@ -118,10 +113,9 @@ function collapseBacklogJoinParts(msgs: ChatMessage[]): ChatMessage[] {
   return out
 }
 
-// Incremental render: on channel switch expose the last RENDER_CHUNK messages
-// immediately, then add another chunk each animation frame until all messages
-// are visible. Each frame gives the browser a repaint opportunity, keeping the
-// UI responsive while the full history builds up behind the viewport.
+// Incremental render: on channel switch show the last RENDER_CHUNK messages, then
+// add a chunk per animation frame so the UI stays responsive while the rest
+// builds up behind the viewport.
 const RENDER_CHUNK = 25
 const phaseLimit = ref<number | null>(null)
 let _phaseRaf: number | null = null
@@ -151,6 +145,8 @@ watch(() => activeBuffer.value?.name, () => {
 })
 
 const messages = computed((): ChatMessage[] => {
+  // Unknown TAGMSGs are filtered here, not at ingestion, so the toggle is instant
+  // and applies to scrollback too.
   const raw = settings.value.chat_show_tag_messages
     ? allMessages.value
     : allMessages.value.filter(m => m.type !== 'tagmsg')
@@ -203,9 +199,8 @@ const MENTION_RE = /@([a-z\d][\w-]{0,31})/gi
 
 const isModernMode = computed(() => (isMobile.value || settings.value.chat_display_mode === 'modern') && activeBuffer.value?.kind !== 'server')
 const showTimestamps = computed(() => {
-  // The "hide sidebar timestamps" preference only applies to the classic IRC
-  // compact layout. Mobile (and modern mode) render the group-header timestamp
-  // instead, so the IRC-specific hide must not suppress it there.
+  // The "hide sidebar timestamps" preference only applies to the classic compact
+  // layout. Mobile and modern mode show the group-header timestamp instead.
   if (!isModernMode.value && props.compact && settings.value.chat_display_mode === 'irc' && settings.value.chat_irc_hide_sidebar_timestamps)
     return false
 
@@ -214,9 +209,8 @@ const showTimestamps = computed(() => {
 const isServerBuffer = computed(() => activeBuffer.value?.kind === 'server')
 const isServiceQuery = computed(() => activeBuffer.value?.kind === 'pm' && SERVICE_NICKS.has((activeBuffer.value?.name ?? '').toLowerCase()))
 
-// Show the initial-load spinner only when there's genuinely nothing to show yet.
-// If the buffer was seeded from cache it already has messages, so skip the spinner
-// and let history settle silently in the background.
+// Only show the initial-load spinner when there's nothing to show. A buffer
+// seeded from cache lets history settle silently.
 const isLoadingInitialHistory = computed(() =>
   chatHistorySupported.value
   && !!activeBuffer.value
@@ -364,7 +358,7 @@ function isMention(msg: ChatMessage) {
   return msg.type === 'chat' && msg.from != null && msg.from !== nick.value && mentionsSelf(msg.text)
 }
 
-// Read line - marks the boundary between already-seen and new messages.
+// Read line: the boundary between seen and new messages.
 const readLineFirstMsgId = computed<number | null>(() => {
   const readLineTs = activeBuffer.value?.readLineTs
   if (!readLineTs)
@@ -385,7 +379,7 @@ const readLineFirstGroupId = computed<number | null>(() => {
   return null
 })
 
-// Clicking the divider catches the buffer up - clears the line and the count.
+// Clicking the divider catches the buffer up, clearing the line and the count.
 function markRead() {
   const name = activeBuffer.value?.name
   if (name)
@@ -412,10 +406,7 @@ function displayNick(from: string | null | undefined): string {
   return from
 }
 
-/**
- * If the nick contains the relaymsg separator, returns { user, bridge }.
- * Otherwise returns null (not a relayed nick).
- */
+/** Split a relayed nick on the relaymsg separator into { user, bridge }, or null. */
 
 function relayNickParts(from: string | null | undefined): { user: string, bridge: string } | null {
   if (!from || !relaySeparator.value)
@@ -489,9 +480,9 @@ function segments(text: string): Segment[] {
 
   specialRanges.sort((a, b) => a.start - b.start)
 
-  // Step 4: Re-emit segments, fusing IRC-formatting-split references into
-  // single typed segments (a server may bold/color only part of a name,
-  // splitting it across multiple segments - we detect on the assembled plain text)
+  // Step 4: Re-emit segments, fusing references that IRC formatting split apart.
+  // A server may bold/color only part of a name, so detection runs on the
+  // assembled plain text.
   const out: Segment[] = []
   let plainPos = 0
 
@@ -583,11 +574,9 @@ function groupRenderItems(msgs: readonly ChatMessage[]): RenderItem[] {
   }
 
   for (const msg of msgs) {
-    // Only true image-only messages feed the gallery grouping. Anything with
-    // text renders as its own line carrying its text, image embeds and the
-    // hover react bar together - splitting text and image apart is what used
-    // to drop the image into a bar-less gallery, leaving it unhoverable (no
-    // reactions, no reply).
+    // Only image-only messages feed the gallery. A message with text renders as
+    // one line with its text, embeds and hover react bar, so the image stays
+    // hoverable for reactions and replies.
     if (isImageOnlyMessage(msg.text)) {
       msgRun.push(msg)
     }
@@ -619,10 +608,8 @@ function videoUrls(text: string): string[] {
   return urlsIn(text).filter(u => VIDEO_RE.test(u))
 }
 
-// Audio is a media preview like images/video, so it's gated on the same
-// chat_show_previews toggle. Unlike those it has no inline thumbnail form, so it
-// always renders as a block player below the message regardless of the
-// inline-images layout preference.
+// Audio is a media preview, so it's gated on chat_show_previews. It has no
+// inline form, so it always renders as a block player below the message.
 function audioUrls(text: string): string[] {
   if (!settings.value.chat_show_previews)
     return []
@@ -647,13 +634,11 @@ function onImageError(url: string) {
   brokenImages.add(url)
 }
 
-// Natural dimensions of embedded images, captured on first load and keyed by
-// URL. Lets us reserve the exact box for an image before it paints - so a
-// message arriving in the buffer (or scrolling back into view) holds its space
-// instead of growing the row from zero height and shoving the layout around.
+// Natural image dimensions keyed by URL, captured on first load, so a row can
+// reserve the exact box before the image paints instead of shoving the layout.
 const imageDims = reactive(new Map<string, { w: number, h: number }>())
 
-// URLs whose image has painted - drives swapping the Skeleton out for the image.
+// URLs whose image has painted, which swaps the Skeleton out for the image.
 const loadedImages = reactive(new Set<string>())
 function onImageLoad(event: Event, url: string) {
   const img = event.target as HTMLImageElement
@@ -662,10 +647,8 @@ function onImageLoad(event: Event, url: string) {
   loadedImages.add(url)
 }
 
-// Reserved box for a block embed, clamped to the same max as the CSS. Known
-// natural size reserves the exact final box (no shift on load, and no shift at
-// all when scrolling back to an already-seen image); unknown falls back to the
-// full max box so first paint still has space held.
+// Reserved box for a block embed, clamped to the CSS max. A known natural size
+// reserves the exact final box. Unknown falls back to the full max box.
 function embedBox(url: string, maxW: number, maxH: number): Record<string, string> {
   const d = imageDims.get(url)
   if (!d)
@@ -818,9 +801,8 @@ function linkAt(target: EventTarget | null): string | null {
 }
 
 // The full reaction picker lives outside the ContextMenu. Mounted inside it, a
-// click on an emoji lands outside the menu's popout, which closes the menu and
-// unmounts the picker before its select fires. The picker outlives the menu, so
-// pin the message it was opened for.
+// click on an emoji closes the menu and unmounts the picker before its select
+// fires. So the picker outlives the menu and pins the message it was opened for.
 const { emojiOpen: reactionPickerOpen, emojiPos: reactionPickerPos, recordEmojiAnchor, openEmojiPicker } = useTextContextMenu()
 const reactionPickerAnchor = useTemplateRef('reaction-picker-anchor')
 const reactionTarget = ref<ChatMessage | null>(null)
@@ -977,7 +959,7 @@ let _longPressTimer: ReturnType<typeof setTimeout> | null = null
 let _touchStartX = 0
 let _touchStartY = 0
 const LONG_PRESS_MS = 500
-const LONG_PRESS_SLOP = 8 // px - cancel if finger drifts (user is scrolling)
+const LONG_PRESS_SLOP = 8 // px of drift before it counts as a scroll
 
 function onTouchStart(event: TouchEvent) {
   const touch = event.touches[0]
@@ -1028,38 +1010,26 @@ function onTouchMove(event: TouchEvent) {
 
 const SCROLL_BOTTOM_THRESHOLD = 80
 
-// How far ahead, in multiples of the viewport height, to start pulling the next
-// page. Proportional to the viewport rather than a fixed pixel lead so a taller
-// window or larger font (fewer, taller messages per screen) still gets the same
-// number of screenfuls of runway. These define two separated trigger zones with
-// a dead zone between them: older history loads only within BACKWARD screens of
-// the top, newer only within FORWARD screens of the bottom. The window cap is
-// large enough that the zones don't overlap, so the two loaders never fire
-// together and fight (prepend-and-trim vs append-and-trim) - the oscillation
-// that empties the log. Each load also moves the viewport back toward the dead
-// zone (a prepend restores downward, an append slides the front up), so it
-// settles after one page instead of bouncing between the edges.
+// Load-ahead leads in viewport heights, so a taller window or larger font gets
+// the same runway. Older history loads within BACKWARD screens of the top, newer
+// within FORWARD screens of the bottom, with a dead zone between. If both loaders
+// fire together they fight (prepend-and-trim vs append-and-trim) and empty the
+// log. Each load moves the viewport back toward the dead zone, so it settles.
 const FORWARD_LOAD_AHEAD_SCREENS = 2
 const BACKWARD_LOAD_AHEAD_SCREENS = 1
 const isAtBottom = ref(true)
 
-// Native scroll anchoring (overflow-anchor) keeps the viewport steady as
-// images/embeds load in. But it's suppressed when the scroll offset is 0,
-// which is exactly where we are when older history loads. So we also restore
-// the position explicitly after a scroll-triggered prepend, anchored to the
-// first visible message element rather than scroll arithmetic. This is immune
-// to any UI chrome (spinner, history-start) appearing or disappearing at the
-// top, which would throw off distance-from-bottom calculations.
+// overflow-anchor is suppressed at scroll offset 0, which is exactly where we
+// are when older history loads. So after a scroll-triggered prepend we restore
+// the position anchored to the first visible message, which is immune to chrome
+// (spinner, history-start) appearing at the top.
 let anchorMsgEl: HTMLElement | null = null
 let anchorMsgVisualTop = 0
 let pendingPrependRestore = false
 
-// After an older-history prepend, keep the anchored line fixed (via the content
-// ResizeObserver) until the user scrolls away. A single restore isn't enough for
-// server-fetched pages: their images / link previews / videos load async and
-// resize above the fold after paint, shoving the viewport down - that's the
-// post-batch "jump". Re-pinning on every height change absorbs it. Cached pages
-// settle instantly so they never needed this, which is why they felt smooth.
+// After an older-history prepend, hold the anchored line fixed (via the content
+// ResizeObserver) until the user scrolls away. Server-fetched pages load media
+// async and resize above the fold after paint, which would shove the viewport.
 let pinTopUntilUserScroll = false
 
 // scrollTop we last set ourselves (restore / re-pin). Lets updateScrollState
@@ -1067,10 +1037,9 @@ let pinTopUntilUserScroll = false
 // the pin. -1 means "no programmatic scroll pending".
 let lastProgrammaticScrollTop = -1
 
-// Set whenever a buffer switch, visibility change, or activation wants to
-// land at the bottom. Cleared only when the user intentionally scrolls up
-// (scrollTop decreases). overflow-anchor bumps scrollTop UP, so they don't
-// clear this flag, letting late-loading media still re-pin to the bottom.
+// Set when a buffer switch, visibility change, or activation wants the bottom.
+// Cleared only when scrollTop decreases (the user scrolling up). overflow-anchor
+// only increases it, so late-loading media can still re-pin to the bottom.
 let wantBottom = false
 let lastScrollTop = 0
 
@@ -1094,10 +1063,8 @@ function updateScrollState() {
     wantBottom = false
   isAtBottom.value = nowAtBottom
 
-  // Older history only near the top, newer only near the bottom, nothing in the
-  // dead zone between. The else makes them mutually exclusive at the boundary;
-  // maybeForwardLoad self-gates on the same near-top cutoff, so callers from the
-  // drain watch stay consistent.
+  // Older history only near the top, newer only near the bottom. The else makes
+  // them mutually exclusive at the boundary.
   if (scrollTop <= clientHeight * BACKWARD_LOAD_AHEAD_SCREENS)
     triggerHistoryLoad()
   else
@@ -1145,12 +1112,9 @@ function triggerHistoryLoad() {
   fetchOlderHistory(activeBuffer.value.name)
 }
 
-// Pull the next page of newer messages from cache while the bottom of a
-// tail-trimmed window is within the forward lead. Mirrors triggerHistoryLoad for
-// the forward direction, but unlike the older-history path there's nothing to
-// restore: overflow-anchor compensates the front-trim, so the viewport stays put
-// while the window slides forward. Guards: not-trimmed / in-flight / still near
-// the top (older history's zone) / not-yet-near-the-bottom.
+// Pull the next page of newer cached messages while the bottom of a tail-trimmed
+// window is within the forward lead. Nothing to restore: overflow-anchor
+// compensates the front-trim, so the viewport stays put.
 function maybeForwardLoad() {
   const buf = activeBuffer.value
   const el = logEl.value
@@ -1159,8 +1123,8 @@ function maybeForwardLoad() {
 
   const { scrollTop, scrollHeight, clientHeight } = el
 
-  // Never load newer while still in the top zone - that's older history's job,
-  // and letting both run is the oscillation.
+  // Never load newer while in the top zone. That's older history's job, and
+  // letting both run is the oscillation.
   if (scrollTop <= clientHeight * BACKWARD_LOAD_AHEAD_SCREENS)
     return
 
@@ -1169,9 +1133,9 @@ function maybeForwardLoad() {
 }
 
 // Keep draining newer pages until the buffer below the fold reaches the lead.
-// A single page only slides the window 25 lines, which a fast scroll blows
-// straight through; re-checking after each page lands builds a runway below the
-// viewport so scrolling forward feels instant instead of hitting the edge.
+// A single page is too short for a fast scroll. Re-checking after each page
+// lands builds a runway below the viewport so scrolling forward doesn't hit
+// the edge.
 // Self-terminating: each page pushes the bottom further past the lead, and
 // reaching the live edge clears tailTrimmed.
 watch(
@@ -1194,9 +1158,8 @@ watch(
     pinTopUntilUserScroll = false
     const el = logEl.value
 
-    // Buffer switches (and visibility/activate restores) set wantBottom. In that
-    // case skip anchor-restore and go straight to the bottom - anchor-restore
-    // would land us mid-history when scrollTop was 0.
+    // Buffer switches and visibility/activate restores set wantBottom. Go straight
+    // to the bottom, since anchor-restore would land mid-history at scrollTop 0.
     if (wantBottom || !el || !anchorMsgEl?.isConnected) {
       nextTick(() => {
         if (wantBottom)
@@ -1206,13 +1169,10 @@ watch(
       return
     }
 
-    // This watch runs before the prepend renders (flush: 'pre'), so measure the
-    // anchor line's position now (pre-prepend) and again after it renders. The
-    // difference is exactly how far the prepended page pushed it down. Offsetting
-    // scrollTop by that preserves whatever the user is looking at *right now* -
-    // even if they kept racing toward the top while a slow server page loaded.
-    // Restoring to a position captured back at trigger time is what jumped them
-    // back to where they were when the load started.
+    // This watch runs before the prepend renders (flush: 'pre'). Measure the
+    // anchor line now and after render, and offset scrollTop by the difference.
+    // That keeps whatever the user is looking at right now, even if they kept
+    // scrolling up while a slow server page loaded.
     const beforeTop = anchorMsgEl.getBoundingClientRect().top
     nextTick(() => {
       if (!el || !anchorMsgEl?.isConnected) {
@@ -1242,11 +1202,9 @@ watch(isChatVisible, (visible) => {
   }
 })
 
-// When switching buffers, jump to the bottom of the new buffer. The content
-// observer below keeps it pinned while the new buffer's content settles.
-// Also re-check scroll/history state in case historyReady is already true
-// (returning to a previously-visited channel) and the sentinel observer won't
-// re-fire because the sentinel was already intersecting.
+// On buffer switch, jump to the bottom (the content observer keeps it pinned).
+// Also re-check history state: a revisited channel already has historyReady set,
+// and the sentinel observer won't re-fire if it was already intersecting.
 watch(
   () => activeBuffer.value?.name,
   () => {
@@ -1268,16 +1226,11 @@ function setupSentinelObserver() {
   if (!topSentinel.value)
     return
 
-  // Observe against the viewport (root: null) rather than logEl. The actual
-  // scroll container varies by surface: on the full page it's .chat-log__scroll
-  // (logEl), but inside the navbar sheet VUI's .vui-card-content is the scroller
-  // while logEl just expands to fit. Using logEl as root breaks the sheet case
-  // (the sentinel never clips, so the observer never re-fires). The viewport
-  // root respects every intervening scroll container's clipping, so it works on
-  // both. Top sentinel only: it's the at-rest backstop for older history (initial
-  // fill, and the sheet where logEl gets no scroll events). Forward loading runs
-  // off updateScrollState's scroll events instead - a bottom sentinel firing
-  // independently of scroll position is what let the two loaders fight.
+  // Observe against the viewport (root: null), not logEl. In the navbar sheet the
+  // scroller is VUI's .vui-card-content and logEl just expands to fit, so a logEl
+  // root never clips and never re-fires. Top sentinel only, as the at-rest
+  // backstop for older history. A bottom sentinel firing regardless of scroll
+  // position let the two loaders fight.
   const back = Math.round((window.innerHeight || 800) * BACKWARD_LOAD_AHEAD_SCREENS)
   sentinelObserver = new IntersectionObserver(
     (entries) => {
@@ -1289,17 +1242,10 @@ function setupSentinelObserver() {
   sentinelObserver.observe(topSentinel.value)
 }
 
-// When initial history settles (historyReady flips true), retry the load if
-// the sentinel is still visible OR if the scroll container has no overflow.
-// Two cases hit this:
-//  1. Content never filled the viewport - sentinel visible the whole time, but
-//     fetchOlderHistory returned early because historyReady was false then.
-//  2. CHATHISTORY LATEST pushed the sentinel just out of view, so the observer
-//     flipped to not-intersecting at the same moment historyReady became true -
-//     it won't re-fire and the sentinel check misses it.
-// Re-evaluating scroll state in nextTick covers both: if the container still
-// isn't scrollable (scrollTop === 0, within the load-ahead lead), updateScrollState
-// calls triggerHistoryLoad regardless of sentinel state.
+// When historyReady flips true, re-check scroll state. Two cases need it: content
+// never filled the viewport (fetchOlderHistory bailed while historyReady was
+// false), or LATEST pushed the sentinel out of view at the same moment so the
+// observer won't re-fire.
 watch(
   () => activeBuffer.value?.historyReady,
   (ready) => {
@@ -1308,12 +1254,9 @@ watch(
   },
 )
 
-// Keep the view pinned to the bottom while content settles (initial load,
-// images / link-previews loading, and new messages) whenever the user is
-// already at the bottom. A ResizeObserver fires exactly when the rendered
-// height changes, so there's no polling and no fighting native anchoring:
-// content added below the anchor (new lines, growing embeds) doesn't move the
-// anchor, so we're free to re-pin to the bottom.
+// Keep the view pinned to the bottom while content settles, whenever the user is
+// already there. Content added below the anchor doesn't move native anchoring,
+// so re-pinning on ResizeObserver doesn't fight it.
 let contentObserver: ResizeObserver | null = null
 
 function setupContentObserver() {
@@ -1326,18 +1269,15 @@ function setupContentObserver() {
     if (!logEl.value)
       return
 
-    // wantBottom: set on buffer switch / visibility / activate, cleared only
-    // when the user intentionally scrolls up. Always re-pin while it's set so
-    // late-loading media (images, embeds) that expands content by more than
-    // SCROLL_BOTTOM_THRESHOLD doesn't leave us stranded mid-log.
+    // Always re-pin while wantBottom is set, so late media that grows content by
+    // more than SCROLL_BOTTOM_THRESHOLD doesn't strand us mid-log.
     if (wantBottom) {
       scrollToBottom()
       return
     }
 
-    // Just prepended older history: keep the anchored line fixed as the new
-    // page's media loads and resizes above the fold. This is what makes a
-    // server-fetched batch land smoothly instead of jumping after it paints.
+    // Just prepended older history: hold the anchored line fixed while the new
+    // page's media resizes above the fold.
     if (pinTopUntilUserScroll && anchorMsgEl?.isConnected) {
       const logRect = logEl.value.getBoundingClientRect()
       const delta = anchorMsgEl.getBoundingClientRect().top - logRect.top - anchorMsgVisualTop
@@ -1355,10 +1295,8 @@ function setupContentObserver() {
       scrollToBottom()
   })
 
-  // Observe both the message content (new lines / growing embeds) and the
-  // scroll container itself. The container grows during the sheet open
-  // animation; without observing it, isAtBottom goes stale-false by the time
-  // images load and the ResizeObserver on content fires.
+  // Also observe the scroll container, which grows during the sheet open
+  // animation. Without it isAtBottom goes stale-false before images load.
   contentObserver.observe(content)
   contentObserver.observe(logEl.value)
 }
@@ -1652,7 +1590,7 @@ onBeforeUnmount(() => {
               </div>
             </template>
 
-            <!-- Server command output (e.g. /whois responses) - left-aligned inline style -->
+            <!-- Server command output (e.g. /whois responses), left-aligned inline -->
             <div
               v-else-if="group.isSystem && group.messages[0].type === 'system'"
               class="chat-log__server-line"
@@ -2432,12 +2370,9 @@ onBeforeUnmount(() => {
     font-size: inherit;
     white-space: pre-wrap;
 
-    // Reactions on the IRC row live inside the text line, and reactions__list
-    // is display:contents globally, so the chips land straight in the line box
-    // and stretch the row by a few pixels. Wrap them in an atomic inline box
-    // the line already has room for and let the chips overflow it, so a line
-    // is the same height whether or not anyone reacted to it. Only the IRC row
-    // nests reactions in here; the modern row keeps them as a sibling.
+    // IRC-row reactions live inside the text line, and reactions__list is
+    // display:contents, so the chips would stretch the row. An atomic inline box
+    // they overflow keeps the line height the same with or without reactions.
     :deep(.reactions__list) {
       display: inline-flex;
       align-items: center;
@@ -2527,9 +2462,8 @@ onBeforeUnmount(() => {
     cursor: pointer;
   }
 
-  // Block embeds sit in a box pre-sized by embedBox() so the row holds its space
-  // before the image paints. A Skeleton fills that box until load, then the image
-  // covers it - no growing the layout from zero height.
+  // Block embeds sit in a box pre-sized by embedBox() so the row holds its space.
+  // A Skeleton fills it until the image loads and covers it.
   &__embed-wrap {
     position: relative;
     display: block;
@@ -3013,11 +2947,9 @@ onBeforeUnmount(() => {
 </style>
 
 <style lang="scss">
-// The Sheet teleports its card to <body> and spreads our class onto the card
-// root, so a scoped :deep can't reach the header. The card's `padding: false`
-// adds vui's `.no-padding` rule (`padding: 0 !important`), so out-specify it and
-// match the !important to restore header padding (incl. the close button). The
-// content stays unpadded since each section manages its own spacing.
+// The Sheet teleports its card to <body>, so a scoped :deep can't reach the
+// header. `padding: false` adds vui's `.no-padding` (`padding: 0 !important`), so
+// out-specify it with !important to restore header padding.
 .chat-log__drawer-sheet.vui-card.no-padding > .vui-card-header {
   padding: var(--space-s) var(--space-m) !important;
 }

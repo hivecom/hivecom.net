@@ -40,14 +40,12 @@ async function handleCallback() {
     }
   }
 
-  // Check if user cancelled (openid.mode will be 'cancel')
   if (route.query['openid.mode'] === 'cancel') {
     status.value = 'error'
     errorMessage.value = 'Steam authentication was cancelled.'
     return
   }
 
-  // Check if we have OpenID params from Steam
   const claimedId = route.query['openid.claimed_id'] as string
   if (!claimedId) {
     status.value = 'error'
@@ -65,7 +63,6 @@ async function handleCallback() {
   // Ensure session is loaded before invoking (waits for Loading.vue to complete getSession)
   await waitForSessionReady()
 
-  // Verify with Edge Function
   try {
     const { data, error } = await supabase.functions.invoke('openid-steam-verify', {
       body: {
@@ -84,7 +81,6 @@ async function handleCallback() {
       return
     }
 
-    // Clean URL
     cleanCallbackParams()
 
     // Link was successful (done in Edge Function)
@@ -107,7 +103,6 @@ function cleanCallbackParams() {
 
   const url = new URL(window.location.href)
 
-  // Clear all openid params and state
   for (const key of [...url.searchParams.keys()]) {
     if (key.startsWith('openid.') || key === 'state') {
       url.searchParams.delete(key)

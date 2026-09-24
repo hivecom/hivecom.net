@@ -5,23 +5,14 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { getAuthenticatedUserId } from "../_shared/auth.ts";
 import { fetchRecentTrack, resolveAlbumArt } from "../_shared/lastfm.ts";
 
-// Convenience alias - used for queries against tables/columns not yet in
-// the generated types (presences_lastfm, profiles.lastfm_username).
-// Remove this alias once the migration has been applied and types regenerated.
-// deno-lint-ignore no-explicit-any
-type AnyClient = ReturnType<typeof createClient<any>>;
-
-// Rate limit: one refresh per 1 minute per user
 const RATE_LIMIT_SECONDS = 60;
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Require authenticated user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -58,20 +49,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Fetch profile - check lastfm_username and rich_presence_enabled.
-    // Cast to AnyClient because lastfm_username is not yet in the generated types.
-    const { data: profile, error: profileError } = await (supabase as AnyClient)
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("lastfm_username, rich_presence_enabled")
       .eq("id", user.id)
-      .single() as {
-        data:
-          | { lastfm_username: string | null; rich_presence_enabled: boolean }
-          | null;
-        error: { message: string } | null;
-      };
+      .single();
 
-    if (profileError) {
+    if (profileError || !profile) {
       return new Response(
         JSON.stringify({ success: false, message: "Failed to fetch profile" }),
         {
@@ -93,13 +77,12 @@ Deno.serve(async (req: Request) => {
 
     const lastfmUsername = profile.lastfm_username;
 
-    // Check rate limit - use AnyClient since presences_lastfm is not yet in types.
-    const anySupabase = supabase as AnyClient;
-    const { data: existing } = await anySupabase
+    // Rate limit
+    const { data: existing } = await supabase
       .from("presences_lastfm")
       .select("updated_at")
       .eq("profile_id", user.id)
-      .single() as { data: { updated_at: string } | null };
+      .maybeSingle();
 
     if (existing?.updated_at) {
       const secondsSince =
@@ -125,19 +108,16 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Fetch from Last.fm
     const track = await fetchRecentTrack(lastfmUsername, apiKey);
 
     const serviceRoleKey = getSecretKey();
     const adminClient = createClient<Database>(supabaseUrl, serviceRoleKey);
-    // Use untyped alias for presences_lastfm writes (table not yet in generated types).
-    const anyAdminClient = adminClient as AnyClient;
 
     const now = new Date().toISOString();
 
     if (!track) {
-      // Upsert with no track data - still record the refresh attempt
-      await anyAdminClient
+      // Record the attempt anyway so the rate limit still applies
+      await adminClient
         .from("presences_lastfm")
         .upsert(
           {
@@ -164,10 +144,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Resolve album art in parallel with nothing else to wait on
     const albumArtUrl = await resolveAlbumArt(track.artist, track.name);
 
-    const { error: upsertError } = await anyAdminClient
+    const { error: upsertError } = await adminClient
       .from("presences_lastfm")
       .upsert(
         {

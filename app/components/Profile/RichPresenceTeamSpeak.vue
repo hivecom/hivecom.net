@@ -61,7 +61,6 @@ const supabase = useSupabaseClient()
 const { data: fetchedPresenceRows } = await useAsyncData(
   () => `teamspeak-presence-${props.profileId}`,
   async () => {
-    // Skip fetch if parent already supplied presence data
     if (props.presences !== null || !props.richPresenceEnabled)
       return []
 
@@ -83,7 +82,6 @@ const { data: fetchedPresenceRows } = await useAsyncData(
 
 const now = computed(() => Date.now())
 
-// Prefer parent-supplied presences; fall back to internally fetched rows
 const presenceRows = computed<PresenceRow[]>(() =>
   props.presences !== null ? (props.presences ?? []) : (fetchedPresenceRows.value ?? []),
 )

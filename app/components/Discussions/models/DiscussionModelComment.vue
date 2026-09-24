@@ -113,8 +113,7 @@ async function handleTogglePin() {
 
 // ── NSFW ──────────────────────────────────────────────────────────────────────
 
-// When the parent thread's fullscreen NSFW overlay has already been dismissed
-// (or warnings are disabled in settings), we skip the per-reply gate entirely.
+// Skip the per-reply gate once the thread's NSFW overlay is dismissed or warnings are off
 const threadNsfwRevealed = inject(DISCUSSION_KEYS.threadNsfwRevealed, ref(false))
 const _showNSFWWarning = ref(!!data.value.is_nsfw)
 const showNSFWWarning = computed({
@@ -176,18 +175,16 @@ async function submitEdit() {
 
   editLoading.value = true
 
-  // Upload any pending blob-placeholder media before reading the markdown,
-  // otherwise blob: URLs get persisted and render as missing media. The editor
-  // surfaces its own error toast on failure, so we just abort here.
+  // Must run before reading the markdown, or blob: URLs get persisted. The
+  // editor shows its own error toast.
   const uploaded = await markdownEditor.value?.flushPendingUploads()
   if (uploaded === false) {
     editLoading.value = false
     return
   }
 
-  // Resolve any plain-text @username mentions that were typed in plain-text
-  // mode - the RichTextEditor's handleSubmit does this automatically, but the
-  // edit modal calls supabase directly and bypasses that path.
+  // This bypasses RichTextEditor's handleSubmit, which normally resolves
+  // plain-text @username mentions
   const resolvedMarkdown = await resolvePlainTextMentions(editedContent.value, supabase)
 
   const res = await supabase
@@ -241,8 +238,7 @@ const { displayReactions, toggleReaction } = useReactions({
 
 // ── Lazy-load missing reply ───────────────────────────────────────────────────
 
-// If the comment has a reply_to_id but the reply wasn't joined in the initial
-// query (e.g. it wasn't in the loaded window), fetch it on demand.
+// A reply outside the loaded window isn't joined, so fetch it on demand
 const fetchedReply = ref<RawComment | null>(null)
 const replyLoading = ref(false)
 
@@ -270,7 +266,7 @@ watch(
 
 <template>
   <div class="discussion-comment">
-    <!-- Desktop floating actions (hover-revealed) - first child so sticky works from top -->
+    <!-- Must be the first child for sticky to work from the top -->
     <div v-if="!isMobile && !data.is_deleted" class="discussion-forum__actions-anchor discussion-comment__actions-anchor">
       <div class="discussion-comment__actions">
         <ReactionsSelect v-if="userId && !data.is_deleted" @reaction="(emote) => toggleReaction(emote)">
@@ -344,7 +340,6 @@ watch(
         </Badge>
       </Flex>
 
-      <!-- Mobile: reaction button (only when no reactions exist) + three-dot trigger -->
       <Flex v-if="isMobile && !data.is_deleted" y-center gap="xxs">
         <ReactionsSelect v-if="userId && !data.is_deleted && displayReactions.length === 0" @reaction="(emote) => toggleReaction(emote)">
           <template #default="{ toggle }">
@@ -414,7 +409,6 @@ watch(
       </div>
     </template>
 
-    <!-- Tombstone: soft-deleted reply -->
     <p v-if="data.is_deleted" class="discussion-comment__deleted">
       <Flex y-center x-start gap="xxs">
         <Tooltip v-if="isAdmin" placement="top">
@@ -431,7 +425,6 @@ watch(
     </p>
 
     <template v-else>
-      <!-- NSFW gate -->
       <button v-if="showNSFWWarning" class="discussion-comment__nsfw" @click="showNSFWWarning = false">
         <Icon class="text-color-accent" name="ph:warning" />
         <p>Potentially sensitive content - click to reveal</p>
@@ -445,7 +438,6 @@ watch(
       <ReactionsSelect v-if="userId" @reaction="toggleReaction" />
     </Flex>
 
-    <!-- Force delete confirmation modal (admin only) -->
     <ModalDeleteReply
       :open="showForceDeleteModal"
       :loading="loadingForceDeletion"
@@ -469,7 +461,6 @@ watch(
       </Card>
     </ConfirmModal>
 
-    <!-- Edit modal -->
     <Modal :open="editing" centered scrollable size="m" :can-dismiss="false" @close="endEditing">
       <template #header>
         <h4>Edit comment</h4>

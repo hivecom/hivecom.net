@@ -78,15 +78,12 @@ const emit = defineEmits<{
 
 const GENERIC_USERNAME_REGEX = /^user\d+$/i
 
-// Convert userIds array to reactive ref
 const userIdsRef = ref(props.userIds)
 
-// Watch for prop changes and update ref
 watch(() => props.userIds, (newIds) => {
   userIdsRef.value = newIds
 }, { immediate: true })
 
-// Use bulk user data composable
 const {
   users,
   loading,
@@ -95,8 +92,8 @@ const {
 } = useBulkDataUser(userIdsRef, {
   includeRole: false,
   includeAvatar: true,
-  userTtl: 10 * 60 * 1000, // 10 minutes
-  avatarTtl: 30 * 60 * 1000, // 30 minutes
+  userTtl: 10 * 60 * 1000,
+  avatarTtl: 30 * 60 * 1000,
 })
 
 const friendIdSet = computed(() => new Set(props.friendIds))
@@ -114,7 +111,6 @@ const orderedUserIds = computed(() => {
   return ids.sort((a, b) => Number(friendIdSet.value.has(b)) - Number(friendIdSet.value.has(a)))
 })
 
-// Get remaining count
 const remainingCount = computed(() => {
   const eligibleCount = orderedUserIds.value.reduce((count, id) => {
     const profile = users.value.get(id)
@@ -130,8 +126,8 @@ const remainingCount = computed(() => {
   return Math.max(0, eligibleCount - props.maxUsers)
 })
 
-// In cluster mode there's no slot reservation - the +N bubble just appends.
-// In normal mode we reserve the last avatar slot so the bubble stays in-row.
+// Cluster mode reserves no slot, so the +N bubble just appends. Normal mode
+// reserves the last avatar slot so the bubble stays in-row.
 const effectiveMaxUsers = computed(() => {
   if (props.cluster)
     return props.maxUsers
@@ -153,7 +149,6 @@ interface UserListEntry {
   profile: UserDisplayData
 }
 
-// Convert users map to array for template iteration
 const usersList = computed<UserListEntry[]>(() => {
   const entries: UserListEntry[] = []
 
@@ -233,7 +228,6 @@ function getActivityStatus(profile?: UserDisplayData | null) {
   return getUserActivityStatus(profile.last_seen)
 }
 
-// Get user initials
 function getUserInitials(username: string): string {
   return username
     .split(' ')
@@ -243,7 +237,6 @@ function getUserInitials(username: string): string {
     .toUpperCase()
 }
 
-// Expose refetch for parent components
 defineExpose({
   refetch,
 })
@@ -251,7 +244,6 @@ defineExpose({
 
 <template>
   <Flex :expand="props.expand" class="bulk-avatar-display" :class="{ 'bulk-avatar-display--cluster': cluster }">
-    <!-- Loading State -->
     <Flex
       v-if="(loading && userIds.length > 0) || (pending && userIds.length === 0)"
       class="bulk-avatar-display__list bulk-avatar-display__list--loading"
@@ -270,14 +262,12 @@ defineExpose({
       </div>
     </Flex>
 
-    <!-- Error State -->
     <div v-else-if="error" class="bulk-avatar-display__error">
       <p class="text-color-danger text-s">
         {{ error }}
       </p>
     </div>
 
-    <!-- Empty State -->
     <div v-else-if="userIds.length === 0 && !props.noEmptyState" class="bulk-avatar-display__empty">
       <slot name="empty">
         <p class="text-color-light text-s">
@@ -286,7 +276,6 @@ defineExpose({
       </slot>
     </div>
 
-    <!-- Avatars -->
     <Flex
       v-else
       class="bulk-avatar-display__list"

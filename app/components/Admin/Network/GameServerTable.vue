@@ -56,7 +56,7 @@ interface TransformedGameserver extends Record<string, unknown> {
   Container: string | null
 }
 
-// Filter states kept local - region/game filters go beyond simple search
+// Region and game filters go beyond the composable's search, so they stay local.
 const regionFilter = ref<{ label: string, value: string }[]>()
 const gameFilter = ref<number[]>([])
 
@@ -89,7 +89,7 @@ const {
 } = useAdminCrudTable<QueryGameserver, TransformedGameserver>({
   resourceType: 'network_gameservers',
   permissionResource: 'network',
-  // URL param sync handled manually below (also needs to set tab= param)
+  // Synced by hand below, since tab= has to be kept too.
   queryParamKey: false,
   refreshSignal,
   fetch: async () => {
@@ -109,7 +109,6 @@ const {
   defaultSort: { column: 'Name', direction: 'asc' },
 })
 
-// Compute game entries from loaded data
 const gameEntries = computed<Tables<'games'>[]>(() => {
   const uniqueGames = new Map<number, Tables<'games'>>()
   gameservers.value.forEach((gs) => {
@@ -154,7 +153,6 @@ function getServerPlayers(gameserverId: number): number | null {
   return metricsPlayerCount(byServer[String(gameserverId)])
 }
 
-// Apply secondary filters on top of the composable's search-filtered rows
 const filteredData = computed(() => {
   return searchFilteredRows.value.filter((row) => {
     if (regionFilter.value != null && regionFilter.value.length > 0) {
@@ -196,7 +194,7 @@ watch(adminTablePerPage, (perPage) => {
 
 setSort('Name', 'asc')
 
-// Manual URL param sync - also needs to preserve/set tab= param
+// Manual URL param sync, so tab= is preserved.
 const focusedGameserverId = computed(() => {
   const raw = route.query.gameserver
   const str = Array.isArray(raw) ? (raw[0] ?? '') : (raw ?? '')

@@ -85,7 +85,7 @@ async function handleConfirm() {
     if (!canvas)
       return
 
-    // Determine output dimensions - cap at outputSize while preserving aspect
+    // Cap the output dimensions at outputSize while preserving aspect
     let { width, height } = canvas
     const max = props.outputSize
     if (width > max || height > max) {
@@ -193,7 +193,7 @@ function handleCancel() {
 </style>
 
 <style lang="scss">
-// Unscoped - target vue-advanced-cropper internals
+// Unscoped to reach vue-advanced-cropper internals
 .vue-advanced-cropper {
   &__background,
   &__foreground {

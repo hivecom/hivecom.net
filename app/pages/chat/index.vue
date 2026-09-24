@@ -16,11 +16,9 @@ const router = useRouter()
 onMounted(() => setChatVisible(true))
 onUnmounted(() => setChatVisible(false))
 
-// Deep-link: ?channel=staff or ?channel=dev/frontend (e.g. from a push
-// notification tap) joins and focuses the channel; ?dm=<nick> opens the DM with
-// that sender. Both are held pending until the connection is up, since a cold
-// open mounts this page before the socket connects - seeding the channel also
-// makes the post-connect auto-join land here.
+// ?channel=staff or ?channel=dev/frontend joins and focuses the channel, ?dm=<nick>
+// opens that DM. Both wait for the connection, since a cold open mounts this page
+// before the socket connects.
 const pendingChannel = ref<string | null>(null)
 const pendingDm = ref<string | null>(null)
 
@@ -39,10 +37,9 @@ function applyPending() {
   }
 }
 
-// Tapping a chat push notification deep-links here with `notify=1` (and usually
-// a `channel=`). The user already opted in by enabling notifications, so bypass
-// the connect dialog and connect straight away - this overrides the per-device
-// "connect automatically" preference, which only governs ordinary visits.
+// A chat push notification tap lands here with `notify=1`. The user already opted in,
+// so connect straight away and skip the dialog, overriding the per-device auto-connect
+// preference.
 function maybeConnectFromNotification(notifyParam: unknown) {
   if (notifyParam !== '1')
     return
@@ -77,7 +74,6 @@ function consumeQueryParams() {
   applyPending()
 }
 
-// Initial page load with ?channel=/?dm=/?notify=, and any later in-app navigation.
 onMounted(consumeQueryParams)
 watch(() => [route.query.channel, route.query.dm, route.query.notify], consumeQueryParams)
 

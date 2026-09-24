@@ -8,34 +8,19 @@ import { parseInternalUrl } from '@/composables/useDataLinkPreview'
 // ---------------------------------------------------------------------------
 // LinkEmbed node extension
 //
-// A block-level atom node that represents a standalone internal hivecom link
-// rendered as a minimal embed card inside the Tiptap editor.
-//
-// Markdown serialization: bare URL on its own line so that:
-//   1. getEditorMarkdown() stores it cleanly in the content model
-//   2. transformLinkEmbeds() in linkEmbedAST.ts converts it to a
-//      <SharedLinkEmbed> component node when the markdown is rendered.
-//
-// A ProseMirror appendTransaction plugin watches every document change and
-// converts any paragraph whose only content is a single self-linked text node
-// pointing at a recognised internal hivecom URL into a linkEmbed node.
+// A standalone internal hivecom link shown as an embed card. It serializes to
+// a bare URL on its own line, which transformLinkEmbeds() in linkEmbedAST.ts
+// renders as <SharedLinkEmbed>. A paragraph holding only an internal
+// self-link gets converted into this node automatically.
 // ------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // Helpers
 // ------------------------------------------------------------------------
-/**
- * If `node` is a paragraph containing only a single text node that:
- *   - has exactly one mark of type "link"
- *   - whose text content equals the link href (i.e. a self-link / bare URL)
- *   - and the href is a recognised internal hivecom URL
- *
- * ...returns the href string. Otherwise returns null.
- */
+// The href when `node` is a paragraph holding only an internal self-link
 function getStandaloneLinkHref(node: import('@tiptap/pm/model').Node): string | null {
   if (node.type.name !== 'paragraph')
     return null
 
-  // Paragraph must have exactly one child
   if (node.childCount !== 1)
     return null
 
@@ -43,7 +28,6 @@ function getStandaloneLinkHref(node: import('@tiptap/pm/model').Node): string | 
   if (!child || child.type.name !== 'text')
     return null
 
-  // That child must carry exactly one mark
   if (child.marks.length !== 1)
     return null
 
@@ -55,11 +39,9 @@ function getStandaloneLinkHref(node: import('@tiptap/pm/model').Node): string | 
   if (href == null || href === '')
     return null
 
-  // Text content must equal the href (self-link, not a custom label)
   if (child.text !== href)
     return null
 
-  // Must be a recognised internal URL
   if (!parseInternalUrl(href))
     return null
 
@@ -142,47 +124,39 @@ export const LinkEmbed = Node.create({
     ]
   },
 
-  // Serialize back to a bare URL so getEditorMarkdown()'s SELF_LINK_RE is not
-  // needed for this path, and the AST transform picks it up cleanly.
+  // A bare URL skips getEditorMarkdown()'s SELF_LINK_RE and feeds the AST transform directly
   renderMarkdown(node: JSONContent): string {
     return (node.attrs?.href as string | null | undefined) ?? ''
   },
 
-  // ProseMirror plugin: watch transactions and auto-convert standalone
-  // internal-link paragraphs into linkEmbed nodes.
   addProseMirrorPlugins() {
     const nodeType = this.type
 
-    // Grab supabase client once - available via Nuxt's auto-import at runtime.
     let supabase: SupabaseClient | null = null
     try {
       supabase = useSupabaseClient()
     }
     catch {
-      // Not in a Nuxt context (e.g. SSR or tests) - skip UUID resolution.
+      // Outside a Nuxt context (SSR, tests), so no UUID resolution
     }
 
-    // Mutable ref shared between the two plugins below so the async callback
-    // can dispatch into the live EditorView after UUID resolution.
+    // Lets the async UUID lookups dispatch into the live view
     const resolveViewRef: { view: EditorView | null } = { view: null }
 
     return [
       new Plugin({
         key: new PluginKey('linkEmbedAutoConvert'),
         appendTransaction(transactions, _oldState, newState) {
-          // Only act when the document actually changed
           if (!transactions.some(tr => tr.docChanged))
             return null
 
           const tr = newState.tr
           let changed = false
 
-          // Collect username-based profile hrefs that need UUID resolution.
           const toResolve: Array<{ username: string, originalHref: string }> = []
 
-          // Collect all replacements first - applying replaceWith during
-          // descendants() walk uses stale positions after each replacement
-          // shifts the doc, causing RangeError: Position X out of range.
+          // Collect first. Replacing during the walk leaves stale positions and
+          // throws "RangeError: Position X out of range".
           const replacements: Array<{ pos: number, nodeSize: number, href: string }> = []
 
           newState.doc.descendants((node, pos) => {
@@ -193,8 +167,7 @@ export const LinkEmbed = Node.create({
             replacements.push({ pos, nodeSize: node.nodeSize, href })
           })
 
-          // Apply in reverse order so earlier replacements don't shift
-          // the positions of later ones.
+          // Reverse order so earlier replacements don't shift later positions
           for (let i = replacements.length - 1; i >= 0; i--) {
             const { pos, nodeSize, href } = replacements[i]!
             tr.replaceWith(pos, pos + nodeSize, nodeType.create({ href }))
@@ -207,8 +180,7 @@ export const LinkEmbed = Node.create({
             }
           }
 
-          // After the sync transaction is applied, fire async UUID lookups.
-          // We use setTimeout so the view is fully updated before we dispatch.
+          // setTimeout so the view has applied this transaction before we dispatch
           if (supabase != null && toResolve.length > 0) {
             const client = supabase
             setTimeout(() => {
@@ -225,7 +197,6 @@ export const LinkEmbed = Node.create({
                     const uuid = data.id
                     const newHref = originalHref.replace(`/profile/${username}`, `/profile/${uuid}`)
 
-                    // Re-read the editor state via the plugin's stored view ref.
                     const pluginState = resolveViewRef.view
                     if (!pluginState)
                       return
@@ -249,8 +220,6 @@ export const LinkEmbed = Node.create({
           return changed ? tr : null
         },
       }),
-      // A tiny plugin that just holds a reference to the EditorView so the
-      // async UUID resolution above can dispatch follow-up transactions.
       new Plugin({
         key: new PluginKey('linkEmbedViewRef'),
         view(editorView) {

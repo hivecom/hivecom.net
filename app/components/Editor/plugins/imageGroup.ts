@@ -10,8 +10,7 @@ interface ImagePos {
   to: number
 }
 
-// Walk the top-level children of the doc and collect runs of consecutive image
-// nodes. Returns slices of ImagePos arrays, each slice being one display row.
+// Runs of consecutive top-level media, split into display rows
 function findImageRows(doc: PmNode): ImagePos[][] {
   const rows: ImagePos[][] = []
   let currentRun: ImagePos[] = []
@@ -32,7 +31,6 @@ function findImageRows(doc: PmNode): ImagePos[][] {
     }
   })
 
-  // Flush trailing run.
   if (currentRun.length >= 2) {
     for (let k = 0; k < currentRun.length; k += MAX_PER_ROW) {
       const row = currentRun.slice(k, k + MAX_PER_ROW)

@@ -8,10 +8,6 @@
  * Pass the date being labelled and the clock speeds up to a 1s tick while that
  * date is within a minute of now, so "12 seconds ago" counts up instead of
  * jumping in 15s steps. It drops back to the slow tick once nothing is fresh.
- *
- * Usage:
- *   const { now } = useNow(() => props.date)
- *   const label = computed(() => fromNow(props.date, now.value))
  */
 
 import type { MaybeRefOrGetter } from 'vue'

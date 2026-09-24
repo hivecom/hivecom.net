@@ -7,13 +7,9 @@ import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 const CACHE_KEY = 'steam_games:all'
 
 /**
- * Cached composable for the data_steam_games catalogue.
- *
- * This table is a passive registry of every Steam app ID observed via rich
- * presence. It is not the same as the community `games` table - it may contain
- * games that are not officially tracked by the community.
- *
- * - TTL: 1 hour (the catalogue grows but existing entries rarely change)
+ * data_steam_games is a passive registry of every Steam app id seen through
+ * rich presence. It isn't the community games table and holds games the
+ * community doesn't track.
  */
 export function useDataSteamGames() {
   const { withCache, cache, loading, error } = useCacheModule(CACHE_NAMESPACES.steamGames)
@@ -40,9 +36,6 @@ export function useDataSteamGames() {
       steamGames.value = result
   }
 
-  /**
-   * Map of Steam app ID (number) -> game name. Useful for label lookups.
-   */
   const steamGameNameMap = computed(() => {
     const map = new Map<number, string>()
     for (const g of steamGames.value)
@@ -50,9 +43,7 @@ export function useDataSteamGames() {
     return map
   })
 
-  /**
-   * Map of Steam app ID (string) -> game name. Useful for metrics key lookups.
-   */
+  // String keys for metrics lookups.
   const steamGameNameMapStr = computed(() => {
     const map = new Map<string, string>()
     for (const g of steamGames.value)

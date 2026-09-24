@@ -17,7 +17,6 @@ const emit = defineEmits<{
   (e: 'delete', projectId: number): void
 }>()
 
-// Interface for project query result
 interface QueryProject {
   created_at: string
   created_by: string
@@ -37,17 +36,14 @@ const isOpen = defineModel<boolean>('open', { default: false })
 
 const formFieldsRef = ref<InstanceType<typeof ProjectFormFields> | null>(null)
 
-// Form state
 const projectForm = ref<ProjectFormState>(emptyProjectForm())
 
-// State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 const saveLoading = ref(false)
 
 const validation = computed(() => validateProjectForm(projectForm.value))
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
-// Update form data when project prop changes
 watch(
   () => props.project,
   (newProject) => {
@@ -56,19 +52,16 @@ watch(
   { immediate: true },
 )
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle form submission
 async function handleSubmit() {
   if (!isValid.value)
     return
 
-  // Upload any pending blob-placeholder media before reading the markdown,
-  // otherwise blob: URLs get persisted and render as missing media. The editor
-  // surfaces its own error toast on failure, so we just abort here.
+  // Flush pending blob-placeholder media first, or blob: URLs get persisted and
+  // render as missing media. The editor shows its own error toast, so just abort.
   const uploaded = await formFieldsRef.value?.flushPendingUploads()
   if (uploaded === false)
     return
@@ -82,7 +75,6 @@ watch(isOpen, (open) => {
     saveLoading.value = false
 })
 
-// Handle delete
 function handleDelete() {
   if (!props.project)
     return
@@ -90,7 +82,6 @@ function handleDelete() {
   showDeleteConfirm.value = true
 }
 
-// Confirm delete
 function confirmDelete() {
   if (!props.project)
     return
@@ -126,7 +117,6 @@ function confirmDelete() {
       />
     </div>
 
-    <!-- Form Actions -->
     <template #footer>
       <Flex gap="xs" class="form-actions">
         <Button
@@ -163,7 +153,6 @@ function confirmDelete() {
       </Flex>
     </template>
 
-    <!-- Confirmation Modal for Delete Action -->
     <ConfirmModal
       v-model:open="showDeleteConfirm"
       :confirm="confirmDelete"

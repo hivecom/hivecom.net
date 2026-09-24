@@ -78,7 +78,6 @@ async function fetchProfileById(id: string) {
   }
 }
 
-// Debounce timer for search
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(searchQuery, (query) => {
@@ -98,7 +97,6 @@ watch(() => props.modelValue, async (val) => {
   if (selectedProfile.value?.id === val)
     return
 
-  // Check results first
   const found = results.value.find(r => r.id === val)
   if (found) {
     selectedProfile.value = found

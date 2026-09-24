@@ -26,7 +26,7 @@ const officialFilterRef = computed(() => props.officialFilter)
 const recurringFilterRef = computed(() => props.recurringFilter)
 const gameFilterRef = computed(() => props.gameFilter ?? [])
 
-// Anon users may only see official past events - community events are members-only
+// Anon users only see official past events, community events are members-only
 const effectiveOfficialFilter = computed(() => !user.value ? true : officialFilterRef.value)
 
 const isMobile = useBreakpoint('<s')

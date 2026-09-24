@@ -1,18 +1,8 @@
 /**
- * themeAdapt.ts
- *
- * Provides `adaptPaletteToTheme`, which intelligently transposes a VUI theme
- * color palette from one theme variant (dark/light) to the other.
- *
- * The core strategy:
- *   1. Parse each color into HSL.
- *   2. Classify each key's semantic role.
- *   3. Remap lightness from the source variant's expected range to the target
- *      variant's expected range, preserving relative contrast relationships.
- *   4. Keep hue and saturation unchanged so custom-tinted themes stay tinted.
- *   5. Output as rgb(r, g, b) strings.
- *
- * No external dependencies - all math is implemented inline.
+ * Transposes a VUI palette between dark and light. Each key's lightness is
+ * remapped from the source variant's expected range to the target's, which
+ * keeps relative contrast. Hue is kept and saturation is rescaled to hold
+ * chroma, so custom-tinted themes stay tinted.
  */
 
 import { VUI_DEFAULT_COLORS } from './theme'
@@ -32,10 +22,9 @@ interface Rgb {
   b: number // 0-255
 }
 
-/** Lightness range [min, max] as percentages (0-100) */
+/** [min, max] lightness, 0-100 */
 type LightnessRange = [number, number]
 
-/** Per-key lightness ranges for each variant */
 interface KeyRanges {
   dark: LightnessRange
   light: LightnessRange
@@ -46,9 +35,6 @@ interface KeyRanges {
 // ------------------------------------------------------------------------
 const RGB_STRING_RE = /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/
 
-/**
- * Parse a hex color string (#rgb, #rrggbb) into RGB components (0-255).
- */
 function parseHex(hex: string): Rgb {
   const clean = hex.replace('#', '')
   let full = clean
@@ -63,10 +49,7 @@ function parseHex(hex: string): Rgb {
   }
 }
 
-/**
- * Parse an rgb(...) or rgba(...) string into RGB components (0-255).
- * Alpha is ignored.
- */
+// Alpha is ignored.
 function parseRgbString(value: string): Rgb {
   const match = value.match(RGB_STRING_RE)
   if (!match) {
@@ -79,9 +62,6 @@ function parseRgbString(value: string): Rgb {
   }
 }
 
-/**
- * Parse any supported color string (hex, rgb, rgba) into HSL.
- */
 export function parseToHsl(value: string): Hsl {
   const trimmed = value.trim()
   let rgb: Rgb
@@ -99,9 +79,6 @@ export function parseToHsl(value: string): Hsl {
   return rgbToHsl(rgb)
 }
 
-/**
- * Convert RGB (0-255) to HSL (h: 0-360, s: 0-100, l: 0-100).
- */
 function rgbToHsl(rgb: Rgb): Hsl {
   const r = rgb.r / 255
   const g = rgb.g / 255
@@ -136,9 +113,6 @@ function rgbToHsl(rgb: Rgb): Hsl {
   }
 }
 
-/**
- * Convert HSL (h: 0-360, s: 0-100, l: 0-100) to RGB (0-255).
- */
 function hslToRgbValues(hsl: Hsl): Rgb {
   const h = hsl.h / 360
   const s = hsl.s / 100
@@ -175,9 +149,6 @@ function hslToRgbValues(hsl: Hsl): Rgb {
   }
 }
 
-/**
- * Convert an HSL value to an rgb(...) CSS string.
- */
 export function hslToRgb(hsl: Hsl): string {
   const { r, g, b } = hslToRgbValues(hsl)
   return `rgb(${r}, ${g}, ${b})`
@@ -186,17 +157,7 @@ export function hslToRgb(hsl: Hsl): string {
 // ---------------------------------------------------------------------------
 // Lightness remapping
 // ------------------------------------------------------------------------
-/**
- * Remap a lightness value from one range to another, preserving the relative
- * position within the range.
- *
- * @param l       - Source lightness (0-100)
- * @param srcMin  - Minimum of source range
- * @param srcMax  - Maximum of source range
- * @param dstMin  - Minimum of target range
- * @param dstMax  - Maximum of target range
- * @returns         Remapped lightness clamped to [0, 100]
- */
+/** Keeps the relative position within the range. Result is clamped to 0-100. */
 export function remapLightness(
   l: number,
   srcMin: number,
@@ -206,13 +167,11 @@ export function remapLightness(
 ): number {
   const srcSpan = srcMax - srcMin
 
-  // If the source range is degenerate, fall back to the midpoint of dst
   if (Math.abs(srcSpan) < 0.001) {
     return (dstMin + dstMax) / 2
   }
 
-  // Compute relative position [0..1] within source range, clamp to avoid
-  // out-of-range colors blowing out the destination
+  // Clamped so an out-of-range colour can't blow out the destination.
   const t = Math.max(0, Math.min(1, (l - srcMin) / srcSpan))
   const mapped = dstMin + t * (dstMax - dstMin)
   return Math.max(0, Math.min(100, mapped))
@@ -221,75 +180,49 @@ export function remapLightness(
 // ---------------------------------------------------------------------------
 // Per-key lightness ranges
 // ------------------------------------------------------------------------
-/**
- * Expected lightness ranges for each color key in each variant.
- * These are derived from the default palettes and serve as the basis for
- * relative remapping. Custom themes that deviate from these ranges will still
- * have their relative relationships preserved within the range.
- */
+// Expected lightness per key and variant, derived from the default palettes.
 const KEY_RANGES: Record<string, KeyRanges> = {
-  // --- Backgrounds ---
-  // Dark: very dark (L 4-12%), Light: very light (L 85-100%)
   'bg': { dark: [4, 12], light: [85, 100] },
   'bg-medium': { dark: [6, 14], light: [85, 95] },
   'bg-raised': { dark: [8, 16], light: [82, 92] },
   'bg-lowered': { dark: [3, 8], light: [95, 100] },
 
-  // --- Foreground text ---
-  // Dark: bright (L 60-100%), Light: dark (L 0-40%)
   'text': { dark: [80, 100], light: [0, 15] },
   'text-light': { dark: [55, 80], light: [15, 35] },
   'text-lighter': { dark: [35, 55], light: [25, 45] },
   'text-lightest': { dark: [18, 35], light: [40, 60] },
 
-  // --- Inverted text (opposite of main text) ---
-  // Dark: very dark (~7%), Light: very light (~97%)
   'text-invert': { dark: [4, 12], light: [88, 100] },
 
-  // --- Button surfaces ---
-  // button-gray: subtle tinted surface
-  // Dark: L ~16-20%, Light: L ~80-90%
   'button-gray': { dark: [14, 22], light: [80, 92] },
   'button-gray-hover': { dark: [12, 18], light: [72, 84] },
 
-  // button-fill: high-contrast fill (inverted from bg)
-  // Dark: near-white (~96-100%), Light: near-black (~2-8%)
+  // High-contrast fill, inverted from bg.
   'button-fill': { dark: [90, 100], light: [2, 10] },
   'button-fill-hover': { dark: [78, 92], light: [10, 25] },
 
-  // --- Semantic text colors (red/green/yellow/blue) ---
-  // Moderate shift - text needs to be readable on bg
-  // Dark: relatively bright, Light: slightly darker
+  // Only a moderate shift, since these have to stay readable on bg.
   'text-red': { dark: [52, 68], light: [42, 58] },
   'text-green': { dark: [48, 65], light: [35, 52] },
   'text-yellow': { dark: [50, 68], light: [35, 52] },
-  'text-blue': { dark: [50, 68], light: [50, 68] }, // similar across variants
+  'text-blue': { dark: [50, 68], light: [50, 68] },
 
-  // --- Semantic background chips (lowered) ---
-  // Dark: very dark tinted (L 8-18%), Light: light pastel (L 55-75%)
   'bg-red-lowered': { dark: [8, 22], light: [55, 70] },
   'bg-green-lowered': { dark: [8, 22], light: [38, 55] },
   'bg-yellow-lowered': { dark: [8, 22], light: [72, 88] },
   'bg-blue-lowered': { dark: [8, 22], light: [72, 88] },
   'bg-accent-lowered': { dark: [18, 35], light: [55, 75] },
 
-  // --- Semantic background chips (raised) ---
-  // Dark: dark tinted (L 18-35%), Light: slightly lighter pastel (L 45-65%)
   'bg-red-raised': { dark: [18, 35], light: [50, 65] },
   'bg-green-raised': { dark: [18, 35], light: [40, 58] },
   'bg-yellow-raised': { dark: [22, 40], light: [62, 78] },
   'bg-blue-raised': { dark: [22, 40], light: [62, 78] },
   'bg-accent-raised': { dark: [28, 45], light: [48, 65] },
 
-  // --- Borders ---
-  // Dark: very dark (L 8-18%), Light: mid-gray (L 75-92%)
   'border': { dark: [10, 20], light: [72, 85] },
   'border-strong': { dark: [16, 28], light: [55, 70] },
   'border-weak': { dark: [6, 14], light: [82, 92] },
 
-  // --- Accent ---
-  // Accent keeps its hue/saturation; lightness adapts so it's visible
-  // Dark: bright vibrant (L 55-75%), Light: darker vibrant (L 35-55%)
   'accent': { dark: [55, 75], light: [35, 55] },
 }
 
@@ -297,27 +230,16 @@ const KEY_RANGES: Record<string, KeyRanges> = {
 // Main adaptation function
 // ------------------------------------------------------------------------
 /**
- * Adapt a theme color palette from one variant to the other (dark <-> light).
- *
- * The `sourcePalette` contains the current color values for the *opposite*
- * variant (e.g. you pass the dark palette when you want to generate a light
- * palette). The function remaps each color's lightness to fit the target
- * variant's expected range, while preserving hue and saturation so that
- * custom-tinted themes remain visually coherent.
- *
- * @param sourcePalette  - The palette from the opposite variant to adapt from.
- * @param targetVariant  - The variant we want to produce ('dark' | 'light').
- * @returns               A new palette in the target variant as rgb() strings.
+ * `sourcePalette` is the opposite variant: pass the dark palette to get a
+ * light one. Output colours are rgb() strings.
  */
 export function adaptPaletteToTheme(
   sourcePalette: Record<string, string>,
   targetVariant: 'dark' | 'light',
 ): Record<string, string> {
-  // The source variant is always the opposite of the target
   const sourceVariant: 'dark' | 'light' = targetVariant === 'dark' ? 'light' : 'dark'
 
-  // The default palette for the *source* variant - used to build fallback ranges
-  // when a key is missing from KEY_RANGES
+  // Builds fallback ranges for keys missing from KEY_RANGES.
   const defaultSourcePalette
     = sourceVariant === 'dark' ? VUI_DEFAULT_COLORS.dark : VUI_DEFAULT_COLORS.light
 
@@ -326,7 +248,6 @@ export function adaptPaletteToTheme(
   for (const key of Object.keys(sourcePalette)) {
     const sourceColor = sourcePalette[key]
 
-    // Skip empty / undefined entries
     if (sourceColor == null || sourceColor === '') {
       continue
     }
@@ -337,7 +258,7 @@ export function adaptPaletteToTheme(
       adapted = adaptColor(key, sourceColor, sourceVariant, targetVariant, defaultSourcePalette)
     }
     catch {
-      // If parsing fails (e.g. non-color value), pass the raw value through
+      // Non-colour values pass through raw.
       adapted = sourceColor
     }
 
@@ -350,9 +271,6 @@ export function adaptPaletteToTheme(
 // ---------------------------------------------------------------------------
 // Per-color adaptation logic
 // ------------------------------------------------------------------------
-/**
- * Adapt a single color value for the given key.
- */
 function adaptColor(
   key: string,
   sourceColor: string,
@@ -362,26 +280,21 @@ function adaptColor(
 ): string {
   const hsl = parseToHsl(sourceColor)
 
-  // Look up the predefined ranges for this key
   const ranges = KEY_RANGES[key]
 
   let newL: number
 
   if (ranges != null) {
-    // We have explicit lightness ranges - remap from source to target
     const srcRange = ranges[sourceVariant]
     const dstRange = ranges[targetVariant]
     newL = remapLightness(hsl.l, srcRange[0], srcRange[1], dstRange[0], dstRange[1])
   }
   else {
-    // Unknown key - fall back to a coarse dark/light inversion using the
-    // default palette's color for this key (if available) to infer the range,
-    // or simply invert the lightness around 50 as a last resort.
+    // Unknown key: infer a range from the default palette, or invert around 50.
     const defaultColor = defaultSourcePalette[key]
     if (defaultColor != null && defaultColor !== '') {
       const defaultHsl = parseToHsl(defaultColor)
 
-      // Build a range centered on the default value with +/-15% width
       const center = defaultHsl.l
       const halfWidth = 15
       const srcRange: LightnessRange = [
@@ -389,7 +302,6 @@ function adaptColor(
         Math.min(100, center + halfWidth),
       ]
 
-      // For the destination range, invert the center
       const dstCenter = 100 - center
       const dstRange: LightnessRange = [
         Math.max(0, dstCenter - halfWidth),
@@ -398,27 +310,23 @@ function adaptColor(
       newL = remapLightness(hsl.l, srcRange[0], srcRange[1], dstRange[0], dstRange[1])
     }
     else {
-      // Last resort: invert lightness around 50%
       newL = 100 - hsl.l
     }
   }
 
-  // Preserve perceptual chroma rather than raw HSL saturation.
-  // In HSL, actual chroma = S * min(L, 1-L) (both in 0-1 space).
-  // A near-black color like #010110 has S=88% but real chroma ~5.8% -
-  // blindly keeping S=88% at a light target produces a vivid pastel.
-  // Instead we solve for the S that yields the same chroma at the new L.
+  // Preserve chroma, not raw HSL saturation. Chroma = S * min(L, 1-L), so a
+  // near-black like #010110 has S=88% but ~5.8% chroma. Keeping S=88% at a
+  // light target gives a vivid pastel, so solve for the S that holds chroma.
   const srcLUnit = hsl.l / 100
   const dstLUnit = newL / 100
   const srcChromaFactor = Math.min(srcLUnit, 1 - srcLUnit)
   const dstChromaFactor = Math.min(dstLUnit, 1 - dstLUnit)
   let newS = hsl.s
   if (dstChromaFactor > 0.001 && srcChromaFactor > 0.001) {
-    // Scale saturation so perceived chroma is preserved
     newS = Math.min(100, hsl.s * (srcChromaFactor / dstChromaFactor))
   }
   else if (srcChromaFactor < 0.001) {
-    // Source was essentially achromatic (near pure black/white) - strip color
+    // Near pure black or white, so there's no real colour to keep.
     newS = 0
   }
 

@@ -1,27 +1,16 @@
 import constants from '~~/constants.json'
 
-/**
- * Formats a monetary amount in cents to a localized currency string
- * using Intl.NumberFormat and the currency code from constants.json.
- * Symbol position, decimal separators, and grouping are all browser-localized.
- *
- * @param cents - Amount in cents (e.g., 1500 for €15.00)
- * @param options - Optional formatting options
- * @param options.showDecimals - Include decimal places (defaults to false for whole units)
- * @param options.decimalPlaces - Number of decimal places to show (defaults to 2)
- * @param options.locale - BCP 47 locale string (defaults to browser locale)
- * @returns Formatted currency string (e.g., "€15" or "15,50 €" depending on locale)
- */
+/** Currency code from constants.json, everything else browser-localized. */
 export function formatCurrency(
   cents: number,
   options: {
-    /** Include decimal places (defaults to false for whole units) */
+    /** Defaults to false, whole units only. */
     showDecimals?: boolean
 
-    /** Number of decimal places to show (defaults to 2) */
+    /** Defaults to 2. */
     decimalPlaces?: number
 
-    /** BCP 47 locale string (defaults to browser locale) */
+    /** BCP 47, defaults to the browser locale. */
     locale?: string
   } = {},
 ): string {
@@ -38,13 +27,6 @@ export function formatCurrency(
   }).format(amount)
 }
 
-/**
- * Formats a monetary amount in cents with decimals always shown
- *
- * @param cents - Amount in cents
- * @param decimalPlaces - Number of decimal places (defaults to 2)
- * @returns Formatted currency string with decimals (e.g., "€15.50")
- */
 export function formatCurrencyWithDecimals(
   cents: number,
   decimalPlaces: number = 2,
@@ -52,17 +34,7 @@ export function formatCurrencyWithDecimals(
   return formatCurrency(cents, { showDecimals: true, decimalPlaces })
 }
 
-/**
- * Formats a monetary amount in whole currency units (euros, not cents) to a
- * localized currency string. Use this when a value has already been divided
- * from cents (e.g. chart diffs, growth values).
- *
- * @param amount - Amount in whole units (e.g. 15 for €15)
- * @param options - Same options as {@link formatCurrency}
- * @param options.showDecimals - Whether to always show decimals
- * @param options.decimalPlaces - Number of decimal places
- * @param options.locale - Locale used for formatting
- */
+/** Takes whole units, not cents. */
 export function formatCurrencyUnits(
   amount: number,
   options: {
@@ -74,9 +46,6 @@ export function formatCurrencyUnits(
   return formatCurrency(amount * 100, options)
 }
 
-/**
- * Get currency information from constants
- */
 export function getCurrencyInfo() {
   return constants.CURRENCY
 }

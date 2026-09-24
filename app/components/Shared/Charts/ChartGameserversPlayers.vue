@@ -124,7 +124,7 @@ const currentCount = computed(() => {
     ?? [...metricsHistory.value].reverse().find(e => e.gameserversPlayers !== null)?.gameserversPlayers
 })
 
-// Server filter - VUI Select options (only servers with query capabilities)
+// Server filter options: only servers with query capabilities.
 const serverOptions = computed<ServerOption[]>(() => {
   const ids = new Set<string>()
   for (const e of metricsHistory.value) {
@@ -159,7 +159,6 @@ const chartData = computed(() => {
 
   const palette = getChartPalette()
 
-  // Determine which server IDs to show
   const ids = selectedServerIds.value
     ? [...selectedServerIds.value]
     : serverOptions.value.map(o => o.value)
@@ -291,10 +290,9 @@ watchEffect(() => {
   chart.resize(Math.floor(width), containerHeight)
 })
 
-// Force resize after data loads - computeMinSampleSize (bar width) is calculated
-// during the first render and may use stale scale dimensions if data arrives
-// after the initial layout pass. Resizing in the next tick after data changes
-// ensures bars are sized correctly.
+// Force a resize after data loads. computeMinSampleSize (bar width) is calculated
+// during the first render and can use stale scale dimensions if data arrives
+// after the initial layout pass.
 watch(chartData, () => {
   nextTick(() => {
     const width = chartWrapperRef.value?.clientWidth

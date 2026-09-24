@@ -436,7 +436,7 @@ async function toggleBrowserNotifications(value = false) {
           </ButtonGroup>
         </Flex>
 
-        <!-- IRC Mode - desktop only -->
+        <!-- IRC Mode, desktop only -->
         <template v-if="!isMobile && settings.chat_display_mode === 'irc'">
           <Divider />
 

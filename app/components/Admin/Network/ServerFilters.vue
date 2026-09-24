@@ -12,24 +12,21 @@ const props = defineProps<{
   statusOptions: SelectOption[]
 }>()
 
-// Emit is still needed for the clearFilters action
 const emit = defineEmits<{
   (e: 'clearFilters'): void
 }>()
 
 const isBelowMedium = useBreakpoint('<m')
 
-// Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
 const _statusFilter = defineModel<SelectOption[] | undefined>('statusFilter')
 
-// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+// VUI <Select show-clear> sets the model to undefined on clear. Coerce it back to [].
 const statusFilter = computed({
   get: () => _statusFilter.value ?? [],
   set: (v) => { _statusFilter.value = v ?? [] },
 })
 
-// Clear filters handler
 function clearFilters() {
   emit('clearFilters')
 }
@@ -37,7 +34,6 @@ function clearFilters() {
 
 <template>
   <Flex gap="s" x-start wrap expand>
-    <!-- Search input -->
     <Input
       v-model="search"
       placeholder="Search servers..."
@@ -48,7 +44,6 @@ function clearFilters() {
       </template>
     </Input>
 
-    <!-- Status filter -->
     <ExpandableSelect
       v-model="statusFilter"
       :options="props.statusOptions"
@@ -58,7 +53,6 @@ function clearFilters() {
       show-clear
     />
 
-    <!-- Clear all filters -->
     <Button
       v-if="search || statusFilter.length > 0"
       plain

@@ -1,9 +1,8 @@
 // ---------------------------------------------------------------------------
-// AST-level link embed transform (used by MarkdownRendererInner)
+// AST-level link embed transform
 // ---------------------------------------------------------------------------
-// Walks the parsed MDC AST and replaces any top-level <p> that contains only
-// a single <a href="..."> pointing at a recognised internal hivecom URL with a
-// <SharedLinkEmbed url="..."> component node.  All other nodes are untouched.
+// A top-level <p> holding only a bare link to an internal hivecom URL becomes
+// a <SharedLinkEmbed>.
 // ------------------------------------------------------------------------
 import { parseInternalUrl } from '@/composables/useDataLinkPreview'
 
@@ -15,13 +14,7 @@ interface ASTNode {
   value?: string
 }
 
-/**
- * Returns true if `node` is a <p> whose only meaningful child is a single <a>
- * pointing at a recognised internal hivecom URL.
- *
- * "Meaningful" means non-whitespace text nodes and non-comment nodes.
- * MDC emits comment nodes as `{ type: 'comment' }` in the AST.
- */
+// MDC emits comments as `{ type: 'comment' }` nodes, so those get skipped too.
 function isStandaloneLinkParagraph(node: ASTNode): boolean {
   if (node.type !== 'element' || node.tag !== 'p')
     return false
@@ -42,7 +35,7 @@ function isStandaloneLinkParagraph(node: ASTNode): boolean {
   if (typeof href !== 'string')
     return false
 
-  // Only embed bare links - skip when anchor has custom label text
+  // A link with its own label text stays a link.
   const anchorText = (child.children ?? [])
     .filter(c => c.type === 'text')
     .map(c => c.value ?? '')
@@ -64,10 +57,6 @@ function getHref(node: ASTNode): string {
   return anchor.props?.href as string
 }
 
-/**
- * Walk the root AST body and replace standalone internal-link paragraphs with
- * `<SharedLinkEmbed url="...">` component nodes.
- */
 export function transformLinkEmbeds(body: ASTNode): ASTNode {
   if (!body.children)
     return body

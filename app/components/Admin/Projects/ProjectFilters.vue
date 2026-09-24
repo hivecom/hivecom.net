@@ -12,29 +12,25 @@ const props = defineProps<{
   tagOptions: SelectOption[]
 }>()
 
-// Emit is still needed for the clearFilters action
 const emit = defineEmits<{
   (e: 'clearFilters'): void
 }>()
 
 const isBelowMedium = useBreakpoint('<m')
 
-// Model values with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
 const _tagFilter = defineModel<SelectOption[] | undefined>('tagFilter')
 
-// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+// VUI <Select show-clear> sets the model to undefined on clear. Coerce it back to [].
 const tagFilter = computed({
   get: () => _tagFilter.value ?? [],
   set: (v) => { _tagFilter.value = v ?? [] },
 })
 
-// Clear filters handler
 function clearFilters() {
   emit('clearFilters')
 }
 
-// Check if any filters are active
 const hasActiveFilters = computed(() =>
   search.value.length > 0
   || (tagFilter.value && tagFilter.value.length > 0),
@@ -43,7 +39,6 @@ const hasActiveFilters = computed(() =>
 
 <template>
   <Flex gap="s" x-start wrap expand>
-    <!-- Search input -->
     <Input
       v-model="search"
       placeholder="Search projects..."
@@ -54,7 +49,6 @@ const hasActiveFilters = computed(() =>
       </template>
     </Input>
 
-    <!-- Tag filter -->
     <ExpandableSelect
       v-model="tagFilter"
       :options="props.tagOptions"
@@ -65,7 +59,6 @@ const hasActiveFilters = computed(() =>
       :single="false"
     />
 
-    <!-- Clear all filters -->
     <Button
       v-if="hasActiveFilters"
       plain

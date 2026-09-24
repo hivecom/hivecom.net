@@ -4,12 +4,11 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { timingSafeEqualString } from "../_shared/auth.ts";
 import { getSecretKey } from "../_shared/env.ts";
 
-// Steam API constants
 const STEAM_API_KEY = Deno.env.get("STEAM_API_KEY");
 const STEAM_API_URL =
   "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/";
 
-// Default configuration (conservative fallback)
+// Fallback when the kvstore config can't be read
 const DEFAULT_CONFIG = {
   max_wall_clock_ms: 50000,
   batch_size: 10,
@@ -78,7 +77,7 @@ type RecentApp = {
   last_played_at: string;
 };
 
-// Defensive parse - the column is jsonb, so never trust the stored shape.
+// The column is jsonb, so never trust the stored shape
 function parseRecentApps(value: unknown): RecentApp[] {
   if (!Array.isArray(value)) return [];
   return value.filter((entry): entry is RecentApp =>
@@ -101,7 +100,6 @@ function pushRecentApp(
   ].slice(0, RECENT_APPS_MAX);
 }
 
-// Create Supabase client with service role
 function createServiceClient() {
   const url = Deno.env.get("SUPABASE_URL");
   const key = getSecretKey();
@@ -113,7 +111,6 @@ function createServiceClient() {
   return createClient<Database>(url, key);
 }
 
-// Fetch configuration from private.kvstore
 async function getWorkerConfig(
   supabase: ReturnType<typeof createServiceClient>,
 ): Promise<WorkerConfig> {
@@ -149,7 +146,6 @@ async function getWorkerConfig(
   }
 }
 
-// Read messages from the queue
 async function readMessages(
   supabase: ReturnType<typeof createServiceClient>,
   batchSize: number,
@@ -169,7 +165,6 @@ async function readMessages(
   return (data as QueueMessage[]) ?? [];
 }
 
-// Delete a message from the queue
 async function deleteMessage(
   supabase: ReturnType<typeof createServiceClient>,
   msgId: number,
@@ -187,7 +182,6 @@ async function deleteMessage(
   return true;
 }
 
-// Fetch Steam player data
 async function fetchSteamPlayers(
   steamIds: string[],
 ): Promise<Map<string, SteamPlayer>> {
@@ -239,7 +233,7 @@ async function fetchSteamPlayers(
   return playerMap;
 }
 
-// Steam presence status type (matches database enum)
+// Matches the database enum
 type PresenceSteamStatus =
   | "offline"
   | "online"
@@ -249,7 +243,6 @@ type PresenceSteamStatus =
   | "looking_to_trade"
   | "looking_to_play";
 
-// Map Steam personastate to enum status
 function mapPersonaState(state: number): PresenceSteamStatus {
   switch (state) {
     case 0:
@@ -267,11 +260,10 @@ function mapPersonaState(state: number): PresenceSteamStatus {
     case 6:
       return "looking_to_play";
     default:
-      return "offline"; // Default to offline for unknown states
+      return "offline";
   }
 }
 
-// Map Steam community visibility state to readable string
 function mapVisibilityState(state: number): string {
   switch (state) {
     case 1:
@@ -285,7 +277,6 @@ function mapVisibilityState(state: number): string {
   }
 }
 
-// Update presences_steam with Steam data
 async function updateSteamPresence(
   supabase: ReturnType<typeof createServiceClient>,
   profileId: string,
@@ -310,7 +301,6 @@ async function updateSteamPresence(
     );
   }
 
-  // Build the details JSON with all available Steam data
   const details: { [key: string]: Json | undefined } = {
     profileurl: player.profileurl,
     avatar: player.avatar,
@@ -318,7 +308,6 @@ async function updateSteamPresence(
     avatarfull: player.avatarfull,
   };
 
-  // Add optional fields if present
   if (player.realname) details.realname = player.realname;
   if (player.loccountrycode) details.country = player.loccountrycode;
   if (player.locstatecode) details.state = player.locstatecode;
@@ -335,7 +324,6 @@ async function updateSteamPresence(
 
   const now = new Date().toISOString();
 
-  // Prepare the upsert data
   const presenceData: {
     profile_id: string;
     status: PresenceSteamStatus;
@@ -362,17 +350,14 @@ async function updateSteamPresence(
     details,
   };
 
-  // Set last_online_at if currently online
   if (isOnline) {
     presenceData.last_online_at = new Date().toISOString();
   } else if (player.lastlogoff) {
-    // Use lastlogoff timestamp if available and user is offline
     presenceData.last_online_at = new Date(
       player.lastlogoff * 1000,
     ).toISOString();
   }
 
-  // Set game info if currently playing
   const currentAppId = player.gameid ? parseInt(player.gameid, 10) : null;
   const currentAppName = player.gameid && player.gameextrainfo
     ? player.gameextrainfo
@@ -390,7 +375,7 @@ async function updateSteamPresence(
   let endedAppName: string | null = null;
 
   if (!currentAppId && existingCurrentAppId) {
-    // Session ended - user stopped playing
+    // Stopped playing
     lastAppId = existingCurrentAppId;
     lastAppName = existingCurrentAppName;
     lastAppEndedAt = now;
@@ -401,7 +386,7 @@ async function updateSteamPresence(
     existingCurrentAppId &&
     currentAppId !== existingCurrentAppId
   ) {
-    // Switched games - old session ended
+    // Switched games, so the old session ended
     lastAppId = existingCurrentAppId;
     lastAppName = existingCurrentAppName;
     lastAppEndedAt = now;
@@ -423,8 +408,8 @@ async function updateSteamPresence(
   } else if (currentAppId !== existingCurrentAppId) {
     presenceData.current_app_started_at = now;
   } else {
-    // Same app still running. Backfill the start for sessions that began
-    // before the column existed so they can eventually qualify.
+    // Same app still running. A missing start gets backfilled so the session
+    // can still qualify.
     presenceData.current_app_started_at = existingStartedAt ?? now;
   }
 
@@ -442,7 +427,6 @@ async function updateSteamPresence(
     }
   }
 
-  // Upsert into presences_steam
   const { error } = await supabase
     .from("presences_steam")
     .upsert(presenceData, {
@@ -466,7 +450,6 @@ async function updateSteamPresence(
   return true;
 }
 
-// Process a batch of messages
 async function processBatch(
   supabase: ReturnType<typeof createServiceClient>,
   messages: QueueMessage[],
@@ -474,32 +457,28 @@ async function processBatch(
   let processed = 0;
   let failed = 0;
 
-  // Collect all Steam IDs from the batch
   const steamIdToMessage = new Map<string, QueueMessage>();
   for (const msg of messages) {
     steamIdToMessage.set(msg.message.steam_id, msg);
   }
 
-  // Fetch Steam player data in bulk
   const steamIds = Array.from(steamIdToMessage.keys());
   const playerMap = await fetchSteamPlayers(steamIds);
 
-  // Process each message
   const results = await Promise.allSettled(
     messages.map(async (msg) => {
       const player = playerMap.get(msg.message.steam_id);
 
       if (!player) {
-        // Steam ID not found - could be private or invalid
+        // Private or invalid Steam ID
         console.warn(
           `Steam ID ${msg.message.steam_id} not found in API response`,
         );
-        // Still delete the message to avoid reprocessing
+        // Delete anyway so it isn't retried forever
         await deleteMessage(supabase, msg.msg_id);
         return { success: false, reason: "not_found" };
       }
 
-      // Update the Steam presence data
       const updated = await updateSteamPresence(
         supabase,
         msg.message.profile_id,
@@ -507,7 +486,6 @@ async function processBatch(
       );
 
       if (updated) {
-        // Successfully processed - delete from queue
         await deleteMessage(supabase, msg.msg_id);
         return { success: true };
       }
@@ -527,15 +505,12 @@ async function processBatch(
   return { processed, failed };
 }
 
-// Main handler
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Verify system cron secret
     const cronSecret = Deno.env.get("SYSTEM_CRON_SECRET");
     const providedSecret = req.headers.get("System-Cron-Secret");
 
@@ -552,7 +527,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Validate Steam API key is configured
     if (!STEAM_API_KEY) {
       return new Response(
         JSON.stringify({
@@ -574,16 +548,13 @@ Deno.serve(async (req: Request) => {
     let totalFailed = 0;
     let batchCount = 0;
 
-    // The main processing loop
     while ((Date.now() - startTime) < config.max_wall_clock_ms) {
-      // Read messages from queue
       const messages = await readMessages(
         supabase,
         config.batch_size,
         config.visibility_timeout_sec,
       );
 
-      // If queue is empty, exit early
       if (!messages.length) {
         console.log("Queue empty, exiting early");
         break;

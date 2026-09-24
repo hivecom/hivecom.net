@@ -8,8 +8,7 @@ withDefaults(defineProps<{
   expand: false,
 })
 
-// Table/grid switch shared by the Assets and Depot file views so both render the
-// same control. Flat view stays Assets-specific and lives beside this toggle.
+// Flat view is Assets-specific, so it lives beside this toggle instead of in it.
 const viewMode = defineModel<'table' | 'grid'>({ required: true })
 </script>
 

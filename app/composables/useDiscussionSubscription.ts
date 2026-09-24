@@ -4,17 +4,7 @@ import type { Database } from '@/types/database.types'
 import { computed, ref, watch } from 'vue'
 import { SUBSCRIPTION_SELECT, useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 
-/**
- * Subscribe / unsubscribe state for a single discussion.
- *
- * Owns the `isSubscribed` flag, the in-flight `subscriptionLoading` guard, the
- * status fetch (cache-first), and the toggle (which patches the status + list
- * caches so the notification sheet stays in sync without a re-fetch).
- *
- * Pass a reactive discussion id; status is fetched automatically whenever the id
- * (or the logged-in user) changes and `enabled` is true. `enabled` lets callers
- * gate it - e.g. the discussion component only subscribes in the comment model.
- */
+// Status is fetched whenever the id or user changes while enabled is true.
 export function useDiscussionSubscription(
   discussionId: Ref<string | null | undefined>,
   options?: { enabled?: Ref<boolean> | boolean },
@@ -38,7 +28,7 @@ export function useDiscussionSubscription(
     if (!userId.value)
       return
 
-    // Check status cache first - avoids a DB round-trip on every page visit.
+    // Status cache first, so a page visit doesn't cost a DB round trip.
     const cached = subscriptionsCache.getStatus(userId.value, id)
     if (cached !== null) {
       isSubscribed.value = cached
@@ -83,13 +73,13 @@ export function useDiscussionSubscription(
         .single()
 
       if (!error && data) {
-        // Patch the list + status caches so the notification sheet reflects the
-        // new subscription without a re-fetch the next time it opens.
+        // Patch the list and status caches so the notification sheet shows the
+        // new subscription without a refetch.
         isSubscribed.value = true
         subscriptionsCache.applySubscribe(userId.value, data as unknown as SubscriptionRow)
       }
       else if (!error) {
-        // insert succeeded but .single() returned no data - just update status.
+        // The insert worked but .single() returned no row, so only the status changes.
         isSubscribed.value = true
         subscriptionsCache.setStatus(userId.value, id, true)
       }

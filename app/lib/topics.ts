@@ -14,10 +14,8 @@ export interface FlatTopicEntry {
 }
 
 /**
- * Sort comparator matching the forum page's sortTopicsByPriority:
- *   - Topics with priority !== 0 first, sorted by priority descending
- *   - Topics with priority === 0 fall to the bottom, sorted alphabetically
- *   - Ties broken alphabetically by name
+ * Must match the forum page's sortTopicsByPriority. Nonzero priority first,
+ * descending, then the rest alphabetically.
  */
 function sortByPriority(
   a: Tables<'discussion_topics'>,
@@ -42,13 +40,9 @@ function sortByPriority(
 }
 
 /**
- * Returns a flat list of topics in depth-first tree order where siblings at
- * every level are sorted by the same priority logic used by the forum page.
- * Each entry carries the topic, its nesting depth (0 = top-level), and its
- * slug path string (e.g. "/games/overwatch") for display.
- *
- * @param topics    Full flat topic list from the database
- * @param excludedIds  Topic IDs to omit from the result (e.g. self + descendants when editing)
+ * Depth-first, with `depth` 0 at the top level and `path` like
+ * "/games/overwatch". `excludedIds` is e.g. a topic and its descendants while
+ * editing it.
  */
 export function flattenTopicsTree(
   topics: Tables<'discussion_topics'>[],

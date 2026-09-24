@@ -3,8 +3,7 @@
 
 @import url(@dolanske/vui/style);
 
-// Register glow-card mouse position properties as typed <length> values so the
-// browser can interpolate them between frames, giving smooth cursor tracking.
+// Typed <length> so the browser can interpolate the glow-card cursor position
 @property --mouse-x {
   syntax: '<length>';
   inherits: true;
@@ -19,21 +18,17 @@
 
 // Place global styles which should be available on all pages here
 :root {
-  // Transition duration tokens - mirrors the duration component of VUI's transition shorthand
-  // tokens (--transition-fast/--transition/--transition-slow). Those are full shorthand values
-  // and cannot be used as a bare duration or delay, so we define discrete duration tokens here.
+  // VUI's --transition tokens are full shorthands and can't be used as a bare
+  // duration or delay
   --transition-fast-duration: 0.05s;
   --transition-duration: 0.11s;
   --transition-slow-duration: 0.15s;
 
-  // Main container sizes
   --container-l: 1280px;
   --container-m: 968px;
   --container-s: 728px;
 
-  // Text color palette - used by the rich text editor color picker.
-  // These are defined here so they can be overridden by future themes and
-  // automatically adapt between light and dark modes via the overrides below.
+  // Rich text color picker palette. Light mode overrides it below.
   --text-color-red: #f04040;
   --text-color-orange: #f97316;
   --text-color-amber: #f59e0b;
@@ -51,17 +46,16 @@
   --text-color-text-lightest: var(--color-text-lightest);
   --text-color-text: var(--color-text);
 
-  // Extend VUI's --font stack with Noto Sans SC for CJK character fallback.
+  // Noto Sans SC is the CJK fallback
   --font: 'Inter', 'Noto Sans SC', sans-serif;
 
-  // Font family palette - system-safe stacks, no web fonts required.
+  // System stacks, no web fonts
   --text-font-sans: ui-sans-serif, system-ui, 'Noto Sans SC', sans-serif;
   --text-font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --text-font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
   --text-font-cursive: 'Comic Sans MS', 'Comic Sans', Chalkboard, cursive;
   --text-font-fantasy: Impact, 'Arial Narrow', fantasy;
 
-  // Font size palette - named steps relative to the base body size.
   --text-size-xs: 0.75rem;
   --text-size-s: 0.875rem;
   --text-size-l: 1.125rem;
@@ -117,8 +111,7 @@
   --banner-filter: invert(1);
   --color-bg-card: var(--color-bg-medium);
 
-  // Light theme text-color palette overrides - slightly darker shades for
-  // better contrast on light backgrounds.
+  // Darker shades for contrast on light backgrounds
   --text-color-red: #dc2626;
   --text-color-orange: #ea6a08;
   --text-color-amber: #d97706;
@@ -161,12 +154,11 @@
   }
 
   width: fit-content;
-  // Badges have a fixed height, so wrapping text overflows the pill. Keep them
-  // on a single line everywhere (e.g. "audio/mpeg" content-type tags in tables).
+  // Badges have a fixed height, so wrapped text overflows the pill
   white-space: nowrap;
 
-  // Iconify icons render as <span class="iconify">, not <svg>/<path>, so VUI's
-  // per-variant svg/path color rules don't reach them. Mirror those rules here.
+  // Iconify renders <span class="iconify">, which VUI's per-variant svg/path
+  // color rules don't reach, so they're mirrored here
   .iconify {
     color: var(--color-text);
   }
@@ -191,12 +183,10 @@
     color: var(--color-text-red);
   }
 
-  // Filled badges invert to white/text-invert
   &.filled .iconify {
     color: var(--color-text-invert);
   }
 
-  // Light mode: accent and warning filled badges use --color-text instead of invert
   :root.light &.vui-badge-variant-accent.filled .iconify,
   :root.light &.vui-badge-variant-warning.filled .iconify {
     color: var(--color-text);
@@ -222,19 +212,15 @@ body {
   scrollbar-width: thin;
 }
 
-// Disable the browser's pinch-zoom and double-tap-to-zoom gestures when the
-// user hasn't opted into browser zoom (the default). Scrolling/panning is still
-// allowed; lightboxes opt back into zoom via their own gesture handling (their
-// containers set `touch-action: none`). Toggled by `useZoomPreference`.
+// Blocks pinch and double-tap zoom but keeps panning. Lightboxes set
+// `touch-action: none` and handle zoom themselves.
 html.disable-zoom,
 html.disable-zoom body {
   touch-action: pan-x pan-y;
 }
 
-// VUI's reset rule `span { font-size: var(--font-size-m) }` fires on any span,
-// including spans nested inside a [data-text-size] size mark. This means the
-// font-size set by the outer size span never reaches inner color/font spans.
-// Force all spans inside a size mark to inherit so the size propagates correctly.
+// VUI's reset sets a font-size on every span, so nested spans in a size mark
+// would lose the mark's size
 [data-text-size] span {
   font-size: inherit;
 }
@@ -286,15 +272,12 @@ label:is(.required):after {
   margin-bottom: 0;
 }
 
-// VUI offsets nested modals by --layer-position * 16px to create a stacking
-// effect, but screen-size modals use position:fixed;inset:0 and must not be
-// shifted - otherwise the layer offset creates a visible gap at the top.
+// VUI offsets nested modals by --layer-position * 16px. On a fullscreen modal
+// that leaves a gap at the top.
 .vui-modal.vui-modal-size-screen {
   transform: none;
 
-  // Same home-bar grace as drawers and sheets: a fullscreen modal runs edge to
-  // edge, so reserve the safe-area inset at the bottom of its card. Additive, so
-  // it keeps the card's own padding and respects padding:false lightboxes.
+  // iPhone home-bar inset, additive so the card keeps its own padding
   > .vui-card {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
@@ -351,21 +334,18 @@ blockquote {
   box-shadow: 0 4px 12px 8px rgba(8, 8, 8, 0.5);
 }
 
-// Popouts (e.g. UserPreviewHover inside a toast body) must render above toasts.
-// VUI's --z-toast is 9000 and is applied as an inline style on the toast wrapper,
-// so the popout (teleported to body as a sibling) needs a direct z-index override.
+// Popouts inside toasts must render above them. VUI sets --z-toast (9000) inline
+// on the toast wrapper, and the popout is teleported to body as a sibling.
 .vui-popout {
   z-index: 10000 !important;
 }
 
-// When using custom body components the toast title is an empty string, which
-// still renders as a <strong> with margin-bottom: var(--space-xs) causing a
-// visible gap above the card. Strip padding from the item and zero the margin
-// on the strong directly - it's 358x0 so has no height, only the margin leaks.
+// Custom-body toasts still render an empty title <strong>, and its margin leaves
+// a gap above the card
 .vui-toast-item:has(.vui-toast-item-content > strong + *) {
   padding: 0;
 
-  // Clip the card to the toast border-radius without hiding the action button.
+  // Clips the card to the toast radius without hiding the action button
   .vui-toast-item-content {
     overflow: hidden;
     border-radius: var(--border-radius-m);
@@ -560,8 +540,7 @@ code {
     display: block;
     max-width: 100%;
     max-height: 480px;
-    // Show a neutral placeholder while the image is in-flight so the page
-    // layout is less likely to shift dramatically before images load.
+    // Placeholder while the image loads
     background-color: var(--color-bg-raised);
     cursor: pointer;
 
@@ -589,11 +568,8 @@ code {
       display: none;
     }
 
-    // The VUI CSS reset includes a global rule `span, strong, p { font-size: var(--font-size-m) }`
-    // which overrides the inherited font-size from heading elements whenever an inline
-    // mark (textFont span, bold strong, italic em, etc.) is rendered inside a heading.
-    // We override that here so inline marks inside headings always inherit the heading's
-    // own font-size rather than being reset to the paragraph default.
+    // VUI's reset sets a font-size on span and strong, which would shrink inline
+    // marks inside headings to paragraph size
     span,
     strong,
     em,
@@ -606,10 +582,6 @@ code {
   }
 }
 
-// Forum post body images: pre-allocate full-width 16:9 space before the image
-// loads so that the layout is stable when the page scrolls to a linked comment.
-// `aspect-ratio: auto 16/9` means the browser uses the image's intrinsic ratio
-// once it has loaded, and falls back to 16:9 while it is still in-flight.
 .forum-post__content {
   img {
     max-width: 100%;
@@ -655,20 +627,14 @@ code {
 .vui-drawer-content {
   outline: none !important;
 
-  // iPhones with a home-bar bezel cut off the bottom of drawer content. Fold
-  // the safe-area inset into VUI's default container padding so every drawer
-  // gets it for free, instead of patching it per drawer everywhere.
+  // iPhone home-bar bezels cut off the bottom of drawer content
   .vui-drawer-container {
     padding-bottom: calc(var(--space-l) + env(safe-area-inset-bottom, 0px));
   }
 }
 
-// VUI Sheets (left / right / bottom) run to the screen edge, so their footer or
-// scrolling content lands against the iPhone bezel. Reserve the safe-area inset
-// on the sheet itself rather than the footer: it's additive, so it keeps each
-// sheet's own padding choice (including card padding:false), needs no
-// !important, and the sheet bg matches the footer so there's no seam. Top sheets
-// don't touch the home bar, so they're left out.
+// Inset on the sheet rather than the footer: it's additive, so each sheet keeps
+// its own padding. Top sheets don't reach the home bar.
 .vui-sheet-position-left,
 .vui-sheet-position-right,
 .vui-sheet-position-bottom {

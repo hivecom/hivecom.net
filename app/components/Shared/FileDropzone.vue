@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-// A drag-and-drop file target that wraps arbitrary content. Lifted from the
-// chat composer's dropzone so other surfaces (the sharing page) get the same
-// behavior: an overlay appears while files are dragged over, and a drop emits
-// the file list. The slot content stays interactive until a drag starts.
+// A drag-and-drop file target that wraps arbitrary content. An overlay appears
+// while files are dragged over, and a drop emits the file list. The slot content
+// stays interactive until a drag starts.
 const props = withDefaults(defineProps<{
   // Ignore drags entirely (e.g. while an upload is already in flight).
   disabled?: boolean

@@ -45,7 +45,6 @@ const subtitle = computed(() => {
   <GameDetailsModalTrigger v-slot="{ open }" :game-id="game.id">
     <Card class="recent-game-activity-tile" @click="open">
       <Flex column gap="xs" class="recent-game-activity-tile__inner">
-        <!-- Game name + indicator row -->
         <Flex y-center expand x-between gap="xs" class="recent-game-activity-tile__title">
           <Flex y-center gap="xs">
             <GameIcon :game="game" size="s" />
@@ -56,7 +55,6 @@ const subtitle = computed(() => {
           </div>
         </Flex>
 
-        <!-- Subtitle row -->
         <span class="text-xxs text-color-lighter recent-game-activity-tile__meta">
           {{ subtitle }}
         </span>

@@ -5,20 +5,15 @@ export default antfu({
   typescript: {
     tsconfigPath: 'tsconfig.json',
   },
-  // Force editor detection off so formatting/autofix rules aren't suppressed
-  // when ZED_ENVIRONMENT is set in the LSP process
+  // Zed sets ZED_ENVIRONMENT in the LSP process, which would suppress autofix rules
   isInEditor: false,
-  // Global rules
   rules: {
     'unicorn/prefer-node-protocol': 'off',
     'node/prefer-global/process': 'off',
     'ts/no-explicit-any': 'error',
     'n/prefer-global/process': 'off',
-    // The upgraded @antfu/eslint-config tightened this rule so it flags parameter
-    // names inside function *type signatures* (interfaces, callback types, generic
-    // constraints). Those names are documentation-only and have no runtime impact.
-    // We keep the rule active for real unused vars/args in function bodies, but
-    // set `args: 'none'` to stop it from flagging type-position parameter names.
+    // `args: 'none'` because the rule flags parameter names in type signatures,
+    // which are documentation only
     'unused-imports/no-unused-vars': ['error', {
       vars: 'all',
       varsIgnorePattern: '^_',
@@ -34,10 +29,9 @@ export default antfu({
     '**/supabase/functions/**/*.ts',
     'REFACTOR.md',
     '.you/**',
-    // Fully generated file - never manually edited, will be overwritten
+    // Generated
     'types/database.types.ts',
   ],
-  // Add additional configurations for specific file patterns
   formatters: {
     vue: true,
     css: true,
@@ -46,8 +40,7 @@ export default antfu({
     html: true,
   },
 }, {
-  // Scope vue rules to Vue files only - applying them globally (e.g. to .md)
-  // causes crashes because getTemplateBodyTokenStore() only exists in Vue contexts.
+  // Vue rules crash outside .vue files: getTemplateBodyTokenStore() only exists there
   files: ['**/*.vue'],
   rules: {
     'vue/object-property-newline': ['error', {

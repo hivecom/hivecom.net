@@ -21,7 +21,6 @@ interface Props {
   tiny?: boolean
 }
 
-// Get role display text
 const roleDisplay = computed(() => {
   const role = props.role || 'user'
   const normalized = role.replace(ROLE_SEPARATOR_RE, ' ')
@@ -54,7 +53,6 @@ const shortDisplay = computed(() => {
   }
 })
 
-// Get variant based on role
 const variant = computed(() => {
   switch (props.role) {
     case 'admin':

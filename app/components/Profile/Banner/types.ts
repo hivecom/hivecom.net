@@ -1,7 +1,7 @@
 export interface GradientStop {
   color: string
 
-  /** 0–1 */
+  /** 0 to 1 */
   position: number
 }
 
@@ -20,13 +20,13 @@ export interface TextLayer {
   /** Primary / solid color; also the first gradient stop default */
   fillColor: string
 
-  /** Gradient stops - used when fillType != 'solid' */
+  /** Used when fillType != 'solid' */
   fillStops: GradientStop[]
 
   /** Angle in degrees for linear and conic gradients */
   fillAngle: number
 
-  /** 0–1 */
+  /** 0 to 1 */
   opacity: number
 
   /** Rotation in degrees, clockwise */
@@ -80,7 +80,7 @@ export interface ImageLayer {
   width: number
   height: number
 
-  /** width / height - preserved during resize */
+  /** width / height, preserved during resize */
   aspect: number
 }
 
@@ -93,7 +93,7 @@ export interface MetadataTextLayer {
   fontFamily: string
   fontSize: number
 
-  // Legacy fields (v3 and below) - kept for backward-compat reads
+  // Legacy fields (v3 and below), still read from old metadata
   color?: string
   gradientColor?: string | null
   gradientAngle?: number

@@ -2,24 +2,16 @@
 import { Flex, Skeleton } from '@dolanske/vui'
 import ChartActivityHistogram from '@/components/Shared/Charts/ChartActivityHistogram.vue'
 
-// Placeholder for a dashboard card section while its data is still cold.
-// Mirrors the geometry of the real items so the card doesn't jump when the
-// content lands: `grid` matches `.home-item-list`, `cover` matches the same
-// grid filled with artwork cards, `rows` matches the stacked
-// `.home-item.inline` lists, `card` matches a stack of compact cards with a
-// title, a line of body and a badge row, `block` matches a single full-width
-// item, `strip` matches the 72px hourly activity histogram, bar for bar.
+// Mirrors the real items' geometry so the card doesn't jump when content lands.
+// `strip` matches the 72px hourly activity histogram bar for bar.
 withDefaults(defineProps<{
   variant?: 'grid' | 'cover' | 'rows' | 'card' | 'block' | 'strip'
-  /** How many placeholder items to draw. Ignored by `block` and `strip`. */
+  /** Ignored by `block` and `strip` */
   count?: number
-  /** Draw the section label bar above the items. */
   label?: boolean
-  /** Lead each row with a square, for lists whose items carry an icon. */
+  /** Leads each row with a square, for items with an icon */
   icon?: boolean
-  /** End each row with room for a small button, for lists whose items carry a
-   *  connect action. The button is what sets those rows' height, so without
-   *  this the placeholder comes out shorter than the real row. */
+  /** Room for a small button, which sets the real row's height */
   action?: boolean
 }>(), {
   variant: 'grid',
@@ -88,9 +80,7 @@ withDefaults(defineProps<{
   }
 }
 
-// Same box as .dashboard-section__head. The bar is shorter than the label's
-// line, so without the box the items start eight pixels above where the real
-// section's do and every section below drifts up by that much again.
+// Same box as .dashboard-section__head, or every section below drifts up 8px
 .dashboard-skeleton__head {
   display: flex;
   align-items: center;
@@ -98,14 +88,11 @@ withDefaults(defineProps<{
   margin-bottom: var(--space-xs);
 }
 
-// The placeholder is inert, so it shouldn't pick up the item hover treatment.
 .home-item {
   pointer-events: none;
   justify-content: center;
 }
 
-// Rows mirror a real item, which is icon-then-name on the left against a short
-// value on the right, so they shouldn't centre their contents like the rest.
 .dashboard-skeleton__row {
   justify-content: space-between;
   align-items: center;
@@ -121,13 +108,12 @@ withDefaults(defineProps<{
   flex-shrink: 0;
 }
 
-// The real cell holds a size-s button, outright or behind hover, and the
-// button rather than the text is what sets the row's height.
+// The real row's height comes from its size-s button
 .dashboard-skeleton__tail--action {
   height: var(--interactive-el-height-s);
 }
 
-// Roughly a compact ReferendumCard: title, a line of body, then its badges.
+// Roughly a compact ReferendumCard
 .dashboard-skeleton__card {
   justify-content: flex-start;
   gap: var(--space-s);

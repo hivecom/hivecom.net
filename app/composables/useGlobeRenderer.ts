@@ -1,14 +1,6 @@
 /// <reference types="@webgpu/types" />
-// useGlobeRenderer.ts
-// Owns the WebGL side of the globe:
-//   - Post-processing pipeline (scanline ShaderPass, UnrealBloom, AfterimagePass)
-//   - Per-frame animation tick (shader time uniform, hex color refresh)
-//   - Arc + ring spawn scheduling
-//   - Resize observer
-//   - Theme observer (MutationObserver + media query)
-//
-// Designed to be called once from the component's onMounted. All teardown
-// is handled by onBeforeUnmount via the returned `destroy` function.
+// Call once from the component's onMounted, and call the returned `destroy`
+// from onBeforeUnmount.
 
 import type { CountryFeature, CountryPoint, FeatureCollection } from '@/composables/useGlobeData'
 import type { GlobePerfParams } from '@/composables/useGlobePerf'
@@ -63,7 +55,7 @@ const HIGHLIGHT_START_MS = 1200
 // Composable
 // ------------------------------------------------------------------------
 export function useGlobeRenderer() {
-  // Internal mutable state - none of this needs to be reactive.
+  // Internal mutable state, none of it reactive.
   let globeInstance: GlobeInstance | null = null
 
   const base = useGlobeBase()
@@ -298,7 +290,7 @@ export function useGlobeRenderer() {
             composer.addPass(new OutputPass())
           }
           catch {
-            // OutputPass unavailable - colors may look slightly off but
+            // OutputPass unavailable. Colors may look slightly off, but
             // everything else still works.
           }
         }
@@ -315,7 +307,6 @@ export function useGlobeRenderer() {
   // ---------------------------------------------------------------------------
   // Theme helpers
   // ------------------------------------------------------------------------
-  // applyGlobeColor is called after base init to toggle bloom/afterimage
   function applyPostProcessingTheme() {
     const light = isLightTheme()
 

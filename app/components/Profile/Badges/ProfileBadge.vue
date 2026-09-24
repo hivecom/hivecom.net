@@ -278,7 +278,6 @@ function onPointerDown(event: PointerEvent) {
   if (event.pointerType !== 'touch')
     return
 
-  // Show the tooltip while the badge is being held down
   if (props.description) {
     positionTouchTooltip()
     isTouchTooltipOpen.value = true
@@ -289,7 +288,6 @@ function onPointerUp(event: PointerEvent) {
   if (event.pointerType !== 'touch')
     return
 
-  // Only animate tilt back if reduced motion is not preferred
   if (!prefersReducedMotion()) {
     isTiltActive.value = false
     tilt.targetX = 0
@@ -299,7 +297,6 @@ function onPointerUp(event: PointerEvent) {
     ensureTicking()
   }
 
-  // Hide the tooltip once the finger lifts (end of hold)
   if (props.description)
     isTouchTooltipOpen.value = false
 }
@@ -821,8 +818,7 @@ onBeforeUnmount(() => {
   --badge-edge-color: #ffb58a;
 }
 
-// Edge glow element - sits above background, behind content
-// Uses same mask trick as GlowCard but with per-variant color
+// Edge glow sits above the background, behind content
 .profile-badge__edge-glow {
   position: absolute;
   inset: 1px;

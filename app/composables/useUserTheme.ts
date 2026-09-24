@@ -201,8 +201,8 @@ export function useUserTheme() {
               applyTheme(cachedTheme)
               activeTheme.value = cachedTheme
 
-              // Also restore custom CSS if it was previously allowed
-              if (cachedTheme.custom_css != null && cachedTheme.custom_css.trim().length > 0) {
+              // Custom CSS stays behind the same opt-in as for signed-in users.
+              if (settings.value.allow_custom_css && cachedTheme.custom_css != null && cachedTheme.custom_css.trim().length > 0) {
                 applyCustomCss(cachedTheme.custom_css)
               }
               return
@@ -222,11 +222,9 @@ export function useUserTheme() {
     if (hasFetched.value && !force)
       return
 
-    // Early restoration from localStorage to avoid FOUC on reload.
-    // Skip on login transitions: the cache may hold a stale guest theme set
-    // before the user authenticated, which would flash before the real profile
-    // theme loads. On a normal reload the session is restored synchronously so
-    // isLoginTransition is false and this path is safe to use.
+    // Restore from localStorage early to avoid FOUC on reload. Skipped on login
+    // transitions, where the cache may hold a stale guest theme that would flash
+    // before the profile theme loads.
     if (import.meta.client && !isLoginTransition) {
       try {
         const cached = localStorage.getItem(THEME_CACHE_KEY)
@@ -291,7 +289,7 @@ export function useUserTheme() {
       const hasCss = theme.custom_css != null && theme.custom_css.trim().length > 0
 
       if (hasCss && storedCssChecksum !== null && storedCssChecksum !== newCssChecksum) {
-        // CSS has changed since last apply - prompt user
+        // CSS changed since the last apply, so ask the user first.
         pendingCssChange.value = {
           theme,
           hasUrl: HAS_URL_REGEX.test(theme.custom_css ?? ''),
@@ -303,7 +301,7 @@ export function useUserTheme() {
         return
       }
 
-      // No CSS change or first time - save CSS checksum and apply normally
+      // No CSS change, or the first apply: store the checksum and apply normally.
       if (hasCss) {
         localStorage.setItem(`hivecom-theme-css-checksum-${theme.id}`, newCssChecksum)
       }
@@ -455,7 +453,7 @@ export function useUserTheme() {
 
     pendingCssChange.value = null
 
-    // Do not update the CSS checksum - user wants to keep old behavior
+    // Leave the CSS checksum alone. The user chose to keep the old behavior.
     applyCustomCss(null)
   }
 

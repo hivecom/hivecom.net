@@ -3,18 +3,16 @@ import { Button, Flex, Input } from '@dolanske/vui'
 import ExpandableSelect from '@/components/Shared/ExpandableSelect.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-// Interface for Select options
 interface SelectOption {
   label: string
   value: string
 }
 
-// Define models for filter values
 const search = defineModel<string>('search', { default: '' })
 const _statusFilter = defineModel<SelectOption[] | undefined>('statusFilter', { default: () => [] })
 const _contextFilter = defineModel<SelectOption[] | undefined>('contextFilter', { default: () => [] })
 
-// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+// VUI <Select show-clear> sets the model to undefined on clear. Coerce it back to [].
 const statusFilter = computed({
   get: () => _statusFilter.value ?? [],
   set: (v) => { _statusFilter.value = v ?? [] },
@@ -26,14 +24,12 @@ const contextFilter = computed({
 
 const isBelowMedium = useBreakpoint('<m')
 
-// Status filter options
 const statusOptions: SelectOption[] = [
   { label: 'New (Unacknowledged)', value: 'new' },
   { label: 'Acknowledged', value: 'acknowledged' },
   { label: 'Responded', value: 'responded' },
 ]
 
-// Context filter options
 const contextOptions: SelectOption[] = [
   { label: 'User', value: 'user' },
   { label: 'Game Server', value: 'gameserver' },
@@ -41,14 +37,12 @@ const contextOptions: SelectOption[] = [
   { label: 'Reply', value: 'reply' },
 ]
 
-// Clear all filters
 function clearFilters() {
   search.value = ''
   statusFilter.value = []
   contextFilter.value = []
 }
 
-// Check if any filters are active
 const hasActiveFilters = computed(() =>
   search.value.length > 0
   || statusFilter.value.length > 0
@@ -58,7 +52,6 @@ const hasActiveFilters = computed(() =>
 
 <template>
   <Flex gap="s" wrap expand>
-    <!-- Search Input -->
     <Input
       v-model="search"
       placeholder="Search complaint messages..."
@@ -69,7 +62,6 @@ const hasActiveFilters = computed(() =>
       </template>
     </Input>
 
-    <!-- Status filter -->
     <ExpandableSelect
       v-model="statusFilter"
       :options="statusOptions"
@@ -79,7 +71,6 @@ const hasActiveFilters = computed(() =>
       :single="false"
     />
 
-    <!-- Context filter -->
     <ExpandableSelect
       v-model="contextFilter"
       :options="contextOptions"
@@ -89,7 +80,6 @@ const hasActiveFilters = computed(() =>
       :single="false"
     />
 
-    <!-- Clear filters button -->
     <Button
       v-if="hasActiveFilters"
       variant="gray"

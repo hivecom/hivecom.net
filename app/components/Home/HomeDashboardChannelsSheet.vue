@@ -4,10 +4,8 @@ import { Flex, Sheet } from '@dolanske/vui'
 import { computed } from 'vue'
 import { channelActivity, channelActivityTitle } from '@/lib/chat/channelActivity'
 
-// Every channel with someone in it or something said today, opened from the
-// four the chat card has room for. Ranking and the join flow stay in the card,
-// since joining a channel is a thing that happens to your connection rather
-// than to this list.
+// Ranking and the join flow stay in the chat card, since joining happens to your
+// connection rather than to this list
 const props = defineProps<{
   open: boolean
   channels: ChannelEntry[]
@@ -45,8 +43,7 @@ const activeChannels = computed(() => props.channels.filter(entry => entry.here 
 </template>
 
 <style scoped lang="scss">
-// The rows are buttons, so the button chrome comes off and the row draws
-// itself the way the card's tiles do.
+// Strips the button chrome off the rows
 .home-channel-row {
   font: inherit;
   color: inherit;

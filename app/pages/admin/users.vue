@@ -26,13 +26,11 @@ interface UserAction {
 
 type ActionType = NonNullable<UserAction['type']>
 
-// Interface for user form data
 interface UserFormData {
   role?: string
   [key: string]: unknown
 }
 
-// Get admin permissions and current user
 const {
   canViewUsers,
   canViewRoles,
@@ -59,7 +57,6 @@ if (!canViewUsers.value && !canViewRoles.value) {
   })
 }
 
-// Tab management (pattern aligned with admin/network)
 const availableTabs = computed(() => {
   const tabs: { label: string, value: 'Users' | 'Roles' | 'Reservations' | 'Globe' }[] = []
   if (canViewUsers.value)
@@ -89,7 +86,6 @@ const pageSubtitle = computed(() => {
   return 'Manage user accounts, permissions, and ban status'
 })
 
-// Reactive state
 const selectedUser = ref<AdminUserProfile | null>(null)
 const showUserDetails = ref(false)
 const userDetailsRef = ref<{ refreshBadges: () => Promise<void> } | null>(null)
@@ -99,7 +95,6 @@ const countryFilter = ref('')
 const userRefreshTrigger = ref(false)
 const detailActionLoading = ref<Partial<Record<ActionType, boolean>>>({})
 
-// UserForm state
 const showUserForm = ref(false)
 const isEditMode = ref(false)
 const userToEdit = ref<AdminUserProfile | null>(null)
@@ -110,7 +105,6 @@ function handleCountryClick(iso: string) {
   countryFilter.value = iso
 }
 
-// Close the details panel when leaving the Users tab.
 watch(activeTab, (tab) => {
   if (tab !== 'Users')
     showUserDetails.value = false
@@ -137,18 +131,15 @@ watch(showUserDetails, (isOpen) => {
   router.replace({ query: rest })
 })
 
-// Handle user selection from table
 function handleUserSelected(user: AdminUserProfile) {
   selectedUser.value = user
   showUserDetails.value = true
 }
 
-// Handle refresh events from UserTable
 function handleRefreshSignal(value: number) {
   refreshSignal.value = value
 }
 
-// Watch for user refresh trigger and update the main refresh signal
 watch(userRefreshTrigger, (shouldRefresh) => {
   if (shouldRefresh) {
     refreshSignal.value++
@@ -160,31 +151,26 @@ watch(() => selectedUser.value?.id, () => {
   detailActionLoading.value = {}
 })
 
-// Watch for userAction changes from UserDetails to handle edit actions
 watch(userAction, (action) => {
   if (action && action.type) {
     handleUserAction(action)
 
-    // Reset the action after handling it
     userAction.value = null
   }
 })
 
-// Handle user actions - updated to handle edit actions at table level
 async function handleUserAction(action: UserAction) {
   if (!action || !action.type)
     return
 
-  // Handle edit action at table level
   if (action.type === 'edit') {
     userToEdit.value = action.user
     isEditMode.value = true
     showUserForm.value = true
-    showUserDetails.value = false // Close UserDetails when opening edit form
+    showUserDetails.value = false
     return
   }
 
-  // Handle ban action
   if (action.type === 'ban') {
     try {
       await runActionWithDetailLoading(action, 'ban', async () => {
@@ -200,19 +186,15 @@ async function handleUserAction(action: UserAction) {
         if (error)
           throw error
 
-        // Trigger refresh after successful ban
         refreshSignal.value++
       })
     }
     catch (error: unknown) {
       console.error('Error banning user:', (error as Error).message)
-
-      // You might want to show an error toast/notification here
     }
     return
   }
 
-  // Handle unban action
   if (action.type === 'unban') {
     try {
       await runActionWithDetailLoading(action, 'unban', async () => {
@@ -227,19 +209,15 @@ async function handleUserAction(action: UserAction) {
         if (error)
           throw error
 
-        // Trigger refresh after successful unban
         refreshSignal.value++
       })
     }
     catch (error: unknown) {
       console.error('Error unbanning user:', (error as Error).message)
-
-      // You might want to show an error toast/notification here
     }
     return
   }
 
-  // Handle delete action
   if (action.type === 'delete') {
     try {
       await runActionWithDetailLoading(action, 'delete', async () => {
@@ -260,14 +238,11 @@ async function handleUserAction(action: UserAction) {
           showUserDetails.value = false
         }
 
-        // Trigger refresh after successful delete
         refreshSignal.value++
       })
     }
     catch (error: unknown) {
       console.error('Error deleting user:', (error as Error).message)
-
-      // You might want to show an error toast/notification here
     }
     return
   }
@@ -275,14 +250,12 @@ async function handleUserAction(action: UserAction) {
   // The action will be handled by the components themselves
   userAction.value = action
 
-  // Trigger refresh after action
   setTimeout(() => {
     refreshSignal.value++
     userAction.value = null
   }, 1500)
 }
 
-// Handle edit from UserDetails
 function handleEditFromDetails(user: AdminUserProfile) {
   userToEdit.value = user
   isEditMode.value = true
@@ -290,7 +263,6 @@ function handleEditFromDetails(user: AdminUserProfile) {
   showUserDetails.value = false
 }
 
-// Handle save from UserForm
 async function handleUserSave(userData: UserFormData, badges: string[], currentBadges: string[]) {
   try {
     const supabase = useSupabaseClient()
@@ -298,10 +270,8 @@ async function handleUserSave(userData: UserFormData, badges: string[], currentB
     if (!userToEdit.value)
       return
 
-    // Extract role from userData (single role management)
     const { role, badges: _badges, ...profileData } = userData
 
-    // Update user profile data
     const { error: profileError } = await supabase
       .from('profiles')
       .update(profileData)
@@ -310,7 +280,6 @@ async function handleUserSave(userData: UserFormData, badges: string[], currentB
     if (profileError)
       throw profileError
 
-    // Handle role update if role is provided
     if (role !== undefined) {
       // Security checks for role modification
       if (!canUpdateRoles.value) {
@@ -322,7 +291,6 @@ async function handleUserSave(userData: UserFormData, badges: string[], currentB
         throw new Error('You cannot modify your own role')
       }
 
-      // First, remove any existing roles for this user
       const { error: deleteError } = await supabase
         .from('user_roles')
         .delete()
@@ -331,7 +299,6 @@ async function handleUserSave(userData: UserFormData, badges: string[], currentB
       if (deleteError)
         throw deleteError
 
-      // If role is not 'user', insert the new role
       if (role !== 'user') {
         const { error: insertError } = await supabase
           .from('user_roles')
@@ -345,14 +312,12 @@ async function handleUserSave(userData: UserFormData, badges: string[], currentB
       }
     }
 
-    // Apply manual badge changes via RPCs
     if (userToEdit.value && badges !== undefined) {
       const profileId = userToEdit.value.id
       const currentBadgeSlugs = new Set(currentBadges)
       const newBadgeSlugs = new Set(badges)
       const manualSlugs = ['builder', 'earlybird', 'founder', 'host']
 
-      // Grant newly added badges
       for (const slug of manualSlugs) {
         if (newBadgeSlugs.has(slug) && !currentBadgeSlugs.has(slug)) {
           const entry = BADGE_CATALOG[slug as keyof typeof BADGE_CATALOG]
@@ -367,7 +332,6 @@ async function handleUserSave(userData: UserFormData, badges: string[], currentB
         }
       }
 
-      // Revoke removed badges
       for (const slug of manualSlugs) {
         if (!newBadgeSlugs.has(slug) && currentBadgeSlugs.has(slug)) {
           const { error: removeError } = await supabase.rpc('admin_remove_profile_badge', {
@@ -383,20 +347,15 @@ async function handleUserSave(userData: UserFormData, badges: string[], currentB
       void userDetailsRef.value?.refreshBadges()
     }
 
-    // Close the form and refresh data
     showUserForm.value = false
     refreshSignal.value++
-
-    // User updated successfully
   }
   catch (error: unknown) {
     console.error('Error updating user:', (error as Error).message)
-
-    // Handle error (you might want to show error message to user)
   }
 }
 
-// Handle delete from UserForm - delegates to the edge function so all cleanup runs
+// Deletes through the edge function so all cleanup runs
 async function handleUserDelete(userId: string) {
   try {
     // The edge function wipes the user's Orbit Depot uploads server-side before
@@ -409,7 +368,6 @@ async function handleUserDelete(userId: string) {
     if (error)
       throw error
 
-    // Close form and refresh data
     showUserForm.value = false
     refreshSignal.value++
   }
@@ -444,7 +402,6 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
 <template>
   <div>
     <Flex column gap="l" expand>
-      <!-- Page Header -->
       <Flex column :gap="0">
         <h1>{{ pageTitle }}</h1>
         <p class="text-color-light">
@@ -462,7 +419,6 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
         You don't have permission to view users or roles.
       </Alert>
 
-      <!-- Users Tab -->
       <Flex v-if="canViewUsers" v-show="activeTab === 'Users'" column gap="l" expand>
         <UserKPIs v-model:refresh-signal="refreshSignal" />
 
@@ -477,20 +433,16 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
         />
       </Flex>
 
-      <!-- Roles Tab -->
       <Flex v-if="canViewRoles" v-show="activeTab === 'Roles'" column gap="m" expand>
         <RolesGrid />
       </Flex>
 
-      <!-- Reservations Tab -->
       <Flex v-if="canManageReservations" v-show="activeTab === 'Reservations'" column gap="l" expand>
         <ReservationsTable v-model:refresh-signal="refreshSignal" />
       </Flex>
     </Flex>
-    <!-- Globe Tab -->
     <AdminGlobe v-show="activeTab === 'Globe'" @country-click="handleCountryClick" />
 
-    <!-- User Details Side Panel -->
     <UserDetails
       v-if="activeTab === 'Users'"
       ref="userDetailsRef"
@@ -503,7 +455,6 @@ async function runActionWithDetailLoading(action: UserAction, actionType: Action
       @edit="handleEditFromDetails"
     />
 
-    <!-- User Form Modal -->
     <UserForm
       v-if="showUserForm"
       v-model:is-open="showUserForm"

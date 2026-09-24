@@ -5,16 +5,7 @@ export interface AdminTab<T extends string = string> {
   value: T
 }
 
-/**
- * Encapsulates the permission-gated tab management + URL query-param sync
- * pattern shared across admin pages (network, users, etc.).
- *
- * The active tab is synced to/from the `?tab=` query param.
- *
- * Usage:
- *   const availableTabs = computed(() => [...])
- *   const { activeTab } = useAdminTabs(availableTabs)
- */
+/** Permission-gated admin tabs, with the active tab synced to and from `?tab=`. */
 export function useAdminTabs<T extends string = string>(
   availableTabs: ComputedRef<AdminTab<T>[]>,
 ) {
@@ -23,9 +14,6 @@ export function useAdminTabs<T extends string = string>(
 
   const activeTab = ref<T | ''>('')
 
-  /**
-   * Safely extracts a plain string from a route query value.
-   */
   function readQueryTab(): string {
     const val = route.query.tab
     if (typeof val === 'string')
@@ -36,19 +24,17 @@ export function useAdminTabs<T extends string = string>(
     return ''
   }
 
-  // When available tabs or the query param changes, pick the right active tab.
   watch(
     [availableTabs, () => route.query.tab] as const,
     ([tabs]) => {
       const queryValue = readQueryTab() as T
 
-      // Honour the URL query param if it points at a permitted tab.
+      // Only honour ?tab= when it points at a tab this user is permitted to see.
       if (queryValue.length > 0 && tabs.some(t => t.value === queryValue)) {
         activeTab.value = queryValue
         return
       }
 
-      // Default to the first available tab if nothing is set yet.
       if (activeTab.value === '' && tabs.length > 0 && tabs[0]) {
         activeTab.value = tabs[0].value
       }
@@ -56,7 +42,6 @@ export function useAdminTabs<T extends string = string>(
     { immediate: true },
   )
 
-  // Push the active tab to the URL ?tab= param whenever it changes.
   watch(activeTab, (rawTab) => {
     const tab: T | '' = rawTab as T | ''
     if (tab === '')

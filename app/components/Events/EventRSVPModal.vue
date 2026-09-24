@@ -23,14 +23,11 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-// Modal state
 const isOpen = defineModel<boolean>('open', { default: false })
 const isBelowSmall = useBreakpoint('<xs')
 
-// Tab state
 const activeTab = ref<'yes' | 'tentative' | 'no'>('yes')
 
-// Data state
 const supabase = useSupabaseClient()
 const rsvpListCache = useCache(CACHE_NAMESPACES.rsvps)
 const loading = ref(true)
@@ -43,7 +40,6 @@ interface RsvpEntry {
   scope: RSVPScope | null
 }
 
-// RSVP data by status
 const rsvpData = ref<{
   yes: RsvpEntry[]
   tentative: RsvpEntry[]
@@ -54,21 +50,17 @@ const rsvpData = ref<{
   no: [],
 })
 
-// Computed counts for each tab
 const yesCount = computed(() => rsvpData.value.yes.length)
 const tentativeCount = computed(() => rsvpData.value.tentative.length)
 const noCount = computed(() => rsvpData.value.no.length)
 const totalCount = computed(() => yesCount.value + tentativeCount.value + noCount.value)
 
-// Computed data for current tab - returns array of entries
 const currentTabData = computed(() => {
   return rsvpData.value[activeTab.value] || []
 })
 
-// Computed user IDs for current tab (for BulkUserDisplay)
 const currentTabUserIds = computed(() => currentTabData.value.map(e => e.user_id))
 
-// Scope lookup map for current tab
 const currentTabScopeMap = computed(() => {
   const map = new Map<string, RSVPScope | null>()
   currentTabData.value.forEach(e => map.set(e.user_id, e.scope))
@@ -99,7 +91,6 @@ function listCacheKey(eventId: number): string {
   return `rsvp:list:${eventId}`
 }
 
-// Fetch RSVP data
 async function fetchRSVPs(force = false) {
   if (!props.event?.id)
     return
@@ -148,7 +139,6 @@ async function fetchRSVPs(force = false) {
       rows = (data ?? []) as Array<{ user_id: string, rsvp: string }>
     }
 
-    // Group RSVPs by status
     const groupedData: RsvpListEntry = {
       yes: [],
       tentative: [],
@@ -177,12 +167,10 @@ async function fetchRSVPs(force = false) {
   }
 }
 
-// Watch for modal opening
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
     fetchRSVPs()
 
-    // Set default tab to the one with the most responses, or 'yes' if tied
     if (yesCount.value >= tentativeCount.value && yesCount.value >= noCount.value) {
       activeTab.value = 'yes'
     }
@@ -198,7 +186,6 @@ watch(() => props.open, (isOpen) => {
   }
 }, { immediate: true })
 
-// Listen for RSVP updates - invalidate cache and refetch if modal is open
 const { onRsvpUpdated } = useRsvpBus()
 onRsvpUpdated(({ eventId }) => {
   if (eventId === props.event.id) {
@@ -227,7 +214,6 @@ function handleClose() {
     </template>
 
     <div class="rsvp-modal-content">
-      <!-- Loading State -->
       <div v-if="loading" class="rsvp-modal__loading">
         <Flex column gap="m">
           <Skeleton height="2rem" width="100%" />
@@ -237,12 +223,9 @@ function handleClose() {
         </Flex>
       </div>
 
-      <!-- Error State -->
       <ErrorAlert v-else-if="error" :message="error" />
 
-      <!-- Content -->
       <div v-else>
-        <!-- No RSVPs State -->
         <div v-if="totalCount === 0" class="rsvp-modal__empty">
           <Flex column y-center x-center gap="m">
             <Icon name="ph:users-three" size="48" class="rsvp-modal__empty-icon" />
@@ -253,9 +236,7 @@ function handleClose() {
           </Flex>
         </div>
 
-        <!-- Tabs and Content -->
         <div v-else>
-          <!-- Tabs -->
           <Tabs v-model="activeTab" class="rsvp-modal__tabs" expand variant="filled">
             <Tab value="yes">
               <Flex y-center gap="xs">
@@ -286,9 +267,7 @@ function handleClose() {
             </Tab>
           </Tabs>
 
-          <!-- Tab Content -->
           <div class="rsvp-modal__tab-content">
-            <!-- No users in this category -->
             <div v-if="currentTabData.length === 0" class="rsvp-modal__tab-empty">
               <Flex column y-center x-center gap="s">
                 <Icon
@@ -304,7 +283,6 @@ function handleClose() {
               </Flex>
             </div>
 
-            <!-- User List -->
             <BulkUserDisplay
               v-else
               :user-ids="currentTabUserIds"

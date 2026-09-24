@@ -1,13 +1,3 @@
-/**
- * Cached user data composable
- * Provides efficient caching for user profile and role data
- *
- * Key design: inflight deduplication maps are MODULE-SCOPED (global singletons)
- * so that when 30 components mount in the same tick requesting the same user ID,
- * only ONE network request fires. Previous versions had per-instance maps which
- * were completely useless for cross-component dedup.
- */
-
 import type { Ref } from 'vue'
 import type { CacheConfig } from './useCache'
 import type { Database } from '@/types/database.types'
@@ -58,28 +48,22 @@ function hasSupporterMetadata(profile?: ProfileCacheEntry | null): profile is Pr
 }
 
 // ── Global inflight deduplication maps ────────────────────────────────────────
-// These are MODULE-SCOPED so every useDataUser instance shares them.
-// When component A starts fetching profile for user X, component B (mounting
-// in the same tick) attaches to the same promise instead of firing a duplicate
-// request. The promise is removed from the map once it settles.
+// Module-scoped so components mounting in the same tick for the same user share
+// one request instead of each firing their own.
 const _inflightProfiles = new Map<string, Promise<ProfileCacheEntry | null>>()
 const _inflightRoles = new Map<string, Promise<string | null>>()
 const _inflightAvatars = new Map<string, Promise<string | null>>()
 
 // ── Module-level avatar-updated bus ──────────────────────────────────────────
-// Registry of active useDataUser instances keyed by userId. When an avatar-updated
-// event fires, we bust both cache layers and force-refetch all active instances
-// watching that user so avatars update everywhere immediately.
+// Active instances by userId, so an avatar update refetches everywhere at once.
 const _activeInstances = new Map<string, Set<() => Promise<void>>>()
 
 if (typeof window !== 'undefined') {
   const { onAvatarUpdated } = useAvatarBus()
   onAvatarUpdated(({ userId }) => {
-    // Do NOT call invalidateAvatarCache here - uploadUserAvatar already wrote
-    // the cache-busted URL into localStorage. Deleting it here would cause
-    // getUserAvatarUrl to reconstruct the clean URL (no ?t=) on the next read,
-    // sending the browser back to its HTTP-cached old image.
-    // Trigger force-refetch on every active instance watching this user
+    // Don't call invalidateAvatarCache here. uploadUserAvatar already stored the
+    // cache-busted URL, and deleting it makes getUserAvatarUrl rebuild the clean
+    // URL (no ?t=), which sends the browser back to its HTTP-cached old image.
     const instances = _activeInstances.get(userId)
     if (instances) {
       for (const refetch of instances) {
@@ -101,19 +85,16 @@ function getCacheKeys(id: string) {
 export interface useCacheUserDataOptions extends CacheConfig {
   includeRole?: boolean
   includeAvatar?: boolean
-  userTtl?: number // TTL specifically for user data (default: 10 minutes)
-  avatarTtl?: number // TTL for avatar URLs (default: 30 minutes)
+  userTtl?: number // ms, default 10 minutes
+  avatarTtl?: number // ms, default 30 minutes
 }
 
-/**
- * Cached user data composable optimized for UserDisplay components
- */
 export function useDataUser(userId: string | Ref<string | null | undefined>, options: useCacheUserDataOptions = {}) {
   const {
     includeRole = false,
     includeAvatar = true,
-    userTtl = 10 * 60 * 1000, // 10 minutes for user data
-    avatarTtl = 30 * 60 * 1000, // 30 minutes for avatars
+    userTtl = 10 * 60 * 1000,
+    avatarTtl = 30 * 60 * 1000,
     ...cacheConfig
   } = options
 
@@ -125,12 +106,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  /**
-   * Synchronously seed user.value from cache if all required entries are
-   * present. Called during composable setup so that on re-mount (e.g. page
-   * navigation) the avatar is available immediately without waiting for the
-   * async fetch, preventing the avatar flash.
-   */
+  // Seeds synchronously so a re-mount has the avatar right away instead of flashing.
   function seedFromCache(id: string): void {
     const keys = getCacheKeys(id)
     const profile = cache.get<ProfileCacheEntry>(keys.profile)
@@ -162,13 +138,9 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
     }
   }
 
-  /**
-   * Fetch user profile data with global inflight dedup
-   */
   async function fetchProfile(id: string): Promise<ProfileCacheEntry | null> {
     const cacheKey = getCacheKeys(id).profile
 
-    // Check cache first
     let profile = cache.get<ProfileCacheEntry>(cacheKey)
     if (profile && !hasSupporterMetadata(profile)) {
       cache.delete(cacheKey)
@@ -179,7 +151,6 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
       return profile
     }
 
-    // Coalesce concurrent fetches across ALL component instances
     let inflight = _inflightProfiles.get(id)
     if (inflight == null) {
       inflight = Promise.resolve(
@@ -220,26 +191,21 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
     return inflight
   }
 
-  /**
-   * Fetch user role data with global inflight dedup
-   */
   async function fetchRole(id: string): Promise<string | null> {
     if (!includeRole)
       return null
 
     const cacheKey = getCacheKeys(id).role
 
-    // Don't fetch role when unauthenticated - RLS will block the query and
-    // the null result would be cached, preventing the role from loading after sign-in.
+    // Don't fetch unauthenticated. RLS blocks the query and the cached null
+    // would keep the role from loading after sign-in.
     if (!currentUser.value)
       return null
 
-    // Check cache first
     if (cache.has(cacheKey)) {
       return cache.get<string | null>(cacheKey)
     }
 
-    // Coalesce concurrent fetches across ALL component instances
     let inflight = _inflightRoles.get(id)
     if (inflight == null) {
       inflight = Promise.resolve(
@@ -262,27 +228,21 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
     return inflight
   }
 
-  /**
-   * Fetch user avatar URL with global inflight dedup
-   */
   async function fetchAvatarUrl(id: string, avatarExtension?: string | null): Promise<string | null> {
     if (!includeAvatar)
       return null
 
-    // Don't attempt to fetch avatars when the user is not authenticated -
-    // RLS will block the storage list call and the null result would be
-    // cached, preventing the avatar from loading once the user signs in.
+    // Don't fetch unauthenticated. RLS blocks the storage list call and the
+    // cached null would keep the avatar from loading after sign-in.
     if (!currentUser.value)
       return null
 
     const cacheKey = getCacheKeys(id).avatar
 
-    // Check cache first
     if (cache.has(cacheKey)) {
       return cache.get<string | null>(cacheKey)
     }
 
-    // Coalesce concurrent fetches across ALL component instances
     let inflight = _inflightAvatars.get(id)
     if (inflight == null) {
       inflight = (async () => {
@@ -307,9 +267,6 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
     return inflight
   }
 
-  /**
-   * Fetch all user data, reading from cache or deduped inflight requests
-   */
   async function fetchUserData(force = false): Promise<void> {
     const id = unref(userId)
 
@@ -318,7 +275,6 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
       return
     }
 
-    // Clear cache if forced
     if (force) {
       const keys = getCacheKeys(id)
       cache.delete(keys.profile)
@@ -326,8 +282,8 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
       cache.delete(keys.avatar)
     }
 
-    // Only show loading if we don't already have data for this user.
-    // This prevents the skeleton flash on back-navigation when cache is warm.
+    // Only show loading without data for this user, so a warm back-navigation
+    // doesn't flash a skeleton.
     const hadData = user.value?.id === id
     if (!hadData) {
       loading.value = true
@@ -335,7 +291,7 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
     error.value = null
 
     try {
-      // Fetch profile and role in parallel, then avatar with extension hint
+      // The avatar waits for the profile's extension hint.
       const [profile, role] = await Promise.all([fetchProfile(id), fetchRole(id)])
       const avatarUrl = await fetchAvatarUrl(id, profile?.avatar_extension)
 
@@ -368,16 +324,10 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
     }
   }
 
-  /**
-   * Refetch user data (bypasses cache)
-   */
   async function refetch(): Promise<void> {
     await fetchUserData(true)
   }
 
-  /**
-   * Invalidate cache for this user
-   */
   function invalidateUser(): void {
     const id = unref(userId)
     if (id === null || id === undefined || id.trim() === '')
@@ -389,15 +339,11 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
     cache.delete(keys.avatar)
   }
 
-  /**
-   * Invalidate cache for all users (useful after bulk operations)
-   */
   function invalidateAllUsers(): void {
     cache.invalidateByPattern('user:')
   }
 
-  // Register this instance in the module-level registry so the avatar-updated
-  // bus can trigger a force-refetch when the user's avatar changes.
+  // Registered so the avatar-updated bus can force-refetch this instance.
   watch(() => unref(userId), (newId, oldId) => {
     if (oldId != null && oldId !== '') {
       const set = _activeInstances.get(oldId)
@@ -430,24 +376,20 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
     })
   }
 
-  // Watch for authentication changes.
-  // Only force-refetch when the user SIGNS IN (transition from null to non-null).
-  // This busts stale null-cached role/avatar data from pre-auth.
-  // We do NOT refetch on sign-out or on navigation (where currentUser briefly
-  // flickers) - that was causing the skeleton flash and anonymous username issue.
+  // Only force-refetch on sign-in, to bust role and avatar nulls cached before
+  // auth. currentUser flickers on navigation, and refetching on that or on
+  // sign-out flashes skeletons and anonymous usernames.
   let _wasAuthed = currentUser.value != null
   watch(currentUser, (newUser) => {
     const isAuthed = newUser != null
     const justSignedIn = !_wasAuthed && isAuthed
     _wasAuthed = isAuthed
 
-    // Only react to actual sign-in (was null, now has a user)
     if (justSignedIn) {
       void fetchUserData(true)
     }
   })
 
-  // Computed helpers
   const userInitials = computed(() => {
     if (user.value?.username === null || user.value?.username === undefined || user.value?.username.trim() === '')
       return '?'
@@ -465,30 +407,24 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
   })
 
   return {
-    // Data
     user: readonly(user),
     loading: readonly(loading),
     error: readonly(error),
 
-    // Computed helpers
     userInitials: readonly(userInitials),
     hasRole: readonly(hasRole),
 
-    // Methods
     refetch,
     invalidateUser,
     invalidateAllUsers,
 
-    // Direct access to cache for advanced use cases
     cache,
   }
 }
 
 /**
- * Patches the `last_seen` field of a cached profile entry without evicting
- * other fields. Call this after a fresh fetch that returns up-to-date
- * last_seen values (e.g. online users list) so that UserAvatar and similar
- * components pick up accurate presence data immediately.
+ * Patches `last_seen` on a cached profile without evicting the rest, so presence
+ * shows up right after a fresh fetch like the online users list.
  */
 export function patchProfileLastSeen(userId: string, lastSeen: string): void {
   const cache = useCache()
@@ -500,9 +436,8 @@ export function patchProfileLastSeen(userId: string, lastSeen: string): void {
 }
 
 /**
- * Bulk user data loader for efficiency when loading multiple users.
- * Uses the same global cache and inflight maps, so individual useDataUser
- * calls that race with a bulk load will attach to the same promises.
+ * Shares the global cache and inflight maps, so single useDataUser calls racing
+ * a bulk load attach to the same promises.
  */
 export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDataOptions = {}) {
   const {
@@ -521,12 +456,6 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  /**
-   * Fetch multiple users efficiently.
-   * Profiles and roles that aren't cached are fetched in bulk IN(...) queries.
-   * The results are written to the same global cache that useDataUser reads,
-   * so individual component mounts will get cache hits.
-   */
   async function fetchUsers(force = false): Promise<void> {
     const ids = unref(userIds)
 
@@ -567,9 +496,8 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
         ? ids.filter(id => !cache.has(`user:role:${id}`))
         : []
 
-      // Don't attempt to fetch avatars when the user is not authenticated -
-      // RLS will block the storage list call and the null result would be
-      // cached, preventing avatars from loading once the user signs in.
+      // Don't fetch avatars unauthenticated. RLS blocks the storage list call
+      // and the cached nulls would keep them from loading after sign-in.
       const avatarIdsToFetch = includeAvatar && currentUser.value ? ids.filter(id => !cache.has(`user:avatar:${id}`)) : []
 
       // Pre-populate from cache synchronously before any async work so the
@@ -660,8 +588,6 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
 
       if (includeAvatar && avatarIdsToFetch.length > 0) {
         await Promise.all(avatarIdsToFetch.map(async (id) => {
-          // Use the global inflight map so individual useDataUser calls
-          // that happen to fire for these same IDs will piggyback.
           const cacheKey = `user:avatar:${id}`
           let inflight = _inflightAvatars.get(id)
           if (inflight == null) {
@@ -688,7 +614,6 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
         }))
       }
 
-      // Build user map from cache and new data
       const userMap = new Map<string, UserDisplayData>()
 
       for (const id of ids) {
@@ -737,9 +662,6 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
     await fetchUsers()
   }
 
-  // Register/deregister this bulk instance in the module-level avatar-updated
-  // registry. For each ID in the list we register a stable bound refetch fn
-  // stored in _bulkRefetchFns so deregisterIds can delete by exact reference.
   function registerIds(ids: string[]) {
     for (const id of ids) {
       if (_bulkRefetchFns.has(id))
@@ -769,11 +691,8 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
     }
   }
 
-  // Watch for userIds changes - compare by serialised content, not by array
-  // reference, so a new array with the same IDs (e.g. produced by .map() in
-  // the parent on every render) doesn't trigger an unnecessary fetchUsers /
-  // userMap rebuild.  Cache hits make the rebuild cheap, but avoiding it
-  // entirely is cleaner.
+  // Compared by content, so a new array with the same IDs (e.g. a .map() in the
+  // parent on every render) doesn't refetch.
   watch(
     () => unref(userIds).join(','),
     (newJoined, oldJoined) => {
@@ -792,8 +711,7 @@ export function useBulkDataUser(userIds: Ref<string[]>, options: useCacheUserDat
     })
   }
 
-  // Watch for authentication changes - same logic as useDataUser:
-  // only refetch on actual sign-in transition
+  // Only refetch on the sign-in transition, as in useDataUser.
   let _wasAuthed = currentUser.value != null
   watch(currentUser, (newUser) => {
     const isAuthed = newUser != null

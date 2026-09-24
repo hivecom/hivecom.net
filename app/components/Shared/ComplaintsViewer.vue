@@ -22,7 +22,6 @@ const emit = defineEmits<{
 
 const PAGE_SIZE = 5
 
-// State
 const complaints = ref<Complaint[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
@@ -31,7 +30,6 @@ const showDeleteConfirm = ref(false)
 const complaintToDelete = ref<number | null>(null)
 const isBelowSmall = useBreakpoint('<xs')
 
-// Pagination
 const currentPage = ref(1)
 const totalCount = ref(0)
 
@@ -43,12 +41,10 @@ const shouldShowPagination = computed(() =>
   totalCount.value > PAGE_SIZE,
 )
 
-// Get current user and supabase client
 const user = useSupabaseUser()
 const userId = useUserId()
 const supabase = useSupabaseClient<Database>()
 
-// Fetch user's complaints for the current page
 async function fetchComplaints() {
   if (!user.value || !userId.value)
     return
@@ -83,7 +79,6 @@ async function fetchComplaints() {
   }
 }
 
-// Get status badge variant
 function getStatusVariant(complaint: Complaint) {
   if (complaint.response)
     return 'success'
@@ -93,7 +88,6 @@ function getStatusVariant(complaint: Complaint) {
   return 'neutral'
 }
 
-// Get status text
 function getStatusText(complaint: Complaint) {
   if (complaint.response)
     return 'Responded'
@@ -103,13 +97,11 @@ function getStatusText(complaint: Complaint) {
   return 'Pending Review'
 }
 
-// Delete complaint - show confirmation modal
 function showDeleteConfirmation(complaintId: number) {
   complaintToDelete.value = complaintId
   showDeleteConfirm.value = true
 }
 
-// Actually delete the complaint after confirmation
 async function deleteComplaint() {
   if (!user.value || !userId.value || !complaintToDelete.value)
     return
@@ -165,12 +157,10 @@ function handlePageChange(page: number) {
   currentPage.value = page
 }
 
-// Re-fetch when page changes
 watch(currentPage, () => {
   void fetchComplaints()
 })
 
-// Watch for modal open to fetch complaints and reset state
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
     currentPage.value = 1
@@ -229,7 +219,6 @@ onMounted(() => {
             :class="{ 'complaint-card--deleting': isDeleting(complaint.id) }"
           >
             <Flex column gap="s" expand>
-              <!-- Header with responded_by user or status, and date with delete button -->
               <Flex x-between y-center expand>
                 <div>
                   <UserDisplay
@@ -267,21 +256,18 @@ onMounted(() => {
                 </Flex>
               </Flex>
 
-              <!-- Response (shown by default if exists) -->
               <div v-if="complaint.response">
                 <p class="text-s">
                   {{ complaint.response }}
                 </p>
               </div>
 
-              <!-- Original complaint message (always shown) -->
               <div>
                 <p class="text-color-light text-s quote quote-border">
                   {{ complaint.message }}
                 </p>
               </div>
 
-              <!-- Context information -->
               <div v-if="complaint.context_user || complaint.context_gameserver">
                 <Flex gap="m" wrap>
                   <div v-if="complaint.context_user">
@@ -304,7 +290,6 @@ onMounted(() => {
           </Card>
         </div>
 
-        <!-- Pagination -->
         <Pagination
           v-if="shouldShowPagination"
           :pagination="paginationState"
@@ -330,7 +315,6 @@ onMounted(() => {
     </template>
   </Modal>
 
-  <!-- Delete Confirmation Modal -->
   <ConfirmModal
     v-model:open="showDeleteConfirm"
     :confirm="deleteComplaint"

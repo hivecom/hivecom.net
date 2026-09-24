@@ -5,11 +5,9 @@ import AudioEqualizer from '@/components/Shared/AudioEqualizer.vue'
 import AudioTransport from '@/components/Shared/AudioTransport.vue'
 import AudioVolume from '@/components/Shared/AudioVolume.vue'
 
-// The persistent mini-player. It only ever exists while there's an active
-// track, so it reads the shared engine directly and stays in lockstep with any
-// inline AudioPlayer pointing at the same source. The transport renders the same
-// controls the inline player uses. Unlike the discover toast, this one
-// deliberately does NOT close on route change, that's the feature.
+// The persistent mini-player reads the shared engine directly, so it stays in lockstep
+// with any inline AudioPlayer on the same source. It deliberately does NOT close on
+// route change.
 
 interface Props {
   // bodyProps is empty, all state comes from the composable. Declared so the
@@ -27,7 +25,6 @@ function onSeekInput(time: number) {
   player.currentTime.value = time
 }
 
-// Pop the fullscreen spectrogram view on the already-active track.
 function openFullscreen() {
   player.openFullscreen({
     src: player.currentSrc.value!,
@@ -36,12 +33,8 @@ function openFullscreen() {
   })
 }
 
-// The toast floats over the bottom of the viewport, where the mobile chat
-// composer also lives. Publish the docked footprint (the toast's own height plus
-// its bottom offset and a small gap) as a CSS variable while we're mounted so the
-// composer can reserve room and stop the player from covering its input. The
-// variable disappears on unmount, so surfaces reading it fall back to zero when
-// nothing's playing.
+// Publish the docked footprint as a CSS variable while mounted so the mobile chat
+// composer can reserve room above the toast. It goes away on unmount.
 let dockObserver: ResizeObserver | null = null
 
 onMounted(() => {
@@ -56,7 +49,7 @@ onMounted(() => {
     return
 
   dockObserver = new ResizeObserver(() => {
-    // 32px is the toast wrapper's bottom offset, plus 8px of breathing room.
+    // Card height plus 12px of breathing room.
     document.documentElement.style.setProperty('--audio-dock-height', `${card.offsetHeight + 12}px`)
   })
   dockObserver.observe(card)
@@ -157,8 +150,7 @@ onUnmounted(() => {
     min-width: 0;
   }
 
-  // Tiny square cover thumbnail in the mini-player. Hidden when a track has no
-  // embedded art, so the row looks exactly as it did before.
+  // Hidden when a track has no embedded art
   &__cover {
     border-radius: var(--border-radius-xs);
     flex-shrink: 0;

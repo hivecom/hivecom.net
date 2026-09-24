@@ -6,7 +6,6 @@ import KPIContainer from '../KPIContainer.vue'
 
 const { events, loading } = useDataEvents()
 
-// Computed KPIs
 const totalEvents = computed(() => events.value.length)
 
 const upcomingEvents = computed(() => {

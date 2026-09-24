@@ -2,13 +2,10 @@
 import { inject } from 'vue'
 import { glowGroupKey } from '@/components/Shared/glowGroup'
 
-// GlowCard wraps any content in a div that tracks mouse position and applies
-// a Vercel-style radial border glow + subtle body glow on hover.
-//
-// When placed inside a <GlowGroup>, the group handles mouse tracking on the
-// shared container and pushes per-card-relative coordinates here via inject,
-// so the glow spreads across all sibling cards simultaneously.
-// When used standalone, GlowCard handles its own mousemove/mouseleave.
+// Tracks the mouse and applies a radial border glow plus a subtle body glow on
+// hover. Inside a <GlowGroup> the group does the tracking and pushes card-relative
+// coordinates here, so the glow spreads across sibling cards. Standalone, GlowCard
+// tracks its own mousemove/mouseleave.
 
 interface Props {
   noGlow?: boolean
@@ -66,7 +63,6 @@ function clearPosition() {
   el.style.removeProperty('--mouse-y')
 }
 
-// Register with the group so it can drive our position.
 if (group) {
   group.register({ setPosition, clearPosition, activate, deactivate, getEl: () => wrapperRef.value })
   onUnmounted(() => {
@@ -74,7 +70,7 @@ if (group) {
   })
 }
 
-// Standalone mode - handle our own tracking when not inside a GlowGroup.
+// Standalone mode: handle our own tracking when not inside a GlowGroup.
 function handleMouseMove(e: MouseEvent) {
   if (group)
     return
@@ -176,12 +172,11 @@ function handleTouchEnd() {
     opacity: 1;
   }
 
-  // Transition background-color on the slotted card on hover
   & > :deep(*) {
     transition: var(--transition-slow);
 
-    // Body glow injected into whatever card is slotted - must live here
-    // rather than on .glow-card itself since the card's background would paint over it.
+    // Body glow injected into whatever card is slotted. It has to live here rather
+    // than on .glow-card itself, since the card's background would paint over it.
     &::before {
       content: '';
       position: absolute;

@@ -12,19 +12,15 @@ const props = defineProps<{
   server: Tables<'network_servers'> | null
 }>()
 
-// Declare emits for edit event
 const emit = defineEmits(['edit'])
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 const isMobile = useBreakpoint('<s')
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle edit button click: close details, then emit edit
 function handleEdit() {
   isOpen.value = false
   emit('edit', props.server)
@@ -70,7 +66,6 @@ function handleEdit() {
 
     <Flex v-if="props.server" column gap="m" class="server-detail">
       <Flex column gap="m" expand>
-        <!-- Basic info -->
         <DetailTable>
           <template #header>
             <Icon name="ph:hard-drives" />
@@ -97,7 +92,6 @@ function handleEdit() {
           </DetailRow>
         </DetailTable>
 
-        <!-- Docker Control Info -->
         <DetailTable>
           <template #header>
             <Icon name="ph:circles-three" />

@@ -9,26 +9,13 @@ import {
 export type ReactableTable = 'discussions' | 'discussion_replies'
 
 export interface UseReactionsOptions {
-  /**
-   * The table this reaction set belongs to.
-   */
   table: ReactableTable
-
-  /**
-   * The UUID of the row being reacted to.
-   */
   rowId: Ref<string | null | undefined> | string | null | undefined
 
-  /**
-   * The initial raw reactions JSONB from the already-fetched row.
-   * The composable keeps a local copy and updates it optimistically.
-   */
+  /** Raw JSONB from the fetched row. A local copy updates optimistically. */
   initialReactions?: Ref<unknown> | unknown
 
-  /**
-   * Provider keys to surface in displayReactions.
-   * Defaults to all providers present in the raw object.
-   */
+  /** Defaults to every provider present in the raw object. */
   providers?: string[]
 }
 
@@ -42,7 +29,6 @@ export function useReactions(options: UseReactionsOptions) {
 
   // ── Local state ────────────────────────────────────────────────────────────
 
-  /** Parsed copy of the reactions JSONB - mutated optimistically. */
   const rawReactions = ref<RawReactions>(
     parseRawReactions(
       isRef(options.initialReactions)
@@ -51,10 +37,9 @@ export function useReactions(options: UseReactionsOptions) {
     ),
   )
 
-  /** Track which emotes are currently being toggled to prevent double-clicks. */
+  // Emotes mid-toggle, so a double-click doesn't fire twice.
   const pending = ref(new Set<string>())
 
-  /** Non-null if the last toggle call failed; cleared on next successful toggle. */
   const error = ref<string | null>(null)
   const capped = ref<Set<string>>(new Set())
 
@@ -69,7 +54,6 @@ export function useReactions(options: UseReactionsOptions) {
     )
   }
 
-  // Reset when the row changes (e.g. navigating between posts)
   watch(rowId, () => {
     rawReactions.value = parseRawReactions(
       isRef(options.initialReactions)
@@ -88,12 +72,6 @@ export function useReactions(options: UseReactionsOptions) {
 
   // ── Toggle ─────────────────────────────────────────────────────────────────
 
-  /**
-   * Toggle a reaction for the current user.
-   *
-   * @param emote    The emote string (emoji or external key).
-   * @param provider The provider key. Defaults to "emoji".
-   */
   async function toggleReaction(
     emote: string,
     provider: string = EMOJI_PROVIDER,
@@ -116,16 +94,14 @@ export function useReactions(options: UseReactionsOptions) {
 
     error.value = null
 
-    // Don't attempt an add if we know this emote is capped - removals still go through.
+    // A capped emote can't be added, but removals still go through.
     const isCapped = capped.value.has(`${provider}:${emote}`)
     const isCurrentlyReacted = hasReacted(emote, provider)
     if (isCapped && !isCurrentlyReacted)
       return
 
-    // Snapshot for rollback
     const snapshot = { ...rawReactions.value }
 
-    // Optimistic update
     pending.value = new Set(pending.value).add(pendingKey)
     rawReactions.value = applyOptimisticToggle(rawReactions.value, provider, emote, uid)
 
@@ -141,11 +117,10 @@ export function useReactions(options: UseReactionsOptions) {
     pending.value = next
 
     if (rpcResult.error != null) {
-      // Roll back optimistic update
       rawReactions.value = snapshot
 
       if (rpcResult.error.message.includes('Reaction cap reached')) {
-        // Mark this emote as capped so the UI can reflect it without another round-trip
+        // Remember the cap so the UI shows it without another round trip.
         capped.value = new Set(capped.value).add(`${provider}:${emote}`)
         error.value = null
       }
@@ -155,23 +130,19 @@ export function useReactions(options: UseReactionsOptions) {
       return
     }
 
-    // Clear cap flag if the user managed to react (e.g. cap was lifted server-side)
+    // The cap can lift server-side.
     if (capped.value.has(`${provider}:${emote}`)) {
       const next = new Set(capped.value)
       next.delete(`${provider}:${emote}`)
       capped.value = next
     }
 
-    // Sync with the authoritative value returned by the RPC
+    // The RPC returns the authoritative value.
     rawReactions.value = parseRawReactions(rpcResult.data)
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  /**
-   * Returns true if the current user has already reacted with this emote
-   * under this provider.
-   */
   function hasReacted(emote: string, provider: string = EMOJI_PROVIDER): boolean {
     const uid = userId.value
     if (uid == null || uid === '')
@@ -181,35 +152,22 @@ export function useReactions(options: UseReactionsOptions) {
     return Array.isArray(reactors) && reactors.includes(uid)
   }
 
-  /**
-   * Count of unique users who reacted with this emote under this provider.
-   */
   function reactionCount(emote: string, provider: string = EMOJI_PROVIDER): number {
     const reactors = rawReactions.value[provider]?.[emote]
     return Array.isArray(reactors) ? reactors.length : 0
   }
 
-  /**
-   * True while any toggle RPC call is in-flight.
-   */
   const isLoading = computed(() => pending.value.size > 0)
 
   return {
-    /** Flat, sorted list of reactions ready for display. */
     displayReactions,
-    /** Raw reactions object - useful if you need provider-level access. */
     rawReactions: readonly(rawReactions),
-    /** Toggle a reaction emote for the current user. */
     toggleReaction,
-    /** True if the current user has reacted with the given emote. */
     hasReacted,
-    /** Count of reactors for a given emote. */
     reactionCount,
-    /** Set of "provider:emote" keys known to be at the 100-reactor cap. */
+    /** "provider:emote" keys known to be at the 100-reactor cap. */
     capped: readonly(capped),
-    /** True while any toggle is in flight. */
     isLoading,
-    /** Last error message, or null. */
     error: readonly(error),
   }
 }

@@ -47,7 +47,6 @@ const gameEvents = computed(() => {
 </script>
 
 <template>
-  <!-- Loading: 3 card skeletons -->
   <template v-if="loading">
     <Grid :columns="isMobile ? 1 : 3" gap="m">
       <Skeleton v-for="i in 3" :key="i" :height="160" :radius="8" />
@@ -57,7 +56,6 @@ const gameEvents = computed(() => {
   <!-- No events: render nothing -->
   <template v-else-if="gameEvents.length === 0" />
 
-  <!-- Events grid -->
   <template v-else>
     <GlowGroup>
       <Grid :columns="isMobile ? 1 : 3" gap="m" y-stretch>

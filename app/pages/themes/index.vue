@@ -18,8 +18,8 @@ function onVariantWrapperClick(e: MouseEvent) {
 function onResetClick(e: MouseEvent) {
   dismissPreview()
 
-  // setActiveTheme(null) owns its own transitionTheme - wrapping it causes the
-  // double-transition guard to block applyTheme(null) silently.
+  // setActiveTheme(null) runs its own transitionTheme. Wrapping it makes the
+  // double-transition guard silently block applyTheme(null).
   void setActiveTheme(null, { x: e.clientX, y: e.clientY })
 }
 

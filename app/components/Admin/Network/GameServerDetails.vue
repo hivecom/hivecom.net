@@ -19,7 +19,6 @@ const props = defineProps<{
   gameserver: GameServerWithJoins | null
 }>()
 
-// Define emits
 const emit = defineEmits(['edit', 'delete'])
 
 const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameserversPlayers.vue'))
@@ -33,10 +32,8 @@ type GameServerWithJoins = Omit<Tables<'network_gameservers'>, 'game'> & {
   } | null
 }
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
-// Get admin permissions
 const { hasPermission } = useAdminPermissions()
 const canUpdateGameservers = computed(() => hasPermission('network.update'))
 const canDeleteGameservers = computed(() => hasPermission('network.delete'))
@@ -59,12 +56,10 @@ watch(
   },
 )
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle edit button click
 function handleEdit() {
   emit('edit', props.gameserver)
   isOpen.value = false
@@ -143,7 +138,6 @@ function confirmDelete() {
 
     <Flex v-if="props.gameserver" column gap="m" class="gameserver-details">
       <Flex column gap="m" expand>
-        <!-- Basic info -->
         <DetailTable>
           <template #header>
             <Icon name="ph:game-controller" />
@@ -191,7 +185,6 @@ function confirmDelete() {
           </DetailRow>
         </DetailTable>
 
-        <!-- Network Details -->
         <DetailTable>
           <template #header>
             <Icon name="ph:network" />
@@ -219,7 +212,6 @@ function confirmDelete() {
           </DetailRow>
         </DetailTable>
 
-        <!-- Activity (only for servers with query support) -->
         <Card v-if="props.gameserver.query_protocol != null" separators class="card-bg">
           <template #header>
             <Flex y-center gap="xs">
@@ -244,7 +236,6 @@ function confirmDelete() {
           </p>
         </DetailTable>
 
-        <!-- Markdown Content -->
         <Card v-if="props.gameserver.markdown" separators class="card-bg">
           <template #header>
             <Flex x-between y-center expand>
@@ -260,7 +251,6 @@ function confirmDelete() {
           </Flex>
         </Card>
 
-        <!-- Metadata -->
         <Metadata
           :created-at="props.gameserver.created_at"
           :created-by="props.gameserver.created_by"

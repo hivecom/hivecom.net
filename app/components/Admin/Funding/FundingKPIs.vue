@@ -8,7 +8,6 @@ import KPIContainer from '../KPIContainer.vue'
 
 const refreshSignal = defineModel<number>('refreshSignal')
 
-// Funding metrics
 const metrics = ref({
   currentMonthFunding: 0,
   currentMonthExpenses: 0,
@@ -16,23 +15,18 @@ const metrics = ref({
   totalPatrons: 0,
 })
 
-// Data fetch state
 const loading = ref(true)
 const errorMessage = ref('')
 
-// Get Supabase client
 const supabase = useSupabaseClient()
 
-// monthly_funding served from shared cache
 const { latestFunding, loading: fundingLoading, error: fundingError } = useDataMonthlyFunding()
 
-// Fetch funding metrics
 async function fetchFundingMetrics() {
   loading.value = true
   errorMessage.value = ''
 
   try {
-    // Get current active expenses (started and not ended)
     const { data: expensesData, error: expensesError } = await supabase
       .from('funding_expenses')
       .select('amount_cents')
@@ -58,7 +52,6 @@ async function fetchFundingMetrics() {
   }
 }
 
-// Derive funding metrics from cached latest funding row
 watch([latestFunding, fundingLoading], () => {
   if (fundingError.value) {
     errorMessage.value = fundingError.value
@@ -78,17 +71,14 @@ watch([latestFunding, fundingLoading], () => {
   }
 }, { immediate: true })
 
-// Calculate funding balance
 const fundingBalance = computed(() => {
   return metrics.value.lifetimeFunding
 })
 
-// Watch for refresh signal from parent
 watch(() => refreshSignal.value, () => {
   fetchFundingMetrics()
 })
 
-// Fetch data on component mount
 onBeforeMount(fetchFundingMetrics)
 </script>
 

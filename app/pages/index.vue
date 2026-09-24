@@ -5,11 +5,9 @@ import HomeDashboard from '@/components/Home/HomeDashboard.vue'
 import HomeMarketing from '@/components/Home/HomeMarketing.vue'
 import '@/assets/pages/home.scss'
 
-// Logged-in users get the dashboard; guests get the marketing landing. The
-// decision is reactive and resolves behind the global loading splash (which
-// blocks on the auth session), so there's no marketing flash for logged-in
-// users. Marketing stays the default/prerendered branch, so SEO and the
-// logged-out first paint are unaffected.
+// Logged-in users get the dashboard, guests the landing. The choice resolves behind
+// the loading splash (which waits on the auth session), so there's no marketing
+// flash. Marketing stays the prerendered branch for SEO and the logged-out first paint.
 const user = useSupabaseUser()
 const nuxtApp = useNuxtApp()
 
@@ -18,32 +16,16 @@ const nuxtApp = useNuxtApp()
 // const showLanding = ref(false)
 const activeTab = ref<'home' | 'dashboard'>('dashboard')
 
-// Marketing is always what goes into the HTML, and the hydrating render has to
-// agree with it. Production prerenders `/` with no session and gets there on its
-// own, but a dev request carries the auth cookie and would otherwise render the
-// dashboard server-side, which it can't survive: every card reads its
-// localStorage cache during setup and fetches in onMounted, so the server paints
-// skeletons and empty states while the client's very first render already has
-// the cached data, and each card hydrates onto markup for a branch it isn't in.
-// Pinning the server to marketing makes dev behave like prod - the dashboard
-// mounts client-side, once, with its data.
-//
-// `isHydrating` is a client-only flag, so the server needs saying explicitly.
-// A client-side navigation to `/` starts false and lands on the right branch
-// immediately.
+// The server and the hydrating render always output marketing. A dev request carries
+// the auth cookie, and a server-rendered dashboard can't hydrate: cards read their
+// localStorage cache in setup, so the client's first render never matches the server's
+// skeletons. `isHydrating` is client-only, so the server is named explicitly.
 const hydrating = ref(import.meta.server || nuxtApp.isHydrating)
 
-// Correcting the branch after hydration is a fix-up rather than a view change,
-// so it lands uncrossfaded and before the first paint. Re-armed a frame later
-// for the tab swaps, which are what the transition is actually for.
-//
-// This also has to drop `out-in` for that one pass, not just the CSS. With
-// `:css="false"` and no JS leave hook, Vue calls the leave `done()` synchronously
-// while it's unmounting the outgoing branch, and out-in's `afterLeave` answers
-// that by re-running the Transition's own render from inside the patch that's
-// still unmounting. The reentrant pass then patches against a placeholder vnode
-// whose element hasn't been created yet and blows up on `el.parentNode`. Default
-// mode has no `afterLeave`, so the swap finishes in the one patch.
+// The post-hydration branch fix lands uncrossfaded before first paint, and the
+// transition re-arms a frame later for tab swaps. That pass drops `out-in` too: with
+// `:css="false"` and no JS leave hook, out-in's afterLeave re-renders the Transition
+// inside the patch that's still unmounting, which crashes on `el.parentNode`.
 const animateSwap = ref(!nuxtApp.isHydrating)
 
 const showDashboard = computed(() =>
@@ -64,13 +46,10 @@ watch(activeTab, () => {
 
 <template>
   <div class="home">
-    <!-- Keep this root element the only node in the template, comments
-         included. Anything alongside it compiles to a fragment, the page vnode
-         resolves to the fragment anchor instead of an element, and Nuxt drops
-         the page transition for this route (NUXT_E4004). -->
-    <!-- Nebula + stars live here, outside the transition, so they persist across
-         the swap instead of tearing down with whichever view is leaving. The
-         variant just crossfades the overlay treatment. -->
+    <!-- Keep this root element the only node in the template, comments included.
+         Anything alongside it makes a fragment and Nuxt drops the page transition
+         for this route (NUXT_E4004). -->
+    <!-- Nebula and stars sit outside the transition so they persist across the swap -->
     <HomeBackdrop :variant="showDashboard ? 'dashboard' : 'landing'" />
 
     <!-- out-in so the dashboard fades away first, then the landing rises up into
@@ -98,7 +77,6 @@ watch(activeTab, () => {
 
 <style lang="scss" scoped>
 // main is a centering column flex container, so the root has to claim the width
-// its children used to claim themselves.
 .home {
   width: 100%;
 }

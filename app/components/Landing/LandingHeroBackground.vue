@@ -5,10 +5,8 @@ import { isLightTheme, parseColor } from '@/lib/globe/GlobeTheme'
 import fragSrc from './LandingHeroBackgroundShader.frag.glsl?raw'
 import vertSrc from './LandingHeroBackgroundShader.vert.glsl?raw'
 
-// Playback speed multiplier for the drift. 1 is the original rate; the dashboard
-// runs it slower so the backdrop is calmer behind the cards. `paused` parks the
-// render loop while the canvas is invisible (e.g. scroll-faded to zero); the
-// accumulated animTime survives, so unpausing continues rather than jumping.
+// `speed` scales the drift rate. `paused` parks the render loop while the canvas is
+// invisible, and animTime survives so unpausing continues rather than jumping.
 const props = withDefaults(defineProps<{
   speed?: number
   paused?: boolean
@@ -26,9 +24,8 @@ let resolutionUniform: WebGLUniformLocation | null = null
 let baseColorUniform: WebGLUniformLocation | null = null
 let altColorUniform: WebGLUniformLocation | null = null
 let rafId: number | null = null
-// Accumulated animation time in seconds, advanced by real elapsed time scaled by
-// the speed prop. Accumulating (rather than deriving t from a fixed start) means
-// changing speed shifts the rate without jumping the noise phase.
+// Accumulated seconds scaled by speed. Accumulating instead of deriving t from a
+// fixed start lets speed change without jumping the noise phase.
 let animTime = 0
 let lastFrame = 0
 let timeOffset = 0
@@ -57,10 +54,6 @@ function toVec3(color: string): [number, number, number] | null {
   return [r / 255, g / 255, b / 255]
 }
 
-/**
- * Linearly blend two vec3 colors by t (0..1).
- * Used to derive a slightly shifted alt color from the accent.
- */
 function blendVec3(
   a: [number, number, number],
   b: [number, number, number],
@@ -145,10 +138,8 @@ function resize() {
   }
 }
 
-// Program, buffer and vertex attribs are set up once in initGL and this
-// context draws nothing else, so a frame is just uniforms and the draw.
-// Sizing lives with the resize observers, not here: getBoundingClientRect
-// every frame forces a layout.
+// This context draws nothing else, so a frame is just uniforms and the draw. Sizing
+// stays with the resize observers because getBoundingClientRect every frame forces a layout.
 function drawFrame() {
   if (!gl || !program || !canvasEl.value)
     return
@@ -183,7 +174,6 @@ function render(now: number) {
 }
 
 function onThemeChange() {
-  // Reset so readAccentColors re-runs and picks up the new values.
   accentResolved = false
   readAccentColors()
 }
@@ -202,14 +192,9 @@ function setupThemeWatcher() {
 }
 
 /**
- * (Re)create the GL context, program, buffer and uniforms, then kick off the
- * render loop. Returns false if anything failed so callers can bail.
- *
- * This is split out from onMounted so it can run again after a
- * `webglcontextrestored` event. Chrome reclaims WebGL contexts much more
- * aggressively than other browsers (and this page already runs a second,
- * heavier context for the globe), so without restore handling the background
- * silently goes blank once its context is lost.
+ * Split out of onMounted so it can rerun on `webglcontextrestored`. Chrome reclaims
+ * WebGL contexts aggressively (this page also runs the heavier globe context), and
+ * without restore handling the background silently goes blank.
  */
 function initGL(): boolean {
   const canvas = canvasEl.value

@@ -1,6 +1,6 @@
 import { useRuntimeConfig, useSupabaseClient } from '#imports'
 
-// Search result item (from mode=search)
+// From mode=search
 export interface IgdbSearchResult {
   igdb_id: number
   name: string
@@ -10,7 +10,7 @@ export interface IgdbSearchResult {
   genre_names: string[]
 }
 
-// Full normalised game data (from mode=details)
+// From mode=details
 export interface IgdbGameDetails {
   igdb_id: number
   igdb_url: string | null
@@ -35,14 +35,8 @@ interface IgdbDetailsResponse {
   game: IgdbGameDetails
 }
 
-/**
- * Composable wrapping calls to the `admin-igdb-search` Supabase edge function.
- *
- * All three methods use a direct `fetch` call rather than `supabase.functions.invoke`
- * because `invoke` does not support query string parameters natively.
- *
- * Callers are responsible for managing reactive loading/error state.
- */
+// Direct fetch because supabase.functions.invoke doesn't support query string
+// params. Callers own their loading and error state.
 export function useIgdb() {
   const supabase = useSupabaseClient()
   const config = useRuntimeConfig()
@@ -68,9 +62,6 @@ export function useIgdb() {
     return response.json() as Promise<T>
   }
 
-  /**
-   * Search IGDB games by name.
-   */
   async function searchByName(q: string): Promise<IgdbSearchResult[]> {
     try {
       const data = await _fetchEdge<IgdbSearchResponse>({ mode: 'search', q })
@@ -81,9 +72,6 @@ export function useIgdb() {
     }
   }
 
-  /**
-   * Search IGDB games by Steam app ID.
-   */
   async function searchBySteamId(steamId: string): Promise<IgdbSearchResult[]> {
     try {
       const data = await _fetchEdge<IgdbSearchResponse>({ mode: 'search', steam_id: steamId })
@@ -94,9 +82,6 @@ export function useIgdb() {
     }
   }
 
-  /**
-   * Fetch full normalised game details by IGDB ID.
-   */
   async function getDetails(igdbId: number): Promise<IgdbGameDetails | null> {
     try {
       const data = await _fetchEdge<IgdbDetailsResponse>({ mode: 'details', id: String(igdbId) })

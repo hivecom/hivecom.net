@@ -1,15 +1,12 @@
 <script setup lang="ts">
-// The shape an item would take, with the reason it isn't there yet written in
-// it. Sections use this instead of collapsing, so a card with little to say
-// keeps the same grid as the cards either side of it rather than turning into a
-// column of grey sentences.
+// Sections use this instead of collapsing, so a card with little to say keeps the
+// same grid as its neighbours
 defineProps<{
-  /** Left out for the cells that only pad a partly filled grid. Use the
-   * `message` slot instead when the copy carries a link. */
+  /** Omit for cells that only pad a grid. Use the `message` slot for copy with a link. */
   message?: string
-  /** Row rather than tile, for the sections that are a list. */
+  /** Row rather than tile */
   inline?: boolean
-  /** Span the whole grid, for a section with nothing in it at all. */
+  /** Spans the whole grid, for an empty section */
   full?: boolean
 }>()
 </script>
@@ -38,7 +35,7 @@ defineProps<{
   border-style: dashed;
   text-align: center;
 
-  // Nothing to click, so it shouldn't answer the cursor like a real item does.
+  // Nothing to click, so no hover response
   &:hover {
     background-color: transparent;
     border-color: var(--color-border-weak);
@@ -53,8 +50,7 @@ defineProps<{
     min-height: 44px;
   }
 
-  // Padding out a grid that has real items in it. No copy, just the shape, so
-  // the eye goes to the item next to it.
+  // Grid padding next to real items, so the eye goes to them
   &--bare {
     opacity: 0.5;
   }
@@ -68,8 +64,6 @@ defineProps<{
   font-size: var(--font-size-s);
   color: var(--color-text-lighter);
 
-  // A link inside the copy reads as part of the sentence, just underlined, and
-  // steps up to normal text on hover so it's clearly the part that answers.
   a {
     color: inherit;
 

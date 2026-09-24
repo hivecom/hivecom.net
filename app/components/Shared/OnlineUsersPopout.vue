@@ -31,7 +31,6 @@ const isDisabled = computed(() => props.disabled || (props.count ?? 0) === 0)
       <slot />
     </template>
     <Flex column gap="xs" class="px-m py-s">
-      <!-- Loading skeleton -->
       <template v-if="loading">
         <Flex
           v-for="i in skeletonCount"
@@ -43,7 +42,6 @@ const isDisabled = computed(() => props.disabled || (props.count ?? 0) === 0)
           <Skeleton width="90px" height="10px" />
         </Flex>
       </template>
-      <!-- Loaded users -->
       <template v-else>
         <UserDisplay
           v-for="id in visibleIds"

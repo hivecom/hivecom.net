@@ -24,14 +24,13 @@ export const BUCKET_SIZE_LIMITS: Record<StorageBucketId, number> = {
   [USERS_BUCKET_ID]: 1048576, // 1 MB
 }
 
-// Archive MIME types and extensions. Browsers report these inconsistently
-// (often '' or application/octet-stream), so we match by extension as a fallback.
+// Browsers report archive MIME types inconsistently (often '' or
+// application/octet-stream), so extensions are the fallback.
 export const ARCHIVE_MIME_TYPES = ['application/zip', 'application/x-zip-compressed', 'application/x-7z-compressed', 'application/vnd.rar', 'application/x-rar-compressed', 'application/x-tar', 'application/gzip', 'application/x-gzip']
 export const ARCHIVE_EXTENSIONS = ['zip', '7z', 'rar', 'tar', 'gz', 'tgz', 'bz2', 'xz']
 
-// Allowed MIME patterns per bucket, mirroring allowed_mime_types in
-// storage.buckets. `null` means the bucket accepts any type. Patterns support a
-// trailing `/*` wildcard (e.g. image/*) just like the database column.
+// Mirrors allowed_mime_types in storage.buckets. `null` accepts any type, and a
+// trailing `/*` wildcard works like it does in the column.
 export const BUCKET_ALLOWED_MIME_TYPES: Record<StorageBucketId, string[] | null> = {
   [CMS_BUCKET_ID]: null,
   [FORUMS_BUCKET_ID]: ['application/json', 'image/*', 'video/*', 'audio/*', 'text/csv', ...ARCHIVE_MIME_TYPES],
@@ -46,8 +45,6 @@ function mimeMatchesPattern(pattern: string, type: string): boolean {
   return pattern === type
 }
 
-// Whether a file is allowed in a bucket, by MIME, with an extension fallback for
-// archives whose browser-reported MIME is empty or octet-stream.
 export function isFileAllowedForBucket(bucketId: StorageBucketId, fileType: string, fileName: string): boolean {
   const patterns = BUCKET_ALLOWED_MIME_TYPES[bucketId]
   if (patterns == null)
@@ -60,8 +57,7 @@ export function isFileAllowedForBucket(bucketId: StorageBucketId, fileType: stri
   return bucketAllowsArchives && ARCHIVE_EXTENSIONS.includes(extension)
 }
 
-// Value for an <input type="file"> accept attribute. Empty string means any
-// type (CMS). Archive extensions are appended since their MIME is unreliable.
+// For an <input type="file"> accept attribute. Empty means any type.
 export function getBucketAcceptAttr(bucketId: StorageBucketId): string {
   const patterns = BUCKET_ALLOWED_MIME_TYPES[bucketId]
   if (patterns == null)
@@ -92,7 +88,7 @@ export interface FlatListResult {
   assets: StorageAsset[]
   totalCount: number
 
-  /** True when there may be more results (returned count === limit). */
+  /** A full page came back, so there may be more. */
   hasMore: boolean
 }
 
@@ -228,10 +224,7 @@ export async function listStorageDirectory(
   return entries
 }
 
-/**
- * Parallel recursive fetch. Fires all folder expansions concurrently.
- * Calls `onBatch` as each batch of files resolves so the UI can stream results in.
- */
+// `onBatch` fires as each folder resolves so the UI can stream results in.
 export async function listStorageFilesRecursiveParallel(
   client: SupabaseClient<Database>,
   bucketId: StorageBucketId,
@@ -370,9 +363,8 @@ export function getPublicAssetUrl(
 }
 
 /**
- * Triggers a browser download for a storage asset. Appends Supabase's
- * `?download` query param so the response is served with a
- * `Content-Disposition: attachment` header even when the asset is cross-origin.
+ * Supabase's `?download` param makes the response carry
+ * `Content-Disposition: attachment`, which works even cross-origin.
  */
 export function downloadAsset(publicUrl: string | null | undefined, fileName: string): void {
   if (!import.meta.client || !publicUrl)

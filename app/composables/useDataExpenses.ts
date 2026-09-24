@@ -5,29 +5,14 @@ import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useCache } from './useCache'
 
 const CACHE_KEY = 'expenses:all'
-const CACHE_TTL = 60 * 60 * 1000 // 1 hour - expenses change infrequently
+const CACHE_TTL = 60 * 60 * 1000 // expenses change infrequently
 
-/**
- * Shared cached expenses composable.
- *
- * Previously fetched independently by multiple call sites:
- * - pages/community/funding.vue (all expenses, ordered by started_at)
- * - components/Community/FundingProgress.vue (active only: ended_at IS NULL + started_at <= now)
- * - components/Admin/KPIOverview.vue (admin side)
- * - components/Admin/Funding/FundingKPIs.vue (admin side)
- *
- * `activeExpenses` is derived client-side from the full list - no second query.
- * Admin write paths should call `invalidate()` after mutations.
- *
- * - TTL: 5 minutes
- * - `invalidate()` should be called after admin writes to the expenses table
- * - `refresh()` forces a cache-busting re-fetch
- */
+// Admin writes to funding_expenses must call invalidate().
 export function useDataExpenses() {
   const cache = useCache(CACHE_NAMESPACES.community)
   const supabase = useSupabaseClient<Database>()
 
-  // Pre-populate synchronously so fundingProgress computes correctly on first render.
+  // Filled synchronously so funding progress is right on first render.
   const _initialCached = cache.getInitial<Tables<'funding_expenses'>[]>(CACHE_KEY)
   const expenses = ref<Tables<'funding_expenses'>[]>(_initialCached ?? [])
   const loading = ref(false)
@@ -66,10 +51,6 @@ export function useDataExpenses() {
     }
   }
 
-  /**
-   * Active expenses: ended_at is null and started_at is in the past.
-   * Derived from the cached full list - no additional query.
-   */
   const activeExpenses = computed(() => {
     const now = new Date().toISOString()
     return expenses.value.filter(
@@ -77,9 +58,7 @@ export function useDataExpenses() {
     )
   })
 
-  /**
-   * Total monthly expense amount in cents, derived from active expenses.
-   */
+  // Monthly total.
   const totalActiveAmountCents = computed(() =>
     activeExpenses.value.reduce((sum, expense) => sum + expense.amount_cents, 0),
   )

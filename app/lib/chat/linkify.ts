@@ -1,6 +1,4 @@
-// Link, channel and mention detection for chat text. The message log and the
-// three topic renderers all need the same rules, so they live here instead of
-// being copy-pasted per component.
+// Link, channel and mention detection shared by every chat text renderer.
 
 const URL_PATTERN = /https?:\/\/\S+/g
 
@@ -20,7 +18,6 @@ function countChar(text: string, char: string): number {
   return count
 }
 
-// Strip the punctuation that rode along on the end of a matched URL.
 export function trimUrl(raw: string): string {
   let url = raw
 
@@ -48,7 +45,6 @@ export function trimUrl(raw: string): string {
 
 export interface UrlMatch { index: number, value: string }
 
-// URLs with their offset in the source text, punctuation already trimmed.
 export function findUrls(text: string): UrlMatch[] {
   const out: UrlMatch[] = []
   for (const m of text.matchAll(URL_PATTERN))
@@ -72,7 +68,6 @@ const TRAILING_CHANNEL_PUNCTUATION = /[.,;:!?'")\]}>]+$/
 
 export interface TopicSegment { type: 'text' | 'link' | 'channel' | 'mention', value: string }
 
-// Split a channel topic into plain text plus the bits that are clickable.
 export function topicSegments(topic: string): TopicSegment[] {
   const out: TopicSegment[] = []
   let last = 0
@@ -93,7 +88,7 @@ export function topicSegments(topic: string): TopicSegment[] {
       value = raw
     }
 
-    // Trimming can eat the whole token ("#." and friends); leave it as text.
+    // Trimming can eat the whole token, e.g. "#.". Leave it as text.
     if (value.length < 2)
       continue
 

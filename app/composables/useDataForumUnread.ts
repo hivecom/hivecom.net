@@ -3,21 +3,14 @@ import dayjs from 'dayjs'
 
 interface TopicSeenState {
   /**
-   * The most recent activity timestamp the user has acknowledged in this topic.
-   * Set when: explicitly navigating to a topic, visiting a discussion directly,
-   * or posting a reply. Uses the server's activity timestamp where available so
-   * we don't overshoot and shadow concurrent activity from others.
+   * Latest activity the user has acknowledged. Uses the server's timestamp where
+   * available so it doesn't overshoot and hide concurrent activity from others.
    */
   seenActivityAt: string
 }
 
 interface DiscussionSeenState {
-  /**
-   * The reply count at the time the user last saw this discussion.
-   * -1 is a sentinel meaning "this discussion exists in a known topic but the
-   * user has never seen it" - used to correctly dot genuinely new discussions
-   * in topics the user has previously visited.
-   */
+  /** -1 means it's in a known topic but was never seen, so it gets a dot. */
   seenReplyCount: number
 }
 
@@ -29,19 +22,8 @@ interface ForumUnreadStorage {
 
 const STORAGE_KEY = 'forum-unread-v3'
 
-/**
- * Composable for tracking "new posts" state on the forum index.
- *
- * Topics use seenActivityAt - the latest activity timestamp the user has
- * acknowledged. This advances when you navigate to a topic, visit a discussion
- * inside it, or post a reply - preventing false dots for your own activity
- * without shadowing concurrent activity from others.
- *
- * Discussions use seenReplyCount. A dot appears when reply_count > seenReplyCount.
- * New discussions in already-visited topics are seeded at -1 (never seen) so
- * they correctly show a dot. New discussions on first topic visit are seeded at
- * their current count to prevent a first-visit flood.
- */
+// New-post dots on the forum index. Topics compare activity timestamps,
+// discussions compare reply counts.
 export function useDataForumUnread() {
   const currentUserId = useUserId()
 
@@ -65,10 +47,7 @@ export function useDataForumUnread() {
     },
   )
 
-  /**
-   * Returns true when a topic has activity after the user last acknowledged it.
-   * Always returns false for topics not yet stored (first visit).
-   */
+  // Always false for topics not stored yet (first visit).
   function isTopicNew(topicId: string, lastActivityAt: string | null): boolean {
     const seen = storage.value.topics[topicId]
     if (!seen)
@@ -79,15 +58,8 @@ export function useDataForumUnread() {
     return dayjs(lastActivityAt).isAfter(dayjs(seen.seenActivityAt))
   }
 
-  /**
-   * When discussions for a topic are loaded, derive the topic dot from whether
-   * any discussion is new. Falls back to the timestamp-based isTopicNew when
-   * discussions haven't loaded yet (pre-load hint).
-   *
-   * This is the authoritative check once discussions are in hand - own activity
-   * and direct visits correctly show no dot because the relevant discussion's
-   * seenReplyCount is already up to date.
-   */
+  // Authoritative once discussions are loaded, since own activity and direct
+  // visits already updated seenReplyCount. Falls back to isTopicNew before that.
   function isTopicNewWithDiscussions(
     topicId: string,
     lastActivityAt: string | null,
@@ -104,11 +76,7 @@ export function useDataForumUnread() {
     return isTopicNew(topicId, lastActivityAt)
   }
 
-  /**
-   * Returns true when a discussion has more replies than when the user last saw it.
-   * seenReplyCount of -1 means the discussion was never seen (new in a known topic).
-   * Always returns false for discussions not yet stored.
-   */
+  // Always false for discussions not stored yet.
   function isDiscussionNew(discussionId: string, replyCount: number | null, lastActivityBy?: string | null): boolean {
     if (lastActivityBy != null && lastActivityBy === currentUserId.value)
       return false
@@ -123,19 +91,13 @@ export function useDataForumUnread() {
   }
 
   /**
-   * Advance a topic's seenActivityAt to the given timestamp (or now if omitted).
-   * Always takes the max of the current value and the new one so we never
-   * accidentally roll back the watermark.
-   *
-   * Pass the server activity timestamp where available (e.g. discussion.last_activity_at)
-   * rather than always using now - this avoids overshooting and masking concurrent
-   * activity from other users that happened after the timestamp you actually saw.
+   * Only ever moves forward. Pass the server activity timestamp when there is
+   * one: now can mask activity from others that landed after what you saw.
    */
   function markTopicSeen(topicId: string, activityAt?: string) {
     const incoming = activityAt ?? new Date().toISOString()
     const current = storage.value.topics[topicId]?.seenActivityAt
 
-    // Only write if the incoming value is newer than what we already have
     if (current != null && !dayjs(incoming).isAfter(dayjs(current)))
       return
 
@@ -148,7 +110,6 @@ export function useDataForumUnread() {
     }
   }
 
-  /** Record the current reply count for a discussion as "seen". */
   function markDiscussionSeen(discussionId: string, replyCount: number) {
     storage.value = {
       ...storage.value,
@@ -162,11 +123,8 @@ export function useDataForumUnread() {
   }
 
   /**
-   * Called after topics (with discussions) are fetched.
-   *
-   * - Topics not yet in storage: seeded as fully seen (first-visit flood prevention).
-   * - Topics already in storage: new discussions get seenReplyCount = -1 (unseen)
-   *   so they correctly show a dot. Existing discussions are left untouched.
+   * Unstored topics seed as fully seen so a first visit isn't a flood of dots.
+   * In stored topics, new discussions get -1 so they show a dot.
    */
   function initializeTopics(
     topics: Array<{
@@ -189,12 +147,9 @@ export function useDataForumUnread() {
         changed = true
       }
 
-      // A topic is "freshly seeded" if it was either just initialized above, or
-      // was seeded by initializeTopicsOnly in the same session - detectable by
-      // seenActivityAt matching last_activity_at exactly (our seeding convention).
-      // In both cases, discussions should be seeded as seen (flood prevention).
-      // Only topics genuinely visited before (seenActivityAt < last_activity_at)
-      // should have new discussions seeded as -1 (unseen).
+      // Seeding stores last_activity_at as seenActivityAt, so an exact match means
+      // the topic was seeded this session and hasn't really been visited. Its
+      // discussions seed as seen. Only visited topics seed new discussions at -1.
       const isFreshlySeeded = isNewTopic
         || updatedTopics[topic.id]?.seenActivityAt === (topic.last_activity_at ?? null)
 
@@ -213,10 +168,7 @@ export function useDataForumUnread() {
     }
   }
 
-  /**
-   * Like `initializeTopics` but only seeds topic-level state. Used when only
-   * topics (without full discussion lists) are loaded on mount.
-   */
+  // For topics loaded without their discussions.
   function initializeTopicsOnly(
     topics: Array<{ id: string, last_activity_at?: string | null }>,
   ) {
@@ -237,34 +189,20 @@ export function useDataForumUnread() {
     }
   }
 
-  /**
-   * Records the current time as the feed visit timestamp and returns the
-   * previous value. Call this once on mount (client-side only) so the
-   * "last visited" divider in the activity feed reflects the prior session.
-   *
-   * To avoid intra-session navigation (e.g. forum index -> discussion -> back
-   * to forum index) collapsing the "since last visit" window down to seconds,
-   * the stored watermark is only advanced when the previous visit was more
-   * than `SESSION_GAP_MS` ago. Within that window the existing watermark is
-   * preserved and returned, so the badge keeps reflecting the real prior
-   * session rather than the most recent re-mount.
-   */
-  const SESSION_GAP_MS = 30 * 60 * 1000 // 30 minutes
+  // The watermark only advances after SESSION_GAP_MS. Otherwise navigating
+  // around within one session shrinks "since last visit" down to seconds.
+  const SESSION_GAP_MS = 30 * 60 * 1000
 
   function recordFeedVisit(): string | null {
     const previous = storage.value.feedVisitedAt
     const now = Date.now()
     const previousMs = previous != null ? new Date(previous).getTime() : null
 
-    // First-ever visit, or a real gap since the last visit: advance the
-    // watermark and return whatever was stored before.
     if (previousMs == null || now - previousMs >= SESSION_GAP_MS) {
       storage.value = { ...storage.value, feedVisitedAt: new Date(now).toISOString() }
       return previous
     }
 
-    // Same session: leave the stored watermark alone so the badge keeps
-    // showing activity since the real prior visit, not since we re-mounted.
     return previous
   }
 

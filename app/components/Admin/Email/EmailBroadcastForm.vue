@@ -58,7 +58,7 @@ const confirmMatches = computed(() => confirmWord.value.trim() === CONFIRM_WORD)
 
 // The HTML part of the mail. breaks is on because people write broadcasts like
 // chat messages, and a single newline swallowed into one paragraph reads wrong.
-// This is the inner body only - the edge function wraps it in the email shell.
+// This is the inner body only. The edge function wraps it in the email shell.
 const renderedHtml = computed(() => marked.parse(body.value, { async: false, gfm: true, breaks: true }))
 
 // ── Preview ──────────────────────────────────────────────────────────────────

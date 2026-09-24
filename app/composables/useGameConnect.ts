@@ -1,18 +1,6 @@
 /**
- * useGameConnect
- *
- * Resolves how a player connects to a game server. The templates live in the
- * database (games.connect_uri, games.connect_command, and the per-server
- * network_gameservers.connect_command override) so adding a game is a data
- * change rather than a deploy.
- *
- * Two independent templates:
- *   connectUri     - navigated to on Launch, e.g. steam://connect/{address}:{port}
- *   connectCommand - console/launch args to copy, e.g. +connect {address}:{port}
- *
- * A third form, the launcher command, is derived rather than stored: it is the
- * resolved URI handed to the steam binary, for people who would rather paste a
- * line into a terminal than trust the browser's protocol handler.
+ * Connect templates live in the database (games.connect_uri, games.connect_command
+ * and the per-server override), so adding a game is a data change, not a deploy.
  *
  * Tokens: {address} {port} {steam_id}, plus {command} in the URI only, which
  * interpolates the URL-encoded connectCommand. That covers games like Cobalt
@@ -26,30 +14,28 @@ type TokenMap = Record<string, string | null>
 export type ConnectMethod = 'uri' | 'copy'
 
 export interface ConnectContext {
-  /** games.connect_uri - null when the game has no direct-launch support */
+  /** Null when the game has no direct-launch support. */
   connectUri: string | null
 
-  /** network_gameservers.connect_command ?? games.connect_command */
+  /** The per-server override, falling back to the game's command. */
   connectCommand: string | null
 
-  /** games.steam_id, used by the {steam_id} token */
   steamId: number | null
 }
 
 export interface ConnectAction {
-  /** The URI to navigate to, or null when the action is copy-only */
+  /** Null when the action is copy-only. */
   uri: string | null
 
-  /** Substituted console/launch command, or null when the game defines none */
+  /** Null when the game defines none. */
   command: string | null
 
-  /** Shell one-liner handing the URI to the Steam client, steam:// URIs only */
+  /** Shell one-liner handing the URI to the Steam client, steam:// URIs only. */
   launcherCommand: string | null
 
-  /** Raw address string including port, always available for clipboard fallback */
+  /** Always set, for the clipboard fallback. */
   addressWithPort: string
 
-  /** Which underlying mechanism this action uses */
   method: ConnectMethod
 }
 
@@ -103,17 +89,13 @@ function substitute(template: string, tokens: TokenMap): string | null {
   return missing ? null : result
 }
 
-/** Shape of the games columns the connect logic needs. */
 export interface ConnectGameFields {
   connect_uri: string | null
   connect_command: string | null
   steam_id: number | null
 }
 
-/**
- * Resolves the game defaults against the per-server override. Kept standalone
- * so components can build the context without instantiating the composable.
- */
+// Standalone so components can build the context without the composable.
 export function buildConnectContext(
   game: ConnectGameFields | null | undefined,
   gameserver?: { connect_command: string | null } | null,
@@ -126,21 +108,10 @@ export function buildConnectContext(
 }
 
 export function useGameConnect() {
-  /**
-   * Formats an address + port into a single "host:port" string.
-   * Returns just the host when no port is provided.
-   */
   function formatAddress(address: string, port: string | null | undefined): string {
     return port != null && port !== '' ? `${address}:${port}` : address
   }
 
-  /**
-   * Returns the ConnectAction for a single address.
-   *
-   * @param address - The raw server address/IP
-   * @param port    - Optional port string (e.g. "27015")
-   * @param ctx     - Resolved connect templates for the game/server pair
-   */
   function getConnectAction(
     address: string,
     port: string | null | undefined,
@@ -182,10 +153,6 @@ export function useGameConnect() {
     }
   }
 
-  /**
-   * Returns one ConnectAction per address for a server with potentially
-   * multiple addresses.
-   */
   function getConnectActions(
     addresses: string[] | null | undefined,
     port: string | null | undefined,
@@ -197,14 +164,7 @@ export function useGameConnect() {
     return addresses.map(a => getConnectAction(a, port, ctx))
   }
 
-  /**
-   * Triggers the connect action in the browser.
-   * For URI-based methods this navigates to the URI (which the OS/Steam client
-   * handles). For copy-only actions this returns false so the caller can fall
-   * back to clipboard copy.
-   *
-   * Returns true if a URI was triggered, false if the caller must handle copy.
-   */
+  // Returns false for copy-only actions, so the caller falls back to the clipboard.
   function triggerConnect(action: ConnectAction): boolean {
     if (action.uri != null) {
       window.location.href = action.uri
@@ -213,11 +173,8 @@ export function useGameConnect() {
     return false
   }
 
-  /**
-   * Convenience: returns true when the game has a direct-launch URI template.
-   * Note this is template-level, so it can still resolve to null per address if
-   * the server is missing a port or the game is missing a Steam ID.
-   */
+  // Template-level, so it can still resolve to null per address when a port or
+  // Steam ID is missing.
   function supportsDirectConnect(ctx: ConnectContext): boolean {
     return ctx.connectUri != null && ctx.connectUri !== ''
   }

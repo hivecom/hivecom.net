@@ -13,7 +13,6 @@ const TURBULENCE = 0.1
 const NOISE_SCALE = 0.0015
 const NOISE_SPEED = 0.00035
 
-// Mouse
 const mouse = { x: 0, y: 0, left: false, right: false }
 
 type AccentVariant = 'accent' | 'raised' | 'lowered'
@@ -38,7 +37,6 @@ let bufB: OffscreenCanvas | null = null
 let ctxA: OffscreenCanvasRenderingContext2D | null = null
 let ctxB: OffscreenCanvasRenderingContext2D | null = null
 
-// Resolved accent colors
 const colors: Record<AccentVariant, string> = {
   accent: '#a7fc2f',
   raised: '#69b103',
@@ -132,7 +130,7 @@ function tick(ctx: CanvasRenderingContext2D, w: number, h: number) {
     if (p.y > h - margin)
       p.vy -= (p.y - (h - margin)) / margin * edgeStrength
 
-    // Left click attracts, right click repulses - strength falls off with distance
+    // Left click attracts, right click repulses, falling off with distance
     if (mouse.left || mouse.right) {
       const dx = mouse.x - p.x
       const dy = mouse.y - p.y
@@ -202,7 +200,7 @@ function tick(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.clearRect(0, 0, w, h)
   ctx.drawImage(bufB, 0, 0)
 
-  // Step 4: swap buffers - bufB becomes the new "previous frame"
+  // Step 4: swap buffers so bufB becomes the new "previous frame"
   const tmpCanvas = bufA
   const tmpCtx = ctxA
   bufA = bufB

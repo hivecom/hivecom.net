@@ -6,8 +6,7 @@ import { useDataSupporters } from '@/composables/useDataSupporters'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 interface Props {
-  // When provided by a parent that already fetched supporters (e.g. funding.vue),
-  // these override the internally fetched list so we don't double-fetch.
+  // Overrides the internal fetch when the parent already has the supporters
   supporterIds?: string[]
 }
 
@@ -17,15 +16,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const currentUser = useSupabaseUser()
 
-// Use shared cached composable - no onMounted fetch needed here.
 const { supporterIds: fetchedSupporterIds } = useDataSupporters()
 
-// Prefer externally-supplied IDs (e.g. already fetched by parent) over internal fetch.
 const resolvedSupporterIds = computed(() =>
   props.supporterIds.length > 0 ? props.supporterIds : fetchedSupporterIds.value,
 )
 
-// Supporter count derived directly from the resolved list.
 const actualSupporterCount = computed(() => resolvedSupporterIds.value.length)
 
 const isBelowSmall = useBreakpoint('<s')

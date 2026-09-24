@@ -10,16 +10,9 @@ import GameIcon from '@/components/Shared/GameIcon.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 
 const props = defineProps<{
-  // 30d metrics history entries
   metricsHistory30d: MetricsHistoryEntry[]
-
-  // Whether the 30d history is still loading
   loading: boolean
-
-  // All games
   games: Tables<'games'>[]
-
-  // All events
   events: Tables<'events'>[]
 
   // Pre-resolved background URL for the popped-off game (empty string if none)
@@ -40,7 +33,6 @@ const poppedOff = computed(() => {
   if (!props.metricsHistory30d.length || !props.games.length)
     return null
 
-  // Find entry+gameId with max usersByGame value
   let bestGameId: string | null = null
   let peakCount = 0
   let peakEntry: MetricsHistoryEntry | null = null
@@ -127,7 +119,6 @@ watchEffect(() => {
         @click="!linkedEvent ? open() : undefined"
       >
         <Card class="popped-off-card" :padding="false">
-          <!-- Background art -->
           <div
             class="popped-off-card__bg"
             :class="{ 'popped-off-card__bg--loaded': bgLoaded }"
@@ -140,7 +131,6 @@ watchEffect(() => {
 
           <div class="popped-off-card__content">
             <Flex column gap="xs" class="popped-off-card__left">
-              <!-- Label -->
               <span class="text-xs text-bold popped-off-card__label" :class="{ 'popped-off-card__label--live': props.live }">
                 <template v-if="props.live">
                   <span class="popped-off-card__live-dot" />
@@ -153,14 +143,12 @@ watchEffect(() => {
                   Recently popped off
                 </template>
               </span>
-              <!-- Game identity -->
               <Flex y-center gap="s" class="popped-off-card__game-row">
                 <span class="popped-off-card__icon-trigger" @click.prevent.stop="open">
                   <GameIcon :game="poppedOff.game" size="m" />
                 </span>
                 <span class="text-xxl text-bold popped-off-card__game-name">{{ poppedOff.game.name }}</span>
               </Flex>
-              <!-- Peak stat -->
               <div class="popped-off-card__bottom mt-xs">
                 <Flex y-center gap="xs" class="popped-off-card__peak">
                   <Icon name="ph:fire" size="16" class="text-color-lighter" />

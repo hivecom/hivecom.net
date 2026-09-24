@@ -14,7 +14,6 @@ import { responseMethodNotAllowed } from "../_shared/response.ts";
 import type { Database } from "database-types";
 
 Deno.serve(async (req: Request) => {
-  // This is needed if you're planning to invoke your function from a browser.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -24,7 +23,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Get container name from request path
     const containerName = extractContainerNameFromPath(req);
 
     if (!containerName) {
@@ -40,7 +38,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify user has permission to manage servers
     const authResponse = await authorizeAuthenticatedHasPermissionAal2(
       req,
       ["network.update"],
@@ -50,16 +47,14 @@ Deno.serve(async (req: Request) => {
       return authResponse;
     }
 
-    // Get the Docker Control token from environment variables
     const DOCKER_CONTROL_TOKEN = getDockerControlToken();
 
-    // Create a Supabase client
+    // Service role client, created only after the permission check
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       getSecretKey(),
     );
 
-    // Get container details including the server it's hosted on
     const { container, error: containerError } = await getContainerWithServer(
       supabaseClient,
       containerName,
@@ -69,7 +64,6 @@ Deno.serve(async (req: Request) => {
       return containerError;
     }
 
-    // Build the Docker control URL for restarting the container
     const dockerControlUrl = buildDockerControlActionUrl(
       container!.server,
       containerName,
@@ -78,16 +72,13 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Making request to Docker Control at: ${dockerControlUrl}`);
 
-    // Update container in database to indicate it's restarting
-    // Container temporarily changes state during restart, so we mark as not running during the process
-    // Also reset healthy to null since health status will need to be re-checked
+    // Not running while it restarts, and health gets rechecked
     await updateContainerStatus(supabaseClient, containerName, {
       running: false,
       healthy: null,
     });
 
-    // Send the request to docker-control service asynchronously
-    // Don't wait for the response - just fire and forget
+    // Fire and forget
     fetch(dockerControlUrl, {
       method: "POST",
       headers: {
@@ -99,16 +90,14 @@ Deno.serve(async (req: Request) => {
         console.error(
           `Error restarting container ${containerName}: ${response.status} ${response.statusText}`,
         );
-        // If restart failed, need to check actual container state, but mark as potentially failed
         await updateContainerStatus(supabaseClient, containerName, {
           healthy: null,
-          // Not updating running since we're unsure of the state - health check will pick up state
+          // Leave running alone, the health check picks up the real state
         });
       } else {
         const result = await response.json();
         console.log(`Container ${containerName} restart result:`, result);
 
-        // After restart completes, update container as running with new timestamp
         await updateContainerStatus(supabaseClient, containerName, {
           running: true,
           healthy: null,
@@ -117,16 +106,14 @@ Deno.serve(async (req: Request) => {
       }
     }).catch((error) => {
       console.error(`Error restarting container ${containerName}:`, error);
-      // If there was an exception, update the container state to reflect uncertain status
       updateContainerStatus(supabaseClient, containerName, {
         healthy: null,
-        // Not updating running since we don't know if restart succeeded
+        // Unknown whether the restart succeeded, so running is left alone
       }).catch((dbError) => {
         console.error(`Failed to update container status: ${dbError.error}`);
       });
     });
 
-    // Return immediate success response
     return new Response(
       JSON.stringify({
         success: true,

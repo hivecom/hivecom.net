@@ -160,12 +160,10 @@ async function handleBulkDelete() {
 </script>
 
 <template>
-  <!-- Error message -->
   <Alert v-if="errorMessage" variant="danger">
     {{ errorMessage }}
   </Alert>
 
-  <!-- Loading state -->
   <template v-else-if="loading">
     <Flex gap="s" column expand>
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>

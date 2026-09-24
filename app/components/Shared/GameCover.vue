@@ -23,7 +23,7 @@ const hasError = ref(false)
 const isImageReady = ref(false)
 
 // Incremented per load so an older in-flight lookup can't clobber the state
-// of a newer one (it used to reset isImageReady after the image had loaded).
+// of a newer one.
 let loadToken = 0
 
 async function loadGameCover() {

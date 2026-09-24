@@ -1,10 +1,7 @@
 /**
- * Shared session-ready signal.
- *
- * Loading.vue calls `resolveSessionReady()` after `applyUserPreferences()` completes
- * (which internally awaits `supabase.auth.getSession()`). Any page that needs a valid
- * session before doing work can `await waitForSessionReady()` instead of racing against
- * the loading screen's own async initialisation.
+ * Loading.vue resolves this once `applyUserPreferences()` has awaited
+ * getSession(). Pages that need a session can `await waitForSessionReady()`
+ * instead of racing the loading screen.
  */
 
 let _resolve: (() => void) | null = null

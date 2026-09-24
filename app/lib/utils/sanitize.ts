@@ -18,27 +18,19 @@ const HTML_ELEMENT_RE = /^<\/?[a-z][^>]*>$/i
 
 const H1_RE = /^# (.*)$/gm
 
-/**
- * Removes HTML tags from a string, leaving only plain text and markdown syntax
- * @param input The input string that may contain HTML
- * @returns The string with HTML tags removed
- */
+/** Leaves plain text and markdown syntax. */
 export function stripHtmlTags(input: string): string {
   if (!input)
     return ''
 
-  // Remove HTML tags while preserving markdown syntax
   return input
-    // Remove HTML comments
     .replace(HTML_COMMENT_RE, '')
 
-    // Remove script and style tags with their content
+    // Script and style lose their content too.
     .replace(SCRIPT_STYLE_RE, '')
 
-    // Remove all other HTML tags but keep their content
     .replace(HTML_TAG_RE, '')
 
-    // Decode common HTML entities
     .replace(AMP_RE, '&')
     .replace(LT_RE, '<')
     .replace(GT_RE, '>')
@@ -47,31 +39,23 @@ export function stripHtmlTags(input: string): string {
     .replace(SLASH_RE, '/')
     .replace(NBSP_RE, ' ')
 
-    // Clean up extra whitespace while preserving newlines
     .replace(INLINE_SPACE_RE, ' ')
     .replace(MULTI_NEWLINE_RE, '\n\n')
     .trim()
 }
 
-/**
- * Validates that markdown content doesn't contain HTML tags
- * @param markdown The markdown content to validate
- * @returns Validation result with valid boolean and error message
- */
 export function validateMarkdownNoHtml(markdown: string): { valid: boolean, error: string | null } {
   if (!markdown)
     return { valid: true, error: null }
 
-  // Check for HTML tags (excluding markdown syntax)
   const htmlMatches = markdown.match(HTML_TAG_DETECT_RE)
 
   if (htmlMatches) {
-    // Filter out false positives that might be valid markdown (like email addresses with < >)
+    // Markdown autolinks like <user@example.com> and <https://...> aren't HTML.
     const actualHtmlTags = htmlMatches.filter((match) => {
-      // Allow some basic patterns that aren't HTML
-      return !match.match(EMAIL_RE) // email addresses
-        && !match.match(URL_RE) // URLs
-        && match.match(HTML_ELEMENT_RE) // HTML tag pattern
+      return !match.match(EMAIL_RE)
+        && !match.match(URL_RE)
+        && match.match(HTML_ELEMENT_RE)
     })
 
     if (actualHtmlTags.length > 0) {
@@ -89,10 +73,6 @@ const TAG_INVALID_CHARS_RE = /[^a-z0-9-]/g
 const TAG_MULTI_HYPHEN_RE = /-{2,}/g
 const TAG_TRIM_HYPHEN_RE = /^-+|-+$/g
 
-/**
- * Normalizes a single tag: lowercase, replace spaces with hyphens,
- * strip all non-alphanumeric/hyphen characters, collapse and trim hyphens.
- */
 export function sanitizeTag(raw: string): string {
   return raw
     .toLowerCase()
@@ -102,10 +82,7 @@ export function sanitizeTag(raw: string): string {
     .replace(TAG_TRIM_HYPHEN_RE, '')
 }
 
-/**
- * Splits a comma-separated string into sanitized, deduplicated tags.
- * Ignores empty results after sanitization.
- */
+// Drops tags already in `existing`.
 export function sanitizeTags(raw: string, existing: string[] = []): string[] {
   const existingSet = new Set(existing)
   return raw

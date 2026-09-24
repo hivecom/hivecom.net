@@ -1,18 +1,6 @@
-/**
- * Cached total discussion count for a given user - used for display counters
- * (e.g. "X discussions" on a profile card).
- *
- * Counts non-draft discussions the user created, excluding profile wall posts
- * (profile_id IS NOT NULL). Archived threads still count.
- *
- * ## Relationship to the "Forum Regular" badge
- *
- * The `forum_regular` badge ("Started X forum discussions") uses the SAME
- * predicate, computed server-side in `recompute_forum_regular_badge` and stored
- * on `profile_badges`. Both must stay in sync: this client-side composable is a
- * live cached counter, the badge is a persisted, trigger-recomputed value with
- * tiers. If you change the predicate here, change it there too.
- */
+// Counts non-draft discussions the user created, excluding profile wall posts.
+// Archived threads still count. The forum_regular badge uses the same predicate
+// in recompute_forum_regular_badge, so change both together.
 
 import type { Ref } from 'vue'
 import type { CacheConfig } from './useCache'
@@ -26,7 +14,7 @@ interface UserDiscussionCountOptions extends Omit<CacheConfig, 'ttl'> {
   cacheKeyPrefix?: string
 }
 
-const DEFAULT_CACHE_TTL = 10 * 60 * 1000 // 10 minutes
+const DEFAULT_CACHE_TTL = 10 * 60 * 1000
 
 export function useDataUserDiscussionCount(
   userId: Ref<string | null | undefined> | string | null | undefined,
@@ -74,8 +62,6 @@ export function useDataUserDiscussionCount(
     error.value = null
 
     try {
-      // Count all non-draft discussions the user has created, across all contexts,
-      // excluding profile discussions (e.g. the user's own profile wall posts).
       const { count: discussionCount, error: supabaseError } = await supabase
         .from('discussions')
         .select('id', { count: 'exact', head: true })

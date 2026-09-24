@@ -3,25 +3,11 @@ import type { Tables } from '@/types/database.overrides'
 
 // Each instance subscribes under its own topic. supabase.channel() hands back
 // the existing channel for a topic that's still registered, and removeChannel()
-// only deregisters once its unsubscribe resolves, so remounting on the same
-// referendum would otherwise attach handlers to a channel already on its way
-// out.
+// only deregisters once its unsubscribe resolves. A remount on the same
+// referendum would otherwise attach handlers to a channel on its way out.
 let instanceCounter = 0
 
-/**
- * Subscribes to Supabase realtime changes on `referendum_votes` for a specific
- * referendum, keeping a local reactive copy of the vote list in sync.
- *
- * Returns a reactive votes array and loading/error state so callers can use it
- * directly in their templates.
- *
- * The subscription is automatically cleaned up when the calling component
- * is unmounted.
- *
- * @param referendumId - Reactive or static referendum ID to subscribe to.
- * @param initialVotes - Optional initial votes array (e.g. from SSR or a cache
- *   query). The composable will keep this list live from that starting point.
- */
+// A live copy of one referendum's votes, starting from initialVotes.
 export function useRealtimeReferendumVotes(
   referendumId: MaybeRef<number | null | undefined>,
   initialVotes: MaybeRef<Tables<'referendum_votes'>[] | null | undefined> = [],
@@ -29,10 +15,9 @@ export function useRealtimeReferendumVotes(
   const supabase = useSupabaseClient()
   const instanceKey = ++instanceCounter
 
-  // Local reactive copy of votes - starts from initialVotes and stays live.
   const votes = ref<Tables<'referendum_votes'>[]>([])
 
-  // Sync when initialVotes changes (e.g. the cache query resolves after mount).
+  // initialVotes can change, e.g. when the cache query resolves after mount.
   watch(
     () => toValue(initialVotes),
     (incoming) => {
@@ -63,8 +48,7 @@ export function useRealtimeReferendumVotes(
         },
         (payload) => {
           const newVote = payload.new as Tables<'referendum_votes'>
-          // Guard against duplicate inserts (optimistic local inserts from
-          // the same tab will already be in the list).
+          // Optimistic inserts from this tab are already in the list.
           if (!votes.value.some(v => v.id === newVote.id)) {
             votes.value = [...votes.value, newVote]
           }

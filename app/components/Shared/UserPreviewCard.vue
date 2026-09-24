@@ -137,7 +137,6 @@ const {
 
 <template>
   <div class="user-preview-card">
-    <!-- Skeleton state -->
     <template v-if="loading">
       <Flex class="user-preview-card__header" expand x-between>
         <Skeleton :width="88" :height="88" :radius="44" />
@@ -166,14 +165,13 @@ const {
       </Flex>
     </template>
 
-    <!-- Empty / no userId -->
     <template v-else-if="!props.userId">
       <div class="user-preview-card__state text-center text-color-light">
         <p>Select a user to preview.</p>
       </div>
     </template>
 
-    <!-- Unauthenticated and profile not visible - show sign-in prompt -->
+    <!-- Unauthenticated and the profile isn't visible, so show a sign-in prompt -->
     <template v-else-if="isUnauthenticatedHidden">
       <Flex column y-center x-center gap="s" class="user-preview-card__locked">
         <Flex column y-center x-center gap="xs">
@@ -195,7 +193,6 @@ const {
       </Flex>
     </template>
 
-    <!-- Error state -->
     <template v-else-if="error || !user">
       <Flex column y-center gap="s" class="user-preview-card__state text-center text-color-light">
         <p>{{ error ?? 'We could not load this profile right now.' }}</p>
@@ -205,7 +202,6 @@ const {
       </Flex>
     </template>
 
-    <!-- Loaded state -->
     <template v-else>
       <Flex column gap="xs">
         <Flex expand x-between class="user-preview-card__header">

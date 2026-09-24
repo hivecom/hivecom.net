@@ -26,12 +26,8 @@ import { metricsPlayerCount } from '@/types/metrics'
 const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartGameserversPlayers.vue'))
 const ChartActivityHistogramModal = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartActivityHistogramModal.vue'))
 
-// Gameservers card: the two busiest servers as artwork, then one server per
-// game for everything else we host, then a single random pick to hop into. The
-// tiles answer "is anyone on right now", which is the only reason to sort by
-// activity at all. The rows are deliberately one-per-game: ranked by activity
-// alone a weekend of Cobalt takes half the card, so a newcomer never finds out
-// what else is running and a regular only sees what he already played.
+// The rows are one per game on purpose. Ranked by activity alone, one busy game
+// takes half the card and nobody finds out what else is running.
 
 const activityModalOpen = ref(false)
 
@@ -42,7 +38,7 @@ interface ServerEntry {
   gs: GameserverWithContainer
   game: Tables<'games'> | null
   players: number
-  /** Most recent point in the last 90 days where this server had anyone on it. */
+  /** Last time in 90 days this server had anyone on it */
   lastActive: { players: number, at: string } | null
 }
 
@@ -50,35 +46,24 @@ const { gameservers, loading: gameserversLoading } = useDataGameservers()
 const { getById: getGameById } = useDataGames()
 const { metrics, fetchMetrics, fetchMetricsHistoryIsolated, getCachedHistory, scheduleRefresh } = useDataMetrics()
 
-// Two windows, because one can't do both jobs. The 90d pass buckets by day, so
-// it reaches back far enough that a server nobody has touched in weeks still
-// says when it last had someone on it. The 24h pass buckets by 15 minutes and
-// overwrites it, so anything recent is accurate to the quarter hour instead of
-// rounding out to "a day ago". Both are smaller than a single 30d fetch.
+// 90d daily buckets reach servers idle for weeks. 24h quarter-hour buckets keep
+// recent activity precise. Both together are smaller than a single 30d fetch.
 const cachedCoarse = getCachedHistory('90d')
 const cachedFine = getCachedHistory('24h')
 
 const coarseHistory = ref<MetricsHistoryEntry[]>(cachedCoarse ?? [])
 const fineHistory = ref<MetricsHistoryEntry[]>(cachedFine ?? [])
 
-// The snapshot decides who is busiest and the two history windows decide who
-// was busiest last, so all three feed the sort. Painting as soon as the first
-// one lands leaves the rows to reshuffle a beat later when the rest arrive.
-// Warm caches satisfy this during setup, which is why the refs seed
-// synchronously: the fetchers are async even on a warm cache, and that one
-// render is the difference between a returning visitor seeing the card and
-// seeing skeletons.
+// All three feed the sort, so painting on the first one reshuffles the rows a
+// beat later. The refs seed synchronously so a warm cache skips the skeletons.
 const ready = ref(metrics.value !== null && cachedCoarse !== null && cachedFine !== null)
 
-// Rolled once at setup so the pick holds still: re-rolling per render would
-// reshuffle it every time a snapshot lands, and rolling on mount would make it
-// jump one tick after a warm cache has already painted a choice.
+// Rolled at setup. Per render it reshuffles on every snapshot, and on mount it
+// jumps after a warm cache has painted.
 const rollSeed = Math.floor(Math.random() * 100000)
 
 onMounted(async () => {
-  // fetchMetrics rethrows on failure, and a dead snapshot still shouldn't leave
-  // the card stuck on skeletons, so it's swallowed rather than rejecting the
-  // batch.
+  // fetchMetrics rethrows, and a dead snapshot mustn't leave the card on skeletons
   const [, coarse, fine] = await Promise.all([
     fetchMetrics().catch(() => null),
     fetchMetricsHistoryIsolated('90d'),
@@ -89,11 +74,8 @@ onMounted(async () => {
   fineHistory.value = fine
   ready.value = true
 
-  // The snapshot keeps itself current through useDataMetrics for as long as
-  // the card is mounted, so the player counts already track the cron. The
-  // history is fetched in isolation and has to ask. Each window refetches when
-  // one of its own buckets rolls over: a new reading can't show up in the fine
-  // set before the quarter hour, or in the coarse set before the day.
+  // The isolated history has to ask. Each window refetches when one of its
+  // buckets rolls over, since nothing new can show up before that.
   scheduleRefresh('90d', (entries) => {
     coarseHistory.value = entries
   }, { cadenceMs: PERIOD_CONFIGS['90d'].bucketMs })
@@ -103,9 +85,7 @@ onMounted(async () => {
   }, { cadenceMs: PERIOD_CONFIGS['24h'].bucketMs })
 })
 
-// Buckets come back oldest first and each bucket holds that window's peak, so
-// the last write per server wins and the map ends up holding each server's most
-// recent reading that had anyone on it.
+// Buckets come oldest first, so the last write per server is its most recent active reading
 const lastActiveByServer = computed(() => {
   const found = new Map<string, { players: number, at: string }>()
 
@@ -122,9 +102,6 @@ const lastActiveByServer = computed(() => {
   return found
 })
 
-// Every server is a candidate, including ones no metrics run has ever seen. The
-// rows are about what we host rather than what moved this week, and
-// activityLabel already says `quiet lately` for a server with no reading.
 const entries = computed<ServerEntry[]>(() =>
   gameservers.value.map((gs) => {
     const players = metricsPlayerCount(metrics.value?.gameservers.byServer[String(gs.id)])
@@ -138,8 +115,7 @@ const entries = computed<ServerEntry[]>(() =>
   }),
 )
 
-// Busiest now, then most recently busy, then alphabetical so the tail is stable
-// rather than reshuffling on every snapshot.
+// Alphabetical tie-break so the tail doesn't reshuffle on every snapshot
 const ranked = computed(() =>
   [...entries.value].sort((a, b) => {
     if (a.players !== b.players)
@@ -154,12 +130,8 @@ const ranked = computed(() =>
   }),
 )
 
-// The tiles are the top of the ranking whether or not anyone is on. With an
-// empty snapshot that falls through to whoever was busy most recently, which
-// beats two empty cells. With exactly one server live the second tile goes
-// instead: "Live right now" over a server nobody is on reads as a lie, and a
-// lone tile takes the full row anyway. The server it displaces falls through
-// to the rows below.
+// With exactly one server live the second tile goes: "Live right now" over an
+// empty server reads as a lie
 const live = computed(() => {
   const top = ranked.value.slice(0, SHOWN_LIVE)
   const populated = top.filter(entry => entry.players > 0)
@@ -167,33 +139,26 @@ const live = computed(() => {
   return populated.length === 1 ? populated : top
 })
 
-// Nobody on means the tiles are showing the last people who were, so the label
-// follows instead of claiming a live server that isn't.
 const liveLabel = computed(() =>
   live.value.some(entry => entry.players > 0) ? 'Live right now' : 'Where people played last',
 )
 
 interface GameGroup {
-  /** Game id, or the server's own id when it isn't tied to a game. */
+  /** Game id, or the server's own id when it has no game */
   key: string
   name: string
   servers: ServerEntry[]
-  /** Most recent activity anywhere in the group, for ordering the groups. */
   lastActiveAt: number
 }
 
-// One server per game, games ordered by how many of them we run and then by how
-// recently anyone was in one. A game already on a tile drops out entirely,
-// otherwise the busiest game takes a tile and a row and says the same thing
-// twice.
+// A game already on a tile drops out, or it shows as both a tile and a row
 const selection = computed<ServerEntry[]>(() => {
   const liveIds = new Set(live.value.map(entry => entry.gs.id))
   const liveGames = new Set(live.value.flatMap(entry => entry.game ? [entry.game.id] : []))
 
   const groups = new Map<string, GameGroup>()
 
-  // Grouping walks the ranking, so the first server into a group is the one it
-  // leads with: busiest, then most recently busy.
+  // Walks the ranking, so each group leads with its busiest server
   for (const entry of ranked.value) {
     if (liveIds.has(entry.gs.id) || (entry.game !== null && liveGames.has(entry.game.id)))
       continue
@@ -232,7 +197,6 @@ const selection = computed<ServerEntry[]>(() => {
 
 const totalPlayers = computed(() => metrics.value?.gameservers.players ?? null)
 
-// Right-hand line per row: who is on now, or who was on last if nobody is.
 function activityLabel(entry: ServerEntry): string {
   if (entry.players > 0)
     return `${entry.players} player${entry.players === 1 ? '' : 's'}`
@@ -249,14 +213,11 @@ function connectFor(entry: ServerEntry) {
   return buildConnectContext(entry.game, entry.gs)
 }
 
-// With no address there is no connect action to reveal, so the row keeps
-// showing its activity line on hover rather than fading into nothing.
 function hasConnect(entry: ServerEntry): boolean {
   return (entry.gs.addresses?.length ?? 0) > 0
 }
 
-// The "Hop in" pick is a nudge towards something that isn't already on the
-// card, so it draws from whatever the tiles and the rows left behind.
+// Draws from whatever the tiles and rows left behind
 const hopIn = computed<ServerEntry | null>(() => {
   const takenIds = new Set([...live.value, ...selection.value].map(entry => entry.gs.id))
   const candidates = ranked.value.filter(entry => !takenIds.has(entry.gs.id) && hasConnect(entry))
@@ -267,8 +228,6 @@ const hopIn = computed<ServerEntry | null>(() => {
   return candidates[rollSeed % candidates.length] ?? null
 })
 
-// The card shows at most the two tiles, three rows and the hop-in pick. The
-// sheet has every server, including the ones one-per-game leaves out.
 const serversSheetOpen = ref(false)
 
 const sheetServers = computed<GameserverSheetRow[]>(() =>
@@ -279,9 +238,8 @@ function openServersSheet(): void {
   serversSheetOpen.value = true
 }
 
-// The metrics gate above covers the ordering, and the server rows arrive on
-// their own clock, so the placeholder waits on both. Once the card has rows a
-// later gameservers refresh doesn't knock it back to skeletons.
+// Waits on metrics and the server rows. Once rows exist a refresh doesn't
+// knock the card back to skeletons.
 const loading = computed(() =>
   !ready.value || (gameserversLoading.value && entries.value.length === 0),
 )
@@ -341,14 +299,12 @@ const loading = computed(() =>
               </template>
             </GameArtCard>
 
-            <!-- No game means no artwork to borrow, so the tile falls back to
-                 the same row the section below is made of. -->
+            <!-- No game means no artwork, so fall back to a row -->
             <HomeDashboardGameserverItem v-else :gs="entry.gs" :meta="activityLabel(entry)" />
           </template>
 
-          <!-- Only one server exists at all. Pad the grid so the lone tile keeps
-               its half instead of stretching across the card. A single live
-               tile is trimmed on purpose and does want the full row. -->
+          <!-- Keeps a lone server's tile to half the row. A single live tile
+               is trimmed on purpose and takes the full row. -->
           <HomeDashboardPlaceholder v-if="entries.length < SHOWN_LIVE" />
         </div>
       </HomeDashboardSection>

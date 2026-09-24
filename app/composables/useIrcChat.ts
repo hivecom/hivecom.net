@@ -6,22 +6,19 @@
 // page. The WebSocket is only ever created in the browser.
 //
 // ## Hot-swap boundary
-// This composable is the entire integration surface for chat. When Orbit ships
-// as an embeddable webapp it replaces this module wholesale, so the rest of the
-// site must only ever touch the public API returned by `useIrcChat()` - never
-// internal IRC details. Keep that API small and presentation-agnostic.
+// Orbit will replace this module wholesale when it ships as an embeddable
+// webapp. The rest of the site must only touch the public API returned by
+// `useIrcChat()`, never internal IRC details. Keep that API small and
+// presentation-agnostic.
 //
 // ## Identity (OIDC)
-// Authentication follows the Orbit identity model: the client sends a provider
-// (Supabase) JWT as the SASL PLAIN password, and an Ergo `auth-script` bridge
-// verifies it against the provider's JWKS. The website already holds a Supabase
-// session, so instead of running a separate OIDC browser flow we reuse that
-// session token via the `registerIdentityProvider` seam. When Orbit becomes a
-// cross-origin iframe, only that seam changes (token arrives via postMessage);
-// everything downstream is identical.
+// The client sends a Supabase JWT as the SASL PLAIN password, and an Ergo
+// `auth-script` bridge verifies it against the provider's JWKS. The token comes
+// from the site's existing session via the `registerIdentityProvider` seam. When
+// Orbit becomes a cross-origin iframe, only that seam changes (the token arrives
+// via postMessage).
 //
-// Until the bridge is configured server-side, SASL is attempted and gracefully
-// falls back to plain registration so the client keeps working today.
+// If SASL fails, registration continues without a verified account.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { StoredBufferMeta, StoredMessage } from '@/lib/chat/bufferCache'
@@ -45,15 +42,12 @@ function defaultChannel(anon: boolean): string {
 const STORAGE_NICK = 'hivecom.chat.nick'
 const STORAGE_CHANNEL = 'hivecom.chat.channel'
 
-// '1' when the persisted nick/channel belong to a signed-in (authenticated)
-// session. Used to drop that identity when the app is loaded signed-out, so the
-// connect form doesn't pre-populate a registered nick that would fail to auth.
+// '1' when the persisted nick/channel belong to a signed-in session. Cleared on a
+// signed-out load so the connect form doesn't prefill a nick that would fail auth.
 const STORAGE_IDENTITY_AUTHED = 'hivecom.chat.identity-authed'
 
-// '1' once this browser has ever connected with a signed-in identity. Unlike
-// STORAGE_IDENTITY_AUTHED (dropped on a signed-out load), this is sticky so the
-// connect form can default a returning user to the sign-in prompt rather than the
-// anonymous guest form.
+// '1' once this browser has ever connected signed-in. Sticky, so the connect form
+// can default a returning user to the sign-in prompt.
 const STORAGE_HAD_ACCOUNT = 'hivecom.chat.had-account'
 
 // Timestamp (ms) of the most recent live message we've seen. Used as the lower
@@ -82,9 +76,8 @@ const APPEARANCE_KEYS: ReadonlySet<string> = new Set(['display-name', 'avatar', 
 // before the IRC connection delivers a MODE query response after rejoin.
 const STORAGE_CHANNEL_MODES = 'hivecom.chat.channel-modes'
 
-// Mode params we never persist. The channel key (k) is effectively a join
-// password, so we keep the 'k' flag (UI can show "password protected") but never
-// write the secret to localStorage.
+// The channel key (k) is a join password. Keep the 'k' flag so the UI can show
+// "password protected", but never write the secret to localStorage.
 const UNCACHED_MODE_PARAMS: ReadonlySet<string> = new Set(['k'])
 
 // How far back to look for missed DMs when there is no stored cursor.
@@ -96,17 +89,14 @@ const HISTORY_FUZZ_MS = 5000
 // Max messages / targets per CHATHISTORY request.
 const HISTORY_LIMIT = 50
 
-// How long to wait after connecting for the server to restore an always-on
-// account's channels before falling back to joining the default channel. The
-// timer is reset on each restored JOIN, so the fallback only fires once the
-// restore burst has gone quiet.
+// Wait for the server to restore an always-on account's channels before joining
+// the default. Each restored JOIN resets the timer.
 const DEFAULT_CHANNEL_SETTLE_MS = 1500
 
 // Synthetic buffer that holds connection-level/system output before any channel
 // is joined. Never sent to the server.
 const SERVER_BUFFER = '*'
 
-// IRCv3 capabilities we request when the server advertises them.
 const WANTED_CAPS = [
   'sasl',
   'batch',
@@ -128,12 +118,9 @@ const WANTED_CAPS = [
   // setname: display-name fallback for servers without draft/metadata-2
   'setname',
   'draft/chathistory',
-  // Required for Ergo to replay stored TAGMSGs (reactions) as real TAGMSG lines
-  // with their client tags intact. Without it, Ergo degrades reaction history to
-  // a data-less HistServ "<nick> sent a TAGMSG" PRIVMSG placeholder (see #1676),
-  // which we can't turn back into a reaction. It also makes JOIN/PART/QUIT/NICK/
-  // MODE replayable as real events inside history batches - those handlers below
-  // guard against `backlog` so replayed events never mutate live state.
+  // Without this, Ergo replays stored TAGMSGs (reactions) as data-less HistServ
+  // PRIVMSG placeholders (#1676). It also replays JOIN/PART/QUIT/NICK/MODE inside
+  // history batches, so those handlers guard on `backlog`.
   'draft/event-playback',
   'draft/metadata-2',
   // draft/channel-rename: rename a channel in place, preserving membership,
@@ -141,16 +128,13 @@ const WANTED_CAPS = [
   'draft/channel-rename',
   // draft/message-redaction: delete messages (own messages, or others' as op).
   'draft/message-redaction',
-  // draft/webpush: lets the server deliver Web Push notifications for messages of
-  // interest while we're disconnected. Enabling the cap makes Ergo advertise its
-  // VAPID public key in the `VAPID` ISUPPORT token (parsed below into `vapidKey`).
+  // draft/webpush: server-sent Web Push while we're disconnected. Ergo advertises
+  // its VAPID key in the `VAPID` ISUPPORT token once this is enabled.
   'draft/webpush',
-  // draft/relaymsg: lets relay bots send messages with spoofed nicks; the tag
-  // tells us which bot actually sent the message so we can show a relay indicator.
+  // draft/relaymsg: the tag names the relay bot behind a spoofed nick.
   'draft/relaymsg',
-  // draft/multiline: send/receive a multi-line message as a single logical
-  // message via a BATCH, instead of one PRIVMSG per line. The cap value carries
-  // max-bytes / max-lines limits (parsed below).
+  // draft/multiline: one logical message via BATCH instead of a PRIVMSG per line.
+  // The cap value carries max-bytes / max-lines.
   'draft/multiline',
 ]
 
@@ -283,12 +267,9 @@ export interface ChatBuffer {
   loadingNewerHistory?: boolean
 
   /**
-   * Newest cached timestamp (ms) we must page BEFORE down to before cache-first
-   * scroll-back may resume. Set when a (re)connect leaves a gap between the
-   * pre-seeded cached block and the freshly-fetched LATEST block (more than
-   * HISTORY_LIMIT messages arrived while away). While set, scroll-back skips the
-   * cache and fetches from the server so the missed window is filled in;
-   * cleared once a BEFORE batch pages back into cached territory.
+   * Newest cached timestamp (ms) that scroll-back must page BEFORE down to before
+   * trusting the cache again. Set when a reconnect leaves a gap between cached and
+   * freshly fetched LATEST messages. Cleared once a BEFORE batch reaches the cache.
    */
   cacheBridgeTs?: number
 
@@ -306,7 +287,6 @@ export interface ChannelListEntry {
   modes?: Set<string>
 }
 
-/** A channel member together with their current IRC mode prefixes. */
 export interface ChatUser {
   name: string
 
@@ -332,15 +312,13 @@ const MODE_PREFIX_RE = /^[~&@%+]+/
 // IRC service bots whose messages should never generate mention notifications.
 export const SERVICE_NICKS = new Set(['histserv', 'nickserv', 'chanserv'])
 
-// Label shown wherever the DM-with-yourself buffer surfaces (channel list,
-// header, etc.) instead of your own nick. A private space to keep notes and
-// share things between your own devices.
+// Label for the DM-with-yourself buffer, a private space for notes and sharing
+// between your own devices.
 export const SELF_SPACE_LABEL = 'Your Space'
 
 // IRC channel-membership prefixes ordered from highest to lowest privilege.
 const PREFIX_ORDER = '~&@%+'
 
-// Channel mode chars that map onto a membership prefix.
 const MODE_TO_PREFIX: Record<string, string> = { q: '~', a: '&', o: '@', h: '%', v: '+' }
 
 // Non-prefix channel modes that consume a parameter, so we can keep MODE parsing aligned.
@@ -350,25 +328,21 @@ const PARAM_MODES_ON_SET = new Set(['l', 'f', 'j'])
 // --- Shared reactive state ---------------------------------------------------
 const connState = ref<ConnState>('disconnected')
 
-// True once a live connection (RPL_WELCOME) has been established this session.
-// Stays true across transient socket drops so the UI can ride out a reconnect in
-// place (keep showing the cached channels/messages) instead of tearing down to
-// the full-screen connect overlay. Only an intentional disconnect() clears it.
+// True once RPL_WELCOME has been seen this session. Survives socket drops so the
+// UI rides out a reconnect in place. Only an intentional disconnect() clears it.
 const everConnected = ref(false)
 const nick = ref('')
 const account = ref('')
 const buffers = ref<ChatBuffer[]>([])
 
-// Internal sink for service-bot (NickServ/ChanServ/HistServ) chatter. Reactive so
-// it's inspectable while debugging, but deliberately kept out of the buffer/tab
-// system so it is never rendered to the user.
+// Service-bot chatter (NickServ/ChanServ/HistServ). Reactive for debugging, but
+// never rendered to the user.
 const serviceLog = ref<ChatMessage[]>([])
 const activeName = ref<string>(SERVER_BUFFER)
 const previousActiveName = ref<string>(SERVER_BUFFER)
 
-// True only when the user has explicitly navigated to the server buffer via
-// setActive('*'). False on initial connect so the no-channels prompt shows
-// by default until the user deliberately opens the server log.
+// True only after an explicit setActive('*'), so the no-channels prompt shows by
+// default instead of the server log.
 const serverLogPinned = ref(false)
 const msgCounter = ref(0)
 const SIDEBAR_HIDDEN_KEY = 'hivecom.chat.sidebar-hidden'
@@ -397,9 +371,8 @@ const accountDmHistory = ref<DmHistorySetting | null>(null)
 // know what 'default' actually means without hardcoding server config.
 const accountDmHistoryEffective = ref<DmHistorySetting | null>(null)
 
-// Per-nick metadata store populated from draft/metadata-2 METADATA notifications.
-// Keyed by lowercased nick. Used to surface avatar, display-name, and orbit.status
-// in the user list and message log without requiring an open PM buffer per user.
+// Per-nick draft/metadata-2 values keyed by lowercased nick, so avatars and
+// display names work without an open PM buffer.
 const userMetaStore = ref(new Map<string, Map<string, string>>())
 
 function setUserMeta(targetNick: string, key: string, value: string | null) {
@@ -439,10 +412,9 @@ export const whoisStore = _whoisStore
 // --- Channel list (populated by LIST/322/323) --------------------------------
 const channelList = ref<ChannelListEntry[]>([])
 
-// Channel metadata cache keyed by lowercase channel name. Unlike buffer
-// metadata, this also holds metadata for channels we are NOT joined to (e.g.
-// parent channels in the slash-nesting tree). draft/metadata-2 permits GET/LIST
-// on any channel target, so a parent can be verified/displayed without joining.
+// Channel metadata keyed by lowercase name, including channels we aren't joined
+// to. draft/metadata-2 allows GET/LIST on any channel, so parents in the nesting
+// tree can be shown without joining.
 const channelMetaCache = ref<Map<string, Map<string, string>>>(new Map())
 
 // Channels we've issued a background METADATA LIST for: dedupes probes and lets
@@ -453,9 +425,8 @@ const _backgroundMetaTargets = new Set<string>()
 // (either data or FAIL). Lets consumers distinguish "pending" from "no data".
 const channelMetaResolved = ref<Set<string>>(new Set())
 
-// Channel modes/flags cache keyed by lowercase channel name. Mirrors the joined
-// buffers' modes/modeParams so flags display instantly on page reload, before a
-// MODE query response arrives. The 'k' key param is excluded on persist.
+// Channel modes keyed by lowercase name, cached so flags show instantly on
+// reload. The 'k' param is never persisted.
 const channelModesCache = ref<Map<string, { modes: Set<string>, params: Map<string, string> }>>(new Map())
 const channelListLoading = ref(false)
 const channelBrowserOpen = ref(false)
@@ -480,12 +451,10 @@ const inputMessage = ref('')
 const replyTarget = ref<ChatMessage | null>(null)
 let focusComposerFn: (() => void) | null = null
 
-// Extra words (besides the current nick) that count as a mention. Sourced from
-// user settings and pushed in via `setMentionKeywords` so this module-level
-// store stays decoupled from the settings composable.
+// Extra words (besides the current nick) that count as a mention. Pushed in via
+// `setMentionKeywords` so this module stays decoupled from settings.
 const mentionKeywords = ref<string[]>([])
 
-/** Replace the list of extra keywords that highlight a message as a mention. */
 export function setMentionKeywords(words: string[]) {
   mentionKeywords.value = words.map(w => w.trim()).filter(w => w.length > 0)
 }
@@ -493,7 +462,6 @@ export function setMentionKeywords(words: string[]) {
 // Whether to fire browser Notifications on mentions. Sourced from user settings.
 const browserNotificationsEnabled = ref(false)
 
-/** Sync the browser-notification preference from user settings. */
 export function setBrowserNotificationsEnabled(enabled: boolean) {
   browserNotificationsEnabled.value = enabled
 }
@@ -511,7 +479,6 @@ const soundMessageDesign = ref<SoundDesign | null>(null)
 // 0-1 fraction applied to every cue.
 const soundVolume = ref(1)
 
-/** Sync the notification-sound preferences from user settings. */
 export function setNotificationSounds(opts: {
   mentionChoice: string
   messageChoice: string
@@ -536,12 +503,9 @@ let readPositions: Record<string, number> = {}
 // Set when draft/read-marker CAP is negotiated successfully.
 let readMarkerActive = false
 
-// Recompute a buffer's unread/mention badges against the current read marker,
-// dropping anything now at or below it. This is what makes read state converge
-// across devices: when another session advances the marker (server pushes us a
-// MARKREAD), the stale badge accumulated here has to be cleared, not just the
-// gate for future messages. Mirrors the badge gating in addToBuffer so the
-// recount matches what live accumulation would have produced.
+// Recount unread/mention badges against the current read marker. When another
+// session advances the marker (a pushed MARKREAD), the stale badge here has to
+// clear too. Must match the badge gating in addToBuffer.
 function reconcileUnread(buf: ChatBuffer) {
   const marker = readPositions[buf.name.toLowerCase()] ?? 0
   let unread = 0
@@ -562,7 +526,6 @@ function reconcileUnread(buf: ChatBuffer) {
   buf.unread = unread
   buf.mentions = mentions
 
-  // Fully caught up - drop the "new messages" divider too.
   if (unread === 0)
     buf.readLineTs = undefined
 }
@@ -570,9 +533,8 @@ function reconcileUnread(buf: ChatBuffer) {
 function saveReadPosition(name: string, ts: number, opts: { sync?: boolean } = {}) {
   const key = name.toLowerCase()
 
-  // Monotonic - the read marker only ever advances. Replayed history can land in
-  // the buffer after a newer system line (e.g. "You joined"), so guard against
-  // regressing the cursor backwards.
+  // The read marker only advances. Replayed history can land after a newer
+  // system line (e.g. "You joined"), so don't let it move backwards.
   if ((readPositions[key] ?? 0) >= ts)
     return
 
@@ -580,17 +542,14 @@ function saveReadPosition(name: string, ts: number, opts: { sync?: boolean } = {
   if (import.meta.client)
     localStorage.setItem(STORAGE_READ_POSITIONS, JSON.stringify(readPositions))
 
-  // Reconcile any badge already accumulated against the advanced marker. Cheap
-  // guard keeps the hot path (per-message pin on the active buffer) O(1) - we
-  // only walk the buffer when there's actually a stale badge to clear, which is
-  // the cross-device / catch-up case, not normal live reading.
+  // Only walk the buffer when there's a stale badge to clear (cross-device or
+  // catch-up), so the per-message pin on the active buffer stays O(1).
   const buf = findBuffer(name)
   if (buf && (buf.unread || buf.mentions))
     reconcileUnread(buf)
 
-  // Sync to server so other clients (and fresh loads) get the correct marker.
-  // Skipped when the marker originated from the server (a pushed MARKREAD), to
-  // avoid echoing it straight back.
+  // Skipped for markers that came from the server (pushed MARKREAD) so we don't
+  // echo them straight back.
   if (readMarkerActive && opts.sync !== false)
     send(`MARKREAD ${name} timestamp=${new Date(ts).toISOString()}`)
 }
@@ -603,33 +562,21 @@ let _readWatcherRegistered = false
 // Messages seeded into the live buffer on startup from the per-message IDB store.
 const CACHE_SEED_COUNT = 150
 
-// Page size for cache-first scroll-back loads. Matches the server HISTORY_LIMIT
-// so cache and server pages are the same depth and scroll-back advances in
-// even, larger steps (fewer round trips, more runway per load).
+// Page size for cache-first scroll-back. Matches HISTORY_LIMIT so cache and
+// server pages advance in even steps.
 const CACHE_PAGE_SIZE = 50
 
-// Maximum messages kept in the live reactive buffer. Older messages are trimmed
-// from the tail (newest end) when older pages are prepended via scroll-back, so
-// the DOM node count stays bounded while IDB holds the full history. Sized to
-// hold a few screenfuls above and below the fold so scroll-back has buffer to
-// coast on while the next (possibly server-fetched) page loads.
+// Cap on messages in the live reactive buffer. Scroll-back trims the newest end,
+// so DOM size stays bounded while IDB holds the full history.
 const MAX_LIVE_MESSAGES = 300
 
-// The scroll loaders in MessageLog only stay out of each other's way when the
-// rendered log is tall enough that their trigger zones (1 screen at the top for
-// older, 2 at the bottom for newer) can't overlap. MAX_LIVE_MESSAGES counts raw
-// messages, but collapsed backlog join/part runs and hidden TAGMSGs render far
-// fewer pixels than that count suggests - trimming a short log is what makes
-// the two loaders oscillate (prepend-and-trim vs append-and-trim) and flash
-// blank space. So trims are gated on measured height: while the rendered log is
-// under MIN_TRIM_SCREENS viewports, the window may exceed the cap instead of
-// sliding. Invisible messages cost no DOM, so the node count stays bounded by
-// height either way.
+// Trims wait until the rendered log is this many viewports tall. Collapsed
+// join/part runs and hidden TAGMSGs render far shorter than their count, and
+// trimming a short log makes MessageLog's top and bottom loaders oscillate.
 const MIN_TRIM_SCREENS = 6
 
-// Scroll element of the currently rendered MessageLog, registered by the
-// component so the trim gate can measure real rendered height. Null (chat not
-// rendered) permits trimming, matching the old unconditional behavior.
+// MessageLog's scroll element, so the trim gate can measure rendered height.
+// Null (chat not rendered) permits trimming.
 let _liveLogEl: HTMLElement | null = null
 
 function setLiveLogEl(el: HTMLElement | null) {
@@ -660,18 +607,13 @@ let _msgFlushTimer: ReturnType<typeof setTimeout> | null = null
 let _intentionalDisconnect = false
 let _skipAutoJoin = false
 
-// When the user has never configured a channel, we defer joining the default
-// until the server has had a chance to restore an always-on account's channels.
-// Holds the channel to fall back to (null = nothing pending); the settle timer
-// joins it only if no channel was restored. See connect() and the 001/JOIN
-// handlers.
+// Default channel to join if the settle timer fires and nothing was restored
+// (null = nothing pending).
 let _defaultChannelFallback: string | null = null
 let _defaultChannelFallbackTimer: ReturnType<typeof setTimeout> | null = null
 
-// Set when a connection attempt fails fatally (e.g. nickname in use) and must
-// NOT auto-reconnect. Unlike _intentionalDisconnect, this preserves the 'error'
-// state so the UI keeps showing why the connection failed. Cleared on each
-// fresh openSocket().
+// Set on a fatal connect failure (e.g. nick in use) that must not auto-reconnect.
+// Unlike _intentionalDisconnect, it keeps the 'error' state visible.
 let _fatalError = false
 let _reconnectAttempts = 0
 const MAX_RECONNECT_ATTEMPTS = 3
@@ -681,8 +623,7 @@ let _reconnectTimer: ReturnType<typeof setTimeout> | null = null
 // user. The read watcher only clears unread/mentions when this is true.
 const isChatVisible = ref(false)
 
-// Programmatic open signal for the chat sheet. Components that want to open the
-// chat sheet (e.g. channel mention links) set this to true.
+// Programmatic open signal for the chat sheet.
 const chatSheetOpen = ref(false)
 
 // Most recent live message timestamp (ms); persisted as the CHATHISTORY cursor.
@@ -725,10 +666,9 @@ function _stopPinging() {
 let identityProvider: IdentityProvider | null = null
 
 /**
- * Register the host's identity provider. Called once from the chat shell with a
- * function that resolves the current Supabase session into `{ username, token }`
- * (or null when signed out). This is the only place that knows where the JWT
- * comes from, which is what keeps the Orbit swap cheap.
+ * Register the host's identity provider, which resolves the Supabase session into
+ * `{ username, token }` (null when signed out). This is the only place that knows
+ * where the JWT comes from, which keeps the Orbit swap cheap.
  */
 export function registerIdentityProvider(fn: IdentityProvider | null) {
   identityProvider = fn
@@ -754,13 +694,11 @@ const vapidKey = ref<string | null>(null)
 let echoMessageActive = false
 
 /**
- * What it takes to put an outgoing message on the wire again. Recorded when the
- * message is sent and kept until the server confirms it, so a send that failed
- * can be resent with its original target and reply context intact.
+ * What it takes to resend an outgoing message, kept until the server confirms it.
  *
- * Deliberately never flushed automatically on reconnect: a queue that empties
- * itself would post messages the user has since thought better of, into a room
- * they may no longer be in. Resending is always an explicit action.
+ * Never flushed automatically on reconnect: that would post messages the user
+ * has since thought better of, into a room they may have left. Resending is
+ * always explicit.
  */
 interface OutboxEntry {
   /** Buffer the message was sent to, and the kind needed to re-open it. */
@@ -805,9 +743,8 @@ const _chanServProbeTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const _pendingDropChannels = new Set<string>()
 let messageTagsActive = false
 
-// IRCv3 draft/multiline: set when the cap is ACKed; max-bytes / max-lines come
-// from the cap value on CAP LS. multilineRef is a monotonic counter for the
-// batch reference tag on outgoing multiline sends.
+// draft/multiline limits come from the CAP LS value. multilineRef numbers the
+// batch reference tags on outgoing sends.
 let multilineActive = false
 let multilineMaxBytes = 0
 let multilineMaxLines = 0
@@ -826,7 +763,7 @@ interface BacklogBatchInfo {
   /** Number of raw IRC lines counted so far in this batch. */
   count: number
 
-  /** True when this is a CHATHISTORY BEFORE response - messages should be prepended. */
+  /** True for a CHATHISTORY BEFORE response, whose messages get prepended. */
   isPrepend: boolean
 
   /** Staged messages for BEFORE batches; spliced into the buffer in one shot at BATCH end. */
@@ -839,9 +776,8 @@ interface BacklogBatchInfo {
   oldestTs?: number
 
   /**
-   * True when this is a CHATHISTORY LATEST with a `since` timestamp selector.
-   * A sparse result (count < HISTORY_LIMIT) does NOT mean all history is exhausted
-   * in this case - there may be older messages before the bound.
+   * CHATHISTORY LATEST with a `since` bound. A sparse result here doesn't mean
+   * history is exhausted: older messages may sit before the bound.
    */
   hasSinceBound?: boolean
 }
@@ -856,7 +792,7 @@ interface MultilineBatchInfo {
   /** Sender nick, taken from the opening BATCH line's prefix. */
   from?: string
 
-  /** msgid on the opening BATCH line - applies to the whole assembled message. */
+  /** msgid from the opening BATCH line. It covers the whole assembled message. */
   msgid?: string
 
   /** +reply target msgid carried on the opening BATCH line. */
@@ -879,12 +815,9 @@ interface MultilineBatchInfo {
 // accumulate here and assemble into one ChatMessage when the batch closes.
 const multilineBatches = new Map<string, MultilineBatchInfo>()
 
-// Reactions (react/unreact) that arrived before their parent message existed in
-// the buffer. Keyed by buffer name (lowercased) -> parent msgid -> queued ops.
-// The common case is reacting to (or receiving reactions on) our own message
-// before its echo delivers the server-assigned msgid; without this, the parent
-// lookup in applyReaction fails and the reaction is silently dropped until a
-// reload re-fetches the message and its reactions together via CHATHISTORY.
+// Reactions that arrived before their parent message, keyed by lowercased buffer
+// name then parent msgid. Usually reactions on our own message before its echo
+// delivers the msgid. Without the queue they'd be dropped until a reload.
 const pendingReactions = new Map<string, Map<string, Array<{ reaction: string, who: string, remove: boolean }>>>()
 
 // Matches a single emoji (including ZWJ sequences, variation selectors, flags,
@@ -902,11 +835,9 @@ const pendingTimeBoundTargets = new Set<string>()
 // batch completes, so the marker lands below replayed history (lowercased).
 const pendingJoinMarkers = new Set<string>()
 
-// Channels the user actively asked to join this session via joinChannel() (the
-// channel browser, /join box, channel links, etc.), lowercased. Only these get a
-// "You joined" marker - the entry is consumed when the matching self-JOIN lands.
-// Connect-time landing joins and server-pushed auto-joins (always-on accounts the
-// server keeps joined) never populate this set, so they stay silent.
+// Channels the user explicitly joined this session via joinChannel(), lowercased.
+// Only these get a "You joined" marker. Connect-time and server-restored joins
+// stay silent.
 const explicitJoinIntents = new Set<string>()
 
 // Channels for which WHO was sent internally (for bot detection). Responses are silenced.
@@ -1006,10 +937,8 @@ function resetBuffers() {
   typingTimers.clear()
   lastTypingSent.clear()
 
-  // Preserve channel/pm buffers across reconnects so the user never sees a blank
-  // screen. Only connection-volatile state is cleared: presence, join status,
-  // history cursor, and in-flight loading flags. Messages stay so cached content
-  // is visible immediately while the socket reconnects and CHATHISTORY replays.
+  // Keep channel/pm buffers across reconnects so cached messages stay visible
+  // while CHATHISTORY replays. Only connection-volatile state is cleared.
   const preserved: ChatBuffer[] = buffers.value
     .filter(b => b.kind === 'channel' || b.kind === 'pm')
     .map(b => ({
@@ -1041,8 +970,7 @@ function resetBuffers() {
   channelList.value = []
   channelListLoading.value = false
 
-  // Pre-populate from stored appearance cache so channels display correctly while
-  // the IRC connection re-establishes and delivers METADATA responses.
+  // Seed from the stored appearance cache until METADATA arrives.
   channelMetaCache.value = loadChannelMetaFromStorage()
   _backgroundMetaTargets.clear()
   channelMetaResolved.value = new Set(channelMetaCache.value.keys())
@@ -1090,14 +1018,11 @@ function escapeRegExp(s: string) {
 }
 
 /**
- * True when `candidate` already exists in `list`. Lines carrying an IRCv3 msgid
- * dedupe on that stable id. Lines without one (JOIN/PART/system, and any server
- * that omits msgid on CHATHISTORY replay) fall back to an exact
- * type+from+text+timestamp signature: replayed history preserves the original
- * server-time, so a re-delivered event matches to the millisecond, while a
- * genuinely new join/part (different ts) still passes through. This is the core
- * guard against re-appending the whole log when CHATHISTORY LATEST is replayed
- * more than once (duplicate JOIN echoes, reconnects, cache-tail catch-up).
+ * True when `candidate` already exists in `list`. Lines with a msgid dedupe on it.
+ * Lines without one fall back to an exact type+from+text+timestamp match: replays
+ * keep the original server-time, so a re-delivered event matches to the ms while
+ * a genuinely new join/part still passes. This is what stops a repeated
+ * CHATHISTORY LATEST from re-appending the whole log.
  */
 function messageExists(list: ChatMessage[], candidate: ChatMessage): boolean {
   if (candidate.msgid != null)
@@ -1129,21 +1054,19 @@ function addToBuffer(
   }
 
   if (opts.prepend) {
-    // For BEFORE batches, push to the staging array instead of directly into
-    // buf.messages. All staged messages are spliced in as one bulk operation at
-    // BATCH end, producing a single DOM update instead of 50 individual ones.
+    // BEFORE batches stage here and splice in once at BATCH end, so the page is
+    // one DOM update instead of one per line.
     const bi = opts.batchTag != null ? backlogBatches.get(opts.batchTag) : undefined
 
     if (bi?.staging != null) {
-      // Dedup within the staging array AND against lines already in the buffer -
-      // a BEFORE page can overlap history we already hold.
+      // Dedupe against the buffer too, since a BEFORE page can overlap history we
+      // already hold.
       if (!messageExists(bi.staging, newMsg) && !messageExists(buf.messages, newMsg))
         bi.staging.push(newMsg)
 
-      // Don't add to buf.messages yet - fall through so badge/read logic still runs.
+      // Not in buf.messages yet. Fall through so badge/read logic still runs.
     }
     else {
-      // Fallback for prepend calls outside a staged batch.
       if (messageExists(buf.messages, newMsg))
         return
 
@@ -1151,21 +1074,16 @@ function addToBuffer(
     }
   }
   else {
-    // Dedup live/replayed messages against ones already present - notably lines
-    // hydrated from the local cache that overlap a CHATHISTORY LATEST replay, and
-    // msgid-less lines (JOIN/PART/system, or replays where the server omits
-    // msgid) that would otherwise re-append on every replay. Optimistic local
-    // sends carry no msgid and a fresh local ts, so they're never wrongly
-    // suppressed against the server echo (which has its own msgid).
+    // Catches cache-hydrated lines overlapping a LATEST replay, and msgid-less
+    // lines that would re-append on every replay. Optimistic sends have no msgid
+    // and a fresh ts, so they never collide with their echo.
     if (messageExists(buf.messages, newMsg))
       return
 
-    // The cache is the sorted superset the live window slides over, so persist
-    // unconditionally. Whether the line also enters the live buffer depends on
-    // where its server-time falls relative to the currently-loaded window -
-    // splicing a line outside that range corrupts ordering and drops it at the
-    // wrong visual position (the bug behind event-playback presence spam landing
-    // mid-history). Out-of-window lines surface later via cache-backed paging.
+    // Always persist, since the cache is the sorted superset the live window
+    // slides over. Only splice into the live buffer when the server-time falls
+    // inside the loaded window, otherwise it lands out of order. Out-of-window
+    // lines surface later via cache-backed paging.
     scheduleMsgWrite(name, newMsg)
 
     const tMs = ts.getTime()
@@ -1177,14 +1095,12 @@ function addToBuffer(
       // cached and appears via fetchNewerFromCache when the user scrolls down.
     }
     else if (newest == null || tMs >= newest.ts.getTime()) {
-      // New tip - the common live case.
       buf.messages.push(newMsg)
     }
     else if (oldest != null && tMs > oldest.ts.getTime()) {
-      // Out-of-order delivery (event-playback replays an old-stamped JOIN/PART
-      // live) landing inside the loaded window: insert at its server-time
-      // position so order is preserved. Flag presence runs as backlog so they
-      // collapse into a summary instead of masquerading as live activity.
+      // Out-of-order delivery inside the loaded window (event-playback replaying an
+      // old JOIN/PART live). Insert at its server-time position, and flag presence
+      // as backlog so it collapses into a summary.
       if (newMsg.type === 'join' || newMsg.type === 'part')
         newMsg.backlog = true
 
@@ -1196,24 +1112,21 @@ function addToBuffer(
       buf.messages.splice(idx, 0, newMsg)
     }
 
-    // else: older than everything loaded - belongs above the window; cache only.
+    // Older than everything loaded: cache only.
   }
 
-  // A message just landed in buf.messages - apply any reactions that arrived
-  // before it (e.g. reactions on our own message that preceded its echo). The
-  // staged-prepend path above doesn't splice yet, so skip it there; the BATCH
-  // end handler drains staged msgids after the bulk splice.
+  // Apply reactions that arrived before this message. Staged prepends aren't in
+  // buf.messages yet, so the BATCH end handler drains those after the splice.
   if (!opts.prepend && newMsg.msgid != null)
     drainPendingReactions(buf, newMsg.msgid)
 
-  // Track the newest chat message so DM history fetches know where we left off.
-  // Backlog messages count too - without this, sessions with no live messages never
-  // advance the cursor and replay the same history on every fresh load.
+  // Backlog counts too. Otherwise a session with no live messages never advances
+  // the DM history cursor and replays the same history on every load.
   if (msg.type === 'chat')
     noteSeen(ts.getTime())
 
-  // Only chat messages from other people affect unread/mention/notification state.
-  // Service bots (HistServ, NickServ, ChanServ) are metadata - never badge.
+  // Only other people's chat lines affect unread/mention/notification state.
+  // Service bots never badge.
   if (msg.type !== 'chat' || msg.from == null || msg.from === nick.value || SERVICE_NICKS.has(msg.from.toLowerCase()))
     return
 
@@ -1227,15 +1140,12 @@ function addToBuffer(
   // against the previously-read position, not this very message.
   const readTs = readPositions[name.toLowerCase()]
 
-  // The read marker is the single source of truth. A message is already read when
-  // it's no newer than the marker - this holds for both live and replayed lines, so
-  // it does NOT matter whether the server flagged the history as a backlog batch (an
-  // unreliable signal). This is the core guard against re-counting seen messages.
+  // The read marker is the single source of truth, for live and replayed lines
+  // alike. The server's backlog flag is unreliable, so don't gate on it here.
   const alreadyRead = readTs != null && ts.getTime() <= readTs
 
-  // Pin the active buffer's marker forward as each message arrives (monotonic), so
-  // the channel you're viewing is robustly recorded as read without depending on the
-  // watcher's flush timing.
+  // Pin the active buffer's marker as each message arrives, so the visible
+  // channel counts as read without depending on the watcher's flush timing.
   if (isActive && isChatVisible.value && !document.hidden)
     saveReadPosition(name, ts.getTime())
 
@@ -1248,9 +1158,8 @@ function addToBuffer(
     new Notification(`${msg.from} mentioned you in ${buf.name}`, { body: msg.text, tag: `chat-mention-${buf.name}` })
   }
 
-  // Notification sound: same "genuinely new, not already read, not actively
-  // viewing this channel" gating as browser notifications. A mention chime takes
-  // priority over the general blip so a ping never fires both.
+  // Same gating as browser notifications. A mention chime replaces the general
+  // blip so a ping never fires both.
   if (!opts.backlog && !alreadyRead && (!isActive || document.hidden)) {
     if (isPing && soundMentionChoice.value !== NONE_SOUND_ID)
       playNotificationSound(soundMentionChoice.value, soundMentionUrl.value, soundVolume.value, soundMentionDesign.value)
@@ -1258,13 +1167,12 @@ function addToBuffer(
       playNotificationSound(soundMessageChoice.value, soundMessageUrl.value, soundVolume.value, soundMessageDesign.value)
   }
 
-  // Don't badge what you're looking at or have already read.
-  // isActive only suppresses the badge when the chat UI is actually visible AND the tab is in the foreground.
+  // Don't badge what you're looking at (visible and foregrounded) or have read.
   if ((isActive && isChatVisible.value && !document.hidden) || alreadyRead)
     return
 
-  // First-ever visit to a channel (no marker): don't badge its replayed history;
-  // only genuine live activity. DMs are exempt - a replayed DM is a real new message.
+  // First visit to a channel (no marker): don't badge its replayed history. DMs
+  // are exempt, since a replayed DM is a real new message.
   if (readTs == null && opts.backlog && kind !== 'pm')
     return
 
@@ -1297,15 +1205,12 @@ function addToActive(msg: Omit<ChatMessage, 'id' | 'ts'>, opts: { ts?: Date } = 
 }
 
 /**
- * Show a message we just sent immediately, before the server has echoed it back,
- * and record what it would take to send it again. Without this the line only
- * appears once the echo lands, which reads as the message being swallowed on a
- * slow connection. The line renders dimmed until reconcileOwnEcho promotes it, or
+ * Show a message we just sent before the server echoes it, and record what it
+ * takes to send it again. Renders dimmed until reconcileOwnEcho promotes it or
  * the timeout flags it as undelivered.
  *
- * Deliberately leaner than addToBuffer: our own message never badges, notifies,
- * or dedups, and it has no msgid yet so there's nothing to cache or to drain
- * queued reactions against. The cache write happens on reconciliation instead.
+ * Leaner than addToBuffer on purpose: our own line never badges, notifies, or
+ * dedupes, and without a msgid there's nothing to cache yet.
  */
 function addPendingSend(name: string, kind: BufferKind, msg: Omit<ChatMessage, 'id' | 'ts'>): void {
   const buf = getBuffer(name, kind)
@@ -1336,20 +1241,17 @@ function addPendingSend(name: string, kind: BufferKind, msg: Omit<ChatMessage, '
 }
 
 /**
- * Look up a line by local id. Goes through buf.messages so we get the reactive
- * proxy - mutating the raw object we pushed wouldn't re-render.
+ * Look up a line by local id through buf.messages to get the reactive proxy.
+ * Mutating the raw object we pushed wouldn't re-render.
  */
 function findLocalMessage(bufferName: string, id: number): ChatMessage | undefined {
   return findBuffer(bufferName)?.messages.find(m => m.id === id)
 }
 
 /**
- * Add our own outgoing message to its buffer. `sent` is whether the line actually
- * made it onto the socket.
- *
- * Without echo-message a successful send is the only confirmation we will ever
- * get, so the line goes straight in as settled history. Anything that didn't make
- * it out needs the outbox either way - that's what a resend is rebuilt from.
+ * Add our own outgoing message to its buffer. `sent` is whether it made it onto
+ * the socket. Without echo-message a successful send is the only confirmation
+ * we'll get, so it goes straight in as settled history.
  */
 function addOwnMessage(name: string, kind: BufferKind, msg: Omit<ChatMessage, 'id' | 'ts'>, sent: boolean): void {
   if (echoMessageActive || !sent)
@@ -1358,7 +1260,6 @@ function addOwnMessage(name: string, kind: BufferKind, msg: Omit<ChatMessage, 'i
     addToBuffer(name, kind, msg)
 }
 
-/** Drop an outbox entry and its timer. */
 function clearOutboxEntry(id: number) {
   const entry = outbox.get(id)
   if (entry?.timer != null)
@@ -1367,8 +1268,8 @@ function clearOutboxEntry(id: number) {
 }
 
 /**
- * Take an undelivered line out of the buffer without touching the cache - a line
- * that never got a msgid was never persisted, so there's nothing to delete.
+ * Take an undelivered line out of the buffer. It never got a msgid, so it was
+ * never cached and there's nothing to delete there.
  */
 function removeLocalMessage(bufferName: string, id: number) {
   const buf = findBuffer(bufferName)
@@ -1386,11 +1287,9 @@ function canResend(message: ChatMessage): boolean {
 }
 
 /**
- * Send an undelivered message again: the old line comes out of the log and the
- * message goes back out from its outbox entry, so it reappears at the bottom as a
- * fresh pending line rather than leaving a dead copy behind. Target and reply
- * context come from the entry, not from the composer, so a resend lands where the
- * original was aimed even if the user has since switched buffers.
+ * Resend an undelivered message. The old line is removed and a fresh pending one
+ * appears at the bottom. Target and reply context come from the outbox entry, so
+ * the resend lands where the original was aimed even after switching buffers.
  */
 function resendMessage(message: ChatMessage) {
   const entry = outbox.get(message.id)
@@ -1422,12 +1321,10 @@ function echoKey(text: string): string {
 }
 
 /**
- * Absorb a self-echoed message into the optimistic line we already showed, so the
- * echo promotes that line in place instead of appending a duplicate. Matching is
- * on text + action flag within the target buffer, which also holds for a replayed
- * copy of a send whose echo we missed across a reconnect.
- *
- * Returns true when the echo was absorbed and the caller should not add it again.
+ * Absorb a self-echo into the optimistic line we already showed, so it promotes
+ * in place instead of appending a duplicate. Matches on text + action flag within
+ * the buffer, which also catches a replayed copy of a send whose echo we missed
+ * across a reconnect. Returns true when the caller shouldn't add it again.
  */
 function reconcileOwnEcho(
   bufferName: string,
@@ -1470,11 +1367,9 @@ function reconcileOwnEcho(
 }
 
 /**
- * Give up waiting on every in-flight send. Called when the socket closes: anything
- * still unconfirmed at that point never got an acknowledgement, so it's shown as
- * undelivered rather than left sitting dim forever. The outbox entries stay, so
- * each one can be resent by hand. A CHATHISTORY replay after reconnect reconciles
- * the ones that did reach the server.
+ * Flag every in-flight send as undelivered when the socket closes, instead of
+ * leaving it dim forever. Outbox entries stay for a manual resend. A CHATHISTORY
+ * replay after reconnect reconciles the ones that did reach the server.
  */
 function failInFlightSends() {
   for (const [id, entry] of outbox) {
@@ -1491,27 +1386,20 @@ function failInFlightSends() {
 }
 
 /**
- * Apply an IRCv3 react/unreact to the parent message identified by `parentMsgid`
- * within `buf`. Idempotent: adding a reactor that's already present (or removing
- * an absent one) is a no-op, so optimistic updates and echoed TAGMSGs converge.
- * Reassigns `reactions` to a fresh object so Vue tracks the change.
+ * Apply an IRCv3 react/unreact to `parentMsgid` in `buf`. Idempotent, so
+ * optimistic updates and echoed TAGMSGs converge.
  */
 function applyReaction(buf: ChatBuffer, parentMsgid: string, reaction: string, who: string, remove: boolean, extra?: ChatMessage[]) {
   if (!parentMsgid || !reaction)
     return
 
-  // In a BEFORE (prepend) pagination batch the parent message is still staged and
-  // not yet spliced into buf.messages, so fall back to searching the staging array.
+  // In a BEFORE batch the parent may still be staged, not yet in buf.messages.
   const parent = buf.messages.find(m => m.msgid === parentMsgid)
     ?? extra?.find(m => m.msgid === parentMsgid)
   if (!parent) {
-    // The parent message isn't in the buffer (nor the current batch's staging)
-    // yet. Two cases, both handled by stashing and replaying when it appears:
-    //  - Live: our own just-sent message awaiting its echo with the server msgid.
-    //  - Backlog: CHATHISTORY replays a reaction at its own (newer) timestamp,
-    //    but the parent it targets was sent earlier and lands in an OLDER batch
-    //    that is fetched in a later page. Without queueing, only reactions whose
-    //    parent shares the same batch survive pagination.
+    // Parent isn't here yet. Either our own send is still awaiting its echo, or
+    // a CHATHISTORY page replayed the reaction at its own (newer) time and the
+    // parent lands in an older page. Queue it and replay when the parent appears.
     queuePendingReaction(buf.name, parentMsgid, reaction, who, remove)
     return
   }
@@ -1566,12 +1454,9 @@ function drainPendingReactions(buf: ChatBuffer, msgid: string) {
 }
 
 /**
- * Apply an IRCv3 draft/message-redaction to the message identified by `msgid`
- * within `buf`. Per spec, a REDACT referencing an unknown msgid MUST be ignored,
- * so a missing target is a silent no-op. We keep the message in place (preserving
- * authorship and ordering) and mark it redacted; the UI renders a placeholder and
- * drops any embeds/reactions. Original content is discarded - redaction is
- * cosmetic and we offer no "reveal" affordance.
+ * Per spec, a REDACT for an unknown msgid MUST be ignored. The message stays in
+ * place as a placeholder so authorship and ordering survive, but its text and
+ * reactions are discarded. There's no "reveal".
  */
 function applyRedaction(buf: ChatBuffer, msgid: string, by: string, reason: string) {
   if (!msgid)
@@ -1585,6 +1470,9 @@ function applyRedaction(buf: ChatBuffer, msgid: string, by: string, reason: stri
   target.redactedBy = by
   target.redactedReason = reason || undefined
   target.reactions = undefined
+
+  // Drop the text too so it doesn't linger in memory or the IndexedDB cache.
+  target.text = ''
   scheduleMsgWrite(buf.name, target)
 }
 
@@ -1637,8 +1525,8 @@ function addUser(buf: ChatBuffer, raw: string) {
   buf.users = [...buf.users, { name, prefix }].sort(sortUsers)
 }
 
-// List modes that have a param but represent a list entry (ban, exception, invite-exception).
-// These are tracked per-entry elsewhere and should not be stored as a boolean channel flag.
+// List modes (ban, exception, invite-exception) take a param but are tracked per
+// entry, never as a boolean channel flag.
 const LIST_MODES = new Set(['b', 'e', 'I'])
 
 /** Apply a MODE change's prefix mutations to the matching channel members. */
@@ -1880,11 +1768,8 @@ function markIdentityAuthed(authed: boolean) {
     localStorage.removeItem(STORAGE_IDENTITY_AUTHED)
 }
 
-// True once this browser has connected with a signed-in identity. Sticky across
-// sign-out so the connect form can default returning users to the sign-in prompt.
 const hadAccount = ref(import.meta.client && localStorage.getItem(STORAGE_HAD_ACCOUNT) === '1')
 
-/** Mark that a signed-in identity has been used at least once on this browser. */
 function markHadAccount() {
   hadAccount.value = true
   if (import.meta.client)
@@ -1892,11 +1777,8 @@ function markHadAccount() {
 }
 
 /**
- * Drop a persisted nick/channel that belonged to a signed-in session. Called
- * when the app loads (or transitions to) a signed-out state so the connect form
- * doesn't pre-fill a registered nick/channel that would fail to authenticate.
- * No-op when the persisted identity was anonymous, preserving a returning anon
- * user's chosen nick.
+ * Drop a persisted nick/channel that belonged to a signed-in session, on a
+ * signed-out load. A returning anon user's chosen nick is left alone.
  */
 function clearAuthedIdentity() {
   if (!import.meta.client)
@@ -1913,9 +1795,8 @@ function clearAuthedIdentity() {
   if (_signOutKey)
     void clearChatCache(_signOutKey)
 
-  // Wipe in-memory buffers from the previous signed-in session. resetBuffers()
-  // deliberately preserves channel/PM buffers across reconnects, so without this
-  // a follow-up anon connect would inherit channels the guest never joined.
+  // resetBuffers() keeps channel/PM buffers across reconnects, so wipe them here
+  // or a follow-up anon connect inherits channels the guest never joined.
   buffers.value = [
     { name: SERVER_BUFFER, kind: 'server', messages: [], users: [], unread: 0, mentions: 0, joined: true },
   ]
@@ -1928,12 +1809,9 @@ function persistChannel(value: string) {
 }
 
 // --- Local buffer cache (IndexedDB) ------------------------------------------
-// Per-message keyed store (DB v2). Every chat/tagmsg with a server-assigned msgid
-// is written incrementally; reactions/redactions mutate the stored row in-place.
-// On startup, the most recent CACHE_SEED_COUNT messages per buffer are loaded into
-// the live reactive array so the user sees content before the WebSocket connects.
-// Scroll-back (fetchOlderHistory) reads from IDB first; CHATHISTORY BEFORE is only
-// sent when the local cache is exhausted.
+// Chat lines with a server msgid are written as they arrive. Startup seeds
+// CACHE_SEED_COUNT messages per buffer before the socket connects, and
+// scroll-back reads IDB first before falling back to CHATHISTORY BEFORE.
 
 /**
  * First non-empty identity (nick) used as the per-user cache key. Empty strings
@@ -1948,7 +1826,7 @@ function cacheNickKey(): string {
   return ''
 }
 
-/** Build a StoredMessage from a live ChatMessage for the given buffer name. Returns null when the message has no msgid (not worth caching). */
+/** Build the cache row for a live message, or null when it shouldn't be cached. */
 function buildStoredMessage(bufferName: string, msg: ChatMessage): StoredMessage | null {
   const userKey = cacheNickKey()
   if (!userKey)
@@ -1967,7 +1845,6 @@ function buildStoredMessage(bufferName: string, msg: ChatMessage): StoredMessage
     msgid = `evt:${msg.type}:${msg.ts.getTime()}:${msg.text}`
   }
 
-  // Only chat/tagmsg (with a server msgid) and join/part presence events persist.
   if (msg.type !== 'chat' && msg.type !== 'tagmsg' && msg.type !== 'join' && msg.type !== 'part')
     return null
   if (!msgid)
@@ -2005,9 +1882,8 @@ function storedToMessage(m: StoredMessage): ChatMessage {
     from: m.from,
     channel: m.channel,
     text: m.text,
-    // Presence events are keyed on a synthetic id in the cache; never surface it
-    // as a real msgid - it isn't a server id, so it must not anchor CHATHISTORY
-    // requests, and buffer dedup falls back to the content+ts signature instead.
+    // The synthetic presence id isn't a server msgid, so it must never anchor
+    // CHATHISTORY. Dedup falls back to the content+ts signature instead.
     msgid: isEvent ? undefined : m.msgid,
     replyTo: m.replyTo,
     action: m.action,
@@ -2021,9 +1897,8 @@ function storedToMessage(m: StoredMessage): ChatMessage {
 }
 
 /**
- * Queue a message for the next debounced IDB batch flush.
- * Later writes with the same (bufferKey, msgid) key overwrite earlier ones,
- * so mutation chains (reactions, redactions) naturally converge.
+ * Queue a message for the debounced IDB flush. Later writes for the same
+ * (bufferKey, msgid) overwrite earlier ones, so reaction/redaction chains converge.
  */
 function scheduleMsgWrite(bufferName: string, msg: ChatMessage) {
   if (!import.meta.client)
@@ -2080,7 +1955,6 @@ async function hydrateBufferCache() {
         const closedAt = closedDms[meta.name.toLowerCase()]
 
         if (closedAt != null) {
-          // We need to peek at the newest message ts to decide.
           const peek = await loadRecentMessages(userKey, meta.name, 1)
 
           if (!peek.length || peek[peek.length - 1]!.ts <= closedAt)
@@ -2118,16 +1992,13 @@ async function hydrateBufferCache() {
         seedBufferModes(buf)
       }
 
-      // Re-check after the awaits above: a live JOIN can create this buffer
-      // while loadRecentMessages was in flight. Without this the seeded copy is
-      // appended alongside the live one, producing a duplicate buffer (and the
-      // appearance of a fully duplicated log when the active buffer flips).
+      // Re-check after the awaits: a live JOIN can create this buffer while
+      // loadRecentMessages is in flight, which would leave a duplicate buffer.
       if (findBuffer(meta.name))
         continue
 
-      // Commit immediately rather than batching at the end. A JOIN that arrives
-      // during a *later* iteration's await would otherwise not see this seeded
-      // buffer (it's still local) and would append a live duplicate alongside it.
+      // Commit now rather than at the end, so a JOIN during a later iteration's
+      // await sees this buffer instead of appending a live duplicate.
       buffers.value = [...buffers.value, buf]
     }
   }
@@ -2162,9 +2033,8 @@ function requestWhois(targetNick: string) {
 }
 
 /**
- * Send a silent background NS INFO probe. NickServ's reply is parsed for
- * the email line but suppressed from visible buffers so no tab opens.
- * Safe to call any time we are connected and authenticated.
+ * Background NickServ INFO probe. The reply is parsed but kept out of visible
+ * buffers so no query tab opens.
  */
 function queryNickServInfo() {
   if (!account.value)
@@ -2231,10 +2101,8 @@ function disableAlwaysOn() {
 }
 
 /**
- * Set the NickServ dm-history preference, suppressing its reply notices from
- * visible buffers. Sets accountDmHistory optimistically on send, then re-probes
- * GET dm-history inside the suppression window so the effective value (what the
- * preference resolves to under server settings) refreshes from the server.
+ * Set the NickServ dm-history preference optimistically, then re-probe GET
+ * dm-history inside the suppression window to refresh the effective value.
  */
 function setDmHistory(value: DmHistorySetting) {
   if (!account.value)
@@ -2296,10 +2164,10 @@ function unescapeTag(value: string) {
     .replace(/\\\\/g, '\\')
 }
 
-/** Inverse of unescapeTag - encode a value for the IRCv3 message-tags wire format. */
+/** Inverse of unescapeTag: encode a value for the IRCv3 message-tags wire format. */
 function escapeTagValue(value: string) {
   return value
-    .replace(/\0/g, '') // null bytes cannot be encoded in IRC tag values - strip them
+    .replace(/\0/g, '') // NUL can't be encoded in IRC tag values
     .replace(/\\/g, '\\\\')
     .replace(/;/g, '\\:')
     .replace(/ /g, '\\s')
@@ -2378,15 +2246,8 @@ function finishCap() {
 }
 
 /**
- * Fetch older messages for a buffer by sending CHATHISTORY BEFORE anchored on
- * the oldest message currently in the buffer. Marks the buffer as loading so
- * the UI can show a spinner and avoid duplicate requests.
- */
-/**
- * Load older messages for a buffer. Checks the local IDB cache first so the user
- * sees history without a server round-trip. Falls back to CHATHISTORY BEFORE once
- * the cache is exhausted. Sets loadingOlderHistory throughout so the UI shows the
- * correct spinner state regardless of source.
+ * Load older messages for a buffer, from the IDB cache first and CHATHISTORY
+ * BEFORE once the cache is exhausted. loadingOlderHistory covers both paths.
  */
 async function fetchOlderHistory(target: string) {
   if (!chatHistorySupported.value)
@@ -2403,10 +2264,9 @@ async function fetchOlderHistory(target: string) {
   buf.loadingOlderHistory = true
 
   // --- cache-first path ---
-  // While a reconnect gap is unbridged (cacheBridgeTs set), the cached messages
-  // below the live front are NOT contiguous with it - serving them here would
-  // silently skip the missed window. Force the server BEFORE path until
-  // pagination reaches back into cached territory and clears the bridge.
+  // While a reconnect gap is unbridged (cacheBridgeTs set), cached messages below
+  // the live front aren't contiguous with it and would skip the missed window.
+  // Use the server until pagination reaches cached territory and clears it.
   const userKey = cacheNickKey()
   if (userKey && !buf.cacheExhausted && buf.cacheBridgeTs == null) {
     const oldestTs = buf.messages[0]?.ts.getTime() ?? Date.now()
@@ -2431,11 +2291,9 @@ async function fetchOlderHistory(target: string) {
           buf.historyAnchorTs = oldest.ts.toISOString()
         }
 
-        // Keep the live DOM node count bounded: trim newest messages from the
-        // tail. The user is scrolled to the top (trigger condition), so content
-        // below the viewport disappears silently. At most one page per load -
-        // skipped trims (short rendered log) let excess accumulate, and chopping
-        // it all at once later could remove content near the viewport.
+        // Trim at most one page from the tail per load. The user is at the top, so
+        // this is off-screen. Trims skipped for a short log let excess build up,
+        // and chopping it all at once could remove content near the viewport.
         if (buf.messages.length > MAX_LIVE_MESSAGES && windowTrimAllowed()) {
           buf.messages.splice(Math.max(MAX_LIVE_MESSAGES, buf.messages.length - CACHE_PAGE_SIZE))
           buf.tailTrimmed = true
@@ -2479,13 +2337,10 @@ async function fetchOlderHistory(target: string) {
 }
 
 // --- CHATHISTORY request scheduling ---
-// Ergo answers CHATHISTORY in the order requests arrive, so firing one per
-// channel during a connect burst (plus the sparse-batch backfills each of those
-// kicks off) leaves the buffer the user is actually looking at queued behind
-// every other channel. Requests go through a small scheduler instead: the active
-// buffer is sent straight away, everything else waits at a low concurrency and
-// the queue is re-sorted every time a slot frees, so switching buffers
-// mid-restore doesn't mean waiting out the whole backlog.
+// Ergo answers CHATHISTORY in arrival order, so a connect burst would queue the
+// buffer the user is looking at behind every other channel. The active buffer
+// goes out immediately. Everything else waits at low concurrency and is
+// re-prioritised whenever a slot frees.
 const HISTORY_CONCURRENCY = 2
 
 // Safety valve: a request whose batch never closes (server error, target gone)
@@ -2553,8 +2408,8 @@ function drainHistoryQueue() {
 }
 
 function queueHistoryRequest(req: QueuedHistory) {
-  // The active buffer is what the user is staring at, so it skips the queue
-  // entirely - even if that briefly puts us one over the concurrency cap.
+  // The active buffer skips the queue entirely, even if that briefly puts us one
+  // over the concurrency cap.
   if (historyPriority(req.target) === 0) {
     dispatchHistoryRequest(req)
     return
@@ -2599,16 +2454,9 @@ function resetHistoryQueue() {
 }
 
 /**
- * Request the latest history for a target. When `since` (ms epoch) is given
- * only messages after that point are returned; otherwise the most recent
- * HISTORY_LIMIT messages are fetched for context.
- */
-/**
- * Record the newest cached timestamp on a buffer before a LATEST history fetch,
- * so the batch-end handler can detect a reconnect gap (more than HISTORY_LIMIT
- * messages missed between the cached block and the freshly-fetched block) and
- * bridge it lazily via BEFORE pagination. No-op when the buffer holds no cached
- * backlog - a live (non-`backlog`) tail means we never went offline here.
+ * Record the newest cached timestamp before a LATEST fetch, so the batch-end
+ * handler can spot a reconnect gap (more than HISTORY_LIMIT missed) and bridge it
+ * via BEFORE pagination. A live (non-backlog) tail means we never went offline.
  */
 function markPendingBridge(buf: ChatBuffer) {
   const last = buf.messages[buf.messages.length - 1]
@@ -2635,7 +2483,7 @@ function requestHistory(target: string, since?: number) {
 /**
  * Lower bound (ms) shared by TARGETS discovery and per-DM LATEST fetches.
  * Uses the last-seen cursor so we only pull what arrived while away, minus fuzz
- * to absorb clock skew. Falls back to a 7-day window on the first connect.
+ * to absorb clock skew. Falls back to DEFAULT_HISTORY_LOOKBACK_MS on first connect.
  */
 function historyLowerBound() {
   const base = lastSeenTs > 0 ? lastSeenTs : Date.now() - DEFAULT_HISTORY_LOOKBACK_MS
@@ -2643,9 +2491,8 @@ function historyLowerBound() {
 }
 
 /**
- * Ask the server for all conversations (DMs) with activity since we last saw a
- * message. Ergo replies with a `draft/chathistory-targets` batch whose lines
- * are parsed in the CHATHISTORY case below.
+ * Ask for all DMs with activity since we last saw a message. Ergo replies with a
+ * `draft/chathistory-targets` batch.
  */
 function requestHistoryTargets() {
   if (!chatHistorySupported.value)
@@ -2654,10 +2501,8 @@ function requestHistoryTargets() {
   const lower = historyLowerBound()
   const upper = Date.now() + HISTORY_FUZZ_MS
 
-  // IRCv3 draft/chathistory TARGETS takes <after_timestamp> <before_timestamp> <limit>:
-  // the first timestamp is the older lower bound (after which we want results)
-  // and the second is the newer upper bound (before which we want results).
-  // Swapping them would produce an inverted range, causing Ergo to return all targets.
+  // TARGETS takes <after> <before> <limit>. Swapping the timestamps gives an
+  // inverted range and Ergo returns every target.
   send(`CHATHISTORY TARGETS timestamp=${new Date(lower).toISOString()} timestamp=${new Date(upper).toISOString()} ${HISTORY_LIMIT}`)
 }
 
@@ -2668,18 +2513,14 @@ function handleMessage(raw: string) {
   const batchTag = tags.batch
   const backlog = batchTag != null && backlogBatches.has(batchTag)
 
-  // Whether replayed lines in this batch should be prepended (CHATHISTORY BEFORE)
-  // rather than appended. Every handler that stores a backlog line (PRIVMSG, JOIN,
-  // PART) must honour this, otherwise BEFORE-batch lines land at the bottom of the
-  // buffer (newest) instead of their correct chronological position at the top.
+  // Every handler that stores a backlog line must honour this, or BEFORE-batch
+  // lines land at the bottom instead of the top.
   const isPrependBatch = (batchTag != null ? backlogBatches.get(batchTag)?.isPrepend : false) ?? false
 
-  // Count every replayed line against its batch budget, regardless of type.
-  // Ergo counts all message types (JOIN, PART, PRIVMSG, etc.) toward the limit.
-  // Also track the oldest line delivered (by ts) so BEFORE pagination can
-  // advance past lines that never enter the buffer (e.g. reaction TAGMSGs,
-  // suppressed HistServ relays); otherwise the anchor never moves and we
-  // re-request the same window forever.
+  // Ergo counts every replayed line (JOIN, PART, PRIVMSG...) toward the batch
+  // limit, so count them all. Also track the oldest line so BEFORE pagination
+  // can advance past lines that never enter the buffer (reaction TAGMSGs,
+  // suppressed relays). Otherwise the anchor never moves.
   if (backlog && batchTag) {
     const _bi = backlogBatches.get(batchTag)
     if (_bi) {
@@ -2831,12 +2672,8 @@ function handleMessage(raw: string) {
       scheduleDefaultChannelFallback()
       _startPinging()
 
-      // Subscribe to Orbit baseline metadata keys (draft/metadata-2).
-      // Ergo pushes live METADATA notifications for subscribed keys whenever
-      // any user visible to this client updates them. Without this subscription
-      // the server only delivers metadata in response to explicit METADATA GET/LIST
-      // requests; the per-channel METADATA LIST on JOIN is a fallback, not a
-      // substitute for the live subscription feed.
+      // Without this subscription Ergo only sends metadata in reply to explicit
+      // GET/LIST, so live avatar/display-name/status changes would never arrive.
       if (capLs.includes('draft/metadata-2'))
         send('METADATA * SUB avatar display-name orbit.status')
 
@@ -2845,10 +2682,8 @@ function handleMessage(raw: string) {
       break
 
     case '005': { // RPL_ISUPPORT
-      // Tokens sit between the leading nick (params[0]) and the trailing
-      // "are supported by this server" text. Capture the VAPID push key; this is
-      // the one we must use as the browser subscription's applicationServerKey so
-      // Ergo's push notifications validate against the subscription.
+      // Tokens sit between the nick and the trailing text. The VAPID key must be
+      // the push subscription's applicationServerKey or Ergo's pushes won't validate.
       for (let i = 1; i < params.length - 1; i++) {
         const tok = params[i] ?? ''
         if (tok.startsWith('VAPID='))
@@ -2863,16 +2698,14 @@ function handleMessage(raw: string) {
       break
 
     case '433': // ERR_NICKNAMEINUSE
-      // During pre-registration, SASL auth may still resolve the nick - Ergo
-      // will ghost the occupant once the authenticated account claims ownership.
-      // Only skip the error if SASL hasn't already failed; a failed SASL means
-      // we have no account claim and the nick collision is genuinely fatal.
+      // Before registration completes, Ergo ghosts the occupant once SASL claims
+      // the account's nick, so this isn't fatal yet. After a failed SASL it is.
       if (connState.value === 'connecting' && authCreds && !saslFailed)
         break
 
       addServer({ type: 'error', text: `Nickname ${params[1]} is already in use. Try a different one.` })
 
-      // Fatal: don't auto-reconnect with the same (taken) nick - that just loops.
+      // Fatal: reconnecting with the same taken nick would just loop.
       _fatalError = true
       connState.value = 'error'
       ws?.close()
@@ -2902,15 +2735,12 @@ function handleMessage(raw: string) {
 
       buf.joined = true
 
-      // Secret channels show up in public metrics under a hash of their name,
-      // never the name. Remembering the ones we're in is what lets the
-      // dashboard and the charts label those rows later, long after chat has
-      // been closed.
+      // Secret channels show in public metrics as a hash of their name. Remembering
+      // the ones we're in lets the dashboard label those rows after chat closes.
       rememberIrcChannel(channel)
 
-      // A channel arrived (restore or manual join). Push the default-channel
-      // fallback out so it only fires once the restore burst is quiet, and not
-      // at all if we now have a channel.
+      // Push the default-channel fallback out so it only fires once the restore
+      // burst is quiet, and not at all now that we have a channel.
       scheduleDefaultChannelFallback()
 
       if (channelKeyPrompt.value?.toLowerCase() === channel.toLowerCase()) {
@@ -2918,10 +2748,9 @@ function handleMessage(raw: string) {
         channelKeyError.value = false
       }
 
-      // Only steal focus for the channel we actually intend to land on. The server
-      // can auto-join several channels on reconnect; flipping the active buffer
-      // through each one would let the read watcher mark them all as read. When no
-      // channel is persisted, land on the first one we join.
+      // Only focus the channel we intend to land on. Flipping through every
+      // server auto-join on reconnect would let the read watcher mark them all
+      // read. With no persisted channel, land on the first join.
       const want = inputChannel.value.toLowerCase()
       const shouldFocus = want
         ? channel.toLowerCase() === want
@@ -2935,11 +2764,7 @@ function handleMessage(raw: string) {
       send(`MODE ${channel}`)
       send(`METADATA ${channel} LIST`)
 
-      // Only render "You joined" when the user actively asked to join this
-      // channel this session (joinChannel). Connect-time landing joins and
-      // server-pushed auto-joins (always-on accounts the server keeps joined)
-      // aren't in the intent set, so they stay silent. Consume the intent so a
-      // later JOIN echo for the same channel doesn't re-trigger the marker.
+      // Consume the intent so a later JOIN echo doesn't re-trigger the marker.
       const isExplicitJoin = explicitJoinIntents.delete(channel.toLowerCase())
 
       // Persist buffer metadata so the next load can hydrate this channel from
@@ -2962,14 +2787,10 @@ function handleMessage(raw: string) {
         if (isExplicitJoin)
           pendingJoinMarkers.add(channel.toLowerCase())
 
-        // Fetch the newest history unconditionally rather than bounding it by
-        // the cached tail. A `since`-bounded LATEST returns only the *newest*
-        // HISTORY_LIMIT lines above the cursor, so when more than that arrived
-        // while we were away it silently drops everything in between, which
-        // leaves a gap in the feed. Plain LATEST overlaps the cached tail for
-        // short absences (dedup stitches them together); for longer ones the
-        // batch-end handler detects the gap and bridges it lazily via BEFORE
-        // pagination.
+        // Plain LATEST, not bounded by the cached tail. A `since` LATEST returns
+        // only the newest HISTORY_LIMIT lines and silently drops anything older
+        // that arrived while away. Short absences overlap the cache and dedupe.
+        // Longer ones leave a gap the batch-end handler bridges via BEFORE.
         markPendingBridge(buf)
         requestHistory(channel)
       }
@@ -3055,7 +2876,7 @@ function handleMessage(raw: string) {
           applyModeChanges(buf, params.slice(1))
       }
       else {
-        // User mode change - track bot flag (+B/-B)
+        // User mode change: track the bot flag (+B/-B).
         const modeStr = params[1] ?? ''
         const setBot = /\+[^-]*B/.test(modeStr)
         const unsetBot = /-[^+]*B/.test(modeStr)
@@ -3199,10 +3020,8 @@ function handleMessage(raw: string) {
       const replyTo = tags['+reply'] ?? undefined
       const relayedBy = tags['draft/relaymsg'] ?? undefined
 
-      // Service bots (NickServ/ChanServ/HistServ) are identity plumbing unless the
-      // user has explicitly opened a conversation with them. Surface traffic only
-      // inside such an open query; our own probe/SET commands (and their echoes)
-      // and replayed history have no open query and stay in the internal log.
+      // Service bots stay in the internal log unless the user has an open query
+      // with them. Our own probe/SET traffic and replayed history never surface.
       if (kind === 'pm' && SERVICE_NICKS.has(bufferName.toLowerCase())) {
         const hasOpenQuery = findBuffer(bufferName)?.kind === 'pm'
 
@@ -3326,16 +3145,14 @@ function handleMessage(raw: string) {
           const batchBuf = findBuffer(info.target)
 
           if (batchBuf) {
-            // Always clear loading state, which covers both LATEST and BEFORE.
             batchBuf.loadingOlderHistory = false
 
             // Mark ready after the first batch (LATEST) completes so lazy-load
             // won't fire before initial history has settled.
             batchBuf.historyReady = true
 
-            // Fewer messages than the limit means no more history - unless this was
-            // a time-bounded LATEST fetch (hasSinceBound), in which case a sparse
-            // result only means no activity in that window, not that all history is gone.
+            // Fewer than the limit means no more history, except for a
+            // time-bounded LATEST where it only means a quiet window.
             if (info.count < HISTORY_LIMIT && !info.hasSinceBound) {
               if (batchBuf.cacheBridgeTs != null && info.isPrepend) {
                 // Bridging a reconnect gap (see below) and the server ran out of
@@ -3353,14 +3170,10 @@ function handleMessage(raw: string) {
             }
 
             // --- reconnect gap detection (plain LATEST on JOIN) ---
-            // A plain LATEST returns at most HISTORY_LIMIT of the newest lines. If
-            // this buffer was seeded from cache and the oldest line delivered sits
-            // above the newest cached line with no overlap, more than HISTORY_LIMIT
-            // messages arrived while we were away: the cached block and this fresh
-            // block aren't contiguous. Drop the now-disconnected cached block from
-            // the live view (it stays in IndexedDB for scroll-back) so the live
-            // front is one contiguous run, and record the cached boundary so
-            // scroll-back bridges the gap from the server before resuming the cache.
+            // If the oldest line in this LATEST sits above the newest cached line
+            // with no overlap, more than HISTORY_LIMIT arrived while away. Drop the
+            // disconnected cached block from the live view (IDB keeps it) and record
+            // the boundary so scroll-back bridges the gap from the server first.
             if (!info.isPrepend && batchBuf.pendingBridgeFromTs != null) {
               const bridgeFrom = batchBuf.pendingBridgeFromTs
 
@@ -3380,16 +3193,13 @@ function handleMessage(raw: string) {
               }
             }
 
-            // Bulk-insert staged BEFORE messages in one splice so the Vue
-            // reactive array only updates once (no per-message layout shift).
-            // Server delivers messages oldest-first, staging preserves that
-            // order, so splice(0,0,...) inserts them chronologically.
+            // One splice so the reactive array updates once. Staging keeps the
+            // server's oldest-first order.
             if (info.isPrepend && info.staging != null && info.staging.length > 0) {
               batchBuf.messages.splice(0, 0, ...info.staging)
 
-              // Now that these older messages exist in the buffer, apply any
-              // reactions that were replayed in a newer batch but targeted them
-              // (their parent only just arrived in this older page).
+              // Apply reactions replayed in a newer batch whose parents only just
+              // arrived in this older page.
               for (const staged of info.staging) {
                 if (staged.msgid != null)
                   drainPendingReactions(batchBuf, staged.msgid)
@@ -3411,14 +3221,10 @@ function handleMessage(raw: string) {
                 scheduleMsgWrite(batchBuf.name, m)
             }
 
-            // Advance the pagination anchor to the oldest line delivered in this
-            // batch, even if that line never entered the buffer (reaction
-            // TAGMSGs and suppressed HistServ relays aren't stored). Without
-            // this, batches full of reactions leave the buffer's oldest stored
-            // message unchanged, so the next BEFORE re-requests the same window
-            // forever and pagination can never reach older real messages. Only
-            // move the anchor backwards in time so re-fetches/LATEST can't reset
-            // it to a newer position.
+            // Advance the anchor to the oldest line delivered, even one that never
+            // entered the buffer (reactions, suppressed relays). Otherwise a batch
+            // of reactions re-requests the same window forever. Only ever move it
+            // backwards so LATEST can't reset it.
             if (info.oldestTs != null) {
               const currentAnchorTs = batchBuf.historyAnchorTs != null ? Date.parse(batchBuf.historyAnchorTs) : Number.POSITIVE_INFINITY
 
@@ -3428,21 +3234,17 @@ function handleMessage(raw: string) {
               }
             }
 
-            // If we were bridging a reconnect gap, check whether this BEFORE page
-            // reached back into cached territory. Once it does, the live front is
-            // contiguous with the cache again: clear the bridge so cache-first
-            // scroll-back resumes serving the older cached block instantly.
+            // Once a BEFORE page reaches cached territory the live front is
+            // contiguous with the cache again, so cache-first scroll-back resumes.
             if (batchBuf.cacheBridgeTs != null && info.isPrepend && info.oldestTs != null
               && info.oldestTs <= batchBuf.cacheBridgeTs + HISTORY_FUZZ_MS) {
               batchBuf.cacheBridgeTs = undefined
               batchBuf.cacheExhausted = false
             }
 
-            // A batch may add few (or zero) visible messages when it's dominated
-            // by reactions/suppressed relays. Since the anchor now advances
-            // regardless, keep fetching until we have a screen's worth of
-            // visible content or history is exhausted. Cap retries as a safety
-            // valve against pathological histories.
+            // A batch dominated by reactions/relays may add almost nothing visible.
+            // Keep fetching until there's a screen's worth or history runs out,
+            // with a retry cap against pathological histories.
             if (!batchBuf.historyExhausted && (batchBuf.autoFetchRetries ?? 0) < 20) {
               const visibleCount = batchBuf.messages.filter(m => m.type !== 'tagmsg').length
 
@@ -3469,15 +3271,14 @@ function handleMessage(raw: string) {
     }
 
     case 'CHATHISTORY': {
-      // Reply to `CHATHISTORY TARGETS`: one line per conversation as
-      // `CHATHISTORY TARGETS <target> <timestamp>`. Only act on DM targets -
-      // channels are replayed on JOIN. If the user previously closed this DM,
-      // skip unless the server reports newer activity than when it was closed.
+      // Reply to `CHATHISTORY TARGETS`, one line per conversation. Only DMs matter
+      // here since channels replay on JOIN. A closed DM is skipped unless the
+      // server reports newer activity than when it was closed.
       if (params[0] === 'TARGETS') {
         const target = params[1] ?? ''
 
-        // Skip service bots - replaying our NickServ/ChanServ command history is
-        // noise and would otherwise materialise a hidden service DM buffer.
+        // Skip service bots. Replaying our NickServ/ChanServ commands is noise and
+        // would create a hidden service DM buffer.
         if (target && !target.startsWith('#') && !target.startsWith('&') && !SERVICE_NICKS.has(target.toLowerCase())) {
           const closedAt = closedDms[target.toLowerCase()]
           const latestTs = Date.parse(params[2] ?? '')
@@ -3496,10 +3297,8 @@ function handleMessage(raw: string) {
             // No read-marker cap: fall back to eager buffer creation.
             const dmBuf = getBuffer(target, 'pm')
 
-            // Same reconnect gap as channels: a `since`-bounded LATEST returns
-            // only the newest HISTORY_LIMIT lines, so a busy DM with more than
-            // that missed drops the messages in between. Mark the cached tail so
-            // the batch-end handler can bridge the gap on scroll-back.
+            // A `since` LATEST drops messages beyond HISTORY_LIMIT, same as
+            // channels, so mark the cached tail for the batch-end bridge.
             markPendingBridge(dmBuf)
             requestHistory(target, historyLowerBound())
           }
@@ -3515,18 +3314,14 @@ function handleMessage(raw: string) {
         ? Date.parse(mrTs.startsWith('timestamp=') ? mrTs.slice('timestamp='.length) : mrTs)
         : Number.NaN
 
-      // Seed readPositions from the server marker before any history replay runs.
-      // This is also how a read on another device reaches us: the server pushes
-      // the advanced marker here, and saveReadPosition reconciles the local
-      // badge. sync: false because the marker already came from the server -
-      // don't echo it back.
+      // Seed readPositions before any history replays. This is also how a read on
+      // another device reaches us. sync: false so we don't echo it back.
       if (mrTarget && Number.isFinite(mrParsed))
         saveReadPosition(mrTarget, mrParsed, { sync: false })
 
-      // Resolve a deferred DM target from CHATHISTORY TARGETS. Only open the
-      // buffer and fetch history if the conversation has activity newer than the
-      // read marker - otherwise skip it entirely so stale DMs don't clutter the
-      // sidebar on fresh connects.
+      // Resolve a deferred DM target from CHATHISTORY TARGETS. Only open it if
+      // there's activity past the read marker, so stale DMs don't clutter the
+      // sidebar on connect.
       const pendingLatestTs = pendingDmTargets.get(mrTarget.toLowerCase())
       if (pendingLatestTs != null) {
         pendingDmTargets.delete(mrTarget.toLowerCase())
@@ -3567,13 +3362,13 @@ function handleMessage(raw: string) {
     case '315': { // RPL_ENDOFWHO
       const whoMask = params[1] ?? ''
       if (internalWhoChannels.delete(whoMask.toLowerCase()))
-        break // silently consumed - internal bot-detection WHO
+        break // internal bot-detection WHO
 
       addToActive({ type: 'system', text: params[params.length - 1] ?? '' }, { ts })
       break
     }
 
-    case '352': { // RPL_WHOREPLY - <client> <channel> <user> <host> <server> <nick> <flags> :<hop> <realname>
+    case '352': { // RPL_WHOREPLY: <client> <channel> <user> <host> <server> <nick> <flags> :<hop> <realname>
       const whoReplyChannel = params[1] ?? ''
       const whoNick = params[5] ?? ''
       const whoFlags = params[6] ?? ''
@@ -3619,7 +3414,7 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '324': { // RPL_CHANNELMODEIS - response to MODE #channel query
+    case '324': { // RPL_CHANNELMODEIS
       const modeChannel = params[1] ?? ''
       const modeBuf = findBuffer(modeChannel)
       if (modeBuf)
@@ -3636,7 +3431,7 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '329': { // RPL_CREATIONTIME - channel creation timestamp
+    case '329': { // RPL_CREATIONTIME
       const ch329 = params[1] ?? ''
       const ts329 = Number(params[2] ?? '')
       if (ch329 && Number.isFinite(ts329) && ts329 > 0) {
@@ -3704,7 +3499,7 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '333': // RPL_TOPICWHOTIME - topic setter + timestamp; silently consumed
+    case '333': // RPL_TOPICWHOTIME: ignored
       break
 
     case 'TOPIC': { // live topic change
@@ -3724,7 +3519,7 @@ function handleMessage(raw: string) {
 
       // Parse ChanServ registration status from background INFO probes or live responses.
       if (fromChanServ && isAddressedToUs) {
-        // "Information on #channel:" - first line of a successful INFO response
+        // "Information on #channel:" opens a successful INFO response.
         const infoMatch = /^Information on (#\S+):/i.exec(noticeText)
 
         if (infoMatch) {
@@ -3804,9 +3599,8 @@ function handleMessage(raw: string) {
           }
         }
 
-        // Suppress all ChanServ output while any probe is in flight.
-        // The probe timer is the only cleanup path - this avoids partial suppression
-        // on multi-line responses (e.g. Founder/Registered-at lines after the header).
+        // Suppress all ChanServ output while any probe is in flight. Only the probe
+        // timer ends it, so multi-line responses aren't half suppressed.
         if (_probingChanServChannels.size > 0)
           break
       }
@@ -3867,9 +3661,8 @@ function handleMessage(raw: string) {
       if (fromNickServ && isAddressedToUs && (probingNickServInfo || suppressingNickServOp))
         break
 
-      // Surface NickServ replies only when the user has an open conversation with
-      // it. Unsolicited notices (login banners, etc.) and background plumbing have
-      // no open query and go to the internal service log instead of a visible tab.
+      // Surface NickServ replies only inside an open conversation with it.
+      // Everything else goes to the internal service log.
       if (fromNickServ && isAddressedToUs) {
         if (findBuffer(nickFrom)?.kind === 'pm')
           addToBuffer(nickFrom, 'pm', { type: 'system', from: nickFrom, text: noticeText }, { ts })
@@ -3882,8 +3675,7 @@ function handleMessage(raw: string) {
         addToBuffer(nickFrom, 'pm', { type: 'system', from: nickFrom, text: noticeText }, { ts })
       }
       else if (noticeTgt.startsWith('#') || noticeTgt.startsWith('&')) {
-        // Suppress server-generated TAGMSG relay notices - the TAGMSG command
-        // itself provides full tag context via the TAGMSG case.
+        // Server-generated TAGMSG relay notices. The TAGMSG case has the full context.
         if (/\bsent a TAGMSG\b/i.test(noticeText))
           break
 
@@ -3895,7 +3687,7 @@ function handleMessage(raw: string) {
       break
     }
 
-    // WHOIS numerics - populate structured store when tracked, else show in buffer.
+    // WHOIS numerics fill the structured store when tracked, else show in the buffer.
     case '301': { // RPL_AWAY
       const [, awayNick, awayMsg] = params
       if (awayNick) {
@@ -3982,7 +3774,7 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '318': { // RPL_ENDOFWHOIS - mark loading done
+    case '318': { // RPL_ENDOFWHOIS
       const [, wNick] = params
       if (wNick) {
         const key = wNick.toLowerCase()
@@ -4061,8 +3853,7 @@ function handleMessage(raw: string) {
       if (wNick) {
         const key = wNick.toLowerCase()
 
-        // Silently consume if this is a tracked WHOIS response; the modes
-        // text is informational and not surfaced in the modal UI yet.
+        // A tracked WHOIS drops this, since the modal doesn't show modes.
         if (!_whoisStore.value.has(key))
           addToActive({ type: 'system', text: `[${wNick}] ${params[params.length - 1] ?? ''}` }, { ts })
       }
@@ -4110,21 +3901,14 @@ function handleMessage(raw: string) {
         break
       }
 
-      // Tags that are protocol metadata - never user-meaningful.
-      const _META_TAGS = new Set(['time', 'batch', 'msgid', 'label', 'account'])
-
-      // Tags we recognise and silently handle (or intentionally ignore).
-      const _KNOWN_TAGS = new Set(['+typing', 'draft/typing', '+react', '+draft/react', '+unreact', '+draft/unreact', 'draft/react', '+icon', '+reply', 'draft/reply', '+draft/reply'])
-
-      // Unknown tags - silently discard. Nothing user-meaningful to display.
+      // Unknown tags: nothing user-meaningful to display.
       break
     }
 
     case 'REDACT': {
       // IRCv3 draft/message-redaction: :redactor REDACT <target> <msgid> [:reason]
-      // Relayed both live and inside CHATHISTORY batches (backlog). The redactor
-      // may be the author or a channel op. We mark the target message redacted
-      // wherever it lives; an unknown msgid is ignored per spec.
+      // Arrives live and inside CHATHISTORY batches. The redactor may be the
+      // author or a channel op.
       if (!nickFrom)
         break
 
@@ -4140,7 +3924,7 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '473': { // ERR_INVITEONLYCHAN - channel is invite-only
+    case '473': { // ERR_INVITEONLYCHAN
       const invChannel = params[1] ?? ''
       if (invChannel) {
         closeBuffer(invChannel)
@@ -4149,7 +3933,7 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '477': { // ERR_NEEDREGGEDNICK - channel requires a registered account
+    case '477': { // ERR_NEEDREGGEDNICK
       const regChannel = params[1] ?? ''
       if (regChannel) {
         closeBuffer(regChannel)
@@ -4158,7 +3942,7 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '475': { // ERR_BADCHANNELKEY - channel requires a key
+    case '475': { // ERR_BADCHANNELKEY
       const keyChannel = params[1] ?? ''
       if (keyChannel) {
         closeBuffer(keyChannel)
@@ -4168,7 +3952,7 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '761': { // RPL_KEYVALUE - metadata key/value (draft/metadata-2)
+    case '761': { // RPL_KEYVALUE (draft/metadata-2)
       const metaTarget = params[1] ?? ''
       const metaKey = params[2] ?? ''
       const metaValue = params[params.length - 1] ?? ''
@@ -4189,7 +3973,7 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '762': { // RPL_METADATAEND - metadata list complete for target
+    case '762': { // RPL_METADATAEND
       const endTarget = params[1]?.toLowerCase()
       if (endTarget && endTarget !== '*' && !channelMetaResolved.value.has(endTarget)) {
         channelMetaResolved.value = new Set(channelMetaResolved.value).add(endTarget)
@@ -4197,10 +3981,10 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '770': // RPL_METADATASUBOK - subscription confirmed, no display needed
+    case '770': // RPL_METADATASUBOK
       break
 
-    case '766': // RPL_NOMATCHINGKEY - silently consumed
+    case '766': // RPL_NOMATCHINGKEY
       break
 
     case '401': { // ERR_NOSUCHNICK
@@ -4218,9 +4002,9 @@ function handleMessage(raw: string) {
       break
     }
 
-    case '400': // ERR_UNKNOWNERROR - Ergo sends this when it can't assemble an outgoing
-      // message (e.g. bad content in stored history). Route to the server buffer so it
-      // doesn't clutter an active channel conversation.
+    case '400': // ERR_UNKNOWNERROR
+      // Ergo sends this when it can't assemble an outgoing message (e.g. bad
+      // stored history). Keep it out of the active channel.
       addServer({ type: 'error', text: params[params.length - 1] ?? raw }, { ts })
       break
 
@@ -4304,9 +4088,8 @@ function handleMessage(raw: string) {
 
     default:
       if (/^\d+$/.test(command)) {
-        // Unhandled numeric reply - route to the server buffer so connection
-        // handshake numerics (002, 003, 004, 251-266, 221, etc.) don't bleed
-        // into whichever channel the user happens to be viewing.
+        // Unhandled numerics go to the server buffer so handshake numerics don't
+        // bleed into whichever channel is open.
         const numText = params[params.length - 1] ?? ''
         if (numText)
           addServer({ type: 'system', text: numText }, { ts })
@@ -4388,10 +4171,8 @@ function openSocket() {
   readMarkerActive = false
   resetBuffers()
 
-  // If we landed on the server buffer after the reset (first connect or no
-  // preserved buffers), but there's a persisted target channel, pre-create a
-  // stub buffer and switch to it immediately so the user never sees the server
-  // tab - they stay in the channel they're connecting to throughout.
+  // With a persisted target channel, pre-create a stub buffer and switch to it so
+  // the user stays in that channel throughout instead of seeing the server tab.
   if (activeName.value === SERVER_BUFFER && inputChannel.value) {
     getBuffer(inputChannel.value, 'channel')
     activeName.value = inputChannel.value
@@ -4417,12 +4198,9 @@ function openSocket() {
     markHadAccount()
 
   try {
-    // IRCv3 defines the WebSocket subprotocols as `text.ircv3.net` / `binary.ircv3.net`.
-    // Chrome strictly fails the handshake if we send a `Sec-WebSocket-Protocol` request
-    // header and the server does not echo one back (Firefox/Safari are lenient). Ergo only
-    // recognises the two IRCv3 names, so requesting the bare `binary` token meant no header
-    // was echoed and Chrome aborted the connection. Request `text.ircv3.net` so Ergo echoes
-    // it and sends UTF-8 text frames, which is what the `onmessage` handler below expects.
+    // Chrome fails the handshake when it requests a subprotocol and the server
+    // echoes none (Firefox/Safari don't). Ergo only echoes the IRCv3 names, so
+    // request `text.ircv3.net`, which also gets UTF-8 text frames.
     ws = new WebSocket(WS_URL, ['text.ircv3.net'])
   }
   catch (e) {
@@ -4482,11 +4260,9 @@ function cancelDefaultChannelFallback() {
   }
 }
 
-// (Re)arm the settle timer. Called once on connect (001) and refreshed on each
-// restored channel JOIN, so the fallback only fires after the restore burst has
-// gone quiet. Joins the default channel only if the server restored none - this
-// is what stops signed-in users landing in the dev #playground when their cache
-// was cleared. A no-op when nothing is pending.
+// (Re)arm the settle timer. Called on 001 and refreshed on each restored JOIN, so
+// the default channel is only joined once the restore burst is quiet and nothing
+// was restored. No-op when nothing is pending.
 function scheduleDefaultChannelFallback() {
   if (_defaultChannelFallback == null)
     return
@@ -4505,9 +4281,8 @@ function scheduleDefaultChannelFallback() {
     if (buffers.value.some(b => b.kind === 'channel'))
       return
 
-    // Silent landing join (not an explicit intent), like the old connect-time
-    // default join. getBuffer + setActive create and focus the buffer and persist
-    // it as the configured channel for next time.
+    // Silent landing join, not an explicit intent. setActive persists it as the
+    // configured channel for next time.
     send(`JOIN ${target}`)
     getBuffer(target, 'channel')
     setActive(target)
@@ -4516,8 +4291,7 @@ function scheduleDefaultChannelFallback() {
 
 /**
  * Connect as the signed-in user when an identity provider is registered, else as
- * the nickname currently in the form. SASL auth is attempted and falls back to
- * plain registration if the server has no auth bridge yet.
+ * the nickname in the form. A failed SASL continues without a verified account.
  */
 async function connect(skipAutoJoin = false) {
   _skipAutoJoin = skipAutoJoin
@@ -4547,24 +4321,18 @@ async function connect(skipAutoJoin = false) {
       inputNick.value = creds.username
     }
     else {
-      // An identity provider is registered (the user looked signed in), but it
-      // resolved to no valid session - e.g. an expired Supabase token. Do NOT
-      // fall through to an unauthenticated guest registration: that silently
-      // downgrades the user to anon with no channels (see the auto-connect path
-      // in plugins/chat.client.ts, which reads the cached profile). Leave the
-      // connection disconnected so the connect form / sign-in prompt is shown.
+      // A provider is registered but resolved no valid session (e.g. an expired
+      // token). Don't fall through to a guest registration, which would silently
+      // downgrade the user to anon. Stay disconnected so the sign-in prompt shows.
       connState.value = 'disconnected'
       return
     }
   }
 
-  // Only fall back to the default channel when the user has never configured one
-  // (key absent). Defer the join rather than setting it eagerly: an always-on
-  // account usually has channels the server restores on connect, and forcing the
-  // default on top of (or instead of) those is wrong - it's what kept dropping
-  // signed-in users into the dev #playground after a cache clear. The settle
-  // timer joins the default only if no channel arrives. An empty-string value
-  // means they explicitly left all channels and should not be auto-joined.
+  // Only fall back to the default channel when the user never configured one (key
+  // absent). Defer it: an always-on account usually gets channels restored on
+  // connect, and forcing the default on top of those is wrong. An empty-string
+  // value means they left all channels on purpose.
   if (!inputChannel.value && (import.meta.client ? localStorage.getItem(STORAGE_CHANNEL) === null : true))
     _defaultChannelFallback = defaultChannel(false)
   else
@@ -4629,13 +4397,10 @@ function setActive(name: string) {
   promoteHistoryRequests(name)
   const buf = findBuffer(name)
 
-  // Entering a channel clears its unread badge but deliberately KEEPS the read
-  // line, so you can see where you left off. Advancing the marker is what used to
-  // wipe the line the instant you opened a channel, so the ORDER here matters:
-  // zero the counts first, then save the position. saveReadPosition only walks
-  // the buffer to drop the line (reconcileUnread) while a count is still set, so
-  // with the counts already cleared the marker advances without touching the
-  // line. The line is only resolved when you act - send, leave, or click it.
+  // Entering a channel clears its badge but keeps the read line, so you can see
+  // where you left off. Order matters: zero the counts first, because
+  // saveReadPosition only drops the line (reconcileUnread) while a count is set.
+  // The line resolves when you act: send, leave, or click it.
   if (buf && buf.kind !== 'server') {
     buf.unread = 0
     buf.mentions = 0
@@ -4675,10 +4440,9 @@ function joinChannel(name: string, key?: string) {
 }
 
 /**
- * Rename a channel in place via the IRCv3 draft/channel-rename RENAME command.
- * The new name inherits the existing channel's prefix type (#/&) so the server
- * doesn't reject a prefix-type change. The buffer is migrated when the server
- * echoes the RENAME back (see the handler in handleMessage).
+ * Rename a channel via IRCv3 draft/channel-rename. The new name keeps the old
+ * prefix type (#/&) so the server doesn't reject a prefix change. The buffer
+ * migrates when the server echoes the RENAME.
  */
 function renameChannel(oldName: string, newName: string, reason?: string) {
   const prefix = oldName[0] ?? '#'
@@ -4707,25 +4471,23 @@ function openPm(target: string) {
   forgetClosedDm(target)
   setActive(target)
 
-  // Load history the first time this DM is opened. Skipped if the buffer was
-  // already populated via CHATHISTORY TARGETS on connect (historyReady is set
-  // when the first chathistory batch closes).
+  // Load history the first time this DM opens, unless CHATHISTORY TARGETS already
+  // did on connect.
   if (chatHistorySupported.value && !buf.historyReady) {
     markPendingBridge(buf)
     requestHistory(target)
   }
 }
 
-/** True when `name` is the current user's own nick - i.e. the "your space" DM. */
+/** True when `name` is your own nick, i.e. the "your space" DM. */
 function isSelfBuffer(name: string) {
   const me = nick.value
   return !!me && name.toLowerCase() === me.toLowerCase()
 }
 
 /**
- * Open (or focus) the DM with yourself - "your space". A private buffer for
- * notes and for shuttling messages between your own devices, since the server
- * stores and replays it via CHATHISTORY like any other DM.
+ * Open the DM with yourself. The server stores and replays it via CHATHISTORY
+ * like any other DM, so it works for notes and moving things between devices.
  */
 function openSelfSpace() {
   const me = nick.value
@@ -4750,9 +4512,8 @@ function closeBuffer(name: string) {
   if (buf.kind === 'channel' && buf.joined) {
     send(`PART ${buf.name}`)
 
-    // Clear the persisted auto-join channel so the next connect() doesn't
-    // immediately re-JOIN a channel the user explicitly left. setActive() below
-    // will repopulate inputChannel if another channel becomes active.
+    // Clear the persisted auto-join channel so the next connect() doesn't re-JOIN
+    // a channel the user explicitly left.
     if (inputChannel.value.toLowerCase() === buf.name.toLowerCase()) {
       inputChannel.value = ''
 
@@ -4969,10 +4730,9 @@ function clearReply() {
 }
 
 /**
- * Toggle an emoji reaction on `parent` within the active buffer (IRCv3 react).
- * Sends a +reply-tagged +draft/react or +draft/unreact TAGMSG, then applies the
- * change optimistically. The optimistic write is idempotent, so an echoed TAGMSG
- * (when echo-message is active) reconciles to the same state.
+ * Toggle an emoji reaction on `parent` in the active buffer (IRCv3 react). Sends
+ * the TAGMSG and applies it optimistically. applyReaction is idempotent, so the
+ * echo reconciles to the same state.
  */
 function toggleReaction(parent: ChatMessage, reaction: string) {
   if (!parent.msgid || !reaction || !EMOJI_RE.test(reaction))
@@ -4992,10 +4752,8 @@ function toggleReaction(parent: ChatMessage, reaction: string) {
 }
 
 /**
- * Whether the current user may delete `message` in the active buffer. Allowed for
- * the user's own messages, or for any message when the user holds an operator-tier
- * role (halfop and above) in the channel. The server is the final authority and
- * may still reject with FAIL REDACT; this only governs whether we offer the action.
+ * Whether to offer deleting `message`: own messages, or anyone's for halfop and
+ * above. The server is the final authority and may still FAIL REDACT.
  */
 function canRedact(message: ChatMessage): boolean {
   if (!redactionSupported.value || !message.msgid || message.redacted)
@@ -5044,17 +4802,15 @@ function redactMessage(message: ChatMessage, reason?: string) {
   send(`REDACT ${target} ${message.msgid}${trimmed ? ` :${trimmed}` : ''}`)
 }
 
-/** Byte length of a string - the draft/multiline caps are byte budgets. */
+/** Byte length of a string. The draft/multiline caps are byte budgets. */
 function utf8Len(s: string): number {
   return new TextEncoder().encode(s).length
 }
 
 /**
- * Send a multi-line message as one or more IRCv3 draft/multiline batches. Lines
- * are grouped into batches that respect the server's max-lines / max-bytes caps
- * (a message that fits goes out as a single batch). The +reply tag, if any, rides
- * the first line of the first batch. Empty lines are sent as a single space so the
- * server doesn't drop a malformed empty-trailing PRIVMSG.
+ * Send a multi-line message as one or more draft/multiline batches within the
+ * server's max-lines / max-bytes caps. +reply rides the first line. Empty lines go
+ * out as a single space so the server doesn't drop an empty-trailing PRIVMSG.
  */
 function sendMultiline(target: string, lines: string[], replyMsgid?: string): boolean {
   const maxLines = multilineMaxLines > 0 ? multilineMaxLines : Number.POSITIVE_INFINITY
@@ -5091,8 +4847,8 @@ function sendMultiline(target: string, lines: string[], replyMsgid?: string): bo
   for (const line of lines) {
     const lb = utf8Len(line)
 
-    // Start a new batch when adding this line would exceed a cap, but never flush
-    // an empty one - a single over-cap line still goes out on its own.
+    // Start a new batch when this line would exceed a cap. Never flush an empty
+    // one: a single over-cap line still goes out on its own.
     if (pending.length && (pending.length >= maxLines || pendingBytes + lb > maxBytes))
       flush()
 
@@ -5106,14 +4862,9 @@ function sendMultiline(target: string, lines: string[], replyMsgid?: string): bo
 }
 
 /**
- * Put an outgoing message on the wire and show it locally. Everything we send
- * funnels through here - the composer, /me, /msg, and a resend from the outbox -
- * so they all share one delivery shape and one optimistic-display path.
- *
- * `wire` is already markdown-converted. Each branch shows what it actually sends:
- * with echo-message the server echoes the message back with a server-assigned
- * msgid (a multiline send echoes as a batch we reassemble), and reconcileOwnEcho
- * folds that echo into the line already on screen instead of appending a copy.
+ * Put an outgoing message on the wire and show it locally. `wire` is already
+ * markdown-converted. With echo-message, reconcileOwnEcho folds the server's echo
+ * (a reassembled batch for multiline) into the line already on screen.
  */
 function deliverWire(target: string, kind: BufferKind, wire: string, opts: { replyTo?: string, action?: boolean } = {}) {
   const { replyTo, action = false } = opts
@@ -5131,8 +4882,8 @@ function deliverWire(target: string, kind: BufferKind, wire: string, opts: { rep
   })
 
   if (action) {
-    // CTCP ACTION is one line by definition - a newline would truncate the line
-    // at the server, so fold the whole thing onto one.
+    // CTCP ACTION is one line by definition. A newline would truncate it at the
+    // server, so fold it onto one.
     const oneLine = wire.replace(/\n/g, ' ')
     const sent = send(`${tagPrefix}PRIVMSG ${target} :\x01ACTION ${oneLine}\x01`)
 
@@ -5146,9 +4897,8 @@ function deliverWire(target: string, kind: BufferKind, wire: string, opts: { rep
       addOwnMessage(target, kind, own(wire, replyTo), sent)
     }
     else if (lines.length > 1) {
-      // No draft/multiline support: fall back to one PRIVMSG per line. The +reply
-      // tag rides only the first line; empty lines go out as a space (see above).
-      // One visible line per PRIVMSG, since that's how the echoes come back.
+      // No draft/multiline: one PRIVMSG per line, +reply on the first, empty lines
+      // as a space. One visible line per PRIVMSG, since that's how echoes return.
       lines.forEach((line, idx) => {
         const pfx = idx === 0 ? tagPrefix : ''
         const sent = send(`${pfx}PRIVMSG ${target} :${line === '' ? ' ' : line}`)
@@ -5161,7 +4911,7 @@ function deliverWire(target: string, kind: BufferKind, wire: string, opts: { rep
     }
   }
 
-  // Nothing left the socket, so no echo is coming - flag the lines now instead of
+  // Nothing left the socket, so no echo is coming. Flag the lines now instead of
   // leaving them dim until the timeout.
   if (!socketOpen())
     failInFlightSends()
@@ -5191,17 +4941,13 @@ function sendMessage() {
 
   const replyMsgid = replyTarget.value?.msgid
 
-  // Convert the composer's markdown (**bold**, *italic*, etc) into IRC control codes
-  // so other clients render the formatting. markdownToIrc converts each line on its
-  // own, so deliverWire's line split still lines up. The local copy stores the same
-  // wire string, which the message log renders back via parseIrcFormatting.
+  // markdownToIrc converts line by line, so deliverWire's line split still lines
+  // up. The local copy keeps the wire string, which the log renders back.
   const wire = markdownToIrc(text)
 
   deliverWire(target, buf.kind, wire, { replyTo: replyMsgid })
 
-  // Sending into a channel resolves its "new messages" line - you've engaged with
-  // it, so catch it up (one of the three line-clearing actions, with leaving and
-  // clicking the line).
+  // Sending resolves the channel's "new messages" line.
   markBufferRead(target)
 
   clearReply()
@@ -5209,11 +4955,10 @@ function sendMessage() {
 }
 
 /**
- * Send an IRCv3 typing notification to the active buffer target.
- * - `active`: user is actively typing (throttled to once per 3 s per target).
- * - `paused`: user stopped typing but has not cleared the input.
- * - `done`:   user cleared the input without sending (bypasses throttle).
- * Requires the `message-tags` capability to be active.
+ * Send an IRCv3 typing notification to the active buffer.
+ * - `active`: typing (throttled to once per 3 s per target).
+ * - `paused`: stopped typing but the input isn't cleared.
+ * - `done`: input cleared without sending (bypasses the throttle).
  */
 function sendTyping(state: 'active' | 'paused' | 'done') {
   if (!messageTagsActive || connState.value !== 'connected')
@@ -5280,9 +5025,8 @@ export function channelRole(prefix: string): ChannelRole | null {
 }
 
 /**
- * Initiate a ChanServ DROP (UNREGISTER) for a channel.
- * Adds the channel to the pending-drop set so the auto-confirm handler fires
- * when ChanServ replies with the verification code.
+ * Start a ChanServ DROP. The pending-drop entry lets the NOTICE handler
+ * auto-confirm when ChanServ replies with the verification code.
  */
 function initiateDrop(channel: string) {
   _pendingDropChannels.add(channel.toLowerCase())
@@ -5344,9 +5088,8 @@ function fetchListModes(channel: string) {
 }
 
 /**
- * Returns true when a channel uses slash notation but its parent chain has not
- * authorized it via `subchannels` metadata. Used to show an "unverified"
- * indicator in the channel list and header.
+ * True when a slash-notation channel isn't authorized by its parent chain's
+ * `subchannels` metadata.
  */
 function isUnauthorizedSubchannel(channelName: string): boolean {
   if (!channelName.startsWith('#') && !channelName.startsWith('&'))
@@ -5363,7 +5106,7 @@ function isUnauthorizedSubchannel(channelName: string): boolean {
     const lc = parentName.toLowerCase()
     const meta = findBuffer(parentName)?.metadata ?? channelMetaCache.value.get(lc)
 
-    // Parent metadata not yet received (joined or not) - assume authorized (pending).
+    // Parent metadata not received yet: assume authorized while pending.
     if (!meta && !channelMetaResolved.value.has(lc))
       continue
 
@@ -5441,7 +5184,6 @@ function requestChannelMetadata(channel: string) {
   send(`METADATA ${channel} LIST`)
 }
 
-/** Set a metadata key on a channel via METADATA SET. */
 function setChannelMetadata(channel: string, key: string, value: string) {
   send(`METADATA ${channel} SET ${key} :${value}`)
 }
@@ -5519,17 +5261,15 @@ async function seekToPresent(target: string) {
   buf.autoFetchRetries = undefined
   buf.loadingOlderHistory = undefined
 
-  // Catch up with a delta after the newest cached line, not a full LATEST * -
-  // a bare * re-replays the server's whole event-playback window every time.
+  // Catch up with a delta after the newest cached line. A bare LATEST * re-replays
+  // the server's whole event-playback window every time.
   requestHistory(target, buf.messages[buf.messages.length - 1]?.ts.getTime())
 }
 
 /**
- * Append the next page of newer messages from IDB cache when the user scrolls
- * toward the bottom of a tail-trimmed buffer. Slides the live window forward:
- * appends CACHE_PAGE_SIZE newer lines, then trims the same count from the front
- * (oldest) to keep the buffer at MAX_LIVE_MESSAGES. Clears tailTrimmed and
- * top-ups from the server once IDB has no more newer lines.
+ * Append the next page of newer cached messages as the user scrolls down a
+ * tail-trimmed buffer, trimming the front to stay within MAX_LIVE_MESSAGES. Once
+ * IDB runs out, clears tailTrimmed and catches up from the server.
  */
 async function fetchNewerFromCache(target: string) {
   const buf = findBuffer(target)
@@ -5556,20 +5296,17 @@ async function fetchNewerFromCache(target: string) {
         if (buf.messages.length > MAX_LIVE_MESSAGES && windowTrimAllowed()) {
           buf.messages.splice(0, Math.min(buf.messages.length - MAX_LIVE_MESSAGES, CACHE_PAGE_SIZE))
 
-          // Oldest messages were just removed - cache can serve them again on
-          // scroll-up. The live front is no longer the absolute oldest line, so
-          // clear historyExhausted too: otherwise "beginning of history" sticks
-          // and fetchOlderHistory's exhausted-guard blocks scrolling back up.
+          // The front is no longer the oldest line, so clear both exhausted flags.
+          // A stuck historyExhausted would block scrolling back up.
           buf.cacheExhausted = false
           buf.historyExhausted = false
         }
       }
     }
     if (newer.length < CACHE_PAGE_SIZE) {
-      // Reached the live edge of the cache - catch up with the server. Request a
-      // delta after our newest known line, NOT a full LATEST *: a bare * re-runs
-      // the server's entire event-playback (a whole day of JOIN/PART spam) and
-      // re-injects it on every scroll-down.
+      // Reached the live edge of the cache, so catch up with a delta from the
+      // server. A bare LATEST * re-runs the whole event-playback window (a day of
+      // JOIN/PART spam) on every scroll-down.
       buf.tailTrimmed = false
       requestHistory(target, buf.messages[buf.messages.length - 1]?.ts.getTime())
     }
@@ -5592,10 +5329,8 @@ function markBufferRead(name: string) {
   buf.mentions = 0
 
   // Resolve the "new messages" line explicitly. saveReadPosition only drops it
-  // (via reconcileUnread) when a count was still set, and by here the buffer may
-  // already be at zero - e.g. clicking the line while actively viewing. This is
-  // the single "fully caught up" action, used for clicking the line, the menu's
-  // "mark as read", sending a message, and leaving a channel.
+  // while a count is set, and the buffer may already be at zero (e.g. clicking
+  // the line while viewing).
   buf.readLineTs = undefined
 }
 
@@ -5619,11 +5354,9 @@ export function useIrcChat() {
 
   const isConnected = computed(() => connState.value === 'connected')
 
-  // A connection that dropped but can be ridden out in place: we were connected
-  // this session and still hold channel/pm buffers (and their cached messages),
-  // so the UI keeps showing them with a reconnect banner instead of throwing the
-  // user back to the full-screen connect/globe overlay. Stays false on a cold
-  // first connect (nothing to show yet) and after an intentional disconnect.
+  // A dropped connection we can ride out in place: connected earlier this session
+  // and still holding buffers, so show them with a reconnect banner instead of
+  // the full-screen overlay. False on a cold first connect and after disconnect().
   const reconnecting = computed(() =>
     everConnected.value
     && connState.value !== 'connected'
@@ -5635,14 +5368,10 @@ export function useIrcChat() {
   const users = computed(() => activeBuffer.value?.users ?? [])
   const canChat = computed(() => isConnected.value && activeBuffer.value != null)
 
-  // Whichever buffer the user is actually viewing is, by definition, read. Keep its
-  // persisted read marker pinned to the newest message and its unread/mention counts
-  // cleared. This is the single authority for "this channel is read" - it self-heals
-  // after the reconnect race (where activeName flips as channels auto-join) by simply
-  // reconciling whatever channel the user lands on once its history has settled. It
-  // intentionally leaves readLineTs alone so the "new messages" line stays visible
-  // while reading. The line is only resolved when you act on the channel: send a
-  // message, leave it, or click the line (all via markBufferRead).
+  // The buffer on screen is read by definition, so pin its marker to the newest
+  // message and clear its counts. This also heals the reconnect race where
+  // activeName flips as channels auto-join. readLineTs is left alone so the
+  // "new messages" line stays while reading.
   if (import.meta.client && !_readWatcherRegistered) {
     _readWatcherRegistered = true
     watch(
@@ -5659,9 +5388,8 @@ export function useIrcChat() {
         if (!b || b.kind === 'server')
           return
 
-        // Zero the counts before advancing the marker so saveReadPosition never
-        // walks the buffer to drop the read line (see setActive) - reading live
-        // must keep the "new messages" line in place.
+        // Zero the counts before advancing the marker so the read line stays
+        // (see setActive).
         b.unread = 0
         b.mentions = 0
         const last = b.messages[b.messages.length - 1]
@@ -5671,10 +5399,8 @@ export function useIrcChat() {
       { flush: 'post' },
     )
 
-    // When the user returns to the tab, clear the active buffer's badge so it
-    // stays in sync, but leave the read line alone - returning to the tab is not
-    // one of the actions that resolves it (send, leave, click). Zero the counts
-    // before advancing the marker so the line survives (see setActive).
+    // Returning to the tab clears the badge but not the read line. Zero the
+    // counts before advancing the marker so the line survives (see setActive).
     document.addEventListener('visibilitychange', () => {
       if (document.hidden || !isChatVisible.value)
         return
@@ -5708,9 +5434,8 @@ export function useIrcChat() {
       markBufferRead(buf.name)
     }
     else {
-      // Becoming visible clears the active buffer's badge but keeps its read line
-      // - opening the chat is not one of the actions that resolves it. Zero the
-      // counts before advancing the marker so the line survives (see setActive).
+      // Opening the chat clears the badge but keeps the read line. Zero the counts
+      // before advancing the marker so the line survives (see setActive).
       buf.unread = 0
       buf.mentions = 0
       const last = buf.messages[buf.messages.length - 1]

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 interface Props {
   /**
-   * When true, renders without the card border/background - just the striped rows.
-   * Use this when DetailTable is nested inside an existing Card.
+   * Renders without the card border and background, just the striped rows. Use it
+   * when DetailTable is nested inside an existing Card.
    */
   bare?: boolean
 }
@@ -41,7 +41,6 @@ withDefaults(defineProps<Props>(), {
     font-weight: 600;
   }
 
-  // Stripe every other row.
   :deep(.detail-row:nth-child(even)) {
     background-color: var(--color-bg-raised);
   }

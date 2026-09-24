@@ -48,10 +48,8 @@ function friendlyLinkError(error: unknown): string {
   return message || GENERIC_LINK_ERROR_MESSAGE
 }
 
-// Persist the Discord id through the service-role edge function rather than a
-// direct profiles update. The direct update is bound by RLS (including the
-// is_aal2_if_mfa() AAL2 requirement), so MFA-enrolled users on an aal1 session
-// could not complete linking; the edge function bypasses RLS safely.
+// Persist through the service-role edge function. A direct profiles update is bound
+// by RLS (including is_aal2_if_mfa()), so MFA-enrolled users on aal1 couldn't link.
 async function syncDiscordId(): Promise<'linked' | 'not-linked'> {
   const { data, error } = await supabase.functions.invoke('user-link-discord')
   if (error)

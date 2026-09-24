@@ -1,32 +1,19 @@
 /**
- * Broadcast email wrapper.
- *
- * Keep this visually in sync with the hand-crafted templates sitting beside it
- * in this directory (change-email.html and friends). Those are Supabase auth
- * templates driven by Go template syntax and pasted into the dashboard. This
- * one is TypeScript because both the Nuxt admin portal (live preview) and the
- * admin-email-broadcast edge function (the actual send) render it, and they
- * have to agree on the output byte for byte.
- *
- * Because it's shared by Deno and the browser it stays dependency free: no
- * imports, no Deno globals, no DOM globals. One pure function and a few
- * constants.
+ * Keep visually in sync with the Supabase auth templates beside it. The admin
+ * preview and the send both render this, so the output has to match byte for byte.
+ * Shared by Deno and the browser, so no imports, Deno globals or DOM globals.
  */
 
-/** Hosted logo used by every Hivecom email header. */
 export const BROADCAST_LOGO_URL
   = 'https://hivecom.supabase.co/storage/v1/object/public/hivecom-content-static/emails/logo.png'
 
-/** Where the header logo links to. */
 export const BROADCAST_SITE_URL = 'https://hivecom.net'
 
-/** Brand green, used for headings and links. */
 export const BROADCAST_GREEN = '#a5fc32'
 
-/** Dimmer green the sibling templates use for long inline links. */
+/** Matches the sibling templates' long inline links */
 export const BROADCAST_LINK_GREEN = '#7da360'
 
-/** Class the content wrapper carries, so the style block can scope to it. */
 export const BROADCAST_CONTENT_CLASS = 'broadcast-content'
 
 const FONT_STACK = '\'Segoe UI\', Arial, sans-serif'
@@ -45,18 +32,8 @@ function escapeHtml(value: string): string {
     .replace(QUOT_RE, '&quot;')
 }
 
-/**
- * Wraps rendered announcement HTML in the Hivecom email shell.
- *
- * @param subject Plain text subject. Becomes the document title and the
- *   heading at the top of the card, escaped on the way in.
- * @param contentHtml The inner body, already rendered from markdown. Trusted:
- *   it comes from an admin composing a broadcast.
- * @param options Rendering options.
- * @param options.centered Centers the content like the hand-crafted
- *   transactional templates (default true); off switches to left-aligned
- *   long-form. Table cells stay left-aligned either way.
- */
+// contentHtml goes in unescaped. It's trusted because only admins compose
+// broadcasts. The subject is escaped.
 export function renderBroadcastEmail(
   subject: string,
   contentHtml: string,

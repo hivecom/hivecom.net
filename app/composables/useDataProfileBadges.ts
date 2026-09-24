@@ -1,17 +1,11 @@
-/**
- * Fetches all profile_badges rows for a given profile ID.
- * Cached via CACHE_NAMESPACES.badges (10 min TTL).
- */
-
 import type { Ref } from 'vue'
 import type { Database } from '@/types/database.types'
 import { ref, unref, watch } from 'vue'
 import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
-// Raw row type with `metadata` typed as a plain object to avoid TS2589.
-// The generated Json type is recursive and causes 'excessively deep' errors
-// when wrapped in Ref<> - same pattern documented in database.overrides.ts.
+// `metadata` is a plain object to avoid TS2589: the generated Json type is
+// recursive and goes "excessively deep" when wrapped in Ref<>.
 interface ProfileBadgeRow {
   earned_at: string
   metadata: Record<string, unknown> | null

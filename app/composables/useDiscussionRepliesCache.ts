@@ -1,26 +1,7 @@
 /**
- * Per-discussion replies cache composable.
- *
- * Upgraded from a single-blob cache to a page-aware cursor cache.
- * Each page is keyed by (discussionId, ascending, cursorTime, cursorId)
- * so navigating back to a previously loaded page is free within the TTL.
- *
- * TTL: 3 minutes - short enough that stale data is not a practical concern
- * during a browsing session, long enough to make back-navigation free.
- *
- * Design notes:
- * - Pages are cached individually. `invalidate(discussionId)` wipes all pages
- *   for that discussion (pattern-matched by prefix) so realtime events still
- *   produce fresh data on next load.
- * - The `fetch` method wraps the `get_discussion_replies_page` RPC.
- * - The `getReplyPageCursor` method wraps the `get_discussion_reply_page_cursor` RPC,
- *   used by the front-end to resolve ?comment=<id> deep links.
- * - `legacyFetch` is kept for any callers (e.g. realtime) that still need
- *   the full flat list. It caches under a separate key prefix.
- *
- * Call sites:
- * - composables/useDataDiscussionReplies.ts (page reads + writes)
- * - composables/useRealtimeDiscussion.ts    (invalidate on realtime events)
+ * Cursor page cache for discussion replies. Pages are cached individually, so
+ * going back to a loaded page is free within the TTL. invalidate() wipes every
+ * page for a discussion so realtime events get fresh data on the next load.
  */
 
 import type { RawComment } from '@/components/Discussions/Discussion.types'
@@ -32,7 +13,7 @@ import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 // ---------------------------------------------------------------------------
 // Constants
 // ------------------------------------------------------------------------
-const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
+const CACHE_TTL = 3 * 60 * 1000
 
 export const PAGE_SIZE_FORUM = 10
 export const PAGE_SIZE_COMMENT = 10
@@ -41,15 +22,13 @@ export const PAGE_SIZE_COMMENT = 10
 // Types
 // ------------------------------------------------------------------------
 export interface PageCursor {
-  cursorTime: string // ISO timestamptz - created_at of the last row on the preceding page
-  cursorId: string // uuid - id of the last row on the preceding page
+  cursorTime: string // ISO created_at of the last row on the preceding page
+  cursorId: string // id of the last row on the preceding page
 }
 
 export interface ReplyPage {
   rows: RawComment[]
   hasMore: boolean
-
-  /** The cursor to pass to fetch the NEXT page after this one. */
   nextCursor: PageCursor | null
 }
 
@@ -58,14 +37,12 @@ export interface ReplyPageCursorResult {
   predecessorCount: number
   cursor: PageCursor | null // null when the target is on page 0
 
-  /** Cursor for the page BEFORE the target's page (page N-1). Non-null only when pageIndex >= 2. */
+  /** Page N-1's cursor. Non-null only when pageIndex >= 2. */
   prevCursor: PageCursor | null
 }
 
-// Shape returned by get_discussion_reply_page_cursor RPC rows.
-// cursor_time / cursor_id are nullable at runtime even though the generated
-// schema omits `| null`; the SQL function returns NULL when the target reply
-// is on the first page (no predecessor cursor needed).
+// The RPC returns NULL cursors when the target is on the first page, even though
+// the generated schema doesn't mark them nullable.
 interface RawCursorRow {
   page_index: number
   predecessor_count: number
@@ -75,24 +52,13 @@ interface RawCursorRow {
   prev_cursor_id: string | null
 }
 
-// Shape returned by get_discussion_replies_tail RPC rows - derived from the
-// generated database types so the function name and args are type-checked.
+// Derived from the generated types so the RPC name stays type-checked.
 // eslint-disable-next-line unused-imports/no-unused-vars
 type TailRow = Database['public']['Functions']['get_discussion_replies_tail']['Returns'][number]
 
 // ---------------------------------------------------------------------------
 // Cache key helpers
 // ------------------------------------------------------------------------
-function tailKey(
-  discussionId: string,
-  rootOnly: boolean = false,
-  hash?: string,
-): string {
-  const rootPart = rootOnly ? ':roots' : ''
-  const hashPart = hash != null ? `:h:${hash}` : ''
-  return `discussion-replies-tail:${discussionId}${rootPart}${hashPart}`
-}
-
 function pageKey(
   discussionId: string,
   ascending: boolean,
@@ -124,13 +90,6 @@ export function useDiscussionRepliesCache() {
 
   // ── Page cache primitives ──────────────────────────────────────────────────
 
-  function getTail(
-    discussionId: string,
-    rootOnly: boolean = false,
-  ): RawComment[] | null {
-    return cache.get<RawComment[]>(tailKey(discussionId, rootOnly))
-  }
-
   function getPage(
     discussionId: string,
     ascending: boolean,
@@ -152,19 +111,13 @@ export function useDiscussionRepliesCache() {
     cache.set(pageKey(discussionId, ascending, cursor, rootOnly, hash), page, CACHE_TTL)
   }
 
-  /**
-   * Invalidate all cached pages for a discussion (both orderings, all cursors).
-   * Also clears legacy full-list entries for the same discussion.
-   */
+  // Every ordering and cursor, plus the tail and legacy entries.
   function invalidate(discussionId: string): void {
     cache.invalidateByPattern(`discussion-replies-page:${discussionId}:`)
     cache.invalidateByPattern(`discussion-replies-tail:${discussionId}`)
     cache.invalidateByPattern(`discussion-replies:${discussionId}:`)
   }
 
-  /**
-   * Invalidate all cached reply data across all discussions.
-   */
   function invalidateAll(): void {
     cache.invalidateByPattern('discussion-replies-page:')
     cache.invalidateByPattern('discussion-replies-tail:')
@@ -174,17 +127,9 @@ export function useDiscussionRepliesCache() {
   // ── Page fetch (cursor-based RPC) ──────────────────────────────────────────
 
   /**
-   * Fetch a single page of discussion replies via the `get_discussion_replies_page`
-   * RPC. Consults the page cache first; pass `force = true` to bypass.
-   *
-   * @param discussionId - The discussion to paginate
-   * @param options - Optional fetch parameters
-   * @param options.ascending - true = forum order (oldest first), false = newest first
-   * @param options.cursor - Composite cursor from the previous page; null for page 1
-   * @param options.pageSize - Rows per page (default: model-appropriate constant)
-   * @param options.hash - Optional meta hash filter for vote discussions
-   * @param options.rootOnly - When true, only top-level replies (reply_to_id IS NULL) are fetched; used for threaded-mode pagination
-   * @param force - Skip cache and always hit the DB
+   * ascending is forum order, oldest first. cursor is null for page 1. hash
+   * filters vote discussions. rootOnly fetches top-level replies only, for
+   * threaded pagination. force skips the cache.
    */
   async function fetchPage(
     discussionId: string,
@@ -236,10 +181,9 @@ export function useDiscussionRepliesCache() {
       const rows = data
       const hasMore = rows.length > 0 && (rows.at(-1)!.has_more)
 
-      // Strip the synthetic has_more column before storing rows
+      // has_more is a synthetic RPC column, not part of the row.
       const cleanRows: RawComment[] = rows.map(({ has_more: _hm, ...rest }) => rest as unknown as RawComment)
 
-      // The next-page cursor is the (created_at, id) of the last row on this page
       const lastRow = cleanRows.at(-1)
       const nextCursor: PageCursor | null = hasMore && lastRow != null
         ? { cursorTime: lastRow.created_at, cursorId: lastRow.id }
@@ -258,30 +202,9 @@ export function useDiscussionRepliesCache() {
     }
   }
 
-  /**
-   * Force a re-fetch of a page, bypassing and replacing the cached entry.
-   */
-  async function refreshPage(
-    discussionId: string,
-    options: {
-      ascending?: boolean
-      cursor?: PageCursor | null
-      pageSize?: number
-      hash?: string
-    } = {},
-  ): Promise<ReplyPage | null> {
-    return fetchPage(discussionId, options, true)
-  }
-
   // ── Deep-link cursor lookup (RPC) ──────────────────────────────────────────
 
-  /**
-   * Given a target reply id, returns the page index and the cursor needed to
-   * fetch the page that contains that reply.
-   *
-   * Returns null when the target reply is not found (deleted, RLS-filtered,
-   * or wrong discussionId).
-   */
+  // null when the target isn't found (deleted, RLS-filtered, or wrong discussion).
   async function getReplyPageCursor(
     discussionId: string,
     targetId: string,
@@ -344,147 +267,10 @@ export function useDiscussionRepliesCache() {
     }
   }
 
-  // ── Tail fetch (last N rows, ascending) ───────────────────────────────────
-
-  /**
-   * Fetch the last p_limit rows for a discussion in ascending order via the
-   * `get_discussion_replies_tail` RPC. Used to always show the newest content
-   * alongside page 1, with a gap indicator in between when applicable.
-   *
-   * Results are cached under a dedicated tail key (separate from page keys).
-   *
-   * @param discussionId - The discussion to query
-   * @param options - Optional fetch parameters
-   * @param options.pageSize - Number of tail rows to fetch
-   * @param options.hash - Optional meta hash filter for vote discussions
-   * @param options.rootOnly - When true, only top-level replies are fetched
-   * @param force - Skip cache and always hit the DB
-   */
-  async function fetchTail(
-    discussionId: string,
-    options: {
-      pageSize?: number
-      hash?: string
-      rootOnly?: boolean
-    } = {},
-    force = false,
-  ): Promise<RawComment[] | null> {
-    const supabase = useSupabaseClient<Database>()
-
-    const pageSize = options.pageSize ?? PAGE_SIZE_FORUM
-    const rootOnly = options.rootOnly ?? false
-    const key = tailKey(discussionId, rootOnly, options.hash)
-
-    if (!force) {
-      const cached = cache.get<RawComment[]>(key)
-      if (cached !== null)
-        return cached
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
-      const { data, error: rpcError } = await supabase.rpc(
-        'get_discussion_replies_tail',
-        {
-          p_discussion_id: discussionId,
-          p_limit: pageSize,
-          p_hash: options.hash ?? undefined,
-          p_root_only: rootOnly,
-        },
-      )
-
-      if (rpcError != null)
-        throw rpcError
-
-      if (data == null)
-        return null
-
-      const rows = data
-      cache.set(key, rows as unknown as RawComment[], CACHE_TTL)
-
-      // NOTE: key already encodes hash so hash-filtered tails are cached separately
-      return rows as unknown as RawComment[]
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch tail replies'
-      return null
-    }
-    finally {
-      loading.value = false
-    }
-  }
-
   // ── Legacy full-list fetch (kept for realtime patch-back) ──────────────────
-
-  /**
-   * Fetches the complete flat reply list for a discussion without pagination.
-   * Used by useRealtimeDiscussion when it needs to build the full set to
-   * patch changes back into. The result is cached under the legacy key.
-   *
-   * @deprecated Prefer fetchPage for new call sites. This exists for
-   * backward-compatibility with useRealtimeDiscussion's patch-back logic.
-   */
-  async function legacyFetch(
-    discussionId: string,
-    options: {
-      hash?: string
-      ascending?: boolean
-    } = {},
-    force = false,
-  ): Promise<RawComment[] | null> {
-    const supabase = useSupabaseClient<Database>()
-    const ascending = options.ascending ?? false
-    const key = legacyKey(discussionId, ascending)
-
-    if (!force) {
-      const cached = cache.get<RawComment[]>(key)
-      if (cached !== null)
-        return cached
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
-      const query = supabase
-        .from('discussion_replies')
-        .select('*')
-        .eq('discussion_id', discussionId)
-
-      if (options.hash != null)
-        query.eq('meta->>hash', options.hash)
-
-      const { data, error: fetchError } = await query.order('created_at', {
-        ascending,
-      })
-
-      if (fetchError != null)
-        throw fetchError
-
-      if (data == null)
-        return null
-
-      const rows = data as RawComment[]
-      cache.set(key, rows, CACHE_TTL)
-      return rows
-    }
-    catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch replies'
-      return null
-    }
-    finally {
-      loading.value = false
-    }
-  }
 
   function legacySet(discussionId: string, replies: RawComment[], ascending: boolean): void {
     cache.set(legacyKey(discussionId, ascending), replies, CACHE_TTL)
-  }
-
-  function legacyGet(discussionId: string, ascending: boolean): RawComment[] | null {
-    return cache.get<RawComment[]>(legacyKey(discussionId, ascending))
   }
 
   // ── Public surface ─────────────────────────────────────────────────────────
@@ -495,7 +281,6 @@ export function useDiscussionRepliesCache() {
     error: readonly(error),
 
     // Page cache primitives
-    getTail,
     getPage,
     setPage,
     invalidate,
@@ -503,17 +288,11 @@ export function useDiscussionRepliesCache() {
 
     // Cursor-based fetch
     fetchPage,
-    refreshPage,
-
-    // Tail fetch (last N rows, for showing newest content alongside page 1)
-    fetchTail,
 
     // Deep-link lookup
     getReplyPageCursor,
 
-    // Legacy full-list (for realtime patch-back compatibility)
-    legacyFetch,
+    // Legacy full list
     legacySet,
-    legacyGet,
   }
 }

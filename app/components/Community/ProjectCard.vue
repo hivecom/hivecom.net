@@ -20,7 +20,6 @@ const props = withDefaults(defineProps<Props>(), {
   isLatest: false,
 })
 
-// Handle card click
 function handleClick() {
   navigateTo(`/community/projects/${props.project.id}`)
 }
@@ -80,7 +79,6 @@ const bannerSurfaceStyle = computed(() => {
       }"
       @click="handleClick"
     >
-      <!-- Ultra compact layout (single line) -->
       <template v-if="ultraCompact">
         <Flex gap="xs" y-center x-between class="project-card__ultra-compact-content">
           <Flex gap="xs" y-center class="project-card__ultra-compact-main">
@@ -97,9 +95,7 @@ const bannerSurfaceStyle = computed(() => {
         </Flex>
       </template>
 
-      <!-- Regular layout -->
       <div v-else class="project-card__content">
-        <!-- Banner -->
         <div class="project-card__banner">
           <div
             class="project-card__banner-surface"
@@ -115,7 +111,6 @@ const bannerSurfaceStyle = computed(() => {
 
         <div class="project-card__body">
           <div class="project-card__body-top">
-            <!-- Project header -->
             <Flex expand x-between y-center>
               <h3 v-if="compact" class="project-card__title project-card__title--compact">
                 {{ project.title }}
@@ -125,13 +120,11 @@ const bannerSurfaceStyle = computed(() => {
               </h3>
             </Flex>
 
-            <!-- Project description -->
             <p v-if="project.description" class="project-card__description">
               {{ project.description }}
             </p>
           </div>
 
-          <!-- Project tags and metadata row -->
           <Flex v-if="((project.tags && project.tags.length > 0) || project.github) && !compact" gap="xs" x-start y-center class="project-card__tags-row">
             <Badge v-for="tag in project.tags" :key="tag" outline>
               <span class="text-color-light text-xs">
@@ -154,8 +147,8 @@ const bannerSurfaceStyle = computed(() => {
   transition: var(--transition-slow);
   border: 1px solid var(--color-border);
   overflow: hidden;
-  width: 100%; // Ensure the card is full width
-  height: 100%; // Ensure the card fills the available height
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background-color: var(--color-bg-card);
@@ -187,7 +180,7 @@ const bannerSurfaceStyle = computed(() => {
     height: 40px; // Match standard button height
     display: flex;
     align-items: center;
-    flex-direction: row; // Override the column direction for ultra-compact
+    flex-direction: row;
 
     &:hover {
       transform: none;
@@ -352,7 +345,7 @@ const bannerSurfaceStyle = computed(() => {
 
 .project-card__date {
   color: var(--color-text-light);
-  flex-shrink: 0; // Prevent date from shrinking
+  flex-shrink: 0;
   font-size: var(--font-size-s);
 }
 
@@ -397,7 +390,7 @@ const bannerSurfaceStyle = computed(() => {
 
 .project-card__ultra-compact-icon {
   color: var(--color-accent);
-  font-size: var(--font-size-s); // Use CSS variable
+  font-size: var(--font-size-s);
   flex-shrink: 0;
 }
 
@@ -416,9 +409,9 @@ const bannerSurfaceStyle = computed(() => {
 .project-card__ultra-compact-latest {
   background: var(--color-accent);
   color: black;
-  padding: 2px 4px; // Smaller padding
+  padding: 2px 4px;
   border-radius: var(--border-radius-xs);
-  font-size: var(--font-size-xxs); // Use CSS variable
+  font-size: var(--font-size-xxs);
   font-weight: var(--font-weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.2px;
@@ -428,7 +421,7 @@ const bannerSurfaceStyle = computed(() => {
 
 .project-card__ultra-compact-date {
   color: var(--color-text-light);
-  font-size: var(--font-size-xs); // Use CSS variable
+  font-size: var(--font-size-xs);
   flex-shrink: 0;
   line-height: 1;
 }

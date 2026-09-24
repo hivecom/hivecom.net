@@ -4,13 +4,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import KPICard from '@/components/Admin/KPICard.vue'
 import KPIContainer from '../KPIContainer.vue'
 
-// Props for refresh signal
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
-// Setup Supabase client
 const supabase = useSupabaseClient()
 
-// Complaint query
 const complaintsQuery = supabase
   .from('complaints')
   .select(`
@@ -21,12 +18,10 @@ const complaintsQuery = supabase
     response
   `)
 
-// Data states
 const loading = ref(true)
 const complaints = ref<QueryData<typeof complaintsQuery>>([])
 const errorMessage = ref('')
 
-// Computed KPI values
 const totalComplaints = computed(() => complaints.value.length)
 
 const pendingComplaints = computed(() =>
@@ -52,7 +47,6 @@ const recentComplaints = computed(() => {
   ).length
 })
 
-// Fetch complaints data
 async function fetchComplaints() {
   try {
     loading.value = true
@@ -75,14 +69,12 @@ async function fetchComplaints() {
   }
 }
 
-// Watch for refresh signal changes
 watch(() => refreshSignal.value, () => {
   if (refreshSignal.value > 0) {
     fetchComplaints()
   }
 })
 
-// Initial data fetch
 onMounted(fetchComplaints)
 </script>
 

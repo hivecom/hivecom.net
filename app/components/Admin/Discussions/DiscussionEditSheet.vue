@@ -30,7 +30,6 @@ const { hasPermission } = useAdminPermissions()
 
 const canDelete = computed(() => hasPermission('discussions.delete'))
 
-// Form state
 const title = ref('')
 const slug = ref('')
 const description = ref('')
@@ -51,13 +50,12 @@ watch(
     description.value = props.discussion?.description ?? ''
     isSticky.value = props.discussion?.is_sticky ?? false
 
-    // markdown is not included in the table query - fetch it separately
+    // The table query leaves out markdown, so fetch it separately.
     if (!props.discussion?.id) {
       markdown.value = ''
       return
     }
 
-    // If it was already fetched and attached to the record, use it directly
     if (props.discussion.markdown != null) {
       markdown.value = props.discussion.markdown
       return
@@ -97,9 +95,8 @@ async function handleSave() {
   saveLoading.value = true
 
   try {
-    // Upload any pending blob-placeholder media before reading the markdown,
-    // otherwise blob: URLs get persisted and render as missing media. The editor
-    // surfaces its own error toast on failure, so we just abort here.
+    // Flush pending blob-placeholder media first, or blob: URLs get persisted and
+    // render as missing media. The editor shows its own error toast, so just abort.
     const uploaded = await markdownEditor.value?.flushPendingUploads()
     if (uploaded === false)
       return
@@ -189,7 +186,6 @@ async function handleDelete() {
     </template>
 
     <Flex v-if="props.discussion" column gap="l">
-      <!-- Identity -->
       <Flex column gap="m" expand>
         <h5>Identity</h5>
 
@@ -224,7 +220,6 @@ async function handleDelete() {
         />
       </Flex>
 
-      <!-- Content -->
       <Flex column gap="m" expand>
         <h5>Content</h5>
 
@@ -241,7 +236,6 @@ async function handleDelete() {
         />
       </Flex>
 
-      <!-- Settings -->
       <Flex column gap="m">
         <h5>Settings</h5>
 
@@ -267,7 +261,6 @@ async function handleDelete() {
         </Card>
       </Flex>
 
-      <!-- Metadata -->
       <Metadata
         :created-at="props.discussion.created_at"
         :created-by="props.discussion.created_by"

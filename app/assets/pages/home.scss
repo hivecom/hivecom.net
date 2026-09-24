@@ -6,8 +6,7 @@
   gap: var(--space-s);
   width: 100%;
 
-  // A lone item takes the row rather than sitting in half of it with a hole
-  // next to it.
+  // A lone item takes the full row
   > *:only-child {
     grid-column: 1 / -1;
   }
@@ -26,9 +25,8 @@
   overflow-wrap: break-word;
 
   &.inline {
-    // vui ships a global `.inline { display: inline }` utility at the same
-    // specificity as `.home-item`, so whichever stylesheet lands last wins.
-    // Restating display here makes this `.home-item.inline` and settles it.
+    // VUI's global `.inline { display: inline }` has the same specificity as
+    // `.home-item`, so display is restated at the higher specificity here
     display: flex;
     flex-direction: row;
     justify-content: space-between;

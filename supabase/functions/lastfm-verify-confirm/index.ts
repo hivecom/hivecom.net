@@ -6,22 +6,15 @@ import { getAuthenticatedUserId } from "../_shared/auth.ts";
 import { fetchLastfmAuthSession } from "../_shared/lastfm.ts";
 
 /**
- * Last.fm authentication verify endpoint
- * Exchanges the Last.fm `token` (from the callback URL) for the username,
- * then writes `lastfm_username` to the authenticated user's profile.
- *
- * POST body:
- * - token: string  (the `token` query param from the Last.fm callback)
- * - state: string  (the base64-encoded state param, unused server-side but accepted for symmetry)
+ * Exchanges the Last.fm callback `token` for a username and links it to the
+ * caller's profile. POST { token, state }. `state` is accepted but unused here.
  */
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Require authenticated user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -73,19 +66,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Exchange the token for a session - we only need the username (name)
     const session = await fetchLastfmAuthSession(token, apiKey, sharedSecret);
     const lastfmUsername = session.name;
 
-    // Write the username to the user's profile using the service role client
+    // Service role write, so it has to stay scoped to the caller's own id
     const serviceRoleKey = getSecretKey();
     const adminClient = createClient<Database>(supabaseUrl, serviceRoleKey);
 
-    // lastfm_username is a new column not yet in the generated types;
-    // cast through `never` until the migration is applied and types regenerated.
-    // deno-lint-ignore no-explicit-any
-    const adminClientAny = adminClient as ReturnType<typeof createClient<any>>;
-    const { error: updateError } = await adminClientAny
+    const { error: updateError } = await adminClient
       .from("profiles")
       .update({ lastfm_username: lastfmUsername })
       .eq("id", user.id);

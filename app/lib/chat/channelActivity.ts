@@ -1,7 +1,5 @@
-// One channel's standing in the dashboard's chat card: who is in it now, and
-// how much it said today. The card and its sheet both rank and label channels,
-// so the shared shape and its two label forms live here rather than in whoever
-// happened to need them first.
+// One channel's standing in the dashboard chat card: who's in it now and how
+// much it said today.
 
 export interface ChannelEntry {
   key: string
@@ -19,11 +17,9 @@ export function channelScore(entry: ChannelEntry): number {
   return entry.here * USER_WEIGHT + entry.messages
 }
 
-// Second line per channel. Whichever half is zero drops out, and a channel with
-// neither says so rather than printing two zeroes. Half a tile is around twenty
-// characters, so messages are abbreviated and the timeframe is left to the
-// title: a busy channel spelling out "62 messages today" wrapped to two lines
-// and pushed its row out of line with the tile beside it.
+// Half a tile fits about twenty characters, so this stays abbreviated and the
+// timeframe lives in the title. "62 messages today" wraps to two lines and
+// pushes the row out of line with the tile beside it.
 export function channelActivity(entry: ChannelEntry): string {
   const parts: string[] = []
 
@@ -36,7 +32,6 @@ export function channelActivity(entry: ChannelEntry): string {
   return parts.length ? parts.join(', ') : 'quiet today'
 }
 
-// The abbreviated line on hover, spelled out.
 export function channelActivityTitle(entry: ChannelEntry): string {
   const parts: string[] = []
 

@@ -18,7 +18,7 @@ interface ReplyJoinedDiscussion {
 
 dayjs.extend(relativeTime)
 
-const FORUM_USER_ACTIVITY_TTL = 2 * 60 * 1000 // 2 minutes - short enough to feel live
+const FORUM_USER_ACTIVITY_TTL = 2 * 60 * 1000 // short enough to feel live
 
 function forumUserActivityCacheKey(uid: string): string {
   return `forum:user-activity:${uid}`
@@ -37,11 +37,9 @@ export interface UserActivityItem {
 }
 
 export interface UseForumUserActivityOptions {
-  /** Reactive ref of the logged-in user's ID */
   userId: Ref<string | null | undefined>
-  /** Reactive settings object - used to filter NSFW and archived content */
   settings: Ref<{ show_nsfw_content: boolean, show_forum_archived: boolean }>
-  /** Lookup map from discussion id → discussion row, used for NSFW filtering */
+  /** Discussion id to row, for NSFW filtering. */
   discussionLookup: ComputedRef<Map<string, Tables<'discussions'>>>
 }
 
@@ -58,7 +56,6 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
       return
     }
 
-    // Check cache first - avoids a round-trip on back-navigation within TTL
     const cacheKey = forumUserActivityCacheKey(uid)
     const cached = forumCache.get<UserActivityItem[]>(cacheKey)
     if (cached !== null) {
@@ -72,8 +69,7 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
     }
 
     const [repliesRes, discussionsRes] = await Promise.all([
-      // Use the forum_discussion_replies view which is already scoped to
-      // discussions that have a discussion_topic_id (i.e. forum threads only),
+      // The forum_discussion_replies view is already scoped to forum threads,
       // avoiding the unreliable embedded-filter workaround on the raw table.
       supabase
         .from('forum_discussion_replies')
@@ -82,8 +78,6 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
         .eq('is_deleted', false)
         .limit(20)
         .order('created_at', { ascending: false }),
-      // Discussions the user created on the forum - we'll only surface ones
-      // where the user has no reply yet (brand-new threads with 0 replies from them).
       supabase
         .from('discussions')
         .select('id, title, slug, created_at, discussion_topic_id, is_archived')
@@ -94,7 +88,7 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
         .order('created_at', { ascending: false }),
     ])
 
-    // Build reply items - timestamp is when the user actually posted the reply
+    // The timestamp is when the user posted the reply.
     const replyItems: UserActivityItem[] = (repliesRes.data ?? []).map((item) => {
       const discussion = unwrapJoin<ReplyJoinedDiscussion>(item.discussions)
       const slug = discussion?.slug ?? item.discussion_id
@@ -115,8 +109,6 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
     // double-count them below with a stale created_at timestamp.
     const repliedDiscussionIds = new Set(replyItems.map(r => r.discussionId))
 
-    // Only include created discussions that the user hasn't replied in yet -
-    // those are already represented (with correct timestamps) via replyItems.
     const discussionItems: UserActivityItem[] = (discussionsRes.data ?? [])
       .filter(item => !repliedDiscussionIds.has(item.id))
       .map(item => ({
@@ -126,16 +118,13 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
         discussionTopicId: item.discussion_topic_id ?? null,
         discussionTitle: item.title ?? 'Discussion',
         discussionHref: `/forum/${item.slug ?? item.id}`,
-        // Use the discussion's created_at - for a thread the user started but
-        // hasn't replied in, "their last activity" is when they created it.
-        // last_activity_at would reflect other people's replies and wrongly
+        // Not last_activity_at: that reflects other people's replies and would
         // float old threads above ones the user recently posted in.
         timestampRaw: item.created_at,
         timestamp: dayjs(item.created_at).fromNow(),
         isArchived: !!item.is_archived,
       }))
 
-    // Merge, sort by most recent user action, deduplicate by discussion, take top 6
     const seenDiscussionIds = new Set<string>()
     userActivity.value = [...replyItems, ...discussionItems]
       .sort((a, b) => b.timestampRaw.localeCompare(a.timestampRaw))
@@ -154,14 +143,12 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
 
   // Filters the raw userActivity list reactively so toggling show_nsfw_content
   // immediately hides NSFW discussions from the "Recently visited" section.
-  // Archived discussions are always excluded regardless of user settings.
+  // Archived discussions only show with show_forum_archived on.
   const visibleUserActivity = computed(() => {
     return userActivity.value.filter((item) => {
       const discussion = discussionLookup.value.get(item.discussionId)
 
-      // If the user has opted in to seeing archived content, don't filter them out here
       if (!settings.value.show_forum_archived) {
-        // Never show archived discussions in recently visited
         if (item.isArchived)
           return false
 
@@ -179,7 +166,6 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
     })
   })
 
-  // Re-fetch when the logged-in user changes.
   watch(userId, uid => void fetchUserActivity(uid), { immediate: true })
 
   return {

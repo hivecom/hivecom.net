@@ -18,28 +18,24 @@ const props = withDefaults(defineProps<Props>(), {
   onFundingPage: false,
 })
 
-// Check if we're on the funding page
 const route = useRoute()
 const isOnFundingPage = computed(() => props.onFundingPage || route.path === '/community/funding')
 
 const isBelowSmall = useBreakpoint('<s')
 
-// Funding data via shared cache
 const { latestFunding: currentFunding, allFunding, loading: fundingLoading, error } = useDataMonthlyFunding()
 const errorMessage = computed(() => error.value)
 
-// Active expenses via shared cache
 const { totalActiveAmountCents: monthlyExpenses, loading: expensesLoading } = useDataExpenses()
 
 const loading = computed(() => fundingLoading.value || expensesLoading.value)
 
-// Calculate funding progress
 const fundingProgress = computed(() => {
   if (!currentFunding.value)
     return { percentage: 0, current: 0, goal: monthlyExpenses.value }
 
   const current = (currentFunding.value.patreon_month_amount_cents ?? 0) + (currentFunding.value.donation_month_amount_cents ?? 0)
-  const goal = monthlyExpenses.value || 1 // Use actual expenses as goal, avoid division by zero
+  const goal = monthlyExpenses.value || 1 // avoid division by zero
   const percentage = goal > 0 ? Math.min((current / goal) * 100, 100) : 0
 
   return { percentage, current, goal }
@@ -120,7 +116,6 @@ function scrollToSupport() {
   <DefineTemplate>
     <GlowCard no-glow>
       <Card :class="{ 'funding-progress__complete': fundingProgress.percentage >= 100 }" class="card-bg" expand>
-        <!-- Loading state -->
         <Flex v-if="loading" column expand>
           <Flex column gap="m">
             <Skeleton :width="300" :height="32" :radius="4" />
@@ -132,7 +127,6 @@ function scrollToSupport() {
           </Flex>
         </Flex>
 
-        <!-- Error state -->
         <Flex v-else-if="errorMessage" expand column>
           <Flex y-center gap="s" class="color-error">
             <Icon name="ph:warning" size="1.2rem" />
@@ -140,7 +134,6 @@ function scrollToSupport() {
           </Flex>
         </Flex>
 
-        <!-- Main content -->
         <Flex v-else column expand>
           <Flex y-center x-between class="mb-s" expand>
             <Flex gap="s" wrap y-center>
@@ -167,7 +160,6 @@ function scrollToSupport() {
             :model-value="fundingProgress.percentage"
           />
 
-          <!-- Funding vs Expenses Summary -->
           <Flex x-between y-start expand>
             <p class="text-s text-color-lighter">
               {{ statusMessage }}
@@ -205,7 +197,6 @@ function scrollToSupport() {
   border: 1px solid var(--color-accent);
 }
 
-// Responsive text sizing
 @media screen and (max-width: $breakpoint-s) {
   .text-xxxl {
     font-size: var(--font-size-xl) !important;

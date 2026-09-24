@@ -9,7 +9,7 @@ const isMobile = useBreakpoint('<m')
 
 <template>
   <Flex y-center x-between gap="xs" class="mb-m">
-    <!-- Left: view mode ButtonGroup (2 square buttons) -->
+    <!-- View mode switcher -->
     <Flex y-center gap="xs">
       <Flex :gap="1">
         <Skeleton :width="28" :height="28" style="border-radius: var(--border-radius-s) 0 0 var(--border-radius-s);" />
@@ -17,7 +17,7 @@ const isMobile = useBreakpoint('<m')
       </Flex>
     </Flex>
 
-    <!-- Right: clock + Latest (mobile only) -->
+    <!-- Clock and Latest buttons -->
     <Flex v-if="isMobile && isForum" gap="xs">
       <Skeleton :width="28" :height="28" :radius="8" />
       <Skeleton :width="80" :height="28" :radius="8" />

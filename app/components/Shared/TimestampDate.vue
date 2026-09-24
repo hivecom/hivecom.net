@@ -28,7 +28,6 @@ export type DateDisplayType
     | 'year'
 
 const props = withDefaults(defineProps<{
-  // The date string to format
   date: string | null
 
   // Which named format to use (defaults to fullDateTime)
@@ -38,16 +37,13 @@ const props = withDefaults(defineProps<{
   // formatted date. The tooltip still shows the precise timestamp.
   relative?: boolean
 
-  // Enable tooltip with detailed information on hover
   tooltip?: boolean
 
   // Text to show if date is null
   fallback?: string
 
-  // Tooltip placement
   placement?: 'top' | 'right' | 'bottom' | 'left'
 
-  // Use smaller font size
   size?: 'xxs' | 'xs' | 's' | 'm' | 'l' | 'xl' | 'xxl' | 'xxxl'
 }>(), {
   type: 'fullDateTime',

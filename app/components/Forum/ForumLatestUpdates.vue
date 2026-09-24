@@ -15,12 +15,7 @@ const props = defineProps<{
   latestPosts: ActivityItem[]
   postSinceYesterday: number
 
-  /**
-   * Authoritative server-side count of new forum activity since the user's
-   * last visit, excluding their own posts. Drives the "since last visit"
-   * badge. Computed locally as a fallback when the prop isn't supplied so
-   * older callers keep working.
-   */
+  /** Server-side count since the last visit, excluding the user's own posts */
   postsSinceLastVisit?: number
   lastVisitedAt: string | null
   mentionLookup: Record<string, string>
@@ -39,7 +34,6 @@ const userId = useUserId()
 
 const sheetOpen = ref(false)
 
-// Close sheet if user signs out mid-session
 watch(user, (u) => {
   if (u == null)
     sheetOpen.value = false
@@ -49,7 +43,6 @@ const isMobile = useBreakpoint('<s')
 
 // ── Carousel ──────────────────────────────────────────────────────────────
 
-// Carousel shows everyone's activity except the current user's own posts.
 const carouselPosts = computed<ActivityItem[]>(() => {
   if (userId.value == null)
     return props.latestPosts
@@ -57,7 +50,6 @@ const carouselPosts = computed<ActivityItem[]>(() => {
   return props.latestPosts.filter(post => post.user !== userId.value)
 })
 
-// Boundary timestamp for the "since last visit" divider
 const visitedAt = computed<number | null>(() => {
   if (props.lastVisitedAt == null)
     return null
@@ -67,11 +59,9 @@ const visitedAt = computed<number | null>(() => {
 
 const CAROUSEL_LIMIT = 16
 
-// The slice of carousel posts actually rendered
 const carouselSlice = computed<ActivityItem[]>(() => carouselPosts.value.slice(0, CAROUSEL_LIMIT))
 
-// Index of the first carousel item older than the last visit, scoped to the
-// rendered slice so the divider is never beyond what's visible.
+// Scoped to the rendered slice so the divider never sits past what's visible
 const splitIndex = computed<number | null>(() => {
   if (visitedAt.value == null || props.loading)
     return null
@@ -85,11 +75,8 @@ const splitIndex = computed<number | null>(() => {
   return idx
 })
 
-// New-since-last-visit count. Prefers the server-side count passed in via
-// `postsSinceLastVisit` (accurate across the entire feed) and falls back to
-// counting against the rendered carousel slice. The fallback is naturally
-// bounded by `CAROUSEL_LIMIT` so it can undercount on busy forums - the
-// server-side count exists specifically to avoid that.
+// The fallback only sees the carousel slice, so it undercounts on busy forums.
+// The server-side count covers the whole feed.
 const newSinceLastVisit = computed<number>(() => {
   if (visitedAt.value == null || user.value == null || props.loading)
     return 0
@@ -134,8 +121,7 @@ const {
   createdByCurrentUser: true,
 })
 
-// What the sheet renders. Its dividers, tabs and scroll sentinels live in
-// ForumLatestSheet, so all this side hands over is the state of each feed.
+// ForumLatestSheet owns dividers, tabs and sentinels. This side only hands over each feed's state.
 const feedPane = computed<ForumLatestPane>(() => ({
   items: sheetItems.value,
   loading: sheetLoading.value,

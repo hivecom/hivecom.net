@@ -5,9 +5,6 @@ import ProfileBadge from '@/components/Profile/Badges/ProfileBadge.vue'
 import { BADGE_CATALOG } from '@/lib/badges/catalog'
 
 /**
- * Generic badge renderer driven by a slug + tier + optional progress.
- * Used by both the catalog preview page (step 2) and profile badge rows (step 3).
- *
  * For the "one_of_us" badge, pass `progress` = years and `earnedAt` = join date ISO string
  * to get the hex number display and "since" description.
  */

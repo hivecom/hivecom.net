@@ -23,7 +23,6 @@ const props = defineProps<{
 
 const buttonSize = computed(() => props.size ?? (props.showLabels ? 'm' : 's'))
 
-// Define a model value for actions with proper type
 interface ContainerWithServer {
   name: string
   running: boolean
@@ -42,12 +41,10 @@ interface ContainerAction {
 }
 const action = defineModel<ContainerAction | null>('modelValue', { default: null })
 
-// Handler functions to update the model value with the appropriate action
 function handleAction(actionType: 'start' | 'stop' | 'restart') {
   action.value = { container: props.container, type: actionType }
 }
 
-// State for prune confirmation modal
 const showPruneConfirm = ref(false)
 
 function handlePrune() {
@@ -58,7 +55,6 @@ function openPruneConfirm() {
   showPruneConfirm.value = true
 }
 
-// Helper function to determine if specific action is loading
 function isActionLoading(actionType: string): boolean {
   const loading = props.isLoading(actionType)
   if (typeof loading === 'boolean') {
@@ -132,7 +128,6 @@ function isActionLoading(actionType: string): boolean {
       </template>
     </Tooltip>
 
-    <!-- Confirmation Modal for Prune Action -->
     <ConfirmModal
       v-model:open="showPruneConfirm"
       :confirm="handlePrune"

@@ -20,10 +20,8 @@ const userId = useUserId()
 
 const dismissed = ref(true)
 
-// `refresh()` sets `isSupported`/`permission` synchronously but only updates
-// `isSubscribed` after the async subscription lookup resolves. Without this gate
-// an already-subscribed user sees the prompt flash for a frame. Stay hidden
-// until the subscription state is actually known.
+// `refresh()` sets `isSupported`/`permission` synchronously but `isSubscribed` only after
+// an async lookup. Stay hidden until it's known, or subscribed users see a one-frame flash.
 const ready = ref(false)
 
 onMounted(async () => {
@@ -61,11 +59,9 @@ function ignore() {
 async function enable() {
   const ok = await subscribe()
 
-  // Persist dismissal once they've acted. `isSubscribed` is re-derived per mount
-  // and silently falls back to `false` whenever the service-worker lookup in
-  // `refresh()` returns null (SW not yet active, or the 5s timeout), which would
-  // otherwise re-show the prompt to an already-subscribed user. The stored flag
-  // is the durable signal that keeps it gone.
+  // Persist dismissal once they've acted. `isSubscribed` silently falls back to false
+  // when the service-worker lookup in `refresh()` returns null (SW not active yet, or
+  // the 5s timeout), so the stored flag is the durable signal.
   if (ok)
     ignore()
 
@@ -128,7 +124,6 @@ async function enable() {
 
 <style lang="scss" scoped>
 .push-prompt {
-  // Accent border to set the call-to-action apart from regular notifications.
   border-color: var(--color-accent);
 
   // On the Past tab it's a quiet reminder, not a fresh call-to-action.

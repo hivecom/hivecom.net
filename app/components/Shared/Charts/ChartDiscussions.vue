@@ -83,10 +83,9 @@ const chartData = computed(() => {
   const palette = getChartPalette()
   const timestamps = metricsHistory.value.map(e => new Date(e.capturedAt).getTime())
 
-  // Same split as the IRC chart: new discussions are bars that read as
-  // background, and replies draw as a line on their own axis since they run
-  // at a much higher rate. Both use the text color, the bars faded so the
-  // line stays on top.
+  // New discussions are bars that read as background, and replies draw as a line
+  // on their own axis since they run at a much higher rate. Both use the text
+  // color, the bars faded so the line stays on top.
   return {
     datasets: [
       {

@@ -20,7 +20,6 @@ onMounted(async () => {
     return
   }
 
-  // Set up auth state change listener
   const authListener = client.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT' || !session) {
       navigateToSignIn()

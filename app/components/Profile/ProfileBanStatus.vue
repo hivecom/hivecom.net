@@ -25,7 +25,6 @@ function getBanDuration() {
   const banEnd = new Date(props.profile.ban_end)
   const now = new Date()
 
-  // Calculate the duration between start and end
   const durationMs = banEnd.getTime() - banStart.getTime()
   const durationText = formatDuration(durationMs)
 
@@ -36,7 +35,6 @@ function getBanDuration() {
   return `Banned for ${durationText}`
 }
 
-// Function to get ban end date for TimestampDate component
 function getBanEndDate() {
   return props.profile.ban_end || null
 }

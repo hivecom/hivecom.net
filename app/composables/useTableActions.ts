@@ -3,9 +3,6 @@ import { computed } from 'vue'
 import { useAdminPermissions } from '@/composables/useAdminPermissions'
 
 /**
- * Composable for determining if table actions should be shown
- * based on user permissions.
- *
  * `resourceType` is a permission group (the part before the dot in an
  * `app_permission`, e.g. 'network'), not an entity/table name. Typing it as
  * `PermissionResource` means a stale group like 'containers' fails to compile.

@@ -1,7 +1,3 @@
-/**
- * Storage utilities for handling file uploads to Supabase Storage
- */
-
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 import { dispatchAvatarUpdated } from '@/composables/useAvatarBus'
@@ -21,7 +17,7 @@ export const allowedAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio
 export const allowedMediaTypes = [...allowedImageTypes, ...allowedVideoTypes, ...allowedAudioTypes]
 export const allowedMediaExtensions = allowedMediaTypes.join(', ')
 
-// Archives. Browsers report these inconsistently (often '' or
+// Browsers report archive types inconsistently (often '' or
 // application/octet-stream), so the editor routes them by extension too.
 export const allowedArchiveTypes = ['application/zip', 'application/x-zip-compressed', 'application/x-7z-compressed', 'application/vnd.rar', 'application/x-rar-compressed', 'application/x-tar', 'application/gzip', 'application/x-gzip']
 
@@ -44,11 +40,7 @@ function isStorageNotFoundError(error: unknown): boolean {
   return false
 }
 
-/**
- * Validates if a file is a valid image
- */
 export function validateImageFile(file: File, maxSizeMB: number = 1): { valid: boolean, error?: string } {
-  // Check file type
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'video/webm']
   if (!allowedTypes.includes(file.type)) {
     return {
@@ -69,13 +61,11 @@ export function validateImageFile(file: File, maxSizeMB: number = 1): { valid: b
 }
 
 /**
- * Strips EXIF and other metadata from an image by re-drawing it through a
- * canvas element. Preserves the original mime type and dimensions.
- * Falls back to the original file if the browser cannot create a canvas blob
- * (e.g. SVG or other non-raster formats).
+ * Strips EXIF and other metadata by redrawing through a canvas. Returns the
+ * original file when the browser can't produce a blob, e.g. for SVG.
  */
 export async function stripImageMetadata(file: File): Promise<File> {
-  // Canvas round-tripping a GIF produces a static single frame - pass through unchanged.
+  // A canvas round trip flattens a GIF to one frame.
   if (file.type === 'image/gif')
     return file
 
@@ -90,7 +80,6 @@ export async function stripImageMetadata(file: File): Promise<File> {
       const ctx = canvas.getContext('2d')
       ctx?.drawImage(img, 0, 0)
 
-      // Preserve the original mime type so PNG stays PNG, JPEG stays JPEG, etc.
       const outputType = file.type === 'image/jpg' ? 'image/jpeg' : file.type
 
       canvas.toBlob(
@@ -103,7 +92,6 @@ export async function stripImageMetadata(file: File): Promise<File> {
             }))
           }
           else {
-            // Canvas couldn't produce a blob - fall back to original
             resolve(file)
           }
         },
@@ -114,7 +102,6 @@ export async function stripImageMetadata(file: File): Promise<File> {
     img.onerror = () => {
       URL.revokeObjectURL(img.src)
 
-      // Can't load the image - just pass it through unchanged
       resolve(file)
     }
 
@@ -122,9 +109,6 @@ export async function stripImageMetadata(file: File): Promise<File> {
   })
 }
 
-/**
- * Converts an image file to WebP format
- */
 export async function convertImageToWebP(file: File, quality: number = 0.8): Promise<File> {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas')
@@ -132,19 +116,15 @@ export async function convertImageToWebP(file: File, quality: number = 0.8): Pro
     const img = new Image()
 
     img.onload = () => {
-      // Set canvas size to image size
       canvas.width = img.naturalWidth
       canvas.height = img.naturalHeight
 
-      // Draw image to canvas
       ctx?.drawImage(img, 0, 0)
 
-      // Convert to WebP blob
       canvas.toBlob(
         (blob) => {
           URL.revokeObjectURL(img.src)
           if (blob) {
-            // Create new File with WebP format
             const webpFile = new File([blob], file.name.replace(FILE_EXTENSION_RE, '.webp'), {
               type: 'image/webp',
               lastModified: Date.now(),
@@ -198,30 +178,28 @@ async function encodeCanvasBlob(
 }
 
 export interface CompressImageOptions {
-  /** Starting WebP quality (0..1). Default 0.95. */
+  /** WebP quality, 0..1. Default 0.95. */
   initialQuality?: number
 
-  /** Lowest quality to try before stepping down resolution. Default 0.5. */
+  /** Lowest quality before stepping down resolution. Default 0.5. */
   minQuality?: number
 
-  /** Smallest resolution scale (relative to original) to try. Default 0.2. */
+  /** Smallest resolution scale relative to the original. Default 0.2. */
   minScale?: number
 
-  /** Quality decrement per attempt. Default 0.1. */
+  /** Default 0.1. */
   qualityStep?: number
 
-  /** Multiplicative scale reduction per resolution pass. Default 0.8. */
+  /** Multiplier per resolution pass. Default 0.8. */
   scaleStep?: number
 }
 
 /**
- * Iteratively re-encodes an image as WebP, dropping quality first and then
- * resolution, until the output fits within `maxBytes` (or the configured floor
- * is reached). Returns a WebP File; falls back to the smallest attempt or the
- * original file if encoding fails entirely.
+ * Re-encodes as WebP, dropping quality first and then resolution, until the
+ * output fits `maxBytes` or hits the floor. Falls back to the smallest attempt.
  *
- * GIFs and non-raster inputs are passed through unchanged - re-encoding a GIF
- * via canvas drops animation, so callers must handle oversize GIFs separately.
+ * GIFs pass through unchanged because a canvas drops the animation. Callers
+ * have to handle oversize GIFs themselves.
  */
 export async function compressImageToFit(
   file: File,
@@ -286,10 +264,6 @@ export async function compressImageToFit(
   return best ?? file
 }
 
-/**
- * Uploads a user's avatar to the storage bucket
- * Automatically converts images to WebP format for consistency and optimization
- */
 export async function uploadUserAvatar(
   supabaseClient: SupabaseClient<Database>,
   userId: string,
@@ -297,13 +271,12 @@ export async function uploadUserAvatar(
   uploadedBy?: string,
 ): Promise<UploadResult> {
   try {
-    // Validate the file first
     const validation = validateImageFile(file)
     if (!validation.valid) {
       return { success: false, error: validation.error }
     }
 
-    // GIFs and WebMs are kept as-is to preserve animation; all other formats convert to WebP
+    // GIFs and WebMs stay as they are to keep the animation.
     let processedFile: File
     if (file.type === 'image/gif' || file.type === 'video/webm') {
       processedFile = file
@@ -318,7 +291,6 @@ export async function uploadUserAvatar(
       }
     }
 
-    // Determine extension: gif stays gif, webm stays webm, webp for converted, png as fallback
     let fileExtension: string
     if (processedFile.type === 'image/gif') {
       fileExtension = 'gif'
@@ -334,8 +306,7 @@ export async function uploadUserAvatar(
     }
     const filePath = `${userId}/avatar.${fileExtension}`
 
-    // Delete any existing avatar files with other extensions so stale files
-    // don't get served after an extension change (e.g. jpg → gif).
+    // Otherwise a stale avatar.jpg keeps getting served after switching to gif.
     const otherExtensions = ['webp', 'gif', 'webm', 'png', 'jpg', 'jpeg'].filter(e => e !== fileExtension)
     const staleFiles = (
       await Promise.all(
@@ -355,7 +326,7 @@ export async function uploadUserAvatar(
     const { error } = await supabaseClient.storage
       .from('hivecom-content-users')
       .upload(filePath, processedFile, {
-        upsert: true, // Replace existing file
+        upsert: true,
         contentType: processedFile.type,
         metadata: { uploadedBy: uploadedBy ?? userId },
       })
@@ -365,21 +336,17 @@ export async function uploadUserAvatar(
       return { success: false, error: error.message }
     }
 
-    // Get the public URL with a cache-busting timestamp so the browser doesn't
-    // serve the old avatar from its HTTP cache (same filename, upserted in place).
+    // Same filename upserted in place, so bust the browser's HTTP cache.
     const { data: urlData } = supabaseClient.storage
       .from('hivecom-content-users')
       .getPublicUrl(filePath)
 
     const bustUrl = `${urlData.publicUrl}?t=${Date.now()}`
 
-    // Invalidate cached avatar URL since we uploaded a new one
     invalidateAvatarCache(userId)
 
-    // Store the cache-busted URL directly in localStorage so the next
-    // getUserAvatarUrl call (triggered by the avatar-updated bus) serves
-    // the fresh image instead of reconstructing the clean URL, which the
-    // browser would serve from its HTTP cache (same filename, upserted).
+    // Seed the busted URL so the getUserAvatarUrl call the avatar bus triggers
+    // doesn't rebuild the clean URL and hit the HTTP cache.
     if (typeof window !== 'undefined') {
       try {
         window.localStorage.setItem(`avatar:${userId}`, JSON.stringify({
@@ -388,14 +355,12 @@ export async function uploadUserAvatar(
         }))
       }
       catch {
-        // localStorage full - ignore
+        // localStorage full
       }
     }
 
-    // Update profiles table with the new avatar extension
     await supabaseClient.from('profiles').update({ avatar_extension: fileExtension }).eq('id', userId)
 
-    // Dispatch avatar updated event
     dispatchAvatarUpdated({ userId, url: bustUrl })
 
     return {
@@ -412,21 +377,15 @@ export async function uploadUserAvatar(
   }
 }
 
-/**
- * Gets the public URL for a user's avatar
- * Tries multiple common extensions to find the avatar, prioritizing WebP
- * Results are cached to avoid repeated storage API calls
- */
+/** Results, including "no avatar", are cached in localStorage for an hour. */
 export async function getUserAvatarUrl(
   supabaseClient: SupabaseClient<Database>,
   userId: string,
   avatarExtension?: string | null | undefined,
 ): Promise<string | null> {
-  // Use a simple in-memory cache for avatar URLs
   const cacheKey = `avatar:${userId}`
-  const cacheTTL = 60 * 60 * 1000 // 1 hour cache
+  const cacheTTL = 60 * 60 * 1000
 
-  // Check if we have a cached result
   if (typeof window !== 'undefined') {
     const cached = window.localStorage.getItem(cacheKey)
     if (cached !== null && cached.length > 0) {
@@ -440,15 +399,14 @@ export async function getUserAvatarUrl(
         }
       }
       catch {
-        // Invalid cache entry, remove it
         window.localStorage.removeItem(cacheKey)
       }
     }
   }
 
   try {
-    // Fast-path: null means the profile column is known to be empty - no avatar,
-    // skip all storage calls entirely. undefined means unknown - fall through to probe.
+    // null means the profile column is known empty, so there's no avatar.
+    // undefined means unknown and falls through to probing storage.
     if (avatarExtension === null) {
       if (typeof window !== 'undefined') {
         try {
@@ -459,7 +417,6 @@ export async function getUserAvatarUrl(
       return null
     }
 
-    // Fast-path: if extension is known, skip storage list() calls entirely
     if (avatarExtension !== undefined && avatarExtension.length > 0) {
       const avatarUrl = supabaseClient.storage
         .from('hivecom-content-users')
@@ -475,20 +432,18 @@ export async function getUserAvatarUrl(
           }))
         }
         catch {
-          // localStorage might be full, ignore cache errors
+          // localStorage full
         }
       }
 
       return avatarUrl
     }
 
-    // Common image extensions to try, in order of preference (WebP first for new uploads)
     const extensions = ['webp', 'webm', 'gif', 'png', 'jpg', 'jpeg']
 
     for (const extension of extensions) {
       const filePath = `${userId}/avatar.${extension}`
 
-      // Check if file exists by trying to get its metadata
       const { data, error } = await supabaseClient.storage
         .from('hivecom-content-users')
         .list(userId, {
@@ -496,20 +451,17 @@ export async function getUserAvatarUrl(
         })
 
       if (error === null && data !== null && data.length > 0) {
-        // File exists, return the public URL
         const { data: urlData } = supabaseClient.storage
           .from('hivecom-content-users')
           .getPublicUrl(filePath)
 
-        // Version by last modification so replaced avatars bypass the stale
-        // browser/CDN cache for the unchanged path.
+        // Version by mtime so a replaced file at the same path skips the browser and CDN cache.
         const file = data.find(f => f.name === `avatar.${extension}`) ?? data[0]
         const updatedAt = file?.updated_at ?? file?.created_at
         const avatarUrl = updatedAt
           ? `${urlData.publicUrl}?v=${new Date(updatedAt).getTime()}`
           : urlData.publicUrl
 
-        // Cache the result
         if (typeof window !== 'undefined') {
           try {
             window.localStorage.setItem(cacheKey, JSON.stringify({
@@ -518,7 +470,7 @@ export async function getUserAvatarUrl(
             }))
           }
           catch {
-            // localStorage might be full, ignore cache errors
+            // localStorage full
           }
         }
 
@@ -526,7 +478,6 @@ export async function getUserAvatarUrl(
       }
     }
 
-    // No avatar found with any extension - cache this result too
     if (typeof window !== 'undefined') {
       try {
         window.localStorage.setItem(cacheKey, JSON.stringify({
@@ -535,7 +486,7 @@ export async function getUserAvatarUrl(
         }))
       }
       catch {
-        // localStorage might be full, ignore cache errors
+        // localStorage full
       }
     }
 
@@ -547,10 +498,7 @@ export async function getUserAvatarUrl(
   }
 }
 
-/**
- * Invalidates the cached avatar URL for a user
- * Should be called when avatar is uploaded or deleted
- */
+// Call after every avatar upload or delete.
 export function invalidateAvatarCache(userId: string): void {
   if (typeof window !== 'undefined') {
     const cacheKey = `avatar:${userId}`
@@ -562,11 +510,6 @@ export function invalidateAvatarCache(userId: string): void {
 
 const TOPIC_ICON_BUCKET = 'hivecom-content-forums'
 
-/**
- * Uploads a topic icon to the forums storage bucket.
- * Stored at `topics/<topicId>/icon.webp`.
- * Automatically converts images to WebP format.
- */
 export async function uploadTopicIcon(
   supabaseClient: SupabaseClient<Database>,
   topicId: string,
@@ -608,8 +551,7 @@ export async function uploadTopicIcon(
       .from(TOPIC_ICON_BUCKET)
       .getPublicUrl(filePath)
 
-    // The path is stable across replacements (upsert), so without a version
-    // param the browser and CDN keep serving the previous image.
+    // Upserts keep the path, so without a version the browser and CDN serve the old image.
     return {
       success: true,
       url: `${urlData.publicUrl}?v=${Date.now()}`,
@@ -624,11 +566,7 @@ export async function uploadTopicIcon(
   }
 }
 
-/**
- * Gets the public URL for a topic's icon.
- * Lists the topic's folder once and picks the best available extension.
- * This is a pure fetch - caching is handled by the useTopicIcon composable.
- */
+// Uncached. useTopicIcon owns the caching.
 export async function getTopicIconUrl(
   supabaseClient: SupabaseClient<Database>,
   topicId: string,
@@ -636,7 +574,6 @@ export async function getTopicIconUrl(
   try {
     const folder = `topics/${topicId}`
 
-    // Preferred extension order - one list() call covers all of them
     const preferredOrder = ['icon.webp', 'icon.png', 'icon.jpg', 'icon.jpeg']
 
     const { data, error } = await supabaseClient.storage
@@ -656,8 +593,7 @@ export async function getTopicIconUrl(
       .from(TOPIC_ICON_BUCKET)
       .getPublicUrl(`${folder}/${found}`)
 
-    // Version by last modification so replaced icons bypass the stale
-    // browser/CDN cache for the unchanged path.
+    // Version by mtime so a replaced file at the same path skips the browser and CDN cache.
     const file = data.find(f => f.name === found)
     const updatedAt = file?.updated_at ?? file?.created_at
     return updatedAt
@@ -670,10 +606,6 @@ export async function getTopicIconUrl(
   }
 }
 
-/**
- * Deletes a topic's icon from storage.
- * Tries all common extensions to find and remove the file.
- */
 export async function deleteTopicIcon(
   supabaseClient: SupabaseClient<Database>,
   topicId: string,
@@ -706,7 +638,6 @@ export async function deleteTopicIcon(
       return { success: true }
     }
 
-    // No icon found - nothing to delete
     return { success: true }
   }
   catch (error) {
@@ -718,10 +649,6 @@ export async function deleteTopicIcon(
   }
 }
 
-/**
- * Uploads a game asset (icon, cover, or background)
- * Automatically converts images to WebP format for consistency and optimization
- */
 export async function uploadGameAsset(
   supabaseClient: SupabaseClient<Database>,
   gameShorthand: string,
@@ -730,13 +657,12 @@ export async function uploadGameAsset(
   uploadedBy?: string,
 ): Promise<UploadResult> {
   try {
-    // Validate the file first (game assets go to the static bucket, 5MB limit)
+    // The static bucket allows 5MB.
     const validation = validateImageFile(file, 5)
     if (!validation.valid) {
       return { success: false, error: validation.error }
     }
 
-    // Convert to WebP for consistency and better compression
     let processedFile: File
     try {
       processedFile = await convertImageToWebP(file, 0.85)
@@ -746,14 +672,13 @@ export async function uploadGameAsset(
       processedFile = file
     }
 
-    // Create the file path: games/{shorthand}/{assetType}.webp (or original extension if conversion failed)
     const fileExtension = processedFile.type === 'image/webp' ? 'webp' : file.name.split('.').pop()?.toLowerCase() ?? 'png'
     const filePath = `games/${gameShorthand}/${assetType}.${fileExtension}`
 
     const { error } = await supabaseClient.storage
       .from('hivecom-content-static')
       .upload(filePath, processedFile, {
-        upsert: true, // Replace existing file
+        upsert: true,
         contentType: processedFile.type,
         metadata: { uploadedBy: uploadedBy ?? 'unknown' },
       })
@@ -763,13 +688,11 @@ export async function uploadGameAsset(
       return { success: false, error: error.message }
     }
 
-    // Get the public URL
     const { data: urlData } = supabaseClient.storage
       .from('hivecom-content-static')
       .getPublicUrl(filePath)
 
-    // The path is stable across replacements (upsert), so without a version
-    // param the browser and CDN keep serving the previous image.
+    // Upserts keep the path, so without a version the browser and CDN serve the old image.
     return {
       success: true,
       url: `${urlData.publicUrl}?v=${Date.now()}`,
@@ -784,23 +707,17 @@ export async function uploadGameAsset(
   }
 }
 
-/**
- * Gets the public URL for a game asset
- * Tries multiple common extensions to find the asset, prioritizing WebP
- */
 export async function getGameAssetUrl(
   supabaseClient: SupabaseClient<Database>,
   gameShorthand: string,
   assetType: 'icon' | 'cover' | 'background',
 ): Promise<string | null> {
   try {
-    // Common image extensions to try, in order of preference (WebP first for new uploads)
     const extensions = ['webp', 'png', 'jpg', 'jpeg']
 
     for (const extension of extensions) {
       const filePath = `games/${gameShorthand}/${assetType}.${extension}`
 
-      // Check if file exists by trying to get its metadata
       const { data, error } = await supabaseClient.storage
         .from('hivecom-content-static')
         .list(`games/${gameShorthand}`, {
@@ -808,13 +725,11 @@ export async function getGameAssetUrl(
         })
 
       if (error === null && data !== null && data.length > 0) {
-        // File exists, return the public URL
         const { data: urlData } = supabaseClient.storage
           .from('hivecom-content-static')
           .getPublicUrl(filePath)
 
-        // Version by last modification so replaced assets bypass the stale
-        // browser/CDN cache for the unchanged path.
+        // Version by mtime so a replaced file at the same path skips the browser and CDN cache.
         const file = data.find(f => f.name === `${assetType}.${extension}`) ?? data[0]
         const updatedAt = file?.updated_at ?? file?.created_at
         return updatedAt
@@ -823,7 +738,6 @@ export async function getGameAssetUrl(
       }
     }
 
-    // No file found with any extension
     return null
   }
   catch (error) {
@@ -832,10 +746,7 @@ export async function getGameAssetUrl(
   }
 }
 
-/**
- * Moves all assets of a game to a new shorthand folder.
- * Used when a game's shorthand changes so existing assets don't get orphaned.
- */
+// Keeps assets from getting orphaned when a game's shorthand changes.
 export async function moveGameAssets(
   supabaseClient: SupabaseClient<Database>,
   fromShorthand: string,
@@ -860,9 +771,8 @@ export async function moveGameAssets(
     if (files.length === 0)
       return { success: true }
 
-    // Assets can already exist at the destination (uploads apply immediately,
-    // before the rename is saved). Those are newer - keep them and drop the
-    // stale copy instead of moving over it.
+    // Uploads apply before the rename is saved, so anything already at the
+    // destination is newer. Keep it and drop the stale source copy.
     const { data: destData } = await bucket.list(`games/${toShorthand}`)
     const destNames = new Set((destData ?? []).map(f => f.name))
 
@@ -897,23 +807,17 @@ export async function moveGameAssets(
   }
 }
 
-/**
- * Deletes a game asset from storage
- * Tries multiple common extensions to find and delete the asset, prioritizing WebP
- */
 export async function deleteGameAsset(
   supabaseClient: SupabaseClient<Database>,
   gameShorthand: string,
   assetType: 'icon' | 'cover' | 'background',
 ): Promise<{ success: boolean, error?: string }> {
   try {
-    // Common image extensions to try (WebP first for new uploads)
     const extensions = ['webp', 'png', 'jpg', 'jpeg']
 
     for (const extension of extensions) {
       const filePath = `games/${gameShorthand}/${assetType}.${extension}`
 
-      // Check if file exists by trying to get its metadata
       const { data, error: listError } = await supabaseClient.storage
         .from('hivecom-content-static')
         .list(`games/${gameShorthand}`, {
@@ -921,7 +825,6 @@ export async function deleteGameAsset(
         })
 
       if (listError === null && data !== null && data.length > 0) {
-        // File exists, delete it
         const { error } = await supabaseClient.storage
           .from('hivecom-content-static')
           .remove([filePath])
@@ -935,7 +838,6 @@ export async function deleteGameAsset(
       }
     }
 
-    // No file found with any extension - this might be intentional
     return { success: true }
   }
   catch (error) {
@@ -972,7 +874,7 @@ export async function uploadProjectBanner(
       ? 'webp'
       : (processedFile.name.split('.').pop()?.toLowerCase() ?? 'png')
 
-    // Remove existing banner variants silently to avoid stale files
+    // Clear other extensions first so a stale banner can't win the lookup.
     const cleanupResult = await deleteProjectBanner(supabaseClient, normalizedProjectId, { silent: true })
 
     if (!cleanupResult.success && typeof cleanupResult.error === 'string' && cleanupResult.error.length > 0) {
@@ -997,8 +899,7 @@ export async function uploadProjectBanner(
       .from(PROJECT_BANNER_BUCKET)
       .getPublicUrl(filePath)
 
-    // The path is stable across replacements (upsert), so without a version
-    // param the browser and CDN keep serving the previous image.
+    // Upserts keep the path, so without a version the browser and CDN serve the old image.
     const bustUrl = `${urlData.publicUrl}?v=${Date.now()}`
 
     dispatchProjectBannerUpdated(normalizedProjectId, bustUrl)
@@ -1043,8 +944,7 @@ export async function getProjectBannerUrl(
         const filePath = buildProjectBannerPath(normalizedProjectId, extension)
         const { data: urlData } = bucket.getPublicUrl(filePath)
 
-        // Version by last modification so replaced banners bypass the stale
-        // browser/CDN cache for the unchanged path.
+        // Version by mtime so a replaced file at the same path skips the browser and CDN cache.
         const updatedAt = file.updated_at ?? file.created_at
         return updatedAt
           ? `${urlData.publicUrl}?v=${new Date(updatedAt).getTime()}`
@@ -1109,17 +1009,12 @@ export async function deleteProjectBanner(
   }
 }
 
-/**
- * Deletes a user's avatar from storage
- * Tries multiple common extensions to find and delete the avatar, prioritizing WebP
- */
 export async function deleteUserAvatar(
   supabaseClient: SupabaseClient<Database>,
   userId: string,
 ): Promise<{ success: boolean, error?: string }> {
   try {
-    // Find and delete ALL avatar files regardless of extension - stale files
-    // from previous uploads (e.g. old jpg when current is gif) must all go.
+    // Every extension goes, including stale ones from earlier uploads.
     const extensions = ['webp', 'gif', 'webm', 'png', 'jpg', 'jpeg']
 
     const filesToDelete = (
@@ -1137,7 +1032,7 @@ export async function deleteUserAvatar(
     ).filter((f): f is string => f !== null)
 
     if (filesToDelete.length === 0) {
-      // No avatar found - still clear the profile column in case it's stale
+      // Clear the column anyway in case it's stale.
       await supabaseClient.from('profiles').update({ avatar_extension: null }).eq('id', userId)
       return { success: true }
     }
@@ -1151,13 +1046,10 @@ export async function deleteUserAvatar(
       return { success: false, error: error.message }
     }
 
-    // Invalidate cached avatar URL since we deleted it
     invalidateAvatarCache(userId)
 
-    // Clear avatar_extension in profiles table
     await supabaseClient.from('profiles').update({ avatar_extension: null }).eq('id', userId)
 
-    // Dispatch avatar deleted event
     dispatchAvatarUpdated({ userId, url: null })
 
     return { success: true }

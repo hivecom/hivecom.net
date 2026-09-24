@@ -63,7 +63,6 @@ const props = defineProps<{
   canViewUserEmails?: boolean
 }>()
 
-// Define emits
 const emit = defineEmits(['edit'])
 
 const isBelowSmall = useBreakpoint('<s')
@@ -84,20 +83,15 @@ const sortedBadges = computed(() => {
   })
 })
 
-// Get current user
 const currentUser = useSupabaseUser()
 const supabase = useSupabaseClient()
 
-// Avatar state
 const avatarUrl = ref<string | null>(null)
 
-// Friends modal state
 const showFriendsModal = ref(false)
 
-// Friends data
 const allFriendships = ref<Array<{ id: number, friender: string, friend: string }>>([])
 
-// Fetch all friendships for this user
 const {
   data: friendshipsData,
   loading: friendshipsLoading,
@@ -110,14 +104,12 @@ const {
   }),
   {
     enabled: computed(() => !!props.user?.id),
-    ttl: 2 * 60 * 1000, // 2 minutes for friendship data
+    ttl: 2 * 60 * 1000,
   },
 )
 
-// Update local friendships data when query data changes
 watch(friendshipsData, (newData) => {
   if (newData && props.user?.id) {
-    // Filter to only friendships involving this user
     allFriendships.value = newData.filter(f =>
       f.friender === props.user!.id || f.friend === props.user!.id,
     )
@@ -127,7 +119,6 @@ watch(friendshipsData, (newData) => {
   }
 }, { immediate: true })
 
-// Get friends (mutual friendships)
 const friends = computed(() => {
   if (!props.user?.id)
     return []
@@ -148,7 +139,7 @@ const friends = computed(() => {
   return mutualFriends
 })
 
-// Get sent requests (user sent but no reciprocation)
+// Sent by this user and not reciprocated
 const sentRequests = computed(() => {
   if (!props.user?.id)
     return []
@@ -168,7 +159,7 @@ const sentRequests = computed(() => {
   return sentRequests
 })
 
-// Get incoming requests (others sent to user but user hasn't reciprocated)
+// Sent to this user and not reciprocated
 const incomingRequests = computed(() => {
   if (!props.user?.id)
     return []
@@ -188,10 +179,8 @@ const incomingRequests = computed(() => {
   return incomingRequests
 })
 
-// Define models for two-way binding with proper type definitions
 const isOpen = defineModel<boolean>('isOpen', { default: false })
 
-// Type that specifically allows null
 type UserAction = {
   user: NonNullable<typeof props.user>
   type: UserActionType | null
@@ -200,35 +189,29 @@ type UserAction = {
 } | null
 const userAction = defineModel<UserAction>('userAction', { default: null })
 
-// Add a refreshTrigger model to request a refresh from parent
 const refreshUser = defineModel<boolean>('refreshUser', { default: false })
 
-// Watch for userAction changes to trigger data refresh after actions are performed
 watch(() => userAction.value, (action) => {
   if (action) {
-    // If it's an edit action, emit edit event - let parent handle closing
+    // The parent handles closing on edit.
     if (action.type === 'edit') {
       emit('edit', props.user)
 
-      // Remove: isOpen.value = false - let parent handle this
       return
     }
 
-    // After a longer delay to ensure the action completes and data is updated on the server
+    // Give the server time to finish the action before asking for a refresh.
     setTimeout(() => {
-      // Set refresh flag to true to trigger refresh in parent
       refreshUser.value = true
-    }, 1500) // Increased from 500ms to 1500ms for more reliable updates
+    }, 1500)
   }
 })
 
-// Watch for user changes to fetch avatar and refetch friends data
 watch(() => props.user, async (newUser) => {
   if (newUser?.id) {
     avatarUrl.value = null
     avatarUrl.value = await getUserAvatarUrl(supabase, newUser.id)
 
-    // Refetch friends data when user changes
     await refetchFriendships()
   }
   else {
@@ -244,10 +227,8 @@ const hasActiveBan = computed(() => {
   return isBanActive(props.user.banned, props.user.ban_end)
 })
 
-// Computed property for user status
 const userStatus = computed(() => (hasActiveBan.value ? 'banned' : 'active'))
 
-// Computed property for user activity status
 const activityStatus = computed(() => {
   if (!props.user?.last_seen)
     return null
@@ -259,7 +240,6 @@ const lastSeenVariant = computed(() => getLastSeenVariant(activityStatus.value))
 
 const countryInfo = computed(() => (props.user ? getCountryInfo(props.user.country ?? null) : null))
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
@@ -268,7 +248,6 @@ function isDetailActionLoading(actionType: string) {
   return !!props.actionLoading?.[actionType as UserActionType]
 }
 
-// Get user initials for avatar fallback
 function getUserInitials(username: string): string {
   return username
     .split(' ')
@@ -314,7 +293,6 @@ defineExpose({ refreshBadges })
 
     <Flex v-if="user" column gap="m" class="user-detail">
       <Flex column gap="m" expand>
-        <!-- Basic Info -->
         <DetailTable>
           <template #header>
             <Icon name="ph:info" />
@@ -354,7 +332,6 @@ defineExpose({ refreshBadges })
             </span>
           </DetailRow>
 
-          <!-- Website Information -->
           <DetailRow :hidden="!user.website" label="Website">
             <a
               :href="user.website!"
@@ -366,7 +343,6 @@ defineExpose({ refreshBadges })
             </a>
           </DetailRow>
 
-          <!-- Friends Information -->
           <DetailRow label="Friends">
             <Skeleton v-if="friendshipsLoading" :height="16" :width="80" :radius="4" />
             <template v-else-if="friends.length > 0 || sentRequests.length > 0 || incomingRequests.length > 0">
@@ -391,7 +367,6 @@ defineExpose({ refreshBadges })
           </DetailRow>
         </DetailTable>
 
-        <!-- Ban Information -->
         <Card v-if="user.banned" separators class="ban-info-card card-bg">
           <template #header>
             <h6 class="ban-header">
@@ -421,7 +396,6 @@ defineExpose({ refreshBadges })
           </DetailTable>
         </Card>
 
-        <!-- Platform Connections -->
         <Flex
           v-if="user.patreon_id || user.discord_id || user.steam_id || user.has_teamspeak || user.lastfm_username"
           gap="s"
@@ -526,7 +500,6 @@ defineExpose({ refreshBadges })
         </Flex>
 
         <Flex expand :wrap="isBelowSmall">
-          <!-- User Introduction -->
           <Card separators expand class="introduction-card card-bg">
             <template #header>
               <Flex gap="xs" y-center>
@@ -538,7 +511,6 @@ defineExpose({ refreshBadges })
               {{ user.introduction ? user.introduction : 'No introduction provided.' }}
             </div>
           </Card>
-          <!-- User Avatar -->
           <Card separators class="avatar-card card-bg">
             <template #header>
               <h6>Avatar</h6>
@@ -551,7 +523,6 @@ defineExpose({ refreshBadges })
           </Card>
         </Flex>
 
-        <!-- User Profile Markdown -->
         <Card v-if="user.markdown" separators class="card-bg">
           <template #header>
             <Flex x-between y-center expand>
@@ -567,7 +538,6 @@ defineExpose({ refreshBadges })
           </div>
         </Card>
 
-        <!-- Fixed Badges -->
         <Card v-if="sortedBadges.length" separators class="card-bg">
           <template #header>
             <h6>Badges</h6>
@@ -589,7 +559,6 @@ defineExpose({ refreshBadges })
           </div>
         </Card>
 
-        <!-- Metadata -->
         <Metadata
           :created-at="user.created_at"
           :created-by="user.created_by"
@@ -600,7 +569,6 @@ defineExpose({ refreshBadges })
       </Flex>
     </Flex>
 
-    <!-- Friends Modal -->
     <FriendsModal
       v-if="user"
       v-model:open="showFriendsModal"

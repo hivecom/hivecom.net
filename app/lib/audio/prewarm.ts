@@ -1,11 +1,6 @@
-// Warm the fullscreen player's visuals for a track in the background, so opening
-// the view is instant instead of decoding and analyzing on the spot. Decoding
-// fills the shared buffer cache the spectrum reads (lib/audio/decode), and
-// computeWaveform caches the peaks the waveform draws; the inflight dedup in
-// decodeAudio collapses both into one fetch and one decode.
-//
-// Fire-and-forget: a failure (e.g. cross-origin without CORS) just means the
-// views fall back to their loading/empty states, exactly as before.
+// Fills the decode and waveform caches in the background so the fullscreen
+// player opens instantly. Fire-and-forget: a failure only leaves the views on
+// their loading or empty states.
 
 import { decodeAudio } from '@/lib/audio/decode'
 import { computeWaveform } from '@/lib/audio/waveform'

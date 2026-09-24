@@ -50,7 +50,7 @@ function updateCommentMarkers(monaco: MonacoModule, editor: MonacoEditor) {
     const end = model.getPositionAt(match.index + match[0].length)
     markers.push({
       severity: monaco.MarkerSeverity.Warning,
-      message: 'Block comments (/* ... */) are stripped on save. This is a security measure - comments can be used to obfuscate dangerous patterns (e.g. java/**/script:) that would otherwise bypass sanitization. To document your CSS, consider posting a comment under your theme - you can pin it to keep notes visible at the top.',
+      message: 'Block comments (/* ... */) are stripped on save. They can hide dangerous patterns like java/**/script: from sanitization. To document your CSS, post a comment under your theme and pin it to keep the notes at the top.',
       startLineNumber: start.lineNumber,
       startColumn: start.column,
       endLineNumber: end.lineNumber,
@@ -182,10 +182,8 @@ onMounted(async () => {
     updateCommentMarkers(monaco, editor)
   })
 
-  // Sync external model changes (e.g. reset) back into the editor.
-  // Guard against re-entrancy: if the editor itself triggered the change,
-  // getValue() already matches so setValue() is a no-op, but we skip it
-  // anyway to avoid cursor/selection disruption.
+  // Sync external model changes (e.g. reset) back into the editor. Skip it when the
+  // editor triggered the change itself, so the cursor and selection aren't disrupted.
   watch(model, (newVal) => {
     if (editorInstance && newVal !== editorInstance.getValue()) {
       editorInstance.setValue(newVal ?? '')

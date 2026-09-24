@@ -69,7 +69,6 @@ async function load() {
   if (!userId.value || loaded.value)
     return
 
-  // Check cache first
   const cached = subscriptionsCache.getList(userId.value)
   if (cached !== null) {
     subscriptions.value = cached

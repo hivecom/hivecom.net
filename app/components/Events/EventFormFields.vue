@@ -74,12 +74,9 @@ function update<K extends keyof FormState>(key: K, value: FormState[K]) {
 }
 
 // ── Local date ref ─────────────────────────────────────────────────────────────
-// Calendar emits on every intermediate interaction (hour/minute scroll).
-// Binding it directly to modelValue via update() creates a re-render cycle:
-// emit -> parent sets new modelValue object -> Calendar gets new :model-value -> emits again.
-// Fix: keep a local ref that Calendar owns; only propagate outward when the
-// date value actually changes (compared by time), and only pull inward when
-// the parent sets a genuinely different date.
+// Calendar emits on every intermediate interaction, and binding it straight to
+// modelValue loops (emit, parent sets a new object, Calendar emits again). Calendar
+// owns this local ref instead, and it only syncs when the date actually changes.
 
 const localDate = ref<Date | null>(props.modelValue.date)
 
@@ -152,7 +149,7 @@ const mediaContext = computed(() =>
 // ── Editor passthrough ──────────────────────────────────────────────────────
 // The editor uploads pasted/dropped media lazily (blob placeholders). Consumers
 // drive their own submit, so they MUST flush pending uploads before persisting
-// the markdown - otherwise blob: URLs get saved and render as missing media.
+// the markdown, or blob: URLs get saved and render as missing media.
 
 const editorRef = ref<InstanceType<typeof RichTextEditor> | null>(null)
 
@@ -165,7 +162,6 @@ defineExpose({ flushPendingUploads })
 
 <template>
   <Flex column gap="l" class="event-form-fields">
-    <!-- Official event toggle - privileged only -->
     <Switch
       v-if="isPrivileged"
       reversed
@@ -175,7 +171,6 @@ defineExpose({ flushPendingUploads })
       @update:model-value="emit('update:isOfficial', !!$event)"
     />
 
-    <!-- Title -->
     <Input
       :model-value="modelValue.title"
       expand
@@ -188,7 +183,6 @@ defineExpose({ flushPendingUploads })
       @update:model-value="update('title', String($event))"
     />
 
-    <!-- Date picker -->
     <Grid expand>
       <div class="event-form-fields__date-picker-container">
         <label for="event-date-picker" class="event-form-fields__label">
@@ -224,7 +218,6 @@ defineExpose({ flushPendingUploads })
       </div>
     </Grid>
 
-    <!-- Duration -->
     <Flex column gap="s" expand>
       <div class="event-form-fields__label">
         Duration
@@ -262,7 +255,6 @@ defineExpose({ flushPendingUploads })
       </Grid>
     </Flex>
 
-    <!-- Recurrence builder -->
     <RecurrenceBuilder
       v-if="showRecurrenceBuilder"
       :model-value="modelValue.recurrence_rule"
@@ -270,7 +262,6 @@ defineExpose({ flushPendingUploads })
       @update:model-value="update('recurrence_rule', $event)"
     />
 
-    <!-- Upcoming occurrences, individually removable -->
     <Flex v-if="upcomingOccurrences.length > 0" column gap="xs" expand>
       <span class="text-s font-medium">Upcoming occurrences</span>
       <span class="text-xs text-color-light">Removed dates drop out of the series when you save.</span>
@@ -319,7 +310,6 @@ defineExpose({ flushPendingUploads })
       @update:model-value="emit('update:recurrenceException', !!$event)"
     />
 
-    <!-- Description -->
     <Input
       :model-value="modelValue.description"
       expand
@@ -332,7 +322,6 @@ defineExpose({ flushPendingUploads })
       @update:model-value="update('description', String($event))"
     />
 
-    <!-- Note -->
     <Input
       :model-value="modelValue.note"
       expand
@@ -342,7 +331,6 @@ defineExpose({ flushPendingUploads })
       @update:model-value="update('note', String($event))"
     />
 
-    <!-- Games -->
     <Flex column gap="s" expand>
       <div class="event-form-fields__label">
         Games
@@ -356,7 +344,6 @@ defineExpose({ flushPendingUploads })
       />
     </Flex>
 
-    <!-- Rich text content -->
     <RichTextEditor
       ref="editorRef"
       :model-value="modelValue.markdown"
@@ -372,7 +359,6 @@ defineExpose({ flushPendingUploads })
       @update:model-value="update('markdown', $event ?? '')"
     />
 
-    <!-- Location -->
     <Input
       :model-value="modelValue.location"
       expand
@@ -382,7 +368,6 @@ defineExpose({ flushPendingUploads })
       @update:model-value="update('location', String($event))"
     />
 
-    <!-- Link -->
     <Input
       :model-value="modelValue.link"
       expand

@@ -18,10 +18,9 @@ const props = defineProps<{
   isLoading?: (action: string) => Record<string, boolean> | boolean
   showLabels?: boolean
   size?: 's' | 'm' | 'l'
-  currentUserId?: string // Add current user ID to hide ban/delete for self
+  currentUserId?: string // Hides ban and delete for yourself
 }>()
 
-// Get admin permissions
 const { canModifyUsers, canDeleteUsers } = useAdminPermissions()
 
 const isMobile = useBreakpoint('<xs')
@@ -29,7 +28,6 @@ const showLabels = computed(() => !!props.showLabels && !isMobile.value)
 
 // const buttonSize = computed(() => showLabels.value ? 'm' as const : 's' as const)
 
-// Define a model value for actions with proper type
 interface UserAction {
   user: typeof props.user
   type: 'ban' | 'unban' | 'edit' | 'delete' | null
@@ -38,8 +36,6 @@ interface UserAction {
 }
 const action = defineModel<UserAction | null>('modelValue', { default: null })
 
-// Handler functions to update the model value with the appropriate action
-// State for modals
 const showBanModal = ref(false)
 const showUnbanConfirm = ref(false)
 const showDeleteConfirm = ref(false)
@@ -97,7 +93,7 @@ function isActionLoading(actionType: string): boolean {
   return !!loading[actionType]
 }
 
-// Check if this is the current user to prevent self-ban/delete
+// Used to block self-ban and self-delete.
 const isCurrentUser = computed(() => props.currentUserId === props.user.id)
 </script>
 
@@ -170,14 +166,12 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
       </template>
     </Tooltip>
 
-    <!-- Ban User Modal -->
     <BanUserModal
       v-model:open="showBanModal"
       :user="props.user"
       @ban="handleBan"
     />
 
-    <!-- Confirmation Modal for Edit Action -->
     <ConfirmModal
       v-model:open="showEditConfirm"
       :confirm="handleEdit"
@@ -188,7 +182,6 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
       :destructive="true"
     />
 
-    <!-- Confirmation Modal for Unban Action -->
     <ConfirmModal
       v-model:open="showUnbanConfirm"
       :confirm="handleUnban"
@@ -199,7 +192,6 @@ const isCurrentUser = computed(() => props.currentUserId === props.user.id)
       :destructive="false"
     />
 
-    <!-- Confirmation Modal for Delete Action -->
     <ConfirmModal
       v-model:open="showDeleteConfirm"
       :confirm="handleDelete"

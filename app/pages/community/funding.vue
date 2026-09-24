@@ -14,14 +14,12 @@ import { formatCurrency } from '@/lib/utils/currency'
 
 const user = useSupabaseUser()
 
-// All data via shared cached composables - no manual onMounted fetch needed.
 const { allFunding: monthlyFunding, latestFunding, loading: fundingLoading, error: fundingError } = useDataMonthlyFunding()
 const { supporterIds: supporters, loading: supportersLoading, error: supportersError } = useDataSupporters()
 const { expenses, loading: expensesLoading, error: expensesError } = useDataExpenses()
 
 const isBelowSmall = useBreakpoint('<s')
 
-// UI state
 const showPastExpenses = ref(false)
 
 useSeoMeta({
@@ -36,7 +34,6 @@ defineOgImage('Default', {
   description: 'See Hivecom community funding, expenses, and how to support the project.',
 })
 
-// Filtered expenses based on checkbox
 const filteredExpenses = computed(() => {
   if (showPastExpenses.value)
     return expenses.value
@@ -44,21 +41,18 @@ const filteredExpenses = computed(() => {
   return expenses.value.filter(expense => expense.ended_at == null)
 })
 
-// Combine loading and error states
 const isLoading = computed(() => fundingLoading.value || supportersLoading.value || expensesLoading.value)
 const combinedError = computed(() => fundingError.value ?? supportersError.value ?? expensesError.value ?? '')
 </script>
 
 <template>
   <div class="page container-l">
-    <!-- Hero section -->
     <section class="page-title">
       <h1>Funding</h1>
       <p>Discover how we are funded, how you can support us and where your contributions go.</p>
     </section>
 
     <ClientOnly>
-      <!-- Loading state -->
       <section v-if="isLoading">
         <Flex column gap="xxs">
           <!-- Supporters card -->
@@ -97,14 +91,11 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
         </Flex>
       </section>
 
-      <!-- Error state -->
       <section v-else-if="combinedError">
         <ErrorAlert message="Failed to load funding data" :error="combinedError" standalone />
       </section>
 
-      <!-- Main content -->
       <Flex v-else column expand>
-        <!-- Our Supporters -->
         <Card v-if="user && supporters.length > 0" class="supporters-card pb-l" expand>
           <div class="supporters-card__sheen gold-surface" aria-hidden="true" />
           <Flex column gap="m" x-center y-center class="supporters-card__content">
@@ -129,7 +120,6 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
           </Flex>
         </Card>
 
-        <!-- Current Funding Progress -->
         <Flex expand column>
           <FundingProgress :on-funding-page="true" />
 
@@ -162,12 +152,10 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
           </Grid>
         </Flex>
 
-        <!-- Historical Funding -->
         <Flex expand column class="mt-xl">
           <FundingHistory :monthly-funding="monthlyFunding" :format-currency="formatCurrency" />
         </Flex>
 
-        <!-- Expenses Breakdown -->
         <Flex column expand class="mt-xl">
           <Flex x-between y-center wrap expand>
             <h3 class="section-title">
@@ -191,7 +179,6 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
           </Alert>
         </Flex>
 
-        <!-- Support Information -->
         <Flex id="support-cta" expand class="mt-xl">
           <SupportCTA :supporter-ids="supporters" />
         </Flex>
@@ -260,9 +247,7 @@ const combinedError = computed(() => fundingError.value ?? supportersError.value
   background-color: var(--color-bg-card);
 }
 
-// Responsive grid for expenses
 .expenses-grid {
-  // Ensure cards stretch to fill grid height
   align-items: stretch;
 
   @media screen and (max-width: $breakpoint-s) {

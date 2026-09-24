@@ -27,29 +27,24 @@ const props = defineProps<{
   } | null
 }>()
 
-// Define emits
 const emit = defineEmits<{
   edit: [expense: Tables<'funding_expenses'>]
   delete: [expense: Tables<'funding_expenses'>]
 }>()
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
 const { handleContentClick } = useExternalLinkGuard()
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle edit action from AdminActions
 function handleEdit(expense: Tables<'funding_expenses'>) {
   emit('edit', expense)
   isOpen.value = false
 }
 
-// Handle delete action from AdminActions
 function handleDelete(expense: Tables<'funding_expenses'>) {
   emit('delete', expense)
   isOpen.value = false
@@ -86,7 +81,6 @@ function handleDelete(expense: Tables<'funding_expenses'>) {
     </template>
 
     <Flex v-if="props.expense" column gap="m" class="expense-details">
-      <!-- Basic info -->
       <DetailTable>
         <template #header>
           <Icon name="ph:receipt" />
@@ -120,7 +114,6 @@ function handleDelete(expense: Tables<'funding_expenses'>) {
         </DetailRow>
       </DetailTable>
 
-      <!-- Description -->
       <DetailTable v-if="props.expense.description">
         <template #header>
           <Icon name="ph:text-align-left" />
@@ -133,7 +126,6 @@ function handleDelete(expense: Tables<'funding_expenses'>) {
         </div>
       </DetailTable>
 
-      <!-- Metadata -->
       <Metadata
         :created-at="props.expense.created_at"
         :created-by="props.expense.created_by"

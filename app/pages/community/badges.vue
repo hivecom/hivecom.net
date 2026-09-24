@@ -5,8 +5,6 @@ import { computed } from 'vue'
 import ProfileBadgeFromSlug from '@/components/Profile/Badges/ProfileBadgeFromSlug.vue'
 import { BADGE_CATALOG, BADGE_VARIANT_ORDER } from '@/lib/badges/catalog'
 
-// useSeoMeta / defineOgImage are Nuxt auto-imports - no explicit import needed
-
 // Build preview entries for computed badges: one entry per defined tier threshold
 interface BadgePreviewEntry {
   slug: string
@@ -45,7 +43,6 @@ const participationBadges = computed((): BadgePreviewEntry[] => {
       continue
 
     const tiers = entry.tiers as Partial<Record<BadgeVariant, number>>
-    // Iterate from lowest tier to highest for display order
     for (const tier of [...BADGE_VARIANT_ORDER].reverse()) {
       const threshold = tiers[tier]
       if (threshold !== undefined) {

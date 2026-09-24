@@ -108,9 +108,8 @@ const { add: addAttachments } = useChatAttachments()
 const { canChat } = useIrcChat()
 const fileDragging = ref(false)
 
-// Shared sharing-rules gate. Attaching files (button, drop, paste) routes
-// through useChatAttachments, which opens this modal when the user hasn't
-// agreed yet; we just mount the modal once here for the whole chat surface.
+// Sharing-rules gate. useChatAttachments opens this modal when the user hasn't
+// agreed yet. It's mounted once here for the whole chat surface.
 const {
   open: sharingRulesOpen,
   agreed: sharingRulesAgreed,
@@ -146,17 +145,14 @@ const chatFontStyle = computed(() => ({ '--chat-font-size': `${isMobile.value ? 
 
 const fallbackNick = `anon-${Math.random().toString(36).slice(2, 7)}`
 
-// Key the sign-out handling off the auth session (userId), not the profile data
-// (user). The profile ref transiently goes null whenever its fetch errors or
-// hasn't resolved yet - e.g. a network blip that also drops the IRC socket - and
-// treating that as a sign-out would call clearAuthedIdentity() and wipe every
-// channel buffer, which is what flashed "No channels open" mid-session.
+// Key sign-out off the auth session (userId), not the profile (user). The profile
+// ref goes null whenever its fetch errors or is pending, and treating that as a
+// sign-out would wipe every channel buffer mid-session.
 watch([userId, user], ([id, u], prev) => {
   const prevId = prev?.[0]
   if (!id) {
-    // Genuinely signed out (no auth session). Drop any persisted identity from a
-    // previous signed-in session so the connect form doesn't pre-fill that
-    // registered nick/channel - it would fail to auth.
+    // Signed out. Drop the persisted signed-in identity so the connect form
+    // doesn't prefill a registered nick/channel that would fail auth.
     if (prevId && isConnected.value)
       disconnect()
     clearAuthedIdentity()
@@ -324,11 +320,9 @@ watch([userId, user], ([id, u], prev) => {
   display: flex;
   flex-direction: column;
   width: 100%;
-  // Fill the parent via flex rather than height: 100%. Both surfaces (.chat-page
-  // and the sheet's .vui-card-content) are flex columns; a percentage height
-  // doesn't resolve against the sheet's flex-derived height, which let content
-  // overflow the card-content (VUI makes it overflow-y: auto) instead of the
-  // inner .chat-log__scroll - breaking scroll-to-load and autoscroll there.
+  // Fill the parent via flex, not height: 100%. A percentage height doesn't
+  // resolve against the sheet's flex-derived height, so content overflowed the
+  // card-content instead of .chat-log__scroll and broke scroll-to-load there.
   flex: 1;
   min-height: 0;
   border: 1px solid var(--color-border);

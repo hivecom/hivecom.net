@@ -318,7 +318,7 @@ watch(showReferendumDetails, (isOpen) => {
 })
 
 // Only open the details panel once after the initial load completes.
-// Do NOT watch loading.value - that would re-run every time a fetch starts/ends.
+// Do NOT watch loading.value, which would re-run on every fetch start and end.
 watch(
   () => route.query.referendum,
   (referendumId) => {
@@ -377,7 +377,6 @@ watch(() => refreshSignal.value, (newValue, oldValue) => {
 onBeforeMount(async () => {
   await fetchReferendums()
 
-  // Honour any ?referendum= query param present on initial load
   const referendumId = route.query.referendum
   if (!referendumId)
     return
@@ -394,12 +393,10 @@ onBeforeMount(async () => {
 
 <template>
   <Flex column expand>
-    <!-- Error message -->
     <Alert v-if="errorMessage" variant="danger">
       {{ errorMessage }}
     </Alert>
 
-    <!-- Initial skeleton - only shown on first load -->
     <Flex v-else-if="initialLoad" gap="s" column expand>
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <ReferendumFilters

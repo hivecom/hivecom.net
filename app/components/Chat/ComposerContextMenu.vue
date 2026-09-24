@@ -22,8 +22,8 @@ const { emojiOpen, emojiPos, closeMenu, writeClipboard, readClipboard, recordEmo
 const emojiAnchor = useTemplateRef('emoji-anchor')
 const hasSelection = ref(false)
 
-// Unlike TipTap, a contenteditable loses its selection the moment the menu steals
-// focus, so capture the caret at right-click time and operate against that.
+// A contenteditable loses its selection the moment the menu steals focus, so
+// capture the caret at right-click time and operate against that.
 const savedCaret = ref({ start: 0, end: 0 })
 
 function onContextMenu(event: MouseEvent) {
@@ -151,9 +151,8 @@ function insertEmoji(emoji: string) {
 </template>
 
 <style scoped lang="scss">
-// The menu wraps the composer input, which is a flex child that must keep filling
-// the row. Make the wrapper a transparent flex pass-through so the input still
-// stretches exactly as it did without the menu around it.
+// The menu wraps the composer input, a flex child that must keep filling the
+// row, so the wrapper is a transparent flex pass-through.
 .composer-context-menu {
   display: flex;
   flex: 1;

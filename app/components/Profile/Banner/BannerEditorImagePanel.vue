@@ -28,7 +28,6 @@ const emit = defineEmits<{
         Drag to move - drag corner to resize - hold Shift to ignore aspect ratio
       </p>
 
-      <!-- Rotation -->
       <Flex y-center gap="s" expand>
         <span class="banner-editor__field-label">Rotate</span>
         <input
@@ -43,7 +42,6 @@ const emit = defineEmits<{
         <span class="banner-editor__range-value">{{ layer.rotation }}&deg;</span>
       </Flex>
 
-      <!-- Position -->
       <div class="banner-editor__transform-grid">
         <span class="banner-editor__field-label">X</span>
         <input

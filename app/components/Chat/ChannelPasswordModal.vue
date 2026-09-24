@@ -27,8 +27,8 @@ function submit() {
 
   joinChannel(props.channel, key.value.trim())
 
-  // Modal stays open - closes automatically on successful JOIN,
-  // or shows an error if 475 comes back.
+  // The modal stays open. It closes on a successful JOIN, or shows an error if
+  // 475 comes back.
 }
 
 function cancel() {

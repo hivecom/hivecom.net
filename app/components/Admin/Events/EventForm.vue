@@ -13,19 +13,16 @@ const props = defineProps<{
   isEditMode: boolean
 }>()
 
-// Define emits
 const emit = defineEmits<{
   save: [eventData: object]
   delete: [id: number]
   fork: [payload: { oldId: number, cappedRule: string, newEventData: object }]
 }>()
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
 const formFieldsRef = ref<InstanceType<typeof EventFormFields> | null>(null)
 
-// Get admin permissions
 const { hasPermission } = useAdminPermissions()
 const canDeleteEvents = computed(() => hasPermission('events.delete'))
 
@@ -188,9 +185,8 @@ async function handleSubmit() {
 
   saveLoading.value = true
 
-  // Upload any pending blob-placeholder media before reading the markdown,
-  // otherwise blob: URLs get persisted and render as missing media. The editor
-  // surfaces its own error toast on failure, so we just abort here.
+  // Flush pending blob-placeholder media first, or blob: URLs get persisted and
+  // render as missing media. The editor shows its own error toast, so just abort.
   const uploaded = await formFieldsRef.value?.flushPendingUploads()
   if (uploaded === false) {
     saveLoading.value = false
@@ -221,7 +217,7 @@ function doFork() {
   const lastOccurrence = pastOccurrences.at(-1)
 
   if (!lastOccurrence) {
-    // Fallback - no past occurrences found, just save normally
+    // No past occurrences, so just save normally.
     emit('save', pendingEventData)
     pendingEventData = null
     return
@@ -338,7 +334,6 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
     </template>
   </Sheet>
 
-  <!-- Delete Confirmation Modal -->
   <ConfirmModal
     v-if="props.event"
     v-model:open="showDeleteConfirm"
@@ -350,7 +345,6 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Event' : 'Cre
     :destructive="true"
   />
 
-  <!-- Fork Confirmation Modal -->
   <ConfirmModal
     v-model:open="showForkConfirm"
     title="This event has already occurred"

@@ -11,7 +11,6 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// Check if expense is currently active
 const isActive = computed(() => {
   return !props.expense.ended_at
 })
@@ -19,7 +18,6 @@ const isActive = computed(() => {
 // Check if this is a planned expense (start date in the future)
 const planned = computed(() => isPlannedExpense(props.expense.started_at))
 
-// Get expense status
 const expenseStatus = computed(() => {
   if (planned.value) {
     return { label: 'Planned', variant: 'accent' as const }
@@ -36,7 +34,6 @@ const expenseStatus = computed(() => {
 <template>
   <Card class="expense-card">
     <Flex column gap="s">
-      <!-- Header with name and amount -->
       <Flex x-between y-center expand>
         <h4 class="text-bold">
           {{ expense.name || 'Unnamed Expense' }}
@@ -46,25 +43,21 @@ const expenseStatus = computed(() => {
         </Badge>
       </Flex>
 
-      <!-- Amount -->
       <div>
         <span class="text-l text-bold">{{ formatCurrency(expense.amount_cents) }}</span>
         <span class="text-color-light text-s">/month</span>
       </div>
 
-      <!-- Description -->
       <p v-if="expense.description" class="text-color-light text-s">
         {{ expense.description }}
       </p>
 
-      <!-- Date range -->
       <Flex x-between y-center>
         <span v-if="planned" class="text-xs text-color-lightest">Starts {{ fullDateLong(expense.started_at) }}</span>
         <span v-else class="text-xs text-color-lightest">Since {{ fullDateLong(expense.started_at) }}</span>
         <span v-if="expense.ended_at" class="text-xs text-color-lightest">Ended {{ fullDateLong(expense.ended_at) }}</span>
       </Flex>
 
-      <!-- External link if available -->
       <Flex v-if="expense.url" class="mt-xs">
         <a
           :href="expense.url"

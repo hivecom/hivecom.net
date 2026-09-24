@@ -395,11 +395,9 @@ function isInsufficientAalError(error: unknown): boolean {
   return code === 'insufficient_aal' || /aal2 required/i.test(message)
 }
 
-// A passkey-authenticated session is aal1 server-side (our access-token hook
-// only elevates the JWT claim, not the GoTrue session), so removing a verified
-// factor requires the user to step up by verifying an existing authenticator.
-// Pick a verified TOTP factor to challenge against - prefer the one being
-// removed, otherwise any other verified authenticator.
+// A passkey session is aal1 server-side (the access-token hook only elevates the JWT
+// claim, not the GoTrue session), so removing a verified factor needs a step-up.
+// Prefer challenging the factor being removed, otherwise any other verified one.
 function pickStepUpFactorId(target: MfaFactor): string | null {
   if (target.factor_type === 'totp' && target.status === 'verified')
     return target.id

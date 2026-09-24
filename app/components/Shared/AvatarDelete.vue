@@ -22,19 +22,15 @@ const emit = defineEmits<{
   delete: []
 }>()
 
-// State
 const showDeleteConfirm = ref(false)
 const imageExists = ref(true)
 const isHovered = ref(false)
 
-// Computed properties
 const hasAvatar = computed(() => !!props.avatarUrl && imageExists.value)
 const showOverlay = computed(() => hasAvatar.value && (isHovered.value || props.loading) && !props.disabled)
 
-// Watch for avatar URL changes to check if image exists
 watch(() => props.avatarUrl, (newUrl) => {
   if (newUrl) {
-    // Create a new image to test if the URL is valid
     const img = new Image()
     img.onload = () => {
       imageExists.value = true
@@ -49,7 +45,6 @@ watch(() => props.avatarUrl, (newUrl) => {
   }
 }, { immediate: true })
 
-// Get user initials for avatar fallback
 function getUserInitials(username: string): string {
   return username
     .split(' ')
@@ -59,20 +54,17 @@ function getUserInitials(username: string): string {
     .toUpperCase()
 }
 
-// Handle delete confirmation
 function handleDeleteConfirm() {
   emit('delete')
   showDeleteConfirm.value = false
 }
 
-// Open delete confirmation modal
 function openDeleteConfirm() {
   if (!props.disabled && !props.loading && hasAvatar.value) {
     showDeleteConfirm.value = true
   }
 }
 
-// Handle mouse events
 function handleMouseEnter() {
   if (hasAvatar.value && !props.disabled) {
     isHovered.value = true
@@ -96,14 +88,12 @@ function handleMouseLeave() {
     @mouseleave="handleMouseLeave"
     @click="openDeleteConfirm"
   >
-    <!-- Avatar -->
     <AvatarMedia :size="size" :url="avatarUrl || undefined" :alt="username">
       <template v-if="!hasAvatar" #default>
         {{ getUserInitials(username) }}
       </template>
     </AvatarMedia>
 
-    <!-- Hover Overlay -->
     <div v-if="showOverlay" class="delete-overlay">
       <div class="overlay-content">
         <Icon
@@ -121,7 +111,6 @@ function handleMouseLeave() {
     </div>
   </div>
 
-  <!-- Delete Confirmation Modal -->
   <ConfirmModal
     v-model:open="showDeleteConfirm"
     :confirm="handleDeleteConfirm"
@@ -189,7 +178,6 @@ function handleMouseLeave() {
   }
 }
 
-/* Hover effects */
 .avatar-delete-container.has-avatar:not(.is-disabled):hover {
   .delete-overlay {
     background: rgba(220, 38, 38, 0.8);

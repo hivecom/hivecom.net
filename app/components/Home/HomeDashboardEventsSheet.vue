@@ -7,12 +7,8 @@ import EventSmall from '@/components/Events/EventSmall.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataGames } from '@/composables/useDataGames'
 
-// Every event, opened from the handful the events card has room for. Upcoming
-// is what the card already knows: whatever's running now, what I'm going to,
-// then the rest in the card's own order (friends first). Past is fetched here
-// the first time its tab opens, since the dashboard never needs history
-// otherwise. Both use the events page's own card, and every card fetches its
-// own attendees, so they mount a page at a time as the list scrolls.
+// Every EventSmall fetches its own attendees, so the lists mount a page at a time
+// as they scroll. Past is only fetched once its tab opens.
 const props = defineProps<{
   open: boolean
   ongoing: Tables<'events'>[]
@@ -35,7 +31,7 @@ const pastSentinel = ref<HTMLElement | null>(null)
 
 interface Row {
   event: Tables<'events'>
-  /** Set on the first row of a group, which is where its label goes. */
+  /** Set on the first row of a group */
   heading: string | null
 }
 
@@ -55,9 +51,7 @@ const upcomingExhausted = computed(() => upcomingVisible.value.length >= upcomin
 
 // ── Past ───────────────────────────────────────────────────────────────────
 
-// Same RPC the events page pages through, newest first. The dashboard is only
-// ever shown signed in, so there's no official-only filter to apply the way
-// the events page does for anonymous visitors.
+// No official-only filter, since the dashboard is only shown signed in
 const pastEvents = ref<Tables<'events'>[]>([])
 const pastLoading = ref(false)
 const pastLoadingMore = ref(false)
@@ -79,12 +73,10 @@ async function fetchPast(): Promise<void> {
   const rows = (data ?? []) as Tables<'events'>[]
   pastEvents.value = [...pastEvents.value, ...rows]
 
-  // A short page is the end of the history.
   pastExhausted.value = rows.length < PAGE_SIZE
 }
 
-// Fetched once per mount. History doesn't change between opens, and the card
-// stays mounted for as long as the dashboard is up.
+// Once per mount. History doesn't change between opens.
 async function ensurePast(): Promise<void> {
   if (pastRequested)
     return
@@ -111,8 +103,8 @@ watch(activeTab, (tab) => {
 
 // ── Infinite scroll sentinels ──────────────────────────────────────────────
 
-// Each sentinel only exists while its tab is showing and past its skeletons,
-// so the observers follow the elements rather than the open state.
+// A sentinel only exists once its tab renders past the skeletons, so the
+// observers follow the elements rather than the open state
 let observer: IntersectionObserver | null = null
 let pastObserver: IntersectionObserver | null = null
 
@@ -155,7 +147,7 @@ watch(pastSentinel, (el) => {
   })
 })
 
-// Reopening starts back on upcoming, at the top. The past pages stay loaded.
+// The past pages stay loaded across reopens
 watch(() => props.open, (open) => {
   if (open)
     return
@@ -187,7 +179,6 @@ onUnmounted(() => {
       </Tabs>
     </template>
 
-    <!-- Upcoming tab -->
     <Flex v-if="activeTab === 'upcoming'" column gap="m" class="pt-s">
       <GlowGroup>
         <Flex column gap="m" expand>
@@ -210,7 +201,6 @@ onUnmounted(() => {
       </div>
     </Flex>
 
-    <!-- Past tab -->
     <Flex v-else column gap="m" class="pt-s">
       <template v-if="pastLoading">
         <Skeleton v-for="i in 4" :key="i" width="100%" :height="164" :radius="8" />
@@ -243,8 +233,7 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" scoped>
-// Same type as the dashboard's section labels, so the groups read like the
-// card they came from.
+// Matches the dashboard's section labels
 .events-sheet__heading {
   font-size: var(--font-size-xs);
   text-transform: uppercase;
@@ -257,20 +246,17 @@ onUnmounted(() => {
   }
 }
 
-// EventSmall's root is the link, which sits inline by default and would let
-// the card shrink to its content inside a column.
+// EventSmall's root is an inline link, which would shrink to its content
 .events-sheet__card {
   display: block;
   width: 100%;
 }
 
-// Pulls the tab underline down onto the sheet header's border, same as the
-// forum sheet's tabs.
+// Pulls the tab underline onto the sheet header's border
 .events-sheet__tabs {
   margin-bottom: -13px;
 }
 
-// Infinite-scroll sentinel
 .events-sheet__sentinel {
   display: flex;
   align-items: center;

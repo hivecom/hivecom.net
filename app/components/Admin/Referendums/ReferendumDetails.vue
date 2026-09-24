@@ -15,19 +15,15 @@ const props = defineProps<{
   referendum: Tables<'referendums'> | null
 }>()
 
-// Define emits
 const emit = defineEmits<{
   edit: [referendum: Tables<'referendums'>]
   delete: [referendum: Tables<'referendums'>]
 }>()
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
-// Setup Supabase client
 const supabase = useSupabaseClient()
 
-// Fetch votes for this referendum
 const { data: referendumVotes } = await useAsyncData(
   `referendum-votes-${props.referendum?.id}`,
   async () => {
@@ -52,24 +48,20 @@ const { data: referendumVotes } = await useAsyncData(
   },
 )
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle edit action from AdminActions
 function handleEdit(referendum: Tables<'referendums'>) {
   emit('edit', referendum)
   isOpen.value = false
 }
 
-// Handle delete action from AdminActions
 function handleDelete(referendum: Tables<'referendums'>) {
   emit('delete', referendum)
   isOpen.value = false
 }
 
-// Computed vote count
 const voteCount = computed(() => referendumVotes.value?.length || 0)
 </script>
 
@@ -106,7 +98,6 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
 
     <Flex v-if="props.referendum" column gap="m" class="referendum-details">
       <Flex column gap="m" expand>
-        <!-- Basic info -->
         <DetailTable>
           <template #header>
             <Icon name="ph:scales" />
@@ -171,7 +162,6 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
           </div>
         </DetailTable>
 
-        <!-- Results -->
         <Flex v-if="referendumVotes && referendumVotes.length > 0" expand>
           <ReferendumResults
             :referendum="props.referendum"
@@ -191,7 +181,6 @@ const voteCount = computed(() => referendumVotes.value?.length || 0)
           </div>
         </DetailTable>
 
-        <!-- Metadata -->
         <Metadata
           :created-at="props.referendum.created_at"
           :created-by="props.referendum.created_by"

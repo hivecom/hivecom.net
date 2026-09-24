@@ -15,9 +15,8 @@ interface RsvpRow {
   occurrence_date: string | null
 }
 
-// Tracks both occurrence-level and series-level RSVP rows for an event.
-// occurrenceRow - RSVP scoped to this specific event row (or null)
-// seriesRow     - RSVP scoped to the parent series (or null, only for child occurrences)
+// occurrenceRow is scoped to this event row. seriesRow is scoped to the parent
+// series and only set for child occurrences.
 interface RsvpState {
   occurrenceRow: RsvpRow | null
   seriesRow: RsvpRow | null
@@ -33,21 +32,8 @@ function statusCacheKey(eventId: number, userId: string, occurrenceDate: string 
 }
 
 /**
- * Manages RSVP state for a single event, supporting both one-off (occurrence)
- * and recurring-series (series) scopes.
- *
- * Resolution order for the displayed status:
- *   1. occurrence-scoped RSVP against this event row (highest priority / override)
- *   2. series-scoped RSVP against the parent event (only for child occurrences)
- *   3. null - no RSVP
- *
- * Exposes:
- *   rsvpStatus        - effective displayed status (read-only computed)
- *   rsvpScope         - scope of the row driving rsvpStatus ('occurrence' | 'series' | null)
- *   hasSeriesRsvp     - true when a series-level RSVP exists (independent of occurrence override)
- *   hasOccurrenceRsvp - true when an occurrence-level override exists
- *   updateRsvp(status, scope) - upsert with explicit scope
- *   removeRsvp(scope?)        - remove occurrence override, series RSVP, or both
+ * The displayed status is the occurrence-scoped RSVP if there is one (an
+ * override), then the series-scoped RSVP on the parent, then null.
  */
 export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | undefined>, occurrenceDateSource?: MaybeRefOrGetter<string | null | undefined>) {
   const supabase = useSupabaseClient()
@@ -62,12 +48,11 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
   const seriesRow = ref<RsvpRow | null>(null)
   const rsvpLoading = ref(false)
 
-  // Computed effective status - occurrence overrides series
+  // Occurrence overrides series.
   const rsvpStatus = computed<RSVPStatus | null>(() => {
     return occurrenceRow.value?.rsvp ?? seriesRow.value?.rsvp ?? null
   })
 
-  // Which scope is actually driving the displayed status
   const rsvpScope = computed<RSVPScope | null>(() => {
     if (occurrenceRow.value != null)
       return 'occurrence'
@@ -80,7 +65,6 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
   const hasSeriesRsvp = computed(() => seriesRow.value != null)
   const hasOccurrenceRsvp = computed(() => occurrenceRow.value != null)
 
-  // Whether this event is a child occurrence of a recurring series
   const isChildOccurrence = computed(() => event.value?.recurrence_parent_id != null)
 
   async function checkRsvpStatus(): Promise<void> {
@@ -102,7 +86,6 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
     }
 
     try {
-      // Always fetch occurrence-scoped RSVP for this event
       const occurrenceDateVal = occurrenceDate.value
       const occurrenceQuery = supabase
         .from('event_rsvps')
@@ -116,7 +99,6 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
         : occurrenceQuery.is('occurrence_date', null)
       ).maybeSingle()
 
-      // Fetch series-scoped RSVP if this is a recurring event
       const seriesPromise = currentEvent.recurrence_rule != null
         ? supabase
             .from('event_rsvps')
@@ -164,7 +146,6 @@ export function useRSVP(eventSource: MaybeRefOrGetter<Tables<'events'> | null | 
       ? (currentEvent.recurrence_parent_id ?? currentEvent.id)
       : currentEvent.id
 
-    // Find existing row for this scope
     const existingRow = scope === 'occurrence' ? occurrenceRow.value : seriesRow.value
 
     rsvpLoading.value = true

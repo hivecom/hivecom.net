@@ -6,8 +6,6 @@ import { useDataGameAssets } from '@/composables/useDataGameAssets'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { metricsPlayerCount } from '@/types/metrics'
 
-// useGameConnect is consumed inside GameServerConnectButton
-
 type GameserverData = NonNullable<ReturnType<typeof useDataLinkPreview>['data']['value']> & { type: 'gameserver' }
 
 const props = defineProps<{
@@ -79,7 +77,6 @@ const playerCount = computed((): number | null => {
     class="link-embed link-embed--gameserver"
     :href="data.href"
   >
-    <!-- Game background image -->
     <div
       v-if="gameBackground"
       class="link-embed__game-bg"
@@ -124,7 +121,7 @@ const playerCount = computed((): number | null => {
           </template>
         </Flex>
 
-        <!-- Connect button - stop propagation so the NuxtLink doesn't navigate -->
+        <!-- Stop propagation so the NuxtLink doesn't navigate -->
         <GameServerConnectButton
           v-if="hasAddresses"
           :addresses="data.addresses"

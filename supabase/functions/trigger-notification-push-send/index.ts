@@ -4,8 +4,7 @@ import { authorizeSystemTrigger } from "../_shared/auth.ts";
 import { responseMethodNotAllowed } from "../_shared/response.ts";
 import { createPublicServiceRoleClient } from "../_shared/serviceRoleClients.ts";
 
-// Payload sent by the `trigger_send_notification_push` trigger on
-// public.user_notifications (one POST per inserted notification row).
+// trigger_send_notification_push sends one POST per inserted user_notifications row
 interface PushRequest {
   notificationId: string;
   userId: string;
@@ -15,8 +14,7 @@ interface PushRequest {
   source?: string | null;
 }
 
-// Mirror of the client `sourceLabel()` so the push title matches the in-app
-// OS notification (title = friendly source label, body = notification title).
+// Mirrors the client's sourceLabel() so the push title matches the in-app notification
 function sourceLabel(source?: string | null): string {
   switch (source) {
     case "discussion_reply":
@@ -104,9 +102,8 @@ Deno.serve(async (req) => {
 
   const supabase = createPublicServiceRoleClient();
 
-  // Consent is per-device: a subscription row exists only because the user
-  // enabled push on that device, and disabling removes it. So delivery is
-  // driven purely by the rows here - no account-wide opt-in gate.
+  // Consent is per device: a row only exists while push is enabled on that device,
+  // so there's no account-wide opt-in gate
   const { data: subscriptions, error: subsError } = await supabase
     .from("user_push_subscriptions")
     .select("endpoint, p256dh, auth")
@@ -121,7 +118,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ success: true, sent: 0 });
   }
 
-  // Unread count for the app icon badge (PWA dock / home screen).
+  // For the app icon badge
   const { count: unreadCount } = await supabase
     .from("user_notifications")
     .select("id", { count: "exact", head: true })
@@ -153,7 +150,7 @@ Deno.serve(async (req) => {
         sent += 1;
         deliveredEndpoints.push(sub.endpoint);
       } catch (err) {
-        // 404/410 mean the subscription is gone for good - prune it.
+        // 404 and 410 mean the subscription is gone for good
         const status = (err as { response?: { status?: number } })?.response
           ?.status;
         if (status === 404 || status === 410) {

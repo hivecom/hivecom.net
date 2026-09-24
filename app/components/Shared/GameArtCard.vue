@@ -4,9 +4,7 @@ import { onMounted, ref, watch } from 'vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import { useDataGameAssets } from '@/composables/useDataGameAssets'
 
-// A game as artwork rather than a row, for the surfaces that want a game to
-// read as a cover at a glance instead of as one more line in a list. Opens the
-// same details modal every other game name on the site does, unless it's been
+// A game as artwork rather than a row. Opens the game details modal unless it's
 // given a title and route of its own, which is how a gameserver borrows the art
 // of the game it runs.
 const props = withDefaults(defineProps<{

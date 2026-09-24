@@ -1,14 +1,4 @@
-/**
- * Singleton page-visibility composable.
- *
- * Tracks `document.hidden` as a reactive ref. Only one event listener is
- * attached regardless of how many composable instances are created.
- *
- * Usage:
- *   const { isHidden } = usePageVisibility()
- *   watch(isHidden, hidden => { ... })
- */
-
+// Module-level, so there's one listener however many instances exist.
 const isHidden = ref(false)
 
 if (import.meta.client) {

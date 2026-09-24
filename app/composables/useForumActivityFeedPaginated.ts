@@ -36,13 +36,12 @@ export interface UseForumActivityFeedPaginatedOptions {
   discussionLookup: ComputedRef<Map<string, Tables<'discussions'>>>
   visibleDiscussionIds: ComputedRef<Set<string>>
   hiddenTopicIds: ComputedRef<Set<string>>
-  /** Called when a topic item is clicked */
   onTopicClick: (id: string) => void
 
-  /** When set, only return items created by the current signed-in user (maps to p_created_by RPC param) */
+  /** Only the signed-in user's items (p_created_by). */
   createdByCurrentUser?: boolean
 
-  /** When set, exclude items created by the current signed-in user (maps to p_exclude RPC param) */
+  /** Excludes the signed-in user's items (p_exclude). */
   excludeCurrentUser?: boolean
 }
 
@@ -65,7 +64,6 @@ export function useForumActivityFeedPaginated({
   const exhausted = ref(false)
   const offset = ref(0)
 
-  // Cache key is stable per user context - different for community vs mine tabs
   function feedCacheKey(): string {
     const uid = userId.value ?? 'anon'
     if (createdByCurrentUser)
@@ -167,7 +165,6 @@ export function useForumActivityFeedPaginated({
     return result
   })
 
-  // IDs of all users mentioned in reply bodies for mention lookup
   const mentionIds = computed<string[]>(() => {
     const ids = new Set<string>()
     for (const item of rawItems.value) {
@@ -231,7 +228,6 @@ export function useForumActivityFeedPaginated({
     if (loading.value)
       return
 
-    // Serve first page from cache when available
     const cacheKey = feedCacheKey()
     const cached = feedCache.get<{ rows: FeedRow[], exhausted: boolean }>(cacheKey)
     if (cached !== null) {
@@ -247,7 +243,6 @@ export function useForumActivityFeedPaginated({
     rawItems.value = []
     await fetchPage(0, false)
 
-    // Cache the loaded first page
     if (rawItems.value.length > 0) {
       feedCache.set(cacheKey, { rows: rawItems.value, exhausted: exhausted.value })
     }

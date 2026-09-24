@@ -29,9 +29,8 @@ const removing = ref('')
 
 const hasMore = computed(() => nextToken.value !== null)
 
-// Table.Root and TableSkeleton inject the select-row context that only
-// defineTable provides, so this call is load-bearing even with pagination and
-// selection off - SES's forward-only token drives loading instead.
+// Table.Root and TableSkeleton inject the select-row context only defineTable
+// provides, so this call is load-bearing even with pagination and selection off.
 const { rows } = defineTable(entries)
 
 async function loadFirstPage() {
@@ -84,10 +83,8 @@ function reasonVariant(reason: string | null) {
   return 'neutral'
 }
 
-// SES is suppressing the address but our profile never got flagged, so the two
-// sides disagree about whether this person is deliverable. The mirror case,
-// flagged but not in SES, is a first-class row now and gets its own badge in
-// the reason column instead.
+// SES suppresses the address but our profile never got flagged, so the two sides
+// disagree on deliverability. The mirror case gets its own badge in the reason column.
 function hasDrift(entry: SuppressionEntry): boolean {
   return entry.sesSuppressed && entry.user !== null && !entry.user.bouncedFlag
 }

@@ -2,28 +2,19 @@
 import type { CSSProperties } from 'vue'
 import LandingHeroShader from '@/components/Landing/LandingHeroBackground.vue'
 
-// Persistent nebula + stars for the home page. Rendered once at the page level
-// and kept mounted across the dashboard <-> landing swap, so the WebGL canvas
-// never tears down and the nebula never blinks out. The variant only swaps the
-// overlay treatment (vignette vs soft edge fade) and base strength, which
-// crossfade over the top of the same canvas.
+// Stays mounted across the dashboard and landing swap so the WebGL canvas never
+// tears down. The variant only crossfades the overlay and base strength.
 withDefaults(defineProps<{
   variant?: 'dashboard' | 'landing'
 }>(), {
   variant: 'landing',
 })
 
-// Everything below reads the viewport, so none of it can exist until the
-// component is actually in a browser. `import.meta.client` isn't enough of a
-// guard: it's already true while Vue is hydrating, so computing here would hand
-// the hydrating render values the server never produced and mismatch the whole
-// subtree. Gating on mount holds the first client render identical to the HTML
-// and fills things in a tick later.
+// Everything below reads the viewport. import.meta.client is already true while
+// hydrating, which would mismatch the server HTML, so this gates on mount instead.
 const mounted = ref(false)
 
-// The nebula drifts down a touch and fades as you scroll off the first viewport,
-// so it reads as a fixed backdrop dissolving into the page rather than scrolling
-// away with it. Applied without a transition so the parallax stays snappy.
+// Fades over the first viewport of scroll so the backdrop dissolves into the page
 const { y: scrollY } = useWindowScroll()
 const heroFade = computed(() => {
   if (!mounted.value)
@@ -32,9 +23,7 @@ const heroFade = computed(() => {
   return Math.max(0, 1 - scrollY.value / (vh * 1.6))
 })
 
-// The star parallax offset lives here too: it's the same value for every star
-// (each one scales it by its own multiplier), so one write on the container
-// beats patching 75 inline styles per scroll tick.
+// One write on the container beats patching every star's inline style per scroll tick
 const nebulaVars = computed<CSSProperties | undefined>(() => {
   if (!mounted.value)
     return undefined
@@ -45,15 +34,11 @@ const nebulaVars = computed<CSSProperties | undefined>(() => {
   }
 })
 
-// Randomly scatter stars across the viewport, client-side so we can read its size.
 const STAR_COUNT = 75
 const STAR_TRANSFORM_THRESHOLD = 0.4
 
-// The parallax depths stars can sit at. Each star used to carry its own
-// continuous multiplier, but that made every scroll frame recompute 75 element
-// transforms. Snapping the random multiplier to a few shared planes lets the
-// wrapper divs carry the transform instead: scroll moves 5 layers, not 75
-// elements. The depths are random decoration, so the quantisation doesn't read.
+// Stars snap to a few shared depth planes, so scrolling transforms the plane
+// wrappers instead of every star. The quantisation doesn't show.
 const PLANE_MULTIPLIERS = [0, 0.225, 0.45, 0.675, 0.9]
 
 interface StarPlane {
@@ -72,8 +57,7 @@ onMounted(() => {
     const verticalRandom = Math.random()
     const baseOpacity = Math.random() * 0.45 + 0.55
 
-    // Same distribution as before (40% hold still, the rest spread over
-    // (0, 0.9]), rounded to the nearest plane.
+    // 40% hold still, the rest spread over (0, 0.9], rounded to the nearest plane
     const multiplier = verticalRandom < STAR_TRANSFORM_THRESHOLD ? 0 : (verticalRandom - STAR_TRANSFORM_THRESHOLD) * 1.5
     const planeIndex = Math.round((multiplier / maxMultiplier) * (PLANE_MULTIPLIERS.length - 1))
 
@@ -103,12 +87,9 @@ onMounted(() => {
     <div class="home-backdrop__nebula">
       <div class="home-backdrop__nebula-fx">
         <ClientOnly>
-          <!-- Dashboard runs the drift at half speed for a calmer backdrop.
-               Paused once the scroll fade has taken it fully transparent, so
-               the GL loop isn't burning frames on an invisible canvas. -->
+          <!-- Paused once the scroll fade makes it invisible, so the GL loop stops burning frames -->
           <LandingHeroShader class="home-backdrop__shader" :speed="variant === 'dashboard' ? 0.5 : 1" :paused="heroFade === 0" />
         </ClientOnly>
-        <!-- Both treatments are always present and crossfade on variant change. -->
         <div class="home-backdrop__overlay home-backdrop__overlay--landing" />
         <div class="home-backdrop__overlay home-backdrop__overlay--dashboard" />
       </div>
@@ -133,21 +114,15 @@ onMounted(() => {
 <style lang="scss" scoped>
 @use '@/assets/mixins' as *;
 
-// Self-contained stacking context behind the page content (which sits at z-index
-// 1). pointer-events off so it never intercepts clicks.
+// Behind the page content, which sits at z-index 1
 .home-backdrop {
-  // Scroll parallax offset the stars inherit; the inline style overrides this
-  // once mounted. Declared here rather than on the star so the per-scroll write
-  // stays a single style change on the container.
+  // The inline style overrides this once mounted
   --vertical-offset: 0px;
 
   position: fixed;
   inset: 0;
-  // inset alone tracks the visual viewport, which shrinks and grows with the
-  // browser chrome on phones. Every scroll step then resizes the shader canvas,
-  // and a canvas resize clears it until the next frame paints, so the nebula
-  // flickers all the way down the page. lvh pins the height to the large
-  // viewport, so scrolling never resizes the backdrop.
+  // inset alone follows the phone's browser chrome, and every canvas resize
+  // clears it until the next paint, so the nebula flickers. lvh pins the height.
   height: 100vh;
   height: 100lvh;
   z-index: 0;
@@ -158,12 +133,11 @@ onMounted(() => {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  // Scroll fade, no transition so it tracks scroll immediately.
+  // No transition, so it tracks scroll immediately
   opacity: var(--hero-fade, 1);
   will-change: opacity;
 }
 
-// Variant base strength crossfades when swapping dashboard <-> landing.
 .home-backdrop__nebula-fx {
   position: absolute;
   inset: 0;
@@ -182,11 +156,9 @@ onMounted(() => {
 .home-backdrop__shader {
   position: absolute;
   inset: 0;
-  // Behind the overlays so the vignette / edge fade darken the nebula.
   z-index: -1;
   pointer-events: none;
-  // Scaled up so the parallax translate has headroom before the canvas edge
-  // enters the clipped nebula.
+  // Headroom for the parallax before the canvas edge shows
   transform: translate3d(0, var(--hero-shift, 0), 0) scale(1.4);
   will-change: transform;
 }
@@ -206,8 +178,7 @@ onMounted(() => {
   opacity: 1;
 }
 
-// Landing: dark vignette so the hero logo and globe stay legible, plus a bottom
-// fade so the nebula dissolves into the page instead of showing a hard band.
+// Vignette keeps the hero legible. The bottom fade avoids a hard band.
 .home-backdrop__overlay--landing {
   background: radial-gradient(
     circle at 50% 50%,
@@ -227,8 +198,6 @@ onMounted(() => {
   }
 }
 
-// Dashboard: soft edge fade toward the page background so cards stay legible, no
-// heavy vignette.
 .home-backdrop__overlay--dashboard {
   background: radial-gradient(
     circle at 50% 0%,
@@ -251,15 +220,11 @@ onMounted(() => {
   }
 }
 
-// One layer per parallax depth. The scroll offset lands here as a single
-// composited transform, so the stars inside ride along without any per-star
-// style work.
 .home-backdrop__star-plane {
   --plane-multiplier: 0;
 
   position: absolute;
   inset: 0;
-  // Above the nebula, below the page content (the whole backdrop is z-index 0).
   z-index: 1;
   pointer-events: none;
   transform: translateY(calc(var(--vertical-offset) * var(--plane-multiplier)));
@@ -276,7 +241,5 @@ onMounted(() => {
   @include star-flicker-layers;
 }
 
-// Keyframes live in the shared mixin so the landing constellation stars can
-// twinkle the same way.
 @include star-flicker;
 </style>

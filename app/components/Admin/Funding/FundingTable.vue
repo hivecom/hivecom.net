@@ -15,10 +15,8 @@ import { fullMonth } from '@/lib/utils/date'
 import FundingDetails from './FundingDetails.vue'
 import FundingFilters from './FundingFilters.vue'
 
-// Monthly funding table type
 interface MonthlyFunding extends Tables<'funding_history'> {}
 
-// Define transformed funding data interface
 interface TransformedFunding {
   'Month': string
   'Patreon Amount': string
@@ -29,7 +27,6 @@ interface TransformedFunding {
   '_original': MonthlyFunding
 }
 
-// Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 // Track the last value we ourselves emitted so the re-fetch watcher can ignore our own bumps
@@ -37,16 +34,13 @@ const lastSelfEmittedSignal = ref(-1)
 const route = useRoute()
 const router = useRouter()
 
-// Setup state
 const loading = ref(true)
 const errorMessage = ref('')
 const monthlyFundings = ref<MonthlyFunding[]>([])
 const search = ref('')
 
-// monthly_funding served from shared cache
 const { allFunding, loading: fundingLoading, error: fundingError, refresh: refreshFunding } = useDataMonthlyFunding()
 
-// Funding details state
 const showFundingDetails = ref(false)
 const selectedFunding = ref<MonthlyFunding | null>(null)
 
@@ -58,7 +52,6 @@ const focusedFundingMonth = computed(() => {
 
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 
-// Filtered and transformed funding data
 const transformedFundings = computed<TransformedFunding[]>(() => {
   let filteredData = monthlyFundings.value
 
@@ -69,11 +62,10 @@ const transformedFundings = computed<TransformedFunding[]>(() => {
     )
   }
 
-  // Sort by date (month field) in descending order by default
   filteredData = filteredData.sort((a, b) => {
     const dateA = new Date(`${a.month}T00:00:00Z`)
     const dateB = new Date(`${b.month}T00:00:00Z`)
-    return dateB.getTime() - dateA.getTime() // Descending order (newest first)
+    return dateB.getTime() - dateA.getTime()
   })
 
   return filteredData.map(funding => ({
@@ -93,7 +85,6 @@ const isFiltered = computed(() => Boolean(search.value))
 
 const isBelowMedium = useBreakpoint('<m')
 
-// Table configuration
 const { headers, rows, pagination, setPage, options } = defineTable(transformedFundings, {
   pagination: {
     enabled: true,
@@ -107,9 +98,7 @@ watch(adminTablePerPage, (perPage) => {
   setPage(1)
 })
 
-// Note: We pre-sort data by date in transformedFundings computed property
-
-// Sync from shared cache - allFunding is already ordered month descending
+// allFunding is already ordered month descending.
 watch([allFunding, fundingLoading, fundingError], () => {
   if (fundingError.value) {
     errorMessage.value = fundingError.value
@@ -121,7 +110,7 @@ watch([allFunding, fundingLoading, fundingError], () => {
     monthlyFundings.value = allFunding.value as MonthlyFunding[]
     loading.value = false
 
-    // Notify parent charts that data is ready - track this so the re-fetch watcher ignores it
+    // Tell the parent charts the data is ready. Tracked so the re-fetch watcher ignores it.
     const next = (refreshSignal.value || 0) + 1
     lastSelfEmittedSignal.value = next
     refreshSignal.value = next
@@ -179,8 +168,7 @@ watch(
   { immediate: true },
 )
 
-// Refresh signal from parent (e.g. after admin writes): bust cache and re-fetch
-// Ignore increments we emitted ourselves - only react to external bumps (e.g. ExpenseTable writes)
+// An external bump busts the cache and re-fetches. Bumps we emitted ourselves are ignored.
 watch(() => refreshSignal.value, (sig, prev) => {
   if (prev != null && sig !== prev && sig !== lastSelfEmittedSignal.value) {
     void refreshFunding()
@@ -189,15 +177,12 @@ watch(() => refreshSignal.value, (sig, prev) => {
 </script>
 
 <template>
-  <!-- Error message -->
   <Alert v-if="errorMessage" variant="danger">
     {{ errorMessage }}
   </Alert>
 
-  <!-- Loading state -->
   <template v-else-if="loading">
     <Flex gap="s" column expand>
-      <!-- Header and filters -->
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
           <FundingFilters v-model:search="search" />
@@ -208,7 +193,6 @@ watch(() => refreshSignal.value, (sig, prev) => {
         </Flex>
       </Flex>
 
-      <!-- Table skeleton -->
       <TableSkeleton
         :columns="4"
         :rows="10"
@@ -218,7 +202,6 @@ watch(() => refreshSignal.value, (sig, prev) => {
   </template>
 
   <Flex v-else gap="s" column expand>
-    <!-- Header and filters -->
     <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
       <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">
         <FundingFilters v-model:search="search" />
@@ -231,7 +214,6 @@ watch(() => refreshSignal.value, (sig, prev) => {
       </Flex>
     </Flex>
 
-    <!-- Table -->
     <TableContainer>
       <Table.Root v-if="rows.length > 0" separate-cells :loading="loading" class="mb-l">
         <template #header>
@@ -268,13 +250,11 @@ watch(() => refreshSignal.value, (sig, prev) => {
         </template>
       </Table.Root>
 
-      <!-- No results message -->
       <Alert v-else-if="!loading" variant="info">
         No funding records found
       </Alert>
     </TableContainer>
 
-    <!-- Funding Detail Sheet -->
     <FundingDetails
       v-model:is-open="showFundingDetails"
       :funding="selectedFunding"

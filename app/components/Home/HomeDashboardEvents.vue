@@ -20,12 +20,8 @@ import HomeDashboardEventItem from './HomeDashboardEventItem.vue'
 
 dayjs.extend(relativeTime)
 
-// Events card: what I'm going to, then everything else on the calendar I
-// haven't answered. The top section is a two-up grid of tiles like the forum
-// and games cards lead with, and the section under it is rows, so the three
-// cards in the row read as one surface. Empty cells get a placeholder rather
-// than collapsing, since a card that changes shape as events come and go pulls
-// the row out of line.
+// Empty cells get a placeholder rather than collapsing, since a card that changes
+// shape as events come and go pulls the row out of line.
 
 const SHOWN_ATTENDING = 2
 const SHOWN_OPEN = 3
@@ -35,24 +31,18 @@ const { rsvpByEventId, loading: rsvpsLoading } = useDataUserRsvps()
 const { mutualFriendIds } = useDataNotifications()
 const { attendingByEventId, loading: friendRsvpsLoading } = useDataFriendRsvps(mutualFriendIds)
 
-// Started but not over yet. These fall out of `upcoming` the moment they begin,
-// so without their own section the event you're meant to be at right now is the
-// one thing the card won't show you.
+// Ongoing events drop out of `upcoming` the moment they start
 const { ongoingEvents } = useOngoingEvents()
 
 const upcoming = computed(() => events.value.filter(e => dayjs(e.date).isAfter(dayjs())))
 
-// Every section here is derived from events plus RSVP state, so the card is
-// only settled once both have landed. A cache hit fills `events` on the first
-// tick and skips the skeleton entirely.
+// Settled only once events and RSVPs have both landed. A cache hit skips the skeleton.
 const loading = computed(() =>
   (eventsLoading.value || rsvpsLoading.value || friendRsvpsLoading.value)
   && upcoming.value.length === 0
   && ongoingEvents.value.length === 0,
 )
 
-// Upcoming events I said yes or tentative to, soonest first. The card takes
-// the first two; the sheet gets all of them.
 const allAttending = computed(() =>
   upcoming.value.filter((e) => {
     const status = rsvpByEventId.value.get(e.id)
@@ -62,8 +52,7 @@ const allAttending = computed(() =>
 
 const attending = computed(() => allAttending.value.slice(0, SHOWN_ATTENDING))
 
-// Everything upcoming I haven't answered, friends first, since "someone you
-// know is going" is the reason to look.
+// Friends first, since someone you know going is the reason to look
 const openToJoin = computed(() => {
   const unanswered = upcoming.value.filter(e => !rsvpByEventId.value.has(e.id))
   const withFriends = unanswered.filter(e => (attendingByEventId.value.get(e.id)?.length ?? 0) > 0)
@@ -72,15 +61,13 @@ const openToJoin = computed(() => {
   return [...withFriends, ...rest]
 })
 
-// Sections swap rather than grow. The tile grid is mine when I'm going to
-// something, with the open events as rows under it. When I'm not, the open
-// events take the grid instead and the rows section goes away.
+// Sections swap rather than grow. Without anything I'm attending, the open
+// events take the grid and the rows section goes away.
 const gridIsMine = computed(() => attending.value.length > 0)
 const rowEvents = computed(() => gridIsMine.value ? openToJoin.value.slice(0, SHOWN_OPEN) : [])
 
-// Anything running right now jumps the queue into the grid rather than getting
-// a section of its own, which made the card taller than the two beside it.
-// The grid keeps its two tiles and whatever was next fills the space left.
+// Ongoing events jump into the grid. A section of their own made the card taller
+// than its neighbours.
 const isLive = computed(() => ongoingEvents.value.length > 0)
 const gridEvents = computed(() => {
   const next = gridIsMine.value ? attending.value : openToJoin.value
@@ -95,16 +82,13 @@ const gridLabel = computed(() => {
   return gridIsMine.value ? 'Your upcoming events' : 'You could join these'
 })
 
-// Every upcoming event, where the card only has room for a handful.
 const eventsSheetOpen = ref(false)
 
 function openEventsSheet(): void {
   eventsSheetOpen.value = true
 }
 
-// The calendar only reports which day was clicked, so the create flow lives
-// here. It's the same gate the events page puts in front of the button: agree
-// to the content rules once, then the form opens.
+// The calendar only reports the clicked day. Creating needs the content rules agreed first.
 const showCreateEventModal = ref(false)
 const showContentRulesModal = ref(false)
 const createDate = ref<Date | null>(null)
@@ -146,22 +130,14 @@ function handleContentRulesConfirmed() {
       </div>
     </HomeDashboardSection>
 
-    <!-- Nothing to join means no section. The calendar underneath already
-         says the month is open, so a placeholder here would say it twice.
-         No skeleton for it either: the rows only exist in one of the card's
-         two states, and the month grid can't give up height to make room, so
-         a placeholder here pushed the whole row taller than the cards beside
-         it while loading. -->
+    <!-- No placeholder or skeleton: the calendar already shows an open month, and
+         the grid can't give up height, so either would make the card taller. -->
     <HomeDashboardSection v-if="!loading && rowEvents.length" label="You could join these">
       <Flex column gap="xs">
         <HomeDashboardEventItem v-for="event in rowEvents" :key="event.id" inline :data="event" />
       </Flex>
     </HomeDashboardSection>
 
-    <!-- The grid is the card's floor. However few events exist, the month is
-         always the same height, and an empty day is a place to start one. -->
-    <!-- The month name is the way to the full calendar. Same query the events
-         page writes when its calendar tab is picked, so it lands on that tab. -->
     <HomeDashboardSection :label="dayjs().format('MMMM')" to="/events?tab=calendar" class="home-calendar-section">
       <HomeDashboardCalendar @create="openCreate" />
     </HomeDashboardSection>
@@ -189,8 +165,7 @@ function handleContentRulesConfirmed() {
 </template>
 
 <style scoped lang="scss">
-// The month grid takes whatever height the cards beside this one leave. The
-// sections above it size to content (see the same override in the chat card).
+// The sections size to content so the month grid gets the leftover height
 .dashboard-fill > .dashboard-section {
   height: auto;
 }

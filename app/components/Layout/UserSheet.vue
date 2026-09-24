@@ -53,7 +53,6 @@ function stopImpersonating() {
   open.value = false
 }
 
-// Complaint modal state
 const showComplaintModal = ref(false)
 
 function openComplaintModal() {
@@ -68,7 +67,7 @@ function openComplaintModal() {
 }
 
 function handleComplaintSubmit(_complaintData: { message: string }) {
-  // Could show a success toast here in the future
+  // Nothing to do on success yet
 }
 
 async function signOut() {
@@ -115,7 +114,6 @@ async function signOut() {
       </template>
 
       <Flex column expand class="user-sheet__body" :gap="0">
-        <!-- Preview card for the current user -->
         <div class="user-sheet__preview">
           <UserPreviewCard
             :user-id="userId"
@@ -129,7 +127,6 @@ async function signOut() {
 
         <Divider class="my-s" />
 
-        <!-- Navigation items -->
         <Flex column expand gap="xxs" class="user-sheet__nav">
           <NuxtLink to="/profile" class="w-100">
             <DropdownItem>

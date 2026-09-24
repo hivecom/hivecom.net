@@ -1,7 +1,5 @@
 <script setup lang="ts">
-// The little bouncing bars that signal an active track is playing. Driven purely
-// by the `playing` prop so any surface (the inline AudioPlayer, the persistent
-// toast) can drop it in and stay in sync with the shared engine.
+// Bouncing bars for an active track, driven purely by the `playing` prop.
 defineProps<{
   playing: boolean
 }>()

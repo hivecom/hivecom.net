@@ -4,17 +4,14 @@ import type { Database } from "database-types";
 import { corsHeaders } from "../_shared/cors.ts";
 import { getAuthenticatedUserId } from "../_shared/auth.ts";
 
-// Rate limit: one refresh per 1 minute per user
 const RATE_LIMIT_SECONDS = 60;
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Get the authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -26,7 +23,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create Supabase client with user's auth
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = getPublishableKey();
 
@@ -38,12 +34,10 @@ Deno.serve(async (req: Request) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Get the authenticated user
     const auth = await getAuthenticatedUserId(supabase, authHeader);
     if ("response" in auth) return auth.response;
     const user = { id: auth.userId };
 
-    // Get the user's profile to check if they have a Steam ID and rich presence enabled
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("steam_id, rich_presence_enabled")
@@ -89,7 +83,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Check rate limit - look at last refresh time
     const { data: presence } = await supabase
       .from("presences_steam")
       .select("fetched_at")
@@ -121,7 +114,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Create service role client for queue operations
+    // Service role client for the queue
     const serviceRoleKey = getSecretKey();
     if (!serviceRoleKey) {
       throw new Error("Missing service role key");
@@ -129,7 +122,6 @@ Deno.serve(async (req: Request) => {
 
     const adminClient = createClient<Database>(supabaseUrl, serviceRoleKey);
 
-    // Enqueue the sync job for this user
     const { error: queueError } = await adminClient.rpc("pgmq_send", {
       queue_name: "queue_sync_steam",
       msg: {
@@ -152,7 +144,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Update fetched_at timestamp immediately to prevent rapid re-requests
+    // Stamp fetched_at now so the rate limit covers the queued job
     await adminClient
       .from("presences_steam")
       .upsert(

@@ -75,7 +75,7 @@ export function useExternalLinkGuard() {
     if (!isExternalUrl(href))
       return
 
-    // Setting disabled - let the link behave normally.
+    // With the setting off the link behaves normally.
     if (!settings.value.confirm_external_links)
       return
 

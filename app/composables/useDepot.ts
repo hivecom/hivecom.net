@@ -31,7 +31,6 @@ export interface DepotUpload {
   content_type?: string
 }
 
-// A stored upload as returned by the listing endpoints.
 export interface DepotFile {
   object_key: string
   url: string
@@ -57,7 +56,6 @@ export interface ListFilesOptions {
   q?: string
 }
 
-// Admin listing layers owner and content-type filters on top of the shared ones.
 export interface AdminListFilesOptions extends ListFilesOptions {
   account?: string
   issuer?: string
@@ -69,16 +67,14 @@ export interface DepotFilePage<T> {
   total: number
 }
 
-// The caller's own storage usage against their quota. limit is bytes; a limit of
-// 0 (or unlimited true) means no cap. Reported by GET /quota.
+// Bytes. A limit of 0, or unlimited true, means no cap.
 export interface DepotQuota {
   used: number
   limit: number
   unlimited: boolean
 }
 
-// Aggregate upload metrics for the admin KPI cards. total_size is bytes;
-// total_images counts uploads whose content type is image/*.
+// total_size is bytes. total_images counts image/* uploads.
 export interface DepotMetrics {
   total_files: number
   total_size: number
@@ -94,8 +90,8 @@ export interface DepotUploader {
   bytes: number
 }
 
-// Sort columns for the uploader leaderboard. file_count is the upload count,
-// file_size the total storage. Distinct from the /admin/files enum.
+// file_count is the upload count, file_size the total storage. Distinct from the
+// /admin/files enum.
 export type UploaderSort = 'file_count' | 'file_size'
 
 export interface MintKeyOptions {
@@ -105,14 +101,11 @@ export interface MintKeyOptions {
   expiresAt?: string
 }
 
-// Maps a depot upload onto the shared StorageAsset shape so it can flow through
-// the same grid, lightbox, and details components the Assets page uses. Depot is
-// flat and gateway-backed, so there are no folders: every file maps to a
-// `type: 'file'` asset whose path is the object key. Anonymous uploads carry no
-// uploader so they resolve to the "Unknown" placeholder.
+// Lets depot uploads use the shared asset grid, lightbox and details. Depot has
+// no folders, so every file is a `type: 'file'` asset keyed by its object key.
 export function depotFileToStorageAsset(file: DepotFile): StorageAsset {
-  // Only the admin listing carries an uploader; self files have none, which is
-  // fine since the sharing page never shows an uploader for your own uploads.
+  // Only the admin listing carries an uploader. The sharing page never shows
+  // one for your own uploads, so self files don't need it.
   const uploaderAccount = 'uploader_account' in file ? (file as DepotAdminFile).uploader_account : ''
   const account = uploaderAccount === ANONYMOUS_OWNER || uploaderAccount === ''
     ? null
@@ -138,11 +131,9 @@ export function depotFileToStorageAsset(file: DepotFile): StorageAsset {
 }
 
 /**
- * Client for Orbit Depot (the storage gateway at depotUrl). Wraps the
- * authenticated endpoints: one-shot uploads, plus API key mint/list/revoke.
- * Every call carries the current user's Supabase JWT, so the user must be
- * signed in. Errors throw as `Error` with Depot's message; callers own their
- * own loading state and toasts.
+ * Client for Orbit Depot, the storage gateway at depotUrl. Every call carries
+ * the user's Supabase JWT, so the user must be signed in. Errors throw with
+ * Depot's message.
  */
 export function useDepot() {
   const supabase = useSupabaseClient()
@@ -175,8 +166,7 @@ export function useDepot() {
     return new Error(data?.error ?? `${fallback} (HTTP ${res.status})`)
   }
 
-  // Query builder shared by every listing endpoint. Undefined and empty values
-  // are dropped, since Depot reads an absent param as "no filter".
+  // Drops undefined and empty values, since Depot reads an absent param as "no filter".
   function queryString(params: Record<string, string | number | undefined>): string {
     const search = new URLSearchParams()
 
@@ -246,9 +236,8 @@ export function useDepot() {
       throw await fail(res, 'Could not revoke key')
   }
 
-  // listFiles lists the caller's own uploads, paged/sorted/searchable. The
-  // gateway forces the owner to the authenticated subject, so this only ever
-  // returns your files. Requires a signed-in identity (no anonymous listing).
+  // The gateway forces the owner to the authenticated subject, so this only ever
+  // returns your files.
   async function listFiles(opts: ListFilesOptions = {}): Promise<DepotFilePage<DepotFile>> {
     const qs = queryString({
       limit: opts.limit,
@@ -268,8 +257,6 @@ export function useDepot() {
     return { files: data.files ?? [], total: data.total ?? 0 }
   }
 
-  // getQuota reports the caller's current usage against their limit. A limit of 0
-  // (or unlimited) means no cap. Requires a signed-in identity.
   async function getQuota(): Promise<DepotQuota> {
     const res = await fetch(`${baseUrl}/quota`, { headers: await authHeaders() })
 
@@ -285,8 +272,8 @@ export function useDepot() {
     }
   }
 
-  // adminListFiles lists uploads across all owners. Requires an admin caller
-  // (an OIDC login whose configured claim matched); Depot returns 403 otherwise.
+  // Every owner's uploads. Requires an admin caller (an OIDC login whose
+  // configured claim matched). Depot returns 403 otherwise.
   async function adminListFiles(opts: AdminListFilesOptions = {}): Promise<DepotFilePage<DepotAdminFile>> {
     const qs = queryString({
       limit: opts.limit,
@@ -309,9 +296,8 @@ export function useDepot() {
     return { files: data.files ?? [], total: data.total ?? 0 }
   }
 
-  // adminMetrics reports aggregate counts and size. It honors the same owner and
-  // content-type filters as adminListFiles, so passing an account scopes the
-  // numbers to one user. Admin only.
+  // Takes the same filters as adminListFiles, so an account scopes the numbers to
+  // one user. Admin only.
   async function adminMetrics(opts: AdminListFilesOptions = {}): Promise<DepotMetrics> {
     const qs = queryString({
       account: opts.account,
@@ -334,9 +320,8 @@ export function useDepot() {
     }
   }
 
-  // adminListUploaders ranks uploaders by total bytes (most first) by default,
-  // with each uploader's file count. sort/order let the table order by upload
-  // count (file_count) or storage (file_size) server-side. Admin only.
+  // Ranks by total bytes, most first, unless sort says otherwise. Sorting is
+  // server-side. Admin only.
   async function adminListUploaders(opts: { limit?: number, offset?: number, sort?: UploaderSort, order?: 'asc' | 'desc' } = {}): Promise<{ users: DepotUploader[], total: number }> {
     const qs = queryString({
       limit: opts.limit,
@@ -355,8 +340,7 @@ export function useDepot() {
     return { users: data.users ?? [], total: data.total ?? 0 }
   }
 
-  // adminContentTypes lists the distinct content types across all uploads, for
-  // the admin file-type filter dropdown. Admin only.
+  // Distinct content types across all uploads. Admin only.
   async function adminContentTypes(): Promise<string[]> {
     const res = await fetch(`${baseUrl}/admin/content-types`, { headers: await authHeaders() })
 
@@ -368,11 +352,8 @@ export function useDepot() {
     return data.content_types ?? []
   }
 
-  // wipeMyFiles removes every one of the caller's own uploads in a single call.
-  // The gateway scopes it to the authenticated identity, so it can only ever
-  // wipe your own files. Returns how many uploads were removed. Used by the
-  // standalone "wipe all" action and by account deletion (call it while the
-  // session is still valid, before the account is gone).
+  // The gateway scopes this to the authenticated identity, so it can only wipe
+  // your own files. Account deletion has to call it while the session is still valid.
   async function wipeMyFiles(): Promise<{ deleted: number }> {
     const res = await fetch(`${baseUrl}/files`, {
       method: 'DELETE',
@@ -387,10 +368,8 @@ export function useDepot() {
     return { deleted: data.deleted ?? 0 }
   }
 
-  // adminWipeUserFiles removes every upload owned by one user. Admin only (an
-  // OIDC login whose configured claim matched); Depot returns 403 otherwise. The
-  // account is the user's Supabase id (the OIDC subject); issuer is optional and
-  // narrows the wipe to one tenant when given. Returns the count removed.
+  // Admin only, Depot returns 403 otherwise. account is the Supabase user id (the
+  // OIDC subject). issuer narrows the wipe to one tenant.
   async function adminWipeUserFiles(account: string, issuer?: string): Promise<{ deleted: number }> {
     // An empty account would drop the filter entirely and widen this DELETE to
     // every upload in the gateway, so refuse it before it goes out.
@@ -410,9 +389,8 @@ export function useDepot() {
     return { deleted: data.deleted ?? 0 }
   }
 
-  // deleteFile removes one upload by its object key. A normal caller may only
-  // delete its own; an admin caller deletes any (the moderation path). The key
-  // is a slash-separated path, so encode each segment but keep the separators.
+  // A normal caller may only delete its own uploads, an admin any. The key is a
+  // slash-separated path, so each segment is encoded but the separators stay.
   async function deleteFile(objectKey: string): Promise<void> {
     const path = objectKey.split('/').map(encodeURIComponent).join('/')
 

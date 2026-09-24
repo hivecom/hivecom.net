@@ -1,30 +1,17 @@
 import { useDataUserSettings } from './useDataUserSettings'
 
 /**
- * Browser-zoom preference.
- *
- * By default the app disables the browser's own zoom gestures (trackpad pinch,
- * Safari pinch, mobile pinch / double-tap) - see `plugins/disable-zoom.client.ts`
- * and the `.disable-zoom` rule in `assets/index.scss`. Users can opt back in via
- * the "Allow browser zoom" setting. Lightboxes always provide their own zoom
- * regardless of this preference.
- *
- * The module-level `zoomDisabled` ref is the single source of truth, shared
- * between the plugin (which reads it on each gesture) and `useZoomPreference`
- * (which keeps it in sync with the user's setting). It defaults to `true` so
- * guests and the pre-hydration state keep zoom disabled.
+ * The app disables the browser's own zoom gestures unless the user turns on
+ * "Allow browser zoom". The disable-zoom plugin reads this flag on every
+ * gesture. It defaults to true so guests and pre-hydration keep zoom disabled.
  */
 const zoomDisabled = ref(true)
 
-/** Read-only-ish accessor for the global flag, usable from plugins/components. */
 export function useBrowserZoomDisabled() {
   return zoomDisabled
 }
 
-/**
- * Wires the user's `allow_browser_zoom` setting to the global flag and applies
- * the side effects (viewport meta + `<html>` class). Call once, centrally.
- */
+// Also drives the viewport meta and the <html> class. Call once, centrally.
 export function useZoomPreference() {
   const { settings } = useDataUserSettings()
 

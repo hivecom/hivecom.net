@@ -1,18 +1,13 @@
-// GlobeTheme.ts
-// Color getters for the globe that read from CSS custom properties so they
-// automatically track the active theme (dark/light, custom user themes, etc.)
-// All functions are safe to call on every frame - getComputedStyle is fast.
+// Globe colours read live from CSS custom properties so they track the active
+// theme, custom user themes included. Cheap enough to call every frame.
 
 import { cssVar } from '@/lib/cssVar'
 
-// Shared
 export const BACKGROUND_COLOR = 'rgba(0,0,0,0)'
 export const ATMOSPHERE_COLOR = '#ddffcc'
 
 // ---------------------------------------------------------------------------
-// Canvas-based CSS color parser
-// Handles any format the browser resolves: hex, rgb(), oklch(), hsl(), etc.
-// Returns [r, g, b] in 0-255 range, or null if unparseable.
+// Canvas-based CSS color parser, for any format the browser resolves
 // ------------------------------------------------------------------------
 let _canvas: HTMLCanvasElement | null = null
 let _ctx: CanvasRenderingContext2D | null = null
@@ -35,12 +30,10 @@ function parseCssColor(color: string): [number, number, number] | null {
   if (ctx == null)
     return null
 
-  // Reset to a known opaque color so we can detect parse failures.
+  // An invalid colour leaves fillStyle untouched, so it reads back as black.
   ctx.fillStyle = '#000'
   ctx.fillStyle = color
 
-  // If the browser couldn't parse it, fillStyle stays '#000' (or whatever
-  // the last valid value was). We detect that by just reading back the pixel.
   ctx.clearRect(0, 0, 1, 1)
   ctx.fillRect(0, 0, 1, 1)
   const d = ctx.getImageData(0, 0, 1, 1).data
@@ -50,9 +43,8 @@ function parseCssColor(color: string): [number, number, number] | null {
 const HEX6_RE = /^#([0-9a-f]{6})$/i
 const HEX3_RE = /^#([0-9a-f]{3})$/i
 
-/** Parse any CSS color string into an [r, g, b] 0-255 tuple. */
+/** [r, g, b] in 0-255. */
 export function parseColor(color: string): [number, number, number] {
-  // Fast path: plain 6-digit hex - no canvas needed.
   const hex6 = HEX6_RE.exec(color)
   if (hex6 != null) {
     const v = Number.parseInt(hex6[1]!, 16)
@@ -65,11 +57,9 @@ export function parseColor(color: string): [number, number, number] {
     return [r!, g!, b!]
   }
 
-  // Fall back to canvas for rgb(), oklch(), hsl(), and anything else.
   return parseCssColor(color) ?? [0, 0, 0]
 }
 
-/** Convert any CSS color to an "r,g,b" string suitable for rgba(). */
 function colorToRgbString(color: string): string {
   const [r, g, b] = parseColor(color)
   return `${r},${g},${b}`
@@ -98,7 +88,7 @@ export function isLightTheme(): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Color getters - read live from CSS variables
+// Color getters
 // ------------------------------------------------------------------------
 export function getArcColor(): string {
   return cssVar('--color-accent') || (isLightTheme() ? '#69883e' : '#a7fc2f')
@@ -130,8 +120,7 @@ export function getGlobeColor(): string {
 }
 
 // ---------------------------------------------------------------------------
-// Utility - blend two CSS colors (any format) by t in [0, 1]
-// Returns a hex string safe for Three.js and globe.gl color callbacks.
+// Blending, hex out so Three.js and globe.gl color callbacks accept it
 // ------------------------------------------------------------------------
 export function blendHex(from: string, to: string, t: number): string {
   const clamp = Math.max(0, Math.min(1, t))

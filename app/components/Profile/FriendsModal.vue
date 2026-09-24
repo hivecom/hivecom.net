@@ -18,14 +18,11 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-// Modal state
 const isOpen = defineModel<boolean>('open', { default: false })
 const isBelowSmall = useBreakpoint('<xs')
 
-// Tab state
 const activeTab = ref<'friends' | 'sent' | 'incoming'>('friends')
 
-// Computed counts for each tab
 const friendsCount = computed(() => props.friends.length)
 const sentCount = computed(() => props.sentRequests.length)
 const incomingCount = computed(() => props.incomingRequests.length)
@@ -69,7 +66,6 @@ function handleClose() {
     </template>
 
     <div class="friends-modal-content">
-      <!-- Tabs (only show for own profile) -->
       <Tabs v-if="showAllTabs" v-model="activeTab" class="friends-modal__tabs" expand variant="filled">
         <Tab value="friends">
           <Flex y-center gap="xs">
@@ -100,9 +96,7 @@ function handleClose() {
         </Tab>
       </Tabs>
 
-      <!-- Tab Content -->
       <div class="friends-modal__tab-content">
-        <!-- Empty State -->
         <div v-if="currentTabData.length === 0" class="friends-modal__tab-empty">
           <Flex column y-center x-center gap="s">
             <Icon
@@ -124,7 +118,6 @@ function handleClose() {
           </Flex>
         </div>
 
-        <!-- User List -->
         <BulkUserDisplay
           v-else
           :user-ids="currentTabData"

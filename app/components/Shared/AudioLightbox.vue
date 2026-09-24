@@ -9,13 +9,10 @@ import AudioWaveform from '@/components/Shared/AudioWaveform.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { formatClock } from '@/lib/utils/duration'
 
-// The single global fullscreen player. Mounted once in app.vue, it reads the
-// shared engine and shows whatever track is active, so every inline AudioPlayer
-// can pop it without each owning a modal. A vertical Resizable stacks three
-// panels: a placeholder visualization on top, the live spectrum in the middle,
-// and the waveform timeline at the bottom. The waveform is the timeline (click or
-// drag it to seek), so the footer is just the centered timecode and a play/volume
-// row.
+// The single global fullscreen player, mounted once in app.vue. It shows whatever
+// track the shared engine has active, so inline players don't each own a modal.
+// The waveform is the timeline (click or drag to seek), so the footer only holds
+// the timecode and the play/volume row.
 
 const player = useAudioPlayer()
 
@@ -31,7 +28,6 @@ const headerSubtitle = computed(() => player.tags.value?.artist ?? player.subtit
 // pins output to full on mobile, so there's nothing to force here.
 const isMobile = useBreakpoint('<s')
 
-// Waveform click/drag seeks the live engine.
 function onWaveformSeek(time: number) {
   player.currentTime.value = time
 }
@@ -161,21 +157,17 @@ useEventListener('keydown', (event) => {
     width: 100%;
   }
 
-  // The vertical split stacking the visualization, spectrum and waveform. Takes
-  // all the height the transport leaves; the handles between panels are draggable.
   &__split {
     flex: 1;
     min-height: 0;
     width: 100%;
   }
 
-  // The placeholder visualization panel on top.
   &__visualization {
     height: 100%;
     width: 100%;
   }
 
-  // The reactive spectrum panel.
   &__spectrum {
     height: 100%;
     width: 100%;
@@ -185,8 +177,7 @@ useEventListener('keydown', (event) => {
     min-width: 0;
   }
 
-  // Small square cover thumbnail beside the titles. Hidden entirely when a track
-  // has no embedded art, so the header looks exactly as it did before.
+  // Cover thumbnail beside the titles. Hidden when the track has no embedded art.
   &__cover {
     border-radius: var(--border-radius-s);
     flex-shrink: 0;
@@ -220,7 +211,6 @@ useEventListener('keydown', (event) => {
     width: 100%;
   }
 
-  // Centered footer under the timeline: timecode over the play/volume row.
   &__footer {
     flex-shrink: 0;
     width: 100%;

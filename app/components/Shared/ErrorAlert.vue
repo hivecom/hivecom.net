@@ -118,7 +118,6 @@ function buildComplaintMessage() {
     </Alert>
   </div>
 
-  <!-- Mobile: stacked centered layout -->
   <Alert v-else-if="isMobile" variant="danger" filled>
     <Flex column gap="xs" x-center>
       <Icon name="ph:warning-diamond" size="32" class="standalone-icon" />
@@ -143,7 +142,6 @@ function buildComplaintMessage() {
     </Flex>
   </Alert>
 
-  <!-- Desktop: side-by-side -->
   <Alert v-else variant="danger" filled>
     <Flex y-center x-between gap="s">
       <p>{{ props.message }}</p>

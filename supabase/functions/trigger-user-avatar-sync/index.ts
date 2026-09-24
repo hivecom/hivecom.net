@@ -25,7 +25,7 @@ type SyncUserAvatarRequest = {
 };
 
 const AVATAR_BUCKET = "hivecom-content-users";
-const MAX_IMAGE_BYTES = 1 * 1024 * 1024; // 1MB - matches bucket limit
+const MAX_IMAGE_BYTES = 1 * 1024 * 1024; // Matches the bucket limit
 const FETCH_TIMEOUT_MS = 8000;
 
 Deno.serve(async (req: Request) => {
@@ -84,7 +84,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Try social avatar URL first (if provided)
     let downloaded:
       | { ok: true; bytes: Uint8Array; contentType: ImageContentType }
       | { ok: false; reason: string; status?: number }
@@ -101,7 +100,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Fall back to Gravatar if social URL is missing/invalid or download failed
     if (!downloaded || !downloaded.ok) {
       const gravatarUrl = buildGravatarUrl(gravatarHash);
       if (!gravatarUrl) {
@@ -167,7 +165,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Update profiles.avatar_extension so the fast-path lookup works immediately
+    // So the avatar_extension fast path works right away
     const { error: profileError } = await supabase
       .from("profiles")
       .update({ avatar_extension: fileExt })
@@ -241,8 +239,7 @@ async function findExistingAvatar(
 
     if (error) {
       console.error("Storage list failed:", error);
-      // If we can't check existence, continue and let the upload (with upsert:false)
-      // be the final guard against overwriting an existing avatar.
+      // Carry on and let the upload (upsert: false) be the guard against overwriting
       return null;
     }
 
@@ -329,7 +326,7 @@ function isAllowedImageContentType(
 }
 
 function buildGravatarUrl(emailHash: string): string | null {
-  // emailHash should be md5(lower(trim(email))) => 32 hex chars
+  // md5(lower(trim(email))), 32 hex chars
   if (!/^[a-f0-9]{32}$/.test(emailHash)) {
     return null;
   }

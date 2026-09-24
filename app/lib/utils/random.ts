@@ -35,10 +35,7 @@ export function hashSeed(seed: string): number {
   return hash
 }
 
-/**
- * Returns a new array with elements in a random order using the Fisher-Yates shuffle.
- * Does not mutate the original array.
- */
+// Fisher-Yates on a copy.
 export function shuffleArray<T>(arr: T[]): T[] {
   const result = [...arr]
   for (let i = result.length - 1; i > 0; i--) {

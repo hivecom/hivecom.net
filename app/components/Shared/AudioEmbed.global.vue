@@ -1,8 +1,6 @@
 <script setup lang="ts">
-// Custom MDC component for <audio> tags in rendered markdown.
-// Registered as the 'audio' component in MarkdownRendererInner's mdcComponents
-// map. processAudioDirectives emits <audio src="..."> for the :::audio
-// directive; this swaps the bare native player for our AudioPlayer UI.
+// MDC override for <audio> in rendered markdown (the :::audio directive). Swaps
+// the bare native player for AudioPlayer.
 
 import { computed, useAttrs } from 'vue'
 import AudioPlayer from '@/components/Shared/AudioPlayer.vue'
@@ -13,8 +11,7 @@ const attrs = useAttrs()
 
 const src = computed(() => (attrs.src as string | undefined) ?? '')
 
-// Track title is the file name pulled from the URL, mirroring how the chat
-// audio embeds label themselves.
+// Track title is the file name pulled from the URL.
 const title = computed(() => {
   if (!src.value)
     return undefined

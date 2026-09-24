@@ -14,9 +14,7 @@ const props = withDefaults(defineProps<{
    */
   activeLabel?: string | null
 
-  /**
-   * Minutes within which the date is considered "active". Defaults to 15.
-   */
+  /** Minutes within which the date counts as active. Defaults to 15. */
   activeThresholdMinutes?: number
 }>(), {
   activeLabel: 'Online',
@@ -60,7 +58,7 @@ const displayText = computed(() => {
     return props.activeLabel!
 
   // When activeLabel is null and the date is very recent, getUserActivityStatus
-  // still returns "Online" as lastSeenText - compute elapsed directly instead.
+  // still returns "Online" as lastSeenText, so compute elapsed directly instead.
   if (status.value.lastSeenText === 'Online') {
     const minutes = Math.floor((now.value - status.value.lastSeenTimestamp.getTime()) / 60000)
     return minutes <= 1 ? '1 minute ago' : `${minutes} minutes ago`

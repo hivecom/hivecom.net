@@ -106,8 +106,8 @@ async function write(work: (store: IDBObjectStore) => void): Promise<void> {
     await run(db, 'readwrite', work)
 }
 
-// Last stamp handed out. Files remembered in the same millisecond still get
-// distinct stamps, so listPendingMedia returns them in the order they came in.
+// Files remembered in the same millisecond still get distinct stamps, so
+// listPendingMedia keeps them in arrival order.
 let lastStamp = 0
 
 /** Remember a pending file, in memory and on disk. */

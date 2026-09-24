@@ -8,18 +8,10 @@ import { usePageVisibility } from '@/composables/usePageVisibility'
 const BACKGROUND_POLL_INTERVAL_MS = 5 * 60 * 1000
 
 /**
- * Manages Supabase realtime channels for a discussion's replies and the
- * discussion row itself.
- *
- * Channels are shared at module level and ref-counted. Multiple Discussion
- * components on the same page (e.g. per-choice threads + general chat on the
- * votes detail page) all use the same underlying Supabase channel. Each
- * instance registers its own JS-side handler; the channel is only torn down
- * when the last subscriber releases it.
- *
- * This prevents "cannot add postgres_changes callbacks after subscribe()"
- * which occurs when supabase.channel() returns an already-subscribed instance
- * by name and a second caller tries to call .on() on it.
+ * Realtime channels are shared at module level and ref-counted, with each
+ * instance adding its own JS handler. supabase.channel() returns the already
+ * subscribed channel by name, and a second .on() on it throws "cannot add
+ * postgres_changes callbacks after subscribe()".
  */
 
 // ---------------------------------------------------------------------------
@@ -167,14 +159,11 @@ export function useRealtimeDiscussion(
   const pendingReplyCount = ref(0)
   const pendingLoading = ref(false)
 
-  // Track which discussion this instance is currently subscribed to, and
-  // the exact handler functions registered so we can remove only ours.
   let subscribedDiscussionId: string | null = null
 
-  // Discussion ID saved before unsubscribing so we can restore when tab returns.
+  // Saved when the tab hides so the subscription comes back when it returns.
   let pausedDiscussionId: string | null = null
 
-  // Background polling when tab is hidden.
   let backgroundPollTimer: ReturnType<typeof setInterval> | null = null
 
   function startBackgroundPoll() {
@@ -239,19 +228,16 @@ export function useRealtimeDiscussion(
       const existingIds = new Set(comments.value.map(c => c.id))
       const newReplies = (data as RawComment[]).filter(r => !existingIds.has(r.id))
 
-      // Only update if there are actually new replies - assigning a new array
-      // reference (even with identical contents) triggers the full reactive
-      // chain: modelledComments → threadNodeMap → threadRoots → re-render of
-      // every reply card. On a thread with 100+ replies this creates hundreds
-      // of short-lived reactive objects and causes heavy GC pressure.
+      // Even an identical new array reruns modelledComments, threadNodeMap and
+      // threadRoots and re-renders every reply card. Long threads feel the GC.
       if (newReplies.length === 0)
         return
 
       const ascendingOrder = model.value !== 'comment'
 
       if (pushRealtimeReplies) {
-        // Delegate to the data composable which tracks realtime items separately
-        // so cursor-based loadMore pages remain in chronological order.
+        // The data composable tracks realtime rows separately so loadMore pages
+        // stay chronological.
         pushRealtimeReplies(newReplies, ascendingOrder)
       }
       else if (model.value === 'comment') {
@@ -263,8 +249,8 @@ export function useRealtimeDiscussion(
 
       pendingReplyCount.value = 0
 
-      // Invalidate both caches - reply_count has changed server-side and the
-      // replies list is now stale (we just extended it above).
+      // reply_count changed server-side, and the cached list is behind what was
+      // just appended.
       discussionCache.invalidate(discussion.value.id, discussion.value.slug)
       repliesCache.legacySet(discussion.value.id, comments.value, model.value !== 'comment')
     }
@@ -274,11 +260,9 @@ export function useRealtimeDiscussion(
   }
 
   function subscribe(discussionId: string) {
-    // No-op if already subscribed to this exact discussion.
     if (subscribedDiscussionId === discussionId)
       return
 
-    // Drop any previous subscription first.
     unsubscribe()
 
     myInsertHandler = (payload: InsertPayload) => {
@@ -288,8 +272,7 @@ export function useRealtimeDiscussion(
       if (comments.value.some(c => c.id === newReply.id))
         return
 
-      // Skip own replies - never show the user a "new reply" indicator for
-      // something they just posted, regardless of timing.
+      // Your own replies never count as new, whatever the timing.
       const ownUserId = currentUserId?.value
       const replyAuthor = newReply.created_by
 

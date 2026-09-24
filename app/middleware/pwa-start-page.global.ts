@@ -3,9 +3,8 @@ import { useSupabaseClient } from '#imports'
 import { usePwa } from '@/composables/usePwa'
 import { PWA_START_PAGE_DESTINATIONS, usePwaStartPage } from '@/composables/usePwaStartPage'
 
-// Cold launch only. Global middleware fires on every navigation, so this flag
-// pins the behaviour to the very first one - clicking the logo mid-session has
-// to actually go home.
+// Cold launch only. Global middleware fires on every navigation, and clicking the
+// logo mid-session has to actually go home.
 let launchHandled = false
 
 export default defineNuxtRouteMiddleware(async (to) => {
@@ -23,8 +22,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (to.path !== '/' || to.hash || Object.keys(to.query).length > 0)
     return
 
-  // Installed app only. Redirecting a normal browser tab away from the landing
-  // page would be a surprise, and the preference is stored per device anyway.
+  // Installed app only. Redirecting a normal browser tab off the landing page
+  // would be a surprise.
   const { isStandalone } = usePwa()
   if (!isStandalone.value)
     return

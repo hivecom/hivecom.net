@@ -183,7 +183,7 @@ function drawArc(ctx: CanvasRenderingContext2D, arc: Arc) {
     ctx.stroke()
   }
 
-  // Traveling data packet - stops at destination then fades with arc.life.
+  // Traveling data packet. It stops at the destination, then fades with arc.life.
   {
     const t = Math.min(arc.t, 1)
     const idx = t * ARC_SEGMENTS

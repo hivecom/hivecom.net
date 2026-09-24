@@ -14,8 +14,8 @@ dayjs.extend(relativeTime)
 
 const FORUM_REPLIES_CACHE_KEY = 'latest-replies:v2'
 const FORUM_TODAY_COUNT_CACHE_KEY = 'today-count'
-const FORUM_REPLIES_TTL = 2 * 60 * 1000 // 2 minutes
-const FORUM_TODAY_COUNT_TTL = 5 * 60 * 1000 // 5 minutes - changes slowly
+const FORUM_REPLIES_TTL = 2 * 60 * 1000
+const FORUM_TODAY_COUNT_TTL = 5 * 60 * 1000 // changes slowly
 
 export interface ActivityItem {
   id: string
@@ -47,7 +47,6 @@ export interface UseForumActivityFeedOptions {
   discussionLookup: ComputedRef<Map<string, Tables<'discussions'>>>
   visibleDiscussionIds: ComputedRef<Set<string>>
   hiddenTopicIds: ComputedRef<Set<string>>
-  /** Called when a topic item is clicked in the latest-posts list */
   onTopicClick: (id: string) => void
 }
 
@@ -66,9 +65,8 @@ export function useForumActivityFeed({
 
   const latestReplies = ref<ActivityItem[]>([])
 
-  // Realtime-only items (new discussions arriving via INSERT) that bypass the
-  // latestReplies pipeline. These are already in display format and get merged
-  // directly into latestPosts alongside flattenedTopics.
+  // New discussions from realtime INSERTs. They're already in display format, so
+  // they skip the latestReplies pipeline and merge straight into latestPosts.
   const realtimeDiscussions = ref<ActivityItem[]>([])
 
   async function fetchLatestReplies() {
@@ -108,7 +106,7 @@ export function useForumActivityFeed({
       })
   }
 
-  // Replies filtered for visibility - respects NSFW setting and parent topic visibility
+  // Respects the NSFW setting and parent topic visibility.
   const visibleReplies = computed<ActivityItem[]>(() => {
     return latestReplies.value
       .filter((reply) => {
@@ -205,7 +203,6 @@ export function useForumActivityFeed({
       // .slice(0, 20)
   })
 
-  // IDs of all users mentioned in latest post descriptions/titles
   const latestPostMentionIds = computed(() => {
     const ids = new Set<string>()
     latestPosts.value.forEach((post) => {
@@ -215,7 +212,7 @@ export function useForumActivityFeed({
     return [...ids]
   })
 
-  // Stable ref for author IDs - avoids spurious useBulkDataUser re-fetches
+  // Stable ref so useBulkDataUser doesn't refetch spuriously.
   const latestPostAuthorIds = ref<string[]>([])
   let _lastAuthorKey = ''
 
@@ -255,14 +252,9 @@ export function useForumActivityFeed({
   }
 
   /**
-   * Server-side count of forum activity (replies + new discussions + new topics)
-   * since `since`, excluding the current user's own posts. Used to drive the
-   * "since last visit" badge so it isn't capped by the rendered carousel slice
-   * or by the 30-row latest-replies fetch.
-   *
-   * No caching: this is keyed on a watermark that changes per visit, so a
-   * stale cache value would actively mislead the badge. The realtime
-   * subscription nudges the count locally between fetches.
+   * Counted server-side so the "since last visit" badge isn't capped by the
+   * carousel slice or the 30-row replies fetch. Uncached on purpose: the
+   * watermark changes per visit, so a cached value would mislead the badge.
    */
   async function fetchSinceLastVisitCount(since: string | null) {
     if (since == null) {
@@ -286,11 +278,7 @@ export function useForumActivityFeed({
     postsSinceLastVisit.value = Math.max(0, postsSinceLastVisit.value + delta)
   }
 
-  /**
-   * Prepend a single reply ActivityItem to the live feed without waiting for
-   * a cache-busting refetch. The cache is invalidated so the next cold load
-   * picks up the fresh data from the server.
-   */
+  // Invalidates the cache too, so the next cold load gets fresh server data.
   function prependReplyItem(item: ActivityItem) {
     latestReplies.value = [item, ...latestReplies.value]
     forumCache.delete(FORUM_REPLIES_CACHE_KEY)
@@ -302,10 +290,6 @@ export function useForumActivityFeed({
     forumCache.delete(countKey)
   }
 
-  /**
-   * Prepend a new discussion that arrived via realtime INSERT. These don't go
-   * through latestReplies - they're merged directly into latestPosts.
-   */
   function prependDiscussionItem(item: ActivityItem) {
     realtimeDiscussions.value = [item, ...realtimeDiscussions.value]
   }

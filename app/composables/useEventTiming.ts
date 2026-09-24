@@ -1,22 +1,5 @@
 /**
- * Composable that centralises all event timing derived state.
- *
- * Previously, `eventStart`, `eventEnd`, `hasEventEnded`, `isUpcoming`,
- * `isOngoing`, `timeAgo`, and `countdown` were independently re-implemented
- * in four separate files:
- *   - pages/events/[id].vue
- *   - components/Events/RSVPButton.vue
- *   - components/Events/EventRSVPCount.vue
- *   - components/Events/EventRSVPModal.vue
- *
- * This composable owns the single `now` ref and its `useIntervalFn` ticker so
- * that each consumer no longer spawns its own interval.
- *
- * @example
- * ```ts
- * const { eventStart, eventEnd, hasEventEnded, isUpcoming, isOngoing, timeAgo, countdown } =
- *   useEventTiming(toRef(props, 'event'))
- * ```
+ * One `now` ticker per call, shared by every timing derived from it.
  */
 
 import type { ComputedRef, MaybeRefOrGetter } from 'vue'
@@ -33,25 +16,17 @@ export interface EventCountdown {
 }
 
 export interface EventTimingResult {
-  /** Parsed start date of the event, or null when the event is not yet loaded. */
+  /** Null until the event has loaded. */
   eventStart: ComputedRef<Date | null>
-  /** Parsed end date of the event (start + duration), or null when not loaded. */
+  /** Start plus duration, null until the event has loaded. */
   eventEnd: ComputedRef<Date | null>
-  /** True when the current time is past the event end. */
   hasEventEnded: ComputedRef<boolean>
-  /** True when the event has not yet started. */
   isUpcoming: ComputedRef<boolean>
-  /** True while the event is in progress (start <= now <= end). */
+  /** Inclusive at both ends: start <= now <= end. */
   isOngoing: ComputedRef<boolean>
-  /**
-   * Human-readable "X days/hours/minutes ago" string for past events.
-   * Returns an empty string while the event is upcoming or ongoing.
-   */
+  /** Empty while the event is upcoming or ongoing. */
   timeAgo: ComputedRef<string>
-  /**
-   * Countdown object for upcoming events, or zeroed object for ongoing events.
-   * Returns null when the event has already ended.
-   */
+  /** Zeroed while ongoing, null once ended. */
   countdown: ComputedRef<EventCountdown | null>
 }
 
@@ -75,8 +50,8 @@ const ZERO_COUNTDOWN: EventCountdown = { days: 0, hours: 0, minutes: 0, seconds:
 export function useEventTiming(
   event: MaybeRefOrGetter<Tables<'events'> | null | undefined>,
 ): EventTimingResult {
-  // Single shared clock - ticks every second so countdown stays accurate.
-  // useIntervalFn is cleaned up automatically when the component unmounts.
+  // Ticks every second so the countdown stays accurate. useIntervalFn cleans
+  // up when the component unmounts.
   const now = ref(new Date())
   useIntervalFn(() => {
     now.value = new Date()

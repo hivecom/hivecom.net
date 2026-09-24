@@ -43,9 +43,7 @@ const topics = inject(FORUM_KEYS.forumTopics, () => ref([]))()
 const activeTopicId = inject(FORUM_KEYS.forumActiveTopicId, () => ref(null))()
 const refreshTopicIcon = inject<RefreshTopicIconFn>(FORUM_KEYS.forumRefreshTopicIcon)
 
-// Collect all descendant IDs of a topic (including itself) so they can be
-// excluded from the location dropdown - a topic can't be placed inside itself
-// or any of its own children.
+// A topic can't be moved inside itself or any of its descendants
 function getDescendantIds(rootId: string, allTopics: typeof topics.value): Set<string> {
   const ids = new Set<string>()
   const queue = [rootId]
@@ -105,7 +103,6 @@ const iconUploading = ref(false)
 const iconDeleting = ref(false)
 const iconError = ref<string | null>(null)
 
-// When editing, fetch the existing topic icon
 watch(() => props.editedItem, async (item) => {
   iconUrl.value = null
   iconError.value = null
@@ -117,7 +114,7 @@ watch(() => props.editedItem, async (item) => {
     iconUrl.value = await getTopicIconUrl(supabase, item.id)
   }
   catch {
-    // No icon or fetch failed - that's fine
+    // No icon, or the fetch failed. Either way there's nothing to show.
   }
 }, { immediate: true })
 
@@ -136,7 +133,7 @@ async function handleIconUpload(file: File) {
     if (result.success && result.url) {
       iconUrl.value = result.url
 
-      // Bust cache and refresh the forum list's bulk icon map
+      // Refreshes the forum list's bulk icon map too
       invalidateTopicIconCache(props.editedItem.id)
       void refreshTopicIcon?.(props.editedItem.id)
       pushToast('Topic icon uploaded')
@@ -390,7 +387,7 @@ async function submitForm() {
         </Dropdown>
       </div>
 
-      <!-- Topic icon upload - only available when editing an existing topic -->
+      <!-- Icons need an existing topic to attach to -->
       <Flex v-if="isEditing" y-start :gap="0" x-between expand>
         <Flex column :gap="0">
           <label class="vui-label">Topic Icon</label>

@@ -1,19 +1,5 @@
-/**
- * Generic Supabase caching composable for better performance and reduced database load
- *
- * Features:
- * - Key-value caching for simple data
- * - Query signature caching for complex queries
- * - Automatic cache invalidation with TTL
- * - Cross-component and cross-reload cache sharing via localStorage
- * - LRU eviction with configurable entry limit
- * - Quota-error recovery (evict + retry on write failure)
- *
- * All entries are stored in localStorage and TTL-checked on every read.
- * A background cleanup timer sweeps expired entries and enforces the entry
- * budget periodically. On SSR (no window), all reads return null and writes
- * are no-ops - caching is a client-side optimisation only.
- */
+// localStorage-backed cache, shared across components and reloads. Client-only:
+// on SSR every read returns null and writes are no-ops.
 
 import type { MaybeRefOrGetter, Ref } from 'vue'
 import type { Database } from '@/types/database.types'
@@ -32,19 +18,10 @@ export interface CacheConfig {
   /** Cleanup interval in milliseconds. Default: 30 seconds. */
   cleanupInterval?: number
 
-  /**
-   * Namespace prefix for localStorage keys. Should end with ':'.
-   * KV entries land at `${prefix}kv:${key}`, query entries at `${prefix}q:${hash}`.
-   * Default: 'hivecom:cache:'.
-   */
+  /** Namespace prefix for localStorage keys, ending in ':'. Default: 'hivecom:cache:'. */
   storagePrefix?: string
 
-  /**
-   * Maximum number of entries allowed in the kv namespace.
-   * When the limit is reached during cleanup, or when a write fails due to
-   * quota exhaustion, the least-recently-used entries are evicted first.
-   * Default: 500.
-   */
+  /** Entry budget for the kv namespace, enforced by LRU eviction. Default: 500. */
   maxEntries?: number
 }
 
@@ -63,10 +40,7 @@ export interface QueryCacheKey {
 
 const LS_DEFAULT_PREFIX = 'hivecom:cache:'
 
-/**
- * Maps storagePrefix → maxEntries so the cleanup timer knows each prefix's budget.
- * Using a Map rather than a Set so we can store the budget alongside the prefix.
- */
+// storagePrefix to maxEntries, so the cleanup timer knows each prefix's budget.
 const activeLocalStoragePrefixes = new Map<string, number>()
 
 let cleanupTimer: number | null = null
@@ -79,10 +53,8 @@ interface StatsEntry {
   lastCleanup: number
 }
 
-/** Per-namespace stats map, keyed by storagePrefix. */
 const _statsPerPrefix = new Map<string, StatsEntry>()
 
-/** Gets (or lazily creates) the stats object for a given storagePrefix. */
 function getStats(prefix: string): StatsEntry {
   let entry = _statsPerPrefix.get(prefix)
   if (!entry) {
@@ -94,10 +66,8 @@ function getStats(prefix: string): StatsEntry {
 
 // ── In-memory access-time tracking ────────────────────────────────────────────
 //
-// Keyed by the full localStorage key (prefix + logical key).
-// Updated on every valid cache read so LRU eviction prefers entries that
-// haven't been touched recently. Resets on page reload; the entry's own
-// `timestamp` (creation time) is used as a fallback for ordering.
+// In memory only, so it resets on reload and LRU falls back to the entry's
+// creation timestamp.
 
 const _accessTimes = new Map<string, number>()
 
@@ -131,11 +101,6 @@ function lsGet<T>(prefix: string, key: string): CacheEntry<T> | null {
   }
 }
 
-/**
- * Write an entry to localStorage.
- * If the write fails (quota exceeded), evict LRU entries from the given
- * namespace down to `keepOnFail` entries and retry once.
- */
 function lsSet<T>(
   prefix: string,
   key: string,
@@ -152,15 +117,14 @@ function lsSet<T>(
     touchEntry(fullKey)
   }
   catch {
-    // Quota exceeded - evict LRU down to 50 % of the budget and retry once
+    // Quota exceeded: evict LRU down to 50% of the budget and retry once.
     evictLRU(prefix, Math.floor(maxEntries * 0.5))
     try {
       window.localStorage.setItem(fullKey, JSON.stringify(entry))
       touchEntry(fullKey)
     }
     catch {
-      // localStorage genuinely unavailable (private mode, storage disabled) -
-      // silently skip; reads will just be cache misses
+      // localStorage unavailable (private mode, storage disabled). Reads just miss.
     }
   }
 }
@@ -176,10 +140,7 @@ function lsDelete(prefix: string, key: string): boolean {
   return had
 }
 
-/**
- * Snapshot all logical keys (prefix stripped) under the given full prefix.
- * Snapshotted up-front so callers can safely mutate localStorage while iterating.
- */
+// Snapshotted up front so callers can mutate localStorage while iterating.
 function lsKeys(prefix: string): string[] {
   if (typeof window === 'undefined')
     return []
@@ -228,12 +189,6 @@ function isEntryValid<T>(entry: CacheEntry<T>): boolean {
 
 // ── LRU eviction ──────────────────────────────────────────────────────────────
 
-/**
- * Evict entries under `prefix` until at most `keepCount` remain.
- * Entries are sorted by last-access time ascending (least recently used first).
- * Falls back to `entry.timestamp` (creation time) for entries not yet touched
- * in the current session.
- */
 function evictLRU(prefix: string, keepCount: number): void {
   if (typeof window === 'undefined' || keepCount < 0)
     return
@@ -254,7 +209,7 @@ function evictLRU(prefix: string, keepCount: number): void {
         lastAccessed = lastAccessedOf(fullKey, entry)
       }
       catch {
-        // Corrupt entry - treat as oldest so it gets evicted first
+        // Corrupt entry, treat as oldest so it goes first.
         lastAccessed = 0
       }
     }
@@ -265,7 +220,6 @@ function evictLRU(prefix: string, keepCount: number): void {
   if (candidates.length <= keepCount)
     return
 
-  // Sort ascending - LRU (least recently used) first
   candidates.sort((a, b) => a.lastAccessed - b.lastAccessed)
 
   const toEvict = candidates.length - keepCount
@@ -278,10 +232,6 @@ function evictLRU(prefix: string, keepCount: number): void {
 
 // ── Cleanup ────────────────────────────────────────────────────────────────────
 
-/**
- * Remove expired entries under the given prefix, then enforce the entry
- * budget via LRU eviction if the kv sub-namespace is still over budget.
- */
 function cleanupPrefix(storagePrefix: string, maxEntries: number): void {
   if (typeof window === 'undefined')
     return
@@ -306,7 +256,6 @@ function cleanupPrefix(storagePrefix: string, maxEntries: number): void {
         keysToRemove.push(fullKey)
     }
     catch {
-      // Corrupt entry - evict
       keysToRemove.push(fullKey)
     }
   }
@@ -316,7 +265,6 @@ function cleanupPrefix(storagePrefix: string, maxEntries: number): void {
     _accessTimes.delete(k)
   })
 
-  // After TTL cleanup, enforce maxEntries on the kv sub-namespace via LRU
   const kvPrefix = `${storagePrefix}kv:`
   if (lsSize(kvPrefix) > maxEntries)
     evictLRU(kvPrefix, Math.floor(maxEntries * 0.8))
@@ -388,11 +336,9 @@ export function useCache(config: CacheConfig = {}) {
   const kvPrefix = `${storagePrefix}kv:`
   const qPrefix = `${storagePrefix}q:`
 
-  // Register/update this prefix so the cleanup timer knows its budget
   activeLocalStoragePrefixes.set(storagePrefix, maxEntries)
   initializeCleanup(cleanupInterval)
 
-  // Auto-dispose when the owning scope (component, composable) is torn down
   if (getCurrentScope())
     onScopeDispose(dispose)
 
@@ -418,15 +364,8 @@ export function useCache(config: CacheConfig = {}) {
     return entry.data
   }
 
-  /**
-   * Read an entry for seeding reactive state during setup.
-   *
-   * Returns null while Nuxt is hydrating. Entries live in localStorage, which
-   * the server never saw, so seeding a ref from one on the first client render
-   * produces markup the server didn't send and Vue reports a hydration
-   * mismatch. Callers pair this with their existing onMounted fetch, which
-   * re-reads the same entry a tick later and patches the DOM normally.
-   */
+  // Returns null while hydrating. The server never saw localStorage, so seeding a
+  // ref from it on first render is a hydration mismatch. Pair with an onMounted fetch.
   function cacheGetInitial<T>(key: string): T | null {
     if (tryUseNuxtApp()?.isHydrating === true)
       return null
@@ -456,7 +395,6 @@ export function useCache(config: CacheConfig = {}) {
   function cacheQuery<T>(query: QueryCacheKey, data: T, customTtl?: number): void {
     const hash = generateQueryHash(query)
 
-    // Query entries tend to be small; evict at a generous cap if quota is hit
     lsSet(qPrefix, hash, { data, timestamp: Date.now(), ttl: customTtl ?? ttl }, maxEntries)
   }
 
@@ -554,39 +492,27 @@ export function useCache(config: CacheConfig = {}) {
   }
 
   return {
-    // Key-value
     set: cacheSet,
     get: cacheGet,
     getInitial: cacheGetInitial,
     has: cacheHas,
     delete: cacheDelete,
 
-    // Query
     cacheQuery,
     getCachedQuery,
     hasQuery,
 
-    // Invalidation
     invalidateByPattern,
     invalidateTable,
     clearCache,
 
-    // Cleanup
     dispose,
 
-    // Statistics
     getStats: getCacheStats,
   }
 }
 
-/**
- * Reactive cached Supabase query composable.
- *
- * Accepts a reactive query (MaybeRefOrGetter) so filter values derived from
- * props, route params, or other reactive state are always reflected correctly.
- * Passing `null` as the resolved query value is treated as "not ready" and
- * suppresses fetching the same way `enabled: false` does.
- */
+// A query that resolves to null means "not ready" and suppresses fetching like `enabled: false`.
 export function useCachedFetch<T = unknown>(
   query: MaybeRefOrGetter<QueryCacheKey | null>,
   config: CacheConfig & {
@@ -603,8 +529,7 @@ export function useCachedFetch<T = unknown>(
   const cache = useCache(cacheConfig)
   const supabase = useSupabaseClient<Database>()
 
-  // Derived prefix mirrors the internal qPrefix used by useCache so the
-  // storage event listener can match only relevant localStorage keys.
+  // Must mirror useCache's qPrefix so the storage listener matches only our keys.
   const _storagePrefix = cacheConfig.storagePrefix ?? LS_DEFAULT_PREFIX
   const _qPrefix = `${_storagePrefix}q:`
 
@@ -721,14 +646,13 @@ export function useCachedFetch<T = unknown>(
 
     const hash = generateQueryHash(q)
 
-    // On a forced refetch, drop any stale inflight entry so joiners don't
-    // receive data from the previous in-progress request.
+    // A forced refetch drops the inflight entry so joiners don't get data from
+    // the previous request.
     if (force)
       _inflightQueries.delete(hash)
 
-    // Join an existing in-flight request rather than firing a duplicate query.
-    // Joiners await the same promise; the original caller populates the cache
-    // and sets data.value - joiners copy the resolved value into their own ref.
+    // Joiners copy the result into their own ref. Only the original caller
+    // writes the cache.
     if (_inflightQueries.has(hash)) {
       const { data: result, error: joinError } = await (_inflightQueries.get(hash) as Promise<{ data: T | null, error: string | null }>)
       if (result !== null)
@@ -748,9 +672,8 @@ export function useCachedFetch<T = unknown>(
         return { data: result, error: null }
       })
       .catch((err: unknown) => {
-        // PostgrestError is a plain object (not an Error subclass), so
-        // instanceof Error is false. Fall back to checking for a message
-        // property before giving up with a generic string.
+        // PostgrestError is a plain object, not an Error subclass, so check for
+        // a message property too.
         const message
           = err instanceof Error
             ? err.message
@@ -780,8 +703,7 @@ export function useCachedFetch<T = unknown>(
     })
   }
 
-  // Use the stable query hash as the watch key - avoids spurious refetches
-  // caused by object key ordering differences in filters/orderBy.
+  // Watch the stable hash so key ordering in filters/orderBy can't trigger a refetch.
   watch(
     () => {
       const q = resolvedQuery()

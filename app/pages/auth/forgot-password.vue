@@ -36,7 +36,6 @@ async function resetPassword() {
   loading.value = false
 }
 
-// Clear errors when email changes
 watch(email, () => errorMessage.value = '')
 
 // Auto-focus email input on page load

@@ -1,15 +1,8 @@
 <script setup lang="ts">
 // https://developer.mozilla.org/en-US/docs/Web/API/Window/queryLocalFonts
 /**
- * BannerEditor - A canvas-based editor for creating user forum banners.
- *
- * Banners are horizontal images (728×36) stored as WebP. The editor supports:
- * - Background: solid colour or linear gradient
- * - Multiple text layers with independent font/colour/position
- * - Multiple image layers with drag-to-move and corner-handle resize
- *
- * Editor metadata is serialised as JSON and embedded as a trailing text chunk
- * in the WebP file so the editor state can be restored when re-editing.
+ * Canvas editor for forum banners, exported as WebP. The editor state is embedded
+ * as a trailing JSON chunk in the WebP so a saved banner can be reopened and edited.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BannerLayer, BannerMetadata, FillType, GradientStop, ImageAssetMeta, ImageLayer, SelectOption, TextLayer } from './types'
@@ -46,10 +39,7 @@ type FsDirHandle = FileSystemDirectoryHandle & {
 // ── Props / Emits ─────────────────────────────────────────────────────────────
 
 const props = defineProps<{
-  /** Current user ID for storage paths */
   userId: string | null
-
-  /** Whether the editor modal is open */
   open: boolean
 }>()
 
@@ -93,7 +83,6 @@ const fontsPermissionDenied = ref(false)
 // When true, show a free-text Input instead of the Select dropdown
 const fontCustomMode = ref(false)
 
-// All families as SelectOptions: fallbacks first, then system fonts
 const fontOptions = computed<SelectOption[]>(() => {
   const fallbackValues = FALLBACK_FONT_FAMILIES.map(f => f.value)
   const systemOptions: SelectOption[] = systemFontFamilies.value
@@ -106,7 +95,7 @@ const fontOptions = computed<SelectOption[]>(() => {
 
 async function loadSystemFonts() {
   if (!('queryLocalFonts' in window)) {
-    // API not available (Firefox, Safari) - manual entry still works via the text input
+    // Not available in Firefox or Safari. Manual entry still works via the text input.
     fontsLoaded.value = true
     return
   }
@@ -156,10 +145,8 @@ const loading = ref(false)
 const isDirty = ref(false)
 const showDiscardConfirm = ref(false)
 
-// Layer clipboard for Ctrl+C / Ctrl+V
 const clipboardLayer = ref<BannerLayer | null>(null)
 
-// Background
 const bgFillType = ref<FillType>('solid')
 const bgFillColor = ref('#1a1a2e')
 const bgFillStops = ref<GradientStop[]>([
@@ -170,10 +157,8 @@ const bgFillAngle = ref(90)
 const bgBorder = ref(true)
 const bgBorderColor = ref('#181818')
 
-// Unified layer array
 const layers = ref<BannerLayer[]>([])
 
-// Selection
 const selectedLayerId = ref<string | null>(null)
 
 const missingLayerCount = computed(() =>
@@ -251,7 +236,7 @@ const fontFamilyModel = computed<SelectOption[] | undefined>({
     if (match)
       return [match]
 
-    // Family came from saved metadata and isn't in the list - show it as-is
+    // Family came from saved metadata and isn't in the list, so show it as-is
     return layer.fontFamily ? [{ label: layer.fontFamily, value: layer.fontFamily }] : undefined
   },
   set(selection) {
@@ -297,7 +282,6 @@ const fillTypeModel = computed<SelectOption<FillType>[] | undefined>({
 })
 
 function addFillStop(layer: TextLayer) {
-  // Insert at midpoint between last two stops, or at 0.5 if only one exists
   const stops = layer.fillStops
   const last = stops.at(-1)?.position ?? 1
   const prev = stops[stops.length - 2]?.position ?? 0
@@ -349,10 +333,9 @@ const fontFamilyCustom = computed<string>({
   },
 })
 
-// Reversed layer list for UI display (frontmost layer at top of list)
+// Frontmost layer first, to match the layer list in the UI
 const layersReversed = computed(() => layers.value.toReversed())
 
-// Interaction state
 const dragging = ref<'layer' | null>(null)
 const draggingLayerId = ref<string | null>(null)
 const resizingLayerId = ref<string | null>(null)
@@ -366,7 +349,7 @@ const hoveredLayerId = ref<string | null>(null)
 const canvasContainerRef = ref<HTMLDivElement | null>(null)
 const canvasScrollRef = ref<HTMLDivElement | null>(null)
 const fitScale = ref(1)
-const zoomLevel = ref(1) // multiplier on top of fit scale, range 0.25–4
+const zoomLevel = ref(1) // multiplier on top of fitScale
 
 const displayScale = computed(() => fitScale.value * zoomLevel.value)
 
@@ -376,7 +359,7 @@ function updateDisplayScale() {
 
   const containerWidth = canvasContainerRef.value.clientWidth
 
-  // Leave room for the zoom bar (48px) and some breathing room
+  // Leave room for the 48px zoom bar plus some breathing room
   const containerHeight = canvasContainerRef.value.clientHeight - 48
   const scaleByWidth = containerWidth / WORKSPACE_WIDTH
   const scaleByHeight = containerHeight / WORKSPACE_HEIGHT
@@ -570,7 +553,6 @@ function drawBackground(ctx: CanvasRenderingContext2D) {
       grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
     }
     else {
-      // conic
       const angleRad = (bgFillAngle.value * Math.PI) / 180
       grad = ctx.createConicGradient(angleRad, cx, cy)
     }
@@ -596,7 +578,6 @@ function redraw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0)
   ctx.clearRect(0, 0, WORKSPACE_WIDTH, WORKSPACE_HEIGHT)
 
-  // Render banner content (clipped to export bounds)
   ctx.save()
   ctx.translate(WORKSPACE_PADDING, WORKSPACE_PADDING)
 
@@ -617,20 +598,13 @@ function redraw() {
 
   ctx.restore()
 
-  // Render guides outside the clipped banner bounds
   drawSelectionIndicators(ctx)
   drawBannerBoundary(ctx)
 
   ctx.restore()
 }
 
-/**
- * Draw all layers onto ctx. The context is assumed to already be translated so
- * that (0,0) maps to the top-left of the banner export area.
- *
- * Used by both redraw() (with WORKSPACE_PADDING translate applied upstream) and
- * exportToWebPBlob() (no padding - ctx origin is already the banner origin).
- */
+/** ctx must already be translated so (0,0) is the top-left of the banner export area. */
 function drawLayers(ctx: CanvasRenderingContext2D, opts: { forExport?: boolean } = {}) {
   for (const layer of layers.value) {
     if (layer.type === 'image') {
@@ -690,7 +664,6 @@ function drawLayers(ctx: CanvasRenderingContext2D, opts: { forExport?: boolean }
           grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r)
         }
         else {
-          // conic
           const angleRad = (layer.fillAngle * Math.PI) / 180
           grad = ctx.createConicGradient(angleRad, 0, 0)
         }
@@ -713,7 +686,6 @@ function drawLayers(ctx: CanvasRenderingContext2D, opts: { forExport?: boolean }
         ctx.strokeText(layer.content, 0, 0)
       }
 
-      // Shadow
       if (layer.shadow) {
         ctx.shadowColor = layer.shadowColor
         ctx.shadowBlur = layer.shadowBlur
@@ -809,7 +781,6 @@ function canvasToLocal(e: MouseEvent): { x: number, y: number } {
   }
 }
 
-/** Returns true if the mouse event is positioned over the canvas element. */
 function isOverCanvas(e: MouseEvent): boolean {
   const canvas = canvasRef.value
   if (!canvas)
@@ -819,7 +790,7 @@ function isOverCanvas(e: MouseEvent): boolean {
   return e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom
 }
 
-/** Rotate point (px, py) around (cx, cy) by -angle degrees (inverse rotation for hit testing). */
+/** Rotates (px, py) around (cx, cy) by -angleDeg, the inverse rotation used for hit testing. */
 function rotatePoint(px: number, py: number, cx: number, cy: number, angleDeg: number): { x: number, y: number } {
   const rad = (-angleDeg * Math.PI) / 180
   const cos = Math.cos(rad)
@@ -876,17 +847,16 @@ function hitTestImageResizeHandle(x: number, y: number, layer: ImageLayer): bool
 
 // ── Mouse handlers ────────────────────────────────────────────────────────────
 
-// Whether the pointer is currently over the resize handle
 const cursorOnResizeHandle = ref(false)
 
-// Pan state - dragging on empty canvas space translates the workspace
+// Dragging on empty canvas space pans the workspace
 const panning = ref(false)
 const panStart = ref({ x: 0, y: 0 })
 const panOffset = ref({ x: 0, y: 0 })
 const panOffsetAtStart = ref({ x: 0, y: 0 })
 
 function onCanvasMouseDown(e: MouseEvent) {
-  // Click outside canvas bounds - just start a pan, don't touch selection
+  // Clicks outside the canvas start a pan and leave the selection alone
   if (!isOverCanvas(e)) {
     panning.value = true
     panStart.value = { x: e.clientX, y: e.clientY }
@@ -896,7 +866,7 @@ function onCanvasMouseDown(e: MouseEvent) {
 
   const pos = canvasToLocal(e)
 
-  // Iterate layers in reverse (topmost rendered = last in array, checked first)
+  // The topmost layer is last in the array, so hit-test in reverse
   for (let i = layers.value.length - 1; i >= 0; i--) {
     const layer = layers.value[i]
     if (!layer)
@@ -930,7 +900,6 @@ function onCanvasMouseDown(e: MouseEvent) {
     }
   }
 
-  // Clicked empty space - start pan or deselect
   panning.value = true
   panStart.value = { x: e.clientX, y: e.clientY }
   panOffsetAtStart.value = { x: panOffset.value.x, y: panOffset.value.y }
@@ -1030,7 +999,6 @@ function relinkLayer(layer: ImageLayer, file: File, url: string, folderName?: st
   layer.assetMeta = buildAssetMeta(file, folderName, folderRelativePath)
 }
 
-/** Shared matching + re-link logic for both picker and webkitdirectory paths. */
 function processFileList(
   entries: Array<{ file: File, relativePath: string, folderName: string }>,
 ): number {
@@ -1084,8 +1052,8 @@ async function scanFolder() {
       redraw()
     }
     else {
-      // Firefox / Safari fallback: trigger a hidden <input webkitdirectory>
-      // Result is handled in onDirSelected
+      // Firefox and Safari fallback: click a hidden <input webkitdirectory>.
+      // onDirSelected handles the result.
       dirInputRef.value?.click()
 
       // scanning stays true until onDirSelected finishes
@@ -1117,7 +1085,6 @@ function onDirSelected(e: Event) {
     const parts = file.webkitRelativePath.split('/')
     const folderName = parts[0] ?? ''
 
-    // relativePath is everything after the top-level folder name
     const relativePath = parts.slice(1).join('/') || file.name
     return { file, relativePath, folderName }
   })
@@ -1322,7 +1289,6 @@ async function exportToWebPBlob(): Promise<Blob> {
     ctx.strokeRect(0.5, 0.5, BANNER_WIDTH - 1, BANNER_HEIGHT - 1)
   }
 
-  // Quality loop: start at 0.85, reduce by 0.1 if > 900 KB, floor at 0.3
   const toBlob = (quality: number): Promise<Blob> =>
     new Promise((resolve, reject) => {
       exportCanvas.toBlob(
@@ -1350,7 +1316,6 @@ async function exportToWebPBlob(): Promise<Blob> {
   if (!imageBlob)
     throw new Error('Failed to export canvas as WebP')
 
-  // Embed metadata as a trailing text chunk
   const meta = buildMetadata()
   const metaString = METADATA_MARKER + JSON.stringify(meta) + METADATA_END
   const metaBytes = new TextEncoder().encode(metaString)
@@ -1362,7 +1327,6 @@ async function exportToWebPBlob(): Promise<Blob> {
 async function loadExistingBanner(supabase: SupabaseClient<Database>, userId: string) {
   loading.value = true
   try {
-    // Try to find existing banner across all supported extensions
     const extChecks = await Promise.all(
       ['webp', 'webm', 'gif'].map(async (e) => {
         const { data } = await supabase.storage.from(USERS_BUCKET_ID).list(userId, { search: `banner.${e}` })
@@ -1400,7 +1364,7 @@ async function loadExistingBanner(supabase: SupabaseClient<Database>, userId: st
           applyMetadata(meta)
         }
         catch {
-          // Corrupted metadata - start fresh
+          // Corrupt metadata, start fresh
         }
       }
     }
@@ -1411,7 +1375,7 @@ async function loadExistingBanner(supabase: SupabaseClient<Database>, userId: st
     isDirty.value = false
   }
   catch {
-    // Could not load existing banner - start fresh
+    // No readable existing banner, start fresh
   }
   finally {
     loading.value = false
@@ -1433,10 +1397,9 @@ async function saveBanner() {
     const supabase = useSupabaseClient<Database>()
     const blob = await exportToWebPBlob()
 
-    // Guard: decode the blob and verify it is exactly the canonical 728×48
-    // dimensions before we allow the upload. This catches any path that
-    // somehow bypasses the canvas export (e.g. programmatic misuse of the
-    // exposed saveBanner method).
+    // Decode the blob and check the exact banner dimensions before upload. This
+    // catches paths that bypass the canvas export, like calling the exposed
+    // saveBanner directly.
     const bitmap = await createImageBitmap(blob)
     const { width: bw, height: bh } = bitmap
     bitmap.close()
@@ -1498,7 +1461,6 @@ async function deleteBanner() {
   try {
     const supabase = useSupabaseClient<Database>()
 
-    // Remove all possible banner extensions
     await Promise.all(['webp', 'webm', 'gif'].map(e =>
       supabase.storage.from(USERS_BUCKET_ID).remove([`${props.userId}/banner.${e}`]),
     ))
@@ -1513,7 +1475,6 @@ async function deleteBanner() {
       return
     }
 
-    // Reset editor state
     bgFillType.value = 'solid'
     bgFillColor.value = '#1a1a2e'
     bgFillStops.value = [{ color: '#1a1a2e', position: 0 }, { color: '#16213e', position: 1 }]
@@ -1570,8 +1531,8 @@ function pasteLayer() {
     clone = { ...src, id: newId, x: src.x + 6, y: src.y + 6 }
   }
   else {
-    // Image layers pasted from clipboard won't have a live src/file -
-    // reuse whatever was captured at copy time (blob URL may still be valid)
+    // Pasted image layers have no live src/file. Reuse what was captured at
+    // copy time, since the blob URL may still be valid.
     clone = { ...src, id: newId, x: src.x + 6, y: src.y + 6 }
   }
   layers.value.push(clone)
@@ -1588,7 +1549,6 @@ const workspaceStyle = computed(() => ({
   transform: `translate(${panOffset.value.x}px, ${panOffset.value.y}px)`,
 }))
 
-// Cursor to show on the canvas based on hover/drag state
 const canvasCursor = computed(() => {
   if (panning.value)
     return 'grabbing'
@@ -1620,7 +1580,6 @@ watch(layers, () => {
   isDirty.value = true
 }, { deep: true })
 
-// Reload existing banner whenever the modal is opened; also trigger font load
 watch(() => props.open, async (isOpen) => {
   if (isOpen && props.userId && !loading.value) {
     const supabase = useSupabaseClient<Database>()
@@ -1702,7 +1661,6 @@ onMounted(async () => {
     resizeObserver.observe(canvasContainerRef.value)
   }
 
-  // Apply VUI theme colours as defaults for new banners
   const colorBg = getCssVarAsHex('--color-bg', '#1a1a2e')
   const colorBgRaised = getCssVarAsHex('--color-bg-raised', '#16213e')
   bgFillColor.value = colorBg
@@ -1731,7 +1689,7 @@ function onDocumentMouseMove(e: MouseEvent) {
     return
   }
 
-  // Resize - works regardless of where mouse is
+  // Resize keeps tracking when the mouse leaves the canvas
   if (resizingLayerId.value) {
     const layer = layers.value.find(l => l.id === resizingLayerId.value)
     if (layer && layer.type === 'image') {
@@ -1756,7 +1714,7 @@ function onDocumentMouseMove(e: MouseEvent) {
     return
   }
 
-  // Drag - works regardless of where mouse is
+  // Drag keeps tracking when the mouse leaves the canvas
   if (dragging.value === 'layer' && draggingLayerId.value) {
     const layer = layers.value.find(l => l.id === draggingLayerId.value)
     if (layer) {
@@ -1768,8 +1726,8 @@ function onDocumentMouseMove(e: MouseEvent) {
     return
   }
 
-  // Idle - only do hover detection if the mouse is actually over the canvas.
-  // Use a single getBoundingClientRect call shared by the over-canvas check and canvasToLocal.
+  // Idle: only hover-test when the mouse is over the canvas. One getBoundingClientRect
+  // call is shared by the over-canvas check and canvasToLocal.
   const canvas = canvasRef.value
   if (!canvas)
     return
@@ -1843,12 +1801,10 @@ onBeforeUnmount(() => {
 // ── Import ────────────────────────────────────────────────────────────────────
 
 /**
- * Import an external WebP file into the editor. If the file contains embedded
- * Hivecom banner metadata the editor state is fully restored from it. Otherwise
- * the image is placed as a centered image layer so the user can keep editing.
+ * Restores the full editor state from embedded banner metadata when present.
+ * Otherwise the image goes in as a centred image layer.
  */
 async function importBanner(file: File): Promise<{ hadMetadata: boolean }> {
-  // Try to extract embedded metadata first
   const bytes = new Uint8Array(await file.arrayBuffer())
   const text = new TextDecoder().decode(bytes)
   const markerIndex = text.lastIndexOf(METADATA_MARKER)
@@ -1870,7 +1826,6 @@ async function importBanner(file: File): Promise<{ hadMetadata: boolean }> {
     }
   }
 
-  // No metadata found - place the whole image as a centred image layer
   await new Promise<void>((resolve) => {
     const url = URL.createObjectURL(file)
     const img = new Image()
@@ -1938,13 +1893,10 @@ function onTextLayerFillAngle(angle: number) {
 }
 
 defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
-
-// saveBanner is also used externally after importBanner when hadMetadata is true
 </script>
 
 <template>
   <Modal size="screen" :open="open" class="banner-editor" hide-close-button @close="emit('close')">
-    <!-- Hidden file input for image layers -->
     <input
       ref="fileInputRef"
       type="file"
@@ -2017,7 +1969,6 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
 
       <!-- ── Right: controls sidebar ───────────────────────────────────── -->
       <div class="banner-editor__sidebar">
-        <!-- Header -->
         <Flex y-center x-between gap="xs" class="banner-editor__sidebar-header">
           <h4>Banner Editor</h4>
           <Flex y-center gap="xs">
@@ -2030,10 +1981,8 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
           </Flex>
         </Flex>
 
-        <!-- Scrollable control groups -->
         <div class="banner-editor__groups">
           <div class="banner-editor__groups-inner">
-            <!-- Background -->
             <BannerEditorBackground
               :fill-type="bgFillType"
               :fill-color="bgFillColor"
@@ -2055,7 +2004,6 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
               @update:fill-type-model="bgFillTypeModel = $event"
             />
 
-            <!-- Layers -->
             <BannerEditorLayersPanel
               :layers-reversed="layersReversed"
               :selected-layer-id="selectedLayerId"
@@ -2068,7 +2016,6 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
               @remove="removeLayer"
             />
 
-            <!-- Text layer controls -->
             <BannerEditorTextPanel
               v-if="selectedTextLayer"
               :layer="selectedTextLayer"
@@ -2095,7 +2042,6 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
               @load-system-fonts="loadSystemFonts()"
             />
 
-            <!-- Image layer controls -->
             <BannerEditorImagePanel
               v-if="selectedImageLayer"
               :layer="selectedImageLayer"
@@ -2109,7 +2055,6 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
             />
           </div>
 
-          <!-- Asset path settings + scan -->
           <div class="banner-editor__group banner-editor__group--flat">
             <span class="banner-editor__group-label">Asset paths</span>
             <Flex column gap="s">
@@ -2143,7 +2088,6 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
           </div>
         </div>
 
-        <!-- Footer: save / delete -->
         <div class="banner-editor__sidebar-footer">
           <p v-if="saveError" class="banner-editor__error">
             {{ saveError }}
@@ -2199,7 +2143,7 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
   font-style: normal;
 }
 
-// Not scoped - mirrors the ThemeEditor pattern so we can target Modal internals
+// Not scoped so we can target Modal internals
 .banner-editor {
   // ── Two-column full-screen layout ──────────────────────────────────────────
 
@@ -2508,7 +2452,7 @@ defineExpose({ saveBanner, deleteBanner, exportToWebPBlob, importBanner })
       border-color: var(--color-accent);
     }
 
-    // Hide browser spin buttons - the value is readable enough without them
+    // Hide browser spin buttons, the value reads fine without them
     &::-webkit-outer-spin-button,
     &::-webkit-inner-spin-button {
       -webkit-appearance: none;

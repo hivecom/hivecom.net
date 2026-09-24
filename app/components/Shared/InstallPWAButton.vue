@@ -7,8 +7,6 @@ import { usePwa } from '@/composables/usePwa'
 // The template has multiple roots, so attrs don't fall through automatically.
 defineOptions({ inheritAttrs: false })
 
-// Offer to install the PWA. Chromium exposes a native prompt; iOS Safari has no
-// programmatic install, so we fall back to "Add to Home Screen" instructions.
 const { isStandalone, canInstall, isIOS, install } = usePwa()
 
 const installing = ref(false)

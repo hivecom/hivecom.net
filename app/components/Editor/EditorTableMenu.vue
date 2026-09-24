@@ -31,7 +31,7 @@ function getTableDomNode(): HTMLElement | null {
 }
 
 // ---------------------------------------------------------------------------
-// Reactive position - updated on every editor transaction
+// Reactive position, updated on every editor transaction
 // ------------------------------------------------------------------------
 interface MenuPos {
   top: number
@@ -52,15 +52,13 @@ function updatePosition() {
   const rect = tableDom.getBoundingClientRect()
   const editorRect = props.editor.view.dom.getBoundingClientRect()
 
-  // Span the full editor width, positioned above the table
   menuPos.value = {
-    top: rect.top - 42, // 42 ≈ menu height + gap
+    top: rect.top - 42, // menu height plus gap
     left: editorRect.left,
     width: editorRect.width,
   }
 }
 
-// Subscribe to editor transactions so we react to cursor moves
 function onTransaction() {
   updatePosition()
 }
@@ -68,7 +66,6 @@ function onTransaction() {
 onMounted(() => {
   props.editor.on('transaction', onTransaction)
 
-  // Also update on scroll/resize so the position tracks the editor
   window.addEventListener('scroll', updatePosition, { passive: true, capture: true })
   window.addEventListener('resize', updatePosition, { passive: true })
 })
@@ -137,7 +134,6 @@ function toggleHeaderRow() {
       >
         <Flex gap="xxs" y-center x-between>
           <Flex gap="xxs" y-center>
-            <!-- Column controls -->
             <ButtonGroup>
               <Button size="s" square plain @click="addColumnBefore">
                 <Icon :size="16" name="ph:arrow-line-left" />
@@ -152,7 +148,6 @@ function toggleHeaderRow() {
 
             <div class="table-menu-divider" />
 
-            <!-- Row controls -->
             <ButtonGroup>
               <Button size="s" square plain @click="addRowBefore">
                 <Icon :size="16" name="ph:arrow-line-up" />
@@ -167,14 +162,12 @@ function toggleHeaderRow() {
           </Flex>
 
           <Flex gap="xxs" y-center>
-            <!-- Header row toggle -->
             <Button size="s" square plain @click="toggleHeaderRow">
               <Icon :size="16" name="ph:text-h" />
             </Button>
 
             <div class="table-menu-divider" />
 
-            <!-- Delete table -->
             <Button size="s" square variant="danger" plain @click="deleteTable">
               <Icon :size="16" name="ph:trash" />
             </Button>

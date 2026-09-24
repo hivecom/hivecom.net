@@ -9,7 +9,7 @@ const OPENING_DIRECTIVE_RE = /^[a-z]+\[/i
 // Named font palette
 // ------------------------------------------------------------------------
 // Each name maps to a CSS custom property defined in app/assets/index.scss.
-// Only system-safe stacks are included so no web fonts need to be loaded.
+// System stacks only, so no web fonts need loading.
 export const TEXT_FONT_NAMES = [
   'sans',
   'serif',
@@ -20,12 +20,10 @@ export const TEXT_FONT_NAMES = [
 
 export type TextFontName = (typeof TEXT_FONT_NAMES)[number]
 
-/** Returns the CSS custom property name for a font, e.g. "sans" → "--text-font-sans". */
 export function textFontVar(name: TextFontName): string {
   return `--text-font-${name}`
 }
 
-/** Returns the CSS value string for a font, e.g. "sans" → "var(--text-font-sans)". */
 export function textFontValue(name: TextFontName): string {
   return `var(${textFontVar(name)})`
 }
@@ -43,10 +41,8 @@ declare module '@tiptap/core' {
 
   interface Commands<ReturnType> {
     textFont: {
-      /** Apply a named system font stack to the selected text, e.g. "mono". */
       setTextFont: (font: TextFontName) => ReturnType
 
-      /** Remove the text font mark from the selection. */
       unsetTextFont: () => ReturnType
     }
   }
@@ -57,9 +53,7 @@ export const TextFont = Mark.create({
 
   priority: 900,
 
-  // Do not extend the mark when typing at its boundary. Without this,
-  // typing adjacent to a font-styled word would inherit the font, which is
-  // almost never what the user wants for an explicit font annotation.
+  // Typing next to a marked word shouldn't inherit the mark
   inclusive: false,
 
   // ---------------------------------------------------------------------------
@@ -74,7 +68,7 @@ export const TextFont = Mark.create({
           if (fromAttr !== null && fromAttr !== '' && isValidFontName(fromAttr))
             return fromAttr
 
-          // Fallback: recover name from a CSS-variable inline style.
+          // Fall back to a CSS-variable inline style
           const raw = element.style.fontFamily ?? ''
           const varMatch = CSS_VAR_FONT_RE.exec(raw)
           const varName = varMatch?.[1] ?? null
@@ -112,7 +106,7 @@ export const TextFont = Mark.create({
           return false
         },
       },
-      // Graceful fallback for spans with a CSS-variable font-family style.
+      // Spans with only a CSS-variable font-family style
       {
         tag: 'span',
         getAttrs: (node: HTMLElement) => {
@@ -186,10 +180,8 @@ export const TextFont = Mark.create({
       if (!isValidFontName(font))
         return undefined
 
-      // Find the closing ::: that matches this opening, accounting for nesting.
-      // A plain lazy regex ([\s\S]*?) stops at the first ::: it encounters, which
-      // is wrong when directives are stacked (e.g. :::font[serif]:::size[xl]text::::::).
-      // We walk the string and track depth so we always find the correct outer close.
+      // A lazy regex stops at the first :::, which breaks stacked directives
+      // like :::font[serif]:::size[xl]text::::::. Track depth to find the outer close.
       const contentStart = prefixMatch[0].length
       let depth = 1
       let i = contentStart
@@ -197,15 +189,12 @@ export const TextFont = Mark.create({
         if (src[i] === ':' && src[i + 1] === ':' && src[i + 2] === ':') {
           const after = src.slice(i + 3)
           if (OPENING_DIRECTIVE_RE.test(after)) {
-            // Another opening directive - go deeper
             depth++
             i += 3
             continue
           }
 
-          // Closing ::: - anything NOT followed by an opening-directive pattern
-          // (letters then '[') counts as a close, including bare ':::' sequences
-          // and text that happens to start with a letter but is not a directive.
+          // Any ::: not followed by `letters[` closes, including text that only looks like a directive
           if (!OPENING_DIRECTIVE_RE.test(after)) {
             depth--
             if (depth === 0) {

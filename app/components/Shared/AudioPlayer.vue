@@ -6,10 +6,8 @@ import AudioTransport from '@/components/Shared/AudioTransport.vue'
 import AudioVolume from '@/components/Shared/AudioVolume.vue'
 
 const props = defineProps<{
-  // The audio source URL.
   src: string
 
-  // Filename or track title shown above the scrubber.
   title?: string
 
   // Optional secondary line (content type, size, uploader, whatever the caller has).
@@ -19,22 +17,20 @@ const props = defineProps<{
   // the title above the controls.
   compact?: boolean
 
-  // Drop the player's own surface (background, border, padding) when it sits
-  // inside a container that already provides one, like the asset drawer preview.
+  // Drop the player's own surface (background, border, padding) inside a container
+  // that already provides one.
   bare?: boolean
 }>()
 
-// A view of the shared playback engine bound to one src. Actual playback lives
-// in useAudioPlayer so it survives navigation and list re-renders, with the
-// persistent toast as the other view. When this instance owns the active track
-// it reflects and drives the engine live; otherwise it sits idle and a press
-// hands the track over to the engine. The transport renders the controls.
+// A view of the shared playback engine bound to one src. Playback lives in
+// useAudioPlayer so it survives navigation and list re-renders. When this instance
+// owns the active track it drives the engine live, otherwise a press hands it over.
 const player = useAudioPlayer()
 
 const isActive = computed(() => player.currentSrc.value === props.src)
 
 // A metadata-only probe so idle players can still show the total duration in
-// lists, the way they did when each owned its own element. It never plays.
+// lists. It never plays.
 const probe = ref<HTMLAudioElement | null>(null)
 const localDuration = ref(0)
 const localErrored = ref(false)
@@ -76,8 +72,6 @@ function onSeekCommit() {
   player.commitSeek()
 }
 
-// Reset the idle probe state when the source swaps (e.g. the drawer moves to
-// another file).
 watch(() => props.src, () => {
   localDuration.value = 0
   localErrored.value = false
@@ -89,8 +83,6 @@ watch(() => props.src, () => {
     class="audio-player" :class="{ 'audio-player--compact': compact,
                                    'audio-player--bare': bare }"
   >
-    <!-- Metadata-only probe so an idle player can show the track length. The
-         engine owns the element that actually plays, so this never does. -->
     <audio
       v-if="!isActive"
       ref="probe"

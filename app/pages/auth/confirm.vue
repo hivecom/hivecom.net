@@ -91,10 +91,9 @@ function scheduleProfileRedirect() {
 
 const hasMfaSupport = computed(() => Boolean((supabase.auth as unknown as { mfa?: unknown }).mfa))
 
-// OAuth sign-ins (e.g. Discord) always produce an aal1 session. If the user has
-// a verified MFA factor enrolled, the self-owned write RLS policies require aal2
-// (see is_aal2_if_mfa()), so we must route them through the authenticator
-// challenge on the sign-in page before sending them on to their destination.
+// OAuth sign-ins always produce an aal1 session, but with a verified MFA factor the
+// self-owned write RLS policies require aal2 (is_aal2_if_mfa()). Route those users
+// through the authenticator challenge before their destination.
 async function redirectForMfaStepUpIfRequired() {
   if (!hasMfaSupport.value)
     return false
@@ -787,7 +786,6 @@ onMounted(() => {
     </div>
 
     <template v-if="isDev && showDebugPanel">
-      <!-- Mobile: floating button + drawer -->
       <template v-if="isBelowS">
         <Button class="debug-fab" square variant="gray" @click="debugDrawerOpen = true">
           <Icon name="ph:bug" size="20" />
@@ -829,7 +827,6 @@ onMounted(() => {
         </Drawer>
       </template>
 
-      <!-- Desktop: fixed card -->
       <Card v-else class="debug-panel">
         <template #header>
           <Flex y-center gap="m">

@@ -1,15 +1,10 @@
 import { corsHeaders } from "../_shared/cors.ts";
 
 /**
- * Steam OpenID authentication start endpoint
- * Returns the Steam OpenID login URL for the client to redirect to
- *
- * POST body:
- * - mode: 'login' | 'link' (default: 'link')
- * - redirect: post-auth redirect path (default: /profile/settings)
+ * POST { mode?: 'login' | 'link', redirect?, baseUrl }. mode defaults to 'link',
+ * redirect to /profile/settings.
  */
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -18,7 +13,6 @@ Deno.serve(async (req) => {
     const { mode = "link", redirect = "/profile/settings", baseUrl } = await req
       .json();
 
-    // Validate mode
     if (mode !== "login" && mode !== "link") {
       return new Response(
         JSON.stringify({ error: 'Invalid mode. Must be "login" or "link".' }),
@@ -39,13 +33,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build the return URL for Steam callback (goes back to frontend)
     const returnUrl = `${baseUrl}/auth/callback/steam/`;
 
-    // Create state parameter with mode and redirect info
     const state = btoa(JSON.stringify({ mode, redirect }));
 
-    // Build Steam OpenID authentication URL
     const steamOpenIdUrl = new URL("https://steamcommunity.com/openid/login");
     steamOpenIdUrl.searchParams.set(
       "openid.ns",

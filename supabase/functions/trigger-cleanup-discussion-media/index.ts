@@ -6,8 +6,6 @@ import { authorizeSystemTrigger } from "../_shared/auth.ts";
 import { responseMethodNotAllowed } from "../_shared/response.ts";
 
 const FORUMS_BUCKET = "hivecom-content-forums";
-// Pattern is recreated per call (no module-level /g flag) to avoid lastIndex
-// state bleeding between requests in the same Deno isolate.
 const STORAGE_PATH_PATTERN =
   /\/storage\/v1\/object\/public\/hivecom-content-forums\/([^\s"')]+)/g;
 
@@ -20,19 +18,17 @@ interface CleanupDiscussionMediaRequest {
 
 function extractStoragePaths(markdown: string): string[] {
   const paths: string[] = [];
-  // Recreate the regex each call so lastIndex always starts at 0.
+  // Recreated per call so lastIndex can't bleed between requests in the same isolate
   const re = new RegExp(STORAGE_PATH_PATTERN.source, "g");
   let match: RegExpExecArray | null;
 
   while ((match = re.exec(markdown)) !== null) {
     const raw = match[1];
-    // Strip query string
     const withoutQuery = raw.split("?")[0];
     const decoded = decodeURIComponent(withoutQuery);
     paths.push(decoded);
   }
 
-  // Deduplicate
   return [...new Set(paths)];
 }
 

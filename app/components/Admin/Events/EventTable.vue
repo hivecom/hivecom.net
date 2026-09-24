@@ -54,7 +54,7 @@ interface RpcEvent {
 
 // ─── Signals & routing ────────────────────────────────────────────────────────
 
-// Keep declared for v-model binding with parent (EventKPIs coordinates separately via useDataEvents)
+// Unused here, but declared so the parent's v-model binding still resolves.
 const _refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
 type Event = Tables<'events'>
@@ -227,7 +227,7 @@ function getEventStatus(event: RpcEvent): { label: string, variant: 'accent' | '
       return { label: 'Recurring', variant: 'accent' }
     }
 
-    // No future occurrences - series ended
+    // No future occurrences, so the series has ended.
     return { label: 'Past', variant: 'neutral' }
   }
 
@@ -452,7 +452,6 @@ watch(adminTablePerPage, () => {
 onBeforeMount(async () => {
   await fetchEvents()
 
-  // Honour any ?event= query param present on initial load
   const eventId = route.query.event
   if (!eventId)
     return
@@ -469,12 +468,10 @@ onBeforeMount(async () => {
 
 <template>
   <Flex column expand>
-    <!-- Error message -->
     <Alert v-if="errorMessage" variant="danger">
       {{ errorMessage }}
     </Alert>
 
-    <!-- Initial skeleton load -->
     <Flex v-else-if="initialLoad" gap="s" column expand>
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <Flex gap="s" y-center wrap :expand="isBelowMedium" :x-center="isBelowMedium">

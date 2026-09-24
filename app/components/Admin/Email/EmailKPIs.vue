@@ -8,9 +8,8 @@ import { useEmailAdmin } from '@/composables/useEmailAdmin'
 
 const { fetchOverview } = useEmailAdmin()
 
-// Bumped by the page after a broadcast goes out, so the quota card reflects
-// the send without a manual reload. The overview model shares the fetched
-// state upward, the compose form shows the recipient count from it.
+// Bumped by the page after a broadcast so the quota card updates without a reload.
+// The overview model shares the fetched state upward for the compose form.
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 const overviewModel = defineModel<EmailOverview | null>('overview', { default: null })
 
@@ -55,8 +54,8 @@ const productionAccess = computed(() => account.value?.productionAccess === true
 
 const enforcementValue = computed(() => account.value?.enforcementStatus ?? 'Unknown')
 
-// Every judgement variant stays gray until data lands - a red icon during
-// loading reads as an outage that isn't there.
+// Every judgement variant stays gray until data lands. A red icon during loading
+// reads as an outage that isn't there.
 const sendingVariant = computed(() => {
   if (!account.value)
     return 'gray'

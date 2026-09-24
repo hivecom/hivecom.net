@@ -1,9 +1,6 @@
 /**
- * Cached total discussion reply count for a given user - used for display
- * counters (e.g. "X replies" on a forum post author sidebar).
- *
- * Counts all non-deleted replies the user has posted across all discussions.
- * This is purely a display counter; badge threshold logic lives in the catalog.
+ * Non-deleted replies across all discussions, for display only. Badge
+ * thresholds live in the catalog.
  */
 
 import type { Ref } from 'vue'

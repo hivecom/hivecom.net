@@ -8,11 +8,9 @@ import { prewarmAudioVisuals } from '@/lib/audio/prewarm'
 import { readTags } from '@/lib/audio/tags'
 import { useMobileViewport } from '@/lib/mediaQuery'
 
-// The whole point of this composable: playback has to survive page navigation
-// and list re-renders. A `new Audio()` element lives in JS, never in the DOM,
-// so nothing can unmount it. Every visible player (the inline AudioPlayer
-// instances and the persistent toast) is just a view bound to this one engine,
-// which is why they can never drift out of sync.
+// Playback has to survive page navigation and list re-renders. A `new Audio()`
+// element never enters the DOM, so nothing can unmount it. Every visible player
+// is a view bound to this one engine, so they can't drift out of sync.
 
 export interface AudioTrack {
   src: string
@@ -25,9 +23,8 @@ const currentSrc = ref<string | null>(null)
 const title = ref<string | undefined>()
 const subtitle = ref<string | undefined>()
 
-// Embedded metadata for the active track (title/artist/album/cover), populated
-// async off the shared fetch. Null until a read resolves or when a track has no
-// readable tags, so the UI falls back to the passed title/subtitle.
+// Null until the tag read resolves, or when a track has no readable tags. The UI
+// falls back to the passed title and subtitle.
 const tags = ref<AudioTags | null>(null)
 const playing = ref(false)
 const duration = ref(0)
@@ -40,13 +37,10 @@ const errored = ref(false)
 const seeking = ref(false)
 const activeToastId = ref<number | null>(null)
 
-// Whether the fullscreen spectrogram view is open. Shared so any inline player
-// can pop it and the single global AudioLightbox can render the active track.
+// Shared so any inline player can pop the one global AudioLightbox.
 const fullscreen = ref(false)
 
-// Output level (0..1) and mute, shared so the fullscreen volume control drives
-// the one engine. Seeded at the 50% default; the persisted user setting takes
-// over once linkVolumeSetting runs on the client.
+// 0..1. Starts at 50% until linkVolumeSetting loads the persisted setting on the client.
 const volume = ref(0.5)
 const muted = ref(false)
 
@@ -57,8 +51,6 @@ let audio: HTMLAudioElement | null = null
 // without this the blobs pile up on every track change.
 let lastCoverUrl: string | null = null
 
-// Swap the tag state and revoke the previous cover URL so its blob is freed.
-// The one bit of real cleanup in here: everything else is plain refs.
 function setTags(next: AudioTags | null) {
   if (lastCoverUrl)
     URL.revokeObjectURL(lastCoverUrl)
@@ -100,8 +92,7 @@ function linkVolumeSetting() {
   )
 }
 
-// Push the current level/mute onto the live element. Safe to call before the
-// element exists.
+// Safe to call before the element exists.
 function applyVolume() {
   if (!audio)
     return
@@ -110,8 +101,7 @@ function applyVolume() {
   audio.muted = muted.value
 }
 
-// Lazily build the element and wire its listeners once, on first play. Returns
-// null on the server where there's no Audio constructor.
+// Built on first play. null on the server, where there's no Audio constructor.
 function ensureAudio(): HTMLAudioElement | null {
   if (audio || !import.meta.client)
     return audio
@@ -166,8 +156,7 @@ function ensureToast() {
   activeToastId.value = toast.id
 }
 
-// Pause and wipe state without touching the toast. Used both by stop() and when
-// the toast is closed out from under us.
+// Pause and wipe state without touching the toast.
 function reset() {
   audio?.pause()
   playing.value = false
@@ -204,9 +193,8 @@ function play(track: AudioTrack) {
     // instant. Background, swallows its own errors.
     prewarmAudioVisuals(track.src)
 
-    // Read embedded tags off the same shared fetch. Fire-and-forget; the
-    // currentSrc guard mirrors the components' `if (src !== props.src) return`
-    // so a slow resolve on an old track can't clobber a newer one.
+    // The currentSrc guard stops a slow read for an old track from clobbering a
+    // newer one.
     setTags(null)
     void readTags(track.src).then((t) => {
       if (currentSrc.value === track.src)
@@ -253,7 +241,6 @@ function togglePlayback() {
   }
 }
 
-// Apply a committed seek to the engine.
 function commitSeek() {
   if (audio)
     audio.currentTime = currentTime.value
@@ -317,8 +304,6 @@ function handleToastUnmount(id: number) {
 }
 
 export function useAudioPlayer() {
-  // Wire the shared volume to the persisted setting on first client use. Guarded
-  // so it only registers once across every player that calls this.
   linkVolumeSetting()
 
   return {

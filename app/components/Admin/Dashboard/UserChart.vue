@@ -22,7 +22,6 @@ import { getChartPalette, getLineChartDefaults } from '@/lib/charts'
 import { deepMergePlainObjects } from '@/lib/utils/common'
 import { fullMonth } from '@/lib/utils/date'
 
-// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -33,13 +32,11 @@ ChartJS.register(
   Legend,
 )
 
-// Types
 interface MonthlyUserData {
   month: string
   totalUsers: number
 }
 
-// Setup client and state
 const supabase = useSupabaseClient()
 const loading = ref(true)
 const errorMessage = ref('')
@@ -49,7 +46,6 @@ const chartRef = ref<ChartComponentRef<'line'> | null>(null)
 const { width: chartWrapperWidth, height: chartWrapperHeight } = useElementSize(chartWrapperRef, { width: 0, height: 0 })
 const { activeTheme } = useUserTheme()
 
-// Fetch users data and group by month
 async function fetchUsersData() {
   const { data: profiles, error } = await supabase
     .from('profiles')
@@ -59,7 +55,6 @@ async function fetchUsersData() {
   if (error)
     throw error
 
-  // Group users by month
   const usersByMonth: Record<string, { total: number }> = {}
 
   profiles?.forEach((profile) => {
@@ -73,7 +68,6 @@ async function fetchUsersData() {
   return usersByMonth
 }
 
-// Combine and process all data
 async function fetchAllData() {
   loading.value = true
   errorMessage.value = ''
@@ -97,11 +91,9 @@ async function fetchAllData() {
   }
 }
 
-// Chart data
 const chartData = computed(() => {
-  // Track both theme (light/dark switch) and activeTheme (custom palette applied
-  // after async fetch). getCSSVariable reads the DOM directly - not reactive -
-  // so we need explicit deps to re-run after applyTheme() writes to :root.
+  // getCSSVariable reads the DOM directly and isn't reactive. Touching theme and
+  // activeTheme re-runs this after applyTheme() writes to :root.
   void theme.value
   void activeTheme.value
 
@@ -112,7 +104,7 @@ const chartData = computed(() => {
     }
   }
 
-  // Data is already sorted in fetchAllData, no need to sort again
+  // fetchAllData already sorts this.
   const sortedData = monthlyData.value
 
   const labels = sortedData.map((data) => {
@@ -137,7 +129,6 @@ const chartData = computed(() => {
   }
 })
 
-// Chart options
 const localChartOptions: ChartOptions<'line'> = {
   plugins: {
     title: {
@@ -176,7 +167,7 @@ const localChartOptions: ChartOptions<'line'> = {
         callback(val, index) {
           const label = this.getLabelForValue(index)
 
-          // label is 'MMM YYYY' e.g. 'Apr 2025' - shorten to 'Apr '25'
+          // label is 'MMM YYYY' (e.g. 'Apr 2025'), shortened to 'Apr '25'
           const parts = label.split(' ')
           const [month, year] = parts
           return month && year ? `${month} '${year.slice(2)}` : label
@@ -215,7 +206,6 @@ watchEffect(() => {
   chart.resize(Math.floor(width), Math.floor(height) || undefined)
 })
 
-// Month-over-month growth %
 const momGrowth = computed(() => {
   const data = monthlyData.value
   if (data.length < 2)
@@ -239,7 +229,6 @@ const currentDiff = computed(() => {
 
 defineExpose({ momGrowth, currentDiff })
 
-// Lifecycle hooks
 onBeforeMount(fetchAllData)
 </script>
 
@@ -247,20 +236,16 @@ onBeforeMount(fetchAllData)
   <div class="chart-container">
     <div v-if="loading" class="chart-loading">
       <div class="chart-skeleton">
-        <!-- Chart area skeleton -->
         <div class="chart-area-skeleton">
-          <!-- Y-axis labels -->
           <div class="y-axis-skeleton">
             <Skeleton v-for="i in 5" :key="i" :width="30" :height="10" :radius="2" />
           </div>
 
-          <!-- Chart lines simulation -->
           <div class="chart-lines-skeleton">
             <Skeleton :height="120" :radius="8" style="opacity: 0.3;" />
           </div>
         </div>
 
-        <!-- X-axis labels -->
         <div class="x-axis-skeleton">
           <Skeleton v-for="i in 6" :key="i" :width="44" :height="10" :radius="2" />
         </div>

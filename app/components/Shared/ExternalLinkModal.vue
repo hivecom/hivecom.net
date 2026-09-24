@@ -30,7 +30,6 @@ const displayHost = computed(() => {
 </script>
 
 <template>
-  <!-- Mobile: bottom drawer -->
   <Drawer v-if="isMobile" :open="open" @close="cancel">
     <Flex column gap="m">
       <Flex column gap="s">
@@ -62,7 +61,6 @@ const displayHost = computed(() => {
     </Flex>
   </Drawer>
 
-  <!-- Desktop: modal -->
   <Modal
     v-else
     :open="open"

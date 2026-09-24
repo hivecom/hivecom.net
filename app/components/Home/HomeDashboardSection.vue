@@ -1,18 +1,11 @@
 <script setup lang="ts">
-// Labelled section inside a dashboard card. Scaffolding for the raw-data pass
-// so all five cards dump their data in a consistent shape while the real
-// layout gets designed on top of it. Pass `to` and the label doubles as the
-// way into the fuller view of what the section shows, same as the card title.
-// Listen for `click` instead when the fuller view is a sheet or modal rather
-// than a page: that swaps the label's arrow for a caret button on the right of
-// the head row, so a section that opens in place never wears the arrow that
-// means "this navigates".
+// `to` makes the label a link to the fuller view. Listen for `click` when that
+// view is a sheet or modal: a caret replaces the arrow that means "this navigates".
 defineProps<{ label: string, to?: string }>()
 const emit = defineEmits<{ click: [] }>()
 
-// Emits don't land in attrs, so the vnode is the only place to see whether
-// anyone is listening. Read at render time rather than cached, since a parent
-// can attach the listener conditionally and the vnode isn't reactive.
+// Emits don't land in attrs, so the vnode is the only place to see a listener.
+// Read at render time, since the vnode isn't reactive.
 const instance = getCurrentInstance()
 
 function clickable() {
@@ -37,8 +30,7 @@ function clickable() {
       </h3>
 
       <div class="dashboard-section__actions">
-        <!-- Sits ahead of the slot so a section with both (the chat card's
-             address hint) keeps the caret next to the label it belongs to. -->
+        <!-- Ahead of the slot so the caret stays next to its label -->
         <button
           v-if="clickable()"
           type="button"
@@ -78,8 +70,6 @@ function clickable() {
   }
 }
 
-// The label keeps its own row so a section can hang an action off the right of
-// it without the action landing on top of the items.
 .dashboard-section__head {
   display: flex;
   align-items: center;
@@ -109,7 +99,7 @@ function clickable() {
   align-items: center;
   gap: var(--space-xxs);
   color: inherit;
-  // The button variant inherits the label's type instead of the browser's.
+  // The button variant inherits the label's type instead of the browser's
   font: inherit;
   letter-spacing: inherit;
   text-transform: inherit;
@@ -129,8 +119,7 @@ function clickable() {
   }
 }
 
-// Held back until hovered, same as the card title's arrow, so the label reads
-// as a label until you reach for it.
+// Hidden until hover, so the label reads as a label until you reach for it
 .dashboard-section__arrow {
   font-size: 12px;
   opacity: 0;
@@ -140,9 +129,7 @@ function clickable() {
     transform var(--transition-duration) ease;
 }
 
-// Same idea as the arrow, scoped to the whole section rather than the label:
-// the caret is the section's handle, so reaching anywhere inside it is enough
-// to bring the handle out. Touch has no hover to spend, so there it just sits.
+// Shows on hover anywhere in the section. Always visible on touch.
 .dashboard-section__expand {
   display: inline-flex;
   align-items: center;

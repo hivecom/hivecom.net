@@ -1,7 +1,5 @@
 import type { Tables } from '@/types/database.overrides'
 
-// Form state shared by the project page modal and the admin sheet
-
 export interface ProjectFormState {
   title: string
   description: string

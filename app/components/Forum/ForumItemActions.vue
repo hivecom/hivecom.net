@@ -178,8 +178,6 @@ const showEditModal = ref(false)
 const showCreateSubTopicModal = ref(false)
 const showCreateDiscussionModal = ref(false)
 
-// function handleEdit() {}
-
 const linkedDiscussionReason = computed(() => {
   if (props.table !== 'discussions')
     return null
@@ -219,7 +217,6 @@ async function handleRecreate() {
 
   const discussion = props.data as Tables<'discussions'>
 
-  // Build the YYYY-MM-DD suffix from the discussion's creation date
   const created = new Date(discussion.created_at)
   const suffix = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`
 
@@ -227,11 +224,10 @@ async function handleRecreate() {
   const archivedTitle = `${oldTitle} (${suffix})`
   const baseSlug = discussion.slug ?? slugify(oldTitle)
 
-  // Strip any existing YYYY-MM-DD prefix from the slug before prepending
   const cleanSlug = baseSlug.replace(SLUG_DATE_PREFIX_RE, '')
   const archivedSlugBase = `${suffix}-${cleanSlug}`
 
-  // Resolve a free archived slug - append -2, -3, etc. on conflict
+  // Append -2, -3 and so on until the slug is free
   let archivedSlug = archivedSlugBase
   {
     let counter = 1
@@ -250,8 +246,7 @@ async function handleRecreate() {
     }
   }
 
-  // Resolve a free slug for the new discussion - the original slug may already
-  // be taken if this discussion was previously re-created
+  // The original slug can be taken if this discussion was re-created before
   let newSlug = baseSlug
   {
     let counter = 1
@@ -270,7 +265,7 @@ async function handleRecreate() {
   }
 
   try {
-    // 1. Update the old discussion: lock, unsticky, archive, rename
+    // 1. Lock, unpin, archive and rename the old discussion
     const { data: archivedData, error: archiveError } = await supabase
       .from('discussions')
       .update({
@@ -290,15 +285,12 @@ async function handleRecreate() {
       return
     }
 
-    // Invalidate the old slug key now that the slug has changed - the old URL
-    // should no longer serve a cache hit for the pre-rename data.
+    // The old URL must stop serving the pre-rename data
     discussionCache.invalidate(discussion.id, discussion.slug)
 
-    // Warm the cache with the renamed archived record so /forum/YYYY-MM-DD-slug
-    // is a cache hit if someone navigates there.
     discussionCache.set(archivedData)
 
-    // 2. Create the new discussion with the original title, description, content and topic
+    // 2. Create the replacement with the original content
     const { data: newData, error: createError } = await supabase
       .from('discussions')
       .insert({
@@ -322,8 +314,7 @@ async function handleRecreate() {
       return
     }
 
-    // Warm the cache with the new discussion so the navigation below is an
-    // immediate cache hit rather than a fresh DB round-trip.
+    // Warm the cache so the navigation below is a cache hit
     discussionCache.set(newData)
 
     pushToast(`Re-created discussion "${oldTitle}"`)
@@ -394,7 +385,6 @@ function handleDelete() {
         Lock
       </DropdownItem>
 
-      <!-- Archiving - topics & discussions -->
       <DropdownItem
         v-if="!props.data.is_archived"
         @click="archiveMode = 'archive'; archiveConfirm = true"
@@ -421,7 +411,7 @@ function handleDelete() {
       <DropdownItem @click="showEditModal = true">
         Edit
       </DropdownItem>
-      <!-- Re-create - discussions only, admin/mod only, blocked for entity-linked discussions -->
+      <!-- Blocked for entity-linked discussions -->
       <template v-if="props.table === 'discussions' && isEffectiveAdminOrMod">
         <template v-if="linkedDiscussionReason">
           <Tooltip placement="left">
@@ -437,7 +427,6 @@ function handleDelete() {
           Re-create
         </DropdownItem>
       </template>
-      <!-- Topic-only: create sub-topic and create discussion shortcuts -->
       <template v-if="props.table === 'discussion_topics'">
         <Divider class="my-xxs" />
         <DropdownItem
@@ -468,7 +457,6 @@ function handleDelete() {
       </DropdownItem>
     </Dropdown>
 
-    <!-- Confirmation modal for locking -->
     <ConfirmModal
       v-model:open="lockConfirm"
       :confirm-loading="lockLoading"
@@ -495,7 +483,6 @@ function handleDelete() {
       </Alert>
     </ConfirmModal>
 
-    <!-- Confirmation modal for re-create -->
     <ConfirmModal
       v-model:open="recreateConfirm"
       :confirm-loading="recreateLoading"
@@ -532,7 +519,6 @@ function handleDelete() {
       @created="emit('update', $event)"
     />
 
-    <!-- Create sub-topic modal (only for topics) -->
     <ForumModalAddTopic
       v-if="props.table === 'discussion_topics'"
       :open="showCreateSubTopicModal"
@@ -541,7 +527,6 @@ function handleDelete() {
       @created="emit('update', $event)"
     />
 
-    <!-- Create discussion modal (only for topics) -->
     <ForumModalAddDiscussion
       v-if="props.table === 'discussion_topics'"
       :open="showCreateDiscussionModal"

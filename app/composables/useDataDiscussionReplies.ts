@@ -8,35 +8,20 @@ import { PAGE_SIZE_COMMENT, PAGE_SIZE_FORUM, useDiscussionRepliesCache } from '@
 import { useDiscussionSubscriptionsCache } from '@/composables/useDiscussionSubscriptionsCache'
 
 export interface ReplyGap {
-  /** ID of the last item in the block that precedes the gap. */
+  /** Last loaded item before the gap. */
   afterId: string
 
-  /** Approximate number of replies sitting in the gap (not yet loaded). */
+  /** Approximate, the gap isn't loaded. */
   count: number
 
-  /** Cursor pointing to the first unloaded page inside the gap. */
+  /** First unloaded page inside the gap. */
   cursor: PageCursor
 }
 
 /**
- * Manages all comment data for a discussion: fetching pages via cursor-based
- * pagination, modelling into flat/threaded structures, off-topic toggling,
- * deletion, and the seen-marker.
- *
- * Pagination model:
- * - Forum (ascending): oldest first, "load more" appends at the bottom.
- * - Comment (descending): newest first, "load more" appends at the bottom
- *   (which is chronologically older).
- * - `comments` is the accumulated flat list across all loaded pages.
- * - `hasMore` indicates a next page is available.
- * - `loadMore()` fetches the next page and appends to `comments`.
- * - `navigateToComment(id)` resolves the page for a deep-linked comment,
- *   loads pages up to and including that page, then returns true when ready.
- *
- * Threading (threaded view):
- * - Only top-level (root) comments are paginated.
- * - Children are fetched lazily per-root via `loadChildren(rootId)`.
- * - Loaded children are stored in `childrenMap` keyed by parent id.
+ * Forum replies load ascending (oldest first), the comment model descending
+ * (newest first). Either way "load more" appends at the bottom. Threaded view
+ * paginates roots only and loads children lazily per root.
  */
 export function useDataDiscussionReplies(
   props: {
@@ -45,34 +30,19 @@ export function useDataDiscussionReplies(
     model: 'comment' | 'forum'
     hash?: string
     viewMode?: Ref<'flat' | 'threaded'>
-    /**
-     * Whether replies load via traditional pagination (page controls + loadPage)
-     * rather than infinite scroll + gap. Always true for the comment model;
-     * driven by a user setting for the forum model. Ordering is unaffected -
-     * forum stays ascending regardless. Defaults to (model === 'comment').
-     */
+    /** Page controls instead of infinite scroll + gap. Doesn't change ordering. */
     paginated?: Ref<boolean>
     /**
-     * Comment id from a ?comment=<id> deep link present on initial mount.
-     * When set, the initial load jumps straight to the page containing this
-     * comment instead of loading page 1 first (which would be dead time for a
-     * deep link). Read once per discussion-id change, at the start of the load.
+     * From a ?comment= deep link. Read once per discussion change: the initial
+     * load jumps straight to its page and skips page 1.
      */
     initialCommentId?: Ref<string | undefined>
     /**
-     * `created_at` (epoch ms) of the deep-linked comment, from a `?ts=` param on
-     * the link. In ascending (chronological forum) view a reply's position never
-     * shifts, so this timestamp lets the initial load fetch the target block
-     * directly - skipping the page-lookup RPC that the deep link otherwise needs.
-     * Ignored in threaded/comment views where positions are not stable.
+     * Epoch ms from the link's ?ts= param. In ascending flat forum view positions
+     * never shift, so the target block can be fetched without the page-lookup RPC.
      */
     initialCommentAnchorTs?: Ref<number | undefined>
-    /**
-     * Page number from a `?page=N` param, used in paginated mode to restore a
-     * specific page on initial load (reload / shared link). Read once at the
-     * start of the load; ignored when a `?comment=` deep link is present (the
-     * deep link resolves its own page) or in infinite mode.
-     */
+    /** ?page=N to restore in paginated mode. Ignored when a ?comment= link is present. */
     initialPage?: Ref<number | undefined>
   },
   comments: Ref<RawComment[]>,
@@ -96,37 +66,30 @@ export function useDataDiscussionReplies(
 
   const ascending = computed(() => props.model !== 'comment')
 
-  // Pagination vs infinite-scroll/gap loading. Independent of ordering: the
-  // forum stays ascending whether or not it paginates. Comment model is always
-  // paginated; the forum model follows the user's setting (passed in).
   const paginated = computed(() => props.paginated?.value ?? (props.model === 'comment'))
   const pageSize = computed(() => props.model === 'forum' ? PAGE_SIZE_FORUM : PAGE_SIZE_COMMENT)
 
-  // Threaded mode paginates root replies only; flat mode paginates all replies.
-  // navigateToComment always uses rootOnly=false so deep links work regardless of mode.
+  // Threaded mode paginates roots only. Deep links ignore this and resolve with
+  // rootOnly=false so child replies stay reachable.
   const rootOnly = computed(() => props.viewMode?.value === 'threaded')
 
-  // The cursor for the next page. null = first page not yet fetched or no more pages.
+  // null before the first fetch or once there are no more pages.
   const nextCursor = ref<PageCursor | null>(null)
   const hasMore = ref(false)
 
-  // Traditional pagination state (comment model only).
+  // Numbered pagination state, used whenever `paginated` is on.
   // cursorHistory[0] = null (page 1 has no predecessor cursor),
   // cursorHistory[n] = cursor needed to fetch page n+1.
   const currentPage = ref(1)
   const cursorHistory = ref<Array<PageCursor | null>>([null])
 
-  // Count of top-level (root) replies. Used as the pagination total in threaded
-  // view, where reply_count (which includes children) would invent phantom pages
-  // that fetch empty. Populated asynchronously by fetchRootCount.
+  // Pagination total in threaded view. reply_count includes children and would
+  // invent phantom pages that fetch empty.
   const rootCount = ref(0)
   const rootCountLoaded = ref(false)
 
-  // Items the pagination control pages through: every reply in flat view, only
-  // top-level entries in threaded view. Until the exact root count loads, fall
-  // back to reply_count (an overcount) rather than 0 - otherwise totalPages would
-  // collapse to 1 and clamp deep-link / page navigation to page 1 before the
-  // count is in (loadPage clamps to totalPages).
+  // Until the root count loads, fall back to reply_count (an overcount). 0 would
+  // collapse totalPages to 1 and loadPage would clamp navigation to page 1.
   const paginationTotal = computed(() => {
     if (!rootOnly.value)
       return discussion.value?.reply_count ?? 0
@@ -151,26 +114,20 @@ export function useDataDiscussionReplies(
 
   // ── Gap / tail state ────────────────────────────────────────────────────────
 
-  // The "late block" rows: either the tail page (forum initial load) or the
-  // deep-linked target page. Tracked so loadGap can splice pages in before
-  // them while they remain pinned at the end.
+  // The late block: the tail page or the deep-linked target page. Gap loads
+  // splice pages in before it so it stays pinned at the end.
   const _tailBlock = ref<RawComment[]>([])
 
-  // Realtime-appended rows that arrived after a deep-link navigation loaded a
-  // tail block. Tracked so applyPage (loadMore) can insert cursor-fetched
-  // pages before them, preserving chronological order.
+  // Realtime rows appended after a deep link loaded a tail block. Cursor pages
+  // go in before them to keep chronological order.
   const _realtimeAppended = ref<RawComment[]>([])
 
-  // Incremented each time navigateToComment resets gap/tailBlock state.
-  // loadGapFromTop and loadGapFromBottom capture this before their async
-  // fetch and bail if it has changed by the time the fetch returns, preventing
-  // a stale gap-page insert from landing in the wrong position.
+  // Bumped when a navigation resets the gap. Gap loads bail if it changed during
+  // their fetch, so a stale page can't land in the wrong position.
   let _gapGeneration = 0
 
-  // Incremented each time the comment list is reset (loadFirstPage or navigateToComment).
-  // loadMore captures this before its async fetch and discards the result if it has
-  // changed - prevents a stale page from being appended after a navigation reset,
-  // which would insert old items after the tail block and break chronological order.
+  // Bumped when the list resets. loadMore drops its page if this changed
+  // mid-fetch, otherwise old rows would land after the tail block.
   let _listGeneration = 0
 
   const gap = ref<ReplyGap | null>(null)
@@ -184,21 +141,18 @@ export function useDataDiscussionReplies(
     if (rootOnly.value)
       return 0
 
-    // Gap exists: the "remaining" for the load-more strip is items after the
-    // late block end, not the gap itself (the gap has its own banner).
     if (!hasMore.value)
       return 0
 
+    // The gap has its own banner, so it's left out here.
     const total = discussion.value?.reply_count ?? 0
     return Math.max(0, total - comments.value.length - (gap.value?.count ?? 0))
   })
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
-  // Count top-level replies for threaded-view pagination markers. Index-only
-  // count via the roots partial index, mirroring the pagination RPC's filters
-  // (discussion_id, optional vote hash, reply_to_id IS NULL). Includes
-  // soft-deleted roots, matching what the paginated fetch returns.
+  // Mirrors the pagination RPC's filters and includes soft-deleted roots, so the
+  // count matches what the pages return.
   async function fetchRootCount(discussionId: string): Promise<void> {
     const query = supabase
       .from('discussion_replies')
@@ -227,11 +181,6 @@ export function useDataDiscussionReplies(
     return fetched
   }
 
-  /**
-   * Load the first page of replies for the current discussion.
-   * Loads the first page of replies and sets hasMore/nextCursor normally.
-   * Resets the comment list and cursor state.
-   */
   async function loadFirstPage(discussionId: string): Promise<void> {
     gap.value = null
     _tailBlock.value = []
@@ -249,7 +198,6 @@ export function useDataDiscussionReplies(
     if (page == null)
       return
 
-    // Reset pagination history on a fresh first-page load.
     currentPage.value = 1
     cursorHistory.value = [null]
 
@@ -257,7 +205,7 @@ export function useDataDiscussionReplies(
   }
 
   /**
-   * Load a specific page by number (1-based). Comment model only.
+   * Load a specific page by number (1-based).
    * Walks the cursor history forwards as needed, caching each cursor so
    * subsequent back/forward navigations don't re-fetch already-seen pages.
    */
@@ -269,13 +217,10 @@ export function useDataDiscussionReplies(
 
     loadingMore.value = true
 
-    // Jumping to an explicit page replaces the visible set, so any deep-link gap
-    // (from infinite/anchor navigation) no longer applies.
+    // An explicit page replaces the visible set, so a deep-link gap no longer applies.
     gap.value = null
     try {
-      // Walk forward through any missing cursors up to the target page.
-      // cursorHistory[i] is the cursor needed to start fetching page i+1.
-      // So to fetch page N we need cursorHistory[N-1].
+      // Fill in missing cursors up to the target. Page N needs cursorHistory[N-1].
       while (cursorHistory.value.length < targetPage) {
         const cursorIdx = cursorHistory.value.length - 1
         const cursor = cursorHistory.value[cursorIdx]!
@@ -307,7 +252,6 @@ export function useDataDiscussionReplies(
       if (result == null)
         return
 
-      // Store the next cursor in history if we don't have it yet.
       if (result.nextCursor != null && cursorHistory.value.length <= targetPage)
         cursorHistory.value.push(result.nextCursor)
 
@@ -323,10 +267,6 @@ export function useDataDiscussionReplies(
     }
   }
 
-  /**
-   * Append the next page of replies to the current list.
-   * No-op when `hasMore` is false or a fetch is already in flight.
-   */
   async function loadMore(): Promise<void> {
     if (!hasMore.value || loadingMore.value || !discussion.value)
       return
@@ -349,9 +289,7 @@ export function useDataDiscussionReplies(
       if (page == null)
         return
 
-      // Discard result if the list was reset (navigateToComment or loadFirstPage
-      // ran while we were waiting) - appending a stale page would place older
-      // items after the tail block and break chronological order.
+      // The list was reset while this was in flight.
       if (_listGeneration !== myGeneration)
         return
 
@@ -362,25 +300,18 @@ export function useDataDiscussionReplies(
     }
   }
 
-  /**
-   * Apply a fetched page to the comment list.
-   * @param page - The fetched page to apply.
-   * @param reset - When true, replaces the list; when false, appends.
-   */
   function applyPage(page: ReplyPage, reset: boolean): void {
     if (reset) {
       comments.value = page.rows
       _realtimeAppended.value = []
     }
     else {
-      // De-duplicate: realtime may have already added some of these rows
+      // Realtime may have already added some of these rows.
       const existingIds = new Set(comments.value.map(c => c.id))
       const fresh = page.rows.filter(r => !existingIds.has(r.id))
 
-      // If realtime replies were appended after the tail block, insert cursor
-      // pages before them to maintain chronological order. Realtime items are
-      // always newer than anything fetched via the DB cursor, so they must
-      // remain at the very end of the list.
+      // Realtime rows are always newer than cursor-fetched ones, so cursor pages
+      // go in before them.
       if (_realtimeAppended.value.length > 0 && fresh.length > 0) {
         const firstRealtimeId = _realtimeAppended.value[0]!.id
         const insertPoint = comments.value.findIndex(c => c.id === firstRealtimeId)
@@ -404,13 +335,10 @@ export function useDataDiscussionReplies(
   }
 
   /**
-   * Fast path for an anchored chronological deep link. Fetches page 1 and the
-   * target block (anchored on the comment's own timestamp) in parallel, with no
-   * page-lookup RPC on the critical path. The exact "hidden replies" gap count
-   * does need the comment's absolute position, so we seed an estimate (keeps the
-   * gap banner from popping in and shifting layout) and refine it from the cursor
-   * RPC in the background. Returns false when the anchor misses so the caller can
-   * fall back to the authoritative RPC path.
+   * Anchored chronological deep link: page 1 and the target block load in
+   * parallel with no page-lookup RPC on the critical path. The gap count starts
+   * as an estimate so the banner doesn't pop in and shift layout, then the cursor
+   * RPC refines it in the background. Returns false when the anchor misses.
    */
   async function navigateViaAnchor(targetId: string, anchorTs: number, options?: { soft?: boolean }): Promise<boolean> {
     if (!discussion.value)
@@ -446,19 +374,18 @@ export function useDataDiscussionReplies(
       if (firstPage == null || targetBlock == null)
         return false
 
-      // A newer navigation started while we were fetching - leave its result.
+      // A newer navigation started mid-fetch, so leave its result.
       if (_listGeneration !== myGeneration)
         return true
 
       const firstIds = new Set(firstPage.rows.map(r => r.id))
 
-      // Target is actually on page 1.
       if (firstIds.has(targetId)) {
         applyPage(firstPage, true)
         return true
       }
 
-      // Anchor missed (stale link / deleted) - bail to the RPC path.
+      // Anchor missed (stale link or deleted reply). Fall back to the RPC path.
       if (!targetBlock.rows.some(r => r.id === targetId))
         return false
 
@@ -468,9 +395,8 @@ export function useDataDiscussionReplies(
       hasMore.value = targetBlock.hasMore
       nextCursor.value = targetBlock.nextCursor
 
-      // Gap between page 1 and the target block. Seed an estimate from the total
-      // reply count, then refine to the exact count from the cursor RPC's
-      // predecessor count (replies strictly before the target) in the background.
+      // Seed the gap from reply_count, then refine it from the RPC's count of
+      // replies strictly before the target.
       if (firstPage.nextCursor != null && firstPage.rows.length > 0) {
         const totalReplies = discussion.value.reply_count ?? 0
         const estimate = Math.max(1, totalReplies - firstPage.rows.length - fresh.length)
@@ -496,15 +422,9 @@ export function useDataDiscussionReplies(
   }
 
   /**
-   * Resolve a deep-linked comment id by loading page 1 and the target page
-   * simultaneously. A gap is established between them when the target is not
-   * on page 1. Returns true when the target is present in the loaded set.
-   *
-   * Always uses rootOnly=false so child replies can be deep-linked regardless
-   * of the current view mode.
-   *
-   * Returns false when the target reply cannot be found (deleted, wrong
-   * discussion, or RLS-filtered).
+   * Loads page 1 and the target's page together with a gap between them. Uses
+   * rootOnly=false so child replies can be deep-linked in either view. Returns
+   * false when the reply can't be found (deleted, wrong discussion, or RLS).
    */
   async function navigateToComment(targetId: string, options?: { soft?: boolean, anchorTs?: number }): Promise<boolean> {
     if (!discussion.value)
@@ -512,24 +432,17 @@ export function useDataDiscussionReplies(
 
     const discussionId = discussion.value.id
 
-    // Already loaded - nothing to do. Checked before any fetch so a no-op
-    // navigation (target already on screen) costs nothing.
     if (comments.value.some(c => c.id === targetId))
       return true
 
-    // Fast path: an anchored deep link in chronological (ascending flat forum)
-    // view. Positions never shift there, so the comment's own timestamp lets us
-    // fetch the target block directly and skip the page-lookup RPC - one round
-    // trip instead of two (RPC then target fetch). Falls through to the RPC path
-    // below if the anchor misses (stale link, deleted reply, or an edge case).
+    // Positions never shift in ascending flat forum view, so an anchored link can
+    // skip the page-lookup RPC. Falls through to the RPC path if the anchor misses.
     if (options?.anchorTs != null && ascending.value && !paginated.value && props.model !== 'comment' && props.viewMode?.value !== 'threaded') {
       const ok = await navigateViaAnchor(targetId, options.anchorTs, options)
       if (ok)
         return true
     }
 
-    // Deep-link cursor lookup always uses the full (non-root-only) set so
-    // child replies can be targeted even in threaded mode.
     const result = await repliesCache.getReplyPageCursor(
       discussionId,
       targetId,
@@ -544,19 +457,16 @@ export function useDataDiscussionReplies(
     if (result == null)
       return false
 
-    // Already loaded - re-checked: navigateViaAnchor (or a concurrent nav) may
-    // have populated the list while the RPC was in flight.
+    // Re-check: navigateViaAnchor or a concurrent nav may have filled the list
+    // while the RPC was in flight.
     if (comments.value.some(c => c.id === targetId))
       return true
 
-    // Paginated mode (comment model, or forum with pagination on): jump straight
-    // to the target page via loadPage, no gap mechanism.
+    // Paginated mode jumps straight to the target page, no gap.
     if (paginated.value) {
-      // The page index must be in the same space the pages use. `result` was
-      // resolved with rootOnly:false (so child replies can be targeted), which
-      // matches flat pagination. Threaded paginates top-level entries only, so
-      // re-resolve there. A child reply has no root page of its own - bail so the
-      // caller falls back rather than landing on the wrong (clamped) page.
+      // result's page index counts all replies, threaded pages count roots only,
+      // so re-resolve there. A child reply has no root page: bail rather than
+      // land on a clamped, wrong page.
       let pageIndex = result.pageIndex
       if (rootOnly.value) {
         const rootResult = await repliesCache.getReplyPageCursor(discussionId, targetId, {
@@ -593,10 +503,8 @@ export function useDataDiscussionReplies(
     try {
       const fetchOpts = { ascending: ascending.value, pageSize: pageSize.value, hash: props.hash, rootOnly: false }
 
-      // Fetch page 1, an optional context page (page N-1), and the target
-      // page in parallel. When the target is on page N >= 2 and prevCursor is
-      // available, we also load page N-1 so the user always sees at least one
-      // page of context immediately before the target comment.
+      // Page N-1 loads too when prevCursor exists, so there's a page of context
+      // before the target.
       const [firstPage, prevPage, targetPage] = await Promise.all([
         repliesCache.fetchPage(discussionId, { ...fetchOpts, cursor: null }),
         result.prevCursor != null
@@ -615,8 +523,7 @@ export function useDataDiscussionReplies(
         applyPage(firstPage, true)
       }
       else {
-        // Page 1 + target page (and optionally page N-1) loaded.
-        // Tail block = [prevPage rows] + [target page rows], deduped.
+        // Tail block is the prevPage rows plus the target page rows, deduped.
         const firstPageIds = new Set(firstPage.rows.map(r => r.id))
         const prevRows = prevPage?.rows.filter(r => !firstPageIds.has(r.id)) ?? []
         const prevIds = new Set(prevRows.map(r => r.id))
@@ -626,13 +533,8 @@ export function useDataDiscussionReplies(
         _tailBlock.value = tailRows
         comments.value = [...firstPage.rows, ...tailRows]
 
-        // Gap sits between the end of page 1 and the start of the first tail
-        // page (page N-1 when prevCursor was available, page N otherwise).
-        //
-        // When prevPage is loaded: gap ends at page N-1 start, so:
-        //   gapCount = (pageIndex - 1) * pageSize - firstPage.rows.length
-        // When no prevPage: gap ends at page N start, so:
-        //   gapCount = pageIndex * pageSize - firstPage.rows.length
+        // The gap runs from the end of page 1 to the first tail page: N-1 when
+        // prevCursor exists, N otherwise.
         const tailStartPageIndex = result.prevCursor != null ? result.pageIndex - 1 : result.pageIndex
         const gapCount = tailStartPageIndex * pageSize.value - firstPage.rows.length
 
@@ -657,50 +559,33 @@ export function useDataDiscussionReplies(
   }
 
   /**
-   * Navigate to the reply closest to a given date. Resolves the nearest reply
-   * id via RPC then delegates to navigateToComment.
-   *
-   * If all replies are already loaded (hasMore is false and no gap exists),
-   * the nearest reply is resolved locally without an RPC round-trip.
-   *
-   * Options:
-   *   findFirst - when true, uses ceiling semantics: finds the FIRST reply
-   *     at or after the target time (for ascending mode). This is used by
-   *     timeline segment clicks so that clicking a block always navigates to
-   *     the start of that activity block rather than its end.
-   *     Default is false (floor semantics: last reply at or before target).
-   *
-   * Returns the resolved reply id on success (caller can use it to scroll),
-   * null on RPC error, no replies found, or navigation failure.
+   * Defaults to the last reply at or before the date. findFirst picks the first
+   * reply at or after it instead, so a timeline segment click lands on the start
+   * of that block. Returns the reply id, or null on any failure.
    */
   async function navigateToDate(date: Date, { findFirst = false }: { findFirst?: boolean } = {}): Promise<string | null> {
     if (!discussion.value)
       return null
 
-    // Short-circuit: if every reply is already in memory, resolve locally. Only
-    // valid for infinite loading, where `!hasMore` means the whole thread is
-    // loaded. In paginated mode `!hasMore` just means we're on the last page, so
-    // resolving locally would clamp to that page and skip the loadPage that
-    // updates the current page - always go through the RPC path there instead.
+    // Resolve locally only in infinite mode, where !hasMore means the whole
+    // thread is loaded. In paginated mode it only means this is the last page.
     if (!paginated.value && !hasMore.value && gap.value == null && comments.value.length > 0) {
       const targetMs = date.getTime()
 
       if (findFirst) {
-        // Ceiling semantics: first reply at or after the target.
-        // Sort ascending and find the earliest reply >= target.
+        // Ceiling: first reply at or after the target.
         const sorted = [...comments.value].sort((a, b) => {
           const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           return ascending.value ? diff : -diff
         })
         const ceil = sorted.find(c => new Date(c.created_at).getTime() >= targetMs)
 
-        // Nothing at or after the target - clamp to the last reply in sort order.
+        // Nothing at or after the target, clamp to the last reply.
         return (ceil ?? sorted.at(-1)!).id
       }
       else {
-        // Floor semantics: the last post at or before the target date.
-        // "I clicked March 6" means "show me what was most recently posted as of
-        // March 6", not "find whatever timestamp is closest in either direction."
+        // Floor: clicking March 6 means what was latest as of March 6, not the
+        // closest timestamp in either direction.
         let floor: typeof comments.value[0] | null = null
 
         for (const c of comments.value) {
@@ -712,7 +597,7 @@ export function useDataDiscussionReplies(
           }
         }
 
-        // Nothing at or before the target - clamp to the first reply.
+        // Nothing at or before the target, clamp to the first reply.
         return (floor ?? comments.value[0]!).id
       }
     }
@@ -734,16 +619,9 @@ export function useDataDiscussionReplies(
   }
 
   /**
-   * Fill the gap between the early block and the late block by loading one
-   * page from the TOP of the gap and one page from the BOTTOM simultaneously.
-   *
-   * This binary-split approach means a 250-reply gap takes O(log N) clicks
-   * rather than O(N/pageSize) clicks to fully bridge. Each click roughly
-   * halves the remaining gap by consuming pages from both ends.
-   *
-   * The _tailBlock tracks items pinned at the end (originally the tail page,
-   * then extended with each bottom-page fetch). The gap banner sits between
-   * the last early item and the first tail item.
+   * Narrow the gap between the early block and the tail block by loading one
+   * page forward from the top of the gap. The gap banner sits between the last
+   * early item and the first item of `_tailBlock`.
    */
   async function loadGapFromTop(): Promise<void> {
     if (gap.value == null || !discussion.value || loadingGap.value)
@@ -767,7 +645,6 @@ export function useDataDiscussionReplies(
       if (forwardPage == null)
         return
 
-      // navigateToComment reset state during our fetch - discard stale result.
       if (_gapGeneration !== myGeneration)
         return
 
@@ -844,11 +721,10 @@ export function useDataDiscussionReplies(
       if (bottomPage == null)
         return
 
-      // navigateToComment reset state during our fetch - discard stale result.
       if (_gapGeneration !== myGeneration)
         return
 
-      // Bottom page arrives in reverse order - flip back to ascending.
+      // The bottom page arrives reversed.
       const bottomRows = [...bottomPage.rows].reverse()
 
       const firstTailId = _tailBlock.value[0]?.id
@@ -868,7 +744,7 @@ export function useDataDiscussionReplies(
         ]
       }
 
-      // Gap is closed when the reverse page ran out of rows (hit the early block boundary).
+      // The reverse page ran out of rows, so it hit the early block.
       const gapClosed = !bottomPage.hasMore || freshBottom.length === 0
 
       if (gapClosed) {
@@ -893,10 +769,8 @@ export function useDataDiscussionReplies(
   // ── Threaded view: lazy child loading ──────────────────────────────────────
 
   /**
-   * Fetch direct children for a root comment (threaded view).
-   * Results are stored in `childrenMap` and also appended to `comments`
-   * so that the flat-mode computed properties continue to work correctly
-   * without a full re-fetch.
+   * Fetch direct children for a root comment (threaded view). Results go in
+   * `childrenMap` only and stay out of the flat `comments` list.
    *
    * Uses a simple ascending query - children are always a small, bounded set
    * so cursor pagination is not needed here.
@@ -905,7 +779,6 @@ export function useDataDiscussionReplies(
     if (!discussion.value)
       return
 
-    // Already fetched - avoid duplicate network calls.
     if (childrenMap.value.has(rootId))
       return
 
@@ -952,25 +825,18 @@ export function useDataDiscussionReplies(
     async () => {
       error.value = undefined
 
-      // The view/pagination mode comes from user settings, which load async. If we
-      // decide how to load before they're in, the deep-link runs in the default
-      // (infinite/flat) mode and a later mode flip resets it - producing the
-      // inconsistent "stuck on page 1 / all comments / wrong page" behaviour. Wait
-      // for the session so paginated/threaded are settled first. Skip the await
-      // when already ready (back-nav) so the synchronous cache fast-path below
-      // still applies without a skeleton flash.
+      // View and pagination mode come from async user settings. Loading before
+      // they're in runs the deep link in the default mode, and the later flip
+      // resets it to the wrong page. Skipped when ready (back-nav) so the sync
+      // cache fast path below still avoids a skeleton flash.
       if (!isSessionReady())
         await waitForSessionReady()
 
-      // Deep-link target present on this load? Captured once up-front so it's
-      // stable across awaits. When set (forum model only), we jump straight to
-      // the page containing the target instead of loading page 1 first - the
-      // page-1 load is pure dead time for a deep link.
+      // Captured up front so they're stable across awaits.
       const initialTargetId = props.initialCommentId?.value
       const initialAnchorTs = props.initialCommentAnchorTs?.value
       const initialPage = props.initialPage?.value
 
-      // Reset pagination state on discussion change.
       nextCursor.value = null
       hasMore.value = false
       currentPage.value = 1
@@ -984,9 +850,8 @@ export function useDataDiscussionReplies(
       rootCountLoaded.value = false
 
       // ── Synchronous cache fast-path ─────────────────────────────────────────
-      // If the discussion meta AND the first reply page are already in
-      // localStorage, populate state immediately without setting loading = true.
-      // This prevents the skeleton flash on back-navigation.
+      // With the discussion and first page already in localStorage, fill state
+      // without setting loading, so back-navigation has no skeleton flash.
       const _asc = ascending.value
       const _ro = rootOnly.value
 
@@ -1029,46 +894,33 @@ export function useDataDiscussionReplies(
 
       void markDiscussionSeen(fetchedDiscussion.id)
 
-      // Deep-link jump (forum model): go straight to the page containing the
-      // target comment as the initial content. The cursor RPC only needs the
-      // discussion id + target id + page size (all known now), so we don't wait
-      // for - or run - the page-1 load. navigateToComment establishes the gap
-      // and tail block itself. soft:true keeps loading=true (already set above)
-      // so the skeleton stays until the target content is in place.
+      // Forum deep links load the target's page first with no page-1 load. soft
+      // leaves loading set so the skeleton stays until the target is in place.
       const wantsDeepLink = initialTargetId != null && props.model !== 'comment'
 
       if (wantsDeepLink) {
-        // If the fast-path already loaded page 1 and it happens to contain the
-        // target, navigateToComment short-circuits (returns immediately).
         const found = await navigateToComment(initialTargetId, { soft: true, anchorTs: initialAnchorTs })
 
-        // Target not found (deleted / RLS-filtered) and the fast-path didn't
-        // already populate the list: fall back to a normal page-1 load so the
-        // thread still renders instead of showing an empty list.
+        // Target not found and the fast path left the list empty: load page 1 so
+        // the thread still renders.
         if (!found && !fastPathComplete)
           await loadFirstPage(fetchedDiscussion.id)
       }
       else if (paginated.value && initialPage != null && initialPage > 1) {
-        // Restore a specific page from ?page= (paginated mode, no deep link).
-        // loadPage replaces the list with that page and clamps to the available
-        // range, so a stale/too-large page falls back to the last real page.
+        // loadPage clamps, so a stale ?page= falls back to the last real page.
         await loadPage(initialPage)
       }
       else if (!fastPathComplete) {
         await loadFirstPage(fetchedDiscussion.id)
       }
 
-      // Reply counts (threaded view) are not needed for first paint - fetch in
-      // the background so the recursive RPC never blocks rendering comments.
+      // Reply counts aren't needed for first paint. Background it so the
+      // recursive RPC never blocks rendering.
       void fetchReplyCountMap(fetchedDiscussion.id)
 
-      // Threaded pagination markers need the top-level count; fetch in the
-      // background (only relevant in threaded view).
       if (rootOnly.value)
         void fetchRootCount(fetchedDiscussion.id)
 
-      // Independently fetch the pinned reply if page 1 didn't include it.
-      // This ensures the pinned banner works even when the reply is on a later page.
       const pinnedId = fetchedDiscussion.pinned_reply_id
       if (pinnedId != null) {
         const fromPage = comments.value.find(c => c.id === pinnedId)
@@ -1094,9 +946,7 @@ export function useDataDiscussionReplies(
 
   // ── View mode reload ────────────────────────────────────────────────────────
 
-  // When the user switches between flat and threaded view, the rootOnly flag
-  // changes so we need to re-fetch page 1 for the new mode. The cache keyed
-  // by rootOnly means switching back is instant within the TTL.
+  // The page cache is keyed by rootOnly, so switching back is instant within the TTL.
   if (props.viewMode != null) {
     watch(props.viewMode, async () => {
       if (!discussion.value)
@@ -1106,7 +956,6 @@ export function useDataDiscussionReplies(
       hasMore.value = false
       childrenMap.value = new Map()
 
-      // Refresh the top-level count when entering threaded view (paginates roots).
       if (rootOnly.value)
         void fetchRootCount(discussion.value.id)
       await loadFirstPage(discussion.value.id)
@@ -1157,9 +1006,6 @@ export function useDataDiscussionReplies(
 
   // ── Comment modelling ───────────────────────────────────────────────────────
 
-  /**
-   * Flat list of comments with their `reply` object resolved.
-   */
   const modelledComments = computed((): Comment[] => {
     const data = comments.value ?? []
 
@@ -1179,15 +1025,8 @@ export function useDataDiscussionReplies(
     })
   })
 
-  /**
-   * Build a node map from the flat `modelledComments` list.
-   * Maps comment.id → ThreadNode (comment + direct children).
-   *
-   * Children fetched via loadChildren() live in childrenMap and are NOT merged
-   * into the flat comments list (to prevent them rendering as top-level items).
-   * Instead, we pull them in here directly from childrenMap so the sheet and
-   * threaded view both stay consistent without polluting the flat list.
-   */
+  // Children from loadChildren stay out of the flat list, where they'd render as
+  // top-level items. They're attached here from childrenMap instead.
   const threadNodeMap = computed((): Map<string, ThreadNode> => {
     const data = modelledComments.value
     const lookup = new Map<string, Comment>(data.map(c => [c.id, c]))
@@ -1195,23 +1034,21 @@ export function useDataDiscussionReplies(
       data.map(c => [c.id, { comment: c, children: [] }]),
     )
 
-    // First pass: wire up reply relationships within the already-loaded flat list.
+    // First pass: reply relationships within the flat list.
     for (const comment of data) {
       if (comment.reply_to_id != null && lookup.has(comment.reply_to_id)) {
         nodeMap.get(comment.reply_to_id)!.children.push(nodeMap.get(comment.id)!)
       }
     }
 
-    // Second pass: attach lazily-fetched children from childrenMap for any root
-    // that has been expanded. These rows are not in the flat list so we create
-    // lightweight ThreadNodes for them on the fly.
+    // Second pass: lazily fetched children of expanded roots.
     for (const [rootId, children] of childrenMap.value) {
       const rootNode = nodeMap.get(rootId)
       if (rootNode == null)
         continue
 
       for (const child of children) {
-        // Skip if already wired up from the flat list to avoid duplicates.
+        // Already wired up from the flat list.
         if (nodeMap.has(child.id))
           continue
 
@@ -1225,11 +1062,6 @@ export function useDataDiscussionReplies(
     return nodeMap
   })
 
-  /**
-   * Top-level thread roots for threaded view.
-   * Only root comments (no parent in this discussion) are included here.
-   * Children are loaded lazily via `loadChildren()`.
-   */
   const threadRoots = computed((): ThreadNode[] => {
     const data = modelledComments.value
     const lookup = new Map<string, Comment>(data.map(c => [c.id, c]))
@@ -1343,15 +1175,8 @@ export function useDataDiscussionReplies(
   }
 
   /**
-   * Append realtime-delivered replies to the comment list.
-   *
-   * For the forum model (ascending), if cursor-based pagination is still in
-   * flight (hasMore or _tailBlock active), we track the realtime items
-   * separately so applyPage (loadMore) can insert cursor pages before them,
-   * keeping the list in chronological order.
-   *
-   * For the comment model (descending), new replies are prepended - they are
-   * always the newest and belong at the top.
+   * Ascending: tracked in _realtimeAppended so later cursor pages land before
+   * them. Descending: prepended, since they're always the newest.
    */
   function pushRealtimeReplies(newReplies: RawComment[], ascendingOrder: boolean): void {
     if (newReplies.length === 0)
@@ -1363,13 +1188,10 @@ export function useDataDiscussionReplies(
       return
 
     if (ascendingOrder) {
-      // Track these as realtime-appended so loadMore can insert cursor pages
-      // before them.
       _realtimeAppended.value = [..._realtimeAppended.value, ...fresh]
       comments.value = [...comments.value, ...fresh]
     }
     else {
-      // Descending (comment model): prepend newest replies at the top.
       comments.value = [...fresh, ...comments.value]
     }
   }

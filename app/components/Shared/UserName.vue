@@ -9,15 +9,8 @@ interface Props {
   userId?: string | null
   size?: 's' | 'm' | 'l'
 
-  /**
-   * When true the username is rendered as a plain span instead of a
-   * NuxtLink to the user's profile.
-   */
   noLink?: boolean
 
-  /**
-   * When true, hovering the username shows the user profile preview card.
-   */
   showPreview?: boolean
 
   /**
@@ -98,11 +91,9 @@ const fontClass = computed(() => {
 </script>
 
 <template>
-  <!-- Loading -->
   <Skeleton v-if="!!props.userId && loading" width="108px" height="20px" />
 
   <UserPreviewHover v-else-if="showPreview && userId" :user-id="userId">
-    <!-- Resolved username -->
     <Flex
       v-if="displayName"
       gap="xs"
@@ -126,7 +117,6 @@ const fontClass = computed(() => {
     </Flex>
   </UserPreviewHover>
 
-  <!-- Resolved username (no preview) -->
   <Flex
     v-else-if="displayName"
     gap="xs"

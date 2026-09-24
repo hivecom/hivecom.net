@@ -46,7 +46,6 @@ const emit = defineEmits<{
   revealResults: []
 }>()
 
-// Calculate vote results
 const voteResults = computed<VoteResult[]>(() => {
   if (!props.referendum || !props.votes) {
     return []
@@ -60,7 +59,6 @@ const voteResults = computed<VoteResult[]>(() => {
     users: [] as VoteResult['users'],
   }))
 
-  // Count votes for each choice
   props.votes.forEach((vote) => {
     vote.choices.forEach((choiceIndex) => {
       if (results[choiceIndex]) {
@@ -70,7 +68,6 @@ const voteResults = computed<VoteResult[]>(() => {
     })
   })
 
-  // Calculate percentages
   const totalVotes = props.votes.length
   results.forEach((result) => {
     result.percentage = totalVotes > 0 ? (result.count / totalVotes) * 100 : 0
@@ -95,7 +92,6 @@ const isBelowSmall = useBreakpoint('<s')
         Results
       </h3>
       <Flex gap="s">
-        <!-- Show reveal button if conditions are met -->
         <Button
           v-if="showRevealButton && canRevealResults"
           variant="gray"
@@ -110,7 +106,6 @@ const isBelowSmall = useBreakpoint('<s')
       </Flex>
     </Flex>
 
-    <!-- No votes yet -->
     <div v-if="totalVoters === 0" class="text-center p-m">
       <Icon name="ph:chart-bar" size="2rem" class="text-color-light mb-s" />
       <p class="text-color-light">
@@ -118,7 +113,6 @@ const isBelowSmall = useBreakpoint('<s')
       </p>
     </div>
 
-    <!-- Results list -->
     <div v-else class="results-list">
       <Accordion
         v-for="result in voteResults" :key="result.index"

@@ -51,7 +51,6 @@ interface RpcDiscussion {
   created_by: string | null
   modified_by: string | null
 
-  // Joined flat fields
   created_by_username: string | null
   profile_username: string | null
   project_title: string | null
@@ -61,11 +60,9 @@ interface RpcDiscussion {
   discussion_topic_name: string | null
   theme_name: string | null
 
-  // Last reply
   last_reply_at: string | null
   last_reply_by: string | null
 
-  // Pagination
   total_count: number
 }
 
@@ -497,7 +494,7 @@ function openDiscussionById(discussionId: string): boolean {
 }
 
 function handleDiscussionUpdated(updated: Tables<'discussions'>) {
-  // Update the selected discussion so detail/action sheets reflect the change immediately
+  // Patch the selection so the open sheets reflect the change right away.
   if (selectedDiscussion.value?.id === updated.id)
     selectedDiscussion.value = { ...selectedDiscussion.value, ...updated }
   if (editingDiscussion.value?.id === updated.id)
@@ -540,7 +537,7 @@ watch(showDiscussionDetails, (isOpen) => {
 })
 
 // Only open the details panel once after the initial load completes.
-// Do NOT watch loading.value - that would re-run every time a fetch starts/ends.
+// Do NOT watch loading.value, which would re-run on every fetch start and end.
 watch(focusedDiscussionId, (discussionId) => {
   if (loading.value || !discussionId)
     return
@@ -636,7 +633,6 @@ onBeforeMount(async () => {
             <template #header>
               <th v-if="canManageActions" class="vui-table-interactive-cell" />
 
-              <!-- Title -->
               <Table.Head class="sortable-head" @click="handleSort('Title')">
                 <Flex gap="xs" y-center>
                   Title
@@ -644,10 +640,8 @@ onBeforeMount(async () => {
                 </Flex>
               </Table.Head>
 
-              <!-- Context - not sortable -->
               <Table.Head>Context</Table.Head>
 
-              <!-- Replies -->
               <Table.Head class="sortable-head" @click="handleSort('Replies')">
                 <Flex gap="xs" y-center>
                   Replies
@@ -655,7 +649,6 @@ onBeforeMount(async () => {
                 </Flex>
               </Table.Head>
 
-              <!-- Views -->
               <Table.Head class="sortable-head" @click="handleSort('Views')">
                 <Flex gap="xs" y-center>
                   Views
@@ -663,7 +656,6 @@ onBeforeMount(async () => {
                 </Flex>
               </Table.Head>
 
-              <!-- Last Active -->
               <Table.Head class="sortable-head" @click="handleSort('Last Active')">
                 <Flex gap="xs" y-center>
                   Last Active
@@ -671,7 +663,6 @@ onBeforeMount(async () => {
                 </Flex>
               </Table.Head>
 
-              <!-- Author -->
               <Table.Head class="sortable-head" @click="handleSort('Author')">
                 <Flex gap="xs" y-center>
                   Author
@@ -679,10 +670,8 @@ onBeforeMount(async () => {
                 </Flex>
               </Table.Head>
 
-              <!-- Status - not sortable -->
               <Table.Head>Status</Table.Head>
 
-              <!-- Actions - not sortable -->
               <Table.Head v-if="canManageActions">
                 Actions
               </Table.Head>
@@ -695,12 +684,10 @@ onBeforeMount(async () => {
                 class="clickable-row"
               >
                 <Table.SelectRow v-if="canManageActions" :row="discussion" />
-                <!-- Title + description -->
                 <Table.Cell @click="openDiscussionDetails(discussion)">
                   <span class="text-medium text-s">{{ discussion.title || 'Untitled' }}</span>
                 </Table.Cell>
 
-                <!-- Context -->
                 <Table.Cell @click="openDiscussionDetails(discussion)">
                   <NuxtLink
                     v-if="getContextLink(discussion)"
@@ -715,17 +702,14 @@ onBeforeMount(async () => {
                   </span>
                 </Table.Cell>
 
-                <!-- Replies -->
                 <Table.Cell @click="openDiscussionDetails(discussion)">
                   <CountDisplay :value="discussion.reply_count ?? 0" class="text-s" />
                 </Table.Cell>
 
-                <!-- Views -->
                 <Table.Cell @click="openDiscussionDetails(discussion)">
                   <CountDisplay :value="discussion.view_count ?? 0" class="text-s" />
                 </Table.Cell>
 
-                <!-- Last Active -->
                 <Table.Cell @click="openDiscussionDetails(discussion)">
                   <Flex column :gap="0">
                     <UserLink
@@ -739,12 +723,10 @@ onBeforeMount(async () => {
                   </Flex>
                 </Table.Cell>
 
-                <!-- Author -->
                 <Table.Cell @click="openDiscussionDetails(discussion)">
                   <UserLink :user-id="discussion.created_by" placeholder="Unknown" show-avatar />
                 </Table.Cell>
 
-                <!-- Status badges -->
                 <Table.Cell @click="openDiscussionDetails(discussion)">
                   <Flex gap="xs" wrap>
                     <Badge :variant="discussion.is_locked ? 'danger' : 'success'">
@@ -762,7 +744,6 @@ onBeforeMount(async () => {
                   </Flex>
                 </Table.Cell>
 
-                <!-- Actions -->
                 <Table.Cell v-if="canManageActions" @click.stop>
                   <Flex gap="xs">
                     <Button

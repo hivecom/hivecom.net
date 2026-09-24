@@ -10,12 +10,8 @@ export interface RsvpUpdatedPayload {
 const RSVP_UPDATED_EVENT = 'rsvp-updated'
 
 /**
- * Typed bus for the `rsvp-updated` custom window event.
- *
- * - `dispatch(payload)` - fire the event from the component that mutated RSVP state
- * - `onRsvpUpdated(handler)` - subscribe and automatically clean up on unmount when
- *   called inside a component setup context. Returns an `off()` function for manual
- *   teardown if called outside a component (e.g. in a plain composable or test).
+ * Typed bus for the `rsvp-updated` window event. Listeners clean up on unmount
+ * inside a component. Outside one, call the returned off().
  */
 export function useRsvpBus() {
   function dispatch(payload: RsvpUpdatedPayload): void {

@@ -102,9 +102,8 @@ const activityChartRef = ref<ChartComponentRef<'line'> | null>(null)
 const { width: activityChartWidth } = useElementSize(activityChartWrapperRef, { width: 0, height: 0 })
 
 const activityChartData = computed(() => {
-  // Track both theme (light/dark switch) and activeTheme (custom palette applied
-  // after async fetch). getCSSVariable reads the DOM directly - not reactive -
-  // so we need explicit deps to re-run after applyTheme() writes to :root.
+  // getCSSVariable reads the DOM and isn't reactive, so track theme and activeTheme
+  // explicitly to re-run after applyTheme() writes to :root
   void theme.value
   void activeTheme.value
 
@@ -176,9 +175,8 @@ const topicChartRef = ref<ChartComponentRef<'bar'> | null>(null)
 const { width: topicChartWidth } = useElementSize(topicChartWrapperRef, { width: 0, height: 0 })
 
 const topicChartData = computed(() => {
-  // Track both theme (light/dark switch) and activeTheme (custom palette applied
-  // after async fetch). getCSSVariable reads the DOM directly - not reactive -
-  // so we need explicit deps to re-run after applyTheme() writes to :root.
+  // getCSSVariable reads the DOM and isn't reactive, so track theme and activeTheme
+  // explicitly to re-run after applyTheme() writes to :root
   void theme.value
   void activeTheme.value
 
@@ -322,7 +320,7 @@ const leaderboardOptions = [
   { label: 'Replies', value: 'replies' },
 ]
 
-// VUI Select always binds SelectOption[] - wrap/unwrap to keep internal state as a plain string
+// VUI Select always binds SelectOption[], so wrap/unwrap to keep internal state a plain string
 const selectedLeaderboardOption = computed({
   get() {
     const match = leaderboardOptions.find(o => o.value === leaderboardMode.value)
@@ -410,12 +408,9 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
         <p>Yapping olympics</p>
       </section>
 
-      <!-- Loading state -->
       <template v-if="loading">
         <Flex column gap="l">
-          <!-- Podium + leaderboard card skeleton -->
           <Card class="stats-podium-card">
-            <!-- Card header -->
             <template #header>
               <Flex expand :x-between="!isMobile" :x-center="isMobile" y-center wrap>
                 <Skeleton :width="160" :height="16" :radius="4" />
@@ -425,7 +420,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
 
             <!-- Podium: 3 slots arranged 2nd, 1st, 3rd -->
             <Flex class="podium" x-center y-end gap="m">
-              <!-- 2nd place -->
               <div class="podium__slot podium__slot--2">
                 <div class="podium__user">
                   <Skeleton :width="28" :height="28" :radius="14" />
@@ -437,7 +431,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
                   <Skeleton :width="40" :height="18" :radius="4" />
                 </div>
               </div>
-              <!-- 1st place -->
               <div class="podium__slot podium__slot--1">
                 <div class="podium__user">
                   <Skeleton :width="28" :height="28" :radius="14" />
@@ -449,7 +442,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
                   <Skeleton :width="40" :height="18" :radius="4" />
                 </div>
               </div>
-              <!-- 3rd place -->
               <div class="podium__slot podium__slot--3">
                 <div class="podium__user">
                   <Skeleton :width="28" :height="28" :radius="14" />
@@ -465,7 +457,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
 
             <Divider />
 
-            <!-- Leaderboard rows -->
             <div v-for="i in 10" :key="i" class="leaderboard__row leaderboard__row--skeleton">
               <Flex gap="m" y-center expand>
                 <Skeleton v-if="!isMobile" :width="20" :height="14" :radius="3" />
@@ -479,7 +470,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
             </div>
           </Card>
 
-          <!-- Counter grid skeleton -->
           <Grid :columns="isBelowSmall ? 1 : isBelowMedium ? 3 : 5" gap="m" y-stretch expand>
             <Card v-for="i in 5" :key="i" class="stats-counter-card">
               <div class="stats-counter">
@@ -490,14 +480,12 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
             </Card>
           </Grid>
 
-          <!-- Chart card skeletons -->
           <div v-for="i in 2" :key="i" class="chart-container">
             <Skeleton :height="320" :radius="8" style="opacity: 0.3;" />
           </div>
         </Flex>
       </template>
 
-      <!-- Error state -->
       <template v-else-if="error">
         <Card>
           <Flex x-center y-center style="padding: var(--space-xl);">
@@ -508,7 +496,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
         </Card>
       </template>
 
-      <!-- Stats content -->
       <template v-else-if="stats">
         <!-- Summary counters -->
 
@@ -550,7 +537,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
           </Card>
         </div>
 
-        <!-- Unified podium + leaderboard card -->
         <Card class="mb-xl stats-podium-card">
           <template #header>
             <Flex expand :x-between="!isMobile" :x-center="isMobile" y-center wrap>
@@ -567,7 +553,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
             </Flex>
           </template>
 
-          <!-- Podium: Top 3 -->
           <Flex class="podium" x-center y-end gap="m">
             <template v-for="(position, posIndex) in [1, 0, 2]" :key="`${leaderboardMode}-${position}`">
               <div
@@ -609,7 +594,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
 
           <Divider class="leaderboard-divider" />
 
-          <!-- Leaderboard: Top 10 -->
           <table class="leaderboard">
             <tbody>
               <tr
@@ -646,7 +630,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
                 </td>
               </tr>
 
-              <!-- Current user pinned row (outside top 10) -->
               <template v-if="currentUserOutsideTop">
                 <tr class="leaderboard__row leaderboard__row--gap">
                   <td :colspan="isMobile ? 2 : 4" class="leaderboard__gap-cell">
@@ -683,7 +666,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
           </table>
         </Card>
 
-        <!-- Activity over time chart -->
         <div class="chart-container mb-m">
           <div ref="activityChartWrapperRef" :key="`${theme}-${activeTheme?.id}-${isMobile}`" class="chart-wrapper">
             <Line
@@ -694,7 +676,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
           </div>
         </div>
 
-        <!-- Topic breakdown chart -->
         <div class="chart-container">
           <div ref="topicChartWrapperRef" :key="`topic-${theme}-${activeTheme?.id}-${isMobile}`" class="chart-wrapper">
             <Bar
@@ -809,7 +790,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
     }
   }
 
-  // Light rays positioning within the slot
   :deep(.light-rays) {
     top: 58px;
     left: 50%;
@@ -836,7 +816,6 @@ const currentUserOutsideTop = computed<CurrentUserRank | null>(() => {
     }
 
     &--first {
-      // Soft gold halo behind the avatar
       filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.45));
     }
   }

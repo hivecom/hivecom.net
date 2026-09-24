@@ -1,31 +1,27 @@
-// Scan-pass shader uniform defaults.
-// The actual GLSL source is imported from the .glsl files next to the Vue
-// component; this module only owns the default values so that
-// useGlobeRenderer can reference them without reaching into the component.
+// Scan-pass uniform defaults. The GLSL lives in .glsl files next to the Vue
+// component, so useGlobeRenderer can read these without reaching into it.
 
 export interface ScanPassUniforms {
-  /** Distortion intensity. */
   strength: number
 
-  /** Band scroll speed (fraction of screen per second). */
+  /** Fraction of the screen per second. */
   speed: number
 
-  /** Fractional screen-height of the scan band. */
+  /** Fraction of screen height. */
   bandWidth: number
 
-  /** Enable a second offset band (1.0 = on, 0.0 = off). */
+  /** Second offset band, 1.0 on and 0.0 off. */
   doubleBand: number
 
-  /** Speed of the liquid ripple inside the band. */
   rippleSpeed: number
 
-  /** Vertical ripple frequency (cycles). */
+  /** Cycles. */
   rippleYFreq: number
 
-  /** Horizontal ripple frequency (cycles). */
+  /** Cycles. */
   rippleXFreq: number
 
-  /** Chromatic-aberration spread in pixels. */
+  /** Chromatic aberration spread in pixels. */
   chroma: number
 }
 
@@ -40,11 +36,7 @@ export const SCAN_PASS_DEFAULTS: ScanPassUniforms = {
   chroma: 18.0,
 }
 
-/**
- * Reduced-quality preset for lower-performing devices.
- * Halves the chroma aberration, disables the second band, and lowers ripple
- * frequencies so the fragment shader does less work per pixel.
- */
+// For lower-performing devices.
 export const SCAN_PASS_LOW_PERF: ScanPassUniforms = {
   strength: 0.006,
   speed: 0.05,

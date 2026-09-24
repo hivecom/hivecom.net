@@ -15,17 +15,14 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// Check if user has Steam linked
 const hasSteam = computed(() => !!props.profile.steam_id)
 
-// Check if user has Last.fm linked
 const hasLastfm = computed(() => !!(props.profile as Record<string, unknown>).lastfm_username)
 const profileLastfmUsername = computed(() => {
   const u = (props.profile as Record<string, unknown>).lastfm_username
   return typeof u === 'string' ? u : null
 })
 
-// Check if user has TeamSpeak identities linked
 const hasTeamspeak = computed(() => {
   const identities = props.profile.teamspeak_identities
   return Array.isArray(identities) && identities.length > 0
@@ -34,7 +31,6 @@ const hasTeamspeak = computed(() => {
 
 <template>
   <div class="activity">
-    <!-- Unauthenticated State -->
     <Flex v-if="!isLoggedIn" column y-center x-center gap="s" class="activity-locked">
       <Icon name="ph:lock" size="32" class="text-color-light" />
       <p class="text-color-light text-s text-center">
@@ -43,7 +39,6 @@ const hasTeamspeak = computed(() => {
     </Flex>
 
     <template v-else>
-      <!-- <ActivitySpotify /> -->
       <ActivityLastfm
         v-if="hasLastfm"
         :profile-id="props.profile.id"

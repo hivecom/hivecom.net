@@ -19,7 +19,6 @@ import ContainerDetails from './ContainerDetails.vue'
 import ContainerFilters from './ContainerFilters.vue'
 import ContainerStatusIndicator from './ContainerStatusIndicator.vue'
 
-// Define container with server interface
 interface ContainerWithServer {
   name: string
   running: boolean
@@ -65,32 +64,26 @@ interface TransformedContainer {
   }
 }
 
-// Define interface for Select options
 interface SelectOption {
   label: string
   value: string
 }
 
 const props = defineProps<{
-  // Function to control containers (start, stop, restart)
   controlContainer: (container: ContainerWithServer, action: 'start' | 'stop' | 'restart') => Promise<void>
   // Optional container name to auto-open in details sheet
   focusContainerName?: string | null
 }>()
 
-// Define model value for refresh signal to parent
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
-// Get admin permissions
 const { canManageResource } = useTableActions('network')
 const { hasPermission } = useAdminPermissions()
 const route = useRoute()
 const router = useRouter()
 
-// Check if user can read containers
 const canReadContainers = computed(() => hasPermission('network.read'))
 
-// Define query
 const supabase = useSupabaseClient()
 const containersQuery = supabase.from('network_containers').select(`
   name,
@@ -111,7 +104,6 @@ const containersQuery = supabase.from('network_containers').select(`
   )
 `)
 
-// Data states
 const loading = ref(true)
 const initialLoad = ref(true)
 const errorMessage = ref('')
@@ -121,7 +113,6 @@ const serverFilter = ref<SelectOption[]>()
 const statusFilter = ref<SelectOption[]>()
 const isBelowMedium = useBreakpoint('<m')
 
-// Container detail state
 const selectedContainer = ref<ContainerWithServer | null>(null)
 const containerLogs = ref('')
 const logsLoading = ref(false)
@@ -133,14 +124,12 @@ const showBulkPruneConfirm = ref(false)
 
 const refreshLogsConfig = ref<{ tail?: number, since?: string, from?: string, to?: string } | null>(null)
 
-// Type that specifically allows null
 interface ContainerAction {
   container: ContainerWithServer
   type: 'start' | 'stop' | 'restart' | 'prune' | null
 }
 const containerAction = ref<ContainerAction | null>(null)
 
-// Compute unique server options for the filter
 const serverOptions = computed<SelectOption[]>(() => {
   const uniqueServers = new Set<string>()
   containers.value.forEach((container: ContainerWithServer) => {
@@ -158,7 +147,6 @@ const serverOptions = computed<SelectOption[]>(() => {
   }))
 })
 
-// Status options for filter
 const statusOptions: SelectOption[] = [
   { label: 'Running', value: 'running' },
   { label: 'Healthy', value: 'healthy' },
@@ -169,7 +157,6 @@ const statusOptions: SelectOption[] = [
   { label: 'Stale', value: 'stale' },
 ]
 
-// Filter based on search, server, and status
 const filteredData = computed<TransformedContainer[]>(() => {
   const filtered = containers.value.filter((item: ContainerWithServer) => {
     const isRestarting = !!actionLoading.value[item.name]?.restart
@@ -180,7 +167,6 @@ const filteredData = computed<TransformedContainer[]>(() => {
       ? getContainerStatus(item.reported_at, item.running, item.healthy, isControlOffline, isRestarting)
       : 'unknown'
 
-    // Filter by search term
     if (search.value && !Object.values(item).some((value) => {
       if (value === null || value === undefined)
         return false
@@ -190,7 +176,6 @@ const filteredData = computed<TransformedContainer[]>(() => {
       return false
     }
 
-    // Filter by server
     if (serverFilter.value && serverFilter.value.length > 0) {
       const serverFilterValue = serverFilter.value[0]!.value
       const serverAddress = item.server?.address || 'Unknown'
@@ -200,7 +185,6 @@ const filteredData = computed<TransformedContainer[]>(() => {
       }
     }
 
-    // Filter by status
     if (statusFilter.value && statusFilter.value.length > 0) {
       const statusFilterValue = statusFilter.value[0]!.value
       if (status !== statusFilterValue) {
@@ -211,7 +195,6 @@ const filteredData = computed<TransformedContainer[]>(() => {
     return true
   })
 
-  // Transform the data into explicit key-value pairs
   return filtered.map((container: ContainerWithServer) => ({
     'id': container.name,
     'Name': container.name,
@@ -239,7 +222,6 @@ const isFiltered = computed(() => filteredCount.value !== totalCount.value)
 
 const adminTablePerPage = inject<Ref<number>>('adminTablePerPage', computed(() => 10))
 
-// Table configuration
 const { headers, rows, selectedRows, deselectAllRows, pagination, setPage, setSort, options } = defineTable(filteredData, {
   pagination: {
     enabled: true,
@@ -253,10 +235,8 @@ watch(adminTablePerPage, (perPage) => {
   setPage(1)
 })
 
-// Set default sorting.
 setSort('Name', 'asc')
 
-// Watch for containerAction changes
 watch(containerAction, async (newAction) => {
   if (newAction && newAction.type) {
     if (newAction.type === 'prune') {
@@ -266,12 +246,10 @@ watch(containerAction, async (newAction) => {
       await handleControl(newAction.container, newAction.type)
     }
 
-    // Reset the action
     containerAction.value = null
   }
 })
 
-// Watch for refreshLogsConfig changes
 watch(refreshLogsConfig, async (newConfig) => {
   if (newConfig) {
     await fetchContainerLogs(
@@ -281,12 +259,10 @@ watch(refreshLogsConfig, async (newConfig) => {
       newConfig.to,
     )
 
-    // Reset the config
     refreshLogsConfig.value = null
   }
 })
 
-// Sync container focus query params with details sheet state
 watch(showContainerDetails, (isOpen) => {
   if (isOpen && selectedContainer.value) {
     const nextQuery = {
@@ -306,24 +282,18 @@ watch(showContainerDetails, (isOpen) => {
   router.replace({ query: rest })
 })
 
-// Watch for refreshContainerDetails changes to refresh the selected container data
 watch(refreshContainerDetails, async (shouldRefresh) => {
   if (shouldRefresh && selectedContainer.value) {
     try {
-      // Store the container name before refreshing
       const containerName = selectedContainer.value.name
 
-      // Refresh all containers first
       await fetchContainers()
 
-      // Then find and update the selected container with fresh data
       const refreshedContainer = containers.value.find((c: ContainerWithServer) => c.name === containerName)
 
       if (refreshedContainer) {
-        // Update the selected container with the refreshed data
         selectedContainer.value = refreshedContainer
 
-        // If container is running, also refresh logs
         if (refreshedContainer.running) {
           await fetchContainerLogs()
         }
@@ -341,7 +311,6 @@ watch(refreshContainerDetails, async (shouldRefresh) => {
   }
 })
 
-// Fetch containers data
 async function fetchContainers() {
   loading.value = true
   errorMessage.value = ''
@@ -355,7 +324,6 @@ async function fetchContainers() {
 
     containers.value = data || []
 
-    // Increment the refresh signal to notify the parent
     refreshSignal.value = (refreshSignal.value || 0) + 1
   }
   catch (error: unknown) {
@@ -367,7 +335,6 @@ async function fetchContainers() {
   }
 }
 
-// Handle row click - View container details
 function viewContainer(container: ContainerWithServer) {
   selectedContainer.value = container
   showContainerDetails.value = true
@@ -378,7 +345,6 @@ function viewContainer(container: ContainerWithServer) {
     containerLogs.value = ''
 }
 
-// Open container details by container name when available in current dataset
 function openContainerByName(containerName: string | null | undefined): boolean {
   if (!containerName)
     return false
@@ -398,10 +364,8 @@ function openContainerByName(containerName: string | null | undefined): boolean 
   return true
 }
 
-// Handle container control actions with loading state
 async function handleControl(container: ContainerWithServer, action: 'start' | 'stop' | 'restart') {
   try {
-    // Set loading state for this specific container and action
     if (!actionLoading.value[container.name]) {
       actionLoading.value[container.name] = {}
     }
@@ -409,7 +373,6 @@ async function handleControl(container: ContainerWithServer, action: 'start' | '
 
     await props.controlContainer(container, action)
 
-    // Refresh container data after action
     await fetchContainers()
 
     // If the details sheet is open for this container, rebind it to fresh data.
@@ -446,25 +409,21 @@ async function handleControl(container: ContainerWithServer, action: 'start' | '
   }
 }
 
-// Handle pruning stale containers - removes them from the database
 async function handlePrune(container: ContainerWithServer) {
   try {
-    // Set loading state for this specific container and prune action
     if (!actionLoading.value[container.name]) {
       actionLoading.value[container.name] = {}
     }
 
     actionLoading.value[container.name]!.prune = true
 
-    // Only proceed if the container is stale
     const status = getContainerStatus(container.reported_at, container.running, container.healthy)
     if (status !== 'stale') {
       throw new Error('Only stale containers can be pruned')
     }
 
-    // Delete the container from the database.
-    // Use count: 'exact' so we can detect a silent RLS block - PostgREST
-    // returns 204 with no error even when 0 rows are deleted.
+    // count: 'exact' catches a silent RLS block. PostgREST returns 204 with no
+    // error even when 0 rows are deleted.
     const { error, count } = await supabase
       .from('network_containers')
       .delete({ count: 'exact' })
@@ -478,37 +437,31 @@ async function handlePrune(container: ContainerWithServer) {
       throw new Error('Container could not be deleted - you may not have permission, or it no longer exists.')
     }
 
-    // Close the detail view since the container no longer exists
     showContainerDetails.value = false
     selectedContainer.value = null
 
-    // Refresh container data after action
     await fetchContainers()
   }
   catch (error: unknown) {
     console.error(`Error pruning container ${container.name}:`, error)
 
-    // Show error message
     errorMessage.value = error instanceof Error ? error.message : 'Failed to prune container'
     setTimeout(() => {
       errorMessage.value = ''
-    }, 5000) // Clear error after 5 seconds
+    }, 5000)
   }
   finally {
-    // Clear loading state
     if (actionLoading.value[container.name]) {
       actionLoading.value[container.name]!.prune = false
     }
   }
 }
 
-// Check if a specific action is loading for a container
 function isActionLoading(containerName: string, action: string): Record<string, boolean> {
   const loadingState = actionLoading.value[containerName] || {}
   return { [action]: !!loadingState[action] }
 }
 
-// Container logs fetching
 async function fetchContainerLogs(tail = 100, since: string | null = null, from: string | null = null, to: string | null = null) {
   if (!selectedContainer.value)
     return
@@ -517,11 +470,9 @@ async function fetchContainerLogs(tail = 100, since: string | null = null, from:
   logsError.value = ''
 
   try {
-    // Construct URL with query parameters
     let endpoint = `admin-docker-control-container-logs/${selectedContainer.value.name}`
     const params = new URLSearchParams()
 
-    // Add parameters if provided
     if (tail)
       params.append('tail', tail.toString())
 
@@ -532,16 +483,13 @@ async function fetchContainerLogs(tail = 100, since: string | null = null, from:
         params.append('to', to)
     }
 
-    // Otherwise use since if provided
     else if (since && since !== 'all') {
       params.append('since', since)
     }
 
-    // Add query parameters if any exist
     if (params.toString())
       endpoint += `?${params.toString()}`
 
-    // Call the Docker control function to get logs
     const { data, error } = await supabase
       .functions
       .invoke(endpoint, {
@@ -565,7 +513,6 @@ async function fetchContainerLogs(tail = 100, since: string | null = null, from:
   }
 }
 
-// Clear all filters
 function clearFilters() {
   search.value = ''
   serverFilter.value = undefined
@@ -635,7 +582,6 @@ function handleBulkPrune() {
   handleBulkAction('prune')
 }
 
-// React to external focus requests (e.g. from query params)
 watch(
   () => [props.focusContainerName, loading.value] as const,
   ([focusContainerName, isLoading]) => {
@@ -647,26 +593,21 @@ watch(
   { immediate: true },
 )
 
-// Lifecycle hooks
 onBeforeMount(fetchContainers)
 </script>
 
 <template>
-  <!-- Check if user can read containers -->
   <Alert v-if="!canReadContainers" variant="info">
     You don't have permission to view containers.
   </Alert>
 
   <template v-else>
-    <!-- Error message -->
     <Alert v-if="errorMessage" variant="danger">
       <p>{{ errorMessage }}</p>
     </Alert>
 
-    <!-- Loading state -->
     <template v-else-if="initialLoad">
       <Flex gap="s" column expand>
-        <!-- Search and Filters -->
         <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
           <ContainerFilters
             v-model:search="search"
@@ -694,7 +635,6 @@ onBeforeMount(fetchContainers)
           </Flex>
         </Flex>
 
-        <!-- Table skeleton -->
         <TableSkeleton
           :columns="5"
           :rows="10"
@@ -704,7 +644,6 @@ onBeforeMount(fetchContainers)
     </template>
 
     <Flex v-else gap="s" column expand>
-      <!-- Search and Filters -->
       <Flex :column="isBelowMedium" :x-between="!isBelowMedium" :x-start="isBelowMedium" y-center gap="s" expand>
         <ContainerFilters
           v-model:search="search"
@@ -785,7 +724,6 @@ onBeforeMount(fetchContainers)
         </TableContainer>
       </div>
 
-      <!-- No results message -->
       <Flex v-if="!loading && (!rows || rows.length === 0)" expand>
         <Alert variant="info" class="w-100">
           No containers found
@@ -846,7 +784,6 @@ onBeforeMount(fetchContainers)
       @confirm="handleBulkPrune"
     />
 
-    <!-- Container Detail Sheet -->
     <ContainerDetails
       v-model:is-open="showContainerDetails"
       v-model:refresh-logs-config="refreshLogsConfig"

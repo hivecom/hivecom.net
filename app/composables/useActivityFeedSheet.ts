@@ -4,20 +4,11 @@ import { useBulkDataUser } from '@/composables/useDataUser'
 import { extractMentionIds } from '@/lib/markdownProcessors'
 
 export interface UseActivityFeedSheetOptions {
-  /**
-   * Called to load the first page. Must reset internal state and return the
-   * initial items. Returning an empty array marks the feed as exhausted.
-   */
+  /** Loads the first page and must reset the source's own state. An empty result marks the feed exhausted. */
   load: () => Promise<ActivityItem[]>
-  /**
-   * Called to load subsequent pages. Receives the current item count as the
-   * offset. Returning an empty array marks the feed as exhausted.
-   */
+  /** Gets the current item count as its offset. An empty result marks the feed exhausted. */
   loadMore: (offset: number) => Promise<ActivityItem[]>
-  /**
-   * Expected page size - used to detect when the source is exhausted (i.e.
-   * when a page comes back shorter than this number).
-   */
+  /** A page shorter than this marks the source exhausted. */
   pageSize: number
 }
 
@@ -149,7 +140,6 @@ export function useActivityFeedSheet(options: UseActivityFeedSheetOptions) {
   })
 
   // ── Author avatar pre-warming ──────────────────────────────────────────
-  // Same stable-ref pattern as mention IDs.
 
   const sheetAuthorIds = ref<string[]>([])
   let _lastAuthorKey = ''
@@ -175,8 +165,7 @@ export function useActivityFeedSheet(options: UseActivityFeedSheetOptions) {
   })
 
   // ── Reset helper ───────────────────────────────────────────────────────
-  // Call when the underlying data source changes (e.g. profile ID swap) so
-  // the next sheet open fetches fresh data.
+  // Call when the data source changes so the next open fetches fresh data.
 
   function reset() {
     sheetItems.value = []
@@ -186,20 +175,17 @@ export function useActivityFeedSheet(options: UseActivityFeedSheetOptions) {
   }
 
   return {
-    // Sheet state
     sheetOpen,
     sheetItems: sheetItems as Ref<ActivityItem[]>,
     sheetLoading,
     sheetLoadingMore,
     sheetExhausted,
 
-    // Sentinel ref - bind with `ref="sentinel"` on the scroll anchor element
+    // Bind with `ref="sentinel"` on the scroll anchor element.
     sentinel,
 
-    // Mention lookup for sheet items (pass as :mention-lookup to ForumLatestItem)
     sheetMentionLookup,
 
-    // Reset when the data source identity changes
     reset,
   }
 }

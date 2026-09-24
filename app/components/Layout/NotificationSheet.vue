@@ -16,7 +16,6 @@ const hasUser = computed(() => Boolean(userId.value))
 const { open, activeTab } = useNotificationSheet()
 const isDev = import.meta.dev
 
-// Dev fixture state passed down to tab components
 const devFixturesActive = ref(false)
 const devFixtureError = ref(false)
 const devFixtureLoading = ref(false)
@@ -29,7 +28,6 @@ function toggleDevFixtures() {
   }
 }
 
-// Refs to tab components for load/reset control
 const activeTabRef = useTemplateRef<InstanceType<typeof NotificationTabActive>>('activeTabRef')
 const pastTabRef = useTemplateRef<InstanceType<typeof NotificationTabPast>>('pastTabRef')
 const subscriptionsTab = useTemplateRef<InstanceType<typeof NotificationTabSubscriptions>>('subscriptionsTab')
@@ -49,7 +47,6 @@ watch(hasUser, (ready) => {
     reset()
 }, { immediate: true })
 
-// Reset lazy tabs and return to active when sheet closes
 watch(open, (isOpen) => {
   if (!isOpen) {
     activeTab.value = 'active'

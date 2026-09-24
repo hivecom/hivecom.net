@@ -15,7 +15,6 @@ const userId = useUserId()
 
 const dropdown = useTemplateRef('dropdown')
 
-// Use cached user data for the current user
 const {
   user: userData,
   userInitials,
@@ -24,8 +23,8 @@ const {
   {
     includeRole: true,
     includeAvatar: true,
-    userTtl: 15 * 60 * 1000, // 15 minutes for current user
-    avatarTtl: 60 * 60 * 1000, // 1 hour for avatar
+    userTtl: 15 * 60 * 1000,
+    avatarTtl: 60 * 60 * 1000,
   },
 )
 
@@ -35,7 +34,6 @@ function navigateToWrap(path: string) {
   navigateTo(path)
 }
 
-// Complaint modal state
 const showComplaintModal = ref(false)
 
 // Effective role respects impersonation
@@ -48,7 +46,6 @@ function toggleImpersonatePopout() {
   impersonatePopoutOpen.value = !impersonatePopoutOpen.value
 }
 
-// Impersonation controls
 const { start: startImpersonation, stop: stopImpersonationFn } = useRoleImpersonation()
 
 const injectedStopImpersonation = inject<() => void>('stopImpersonation', () => {})
@@ -65,15 +62,14 @@ function stopImpersonating() {
   dropdown.value?.close()
 }
 
-// Handle complaint submission
 function handleComplaintSubmit(_complaintData: { message: string }) {
-  // Could show a success toast here in the future
+  // Nothing to do on success yet
 }
 
 function openComplaintModal() {
   dropdown.value?.close()
 
-  // Defensive check - UserDropdown should only be rendered for authenticated users
+  // Defensive: UserDropdown should only render for authenticated users
   if (!user.value) {
     navigateToWrap('/auth/sign-in')
     return

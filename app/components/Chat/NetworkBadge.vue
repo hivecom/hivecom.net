@@ -24,10 +24,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <!-- Client only because the count comes from the metrics cache in the
-       browser, which the server has no view of. Server-render it and a visitor
-       with a warm cache hydrates 6 over a server-rendered 0. The fallback is
-       what the server used to emit anyway, so a cold load looks unchanged. -->
+  <!-- Client only: the count comes from the browser's metrics cache, so a server
+       render would hydrate a warm-cache count over a 0. The fallback keeps a
+       cold load looking the same. -->
   <ClientOnly>
     <OnlineBadge
       :count="count"

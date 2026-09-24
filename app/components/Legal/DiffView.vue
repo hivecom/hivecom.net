@@ -67,8 +67,8 @@ async function generateDiff() {
       { context: 0 },
     )
 
-    // Don't pass colorScheme - we handle all coloring ourselves to avoid
-    // d2h-light-color-scheme / d2h-dark-color-scheme interfering.
+    // Don't pass colorScheme. We handle all coloring ourselves so the
+    // d2h-light-color-scheme / d2h-dark-color-scheme classes don't interfere.
     let html = diff2html(patch, {
       outputFormat: 'line-by-line',
       drawFileList: false,
@@ -76,15 +76,13 @@ async function generateDiff() {
       diffStyle: 'word',
     })
 
-    // Strip rows where an added/removed line is empty (blank line additions/removals).
-    // Context empty lines (unchanged) are kept - they preserve visual spacing.
+    // Strip rows where an added/removed line is empty. Unchanged empty lines stay,
+    // they preserve visual spacing.
     DIFF_ROW_RE.lastIndex = 0
     html = html.replace(DIFF_ROW_RE, (row) => {
-      // Only consider ins/del rows - skip context and hunk header rows.
       if (!row.includes('d2h-ins') && !row.includes('d2h-del'))
         return row
 
-      // Extract the content span and strip tags to see if there's actual text.
       const contentMatch = row.match(DIFF_CONTENT_RE)
       if (!contentMatch)
         return row
@@ -224,7 +222,7 @@ watch([() => props.fromPath, () => props.toPath], () => {
       display: block;
     }
 
-    // File header shows the filename from the patch - not useful here.
+    // File header shows the patch filename, which isn't useful here
     :deep(.d2h-file-header) {
       display: none;
     }

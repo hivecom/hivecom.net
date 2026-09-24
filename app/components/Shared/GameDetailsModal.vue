@@ -478,19 +478,15 @@ watch(
     </template>
 
     <div class="game-details-modal">
-      <!-- Loading State -->
       <div v-if="loading" class="game-details-modal__loading">
         <Skeleton height="180px" width="100%" />
         <Skeleton height="20px" width="60%" />
         <Skeleton height="16px" width="40%" />
       </div>
 
-      <!-- Error State -->
       <ErrorAlert v-else-if="error" :message="error" />
 
-      <!-- Content -->
       <div v-else-if="currentDetails" class="game-details-modal__content">
-        <!-- Hero image / metadata accordion -->
         <Accordion
           v-if="currentDetails.game.description || currentDetails.game.markdown || currentDetails.game.genre_tags?.length || currentDetails.game.multiplayer_modes?.length || currentDetails.game.release_date"
           unstyled
@@ -584,7 +580,6 @@ watch(
           </div>
         </Accordion>
 
-        <!-- Hero image (no metadata) -->
         <div v-else class="game-details-modal__media" :class="{ 'game-details-modal__media--empty': !heroImageUrl }">
           <div v-if="heroImageUrl && !heroImageReady" class="game-details-modal__media-skeleton" />
           <img
@@ -600,7 +595,6 @@ watch(
             <span>No artwork available</span>
           </div>
 
-          <!-- Who's in it now, then who played it lately, on the art itself. -->
           <Flex v-if="user && (playersPending || artworkPlayerIds.length > 0 || serverPlayerCount > 0)" gap="s" y-center class="game-details-modal__media-players">
             <BulkAvatarDisplay
               v-if="playersPending || artworkPlayerIds.length > 0"
@@ -624,7 +618,6 @@ watch(
           <div v-if="user && (playersPending || artworkPlayerIds.length > 0 || serverPlayerCount > 0)" class="game-details-modal__media-scrim" />
         </div>
 
-        <!-- Stats grid -->
         <div class="game-details-modal__stats-grid">
           <Card v-if="currentDetails.game.steam_id" class="stat-card">
             <Flex column gap="xs">
@@ -669,7 +662,6 @@ watch(
           </ChartActivityHistogramControls>
         </div>
 
-        <!-- Servers list -->
         <div v-if="gameServersForGame.length > 0" class="game-details-modal__section">
           <Flex y-center x-between>
             <h4 class="game-details-modal__section-title">
@@ -720,7 +712,6 @@ watch(
           </Flex>
         </div>
 
-        <!-- Recent events list -->
         <div v-if="recentEvents.length > 0" class="game-details-modal__section">
           <Flex y-center x-between>
             <h4 class="game-details-modal__section-title">

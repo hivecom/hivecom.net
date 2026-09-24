@@ -14,7 +14,6 @@ interface DeleteUserRequest {
 }
 
 Deno.serve(async (req: Request) => {
-  // This is needed if you're planning to invoke your function from a browser. Which we are.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -24,7 +23,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Parse request body to get user ID
     const body: DeleteUserRequest = await req.json();
     const { userId } = body;
 
@@ -41,7 +39,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify user has permission to delete users
     const authResponse = await authorizeAuthenticatedHasPermissionAal2(
       req,
       ["users.delete"],
@@ -51,7 +48,7 @@ Deno.serve(async (req: Request) => {
       return authResponse;
     }
 
-    // Get current user to prevent self-deletion
+    // Resolve the caller so they can't delete themselves
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -81,7 +78,6 @@ Deno.serve(async (req: Request) => {
       return currentUser.response;
     }
 
-    // Prevent users from deleting themselves
     if (currentUser.userId === userId) {
       return new Response(
         JSON.stringify({
@@ -95,13 +91,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create a Supabase client with service role key for admin operations
+    // Service role client for the auth admin calls
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       getSecretKey(),
     );
 
-    // First, check if the user exists by looking up their profile
     const { data: userProfile, error: profileError } = await supabaseClient
       .from("profiles")
       .select("id, username")
@@ -110,7 +105,6 @@ Deno.serve(async (req: Request) => {
 
     if (profileError) {
       if (profileError.code === "PGRST116") {
-        // User not found
         return new Response(
           JSON.stringify({
             success: false,
@@ -140,10 +134,8 @@ Deno.serve(async (req: Request) => {
       `Attempting to delete user: ${userProfile.username} (${userId})`,
     );
 
-    // Wipe the user's Orbit Depot uploads first, so nothing survives the account
-    // deletion. Runs server-side with the gateway service key. A configured
-    // Depot that fails aborts the delete (retryable); an unconfigured Depot is
-    // skipped (null).
+    // Wipe Depot first so nothing outlives the account. A failing Depot aborts the
+    // delete so it can be retried.
     try {
       const wiped = await wipeDepotUploads(userId);
       if (wiped !== null) {
@@ -165,8 +157,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Delete the user using Supabase Auth Admin API
-    // This will delete from auth.users table, which will cascade to profiles due to foreign key constraint
+    // Cascades from auth.users to profiles through the foreign key
     const { error: deleteError } = await supabaseClient.auth.admin.deleteUser(
       userId,
     );
@@ -190,7 +181,6 @@ Deno.serve(async (req: Request) => {
       `Successfully deleted user: ${userProfile.username} (${userId})`,
     );
 
-    // Return success response
     return new Response(
       JSON.stringify({
         success: true,

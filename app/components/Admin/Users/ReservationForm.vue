@@ -30,7 +30,6 @@ const isOpen = defineModel<boolean>('isOpen')
 
 const USERNAME_RE = /^\w+$/
 
-// Form state
 const username = ref('')
 const note = ref('')
 const assignedTo = ref<string | null>(null)

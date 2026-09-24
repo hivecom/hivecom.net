@@ -23,7 +23,7 @@ const SIZE_PX: Record<string, number> = {
   xl: 72,
 }
 
-// Animated positions - four gradient blobs each with their own phase offset
+// Four gradient blobs, each with its own phase offset
 const ANIM_TARGETS = [
   { x: 20, y: 30 },
   { x: 75, y: 20 },
@@ -72,7 +72,6 @@ function animatedPosition(index: number): { x: number, y: number } {
   const phase = (index / ANIM_TARGETS.length)
   const tPhased = (t + phase) % 1
 
-  // Use sine to ease back and forth smoothly
   const ease = (Math.sin(tPhased * Math.PI * 2) + 1) / 2
   const target = ANIM_TARGETS[index] ?? ANIM_TARGETS[0]!
   const opposite = ANIM_TARGETS[(index + 2) % ANIM_TARGETS.length] ?? ANIM_TARGETS[0]!

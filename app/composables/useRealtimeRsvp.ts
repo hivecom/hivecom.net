@@ -11,21 +11,9 @@ type RSVPStatus = Database['public']['Enums']['events_rsvp_status']
 let instanceCounter = 0
 
 /**
- * Subscribes to Supabase realtime changes on `event_rsvps` for a specific event.
- *
- * Bridges cross-browser RSVP changes into the existing `useRsvpBus` so all
- * components that already listen to that bus (EventRSVPCount, EventRSVPModal,
- * EventHeader) receive cross-browser updates without any further changes.
- *
- * Note: we do NOT skip events for the current user. `RSVPButton` dispatches
- * via `window.dispatchEvent`, which is same-tab only - so in a second browser
- * window (even the same user) the realtime event is the only signal and must
- * not be dropped. The extra re-fetch on the originating tab is harmless.
- *
- * The subscription is automatically cleaned up when the calling component
- * is unmounted.
- *
- * @param eventId - Reactive or static event ID to subscribe to.
+ * Bridges realtime RSVP changes into `useRsvpBus`. Don't skip the current
+ * user's events: `RSVPButton` dispatches with `window.dispatchEvent`, which is
+ * same-tab only, so in a second window the realtime event is the only signal.
  */
 export function useRealtimeRsvp(eventId: MaybeRef<number | null | undefined>) {
   const supabase = useSupabaseClient()

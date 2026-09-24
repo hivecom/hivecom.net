@@ -59,8 +59,7 @@ export interface MetricsHistoryEntry {
   ircMessagesByChannel: Record<string, number> | null
 }
 
-// Shown next to the IRC badge wherever message counts appear, so readers know
-// what the number covers before comparing it against their own experience.
+// Shown wherever IRC message counts appear, so readers know what the number covers.
 export const IRC_MESSAGES_INFO = 'Message counts cover registered public channels with history enabled, plus secret channels. Direct messages aren\'t included.'
 
 export function formatMessageCount(total: number): string {
@@ -68,24 +67,18 @@ export function formatMessageCount(total: number): string {
 }
 
 const METRICS_CACHE_KEY = 'metrics:latest'
-export const METRICS_COLLECTION_INTERVAL = 5 * 60 * 1000 // 5 minutes
+export const METRICS_COLLECTION_INTERVAL = 5 * 60 * 1000
 export const METRICS_REFRESH_BUFFER_MS = 30 * 1000 // buffer after collection boundary
 
-/**
- * Returns ms until the next 5-min collection boundary.
- * e.g. at 12:07 -> 3 min; at 12:00 -> 5 min (fresh boundary).
- */
+// Exactly on a boundary this returns the full interval, not 0.
 function msUntilNextCollection(): number {
   const now = Date.now()
   const elapsed = now % METRICS_COLLECTION_INTERVAL
   return METRICS_COLLECTION_INTERVAL - elapsed
 }
 
-/**
- * Bucket width for an arbitrary window duration, so the point count stays in a
- * range the charts can actually draw. Anything past a year steps up to weekly
- * buckets - daily over three years is ~1100 bars in a few hundred pixels.
- */
+// Keeps the point count drawable. Past a year it steps up to weekly buckets,
+// since daily over three years is ~1100 bars in a few hundred pixels.
 function bucketMsForDuration(durationMs: number): number {
   const hour = 60 * 60 * 1000
   const day = 24 * hour
@@ -103,7 +96,6 @@ function bucketMsForDuration(durationMs: number): number {
   return 7 * day
 }
 
-// Convert a millisecond duration to a Postgres interval string.
 function msToPgInterval(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000)
   const hours = Math.floor(totalSeconds / 3600)
@@ -112,11 +104,9 @@ function msToPgInterval(ms: number): string {
   return `${hours} hours ${minutes} minutes ${seconds} seconds`
 }
 
-// Bucket origin for the RPC: local midnight today, so day-sized buckets are
-// local days rather than UTC days. The day histograms label bars relative to
-// the local date and open local midnight-to-midnight windows on click, and
-// both only line up when the buckets are cut the same way. Sub-day buckets
-// are unaffected beyond aligning to the local hour.
+// Local midnight, so day buckets are local days rather than UTC days. The day
+// histograms label and open windows by local date and only line up if the
+// buckets are cut the same way.
 function localDayOrigin(): Date {
   const now = new Date()
   return new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -222,8 +212,6 @@ async function fetchMetricsFromStorage(supabase: SupabaseClient<Database>) {
   }
 }
 
-// Normalise one row returned by get_metrics_bucketed into MetricsHistoryEntry.
-// The RPC already handles bucketing/averaging - we just map column names.
 function normalizeRpcRow(row: Record<string, unknown>): MetricsHistoryEntry {
   return {
     capturedAt: row.captured_at as string,
@@ -277,14 +265,10 @@ async function fetchMetricsHistoryFromDB(
   return (data as unknown as Record<string, unknown>[]).map(normalizeRpcRow)
 }
 
-// In-flight history fetches keyed by cache key. The metrics page mounts five
-// charts plus the brush, and a period switch makes all of them request the
-// same range at once - before any response has landed in the cache. Sharing
-// the pending promise collapses those into a single RPC call. Six concurrent
-// copies of get_metrics_bucketed were enough to push each past the 8s
-// statement timeout on long ranges.
-// Null propagates a failed fetch through the coalescing layer so callers can
-// tell it apart from a range that legitimately holds no rows.
+// A period switch makes every chart on the metrics page request the same range
+// before any response is cached. Six concurrent get_metrics_bucketed calls
+// pushed each past the 8s statement timeout on long ranges, so they share one
+// pending promise. Null marks a failed fetch, distinct from an empty range.
 const inflightHistory = new Map<string, Promise<MetricsHistoryEntry[] | null>>()
 
 async function coalesceHistory(
@@ -305,15 +289,14 @@ const metricsHistory = ref<MetricsHistoryEntry[]>([])
 const loadingHistory = ref(false)
 export const metricsWindow = ref<{ start: Date, end: Date } | null>(null)
 
-// Separate 90d overview dataset exclusively for the brush - never overwritten
-// by period fetches so the brush always shows the full context.
+// 90d overview for the brush only. Period fetches never overwrite it, so the
+// brush keeps the full context.
 const metricsOverview = ref<MetricsHistoryEntry[]>([])
 const loadingOverview = ref(false)
 
 // How far back the overview currently reaches. Null until the first fetch.
 let overviewSinceMs: number | null = null
 
-// Shared snapshot state - hoisted so all callers share the same reactive ref.
 const metrics = shallowRef<MetricsSnapshot | null>(null)
 const loading = shallowRef(false)
 const error = shallowRef<string | null>(null)
@@ -361,11 +344,9 @@ async function refreshSnapshot(): Promise<void> {
 }
 
 function scheduleSnapshotRefresh(): void {
-  // Never on the server. The refs above are module state, so one process is
-  // shared by every request: a timer here bakes whatever it last fetched into
-  // the HTML of visitors who never asked for metrics, and the client starts
-  // from null and hydrates over the top of it. It also never stops, since
-  // nothing on the server unmounts.
+  // Never on the server. These refs are module state shared by every request,
+  // so a server timer bakes its last fetch into unrelated visitors' HTML. It
+  // would also never stop, since nothing on the server unmounts.
   if (import.meta.server)
     return
 
@@ -382,17 +363,11 @@ function scheduleSnapshotRefresh(): void {
 
 // ── History auto-refresh ──────────────────────────────────────────────────────
 //
-// Consumers subscribe to a period and get an unsubscribe back. Subscriptions
-// are ref-counted per period, so one component unmounting can't cancel a timer
-// another still depends on, and each period owns its own timer, so two charts
-// on different periods both stay current instead of whichever mounted last
-// silently winning.
+// Ref-counted per period with a timer each, so one unmount can't cancel a timer
+// another consumer depends on, and charts on different periods all stay current.
 //
-// Every timer still fires on the five-minute collection boundary, but a
-// consumer can ask for a slower cadence. A card folding a day into hourly bars
-// gains nothing from refetching twelve times an hour, and a daily-bucketed 90d
-// window changes once a day. The period refreshes at the tightest cadence any
-// live consumer asked for, so a slow consumer never starves a fast one.
+// Timers fire on the collection boundary, but a consumer can ask for a slower
+// cadence. The period refreshes at the tightest cadence any live consumer wants.
 
 export type MetricsRefreshListener = (entries: MetricsHistoryEntry[]) => void
 
@@ -521,10 +496,9 @@ function subscribePeriod(
   }
 }
 
-// A backgrounded tab throttles timers and a sleeping machine stops them
-// outright, so by the time the tab is visible again a scheduled refresh can be
-// arbitrarily overdue. Catch up on anything past its collection interval and
-// re-arm every timer from the current time.
+// Background tabs throttle timers and a sleeping machine stops them, so a
+// refresh can be arbitrarily overdue when the tab comes back. Catch up on
+// anything stale and re-arm every timer from now.
 if (import.meta.client) {
   const { isHidden } = usePageVisibility()
 
@@ -552,10 +526,8 @@ export function useDataMetrics() {
   const supabase = useSupabaseClient<Database>()
   metricsClient = supabase
 
-  // Pre-populate synchronously so first render has data on warm cache. While
-  // hydrating the seed has to wait for mount - the cache is localStorage, which
-  // the server never saw, so applying it during the first client render gives
-  // Vue markup that disagrees with what came off the server.
+  // Seed synchronously on a warm cache, except while hydrating: the server never
+  // saw localStorage, so seeding during the first client render is a mismatch.
   const hydrating = tryUseNuxtApp()?.isHydrating === true
   const _initialCached = hydrating ? null : metricsCache.get<MetricsSnapshot>(METRICS_CACHE_KEY)
 
@@ -563,7 +535,7 @@ export function useDataMetrics() {
     if (snapshot !== null)
       metrics.value ??= snapshot
 
-    // lastFetchedAt follows whatever snapshot is available - cache or already-loaded module ref.
+    // lastFetchedAt follows whichever snapshot is available, cached or already loaded.
     if (lastFetchedAt.value === null) {
       const source = snapshot ?? metrics.value
       if (source !== null)
@@ -581,9 +553,7 @@ export function useDataMetrics() {
     })
   }
 
-  // Refresh subscriptions owned by this instance, released together on
-  // teardown. Tracked per instance so unmounting one consumer can never cancel
-  // another's refresh.
+  // Tracked per instance so unmounting one consumer can never cancel another's refresh.
   const ownedSubscriptions = new Set<() => void>()
 
   /**
@@ -642,9 +612,7 @@ export function useDataMetrics() {
       const snapshot = await fetchMetricsFromStorage(supabase)
       metrics.value = snapshot
       if (snapshot !== null) {
-        // TTL = time remaining until the *next* collection after this snapshot.
-        // Use collectedAt so we don't cache stale data for up to 5 extra minutes
-        // if fetchMetrics is called right after a fresh collection.
+        // TTL runs to the next collection after this snapshot, not after now.
         const collectedAt = new Date(snapshot.collectedAt).getTime()
         const ttl = Math.max(0, collectedAt + METRICS_COLLECTION_INTERVAL - Date.now())
         metricsCache.set(METRICS_CACHE_KEY, snapshot, ttl)
@@ -662,8 +630,6 @@ export function useDataMetrics() {
     }
   }
 
-  // Shared fetch for a window range - concurrent callers with the same range
-  // share one RPC call via coalesceHistory.
   const fetchWindowEntries = async (start: Date, end: Date): Promise<MetricsHistoryEntry[] | null> => {
     const cacheKey = `metrics:history:window:${start.getTime()}:${end.getTime()}`
     return coalesceHistory(cacheKey, async () => {
@@ -727,8 +693,6 @@ export function useDataMetrics() {
     }
   }
 
-  // Shared fetch for a period - concurrent callers with the same period share
-  // one RPC call via coalesceHistory.
   const fetchHistoryEntries = async (period: MetricsPeriod): Promise<MetricsHistoryEntry[]> => {
     const cacheKey = `metrics:history:${period}`
     const entries = await coalesceHistory(cacheKey, async () => {
@@ -771,17 +735,13 @@ export function useDataMetrics() {
   }
 
   /**
-   * Synchronous read of a period already in the cache. The fetchers are async
-   * even on a warm cache, which costs a render, so consumers that would rather
-   * paint real data than a placeholder can seed themselves during setup and
-   * let the fetch confirm it. Returns null when the cache is cold.
+   * Sync cache read, so consumers can seed during setup instead of rendering a
+   * placeholder while the async fetch confirms it. Null on a cold cache.
    */
   const getCachedHistory = (period: MetricsPeriod): MetricsHistoryEntry[] | null =>
     metricsCache.get<MetricsHistoryEntry[]>(`metrics:history:${period}`)
 
-  // Like fetchMetricsHistory but returns data without writing to the shared ref.
-  // Use this when you need history data in an isolated context (e.g. a modal)
-  // that should not affect other consumers of metricsHistory.
+  // Like fetchMetricsHistory but doesn't write the shared ref, e.g. for a modal.
   const fetchMetricsHistoryIsolated = async (period: MetricsPeriod = '24h'): Promise<MetricsHistoryEntry[]> => {
     const cacheKey = `metrics:history:${period}`
     const cached = metricsCache.get<MetricsHistoryEntry[]>(cacheKey)
@@ -796,9 +756,7 @@ export function useDataMetrics() {
     }
   }
 
-  // Fetch 14-day history with 24h buckets - used by admin table mini-histograms.
-  // Intentionally separate from fetchMetricsHistory so it always uses daily granularity
-  // regardless of what PERIOD_CONFIGS['14d'].bucketMs is set to.
+  // Always daily buckets, whatever PERIOD_CONFIGS['14d'].bucketMs is set to.
   const fetchDailyHistory = async (): Promise<MetricsHistoryEntry[]> => {
     const origin = localDayOrigin()
     const cacheKey = `metrics:history:14d-daily:${origin.getTime()}`
@@ -849,8 +807,8 @@ export function useDataMetrics() {
 
   /**
    * Earliest snapshot we ever collected, used to size the All Time period.
-   * Cached for the session - it only moves when the rollup trims the tail, and
-   * a stale value there is off by a day at worst.
+   * Cached for an hour. It only moves when the rollup trims the tail, and a
+   * stale value is off by a day at worst.
    */
   const fetchMetricsEarliest = async (): Promise<Date | null> => {
     const cacheKey = 'metrics:earliest'
@@ -874,19 +832,10 @@ export function useDataMetrics() {
   }
 
   /**
-   * Dataset backing the brush. Defaults to 90 days, and takes a `since` so the
-   * brush can widen itself when a selection reaches further back than that -
-   * otherwise it renders a window it holds no data for, stretching 90 days
-   * across the full width while the charts below show a different range.
-   *
-   * Within a session it only ever widens, so a narrower request is a no-op
-   * rather than a refetch and a narrower response that lands late can't clobber
-   * a wider one.
-   *
-   * Calling it with no argument is a reset, not a widening request - that's a
-   * freshly mounted brush asking for its default view. Without that, the state
-   * here outlives the component and the brush comes back still stretched to
-   * whatever the last visit expanded it to.
+   * Brush dataset, 90 days by default. `since` widens it when a selection
+   * reaches further back, so the brush never draws a window it has no data for.
+   * It only widens, so a late narrower response can't clobber a wider one. No
+   * argument is a reset, since this state outlives the brush component.
    */
   const fetchMetricsOverview = async (since?: Date) => {
     const defaultStartMs = Date.now() - PERIOD_CONFIGS['90d'].hours * 60 * 60 * 1000
@@ -915,7 +864,7 @@ export function useDataMetrics() {
           p_bucket_interval: msToPgInterval(bucketMsForDuration(end.getTime() - startMs)),
         })
 
-        // Don't cache a failure - an empty brush would stick for the whole
+        // Don't cache a failure. An empty brush would stick for the whole
         // interval and every chart under it would render the wrong range.
         if (dbError !== null || data === null)
           return null

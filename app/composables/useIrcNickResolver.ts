@@ -6,14 +6,13 @@ export interface ResolvedNick {
   id: string
   username: string
 
-  /** ISO timestamp of the user's last website activity (for the online dot). */
+  /** ISO. Last website activity, drives the online dot. */
   last_seen: string | null
 }
 
-const NICK_TTL = 5 * 60 * 1000 // 5 minutes
+const NICK_TTL = 5 * 60 * 1000
 
-// Module-level singletons - reactive state and in-flight dedup are shared
-// across all components that call useIrcNickResolver().
+// Module-level so state and in-flight dedup are shared by every caller.
 const _pending = new Set<string>()
 const _resolved = ref<Map<string, ResolvedNick | null>>(new Map())
 
@@ -37,7 +36,6 @@ export function useIrcNickResolver() {
 
     const normalized = [...new Set(nicks.map(n => n.toLowerCase()).filter(Boolean))]
 
-    // Seed from localStorage cache before hitting the network.
     let changed = false
     const next = new Map(_resolved.value)
     for (const n of normalized) {
@@ -76,8 +74,7 @@ export function useIrcNickResolver() {
       for (const nick of toFetch) {
         const entry = found.get(nick) ?? null
 
-        // Persist result (including null misses) so subsequent page loads skip
-        // the network round-trip.
+        // Null misses are cached too, so later page loads skip the round trip.
         cache.set(`nick:${nick}`, entry, NICK_TTL)
         final.set(nick, entry)
         _resolvedAt.set(nick, Date.now())

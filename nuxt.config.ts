@@ -3,10 +3,10 @@ import { fileURLToPath } from 'node:url'
 import process from 'process'
 import fetchRoutes from './nitro/fetch-routes'
 
-// Only fetch routes when actually building/generating - not during `nuxi prepare`, type-gen, etc.
+// Only fetch routes on build/generate. `nuxi prepare` and type-gen must not hit the network.
 const isBuildCommand = process.argv.some(arg => ['build', 'generate'].includes(arg))
 
-// Cache the fetch result so it's only called once across hooks
+// Shared by the sitemap and prerender hooks so the fetch runs once
 let fetchRoutesCache: Promise<{ routes: string[], sitemapUrls: SitemapUrl[] }> | null = null
 async function getCachedRoutes() {
   fetchRoutesCache ??= fetchRoutes()
@@ -30,10 +30,8 @@ export default defineNuxtConfig({
   app: {
     head: {
       link: [
-        // Declared explicitly so nuxt-seo-utils doesn't advertise every
-        // favicon-*.ico and icon*.{png,svg} in public/ as a site icon.
-        // Keyed so app.vue's reactive favicon merges into this tag rather than
-        // adding a second icon link.
+        // Declared explicitly so nuxt-seo-utils doesn't advertise every icon file
+        // in public/. Keyed so app.vue's reactive favicon merges into this tag.
         { rel: 'icon', key: 'favicon', href: '/favicon.ico', type: 'image/x-icon' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' },
         { rel: 'manifest', href: '/manifest.json' },
@@ -46,24 +44,21 @@ export default defineNuxtConfig({
       ],
       script: [
         {
-          // Blocking inline script - runs synchronously before first paint to
-          // restore the cached theme and light/dark mode from localStorage,
-          // preventing any flash of the wrong theme/palette.
+          // Blocking inline script. It runs before first paint to restore the cached
+          // theme and color mode, so there's no flash of the wrong palette.
           innerHTML: `(function () {
   try {
-    // 1. Restore light/dark mode (VUI stores this under 'vueuse-color-scheme')
+    // VUI stores the color mode under 'vueuse-color-scheme'
     var scheme = localStorage.getItem('vueuse-color-scheme');
     var html = document.documentElement;
     if (scheme === 'light') {
       html.classList.remove('dark');
       html.classList.add('light');
     } else {
-      // Default to dark
       html.classList.remove('light');
       html.classList.add('dark');
     }
 
-    // 2. Restore custom theme palette from cache
     var raw = localStorage.getItem('hivecom-theme-cache');
     if (!raw) return;
     var theme = JSON.parse(raw);
@@ -98,13 +93,13 @@ export default defineNuxtConfig({
       }
     }
 
-    // Scale helpers
     function scaleVal(def, dbVal, minP, maxP) {
       var pct = minP + (dbVal / 100) * (maxP - minP);
       return def * (pct / 100);
     }
 
-    // Spacing tokens (minPercent=0, maxPercent=200, defaultDb=50, unit=px)
+    // These ranges and defaults mirror the scale configs in app/lib/theme.ts
+    // Spacing: minPercent=0, maxPercent=200, defaultDb=50, px
     var spacingDefs = [
       ['--space-xxs', 4], ['--space-xs', 8], ['--space-s', 12],
       ['--space-m', 16], ['--space-l', 24], ['--space-xl', 34],
@@ -116,7 +111,7 @@ export default defineNuxtConfig({
       style.setProperty(spacingDefs[j][0], Math.round(scaled * 10) / 10 + 'px');
     }
 
-    // Rounding tokens (minPercent=0, maxPercent=500, defaultDb=20, unit=px)
+    // Rounding: minPercent=0, maxPercent=500, defaultDb=20, px
     var roundingDefs = [
       ['--border-radius-xs', 3], ['--border-radius-s', 5],
       ['--border-radius-m', 8], ['--border-radius-l', 12],
@@ -128,7 +123,7 @@ export default defineNuxtConfig({
       style.setProperty(roundingDefs[j][0], Math.round(scaled * 10) / 10 + 'px');
     }
 
-    // Transition tokens (minPercent=0, maxPercent=400, defaultDb=25, unit=s)
+    // Transitions: minPercent=0, maxPercent=400, defaultDb=25, s
     var transitionDefs = [
       ['--transition-fast', 0.05, 'ease-in-out', '--transition-fast-duration'],
       ['--transition', 0.11, 'cubic-bezier(.65, 0, .35, 1)', '--transition-duration'],
@@ -143,7 +138,7 @@ export default defineNuxtConfig({
       style.setProperty(td[3], durStr);
     }
 
-    // Widening/container tokens (minPercent=100, maxPercent=300, defaultDb=0, unit=px)
+    // Widening: minPercent=100, maxPercent=300, defaultDb=0, px
     var containerDefs = [
       ['--container-xs', 360], ['--container-s', 728], ['--container-m', 968],
       ['--container-l', 1280], ['--container-xl', 1540], ['--container-xxl', 1920]
@@ -161,21 +156,14 @@ export default defineNuxtConfig({
           tagPriority: 'critical',
         },
         {
-          // Vue-independent boot watchdog. If hydration crashes, app.vue's
-          // onMounted never runs, so the in-app escape hatch timer in
-          // Loading.vue never starts and the SSR-rendered splash sits frozen
-          // with no way out. A plain setTimeout registered here still fires (a
-          // thrown hydration error frees the main thread), so we can detect the
-          // stuck splash and offer a reload. The 12s delay clears the 8s
-          // self-recovery in Loading.vue, so this only triggers on a real boot
-          // failure, not a slow-but-alive load.
+          // Vue-independent boot watchdog. If hydration crashes, the in-app escape
+          // hatch in Loading.vue never starts and the SSR splash sits frozen. A
+          // plain setTimeout still fires, so this offers a reload. 12s clears the
+          // 8s self-recovery in Loading.vue, so only a real boot failure trips it.
           innerHTML: `(function () {
   try {
-    // Only conclude a stuck boot after 12s of CONTINUOUS foreground time. A
-    // backgrounded tab throttles timers and defers hydration, so wall-clock
-    // elapsed isn't a reliable signal - it would flag a slow-but-alive load
-    // that finishes the instant the tab is refocused. Count visible time only,
-    // and skip an overlay that's already fading out (i.e. recovering).
+    // Count continuous foreground time only. Background tabs throttle timers and
+    // defer hydration, so wall-clock time would flag loads that finish on refocus.
     var DELAY = 12000;
     var timer = null;
     var shown = false;
@@ -183,7 +171,7 @@ export default defineNuxtConfig({
     function show() {
       timer = null;
       if (shown) return;
-      // Overlay gone, or mid fade-out -> the app booted, nothing is stuck.
+      // Overlay gone or fading out means the app booted
       if (!document.querySelector('.initial-loading:not(.fade-out)')) return;
       if (document.getElementById('boot-escape-hatch')) return;
       shown = true;
@@ -203,9 +191,8 @@ export default defineNuxtConfig({
       reload.textContent = 'Reload';
       reload.style.cssText = 'cursor:pointer;border:0;border-radius:var(--border-radius-m,8px);padding:6px 14px;font-size:13px;background:var(--color-accent,#a3e635);color:#000;';
       reload.onclick = function () {
-        // Cache-busting reload: a plain location.reload() can be served the
-        // same stale HTML (which references now-deleted _nuxt chunks), so this
-        // would never recover. Append a query param to force a network fetch.
+        // A plain reload() can be served the same stale HTML pointing at deleted
+        // _nuxt chunks, so bust the cache with a query param.
         var loc = window.location;
         var sep = loc.search ? '&' : '?';
         loc.replace(loc.pathname + loc.search + sep + '_=' + Date.now() + loc.hash);
@@ -232,8 +219,6 @@ export default defineNuxtConfig({
       if (timer) { clearTimeout(timer); timer = null; }
     }
 
-    // Pause the countdown while hidden, start a fresh 12s when refocused, so
-    // only uninterrupted foreground time counts toward "stuck".
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') arm();
       else disarm();
@@ -251,11 +236,9 @@ export default defineNuxtConfig({
     pageTransition: {
       name: 'page',
     },
-    // Routes that change chrome (admin, chat) swap the layout, and Nuxt keys the
-    // layout provider by name, so the <NuxtPage> transition inside it is torn
-    // down and rebuilt with nothing to animate. This covers those navigations.
-    // out-in because two layouts are both full-height block elements: overlap
-    // them and the second one stacks below the first instead of over it.
+    // Nuxt keys the layout provider by name, so a layout swap tears down the
+    // <NuxtPage> transition inside it. out-in because overlapping full-height
+    // layouts stack vertically instead of over each other.
     layoutTransition: {
       name: 'layout',
       mode: 'out-in',
@@ -265,20 +248,10 @@ export default defineNuxtConfig({
     enabled: false,
   },
   unhead: {
-    // nuxt-seo-utils enables unhead's dev-time head validator, and it's all or
-    // nothing - no way to pick which rules run. Everything it flagged here is
-    // either deliberate or out of our hands, so it was pure console noise:
-    //
-    // - the two blocking inline scripts in `app.head`, which have to stay inline
-    // - `user-scalable=no` from useZoomPreference, our default for the
-    //   "Allow browser zoom" setting
-    // - `twitter:card`, which the rule calls deprecated but is what gets X to
-    //   render a large-image card
-    // - `tagPriority: 35` and the legacy `twitter:image:*` tags, both pushed by
-    //   nuxt-og-image
-    //
-    // The tree-shake, useSeoMeta and minify transforms still run; only the
-    // validator is off.
+    // nuxt-seo-utils turns on unhead's dev head validator with no per-rule
+    // control. Everything it flags here is deliberate or comes from nuxt-og-image:
+    // the inline head scripts, user-scalable=no, twitter:card. Only the validator
+    // is off. The other transforms still run.
     vite: {
       validate: false,
     },
@@ -308,22 +281,18 @@ export default defineNuxtConfig({
     clientBundle: {
       scan: true,
       sizeLimitKb: 512,
-      // Icons referenced dynamically (via :name binding from JS objects/constants) -
-      // can't be statically scanned from templates, so must be explicitly included.
+      // Icons bound dynamically through :name can't be scanned from templates
       icons: [
-        // constants.json PLATFORMS (index.vue join section)
         'ph:chats-circle-bold',
         'ph:play-circle-bold',
         'mdi:teamspeak',
 
-        // constants.json LINKS (Footer.vue social links)
         'mdi:discord',
         'mdi:github',
         'mdi:code',
         'mdi:steam',
         'mdi:twitch',
 
-        // lib/navigation.ts (Navigation.vue mobile menu)
         'ph:house',
         'ph:users',
         'ph:calendar',
@@ -331,7 +300,6 @@ export default defineNuxtConfig({
         'ph:game-controller',
         'ph:check-square',
 
-        // layouts/admin.vue sidebar menu items
         'ph:squares-four',
         'ph:images-square',
         'ph:flag',
@@ -345,12 +313,10 @@ export default defineNuxtConfig({
         'ph:user-sound',
         'ph:user',
 
-        // Admin/Alerts.vue
         'ph:warning-circle',
         'ph:calendar-x',
         'ph:warning-octagon',
 
-        // Admin/Complaints (ComplaintCard.vue, ComplaintDetails.vue)
         'ph:bell',
         'ph:check-circle',
         'ph:chat-circle-dots',
@@ -358,28 +324,20 @@ export default defineNuxtConfig({
         'ph:chat-circle-text',
         'ph:chats',
 
-        // Admin/Discussions/DiscussionDetails.vue context links
         'ph:user-circle',
 
-        // Admin/Network/GameServerTable.vue
         'ph:cube',
 
-        // Admin/Users/UserTable.vue provider + platform icons
         'ph:google-logo',
         'ph:discord-logo',
 
-        // Chat/MessageLog.vue bridgeInfo() - relay source icons (dynamic :name binding)
         'ph:telegram-logo',
         'simple-icons:matrix',
-        // ph:discord-logo already listed above
-        // ph:swap already scanned statically
         'ph:envelope-simple',
         'ph:identification-card',
         'ph:steam-logo',
         'ph:patreon-logo',
 
-        // Editor/RichTextSelectionMenu.vue
-        // (static string names in <Icon> - included explicitly to guarantee bundle inclusion)
         'ph:text-h-one',
         'ph:x',
         'ph:text-b',
@@ -395,35 +353,29 @@ export default defineNuxtConfig({
         'ph:quotes',
         'material-symbols-light:lowercase',
 
-        // Community/FundingHistory.vue growth indicators
         'ph:minus',
         'ph:trend-up',
         'ph:trend-down',
 
-        // pages/servers/gameservers/[id].vue state configs
         'ph:check-circle-fill',
         'ph:play-circle-fill',
         'ph:warning-circle-fill',
         'ph:x-circle-fill',
         'ph:question-fill',
 
-        // events
         'ph:arrows-vertical',
         'ph:download-simple',
 
-        // Notifications/NotificationTabSubscriptions.vue subscription entity icons
         'ph:desktop-tower',
         'ph:blueprint',
         'ph:scales',
         'ph:chat-dots',
         'ph:paint-brush',
 
-        // Discussions/DiscussionTimeline.vue jump-to-date button + toolbar
         'ph:clock',
         'ph:arrow-down',
         'ph:arrow-up',
 
-        // Profile/Banner editor
         'ph:arrows-out',
         'ph:circle-half-tilt',
         'ph:copy',
@@ -437,7 +389,6 @@ export default defineNuxtConfig({
         'ph:text-t',
         'ph:trash',
 
-        // Global search + searches
         'ph:magnifying-glass',
         'ph:list-magnifying-glass',
         'ph:selection-slash',
@@ -451,7 +402,7 @@ export default defineNuxtConfig({
   ],
   content: {
     experimental: {
-      // Build the content database with node:sqlite instead of better-sqlite3.
+      // node:sqlite instead of better-sqlite3
       sqliteConnector: 'native',
     },
   },
@@ -466,11 +417,9 @@ export default defineNuxtConfig({
           output: 'html',
         },
       },
-      // NOTE: rehype-sanitize is configured in mdc.config.ts instead of here.
-      // nuxt.config.ts options are passed through JSON.stringify when generating
-      // .nuxt/mdc-imports.mjs, which silently converts every RegExp to {} -
-      // causing the iframe src allow-list to reject all YouTube embeds.
-      // mdc.config.ts is loaded as a real ES module so RegExp values survive.
+      // rehype-sanitize lives in app/mdc.config.ts. Options here go through
+      // JSON.stringify, which turns every RegExp into {} and breaks the iframe
+      // src allow-list.
     },
   },
   vite: {
@@ -483,9 +432,7 @@ export default defineNuxtConfig({
     },
     build: {
       rollupOptions: {
-        // consola imports node:tty for its terminal reporter; it's safely
-        // externalized by Vite and has no effect in the browser. Suppress
-        // the spurious warning so build output stays readable.
+        // consola's node:tty import is externalized by Vite and harmless in the browser
         onwarn(warning, warn) {
           if (warning.code === 'MODULE_LEVEL_DIRECTIVE')
             return
@@ -542,6 +489,8 @@ export default defineNuxtConfig({
         'jszip', // CJS
         'remark-math',
         'rehype-katex',
+        'rehype-raw',
+        'rehype-sanitize',
         'vue-advanced-cropper',
         'chart.js',
         'vue-chartjs',
@@ -609,12 +558,8 @@ export default defineNuxtConfig({
   },
   hooks: {
     'vite:extendConfig': (config) => {
-      // `@` resolves to `./app`, but `@/types/*` files live at the repo root
-      // (`./types`). Nuxt registers the default `@` alias before any we add via
-      // `alias`, so Vite (and vite-node, used by the dev server) matches `@`
-      // first and fails to resolve runtime value imports of `@/types/*`.
-      // Prepend a more specific alias so it is matched first. Vite does not read
-      // tsconfig `paths`, so this must live in the Vite resolver explicitly.
+      // `@/types/*` lives at the repo root, but Nuxt registers `@` -> ./app first
+      // and Vite doesn't read tsconfig paths. Prepend a more specific alias.
       const typesReplacement = `${fileURLToPath(new URL('./types', import.meta.url))}/`
       const resolve = config.resolve
       if (!resolve)
@@ -630,8 +575,7 @@ export default defineNuxtConfig({
       ]
     },
     'nitro:build:before': (nitro) => {
-      // Force-exit after Nitro fully closes (post-prerender) so the CI process
-      // doesn't hang on open handles (native addons, etc.) in static builds.
+      // Force-exit after Nitro closes so CI doesn't hang on open native handles
       nitro.hooks.hook('close', () => {
         if (isBuildCommand) {
           process.exit(0)
@@ -651,37 +595,25 @@ export default defineNuxtConfig({
   },
   fonts: {
     families: [
-      // Inter is the primary Latin font for the OG image templates.
+      // Both are for the OG image templates. Noto Sans SC is the CJK fallback.
       { name: 'Inter', weights: [400, 700], provider: 'google' },
-      // Noto Sans SC covers Chinese (simplified + traditional) and other Unicode
-      // scripts not covered by Inter, giving OG image templates CJK fallback support.
       { name: 'Noto Sans SC', weights: [400, 700], provider: 'google' },
-      //
-      // No `global: true`: nuxt-og-image auto-detects these families from the
-      // font-family declared in the OG image components and resolves them via
-      // @nuxt/fonts at render time. Setting global would inject a ~200 kB
-      // nuxt-fonts-global.css of @font-face rules into every app page.
+      // No `global: true`: nuxt-og-image resolves these at render time, and global
+      // would inject a ~200 kB @font-face stylesheet into every app page.
     ],
     experimental: {
-      // Don't generate metric-adjusted local fallback @font-face rules for the
-      // font-family declarations found in app/VUI CSS; those overrides change the
-      // app's system fonts. We only want the OG image renderer to use this font.
+      // Local fallback @font-face rules would override the app's system fonts
       disableLocalFallbacks: true,
     },
   },
   ogImage: {
-    // This is a fully prerendered static site (github-pages), so all OG images
-    // are generated at build time. Zero runtime mode removes all renderer code
-    // from the Nitro output and eliminates the "Unknown Nitro preset" warning.
+    // Static site, so every OG image renders at build time
     zeroRuntime: true,
-    // Cache rendered OG images to disk so CI builds skip re-rendering unchanged images.
-    // Stored in node_modules/.cache/nuxt-seo/og-image/ and preserved by the cache action.
+    // node_modules/.cache/nuxt-seo/og-image/, preserved by the CI cache action
     buildCache: true,
   },
   nitro: {
-    // Explicitly set static: true so nuxt-og-image's resolveOgImagePreset()
-    // sees nuxt.options.nitro.static and returns "nitro-prerender" instead of
-    // falling through to resolveNitroPreset() with an unknown preset name.
+    // nuxt-og-image reads this to pick the nitro-prerender preset
     static: true,
     prerender: {
       failOnError: false,
@@ -694,7 +626,7 @@ export default defineNuxtConfig({
     url: process.env.SUPABASE_URL,
     key: process.env.SUPABASE_PUBLISHABLE_KEY,
     types: '~~/types/database.types.ts',
-    redirect: false, // It would make sense to have redirects based on the path, however due to SSR, this is not possible.
+    redirect: false, // Path-based redirects don't work with SSR
     redirectOptions: {
       login: '/auth/sign-in',
       callback: '/auth/confirm',
@@ -703,13 +635,10 @@ export default defineNuxtConfig({
     clientOptions: {
       auth: {
         experimental: {
-          // Opt in to the experimental passkey (WebAuthn) API in supabase-js.
           passkey: true,
-          // Tag every email/OAuth redirect with its PKCE flow id so the callback
-          // picks the matching verifier. Without this, each new link request
-          // overwrites the single verifier and every older link in the inbox
-          // stops working. Redirect allow-list entries must be wildcards
-          // (/auth/*) so the extra query param still matches.
+          // Without the flow id, each new link overwrites the single PKCE verifier
+          // and older links in the inbox stop working. Redirect allow-list
+          // entries must be wildcards (/auth/*) so the extra param still matches.
           appendPkceFlowIdToRedirects: true,
         },
       },

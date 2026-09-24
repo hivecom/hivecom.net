@@ -3,11 +3,7 @@ import { createAtomBlockMarkdownSpec, mergeAttributes, Node } from '@tiptap/core
 // ---------------------------------------------------------------------------
 // DataFile node extension
 //
-// Stores uploaded CSV/JSON files as a block-level atom node in Tiptap.
-// Serializes to the :::datafile directive syntax so the markdown pre-processor
-// can convert it to a styled attachment card before rendering.
-//
-// Directive format:
+// Block atom the markdown pre-processor renders as an attachment card:
 //   :::datafile {src="https://..." name="data.csv" type="csv"} :::
 // ------------------------------------------------------------------------
 declare module '@tiptap/core' {
@@ -16,7 +12,6 @@ declare module '@tiptap/core' {
 
   interface Commands<ReturnType> {
     dataFile: {
-      /** Insert a data file node at the current selection. */
       insertDataFile: (attrs: { src: string, name: string, type: 'csv' | 'json' | 'archive' }) => ReturnType
     }
   }
@@ -97,7 +92,6 @@ export const DataFile = Node.create({
     }
   },
 
-  // Markdown serialization: :::datafile {src="..." name="..." type="csv"} :::
   ...createAtomBlockMarkdownSpec({
     nodeName: 'dataFile',
     allowedAttributes: ['src', 'name', 'type'],

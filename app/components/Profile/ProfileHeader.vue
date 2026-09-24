@@ -139,7 +139,6 @@ const joinedTooltip = computed(() => {
   return fullDateTime(created)
 })
 
-// Generate profile URL for copying
 const profileUrl = computed(() => {
   if (typeof window === 'undefined')
     return ''
@@ -148,7 +147,6 @@ const profileUrl = computed(() => {
   return `${window.location.origin}/profile/${identifier}`
 })
 
-// Get user initials for avatar
 function getUserInitials(username: string): string {
   return username
     .split(' ')
@@ -158,7 +156,6 @@ function getUserInitials(username: string): string {
     .toUpperCase()
 }
 
-// Format time since account creation
 function getAccountAge(createdAt: string): string {
   const created = new Date(createdAt)
   const now = new Date()
@@ -178,7 +175,6 @@ function getAccountAge(createdAt: string): string {
   }
 }
 
-// Get role display and styling
 function getRoleInfo(role: string | null) {
   if (!role)
     return null
@@ -421,7 +417,6 @@ onUnmounted(() => stopConfetti())
   >
     <canvas v-if="isBirthdayToday" ref="canvasRef" class="birthday-confetti-canvas" />
     <Card class="profile-header card-bg" :footer-separator="loading || !!(profile?.markdown || isOwnProfile)">
-      <!-- Loading Skeleton -->
       <template v-if="loading">
         <Flex gap="xl" expand y-start class="profile-header-skeleton__grid">
           <div class="profile-header-skeleton__avatar">
@@ -446,7 +441,6 @@ onUnmounted(() => stopConfetti())
 
       <Flex v-else-if="profile" column y-center x-center>
         <Grid gap="xl" expand columns="auto 1fr" class="profile-header-grid">
-          <!-- Avatar -->
           <div class="profile-avatar">
             <div class="avatar-container">
               <AvatarMedia
@@ -457,7 +451,6 @@ onUnmounted(() => stopConfetti())
                           cursor: avatarUrl ? 'pointer' : 'default' }"
                 @click="avatarUrl && (showAvatarLightbox = true)"
               />
-              <!-- Activity status indicator -->
               <Tooltip v-if="activityStatus">
                 <template #tooltip>
                   <p>{{ activityStatus.lastSeenText }}</p>
@@ -488,7 +481,6 @@ onUnmounted(() => stopConfetti())
           </Modal>
 
           <Flex column gap="s" expand x-end class="h-100">
-            <!-- Username, Role, Badges and Action Buttons Row -->
             <Flex gap="xs" y-center wrap>
               <Badge
                 v-if="userRole && getRoleInfo(userRole)"
@@ -500,7 +492,6 @@ onUnmounted(() => stopConfetti())
                 <Icon name="ph:heart" class="gold" />
                 Supporter
               </Badge>
-              <!-- Friend status badge -->
               <Badge
                 v-if="!isOwnProfile && friendshipStatus === 'mutual'"
                 variant="success"
@@ -530,7 +521,6 @@ onUnmounted(() => stopConfetti())
               </h1>
             </Flex>
 
-            <!-- Action Buttons -->
             <Flex gap="xs" class="profile-action-buttons">
               <Tooltip v-if="isOwnProfile">
                 <Button size="s" variant="gray" square @click="emit('openEditSheet')">
@@ -561,12 +551,10 @@ onUnmounted(() => stopConfetti())
               <ProfileManageMenu v-if="!isOwnProfile" :profile="profile" @updated="emit('moderated')" />
             </Flex>
 
-            <!-- Introduction (Full Width) -->
             <p v-if="profile.introduction" class="profile-description">
               {{ profile.introduction }}
             </p>
 
-            <!-- Account Info (Full Width) -->
             <Flex x-between y-center class="profile-meta" expand>
               <Flex gap="m" y-center wrap>
                 <Flex v-if="countryInfo" gap="xs" y-center class="profile-country">
@@ -626,7 +614,7 @@ onUnmounted(() => stopConfetti())
                   </Flex>
                 </Tooltip>
 
-                <!-- Last seen - only shown on mobile where the activity indicator is not tappable -->
+                <!-- Last seen, mobile only because the activity indicator isn't tappable there -->
                 <Flex v-if="isTablet && activityStatus && !activityStatus.isActive" gap="xs" y-center class="text-color-lighter">
                   <Icon
                     class="text-color-lighter"

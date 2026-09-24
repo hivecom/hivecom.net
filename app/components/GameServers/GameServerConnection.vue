@@ -53,7 +53,6 @@ const connect = computed(() => buildConnectContext(game, gameserver))
           </Card>
         </div>
 
-        <!-- Quick Join -->
         <div class="gameserver-connection__quick-join-section">
           <h4 class="gameserver-connection__subtitle">
             Quick Join

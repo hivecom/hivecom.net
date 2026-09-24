@@ -22,7 +22,6 @@ import { shuffleArray } from '@/lib/utils/random'
 
 const isMobile = useBreakpoint('<xs')
 
-// Get current user for authentication checks
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const route = useRoute()
@@ -48,14 +47,13 @@ defineOgImage('Default', {
   description: 'Learn about Hivecom, explore community projects, and connect with users.',
 })
 
-// State for community members - hoist cache check before loading so it initializes correctly
 const { projects: allProjects } = useDataProjects()
 const { games } = useDataGames()
 const marqueeGames = computed(() => [...games.value].sort(() => Math.random() - 0.5).slice(0, 60))
 const communityCache = useCache(CACHE_NAMESPACES.community)
 
 const COMMUNITY_MEMBERS_CACHE_KEY = 'community-page:members'
-const COMMUNITY_MEMBERS_TTL = 5 * 60 * 1000 // 5 minutes
+const COMMUNITY_MEMBERS_TTL = 5 * 60 * 1000
 
 interface CommunityMembersCache {
   randomUsers: string[]
@@ -63,6 +61,7 @@ interface CommunityMembersCache {
   birthdayUserIds: string[]
 }
 
+// Read the cache before `loading` so warm visits skip the skeleton
 const _cachedMembers = communityCache.get<CommunityMembersCache>(COMMUNITY_MEMBERS_CACHE_KEY)
 
 const randomUsers = ref<string[]>(_cachedMembers?.randomUsers ?? [])
@@ -74,7 +73,7 @@ const error = ref('')
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000
 const ONLINE_USERS_CACHE_KEY = 'community-page:online-users'
-const ONLINE_USERS_TTL = 60 * 1000 // 1 minute
+const ONLINE_USERS_TTL = 60 * 1000
 const onlineUserIds = ref<string[]>([])
 const onlineUsersLoading = ref(false)
 
@@ -113,7 +112,6 @@ const onlineCount = computed(() => onlineUserIds.value.length > 0 ? onlineUserId
 fetchLatestMetrics()
 void fetchOnlineUsers()
 
-// State for recent projects
 const recentProjects = ref<ReturnType<typeof useDataProjects>['projects']['value']>([])
 
 // Pre-populate recent projects synchronously from already-cached project list
@@ -178,14 +176,13 @@ async function fetchRandomActiveCommunityMembers(filterClause: string) {
   }
 }
 
-// Fetch community data
 async function fetchCommunityData() {
   try {
-    // Warm cache - pre-population already handled at setup time, nothing to do
+    // Warm cache, already pre-populated at setup
     if (_cachedMembers !== null && recentProjects.value.length > 0)
       return
 
-    // Only show loading skeleton on cold load - cache pre-population handles warm visits
+    // Only show the skeleton on a cold load
     if (_cachedMembers === null)
       loading.value = true
     error.value = ''
@@ -197,20 +194,16 @@ async function fetchCommunityData() {
       // Compute MM-DD patterns covering +/-12h of now (handles all timezones)
       const birthdayPatterns = getBirthdayPatterns()
 
-      // Fetch supporters, random users, and birthday users in parallel for authenticated users
       const [supportersResult, randomUserIds, birthdayResult] = await Promise.all([
-        // Fetch supporters (lifetime and patreon)
         supabase
           .from('profiles')
           .select('id, supporter_lifetime, supporter_patreon, banned, ban_end')
           .or('supporter_lifetime.eq.true,supporter_patreon.eq.true')
           .order('created_at', { ascending: true }), // Show earliest supporters first
 
-        // Fetch random selection of users
         fetchRandomActiveCommunityMembers(activeProfilesFilter),
 
-        // Fetch all profiles with a birthday set - we filter MM-DD client-side because
-        // the birthday column is a date type and PostgREST cannot apply LIKE to it directly.
+        // Filter MM-DD client-side because PostgREST can't apply LIKE to a date column
         supabase
           .from('profiles')
           .select('id, birthday, banned, ban_end')
@@ -241,7 +234,6 @@ async function fetchCommunityData() {
       // Exclude birthday celebrants from the random members cluster so they don't appear twice
       randomUsers.value = randomUserIds.filter(id => !birthdayUserIds.value.includes(id))
 
-      // Cache the member data for warm re-visits
       communityCache.set<CommunityMembersCache>(COMMUNITY_MEMBERS_CACHE_KEY, {
         randomUsers: randomUsers.value,
         supporters: supporters.value,
@@ -261,7 +253,6 @@ async function fetchCommunityData() {
   }
 }
 
-// Load data when user is authenticated or on initial load
 watch(user, () => {
   fetchCommunityData()
 }, { immediate: true })
@@ -269,13 +260,6 @@ watch(user, () => {
 
 <template>
   <div class="page container-l">
-    <!-- Hero section -->
-    <!-- <section class="page-title">
-      <h1>Community</h1>
-      <p>Friends building things together</p>
-    </section> -->
-
-    <!-- Community Users (includes birthday sub-section when applicable) -->
     <ClientOnly>
       <ChartOnlineUsersModal
         v-model:open="showOnlineModal"
@@ -316,7 +300,6 @@ watch(user, () => {
         </Flex>
       </Card>
 
-      <!-- Sign-in prompt for community features -->
       <section v-else class="mt-m mb-l">
         <Card class="signin-prompt">
           <Flex column gap="l" y-center class="signin-prompt__content">
@@ -341,7 +324,6 @@ watch(user, () => {
         </Card>
       </section>
 
-      <!-- What We Play -->
       <section v-if="marqueeGames.length > 0">
         <Flex :y-end="!isMobile" :x-between="!isMobile" :column="isMobile" expand class="mb-s">
           <Flex column gap="xxs">
@@ -364,7 +346,6 @@ watch(user, () => {
         <GameMarquee :games="marqueeGames" :interactive="false" draggable @click="navigateTo('/community/games')" />
       </section>
 
-      <!-- Recent Projects -->
       <section v-if="recentProjects.length > 0 || loading" class="mt-xl">
         <Flex column gap="l">
           <Flex :y-end="!isMobile" :x-between="!isMobile" :column="isMobile" expand>
@@ -404,7 +385,6 @@ watch(user, () => {
         </Flex>
       </section>
 
-      <!-- Monthly Funding Progress -->
       <Flex column gap="l" class="mt-xl">
         <Flex gap="xxs" column>
           <h3 class="section-title">
@@ -417,7 +397,6 @@ watch(user, () => {
         <FundingProgress />
       </Flex>
 
-      <!-- Support Section with Community Supporters -->
       <section class="mt-l">
         <SupportCTA :supporter-ids="supporters" />
       </section>
@@ -456,7 +435,6 @@ watch(user, () => {
   }
 }
 
-// Projects Grid Styling
 .projects-grid {
   @media screen and (max-width: $breakpoint-m) {
     grid-template-columns: 1fr 1fr !important;

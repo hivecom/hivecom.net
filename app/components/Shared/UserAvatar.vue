@@ -114,7 +114,6 @@ const attrs = useAttrs()
 </script>
 
 <template>
-  <!-- Loading skeleton -->
   <Skeleton
     v-if="showSkeleton"
     :width="getSizePixels(size)"
@@ -122,7 +121,6 @@ const attrs = useAttrs()
     style="border-radius: var(--border-radius-pill);"
   />
 
-  <!-- With preview hover + link -->
   <UserPreviewHover
     v-else-if="showPreview && linked && userId"
     :user-id="userId"
@@ -156,7 +154,6 @@ const attrs = useAttrs()
     </NuxtLink>
   </UserPreviewHover>
 
-  <!-- With preview hover, no link -->
   <UserPreviewHover
     v-else-if="showPreview && userId"
     :user-id="userId"
@@ -184,7 +181,6 @@ const attrs = useAttrs()
     </div>
   </UserPreviewHover>
 
-  <!-- Link only, no preview -->
   <NuxtLink
     v-else-if="linked && profileLink"
     :to="profileLink"
@@ -213,7 +209,6 @@ const attrs = useAttrs()
     </div>
   </NuxtLink>
 
-  <!-- Plain avatar -->
   <div v-else class="user-avatar__media-wrap">
     <AvatarMedia
       :url="avatarUrl"

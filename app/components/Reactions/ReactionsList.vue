@@ -13,7 +13,7 @@ const props = defineProps<{
   /** Render chips at a smaller size (e.g. for dense chat contexts). */
   small?: boolean
 
-  /** When true, reactors are IRC nicks rather than user UUIDs - renders plain labels instead of avatars. */
+  /** Reactors are IRC nicks rather than user UUIDs, so render plain labels instead of avatars */
   nickReactors?: boolean
 }>()
 
@@ -144,7 +144,6 @@ function closeDrawer() {
         <span class="reactions__counter">{{ isCapped(reaction) ? 'MAX' : reaction.count }}</span>
       </button>
 
-      <!-- Desktop: hover popout -->
       <Popout
         v-if="!isMobile && reaction.reactors.length > 0"
         :anchor="getAnchor(getKey(reaction))"
@@ -175,7 +174,6 @@ function closeDrawer() {
     </div>
   </div>
 
-  <!-- Mobile: long-press drawer -->
   <Drawer
     v-if="isMobile"
     :open="drawerOpen"

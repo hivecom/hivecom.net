@@ -5,10 +5,8 @@ import ReferendumTable from '@/components/Admin/Referendums/ReferendumTable.vue'
 
 definePageMeta({ layout: 'admin' })
 
-// Refresh signal for referendum table
 const refreshSignal = ref(0)
 
-// Handle refresh when actions are performed
 function handleRefresh() {
   refreshSignal.value += 1
 }

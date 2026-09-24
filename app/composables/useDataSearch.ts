@@ -81,7 +81,6 @@ export function useDataSearch(query: Ref<string>, scope: Ref<SearchType[] | null
     }
   }
 
-  // Re-run when the debounced query changes.
   watch(debouncedQuery, (q) => {
     void runSearch(q)
   })

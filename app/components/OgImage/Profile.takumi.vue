@@ -58,31 +58,26 @@ function capitalize(s: string): string {
     class="relative flex flex-col w-full h-full bg-[#111111] text-white font-sans py-12 px-16 gap-4 box-border"
     style="font-family: 'Inter', 'Noto Sans SC', sans-serif"
   >
-    <!-- Background light leak -->
     <img
       src="/leak.png"
       alt=""
       class="absolute top-0 left-0 w-full h-full object-cover opacity-30 mix-blend-screen"
     >
 
-    <!-- Logo -->
     <img
       src="/icon.svg"
       alt="Hivecom"
       class="absolute top-12 right-16 w-18 h-18"
     >
 
-    <!-- Section label -->
     <p class="text-2xl text-[#a7fc2f] m-0 font-semibold tracking-widest uppercase">
       User
     </p>
 
-    <!-- Username -->
     <h1 class="text-6xl text-white m-0 leading-tight pr-40 shrink-0">
       @{{ data.username }}
     </h1>
 
-    <!-- Introduction -->
     <p
       v-if="data.introduction != null && data.introduction !== ''"
       class="text-3xl text-[#aeaeae] m-0 leading-snug pr-40 grow overflow-hidden line-clamp-2"
@@ -90,13 +85,11 @@ function capitalize(s: string): string {
       {{ data.introduction }}
     </p>
 
-    <!-- Spacer when no introduction -->
     <div
       v-else
       class="grow"
     />
 
-    <!-- Badges + supporter pills -->
     <div
       v-if="visibleBadges.length > 0 || supporterLabel != null"
       class="flex flex-row gap-2"
@@ -117,9 +110,7 @@ function capitalize(s: string): string {
       </span>
     </div>
 
-    <!-- Meta bar -->
     <div class="flex flex-row gap-12 mt-auto pt-6 border-t border-[#242424]">
-      <!-- Country -->
       <div
         v-if="data.country != null && data.country !== ''"
         class="flex flex-row items-center gap-3 text-[28px] text-[#aeaeae]"
@@ -137,7 +128,6 @@ function capitalize(s: string): string {
         {{ data.country }}
       </div>
 
-      <!-- User since -->
       <div
         v-if="memberYear != null"
         class="flex flex-row items-center gap-3 text-[28px] text-[#aeaeae]"

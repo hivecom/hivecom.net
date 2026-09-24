@@ -5,22 +5,15 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { getAuthenticatedUserId } from "../_shared/auth.ts";
 
 /**
- * Last.fm authentication start endpoint
- * Returns the Last.fm auth URL for the client to redirect to.
- * Link-only flow - requires an authenticated user.
- *
- * POST body:
- * - baseUrl: string  (origin of the frontend, e.g. https://hivecom.net)
- * - redirect?: string  (post-auth redirect path, default: /profile/settings)
+ * Link-only, so the caller must be signed in.
+ * POST { baseUrl, redirect? }. redirect defaults to /profile/settings.
  */
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Require authenticated user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -66,13 +59,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Build the callback URL that Last.fm will redirect back to
     const state = btoa(JSON.stringify({ redirect }));
     const returnUrl = `${baseUrl}/auth/callback/lastfm?state=${
       encodeURIComponent(state)
     }`;
 
-    // Build the Last.fm auth URL
     const lastfmAuthUrl = new URL("https://www.last.fm/api/auth/");
     lastfmAuthUrl.searchParams.set("api_key", apiKey);
     lastfmAuthUrl.searchParams.set("cb", returnUrl);

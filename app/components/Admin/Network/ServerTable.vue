@@ -37,7 +37,7 @@ const supabase = useSupabaseClient()
 const userId = useUserId()
 const isBelowMedium = useBreakpoint('<m')
 
-// Filter states kept local - status filter goes beyond simple search
+// The status filter goes beyond the composable's search, so it stays local.
 const statusFilter = ref<SelectOption[]>()
 
 const statusOptions: SelectOption[] = [
@@ -96,7 +96,6 @@ const {
   defaultSort: { column: 'Address', direction: 'asc' },
 })
 
-// Apply status filter on top of search-filtered rows
 const filteredData = computed(() => {
   return searchFilteredRows.value.filter((row) => {
     if (statusFilter.value != null && statusFilter.value.length > 0) {

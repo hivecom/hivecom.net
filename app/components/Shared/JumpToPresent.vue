@@ -1,14 +1,12 @@
 <script setup lang="ts">
 // Floating "jump to present" pill that fades in when the user has scrolled away
-// from the newest content. Used by the chat message log and the forum timeline.
+// from the newest content.
 withDefaults(defineProps<{
   /** Controls visibility; the fade transition is handled internally. */
   visible: boolean
 
-  /** Pill label. */
   label?: string
 
-  /** Leading icon name. */
   icon?: string
 
   /**

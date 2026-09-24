@@ -16,11 +16,9 @@ type BreakpointKey = keyof typeof BREAKPOINTS
 
 type BreakpointQuery = `<${BreakpointKey}` | `>=${BreakpointKey}`
 
-// useMediaQuery returns `false` during SSR, which causes hydration mismatches
-// when components conditionally render based on breakpoints. By gating the
-// real media query result behind a mounted flag we ensure the SSR and initial
-// client render both produce the same output (always-false), and the correct
-// value is only applied after the client has mounted and evaluated the query.
+// useMediaQuery is false during SSR. Gating on mounted keeps the first client
+// render false too, so breakpoint-driven rendering doesn't cause a hydration
+// mismatch.
 function createMediaQuery(query: string) {
   const mq = useMediaQuery(query)
   const mounted = ref(false)
@@ -43,9 +41,8 @@ export function useBreakpoint(query: BreakpointQuery) {
     : createMediaQuery(`(max-width: ${value - 1}px)`)
 }
 
-// Non-SSR-gated mobile viewport check for client-only runtime logic (e.g. sound
-// playback) that can run at plugin scope where onMounted never fires. Components
-// rendering UI should prefer useBreakpoint('<s') to avoid hydration mismatches.
+// Not SSR-gated, for client-only logic at plugin scope where onMounted never
+// fires. UI should use useBreakpoint('<s') to avoid hydration mismatches.
 export function useMobileViewport() {
   return useMediaQuery(`(max-width: ${BREAKPOINTS.s - 1}px)`)
 }

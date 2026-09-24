@@ -11,7 +11,6 @@ import { useDataGames } from '@/composables/useDataGames'
 import { useDataGameservers } from '@/composables/useDataGameservers'
 import { usePermissions } from '@/composables/usePermissions'
 
-// Get route parameter
 const route = useRoute()
 const router = useRouter()
 
@@ -48,12 +47,11 @@ const container = computed((): GameserverWithContainer['container'] =>
   gameserver.value?.container ?? null,
 )
 
-// Typed as Tables<'network_containers'> for GameServerHeader prop - the joined shape is compatible
+// Cast for the GameServerHeader prop, the joined shape is compatible
 const containerForHeader = computed((): Tables<'network_containers'> | null =>
   container.value as Tables<'network_containers'> | null,
 )
 
-// Computed server state
 const state = computed(() => {
   if (!container.value)
     return 'unknown'
@@ -79,7 +77,6 @@ const state = computed(() => {
   }
 })
 
-// State display properties
 const stateConfig = computed(() => {
   const configs = {
     healthy: {
@@ -121,7 +118,6 @@ const notFound = computed(() =>
   !loading.value && gameservers.value.length > 0 && gameserver.value === null,
 )
 
-// Load game background when game data is available
 watch(game, async (newGame) => {
   if (!newGame) {
     gameBackground.value = null
@@ -152,11 +148,8 @@ const displayError = computed(() => {
 // Raw error shown as copyable technical detail only for unexpected fetch errors.
 const displayErrorDetail = computed(() => gameserversError.value ?? undefined)
 
-// Fetch minimal gameserver data at SSR/prerender time so meta tags are
-// populated. useDataGameservers fetches client-only (onMounted), so during
-// prerendering gameserver.value stays null and every card falls back to
-// "Game Server Details" / "Game server details" - the doubled label crawlers
-// were seeing.
+// Minimal SSR/prerender fetch for meta tags. useDataGameservers is client-only, so
+// prerendered pages would otherwise all fall back to "Game Server Details".
 const supabase = useSupabaseClient()
 const { data: seoGameserver } = await useAsyncData(`gameserver-seo-${gameserverId}`, async () => {
   const { data } = await supabase
@@ -177,7 +170,6 @@ const seoDescription = computed(() => {
   return source?.description || 'Game server details'
 })
 
-// SEO and page metadata
 useSeoMeta({
   title: seoTitle,
   description: seoDescription,
@@ -189,7 +181,6 @@ defineOgImage('Gameserver', {
   gameserverId,
 })
 
-// Page title
 useHead({
   title: computed(() => (gameserver.value ?? seoGameserver.value)?.name ?? 'Game Server Details'),
 })

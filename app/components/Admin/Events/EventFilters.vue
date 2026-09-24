@@ -26,8 +26,7 @@ const officialOptions: SelectOption[] = [
   { label: 'Non-official', value: 'false' },
 ]
 
-// VUI Select uses an array for multi (or single) select; we use a single-select with show-clear.
-// Map between boolean | null and SelectOption[] for the VUI Select component.
+// VUI Select speaks SelectOption[] even for single select. Bridge it to boolean | null.
 const officialSelection = computed<SelectOption[]>({
   get() {
     if (isOfficial.value === null)

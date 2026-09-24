@@ -9,7 +9,6 @@ import KPIContainer from '../KPIContainer.vue'
 
 const refreshSignal = defineModel<number>('refreshSignal')
 
-// Container metrics
 const metrics = ref({
   running: 0,
   healthy: 0,
@@ -19,20 +18,16 @@ const metrics = ref({
   total: 0,
 })
 
-// Data fetch state
 const loading = ref(true)
 const errorMessage = ref('')
 
-// Get Supabase client
 const supabase = useSupabaseClient()
 
-// Fetch container metrics
 async function fetchContainerMetrics() {
   loading.value = true
   errorMessage.value = ''
 
   try {
-    // Query for all containers
     const { data, error } = await supabase
       .from('network_containers')
       .select(`
@@ -50,7 +45,6 @@ async function fetchContainerMetrics() {
       throw error
     }
 
-    // Reset metrics
     const newMetrics = {
       running: 0,
       healthy: 0,
@@ -60,7 +54,6 @@ async function fetchContainerMetrics() {
       total: data ? data.length : 0,
     }
 
-    // Calculate metrics
     data?.forEach((container) => {
       const isDockerControlEnabled = container.server?.docker_control === true
       const isControlOffline = isDockerControlEnabled
@@ -105,17 +98,14 @@ async function fetchContainerMetrics() {
   }
 }
 
-// Compute combined active containers (healthy + running)
 const activeContainers = computed(() => {
   return metrics.value.healthy + metrics.value.running
 })
 
-// Watch for refresh signal from parent
 watch(() => refreshSignal.value, () => {
   fetchContainerMetrics()
 })
 
-// Fetch data on component mount
 onBeforeMount(fetchContainerMetrics)
 </script>
 

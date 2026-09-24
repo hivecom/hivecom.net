@@ -79,7 +79,6 @@ const { user } = useDataUser(data.value.created_by!, {
   avatarTtl: 30 * 60 * 1000,
 })
 
-// Role variant for TinyBadge on mobile
 const ROLE_SEPARATOR_RE = /[-_]/g
 const roleVariant = computed(() => {
   switch (user.value?.role) {
@@ -100,7 +99,6 @@ const roleDisplay = computed(() => {
 })
 const shouldDisplayRole = computed(() => user.value?.role && user.value.role !== 'user')
 
-// Only fetch modifier data when the message was edited by someone other than the author
 const modifierId = computed(() => {
   const { modified_at, created_at, modified_by, created_by } = data.value
   if (modified_at === created_at || !modified_by || modified_by === created_by)
@@ -117,8 +115,7 @@ const setQuoteOfComment = inject(DISCUSSION_KEYS.setQuoteOfComment) as (data: Co
 
 // ── Lazy-load missing reply ───────────────────────────────────────────────────
 
-// If the comment has a reply_to_id but the reply wasn't joined in the initial
-// query (e.g. it wasn't in the loaded window), fetch it on demand.
+// A reply outside the loaded window isn't joined, so fetch it on demand
 const fetchedReply = ref<import('../Discussion.types').RawComment | null>(null)
 const replyLoading = ref(false)
 
@@ -221,8 +218,7 @@ function handleForceDeletion() {
     })
 }
 
-// When the parent thread's fullscreen NSFW overlay has already been dismissed
-// (or warnings are disabled in settings), we skip the per-reply gate entirely.
+// Skip the per-reply gate once the thread's NSFW overlay is dismissed or warnings are off
 const threadNsfwRevealed = inject(DISCUSSION_KEYS.threadNsfwRevealed, ref(false))
 const _showNSFWWarning = ref(!!props.data.is_nsfw)
 const showNSFWWarning = computed({
@@ -263,18 +259,16 @@ async function submit() {
   if (editedContent.value.length > 0) {
     editLoading.value = true
 
-    // Upload any pending blob-placeholder media before reading the markdown,
-    // otherwise blob: URLs get persisted and render as missing media. The editor
-    // surfaces its own error toast on failure, so we just abort here.
+    // Must run before reading the markdown, or blob: URLs get persisted. The
+    // editor shows its own error toast.
     const uploaded = await markdownEditor.value?.flushPendingUploads()
     if (uploaded === false) {
       editLoading.value = false
       return
     }
 
-    // Resolve any plain-text @username mentions that were typed in plain-text
-    // mode - the RichTextEditor's handleSubmit does this automatically, but the
-    // edit modal calls supabase directly and bypasses that path.
+    // This bypasses RichTextEditor's handleSubmit, which normally resolves
+    // plain-text @username mentions
     const resolvedMarkdown = await resolvePlainTextMentions(editedContent.value, supabase)
 
     const res = await supabase
@@ -296,7 +290,6 @@ async function submit() {
       data.value.modified_at = new Date().toISOString()
       data.value.modified_by = currentUser.value?.id ?? null
 
-      // Re-apply the NSFW warning if the user toggled it back on
       _showNSFWWarning.value = editedIsNsfw.value
 
       timestampUpdateKey.value++
@@ -324,7 +317,6 @@ const { displayReactions, toggleReaction } = useReactions({
   initialReactions: data.value.reactions,
 })
 
-// Formatted timestamps for the toolbar sheet
 const postedAtFormatted = computed(() => fromNow(data.value.created_at))
 const editedAtFormatted = computed(() => {
   if (data.value.modified_at === data.value.created_at)
@@ -345,7 +337,6 @@ const editedAtFormatted = computed(() => {
     @touchstart.passive="replyHovered = true"
     @touchend.passive="replyHovered = false"
   >
-    <!-- Reusable desktop author block (avatar + name stacked) -->
     <DefineReusableUserInfo>
       <Flex column x-center y-center gap="s">
         <SharedUserAvatar :user-id="data.created_by" size="l" linked />
@@ -359,9 +350,7 @@ const editedAtFormatted = computed(() => {
       </Flex>
     </DefineReusableUserInfo>
 
-    <!-- Desktop: left column author panel -->
     <div v-if="!isMobile" class="discussion-forum__author" :class="{ 'discussion-forum__author--deleted': data.is_deleted }">
-      <!-- Deleted reply: muted placeholder instead of real profile -->
       <template v-if="data.is_deleted">
         <Flex column x-center y-center gap="s">
           <Avatar size="m" class="discussion-forum__deleted-avatar" />
@@ -393,9 +382,9 @@ const editedAtFormatted = computed(() => {
       </template>
     </div>
 
-    <!-- Content column: single div always mounted, chrome switches via v-if -->
+    <!-- Always mounted. Only the chrome around it switches. -->
     <div class="discussion-forum__content">
-      <!-- Desktop floating actions (hover-revealed) - must be first child for sticky to work from top -->
+      <!-- Must be the first child for sticky to work from the top -->
       <div v-if="!isMobile && !showNSFWWarning && !data.is_deleted" class="discussion-forum__actions-anchor">
         <div class="discussion-forum__actions">
           <ReactionsSelect v-if="userId" @reaction="(emote) => toggleReaction(emote)">
@@ -436,9 +425,7 @@ const editedAtFormatted = computed(() => {
         </div>
       </div>
 
-      <!-- Mobile header: author + toolbar (only rendered on mobile) -->
       <div v-if="isMobile" class="discussion-forum__mobile-header">
-        <!-- Deleted reply: muted placeholder -->
         <template v-if="data.is_deleted">
           <Flex gap="xs" y-center>
             <Avatar size="s" class="discussion-forum__deleted-avatar" />
@@ -505,9 +492,7 @@ const editedAtFormatted = computed(() => {
         />
       </div>
 
-      <!-- Shared body: reply quote + markdown (mounted once, always) -->
       <div class="discussion-forum__body">
-        <!-- Tombstone: soft-deleted reply -->
         <template v-if="data.is_deleted">
           <Flex expand x-between class="discussion-forum__deleted-row">
             <p class="discussion-forum__deleted">
@@ -570,7 +555,6 @@ const editedAtFormatted = computed(() => {
             <Icon class="text-color-accent" name="ph:caret-up" />
           </button>
 
-          <!-- Content markdown - rendered once regardless of layout -->
           <MarkdownRenderer
             v-else
             :md="data.markdown"
@@ -579,7 +563,6 @@ const editedAtFormatted = computed(() => {
         </template>
       </div>
 
-      <!-- Desktop bottom row: timestamps + reactions (only rendered on desktop, hidden when deleted) -->
       <template v-if="!isMobile && !data.is_deleted">
         <div class="flex-1" />
 
@@ -614,8 +597,8 @@ const editedAtFormatted = computed(() => {
         </Flex>
       </template>
 
-      <!-- User signature / banner - shown below the post body on desktop only -->
-      <BannerDisplay v-if="!data.is_deleted && !showNSFWWarning" :user="user ?? null" :external-hover="replyHovered" />      <!-- Mobile footer: reply count + reactions (only rendered on mobile when there's content) -->
+      <!-- User signature banner, below the post body -->
+      <BannerDisplay v-if="!data.is_deleted && !showNSFWWarning" :user="user ?? null" :external-hover="replyHovered" />
       <div v-if="!data.is_deleted && isMobile && ((threadReplyCount && threadReplyCount > 0) || displayReactions.length > 0 || (userId && !showNSFWWarning))" class="discussion-forum__mobile-footer">
         <div class="discussion-forum__mobile-footer-row">
           <button v-if="threadReplyCount && threadReplyCount > 0" class="discussion-forum__reply-count" @click.stop="emit('openReplies')">
@@ -631,7 +614,6 @@ const editedAtFormatted = computed(() => {
       </div>
     </div>
 
-    <!-- Force delete confirmation modal (admin only) -->
     <ModalDeleteReply
       :open="showForceDeleteModal"
       :loading="loadingForceDeletion"
@@ -639,7 +621,6 @@ const editedAtFormatted = computed(() => {
       @confirm="handleForceDeletion"
     />
 
-    <!-- Delete confirmation modal -->
     <ConfirmModal
       :open="showDeleteModal"
       :confirm-loading="loadingDeletion"
@@ -656,7 +637,6 @@ const editedAtFormatted = computed(() => {
       </Card>
     </ConfirmModal>
 
-    <!-- Edit Modal -->
     <Modal :open="editing" centered scrollable size="l" :can-dismiss="false" @close="editing = false" @keydown.enter="(e: KeyboardEvent) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); submit() } }">
       <template #header>
         <h3>Edit post</h3>
@@ -1000,7 +980,7 @@ const editedAtFormatted = computed(() => {
       width: 100%;
       border-top-right-radius: var(--border-radius-m);
       border-bottom-right-radius: var(--border-radius-m);
-      // Reset desktop padding - mobile header/footer handle their own
+      // The mobile header and footer handle their own padding
       padding: 0;
       background-color: var(--color-bg-medium);
     }

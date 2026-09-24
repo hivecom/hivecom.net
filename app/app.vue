@@ -69,27 +69,19 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 })
 
-// Desktop chat runs full-screen (the bare layout) while mobile keeps the global
-// navbar so the rest of the site stays one tap away.
 const isDesktop = useBreakpoint('>=s')
 
 const layoutName = computed(() => {
-  // Normalize away any trailing slash so production hosts that append one
-  // (e.g. `/chat/`) still match the exact-path checks below.
+  // Production hosts can append a trailing slash (`/chat/`)
   const path = route.path.replace(/\/+$/, '') || '/'
 
   if (path.startsWith('/admin'))
     return 'admin'
 
-  // `/` deliberately stays on the default layout. Nuxt keys the layout provider
-  // by name, so a layout swap unmounts the <NuxtPage> transition on the way out
-  // and mounts a fresh one on the way in, and a fresh Transition skips its enter
-  // hooks - navigating to or from a route with its own layout gets no transition
-  // at either end. The landing layout was default minus an unused hero slot, and
-  // the navbar already keys its landing styling off the path itself.
+  // Keep `/` on the default layout. Nuxt keys the layout provider by name, so a
+  // layout swap remounts the <NuxtPage> transition and skips its enter hooks.
 
-  // Chat is exclusive (full-screen, no chrome) on desktop, but keeps the navbar
-  // on mobile where it's the primary way to move around the site.
+  // Mobile keeps the navbar in chat since it's the main way around the site
   if (path === '/chat')
     return isDesktop.value ? 'bare' : 'no-footer'
 
@@ -99,20 +91,15 @@ const layoutName = computed(() => {
   return 'default'
 })
 
-// Initialize last seen tracking for authenticated users
 useLastSeenTracking()
 
-// Keep the browser-zoom preference (viewport meta + gesture blocking) in sync
-// with the user's setting.
 useZoomPreference()
 
-// Favicon badge - lights up when there are unread notifications or new realtime activity while tab is hidden
 const { unreadCount } = useDataNotifications()
 const realtimeActivityWhileHidden = ref(false)
 
-// Track new realtime activity that arrives while the tab is not focused
 if (import.meta.client) {
-  // Expose a global bus for realtime composables to ping
+  // Realtime composables ping this global when activity arrives
   window.__hivecomActivitySignal = () => {
     if (document.hidden)
       realtimeActivityWhileHidden.value = true
@@ -124,11 +111,8 @@ if (import.meta.client) {
   })
 }
 
-// Favicon - single source of truth for all favicon state. This goes through
-// useHead rather than VueUse's useFavicon: unhead owns the <link rel="icon">
-// declared in nuxt.config, so anything that writes to that element directly
-// gets reverted the next time unhead patches the head (every route change,
-// since the title and canonical link are reactive).
+// Favicon goes through useHead, not VueUse's useFavicon. unhead owns the icon
+// link and reverts direct writes on its next head patch, which is every route change.
 const { hasMention, hasUnread } = useIrcChat()
 
 const faviconHref = computed(() => {
@@ -168,10 +152,9 @@ function onConfirmTheme(_close: () => void) {
     void confirmPendingTheme()
   }, origin)
 
-  // Do NOT call close() here - confirmPendingTheme sets pendingTheme = null,
-  // which closes the modal via :open="!!pendingTheme". Calling close() first
-  // triggers @close → pendingTheme = null before the transition callback fires,
-  // so confirmPendingTheme sees a null pendingTheme and bails out.
+  // Don't call close() here. confirmPendingTheme nulls pendingTheme, which closes
+  // the modal. Closing first nulls it before the transition callback runs, and the
+  // confirm bails out.
 }
 
 function onConfirmThemeWithoutCss(_close: () => void) {
@@ -180,7 +163,7 @@ function onConfirmThemeWithoutCss(_close: () => void) {
     void confirmPendingThemeWithoutCss()
   }, origin)
 
-  // Same reason as onConfirmTheme - let confirmPendingThemeWithoutCss close the modal.
+  // Same as onConfirmTheme: let the confirm close the modal
 }
 
 function onConfirmPreviewTheme(withCss: boolean, close: () => void) {
@@ -326,7 +309,6 @@ function onConfirmPreviewTheme(withCss: boolean, close: () => void) {
 </template>
 
 <style lang="scss">
-/* Custom page transitions that work better with data fetching */
 .page-enter-active {
   transition: var(--transition);
   transition-delay: var(--transition-slow-duration); /* Delay entry to ensure old page has unmounted */

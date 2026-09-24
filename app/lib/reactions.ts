@@ -1,59 +1,32 @@
 /**
- * Reactions - shared types, constants, and helpers.
- *
- * Shape stored in the DB (reactions JSONB column):
+ * Shape of the reactions JSONB column, provider key to emote to user UUIDs:
  *
  *   {
- *     "emoji": {                          ← provider key
- *       "👍": ["<uuid>", "<uuid>"],       ← emote → array of user UUIDs
- *       "❤️": ["<uuid>"]
- *     },
- *     "xdd": {                            ← external provider
- *       "PogChamp": ["<uuid>"]
- *     }
+ *     "emoji": { "👍": ["<uuid>", "<uuid>"] },
+ *     "xdd": { "PogChamp": ["<uuid>"] }
  *   }
  *
- * The top-level provider key makes it safe to merge reactions from different
- * sources without colliding.
- *
- * The DB accepts any emote string (up to 32 characters) and any provider key
- * (up to 64 characters). Front-ends decide which emotes to render - if an
- * emote doesn't map to anything the UI recognises, it is simply not displayed.
+ * The provider key keeps reactions from different sources from colliding. The
+ * DB accepts any emote up to 32 characters and any provider key up to 64.
  */
 
 import type { ReactionData } from '@/types/database.overrides'
 
-// Re-export so callers only need to import from this one file.
 export type { ReactionData } from '@/types/database.overrides'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Provider identifiers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Built-in first-party provider key. Used as the default when toggling
- * reactions from the hivecom front-end.
- */
 export const EMOJI_PROVIDER = 'emoji' as const
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Raw DB shape
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * The raw JSONB value that comes back from Supabase.
- * Each provider maps emote strings to arrays of user-UUID strings.
- *
- * This is an alias for ReactionData (the type stored in the DB) - kept
- * separate so component-level code can use the more descriptive name.
- */
 export type RawReactions = ReactionData
 
-/**
- * Coerce the loosely-typed value from the DB into a RawReactions map.
- * Returns an empty object when the value is absent or malformed, so callers
- * never have to null-check.
- */
+// Malformed or missing values come back as {}, so callers never null-check.
 export function parseRawReactions(value: unknown): RawReactions {
   if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
     return value as RawReactions
@@ -65,15 +38,6 @@ export function parseRawReactions(value: unknown): RawReactions {
 // Derived / display shape
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * A single displayable reaction - what the Reactions UI components consume.
- *
- * `content`  is the emote string (emoji or external emote key).
- * `count`    is the total number of users who reacted with it.
- * `byMe`     is true when the current user's UUID is in the reactors list.
- * `provider` tracks where the reaction originated (for future provider UI).
- * `reactors` is the full list of user UUIDs who reacted with this emote.
- */
 export interface DisplayReaction {
   content: string
   count: number
@@ -82,14 +46,7 @@ export interface DisplayReaction {
   reactors: string[]
 }
 
-/**
- * Build a flat list of DisplayReactions from a raw reactions object.
- *
- * @param raw      The parsed reactions JSONB value.
- * @param userId   The currently authenticated user's UUID (or null/undefined).
- * @param providers Optional allow-list of providers to include.  When omitted
- *                  all providers present in the raw object are included.
- */
+/** `providers` is an allow-list. Omit it to include every provider present. */
 export function buildDisplayReactions(
   raw: RawReactions,
   userId: string | null | undefined,
@@ -107,9 +64,7 @@ export function buildDisplayReactions(
       if (!Array.isArray(reactors) || reactors.length === 0)
         continue
 
-      // Any stored emote with reactors is displayed. The hivecom picker now
-      // sources the full emoji set from VUI's EmojiPicker, so there's no
-      // curated manifest to filter against - if it's in the DB, we render it.
+      // No manifest to filter against, so anything stored gets rendered.
       result.push({
         content: emote,
         count: reactors.length,
@@ -120,21 +75,12 @@ export function buildDisplayReactions(
     }
   }
 
-  // Stable sort: higher count first, then alphabetical emote for tie-breaking
   result.sort((a, b) => b.count - a.count || a.content.localeCompare(b.content))
 
   return result
 }
 
-/**
- * Optimistically apply a reaction toggle to a RawReactions object.
- * Returns a new object (no mutation) so Vue's reactivity picks up the change.
- *
- * @param raw      Current parsed reactions.
- * @param provider Provider key (e.g. "hivecom").
- * @param emote    Emote string to toggle.
- * @param userId   The current user's UUID.
- */
+// Returns a new object rather than mutating, so Vue's reactivity picks it up.
 export function applyOptimisticToggle(
   raw: RawReactions,
   provider: string,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
 import type { AtypeName } from '@/lib/atype.generated'
-import type { Tables } from '@/types/database.types'
+import type { Tables } from '@/types/database.overrides'
 import { Marquee, pushToast } from '@dolanske/vui'
 import constants from '~~/constants.json'
 import EventSmall from '@/components/Events/EventSmall.vue'
@@ -12,6 +12,7 @@ import FocusFrame from '@/components/Shared/FocusFrame.vue'
 import FocusTarget from '@/components/Shared/FocusTarget.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
+import { nextOccurrenceDate } from '@/lib/utils/rrule'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -30,9 +31,8 @@ const MARQUEE_ROWS = 5
 const MARQUEE_POSTS_PER_ROW = 2
 const MARQUEE_SPEED = 20
 
-// The marquee lays the row out twice and scrolls by half, so the row itself has
-// to be wider than the card or the loop shows a gap. Short rows get repeated
-// until they hit this many characters, which at 64px bold clears the card width.
+// The marquee lays a row out twice and scrolls by half, so a row narrower than
+// the card leaves a gap in the loop. 40 chars at 64px bold clears the card width.
 const MARQUEE_MIN_ROW_CHARS = 40
 
 const marqueePosts = ref<MarqueePost[]>([])
@@ -69,31 +69,34 @@ onBeforeMount(() => {
       }
     })
 
-  // Get the 3 most upcoming events
+  // Future-dated events plus every recurring series, since a series that started
+  // in the past can still have upcoming occurrences.
   supabase.from('events')
     .select('*')
     .eq('is_official', true)
-    .order('date', { ascending: false })
-    .limit(3)
+    .or(`date.gte.${new Date().toISOString()},recurrence_rule.not.is.null`)
     .then(({ data }) => {
-      if (data) {
-        events.value = data
-      }
+      if (!data)
+        return
+
+      // Same rule as the events page: a series counts down to its next occurrence.
+      const now = new Date()
+      events.value = data
+        .map((event) => {
+          const next = event.recurrence_rule ? nextOccurrenceDate(event, now) : new Date(event.date)
+          return next != null && next > now ? { ...event, date: next.toISOString() } : null
+        })
+        .filter(event => event != null)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(0, 3)
     })
 })
 
-// The closing section pitches signing up, which is nothing to someone who
-// already has an account. Members get the invite angle instead.
+// Members get the invite pitch instead of sign-up.
 //
-// `/` is prerendered with no session, so reading `user` on the hydrating render
-// would swap the copy out from under the server's markup. Hold the guest branch
-// for that one frame. A logged-in user only reaches the landing by way of the
-// Home tab anyway, which is a fresh mount well past hydration.
-//
-// `isHydrating` is client-only, so the server needs saying explicitly. Prod
-// prerenders with no session and lands on the guest branch by itself, but a dev
-// request carries the auth cookie and would render the member branch server-side,
-// which the client's hydrating render then contradicts. Same pin as index.vue.
+// `/` is prerendered with no session, so the hydrating render holds the guest
+// branch to match the server markup. isHydrating is client-only, so the server
+// is pinned too: a dev request carries the auth cookie and would render members.
 const hydrating = ref(import.meta.server || nuxtApp.isHydrating)
 
 onMounted(() => {
@@ -102,8 +105,7 @@ onMounted(() => {
 
 const isMember = computed(() => !hydrating.value && !!user.value)
 
-// Straight to sign-up rather than the landing, so whoever gets this link lands
-// on the form instead of having to find it.
+// Straight to the sign-up form rather than the landing
 const signUpLink = computed(() => {
   const baseUrl = (runtimeConfig.public.baseUrl as string) || 'https://hivecom.net'
 
@@ -120,9 +122,8 @@ async function copySignUpLink() {
   }
 }
 
-// About card flips between the "about us" story and our mantra. Clicking the
-// barcode glitch-swaps the copy in place, same letter-jitter feel as LandingMotd.
-// The corners and barcode are pre-rendered hidden messages from app/lib/atype.generated.ts.
+// Clicking the about card glitch-swaps it between the story and our mantra. The
+// corners and barcode are pre-rendered messages from app/lib/atype.generated.ts.
 interface AboutSide {
   corner: AtypeName
   cornerRight: AtypeName
@@ -163,14 +164,12 @@ const sideIndex = ref(0)
 const side = computed(() => SIDES[sideIndex.value] ?? SIDES[0]!)
 const isAbout = computed(() => sideIndex.value === 0)
 
-// The copy swaps on the same frame as the click. Everything after that is a
-// short burst of tearing on top of the already-swapped card, so the flip reads
-// as a hard cut rather than a fade.
+// The copy swaps on the click frame and the tearing plays over it, so the flip
+// reads as a hard cut rather than a fade
 const CUT_MS = 220
 
-// Horizontal slices of the card that shear sideways and snap back. They all
-// carry the accent, so the overlap reads as one signal doubling rather than an
-// RGB split. Percentages are of the copy block's height, offsets are px.
+// All in the accent, so overlaps read as one signal doubling rather than an RGB
+// split. top and bottom are % of the copy block's height, x is px.
 const TEAR_BANDS = [
   { top: 0, bottom: 18, x: -22, delay: 0 },
   { top: 14, bottom: 34, x: 16, delay: 20 },
@@ -235,19 +234,12 @@ const MOBILE_STARS = [
 const DESKTOP_HEIGHT = 112
 const MOBILE_HEIGHT = 339
 
-// The stars that foreshadow the diamonds. They parallax the way the backdrop
-// stars do: held fixed on screen while the page slides under them. Each one
-// waits at the spot where its diamond will land, so the constellation is
-// already in the sky while the join copy scrolls past over it, and the
-// diamonds climb up to meet the stars.
-//
-// The hold is position: sticky, so the compositor carries the stars with the
-// scroll. Driving it from a scroll listener left them a frame behind the page
-// on every step, which read as jitter next to the backdrop stars, worst on touch.
+// Stars hold still on screen like the backdrop stars, each waiting where its
+// diamond will land. The hold is position: sticky because a scroll listener
+// lags a frame behind the page and jitters, worst on touch.
 
-// Where the block lands: the diamonds reach the stars once the SVG's bottom
-// edge has climbed to this fraction of the viewport height. Landing at the
-// bottom edge instead would hold the stars right on that edge, barely on screen.
+// The diamonds meet the stars once the SVG's bottom edge reaches this fraction
+// of the viewport. At the bottom edge the stars would barely be on screen.
 const SETTLE_AT = 0.65
 // Half the dot, so the sticky edge lands the star's centre on the diamond.
 const STAR_RADIUS = 1.25
@@ -262,13 +254,9 @@ const HOLD_FROM_BOTTOM = `${(100 - SETTLE_AT * 100).toFixed(2)}dvh`
 
 const constellationEl = ref<HTMLElement | null>(null)
 
-// Hovering or focusing a link pulls its star into the diamond even if the block
-// hasn't settled yet, so the flare lights up around a star that's actually
-// there. A pinned star drops the sticky hold and rides with the page. position
-// can't transition, so the glide is a FLIP: let the star jump, measure how far,
-// put it back with a transform and ease that out to zero. The transition stays
-// on for a beat after leaving so it eases back out too, then comes off so the
-// hold is instant again.
+// Hover or focus pins a link's star to its diamond, so the flare lights around a
+// star that's there. position can't transition, so the glide is a FLIP: jump,
+// measure, transform back, ease to zero. The ease stays on a beat after release.
 const alignedStar = ref<number | null>(null)
 // Which star carries the FLIP offset, and whether it's easing right now.
 const glidingStar = ref<number | null>(null)
@@ -327,10 +315,8 @@ function releaseStar(index: number) {
   }, GLIDE_MS)
 }
 
-// The column a star holds in: zero wide, reaching a full viewport above the
-// diamond down to the diamond itself, with the star sat at its bottom. The
-// sticky hold is confined to this box, so the viewport of lead-in is what lets
-// the star reach its spot on screen while the diamond is still below the fold.
+// The sticky hold is confined to this column, so a viewport of lead-in lets the
+// star hold on screen while its diamond is still below the fold
 function slotStyle(star: number[]): CSSProperties {
   const [x = 0, y = 0] = star
 
@@ -358,12 +344,9 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
 
 <template>
   <div class="home-page">
-    <!-- Corner brackets that start in the corners of the hero, settle on each
-         big tile as it scrolls into view or gets hovered, and stay parked on
-         the join block at the end. -->
+    <!-- Corner brackets that settle on each tile as it scrolls into view or gets hovered -->
     <FocusFrame>
-      <!-- The hero fills the viewport, so the brackets pull inside it, and
-           further at the top to clear the fixed nav (64px). -->
+      <!-- The hero fills the viewport, so the brackets pull inside it and clear the 64px nav -->
       <FocusTarget :padding="-24" :padding-top="-88" no-hover>
         <LandingHero />
       </FocusTarget>
@@ -374,13 +357,10 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
             <FocusTarget>
               <GlowCard class="glow-card-home">
                 <div class="home-card centered home-card--about typeset" :class="{ 'is-cut': cutting }" @click="toggleSide">
-                  <!-- The actual warp. Turbulence with a near-zero X frequency gives one
-                       noise value per row, so displacing by it shreds the copy into
-                       horizontal slips instead of a soft wobble. Remounted on every click
-                       via the key, which is what restarts the SMIL timeline. -->
+                  <!-- A near-zero X frequency gives one noise value per row, so the copy
+                       shreds into horizontal slips. The key remount restarts the SMIL timeline. -->
                   <svg :key="cutKey" class="about-distort-defs" aria-hidden="true" focusable="false">
-                    <!-- Copy block. The regions are generous because displaced pixels get
-                         clipped to them, and a tight region just eats the shred. -->
+                    <!-- Displaced pixels clip to the region, so a tight one eats the shred -->
                     <filter id="about-distort" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
                       <feTurbulence type="fractalNoise" baseFrequency="0.00001 0.12" numOctaves="1" seed="11" result="shred">
                         <animate
@@ -402,9 +382,8 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
                       </feDisplacementMap>
                     </filter>
 
-                    <!-- Same warp scaled down for the atype. The barcode is 16px tall and the
-                         corner marks are 9px, so the copy block's displacement would push
-                         every pixel clean out of the region and just blank them. -->
+                    <!-- Scaled down for the 16px barcode and 9px corners, which the copy's
+                         displacement would push clean out of the region -->
                     <filter id="about-distort-fine" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
                       <feTurbulence type="fractalNoise" baseFrequency="0.00001 0.4" numOctaves="1" seed="3" result="shredFine">
                         <animate
@@ -434,8 +413,6 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
                     <span :key="cutKey" class="corner-text__inner"><AtypeText :name="side.cornerRight" :height="9" /></span>
                   </span>
 
-                  <!-- Both sides are always rendered and stacked in one grid cell, so the
-                       card is always as tall as the taller side and the layout never shifts. -->
                   <div :key="cutKey" class="about-stack" :class="{ 'about-stack--cut': cutting }">
                     <div
                       v-for="(entry, entryIndex) in SIDES"
@@ -453,9 +430,6 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
                       </p>
                     </div>
 
-                    <!-- Torn copies of the side that just landed. Each band clips to a
-                         slice, shears sideways and snaps back in accent. Purely
-                         decorative, gone in 220ms. -->
                     <div v-if="cutting" class="about-tear" aria-hidden="true">
                       <div
                         v-for="(band, bandIndex) in TEAR_BANDS"
@@ -478,9 +452,8 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
                     </div>
                   </div>
 
-                  <!-- The whole card flips on click. The barcode stays a button so keyboard
-                       and screen reader users get a focusable target. Its click bubbles up
-                       to the card, so it has no handler of its own. -->
+                  <!-- A button for keyboard and screen reader users. Its click bubbles to
+                       the card, so it has no handler of its own. -->
                   <button
                     type="button"
                     class="about-barcode"
@@ -488,8 +461,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
                   >
                     <AtypeText :name="side.barcode" :height="16" />
 
-                    <!-- Channel ghosts of the new barcode, offset either way for the two
-                         frames the cut lasts. Keyed off the button so focus survives. -->
+                    <!-- Keyed off the button so focus survives the cut -->
                     <span v-if="cutting" :key="cutKey" class="about-barcode__ghosts" aria-hidden="true">
                       <span class="about-barcode__ghost about-barcode__ghost--a"><AtypeText :name="side.barcode" :height="16" /></span>
                       <span class="about-barcode__ghost about-barcode__ghost--b"><AtypeText :name="side.barcode" :height="16" /></span>
@@ -554,9 +526,8 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
         </section>
       </GlowGroup>
       <div class="home-join">
-        <!-- The sun crests the section's bottom edge, so it gets its own clip.
-             The section itself can't clip vertically without cutting off the
-             constellation stars, which hold a viewport above their diamonds. -->
+        <!-- The section can't clip vertically without cutting off the constellation
+             stars, so the sun gets its own clip -->
         <div class="home-join__sun-clip">
           <LandingSun class="home-join__sun" />
         </div>
@@ -589,8 +560,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
         </FocusTarget>
 
         <div ref="constellationEl" class="constellation">
-          <!-- The links have to stay the first children: their positions and the
-               flare hover both key off nth-child. -->
+          <!-- The links must stay the first children: positions and flare hover key off nth-child -->
           <a
             v-for="(link, _name, index) in constants.LINKS"
             :key="link.name"
@@ -643,7 +613,6 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
             </g>
           </svg>
 
-          <!-- One set of stars per layout, shown and hidden with the matching SVG. -->
           <div class="constellation-stars constellation-stars--desktop" aria-hidden="true">
             <div v-for="(star, index) in DESKTOP_STARS" :key="index" class="constellation-star-slot" :style="slotStyle(star)">
               <div
@@ -706,7 +675,6 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
     height: 16px;
   }
 
-  // Atype strip that rides the horizontal run of the pointer line.
   .atype-text {
     position: absolute;
     color: var(--color-text-lightest);
@@ -777,14 +745,11 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
   flex-direction: column;
   gap: 128px;
   width: 100%;
-  // Sit above the persistent page backdrop (HomeBackdrop, z-index 0).
+  // Above the HomeBackdrop layer at z-index 0
   position: relative;
   z-index: 1;
-  // The card pointer decorations reach 317px out from the cards, past the
-  // viewport edge on anything narrower than a wide desktop, and that overhang
-  // is horizontally scrollable. clip rather than hidden, for the same reason
-  // as .home-join: hidden would make this a scroll container and the
-  // constellation's sticky stars would hold against it instead of the viewport.
+  // Card pointers reach 317px out, past the viewport on most screens. clip, not
+  // hidden: a scroll container would catch the constellation's sticky stars.
   overflow-x: clip;
 
   * {
@@ -801,16 +766,12 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
   word-wrap: balanced;
   width: 100%;
   position: relative;
-  // Horizontal only, and clip rather than hidden: hidden makes this a scroll
-  // container, and the constellation's sticky stars would then hold against it
-  // instead of the viewport. Clipping vertically would cut the stars off at the
-  // section's top edge, which is what used to leave them hanging there until
-  // the page had scrolled far enough to release them.
+  // clip, not hidden, so this isn't a scroll container the sticky stars hold
+  // against. Horizontal only, or the stars get cut off at the top edge.
   overflow-x: clip;
   padding-bottom: 420px;
 
-  // The sun band sits behind the join content and crests the bottom edge, so it
-  // carries the vertical clip the section itself can't have.
+  // Carries the vertical clip the section itself can't have
   .home-join__sun-clip {
     position: absolute;
     inset: 0;
@@ -828,9 +789,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
   }
 
   @media screen and (max-width: $breakpoint-m) {
-    // The desktop band leaves most of a screen of empty page under the join
-    // copy on a phone. The sun's crest is ~45% of the band height, so these
-    // keep the same proportions at roughly half the size.
+    // Roughly half the desktop band, keeping the crest at ~45% of its height
     padding-bottom: 240px;
 
     .home-join__sun {
@@ -853,8 +812,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
     }
   }
 
-  // Renders as a link for guests and a button for members, so reset the button
-  // chrome the global styles leave alone.
+  // A link for guests and a button for members, so reset the button chrome
   .join-button {
     display: flex;
     border: none;
@@ -883,15 +841,13 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
   }
 
   .constellation {
-    // Lines and the hot centres of the flares were white, which is nothing on a
-    // light background. Drawing them in the text colour flips them with the theme.
+    // Text colour so the lines and flare centres flip with the theme
     --constellation-ink: var(--color-text);
 
     display: inline-block;
     margin: auto;
-    // No z-index on purpose: this must not be a stacking context, so the star
-    // layer's negative z-index can drop behind the join copy above. The links
-    // and SVG still paint over the sun by tree order.
+    // No z-index on purpose. As a stacking context it would stop the star layer's
+    // negative z-index from dropping behind the join copy.
     position: relative;
     margin-top: 164px;
 
@@ -1000,14 +956,11 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
       color: var(--constellation-ink);
     }
 
-    // Overlays the SVG exactly, so the diamond coordinates work as px offsets.
-    // The negative z-index resolves against the page, so the stars sit behind
-    // everything on it like the backdrop stars do: labels, the join copy and
-    // the flare all paint over them.
+    // Overlays the SVG exactly, so diamond coordinates work as px offsets. The
+    // negative z-index resolves against the page, putting the stars behind everything.
     .constellation-stars {
-      // How far above its diamond a star's sticky column reaches. A full
-      // viewport is the least that lets every star settle at its hold spot
-      // before the constellation itself comes into view.
+      // A full viewport is the least that lets every star settle before the
+      // constellation comes into view
       --star-lead: 100dvh;
 
       position: absolute;
@@ -1016,10 +969,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
       pointer-events: none;
     }
 
-    // Zero-width column per star, from a viewport above the constellation down
-    // to the diamond. It's the box the sticky hold is confined to, so its top
-    // edge is the highest point a star can hold at. Inline style sets left and
-    // height.
+    // Its top edge is the highest point a star can hold at
     .constellation-star-slot {
       position: absolute;
       top: calc(var(--star-lead) * -1);
@@ -1029,7 +979,6 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
       justify-content: flex-end;
     }
 
-    // Same dot as the backdrop stars, sized to sit inside the diamond.
     .constellation-star {
       --star-hold: 0px;
       --star-glide: 0px;
@@ -1037,28 +986,22 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
       --star-animation-duration: 2000ms;
       --star-base-opacity: 1;
 
-      // Sticky against the viewport bottom: the star holds its spot on screen
-      // while the diamond is still below it, and rides with the page once the
-      // diamond climbs up to it.
       position: sticky;
       bottom: var(--star-hold);
       flex: none;
       width: 2.5px;
       height: 2.5px;
-      // Centre on the diamond. The glide is the FLIP offset while a hover pulls
-      // the star in or lets it go.
+      // The glide is the FLIP offset during a hover
       transform: translate(-50%, var(--star-glide));
       border-radius: 50%;
       @include star-flicker-layers;
 
-      // Pinned to its diamond by a hover on the link: drop the hold and ride.
       &.is-aligned {
         position: relative;
         bottom: auto;
       }
 
-      // Only while gliding into or out of a hovered diamond. The hold is
-      // instant otherwise.
+      // The hold is instant otherwise
       &.is-gliding {
         transition: transform 0.3s ease;
       }
@@ -1270,16 +1213,13 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
   padding-top: 96px;
   padding-bottom: 128px;
   position: relative;
-  // Clicking anywhere on the card flips it.
   cursor: pointer;
 
   @media screen and (max-width: $breakpoint-m) {
-    // Bottom stays clear of the barcode, which sits 24px up and is 48px tall
-    // including its padding.
+    // Clears the barcode, 24px up and 48px tall with padding
     padding: 64px 32px 104px;
   }
 
-  // Filter defs only, nothing to paint.
   .about-distort-defs {
     position: absolute;
     width: 0;
@@ -1302,8 +1242,6 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
     }
   }
 
-  // The corner atype changes message with the side, so it takes the same hit as
-  // the copy: a couple of dropped frames and a nudge, tinted on the way through.
   &.is-cut .corner-text__inner {
     display: block;
     animation: about-corner-cut 180ms steps(1, end) both;
@@ -1334,7 +1272,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
     color: var(--color-text-lightest);
     transition: color var(--transition-fast);
 
-    // The barcode is drawn one module per px, keep the edges from smearing.
+    // One module per px, so keep the edges from smearing
     .atype-text {
       shape-rendering: crispEdges;
     }
@@ -1345,7 +1283,6 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
     }
   }
 
-  // The whole card flips, so the barcode lights up for a hover anywhere on it.
   &:hover .about-barcode {
     color: var(--color-accent);
   }
@@ -1355,8 +1292,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
     animation: about-barcode-cut 200ms steps(1, end) both;
   }
 
-  // Two accent copies of the new barcode, thrown either side of the real one for
-  // the length of the cut. Screen blend so the overlap builds rather than smears.
+  // Screen blend so the overlap builds rather than smears
   .about-barcode__ghosts {
     position: absolute;
     inset: var(--space-s);
@@ -1469,16 +1405,13 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
   }
 }
 
-// Both sides live in one grid cell, so the card height is the taller of the two
-// and never shifts when swapping. Only the active side is visible.
+// Both sides share one grid cell, so the card never changes height on a swap
 .about-stack {
   display: grid;
   position: relative;
 }
 
-// The swap itself is instant: the click flips which side is visible on the same
-// frame. Everything below is a 200ms burst of tearing played over the copy that
-// already landed, all of it on steps() so the frames snap instead of easing.
+// The tearing runs on steps() so the frames snap instead of easing
 .about-swap {
   grid-area: 1 / 1;
   // The shorter side sits mid-card instead of leaving its slack at the bottom.
@@ -1529,8 +1462,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
   }
 }
 
-// Torn slices of the copy, stacked over the real thing and blended additively so
-// overlapping slices build up instead of smearing.
+// Blended additively so overlapping slices build up instead of smearing
 .about-tear {
   grid-area: 1 / 1;
   position: relative;
@@ -1572,8 +1504,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
   }
 }
 
-// Reduced motion gets the swap with none of the tearing: toggleSide bails before
-// setting the cut flag, so these are a belt-and-braces guard.
+// toggleSide already skips the cut under reduced motion. This is a backup guard.
 @media (prefers-reduced-motion: reduce) {
   .about-stack--cut .about-swap--active,
   .about-tear__band,
@@ -1613,7 +1544,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
     a {
       text-decoration: none;
       color: inherit;
-      // Breathing room so back-to-back posts don't read as one word
+      // Keeps back-to-back posts from reading as one word
       margin-right: 0.4em;
 
       &:hover {

@@ -1,15 +1,4 @@
 /// <reference types="@webgpu/types" />
-// useGlobeBase.ts
-// Shared globe boilerplate extracted from useGlobeRenderer and AdminGlobe:
-//   - GPUShaderStage polyfill
-//   - Globe instance + MeshStandardMaterial creation
-//   - applyGlobeColor (material color only)
-//   - setupThemeWatcher (MutationObserver + matchMedia)
-//   - ResizeObserver + window resize listener with debounce
-//   - Base hex polygon configuration
-//   - Auto-rotate / idle-pause controls
-//   - pointOfView
-//   - destroy base teardown
 
 import type { CountryFeature, FeatureCollection } from '@/composables/useGlobeData'
 import type { GlobePerfParams } from '@/composables/useGlobePerf'
@@ -32,8 +21,6 @@ export interface GlobeBaseOptions {
   autoRotateSpeed?: number
   enableZoom?: boolean
   pointOfView?: { lat: number, lng: number, altitude: number }
-
-  /** Called after every resize with the new width/height (e.g. for post-processing passes). */
   onResize?: (width: number, height: number) => void
 }
 
@@ -41,10 +28,7 @@ export interface GlobeBaseResult {
   globeInstance: GlobeInstance
   globeMaterial: import('three').MeshStandardMaterial
 
-  /**
-   * Re-runs hexPolygonColor with the supplied color function.
-   * Pass undefined to reset to the plain base-color function.
-   */
+  /** undefined resets to the base color. */
   refreshHexColors: (colorFn?: (feat: CountryFeature) => string) => void
   destroy: () => void
 }
@@ -65,10 +49,9 @@ export function useGlobeBase() {
   // ---------------------------------------------------------------------------
   // Incremental hex feed
   // ------------------------------------------------------------------------
-  // The hexed-polygons layer tessellates each feature into H3 cells and merges
-  // per-hex geometry synchronously during its digest. Setting every country at
-  // once blocks the main thread for hundreds of ms in a single frame, so we
-  // stream features in batches sized to a per-frame time budget instead.
+  // The hex layer tessellates and merges geometry synchronously in its digest.
+  // Setting every country at once blocks the main thread for hundreds of ms, so
+  // features stream in batches sized to a per-frame time budget.
   const HEX_FRAME_BUDGET_MS = 14
   const HEX_BATCH_MIN = 1
   const HEX_BATCH_MAX = 40
@@ -84,7 +67,7 @@ export function useGlobeBase() {
     let i = 0
 
     while (i < features.length) {
-      // Bail if the globe was destroyed mid-feed (e.g. route change).
+      // Destroyed mid-feed, e.g. by a route change.
       if (globeInstance == null)
         return
 
@@ -176,10 +159,9 @@ export function useGlobeBase() {
       metalness: 0,
     })
 
-    // three-render-objects runs the renderer at min(devicePixelRatio, 2), and
-    // the post-processing chain (scanline, bloom, afterimage) pays that cost
-    // per pass. Cap at 1.5 like the sun does - on a 2x display that's less
-    // than half the fragment work, and the dotted globe doesn't show it.
+    // three-render-objects renders at min(devicePixelRatio, 2) and every
+    // post-processing pass pays for it. At 1.5 a 2x display does less than half
+    // the fragment work, and the dotted globe doesn't show the difference.
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5)
     globeInstance.renderer()?.setPixelRatio(pixelRatio)
     globeInstance.postProcessingComposer()?.setPixelRatio(pixelRatio)
@@ -246,17 +228,14 @@ export function useGlobeBase() {
     globeInstance.controls().autoRotate = true
     globeInstance.controls().autoRotateSpeed = autoRotateSpeed
 
-    // Disable built-in zoom - OrbitControls dolly is instant with no easing path.
-    // We drive zoom ourselves via a smooth rAF lerp on pointOfView altitude.
+    // OrbitControls dolly is instant with no easing, so zoom is our own rAF lerp
+    // on the pointOfView altitude.
     globeInstance.controls().enableZoom = false
 
-    // Even with zoom off, OrbitControls keeps its wheel listener, and it's
-    // registered non-passively - so once the globe exists, every wheel event
-    // over the canvas has to wait on the main thread before the compositor is
-    // allowed to scroll. With the globe rendering every frame that wait is
-    // most of a frame, which reads as scroll going unresponsive the moment
-    // the globe finishes loading. Zoom is driven by our own listeners
-    // everywhere, so drop OrbitControls' one entirely.
+    // OrbitControls keeps a non-passive wheel listener even with zoom off, so
+    // every wheel event over the canvas waits on the main thread before the page
+    // can scroll. With the globe rendering every frame, scrolling goes
+    // unresponsive. Our own listeners handle zoom, so remove it.
     const rawControls = globeInstance.controls() as unknown as {
       domElement?: HTMLElement | null
       _onMouseWheel?: (event: WheelEvent) => void
@@ -350,8 +329,7 @@ export function useGlobeBase() {
       globeMaterial = null
     }
 
-    // Stream in the hex features last so a destroy mid-feed only has to stop
-    // the feed itself - everything else is already wired up.
+    // Hex features stream in last so a destroy mid-feed only has to stop the feed.
     const instance = globeInstance
     const material = globeMaterial
     await feedHexFeatures(featureCollection.features)

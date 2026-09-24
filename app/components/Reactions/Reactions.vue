@@ -14,7 +14,6 @@ export interface Reaction {
   // Whether the current user has reacted with this emote
   byMe: boolean
 
-  // Which provider this reaction came from
   provider: string
 }
 

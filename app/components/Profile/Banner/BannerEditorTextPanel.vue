@@ -45,13 +45,11 @@ const emit = defineEmits<{
         placeholder="Layer text…"
         expand
       />
-      <!-- Font -->
       <Divider class="my-s" />
       <Flex y-center gap="xs" class="banner-editor__sub-label">
         <Icon name="ph:text-t" />
         <span>Font</span>
       </Flex>
-      <!-- Font family row -->
       <Flex y-center gap="xs" expand>
         <ExpandableSelect
           v-if="!fontCustomMode"
@@ -71,7 +69,6 @@ const emit = defineEmits<{
           spellcheck="false"
           @update:model-value="emit('update:fontFamilyCustom', String($event))"
         />
-        <!-- Toggle custom entry -->
         <Tooltip>
           <Button
             size="m"
@@ -101,7 +98,6 @@ const emit = defineEmits<{
           </template>
         </Tooltip>
       </Flex>
-      <!-- Font size row -->
       <Flex y-center gap="s" expand>
         <input
           v-model.number="layer.fontSize"
@@ -122,13 +118,11 @@ const emit = defineEmits<{
           @change="layer.fontSize = Number(($event.target as HTMLInputElement).value); redraw()"
         >
       </Flex>
-      <!-- Fill -->
       <Divider class="my-s" />
       <Flex y-center gap="xs" class="banner-editor__sub-label">
         <Icon name="ph:paint-bucket" />
         <span>Fill</span>
       </Flex>
-      <!-- Fill type + solid colour / gradient stops -->
       <Flex y-center gap="xs">
         <ExpandableSelect
           :model-value="fillTypeModel"
@@ -136,7 +130,6 @@ const emit = defineEmits<{
           single
           @update:model-value="emit('update:fillTypeModel', $event)"
         />
-        <!-- Solid: single colour swatch -->
         <Color
           v-if="layer.fillType === 'solid'"
           v-model="layer.fillColor"
@@ -144,7 +137,6 @@ const emit = defineEmits<{
           expand
           @update:model-value="redraw()"
         />
-        <!-- Gradient: preview bar -->
         <span
           v-else
           class="banner-editor__gradient-preview"
@@ -154,7 +146,6 @@ const emit = defineEmits<{
         />
       </Flex>
 
-      <!-- Gradient stops (shown when fill is not solid) -->
       <template v-if="layer.fillType !== 'solid'">
         <BannerGradientStops
           :stops="layer.fillStops"
@@ -169,7 +160,6 @@ const emit = defineEmits<{
         />
       </template>
 
-      <!-- Style -->
       <Divider class="my-s" />
       <Flex y-center gap="xs" class="banner-editor__sub-label">
         <Icon name="ph:text-b" />
@@ -230,7 +220,6 @@ const emit = defineEmits<{
         </Tooltip>
       </Flex>
 
-      <!-- Outline settings -->
       <template v-if="layer.outline">
         <Divider class="my-s" />
         <Flex y-center gap="xs" class="banner-editor__sub-label">
@@ -261,7 +250,6 @@ const emit = defineEmits<{
         </Flex>
       </template>
 
-      <!-- Shadow settings -->
       <template v-if="layer.shadow">
         <Divider class="my-s" />
         <Flex y-center gap="xs" class="banner-editor__sub-label">
@@ -318,13 +306,11 @@ const emit = defineEmits<{
         </Flex>
       </template>
 
-      <!-- Transform -->
       <Divider class="my-s" />
       <Flex y-center gap="xs" class="banner-editor__sub-label">
         <Icon name="ph:arrows-out" />
         <span>Transform</span>
       </Flex>
-      <!-- Rotation row -->
       <Flex y-center gap="s" expand>
         <span class="banner-editor__field-label">Rotate</span>
         <input
@@ -338,7 +324,6 @@ const emit = defineEmits<{
         >
         <span class="banner-editor__range-value">{{ layer.rotation }}°</span>
       </Flex>
-      <!-- Opacity row -->
       <Flex y-center gap="s" expand>
         <span class="banner-editor__field-label">Opacity</span>
         <input

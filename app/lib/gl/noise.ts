@@ -1,16 +1,9 @@
-// Shared GLSL noise building blocks. These are plain string chunks you splice
-// into a fragment shader's top scope with a template literal. Two independent
-// noise systems live here so a single shader can pull in both without any symbol
-// collisions:
+// GLSL chunks to splice into a fragment shader's top scope. Their symbol names
+// don't collide, so one shader can pull in both.
 //
-//  - curlNoiseChunk: gradient noise plus its curl. The curl of a scalar field is
-//    divergence-free, so it swirls instead of pumping outward, which is what
-//    reads as smoke / plasma flow. Defines gnHash2, gnNoise, curl.
-//  - fbmChunk: stacked octaves of smooth value noise. Torn, granular texture for
-//    stamps and the sun's photosphere. Defines vnHash, vnNoise, fbm.
-//
-// Both the smoke field (lib/audio/smoke-field) and the sun field
-// (lib/landing/sun-field) import these instead of carrying their own copies.
+// curlNoiseChunk defines gnHash2, gnNoise and curl. The curl of a scalar field
+// is divergence-free, so it swirls instead of pumping outward.
+// fbmChunk defines vnHash, vnNoise and fbm.
 
 export const curlNoiseChunk = /* glsl */ `
   vec2 gnHash2(vec2 p) {
@@ -27,7 +20,6 @@ export const curlNoiseChunk = /* glsl */ `
     float d = dot(gnHash2(i + vec2(1.0, 1.0)) - 0.5, f - vec2(1.0, 1.0));
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
   }
-  // Curl of the scalar field: a swirling, divergence-free flow.
   vec2 curl(vec2 p) {
     float e = 0.06;
     float x = gnNoise(p + vec2(0.0, e)) - gnNoise(p - vec2(0.0, e));

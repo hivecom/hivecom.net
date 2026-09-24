@@ -1,9 +1,7 @@
 import type { Tables } from '@/types/database.overrides'
 
-// The descriptive half of a game: links, copy, tags and color. Shared by the
-// quick edit on the game details modal and the admin sheet. Identity fields
-// (name, shorthand, Steam ID) and assets stay admin-only because storage paths
-// and syncs hang off them.
+// The descriptive half of a game. Identity fields (name, shorthand, Steam ID)
+// and assets stay admin-only because storage paths and syncs hang off them.
 
 export const GAME_DESCRIPTION_MAX = 160
 

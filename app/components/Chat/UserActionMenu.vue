@@ -5,15 +5,9 @@ import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useIrcChat } from '@/composables/useIrcChat'
 
 /**
- * Shared fragment of user-targeted context menu items.
- * Renders: About/WHOIS, [#middle slot], Copy nickname, Message, Mention,
- * and optional mod actions (Op/Deop, Voice/Devoice, Kick, Ban, Kick & ban).
- *
- * - Emits `openWhois` with the nick; the parent is responsible for opening
- *   the WHOIS modal and closing the menu.
- * - Emits `close` after every other action so the parent can dismiss the menu.
- * - Self-targeted actions (Message, Mention, mod) are hidden when the nick
- *   matches the current user.
+ * Shared user-targeted context menu items. Emits `openWhois` (the parent opens
+ * the modal and closes the menu) and `close` after every other action.
+ * Self-targeted actions are hidden for your own nick.
  */
 
 const props = defineProps<{
@@ -26,11 +20,7 @@ const props = defineProps<{
    *  for users with sufficient channel privileges. */
   showModActions?: boolean
 
-  /**
-   * Override the nick used in the mention action. Useful for relay nicks where
-   * the full IRC nick contains a bridge suffix (e.g. "user/cord") but the
-   * mention should only insert the user part ("user").
-   */
+  /** Nick for the mention action, e.g. just "user" for a relay nick "user/cord". */
   mentionNick?: string
 
   /** When true, the "Message" (PM) and mod actions (Op/Voice/Kick/Ban) are hidden. Use for relay virtual nicks. */

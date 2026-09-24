@@ -41,15 +41,12 @@ const isMobile = useBreakpoint('<m')
       <Skeleton :width="isMobile ? 320 : 256" :height="24" :radius="12" />
     </Flex>
 
-    <!-- Post body content area -->
     <section class="forum-post-skeleton__body mb-xl">
       <Skeleton class="forum-post-skeleton__full" :height="400" :radius="8" />
     </section>
 
-    <!-- Toolbar -->
     <DiscussionToolbarSkeleton is-forum />
 
-    <!-- Reply cards -->
     <Flex column gap="m" expand>
       <DiscussionReplyCardSkeleton v-for="n in 3" :key="n" />
     </Flex>

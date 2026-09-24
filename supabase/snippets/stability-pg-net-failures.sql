@@ -5,9 +5,8 @@
 -- No rows = all recent pg_net calls succeeded.
 --
 -- Don't join net.http_request_queue for URLs: pg_net deletes queue rows the
--- moment a request completes, so the join drops every finished response. That
--- hid a week of 401s during the Aug 2026 legacy-key outage. Completed
--- responses only carry status/error, no URL or method.
+-- moment a request completes, so the join drops every finished response.
+-- Completed responses only carry status/error, no URL or method.
 --
 -- pg_net also prunes responses after ~6 hours, so that's the real window here
 -- regardless of the filter.

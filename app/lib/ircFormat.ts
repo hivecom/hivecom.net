@@ -201,9 +201,7 @@ export function parseIrcFormatting(text: string): Segment[] {
     segStart = i
   }
 
-  // Walk the string, closing the current segment whenever a control code changes
-  // the active style: 0x03 colour, 0x02 bold, 0x1D italic, 0x1F underline,
-  // 0x1E strike, 0x11 monospace, 0x16 reverse, 0x0F reset.
+  // Every control code closes the current segment.
   while (i < text.length) {
     const code = text.charCodeAt(i)
 
@@ -304,22 +302,18 @@ export function parseIrcFormatting(text: string): Segment[] {
   return out
 }
 
-// Modern-mode markdown layer. IRC clients send invisible control codes; bridged
-// platforms (Discord etc.) send only the literal markers (**bold**, `code`).
-// resolveInlineMarkdown runs on top of the IRC-parsed cells: it finds emphasis and
-// code spans, flags each marker character for removal (del) and ORs the matching
-// style onto the content between them. It uses a delimiter stack so emphasis NESTS
-// and stacks correctly - ***both***, **a *b* c**, ~~**x**~~ all resolve cleanly -
-// where the old per-rule regex approach leaked stray markers on same-char nesting.
-// Underscores require a word boundary (so snake_case, __dunder__ and underscores in
-// URLs aren't mangled); asterisks stay intraword (CommonMark allows foo*bar*baz).
+// Modern-mode markdown layer. Bridged platforms like Discord send literal
+// markers (**bold**, `code`) instead of control codes. This runs over the
+// IRC-parsed cells: markers get del, the content between them gets the style.
+// A delimiter stack lets emphasis nest, so ***both*** and **a *b* c** resolve.
+// Underscores need a word boundary so snake_case and URLs survive. Asterisks
+// work intraword, as CommonMark allows foo*bar*baz.
 type EmFlag = 'bold' | 'italic' | 'underline' | 'strike' | 'mono'
 interface MdCell { ch: string, style: StyleFlags, del: boolean, code: boolean }
 
 const isWS = (c: string | undefined): boolean => c === undefined || /\s/.test(c)
 
-// ASCII punctuation (CommonMark's set), listed explicitly to keep the flanking
-// rules readable and avoid obscure regex ranges.
+// CommonMark's ASCII punctuation set.
 const ASCII_PUNCT = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
 const isPunct = (c: string | undefined): boolean => c !== undefined && ASCII_PUNCT.includes(c)
 
@@ -331,7 +325,6 @@ function resolveCodeSpans(cells: MdCell[]): void {
 
   while (i < n) {
     if (cells[i]!.ch === '`' && !cells[i]!.del && !cells[i]!.code) {
-      // Measure the opening run, then hunt for a closing run of the same length.
       let j = i
 
       while (j < n && cells[j]!.ch === '`') j++
@@ -349,7 +342,7 @@ function resolveCodeSpans(cells: MdCell[]): void {
 
           while (m < n && cells[m]!.ch === '`') m++
 
-          // A shorter or longer run isn't the closer; keep looking from its end.
+          // A run of a different length isn't the closer.
           if (m - k === runLen) {
             // Drop both backtick runs and mark everything between them as code.
             for (let p = i; p < j; p++) cells[p]!.del = true
@@ -382,16 +375,14 @@ function resolveCodeSpans(cells: MdCell[]): void {
   }
 }
 
-// Emphasis for a single delimiter char via a delimiter stack (CommonMark-style), so
-// runs nest and stack. `strong` is the 2-char style, `em` the 1-char style (undefined
-// for ~~, which only matches in pairs). Closers consume markers from the front of
-// their run, openers from the back, so a run can close earlier emphasis then open new.
+// `strong` is the 2-char style, `em` the 1-char style (undefined for ~~, which
+// only matches in pairs). Closers consume from the front of their run and
+// openers from the back, so one run can close earlier emphasis and open new.
 function resolveEmphasis(cells: MdCell[], ch: string, strong: EmFlag, em: EmFlag | undefined, pairsOnly: boolean): void {
   const n = cells.length
 
   interface Run { start: number, end: number, len: number, openConsumed: number, closeConsumed: number, canOpen: boolean, canClose: boolean }
 
-  // Pass one: collect every run of the delimiter char.
   const runs: Run[] = []
   let i = 0
 
@@ -409,8 +400,7 @@ function resolveEmphasis(cells: MdCell[], ch: string, strong: EmFlag, em: EmFlag
     }
   }
 
-  // Pass two: decide which runs may open and which may close, from what sits on
-  // either side of them (CommonMark's flanking rules).
+  // CommonMark's flanking rules.
   for (const r of runs) {
     const before = r.start > 0 ? cells[r.start - 1]!.ch : undefined
     const after = r.end < n ? cells[r.end]!.ch : undefined
@@ -428,7 +418,6 @@ function resolveEmphasis(cells: MdCell[], ch: string, strong: EmFlag, em: EmFlag
     }
   }
 
-  // Pass three: match closers against the open stack.
   const stack: number[] = []
   for (let ri = 0; ri < runs.length; ri++) {
     const r = runs[ri]!
@@ -470,8 +459,7 @@ function resolveEmphasis(cells: MdCell[], ch: string, strong: EmFlag, em: EmFlag
   }
 }
 
-// Resolve all inline markdown (code spans, then emphasis) over a run of cells,
-// mutating them in place: marker chars get del=true, content cells get the style.
+// Mutates in place: markers get del, content gets the style.
 export function resolveInlineMarkdown(cells: MdCell[]): void {
   resolveCodeSpans(cells)
   resolveEmphasis(cells, '*', 'bold', 'italic', false)
@@ -479,11 +467,10 @@ export function resolveInlineMarkdown(cells: MdCell[]): void {
   resolveEmphasis(cells, '~', 'strike', undefined, true)
 }
 
-// Convert the composer's markdown into an IRC wire string: emphasis markers (** * __
-// ~~ `) become the matching control codes so other IRC clients render the formatting,
-// the markers themselves are dropped, and any existing control codes (e.g. a color
-// run from the picker) pass through untouched. Convert one line at a time - emphasis
-// doesn't carry across the per-line PRIVMSGs a multiline send produces.
+// Composer markdown to an IRC wire string: markers become control codes and
+// existing codes, like a colour from the picker, pass through. Convert one line
+// at a time, since emphasis doesn't carry across the per-line PRIVMSGs of a
+// multiline send.
 const MD_TOGGLES: [EmFlag, string][] = [
   ['bold', String.fromCharCode(0x02)],
   ['italic', String.fromCharCode(0x1D)],
@@ -503,10 +490,8 @@ function markdownLineToIrc(line: string): string {
   while (i < chars.length) {
     const ch = chars[i]!
     if (ch.charCodeAt(0) === 0x03) {
-      // Color: \x03 plus up to two fg digits and an optional ",bg". Mark the whole
-      // run as passthrough (matching parseIrcFormatting) so an emphasis toggle never
-      // splits the code from its digits - otherwise \x03 08 would become a bare
-      // color reset followed by a literal "08".
+      // The whole colour run passes through as one, or an emphasis toggle could
+      // split \x03 from its digits and turn \x0308 into a reset plus a literal "08".
       push(ch, true)
       i++
 
@@ -523,8 +508,7 @@ function markdownLineToIrc(line: string): string {
       continue
     }
 
-    // Other C0 control chars are existing IRC codes - pass them through and keep them
-    // out of markdown scanning.
+    // Other C0 chars are existing IRC codes. Keep them out of markdown scanning.
     push(ch, ch.charCodeAt(0) < 0x20)
     i++
   }
@@ -548,7 +532,7 @@ function markdownLineToIrc(line: string): string {
     out += c.ch
   }
 
-  // Close anything still open (unclosed markdown) so a trailing format doesn't bleed.
+  // Close unclosed markdown so a trailing format doesn't bleed.
   for (const [flag, code] of MD_TOGGLES) {
     if (open[flag])
       out += code
@@ -556,12 +540,11 @@ function markdownLineToIrc(line: string): string {
   return out
 }
 
-// `strip` removes the markers (modern mode); when false the markers are kept in
-// place with their surrounding style (classic IRC mode keeps asterisks etc.
-// while still styling the content between them).
+// `strip` removes the markers (modern mode). Classic mode keeps them visible
+// but still styles the content between them.
 export function applyMarkdown(segs: Segment[], strip = true): Segment[] {
-  // Expand to per-character cells that carry their IRC-derived style, so marker
-  // detection can run on the plain text while preserving control-code styling.
+  // Per-character cells, so marker detection runs on plain text but keeps the
+  // control-code styling.
   interface Cell { ch: string, style: StyleFlags, del: boolean, code: boolean }
   const cells: Cell[] = []
   for (const seg of segs) {
@@ -574,7 +557,6 @@ export function applyMarkdown(segs: Segment[], strip = true): Segment[] {
 
   resolveInlineMarkdown(cells)
 
-  // Coalesce surviving cells with identical style back into text segments.
   const out: Segment[] = []
   let cur: Segment | null = null
   for (const cell of cells) {
@@ -595,11 +577,10 @@ export function applyMarkdown(segs: Segment[], strip = true): Segment[] {
 // ---------------------------------------------------------------------------
 // Editor tokenizer
 // ---------------------------------------------------------------------------
-// The composer renders into a contenteditable. Unlike the message log, it must
-// keep EVERY source character in the DOM (control codes and markdown markers
-// included) so the DOM text length stays 1:1 with the wire string and the caret
-// offset maps directly. Formatting characters are emitted as `hidden` tokens
-// that the composer renders zero-width; visible text carries the resolved style.
+// The composer's contenteditable must keep every source character in the DOM,
+// codes and markers included, so DOM text length stays 1:1 with the wire string
+// and caret offsets map directly. Formatting characters become `hidden` tokens
+// that render zero-width.
 
 export interface EditorToken {
   text: string
@@ -607,10 +588,7 @@ export interface EditorToken {
   style: StyleFlags
 }
 
-// `strip` (default true, modern mode) hides the consumed markdown markers (** etc)
-// the same way the message renderer does; pass false (classic/IRC mode) to keep
-// them visible while still styling the content between them. Control codes are
-// always hidden - they're non-printable either way.
+// `strip` works as in applyMarkdown. Control codes are always hidden.
 export function tokenizeForEditor(text: string, strip = true): EditorToken[] {
   interface Cell { ch: string, style: StyleFlags, hidden: boolean, code: boolean, del: boolean }
   const cells: Cell[] = []
@@ -643,15 +621,14 @@ export function tokenizeForEditor(text: string, strip = true): EditorToken[] {
     return s
   }
 
-  // Pass 1: walk the source, hiding control codes and tracking active style.
   while (i < text.length) {
     const code = text.charCodeAt(i)
 
     if (code === 0x03) {
       pushHidden(text.charAt(i++))
 
-      // Colour is `<fg>[,<bg>]`, one or two digits each. Every character of the
-      // code is hidden, but the digits still have to be read to know the colour.
+      // Colour is `<fg>[,<bg>]`, one or two digits each. The digits are hidden
+      // but still read.
       let fgStr = ''
 
       if (i < text.length && /\d/.test(text.charAt(i))) {
@@ -731,10 +708,7 @@ export function tokenizeForEditor(text: string, strip = true): EditorToken[] {
     }
   }
 
-  // Pass 2: markdown (code spans + nestable emphasis) over the visible characters.
-  // The control-code cells are skipped; resolveInlineMarkdown mutates the visible
-  // cells in place (they're the same objects), flagging markers del and styling
-  // content, exactly as it does for the message renderer.
+  // The same cell objects, so resolveInlineMarkdown's mutations land in `cells`.
   const vis: MdCell[] = []
   for (const cell of cells) {
     if (!cell.hidden)
@@ -742,13 +716,9 @@ export function tokenizeForEditor(text: string, strip = true): EditorToken[] {
   }
   resolveInlineMarkdown(vis)
 
-  // Coalesce into tokens. Hidden runs (codes + consumed markers) group together;
-  // visible runs group by identical style.
   const tokens: EditorToken[] = []
   let cur: EditorToken | null = null
   for (const cell of cells) {
-    // Control codes (cell.hidden) are always hidden; consumed markers (cell.del)
-    // are hidden only in strip mode, otherwise they stay visible (classic IRC).
     const hidden = cell.hidden || (cell.del && strip)
     if (cur && cur.hidden === hidden && (hidden || sameStyle(cur.style, cell.style))) {
       cur.text += cell.ch

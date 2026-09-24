@@ -16,12 +16,10 @@ const props = defineProps<{
   isEditMode: boolean
 }>()
 
-// Define emits
 const emit = defineEmits(['save', 'delete'])
 
 const formFieldsRef = ref<InstanceType<typeof GameServerDetailsFields> | null>(null)
 
-// Interface for gameserver query result
 interface QueryGameserver {
   addresses: string[] | null
   administrator: string | null
@@ -43,19 +41,15 @@ interface QueryGameserver {
   region: 'eu' | 'na' | 'all' | null
 }
 
-// Interface for Select options
 interface SelectOption {
   label: string
   value: string
 }
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
-// Setup Supabase client
 const supabase = useSupabaseClient()
 
-// Form state
 const gameserverForm = ref({
   name: '',
   description: '',
@@ -84,10 +78,9 @@ const detailsModel = computed<GameServerDetailsFormState>({
   },
 })
 
-// Query secret and options. The secret (Factorio's RCON password, Trackmania's
-// User password) is stored in Vault via the set/get_gameserver_query_secret
-// RPCs and never persisted on the row. factorioUseLua is non-secret config
-// kept in query_options.
+// The query secret (Factorio's RCON password, Trackmania's User password) lives
+// in Vault via set/get_gameserver_query_secret and never touches the row.
+// factorioUseLua is non-secret config kept in query_options.
 const factorioUseLua = ref(false)
 const querySecret = ref('')
 const querySecretExists = ref(false)
@@ -97,15 +90,13 @@ const clearQuerySecret = ref(false)
 const secretProtocols = ['factorio', 'trackmania']
 const usesQuerySecret = computed(() => secretProtocols.includes(gameserverForm.value.query_protocol ?? ''))
 
-// State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 
 const saveLoading = ref(false)
 
-// Loading states for dropdowns
 const loadingContainers = ref(true)
 
-// Games state - loaded via debounced server-side search
+// Games load through a debounced server-side search.
 const games = ref<Tables<'games'>[]>([])
 const gamesLoading = ref(false)
 let gameSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -145,10 +136,8 @@ function debouncedSearchGames(query: string) {
   }, 300)
 }
 
-// Options for dropdowns
 const containers = ref<Tables<'network_containers'>[]>([])
 
-// Query protocol options
 const queryProtocolOptions = [
   { label: 'Source (A2S)', value: 'source' },
   { label: 'Minecraft (Query)', value: 'minecraft' },
@@ -158,14 +147,12 @@ const queryProtocolOptions = [
   { label: 'Trackmania (GBXRemote)', value: 'trackmania' },
 ]
 
-// Region options
 const regionOptions = [
   { label: 'Europe', value: 'eu' },
   { label: 'North America', value: 'na' },
   { label: 'Multi-Region', value: 'all' },
 ]
 
-// Computed options for selects
 const containerOptions = computed(() =>
   containers.value.map(container => ({
     label: container.name,
@@ -180,7 +167,6 @@ function onGameSelect(ids: number[]) {
   gameserverForm.value.game = next ?? null
 }
 
-// Computed properties to handle conversion between form values and select options
 const selectedRegionComputed = computed({
   get: () => {
     if (!gameserverForm.value.region)
@@ -218,7 +204,6 @@ const selectedQueryProtocolComputed = computed({
   set: (value: SelectOption[] | null | undefined) => {
     gameserverForm.value.query_protocol = (value && value.length > 0) ? value[0]!.value : null
 
-    // Clear query port when protocol is cleared
     if (!gameserverForm.value.query_protocol)
       gameserverForm.value.query_port = ''
 
@@ -234,14 +219,12 @@ const selectedQueryProtocolComputed = computed({
   },
 })
 
-// Form validation
 const validation = computed(() => ({
   name: !!gameserverForm.value.name.trim(),
 }))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
-// Fetch dropdown data
 // Check whether a Vault query secret exists for this gameserver (without
 // revealing it) so the form can show stored-state and the right placeholder.
 async function loadQuerySecretState(gameserverId: number) {
@@ -309,7 +292,6 @@ function applyGameserver(newGameserver: QueryGameserver | null) {
       void loadQuerySecretState(newGameserver.id)
   }
   else {
-    // Reset form for new gameserver
     gameserverForm.value = {
       name: '',
       description: '',
@@ -331,10 +313,8 @@ function applyGameserver(newGameserver: QueryGameserver | null) {
   }
 }
 
-// Update form data when gameserver prop changes
 watch(() => props.gameserver, applyGameserver, { immediate: true })
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
@@ -355,19 +335,16 @@ watch(isOpen, (open) => {
     searchGames('')
 })
 
-// Handle form submission
 async function handleSubmit() {
   if (!isValid.value)
     return
 
-  // Upload any pending blob-placeholder media before reading the markdown,
-  // otherwise blob: URLs get persisted and render as missing media. The editor
-  // surfaces its own error toast on failure, so we just abort here.
+  // Flush pending blob-placeholder media first, or blob: URLs get persisted and
+  // render as missing media. The editor shows its own error toast, so just abort.
   const uploaded = await formFieldsRef.value?.flushPendingUploads()
   if (uploaded === false)
     return
 
-  // Prepare the data to save
   const gameserverData: TablesInsert<'network_gameservers'> | TablesUpdate<'network_gameservers'> = {
     ...gameServerDetailsPayload(detailsModel.value),
     name: gameserverForm.value.name,
@@ -396,7 +373,6 @@ async function handleSubmit() {
   emit('save', gameserverData, secretPayload)
 }
 
-// Open confirmation modal for deletion
 function handleDelete() {
   if (!props.gameserver)
     return
@@ -404,7 +380,6 @@ function handleDelete() {
   showDeleteConfirm.value = true
 }
 
-// Perform actual deletion when confirmed
 function confirmDelete() {
   if (!props.gameserver)
     return
@@ -436,9 +411,7 @@ onMounted(() => {
       </Flex>
     </template>
 
-    <!-- Gameserver Info Section -->
     <Flex column gap="l" class="gameserver-form">
-      <!-- Basic Information -->
       <Flex column gap="m" expand>
         <h4>Basic Information</h4>
 
@@ -464,11 +437,9 @@ onMounted(() => {
         />
       </Flex>
 
-      <!-- Game and Container Selection -->
       <Flex column gap="m" expand>
         <h4>Configuration</h4>
 
-        <!-- First row: Game and Container -->
         <Flex gap="m" wrap expand>
           <Flex column gap="s" expand>
             <div class="gameserver-form__label">
@@ -499,7 +470,6 @@ onMounted(() => {
           />
         </Flex>
 
-        <!-- Second row: Administrator and Port -->
         <Flex gap="m" wrap expand>
           <Flex column gap="s" expand>
             <div class="gameserver-form__label">
@@ -530,7 +500,6 @@ onMounted(() => {
           hint="Overrides the game's connect command for this server only, e.g. extra launch arguments. Tokens: {address} {port}. Not a place for secrets, this row is publicly readable."
         />
 
-        <!-- Third row: Query Protocol and Query Port -->
         <Flex gap="m" wrap expand>
           <ExpandableSelect
             v-model="selectedQueryProtocolComputed"
@@ -553,7 +522,7 @@ onMounted(() => {
           />
         </Flex>
 
-        <!-- Login secret for protocols that need one. Query Port above should be the RCON port (Factorio) or the xmlrpc_port (Trackmania). -->
+        <!-- Query Port should be the RCON port (Factorio) or the xmlrpc_port (Trackmania). -->
         <Flex v-if="usesQuerySecret" column gap="s" expand>
           <Input
             v-model="querySecret"
@@ -616,7 +585,6 @@ onMounted(() => {
       </Flex>
     </template>
 
-    <!-- Confirmation Modal for Delete Action -->
     <ConfirmModal
       v-model:open="showDeleteConfirm"
       :confirm="confirmDelete"

@@ -1,6 +1,5 @@
-// useAdminGlobeData.ts
-// Fetches online user counts grouped by country for the admin globe visualization.
-// Individual user lists are fetched on-demand (on hover) via fetchCountryUsers.
+// Online user counts per country for the admin globe. Per-country user lists
+// load on hover.
 
 import type { Database } from '@/types/database.types'
 import { ref } from 'vue'
@@ -17,11 +16,10 @@ export function useAdminGlobeData() {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  // Cache: skip re-fetch if data is fresh (5 min TTL)
   let cachedAt: number | null = null
   const CACHE_TTL_MS = 5 * 60 * 1000
 
-  // Fetches count of online users per country (last 15 min).
+  // Online means seen in the last 15 minutes.
   async function fetchOnlineUsers(force = false) {
     if (!force && cachedAt != null && Date.now() - cachedAt < CACHE_TTL_MS && onlineCountsByCountry.value.length > 0)
       return
@@ -63,7 +61,6 @@ export function useAdminGlobeData() {
     }
   }
 
-  // Fetches up to `limit` online users for a specific country on-demand.
   async function fetchCountryUsers(iso: string, limit = 10): Promise<{ userIds: string[], total: number }> {
     const since = new Date(Date.now() - 15 * 60 * 1000).toISOString()
     const { data, error: queryError } = await supabase
@@ -82,7 +79,7 @@ export function useAdminGlobeData() {
     return { userIds: (data ?? []).map(r => r.id), total }
   }
 
-  // Fetches up to `limit` users for a specific country (all users, not just online).
+  // Everyone in the country, online or not.
   async function fetchCountryAllUsers(iso: string, limit = 10): Promise<{ userIds: string[], total: number }> {
     const { data, error: queryError } = await supabase
       .from('profiles')

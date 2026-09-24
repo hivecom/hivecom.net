@@ -36,10 +36,7 @@ function requireSesConfig(): { client: SESv2Client; from: string } {
   };
 }
 
-/**
- * Pulls the sending domain out of the configured from address. Handles both
- * the "Hivecom <noreply@hivecom.net>" display name form and a bare address.
- */
+// Handles both "Hivecom <noreply@hivecom.net>" and a bare address
 function extractDomain(from: string): string | null {
   const angled = from.match(/<([^>]+)>/);
   const address = (angled ? angled[1] : from).trim();
@@ -51,7 +48,6 @@ function extractDomain(from: string): string | null {
 }
 
 Deno.serve(async (req: Request) => {
-  // This is needed if you're planning to invoke your function from a browser. Which we are.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -61,7 +57,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Verify user has permission to read broadcast state (includes ban + aal2 checks)
+    // Also enforces the ban and aal2 checks
     const authResponse = await authorizeAuthenticatedHasPermissionAal2(
       req,
       ["broadcasts.read"],
@@ -88,9 +84,8 @@ Deno.serve(async (req: Request) => {
         [],
     };
 
-    // Identity health for the domain we actually send from. A missing identity
-    // is a real state the page should show, so it degrades to null instead of
-    // failing the whole response.
+    // A missing identity is a real state the page shows, so it degrades to null
+    // instead of failing the whole response
     const domain = extractDomain(from);
     let identity: {
       domain: string;
@@ -120,10 +115,8 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // How many members a full broadcast would reach right now: every profile
-    // minus the bounce-flagged ones the send skips. Counted from profiles since
-    // every auth user has one; the broadcast function resolves the same set
-    // through the Auth Admin API at send time.
+    // Who a full broadcast would reach: every profile minus the bounce-flagged ones.
+    // Every auth user has a profile, so this matches what the send resolves.
     const supabase = createPublicServiceRoleClient();
 
     const { count: totalProfiles, error: totalError } = await supabase

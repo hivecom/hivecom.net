@@ -6,7 +6,7 @@ function getRippleDuration(): number {
 
   const raw = getComputedStyle(document.documentElement).getPropertyValue('--transition').trim()
 
-  // VUI token format: "0.11s cubic-bezier(...)" - grab the first time value
+  // VUI token format is "0.11s cubic-bezier(...)", so grab the first time value.
   const match = raw.match(/([\d.]+)(m?s)/)
   if (!match)
     return 600
@@ -43,7 +43,6 @@ export function useThemeTransition() {
       Math.max(y, window.innerHeight - y),
     ))
 
-    // Inject the keyframe animation once
     const styleId = '__theme-ripple-style'
     if (!document.getElementById(styleId)) {
       const style = document.createElement('style')
@@ -64,7 +63,6 @@ export function useThemeTransition() {
       document.head.appendChild(style)
     }
 
-    // Write ripple origin/radius as CSS custom properties on :root
     const root = document.documentElement
     root.style.setProperty('--ripple-x', `${x}px`)
     root.style.setProperty('--ripple-y', `${y}px`)
@@ -72,8 +70,9 @@ export function useThemeTransition() {
     root.style.setProperty('--ripple-duration', `${rippleDuration}ms`)
 
     try {
-      // startViewTransition is not available in all browsers - falls back to instant apply
-      // Reflect.get returns unknown, which TS won't narrow away in the null check
+      // startViewTransition isn't in every browser, so this falls back to an
+      // instant apply. Reflect.get returns unknown, which TS won't narrow away
+      // in the null check.
       type VTFn = (cb: () => void) => { finished: Promise<void> }
       const transition = Reflect.get(document, 'startViewTransition') as VTFn | null | undefined
       if (transition == null) {
@@ -86,7 +85,7 @@ export function useThemeTransition() {
       }).finished
     }
     catch {
-      // Transition was skipped, interrupted, or unsupported - apply directly
+      // Transition skipped, interrupted or unsupported, so apply directly.
       applyFn()
     }
     finally {

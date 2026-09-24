@@ -11,10 +11,7 @@ const props = defineProps<{
   nick: string | null
   open: boolean
 
-  /**
-   * When set, this nick is a relaymsg spoofed nick. relayedBy is the actual
-   * IRC bot nick that sent the RELAYMSG - the real user to WHOIS.
-   */
+  /** Set for relaymsg spoofed nicks: the bot that sent the RELAYMSG, which is who to WHOIS. */
   relayedBy?: string | null
 }>()
 
@@ -25,7 +22,7 @@ const emit = defineEmits<{
 const { requestWhois, buffers, relaySeparator } = useIrcChat()
 const { resolved, resolve } = useIrcNickResolver()
 
-/** The display name - just the user part of the spoofed nick for relay messages. */
+/** Display name: just the user part of a relay's spoofed nick. */
 const displayNick = computed(() => {
   if (!props.nick)
     return null
@@ -50,11 +47,6 @@ const bridgeName = computed(() => {
   return props.nick.slice(idx + relaySeparator.value.length)
 })
 
-/**
- * The IRC nick to actually WHOIS.
- * For relay messages where relayedBy is set: that's the real bot to query.
- * Otherwise: the nick as-is.
- */
 const whoisNick = computed(() => props.relayedBy ?? props.nick)
 
 watch(() => [props.open, props.nick] as [boolean, string | null], ([open]) => {

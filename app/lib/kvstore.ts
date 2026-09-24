@@ -1,11 +1,8 @@
 import type { Tables } from '@/types/database.overrides'
 
-// Use a permissive value type to avoid recursive Json instantiation in consumers.
+// `unknown` sidesteps recursive Json type instantiation in consumers.
 export type KvEntry = Omit<Tables<'kvstore'>, 'value'> & { value: unknown }
 
-/**
- * Return the raw value as a string for display/search without altering semantics.
- */
 export function renderKvValue(value: unknown): string {
   if (value === null || value === undefined)
     return '-'
@@ -24,13 +21,7 @@ export function renderKvValue(value: unknown): string {
   }
 }
 
-/**
- * Safely coerce a kvstore row into a typed JS value based on its declared type.
- * - STRING: string
- * - NUMBER: number (NaN if invalid)
- * - BOOLEAN: boolean
- * - JSON: object/array/primitive (parsed if stored as string)
- */
+// An invalid NUMBER comes back NaN. JSON stored as a string gets parsed.
 export function parseKvValue(entry: Pick<KvEntry, 'type' | 'value'>): unknown {
   const { type, value } = entry
 

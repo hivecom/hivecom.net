@@ -8,35 +8,11 @@ import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 const CACHE_KEY = 'gameservers:all'
 
 // Module-level singleton for cache invalidation from outside the composable.
-// Follows the same pattern as useDataProjectBanner's _bannerCache.
 const _gameserversCache = useCache(CACHE_NAMESPACES.gameservers)
 
 export function invalidateGameserversCache(): void {
   _gameserversCache.delete(CACHE_KEY)
 }
-
-/**
- * Shared cached gameservers composable.
- *
- * Previously fetched independently by 3+ call sites with no coordination:
- * - pages/servers/gameservers/index.vue (full join with container + server)
- * - pages/servers/gameservers/[id].vue (single with container)
- * - components/Shared/GameServerLink.vue (name only, per ID - now cached separately)
- *
- * The full list includes the container + server join needed by the index page.
- * Single-gameserver lookups should derive from the cached list via `getById()`
- * rather than issuing a second query when the full list is already loaded.
- *
- * NOTE: This composable is for public-facing pages only. The admin panel
- * (GameServerTable, ContainerTable) fetches gameservers and containers directly
- * without this cache so it always sees live container state (running, healthy, etc.).
- * Admin write paths should call `invalidate()` after mutations so the next public
- * page load picks up the change.
- *
- * - TTL: 30 minutes
- * - `invalidate()` should be called after admin writes to the gameservers table
- * - `refresh()` forces a cache-busting re-fetch
- */
 
 export type GameserverWithContainer = Tables<'network_gameservers'> & {
   container?: (Tables<'network_containers'> & {
@@ -48,6 +24,10 @@ export type GameserverWithContainer = Tables<'network_gameservers'> & {
   administrator?: string | null
 }
 
+/**
+ * Public pages only. The admin panel fetches directly so it always sees live
+ * container state, and must call `invalidate()` after writes.
+ */
 export function useDataGameservers() {
   const { withCache, cache, loading, error, onExternalInvalidation } = useCacheModule(CACHE_NAMESPACES.gameservers)
   const supabase = useSupabaseClient<Database>()
@@ -86,10 +66,7 @@ export function useDataGameservers() {
       gameservers.value = result
   }
 
-  /**
-   * Look up a single gameserver from the cached list by numeric ID. Returns null
-   * if not found or if the cache hasn't been populated yet (call `fetch()` first).
-   */
+  /** Returns null until the list has loaded. */
   function getById(id: number): GameserverWithContainer | null {
     return gameservers.value.find(gs => gs.id === id) ?? null
   }

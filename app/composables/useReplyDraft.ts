@@ -12,17 +12,10 @@ import { onMounted, onUnmounted, toValue, watch } from 'vue'
  *
  * The reply target is stored by id only. The caller resolves it back into a
  * comment on restore and drops it if the comment is gone.
- *
- * ## Usage
- *
- *   useReplyDraft(() => userId.value ? `${userId.value}:${props.id}` : null, form, {
- *     replyToId: () => replyingTo.value?.id ?? null,
- *     restoreReplyTo: id => resolveComment(id),
- *   })
  */
 
 const DRAFTS_KEY = 'hivecom.forum.drafts'
-const DRAFT_TTL = 30 * 24 * 60 * 60 * 1000 // 30 days
+const DRAFT_TTL = 30 * 24 * 60 * 60 * 1000
 const PERSIST_DELAY = 300
 
 interface ReplyDraft {

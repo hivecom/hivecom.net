@@ -33,11 +33,10 @@ const emit = defineEmits<{
   parsed: []
 }>()
 
-// MDCRenderer.components prop is typed as Record<string, string | DefineComponent<any,any,any>>.
-// Casting via unknown as Record<string, string> satisfies the type (string is a subtype of the union)
-// while keeping the actual runtime value as the component object.
-// 'img' key matches the AST node tag so MDCRenderer uses ProseImg for every
-// markdown image, giving us lazy loading and a fade-in without DOM post-processing.
+// MDCRenderer.components is typed Record<string, string | DefineComponent>. Casting
+// via unknown as Record<string, string> satisfies it while keeping the component
+// objects at runtime. The 'img' key makes MDCRenderer use ProseImg for every
+// markdown image, for lazy loading and a fade-in without DOM post-processing.
 const mdcComponents = { SharedUserMention, SharedChannelMention, SharedLinkEmbed, img: ProseImg, audio: SharedAudioEmbed } as unknown as Record<string, string>
 
 const container = useTemplateRef('container')
@@ -59,7 +58,7 @@ function applyTransforms(body: MDCRoot | undefined): MDCRoot | undefined {
   return result as unknown as MDCRoot
 }
 
-// Parsed result - null until the first parse completes after mount.
+// Parsed result, null until the first parse completes after mount.
 // Using a regular ref (not top-level await) so this component is never in a
 // half-mounted async-setup state when the parent Suspense is torn down, which
 // caused "instance is null" / "subTree of null" crashes in Vue's runtime.
@@ -208,7 +207,6 @@ watch(processedMarkdown, (val) => {
       pointer-events: none;
     }
 
-    // Centered play icon overlay
     &::after {
       content: '';
       position: absolute;
@@ -236,10 +234,9 @@ watch(processedMarkdown, (val) => {
     grid-column: 1 / -1;
   }
 
-  // 2 images left over in the last row (count % 3 == 2, e.g. 5, 8, 11...):
-  // A 3-col grid gives each orphan 1/3 width with the last third empty - looks bad.
-  // Fix: switch to a 6-col grid where each item spans 2 cols (still 3 per row),
-  // and the last two orphans each span 3 cols (equal halves of the row).
+  // 2 images left over in the last row (count % 3 == 2, e.g. 5, 8, 11). A 3-col
+  // grid leaves the last third empty, so switch to a 6-col grid where each item
+  // spans 2 cols and the last two orphans span 3 each.
   &[data-count='5'],
   &[data-count='8'],
   &[data-count='11'],
@@ -262,8 +259,8 @@ watch(processedMarkdown, (val) => {
   @media (max-width: 600px) {
     grid-template-columns: repeat(2, 1fr);
 
-    // Reset the 6-col span overrides applied for 3n+2 counts - on mobile
-    // we use a plain 2-col grid so items must auto-place without forced spans.
+    // Reset the 6-col span overrides for 3n+2 counts. Mobile uses a plain 2-col
+    // grid, so items must auto-place without forced spans.
     &[data-count='5'],
     &[data-count='8'],
     &[data-count='11'],
@@ -306,7 +303,7 @@ watch(processedMarkdown, (val) => {
       }
     }
 
-    // Even last child fits perfectly - no spanning.
+    // Even last child fits perfectly, no spanning.
     > :last-child:nth-child(2n) {
       grid-column: unset;
     }
@@ -445,7 +442,7 @@ watch(processedMarkdown, (val) => {
   display: block;
   width: 100%;
   overflow-wrap: break-word;
-  word-break: break-word; // Safari fallback - break-word is non-standard but widely supported
+  word-break: break-word; // Safari fallback. break-word is non-standard but widely supported
 
   :deep(table) {
     display: table;

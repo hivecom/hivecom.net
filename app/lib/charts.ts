@@ -4,39 +4,24 @@ import { getCSSVariable } from './utils/common'
 import 'chartjs-scale-timestack'
 
 /**
- * Chart color palette derived from VUI theme tokens.
- *
- * These are the resolved --color-* variables (not the prefixed --light-color-*
- * or --dark-color-* variants). VUI keeps them in sync with the active theme,
- * so reading them at render time always gives the correct value. The chart
- * wrapper's :key="theme" forces a remount on theme switch, which re-reads all
- * of these.
+ * Resolved --color-* tokens, which VUI keeps in sync with the active theme.
+ * The chart wrapper's :key="theme" remounts on a theme switch so these get
+ * re-read.
  */
 export interface ChartPalette {
-  /** Grid lines, axis ticks. */
   grid: string
 
-  /** Axis label text. */
   text: string
 
-  /** Muted axis label text. */
   textLight: string
 
-  /** Dimmer axis tick text. */
   textLighter: string
 
-  /**
-   * Ordered dataset colors. Callers should index into this array by dataset
-   * position. Falls back gracefully - the array always has at least 6 entries.
-   *
-   * Order: blue, green, red, yellow, accent, text-light (neutral)
-   */
+  /** Index by dataset position. */
   datasets: string[]
 }
 
-/**
- * Converts an RGB triplet to HSL. Returns [hue 0-360, saturation 0-100, lightness 0-100].
- */
+/** Returns [hue 0-360, saturation 0-100, lightness 0-100]. */
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   const rn = r / 255
   const gn = g / 255
@@ -60,19 +45,15 @@ function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
 }
 
 /**
- * Applies an alpha (0-1) to any CSS color. Tokens aren't guaranteed to be hex
- * (the app overrides some VUI tokens with rgb() values), so appending a hex
- * alpha suffix would produce an invalid color that Chart.js renders as black.
+ * Tokens aren't guaranteed to be hex (some are overridden with rgb()), so a
+ * hex alpha suffix can produce an invalid colour that Chart.js renders black.
  */
 export function withAlpha(color: string, alpha: number): string {
   const [r, g, b] = parseColor(color)
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
-/**
- * Reads the accent CSS variable and returns its HSL hue (0-360).
- * Falls back to 120 (green) if the variable is unavailable (SSR).
- */
+// Falls back to green during SSR.
 function getAccentHue(): number {
   const raw = getCSSVariable('--color-accent')
   if (!raw)
@@ -84,12 +65,8 @@ function getAccentHue(): number {
 }
 
 /**
- * Generates an array of `count` visually distinct colors evenly distributed
- * around the HSL hue wheel, anchored to the VUI accent hue so the palette
- * stays coherent with the active theme.
- *
- * @param count  Number of colors to generate.
- * @param alpha  Opacity as a two-digit hex string (default "cc" = ~80%).
+ * `count` hues spread evenly around the wheel, starting from the accent hue.
+ * `alpha` is two hex digits, so "cc" is ~80%.
  */
 export function getColorizedPalette(count: number, alpha = 'cc'): string[] {
   if (count <= 0)
@@ -103,11 +80,7 @@ export function getColorizedPalette(count: number, alpha = 'cc'): string[] {
   })
 }
 
-/**
- * Reads the current VUI theme's resolved CSS variables and returns a
- * ChartPalette. Call this at render/mount time (not module load time) so the
- * DOM has applied the active theme.
- */
+// Call at mount, not module load, so the DOM has the active theme applied.
 export function getChartPalette(): ChartPalette {
   return {
     grid: getCSSVariable('--color-border'),
@@ -126,11 +99,6 @@ export function getChartPalette(): ChartPalette {
   }
 }
 
-/**
- * External tooltip handler that renders a VUI-styled tooltip DOM element
- * positioned over the chart canvas. Matches --color-bg-raised, --box-shadow,
- * --border-radius-s, --font-size-s, and --color-text tokens from VUI.
- */
 export function createVuiTooltipHandler() {
   return function (context: { chart: Chart, tooltip: TooltipModel<'bar' | 'line'> }) {
     const { chart, tooltip } = context
@@ -148,7 +116,6 @@ export function createVuiTooltipHandler() {
       return
     }
 
-    // Build inner HTML
     const titleLines = tooltip.title ?? []
     const bodyLines = tooltip.body?.map(b => b.lines) ?? []
 
@@ -172,7 +139,6 @@ export function createVuiTooltipHandler() {
       })
     })
 
-    // Afterbody (e.g. "No data" messages)
     const afterBody = tooltip.afterBody ?? []
     if (afterBody.length) {
       afterBody.forEach((line) => {
@@ -188,7 +154,6 @@ export function createVuiTooltipHandler() {
     const elWidth = el.offsetWidth
     const elHeight = el.offsetHeight
 
-    // Position: prefer above the caret, clamp inside canvas
     let x = tooltip.caretX - elWidth / 2
     let y = tooltip.caretY - elHeight - 12
 
@@ -197,10 +162,9 @@ export function createVuiTooltipHandler() {
     if (x + elWidth > canvasRect.width)
       x = canvasRect.width - elWidth - 4
 
-    // Short charts (the 160px game activity strip) can't fit a multi-row
-    // tooltip above the caret, and flipping it below used to spill it out of
-    // the wrapper and over the content underneath. Flip only when there's room,
-    // otherwise clamp it inside the canvas box.
+    // Short charts can't fit a multi-row tooltip above the caret, and flipping
+    // it below can spill out over the content underneath. Flip only when there's
+    // room, otherwise clamp inside the canvas.
     if (y < 0) {
       const below = tooltip.caretY + 12
       y = below + elHeight <= canvasRect.height
@@ -214,15 +178,7 @@ export function createVuiTooltipHandler() {
 }
 
 /**
- * Returns Chart.js line chart defaults wired to the current VUI theme.
- *
- * The `theme` parameter is no longer used for color resolution - colors come
- * from the resolved --color-* tokens via getChartPalette(). It is kept as an
- * optional parameter for call-site compatibility (existing callers pass
- * `theme` from VUI) and may be removed in a future cleanup.
- *
- * @deprecated Pass no arguments. The `_theme` param is a no-op and will be
- * removed once all call sites are updated.
+ * @deprecated Pass no arguments. `_theme` is a no-op.
  */
 export function getLineChartDefaults(_theme?: string): ChartOptions<'line'> {
   const palette = getChartPalette()
@@ -288,10 +244,7 @@ export function getLineChartDefaults(_theme?: string): ChartOptions<'line'> {
   }
 }
 
-/**
- * Reads the y-value out of a Chart.js bar datapoint, which may be a plain
- * number, a plain `null`, or an `{x, y}` point object.
- */
+// A bar datapoint is a number, null, or an `{x, y}` point.
 function barPointY(value: unknown): number | null {
   if (value !== null && typeof value === 'object' && 'y' in value)
     return (value as { x: number, y: number | null }).y
@@ -309,24 +262,13 @@ function barPointX(point: unknown): number | null {
 }
 
 /**
- * Chart.js plugin that draws a faint fill over bar chart columns where every
- * dataset has a null y-value, visually indicating a data gap without polluting
- * the legend or tooltip with an extra dataset.
- *
- * The all-datasets check matters for the stacked per-server charts, which build
- * one dataset per server. Testing only the first dataset paints a gap over any
- * column where that one server is missing, even when every other server
- * reported - which is wrong, and disagrees with the tooltip's own gap text.
- *
- * Supports both plain `null` values and `{x, y}` point objects.
- *
- * Register once globally before mounting any bar charts:
- *   ChartJS.register(barGapPlugin)
+ * Shades bar columns where every dataset is null. It has to be every dataset:
+ * the stacked per-server charts have one dataset per server, and one missing
+ * server isn't a gap.
  */
 export const barGapPlugin: Plugin<'bar'> = {
   id: 'barGapPlugin',
   afterDatasetsDraw(chart: Chart<'bar'>) {
-    // Allow per-chart opt-out via options.plugins.barGapPlugin = { enabled: false }
     const pluginOpts = (chart.options as unknown as { plugins?: { barGapPlugin?: { enabled?: boolean } } }).plugins?.barGapPlugin
     if (pluginOpts?.enabled === false)
       return
@@ -341,8 +283,7 @@ export const barGapPlugin: Plugin<'bar'> = {
     if (!xAxis || !yAxis)
       return
 
-    // Only consider datasets Chart.js is actually drawing, so a column doesn't
-    // count as a gap on account of a series the user hid.
+    // A series the user hid shouldn't make a column count as a gap.
     const visible = datasets
       .map((dataset, i) => ({ dataset, index: i }))
       .filter(({ index }) => chart.isDatasetVisible(index))
@@ -357,23 +298,21 @@ export const barGapPlugin: Plugin<'bar'> = {
     const now = Date.now()
 
     ctx.save()
-    ctx.fillStyle = `${color}44`
+    ctx.fillStyle = withAlpha(color, 0x44 / 255)
 
     for (let index = 0; index < pointCount; index++) {
       const isGap = visible.every(({ dataset }) => barPointY(dataset.data[index]) === null)
       if (!isGap)
         continue
 
-      // A bucket that hasn't happened yet isn't missing data. futureShadePlugin
-      // covers that part of the axis instead.
+      // A future bucket isn't missing data. futureShadePlugin covers it.
       const bucketStart = visible
         .map(({ dataset }) => barPointX(dataset.data[index]))
         .find(x => x !== null)
       if (bucketStart !== undefined && bucketStart > now)
         continue
 
-      // Geometry comes from whichever visible dataset has a bar laid out here.
-      // Stacked datasets share an x position, so any of them will do.
+      // Stacked datasets share an x position, so any visible one will do.
       let bar: { x: number, width?: number } | undefined
       for (const { index: datasetIndex } of visible) {
         const candidate = chart.getDatasetMeta(datasetIndex).data[index] as unknown as { x: number, width?: number } | undefined
@@ -385,7 +324,7 @@ export const barGapPlugin: Plugin<'bar'> = {
       if (!bar)
         continue
 
-      // bar.width comes from Chart.js internal layout
+      // bar.width is Chart.js internal layout.
       const barWidth = bar.width ?? xAxis.width / pointCount
       const x = bar.x - barWidth / 2
 
@@ -396,11 +335,7 @@ export const barGapPlugin: Plugin<'bar'> = {
   },
 }
 
-/**
- * Tooltip footer for a bar column with no data. Empty when any series has a
- * value, and empty for buckets that start in the future, since those aren't
- * gaps. Pairs with barGapPlugin, which paints the same columns.
- */
+// Must agree with barGapPlugin on which columns are gaps.
 export function barGapTooltipText(items: TooltipItem<'bar'>[]): string {
   const allNull = items.every(item => barPointY(item.raw) === null)
   if (!allNull)
@@ -414,13 +349,9 @@ export function barGapTooltipText(items: TooltipItem<'bar'>[]): string {
 }
 
 /**
- * Chart.js plugin that dims the part of a time axis that lies in the future
- * and draws a marker at the present. Windows are whole days, so a chart opened
- * mid-day would otherwise show hours of empty columns that read as missing
- * data. Does nothing when the axis ends at or before now.
- *
- * Register alongside barGapPlugin on charts that take a window:
- *   ChartJS.register(futureShadePlugin)
+ * Dims the future part of a time axis and marks the present. Windows are
+ * whole days, so a chart opened mid-day otherwise shows hours of empty columns
+ * that read as missing data.
  */
 export const futureShadePlugin: Plugin<'bar'> = {
   id: 'futureShadePlugin',
@@ -441,11 +372,9 @@ export const futureShadePlugin: Plugin<'bar'> = {
 
     ctx.save()
 
-    // Wash over the future.
     ctx.fillStyle = withAlpha(getCSSVariable('--color-bg-raised') || getCSSVariable('--color-border'), 0.35)
     ctx.fillRect(nowX, top, xAxis.right - nowX, height)
 
-    // Present marker, only when it falls inside the axis.
     if (now > xAxis.min) {
       ctx.strokeStyle = withAlpha(getCSSVariable('--color-text-lighter'), 0.8)
       ctx.lineWidth = 1
@@ -460,11 +389,6 @@ export const futureShadePlugin: Plugin<'bar'> = {
   },
 }
 
-/**
- * Returns Chart.js bar chart defaults wired to the current VUI theme.
- * Uses the timestack x-axis for clean human-readable time labels.
- * Legend and axis titles are hidden - keep charts minimal.
- */
 export function getBarChartDefaults(useUtc = false): ChartOptions<'bar'> {
   const palette = getChartPalette()
   const borderRadius = Number.parseInt(getCSSVariable('--border-radius-xs') || '3', 10)

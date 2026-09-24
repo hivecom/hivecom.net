@@ -61,7 +61,7 @@ async function addPasskey() {
     dispatchPasskeysChanged({ count: passkeys.value.length })
   }
   catch (err) {
-    // A cancelled browser prompt surfaces as an abort/NotAllowed error - keep quiet for those.
+    // A cancelled browser prompt surfaces as an abort/NotAllowed error, so stay quiet
     if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError'))
       return
 
@@ -298,7 +298,6 @@ onMounted(() => {
     </Flex>
   </Card>
 
-  <!-- Rename passkey -->
   <Modal
     :open="renameState.open"
     size="s"
@@ -342,7 +341,6 @@ onMounted(() => {
     </template>
   </Modal>
 
-  <!-- Remove passkey confirmation -->
   <ConfirmModal
     v-model:open="removeModalOpen"
     :confirm="removeSelectedPasskey"

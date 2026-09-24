@@ -43,9 +43,8 @@ function getSizePixels(size: 's' | 'm' | 'l' | number): string {
 
 const sizePixels = computed(() => getSizePixels(props.size))
 
-// Only set after preload completes - guarantees the Transition fades in a
-// fully decoded image. Uses nextTick for cache hits so the transition still
-// plays after the component mounts.
+// Only set after preload completes, so the Transition fades in a fully decoded
+// image. Cache hits go through nextTick so the transition still plays after mount.
 const visibleSrc = ref<string | null>(null)
 
 function preload(url: string) {

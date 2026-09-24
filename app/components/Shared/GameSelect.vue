@@ -28,8 +28,8 @@ const emit = defineEmits<{
 
 const searchQuery = ref('')
 
-// When onSearch is provided, parent controls the list - just return props.games as-is.
-// When onSearch is not provided, filter locally.
+// With onSearch the parent controls the list, so return props.games as-is.
+// Without it, filter locally.
 const filteredGames = computed(() => {
   if (props.onSearch)
     return props.games
@@ -42,7 +42,6 @@ const filteredGames = computed(() => {
   )
 })
 
-// Debounce timer for external search
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(searchQuery, (query) => {

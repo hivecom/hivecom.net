@@ -1,9 +1,8 @@
 import type { MetricsHistoryEntry } from '@/composables/useDataMetrics'
 import type { Tables } from '@/types/database.overrides'
 
-// Shared derivation for "what has the community been playing". Both the games
-// page section and the dashboard card read off this, so the two lists can't
-// drift into telling different stories about the same fortnight.
+// One derivation of "what has the community been playing", so every list of it
+// tells the same story.
 
 export interface NowPlayingEntry {
   game: Tables<'games'>
@@ -46,20 +45,20 @@ export function buildRecentlyPlayedMap(
         continue
 
       const existing = byGameId.get(id)
-      if (existing === undefined || capturedAt > existing.lastSeen)
+      if (existing === undefined) {
         byGameId.set(id, { lastSeen: capturedAt, peakCount: count })
-      else if (count > existing.peakCount)
-        existing.peakCount = count
+        continue
+      }
+
+      existing.lastSeen = Math.max(existing.lastSeen, capturedAt)
+      existing.peakCount = Math.max(existing.peakCount, count)
     }
   }
 
   return byGameId
 }
 
-/**
- * Games with members in them right now, busiest first. Auth-gated, since the
- * presence roster is not something signed-out visitors can read.
- */
+// Signed-out visitors can't read the presence roster.
 export function buildNowPlaying(
   currentPlayersBySteamId: Map<number, string[]>,
   games: Tables<'games'>[],

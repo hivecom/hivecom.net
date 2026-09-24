@@ -11,7 +11,6 @@ const props = defineProps<{
   // When true, render a plain (mobile) trigger instead of the tooltip button.
   mobile?: boolean
 
-  // When true, the trigger button is disabled and the sheet cannot be opened.
   disabled?: boolean
 }>()
 

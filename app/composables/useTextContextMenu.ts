@@ -12,9 +12,8 @@ export function useTextContextMenu() {
   const emojiPos = ref({ x: 0, y: 0 })
 
   // The VUI ContextMenu only closes when vueuse's onClickOutside fires. That
-  // requires a click event with detail=0 (programmatic) dispatched outside the
-  // popout AFTER the current tick - vueuse sets a same-tick dedup guard (p)
-  // that blocks a synchronous dispatch during the same click handling.
+  // needs a programmatic click outside the popout after the current tick, since
+  // vueuse's same-tick dedup guard blocks a synchronous dispatch.
   function closeMenu() {
     if (import.meta.client)
       setTimeout(() => document.body.dispatchEvent(new MouseEvent('click', { bubbles: true })), 0)

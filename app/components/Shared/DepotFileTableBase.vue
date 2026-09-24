@@ -21,26 +21,18 @@ const props = defineProps<{
   deleteFile: (objectKey: string) => Promise<void>
   perPage: number
 
-  // Gates the select column, row/bulk delete, grid + drawer delete. The Sharing
-  // table is always on (your own files); the admin table gates on moderation.
+  // Gates the select column, row/bulk delete, and grid + drawer delete.
   canManage: boolean
 
-  // Hide the uploader on the grid tiles. The Sharing page only shows the
-  // logged-in user's own files, so there's nothing to attribute.
   hideUploader?: boolean
   emptyMessage: string
   emptySearchMessage?: string
 
-  // Fixed column count for the grid view. When omitted the grid auto-fills at a
-  // 200px min, which is what the Sharing table uses. The admin table passes a
-  // count to match the Assets manager.
+  // Fixed column count for the grid view. Omitted, the grid auto-fills at a 200px min.
   gridColumns?: number
 
-  // Gap between the filter controls in the toolbar. The admin filters sit at 's';
-  // the self table packs its upload/rules/search tighter at 'xs'.
   filtersGap?: 'xs' | 's'
 
-  // The admin table renders the content type as a Badge; the self table plain.
   contentTypeBadge?: boolean
 
   // Trailing clause of the delete confirmations (after "Permanently delete X?").
@@ -48,8 +40,7 @@ const props = defineProps<{
   deleteConsequencePlural?: string
   loadErrorMessage?: string
 
-  // Extra listing params and the reactive sources that trigger a refetch (admin
-  // content-type and owner filters).
+  // Extra listing params, plus the reactive sources that trigger a refetch.
   extraParams?: () => Partial<AdminListFilesOptions>
   extraWatchSources?: WatchSource[]
 }>()
@@ -67,10 +58,8 @@ defineSlots<{
 // Bumped after a mutation so the page's KPI/quota cards refetch.
 const refreshSignal = defineModel<number>('refreshSignal', { default: 0 })
 
-// Surfaced so the self page can show the upload count; internal for admin.
 const total = defineModel<number>('total', { default: 0 })
 
-// The admin table persists this in user settings; the self table keeps it local.
 const viewMode = defineModel<'table' | 'grid'>('viewMode', { default: 'grid' })
 
 const perPage = computed(() => props.perPage)
@@ -80,8 +69,6 @@ const gridTemplate = computed(() =>
   props.gridColumns ? `repeat(${props.gridColumns}, 1fr)` : 'repeat(auto-fill, minmax(200px, 1fr))',
 )
 
-// Below the medium breakpoint the toolbar stacks into a column and its controls
-// reflow to full width, matching the Assets manager layout.
 const isBelowMedium = useBreakpoint('<m')
 
 const {
@@ -126,8 +113,7 @@ const {
   loadErrorMessage: props.loadErrorMessage,
 })
 
-// Surfaced for components that own external mutations (the Sharing table's
-// upload and wipe-all), which call these to resync after the action.
+// For components that own external mutations, so they can resync afterwards.
 defineExpose({ refresh: fetchFiles, handleUploaded, handleExternalWipe })
 </script>
 

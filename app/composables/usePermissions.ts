@@ -3,8 +3,7 @@
  *
  * Staff roles read their grants from role_permissions, fetched once per role and
  * shared by every caller. Signed-in users without a staff role get the hardcoded
- * baseline. Impersonation flows through useEffectiveRole, so the list swaps with
- * it the same way the admin layout's did.
+ * baseline. Impersonation flows through useEffectiveRole, so the list swaps with it.
  */
 import type { AppPermission } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'

@@ -25,7 +25,6 @@ const showChat = true
 
 const { signInPath } = useAuthRedirect()
 
-// Listen for auth events
 const user = useSupabaseUser()
 const { waitForSessionReady, isSessionReady } = useSessionReady()
 const authReady = ref(isSessionReady())
@@ -34,7 +33,6 @@ const route = useRoute()
 
 const isMobile = useBreakpoint('<s')
 
-// Mobile menu state
 const mobileMenuOpen = ref(false)
 
 function closeMobileMenu() {
@@ -701,11 +699,9 @@ const [DefineSearchButton, SearchButton] = createReusableTemplate()
   }
 }
 
-// On the dedicated /chat page on mobile, the page itself is the chat surface and
-// the nav sheet (ChatNavSheet) provides channel/user access, so the navbar chat
-// trigger is redundant. Hide it via the viewport media query rather than the
-// SSR-gated useBreakpoint, so a fresh load of /chat doesn't flash the button in
-// before hydration removes it. Desktop /chat keeps the disabled trigger.
+// On mobile /chat the page is the chat surface and ChatNavSheet covers navigation,
+// so hide the navbar trigger. A media query rather than the SSR-gated useBreakpoint,
+// so a fresh load doesn't flash the button before hydration.
 @media (max-width: #{$breakpoint-s - 1}) {
   .navigation.on-chat .chat-sheet {
     display: none;

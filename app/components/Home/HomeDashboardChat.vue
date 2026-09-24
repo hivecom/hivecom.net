@@ -29,35 +29,25 @@ import { getRegionFlagEmoji } from '@/lib/utils/country'
 
 dayjs.extend(relativeTime)
 
-// Chat / Voice card: where the talking is happening right now, in both places
-// we host it. Channels come from the metrics snapshot rather than the live IRC
-// connection. The chat page opens a socket when you go there, and the dashboard
-// should never be the thing that connects you. Secret channels come through
-// keyed by a hash of their name, which resolves for the ones you're in and for
-// nobody else, so the rest are dropped rather than rendered as a row of hex.
+// Channels come from the metrics snapshot, never the live IRC connection: the
+// dashboard must not be the thing that connects you.
 
 const SHOWN_CHANNELS = 4
 
 const { metrics, fetchMetrics, fetchMetricsHistoryIsolated, getCachedHistory, scheduleRefresh } = useDataMetrics()
 
-// The snapshot says who is in a channel now, the 24h history says whether it
-// said anything today. Both seed synchronously from cache, because the fetchers
-// are async even on a warm cache and that one render is the difference between
-// a returning visitor seeing the card and seeing skeletons.
+// Seeded synchronously from cache. The fetchers are async even on a warm cache,
+// and that one render decides between the card and skeletons.
 const cachedDay = getCachedHistory('24h')
 const dayHistory = ref<MetricsHistoryEntry[]>(cachedDay ?? [])
 const ircReady = ref(metrics.value !== null && cachedDay !== null)
 
-// The snapshot keeps itself current through useDataMetrics for as long as the
-// card is mounted. The history is fetched in isolation, so it has to ask.
-// Everything drawn from it is folded to the hour, so a new hour is the only
-// time it can look different; if another card holds the same window at a
-// tighter cadence the entries arrive with that fetch instead.
+// The isolated history has to ask for refreshes. It's folded to the hour, so
+// hourly is the only cadence that can change it.
 const HOUR_MS = 60 * 60 * 1000
 
 onMounted(async () => {
-  // fetchMetrics rethrows on failure, and a dead snapshot shouldn't leave the
-  // card stuck on skeletons, so it's swallowed rather than rejecting the batch.
+  // fetchMetrics rethrows, and a dead snapshot mustn't leave the card on skeletons
   const [, day] = await Promise.all([
     fetchMetrics().catch(() => null),
     fetchMetricsHistoryIsolated('24h'),
@@ -71,8 +61,7 @@ onMounted(async () => {
   }, { cadenceMs: HOUR_MS })
 })
 
-// Each bucket carries the messages sent during that bucket, so today's total is
-// the sum across the window rather than the last reading.
+// Buckets hold per-bucket message counts, so today's total is the sum
 const messagesToday = computed(() => {
   const totals = new Map<string, number>()
 
@@ -87,15 +76,12 @@ const messagesToday = computed(() => {
   return totals
 })
 
-// IRC hands names over with their '#', but a key that lost it still has to read
-// like a channel.
 function channelDisplayName(key: string): string {
   return key.startsWith('#') ? key : `#${key}`
 }
 
-// Secret channels arrive under a hash of their name. Being in one is what lets
-// you recompute that hash, so your own channels get a name here and everything
-// else stays anonymous and drops out.
+// Secret channels arrive as a hash of their name. Only members can recompute
+// it, so everyone else's secret channels stay anonymous and drop out.
 const { load: loadChannelNames, resolve: resolveChannelName } = useIrcChannelNames()
 
 onMounted(() => {
@@ -109,8 +95,7 @@ function channelName(key: string): string | null {
   return resolveChannelName(key)?.name ?? null
 }
 
-// One score per channel, then alphabetical so the tail holds still instead of
-// reshuffling every time a snapshot lands.
+// Alphabetical tie-break so the tail doesn't reshuffle on every snapshot
 const rankedChannels = computed<ChannelEntry[]>(() => {
   const here = metrics.value?.irc.byChannel ?? {}
   const keys = new Set([...Object.keys(here), ...messagesToday.value.keys()])
@@ -135,18 +120,13 @@ const rankedChannels = computed<ChannelEntry[]>(() => {
 
 const shownChannels = computed(() => rankedChannels.value.slice(0, SHOWN_CHANNELS))
 
-// The card shows the top four, the sheet shows every named channel that isn't
-// quiet.
 const channelsSheetOpen = ref(false)
 
 function openChannelsSheet(): void {
   channelsSheetOpen.value = true
 }
 
-// Clicking a channel lands you in it inside the chat sheet, the same way a
-// #channel mention does. Already in it: switch to it. Connected but not in it:
-// ask first, since joining is visible to everyone in there. Not connected: seed
-// the channel so the connect form offers it, and let the sheet take it from there.
+// Joining is visible to everyone in the channel, so a connected user gets asked first
 const { buffers, isConnected, joinChannel, setActive, seedChannel, chatSheetOpen } = useIrcChat()
 
 const pendingJoin = ref<string | null>(null)
@@ -186,10 +166,7 @@ function confirmJoin() {
   chatSheetOpen.value = true
 }
 
-// Voice servers: one row per server the snapshot reports, with its headcount.
-// The viewer on /servers/voiceservers has the channel tree; this only answers
-// "is anyone there" and hands you the door. Same five-minute check the viewer
-// runs, since without it the count is whatever was true when the page loaded.
+// Without the refresh the count is whatever was true when the page loaded
 const { data: snapshot, status: snapshotStatus } = useDataTeamSpeakSnapshot({
   refreshInterval: 5 * 60 * 1000,
 })
@@ -200,8 +177,7 @@ function serverConfig(serverId: string): ServerConfig | undefined {
   return constants.PLATFORMS?.TEAMSPEAK?.servers?.find(srv => srv.id === serverId)
 }
 
-// Music bots sit in a channel around the clock, so they'd make every server
-// look occupied. Same exclusion the viewer's total makes.
+// Music bots sit in a channel around the clock and would make every server look occupied
 function onlineCount(server: TeamSpeakServerSnapshot): number {
   const botGroup = serverConfig(server.id)?.roleMusicBotGroupId
 
@@ -221,8 +197,6 @@ interface VoiceServer {
   connectUrl: string | null
 }
 
-// Prefer the host and voice port configured for the server, and fall back to
-// the first configured URL when the snapshot reports one we have no entry for.
 function connectUrl(serverId: string): string | null {
   const matched = serverConfig(serverId)
 
@@ -248,25 +222,18 @@ const voiceServers = computed<VoiceServer[]>(() =>
     .sort((a, b) => b.online - a.online),
 )
 
-// The snapshot only fetches on the client, and the composable kicks it off from
-// its own onMounted, so it sits at idle for a render before it even goes
-// pending. Both count as "hasn't landed yet", otherwise the card flashes its
-// empty state on the way in.
+// The snapshot sits idle for a render before going pending. Both count as not
+// landed, or the card flashes its empty state.
 const voiceLoading = computed(() =>
   snapshot.value === null && (snapshotStatus.value === 'idle' || snapshotStatus.value === 'pending'),
 )
 
 const fallbackConnectUrl = computed(() => constants.PLATFORMS?.TEAMSPEAK?.urls?.[0]?.url ?? null)
 
-// Same address the chat menubar's connect guide gives out, for the hover on
-// the section label.
 const ircAddress = constants.PLATFORMS.IRC.urls.find(url => url.id === 'irc')?.url.replace('irc://', '') ?? 'irc.hivecom.net:6697'
 
-// Touch has no hover, so on a phone that hint was an icon that did nothing.
-// It's a button on every size now: the tooltip still carries the address where
-// there's a pointer to hover with, and the tap opens the same native-client
-// guide the chat menubar links to, which is what the address was for. The
-// identity modal comes along because the guide's first step points at it.
+// A button on every size, since touch has no hover for the tooltip. The guide's
+// first step points at the identity modal, so that comes along.
 const isMobile = useBreakpoint('<s')
 const nativeOpen = ref(false)
 const identityOpen = ref(false)
@@ -276,24 +243,18 @@ function openIdentityFromNative() {
   identityOpen.value = true
 }
 
-// The legend doubles as the way into the full charts: messages open the IRC
-// activity modal, voice opens the TeamSpeak one. Counts feed the modal headers
-// and pick the initial period the same way the badges elsewhere do.
 const ircModalOpen = ref(false)
 const voiceModalOpen = ref(false)
 
 const ircOnline = computed(() => metrics.value?.irc.online ?? null)
 const voiceOnline = computed(() => snapshot.value ? voiceServers.value.reduce((sum, server) => sum + server.online, 0) : null)
 
-// The modals draw on canvas, so they get the strip's colours resolved rather
-// than as var() references. Empty on the server, where nothing is drawn.
+// The modals draw on canvas, so they need resolved colours rather than var() references
 const messagesColor = computed(() => getCSSVariable('--color-text') || undefined)
 const voiceColor = computed(() => getCSSVariable('--color-text-blue') || undefined)
 
-// The last day as two strips of hourly bars, one for messages and one for
-// people in voice. The 24h history buckets by quarter hour, which is too many
-// bars for a card column, so it's folded to the hour: messages add up, voice
-// takes the busiest reading.
+// Quarter-hour buckets are too many bars for a card, so fold to the hour.
+// Messages add up, voice takes the busiest reading.
 interface HourBucket {
   start: number
   messages: number
@@ -318,8 +279,7 @@ const hourly = computed<HourBucket[]>(() => {
 const messageBars = computed(() => hourly.value.map(bucket => bucket.messages))
 const voiceBars = computed(() => hourly.value.map(bucket => bucket.voice))
 
-// "3 hours ago (19:00)": the distance is what you read, the clock time is
-// there to anchor it.
+// "3 hours ago (19:00)"
 function hourLabel(index: number): string {
   const bucket = hourly.value[index]
   if (!bucket)
@@ -383,8 +343,7 @@ function hourLabel(index: number): string {
     <HomeDashboardSkeleton v-if="voiceLoading && !voiceServers.length" variant="rows" :count="1" action />
     <HomeDashboardSection v-else label="Voice servers" to="/servers/voiceservers">
       <Flex column gap="xs">
-        <!-- The title carries the click and stretches over the row, so the
-             connect button stays a real link instead of an anchor in an anchor. -->
+        <!-- The title's click stretches over the row, so the connect button isn't an anchor in an anchor -->
         <div v-for="server in voiceServers" :key="server.id" class="home-item inline home-voice">
           <NuxtLink to="/servers/voiceservers" class="home-voice__title">
             <span v-if="server.flag" class="home-voice__flag" aria-hidden="true">{{ server.flag }}</span>
@@ -464,17 +423,14 @@ function hourLabel(index: number): string {
 </template>
 
 <style scoped lang="scss">
-// The channel tiles are buttons, so the button chrome comes off and the tile
-// draws itself the way the other cards' tiles do.
+// Strips the button chrome off the channel tiles
 .home-channel {
   font: inherit;
   color: inherit;
   text-align: left;
   cursor: pointer;
 
-  // Counts have no ceiling, so the abbreviation alone isn't a guarantee. One
-  // line per tile, clipped if it comes to that, keeps the row aligned with
-  // whatever sits next to it.
+  // Counts have no ceiling, so clip to one line to keep the row aligned
   span {
     white-space: nowrap;
     overflow: hidden;
@@ -494,7 +450,7 @@ function hourLabel(index: number): string {
   min-width: 0;
   color: inherit;
 
-  // Click target covers the row, behind the connect button that lifts above it.
+  // Covers the row, behind the connect button
   &::after {
     content: '';
     position: absolute;
@@ -513,29 +469,23 @@ function hourLabel(index: number): string {
   flex-shrink: 0;
 }
 
-// The strip sits on the card's floor at a fixed height. Growing it to fill
-// whatever the neighbours leave made it a wall when the events card ran long.
+// Fixed height. Filling the leftover space made it a wall when the events card ran long.
 .home-activity-section {
   margin-top: auto;
 }
 
-// HomeDashboardSection is `height: 100%`, which is harmless in a card sized by
-// its content and wrong the moment the card is stretched: every section
-// resolves to the full card and they all shrink from there. Size them to
-// content so the labels line up with the cards beside this one.
+// HomeDashboardSection's height: 100% resolves to the whole stretched card, so
+// size sections to content here
 .dashboard-fill > .dashboard-section {
   height: auto;
 }
 
-// Messages in the text colour, voice in VUI's blue: the voice bar is the one that means
-// someone is there to talk to, and blue keeps it off the accent the rest of
-// the dashboard uses for calls to action.
+// Blue for voice keeps it off the accent the dashboard uses for calls to action
 .home-activity {
   --histogram-color: var(--color-text);
   --histogram-secondary-color: var(--color-text-blue);
 
-  // Background until you look at it. The strip is context, not the point of
-  // the card, so it sits back and comes up under the cursor.
+  // Context rather than the point of the card, so it sits back until hovered
   opacity: 0.4;
   transition: opacity var(--transition-duration) ease;
 
@@ -566,8 +516,7 @@ function hourLabel(index: number): string {
   color: var(--color-text-lighter);
 }
 
-// Each entry is a button into its chart, so the button chrome comes off and it
-// keeps reading as a legend until hovered.
+// Each entry is a button into its chart, styled to read as a legend
 .home-activity__legend-item {
   display: inline-flex;
   align-items: center;

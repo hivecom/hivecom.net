@@ -9,8 +9,7 @@ const OPENING_DIRECTIVE_RE = /^[a-z]+\[/i
 // Named size palette
 // ------------------------------------------------------------------------
 // Each name maps to a CSS custom property defined in app/assets/index.scss.
-// Named steps are used instead of raw values so the scale can be adjusted
-// globally per theme without touching stored content.
+// Named steps keep the scale adjustable per theme without touching stored content.
 export const TEXT_SIZE_NAMES = [
   'xs',
   's',
@@ -21,12 +20,10 @@ export const TEXT_SIZE_NAMES = [
 
 export type TextSizeName = (typeof TEXT_SIZE_NAMES)[number]
 
-/** Returns the CSS custom property name for a size, e.g. "l" → "--text-size-l". */
 export function textSizeVar(name: TextSizeName): string {
   return `--text-size-${name}`
 }
 
-/** Returns the CSS value string for a size, e.g. "l" → "var(--text-size-l)". */
 export function textSizeValue(name: TextSizeName): string {
   return `var(${textSizeVar(name)})`
 }
@@ -44,10 +41,8 @@ declare module '@tiptap/core' {
 
   interface Commands<ReturnType> {
     textSize: {
-      /** Apply a named size step to the selected text, e.g. "xl". */
       setTextSize: (size: TextSizeName) => ReturnType
 
-      /** Remove the text size mark from the selection. */
       unsetTextSize: () => ReturnType
     }
   }
@@ -58,9 +53,7 @@ export const TextSize = Mark.create({
 
   priority: 900,
 
-  // Do not extend the mark when typing at its boundary. Without this,
-  // typing adjacent to a size-styled word would inherit the size, which is
-  // almost never what the user wants for an explicit size annotation.
+  // Typing next to a marked word shouldn't inherit the mark
   inclusive: false,
 
   // ---------------------------------------------------------------------------
@@ -75,7 +68,7 @@ export const TextSize = Mark.create({
           if (fromAttr !== null && fromAttr !== '' && isValidSizeName(fromAttr))
             return fromAttr
 
-          // Fallback: recover name from a CSS-variable inline style.
+          // Fall back to a CSS-variable inline style
           const raw = element.style.fontSize ?? ''
           const varMatch = CSS_VAR_SIZE_RE.exec(raw)
           const varName = varMatch?.[1] ?? null
@@ -113,7 +106,7 @@ export const TextSize = Mark.create({
           return false
         },
       },
-      // Graceful fallback for spans with a CSS-variable font-size style.
+      // Spans with only a CSS-variable font-size style
       {
         tag: 'span',
         getAttrs: (node: HTMLElement) => {
@@ -187,10 +180,8 @@ export const TextSize = Mark.create({
       if (!isValidSizeName(size))
         return undefined
 
-      // Find the closing ::: that matches this opening, accounting for nesting.
-      // A plain lazy regex ([\s\S]*?) stops at the first ::: it encounters, which
-      // is wrong when directives are stacked (e.g. :::size[xxl]:::font[serif]text::::::).
-      // We walk the string and track depth so we always find the correct outer close.
+      // A lazy regex stops at the first :::, which breaks stacked directives
+      // like :::size[xxl]:::font[serif]text::::::. Track depth to find the outer close.
       const contentStart = prefixMatch[0].length
       let depth = 1
       let i = contentStart
@@ -198,15 +189,12 @@ export const TextSize = Mark.create({
         if (src[i] === ':' && src[i + 1] === ':' && src[i + 2] === ':') {
           const after = src.slice(i + 3)
           if (OPENING_DIRECTIVE_RE.test(after)) {
-            // Another opening directive - go deeper
             depth++
             i += 3
             continue
           }
 
-          // Closing ::: - anything NOT followed by an opening-directive pattern
-          // (letters then '[') counts as a close, including bare ':::' sequences
-          // and text that happens to start with a letter but is not a directive.
+          // Any ::: not followed by `letters[` closes, including text that only looks like a directive
           if (!OPENING_DIRECTIVE_RE.test(after)) {
             depth--
             if (depth === 0) {

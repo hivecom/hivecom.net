@@ -6,7 +6,7 @@ import { useIrcChat } from '@/composables/useIrcChat'
 const { connState, connect, disconnect } = useIrcChat()
 
 // 'connecting' auto-retries on its own, so just reassure the user. 'offline' and
-// 'error' mean we gave up retrying - offer a manual retry and a way out.
+// 'error' mean we gave up retrying, so offer a manual retry and a way out.
 const stalled = computed(() => connState.value === 'offline' || connState.value === 'error')
 </script>
 

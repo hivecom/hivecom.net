@@ -1,12 +1,7 @@
 /**
- * Date formatting utilities.
- *
- * Display functions use the browser's locale via the Intl APIs so output
- * adapts automatically to the user's region and language settings.
- * Exception: relative time strings (fromNow) are always English.
- *
- * Non-display helpers (formatDateOnly, getBirthdayPatterns, isBirthdayDateToday)
- * produce locale-independent strings for inputs or database values.
+ * Display formatters use the browser's locale, except fromNow which is always
+ * English. The non-display helpers produce locale-independent strings for
+ * inputs and database values.
  */
 
 // ---------------------------------------------------------------------------
@@ -26,15 +21,10 @@ function parse(date: string | Date | null | undefined): Date | null {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns a locale-aware relative time string, e.g. "3 minutes ago" or
- * "il y a 3 minutes" for a French browser.
- * Returns an empty string for null/invalid values.
+ * English relative time, e.g. "3 minutes ago". Empty for null or invalid input.
  *
- * Pass `now` (usually the shared tick from useNow) to keep the result live.
- * Without it the value is computed once and never ages.
- *
- * `style` maps straight onto Intl: 'long' reads "3 hours ago", 'narrow' reads
- * "3h ago" for places too tight to spell it out.
+ * Pass `now`, usually the shared tick from useNow, or the value never ages.
+ * `style` 'narrow' reads "3h ago".
  */
 export function fromNow(
   date: string | Date | null | undefined,
@@ -70,7 +60,6 @@ export function fromNow(
 /**
  * Short date in locale-dependent order, e.g. "05/01/2025" (en-GB) or
  * "01/05/2025" (en-US).
- * Returns 'Unknown' for null/invalid values.
  */
 export function displayDate(date: string | Date | null | undefined): string {
   const d = parse(date)
@@ -84,10 +73,7 @@ export function displayDate(date: string | Date | null | undefined): string {
   }).format(d)
 }
 
-/**
- * Short date + time in locale-dependent format, e.g. "05/01/2025, 14:30".
- * Returns 'Unknown' for null/invalid values.
- */
+/** e.g. "05/01/2025, 14:30" */
 export function displayDateTime(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
@@ -102,10 +88,7 @@ export function displayDateTime(date: string | Date | null | undefined): string 
   }).format(d)
 }
 
-/**
- * Full date with abbreviated month name, e.g. "Jan 5, 2025" or "5 jan. 2025".
- * Returns 'Unknown' for null/invalid values.
- */
+/** e.g. "Jan 5, 2025" */
 export function fullDate(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
@@ -118,10 +101,7 @@ export function fullDate(date: string | Date | null | undefined): string {
   }).format(d)
 }
 
-/**
- * Full date with abbreviated month name and time, e.g. "Jan 5, 2025, 2:30 PM".
- * Returns 'Unknown' for null/invalid values.
- */
+/** e.g. "Jan 5, 2025, 2:30 PM" */
 export function fullDateTime(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
@@ -136,10 +116,7 @@ export function fullDateTime(date: string | Date | null | undefined): string {
   }).format(d)
 }
 
-/**
- * Full date with long month name, e.g. "January 5, 2025".
- * Returns 'Unknown' for null/invalid values.
- */
+/** e.g. "January 5, 2025" */
 export function fullDateLong(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
@@ -153,10 +130,8 @@ export function fullDateLong(date: string | Date | null | undefined): string {
 }
 
 /**
- * Calendar date with long month name, e.g. "September 1, 2026".
- * Formats in UTC so a date-only value like "2026-09-01" displays as that
- * calendar day everywhere instead of shifting with the viewer's timezone.
- * Returns 'Unknown' for null/invalid values.
+ * e.g. "September 1, 2026". Formats in UTC so a date-only value shows the same
+ * calendar day in every timezone.
  */
 export function calendarDateLong(date: string | Date | null | undefined): string {
   const d = parse(date)
@@ -171,14 +146,10 @@ export function calendarDateLong(date: string | Date | null | undefined): string
   }).format(d)
 }
 
-/**
- * Month and year only, e.g. "January 2025" or "janvier 2025".
- * Accepts a full date string, a Date object, or a "YYYY-MM" string.
- * Returns 'Unknown' for null/invalid values.
- */
+/** e.g. "January 2025". Also accepts a bare "YYYY-MM". */
 export function fullMonth(date: string | Date | null | undefined): string {
-  // Handle bare "YYYY-MM" strings without appending a time component that
-  // could shift the date across a UTC boundary into the wrong month.
+  // A bare "YYYY-MM" parses as UTC and can land in the previous month locally.
+  // Adding a time makes it parse as local.
   if (typeof date === 'string' && /^\d{4}-\d{2}$/.test(date))
     date = `${date}T00:00:00`
 
@@ -192,11 +163,7 @@ export function fullMonth(date: string | Date | null | undefined): string {
   }).format(d)
 }
 
-/**
- * Full date with weekday, abbreviated month name, and time,
- * e.g. "Monday, Jan 5, 2025, 2:30 PM" or "lundi 5 janv. 2025 à 14:30".
- * Returns 'Unknown' for null/invalid values.
- */
+/** e.g. "Monday, Jan 5, 2025, 2:30 PM" */
 export function fullDateTimeWeekday(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
@@ -212,10 +179,6 @@ export function fullDateTimeWeekday(date: string | Date | null | undefined): str
   }).format(d)
 }
 
-/**
- * Year only, e.g. "2025".
- * Returns 'Unknown' for null/invalid values.
- */
 export function yearOnly(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
@@ -226,10 +189,6 @@ export function yearOnly(date: string | Date | null | undefined): string {
   }).format(d)
 }
 
-/**
- * ISO 8601 timestamp string for display purposes, e.g. "2025-01-05T14:30:00.000Z".
- * Returns an empty string for null/invalid values.
- */
 export function timestamp(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)
@@ -238,10 +197,7 @@ export function timestamp(date: string | Date | null | undefined): string {
   return d.toISOString()
 }
 
-/**
- * The precise instant in the viewer's local time for detail tooltips, e.g.
- * "2026-09-13 10:09:18". Returns null for null/invalid values.
- */
+/** Local time for detail tooltips, e.g. "2026-09-13 10:09:18". */
 export function timestampDetail(date: string | Date | null | undefined): string | null {
   const d = parse(date)
   if (!d)
@@ -260,9 +216,8 @@ export function timestampDetail(date: string | Date | null | undefined): string 
 // ---------------------------------------------------------------------------
 
 /**
- * Serialises a Date to a YYYY-MM-DD string suitable for HTML date inputs and
- * database birthday columns. Uses local calendar values so the result matches
- * what the user sees in the date picker.
+ * YYYY-MM-DD for date inputs and birthday columns. Uses local calendar values
+ * so it matches what the date picker shows.
  */
 export function formatDateOnly(date: Date): string {
   const year = date.getFullYear()
@@ -271,11 +226,7 @@ export function formatDateOnly(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
-/**
- * Compute the set of MM-DD patterns that cover "today" across all timezones.
- * Offsets UTC by ±12 h so a birthday filter catches every user whose local
- * date is "today".
- */
+// MM-DD patterns covering "today" in every timezone, UTC plus or minus 12h.
 export function getBirthdayPatterns(): string[] {
   const now = Date.now()
   const minus12h = new Date(now - 12 * 60 * 60 * 1000)
@@ -288,24 +239,15 @@ export function getBirthdayPatterns(): string[] {
   return [...patterns]
 }
 
-/**
- * Returns true if a YYYY-MM-DD birthday string falls on "today", accounting
- * for timezone drift (±12 h around UTC).
- */
 export function isBirthdayDateToday(birthday: string | null | undefined): boolean {
   if (birthday == null || birthday === '')
     return false
 
-  const mmdd = birthday.slice(5) // "YYYY-MM-DD" → "MM-DD"
+  const mmdd = birthday.slice(5) // "YYYY-MM-DD" to "MM-DD"
   return getBirthdayPatterns().includes(mmdd)
 }
 
-/**
- * Time only in locale-aware format, e.g. "2:30 PM" (en-US) or "14:30" (en-GB).
- * Returns 'Unknown' for null/invalid values.
- *
- * Previously produced a hardcoded "HH:mm" string - now locale-aware.
- */
+/** e.g. "2:30 PM" (en-US) or "14:30" (en-GB) */
 export function formatTime(date: string | Date | null | undefined): string {
   const d = parse(date)
   if (!d)

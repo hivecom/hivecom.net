@@ -4,20 +4,11 @@ import { ref } from 'vue'
 import { usePwa } from '@/composables/usePwa'
 
 /**
- * Web Push subscription management for installed PWAs / supporting browsers.
- *
- * Handles the browser-side half of platform push notifications: feature
- * detection, permission, and (un)subscribing via the registered service
- * worker.
- *
- * Consent is per-device: a row in `user_push_subscriptions` exists only because
- * the user enabled push on that device, and unsubscribing removes it. The
- * `trigger-notification-push-send` edge function delivers to whatever rows
- * exist - there is no account-wide opt-in flag.
+ * Consent is per device: a `user_push_subscriptions` row exists only because
+ * the user enabled push on that device. `trigger-notification-push-send`
+ * delivers to whatever rows exist, and there's no account-wide opt-in flag.
  */
 
-// Convert the URL-safe base64 VAPID application server key into the byte array
-// the Push API expects.
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   // Strip any whitespace/newlines first. Safari's `atob()` is stricter than
   // Chromium's/Firefox's and throws `InvalidCharacterError` on stray whitespace,
@@ -32,15 +23,9 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return output
 }
 
-// Wait for a registration's worker to reach the `activated` state.
-//
-// `pushManager.subscribe()` requires an ACTIVE service worker. On a freshly
-// launched iOS PWA the worker is frequently still `installing`/`waiting` when we
-// reach the subscribe call (we deliberately time out `serviceWorker.ready`
-// below, since WebKit can hang it forever). Subscribing against a
-// not-yet-activated worker throws `InvalidStateError`, which surfaced to the
-// user as "Something went wrong. Please try again." Give activation a bounded
-// window to complete before continuing.
+// `pushManager.subscribe()` throws `InvalidStateError` without an active worker,
+// and on a freshly launched iOS PWA the worker is often still installing or
+// waiting. Activation gets a bounded window to complete.
 async function waitForActiveWorker(registration: ServiceWorkerRegistration): Promise<void> {
   if (registration.active)
     return
@@ -60,14 +45,9 @@ async function waitForActiveWorker(registration: ServiceWorkerRegistration): Pro
   })
 }
 
-// Resolve the active service worker registration without hanging.
-//
-// On a freshly launched iOS PWA the page often isn't controlled by the SW yet,
-// and WebKit's `navigator.serviceWorker.ready` can then never resolve. Awaiting
-// it directly (as the subscribe/refresh flows did) left the UI spinner stuck
-// forever. We register `/sw.js` (idempotent) and race `ready` against a timeout,
-// falling back to whatever registration exists, then wait for that worker to
-// activate so `pushManager.subscribe()` doesn't throw `InvalidStateError`.
+// WebKit's `serviceWorker.ready` can never resolve on a freshly launched iOS PWA
+// the SW doesn't control yet. So register `/sw.js` (idempotent), race `ready`
+// against a timeout, and fall back to whatever registration exists.
 async function getRegistration(): Promise<ServiceWorkerRegistration | null> {
   let registered: ServiceWorkerRegistration | null = null
   try {
@@ -120,7 +100,6 @@ export function usePushNotifications() {
   const config = useRuntimeConfig()
   const vapidPublicKey = config.public.vapidPublicKey
 
-  // Standalone (installed app) detection lives in the shared PWA composable.
   const { isStandalone } = usePwa()
 
   const isSupported = ref(false)
@@ -172,10 +151,8 @@ export function usePushNotifications() {
     return !error
   }
 
-  // Reconcile the DB with this device's live subscription. Handles browser
-  // subscription rotation: ensures the current endpoint is stored, and removes
-  // a rotated-away endpoint when we know it. Called on app open and in response
-  // to the SW's `pushsubscriptionchange` message.
+  // Handles browser subscription rotation: stores the current endpoint and
+  // drops a rotated-away one when it's known.
   async function reconcile(
     changed?: PushSubscriptionJSON | null,
     oldEndpoint?: string | null,
@@ -192,7 +169,7 @@ export function usePushNotifications() {
 
       const live = await registration.pushManager.getSubscription()
 
-      // No live subscription means this device isn't opted in - nothing to do.
+      // No live subscription means this device isn't opted in.
       if (!live)
         return
 

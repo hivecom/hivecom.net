@@ -62,10 +62,8 @@ const LandingHeroGlobe = defineAsyncComponent(() => import('@/components/Landing
 
 const splashMessage = ref(constants.SPLASH_MESSAGE)
 
-// Tracks the globe's actual first frame. Drives the planet ghost that holds
-// the planet's spot until the real globe resolves out of it. Fallback timeout
-// covers the case where the globe never readies (load failure, WebGL
-// unavailable) so users aren't left staring at the ghost.
+// Set on the globe's first frame so the planet ghost dissolves. The fallback timeout
+// covers a globe that never readies (load failure, no WebGL).
 const globeVisible = ref(false)
 let ghostFallbackTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -285,7 +283,6 @@ onMounted(() => {
 }
 
 .hero-overlay__stats {
-  /* margin-top: 0.5rem; */
   width: 100%;
   position: relative;
   z-index: 4;

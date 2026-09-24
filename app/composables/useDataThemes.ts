@@ -4,15 +4,13 @@ import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 import { useCache } from './useCache'
 
 const CACHE_KEY = 'themes:all'
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const CACHE_TTL = 5 * 60 * 1000
 
-// Module-level cache singleton - correct namespace and allows invalidateThemesCache()
-// to be called without instantiating the composable (matches useDataEvents pattern).
+// Module-level so invalidateThemesCache() works without instantiating the composable.
 const _themesCache = useCache(CACHE_NAMESPACES.themes)
 
 export function invalidateThemesCache(): void {
-  // Clear entire themes namespace so gallery page caches are also busted
-  // when admin writes or the theme editor saves.
+  // Clears the whole namespace so gallery page caches go too.
   _themesCache.clearCache()
 }
 

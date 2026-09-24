@@ -12,15 +12,10 @@ import { buildNowPlaying, buildRecentlyPlayedMap } from '@/lib/games/recentActiv
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
-  // Map of steam_id (number) -> array of profile_ids currently playing
+  // steam_id -> profile_ids currently playing
   currentPlayersBySteamId: Map<number, string[]>
-  // Full games list to cross-reference steam_id -> game
   games: Tables<'games'>[]
-
-  // Whether the current user is authenticated
   isLoggedIn: boolean
-
-  // Whether the presences data is still loading
   loading: boolean
 
   // Metrics history buckets for "recently played" fallback
@@ -29,16 +24,13 @@ const props = defineProps<{
 
 const isMobile = useBreakpoint('<s')
 
-// Games with live players right now (auth-gated)
 const nowPlaying = computed<NowPlayingEntry[]>(() =>
   buildNowPlaying(props.currentPlayersBySteamId, props.games, props.isLoggedIn).slice(0, 4),
 )
 
-// Set of game IDs already shown as live - used to avoid duplication
 const liveGameIds = computed(() => new Set(nowPlaying.value.map(e => e.game.id)))
 
 // Recently played games from metricsHistory (last ~14d), excluding live ones
-// We pick the most recently active bucket per game and take top results
 const recentlyPlayed = computed<RecentlyPlayedEntry[]>(() => {
   const history = props.metricsHistory
   if (!history?.length || !props.isLoggedIn)
@@ -79,7 +71,6 @@ const sheetOpen = ref(false)
 </script>
 
 <template>
-  <!-- Sign-in CTA for unauthenticated users -->
   <template v-if="!isLoggedIn">
     <Card class="recent-game-activity-signin">
       <Flex column gap="l" y-center class="recent-game-activity-signin__content">
@@ -125,14 +116,12 @@ const sheetOpen = ref(false)
     </Grid>
   </template>
 
-  <!-- Empty state: no live players and no recent history -->
   <template v-else-if="allEntries.length === 0">
     <p class="text-s text-color-lighter">
       No recent game activity to show.
     </p>
   </template>
 
-  <!-- Tiles -->
   <template v-else>
     <Flex y-center x-between gap="s" class="mb-s">
       <h3 v-if="sectionTitle" class="section-title">
@@ -172,7 +161,6 @@ const sheetOpen = ref(false)
 </template>
 
 <style lang="scss" scoped>
-// Sign-in Prompt
 .recent-game-activity-signin {
   min-height: 200px;
   border: 2px dashed var(--color-border);

@@ -34,11 +34,9 @@ defineOgImage('Default', {
 // which would shift across the UTC boundary.
 const todayKey = formatDateOnly(new Date())
 
-// Detect whether we're viewing a revision (path has 2+ segments, e.g. "terms/2026-12-01")
 const nameParts = computed(() => name.value.split('/'))
 const isRevisionPage = computed(() => nameParts.value.length > 1)
 
-// The base document name (e.g. "terms") for linking back
 const baseName = computed(() => nameParts.value[0])
 
 // The current in-effect document. On the index page this is the same document
@@ -51,7 +49,6 @@ const { data: parentContent, error: parentError } = await useAsyncData(
   { watch: [name] },
 )
 
-// For revision pages: is this document not yet in effect?
 const isFutureRevision = computed(() => {
   if (!isRevisionPage.value || !content.value?.date)
     return false
@@ -59,7 +56,6 @@ const isFutureRevision = computed(() => {
   return content.value.date >= todayKey
 })
 
-// Past revision = is a revision page, not future
 const isPastRevision = computed(() => isRevisionPage.value && !isFutureRevision.value)
 
 // Effective date of the current in-effect version, shown as its own entry on
@@ -87,7 +83,6 @@ const hasRevisions = computed(() =>
   || (isRevisionPage.value && !!currentDate.value),
 )
 
-// Diff toggle
 const diffOpen = ref(false)
 
 // On the current page: compare most recent past revision -> current.
@@ -131,8 +126,7 @@ const diffToLabel = computed(() => calendarDateLong(content.value?.date ?? null)
 
 const canDiff = computed(() => !!diffFromPath.value)
 
-// The note always lives on the "to" document (the newer version being diffed into).
-// On the current page and revision pages alike, that's content.value.
+// The note always lives on the "to" document, the newer version being diffed into
 const changeNote = computed(() => content.value?.notes ?? null)
 
 // True when a DB-level error occurred (e.g. cold-start SQLite race in dev).
@@ -213,7 +207,6 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
 
           <Divider class="my-m" />
 
-          <!-- Callout: this is a future revision, not yet in effect -->
           <Alert v-if="isFutureRevision" variant="warning" class="legal-page__callout">
             This version is not yet in effect. It will replace the
             <NuxtLink :to="`/legal/${baseName}`">
@@ -222,7 +215,6 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
             on {{ calendarDateLong(content.date) }}.
           </Alert>
 
-          <!-- Callout: current doc has upcoming changes -->
           <Alert v-else-if="!isRevisionPage && futureRevisions.length" variant="info" class="legal-page__callout">
             <template v-if="futureRevisions.length === 1">
               Updated terms will take effect on {{ calendarDateLong(futureRevisions[0]) }}.
@@ -238,11 +230,7 @@ const hasError = computed(() => !!(contentError.value ?? parentError.value))
             </template>
           </Alert>
 
-          <!-- Render the content as Prose & Vue components -->
           <ContentRenderer class="legal-page__content" :value="content" />
-
-          <!-- Seems to not be working right now -->
-          <!-- <TableOfContents :toc="content.body.toc" /> -->
 
           <div v-if="hasRevisions" id="revisions" class="legal-page__revisions">
             <div v-if="futureRevisions.length" class="legal-page__revisions-group">

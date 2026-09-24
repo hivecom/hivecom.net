@@ -2,12 +2,10 @@
 import { Button, Flex, Input } from '@dolanske/vui'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-// Define models for filter values
 const search = defineModel<string>('search', { default: '' })
 
 const isBelowMedium = useBreakpoint('<m')
 
-// Clear all filters
 function clearFilters() {
   search.value = ''
 }
@@ -15,7 +13,6 @@ function clearFilters() {
 
 <template>
   <Flex gap="s" wrap expand>
-    <!-- Search Input -->
     <Input
       v-model="search"
       placeholder="Search funding records..."
@@ -26,7 +23,6 @@ function clearFilters() {
       </template>
     </Input>
 
-    <!-- Clear filters button -->
     <Button v-if="search" :expand="isBelowMedium" @click="clearFilters">
       Clear Filters
     </Button>

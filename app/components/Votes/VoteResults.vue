@@ -24,7 +24,6 @@ const isBelowSmall = useBreakpoint('<s')
 
 <template>
   <section>
-    <!-- Hidden results message -->
     <Card
       v-if="!props.shouldShowResults"
       :class="{ 'p-l': !isBelowSmall }"
@@ -51,7 +50,6 @@ const isBelowSmall = useBreakpoint('<s')
       </Flex>
     </Card>
 
-    <!-- Loading results -->
     <Card v-else-if="props.isLoadingResults" :class="{ 'p-l': !isBelowSmall }">
       <Flex x-between y-center class="mb-m">
         <Skeleton :width="80" :height="24" :radius="4" />
@@ -68,7 +66,6 @@ const isBelowSmall = useBreakpoint('<s')
       </div>
     </Card>
 
-    <!-- Actual results -->
     <ReferendumResults
       v-else
       :referendum="props.referendum"

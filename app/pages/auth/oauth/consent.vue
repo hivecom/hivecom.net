@@ -70,7 +70,7 @@ async function ensureAuthenticatedOrRedirect() {
 
   const { data, error } = await supabase.auth.getUser()
 
-  // Treat both an explicit error and a missing user as unauthenticated - redirect to login
+  // An explicit error and a missing user both count as signed out, so redirect to login
   if (error || !data.user) {
     redirecting.value = true
     await navigateTo({
@@ -196,7 +196,6 @@ function applyDebugOptions() {
     return
   }
 
-  // Reset and reload
   loading.value = false
   errorMessage.value = ''
   void loadAuthorizationDetails()
@@ -290,7 +289,6 @@ onMounted(() => {
     <div class="animated-blob second" />
 
     <template v-if="isDev && showDebugPanel">
-      <!-- Mobile: floating button + drawer -->
       <template v-if="isBelowS">
         <Button class="debug-fab" square variant="gray" @click="debugDrawerOpen = true">
           <Icon name="ph:bug" size="20" />
@@ -337,7 +335,6 @@ onMounted(() => {
         </Drawer>
       </template>
 
-      <!-- Desktop: fixed card -->
       <Card v-else class="debug-panel">
         <template #header>
           <Flex y-center gap="m">

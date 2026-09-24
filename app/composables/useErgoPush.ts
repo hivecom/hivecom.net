@@ -2,25 +2,14 @@ import { ref, watch } from 'vue'
 import { useIrcChat } from '@/composables/useIrcChat'
 
 /**
- * Web Push for the chat server (Ergo) via the draft/webpush (soju.im/webpush)
- * IRCv3 extension.
+ * Chat push via the draft/webpush (soju.im/webpush) IRCv3 extension. Ergo is the
+ * application server: it advertises its VAPID key in the `VAPID` ISUPPORT token
+ * and takes the subscription over IRC with `WEBPUSH REGISTER`.
  *
- * Unlike `usePushNotifications` (platform notifications, signed with the app's
- * own VAPID key and delivered by a Supabase edge function), here Ergo itself is
- * the application server: it advertises its VAPID public key in the `VAPID`
- * ISUPPORT token, the client subscribes the browser to that key, and the
- * subscription is registered with Ergo over the IRC connection via
- * `WEBPUSH REGISTER`. Ergo then signs and sends push messages directly.
- *
- * This needs its own service worker registration (`/ergo-sw.js`, scope
- * `/chat-push/`) because a registration may only hold one subscription bound to
- * one applicationServerKey, and `/sw.js` already uses the app's key.
- *
- * Consent is per-device: a browser subscription exists only because the user
- * enabled chat push on this device. We persist that intent so it can be
- * re-registered automatically on each reconnect (the endpoint is stable, and
- * `WEBPUSH REGISTER` is idempotent - the server replaces any prior subscription
- * with the same endpoint).
+ * It needs its own service worker registration because a registration holds one
+ * subscription bound to one applicationServerKey, and `/sw.js` already uses the
+ * app's key. Consent is per device and persisted, so every reconnect
+ * re-registers. That's safe since WEBPUSH REGISTER is idempotent per endpoint.
  */
 
 const ERGO_SW_URL = '/ergo-sw.js'
@@ -30,10 +19,8 @@ const ENABLED_KEY = 'hivecom.chat.webpush.enabled'
 const isSupported = ref(false)
 const isSubscribed = ref(false)
 
-// Whether we've reconciled `isSubscribed` against the real browser subscription
-// at least once. Until then the initial `false` means "unknown", not
-// "unsubscribed" - banners gate on this so they don't flash for users who
-// already have push enabled.
+// Until the first reconcile against the browser, `isSubscribed` false means
+// unknown. Banners gate on this so they don't flash for users with push enabled.
 const subscriptionResolved = ref(false)
 const loading = ref(false)
 
@@ -43,7 +30,6 @@ const registeredEndpoint = ref<string | null>(null)
 
 let _orchestratorRegistered = false
 
-// Convert the URL-safe base64 VAPID key into the byte array the Push API expects.
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   // Strip any whitespace/newlines first. Safari's `atob()` is stricter than
   // Chromium's/Firefox's and throws `InvalidCharacterError` on stray whitespace.
@@ -61,7 +47,6 @@ function wantsPush(): boolean {
   return import.meta.client && localStorage.getItem(ENABLED_KEY) === 'true'
 }
 
-// Register (or fetch) the dedicated chat-push service worker.
 async function ergoRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!isSupported.value)
     return null
@@ -100,8 +85,7 @@ export function useErgoPush() {
       && 'Notification' in window
   }
 
-  // Format the subscription keys in the message-tag form the spec mandates and
-  // register the subscription with Ergo over IRC.
+  // Keys go in the message-tag form the spec mandates.
   function sendRegister(subscription: PushSubscription) {
     const json = subscription.toJSON()
     const p256dh = json.keys?.p256dh
@@ -153,11 +137,10 @@ export function useErgoPush() {
 
       localStorage.setItem(ENABLED_KEY, 'true')
 
-      // Flag the upcoming registration test push ("PING webpush", sent by Ergo
-      // before it acks a fresh endpoint) so the worker shows a welcome
-      // notification for it instead of dropping it like a keepalive. Cache API
-      // because the flag must survive the worker restarting between now and the
-      // push landing. Only set here, on user-initiated enable - reconnect and
+      // Flag the registration test push ("PING webpush", sent by Ergo before it
+      // acks a fresh endpoint) so the worker shows a welcome notification instead
+      // of dropping it like a keepalive. Cache API because the flag must survive
+      // a worker restart. Only set on user-initiated enable, so reconnect and
       // rotation re-registers stay silent.
       try {
         const cache = await caches.open('ergo-push-meta')

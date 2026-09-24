@@ -5,11 +5,9 @@ import { computeWaveform } from '@/lib/audio/waveform'
 import { formatClock } from '@/lib/utils/duration'
 
 // The SoundCloud-style waveform for the fullscreen player. Decodes the file once
-// (off the playback element, see lib/audio/decode), buckets it into bars and
-// paints them mirrored around the center line. It's a static timeline: played
-// bars sit in the accent, the rest as a dim ghost, with a playhead that tracks
-// progress. The whole strip seeks on click/drag and previews on hover. The live,
-// music-reactive piece lives in AudioSpectrum, kept separate on purpose.
+// (off the playback element, see lib/audio/decode) and paints bars mirrored around
+// the center line. The live, music-reactive piece is AudioSpectrum, kept separate
+// on purpose.
 
 const props = defineProps<{
   // Track URL. Swapping it recomputes the waveform.
@@ -43,14 +41,13 @@ let resizeObserver: ResizeObserver | null = null
 // Live pointer position as a 0..1 fraction while hovering, null otherwise.
 const hoverFraction = ref<number | null>(null)
 
-// Read the live accent so the bars track the active theme.
 function readAccent(): [number, number, number] {
   return readThemeColor('--color-accent', [167, 252, 47])
 }
 
 let accent: [number, number, number] = [167, 252, 47]
 
-// Re-read the accent and repaint when the theme flips, the way the globe does.
+// Re-read the accent and repaint when the theme flips.
 onThemeChange(() => {
   accent = readAccent()
   repaint()
@@ -147,11 +144,9 @@ function draw() {
     ctx.fillRect(x, centerY - barH, BAR_WIDTH, barH * 2)
   }
 
-  // The playhead line.
   ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
   ctx.fillRect(headX - 1, 0, 2, h)
 
-  // Hover marker.
   if (hoverX >= 0) {
     ctx.fillStyle = `rgba(${ar}, ${ag}, ${ab}, 0.6)`
     ctx.fillRect(hoverX - 0.5, 0, 1, h)
@@ -197,10 +192,8 @@ async function load() {
 
 watch(() => props.src, load, { immediate: true })
 
-// Move the playhead as playback (or a paused scrub) advances.
 watch(() => props.progress, repaint)
 
-// Turn a pointer x into a 0..1 fraction along the strip.
 function fractionFromEvent(event: PointerEvent): number | null {
   const host = wrap.value
   if (!host)
@@ -248,7 +241,6 @@ function onPointerLeave() {
   repaint()
 }
 
-// Hover time label, anchored to the cursor.
 const hoverTime = computed(() => {
   if (hoverFraction.value == null || !props.duration)
     return null
@@ -260,7 +252,6 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect()
 })
 
-// Re-bucket the bars and repaint on container resize.
 watch(wrap, (el) => {
   resizeObserver?.disconnect()
   if (!el)

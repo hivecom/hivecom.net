@@ -60,10 +60,8 @@ interface DiscordRecurrenceRule {
 }
 
 /**
- * Convert an iCal RRULE string + event start date into a Discord recurrence
- * rule object. Returns null if the rule cannot be mapped to Discord's limited
- * recurrence model (e.g. FREQ=MONTHLY;BYMONTHDAY which Discord doesn't support
- * directly - Discord only allows nth-weekday-of-month for monthly events).
+ * Returns null when Discord's recurrence model can't express the rule. Monthly
+ * events only support the nth weekday, not BYMONTHDAY.
  */
 function rruleToDiscord(
   rrule: string,
@@ -119,12 +117,12 @@ function rruleToDiscord(
   }
 
   if (freq === "MONTHLY") {
-    // Discord monthly only supports by_n_weekday (nth weekday of month),
-    // not BYMONTHDAY. Derive nth weekday from the event start date.
+    // Discord monthly only supports by_n_weekday, so derive the nth weekday from
+    // the start date
     const day = eventStart.getDay(); // 0=Sun..6=Sat
-    // Convert JS day (0=Sun) to Discord weekday enum (0=Mon, 6=Sun)
+    // JS day (0=Sun) to Discord's weekday enum (0=Mon, 6=Sun)
     const discordDay = day === 0 ? 6 : day - 1;
-    // Which occurrence of this weekday in the month (1-5)?
+    // Occurrence of this weekday in the month, 1-5
     const n = Math.ceil(eventStart.getDate() / 7);
     return {
       start,
@@ -135,7 +133,6 @@ function rruleToDiscord(
   }
 
   if (freq === "YEARLY") {
-    // Derive month and day-of-month from the event start date
     const month = eventStart.getMonth() + 1; // 1-based
     const monthDay = eventStart.getDate();
     return {

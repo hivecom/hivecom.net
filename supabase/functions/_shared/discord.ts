@@ -1,9 +1,8 @@
 // ---------------------------------------------------------------------------
 // Discord notification helper
 // ---------------------------------------------------------------------------
-// Reads the webhook URL from the DISCORD_NOTIFICATION_WEBHOOK_URL env var
-// (mapped from the vault secret system_discord_notification_webhook_url).
-// Silently no-ops when the env var is absent or set to the placeholder value.
+// DISCORD_NOTIFICATION_WEBHOOK_URL maps from the vault secret
+// system_discord_notification_webhook_url. No-ops when unset.
 
 interface DiscordEmbed {
   title?: string;

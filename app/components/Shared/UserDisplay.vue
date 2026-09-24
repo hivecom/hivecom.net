@@ -27,11 +27,10 @@ withDefaults(defineProps<Props>(), {
 <template>
   <div class="user-display" :class="{ 'user-display--inline': inline }">
     <Flex gap="s" y-center x-center class="user-display__header" inline>
-      <!-- Avatar -->
       <template v-if="!hideAvatar">
         <!-- System avatar (no userId) -->
         <Avatar v-if="!userId" :size="size" url="/icon.svg" />
-        <!-- User avatar - cache handles dedup -->
+        <!-- User avatar, deduped by the cache -->
         <UserAvatar
           v-else
           :user-id="userId"
@@ -41,7 +40,6 @@ withDefaults(defineProps<Props>(), {
         />
       </template>
 
-      <!-- Name & role -->
       <div v-if="!hideUsername" class="user-display__info">
         <Flex
           gap="xs"

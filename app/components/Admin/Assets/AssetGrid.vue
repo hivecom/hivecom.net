@@ -9,14 +9,9 @@ import { downloadAsset, formatBytes, FORUMS_BUCKET_ID, isArchiveAsset, isAudioAs
 const props = defineProps<{
   assets: StorageAsset[]
 
-  /**
-   * Number of columns in the grid. Defaults to auto-fill with 200px min.
-   */
+  /** Defaults to auto-fill with a 200px min. */
   columns?: number
 
-  /**
-   * Show delete button in the card overlay. Defaults to false.
-   */
   canDelete?: boolean
 
   /**
@@ -37,10 +32,6 @@ const props = defineProps<{
    */
   clickToPreview?: boolean
 
-  /**
-   * Hide the uploader row on each tile. The Sharing page only ever shows the
-   * logged-in user's own files, so the uploader is noise there.
-   */
   hideUploader?: boolean
 }>()
 
@@ -124,7 +115,6 @@ const { contentStyle, navStyle, reset: resetZoom } = useLightboxZoom(lightboxWra
   canPrev: () => lightboxHasPrev.value,
 })
 
-// Reset zoom/pan whenever the previewed asset changes or the lightbox closes.
 watch(lightboxIndex, resetZoom)
 
 useEventListener('keydown', (event) => {
@@ -163,11 +153,10 @@ function getUploaderId(asset: StorageAsset): string | null {
   if (typeof fromMeta === 'string' && fromMeta.length > 0 && fromMeta !== 'unknown' && fromMeta !== 'anonymous')
     return fromMeta
 
-  // Fallback: forum bucket path structure - {contextId}/{userId}/{filename}
+  // Fallback for forum bucket paths: {contextId}/{userId}/{filename}
   if (asset.bucket_id === FORUMS_BUCKET_ID) {
     const segments = asset.path.split('/').filter(Boolean)
 
-    // If a context ID is provided, only match assets under that context
     if (props.forumContextId) {
       if (segments.length >= 2 && segments[0] === props.forumContextId)
         return segments[1] ?? null

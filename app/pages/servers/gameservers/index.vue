@@ -17,7 +17,6 @@ const ChartGameserversPlayers = defineAsyncComponent(() => import('@/components/
 
 const supabase = useSupabaseClient<Database>()
 
-// Tab management
 const route = useRoute()
 const router = useRouter()
 
@@ -144,7 +143,6 @@ const filteredGameservers = computed(() => {
     return []
 
   return gameservers.value.filter((gameserver) => {
-    // Find the game object for this gameserver
     const gameObj = games.value.find(g => g.id === gameserver.game)
     const searchLower = search.value?.toLowerCase() || ''
     const matchesSearch = search.value
@@ -193,7 +191,6 @@ const filteredGames = computed(() => {
     })
     const hasGameServers = gameServers.length > 0
 
-    // Check if search matches game name/shorthand OR any server names belonging to this game
     const matchesSearch = search.value
       ? (
           game.name?.toLowerCase().includes(search.value.toLowerCase())
@@ -210,7 +207,6 @@ const filteredGames = computed(() => {
 
     return hasGameServers && matchesSearch && matchesSelectedGame
   }).sort((a, b) => {
-    // Sort games alphabetically by name
     const nameA = (a.name || '').toLowerCase()
     const nameB = (b.name || '').toLowerCase()
     return nameA.localeCompare(nameB)
@@ -222,7 +218,6 @@ const gameserversWithoutGame = computed(() => {
     return []
 
   return gameservers.value.filter((gameserver) => {
-    // Check if gameserver doesn't have a game or the game doesn't exist
     const hasNoGame = !gameserver.game || !games.value.some(game => game.id === gameserver.game)
 
     if (!hasNoGame)
@@ -277,7 +272,6 @@ function clearFilters() {
       </div>
     </section>
 
-    <!-- Tabs Navigation -->
     <Tabs v-model="activeTab" class="mb-m">
       <Tab value="library">
         Library
@@ -300,7 +294,6 @@ function clearFilters() {
     </Tabs>
 
     <div class="game-servers">
-      <!-- List View -->
       <GameListing
         v-if="activeTab === 'list'"
         :games="games"
@@ -321,7 +314,6 @@ function clearFilters() {
         @clear-filters="clearFilters"
       />
 
-      <!-- Library View -->
       <GameLibrary
         v-else-if="activeTab === 'library'"
         :games="games"

@@ -45,9 +45,8 @@ const selectedVariantWithTransition = computed({
   },
 })
 
-// Installed-app launch page. Device-local, so the control only appears when
-// we're actually running as the installed app - setting it from a browser tab
-// wouldn't carry over to the home-screen app on iOS.
+// Installed-app launch page. Device-local, so the control only appears when running
+// as the installed app. Setting it from a browser tab wouldn't carry over on iOS.
 const { isStandalone } = usePwa()
 const { startPage, setStartPage, destinations } = usePwaStartPage()
 
@@ -94,8 +93,8 @@ async function togglePushNotifications(value = false) {
     await unsubscribePush()
 }
 
-// Quick reactions - the curated emoji strip shown above the full reaction
-// picker and in chat's floating toolbar.
+// Quick reactions: the curated emoji strip above the full reaction picker and in
+// chat's floating toolbar
 const MAX_QUICK_REACTIONS = 10
 </script>
 

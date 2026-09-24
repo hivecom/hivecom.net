@@ -25,7 +25,6 @@ const refreshLogsConfig = defineModel<{ tail?: number, since?: string, from?: st
 
 const HTML_TAG_RE = /<[^>]*>/g
 
-// Log filtering state
 const logTail = ref(100)
 const logTimePeriods = [
   { label: '30 seconds', value: '30s' },
@@ -42,7 +41,6 @@ const logTimePeriods = [
 ]
 const logTimePeriod = ref<SelectOption[]>([{ label: 'All time', value: 'all' }])
 
-// Date range toggle
 const useCustomDateRange = ref(false)
 const fromDate = ref<string>('')
 const toDate = ref<string>('')
@@ -125,14 +123,12 @@ function handleRefreshLogs() {
   setTimeout(scrollLogsToBottom, 300)
 }
 
-// Auto-refresh when time period selection changes
 watch(() => logTimePeriod.value, (newValue) => {
   if (!useCustomDateRange.value && newValue && newValue.length > 0) {
     handleRefreshLogs()
   }
 }, { immediate: false })
 
-// Populate default date range values when switching to custom mode
 watch(() => useCustomDateRange.value, (newValue) => {
   if (newValue) {
     if (!fromDate.value) {
@@ -150,7 +146,6 @@ watch(() => useCustomDateRange.value, (newValue) => {
   }
 })
 
-// Scroll to bottom when logs update and are ready
 watch(
   () => props.logs,
   () => {
@@ -160,7 +155,6 @@ watch(
   { immediate: true, flush: 'post' },
 )
 
-// Scroll to bottom when the log container element mounts (card or modal)
 watch(
   [() => logsContainerRef.value, () => logsContainerModalRef.value],
   ([el, modalEl]) => {
@@ -170,7 +164,6 @@ watch(
   { flush: 'post' },
 )
 
-// Scroll to bottom when the sheet opens or logs finish loading
 watch(
   [() => props.logsLoading, () => props.logsError, () => props.containerRunning, () => props.logs],
   () => {

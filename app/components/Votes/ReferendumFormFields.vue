@@ -44,8 +44,6 @@ const endDateInvalid = computed(() =>
   && (!props.validation.date_end || !props.validation.dateRange || !props.validation.startBeforeEnd),
 )
 
-// Choices
-
 const newChoice = ref('')
 
 const isRemovingChoices = computed(() =>
@@ -90,7 +88,6 @@ function removeChoice(index: number) {
       @update:model-value="update('description', $event)"
     />
 
-    <!-- Dates -->
     <Grid :columns="isMobile ? 1 : 2" expand gap="m">
       <Flex column expand :gap="0">
         <label class="vui-label required">
@@ -150,7 +147,6 @@ function removeChoice(index: number) {
       </Flex>
     </Grid>
 
-    <!-- Options -->
     <Checkbox
       :model-value="modelValue.multiple_choice"
       name="multiple_choice"
@@ -173,7 +169,6 @@ function removeChoice(index: number) {
       </Tooltip>
     </Flex>
 
-    <!-- Choices -->
     <Flex column :gap="0" expand class="mt-s">
       <label class="vui-label required">
         Voting choices

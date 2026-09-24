@@ -93,7 +93,6 @@ function formatDate(date: string | null): string {
           <span class="link-embed__eyebrow">Event</span>
         </Flex>
 
-        <!-- Auth-gated: sign-in nudge -->
         <template v-if="data.requiresAuth">
           <Flex y-center x-between expand gap="s" class="link-embed__signin-nudge">
             <span class="link-embed__signin-nudge-text">Sign in to view this event</span>
@@ -105,7 +104,6 @@ function formatDate(date: string | null): string {
           </Flex>
         </template>
 
-        <!-- Full event content -->
         <template v-else>
           <Flex y-center gap="s">
             <span class="link-embed__title">{{ data.title }}</span>
@@ -131,7 +129,7 @@ function formatDate(date: string | null): string {
         </template>
       </Flex>
 
-      <!-- Right: countdown timer (only for upcoming/ongoing, not auth-gated) -->
+      <!-- Right: countdown timer -->
       <CountdownTimer
         v-if="!data.requiresAuth && eventStatus !== 'past' && data.date != null"
         :countdown="eventCountdown"

@@ -7,22 +7,12 @@ const isOpen = ref(false)
 const scope = ref<SearchType[] | null>(null)
 
 export function useCommand() {
-  /**
-   * Open the command modal.
-   *
-   * @param s  Optional list of entity types to restrict results to.
-   *           When omitted the modal searches across all types.
-   *
-   * @example
-   *   openCommand()                                          // global search
-   *   openCommand(['discussion', 'discussion_topic'])        // forum-scoped
-   */
+  /** Restricts results to the given entity types, or searches everything when omitted. */
   function openCommand(s?: SearchType[]) {
     scope.value = s ?? null
     isOpen.value = true
   }
 
-  /** Close the modal and reset scope. */
   function closeCommand() {
     isOpen.value = false
     scope.value = null

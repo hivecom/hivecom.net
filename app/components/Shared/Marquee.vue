@@ -41,7 +41,6 @@ let lastTimestamp: number | null = null
 const isHovering = ref(false)
 let reducedMotion = false
 
-// Drag state
 let dragStartX = 0
 let dragStartOffset = 0
 let didDrag = false
@@ -52,7 +51,6 @@ interface VelocitySample {
 }
 let velocitySamples: VelocitySample[] = []
 
-// Observers
 let resizeObserver: ResizeObserver | null = null
 let intersectionObserver: IntersectionObserver | null = null
 let isVisible = true
@@ -90,12 +88,10 @@ function normalizeOffset() {
   if (w <= 0)
     return
 
-  // Keep offset in (-w, 0] for BOTH directions. The track lays out two
-  // identical copies at [0, w] and [w, 2w], so the viewport is only guaranteed
-  // to be covered while offset <= 0 (a positive offset exposes a blank gap on
-  // the left). Direction only flips the velocity sign (see targetVelocity);
-  // subtracting whole multiples of w here never shifts the visible image
-  // because the two copies are identical and adjacent.
+  // Keep offset in (-w, 0] for BOTH directions. The track lays out two identical
+  // copies at [0, w] and [w, 2w], so the viewport is only covered while offset <= 0.
+  // Direction only flips the velocity sign (see targetVelocity), and subtracting
+  // whole multiples of w never shifts the visible image since the copies are identical.
   offset.value = ((offset.value % w) - w) % w
 }
 
@@ -141,9 +137,9 @@ function onPointerDown(e: PointerEvent) {
   if (!props.draggable)
     return
 
-  // Track start position but don't capture yet - capturing immediately
-  // redirects pointerup to this element, which causes the browser to fire
-  // click here instead of on the child target, breaking child click handlers.
+  // Track the start position but don't capture yet. Capturing immediately
+  // redirects pointerup here, so the browser fires click on this element instead
+  // of the child target and child click handlers break.
   pendingPointerId = e.pointerId
   dragStartX = e.clientX
   dragStartOffset = offset.value
@@ -163,7 +159,7 @@ function onPointerMove(e: PointerEvent) {
     if (Math.abs(dx) <= 5)
       return
 
-    // Threshold crossed - now capture and enter drag mode
+    // Threshold crossed, so capture and enter drag mode
     isDragging.value = true
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     emit('dragstart')
@@ -183,7 +179,7 @@ function onPointerUp(e: PointerEvent) {
   pendingPointerId = null
 
   if (!isDragging.value) {
-    // Clean click - emit dragend so consumers reset their wasDragged state
+    // Clean click: emit dragend so consumers reset their wasDragged state
     if (wasTracking)
       emit('dragend', { dragged: false })
     return
@@ -191,7 +187,6 @@ function onPointerUp(e: PointerEvent) {
   isDragging.value = false
   ;(e.currentTarget as HTMLElement | null)?.releasePointerCapture?.(e.pointerId)
 
-  // Compute weighted velocity from samples
   let totalDx = 0
   let totalDt = 0
   for (const s of velocitySamples) {
@@ -222,13 +217,12 @@ function onPointerLeave() {
 
 // --- Lifecycle ---
 onMounted(() => {
-  // Reduced motion check
   if (typeof window !== 'undefined' && window.matchMedia) {
     reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   }
 
-  // ResizeObserver - watches both the content copy (for the wrap width) and
-  // the container (for how many copies are needed to fill it)
+  // Watch both the content copy (for the wrap width) and the container (for how
+  // many copies are needed to fill it)
   if (contentRef.value && rootRef.value) {
     resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -250,7 +244,6 @@ onMounted(() => {
     resizeObserver.observe(rootRef.value)
   }
 
-  // IntersectionObserver
   if (trackRef.value?.parentElement) {
     intersectionObserver = new IntersectionObserver(
       (entries) => {

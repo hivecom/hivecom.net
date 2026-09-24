@@ -21,13 +21,10 @@ const props = defineProps<{
   prefill?: { name?: string, steam_id?: number }
 }>()
 
-// Define emits
 const emit = defineEmits(['save', 'delete'])
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
-// Game assets composable
 const { getGameIconUrl, getGameCoverUrl, getGameBackgroundUrl, clearGameAssets } = useDataGameAssets()
 const supabase = useSupabaseClient()
 
@@ -53,7 +50,6 @@ async function fetchSteamClientIcon(appId: string) {
   }
 }
 
-// Multiplayer mode select options
 interface SelectOption {
   label: string
   value: string
@@ -69,11 +65,9 @@ const multiplayerModeOptions: SelectOption[] = [
 const RELEASE_DATE_MIN = new Date(1970, 0, 1)
 const RELEASE_DATE_MAX = new Date(new Date().getFullYear() + 2, 11, 31)
 
-// Forum topic picker
 const { topics: forumTopics } = useDataForumTopics()
 const topicSearch = ref('')
 
-// Form state
 const gameForm = ref({
   name: '',
   shorthand: '',
@@ -90,11 +84,9 @@ const gameForm = ref({
   discussion_topic_id: '',
 })
 
-// State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 const saving = ref(false)
 
-// Asset upload state
 const assetsUploading = ref({
   icon: false,
   cover: false,
@@ -129,7 +121,6 @@ function suggestShorthand(name: string): string {
   return words.map(w => w[0]!).join('')
 }
 
-// Track whether shorthand was manually edited
 const shorthandManuallySet = ref(false)
 
 function onShorthandInput() {
@@ -141,9 +132,9 @@ function onNameInput() {
     gameForm.value.shorthand = suggestShorthand(gameForm.value.name)
 }
 
-// Shorthand availability - assets live under games/{shorthand}/ in storage,
-// so a duplicate shorthand would clobber another game's assets. Compared
-// normalized (lowercase, no whitespace), same as the save path.
+// Shorthand availability. Assets live under games/{shorthand}/ in storage, so a
+// duplicate shorthand would clobber another game's assets. Compared normalized
+// (lowercase, no whitespace), same as the save path.
 const WHITESPACE_RE = /\s+/g
 const shorthandTaken = ref(false)
 let shorthandCheckTimer: ReturnType<typeof setTimeout> | null = null
@@ -199,7 +190,6 @@ const detailsModel = computed<GameDetailsFormState>({
 
 const detailsValidation = computed(() => validateGameDetails(detailsModel.value))
 
-// Form validation
 const validation = computed(() => ({
   name: !!gameForm.value.name.trim(),
   shorthand: !shorthandTaken.value,
@@ -208,7 +198,6 @@ const validation = computed(() => ({
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
-// Topic picker computeds (depend on gameForm)
 const topicOptions = computed(() =>
   flattenTopicsTree(forumTopics.value.filter(t => !t.is_archived))
     .filter(({ topic, path }) => topicSearch.value ? searchString([topic.name, path], topicSearch.value) : true)
@@ -221,8 +210,6 @@ const selectedTopicLabel = computed(() => {
 
   return topicOptions.value.find(o => o.id === id)?.label ?? id
 })
-
-// Genre tag helpers (depend on gameForm)
 
 // Release date <-> Date bridge for the Calendar year-picker
 const releaseDateModel = computed<Date | null>({
@@ -275,7 +262,8 @@ const steamAssetLinks = computed(() => {
   }
 })
 
-// Steam asset previews - shown transparently under upload zones when no asset uploaded
+// Steam asset previews, shown semi-transparent under the upload zones until an
+// asset is uploaded.
 const steamAssetPreviews = computed(() => {
   if (!steamAssetLinks.value)
     return null
@@ -288,8 +276,8 @@ const steamAssetPreviews = computed(() => {
   }
 })
 
-// Fetch a remote image URL and upload it as a game asset.
-// For the icon, media.steampowered.com blocks cross-origin fetch, so we proxy through the edge function.
+// For the icon, media.steampowered.com blocks cross-origin fetch, so it goes
+// through the edge function.
 async function importSteamAsset(assetType: 'icon' | 'cover' | 'background', url: string) {
   let blob: Blob
   if (assetType === 'icon' && steamId.value) {
@@ -352,7 +340,6 @@ async function importAllIgdbAssets() {
 function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) {
   const overwrite = payload._overwrite ?? false
 
-  // Capture asset links so user can re-import without re-running the lookup.
   igdbAssetLinks.value = {
     igdb_id: payload.igdb_id,
     igdb_url: payload.igdb_url ?? `https://www.igdb.com/games/${payload.igdb_id}`,
@@ -360,33 +347,28 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
     background_url: payload.background_url,
   }
 
-  // name
   if (overwrite || !gameForm.value.name.trim())
     gameForm.value.name = payload.name
 
-  // shorthand - re-suggest alongside the name unless the user set it manually
+  // Re-suggest the shorthand alongside the name unless the user set it manually.
   if (!shorthandManuallySet.value && (overwrite || !gameForm.value.shorthand.trim()))
     gameForm.value.shorthand = payload.acronym?.toLowerCase() ?? suggestShorthand(payload.name)
 
-  // markdown body - summary + storyline
   const markdownParts = [payload.summary, payload.storyline].filter(Boolean)
   if (markdownParts.length > 0 && (overwrite || !gameForm.value.markdown.trim()))
     gameForm.value.markdown = markdownParts.join('\n\n')
 
-  // release_date
   if (payload.release_date && (overwrite || !gameForm.value.release_date.trim()))
     gameForm.value.release_date = payload.release_date
 
-  // website
   if (payload.website && (overwrite || !gameForm.value.website.trim()))
     gameForm.value.website = payload.website
 
-  // steam_id
   if (payload.steam_id && (overwrite || !gameForm.value.steam_id.trim()))
     gameForm.value.steam_id = payload.steam_id
 
-  // genre_tags - merge (dedupe case-insensitively); overwrite replaces, but
-  // an empty incoming list never wipes existing tags
+  // Tags merge case-insensitively. Overwrite replaces them, but an empty incoming
+  // list never wipes existing tags.
   const incomingTags = payload.genre_tags.map(t => sanitizeTag(t))
   if (overwrite) {
     if (incomingTags.length > 0)
@@ -402,7 +384,7 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
     gameForm.value.genre_tags = merged
   }
 
-  // multiplayer_modes - same merge logic
+  // multiplayer_modes merge the same way.
   const incomingModes = multiplayerModeOptions.filter(o => payload.multiplayer_modes.includes(o.value))
   if (overwrite) {
     if (incomingModes.length > 0)
@@ -418,7 +400,7 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
     gameForm.value.multiplayer_modes = merged
   }
 
-  // Import cover and background - overwrite replaces existing assets
+  // Overwrite replaces an existing cover and background.
   if (payload.cover_url && (overwrite || !assetsUrl.value.cover) && gameForm.value.shorthand)
     importRemoteAsset('cover', payload.cover_url)
 
@@ -426,7 +408,6 @@ function applyIgdbMetadata(payload: IgdbGameDetails & { _overwrite?: boolean }) 
     importRemoteAsset('background', payload.background_url)
 }
 
-// Generic remote URL -> game asset importer (shared by Steam and IGDB flows)
 async function importRemoteAsset(assetType: 'icon' | 'cover' | 'background', url: string) {
   const resp = await fetch(url)
   if (!resp.ok)
@@ -456,7 +437,6 @@ async function importAllSteamAssets() {
   }
 }
 
-// Fetch Steam client icon whenever steam_id changes
 watch(
   steamId,
   (id) => {
@@ -465,7 +445,6 @@ watch(
   { immediate: true },
 )
 
-// Update form data when game prop changes
 watch(
   () => props.game,
   async (newGame) => {
@@ -486,10 +465,9 @@ watch(
         discussion_topic_id: newGame.discussion_topic_id ?? '',
       }
 
-      // Existing game - shorthand is already set, treat as manual
+      // An existing game's shorthand counts as manually set.
       shorthandManuallySet.value = !!newGame.shorthand
 
-      // Initialize asset URLs if shorthand exists
       if (newGame.shorthand) {
         assetsUrl.value.icon = await getGameIconUrl(newGame)
         assetsUrl.value.cover = await getGameCoverUrl(newGame)
@@ -497,7 +475,6 @@ watch(
       }
     }
     else {
-      // Reset form for new game (apply prefill if provided)
       const prefillName = props.prefill?.name ?? ''
       shorthandManuallySet.value = false
       gameForm.value = {
@@ -526,7 +503,6 @@ watch(
   { immediate: true },
 )
 
-// Reset form and saving state when sheet closes
 watch(isOpen, (open) => {
   if (!open) {
     resetForm()
@@ -534,7 +510,6 @@ watch(isOpen, (open) => {
   }
 })
 
-// Re-apply prefill when it changes (e.g. opening form for a different Steam game)
 watch(
   () => props.prefill,
   (newPrefill) => {
@@ -561,13 +536,12 @@ watch(
   },
 )
 
-// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+// VUI <Select show-clear> sets the model to undefined on clear. Coerce it back to [].
 const multiplayerModesModel = computed<SelectOption[]>({
   get: () => gameForm.value.multiplayer_modes ?? [],
   set: (val) => { gameForm.value.multiplayer_modes = val ?? [] },
 })
 
-// Handle closing the sheet
 function resetForm() {
   gameForm.value = {
     name: '',
@@ -595,14 +569,12 @@ function handleClose() {
   isOpen.value = false
 }
 
-// Handle form submission
 function handleSubmit() {
   if (!isValid.value)
     return
 
   saving.value = true
 
-  // Prepare the data to save
   const gameData = {
     ...gameDetailsPayload(detailsModel.value),
     name: gameForm.value.name,
@@ -616,7 +588,6 @@ function handleSubmit() {
   emit('save', gameData)
 }
 
-// Open confirmation modal for deletion
 function handleDelete() {
   if (!props.game)
     return
@@ -624,7 +595,6 @@ function handleDelete() {
   showDeleteConfirm.value = true
 }
 
-// Perform actual deletion when confirmed
 function confirmDelete() {
   if (!props.game)
     return
@@ -632,7 +602,6 @@ function confirmDelete() {
   emit('delete', props.game.id)
 }
 
-// Handle asset upload
 async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', file: File) {
   // Save normalizes the shorthand, so storage writes have to use the same
   // value or the assets end up under a folder the game never points at.
@@ -640,7 +609,7 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
   if (!shorthand)
     return
 
-  // Uploads apply immediately - writing under a taken shorthand would
+  // Uploads apply immediately, so writing under a taken shorthand would
   // overwrite another game's assets.
   if (shorthandTaken.value) {
     assetsError.value[assetType] = 'Shorthand is already used by another game'
@@ -658,7 +627,6 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
     if (result.success && result.url) {
       assetsUrl.value[assetType] = result.url
 
-      // Clear cache for this game to ensure fresh data
       clearGameAssets(props.game?.id ?? null, shorthand)
     }
     else {
@@ -674,14 +642,12 @@ async function handleAssetUpload(assetType: 'icon' | 'cover' | 'background', fil
   }
 }
 
-// Handle asset removal
 async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
   const shorthand = normalizeShorthand(gameForm.value.shorthand)
   if (!shorthand)
     return
 
-  // Same as upload - removing under a taken shorthand would delete another
-  // game's assets.
+  // Removing under a taken shorthand would delete another game's assets.
   if (shorthandTaken.value) {
     assetsError.value[assetType] = 'Shorthand is already used by another game'
     return
@@ -695,7 +661,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
       assetsUrl.value[assetType] = null
       assetsError.value[assetType] = null
 
-      // Clear cache for this game to ensure fresh data
       clearGameAssets(props.game?.id ?? null, shorthand)
     }
     else {
@@ -779,13 +744,11 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
         />
       </Flex>
 
-      <!-- Game Details Section -->
       <Flex column gap="m" expand>
         <h4>Game Details</h4>
 
         <GameDetailsFields v-model="detailsModel" :validation="detailsValidation" />
 
-        <!-- Multiplayer modes -->
         <Flex expand>
           <Select
             v-model="multiplayerModesModel"
@@ -797,7 +760,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
           />
         </Flex>
 
-        <!-- Release year -->
         <Flex column gap="xs" expand>
           <label class="asset-label">Release Date</label>
           <Calendar
@@ -818,7 +780,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
           </Calendar>
         </Flex>
 
-        <!-- Forum topic picker -->
         <Flex column gap="xs" expand>
           <label class="asset-label">Forum Topic</label>
           <Flex gap="xs" y-center>
@@ -874,7 +835,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
         </Flex>
       </Flex>
 
-      <!-- Asset Upload Section -->
       <Flex column gap="m" expand>
         <Flex x-between y-center expand>
           <h4>Game Assets</h4>
@@ -999,7 +959,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
         <template v-if="gameForm.shorthand">
           <Flex column gap="m" expand>
             <Flex expand>
-              <!-- Icon Upload -->
               <Flex column gap="xs" expand>
                 <label class="asset-label">Game Icon</label>
                 <FileUpload
@@ -1019,7 +978,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
                 <span class="text-xs text-color-light">Recommended: 512x512px square image</span>
               </Flex>
 
-              <!-- Cover Upload -->
               <Flex column gap="xs" expand>
                 <label class="asset-label">Game Cover</label>
                 <FileUpload
@@ -1037,7 +995,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
               </Flex>
             </Flex>
 
-            <!-- Background Upload -->
             <Flex column gap="xs" expand>
               <label class="asset-label">Game Background</label>
               <FileUpload
@@ -1100,7 +1057,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
       </Flex>
     </template>
 
-    <!-- Confirmation Modal for Delete Action -->
     <ConfirmModal
       v-model:open="showDeleteConfirm"
       :confirm="confirmDelete"
@@ -1111,7 +1067,6 @@ async function handleAssetRemove(assetType: 'icon' | 'cover' | 'background') {
       :destructive="true"
     />
 
-    <!-- IGDB Metadata Lookup Modal -->
     <IGDBLookupModal
       v-model:open="igdbLookupOpen"
       :initial-name="gameForm.name"

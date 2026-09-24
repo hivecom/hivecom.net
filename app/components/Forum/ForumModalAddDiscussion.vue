@@ -45,8 +45,6 @@ const userId = useUserId()
 const discussionCache = useDiscussionCache()
 const subscriptionsCache = useDiscussionSubscriptionsCache()
 
-// Use the cached user data composable - role is already fetched and shared
-// with ForumItemActions and the parent page. No extra DB queries needed.
 const { isAdminOrMod: canUpdateDiscussions } = useEffectiveRole()
 
 const { settings } = useDataUserSettings()
@@ -90,7 +88,7 @@ watch(() => props.editedItem, (item) => {
 const injectedTopics = inject(FORUM_KEYS.forumTopics, () => ref<Tables<'discussion_topics'>[]>([]))()
 const activeTopicId = inject(FORUM_KEYS.forumActiveTopicId, () => ref<string | null>(null))()
 
-// Fall back to shared cached topics when the parent forum page hasn't provided them via inject
+// Cached topics when the forum page hasn't provided any
 const { topics: cachedTopics } = useDataForumTopics()
 const resolvedTopics = computed(() =>
   injectedTopics.value.length ? injectedTopics.value : cachedTopics.value,
@@ -99,8 +97,7 @@ const resolvedTopics = computed(() =>
 // Options to optionally select a parent topic. A 1-level deep list which
 // contains paths to possibly deeply nested topics
 const topicOptions = computed(() => {
-  // Topics that are always included regardless of lock/archive (e.g. the one
-  // already assigned to the discussion being edited).
+  // The edited discussion's own topic stays listed even when locked or archived
   const pinnedId = editedDiscussion.value?.discussion_topic_id
 
   return flattenTopicsTree(
@@ -256,9 +253,8 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
   loading.value = true
 
   try {
-    // Upload any pending blob-placeholder media before reading the markdown,
-    // otherwise blob: URLs get persisted and render as missing media. The editor
-    // surfaces its own error toast on failure, so we just abort here.
+    // Must run before reading the markdown, or blob: URLs get persisted. The
+    // editor shows its own error toast.
     const uploaded = await markdownEditor.value?.flushPendingUploads()
     if (uploaded === false) {
       loading.value = false
@@ -318,13 +314,11 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
     if (!isEditing.value && userId.value)
       subscriptionsCache.invalidateList(userId.value)
 
-    // Invalidate the old cache entry before writing the new one so stale slug
-    // and id keys don't survive a title/slug/topic change.
+    // Stale slug and id keys must not survive a title, slug or topic change
     if (isEditing.value && editedDiscussion.value) {
       discussionCache.invalidate(editedDiscussion.value.id, editedDiscussion.value.slug)
     }
 
-    // Warm the cache with the freshly saved row.
     discussionCache.set(data[0])
 
     if (payload.is_draft) {
@@ -337,7 +331,7 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
       }
       emit('draftUpdated')
 
-      // Redirect to the draft page - deferred so the modal teardown completes first
+      // Deferred so the modal teardown completes first
       await nextTick()
       await navigateTo(`/forum/${data[0].slug ?? data[0].id}`)
     }
@@ -347,22 +341,18 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
         emit('draftUpdated')
       }
 
-      // Capture old identifier now - emitting 'created' propagates the new data
-      // back up through the parent chain reactively, so editedDiscussion.value
-      // will already reflect the new slug by the time we check after nextTick.
+      // Captured before emitting 'created', which propagates the new slug into
+      // editedDiscussion by the time nextTick resolves
       const oldIdentifier = isEditing.value && editedDiscussion.value
         ? (editedDiscussion.value.slug ?? editedDiscussion.value.id)
         : null
       emit('created', data[0])
       emit('close')
 
-      // Defer navigation until after the modal has had a tick to tear down.
-      // Navigating synchronously while the modal is still mounted causes a
-      // null-node unmount crash in Vue's patch cycle.
+      // Navigating while the modal is still mounted crashes Vue's patch cycle
+      // with a null-node unmount
       await nextTick()
 
-      // Navigate to the new slug when editing and the slug changed, or to the
-      // newly published discussion when creating.
       if (oldIdentifier !== null) {
         const newIdentifier = data[0].slug ?? data[0].id
         if (oldIdentifier !== newIdentifier) {
@@ -379,10 +369,6 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
   }
 }
 
-// Draft methods - load lazily on first open rather than on every mount.
-// ForumModalAddDiscussion is always mounted on the forum page (no v-if), so
-// onBeforeMount would fire on every page render. Deferring to first open
-// eliminates the spurious draft fetch for users who never open the modal.
 // Pre-select topic when opened from a topic's action menu
 watch(() => props.open, (open) => {
   if (open && !isEditing.value && props.defaultTopicId) {
@@ -390,6 +376,8 @@ watch(() => props.open, (open) => {
   }
 }, { immediate: true })
 
+// Drafts load on first open. The modal is always mounted on the forum page, so
+// loading on mount would fetch for everyone who never opens it.
 const draftsLoaded = ref(false)
 
 watch(() => props.open, (isOpen) => {
@@ -480,11 +468,8 @@ function deleteDraft() {
     })
 }
 
-// Clear form when modal is closed, repopulate when it re-opens.
-// The editedDiscussion watcher only fires on value *changes* - if the same
-// object reference is passed on re-open (e.g. after a save that didn't change
-// the prop reference), the watcher won't re-fire and the form stays blank.
-// Watching props.open and repopulating on open covers that case.
+// Repopulate on open: the editedDiscussion watcher doesn't re-fire when the same
+// object comes back, and the form would stay blank.
 watch(() => props.open, async (isOpen) => {
   if (!isOpen) {
     Object.assign(form, {
@@ -509,8 +494,6 @@ watch(() => props.open, async (isOpen) => {
     slugTouched.value = false
   }
   else if (editedDiscussion.value) {
-    // Re-opening with an existing editedItem - force repopulate in case the
-    // object reference hasn't changed and the editedDiscussion watcher didn't fire.
     const item = editedDiscussion.value
     Object.assign(form, {
       title: item.title ?? '',

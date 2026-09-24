@@ -26,26 +26,22 @@ const externalLink = !githubRepo && data?.link ? data.link : null
 
 <template>
   <div class="relative flex flex-col w-full h-full bg-[#111111] text-white font-sans py-12 px-16 gap-4 box-border" style="font-family: 'Inter', 'Noto Sans SC', sans-serif">
-    <!-- Background light leak -->
     <img
       src="/leak.png"
       alt=""
       class="absolute top-0 left-0 w-full h-full object-cover opacity-30 mix-blend-screen"
     >
 
-    <!-- Logo -->
     <img
       src="/icon.svg"
       alt="Hivecom"
       class="absolute top-12 right-16 w-18 h-18"
     >
 
-    <!-- Section label -->
     <p class="text-2xl text-[#a7fc2f] m-0 font-semibold tracking-widest uppercase">
       Project
     </p>
 
-    <!-- Title -->
     <h1
       class="m-0 leading-tight pr-40 shrink-0 text-white"
       :class="titleFontSize"
@@ -53,7 +49,6 @@ const externalLink = !githubRepo && data?.link ? data.link : null
       {{ data?.title ?? 'Project' }}
     </h1>
 
-    <!-- Description -->
     <p
       v-if="data?.description"
       class="text-3xl text-[#aeaeae] m-0 leading-snug pr-40 grow overflow-hidden line-clamp-2"
@@ -61,13 +56,11 @@ const externalLink = !githubRepo && data?.link ? data.link : null
       {{ data.description }}
     </p>
 
-    <!-- Spacer when no description -->
     <div
       v-else
       class="grow"
     />
 
-    <!-- Tags -->
     <div
       v-if="tags"
       class="flex flex-row gap-2 flex-wrap"
@@ -81,9 +74,7 @@ const externalLink = !githubRepo && data?.link ? data.link : null
       </span>
     </div>
 
-    <!-- Meta bar -->
     <div class="flex flex-row gap-16 mt-auto pt-6 border-t border-[#242424]">
-      <!-- Owner -->
       <div
         v-if="ownerUsername"
         class="flex flex-row items-center gap-3 text-[28px] text-[#aeaeae]"
@@ -98,7 +89,6 @@ const externalLink = !githubRepo && data?.link ? data.link : null
         @{{ ownerUsername }}
       </div>
 
-      <!-- GitHub repo -->
       <div
         v-if="githubRepo"
         class="flex flex-row items-center gap-3 text-[28px] text-[#aeaeae]"
@@ -113,7 +103,6 @@ const externalLink = !githubRepo && data?.link ? data.link : null
         {{ githubRepo }}
       </div>
 
-      <!-- External link (only when no GitHub) -->
       <div
         v-else-if="externalLink"
         class="flex flex-row items-center gap-3 text-[28px] text-[#aeaeae]"

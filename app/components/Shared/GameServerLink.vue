@@ -16,7 +16,6 @@ const error = ref(false)
 
 const { get: cacheGet, set: cacheSet } = useCache({ ttl: 30 * 60 * 1000 })
 
-// Fetch gameserver data
 async function fetchGameserver() {
   if (!props.gameserverId) {
     loading.value = false
@@ -66,7 +65,6 @@ onMounted(() => {
   fetchGameserver()
 })
 
-// Watch for authentication state changes
 watch(currentUser, () => {
   fetchGameserver()
 }, { immediate: false })

@@ -59,16 +59,12 @@ const emit = defineEmits<{
   (e: 'submit'): void
 }>()
 
-// Extend the stock Image node to add loading="lazy" and decoding="async" so
-// images in the editor view defer decode and don't block the main thread.
 const LazyImage = Image.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
-      // Transient client-only id used to track a placeholder through async
-      // conversion/upload without relying on the mutable `src`. rendered: false
-      // keeps it out of the serialized HTML, and the image markdown spec only
-      // emits src/alt/title so it never leaks into stored markdown either.
+      // Client-only id that tracks a placeholder through conversion and upload,
+      // since `src` changes. Never serialized: rendered is false and markdown only emits src/alt/title.
       uploadId: {
         default: null,
         rendered: false,
@@ -91,12 +87,11 @@ const NBSP_SINGLE_RE = /&nbsp;$/
 const HTML_ANGLE_RE = /<([^>]*)>/g
 const TRAILING_WS_RE = /(\s+)$/
 const LEADING_WS_RE = /^(\s+)/
-// Matches [url](url) where the label is identical to the href - collapses to bare url
+// [url](url) where the label equals the href, collapsed to a bare url
 const SELF_LINK_RE = /\[([^\]]+)\]\(\1\)/g
 
-// Atom media nodes that share the blob-placeholder upload flow (insert a blob
-// src immediately, swap to the storage URL once uploaded). Used wherever the
-// upload bookkeeping walks the document for media to track/swap/clean up.
+// Atom media nodes on the blob-placeholder upload flow: a blob src goes in
+// immediately and gets swapped for the storage URL once uploaded.
 const MEDIA_NODE_TYPES = new Set(['image', 'video', 'audio'])
 
 // TODO: Code block highlighting & dropdown for seleting language
@@ -117,17 +112,10 @@ interface Props {
   showExpandButton?: boolean
   alwaysShowExpandButton?: boolean
 
-  /**
-   * When true, automatically opens the fullscreen editor modal on mobile
-   * breakpoints. Useful inside modals where the small editor is impractical.
-   */
   fullscreenOnMobile?: boolean
   showSubmitOptions?: boolean
 
-  /**
-   * External loading state - when true, disables the editor and shows spinner
-   * on the send button. Useful when the parent handles async work after submit.
-   */
+  /** Disables the editor and spins the send button while the parent handles async work after submit. */
   loading?: boolean
   contentRulesOverlayText?: string
 
@@ -137,15 +125,10 @@ interface Props {
    */
   mediaContext?: string
 
-  /**
-   * Optional storage bucket for uploads (defaults to forums bucket).
-   */
+  /** Defaults to the forums bucket. */
   mediaBucketId?: StorageBucketId
 
-  /**
-   * Strip EXIF and other metadata from images before upload. Defaults to true.
-   * Set to false if the original metadata must be preserved.
-   */
+  /** Strips EXIF and other image metadata before upload. Defaults to true. */
   stripImageMetadata?: boolean
 }
 
@@ -160,11 +143,8 @@ const content = defineModel<string>()
 // ---------------------------------------------------------------------------
 // Plain-text display helpers
 //
-// The content model always stores HTML angle brackets escaped as &lt;/&gt; so
-// that the markdown renderer never interprets them as real HTML.  When the user
-// switches to the plain-text textarea we decode those entities so they see
-// "<foo>" instead of "&lt;foo&gt;".  Any edits they make are re-escaped before
-// being written back into the content model, preserving the invariant.
+// The content model stores tags escaped with &lt; so the markdown renderer
+// never parses them as HTML. The textarea shows them decoded and re-escapes edits.
 // ------------------------------------------------------------------------
 const minHeightPlain = computed(() => {
   const cssValue = Number(minHeight.slice(0, -2))
@@ -173,14 +153,11 @@ const minHeightPlain = computed(() => {
   return `${cssValue - 28}px`
 })
 
-// Both directions skip code spans and fenced blocks. Markdown never decodes
-// entities inside code, so escaping there would leave the reader looking at a
-// literal "&lt;" instead of the tag they typed into their code sample.
+// Both directions skip code spans and fenced blocks, since markdown never
+// decodes entities inside code.
 //
-// Only "<" is escaped, never ">". Escaping "<" is already enough to stop the
-// renderer parsing a tag, and ">" is the blockquote marker - rewriting it to
-// "&gt;" turned every quote typed in plain-text mode into a plain paragraph,
-// and flattened rich-mode quotes on a round trip through the textarea.
+// Only "<" is escaped. That's enough to stop tag parsing, and ">" is the
+// blockquote marker: escaping it would turn every quote into a plain paragraph.
 function encodeHtmlEntities(str: string): string {
   return replaceOutsideCode(str, text =>
     text.replace(ENCODE_AMP_RE, '&amp;').replace(ENCODE_LT_RE, '&lt;'))
@@ -191,7 +168,7 @@ function decodeHtmlEntities(str: string): string {
     text.replace(DECODE_GT_RE, '>').replace(DECODE_LT_RE, '<').replace(DECODE_AMP_RE, '&'))
 }
 
-// Decoded version of `content` used exclusively by the plain-text textarea.
+// Decoded `content` for the plain-text textarea
 const plainTextContent = ref('')
 const plainTextarea = useTemplateRef<HTMLTextAreaElement>('plain-textarea')
 
@@ -218,23 +195,18 @@ const user = useSupabaseUser()
 
 const { agreed: fetchedContentRulesAgreement, markAgreed } = useContentRulesAgreement()
 
-// Flag used to suppress image-cleanup logic when content is replaced externally
-// (e.g. via the watch(content) handler). ProseMirror dispatches transactions
-// synchronously so a plain boolean is safe here.
+// Suppresses media cleanup while content is replaced externally. ProseMirror
+// dispatches transactions synchronously, so a plain boolean is safe.
 let externalContentUpdate = false
 
-/**
- * Extract the Supabase storage path from a public image URL.
- * Public URL format: {origin}/storage/v1/object/public/{bucket}/{path}
- * Returns null when the URL doesn't match our storage or bucket.
- */
+// Public URL format: {origin}/storage/v1/object/public/{bucket}/{path}
 function extractStoragePath(src: string, bucketId: string): string | null {
   const marker = `/storage/v1/object/public/${bucketId}/`
   const idx = src.indexOf(marker)
   if (idx === -1)
     return null
 
-  // Strip any query-string parameters that Supabase may append
+  // Supabase may append query params
   return decodeURIComponent((src.slice(idx + marker.length).split('?').at(0)) ?? '')
 }
 
@@ -250,55 +222,34 @@ const mathModalLatex = ref('')
 const mathModalType = ref<'inline' | 'block'>('inline')
 const mathModalEditPos = ref<number | null>(null)
 
-// YouTube modal state
 const youtubeModalOpen = ref(false)
 
-// Video modal state (insert by URL)
 const videoModalOpen = ref(false)
 
-// Pending blobs: uploadId -> { file, blobUrl }. Plain Map (not ref) - only
-// mutated imperatively. Keyed on a stable per-placeholder uploadId rather than
-// the mutable blob src so async conversion/upload can never lose track of a
-// node even if its src changes (or a src-walk fails to find it) mid-flight.
+// Keyed on uploadId because a node's blob src can change mid-conversion, and
+// a src walk that misses its node would lose the upload.
 const pendingBlobs = new Map<string, { file: File, blobUrl: string }>()
 
-// In-flight background conversions (processPendingFile). flushPendingUploads must
-// await these before snapshotting pendingBlobs - otherwise a conversion that
-// swaps a node's blob src mid-upload would leave the placeholder blob in the doc.
+// flushPendingUploads must await these before snapshotting pendingBlobs, or a
+// conversion that swaps a blob src mid-upload leaves the placeholder in the doc.
 const pendingConversions = new Set<Promise<void>>()
 
-// Per-upload progress 0-100, keyed by uploadId. ref so template can react.
+// Per-upload progress 0-100, keyed by uploadId
 const uploadProgress = ref(new Map<string, number>())
 
-// True only while flushPendingUploads is running - drives shimmer animation.
 const isUploading = ref(false)
 
-// A custom marked instance that intercepts inline HTML tokens so that raw tags
-// typed or pasted into the editor are treated as literal text rather than being
-// parsed as real HTML nodes.
-//
-// marked's inline `tag` tokenizer produces `type: "html"` tokens for anything
-// matching `<tagname ...>`. @tiptap/markdown receives those and calls
-// generateJSON() on them, which silently drops unrecognised tag names and
-// swallows their inner content (e.g. `<tag>example</tag>` → `example` or
-// nothing at all).
-//
-// The single inline extension below intercepts those tokens before marked emits
-// them and re-emits them as `type: "text"` instead, so `<foo>bar</foo>` is
-// stored as the literal visible string `<foo>bar</foo>` in the Tiptap editor.
-// getEditorMarkdown() then escapes the raw angle brackets to `&lt;`/`&gt;`
-// on the way out so the markdown renderer never interprets them as HTML.
-// Matches a line that is solely an image: ![alt](url) with optional trailing
-// whitespace. Captured groups: 1=alt, 2=url, 3=optional title.
+// A line holding only an image. Groups: 1=alt, 2=url, 3=optional title.
 const BLOCK_IMAGE_RE = /^!\[([^\]]*)\]\((\S+?)(?:\s+"([^"]*)")?\)[ \t]*(?:\n|$)/
 
+// @tiptap/markdown runs marked's inline `html` tokens through generateJSON(),
+// which drops unknown tags along with their content. This instance re-emits
+// them as text so typed tags stay literal. getEditorMarkdown() escapes them on the way out.
 const noHtmlMarked = marked.use({
   extensions: [
     {
-      // Block-level image: a line consisting of nothing but a single image
-      // token. By intercepting it here at block level we prevent marked from
-      // wrapping it in a paragraph, which would place a block `image` node
-      // inside paragraph content and violate the ProseMirror schema.
+      // Left alone, marked wraps a lone image in a paragraph, which puts a
+      // block `image` node inside paragraph content and breaks the schema.
       name: 'image',
       level: 'block',
       start(src: string) {
@@ -319,17 +270,13 @@ const noHtmlMarked = marked.use({
       },
     },
     {
-      // Inline-level HTML: intercepts marked's `tag` rule (inline HTML like
-      // `<b>`, `</em>`, `<br/>`) before it produces an `html` token.
-      // We re-emit it as a `text` token so the angle-bracket sequence is
-      // stored verbatim and never handed to @tiptap/markdown's HTML parser.
       name: 'stripInlineHtml',
       level: 'inline',
       start(src: string) {
         return src.indexOf('<')
       },
       tokenizer(src: string) {
-        // Matches any inline HTML tag: opening, closing, self-closing, or comment.
+        // Opening, closing and self-closing tags, plus comments
         const match = INLINE_HTML_TAG_RE.exec(src)
         if (match) {
           return {
@@ -347,8 +294,7 @@ const editor = useEditor({
   content: content.value,
   extensions: [
     StarterKit.configure({
-      // Links should not open on a plain click inside the editor - it's
-      // disruptive while editing. Opening is handled via the context menu.
+      // Opening on a plain click is disruptive while editing. The context menu opens links.
       link: { openOnClick: false },
     }),
     // @tiptap/markdown vendors its own copy of marked; the two instances have
@@ -357,7 +303,6 @@ const editor = useEditor({
     Markdown.configure({ marked: noHtmlMarked as any }),
     LazyImage,
     ImageGroup,
-    // Ctrl+Enter to submit
     Extension.create({
       name: 'submitShortcut',
       addKeyboardShortcuts() {
@@ -369,24 +314,16 @@ const editor = useEditor({
         }
       },
     }),
-    // Text color (triple-colon directive: :::color[name]text:::)
     TextColor,
-    // Text font family (triple-colon directive: :::font[name]text:::)
     TextFont,
-    // Text font size (triple-colon directive: :::size[name]text:::)
     TextSize,
-    // Checklist / task list support (markdown: - [ ] / - [x])
     TaskList,
     TaskItem.configure({ nested: true }),
     // User mentions
     createMentionExtension(supabase),
 
-    // Media content setting for file uploads.
-    // We roll our own plugin instead of using @tiptap/extension-file-handler
-    // because that extension returns false (not consumed) when the clipboard
-    // also contains text/html - which lets ProseMirror's default paste handler
-    // run afterward and insert a raw image link. We need to return true to
-    // fully consume the event whenever we handle the files ourselves.
+    // Not @tiptap/extension-file-handler: it returns false when the clipboard
+    // also has text/html, so ProseMirror's default paste then inserts a raw image link.
     ...(props.mediaContext
       ? [Extension.create({
           name: 'mediaUpload',
@@ -400,9 +337,8 @@ const editor = useEditor({
                     if (!cd)
                       return false
 
-                    // Collect files from both .files and .items (the latter
-                    // catches screenshots and images copied from other apps
-                    // where .files may be empty).
+                    // Screenshots and images copied from other apps can leave
+                    // .files empty and only show up in .items.
                     let files: File[] = [...cd.files]
                     if (files.length === 0) {
                       files = [...cd.items]
@@ -445,7 +381,6 @@ const editor = useEditor({
     ...(props.limit
       ? [CharacterCount.configure({ limit: props.limit })]
       : []),
-    // LaTeX math (inline & block) via KaTeX
     Mathematics.configure({
       inlineOptions: {
         onClick: (node, pos) => {
@@ -467,32 +402,24 @@ const editor = useEditor({
         throwOnError: false,
       },
     }),
-    // YouTube embeds
     Youtube.configure({
       nocookie: true,
       width: 640,
       height: 360,
       allowFullscreen: true,
     }),
-    // Uploaded video embeds (:::video {src="..."} ::: directive)
     Video,
-    // Uploaded audio embeds (:::audio {src="..."} ::: directive)
     Audio,
-    // Standalone internal link embed cards
     LinkEmbedNode,
-    // Uploaded CSV/JSON data file attachments (:::dataFile directive)
     DataFile,
-    // Spoiler / collapsible blocks via the HTML <details> element
     Details.configure({ persist: true }),
     DetailsSummary,
     DetailsContent,
-    // Tables
     Table.configure({ resizable: false }),
     TableRow,
     TableHeader,
     TableCell,
-    // Decorate #channel mentions so they are visually distinct while editing.
-    // This is purely cosmetic - the stored markdown remains plain #channelname text.
+    // Cosmetic only. Stored markdown keeps #channel mentions as plain text.
     Extension.create({
       name: 'channelMentionDecoration',
       addProseMirrorPlugins() {
@@ -527,15 +454,10 @@ const editor = useEditor({
   ],
   contentType: 'markdown',
   onCreate: () => {
-    // Patch MarkdownManager.renderNodesWithMarkBoundaries to compare mark attrs,
-    // not just mark types. The library's findMarksToClose / findMarksToCloseAtEnd
-    // only check whether the same mark *type* exists on the next text node. When
-    // two adjacent nodes carry the same mark type with different attrs (e.g.
-    // textColor red → orange), the library never closes the first mark or opens
-    // the second, producing merged output like :::color[red]Testing::: instead of
-    // :::color[red]Test::::::color[orange]ing:::. Patching the instance method is
-    // the least invasive fix since the standalone helper functions called inside
-    // the method can't be swapped individually.
+    // Upstream only compares mark types at boundaries, so adjacent red and orange
+    // textColor merge into :::color[red]Testing::: instead of
+    // :::color[red]Test::::::color[orange]ing:::. The helpers it calls can't be
+    // swapped individually, so the instance method gets patched to compare attrs.
     if (editor.value?.markdown) {
       const mgr = editor.value.markdown as unknown as {
         renderNodesWithMarkBoundaries: (
@@ -566,8 +488,7 @@ const editor = useEditor({
         separator = '',
         level = 0,
       ): string => {
-        // Check whether any node pair has same-type-different-attrs marks.
-        // If not, skip the patch entirely and use the original (faster) path.
+        // Fast path: no adjacent pair has same-type marks with different attrs
         let needsPatch = false
         for (let idx = 0; idx < nodes.length - 1; idx++) {
           const a = nodes[idx]
@@ -606,8 +527,6 @@ const editor = useEditor({
               ((node.marks ?? []) as MarkEntry[]).map(m => [m.type, m]),
             )
 
-            // Determine which active marks need closing: mark absent from
-            // current node OR same type but attrs changed.
             const toClose: string[] = []
             for (const [type, activeMark] of activeMarks) {
               const cur = currentMarks.get(type)
@@ -615,8 +534,6 @@ const editor = useEditor({
                 toClose.push(type)
             }
 
-            // Determine which current marks need opening: not active, or
-            // active with different attrs (i.e. was just closed above).
             const toOpen: Array<{ type: string, mark: MarkEntry }> = []
             for (const [type, mark] of currentMarks) {
               const active = activeMarks.get(type)
@@ -624,7 +541,7 @@ const editor = useEditor({
                 toOpen.push({ type, mark })
             }
 
-            // Close marks (reverse order for proper nesting)
+            // Close in reverse order for proper nesting
             let trailingWs = ''
             if (toClose.length > 0) {
               const wsMatch = text.match(TRAILING_WS_RE)
@@ -641,7 +558,6 @@ const editor = useEditor({
               activeMarks.delete(type)
             }
 
-            // Open marks
             let leadingWs = ''
             if (toOpen.length > 0) {
               const wsMatch = text.match(LEADING_WS_RE)
@@ -658,8 +574,6 @@ const editor = useEditor({
             }
             text = leadingWs + text
 
-            // Close marks that shouldn't persist to the next node: mark not
-            // on the next node at all, or same type but different attrs.
             const toCloseAtEnd: string[] = []
             for (const [type, activeMark] of activeMarks) {
               const nextMarks = (nextNode?.marks ?? []) as MarkEntry[]
@@ -715,9 +629,7 @@ const editor = useEditor({
       }
     }
 
-    // Synchronise the Vue-level empty flag once the editor is fully initialised.
-    // Using nextTick ensures EditorContent has attached the view to the visible
-    // DOM so any subsequent reactive renders see the correct state.
+    // Wait a tick so EditorContent has attached the view to the DOM
     nextTick(() => {
       editorIsEmpty.value = editor.value?.isEmpty ?? true
     })
@@ -725,21 +637,13 @@ const editor = useEditor({
   onUpdate: () => {
     editorIsEmpty.value = editor.value?.isEmpty ?? true
 
-    // @tiptap/extension-paragraph serialises an empty paragraph as "&nbsp;"
-    // so that round-trip parsing keeps the paragraph intact. We never want
-    // that sentinel to leak into the content model – an empty editor should
-    // always produce an empty string. getEditorMarkdown() strips the sentinel
-    // from both fully-empty editors and trailing empty paragraphs.
+    // getEditorMarkdown() keeps the empty-paragraph "&nbsp;" sentinel out of the model
     content.value = getEditorMarkdown()
   },
   onTransaction: ({ transaction }) => {
-    // Only act when the doc actually changed, we have a media context, and
-    // this isn't a programmatic content replacement.
     if (!transaction.docChanged || !props.mediaContext || externalContentUpdate)
       return
 
-    // Collect image, video and audio media nodes (src + transient uploadId)
-    // present in the document before this transaction.
     const prevNodes = new Map<string, string | null>()
     transaction.before.descendants((node) => {
       if (MEDIA_NODE_TYPES.has(node.type.name) && typeof node.attrs.src === 'string')
@@ -749,14 +653,13 @@ const editor = useEditor({
     if (prevNodes.size === 0)
       return
 
-    // Collect media srcs present in the document after this transaction
     const nextSrcs = new Set<string>()
     transaction.doc.descendants((node) => {
       if (MEDIA_NODE_TYPES.has(node.type.name) && typeof node.attrs.src === 'string')
         nextSrcs.add(node.attrs.src)
     })
 
-    // For every src that disappeared, attempt to remove it from storage
+    // Media removed from the doc gets removed from storage
     for (const [src, uploadId] of prevNodes) {
       if (nextSrcs.has(src))
         continue
@@ -791,44 +694,23 @@ const editor = useEditor({
   },
 })
 
-/**
- * Tiptap's markdown serializer emits "&nbsp;" for every empty paragraph so
- * that the paragraph survives a round-trip through the parser. This is fine
- * for the editor's internal use, but we must never let that sentinel leak into
- * the content model that is stored/displayed outside the editor.
- *
- * This helper strips any trailing "&nbsp;" (with optional preceding newlines)
- * that the serializer appended, then falls back to an empty string when the
- * result is blank – matching what the `isEmpty` fast-path already does for a
- * fully-empty editor.
- */
 function getEditorMarkdown(): string {
   if (!editor.value || editor.value.isEmpty)
     return ''
 
   const raw = editor.value.getMarkdown() ?? ''
 
-  // @tiptap/extension-paragraph emits "&nbsp;" for every empty paragraph -
-  // not just the trailing one - so we must replace all of them.
-  // A line whose only content is "&nbsp;" represents an empty paragraph;
-  // replace it with a genuinely empty line so the plain-text view is clean.
-  // We also strip a lone trailing "&nbsp;" that has no preceding newline
-  // (single-paragraph empty doc edge-case).
+  // @tiptap/extension-paragraph serialises every empty paragraph as "&nbsp;"
+  // so it survives a round trip. That sentinel must never reach the content model.
   const stripped = raw
     .replace(NBSP_TRAILING_RE, '')
     .replace(NBSP_SINGLE_RE, '')
 
-    // Collapse [url](url) self-links (label === href) to bare URLs so that
-    // the markdown renderer can promote standalone internal links to rich embeds.
+    // Bare URLs let the markdown renderer promote standalone internal links to embeds
     .replace(SELF_LINK_RE, '$1')
 
-  // Escape any HTML tag-like sequences (<...>) so they are stored and rendered
-  // as visible literal text rather than being interpreted as HTML by the
-  // markdown renderer. Tiptap now stores these as raw angle-bracket text nodes
-  // (the noHtmlMarked inline interceptor prevents them from being parsed as
-  // real HTML on input), so we must re-escape them on the way out. Code spans
-  // and fenced blocks are left alone - the renderer already shows those
-  // verbatim, and escaping them puts a literal "&lt;" on the page.
+  // Tiptap holds typed tags as raw text, so escape them for the renderer. Code
+  // is left alone because the renderer shows it verbatim.
   const escaped = replaceOutsideCode(stripped, text => text.replace(HTML_ANGLE_RE, '&lt;$1&gt;'))
 
   return escaped.trim() === '' ? '' : escaped
@@ -843,23 +725,11 @@ const avgUploadProgress = computed(() => {
   return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
 })
 
-// Upload file into the bucket and set the editor node URL.
-//
-// Strategy: insert a blob URL placeholder immediately so the user sees a
-// preview (image) or spinner (video) while the upload is in-flight.  When the
-// upload completes we swap the blob src for the real Supabase URL in-place
-// using updateAttributes.  On failure we delete the placeholder node.
-//
-// The blob URL is intentionally NOT a Supabase storage URL, so extractStoragePath
-// returns null for it and the onTransaction cleanup handler leaves it alone.
-// Background conversion/compression for a single file. Runs AFTER the
-// placeholder has been inserted so the user sees an immediate preview, then
-// swaps the placeholder's blob src to the optimised bytes when ready.
+// Runs after the placeholder is in so the preview shows immediately, then
+// swaps the placeholder's blob src to the optimised bytes.
 async function processPendingFile(originalFile: File, uploadId: string, currentBlobUrl: string, skipImageProcessing: boolean) {
-  // Always convert raster images to WebP - it's a format/size optimisation
-  // that benefits every upload regardless of the metadata-stripping preference.
-  // Exceptions: GIF (canvas round-trip drops animation), WebP (already optimal),
-  // and video/audio (no image processing applies - uploaded as-is).
+  // WebP conversion ignores the metadata-stripping preference. GIF is skipped
+  // because the canvas round trip drops animation.
   const shouldConvert = !skipImageProcessing
     && originalFile.type !== 'image/gif'
     && originalFile.type !== 'image/webp'
@@ -909,15 +779,10 @@ async function processPendingFile(originalFile: File, uploadId: string, currentB
     }
   }
 
-  // No transformation - placeholder already points at the right bytes.
   if (file === originalFile)
     return
 
-  // Find the placeholder node (it may have been deleted while we were
-  // converting). We match on the transient uploadId rather than the mutable
-  // src so the walk can never miss its own node, even on a slow device where
-  // the src may have changed underneath us. If found, swap its src to the
-  // optimised blob URL.
+  // The placeholder may have been deleted while converting
   const newBlobUrl = URL.createObjectURL(file)
   let swapped = false
   if (editor.value) {
@@ -941,14 +806,10 @@ async function processPendingFile(originalFile: File, uploadId: string, currentB
   }
 
   if (swapped) {
-    // Bookkeeping is keyed on uploadId, so we only update the stored blobUrl /
-    // file - the key stays stable across the conversion swap.
     pendingBlobs.set(uploadId, { file, blobUrl: newBlobUrl })
     rememberPendingMedia(newBlobUrl, file)
   }
   else {
-    // Placeholder gone (user deleted it) - drop the converted blob and the
-    // pending entry entirely.
     URL.revokeObjectURL(newBlobUrl)
     pendingBlobs.delete(uploadId)
     uploadProgress.value.delete(uploadId)
@@ -962,18 +823,9 @@ function handleFileUpload(files: File[] | null, pos?: number) {
   if (!files || files.length === 0)
     return
 
-  // Two-phase upload to keep the UI responsive on slow devices:
-  //
-  // Phase 1 (sync): insert a placeholder for every file using a blob URL from
-  // the ORIGINAL file so the user sees a preview immediately, even when image
-  // conversion takes seconds on mobile. Inserting all placeholders synchronously
-  // also fixes a multi-image "glitching" bug where parallel async conversion
-  // would scramble insertion order and stack placeholders at the same position.
-  //
-  // Phase 2 (async, fire-and-forget): run conversion/compression for each file
-  // in the background and swap the placeholder's blob src to the optimised
-  // bytes when ready. flushPendingUploads (on submit) reads from pendingBlobs,
-  // which processPendingFile keeps up to date.
+  // Placeholders go in synchronously from the original files, so the preview
+  // shows before conversion finishes (seconds on mobile). Inserting them async
+  // scrambles the order of a multi-image drop and stacks them on one position.
   let nextPos = pos ?? editor.value?.state.selection.anchor ?? 0
   const queue: Array<{ originalFile: File, uploadId: string, blobUrl: string, skipImageProcessing: boolean }> = []
 
@@ -988,23 +840,14 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     const isAudio = allowedAudioTypes.includes(originalFile.type)
     const nodeType = isVideo ? 'video' : isAudio ? 'audio' : 'image'
 
-    // Video and audio upload as-is; only images go through conversion/strip.
     const skipImageProcessing = isVideo || isAudio
 
-    // Use the original file's blob URL as the immediate placeholder so we don't
-    // block on conversion. processPendingFile swaps this for the optimised blob.
     const blobUrl = URL.createObjectURL(originalFile)
 
-    // Stable, transient id stamped onto the placeholder node. All pending-upload
-    // bookkeeping is keyed on this rather than the mutable src, so async
-    // conversion/upload can never lose track of the node. It is NOT serialized
-    // into the stored markdown/HTML (rendered: false on the node attribute).
     const uploadId = crypto.randomUUID()
 
-    // Insert the placeholder without selecting it - we don't want the bubble
-    // menu popping up mid-upload. CSS targets img[src^="blob:"] / video[src^="blob:"]
-    // to show a shimmer during the actual storage upload. Only focus on the
-    // final insertion to avoid soft-keyboard flicker on mobile.
+    // No selection, so the bubble menu stays closed mid-upload. Only the last
+    // insert focuses, to avoid soft-keyboard flicker on mobile.
     const chain = editor.value
       .chain()
       .insertContentAt(nextPos, {
@@ -1017,13 +860,10 @@ function handleFileUpload(files: File[] | null, pos?: number) {
     else
       chain.run()
 
-    // image / video / audio atom nodes have nodeSize 1; advance so the next
-    // iteration inserts after this placeholder rather than on top of it.
+    // Media atoms have nodeSize 1
     nextPos += 1
 
-    // Register as pending immediately - this gates the submit button via
-    // hasPendingUploads. processPendingFile will replace the file ref with
-    // the optimised bytes when ready.
+    // Registering now gates the submit button through hasPendingUploads
     pendingBlobs.set(uploadId, { file: originalFile, blobUrl })
     rememberPendingMedia(blobUrl, originalFile)
     uploadProgress.value.set(uploadId, 0)
@@ -1033,11 +873,6 @@ function handleFileUpload(files: File[] | null, pos?: number) {
 
   uploadProgress.value = new Map(uploadProgress.value)
 
-  // Fire-and-forget conversion. Each call independently updates pendingBlobs
-  // and the editor node when its optimised bytes are ready. We track each
-  // promise so flushPendingUploads can await any in-flight conversions before
-  // snapshotting pendingBlobs (otherwise it may upload against a stale blob URL
-  // that the conversion has since swapped out, leaving a blob: src in the doc).
   for (const item of queue) {
     const conversion = processPendingFile(item.originalFile, item.uploadId, item.blobUrl, item.skipImageProcessing)
       .finally(() => pendingConversions.delete(conversion))
@@ -1047,10 +882,8 @@ function handleFileUpload(files: File[] | null, pos?: number) {
 
 // Converts the FileList from @input event into a File[]
 
-// Explicit mime -> file extension map. file.type.split('/')[1] is wrong for a
-// few common types (image/svg+xml -> "svg+xml", video/quicktime -> "quicktime")
-// and yields undefined for an empty type. processPendingFile converts most
-// rasters to image/webp, so webp is the common case.
+// file.type.split('/')[1] is wrong for image/svg+xml and video/quicktime, and
+// undefined for an empty type.
 const MIME_EXTENSION_MAP: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/jpg': 'jpg',
@@ -1085,8 +918,6 @@ const UPLOAD_TIMEOUT_MS = 30_000
 const UPLOAD_RETRY_BACKOFF_MS = 1_000
 
 async function flushPendingUploads(): Promise<boolean> {
-  // Wait for any background conversions to finish so pendingBlobs and the
-  // editor node srcs are stable before we snapshot and upload.
   if (pendingConversions.size > 0)
     await Promise.allSettled([...pendingConversions])
 
@@ -1095,11 +926,8 @@ async function flushPendingUploads(): Promise<boolean> {
 
   isUploading.value = true
 
-  // Freeze the document while uploading. pointer-events: none only blocks the
-  // mouse - a focused ProseMirror still accepts keyboard input - so without this
-  // a concurrent edit could swap a node's blob src out from under us mid-upload
-  // (the same class of race as the background-conversion bug). Disabling editing
-  // guarantees node srcs still match their blob URLs when we do the final swap.
+  // pointer-events: none only blocks the mouse. A focused ProseMirror still takes
+  // keys, and an edit mid-upload could swap a blob src out before the final swap.
   const editorRef = editor.value
   const wasEditable = editorRef?.isEditable ?? true
   editorRef?.setEditable(false)
@@ -1107,11 +935,8 @@ async function flushPendingUploads(): Promise<boolean> {
   try {
     const entries = [...pendingBlobs.entries()]
 
-    // Phase 1: upload every pending blob in parallel. The doc is NOT touched
-    // here - we only collect the resulting public URL keyed by the placeholder's
-    // stable uploadId (NOT the mutable src, which an in-flight conversion may
-    // have changed). Each upload is retried a few times behind a timeout so a
-    // stalled mobile request fails fast and retries instead of hanging forever.
+    // Upload in parallel without touching the doc. A stalled mobile request
+    // times out and retries instead of hanging.
     const results = await Promise.all(
       entries.map(async ([uploadId, { file, blobUrl }]) => {
         const format = extensionForMime(file.type)
@@ -1119,10 +944,8 @@ async function flushPendingUploads(): Promise<boolean> {
         let lastError: { message: string } | null = null
         let fileUrl = ''
         for (let attempt = 0; attempt < UPLOAD_MAX_ATTEMPTS; attempt++) {
-          // Fresh path per attempt so a retry never collides with a previous
-          // attempt that stalled past the timeout but still succeeded
-          // server-side (same-path re-upload would 409 and fail the post). A
-          // timed-out-but-succeeded attempt just leaves a harmless orphan.
+          // Fresh path per attempt: a timed-out attempt can still succeed
+          // server-side, and a same-path retry would 409. The orphan is harmless.
           fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${format}`
 
           // storage-js upload() does not accept an abort signal, so race it
@@ -1156,7 +979,6 @@ async function flushPendingUploads(): Promise<boolean> {
               clearTimeout(timeoutId)
           }
 
-          // Back off briefly before retrying (skip the wait after the last try).
           if (attempt < UPLOAD_MAX_ATTEMPTS - 1)
             await new Promise(resolve => setTimeout(resolve, UPLOAD_RETRY_BACKOFF_MS * (attempt + 1)))
         }
@@ -1169,7 +991,7 @@ async function flushPendingUploads(): Promise<boolean> {
           return { uploadId, blobUrl, publicUrl: null as string | null }
         }
 
-        // Set progress to 100 on success (no onUploadProgress in this storage-js version)
+        // No onUploadProgress in this storage-js version
         uploadProgress.value.set(uploadId, 100)
         uploadProgress.value = new Map(uploadProgress.value)
 
@@ -1178,9 +1000,7 @@ async function flushPendingUploads(): Promise<boolean> {
       }),
     )
 
-    // Phase 2: swap every successfully-uploaded placeholder to its public URL in
-    // a single synchronous transaction, after all network is done. We match on
-    // the stable uploadId rather than the src so the swap cannot miss its node.
+    // Swap every uploaded placeholder in one transaction once the network is done
     const urlMap = new Map(
       results
         .filter((r): r is { uploadId: string, blobUrl: string, publicUrl: string } => r.publicUrl !== null)
@@ -1197,7 +1017,6 @@ async function flushPendingUploads(): Promise<boolean> {
               if (publicUrl) {
                 tr.setNodeAttribute(nodePos, 'src', publicUrl)
 
-                // Clear the transient id now that the node points at storage.
                 tr.setNodeAttribute(nodePos, 'uploadId', null)
               }
             }
@@ -1207,8 +1026,7 @@ async function flushPendingUploads(): Promise<boolean> {
         .run()
     }
 
-    // Clean up pending state for successful uploads. Failed entries are kept in
-    // pendingBlobs so the user can retry on the next submit.
+    // Failed entries stay in pendingBlobs so the next submit retries them
     for (const r of results) {
       if (r.publicUrl !== null) {
         URL.revokeObjectURL(r.blobUrl)
@@ -1222,12 +1040,8 @@ async function flushPendingUploads(): Promise<boolean> {
     if (!results.every(r => r.publicUrl !== null))
       return false
 
-    // Fail-closed safety net: even if every reported upload "succeeded", refuse
-    // to let the post proceed while ANY media node still points at a blob: URL.
-    // This catches the case where a node's src was never swapped (e.g. a
-    // conversion walk that failed to find its node on a slow device), which
-    // would otherwise ship a broken image. Both consumer paths abort the post
-    // when this returns false; the failed entries stay in pendingBlobs.
+    // Fail closed: any media still on a blob: URL would ship as a broken image,
+    // even when every upload reported success.
     let hasBlobRemaining = false
     editorRef?.state.doc.descendants((node) => {
       if (hasBlobRemaining)
@@ -1262,8 +1076,6 @@ function handleReplacePendingBlob(oldBlobUrl: string, newFile: File) {
 
   const newBlobUrl = URL.createObjectURL(newFile)
 
-  // Locate the placeholder by its current blob src and read its stable uploadId,
-  // which keys all pending-upload bookkeeping. Swap the src to the new blob.
   let uploadId: string | null = null
   editor.value.state.doc.descendants((node, nodePos) => {
     if (uploadId !== null)
@@ -1317,12 +1129,9 @@ async function resolveOrphanMedia(src: string): Promise<AdoptedMedia | null> {
   return null
 }
 
-// Content loaded from outside the editor can carry blob: media this instance
-// never registered: a reply draft restored after the tab closed, the fullscreen
-// editor opening on the same content, or a plain-text round trip that rebuilt
-// every node without its uploadId. Link each one back to its file so it uploads
-// on submit. Media whose file is gone gets removed, since posting it would only
-// store a dead link.
+// Content from outside the editor (a restored draft, the fullscreen editor, a
+// plain-text round trip) can carry blob: media this instance never registered.
+// Link each back to its file so it uploads on submit. Media whose file is gone gets removed.
 async function adoptOrphanMedia() {
   if (!editor.value || !props.mediaContext)
     return
@@ -1429,8 +1238,7 @@ const fileInput = useTemplateRef('file-input')
 
 const DATA_FILE_EXT_RE = /\.(?:csv|json|zip|7z|rar|tar|gz|tgz)$/i
 
-// Archive extension -> MIME. Used to set a reliable contentType on upload since
-// browsers leave file.type empty for most of these.
+// Browsers leave file.type empty for most archives, so contentType comes from the extension
 const ARCHIVE_EXT_TO_MIME: Record<string, string> = {
   'zip': 'application/zip',
   '7z': 'application/x-7z-compressed',
@@ -1440,20 +1248,13 @@ const ARCHIVE_EXT_TO_MIME: Record<string, string> = {
   'tgz': 'application/gzip',
 }
 
-// (removed insertSpoilerBlock function)
-
-// Upload a CSV or JSON file and insert a dataFile node once the URL is known.
-// Unlike images/videos there is no blob placeholder - the upload is fast and
-// these files have no visual preview until the node is rendered.
+// No blob placeholder here. The upload is fast and a data file has no preview anyway.
 async function handleDataFileUpload(file: File) {
   if (!editor.value || !props.mediaContext)
     return
 
-  // Capture the insert position synchronously before any awaits so that a
-  // concurrently-inserted image placeholder (which uses updateSelection:false)
-  // cannot leave the selection as a NodeSelection on that image. If we later
-  // called insertContent() against such a NodeSelection it would silently
-  // replace the image node with the dataFile node.
+  // Captured before any await. A concurrent image placeholder can leave a
+  // NodeSelection on itself, and insertContent() would then replace the image.
   const insertPos = editor.value.state.selection.anchor
 
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'csv'
@@ -1464,9 +1265,7 @@ async function handleDataFileUpload(file: File) {
       : 'csv'
   const fileUrl = `${props.mediaContext}/${crypto.randomUUID()}.${ext}`
 
-  // Browsers report archive MIME types inconsistently (often '' or
-  // octet-stream), but the bucket's allow-list needs a concrete type, so
-  // resolve it from the extension when we recognise one.
+  // The bucket's allow-list needs a concrete type
   const contentType = ARCHIVE_EXT_TO_MIME[ext] ?? (file.type || 'application/octet-stream')
 
   const { error } = await supabase.storage
@@ -1490,8 +1289,6 @@ async function handleDataFileUpload(file: File) {
     .run()
 }
 
-// Single handler for the combined file input. Routes each file to either the
-// media upload flow (images/videos) or the data file upload flow (CSV/JSON).
 function handleCombinedFileInput(event: Event) {
   const files = (event.target as HTMLInputElement).files
   if (files == null || files.length === 0)
@@ -1514,17 +1311,15 @@ function handleCombinedFileInput(event: Event) {
   if (mediaFiles.length > 0)
     handleFileUpload(mediaFiles)
 
-  // Reset so the same files can be re-selected
+  // Reset so the same files can be picked again
   ;(event.target as HTMLInputElement).value = ''
 }
 
-// Insert or update a math node (called from EditorMathModal)
 function handleMathConfirm(payload: { latex: string, type: 'inline' | 'block', editPos: number | null }) {
   if (!editor.value)
     return
 
   if (payload.editPos != null) {
-    // Update an existing math node
     if (payload.type === 'inline') {
       editor.value.chain().setNodeSelection(payload.editPos).updateInlineMath({ latex: payload.latex }).focus().run()
     }
@@ -1533,7 +1328,6 @@ function handleMathConfirm(payload: { latex: string, type: 'inline' | 'block', e
     }
   }
   else {
-    // Insert a new math node at current selection
     if (payload.type === 'inline') {
       editor.value.commands.insertInlineMath({ latex: payload.latex })
     }
@@ -1543,7 +1337,6 @@ function handleMathConfirm(payload: { latex: string, type: 'inline' | 'block', e
   }
 }
 
-// Insert a YouTube embed (called from EditorYoutubeModal)
 function handleYoutubeConfirm(url: string) {
   if (!editor.value || !url.trim())
     return
@@ -1551,12 +1344,10 @@ function handleYoutubeConfirm(url: string) {
   editor.value.commands.setYoutubeVideo({ src: url.trim() })
 }
 
-// Insert a 3x3 table with a header row
 function handleInsertTable() {
   editor.value?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
 }
 
-// Insert a video node by URL (called from EditorVideoModal)
 function handleVideoConfirm(url: string) {
   if (!editor.value || !url.trim())
     return
@@ -1564,7 +1355,6 @@ function handleVideoConfirm(url: string) {
   editor.value.commands.insertVideo({ src: url.trim() })
 }
 
-// Auto-open fullscreen editor on mobile when requested
 watch(
   [isMobile, () => props.fullscreenOnMobile],
   ([mobile, fullscreenProp]) => {
@@ -1584,24 +1374,14 @@ watch(() => editor.value, (value) => {
 
 // Update editor content manually on model change
 watch(content, async (newContent) => {
-  // When the expanded modal is open it owns the editor with focus. Syncing
-  // content back into this (background) editor on every keystroke causes
-  // setContent() to fire, which triggers layout reflows and makes the view
-  // jump. Skip the sync entirely - when the modal closes the two editors
-  // share the same v-model so they'll already be in sync.
+  // The expanded modal owns focus. Syncing this background editor on every
+  // keystroke reflows and makes the view jump. The expandedOpen watcher resyncs on close.
   if (expandedOpen.value)
     return
 
-  // In plain-text mode the textarea owns the content directly; do not forward
-  // changes to the Tiptap editor or its onUpdate hook will fire and run
-  // getEditorMarkdown(), which escapes angle brackets and writes the mangled
-  // value back into the model - stripping any HTML the user just typed.
-  // The plainTextContent ref is kept in sync separately via handlePlainTextInput,
-  // except when content is cleared externally (e.g. after submit) - in that case
-  // we must reset plainTextContent too so the textarea actually clears.
+  // In plain-text mode the textarea owns the content. Forwarding to Tiptap would
+  // fire onUpdate, and getEditorMarkdown() would write a mangled value back.
   if (editorMode.value === 'plain') {
-    // Always sync external content changes into the textarea, not just clears.
-    // This covers quotes, external resets, and any other programmatic writes.
     const decoded = decodeHtmlEntities(newContent ?? '')
     if (plainTextContent.value !== decoded) {
       plainTextContent.value = decoded
@@ -1609,24 +1389,15 @@ watch(content, async (newContent) => {
     return
   }
 
-  // Normalise the current editor markdown the same way onUpdate does so that
-  // an empty editor (whose raw getMarkdown() returns "&nbsp;") compares equal
-  // to an empty string coming from the model, preventing a spurious setContent
-  // call that would trigger onUpdate and write "&nbsp;" back into the model.
-  // getEditorMarkdown() also strips trailing "&nbsp;" sentinels from non-empty
-  // editors that end with an empty paragraph.
+  // Compare normalised markdown so an empty editor's raw "&nbsp;" doesn't
+  // trigger a setContent that writes it back into the model.
   const currentMarkdown = getEditorMarkdown()
   if (currentMarkdown === (newContent ?? '')) {
     return
   }
 
-  // Guard the onTransaction handler so it doesn't try to delete images that
-  // are simply being replaced by an external content update.
-  // Also guard against calling setContent before the editor's ProseMirror view
-  // is attached to the DOM - if the view's root element isn't connected yet,
-  // setContent will try to resolve positions against an incomplete doc and
-  // throw a RangeError. Wait one tick and re-check; if still not connected,
-  // bail - the editor already received the correct content from its initial prop.
+  // setContent before the view is attached throws a RangeError. If it's still
+  // detached after a tick, the editor already has this content from its initial prop.
   if (!editor.value?.view?.dom?.isConnected) {
     await nextTick()
     if (!editor.value?.view?.dom?.isConnected)
@@ -1643,12 +1414,8 @@ watch(content, async (newContent) => {
   void hydrateMentionLabels(editor.value, supabase, newContent ?? '')
   void adoptOrphanMedia()
 
-  // Only focus at the end if this editor doesn't already have focus - otherwise
-  // a shared v-model (e.g. the expanded modal editor) will steal focus back on
-  // every keystroke as its content changes propagate to this instance.
-  // Deferred to nextTick so ProseMirror has finished processing the setContent
-  // transaction before we dispatch a cursor move - otherwise the old selection
-  // position may be out of range in the new doc, causing a RangeError.
+  // Skipping a focused editor stops a shared v-model from stealing focus on every
+  // keystroke. The nextTick avoids a RangeError from the old selection in the new doc.
   if (!editor.value?.isFocused) {
     nextTick(() => {
       editor.value?.commands.focus('end')
@@ -1656,8 +1423,7 @@ watch(content, async (newContent) => {
   }
 })
 
-// When expanded modal closes, the outer Tiptap editor missed all content
-// updates (they were skipped to avoid reflow). Force a sync now.
+// The outer editor skips content updates while expanded, so sync on close
 watch(expandedOpen, async (isOpen) => {
   if (isOpen || !editor.value || editorMode.value === 'plain')
     return
@@ -1693,10 +1459,8 @@ function handleContentRulesConfirmed() {
 // Expose some methods for refs
 defineExpose({
   focus: () => editor.value?.commands.focus('end'),
-  // Upload any blob-placeholder media to storage and swap the doc srcs to their
-  // public URLs. Consumers that drive their own submit (i.e. don't use the
-  // editor's built-in submit button) MUST await this before reading the model,
-  // otherwise blob: URLs get persisted and render as "Missing or Deleted Media".
+  // Consumers with their own submit button must await this before reading the
+  // model, or blob: URLs get persisted and render as "Missing or Deleted Media".
   flushPendingUploads,
   hasPendingUploads,
 })
@@ -1705,41 +1469,26 @@ async function handleEditorModeSwitch() {
   const newMode = editorMode.value === 'rich' ? 'plain' : 'rich'
 
   if (newMode === 'plain') {
-    // Decode stored entities so the textarea shows readable "<foo>" rather than
-    // the "&lt;foo&gt;" that the content model carries internally.
     plainTextContent.value = decodeHtmlEntities(content.value ?? '')
     nextTick(resizePlainTextarea)
   }
   else if (newMode === 'rich') {
-    // The model always stores the escaped form (&lt;/&gt;) for the DB/renderer.
-    // Tiptap receives the decoded form (raw angle brackets) - the noHtmlMarked
-    // inline interceptor converts them to plain text tokens so they are never
-    // parsed as real HTML. getEditorMarkdown() then re-escapes them on the way
-    // out, keeping the model invariant intact.
+    // The model keeps the escaped form. Tiptap gets raw angle brackets, which
+    // noHtmlMarked keeps as text and getEditorMarkdown() re-escapes.
     const tiptapContent = plainTextContent.value
     let newContent = encodeHtmlEntities(tiptapContent)
 
-    // Resolve any plain-text @username mentions so the Tiptap editor can
-    // display and hydrate them as proper mention nodes.
     if (newContent) {
       newContent = await resolvePlainTextMentions(newContent, supabase)
     }
 
-    // Update the model so external consumers stay in sync.
     content.value = newContent
 
-    // Switch the mode before calling setContent so that if onUpdate fires it
-    // does not immediately write back a mangled value via the plain-text guard.
+    // Switch mode before setContent so onUpdate doesn't write back a mangled value
     editorMode.value = newMode
 
-    // Directly call setContent instead of relying on watch(content): the watcher
-    // skips the update when newContent equals the value already in the model
-    // (which is common - handlePlainTextInput keeps content in sync while the
-    // user types, so by the time they switch modes the values are identical and
-    // Vue never fires the watcher).
-    // We pass tiptapContent (decoded, raw angle brackets) so the noHtmlMarked
-    // inline interceptor can store them as literal text. getEditorMarkdown()
-    // re-escapes them to &lt;/&gt; on serialization.
+    // watch(content) won't fire here: handlePlainTextInput already keeps the
+    // model in sync, so the value is usually unchanged.
     externalContentUpdate = true
     editor.value?.commands.setContent(tiptapContent, { contentType: 'markdown' })
     externalContentUpdate = false
@@ -1780,12 +1529,10 @@ async function handleSubmit() {
     }
 
     if (editorMode.value === 'plain') {
-      // Ensure the final value in the model is properly escaped - the textarea
-      // binds to plainTextContent (decoded) so we must re-encode before submit.
+      // The textarea binds the decoded text, so re-encode before submit
       content.value = encodeHtmlEntities(plainTextContent.value)
 
-      // In plain-text mode the Tiptap suggestion flow never ran, so any @username
-      // tokens must be resolved to @{uuid} before the content is submitted.
+      // The Tiptap suggestion flow never ran, so resolve @username to @{uuid} here
       content.value = await resolvePlainTextMentions(content.value, supabase)
     }
 
@@ -1811,10 +1558,8 @@ onBeforeRouteLeave(() => {
       {{ props.hint }}
     </p>
 
-    <!-- Media context menu (image + video) -->
     <RichTextMediaMenu v-if="editor && props.mediaContext" :editor :bucket-id="resolvedMediaBucketId" :media-context="props.mediaContext" @replace-pending-blob="handleReplacePendingBlob" />
 
-    <!-- Table context menu (add/remove rows & columns) -->
     <EditorTableMenu v-if="editor && editorMode === 'rich'" :editor />
 
     <!-- Main editor instance -->
@@ -1838,7 +1583,6 @@ onBeforeRouteLeave(() => {
         @confirm="handleContentRulesConfirmed"
       />
 
-      <!-- Math insert / edit modal -->
       <EditorMathModal
         v-model:open="mathModalOpen"
         :initial-latex="mathModalLatex"
@@ -1847,13 +1591,11 @@ onBeforeRouteLeave(() => {
         @confirm="handleMathConfirm"
       />
 
-      <!-- YouTube embed modal -->
       <EditorYoutubeModal
         v-model:open="youtubeModalOpen"
         @confirm="handleYoutubeConfirm"
       />
 
-      <!-- Video insert modal -->
       <EditorVideoModal
         v-model:open="videoModalOpen"
         @confirm="handleVideoConfirm"
@@ -1861,7 +1603,6 @@ onBeforeRouteLeave(() => {
 
       <!-- Editor content & controls -->
       <div class="editor-container" :class="{ 'is-plain': editorMode === 'plain' }">
-        <!-- Toolbar: floating bubble in rich mode, static bar in plain mode -->
         <div v-if="hasPendingUploads" class="upload-progress-bar">
           <div class="upload-progress-bar__fill" :style="{ width: `${avgUploadProgress}%` }" />
         </div>
@@ -1982,7 +1723,6 @@ onBeforeRouteLeave(() => {
       </li>
     </ul>
 
-    <!-- Fullscreen expand modal -->
     <Modal
       :open="expandedOpen"
       size="screen"
@@ -2129,13 +1869,11 @@ onBeforeRouteLeave(() => {
         margin-top: 0 !important;
       }
 
-      // Task list (checklist) styles
       ul[data-type='taskList'] {
         list-style: none;
         padding-left: var(--space-xs);
 
-        // Use plain li to avoid any data-type attribute resolution issues
-        // on the node-view-created element.
+        // Plain li, since data-type attribute resolution is unreliable on the node-view element
         li {
           display: flex !important;
           align-items: flex-start;
@@ -2151,7 +1889,6 @@ onBeforeRouteLeave(() => {
             display: none !important;
           }
 
-          // The label wraps the checkbox and is marked contenteditable=false
           > label {
             display: flex;
             align-items: center;
@@ -2168,7 +1905,7 @@ onBeforeRouteLeave(() => {
             }
           }
 
-          // The div is the contentDOM – it holds the paragraph text
+          // contentDOM holding the paragraph text
           > div {
             flex: 1 1 auto;
             min-width: 0;
@@ -2183,7 +1920,6 @@ onBeforeRouteLeave(() => {
             }
           }
 
-          // Checked state: strike through the text content
           &[data-checked='true'] > div > p {
             color: var(--color-text-lighter);
             // text-decoration: line-through;
@@ -2191,11 +1927,8 @@ onBeforeRouteLeave(() => {
         }
       }
 
-      // The VUI CSS reset includes a global rule `span, strong, p { font-size: var(--font-size-m) }`
-      // which overrides the inherited font-size from heading elements (h1–h4) whenever an inline
-      // mark (textFont span, bold strong, italic em, etc.) is applied inside a heading.
-      // We override that here so inline marks inside headings always inherit the heading's
-      // own font-size rather than being reset to the paragraph default.
+      // The VUI reset sets `span, strong, p { font-size: var(--font-size-m) }`, which
+      // shrinks inline marks inside headings back to paragraph size.
       h1,
       h2,
       h3,
@@ -2214,13 +1947,8 @@ onBeforeRouteLeave(() => {
       }
     }
 
-    // Image grouping for consecutive images in the editor.
-    // The ImageGroup ProseMirror plugin decorates each image in a run with
-    // data-img-run-index (0-based position) and data-img-run-total (row size).
-    // CSS uses those attributes to lay images out as inline-block rows.
-    // Gap between items is 8px. Width calc subtracts the gap share per item.
-
-    // Base styles for any grouped image or video.
+    // The ImageGroup plugin sets data-img-run-index and data-img-run-total on
+    // consecutive media. Rows use an 8px gap, subtracted per item in the widths.
     .ProseMirror > img[data-img-run-total],
     .ProseMirror > div[data-video-embed][data-img-run-total],
     .ProseMirror > div[data-img-node][data-img-run-total] {
@@ -2235,7 +1963,6 @@ onBeforeRouteLeave(() => {
       margin-bottom: var(--space-xs);
     }
 
-    // Video: inner element covers the tile.
     .ProseMirror > div[data-video-embed][data-img-run-total] {
       display: inline-block;
       vertical-align: top;
@@ -2252,7 +1979,6 @@ onBeforeRouteLeave(() => {
       }
     }
 
-    // Image node wrapper in gallery: inner img covers the tile.
     .ProseMirror > div[data-img-node][data-img-run-total] {
       display: inline-block;
       vertical-align: top;
@@ -2269,7 +1995,6 @@ onBeforeRouteLeave(() => {
       }
     }
 
-    // Image node wrapper solo (no gallery): transparent passthrough.
     .ProseMirror > div[data-img-node]:not([data-img-run-total]) {
       display: block;
 
@@ -2280,7 +2005,6 @@ onBeforeRouteLeave(() => {
       }
     }
 
-    // Run of 2: each item gets ~50% minus half the gap.
     .ProseMirror > img[data-img-run-total='2'],
     .ProseMirror > div[data-video-embed][data-img-run-total='2'],
     .ProseMirror > div[data-img-node][data-img-run-total='2'] {
@@ -2293,7 +2017,6 @@ onBeforeRouteLeave(() => {
       margin-right: 8px;
     }
 
-    // Run of 3: each item gets ~33% minus a third of the total gap.
     .ProseMirror > img[data-img-run-total='3'],
     .ProseMirror > div[data-video-embed][data-img-run-total='3'],
     .ProseMirror > div[data-img-node][data-img-run-total='3'] {
@@ -2309,9 +2032,7 @@ onBeforeRouteLeave(() => {
       margin-right: 8px;
     }
 
-    // On mobile, collapse grouped images to full-width single images and cap height.
     @media (max-width: 600px) {
-      // Solo images: fill width, natural height, no cropping.
       .ProseMirror > img:not([data-img-run-total]),
       .ProseMirror > div[data-img-node]:not([data-img-run-total]) img {
         width: 100%;
@@ -2321,7 +2042,6 @@ onBeforeRouteLeave(() => {
         object-fit: unset;
       }
 
-      // Grouped images and videos: stack vertically, cap height to keep them compact.
       .ProseMirror > img[data-img-run-total],
       .ProseMirror > div[data-video-embed][data-img-run-total],
       .ProseMirror > div[data-img-node][data-img-run-total] {
@@ -2360,9 +2080,8 @@ onBeforeRouteLeave(() => {
     }
   }
 
-  // Vue-rendered placeholder (replaces the ProseMirror decoration approach
-  // which suffers from a timing issue on initial mount where
-  // `this.editor.isEmpty` can resolve incorrectly before the view is wired up).
+  // The placeholder is Vue-rendered. A ProseMirror decoration can read
+  // `editor.isEmpty` wrong on mount, before the view is wired up.
   .editor-rich-wrapper {
     max-height: 90vh;
     overflow-y: auto;
@@ -2394,7 +2113,7 @@ onBeforeRouteLeave(() => {
     outline: 2px solid var(--color-text);
   }
 
-  // Missing/broken image placeholder - noise at 25% opacity with label.
+  // Broken image placeholder
   .ProseMirror > div[data-img-node]:has(img.img-error) {
     position: relative;
     overflow: hidden;
@@ -2437,11 +2156,8 @@ onBeforeRouteLeave(() => {
     }
   }
 
-  // Uploading placeholder states.
-  // Images show a shimmer over the local preview; videos show a spinner
-  // overlay since the video element itself renders black while loading.
-  // Both states are keyed off blob: URLs - once the real Supabase URL is
-  // swapped in the styles disappear automatically.
+  // Upload states key off blob: URLs, so they clear once the storage URL is in.
+  // Videos get a spinner because the element renders black while loading.
   @keyframes upload-shimmer {
     0% {
       opacity: 0.55;
@@ -2472,7 +2188,6 @@ onBeforeRouteLeave(() => {
     }
   }
 
-  // Math nodes (rendered by KaTeX via @tiptap/extension-mathematics)
   .tiptap-mathematics-render {
     cursor: pointer;
     padding: 0 2px;
@@ -2491,7 +2206,6 @@ onBeforeRouteLeave(() => {
     }
   }
 
-  // YouTube embeds
   .ProseMirror div[data-youtube-video] {
     display: flex;
     justify-content: center;
@@ -2507,7 +2221,6 @@ onBeforeRouteLeave(() => {
     }
   }
 
-  // Video embeds (:::video directive / uploaded videos)
   .ProseMirror div[data-video-embed]:not([data-img-run-total]) {
     display: flex;
     justify-content: center;
@@ -2523,8 +2236,7 @@ onBeforeRouteLeave(() => {
     }
   }
 
-  // Audio embeds (:::audio directive / uploaded audio). Native controls stand in
-  // as the editor placeholder; the stored markdown renders our AudioPlayer.
+  // Native controls stand in while editing. Rendered markdown uses AudioPlayer.
   .ProseMirror div[data-audio-embed] {
     margin: var(--space-s) 0;
 
@@ -2548,9 +2260,7 @@ onBeforeRouteLeave(() => {
     padding: 0.4rem;
   }
 
-  // Spoiler / collapsible blocks
-  // The Details extension uses a custom node view - NOT a real <details> element.
-  // Structure:
+  // The Details extension renders a custom node view, not a real <details>:
   //   div[data-type="details"](.is-open?)
   //     button          <- toggle (not in contentDOM)
   //     div             <- contentDOM wrapper
@@ -2562,11 +2272,9 @@ onBeforeRouteLeave(() => {
     margin: var(--space-xs) 0;
     overflow: hidden;
 
-    // Row: toggle button + summary side-by-side
     display: grid;
     grid-template-columns: 28px 1fr;
 
-    // The toggle button rendered by the node view
     > button {
       grid-column: 1;
       grid-row: 1;
@@ -2602,7 +2310,6 @@ onBeforeRouteLeave(() => {
       transform: rotate(90deg);
     }
 
-    // The contentDOM wrapper div (holds summary + detailsContent)
     > div {
       grid-column: 2;
       grid-row: 1;
@@ -2617,14 +2324,12 @@ onBeforeRouteLeave(() => {
       outline: none;
       cursor: text;
 
-      // Hide the default browser disclosure triangle
       list-style: none;
       &::-webkit-details-marker {
         display: none;
       }
     }
 
-    // The hidden/shown content body
     div[data-type='detailsContent'] {
       padding: var(--space-xs) var(--space-s) var(--space-s) 0;
       border-top: 1px solid var(--color-border-weak);
@@ -2638,7 +2343,7 @@ onBeforeRouteLeave(() => {
         }
       }
 
-      // Always show content while editing so users can click into it
+      // Always shown while editing so users can click into it
       &[hidden] {
         display: block !important;
         opacity: 0.35;
@@ -2646,7 +2351,6 @@ onBeforeRouteLeave(() => {
     }
   }
 
-  // Tables
   .ProseMirror table {
     border-collapse: collapse;
     width: 100%;

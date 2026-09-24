@@ -10,8 +10,29 @@ import type { Database } from "database-types";
 
 interface BanUserRequest {
   userId: string;
-  banDuration: string; // Format: '300ms', '2h45m', '100y' for permanent, or 'none' to unban
-  banReason?: string; // Optional reason for the ban
+  banDuration: string; // e.g. '1h', '2h45m', '7d', 'permanent', or 'none' to unban
+  banReason?: string;
+}
+
+const BAN_UNIT_MS: Record<string, number> = {
+  ms: 1,
+  s: 1000,
+  m: 60 * 1000,
+  h: 60 * 60 * 1000,
+  d: 24 * 60 * 60 * 1000,
+  y: 365 * 24 * 60 * 60 * 1000,
+};
+
+// Parses compound durations like "2h45m" or "7d". Undefined when malformed.
+function parseBanDurationMs(value: string): number | undefined {
+  if (!/^(\d+(ms|s|m|h|d|y))+$/.test(value)) return undefined;
+
+  let total = 0;
+  for (const [, amount, unit] of value.matchAll(/(\d+)(ms|s|m|h|d|y)/g)) {
+    total += Number(amount) * BAN_UNIT_MS[unit];
+  }
+
+  return total > 0 ? total : undefined;
 }
 
 type DatabaseWithSessionRpc = Database & {
@@ -26,7 +47,6 @@ type DatabaseWithSessionRpc = Database & {
 };
 
 Deno.serve(async (req: Request) => {
-  // This is needed if you're planning to invoke your function from a browser. Which we are.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -36,15 +56,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Parse request body to get user ID and ban duration
     const body: BanUserRequest = await req.json();
     const { userId, banDuration, banReason } = body;
-
-    // Normalize ban duration for Supabase Auth (it expects values like 1h, 7d, 100y, or none)
-    let normalizedBanDuration = banDuration;
-    if (banDuration === "permanent") {
-      normalizedBanDuration = "100y";
-    }
 
     if (!userId || typeof userId !== "string") {
       return new Response(
@@ -64,7 +77,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           success: false,
           error:
-            "Ban duration is required and must be a string (e.g., '1h', '30m', '100y' for permanent, or 'none' to unban)",
+            "Ban duration is required and must be a string (e.g., '1h', '30m', '7d', 'permanent', or 'none' to unban)",
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -73,7 +86,32 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify user has permission to ban users
+    const banMs = banDuration === "none" || banDuration === "permanent"
+      ? null
+      : parseBanDurationMs(banDuration);
+
+    if (banMs === undefined) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            "Invalid ban duration. Use units ms, s, m, h, d or y (e.g., '2h45m', '7d')",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        },
+      );
+    }
+
+    // Supabase Auth only takes Go duration units (up to h), so days and years
+    // are sent as seconds. Permanent is 100 years.
+    const normalizedBanDuration = banDuration === "none"
+      ? "none"
+      : banDuration === "permanent"
+      ? "876000h"
+      : `${Math.ceil(banMs! / 1000)}s`;
+
     const authResponse = await authorizeAuthenticatedHasPermissionAal2(
       req,
       ["users.update"],
@@ -83,7 +121,7 @@ Deno.serve(async (req: Request) => {
       return authResponse;
     }
 
-    // Get current user to prevent self-banning
+    // Resolve the caller so they can't ban themselves
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -117,7 +155,6 @@ Deno.serve(async (req: Request) => {
       return currentUser.response;
     }
 
-    // Prevent users from banning themselves
     if (currentUser.userId === userId) {
       return new Response(
         JSON.stringify({
@@ -131,13 +168,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create a Supabase client with service role key for admin operations
+    // Service role client for the auth admin calls
     const supabaseClient = createClient<DatabaseWithSessionRpc>(
       supabaseUrl,
       supabaseServiceRoleKey,
     );
 
-    // First, check if the user exists by looking up their profile
     const { data: userProfile, error: profileError } = await supabaseClient
       .from("profiles")
       .select("id, username")
@@ -146,7 +182,6 @@ Deno.serve(async (req: Request) => {
 
     if (profileError) {
       if (profileError.code === "PGRST116") {
-        // User not found
         return new Response(
           JSON.stringify({
             success: false,
@@ -178,39 +213,14 @@ Deno.serve(async (req: Request) => {
       }`,
     );
 
-    // Determine ban start and end times
     let banStart: string | null = null;
     let banEnd: string | null = null;
 
     if (banDuration !== "none") {
       banStart = new Date().toISOString();
 
-      if (banDuration !== "permanent") {
-        // Parse duration and calculate end time
-        // This is a simplified parser - you might want to use a more robust one
-        const durationMatch = banDuration.match(/^(\d+)([hmdy])$/);
-        if (durationMatch) {
-          const amount = parseInt(durationMatch[1]);
-          const unit = durationMatch[2];
-          const now = new Date();
-
-          switch (unit) {
-            case "h":
-              now.setHours(now.getHours() + amount);
-              break;
-            case "d":
-              now.setDate(now.getDate() + amount);
-              break;
-            case "m":
-              now.setMinutes(now.getMinutes() + amount);
-              break;
-            case "y":
-              now.setFullYear(now.getFullYear() + amount);
-              break;
-          }
-
-          banEnd = now.toISOString();
-        }
+      if (banMs != null) {
+        banEnd = new Date(Date.now() + banMs).toISOString();
       }
     }
 
@@ -220,7 +230,6 @@ Deno.serve(async (req: Request) => {
       ban_end: banDuration === "none" ? null : banEnd,
     };
 
-    // Ban the user using Supabase Auth Admin API
     const { error: banError } = await supabaseClient.auth.admin.updateUserById(
       userId,
       {
@@ -245,7 +254,8 @@ Deno.serve(async (req: Request) => {
     }
 
     if (banDuration !== "none") {
-      // Call security-definer RPC to purge sessions/refresh tokens and force immediate sign-out
+      // Security-definer RPC that purges sessions and refresh tokens, so the ban
+      // signs the user out immediately
       const { error: sessionPurgeError } = await supabaseClient.rpc(
         "admin_delete_user_sessions",
         { target_user: userId },
@@ -275,7 +285,6 @@ Deno.serve(async (req: Request) => {
       `Successfully ${action} user: ${userProfile.username} (${userId})`,
     );
 
-    // Return success response
     return new Response(
       JSON.stringify({
         success: true,

@@ -173,7 +173,7 @@ VALUES
   '#505050', '#1e1e1e', '#272727',
   -- dark semantic: purple
   '#C176FF', '#481C76', '#622C9E',
-  -- dark borders / accent: high-luminance gray - green can't be used here since
+  -- dark borders / accent: high-luminance gray. Green can't be used here since
   -- it would be indistinguishable from the semantic green slot in grayscale
   '#282828', '#363636', '#242424',
   '#e0e0e0', '#484848', '#606060',
@@ -191,7 +191,7 @@ VALUES
   '#919191', '#c8c8c8', '#b4b4b4',
   -- light semantic: purple
   '#C176FF', '#481C76', '#622C9E',
-  -- light borders / accent: near-black gray - same reasoning as dark palette
+  -- light borders / accent: near-black gray, same reasoning as the dark palette
   '#c8c8c8', '#989898', '#e0e0e0',
   '#1e1e1e', '#9a9a9a', '#b0b0b0'
 ),
@@ -213,13 +213,13 @@ VALUES
   '#000000', '#0a0a0a', '#141414', '#000000',
   '#ffffff', '#e0e0e0', '#aaaaaa', '#888888', '#000000',
   '#1e1e1e', '#2a2a2a', '#ffffff', '#cccccc',
-  -- dark semantic: red - bright saturated red
+  -- dark semantic: bright saturated red
   '#ff3333', '#660000', '#990000',
-  -- dark semantic: green - bright saturated green
+  -- dark semantic: bright saturated green
   '#00e060', '#003d1a', '#005c28',
-  -- dark semantic: yellow - bright saturated yellow
+  -- dark semantic: bright saturated yellow
   '#ffe000', '#4a3d00', '#6e5a00',
-  -- dark semantic: blue - bright saturated blue
+  -- dark semantic: bright saturated blue
   '#3399ff', '#002b66', '#003d99',
   -- dark semantic: purple
   '#C176FF', '#481C76', '#622C9E',
@@ -231,13 +231,13 @@ VALUES
   '#ffffff', '#f0f0f0', '#e0e0e0', '#ffffff',
   '#000000', '#1a1a1a', '#404040', '#666666', '#ffffff',
   '#d0d0d0', '#b0b0b0', '#000000', '#1a1a1a',
-  -- light semantic: red - deep saturated red
+  -- light semantic: deep saturated red
   '#cc0000', '#990000', '#dd0000',
-  -- light semantic: green - deep saturated green
+  -- light semantic: deep saturated green
   '#007a30', '#005522', '#009040',
-  -- light semantic: yellow - deep amber (yellow on white needs darkening)
+  -- light semantic: deep amber, since yellow on white needs darkening
   '#8a6000', '#d4b87a', '#c49a20',
-  -- light semantic: blue - deep saturated blue
+  -- light semantic: deep saturated blue
   '#0055cc', '#aac4f0', '#5599ee',
   -- light semantic: purple
   '#C176FF', '#481C76', '#622C9E',
@@ -247,10 +247,9 @@ VALUES
   '#3d6600', '#aad96e', '#7db83d'
 );
 
--- Insert RBAC roles.
 INSERT INTO public.role_permissions(role, permission)
 VALUES
-  -- Admin permissions - full access to all resources
+  -- Admin: full access to all resources
 ('admin', 'alerts.read'),
 ('admin', 'assets.create'),
 ('admin', 'assets.delete'),
@@ -311,7 +310,7 @@ VALUES
 ('admin', 'users.delete'),
 ('admin', 'users.read'),
 ('admin', 'users.update'),
-  -- Moderator permissions - content management with delete access but no role management
+  -- Moderator: content management with delete access, but no role management
 ('moderator', 'alerts.read'),
 ('moderator', 'assets.create'),
 ('moderator', 'assets.delete'),
@@ -356,7 +355,6 @@ VALUES
 ON CONFLICT (role, permission)
   DO NOTHING;
 
--- Create the ` buckets
 INSERT INTO "storage"."buckets"("id", "name", "owner", "created_at", "updated_at", "public", "avif_autodetection", "file_size_limit", "allowed_mime_types", "owner_id")
 VALUES
 ('hivecom-content-static', 'hivecom-content-static', NULL, '2025-04-13 21:02:43.930594+00', '2025-04-13 21:02:43.930594+00', 'true', 'false', '5242880', '{"application/json","image/*","video/*","text/csv"}', NULL),
@@ -366,15 +364,12 @@ VALUES
 ON CONFLICT (id)
   DO NOTHING;
 
--- Insert our admin seed user.
 INSERT INTO "auth"."users"("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous")
   VALUES ('00000000-0000-0000-0000-000000000000', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'authenticated', 'authenticated', 'contact@hivecom.net', '$2a$10$Q6EF4VpHdLQlgwHxpUyPrewgFHmqwaw/ZTaKwuD3X8k0v4DVoMf7a', '2025-01-01 12:00:00.000000+00', NULL, '', NULL, '', NULL, '', '', NULL, NULL, '{"provider": "email", "providers": ["email"]}', '{"email_verified": true}', NULL, '2025-04-15 04:18:06.23308+00', '2025-04-15 04:18:06.237601+00', NULL, NULL, '', '', NULL, '', '0', NULL, '', NULL, 'false', NULL, 'false');
 
--- Create user_roles entry for admin
 INSERT INTO public.user_roles(role, user_id)
   VALUES ('admin', '018d224c-0e49-4b6d-b57a-87299605c2b1');
 
--- Create or update a profile for our admin user
 INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, supporter_lifetime, markdown, public, avatar_extension)
   VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', '76561198000000001', '2013-01-01 00:00:00+00', 'Hivecom', 'Local develop and test user', 'true', '# whoami
 
@@ -581,12 +576,12 @@ ALTER TABLE public.profiles DISABLE TRIGGER update_profiles_audit_fields;
 UPDATE public.profiles SET created_at = '2013-01-01 00:00:00+00' WHERE id = '018d224c-0e49-4b6d-b57a-87299605c2b1';
 ALTER TABLE public.profiles ENABLE TRIGGER update_profiles_audit_fields;
 
--- Seed the founder badge for the dev account (previously stored in profiles.badges)
+-- Founder badge for the dev account
 INSERT INTO public.profile_badges (profile_id, slug, tier, source, earned_at, updated_at)
   VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b1', 'founder', 'shiny', 'manual', '2013-01-01 00:00:00+00', now())
   ON CONFLICT (profile_id, slug) DO NOTHING;
 
--- Seed a Steam presence entry for Hivecom (current game + last app)
+-- Steam presence for Hivecom with a current game and a last app
 INSERT INTO public.presences_steam(
   profile_id,
   status,
@@ -629,12 +624,10 @@ ON CONFLICT (profile_id)
     steam_name = EXCLUDED.steam_name,
     details = EXCLUDED.details;
 
--- Insert example test user for admin to modify and test with
 INSERT INTO "auth"."users"("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous")
   VALUES ('00000000-0000-0000-0000-000000000000', '018d224c-0e49-4b6d-b57a-87299605c2b3', 'authenticated', 'authenticated', 'testuser@example.com', '$2a$10$Q6EF4VpHdLQlgwHxpUyPrewgFHmqwaw/ZTaKwuD3X8k0v4DVoMf7a', '2025-01-01 12:00:00.000000+00', NULL, '', NULL, '', NULL, '', '', NULL, NULL, '{"provider": "email", "providers": ["email"]}', '{"email_verified": true}', NULL, '2025-04-15 04:18:06.23308+00', '2025-04-15 04:18:06.237601+00', NULL, NULL, '', '', NULL, '', '0', NULL, '', NULL, 'false', NULL, 'false');
 
--- Keep in mind, we're not going to assign the user a role because most users will not have a role assigned.
--- Create profile for test user
+-- TestUser gets no role, like most real users
 INSERT INTO public.profiles(id, steam_id, created_at, username, introduction, rich_presence_enabled, supporter_patreon)
   VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b3', '76561198000000002', NOW(), 'TestUser', 'Example user for testing admin features and role assignments', TRUE, TRUE)
 ON CONFLICT (id)
@@ -645,7 +638,7 @@ ON CONFLICT (id)
     rich_presence_enabled = EXCLUDED.rich_presence_enabled,
     supporter_patreon = EXCLUDED.supporter_patreon;
 
--- Seed a Steam presence entry for TestUser (not currently playing)
+-- Steam presence for TestUser, not currently playing
 INSERT INTO public.presences_steam(
   profile_id,
   status,
@@ -688,11 +681,10 @@ ON CONFLICT (profile_id)
     steam_name = EXCLUDED.steam_name,
     details = EXCLUDED.details;
 
--- Insert BirthdayUser - a test account whose birthday is set to today.
+-- BirthdayUser's birthday is always today
 INSERT INTO "auth"."users"("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous")
   VALUES ('00000000-0000-0000-0000-000000000000', '018d224c-0e49-4b6d-b57a-87299605c2b4', 'authenticated', 'authenticated', 'birthdayuser@example.com', '$2a$10$Q6EF4VpHdLQlgwHxpUyPrewgFHmqwaw/ZTaKwuD3X8k0v4DVoMf7a', '2025-01-01 12:00:00.000000+00', NULL, '', NULL, '', NULL, '', '', NULL, NULL, '{"provider": "email", "providers": ["email"]}', '{"email_verified": true}', NULL, NOW(), NOW(), NULL, NULL, '', '', NULL, '', '0', NULL, '', NULL, 'false', NULL, 'false');
 
--- Create profile for BirthdayUser with birthday set to today
 INSERT INTO public.profiles(id, created_at, username, introduction, birthday)
   VALUES ('018d224c-0e49-4b6d-b57a-87299605c2b4', NOW(), 'BirthdayUser', 'Test account whose birthday is always today.', CURRENT_DATE)
 ON CONFLICT (id)
@@ -701,7 +693,7 @@ ON CONFLICT (id)
     introduction = EXCLUDED.introduction,
     birthday = EXCLUDED.birthday;
 
--- Insert an upcoming test event (moved 2 weeks earlier)
+-- Monthly recurring event that started two months ago
 INSERT INTO public.events(created_at, created_by, date, description, title, location, markdown, games, is_official, recurrence_rule)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b3', NOW() - INTERVAL '2 months', 'Join us for our monthly gaming session!', 'Community Gaming Night', 'Voice Channels', '
 It is that time of the month again! Join us for our community gaming night where we play various games together, chat, and have fun.
@@ -904,11 +896,9 @@ ORDER BY
   id DESC
 LIMIT 1;
 
--- Insert a test server
 INSERT INTO public.network_servers(active, address, created_at, docker_control, docker_control_secure, docker_control_port, accessible, last_accessed)
   VALUES (TRUE, 'host.docker.internal', NOW(), TRUE, FALSE, 54320, TRUE, NOW());
 
--- Insert test games
 -- CS2 and Garrys Mod cover the steam://connect shape, Cobalt covers the
 -- rungameid shape for games Steam's connect handler does not know. Minecraft
 -- and Generic stay copy-only.
@@ -920,7 +910,6 @@ VALUES
   (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Generic Game', 'generic', NULL, NULL, NULL),
   (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Cobalt', 'cobalt', 357340, 'steam://rungameid/{steam_id}//{command}', '+connect {address}:{port}');
 
--- Insert a test container for our gameserver
 INSERT INTO public.network_containers(created_at, healthy, name, reported_at, running, server, started_at)
   VALUES (NOW(), TRUE, 'gameserver-cs2', NOW(), TRUE, 1, -- References the server ID we just created
     NOW() - INTERVAL '1 hour' -- Set started_at to 1 hour ago
@@ -957,11 +946,10 @@ INSERT INTO public.network_gameservers(addresses, created_at, created_by, descri
   VALUES (ARRAY['generic.g.hivecom.net'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'A generic community game server with no query protocol', 4, 'Hivecom Generic Game Server', '7777', 'eu');
 
 -- Insert a test gameserver for Cobalt. Its connect command will not resolve
--- hostnames, so the address is a literal IP - see the game's connect_uri.
+-- hostnames, so the address is a literal IP. See the game's connect_uri.
 INSERT INTO public.network_gameservers(addresses, created_at, created_by, description, game, name, port, region, query_protocol, query_port)
   VALUES (ARRAY['127.0.0.1'], NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Our community Cobalt deathmatch server', 5, 'Hivecom Cobalt Deathmatch', '27051', 'eu', 'source', 27051);
 
--- Insert a test expense
 INSERT INTO public.funding_expenses(created_at, created_by, name, description, url, amount_cents, started_at, ended_at)
 VALUES
   (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Domain Fees', 'Domain registration fees', NULL, 100, NOW() - INTERVAL '1 month', NULL),
@@ -969,7 +957,6 @@ VALUES
 (NOW() - INTERVAL '3 months', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'Hivecom Supabase', 'Monthly Supabase hosting fees', NULL, 2000, NOW() - INTERVAL '3 months', NULL),
 (NOW() - INTERVAL '12 months', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'VPS Web Hosting', 'VPS hosting fees for Hivecom website', NULL, 3000, NOW() - INTERVAL '12 months', NOW() - INTERVAL '3 months');
 
--- Insert monthly funding records
 INSERT INTO public.funding_history(month, patreon_month_amount_cents, patreon_lifetime_amount_cents, patreon_count, donation_month_amount_cents, donation_lifetime_amount_cents, donation_count)
 VALUES
   (DATE_TRUNC('month', NOW()), 3000, 9000, 3, 5000, 20000, 1),
@@ -1010,7 +997,6 @@ INSERT INTO public.referendum_votes(created_at, user_id, referendum_id, choices)
   FROM public.referendums
   WHERE title = 'Next Community Game Server';
 
--- Insert default discussion topics
 INSERT INTO public.discussion_topics (name, slug, description, priority, is_locked)
 VALUES
   ('Announcements', 'announcements', 'Official news and updates from Hivecom.', 100, true),
@@ -1023,7 +1009,6 @@ ON CONFLICT (slug) DO UPDATE SET
   priority = EXCLUDED.priority,
   is_locked = EXCLUDED.is_locked;
 
--- Insert forum discussions (migrated from former announcements seed data)
 INSERT INTO public.discussions(created_at, created_by, title, slug, description, markdown, is_sticky, discussion_topic_id)
 SELECT
   v.created_at,
@@ -1081,7 +1066,6 @@ Come join us and let''s have some fun together!
 CROSS JOIN public.discussion_topics dt
 WHERE dt.slug = 'announcements';
 
--- Insert sample MOTDs
 INSERT INTO public.motds(message, created_at, created_by, modified_at, modified_by)
 VALUES
   ('This is a message of the day.', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1'),
@@ -1095,21 +1079,19 @@ VALUES
 ON CONFLICT
   DO NOTHING;
 
--- Insert test complaints
 INSERT INTO public.complaints(created_at, created_by, message, response, responded_by, responded_at, acknowledged, context_user, context_gameserver)
   VALUES
   -- General complaint with no context (from TestUser)
 (NOW() - INTERVAL '3 days', '018d224c-0e49-4b6d-b57a-87299605c2b3', 'I''m having trouble accessing my profile settings. The page seems to be loading indefinitely and I can''t update my information.', 'Thank you for reporting this issue. We have identified and fixed the bug affecting profile settings. Please try again and let us know if you continue to experience problems.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '2 days', TRUE, NULL, NULL),
   -- Complaint about a user (context_user)
 (NOW() - INTERVAL '1 day', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'This user was using inappropriate language and being disrespectful to other community members during our gaming session yesterday evening. They were also intentionally griefing other players.', 'Thank you for reporting this behavior. We have reviewed the situation and taken appropriate moderation action. The user has been warned and is now being monitored. Please continue to report any issues you encounter.', '018d224c-0e49-4b6d-b57a-87299605c2b1', NOW() - INTERVAL '20 hours', TRUE, '018d224c-0e49-4b6d-b57a-87299605c2b3', NULL),
-  -- Complaint about a gameserver (context_gameserver) - acknowledged but not responded
+  -- Complaint about a gameserver (context_gameserver), acknowledged but not responded to
 (NOW() - INTERVAL '4 hours', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'The CS2 server is experiencing severe performance issues. There are frequent lag spikes, players are getting disconnected randomly, and hit registration seems inconsistent. This makes the game unplayable.', NULL, NULL, NULL, TRUE, NULL, 1),
   -- New unacknowledged complaint with no context
 (NOW() - INTERVAL '30 minutes', '018d224c-0e49-4b6d-b57a-87299605c2b1', 'I noticed that the community voting system seems to have a bug where my vote doesn''t get saved properly. I tried voting on the recent referendum but it keeps asking me to vote again.', NULL, NULL, NULL, FALSE, NULL, NULL);
 
--- Insert a discussion by TestUser in the General topic, with a reply mentioning the Hivecom user.
--- The auto-subscribe triggers will subscribe TestUser on discussion create.
--- The mention trigger will create a notification for the Hivecom user.
+-- TestUser's discussion in General. The auto-subscribe trigger subscribes
+-- TestUser, and the reply's mention notifies Hivecom.
 INSERT INTO public.discussions(created_at, created_by, title, slug, description, markdown, is_sticky, discussion_topic_id)
 SELECT
   NOW() - INTERVAL '1 hour',
@@ -1124,10 +1106,8 @@ FROM public.discussion_topics dt
 WHERE dt.slug = 'general'
 ;
 
--- TestUser replies to their own discussion and mentions the Hivecom admin user.
--- This fires both the subscription fan-out trigger (no-op for TestUser since
--- they are already subscribed) and the mention notification trigger which will
--- create a notification for the Hivecom user.
+-- The subscription fan-out is a no-op for TestUser, who's already subscribed.
+-- The mention trigger notifies Hivecom.
 INSERT INTO public.discussion_replies(id, created_at, created_by, discussion_id, markdown)
 SELECT
   '018d224c-0e49-4b6d-b57a-87299605c2b5'::uuid,
@@ -1138,9 +1118,8 @@ SELECT
 FROM public.discussions d
 WHERE d.slug = 'looking-for-people-to-play-cs2-with';
 
--- TestUser replies on Hivecom's profile discussion.
--- This tests the profile discussion subscription flow - Hivecom is subscribed
--- to their own profile discussion and should receive a notification.
+-- Exercises the profile discussion subscription flow: Hivecom is subscribed to
+-- their own profile discussion and should get a notification.
 INSERT INTO public.discussion_replies(created_at, created_by, discussion_id, markdown)
 SELECT
   NOW() - INTERVAL '15 minutes',
@@ -1287,7 +1266,6 @@ FROM (
   ) AS t
 ) AS series;
 
--- Insert test projects
 INSERT INTO public.projects(created_at, created_by, title, description, markdown, link, owner, tags, github)
   VALUES (NOW(), '018d224c-0e49-4b6d-b57a-87299605c2b1', 'VUI', 'The UI library that powers the Hivecom platform interface.', '
 VUI is the powerful and elegant Vue 3 component library that drives the user interface of Hivecom and other modern web applications.

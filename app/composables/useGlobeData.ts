@@ -1,10 +1,3 @@
-// useGlobeData.ts
-// Owns everything related to geographic data and user-metrics filtering:
-//   - Fetching and parsing the countries GeoJSON
-//   - Computing polygon centroids
-//   - Normalising ISO-2 / ISO-3 country codes
-//   - Fetching platform metrics and filtering centroids to countries with users
-
 import { useDataMetrics } from '@/composables/useDataMetrics'
 
 // ---------------------------------------------------------------------------
@@ -66,9 +59,8 @@ function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
 }
 
 /**
- * Sample up to `n` random points that fall within a GeoJSON polygon geometry.
- * Uses bbox rejection sampling with a fixed attempt cap.
- * Points are snapped to H3 cell centers at `hexResolution` so they align with rendered hexes.
+ * Bbox rejection sampling with a fixed attempt cap. Points snap to H3 cell
+ * centers at `hexResolution` so arc origins align with the rendered hexes.
  */
 async function samplePointsInPolygon(
   geometry: CountryFeature['geometry'],
@@ -78,14 +70,13 @@ async function samplePointsInPolygon(
   if (geometry == null)
     return []
 
-  // Collect all outer rings (first ring of each polygon)
   const rings: number[][][] = []
   if (geometry.type === 'Polygon') {
     if (geometry.coordinates[0])
       rings.push(geometry.coordinates[0])
   }
   else if (geometry.type === 'MultiPolygon') {
-    // Pick the largest polygon by ring length for sampling
+    // Largest polygon by ring length
     let best: number[][] | null = null
     for (const poly of geometry.coordinates) {
       const ring = poly[0]
@@ -103,7 +94,6 @@ async function samplePointsInPolygon(
   if (ring == null)
     return []
 
-  // Compute bbox
   let minLng = Infinity
   let maxLng = -Infinity
   let minLat = Infinity
@@ -132,7 +122,6 @@ async function samplePointsInPolygon(
       results.push({ lat, lng })
   }
 
-  // Snap each point to its H3 cell center so arc origins align with rendered hexes
   const { latLngToCell, cellToLatLng } = await import('h3-js')
   return results.map(({ lat, lng }) => {
     const cell = latLngToCell(lat, lng, hexResolution)
@@ -217,7 +206,6 @@ function normalizeMetricCountryCode(
 // Return types
 // ------------------------------------------------------------------------
 export interface GlobeDataResult {
-  /** Every country centroid derived from the GeoJSON. */
   allCentroids: CountryPoint[]
 
   /**
@@ -227,7 +215,7 @@ export interface GlobeDataResult {
    */
   sourceCentroids: CountryPoint[]
 
-  /** Raw GeoJSON feature collection - needed for hexPolygonsData. */
+  /** Raw GeoJSON, needed for hexPolygonsData. */
   featureCollection: FeatureCollection
 
   /**
@@ -253,9 +241,8 @@ export function useGlobeData() {
   const { fetchMetrics } = useDataMetrics()
 
   /**
-   * Fetches and processes all globe data. Throws on unrecoverable errors
-   * (e.g. GeoJSON fetch failure); metrics errors are handled gracefully by
-   * falling back to the global centroid set.
+   * Throws on unrecoverable errors like a GeoJSON fetch failure. Metrics errors
+   * fall back to the global centroid set.
    */
   async function loadGlobeData(): Promise<GlobeDataResult> {
     const res = await fetch('/geojson/countries.geojson')
@@ -265,7 +252,6 @@ export function useGlobeData() {
     // eslint-disable-next-line ts/no-unsafe-assignment
     const featureCollection: FeatureCollection = await res.json()
 
-    // Build ISO-3 → ISO-2 lookup and centroid list in a single pass.
     const iso3ToIso2 = new Map<string, string>()
     const allCentroids: CountryPoint[] = []
 
@@ -285,7 +271,6 @@ export function useGlobeData() {
     if (allCentroids.length < 2)
       throw new Error('Insufficient centroid data from GeoJSON')
 
-    // Attempt to narrow to countries that have platform users.
     let sourceCentroids = allCentroids
     let usingGlobalFallback = true
     const countryUserCounts = new Map<string, number>()

@@ -21,7 +21,6 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-// Fetch context labels for display
 const supabase = useSupabaseClient()
 
 const discussionTitle = ref<string | null>(null)
@@ -62,23 +61,19 @@ async function fetchContextGameserver(gameserverId: number) {
   contextGameserverName.value = data?.name ?? null
 }
 
-// Get admin permissions
 const { canDeleteComplaints } = useAdminPermissions()
 
 const isMobile = useBreakpoint('<xs')
 const showActionLabels = computed(() => !isMobile.value)
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
-// Response form state
 const responseText = ref('')
 const isSubmitting = ref(false)
 const isEditingResponse = ref(false)
 const showRemoveConfirm = ref(false)
 const showDeleteConfirm = ref(false)
 
-// Computed properties
 const status = computed(() => {
   if (!props.complaint)
     return 'unknown'
@@ -128,7 +123,6 @@ const canRespond = computed(() => {
   return props.complaint && (status.value === 'acknowledged' || status.value === 'pending')
 })
 
-// Watch for complaint changes to reset form and fetch discussion title
 watch(() => props.complaint, (newComplaint) => {
   if (newComplaint && newComplaint.response) {
     responseText.value = newComplaint.response
@@ -137,10 +131,8 @@ watch(() => props.complaint, (newComplaint) => {
     responseText.value = ''
   }
 
-  // Reset editing state when complaint changes
   isEditingResponse.value = false
 
-  // Fetch context labels when the complaint changes
   discussionTitle.value = null
   contextUsername.value = null
   contextUserProfilePath.value = null
@@ -157,13 +149,11 @@ watch(() => props.complaint, (newComplaint) => {
   }
 }, { immediate: true })
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
   emit('close')
 }
 
-// Handle acknowledge action
 function handleAcknowledge() {
   if (!props.complaint)
     return
@@ -171,7 +161,6 @@ function handleAcknowledge() {
   emit('acknowledge', props.complaint.id)
 }
 
-// Handle response submission
 async function handleSubmitResponse() {
   if (!props.complaint || !responseText.value.trim())
     return
@@ -180,14 +169,12 @@ async function handleSubmitResponse() {
 
   try {
     if (isEditingResponse.value && props.complaint.response) {
-      // Update existing response
       emit('updateResponse', {
         id: props.complaint.id,
         response: responseText.value.trim(),
       })
     }
     else {
-      // Create new response
       emit('respond', {
         id: props.complaint.id,
         response: responseText.value.trim(),
@@ -200,7 +187,6 @@ async function handleSubmitResponse() {
   }
 }
 
-// Handle edit response
 function handleEditResponse() {
   isEditingResponse.value = true
   if (props.complaint?.response) {
@@ -208,7 +194,6 @@ function handleEditResponse() {
   }
 }
 
-// Handle cancel edit
 function handleCancelEdit() {
   isEditingResponse.value = false
   if (props.complaint?.response) {
@@ -216,7 +201,6 @@ function handleCancelEdit() {
   }
 }
 
-// Handle remove response
 function handleRemoveResponse() {
   if (!props.complaint?.response)
     return
@@ -224,7 +208,6 @@ function handleRemoveResponse() {
   showRemoveConfirm.value = true
 }
 
-// Confirm remove response
 function confirmRemoveResponse() {
   if (!props.complaint)
     return
@@ -235,12 +218,10 @@ function confirmRemoveResponse() {
   showRemoveConfirm.value = false
 }
 
-// Handle delete complaint
 function handleDeleteComplaint() {
   showDeleteConfirm.value = true
 }
 
-// Confirm delete complaint
 function confirmDeleteComplaint() {
   if (!props.complaint)
     return
@@ -248,7 +229,6 @@ function confirmDeleteComplaint() {
   emit('deleteComplaint', props.complaint.id)
   showDeleteConfirm.value = false
 
-  // Close the sheet and reset state after deletion
   isOpen.value = false
   emit('close')
 }
@@ -272,7 +252,6 @@ function confirmDeleteComplaint() {
       <Card separators class="card-bg">
         <template #header>
           <Flex column gap="m">
-            <!-- Header row with title and badge -->
             <Flex expand gap="m" y-center x-between>
               <UserDisplay
                 :user-id="complaint.created_by"
@@ -286,15 +265,12 @@ function confirmDeleteComplaint() {
           </Flex>
         </template>
 
-        <!-- Message -->
         <div class="complaint-message">
           <p>{{ complaint.message }}</p>
         </div>
 
         <template #footer>
-          <!-- Metadata row -->
           <Flex column gap="s" expand>
-            <!-- Context and date info -->
             <Flex gap="l" wrap expand>
               <Flex gap="xs" y-center expand x-between>
                 <Flex y-center>
@@ -304,7 +280,6 @@ function confirmDeleteComplaint() {
                   </span>
                 </Flex>
 
-                <!-- Context information -->
                 <div v-if="complaint.context_discussion_reply || complaint.context_discussion || complaint.context_user || complaint.context_gameserver">
                   <Flex gap="m" wrap>
                     <div v-if="complaint.context_discussion_reply && complaint.context_discussion">
@@ -372,7 +347,6 @@ function confirmDeleteComplaint() {
       </Card>
 
       <h5>Response</h5>
-      <!-- Response section -->
       <Card v-if="complaint.response && !isEditingResponse" separators class="card-bg">
         <template #header>
           <div v-if="complaint.response">
@@ -407,7 +381,6 @@ function confirmDeleteComplaint() {
         </template>
 
         <Flex column gap="l">
-          <!-- Existing response (view mode) -->
           <div v-if="complaint.response && !isEditingResponse" class="response-content">
             <p>{{ complaint.response }}</p>
           </div>
@@ -431,7 +404,6 @@ function confirmDeleteComplaint() {
         expand
       />
 
-      <!-- Cancel edit button -->
       <div v-if="isEditingResponse" class="edit-actions">
         <Button variant="gray" size="s" @click="handleCancelEdit">
           Cancel
@@ -439,10 +411,8 @@ function confirmDeleteComplaint() {
       </div>
     </div>
 
-    <!-- Actions -->
     <template #footer>
       <Flex gap="xs" class="form-actions">
-        <!-- Acknowledge button -->
         <ResponsiveButton
           v-if="status === 'pending'"
           :collapsed="!showActionLabels"
@@ -451,7 +421,6 @@ function confirmDeleteComplaint() {
           label="Acknowledge"
           @click="handleAcknowledge"
         />
-        <!-- Respond/Update button -->
         <ResponsiveButton
           :collapsed="!showActionLabels"
           variant="success"
@@ -479,7 +448,6 @@ function confirmDeleteComplaint() {
     </template>
   </Sheet>
 
-  <!-- Remove Response Confirmation Modal -->
   <ConfirmModal
     v-model:open="showRemoveConfirm"
     :confirm="confirmRemoveResponse"
@@ -490,7 +458,6 @@ function confirmDeleteComplaint() {
     :destructive="true"
   />
 
-  <!-- Delete Complaint Confirmation Modal -->
   <ConfirmModal
     v-model:open="showDeleteConfirm"
     :confirm="confirmDeleteComplaint"

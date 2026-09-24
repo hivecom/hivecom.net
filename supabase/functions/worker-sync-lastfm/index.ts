@@ -5,13 +5,6 @@ import { timingSafeEqualString } from "../_shared/auth.ts";
 import { getSecretKey } from "../_shared/env.ts";
 import { fetchRecentTrack, resolveAlbumArt } from "../_shared/lastfm.ts";
 
-// Convenience alias - used for queries against tables/columns not yet in
-// the generated types (presences_lastfm).
-// Remove this alias once the migration has been applied and types regenerated.
-// deno-lint-ignore no-explicit-any
-type AnyClient = ReturnType<typeof createClient<any>>;
-
-// Last.fm API key - read once at module load
 const LASTFM_API_KEY = Deno.env.get("LASTFM_API_KEY");
 
 // Conservative defaults used when kvstore config is unavailable
@@ -150,11 +143,9 @@ async function processMessage(
   const track = await fetchRecentTrack(lastfm_username, LASTFM_API_KEY);
 
   const now = new Date().toISOString();
-  // presences_lastfm is a new table not yet in generated types
-  const anySupabase = supabase as AnyClient;
 
   if (!track) {
-    await anySupabase
+    await supabase
       .from("presences_lastfm")
       .upsert(
         {
@@ -178,7 +169,7 @@ async function processMessage(
 
   const albumArtUrl = await resolveAlbumArt(track.artist, track.name);
 
-  const { error: upsertError } = await anySupabase
+  const { error: upsertError } = await supabase
     .from("presences_lastfm")
     .upsert(
       {
@@ -201,7 +192,7 @@ async function processMessage(
       `Failed to upsert Last.fm presence for ${profile_id}:`,
       upsertError.message,
     );
-    // Don't archive - let visibility timeout expire so it can be retried
+    // Don't archive. The visibility timeout expires and the message gets retried.
     return;
   }
 
@@ -226,7 +217,6 @@ async function processBatch(
   let processed = 0;
   let failed = 0;
 
-  // Process in chunks of maxConcurrency
   for (let i = 0; i < messages.length; i += maxConcurrency) {
     const chunk = messages.slice(i, i + maxConcurrency);
 
@@ -252,13 +242,11 @@ async function processBatch(
 // ---------------------------------------------------------------------------
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Verify system cron secret
     const cronSecret = Deno.env.get("SYSTEM_CRON_SECRET");
     const providedSecret = req.headers.get("System-Cron-Secret");
 

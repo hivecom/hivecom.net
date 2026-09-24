@@ -38,9 +38,9 @@ const supabase = useSupabaseClient<Database>()
 const discussionCache = useDiscussionCache()
 const profileCache = useCache(CACHE_NAMESPACES.forum)
 
-const PREVIEW_TTL = 3 * 60 * 1000 // 3 minutes
-const WEEK_COUNT_TTL = 5 * 60 * 1000 // 5 minutes
-const SHEET_TTL = 3 * 60 * 1000 // 3 minutes
+const PREVIEW_TTL = 3 * 60 * 1000
+const WEEK_COUNT_TTL = 5 * 60 * 1000
+const SHEET_TTL = 3 * 60 * 1000
 
 function previewCacheKey(profileId: string) {
   return `profile-discussions:preview:${profileId}`
@@ -53,8 +53,8 @@ function sheetPageCacheKey(profileId: string, offset: number) {
 }
 
 // ── Discussion cache warming ───────────────────────────────────────────────
-// The RPC doesn't join discussion titles for reply rows - we need to fetch
-// them separately and warm the cache so mapRow can resolve titles/slugs.
+// The RPC doesn't join discussion titles for reply rows, so fetch them separately
+// and warm the cache for mapRow to resolve titles and slugs.
 
 async function warmDiscussionCache(rows: FeedRow[]) {
   const ids = [
@@ -79,7 +79,7 @@ function mapRow(row: FeedRow): ActivityItem | null {
     if (row.discussion_id == null || row.body === '#empty')
       return null
 
-    // Warm the discussion cache so ForumLatestItem / Discussion.vue don't re-fetch
+    // Title and slug come from the discussion cache when it's already warm.
     const cached = discussionCache.getById(row.discussion_id)
 
     return {
@@ -131,7 +131,7 @@ function mapRow(row: FeedRow): ActivityItem | null {
       icon: 'ph:folder-open',
       isNsfw: false,
       isOfftopic: false,
-      // Topics don't have a direct href - clicking the forum sidebar handles navigation
+      // Topics have no direct href, the forum sidebar handles navigation
       href: undefined,
     }
   }
@@ -199,7 +199,7 @@ watch(() => props.profileId, () => {
 })
 
 // ── "This week" badge ──────────────────────────────────────────────────────
-// Count across all three item types - three targeted HEAD queries, summed.
+// Three targeted HEAD queries, one per item type, summed
 
 const activityThisWeek = ref<number | null>(null)
 
@@ -355,7 +355,6 @@ watch(() => props.profileId, () => {
       </Flex>
     </template>
 
-    <!-- Loading State -->
     <Flex v-if="loading" column class="profile-discussions__loading">
       <div v-for="i in 3" :key="`activity-skeleton-${i}`" class="profile-discussions__item profile-discussions__item--skeleton">
         <Flex x-between y-center expand class="mb-xs">
@@ -366,7 +365,6 @@ watch(() => props.profileId, () => {
       </div>
     </Flex>
 
-    <!-- Error State -->
     <Flex v-else-if="error" column y-center x-center class="profile-discussions__empty">
       <Icon name="ph:warning" size="32" class="text-color-light" />
       <p class="text-color-light text-s text-center">
@@ -374,7 +372,6 @@ watch(() => props.profileId, () => {
       </p>
     </Flex>
 
-    <!-- Activity List -->
     <Flex v-else-if="hasActivity" column gap="xxs">
       <ForumLatestItem
         v-for="item in previewItems"
@@ -387,7 +384,6 @@ watch(() => props.profileId, () => {
       />
     </Flex>
 
-    <!-- Empty State -->
     <Flex v-else column y-center x-center class="profile-discussions__empty">
       <Icon name="ph:chats-circle" size="32" class="text-color-light" />
       <p class="text-color-light text-s text-center">
@@ -395,7 +391,6 @@ watch(() => props.profileId, () => {
       </p>
     </Flex>
 
-    <!-- Sheet -->
     <Sheet :open="sheetOpen" :size="456" @close="sheetOpen = false">
       <template #header>
         <h4 class="pt-xxs">
@@ -427,7 +422,6 @@ watch(() => props.profileId, () => {
             hide-user
           />
 
-          <!-- Infinite scroll sentinel -->
           <div ref="sentinel" class="profile-discussions__sentinel">
             <Flex v-if="sheetLoadingMore" expand x-center>
               <Spinner />

@@ -117,10 +117,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Wipe the user's Orbit Depot uploads first, so nothing survives the account
-    // deletion. Runs server-side with the gateway service key. A configured
-    // Depot that fails aborts the delete (retryable); an unconfigured Depot is
-    // skipped (null).
+    // Wipe Depot first so nothing outlives the account. A failing Depot aborts the
+    // delete so it can be retried.
     try {
       const wiped = await wipeDepotUploads(user.id);
       if (wiped !== null) {

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// AST-level table wrapping (used by MarkdownRendererInner before MDCRenderer sees it)
+// AST-level table wrapping, before MDCRenderer sees the tree
 // ------------------------------------------------------------------------
 interface ASTNode {
   type: string
@@ -9,9 +9,7 @@ interface ASTNode {
   value?: string
 }
 
-// Recursively walk the AST and wrap every <table> node in a
-// <div class="table-scroll-wrapper"> so wide tables scroll horizontally
-// instead of widening the parent container.
+// Wide tables scroll horizontally instead of widening the parent container.
 export function wrapTablesAST(body: ASTNode): ASTNode {
   if (!body.children)
     return body
@@ -28,7 +26,6 @@ export function wrapTablesAST(body: ASTNode): ASTNode {
         }
       }
 
-      // Recurse into any other element that may contain tables
       if (node.type === 'element' && (node.children?.length ?? 0) > 0)
         return wrapTablesAST(node)
 

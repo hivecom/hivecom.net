@@ -16,8 +16,8 @@ interface Props {
   showDelete?: boolean
   deleting?: boolean
   aspectRatio?: number // Width/height ratio (e.g., 16/9 = 1.778, 9/16 = 0.5625)
-  minHeight?: number // Minimum height in pixels
-  maxHeight?: number // Maximum height in pixels
+  minHeight?: number
+  maxHeight?: number
   iconSize?: number // Size of the icon square in pixels (icon variant only, default 64)
   multiple?: boolean
   persistentDropzone?: boolean
@@ -49,16 +49,14 @@ const fileInput = ref<HTMLInputElement>()
 const dragOver = ref(false)
 const imageExists = ref(true) // Assume true initially, check when previewUrl changes
 const localPreviewUrl = ref<string | null>(null) // For showing preview of uploaded file
-const currentPreviewMime = ref<string | null>(null) // MIME type of the locally previewed file
+const currentPreviewMime = ref<string | null>(null)
 const internalError = ref<string | null>(null)
 
-// Crop modal state
 const cropModalOpen = ref(false)
 const cropSrc = ref<string | null>(null)
 const cropMime = ref<string | null>(null)
 const cropOriginalName = ref<string | null>(null)
 
-// Computed properties
 const maxSizeBytes = computed(() => props.maxSizeMB * 1024 * 1024)
 const currentPreviewUrl = computed(() => localPreviewUrl.value || props.previewUrl)
 const isVideoPreview = computed(() => {
@@ -79,7 +77,6 @@ const isIconVariant = computed(() => props.variant === 'icon')
 const allowedTypes = computed(() => props.accept.split(',').map(type => type.trim()).filter(Boolean))
 const shouldShowPreview = computed(() => hasPreview.value && !props.persistentDropzone)
 
-// Computed style for aspect ratio (asset/avatar variants)
 const aspectRatioStyle = computed(() => {
   if (isAvatarVariant.value || isIconVariant.value || !props.aspectRatio) {
     return {}
@@ -104,7 +101,7 @@ const aspectRatioStyle = computed(() => {
   return style
 })
 
-// Fixed square size for the icon variant - maxHeight takes priority over iconSize
+// Fixed square size for the icon variant. maxHeight takes priority over iconSize.
 const iconSquareStyle = computed(() => {
   const size = props.maxHeight ?? props.iconSize
   return {
@@ -113,7 +110,6 @@ const iconSquareStyle = computed(() => {
   }
 })
 
-// Handle file selection
 function handleFileSelect(event: Event) {
   const target = event.target as HTMLInputElement
   const files = target.files ? [...target.files] : []
@@ -125,7 +121,6 @@ function handleFileSelect(event: Event) {
   target.value = ''
 }
 
-// Handle drag and drop
 function handleDrop(event: DragEvent) {
   event.preventDefault()
   dragOver.value = false
@@ -167,7 +162,7 @@ function isAcceptedType(file: File): boolean {
   })
 }
 
-// MIME types that support cropping (static images only - not GIF/WebM)
+// MIME types that support cropping (static images only, not GIF/WebM)
 const CROPPABLE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 
 function isCroppable(mimeType: string): boolean {
@@ -182,8 +177,8 @@ function processFile(file: File) {
     return
   }
 
-  // Croppable images skip the size check here - the cropped output canvas will
-  // be smaller. Size is checked again in commitFile after cropping.
+  // Croppable images skip the size check here, since the cropped output will be
+  // smaller. commitFile checks the size again after cropping.
   if (!isCroppable(file.type) && file.size > maxSizeBytes.value) {
     const msg = `File too large. Max size is ${props.maxSizeMB}MB.`
     internalError.value = msg
@@ -193,7 +188,6 @@ function processFile(file: File) {
 
   internalError.value = null
 
-  // Open crop modal for static images; skip for GIF/WebM
   if (isCroppable(file.type)) {
     if (cropSrc.value)
       URL.revokeObjectURL(cropSrc.value)
@@ -204,14 +198,12 @@ function processFile(file: File) {
     return
   }
 
-  // GIF/WebM - skip cropping, commit directly
-
   commitFile(file)
 }
 
 function commitFile(file: File) {
-  // Final size gate - catches oversized GIF/WebM and post-crop blobs that are
-  // still too large (e.g. huge PNG exported losslessly).
+  // Final size gate. Catches oversized GIF/WebM and post-crop blobs that are still
+  // too large (e.g. a huge PNG exported losslessly).
   if (file.size > maxSizeBytes.value) {
     const msg = `File too large. Max size is ${props.maxSizeMB}MB.`
     internalError.value = msg
@@ -252,14 +244,12 @@ function handleCropCancel() {
   cropMime.value = null
 }
 
-// Open file dialog
 function openFileDialog() {
   if (!props.disabled && !props.loading) {
     fileInput.value?.click()
   }
 }
 
-// Remove current file/preview
 function removeFile() {
   if (fileInput.value) {
     fileInput.value.value = ''
@@ -272,12 +262,10 @@ function removeFile() {
   emit('remove')
 }
 
-// Delete file from server
 function deleteFile() {
   emit('delete')
 }
 
-// Format file size for display
 function formatFileSize(bytes: number): string {
   if (bytes === 0)
     return '0 Bytes'
@@ -288,7 +276,6 @@ function formatFileSize(bytes: number): string {
   return `${Number.parseFloat((bytes / (k ** i)).toFixed(2))} ${sizes[i]}`
 }
 
-// Check if image exists at the given URL
 function checkImageExists(url: string): Promise<boolean> {
   return new Promise((resolve) => {
     const img = new Image()
@@ -298,9 +285,7 @@ function checkImageExists(url: string): Promise<boolean> {
   })
 }
 
-// Watch for previewUrl changes and check if image exists
 watch(() => props.previewUrl, async (newUrl) => {
-  // Clear local preview when external previewUrl changes
   if (localPreviewUrl.value) {
     URL.revokeObjectURL(localPreviewUrl.value)
     localPreviewUrl.value = null
@@ -316,7 +301,6 @@ watch(() => props.previewUrl, async (newUrl) => {
 
 defineExpose({ openFileDialog })
 
-// Cleanup on unmount
 onUnmounted(() => {
   if (localPreviewUrl.value)
     URL.revokeObjectURL(localPreviewUrl.value)
@@ -339,7 +323,6 @@ onUnmounted(() => {
   />
 
   <Flex column :gap="0" class="file-upload" :class="{ 'file-upload--avatar': isAvatarVariant }" :expand="expand">
-    <!-- Hidden file input -->
     <input
       ref="fileInput"
       type="file"
@@ -353,7 +336,6 @@ onUnmounted(() => {
     <!-- ── Icon variant ──────────────────────────────────────────────────────── -->
     <template v-if="isIconVariant">
       <Flex y-center gap="xs">
-        <!-- Square drop target, always visible -->
         <div
           class="file-upload__icon-square"
           :class="{
@@ -384,7 +366,6 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- X button only appears once an image is loaded -->
         <Button
           v-if="shouldShowPreview"
           size="s"
@@ -401,7 +382,6 @@ onUnmounted(() => {
 
     <!-- ── Avatar / Asset variants ─────────────────────────────────────────── -->
     <template v-else>
-      <!-- Preview Image (if exists) -->
       <div
         v-if="shouldShowPreview"
         class="file-upload__preview"
@@ -461,7 +441,6 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Upload Area (if no preview) -->
       <div
         v-else
         class="file-upload__drop-zone"
@@ -505,7 +484,6 @@ onUnmounted(() => {
       </div>
     </template>
 
-    <!-- Error Message -->
     <div v-if="error || internalError" class="file-upload__error">
       {{ error || internalError }}
     </div>
@@ -536,7 +514,7 @@ onUnmounted(() => {
     background: var(--color-bg-lowered);
     transition: border-color var(--transition);
 
-    // Solid border once an image is loaded - handled via the overlay presence
+    // Solid border once an image is loaded, driven by the overlay's presence
     &:has(.file-upload__icon-square-image) {
       border-style: solid;
     }

@@ -195,7 +195,6 @@ async function removeVote() {
         <span class="link-embed__eyebrow">Vote</span>
       </Flex>
 
-      <!-- Title links to the full vote page -->
       <NuxtLink :href="data.href" class="link-embed__title-link">
         <span class="link-embed__title">{{ data.title }}</span>
       </NuxtLink>
@@ -204,7 +203,6 @@ async function removeVote() {
         {{ data.description }}
       </p>
 
-      <!-- Concluded: inline bar results -->
       <template v-if="data.status === 'concluded'">
         <div class="link-embed__vote-results">
           <div
@@ -226,7 +224,6 @@ async function removeVote() {
         </div>
       </template>
 
-      <!-- Sign-in nudge when not logged in -->
       <template v-else-if="!user">
         <Flex y-center x-between expand gap="s" class="link-embed__signin-nudge">
           <span class="link-embed__signin-nudge-text">Sign in to join this vote</span>
@@ -238,7 +235,6 @@ async function removeVote() {
         </Flex>
       </template>
 
-      <!-- Interactive choices when active and logged in -->
       <template v-else-if="voteStatus === 'active' && user">
         <div class="link-embed__vote-choices" :class="{ 'link-embed__vote-choices--grid': !isMobile }">
           <button
@@ -264,7 +260,6 @@ async function removeVote() {
         </div>
         <!-- Action buttons: mobile only (desktop shows in meta row) -->
         <template v-if="voteStatus === 'active' && user && isMobile">
-          <!-- Single choice: full-width remove on mobile -->
           <template v-if="!data.multipleChoice && hasVoted">
             <Button
               variant="danger"
@@ -282,7 +277,6 @@ async function removeVote() {
               Remove vote
             </Button>
           </template>
-          <!-- Multi-choice: side-by-side remove + submit on mobile -->
           <template v-if="data.multipleChoice && (hasVoted || selectedChoices.length > 0)">
             <Flex gap="s" class="link-embed__vote-actions" expand>
               <Button
@@ -319,7 +313,6 @@ async function removeVote() {
         </template>
       </template>
 
-      <!-- Read-only choices list when not active or not logged in -->
       <ul v-else-if="data.choices.length > 0" class="link-embed__choices" :class="{ 'link-embed__choices--grid': !isMobile }">
         <li
           v-for="(choice, i) in data.choices.slice(0, 4)"

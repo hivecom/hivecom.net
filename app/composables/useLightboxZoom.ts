@@ -3,18 +3,9 @@ import { useEventListener } from '@vueuse/core'
 import { computed, ref } from 'vue'
 
 /**
- * Pan / zoom / swipe gesture controller shared by the lightbox components.
- *
- * Handles, on a single stable container element:
- * - wheel + trackpad pinch (ctrl/cmd wheel) zoom on desktop
- * - Safari desktop trackpad pinch via gesture events
- * - touch pinch-to-zoom (two pointers)
- * - drag-to-pan while zoomed in
- * - horizontal swipe-to-navigate while at native scale
- * - double-click / double-tap to toggle zoom
- *
- * The container should keep `touch-action: none` so the browser doesn't steal
- * the gestures for its own scrolling/zooming.
+ * Pan, zoom and swipe gestures for the lightbox components. The container
+ * needs `touch-action: none` or the browser steals the gestures for its own
+ * scrolling and zooming.
  */
 
 type GestureEventLike = Event & { scale: number, clientX: number, clientY: number }
@@ -94,10 +85,7 @@ export function useLightboxZoom(
     offsetY.value = Math.min(maxY, Math.max(-maxY, offsetY.value))
   }
 
-  /**
-   * Set a new scale while keeping the content point under (cx, cy) fixed.
-   * (cx, cy) are relative to the container's center.
-   */
+  // Keeps the point under (cx, cy) fixed. Both are relative to the container's center.
   function zoomToScale(newScale: number, cx: number, cy: number) {
     const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale))
     if (clamped === scale.value)
@@ -345,7 +333,6 @@ export function useLightboxZoom(
     return {}
   })
 
-  // Keep navStyle as an alias for backward compatibility
   const navStyle = slideStyle
 
   return { scale, isZoomed, contentStyle, navStyle, slideStyle, isSwiping, isDismissing, reset }

@@ -22,8 +22,7 @@ export function useEventOrganizer(
     includeAvatar: false,
   })
 
-  // Same gate the event page uses: guests only see the organizer when that
-  // profile is public.
+  // Guests only see the organizer when that profile is public.
   const showOrganizer = computed(() =>
     organizerId.value != null && (!!user.value || organizer.value?.isPublic === true),
   )

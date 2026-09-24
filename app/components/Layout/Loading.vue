@@ -19,7 +19,6 @@ let escapeHatchTimer: ReturnType<typeof setTimeout> | null = null
 const { applyUserPreferences } = useInitialUserPreferences()
 const { resolveSessionReady } = useSessionReady()
 
-// Show escape hatch after 10 seconds
 onMounted(() => {
   escapeHatchTimer = setTimeout(() => {
     if (isLoading.value) {
@@ -33,8 +32,7 @@ onUnmounted(() => {
     clearTimeout(escapeHatchTimer)
 })
 
-// Fade out the loading screen. Idempotent - the guard makes it safe to call
-// more than once (e.g. both the normal path and a fallback timeout).
+// Idempotent, so both the normal path and a fallback timeout can call it
 function finishLoading() {
   if (!isLoading.value)
     return
@@ -44,15 +42,12 @@ function finishLoading() {
   if (import.meta.client)
     document.getElementById('boot-escape-hatch')?.remove()
 
-  // Mark content as ready first (render behind loading screen)
   setTimeout(() => {
     isContentReady.value = true
 
-    // Then start the fade-out animation
     setTimeout(() => {
       isFadingOut.value = true
 
-      // Remove the loading screen after animation completes
       setTimeout(() => {
         isLoading.value = false
         showEscapeHatch.value = false
@@ -66,7 +61,6 @@ function reload() {
     reloadWithCacheBust()
 }
 
-// Load content and then fade out loading screen
 onMounted(async () => {
   if (import.meta.client) {
     try {
@@ -83,7 +77,6 @@ onMounted(async () => {
       ])
     }
     catch (error) {
-      // Preferences failed - log it but still let the app through.
       console.error('[Loading] Failed to apply user preferences', error)
     }
     finally {
@@ -97,7 +90,6 @@ onMounted(async () => {
 </script>
 
 <template>
-  <!-- Loading overlay that fades out -->
   <Flex v-if="isLoading" class="initial-loading" :class="{ 'fade-out': isFadingOut }">
     <SharedLogo class="logo-animation" />
     <div class="pulse-bar" />
@@ -124,8 +116,6 @@ onMounted(async () => {
 </template>
 
 <style lang="scss">
-/* Loading state styles */
-
 .initial-loading {
   position: fixed;
   top: 0;

@@ -5,10 +5,8 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import ForumLatestItem from '@/components/Forum/ForumLatestItem.vue'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-// The full forum activity feed as a sheet. The forum page opens it off its
-// carousel with both tabs and the reload button; the dashboard card opens it
-// with one feed and none of that. Everything that isn't the feed itself is
-// optional, so a caller only pays for the parts it asked for.
+// The full forum activity feed as a sheet. Everything besides the feed itself
+// is optional, so a caller only pays for the parts it asks for.
 
 /** One scrollable feed inside the sheet. The caller owns the fetching. */
 export interface ForumLatestPane {
@@ -81,10 +79,8 @@ const trailingDivider = computed<boolean>(() => {
 
 // ── Infinite scroll sentinels ──────────────────────────────────────────────
 
-// The sentinel only exists once its tab is rendered and past its skeletons, so
-// the observers follow the elements rather than the open state. Watching the
-// refs means a feed that arrives late still gets wired up, which the old
-// open-then-nextTick dance couldn't promise.
+// A sentinel only exists once its tab renders past the skeletons, so the
+// observers follow the element refs rather than the open state
 let observer: IntersectionObserver | null = null
 let mineObserver: IntersectionObserver | null = null
 
@@ -181,7 +177,6 @@ onUnmounted(() => {
       </Tabs>
     </template>
 
-    <!-- Community feed tab -->
     <Flex v-if="activeTab === 'feed'" column gap="m" class="pt-s">
       <template v-if="feed.loading">
         <Skeleton v-for="i in 6" :key="i" width="100%" height="96px" />
@@ -220,7 +215,6 @@ onUnmounted(() => {
       </template>
     </Flex>
 
-    <!-- My activity tab -->
     <Flex v-else-if="mine" column gap="m" class="pt-s">
       <template v-if="mine.loading">
         <Skeleton v-for="i in 6" :key="i" width="100%" height="96px" />
@@ -261,10 +255,7 @@ onUnmounted(() => {
   min-height: 48px;
 }
 
-// Dashed rule across the list with the clock sitting on it, marking where the
-// reader's last visit falls. The carousel on the forum page draws the same
-// marker on its side, so this is the row-list form of it rather than a second
-// idea about what a divider looks like.
+// Marks the reader's last visit. The row-list form of the forum carousel's divider.
 .forum__latest-divider {
   display: inline-flex;
   flex-direction: row;

@@ -41,7 +41,6 @@ const linkAttrs = computed(() => {
   >
     <Card class="kpi-card card-bg" :padding="false" expand>
       <Flex column gap="m" expand x-between>
-        <!-- Desktop: icon + label top, value bottom -->
         <template v-if="!isMobile">
           <Flex gap="m" y-center expand>
             <Flex gap="m" y-center>
@@ -72,7 +71,6 @@ const linkAttrs = computed(() => {
           </Flex>
         </template>
 
-        <!-- Mobile: icon + value top, label + description bottom -->
         <template v-else>
           <Flex gap="m" y-center x-between expand>
             <div v-if="icon" class="kpi-card__icon-container" :class="`kpi-card__icon-container--${variant || 'primary'}`">

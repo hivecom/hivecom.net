@@ -2,17 +2,14 @@
 import { Button } from '@dolanske/vui'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-// The play/pause toggle with the morphing glyph. Pulled out of AudioTransport so
-// the fullscreen player can place it on its own without rebuilding the icon. It's
-// fully controlled: the parent feeds state and handles the toggle.
+// The play/pause toggle with the morphing glyph. Fully controlled: the parent
+// feeds state and handles the toggle.
 
 const props = defineProps<{
   playing: boolean
   loading: boolean
   errored: boolean
 
-  // Bump the button and glyph up a size. Used on mobile, where it's the primary
-  // touch target.
   large?: boolean
 }>()
 
@@ -46,8 +43,6 @@ const iconRight = computed(() => pathFor(PLAY_RIGHT, PAUSE_RIGHT, morph.value))
 // frame between the two.
 const isLoading = computed(() => props.loading && props.playing)
 
-// Hand-rolled tween so the morph plays everywhere, not just browsers that
-// animate the CSS `d` property.
 let morphRaf: number | null = null
 
 function easeInOut(t: number): number {
@@ -98,10 +93,8 @@ onBeforeUnmount(() => {
     :aria-label="playing ? 'Pause' : 'Play'"
     @click="emit('toggle')"
   >
-    <!-- Inline SVG so the two halves can morph between the play triangle and the
-         pause bars (no Iconify name swap, no blank frame). The same SVG also holds
-         the buffering ring so the glyph can melt into it when the track is seeking
-         instead of cutting to nothing. -->
+    <!-- Inline SVG so the halves can morph between play and pause, and the glyph can
+         melt into the buffering ring without a blank frame. -->
     <svg
       class="audio-play-button__icon"
       :class="{ 'audio-play-button__icon--loading': isLoading }"

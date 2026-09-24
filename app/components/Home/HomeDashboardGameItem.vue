@@ -5,23 +5,18 @@ import { computed, useSlots } from 'vue'
 import BulkAvatarDisplay from '@/components/Shared/BulkAvatarDisplay.vue'
 import GameIcon from '@/components/Shared/GameIcon.vue'
 
-// One game in the Games card. When the Steam app matches a game we track, the
-// row opens the same details modal the games page uses, so a name on the
-// dashboard behaves like a name anywhere else. Games we have no row for stay
-// plain text rather than a button that leads nowhere.
+// Untracked games stay plain text rather than a button that leads nowhere
 const props = withDefaults(defineProps<{
   name: string
-  /** Our games table id, or null when the Steam app isn't one we track. */
+  /** Null when the Steam app isn't one we track */
   gameId?: number | null
-  /** Our games row, when the row should lead with the game's icon. */
+  /** Set when the row should lead with the game's icon */
   game?: Tables<'games'> | null
-  /** Right-hand line on inline rows, second line on grid tiles. */
+  /** Right-hand line on inline rows, second line on grid tiles */
   meta?: string
-  /** Profile ids in this game right now, drawn as the same avatar cluster the
-   *  games page uses on its cards. */
+  /** Profile ids in this game right now */
   players?: string[]
-  /** Subset of players that are mutual friends, which puts them first in the
-   *  cluster so a cut-off list keeps them. */
+  /** Mutual friends go first, so a cut-off cluster keeps them */
   friendIds?: string[]
   inline?: boolean
 }>(), {
@@ -36,10 +31,8 @@ const slots = useSlots()
 const clickable = computed(() => props.gameId != null)
 const hasSlot = computed(() => slots.default !== undefined)
 
-// The row itself is the button when nothing inside it is a link. Player avatars
-// link to profiles, so those rows hand the click to the name and stretch its hit
-// area over the whole row instead, with the avatars lifted back on top. Slotted
-// content isn't ours to lift, so it keeps the plain name-only click.
+// Avatars link to profiles, so rows with players stretch the name's click over the
+// row instead of being a button. Slotted content isn't ours to lift, so it stays name-only.
 const rootIsButton = computed(() => clickable.value && !hasSlot.value && props.players.length === 0)
 const stretched = computed(() => clickable.value && !hasSlot.value && props.players.length > 0)
 const nameIsButton = computed(() => clickable.value && !rootIsButton.value)
@@ -103,8 +96,7 @@ function open(): void {
 </template>
 
 <style scoped lang="scss">
-// The row is a button for the games we can open, so it needs the button
-// defaults stripped back to what .home-item already draws.
+// Strips the button defaults back to what .home-item draws
 .home-game-item--clickable {
   font: inherit;
   color: inherit;
@@ -123,9 +115,7 @@ function open(): void {
   cursor: pointer;
 }
 
-// Rows we can't make a button still open from anywhere: the name's click target
-// stretches over the whole row behind the content, and the avatars sit above it
-// so their profile links still work.
+// The avatars sit above the stretched click so their profile links still work
 .home-game-item--stretched {
   position: relative;
 
@@ -141,17 +131,13 @@ function open(): void {
   }
 }
 
-// The icon and the name share the left of the row, and the group has to be
-// allowed to shrink or a long name pushes the meta line off the end. The floor
-// is the small button height so these rows sit level with gameserver rows,
-// which carry a connect button that sets theirs.
+// Must shrink, or a long name pushes the meta line off the end. The min height
+// keeps these level with gameserver rows and their connect button.
 .home-game-item__lead {
   min-width: 0;
   min-height: var(--interactive-el-height-s);
 }
 
-// Tiles put the meta line and the avatars on one line under the name, so the
-// avatars sit at the right edge with the timestamp on the left.
 .home-game-item__foot {
   flex-shrink: 0;
 }

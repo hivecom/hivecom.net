@@ -152,7 +152,7 @@ defineExpose({ open, close })
   }
 }
 
-// Slide transitions - global so Vue's runtime-injected transition classes match
+// Slide transitions are global so Vue's runtime-injected transition classes match
 .md-lightbox-slide-left-enter-active,
 .md-lightbox-slide-left-leave-active,
 .md-lightbox-slide-right-enter-active,

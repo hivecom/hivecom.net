@@ -56,7 +56,6 @@ function openOfficialExport() {
 
 <template>
   <Flex gap="xs" :x-center="isBelowMedium" :expand="isBelowMedium">
-    <!-- Google Calendar - dropdown for authenticated, direct link for guests -->
     <Dropdown v-if="isAuthenticated" placement="bottom-start">
       <template #trigger="{ toggle }">
         <Button
@@ -102,7 +101,6 @@ function openOfficialExport() {
       <span v-if="showLabels" class="text-s">Subscribe</span>
     </Button>
 
-    <!-- ICAL export - dropdown for authenticated, direct link for guests -->
     <Dropdown v-if="isAuthenticated" placement="bottom-start">
       <template #trigger="{ toggle }">
         <Button

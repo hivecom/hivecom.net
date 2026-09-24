@@ -1,7 +1,3 @@
-/**
- * Shared Last.fm API helpers
- */
-
 import { createHash } from "node:crypto";
 
 // ---------------------------------------------------------------------------
@@ -9,21 +5,17 @@ import { createHash } from "node:crypto";
 // ---------------------------------------------------------------------------
 
 export interface LastfmTrack {
-  /** Track title */
   name: string;
-  /** Artist name */
   artist: string;
-  /** Album name (may be empty string) */
+  /** May be empty */
   album: string;
-  /** Last.fm track page URL */
   url: string;
-  /** True when the track is currently playing (no timestamp yet) */
+  /** Now-playing tracks have no timestamp yet */
   nowPlaying: boolean;
-  /** Unix timestamp of when the track finished (null when now-playing) */
+  /** When the track finished, null while now-playing */
   playedAt: Date | null;
 }
 
-/** Raw shape returned by user.getRecentTracks for a single track entry */
 interface RawTrack {
   name: string;
   artist: { "#text": string };
@@ -33,7 +25,6 @@ interface RawTrack {
   date?: { uts: string };
 }
 
-/** Raw shape returned by user.getRecentTracks */
 interface RecentTracksResponse {
   recenttracks?: {
     track?: RawTrack | RawTrack[];
@@ -42,7 +33,6 @@ interface RecentTracksResponse {
   message?: string;
 }
 
-/** Raw shape returned by auth.getSession */
 interface GetSessionResponse {
   session?: {
     name: string;
@@ -57,13 +47,8 @@ interface GetSessionResponse {
 // Signing
 // ---------------------------------------------------------------------------
 
-/**
- * Compute the Last.fm `api_sig` for a set of parameters.
- *
- * Algorithm: sort keys alphabetically, concatenate `key + value` for each
- * pair (excluding `format` and `callback`), append the shared secret, then
- * return the hex-encoded MD5 digest.
- */
+// Last.fm's api_sig: sorted `key + value` pairs without `format` and `callback`,
+// then the shared secret, MD5 hex
 export function signParams(
   params: Record<string, string>,
   secret: string,
@@ -87,10 +72,7 @@ export function signParams(
 
 const LASTFM_API_ROOT = "https://ws.audioscrobbler.com/2.0/";
 
-/**
- * Exchange a Last.fm auth token for a session, returning just the username.
- * Does NOT store the session key - we only care about the username.
- */
+// Only the username is used. The session key is never stored.
 export async function fetchLastfmAuthSession(
   token: string,
   apiKey: string,
@@ -124,10 +106,6 @@ export async function fetchLastfmAuthSession(
   return { name: data.session.name };
 }
 
-/**
- * Fetch the most recent track for a Last.fm user.
- * Returns null when the user has no scrobbles or the request fails.
- */
 export async function fetchRecentTrack(
   username: string,
   apiKey: string,
@@ -158,7 +136,7 @@ export async function fetchRecentTrack(
   const trackData = data.recenttracks?.track;
   if (!trackData) return null;
 
-  // The API returns an array, but collapses to an object when there is only 1 result
+  // The API collapses the array to an object when there's only one result
   const track: RawTrack = Array.isArray(trackData) ? trackData[0] : trackData;
 
   if (!track) return null;
@@ -182,11 +160,7 @@ export async function fetchRecentTrack(
 // Album art resolution
 // ---------------------------------------------------------------------------
 
-/**
- * Attempt to resolve a high-resolution album art URL.
- * Tries Deezer first (no API key needed), falls back to iTunes.
- * Returns null when neither source has a result.
- */
+// Deezer first since it needs no API key, then iTunes
 export async function resolveAlbumArt(
   artist: string,
   track: string,

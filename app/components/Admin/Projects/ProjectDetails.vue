@@ -17,13 +17,11 @@ const props = defineProps<{
   project: Tables<'projects'> | null
 }>()
 
-// Define emits
 const emit = defineEmits<{
   edit: [project: Tables<'projects'>]
   delete: [project: Tables<'projects'>]
 }>()
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
 const { handleContentClick } = useExternalLinkGuard()
@@ -32,18 +30,15 @@ const { bannerUrl: projectBannerUrl } = useDataProjectBanner(
   computed(() => props.project?.id ?? null),
 )
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle edit action from AdminActions
 function handleEdit(project: Tables<'projects'>) {
   emit('edit', project)
   isOpen.value = false
 }
 
-// Handle delete action from AdminActions
 function handleDelete(project: Tables<'projects'>) {
   emit('delete', project)
   isOpen.value = false
@@ -93,7 +88,6 @@ function handleDelete(project: Tables<'projects'>) {
           />
         </div>
 
-        <!-- Basic info -->
         <DetailTable>
           <template #header>
             <Icon name="ph:folder" />
@@ -135,7 +129,6 @@ function handleDelete(project: Tables<'projects'>) {
           </DetailRow>
         </DetailTable>
 
-        <!-- Description -->
         <DetailTable v-if="props.project.description">
           <template #header>
             <Icon name="ph:text-align-left" />
@@ -148,7 +141,6 @@ function handleDelete(project: Tables<'projects'>) {
           </div>
         </DetailTable>
 
-        <!-- Markdown Content -->
         <DetailTable v-if="props.project.markdown">
           <template #header>
             <Flex x-between y-center expand>
@@ -164,7 +156,6 @@ function handleDelete(project: Tables<'projects'>) {
           </div>
         </DetailTable>
 
-        <!-- Metadata -->
         <Metadata
           :created-at="props.project.created_at"
           :created-by="props.project.created_by"

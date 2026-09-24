@@ -16,7 +16,6 @@ const emit = defineEmits<{
 const open = defineModel<boolean>('open', { default: false })
 const isBelowSmall = useBreakpoint('<xs')
 
-// Ban duration options
 const banDurationOptions = [
   { label: '1 hour', value: '1h' },
   { label: '6 hours', value: '6h' },

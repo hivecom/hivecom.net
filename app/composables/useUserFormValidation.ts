@@ -2,8 +2,7 @@ import type { Ref } from 'vue'
 import { COUNTRY_SELECT_OPTIONS } from '@/lib/utils/country'
 import { validateMarkdownNoHtml } from '@/lib/utils/sanitize'
 
-// Minimal set of fields the validators actually read.
-// Both UserForm and ProfileForm satisfy this shape structurally.
+// The fields the validators read.
 export interface ProfileFormState {
   username: string
   introduction: string
@@ -14,7 +13,6 @@ export interface ProfileFormState {
   public: boolean
 }
 
-// Full admin user form state - superset of ProfileFormState
 export interface UserFormState extends ProfileFormState {
   rich_presence_enabled: boolean
   supporter_patreon: boolean
@@ -29,7 +27,6 @@ export interface ValidationResult {
   error: string | null
 }
 
-// Regex constants - module-scoped to avoid re-compilation
 const WORD_ONLY_RE = /^\w+$/
 const WHITESPACE_RE = /\s/
 const DIGITS_ONLY_RE = /^\d+$/
@@ -38,7 +35,7 @@ const STEAM_ID_RE = /^\d{17}$/
 const HTTP_PROTOCOL_RE = /^https?:\/\//
 const BIRTHDAY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
-// Field limits (matching database constraints)
+// Must match the database constraints.
 export const USERNAME_LIMIT = 32
 export const INTRODUCTION_LIMIT = 128
 export const MARKDOWN_LIMIT = 8128
@@ -56,7 +53,7 @@ export function normalizeWebsiteUrl(url: string): string {
 }
 
 export interface UseUserFormValidationOptions {
-  // Optional server-side error to surface in username validation (e.g. duplicate username)
+  // Server-side error to surface on the username, e.g. a duplicate.
   submissionError?: Ref<string | null | undefined>
 }
 
@@ -156,10 +153,7 @@ export function useUserFormValidation(
     return { valid: true, error: null }
   })
 
-  // ID validators - only meaningful for UserForm, returned unconditionally so callers
-  // can destructure them without conditional logic. They pass vacuously when the form
-  // field is absent (ProfileFormState doesn't have these, but the computed reads
-  // via optional chaining so it resolves to empty string -> valid).
+  // Only the admin form has these ids. Elsewhere they read as empty and pass.
   const patreonIdValidation = computed<ValidationResult>(() => {
     const id = ((userForm.value as Partial<UserFormState>).patreon_id ?? '').trim()
     if (!id)
@@ -193,7 +187,6 @@ export function useUserFormValidation(
     return { valid: true, error: null }
   })
 
-  // Base validation covering the fields shared by both forms
   const baseValidation = computed(() => ({
     username: usernameValidation.value.valid,
     introduction: introductionValidation.value.valid,
@@ -203,7 +196,6 @@ export function useUserFormValidation(
     birthday: birthdayValidation.value.valid,
   }))
 
-  // Full validation including ID fields - use this in UserForm
   const validation = computed(() => ({
     ...baseValidation.value,
     patreon_id: patreonIdValidation.value.valid,

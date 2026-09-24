@@ -13,22 +13,16 @@ import { TEXT_FONT_NAMES, textFontValue } from './plugins/textFont'
 const props = defineProps<{
   editor: Editor
 
-  // When true the toolbar renders as a static bar above the editor (plain text
-  // mode) rather than as a floating bubble menu tied to the selection.
+  // Static bar above the textarea instead of a floating bubble menu
   plainText?: boolean
 
-  // The underlying <textarea> element exposed by VUI's Textarea component.
-  // Required in plain text mode so toolbar buttons can splice markdown syntax
-  // around the current text selection.
+  // Required in plain text mode, where buttons splice markdown around the textarea selection
   textareaEl?: HTMLTextAreaElement | null
 }>()
 
 // ---------------------------------------------------------------------------
 // Plain text markdown insertion
 // ------------------------------------------------------------------------
-// Wraps or prefixes the current textarea selection with markdown syntax and
-// emits the updated value. After insertion the selection is restored so the
-// user can keep typing naturally.
 function insertMarkdown(
   before: string,
   after: string = '',
@@ -48,8 +42,7 @@ function insertMarkdown(
   let cursorEnd: number
 
   if (linePrefix) {
-    // Block-level prefix (e.g. "## "): apply to each selected line.
-    // If nothing is selected, just insert the prefix and a placeholder.
+    // Block prefix like "## " goes on every selected line
     if (selected.length === 0) {
       inserted = linePrefix
       cursorStart = start + linePrefix.length
@@ -66,7 +59,6 @@ function insertMarkdown(
     el.value = value.slice(0, start) + inserted + value.slice(end)
   }
   else {
-    // Inline wrap (e.g. **bold**).
     inserted = before + selected + after
     el.value = value.slice(0, start) + inserted + value.slice(end)
     cursorStart = start + before.length
@@ -77,11 +69,10 @@ function insertMarkdown(
   el.selectionEnd = cursorEnd
   el.focus()
 
-  // Notify the parent so content / plainTextContent stay in sync.
+  // Keeps the parent's content and plainTextContent in sync
   el.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
-// Insert a spoiler block in plain text mode, wrapping selected text if any
 function insertSpoilerMarkdown() {
   const el = props.textareaEl
   if (!el)
@@ -107,11 +98,9 @@ ${hasSelection ? selected : '[content]'}
 :::
 `
 
-  // Insert at cursor, or replace selection
   const newValue = value.slice(0, start) + spoilerBlock + value.slice(end)
   el.value = newValue
 
-  // Move cursor to [content] for convenience if nothing was selected
   if (!hasSelection) {
     const contentPos = newValue.indexOf('[content]')
     if (contentPos !== -1) {
@@ -120,13 +109,11 @@ ${hasSelection ? selected : '[content]'}
     }
   }
   else {
-    // Place cursor after the inserted block
     const afterBlock = value.slice(0, start).length + spoilerBlock.length
     el.setSelectionRange(afterBlock, afterBlock)
     el.focus()
   }
 
-  // Notify the parent so content / plainTextContent stay in sync.
   el.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
@@ -235,9 +222,8 @@ function toggleHeading(level: HeadingLevel) {
     insertMarkdown('', '', `${'#'.repeat(level)} `)
   }
   else {
-    // If the selection spans multiple blocks, collapse to the anchor position
-    // so toggling a heading only affects the block the user clicked in, not
-    // every paragraph covered by the selection.
+    // A multi-block selection collapses to the anchor, so only the clicked
+    // block toggles instead of every paragraph in the selection
     const { from, to, $from, $to } = props.editor.state.selection
     const isMultiBlock = from !== to && $from.parent !== $to.parent
 
@@ -297,7 +283,6 @@ function clearColor() {
   colorPickerOpen.value = false
 }
 
-// Tints the paint bucket icon with the active color, visible at a glance
 const bucketStyle = computed(() => {
   const color = getActiveColor()
   return color ? { color: textColorValue(color) } : {}
@@ -369,10 +354,7 @@ function toggleTinyText() {
 // ---------------------------------------------------------------------------
 // Bubble menu visibility
 // ------------------------------------------------------------------------
-// Makes sure that when editor is clicked, we do not show bubble menu for empty
-// text selection. Not used in plain text mode.
 function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
-  // Never show the bubble menu in plain text mode - the static toolbar handles it.
   if (props.plainText)
     return false
 
@@ -388,9 +370,7 @@ function shouldShow({ state, from, to }: ShouldShowMenuProps): boolean {
 // ---------------------------------------------------------------------------
 // Reusable toolbar template
 // ------------------------------------------------------------------------
-// The button groups are identical between the static (plain text) toolbar and
-// the floating bubble menu. We define them once here and render the same
-// template in both places instead of duplicating ~220 lines of markup.
+// Shared by the static toolbar and the bubble menu
 const [DefineToolbar, ReuseToolbar] = createReusableTemplate()
 
 // ---------------------------------------------------------------------------
@@ -405,8 +385,7 @@ function closeAllPickers() {
   linkPickerOpen.value = false
 }
 
-// Capture phase so we run before any stopPropagation calls elsewhere on the page.
-// Called at setup() level so VueUse registers the cleanup on unmount automatically.
+// Capture phase runs before any stopPropagation elsewhere on the page
 useEventListener(document, 'mousedown', (e) => {
   if (!headingPickerOpen.value && !colorPickerOpen.value && !fontPickerOpen.value && !linkPickerOpen.value)
     return
@@ -415,13 +394,11 @@ useEventListener(document, 'mousedown', (e) => {
   if (target == null)
     return
 
-  // Keep pickers open when clicking inside the toolbar (static or floating).
   if (toolbarEl.value?.contains(target))
     return
 
-  // Our picker popouts teleport to body - check if click landed inside one.
-  // We use a data attribute on the inner content div rather than .vui-popout
-  // so we don't accidentally match other dropdowns on the page (e.g. the + menu).
+  // Picker popouts teleport to body. Matching .vui-popout would also catch
+  // unrelated dropdowns like the + menu, hence the data attribute.
   const openPickerPopouts = document.querySelectorAll('[data-editor-picker]')
   if ([...openPickerPopouts].some(el => el.contains(target)))
     return
@@ -431,11 +408,9 @@ useEventListener(document, 'mousedown', (e) => {
 </script>
 
 <template>
-  <!-- Shared toolbar button groups - defined once, used in both modes below -->
   <DefineToolbar>
     <Flex :gap="4">
       <ButtonGroup>
-        <!-- Heading -->
         <Button
           ref="headingButtonRef"
           size="s"
@@ -475,7 +450,6 @@ useEventListener(document, 'mousedown', (e) => {
           </div>
         </Popout>
 
-        <!-- Inline formatting -->
         <template v-if="plainText">
           <Button size="s" square @click="insertMarkdown('**', '**')">
             <Icon :size="18" name="ph:text-b" />
@@ -511,7 +485,6 @@ useEventListener(document, 'mousedown', (e) => {
           </Button>
         </template>
 
-        <!-- Link -->
         <Button
           ref="linkButtonRef"
           size="s"
@@ -561,7 +534,6 @@ useEventListener(document, 'mousedown', (e) => {
           </div>
         </Popout>
 
-        <!-- Color -->
         <Button
           ref="bucketButtonRef"
           size="s"
@@ -598,7 +570,6 @@ useEventListener(document, 'mousedown', (e) => {
           </div>
         </Popout>
 
-        <!-- Font family -->
         <Button
           ref="fontButtonRef"
           size="s"
@@ -636,7 +607,6 @@ useEventListener(document, 'mousedown', (e) => {
           </div>
         </Popout>
 
-        <!-- Font size -->
         <Button
           size="s"
           square
@@ -646,7 +616,6 @@ useEventListener(document, 'mousedown', (e) => {
         </Button>
       </ButtonGroup>
 
-      <!-- Block formatting -->
       <template v-if="plainText">
         <ButtonGroup>
           <Button size="s" square @click="insertMarkdown('', '', '- ')">
@@ -704,21 +673,14 @@ useEventListener(document, 'mousedown', (e) => {
     </Flex>
   </DefineToolbar>
 
-  <!-- Static toolbar: rendered above the textarea in plain text mode.
-       ReuseToolbar is only mounted here when plainText is true so that there
-       is never more than one live ReuseToolbar consumer at a time.
-       (createReusableTemplate does not support concurrent consumers - two
-       simultaneous instances cause an infinite reactive-update loop.) -->
+  <!-- Only one ReuseToolbar may be mounted at a time. Two concurrent
+       createReusableTemplate consumers loop on reactive updates forever. -->
   <div v-show="plainText" ref="toolbar-root" class="rich-text-menu rich-text-menu--static">
     <ReuseToolbar v-if="plainText" />
   </div>
 
-  <!-- Rich text mode: floating bubble menu that appears on selection.
-       Always kept mounted (no v-else) so that Tiptap never tears down its
-       DOM hooks during a mode switch (which causes "insertBefore, t is null"
-       crashes). shouldShow() returns false when plainText is true so it
-       stays hidden. ReuseToolbar is only rendered here in rich mode so only
-       one consumer is ever active at once. -->
+  <!-- Always mounted: tearing down Tiptap's DOM hooks on a mode switch
+       crashes with "insertBefore, t is null". -->
   <BubbleMenu
     :editor="editor"
     :options="{
@@ -751,7 +713,6 @@ useEventListener(document, 'mousedown', (e) => {
   flex-direction: column;
   gap: 4px;
 
-  // Static variant sits flush above the textarea inside the editor container
   &--static {
     margin-top: -8px;
     padding-inline: 0;
@@ -760,7 +721,7 @@ useEventListener(document, 'mousedown', (e) => {
     padding-bottom: 6px;
   }
 
-  // Floating variant teleports to body - must sit above modals
+  // Teleports to body and must sit above modals
   &--floating {
     z-index: 1000;
     position: relative;

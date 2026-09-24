@@ -137,7 +137,6 @@ function handleReport() {
 </script>
 
 <template>
-  <!-- Mobile: three-dots button that opens a Sheet -->
   <template v-if="isMobile">
     <Flex v-if="currentUserData && canInteract" gap="xs">
       <Button size="s" square plain aria-label="Reply" @click="handleReply">
@@ -171,7 +170,6 @@ function handleReport() {
           Copy link
         </DropdownItem>
 
-        <!-- Edit / delete (own post or mod) -->
         <template v-if="canEditOrDelete">
           <DropdownItem :inert="loadingDeletion" @click="handleStartEditing">
             <template #icon>
@@ -189,7 +187,6 @@ function handleReport() {
 
         <Divider class="my-m" />
 
-        <!-- Off-topic + report -->
         <template v-if="showModGroup || canPin">
           <DropdownItem v-if="canPin" :inert="pinnedLoading" :loading="pinnedLoading" @click="handleTogglePin">
             <template #icon>
@@ -225,11 +222,10 @@ function handleReport() {
     </Drawer>
   </template>
 
-  <!-- Desktop: floating button group, shown on hover via CSS -->
+  <!-- Shown on hover via CSS -->
   <template v-else>
     <div class="discussion-toolbar__desktop">
-      <!-- Reactions select is handled by the parent since it needs the toggle fn;
-           we only render the action groups here -->
+      <!-- The parent renders the reactions select, since it owns the toggle -->
       <slot name="reactions" />
 
       <ButtonGroup v-if="currentUserData">

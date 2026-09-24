@@ -17,16 +17,14 @@ export type TopicWithDiscussions = Tables<'discussion_topics'> & {
 export type SortColumn = 'last_activity_at' | 'reply_count' | 'view_count'
 
 const FORUM_TOPICS_CACHE_KEY = 'topics-v3'
-const FORUM_TOPICS_TTL = 5 * 60 * 1000 // 5 minutes
+const FORUM_TOPICS_TTL = 5 * 60 * 1000
 
-// Lightweight discussion index for the activity feed, visibleDiscussionIds,
-// and discussionLookup. Fetched once on mount independently of the lazy
-// per-topic discussion loads so the feed works without clicking into topics.
+// Lightweight index for the activity feed. Loaded independently of the lazy
+// per-topic loads so the feed works without opening a topic.
 const FORUM_DISCUSSIONS_INDEX_CACHE_KEY = 'discussions-index:v1'
 const FORUM_DISCUSSIONS_INDEX_TTL = 5 * 60 * 1000
 
-// Per-topic discussion page cache
-const TOPIC_DISCUSSIONS_TTL = 3 * 60 * 1000 // 3 minutes
+const TOPIC_DISCUSSIONS_TTL = 3 * 60 * 1000
 function topicDiscussionsCacheKey(topicId: string, page: number, sort: SortColumn, asc: boolean): string {
   return `topic-discussions:${topicId}:${page}:${sort}:${asc ? 'asc' : 'desc'}`
 }
@@ -37,8 +35,7 @@ interface TopicDiscussionsPage {
   totalCount: number | null
 }
 
-// Shared column list for discussion rows. Used by both the lightweight index
-// fetch and the per-topic lazy loads so they return an identical row shape.
+// Shared by the index and the per-topic loads so both return the same row shape.
 const DISCUSSION_SELECT = 'id, title, slug, description, is_sticky, is_locked, is_archived, is_draft, is_nsfw, reply_count, view_count, last_activity_at, last_activity_by, created_at, created_by, modified_at, modified_by, discussion_topic_id, pinned_reply_id, event_id, gameserver_id, project_id, profile_id, referendum_id'
 
 const TOPIC_PAGE_SIZE = 15
@@ -49,13 +46,8 @@ interface TopicPaginationState {
 }
 
 /**
- * Owns the forum topic tree: lazy per-topic discussion loading, per-topic
- * pagination, sort state, active-topic navigation (URL-driven), the derived
- * topic views the page renders, and the create/update/delete mutations.
- *
- * The page keeps the activity-feed/realtime wiring, online users, drafts,
- * content-rules gating, SEO, modals and the template - those consume `topics`,
- * `allDiscussions` and `setActiveTopicById` from here.
+ * The forum topic tree: lazy per-topic discussion loading, pagination, sort,
+ * URL-driven active topic and the topic and discussion mutations.
  */
 export function useForumTopics() {
   const route = useRoute()
@@ -81,9 +73,9 @@ export function useForumTopics() {
   // Pathing and topic nesting
   const activeTopicId = ref<string | null>(null)
 
-  // Read initial query values once on mount – we drive URL updates manually via
-  // router.push / router.replace so we can control whether each change adds a
-  // history entry or not.
+  // Read-only views of the route query. Writes go through _setQuery, which picks
+  // router.push or router.replace to control whether a change adds a history
+  // entry.
   const activeTopicSlug = computed({
     get: () => (route.query.activeTopic as string | null) ?? null,
     set: (value: string | null) => {
@@ -98,12 +90,7 @@ export function useForumTopics() {
     },
   })
 
-  /**
-   * Update the URL query params for the active topic.
-   * @param slug  The slug to set in ?activeTopic, or null to clear.
-   * @param uuid  The UUID to set in ?activeTopicId, or null to clear.
-   * @param push  When true uses router.push (adds history entry), otherwise replace.
-   */
+  // push adds a history entry, otherwise the current one is replaced.
   function _setQuery(slug: string | null, uuid: string | null, push: boolean) {
     const query: Record<string, string> = {}
     if (slug)
@@ -136,10 +123,8 @@ export function useForumTopics() {
     }
   }
 
-  // Resolve the active topic from the URL query (?activeTopic slug or ?activeTopicId
-  // uuid) against the loaded topics, then load its discussions. A bare URL (neither
-  // param) clears the active topic and loads all top-level topics. Shared by the
-  // initial load (cached + fetched paths) and the route.query watcher (back/forward).
+  // A bare URL with neither ?activeTopic nor ?activeTopicId clears the active
+  // topic and loads all top-level topics.
   function resolveActiveTopicFromQuery() {
     const slug = activeTopicSlug.value
     const uuid = activeTopicIdQuery.value
@@ -158,7 +143,7 @@ export function useForumTopics() {
       if (matched) {
         activeTopicId.value = matched.id
 
-        // Silently upgrade UUID → slug if possible (replace, no new history entry).
+        // Upgrade the UUID to the slug with replace, so no new history entry.
         if (matched.slug)
           _setQuery(matched.slug, null, false)
         loadTopicOrChildren(matched.id)
@@ -166,24 +151,19 @@ export function useForumTopics() {
       return
     }
 
-    // Root view - clear the active topic and (re-)load all top-level visible topics.
-    // The discussionsLoaded guard in loadTopicDiscussions makes re-loading a no-op
-    // for topics that are still populated (e.g. after an intervening remount on
-    // browser back left only the previously-active topic loaded).
+    // Root view. The discussionsLoaded guard makes reloading a no-op for topics
+    // that are still populated.
     activeTopicId.value = null
     for (const topic of getTopicsByParentId(null))
       loadTopicOrChildren(topic.id)
   }
 
-  // Initial topics + discussion-index load. The page awaits this in onBeforeMount,
-  // then runs the activity-feed fetches and realtime subscription itself.
   async function loadTopics() {
     loading.value = true
 
     // ── Topics + nested discussions ──────────────────────────────────────────
-    // Cache for 5 minutes. New discussions and reply counts change frequently
-    // enough that a short TTL is appropriate, but remounting within a session
-    // (back navigation) should never refetch.
+    // Short TTL since discussions and reply counts change often, but long enough
+    // that back navigation doesn't refetch.
     const cachedTopics = forumCache.get<TopicWithDiscussions[]>(FORUM_TOPICS_CACHE_KEY)
 
     if (cachedTopics !== null) {
@@ -209,11 +189,10 @@ export function useForumTopics() {
             topics.value = mapped
             forumCache.set(FORUM_TOPICS_CACHE_KEY, mapped, FORUM_TOPICS_TTL)
 
-            // Seed localStorage seen-state for topics. First-time visitors get everything
-            // marked as "seen" so only future activity triggers the new-post dots.
+            // First-time visitors get everything marked seen so only future
+            // activity triggers the new-post dots.
             forumUnread.initializeTopicsOnly(mapped)
 
-            // Restore active topic from URL query params (replace-only - no new history entry)
             resolveActiveTopicFromQuery()
           }
         })
@@ -249,9 +228,8 @@ export function useForumTopics() {
   async function loadTopicDiscussions(topicId: string, page: number = 0, isExplicitPageChange: boolean = false) {
     const topic = topics.value.find(t => t.id === topicId)
 
-    // On first load (page 0) guard against duplicate fetches and already-loaded state.
-    // Skip the already-loaded guard when this is an explicit pagination action (e.g. clicking page 1 again).
-    // On subsequent pages always allow the fetch.
+    // Page 0 skips already-loaded topics unless it's an explicit page change,
+    // like clicking page 1 again.
     if (!topic)
       return
     if (page === 0 && !isExplicitPageChange && (topic.discussionsLoaded || topicDiscussionsLoading.value.has(topicId)))
@@ -261,8 +239,6 @@ export function useForumTopics() {
     if (page > 0 && topicPaginationLoading.value.has(topicId))
       return
 
-    // Check cache - key encodes topicId, page, sort column and direction so
-    // any previously fetched combination hits instantly, new combos miss and fetch.
     const cacheKey = topicDiscussionsCacheKey(topicId, page, sortColumn.value, sortAscending.value)
     const cached = forumCache.get<TopicDiscussionsPage>(cacheKey)
     if (cached !== null) {
@@ -301,8 +277,7 @@ export function useForumTopics() {
     const from = page * TOPIC_PAGE_SIZE
     const to = from + TOPIC_PAGE_SIZE - 1
 
-    // Sticky discussions are always fetched on first load and kept separately.
-    // Non-sticky discussions are paginated.
+    // Stickies load on page 0 only and sit outside pagination.
     const [stickyResult, pageResult, countResult] = await Promise.all([
       page === 0
         ? supabase
@@ -359,7 +334,6 @@ export function useForumTopics() {
     }
     topics.value[idx] = updatedTopic
 
-    // Update pagination state
     const prevPagination = topicPagination.value[topicId]
     const newTotalCount = page === 0 ? (countResult.count ?? prevPagination?.totalCount ?? 0) : (prevPagination?.totalCount ?? 0)
     topicPagination.value = {
@@ -370,14 +344,12 @@ export function useForumTopics() {
       },
     }
 
-    // Cache results for re-navigation within TTL
     forumCache.set<TopicDiscussionsPage>(cacheKey, {
       discussions: pageResult.data as ForumDiscussion[],
       stickyDiscussions: page === 0 ? stickyDiscussions : currentTopic.stickyDiscussions,
       totalCount: page === 0 ? newTotalCount : null,
     }, TOPIC_DISCUSSIONS_TTL)
 
-    // Seed unread state for newly loaded discussions
     forumUnread.initializeTopics([{
       id: updatedTopic.id,
       last_activity_at: updatedTopic.last_activity_at,
@@ -390,22 +362,17 @@ export function useForumTopics() {
   }
 
   async function goToTopicPage(topicId: string, page: number) {
-    // Pass isExplicitPageChange=true so the discussionsLoaded guard is bypassed,
-    // allowing re-fetching page 0 when the user clicks page 1 more than once.
+    // Explicit, so clicking page 1 again refetches past the discussionsLoaded guard.
     await loadTopicDiscussions(topicId, page, true)
     window.scrollTo(0, 0)
   }
 
-  /**
-   * Navigate to a topic by its ID. Used by the breadcrumb back-navigation where
-   * going "up" the tree should push a history entry so the user can go forward
-   * again.
-   */
+  // Going up the tree via the breadcrumb pushes a history entry so forward works.
   function setActiveTopicById(topicId: string | null) {
     activeTopicId.value = topicId
 
     if (!topicId) {
-      // Navigating back to the root – clear query and push so back-button works
+      // Back to the root. Push so the back button works.
       _setQuery(null, null, true)
       return
     }
@@ -418,22 +385,16 @@ export function useForumTopics() {
       _setQuery(matchedTopic.slug, null, true)
     }
     else {
-      // No slug yet – use UUID but don't pollute history (replace);
-      // slug will be upgraded silently once available.
+      // No slug yet. The UUID goes in with replace so it doesn't pollute history.
       _setQuery(null, topicId, false)
     }
   }
 
-  /**
-   * Navigate into a topic (e.g. clicking a topic row). Always pushes a history
-   * entry so the back-button can return to the previous topic. When the topic has
-   * no slug yet we use replace for the UUID entry, then replace again once we can
-   * upgrade to the slug – this avoids a spurious UUID entry in history.
-   */
+  // Pushes a history entry so back returns to the previous topic. Slugless topics
+  // use replace instead, which avoids a stray UUID entry in history.
   function setActiveTopicFromTopic(topic: TopicWithDiscussions) {
     activeTopicId.value = topic.id
 
-    // Mark this topic as seen so the new-post dot clears after navigation
     forumUnread.markTopicSeen(topic.id)
 
     loadTopicOrChildren(topic.id)
@@ -442,19 +403,18 @@ export function useForumTopics() {
       _setQuery(topic.slug, null, true)
     }
     else {
-      // UUID fallback – replace so history only gets an entry once the slug lands
       _setQuery(null, topic.id, false)
     }
   }
 
-  // Watch route query changes driven externally (e.g. browser back/forward)
+  // External query changes, like browser back and forward.
   watch(
     () => route.query,
     () => resolveActiveTopicFromQuery(),
   )
 
-  // Filter discussions by visibility settings. DB already orders by last_activity_at
-  // so we preserve that order - re-sorting would scramble pagination.
+  // Filter by visibility settings only. The DB returns rows in the selected sort
+  // order, and re-sorting here would scramble pagination.
   function sortDiscussions(discussions: ForumDiscussion[]) {
     let filtered = settings.value.show_forum_archived
       ? discussions
@@ -464,7 +424,6 @@ export function useForumTopics() {
       filtered = filtered.filter(discussion => !discussion.is_nsfw)
     }
 
-    // DB owns ordering; no client-side sort needed
     return filtered
   }
 
@@ -475,24 +434,20 @@ export function useForumTopics() {
       return getTopicsByParentId(null).toSorted(sortTopicsByPriority)
     }
 
-    // If the active topic has children, show those children as cards - same
-    // expansion behavior as the root level. This lets e.g. "General" display
-    // Books, Garage, Music etc. as individual expandable cards.
+    // Child topics show as expandable cards, same as the root level.
     const children = getTopicsByParentId(activeTopicId.value)
     if (children.length > 0) {
       const parent = topics.value.find(t => t.id === activeTopicId.value)
       const sorted = children.toSorted(sortTopicsByPriority)
 
-      // Always prepend the parent as a card so its own direct discussions are
-      // visible alongside child topic cards (e.g. pinned posts on "Hivecom").
+      // Prepend the parent so its own discussions show next to the child cards.
       if (parent) {
         return [parent, ...sorted]
       }
       return sorted
     }
 
-    // No children - show the topic itself (discussion list view).
-    // Always include the explicitly-navigated topic even if archived.
+    // No children: show the topic itself, even if archived.
     const topic = topics.value.find(t => t.id === activeTopicId.value)
     return topic ? [topic] : []
   })
@@ -538,7 +493,6 @@ export function useForumTopics() {
       else {
         topic.discussions = [discussion, ...topic.discussions]
 
-        // Bump total count
         const pag = topicPagination.value[topic.id]
         if (pag) {
           topicPagination.value = {
@@ -549,16 +503,15 @@ export function useForumTopics() {
       }
       topic.discussionsLoaded = true
 
-      // Also add to the global discussions index so the activity feed sees it immediately
+      // The activity feed reads the index, so add it there too.
       if (!allDiscussions.value.some(d => d.id === discussion.id))
         allDiscussions.value = [discussion, ...allDiscussions.value]
 
-      // Bust topic discussion page caches for all pages of this topic so next open fetches fresh
       forumCache.invalidateByPattern(new RegExp(`^topic-discussions:${discussion.discussion_topic_id}:`))
       forumCache.delete(FORUM_DISCUSSIONS_INDEX_CACHE_KEY)
 
-      // You created this discussion - seed it as seen so initializeTopics doesn't
-      // treat it as an unseen discussion in a known topic (seenReplyCount = -1).
+      // Your own discussion starts seen. Otherwise initializeTopics treats it as
+      // unseen in a known topic (seenReplyCount = -1).
       forumUnread.markDiscussionSeen(discussion.id, discussion.reply_count ?? 0)
 
       // Advance the topic watermark to now so the act of creating a discussion
@@ -577,9 +530,7 @@ export function useForumTopics() {
       sortAscending.value = false
     }
 
-    // Reload visible topics using pagination-style dimming (keeps existing items
-    // visible and dimmed) rather than wiping to skeletons - skeletons are for
-    // initial load only.
+    // Reload with pagination-style dimming. Skeletons are for the initial load only.
     const reloadTopic = (id: string) => {
       topicPagination.value = {
         ...topicPagination.value,
@@ -595,18 +546,14 @@ export function useForumTopics() {
     }
   }
 
-  // Load discussions for a topic, or if it has children, load all children's discussions.
-  // Used when navigating into a topic so the correct cards are populated.
   function loadTopicOrChildren(topicId: string) {
     const children = getTopicsByParentId(topicId)
     if (children.length > 0) {
-      // Load children's discussions for the sub-topic cards
       for (const child of children) {
         void loadTopicDiscussions(child.id)
       }
 
-      // Also load the parent's own direct discussions (e.g. pinned items on a
-      // parent topic that also has sub-topic children)
+      // The parent's own discussions show next to the child cards.
       void loadTopicDiscussions(topicId)
     }
     else {
@@ -635,7 +582,7 @@ export function useForumTopics() {
         const merged = { ...oldDiscussion, ...updatedDiscussion } as ForumDiscussion
 
         if (updatedDiscussion.discussion_topic_id !== parentTopic.id) {
-          // Discussion was moved to a different topic - remove from old, add to new
+          // Moved to a different topic.
           parentTopic.discussions.splice(discussionIndex, 1)
           const newParentTopic = topics.value.find(topic => topic.id === updatedDiscussion.discussion_topic_id)
           if (newParentTopic) {
@@ -652,17 +599,14 @@ export function useForumTopics() {
     if (type === 'discussion') {
       const updatedDiscussion = data as ForumDiscussion
 
-      // Invalidate per-topic discussion page cache for affected topic(s)
       if (updatedDiscussion.discussion_topic_id) {
         forumCache.invalidateByPattern(new RegExp(`^topic-discussions:${updatedDiscussion.discussion_topic_id}:`))
       }
 
-      // Keep the global index in sync with updated discussion data
       const indexIdx = allDiscussions.value.findIndex(d => d.id === updatedDiscussion.id)
       if (indexIdx !== -1)
         allDiscussions.value = allDiscussions.value.toSpliced(indexIdx, 1, updatedDiscussion)
 
-      // Also update stickyDiscussions if the discussion is sticky
       const stickyParentTopic = topics.value.find(t =>
         t.stickyDiscussions.some(d => d.id === updatedDiscussion.id),
       )
@@ -675,12 +619,10 @@ export function useForumTopics() {
     }
   }
 
-  // Remove methods - remove a topic or discussion from local state after deletion
   function removeItem(type: 'topic' | 'discussion', id: string) {
     if (type === 'topic') {
       topics.value = topics.value.filter(topic => topic.id !== id)
 
-      // If the removed topic was the active one, reset navigation
       if (activeTopicId.value === id) {
         activeTopicId.value = null
         _setQuery(null, null, false)
@@ -695,14 +637,13 @@ export function useForumTopics() {
       }
       allDiscussions.value = allDiscussions.value.filter(d => d.id !== id)
 
-      // Also remove from stickyDiscussions if present
       const stickyParent = topics.value.find(t => t.stickyDiscussions.some(d => d.id === id))
       if (stickyParent) {
         stickyParent.stickyDiscussions = stickyParent.stickyDiscussions.filter(d => d.id !== id)
       }
 
-      // Decrement total count
-      const discussionTopicId = topics.value.find(t => t.discussions.some(d => d.id === id))?.id
+      // Captured before the filter above removed the discussion from the topic.
+      const discussionTopicId = parentTopic?.id
       if (discussionTopicId) {
         const pag = topicPagination.value[discussionTopicId]
         if (pag) {

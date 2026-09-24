@@ -21,7 +21,6 @@ export function useThemePreview() {
   const { transitionTheme } = useThemeTransition()
 
   function _applyPreview(theme: Tables<'themes'>, origin?: { x: number, y: number }, withCss = false) {
-    // Dismiss any existing preview toast
     if (previewToastId !== null)
       removeToast(previewToastId)
 
@@ -47,9 +46,9 @@ export function useThemePreview() {
             void setActiveTheme(null, keepOrigin)
           }
           else {
-            // Pass withCss explicitly so applyAndPersistTheme doesn't re-evaluate
-            // settings.value.allow_custom_css - user already decided during preview.
-            // Also persist the CSS consent in settings so it survives reloads.
+            // Pass withCss explicitly so applyAndPersistTheme doesn't re-read
+            // allow_custom_css, since the user already decided during preview.
+            // The consent is persisted so it survives reloads.
             if (withCss)
               settings.value.allow_custom_css = true
             void transitionTheme(() => {
@@ -80,8 +79,8 @@ export function useThemePreview() {
   function previewTheme(theme: Tables<'themes'>, origin?: { x: number, y: number }) {
     const hasCss = theme.custom_css != null && theme.custom_css.trim().length > 0
 
-    // Theme has custom CSS - prompt unless already previewing this exact theme
-    // (re-clicking the same theme shouldn't re-prompt). Each distinct theme gets its own warning.
+    // Custom CSS prompts once per distinct theme. Re-clicking the theme already
+    // being previewed doesn't re-prompt.
     if (hasCss && previewingThemeId.value !== theme.id) {
       pendingPreviewTheme.value = {
         theme,
@@ -91,13 +90,13 @@ export function useThemePreview() {
           _applyPreview(theme, origin, withCss)
         },
         onCancel: () => {
-          // Nothing to restore - preview was never applied
+          // Nothing to restore, the preview was never applied.
         },
       }
       return
     }
 
-    // No CSS prompt needed - apply with CSS if user has globally allowed it
+    // No prompt needed. CSS applies only if the user allowed it globally.
     _applyPreview(theme, origin, settings.value.allow_custom_css)
   }
 
@@ -110,8 +109,8 @@ export function useThemePreview() {
     void transitionTheme(() => applyTheme(activeTheme.value ?? null), origin)
   }
 
-  // Dismiss the toast only - no theme restore. Use when the caller is
-  // handling the transition itself (e.g. reset-to-default button).
+  // Dismisses the toast without restoring a theme, for callers that handle the
+  // transition themselves.
   function dismissPreview() {
     if (previewToastId !== null) {
       removeToast(previewToastId)
@@ -133,9 +132,9 @@ export function useThemePreview() {
     previewingThemeId.value = null
     previewingTheme = null
     if (theme.id === '$default') {
-      // setActiveTheme(null) owns its own transitionTheme call - calling it
-      // directly lets the origin propagate and avoids the double-wrap that
-      // triggers the transitioning guard, silently blocking applyTheme(null).
+      // setActiveTheme(null) owns its own transitionTheme call. Calling it
+      // directly lets the origin propagate and avoids the double wrap that trips
+      // the transitioning guard and silently blocks applyTheme(null).
       void setActiveTheme(null, origin)
     }
     else {

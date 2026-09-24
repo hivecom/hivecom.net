@@ -12,27 +12,21 @@ const props = defineProps<{
   isEditMode: boolean
 }>()
 
-// Define emits
 const emit = defineEmits<{
   save: [referendumData: TablesInsert<'referendums'> | TablesUpdate<'referendums'>]
   delete: [number]
 }>()
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
-// Get admin permissions
 const { hasPermission } = useAdminPermissions()
 const canDeleteReferendums = computed(() => hasPermission('referendums.delete'))
 const canMakePublic = computed(() => hasPermission('referendums.update'))
 
-// Form state
 const referendumForm = ref<ReferendumFormState>(emptyReferendumForm())
 
-// State for delete confirmation modal
 const showDeleteConfirm = ref(false)
 
-// Loading states for buttons
 const saveLoading = ref(false)
 const deleteLoading = ref(false)
 
@@ -40,7 +34,6 @@ const validation = computed(() => validateReferendumForm(referendumForm.value))
 
 const isValid = computed(() => Object.values(validation.value).every(Boolean))
 
-// Update form data when referendum prop changes
 watch(
   () => props.referendum,
   (newReferendum) => {
@@ -48,7 +41,6 @@ watch(
   },
 )
 
-// Reset loading states when form is closed
 watch(
   () => isOpen.value,
   (newIsOpen) => {
@@ -59,12 +51,10 @@ watch(
   },
 )
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
 
-// Handle form submission
 function handleSubmit() {
   if (!isValid.value)
     return
@@ -77,7 +67,6 @@ function handleSubmit() {
   emit('save', referendumData)
 }
 
-// Open confirmation modal for deletion
 function handleDelete() {
   if (!props.referendum)
     return
@@ -85,18 +74,15 @@ function handleDelete() {
   showDeleteConfirm.value = true
 }
 
-// Perform actual deletion when confirmed
 function confirmDelete() {
   if (!props.referendum)
     return
 
-  // Set loading state
   deleteLoading.value = true
 
   emit('delete', props.referendum.id)
 }
 
-// Computed properties for form title and button text
 const formTitle = computed(() => props.isEditMode ? 'Edit Referendum' : 'Add Referendum')
 const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' : 'Create Referendum')
 </script>
@@ -165,7 +151,6 @@ const submitButtonText = computed(() => props.isEditMode ? 'Update Referendum' :
       </Flex>
     </template>
 
-    <!-- Delete Confirmation Modal -->
     <ConfirmModal
       v-if="props.referendum"
       v-model:open="showDeleteConfirm"

@@ -81,7 +81,6 @@ async function loadAdmins() {
   }
 }
 
-// Load admins when modal opens
 watch(isOpen, (opened) => {
   if (opened && admins.value.length === 0 && !adminsLoading.value)
     loadAdmins()

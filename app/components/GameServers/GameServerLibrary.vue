@@ -108,25 +108,22 @@ function getServerCountForGame(gameId: number) {
   return props.gameservers?.filter((gs: GameserversType[0]) => gs.game === gameId).length || 0
 }
 
-// Get game cover image using the cached composable
 async function getGameCover(game: Tables<'games'>) {
   const coverUrl = await getGameCoverUrl(game)
 
-  // Return empty string if no cover to show only the small logo
+  // Empty string shows just the small logo
   return coverUrl || ''
 }
 
 function handleCoverLoad(event: Event) {
   const target = event.target as HTMLImageElement
   if (target) {
-    // Trigger the fade-in effect
     target.classList.add('cover-loaded')
   }
 }
 
-// How many cover lookups run at once. Each one is up to four storage list
-// calls, so fully parallel would flood storage on a fresh grid, while one at a
-// time made the covers pop in strictly left to right.
+// Each cover lookup is up to four storage list calls. Fully parallel floods storage
+// on a fresh grid, and one at a time pops the covers in strictly left to right.
 const COVER_CONCURRENCY = 4
 
 async function loadCover(game: Tables<'games'>) {
@@ -138,7 +135,7 @@ async function loadCover(game: Tables<'games'>) {
   catch (error) {
     console.error(`Failed to load cover for game ${game.id}:`, error)
 
-    // On error, don't fall back to anything - just show the small logo
+    // On error, show just the small logo
     gameCovers.value.set(game.id, '')
   }
   finally {
@@ -146,7 +143,6 @@ async function loadCover(game: Tables<'games'>) {
   }
 }
 
-// Load game covers when filtered games change
 watch(() => props.filteredGames, async (newGames) => {
   const queue = (newGames ?? []).filter(game =>
     !gameCovers.value.has(game.id) && !coverLoadingStates.value.has(game.id),
@@ -164,12 +160,10 @@ watch(() => props.filteredGames, async (newGames) => {
   await Promise.all(Array.from({ length: Math.min(COVER_CONCURRENCY, queue.length) }, () => worker()))
 }, { immediate: true })
 
-// Helper function to get cached game cover
 function getCachedGameCover(gameId: number): string {
   return gameCovers.value.get(gameId) || ''
 }
 
-// Check if cover is loading
 function isCoverLoading(gameId: number): boolean {
   return coverLoadingStates.value.has(gameId)
 }
@@ -177,12 +171,10 @@ function isCoverLoading(gameId: number): boolean {
 
 <template>
   <div class="game-library">
-    <!-- Error message -->
     <template v-if="errorMessage">
       <ErrorAlert message="An error occurred while fetching games." :error="errorMessage" />
     </template>
 
-    <!-- Loading skeletons -->
     <div v-if="loading" class="game-grid">
       <template v-for="i in 12" :key="i">
         <div class="game-card-skeleton">
@@ -193,7 +185,6 @@ function isCoverLoading(gameId: number): boolean {
     </div>
 
     <template v-if="!loading && !errorMessage">
-      <!-- Content -->
       <template v-if="games && gameservers && filteredGames.length > 0">
         <div class="game-grid">
           <GlowGroup>
@@ -209,13 +200,10 @@ function isCoverLoading(gameId: number): boolean {
                 >
                   <div class="game-cover">
                     <div class="cover-image-container">
-                      <!-- Base fallback: Hivecom logo -->
                       <div class="cover-fallback">
                         <img src="/icon.svg" alt="Hivecom logo" class="fallback-logo" loading="lazy" decoding="async">
                       </div>
-                      <!-- Loading skeleton -->
                       <Skeleton v-if="isCoverLoading(game.id)" :height="280" :radius="0" class="cover-skeleton" />
-                      <!-- Actual cover image (custom or Steam) -->
                       <img
                         v-else-if="getCachedGameCover(game.id)"
                         :src="getCachedGameCover(game.id)"
@@ -293,7 +281,6 @@ function isCoverLoading(gameId: number): boolean {
         </div>
       </template>
 
-      <!-- No content -->
       <template v-else>
         <Alert variant="info">
           No games found.
@@ -301,7 +288,6 @@ function isCoverLoading(gameId: number): boolean {
       </template>
     </template>
 
-    <!-- Game Servers Modal -->
     <GameServerModal :open="showModal" :game="selectedGame" :gameservers="selectedGameServers" @close="closeModal" />
   </div>
 </template>
@@ -333,7 +319,6 @@ function isCoverLoading(gameId: number): boolean {
   height: 100%;
 }
 
-/* Card fade-in animations */
 .card-fade-enter-active {
   transition: all 0.6s ease;
   transition-delay: var(--delay, 0ms);
@@ -367,7 +352,6 @@ function isCoverLoading(gameId: number): boolean {
   transition: transform 0.4s ease;
 }
 
-/* Modal fade animations */
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition: all 0.3s ease;
@@ -399,7 +383,7 @@ function isCoverLoading(gameId: number): boolean {
     border-color 0.2s ease,
     opacity 0.3s ease;
 
-  /* Initial state - slightly faded until content loads */
+  /* Slightly faded until content loads */
   opacity: 0.7;
 
   &.content-loaded {

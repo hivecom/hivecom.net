@@ -8,9 +8,8 @@ const OPENING_DIRECTIVE_RE = /^[a-z]+\[/i
 // ---------------------------------------------------------------------------
 // Named color palette
 // ------------------------------------------------------------------------
-// The canonical set of allowed color names. Each name maps to a CSS custom
-// property defined in app/assets/index.scss so that the actual hue adapts
-// automatically to the active theme (light / dark / future themes).
+// Allowed color names. Each maps to a CSS custom property in
+// app/assets/index.scss, so the hue follows the active theme.
 export const TEXT_COLOR_NAMES = [
   'red',
   'orange',
@@ -32,12 +31,10 @@ export const TEXT_COLOR_NAMES = [
 
 export type TextColorName = (typeof TEXT_COLOR_NAMES)[number]
 
-/** Returns the CSS custom property name for a palette color, e.g. "red" → "--text-color-red". */
 export function textColorVar(name: TextColorName): string {
   return `--text-color-${name}`
 }
 
-/** Returns the CSS value string for a palette color, e.g. "red" → "var(--text-color-red)". */
 export function textColorValue(name: TextColorName): string {
   return `var(${textColorVar(name)})`
 }
@@ -55,10 +52,8 @@ declare module '@tiptap/core' {
 
   interface Commands<ReturnType> {
     textColor: {
-      /** Apply a named palette color to the selected text, e.g. "red". */
       setTextColor: (color: TextColorName) => ReturnType
 
-      /** Remove the text color mark from the selection. */
       unsetTextColor: () => ReturnType
     }
   }
@@ -67,12 +62,10 @@ declare module '@tiptap/core' {
 export const TextColor = Mark.create({
   name: 'textColor',
 
-  // Lower priority than standard marks (bold, italic, etc.)
+  // Above the default 100, so the color span wraps bold, italic and the rest
   priority: 900,
 
-  // Do not extend the mark when typing at its boundary. Without this,
-  // typing adjacent to a colored word would inherit the color, which is
-  // almost never what the user wants for an explicit color annotation.
+  // Typing next to a marked word shouldn't inherit the mark
   inclusive: false,
 
   // ---------------------------------------------------------------------------
@@ -83,13 +76,11 @@ export const TextColor = Mark.create({
       color: {
         default: null,
         parseHTML: (element: HTMLElement) => {
-          // Support both the data attribute (written by renderHTML) and a
-          // legacy inline style for graceful degradation.
           const fromAttr = element.getAttribute('data-text-color')
           if (fromAttr !== null && fromAttr !== '' && isValidColorName(fromAttr))
             return fromAttr
 
-          // Fallback: try to recover a name from a CSS-variable inline style.
+          // Fall back to a CSS-variable inline style
           const raw = element.style.color ?? ''
           const varMatch = CSS_VAR_COLOR_RE.exec(raw)
           const varName = varMatch?.[1] ?? null
@@ -127,7 +118,7 @@ export const TextColor = Mark.create({
           return false
         },
       },
-      // Graceful fallback for legacy spans that carry a CSS-variable inline style.
+      // Spans with only a CSS-variable inline style
       {
         tag: 'span',
         getAttrs: (node: HTMLElement) => {
@@ -172,9 +163,7 @@ export const TextColor = Mark.create({
   },
 
   // ---------------------------------------------------------------------------
-  // Markdown serialization
-  // Serializes to :::color[name]text::: - triple-colon inline directive
-  // syntax, consistent with other custom directives in the markdown dialect.
+  // Markdown serialization  :::color[name]text:::
   // ------------------------------------------------------------------------
   renderMarkdown(node: JSONContent, h: MarkdownRendererHelpers, _ctx: RenderContext): string {
     // eslint-disable-next-line ts/no-unsafe-assignment
@@ -186,7 +175,7 @@ export const TextColor = Mark.create({
   },
 
   // ---------------------------------------------------------------------------
-  // Markdown tokenizer - teaches marked.js to recognise :::color[name]text:::
+  // Markdown tokenizer for :::color[name]text:::
   // ------------------------------------------------------------------------
   markdownTokenizer: {
     name: 'textColor',
@@ -206,10 +195,8 @@ export const TextColor = Mark.create({
       if (!isValidColorName(color))
         return undefined
 
-      // Find the closing ::: that matches this opening, accounting for nesting.
-      // A plain lazy regex ([\s\S]*?) stops at the first ::: it encounters, which
-      // is wrong when directives are stacked (e.g. :::color[red]:::font[serif]text::::::).
-      // We walk the string and track depth so we always find the correct outer close.
+      // A lazy regex stops at the first :::, which breaks stacked directives
+      // like :::color[red]:::font[serif]text::::::. Track depth to find the outer close.
       const contentStart = prefixMatch[0].length
       let depth = 1
       let i = contentStart
@@ -217,15 +204,12 @@ export const TextColor = Mark.create({
         if (src[i] === ':' && src[i + 1] === ':' && src[i + 2] === ':') {
           const after = src.slice(i + 3)
           if (OPENING_DIRECTIVE_RE.test(after)) {
-            // Another opening directive - go deeper
             depth++
             i += 3
             continue
           }
 
-          // Closing ::: - anything NOT followed by an opening-directive pattern
-          // (letters then '[') counts as a close, including bare ':::' sequences
-          // and text that happens to start with a letter but is not a directive.
+          // Any ::: not followed by `letters[` closes, including text that only looks like a directive
           if (!OPENING_DIRECTIVE_RE.test(after)) {
             depth--
             if (depth === 0) {
@@ -235,8 +219,7 @@ export const TextColor = Mark.create({
                 type: 'textColor',
                 raw,
                 color,
-                // Tokenize inner content as inline tokens so nested marks
-                // (bold, italic, mentions, etc.) are preserved.
+                // Inline tokens keep nested marks like bold and mentions
                 tokens: lexer.inlineTokens(rawInner),
               }
             }
@@ -262,7 +245,6 @@ export const TextColor = Mark.create({
     const innerTokens = (raw.tokens as MarkdownToken[] | undefined) ?? []
     const content = helpers.parseInline(innerTokens)
 
-    // Fall back to plain inline content if the color name is invalid.
     if (color === null)
       return content
 

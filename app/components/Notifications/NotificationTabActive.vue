@@ -243,7 +243,6 @@ defineExpose({ markAllAsRead: onMarkAllAsRead, markAllLoading, hasAnyNotificatio
         @retry="devFixtureError ? undefined : fetch"
       />
 
-      <!-- Pinned section -->
       <template v-if="hasPinned">
         <span class="text-s text-color-lighter block">Actions</span>
 
@@ -277,7 +276,6 @@ defineExpose({ markAllAsRead: onMarkAllAsRead, markAllLoading, hasAnyNotificatio
         <div class="block mb-s" />
       </template>
 
-      <!-- Regular actionable notifications -->
       <span v-if="hasActionable" class="text-s text-color-lighter">Recent</span>
 
       <NotificationCardEventRsvp

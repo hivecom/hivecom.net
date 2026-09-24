@@ -3,27 +3,21 @@ import type { AnalysisFrame, SharedAnalysis } from '@/lib/audio/analysis'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { getSharedAnalysis } from '@/lib/audio/analysis'
 
-// The live, music-reactive bar visualizer. It runs no FFTs of its own: the
-// shared analysis provider (lib/audio/analysis) decodes the track once and hands
-// every panel the windowed magnitudes for each size it asks for, computed once
-// per frame. This panel reads an 8192 (snappy upper bars) and a 16384 (finer
-// bass, smoother over time) and pools them into bars. The provider never taps
-// the live <audio> element (which would risk muting cross-origin tracks, see
-// lib/audio/decode). When paused the bars decay to a flat baseline, so the panel
-// always holds its space.
+// The live bar visualizer. It runs no FFTs of its own: the shared analysis
+// provider (lib/audio/analysis) hands it windowed magnitudes at 8192 (snappy upper
+// bars) and 16384 (finer bass), which it pools into bars. The provider never taps
+// the live <audio> element, which would risk muting cross-origin tracks.
 
 const props = defineProps<{
   // Track URL. Swapping it re-subscribes to that track's shared analysis.
   src: string
 
-  // Playback position as a 0..1 fraction. The provider reads playback state
-  // directly; this is only here for the shared prop shape the lightbox binds.
+  // The provider reads playback state directly. This only keeps the prop shape
+  // the lightbox binds.
   progress: number
 
-  // Total duration in seconds.
   duration: number
 
-  // Whether the engine is playing.
   playing: boolean
 
   // Whether the engine is buffering/seeking. The spectrum reads decoded PCM at an
@@ -31,9 +25,8 @@ const props = defineProps<{
   // through a seek gap while no sound is out. Gating on it idles the bars then.
   loading?: boolean
 
-  // Optional fixed bar count. Leave unset and the panel picks a count from its
-  // width so bars never get thinner than MIN_BAR_PX, which is what smeared the
-  // mobile view. Set it to pin a specific resolution.
+  // Optional fixed bar count. Unset, the panel picks a count from its width so bars
+  // never get thinner than MIN_BAR_PX.
   bars?: number
 }>()
 
@@ -60,10 +53,9 @@ const DOUBLE_HALF = DOUBLE / 2
 const FLOOR_DB = -80
 const MAX_DB = -30
 
-// Most bars we ever draw; the active count collapses below this on narrow panels
-// so bars never get thinner than MIN_BAR_PX (what turned the mobile view into a
-// smear). Arrays are sized to the max and we only ever touch the first
-// `activeBars`. `lowBars` is how many, from the bass up, read the long window.
+// Most bars we ever draw. Narrow panels collapse the active count so bars stay at
+// least MIN_BAR_PX wide. Arrays are sized to the max and only the first
+// `activeBars` get touched. `lowBars` is how many, from the bass up, read the long window.
 const MAX_BARS = 256
 const MIN_BARS = 24
 const MIN_BAR_PX = 3
@@ -129,7 +121,7 @@ let unsubscribe: (() => void) | null = null
 let accent: [number, number, number] = [167, 252, 47]
 let axis: [number, number, number] = [110, 110, 110]
 
-// Re-read the palette and repaint when the theme flips, the way the globe does.
+// Re-read the palette and repaint when the theme flips.
 function refreshColors() {
   accent = readThemeColor('--color-accent', [167, 252, 47])
   axis = readThemeColor('--color-text-lighter', [110, 110, 110])
@@ -183,8 +175,6 @@ function onFrame(frame: AnalysisFrame) {
   if (!cv || !host)
     return
 
-  // Recompute bands the first time the real sample rate arrives (it drives how
-  // many bins a frequency spans).
   if (frame.sampleRate > 0 && frame.sampleRate !== sampleRate) {
     sampleRate = frame.sampleRate
     computeBands()
@@ -256,7 +246,6 @@ function onFrame(frame: AnalysisFrame) {
       const yForDb = (d: number) => baseY - ((d - FLOOR_DB) / (MAX_DB - FLOOR_DB)) * maxH
       const xForFreq = (f: number) => (activeBars * Math.log(f / MIN_FREQ) / LOG_RANGE) * step + barW / 2
 
-      // dB gridlines behind the bars.
       if (showAxes) {
         ctx.lineWidth = 1
         ctx.strokeStyle = `rgba(${xr}, ${xg}, ${xb}, 0.16)`
@@ -279,7 +268,6 @@ function onFrame(frame: AnalysisFrame) {
         ctx.fillStyle = grad
         ctx.fillRect(x, y, barW, barH)
 
-        // Solid accent peak-hold cap, sitting at the held level above the bar.
         const capY = baseY - holds[j]! * maxH - capH
         ctx.fillStyle = solid
         ctx.fillRect(x, Math.max(0, capY), barW, capH)
@@ -333,7 +321,6 @@ function subscribe(src: string) {
 
 watch(() => props.src, src => subscribe(src), { immediate: true })
 
-// Re-read the palette and repaint when the theme flips, the way the globe does.
 onThemeChange(() => {
   refreshColors()
   analysis?.requestFrame()

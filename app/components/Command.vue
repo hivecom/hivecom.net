@@ -18,7 +18,7 @@ const userId = useUserId()
 const { user: userData } = useDataUser(userId, { includeRole: true, includeAvatar: false })
 const userRole = computed(() => userData.value?.role ?? null)
 
-// Forum topics - used for pre-populated results when forum-scoped
+// Pre-populates results when forum-scoped
 const { topics: forumTopics } = useDataForumTopics()
 const { settings } = useDataUserSettings()
 const showArchived = computed(() => settings.value.show_forum_archived)
@@ -30,7 +30,6 @@ const topicById = computed(() => {
   return map
 })
 
-// True when the scope is restricted to forum types (no nav items, pre-populate with topics)
 const isForumScoped = computed(() =>
   scope.value != null
   && scope.value.length > 0
@@ -51,7 +50,6 @@ watch(isOpen, (open) => {
   }
 })
 
-// Reset group when scope changes (different open context)
 watch(scope, () => {
   activeGroup.value = 'All'
 })
@@ -96,11 +94,9 @@ const effectiveScope = computed<SearchType[] | null>(() => {
   if (g === 'Navigation' || g === 'Commands' || g === 'Themes')
     return null
 
-  // Specific DB group selected
   if (g != null && g !== 'All' && GROUP_TO_TYPES[g] != null)
     return GROUP_TO_TYPES[g]!
 
-  // All or null - use the contextual scope
   return scope.value
 })
 
@@ -125,7 +121,6 @@ const navItems = computed(() =>
   }),
 )
 
-// Nav scoring for priority ranking
 function navScore(label: string, q: string): number {
   if (label === q)
     return 4
@@ -297,9 +292,7 @@ const isCommandsOnly = computed(() => activeGroup.value === 'Commands')
 const isThemesOnly = computed(() => activeGroup.value === 'Themes')
 
 const commands = computed<Command[]>(() => {
-  // Forum-scoped: never show nav items
   if (isForumScoped.value) {
-    // Empty query - pre-populate with topics from cache, respecting archived setting
     if (!search.value) {
       return forumTopics.value
         .filter(t => showArchived.value || !t.is_archived)
@@ -320,7 +313,6 @@ const commands = computed<Command[]>(() => {
 
     const dbCommands: Command[] = results.value.map(dbResultToCommand)
 
-    // Exclude topics already returned by DB to avoid duplicates
     const dbTopicIds = new Set(
       results.value.filter(r => r.result_type === 'discussion_topic').map(r => r.id),
     )
@@ -384,8 +376,6 @@ const commands = computed<Command[]>(() => {
 // Icon lookup (used in #icon slot)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Maps a group label back to an icon for nav commands, and uses TYPE_META for DB commands.
-// Falls back to a generic icon if nothing matches.
 const NAV_GROUP_ICONS: Record<string, string> = Object.fromEntries(
   commandLinks.map(link => [link.label, link.icon]),
 )
@@ -415,7 +405,6 @@ const resultTypeByTitle = computed(() => {
 })
 
 function iconForCommand(command: Command): string {
-  // Quick commands have fixed icons keyed on title
   if (command.group === 'Commands') {
     if (command.title === 'Latest Discussion')
       return 'ph:chat-circle'
@@ -430,7 +419,6 @@ function iconForCommand(command: Command): string {
     return 'ph:circle-half-tilt-fill'
   }
 
-  // Differentiate discussions from topics within the Forum group
   else if (command.group === 'Forum') {
     const resultType = resultTypeByTitle.value.get(command.title)
     if (resultType === 'discussion')
@@ -440,12 +428,10 @@ function iconForCommand(command: Command): string {
     return 'ph:folder'
   }
 
-  // DB result groups map directly via TYPE_META
   const typeMeta = Object.values(TYPE_META).find(m => m.group === command.group)
   if (typeMeta != null)
     return typeMeta.icon
 
-  // Navigation items: look up by title
   return NAV_GROUP_ICONS[command.title] ?? 'ph:arrow-right'
 }
 

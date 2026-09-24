@@ -13,7 +13,6 @@ defineProps<Props>()
 
 <template>
   <Flex column gap="xs">
-    <!-- Server Details (Markdown) -->
     <Card v-if="gameserver.markdown" class="gameserver-markdown card-bg ">
       <Flex column gap="l" class="pb-l">
         <strong class="gameserver-markdown__title">
@@ -51,7 +50,6 @@ defineProps<Props>()
 
   &__content {
     padding: var(--space-m);
-    /* max-width: 728px; */
     margin-bottom: var(--space-xl);
   }
 }

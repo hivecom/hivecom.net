@@ -11,8 +11,7 @@ export interface ChatAttachment {
   id: string
   file: File
 
-  // Object URL for image files (thumbnail preview), null otherwise. Revoked on
-  // remove/clear.
+  // Object URL for image previews, null for other files. Revoked on remove/clear.
   previewUrl: string | null
   status: ChatAttachmentStatus
 
@@ -24,12 +23,10 @@ export interface ChatAttachment {
 // stops an obviously-too-big file from starting a doomed upload.
 const MAX_FILE_BYTES = 100 * 1024 * 1024
 
-// Module-level singleton — there is only ever one active composer at a time, so
-// sharing the trays is safe and lets parent components (e.g. ChatApp) call
-// add() from a drag handler without needing a separate composable instance.
-//
+// Module-level singleton. There's only ever one active composer, so sharing the
+// trays is safe and lets a parent call add() from a drag handler.
 // One tray per buffer, keyed like the composer's drafts, so files queued in one
-// channel don't follow you into the next. The composer picks the active one.
+// channel don't follow you into the next.
 const trays = ref(new Map<string, ChatAttachment[]>())
 const activeTray = ref('')
 const uploading = ref(false)
@@ -58,11 +55,6 @@ function trayFor(buffer: string): ChatAttachment[] {
   return tray
 }
 
-/**
- * Shared attachment tray for the chat composer. Holds the files queued for the
- * next send, mints thumbnail previews for images, and uploads everything to
- * Depot on demand.
- */
 export function useChatAttachments() {
   const depot = useDepot()
   const rulesGate = useSharingRulesGate()
@@ -139,8 +131,8 @@ export function useChatAttachments() {
     }
   }
 
-  // Both the composer and ChatApp call this composable, so restoredFor keeps
-  // the load to once per user per page.
+  // Several components call this composable, so restoredFor keeps the load to
+  // once per user per page.
   if (import.meta.client) {
     watch(userId, (id) => {
       if (id != null && id !== restoredFor)
@@ -148,10 +140,8 @@ export function useChatAttachments() {
     }, { immediate: true })
   }
 
-  // Attaching is an upload to Depot, so it goes through the sharing-rules gate:
-  // if the user hasn't agreed yet, the shared modal opens and the files are
-  // added once they accept. Snapshot the list first since a FileList from an
-  // <input> is cleared right after this call.
+  // Attaching uploads to Depot, so it goes through the sharing-rules gate.
+  // Snapshot first since an <input>'s FileList is cleared right after this call.
   function add(files: FileList | File[]) {
     const snapshot = Array.from(files)
     if (!snapshot.length)
@@ -160,8 +150,7 @@ export function useChatAttachments() {
     rulesGate.run(() => addToTray(snapshot))
   }
 
-  // Point the tray at a buffer. The composer calls this whenever the active
-  // buffer changes, the same moment it swaps the draft text.
+  // Call whenever the active buffer changes, alongside the draft text swap.
   function select(buffer: string) {
     activeTray.value = buffer
   }
@@ -189,9 +178,8 @@ export function useChatAttachments() {
     trays.value.delete(activeTray.value)
   }
 
-  // Upload every queued attachment to Depot and return the public URLs in order.
-  // Returns null if any upload fails, leaving the tray intact so the user can
-  // retry. Already-uploaded files (a previous partial run) are not re-sent.
+  // Returns the public URLs in order, or null if any upload fails, leaving the
+  // tray intact for a retry. Files done in a previous partial run aren't re-sent.
   async function uploadAll(): Promise<string[] | null> {
     if (!attachments.value.length)
       return []

@@ -7,7 +7,6 @@ import FundingTable from '@/components/Admin/Funding/FundingTable.vue'
 
 definePageMeta({ layout: 'admin' })
 
-// State for refresh coordination between components
 const refreshSignal = ref(0)
 </script>
 
@@ -20,14 +19,11 @@ const refreshSignal = ref(0)
       </p>
     </Flex>
 
-    <!-- Funding KPIs -->
     <FundingKPIs v-model:refresh-signal="refreshSignal" />
 
-    <!-- Expense Table -->
     <h2>Expenses</h2>
     <ExpenseTable v-model:refresh-signal="refreshSignal" />
 
-    <!-- Funding Table -->
     <h2>Funding History</h2>
     <FundingTable v-model:refresh-signal="refreshSignal" />
   </Flex>

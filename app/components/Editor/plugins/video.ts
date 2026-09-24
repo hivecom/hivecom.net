@@ -3,11 +3,7 @@ import { createAtomBlockMarkdownSpec, mergeAttributes, Node } from '@tiptap/core
 // ---------------------------------------------------------------------------
 // Video node extension
 //
-// Stores uploaded/linked videos as a block-level atom node in Tiptap.
-// Serializes to the :::video directive syntax so the markdown pre-processor
-// can convert it to a <video> HTML element before rendering.
-//
-// Directive format (mirrors the YouTube extension pattern):
+// Block atom the markdown pre-processor renders as a <video> element:
 //   :::video {src="https://..."} :::
 // ------------------------------------------------------------------------
 declare module '@tiptap/core' {
@@ -16,7 +12,6 @@ declare module '@tiptap/core' {
 
   interface Commands<ReturnType> {
     video: {
-      /** Insert a video node at the current selection. */
       insertVideo: (attrs: { src: string }) => ReturnType
     }
   }
@@ -34,10 +29,8 @@ export const Video = Node.create({
       src: {
         default: null,
       },
-      // Transient client-only id used to track a placeholder through async
-      // upload without relying on the mutable `src`. rendered: false keeps it
-      // out of the serialized HTML, and the atom-block markdown spec below only
-      // allows `src`, so it never leaks into stored markdown either.
+      // Client-only id that tracks a placeholder through upload, since `src`
+      // changes. Never serialized: rendered is false and the markdown spec only allows `src`.
       uploadId: {
         default: null,
         rendered: false,
@@ -76,7 +69,6 @@ export const Video = Node.create({
     }
   },
 
-  // Markdown serialization: :::video {src="..."} :::
   ...createAtomBlockMarkdownSpec({
     nodeName: 'video',
     allowedAttributes: ['src'],

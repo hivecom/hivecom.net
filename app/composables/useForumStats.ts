@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useCache } from '@/composables/useCache'
 
 const FORUM_STATS_CACHE_KEY = 'forum:stats'
-const FORUM_STATS_TTL = 10 * 60 * 1000 // 10 minutes
+const FORUM_STATS_TTL = 10 * 60 * 1000
 
 export interface ForumUserStat {
   user_id: string
@@ -33,7 +33,7 @@ export interface ForumStats {
   topRepliers: ForumUserStat[]
   topStarters: ForumUserStat[]
 
-  // Full sorted lists (not sliced) - used for out-of-top-10 rank lookups
+  // Full sorted lists, not sliced, for out-of-top-10 rank lookups.
   allCombined: ForumUserStat[]
   allRepliers: ForumUserStat[]
   allStarters: ForumUserStat[]

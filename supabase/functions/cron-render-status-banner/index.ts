@@ -63,8 +63,7 @@ Deno.serve(async (req: Request) => {
         .gt("date", now)
         .order("date", { ascending: true })
         .limit(1),
-      // Known games - resolves Steam app IDs to display names. Player counts
-      // come from the metrics snapshot, not from here.
+      // Only for names. Player counts come from the metrics snapshot.
       supabaseClient
         .from("games")
         .select("steam_id, name")
@@ -97,8 +96,6 @@ Deno.serve(async (req: Request) => {
     });
     const eventOngoing = Boolean(activeEvent);
 
-    // Map known Steam app IDs to their display name. The games table only
-    // supplies metadata (the name); player counts come from the snapshot.
     const steamIdToName = new Map<number, string>();
     for (const g of gamesResult.data ?? []) {
       const row = g as unknown as {
@@ -110,14 +107,13 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Pick the top currently-played known game from the snapshot counts, so the
-    // footer count and the "In-game" KPI are derived from the same point in
-    // time and can never disagree.
+    // Counts come from the snapshot, so the footer and the "In-game" KPI can never
+    // disagree
     let topAppId: number | null = null;
     let topCount = 0;
     for (const [appIdStr, count] of Object.entries(metrics.users.bySteamGame)) {
       const appId = Number(appIdStr);
-      if (!steamIdToName.has(appId)) continue; // not a tracked game
+      if (!steamIdToName.has(appId)) continue;
       if (count > topCount) {
         topCount = count;
         topAppId = appId;

@@ -17,8 +17,7 @@ const props = defineProps<{
   // When true, render a plain (mobile) trigger instead of the tooltip button.
   mobile?: boolean
 
-  // When true, suppress the trigger button entirely (the surrounding page
-  // provides its own trigger, e.g. ChatHeader's back button on mobile).
+  // Suppress the trigger when the surrounding page provides its own
   noTrigger?: boolean
 }>()
 

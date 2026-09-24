@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// AST-level grouping (used by MarkdownRendererInner before MDCRenderer sees it)
+// AST-level grouping, before MDCRenderer sees the tree
 // ------------------------------------------------------------------------
 interface ASTNode {
   type: string
@@ -10,7 +10,7 @@ interface ASTNode {
 }
 
 function isSoloVideoASTNode(node: ASTNode): boolean {
-  // Structured element path - rehype stores class as props.className (string array)
+  // rehype stores class as props.className, a string array.
   if (node.type === 'element' && node.tag === 'div') {
     const cls = node.props?.className ?? node.props?.class
     if (typeof cls === 'string')
@@ -19,7 +19,7 @@ function isSoloVideoASTNode(node: ASTNode): boolean {
       return (cls as string[]).includes('md-video-embed')
   }
 
-  // Fallback: raw HTML node (type:'raw' or 'html') if MDC doesn't parse the HTML
+  // Raw HTML node, when MDC doesn't parse the HTML.
   if ((node.type === 'raw' || node.type === 'html') && typeof node.value === 'string')
     return node.value.trimStart().startsWith('<div class="md-video-embed">')
 
@@ -36,8 +36,7 @@ function isSoloImageASTNode(node: ASTNode): boolean {
   return kids.length === 1 && kids[0]?.type === 'element' && kids[0]?.tag === 'img'
 }
 
-// If a <p> contains multiple images and nothing else, split it into individual
-// solo-image <p> nodes so the grouping pass can pick them up.
+// A <p> of only images gets split so the grouping pass can pick them up.
 function splitMultiImageASTNode(node: ASTNode): ASTNode[] {
   if (node.type !== 'element' || node.tag !== 'p')
     return [node]
@@ -58,9 +57,7 @@ function splitMultiImageASTNode(node: ASTNode): ASTNode[] {
   }))
 }
 
-// Strip the `controls` attribute from a video AST node so gallery tiles don't
-// show the native controls bar. Handles both raw HTML string nodes and
-// structured element nodes produced by rehype.
+// Gallery tiles shouldn't show the native controls bar.
 function stripVideoControls(node: ASTNode): ASTNode {
   if ((node.type === 'raw' || node.type === 'html') && typeof node.value === 'string') {
     return { ...node, value: node.value.replace(/\s+controls(?:="[^"]*")?/g, '') }
@@ -80,16 +77,13 @@ function stripVideoControls(node: ASTNode): ASTNode {
   return node
 }
 
-// Walk the root AST body and wrap runs of solo-image <p> nodes in a
-// <div class="md-image-group" data-count="N"> node so that Vue renders the
-// grouping natively and never patches it away.
+// Grouping in the AST, rather than the DOM, means Vue renders the groups
+// natively and never patches them away.
 export function groupImagesAST(body: ASTNode): ASTNode {
   if (!body.children)
     return body
 
-  // First pass: split any <p> nodes that contain multiple consecutive images
-  // into individual solo-image <p> nodes (happens when images have no blank
-  // line between them in the source markdown).
+  // Images with no blank line between them in the source share one <p>.
   const flatChildren: ASTNode[] = []
   for (const child of body.children) {
     flatChildren.push(...splitMultiImageASTNode(child))
@@ -107,7 +101,6 @@ export function groupImagesAST(body: ASTNode): ASTNode {
       continue
     }
 
-    // Collect full run of consecutive solo-image/video nodes.
     const run: ASTNode[] = []
     let j = i
     while (j < flatChildren.length && (isSoloImageASTNode(flatChildren[j]!) || isSoloVideoASTNode(flatChildren[j]!))) {
@@ -134,10 +127,8 @@ export function groupImagesAST(body: ASTNode): ASTNode {
 }
 
 // ---------------------------------------------------------------------------
-// DOM-level grouping (used by the ProseMirror editor)
+// DOM-level grouping, for the ProseMirror editor
 // ------------------------------------------------------------------------
-// If a <p> contains only <img> elements (no other non-whitespace content),
-// split it into individual solo-image <p> nodes in the DOM.
 function splitMultiImageNode(node: HTMLElement, container: HTMLElement): void {
   const kids = [...node.childNodes].filter(
     n => !(n.nodeType === Node.TEXT_NODE && n.textContent?.trim() === ''),
@@ -147,7 +138,6 @@ function splitMultiImageNode(node: HTMLElement, container: HTMLElement): void {
   if (!kids.every(n => n instanceof HTMLElement && n.tagName === 'IMG'))
     return
 
-  // Insert individual <p><img></p> wrappers before the original node.
   for (const img of kids) {
     const p = document.createElement('p')
     p.appendChild(img.cloneNode(true))
@@ -156,10 +146,8 @@ function splitMultiImageNode(node: HTMLElement, container: HTMLElement): void {
   container.removeChild(node)
 }
 
-// A "solo media node" is either:
-// - a <p> whose only non-whitespace child is an <img>  (MDC renderer output)
-// - a bare <img> that is a direct child of the container (ProseMirror output)
-// - a <div class="md-video-embed"> block (MDC renderer output for :::video)
+// A bare <img> is what ProseMirror emits. The <p> and video embed forms come
+// from the MDC renderer.
 function isSoloImageNode(node: ChildNode): node is HTMLElement {
   if (!(node instanceof HTMLElement))
     return false
@@ -180,12 +168,9 @@ function isSoloImageNode(node: ChildNode): node is HTMLElement {
   return false
 }
 
-// Walk a container element and wrap runs of solo-image nodes in a single
-// .md-image-group div per run. CSS grid controls the column layout at each
-// breakpoint - no JS chunking so there are no orphaned odd images.
-// Safe to call repeatedly - cleans up previous groupings before re-running.
+// One group per run. CSS grid handles the columns, so JS chunking can't leave
+// orphaned odd images. Idempotent.
 export function groupImages(container: HTMLElement): void {
-  // Clean up any previously applied groupings so re-runs are idempotent.
   for (const group of [...container.querySelectorAll('.md-image-group')]) {
     const parent = group.parentNode
     if (!parent)
@@ -197,14 +182,11 @@ export function groupImages(container: HTMLElement): void {
     parent.removeChild(group)
   }
 
-  // Remove gap cursors before grouping - ProseMirror re-injects them on the
-  // next transaction so we don't need to preserve their positions.
+  // ProseMirror re-injects gap cursors on the next transaction.
   for (const gap of [...container.querySelectorAll('.ProseMirror-gapcursor')]) {
     gap.parentNode?.removeChild(gap)
   }
 
-  // Split any <p> nodes that contain multiple consecutive images into
-  // individual solo-image <p> nodes before the grouping pass.
   for (const child of [...container.childNodes]) {
     if (child instanceof HTMLElement && child.tagName === 'P')
       splitMultiImageNode(child, container)
@@ -220,7 +202,6 @@ export function groupImages(container: HTMLElement): void {
       continue
     }
 
-    // Collect the full run of consecutive solo-image nodes.
     const run: HTMLElement[] = []
     let j = i
     while (j < children.length && isSoloImageNode(children[j]!)) {
@@ -229,13 +210,10 @@ export function groupImages(container: HTMLElement): void {
     }
 
     if (run.length < 2) {
-      // Single image - leave it alone.
       i++
       continue
     }
 
-    // Wrap the entire run in one group. CSS grid handles column layout per
-    // breakpoint so there are no orphaned images from JS-level chunking.
     const wrapper = document.createElement('div')
     wrapper.className = 'md-image-group'
     wrapper.dataset.count = String(run.length)

@@ -52,8 +52,8 @@ function effectiveDate(event: Tables<'events'>, now: Date = new Date()): Date {
   return new Date(event.date)
 }
 
-// Returns a copy of the event with `date` set to the effective occurrence date
-// so that child components (e.g. Event.vue) use the right date for countdown.
+// Copies the event with `date` set to the effective occurrence, so children count
+// down to the right date
 function withEffectiveDate(event: Tables<'events'>, now: Date): Tables<'events'> {
   const start = effectiveDate(event, now)
   const isoDate = start.toISOString()
@@ -99,7 +99,6 @@ const hasActiveEvents = computed(() =>
 
 <template>
   <div v-if="loading">
-    <!-- Loading skeletons -->
     <Flex column gap="l">
       <!-- Section title skeleton -->
       <Skeleton :width="200" :height="36" :radius="8" />
@@ -116,7 +115,6 @@ const hasActiveEvents = computed(() =>
   </div>
 
   <template v-else>
-    <!-- Ongoing Events Section -->
     <div v-if="ongoingEvents.length > 0" class="events-section events-section--ongoing">
       <h2 class="events-section__title">
         Happening Now
@@ -135,7 +133,6 @@ const hasActiveEvents = computed(() =>
       </GlowGroup>
     </div>
 
-    <!-- Upcoming Events Section -->
     <div v-if="upcomingEvents.length > 0" class="events-section">
       <h2 class="events-section__title">
         Upcoming Events
@@ -153,14 +150,14 @@ const hasActiveEvents = computed(() =>
       </GlowGroup>
     </div>
 
-    <!-- No active events message - past listing handles its own empty state -->
+    <!-- The past listing handles its own empty state -->
     <div v-if="!hasActiveEvents" class="events-section__no-active">
       <p class="text-color-lighter">
         No upcoming or ongoing events.
       </p>
     </div>
 
-    <!-- Past Events Section - self-contained, manages its own data fetching -->
+    <!-- Past events fetch their own data -->
     <EventsPastListing :search="search" :official-filter="officialFilter" :recurring-filter="recurringFilter" :game-filter="gameFilter" />
   </template>
 </template>
@@ -195,7 +192,6 @@ const hasActiveEvents = computed(() =>
     padding: 3rem 0;
   }
 
-  // Past events styling - grayed out with hover effect
   &--past {
     .events-section__title {
       color: var(--color-text-light);
@@ -211,7 +207,6 @@ const hasActiveEvents = computed(() =>
     }
   }
 
-  // Ongoing events styling - highlighted with accent color
   &--ongoing {
     .events-section__title {
       display: flex;
@@ -257,7 +252,6 @@ const hasActiveEvents = computed(() =>
   }
 }
 
-// Mobile responsiveness
 @media (max-width: $breakpoint-s) {
   // Hide the header row on mobile since individual events are centered
   .events-section > .vui-flex:has(.events-section__countdown-header),

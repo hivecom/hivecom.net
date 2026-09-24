@@ -7,10 +7,8 @@ const SNAPSHOT_PATH = 'teamspeak/state.json'
 const STALE_AUTO_REFRESH_MS = 300_000
 
 export interface UseTeamSpeakSnapshotOptions {
-  /** Optional key override for useAsyncData */
   key?: string
 
-  /** Optional refresh interval passed to useAsyncData */
   refreshInterval?: number
 }
 

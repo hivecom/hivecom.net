@@ -5,7 +5,6 @@ import { authorizeSystemCron } from "../_shared/auth.ts";
 import { sendDiscordNotification } from "../_shared/discord.ts";
 import type { Database, Tables } from "database-types";
 
-// Define interfaces for Patreon API response types
 interface PatreonTier {
   id: string;
   type: string;
@@ -68,9 +67,8 @@ interface PatreonResponse {
 }
 
 Deno.serve(async (req: Request) => {
-  // Skip CORS preflight check for OPTIONS requests as this should not originate from a browser.
+  // No CORS preflight, cron requests never come from a browser
   try {
-    // Authorize the request using the system cron authorization function
     const authorizeResponse = authorizeSystemCron(req);
     if (authorizeResponse) {
       console.error("Authorization failed:", authorizeResponse.statusText);
@@ -98,15 +96,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create a Supabase client with the service role key (full admin access)
-    // Don't pass Authorization header from the request
+    // Service role client. Never forward the request's Authorization header.
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       getSecretKey(),
     );
 
-    // Fetch the latest Patreon contribution records for our campaign.
-    // Using currently_entitled_amount_cents since it represents the amount the patron is entitled to in the campaign's currency (Euro)
+    // currently_entitled_amount_cents is in the campaign currency (EUR)
     const patreonUrl =
       `https://patreon.com/api/oauth2/v2/campaigns/${PATREON_CAMPAIGN_ID}/members?fields%5Bmember%5D=full_name,campaign_lifetime_support_cents,currently_entitled_amount_cents,last_charge_date,last_charge_status,patron_status,note,is_free_trial,is_gifted,will_pay_amount_cents&include=currently_entitled_tiers,user`;
 
@@ -128,40 +124,32 @@ Deno.serve(async (req: Request) => {
 
     const patreonData = await patreonResponse.json() as PatreonResponse;
 
-    // Parse the patreon data to get member information
     const members = patreonData.data || [];
     console.log(`Found ${members.length} Patreon members`);
 
-    // Calculate total monthly funding by summing up the currently_entitled_amount_cents of all active patrons
-    // This value is already in cents in the campaign's currency (Euro)
     let monthlyPatreonCents = 0;
     let lifetimePatreonCents = 0;
 
-    // Track patrons by ID for profile updates
     const activePatronIds: string[] = [];
     const supporterPatronIds: string[] = [];
-    // Map patreon user ID -> monthly cents for points awarding
     const activePatronMonthlyCents = new Map<string, number>();
 
-    // Process each member to calculate total and identify supporters
     for (const member of members) {
-      // Track lifetime total from all members regardless of status
+      // Lifetime counts every member regardless of status
       if (member.attributes.campaign_lifetime_support_cents) {
         lifetimePatreonCents +=
           member.attributes.campaign_lifetime_support_cents;
       }
 
-      // Only include active patrons in the monthly totals
       if (
         member.attributes.patron_status === "active_patron" &&
         member.attributes.last_charge_status === "Paid"
       ) {
-        // Add to monthly total keeping the value in cents
         const patronAmountCents =
           member.attributes.currently_entitled_amount_cents;
         monthlyPatreonCents += patronAmountCents;
 
-        // Get the actual Patreon user ID from the user relationship (not the member ID)
+        // The user relationship id, not the member id
         const patreonUserId = member.relationships.user.data.id;
         activePatronIds.push(patreonUserId);
         activePatronMonthlyCents.set(patreonUserId, patronAmountCents);
@@ -172,7 +160,6 @@ Deno.serve(async (req: Request) => {
           } (${patronAmountCents} cents)`,
         );
 
-        // Check if this patron is entitled to the supporter tier
         const entitledTiers =
           member.relationships?.currently_entitled_tiers?.data || [];
         const isSupporterTier = entitledTiers.some(
@@ -186,7 +173,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // The totals calculated in cents
     const monthlyPatreonTotal = Math.round(monthlyPatreonCents);
     const lifetimePatreonTotal = Math.round(lifetimePatreonCents);
 
@@ -204,8 +190,6 @@ Deno.serve(async (req: Request) => {
       }€ (${lifetimePatreonTotal} cents)`,
     );
 
-    // Get the current month in YYYY-MM-DD format for the monthly funding record
-    // Using the first day of the month as the date
     const now = new Date();
     const currentMonthDate = `${now.getFullYear()}-${
       String(now.getMonth() + 1).padStart(2, "0")
@@ -215,15 +199,13 @@ Deno.serve(async (req: Request) => {
       `Updating monthly funding record for date: ${currentMonthDate}`,
     );
 
-    // Upsert the monthly funding record for this month based on the Patreon data
-    // Using the new column structure as per the DB schema changes
     const { error: upsertError } = await supabaseClient
       .from("funding_history")
       .upsert({
         month: currentMonthDate,
-        patreon_month_amount_cents: monthlyPatreonTotal, // Monthly amount in cents
-        patreon_count: activePatronIds.length, // Number of active patrons
-        patreon_lifetime_amount_cents: lifetimePatreonTotal, // Lifetime total in cents
+        patreon_month_amount_cents: monthlyPatreonTotal,
+        patreon_count: activePatronIds.length,
+        patreon_lifetime_amount_cents: lifetimePatreonTotal,
       } as Tables<"funding_history">, {
         onConflict: "month",
       });
@@ -235,7 +217,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Read points_per_cent rate from kvstore
     let pointsPerEuroCent = 1;
     const { data: kvRow } = await supabaseClient
       .from("kvstore")
@@ -252,7 +233,6 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Points per euro cent rate: ${pointsPerEuroCent}`);
 
-    // Award Patreon points to linked profiles
     let linkedProfileCount = 0;
     let totalPointsAwarded = 0;
 
@@ -350,14 +330,11 @@ Deno.serve(async (req: Request) => {
       `Points summary: ${linkedProfileCount} linked profiles, ${totalPointsAwarded} total points awarded`,
     );
 
-    // Update supporter status for all profiles with patreon_id
-    // IMPORTANT:
-    // Don't blanket-reset supporter_patreon to false and then set it back to true.
-    // That causes a daily false→true flip for real supporters and triggers the
-    // `notify_discord_supporter_status_changed` Discord notification each run.
+    // Don't blanket-reset supporter_patreon and set it back. Every false to true
+    // flip sends a Discord notification, so real supporters would be announced
+    // on every run.
 
-    // Helper to build a PostgREST `in` list for `.not(..., 'in', ...)`.
-    // Format example: '("123","456")'
+    // PostgREST `in` list, e.g. '("123","456")'
     const toPostgrestInList = (values: string[]) => {
       const escaped = values
         .map((value) => value.replaceAll("\\", "\\\\").replaceAll('"', '\\"'))
@@ -365,9 +342,7 @@ Deno.serve(async (req: Request) => {
       return `(${escaped.join(",")})`;
     };
 
-    // 1) Remove supporter flag only from users who are currently marked as supporters
-    //    but are no longer entitled (and have a Patreon link).
-    //    This does NOT trigger the Discord notification (trigger only notifies on TRUE transitions).
+    // 1) Unflag supporters who lost their entitlement. This never notifies.
     const removeSupporterQuery = supabaseClient
       .from("profiles")
       .update({ supporter_patreon: false } as Tables<"profiles">)
@@ -389,8 +364,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 2) Add supporter flag only to users who are entitled AND currently not marked.
-    //    This will fire Discord notifications only when a user truly becomes a supporter.
+    // 2) Flag newly entitled users. Only these get a notification.
     let supporterUpdateResult = null;
     if (supporterPatronIds.length > 0) {
       const { data: updatedProfiles, error: supporterError } =
@@ -411,7 +385,6 @@ Deno.serve(async (req: Request) => {
       supporterUpdateResult = updatedProfiles;
     }
 
-    // Notify Discord for each newly-awarded supporter
     if (supporterUpdateResult && supporterUpdateResult.length > 0) {
       for (const profile of supporterUpdateResult) {
         await sendDiscordNotification({

@@ -111,7 +111,7 @@ Deno.serve(async (req: Request) => {
     const iconUrl =
       `https://media.steampowered.com/steamcommunity/public/images/apps/${appId}/${match.img_icon_url}.jpg`;
 
-    // If download=1, proxy the image bytes directly (avoids browser CORS on fetch)
+    // download=1 proxies the image bytes to dodge browser CORS
     const download = url.searchParams.get("download");
     if (download === "1") {
       const imgRes = await fetch(iconUrl);

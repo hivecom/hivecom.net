@@ -30,7 +30,6 @@ const badgeVariant = computed(() => {
   return eventEnded.value ? 'neutral' : 'accent'
 })
 
-// Computed properties for display text
 const displayText = computed(() => {
   if (goingCount.value === 0) {
     return eventEnded.value ? 'No one joined' : 'No one going yet'
@@ -56,7 +55,6 @@ defineExpose({
 
 <template>
   <div class="event-rsvp-count">
-    <!-- Loading skeleton -->
     <Skeleton
       v-if="loadingCount"
       height="2rem"
@@ -64,7 +62,6 @@ defineExpose({
       style="border-radius: 1rem;"
     />
 
-    <!-- RSVP count badge -->
     <Badge
       v-else-if="shouldShow"
       :variant="badgeVariant"

@@ -48,7 +48,6 @@ const allMap = computed<Map<string, number>>(() => {
 type GlobeMode = 'online' | 'all'
 const mode = ref<GlobeMode>('all')
 
-// Tooltip state
 const tooltip = ref<{ x: number, y: number, country: string, flag: string, iso: string, userIds: string[], userCount: number, usersLoading: boolean } | null>(null)
 let hoverFetchTimer: ReturnType<typeof setTimeout> | null = null
 const userCache = new Map<string, string[]>()
@@ -81,14 +80,12 @@ function onMouseMove(e: MouseEvent) {
   }
 }
 
-// Total online users count
 const totalOnlineCount = computed(() => {
   let count = 0
   for (const entry of onlineCountsByCountry.value) count += entry.count
   return count
 })
 
-// Total all users count (from metrics snapshot)
 const totalAllCount = computed(() => {
   let count = 0
   for (const v of allMap.value.values()) count += v
@@ -100,10 +97,9 @@ const hoveredHasUsers = computed(() => {
   return count > 0
 })
 
-// True once the globe has finished its initial mount sequence
 const globeReady = ref(false)
 
-// Dim the globe while data is loading after initial render (mirrors UserTable's table-loading pattern)
+// Dim the globe while data reloads after the initial render.
 const isGlobeLoading = computed(() => globeReady.value && (loading.value || loadingLatest.value))
 
 let globeInstance: import('globe.gl').GlobeInstance | null = null
@@ -191,8 +187,8 @@ onMounted(async () => {
     globeInstance
       .enablePointerInteraction(true)
 
-      // Invisible polygon layer for whole-country hover detection
-      // Filter out Bermuda (id: BMU) - its GeoJSON polygon covers most of the Atlantic
+      // Invisible polygon layer for whole-country hover detection. Bermuda (BMU) is
+      // filtered out because its GeoJSON polygon covers most of the Atlantic.
       .polygonsData(featureCollection.features.filter((f) => {
         return (f.id ?? '') !== 'BMU'
       }))
@@ -237,7 +233,6 @@ onMounted(async () => {
         const allCount = allMap.value.get(isoUpper) ?? 0
         const userCount = mode.value === 'online' ? onlineCount : allCount
 
-        // Show tooltip immediately with count and loading state
         tooltip.value = {
           x: lastMouseX,
           y: lastMouseY,
@@ -251,7 +246,6 @@ onMounted(async () => {
         if (userCount === 0)
           return
 
-        // Check cache first
         const cacheKey = `${mode.value}:${isoUpper}`
         const cached = userCache.get(cacheKey)
         if (cached) {
@@ -259,7 +253,6 @@ onMounted(async () => {
           return
         }
 
-        // Debounce the actual user fetch
         if (hoverFetchTimer != null)
           clearTimeout(hoverFetchTimer)
         hoverFetchTimer = setTimeout(async () => {
@@ -369,7 +362,6 @@ onBeforeUnmount(() => {
         <Spinner size="l" />
       </Flex>
 
-      <!-- Tooltip -->
       <Teleport to="body">
         <div
           v-if="tooltip"

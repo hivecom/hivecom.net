@@ -14,9 +14,8 @@ const props = defineProps<{
 
 const { now } = useNow(() => props.post.timestampRaw)
 
-// Narrow ("3d ago") like the gameserver card's activity line, because the row
-// splits its width with the thread name. The item's own `timestamp` is baked at
-// fetch time and never ages, so this re-derives off the shared tick instead.
+// The item's own `timestamp` is baked at fetch time and never ages, so this
+// re-derives off the shared tick
 const timeLabel = computed(() => fromNow(props.post.timestampRaw, now.value, 'narrow'))
 </script>
 
@@ -37,9 +36,6 @@ const timeLabel = computed(() => fromNow(props.post.timestampRaw, now.value, 'na
         <span class="forum__latest-time">{{ timeLabel }}</span>
       </Flex>
 
-      <!-- Replies push the thread to the far edge with the reply arrow standing
-           in for "Reply in". Topics and discussions have no thread to point at,
-           so they keep the plain label. -->
       <span v-if="post.type === 'Reply'" class="forum__latest-thread">
         <Icon name="ph:arrow-bend-up-left" :size="12" class="forum__latest-thread-icon" />
         <span class="forum__latest-thread-name">{{ post.typeContext }}</span>
@@ -55,16 +51,13 @@ const timeLabel = computed(() => fromNow(props.post.timestampRaw, now.value, 'na
 <style lang="scss" scoped>
 @use '@/assets/mixins.scss' as *;
 
-// A list, not a stack of cards. The rows carry no outline of their own, so the
-// hairline does the separating and the hover fill does the "this is a target".
 .forum__latest-item {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-xxs);
   padding: var(--space-xs);
-  // Bleed back out over the section padding so the rows and the hover fill run
-  // to the card edge instead of sitting indented under the label.
+  // Bleeds over the section padding so the hover fill runs to the card edge
   margin-inline: calc(var(--space-xs) * -1);
   border-bottom: 1px solid var(--color-border-weak);
   overflow: hidden;
@@ -99,10 +92,7 @@ const timeLabel = computed(() => fromNow(props.post.timestampRaw, now.value, 'na
   text-overflow: ellipsis;
 }
 
-// Right-aligned and dimmed: the thread is context for the message, so it sits
-// a step under the author line rather than competing with it. Qualified by the
-// row class because the blanket `span` rule above would otherwise out-specify
-// the colour.
+// Qualified by the row class, or the blanket `span` rule above out-specifies the colour
 .forum__latest-item .forum__latest-thread {
   flex: 0 1 auto;
   min-width: 0;
@@ -130,27 +120,21 @@ const timeLabel = computed(() => fromNow(props.post.timestampRaw, now.value, 'na
   font-weight: var(--font-weight-regular);
 }
 
-// The name sits at the same weight and size as the rest of the footer, so
-// UserName inherits instead of carrying its own scale.
 .forum__latest-user {
   flex: 0 1 auto;
   min-width: 0;
-  // Never more than two thirds of the row, so a long name can't crowd the
-  // thread out entirely.
+  // A long name can't crowd the thread out
   max-width: 66%;
   overflow: hidden;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   color: var(--color-text);
 
-  // Avatar keeps its 18px whatever else happens.
   > :first-child {
     flex-shrink: 0;
   }
 
-  // UserName wraps by default and its text has no truncation of its own, so
-  // without this the name either wraps to a second line or spills over the
-  // thread once the row runs out of room.
+  // UserName wraps by default and has no truncation of its own
   :deep(.user-name) {
     min-width: 0;
     flex-wrap: nowrap;
@@ -174,15 +158,12 @@ const timeLabel = computed(() => fromNow(props.post.timestampRaw, now.value, 'na
   width: 100%;
   max-width: 100%;
   text-align: left;
-  // Same size as the footer - the bold weight and the brighter colour carry the
-  // hierarchy, so the message doesn't need the extra couple of pixels.
   font-size: var(--font-size-xs);
   color: var(--color-text);
   @include line-clamp(2);
 
-  // MarkdownPreview's root is a <p>, and the VUI reset sets `span, strong, p`
-  // to --font-size-m outright, so it takes the reset instead of inheriting the
-  // size off this strong. Hand it back.
+  // MarkdownPreview's root is a <p>, and the VUI reset sets `span, strong, p` to
+  // --font-size-m instead of inheriting
   p {
     font-size: inherit;
     @include line-clamp(2);

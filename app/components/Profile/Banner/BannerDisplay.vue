@@ -5,43 +5,29 @@ import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { USERS_BUCKET_ID } from '@/lib/storageAssets'
 
 const props = defineProps<{
-  /**
-   * The display data for the post author. When null the component renders nothing.
-   */
   user: UserDisplayData | null
 
-  /**
-   * When true, suppresses the default top padding so the banner sits flush
-   * inside a container that already provides its own spacing (e.g. mobile footer).
-   */
+  /** Drops the top padding for containers that bring their own spacing */
   flush?: boolean
 
-  /**
-   * When true, treats the banner as hovered from an external source (e.g. the
-   * parent reply row is hovered). This allows the parent to drive the reveal
-   * without the user needing to hover directly over the banner.
-   */
+  /** Lets the parent drive the reveal, e.g. while the reply row is hovered */
   externalHover?: boolean
 }>()
 
 const supabase = useSupabaseClient()
 const { settings } = useDataUserSettings()
 
-// Track whether the banner image failed to load (e.g. file deleted but
-// has_banner flag not yet cleared). Reset when the user prop changes so a
-// fresh image attempt is made for every new author rendered.
+// Set when the image fails to load, e.g. the file is gone but has_banner isn't
+// cleared yet. Reset per author so each one gets a fresh attempt.
 const bannerLoadFailed = ref(false)
 watch(() => props.user?.id, () => {
   bannerLoadFailed.value = false
 })
 
-/**
- * Synchronous public URL - Supabase Storage getPublicUrl never hits the
- * network, it just constructs the URL from the project's storage endpoint.
- */
 const bannerExtension = computed(() => props.user?.banner_extension ?? 'webp')
 const isVideoBanner = computed(() => bannerExtension.value === 'webm')
 
+// getPublicUrl never hits the network, it only builds the URL, so this stays synchronous
 const bannerUrl = computed<string | null>(() => {
   if (!props.user?.has_banner || !props.user.id)
     return null
@@ -53,10 +39,8 @@ const bannerUrl = computed<string | null>(() => {
   return data.publicUrl ?? null
 })
 
-/** Whether the banner image is currently intended to be shown. */
 const showBanner = computed(() => !!bannerUrl.value && !bannerLoadFailed.value)
 
-/** Whether this component has anything visible to render at all. */
 const hasContent = computed(() => showBanner.value && settings.value.show_user_banners)
 
 function onBannerError() {
@@ -70,11 +54,8 @@ const hovered = ref(false)
 const imgRef = ref<HTMLImageElement | null>(null)
 const isActive = computed(() => hovered.value || tapped.value || !!props.externalHover)
 
-/**
- * Toggle reveal on tap. We listen on touchend so that a scroll gesture that
- * happens to end over the image does not trigger a reveal - we check that no
- * significant movement occurred by comparing touch start/end positions.
- */
+// Reveal on touchend, and only if the finger barely moved, so a scroll that ends
+// over the image doesn't count as a tap
 const touchStartX = ref(0)
 const touchStartY = ref(0)
 
@@ -95,18 +76,13 @@ function onTouchEnd(e: TouchEvent) {
   const dx = Math.abs(t.clientX - touchStartX.value)
   const dy = Math.abs(t.clientY - touchStartY.value)
 
-  // Only treat as a tap if the finger barely moved (not a scroll)
   if (dx < 10 && dy < 10) {
     e.preventDefault()
     tapped.value = !tapped.value
   }
 }
 
-/**
- * Reset the tapped state when the user touches anywhere outside the banner.
- * Attached to the document while tapped is true so we don't pay the cost
- * when banners are in their default dim state.
- */
+// Only attached to the document while tapped, so dim banners cost nothing
 function onOutsideTouch(e: TouchEvent) {
   if (imgRef.value && !imgRef.value.contains(e.target as Node)) {
     tapped.value = false
@@ -169,8 +145,7 @@ watch(tapped, (val) => {
 
 <style lang="scss" scoped>
 .banner-display {
-  // Prevent the section from collapsing into zero-height while the browser
-  // is fetching the image. Banners are exactly 728x36 px.
+  // Keep the section from collapsing to zero height while the image loads
   min-height: 1px;
 
   @media screen and (min-width: $breakpoint-s) {
@@ -184,13 +159,10 @@ watch(tapped, (val) => {
 
   &__image {
     display: block;
-    // Enforce the canonical 728x36 aspect ratio and scale down on narrow
-    // viewports. The image never exceeds its native width, and height is
-    // derived from the ratio so nothing gets squished or stretched.
     display: block;
     width: 100%;
-    // Enforce canonical 728x36 ratio regardless of the image's intrinsic
-    // dimensions. object-fit: cover crops oversized banners cleanly.
+    // Enforce the 728x36 ratio regardless of the image's intrinsic size.
+    // object-fit: cover crops oversized banners cleanly.
     aspect-ratio: 728 / 36;
     max-height: 36px;
     object-fit: cover;
@@ -207,9 +179,7 @@ watch(tapped, (val) => {
     }
 
     @media screen and (max-width: $breakpoint-s) {
-      // On mobile, banners are full-bleed and flush with the top of the
-      // container (e.g. the mobile footer) so we can use the full width of
-      // the screen and save space by removing the border radius.
+      // Mobile banners are full-bleed and flush with the container top, so drop the radius
       border-radius: 0;
     }
   }

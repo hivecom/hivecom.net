@@ -9,13 +9,11 @@ const IGDB_BASE_URL = "https://api.igdb.com/v4/games";
 const TWITCH_TOKEN_URL = "https://id.twitch.tv/oauth2/token";
 const IGDB_IMAGE_BASE = "https://images.igdb.com/igdb/image/upload";
 
-// Module-level token cache
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
 async function getAccessToken(): Promise<string> {
   const now = Date.now();
 
-  // Refresh if no token or within 60 seconds of expiry
   if (!cachedToken || cachedToken.expiresAt - now <= 60_000) {
     const params = new URLSearchParams({
       client_id: IGDB_CLIENT_ID,

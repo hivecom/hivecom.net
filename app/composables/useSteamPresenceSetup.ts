@@ -6,10 +6,8 @@ import { useUserId } from '@/composables/useUserId'
 export type SteamSetupState = 'link' | 'enable-presence' | null
 
 /**
- * Whether the signed-in user still has something to do before their game
- * activity shows up: no Steam account linked, or linked with rich presence
- * turned off. Shared by the games page callout and the dashboard nudge so the
- * two never end up asking for different things.
+ * What the user still has to do before their game activity shows up. Every
+ * nudge reads it from here, so no two of them ask for different things.
  */
 export function useSteamPresenceSetup() {
   const supabase = useSupabaseClient<Database>()

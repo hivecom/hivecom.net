@@ -1,67 +1,36 @@
-// useGlobePerf.ts
-// Detects device rendering capability by sampling real frame-times from
-// requestAnimationFrame, then exposes a reactive quality tier that other
-// globe composables can use to scale their parameters.
-//
-// Tiers
-//   'high'   - no restrictions, full post-processing
-//   'medium' - reduced bloom strength, single scan band, fewer arcs
-//   'low'    - post-processing disabled, minimum arcs, low hex resolution
-//
-// Dev override: append ?globe_tier=low (or medium/high) to the URL to force
-// a specific tier. The probe is skipped when the override is active so the
-// tier stays pinned for the full page load.
-//
-// Singleton: tier/params/probe state is module-level so multiple callers
-// (e.g. LandingHeroGlobe + LandingHeroBackground) share one instance and
-// one probe run.
+// Starts from navigator hints, then degrades the tier if sampled frame times
+// come in slow. Dev override: ?globe_tier=low|medium|high pins the tier for the
+// whole page load and skips the probe.
 
 import { readonly, ref } from 'vue'
 
 export type GlobeQualityTier = 'high' | 'medium' | 'low'
 
 export interface GlobePerfParams {
-  /** Maximum simultaneous arcs. */
   maxArcs: number
 
-  /**
-   * H3 resolution level for hexed polygons. Default is 3.
-   * Each level down (~2) cuts hex count by ~7x - big GPU savings.
-   */
+  /** H3 resolution. Each level down cuts the hex count by ~7x. */
   hexResolution: number
 
-  /**
-   * Angular degrees of curvature resolution per hex polygon face.
-   * Higher value = fewer faces = cheaper. Default in globe.gl is 5.
-   */
+  /** Degrees of curvature per hex face. Higher is cheaper. globe.gl defaults to 5. */
   hexCurvatureResolution: number
 
-  /**
-   * Circle segment count for dot representation (hexPolygonUseDots=true).
-   * Higher = smoother dots but more geometry. Default in globe.gl is 12.
-   */
+  /** Circle segments per dot (hexPolygonUseDots). globe.gl defaults to 12. */
   hexDotResolution: number
 
-  /** Enable UnrealBloom post-processing pass. */
   bloomEnabled: boolean
 
-  /** Enable AfterimagePass (phosphor trails) post-processing pass. */
+  /** AfterimagePass, the phosphor trails. */
   afterimageEnabled: boolean
 
-  /** Enable custom scanline ShaderPass. */
   scanlineEnabled: boolean
 
-  /** AfterimagePass damp value (0–1). Higher = longer trails. */
+  /** 0 to 1, higher means longer trails. */
   afterimageDamp: number
 
-  /** UnrealBloomPass strength. */
   bloomStrength: number
 
-  /**
-   * Render resolution scale for the background shader canvas.
-   * Applied as a multiplier to devicePixelRatio * element dimensions.
-   * Lower = fewer fragment shader invocations per frame.
-   */
+  /** Background shader canvas scale, multiplied into devicePixelRatio times element size. */
   bgResScale: number
 }
 
@@ -107,16 +76,14 @@ const PERF_PARAMS: Record<GlobeQualityTier, GlobePerfParams> = {
 // ---------------------------------------------------------------------------
 // Frame-time probe config
 // ------------------------------------------------------------------------
-// Frame-time thresholds (ms). If the median frame time during the probe
-// window exceeds these values, we drop to the next tier.
+// ms. A median frame time above these drops to the next tier.
 const THRESHOLD_HIGH_MS = 20 // ~50 fps
 const THRESHOLD_MEDIUM_MS = 33 // ~30 fps
 
-// How many frames to sample before making a decision.
 const PROBE_FRAMES = 45
 
-// If the device reports a very low logical CPU count, skip probing and start
-// at medium. This catches low-end mobile before we even render a frame.
+// Fewer logical cores than this starts at medium, catching low-end mobile
+// before the first frame.
 const LOW_CPU_CORE_THRESHOLD = 4
 
 // ---------------------------------------------------------------------------
@@ -143,7 +110,6 @@ function detectInitialTier(): GlobeQualityTier {
   if (typeof window === 'undefined')
     return 'high'
 
-  // Navigator hints - available in most modern browsers.
   const nav = navigator as Navigator & {
     deviceMemory?: number
     hardwareConcurrency?: number
@@ -152,7 +118,6 @@ function detectInitialTier(): GlobeQualityTier {
   const cores = nav.hardwareConcurrency ?? 4
   const memoryGb = nav.deviceMemory ?? 4
 
-  // Coarse early-out: very low-end hardware.
   if (cores <= 2 || memoryGb <= 1)
     return 'low'
   if (cores < LOW_CPU_CORE_THRESHOLD || memoryGb <= 2)
@@ -193,16 +158,9 @@ export function useGlobePerf() {
   if (import.meta.client)
     _ensureInitialised()
 
-  /**
-   * Start the frame-time probe. Collects PROBE_FRAMES samples then adjusts
-   * the tier downward if the median frame time is too high.
-   *
-   * Safe to call from multiple components - only one probe runs at a time,
-   * and subsequent calls while probing are silently ignored.
-   */
+  // Safe to call from multiple components. Calls while a probe runs are ignored.
   function startProbe() {
-    // Skip the probe entirely when a dev override is active - the tier is
-    // pinned intentionally and we don't want the probe to degrade it.
+    // A dev override pins the tier on purpose, so the probe mustn't degrade it.
     if (readTierOverride() != null)
       return
     if (_probing || !import.meta.client)
@@ -223,7 +181,7 @@ export function useGlobePerf() {
         return
       }
 
-      // Done collecting - find the median to ignore outlier spikes.
+      // Median, to ignore outlier spikes.
       const sorted = samples.toSorted((a, b) => a - b)
       const median = sorted[Math.floor(sorted.length / 2)] ?? 0
 
@@ -238,9 +196,8 @@ export function useGlobePerf() {
         _applyTier('medium')
       }
 
-      // Never upgrade - only degrade. A slow device that starts at 'medium'
-      // via the static hint stays at 'medium' even if the probe comes back
-      // fast, because the probe itself adds load that wasn't there before.
+      // Never upgrade, only degrade. A device the hints put at 'medium' stays
+      // there even if the probe comes back fast, since the probe adds load itself.
     }
 
     _rafHandle = requestAnimationFrame(frame)

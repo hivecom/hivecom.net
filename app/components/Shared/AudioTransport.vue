@@ -3,10 +3,8 @@ import { computed } from 'vue'
 import AudioPlayButton from '@/components/Shared/AudioPlayButton.vue'
 import { formatClock } from '@/lib/utils/duration'
 
-// The shared transport: play/pause button, scrubber and time labels. Both the
-// inline AudioPlayer and the persistent toast render this so there's one copy of
-// the controls. It's fully controlled, it holds no playback state of its own,
-// the parent feeds it values and handles the events.
+// The shared transport: play/pause button, scrubber and time labels. Fully
+// controlled, so the parent feeds it values and handles the events.
 
 const props = defineProps<{
   playing: boolean

@@ -18,11 +18,11 @@ export function normalizeInternalRedirect(value: unknown): string | null {
   if (!trimmed.startsWith('/'))
     return null
 
-  // Prevent protocol-relative and similar external redirects.
+  // Protocol-relative URLs redirect off-site.
   if (trimmed.startsWith('//'))
     return null
 
-  // Basic hardening against header splitting / weird inputs.
+  // Guards against header splitting.
   if (trimmed.includes('\n') || trimmed.includes('\r'))
     return null
 
@@ -30,12 +30,9 @@ export function normalizeInternalRedirect(value: unknown): string | null {
 }
 
 /**
- * Reloads the current page with a cache-busting query param appended so the
- * browser is forced to re-fetch the HTML document from the network rather than
- * re-serving a stale cached copy. This is essential after a deploy replaces the
- * content-hashed `_nuxt/` chunks: a plain `location.reload()` can be served the
- * same stale HTML (which still references now-deleted chunk files), leaving the
- * app permanently broken. Preserves the current path and hash.
+ * After a deploy replaces the hashed `_nuxt/` chunks, a plain
+ * `location.reload()` can get the stale cached HTML that still points at
+ * deleted chunks, leaving the app broken. The query param forces a network fetch.
  */
 export function reloadWithCacheBust() {
   if (typeof window === 'undefined')
@@ -48,11 +45,7 @@ export function reloadWithCacheBust() {
   window.location.replace(url.toString())
 }
 
-/**
- * Removes the `_` cache-bust param that reloadWithCacheBust added, rewriting
- * the address bar without a navigation. Call once after boot so the ugly
- * `?_=...` doesn't linger in the URL after a recovery reload has done its job.
- */
+// Call once after boot to drop reloadWithCacheBust's `?_=` without a navigation.
 export function stripCacheBustParam() {
   if (typeof window === 'undefined')
     return
@@ -134,26 +127,9 @@ export function deepMergePlainObjects<
 const SCROLL_NAVBAR_OFFSET = 92
 
 /**
- * Scrolls the element matching `id` into view, positioning its top edge just
- * below the sticky navbar. Uses `window.scrollTo` instead of
- * `scrollIntoView({ block: 'start' })` so it works correctly even when the
- * target is near the bottom of the document (where `scrollIntoView` can't
- * scroll far enough to put the element at the top of the viewport).
- *
- * The `block` parameter is kept for call-site compatibility but only
- * `'start'` / `'center'` produce meaningfully different behaviour:
- * - `'start'`  → top of element sits just below the navbar (default)
- * - `'center'` → element is vertically centred in the available viewport
- */
-/**
- * When multiple elements share the same id (e.g. a pinned-comment banner plus
- * the list instance, or flat-view and threaded-view copies kept alive by
- * v-show), querySelector always returns the first in DOM order which may be
- * hidden (display:none on itself or an ancestor → zero bounding rect).
- *
- * This helper walks all matching elements and returns the first one whose
- * bounding rect has a non-zero height, falling back to the very first match
- * if every instance is currently hidden.
+ * An id can match more than one element, e.g. a pinned-comment banner plus the
+ * list copy, or flat and threaded views kept alive by v-show. querySelector
+ * would return the first, which may be hidden with a zero-height rect.
  */
 function findVisibleElement(id: string): HTMLElement | null {
   const els = document.querySelectorAll<HTMLElement>(id)
@@ -165,10 +141,14 @@ function findVisibleElement(id: string): HTMLElement | null {
       return el
   }
 
-  // All hidden - return the first so callers can at least measure it.
+  // All hidden. Return the first so callers can at least measure it.
   return els[0]!
 }
 
+/**
+ * Uses `window.scrollTo` because `scrollIntoView({ block: 'start' })` can't put
+ * an element near the bottom of the document below the sticky navbar.
+ */
 export function scrollToId(id: string, block: ScrollIntoViewOptions['block'] = 'start', smooth = false, additionalOffset = 0) {
   const el = findVisibleElement(id)
   if (!el)
@@ -187,30 +167,18 @@ export function scrollToId(id: string, block: ScrollIntoViewOptions['block'] = '
     target = absoluteTop + rect.height - window.innerHeight
   }
   else {
-    // 'start' and everything else: align top of element to just below navbar
     target = absoluteTop - totalOffset
   }
 
-  // Programmatic navigation uses 'instant' by default so layout shifts during
-  // a smooth animation can't cause the final scroll position to drift.
-  // Pass smooth=true only for user-visible transitions where animation matters.
+  // Instant by default: layout shifts during a smooth animation make the final
+  // position drift.
   window.scrollTo({ top: Math.max(0, target), behavior: smooth ? 'smooth' : 'instant' })
 }
 
 /**
- * Scrolls to `id` and keeps re-anchoring on every animation frame while the
- * layout is still shifting (e.g. images loading, markdown rendering, newly
- * injected comment pages). Resolves once the element's absolute position has
- * been stable for `stableForMs` milliseconds, or the hard `timeoutMs`
- * deadline is hit.
- *
- * The first scroll fires immediately on the first rAF tick - no pre-flight
- * wait. The loop then keeps re-anchoring so any content that loads above the
- * target (images, markdown, late-rendered cards) gets corrected on the next
- * frame.
- *
- * If the user scrolls (wheel, touch, or keyboard) the loop exits immediately
- * and cedes control to them.
+ * Re-anchors on every frame while content above the target is still loading,
+ * until the position holds for `stableForMs` or `timeoutMs` passes. Any user
+ * scroll (wheel, touch, keyboard) ends the loop and hands control back.
  */
 export async function scrollToIdWhenStable(
   id: string,
@@ -259,7 +227,6 @@ export async function scrollToIdWhenStable(
     const tick = () => {
       const now = Date.now()
 
-      // Recompute the element's absolute position every frame.
       const rect = el.getBoundingClientRect()
       const absoluteTop = rect.top + window.scrollY
 
@@ -270,21 +237,16 @@ export async function scrollToIdWhenStable(
         target = absoluteTop - totalOffset - availableHeight / 2 + rect.height / 2
       }
       else if (block === 'end') {
-        // Align bottom of element to the bottom of the viewport.
         target = absoluteTop + rect.height - window.innerHeight
       }
       else {
         target = absoluteTop - totalOffset
       }
 
-      // Always re-apply the scroll so we stay pinned to the element.
       window.scrollTo({ top: Math.max(0, target), behavior: 'instant' })
 
-      // Track whether the element's absolute position AND the page's total
-      // scroll height have both stabilised. Checking scrollHeight catches
-      // content loading above (or below) the target - e.g. MarkdownRenderer
-      // suspense boundaries resolving - which shifts absoluteTop but can be
-      // masked by the compensating scrollTo call above.
+      // The compensating scrollTo can mask a shift in absoluteTop, so page
+      // height has to settle too.
       const scrollHeight = document.body.scrollHeight
       const positionChanged = lastAbsoluteTop === null || Math.abs(absoluteTop - lastAbsoluteTop) > 1
       const heightChanged = lastScrollHeight === null || Math.abs(scrollHeight - lastScrollHeight) > 1
@@ -310,15 +272,8 @@ export async function scrollToIdWhenStable(
   })
 }
 
-/**
- * Waits for all currently-loading images in the document to either finish
- * loading or error out before resolving. Falls back after `timeoutMs`
- * milliseconds so a slow/broken image never blocks a scroll indefinitely.
- *
- * Use this before programmatic `scrollIntoView` calls that follow dynamic
- * content (markdown renders, image-heavy posts, etc.) to avoid the scroll
- * landing in the wrong spot due to images shifting the layout after mount.
- */
+// Resolves once every loading image settles, or after `timeoutMs` so a broken
+// image can't block a scroll forever.
 export async function waitForImages(timeoutMs = 4000): Promise<void> {
   return new Promise((resolve) => {
     if (!import.meta.client) {
@@ -354,21 +309,14 @@ export async function waitForImages(timeoutMs = 4000): Promise<void> {
       img.addEventListener('error', onSettle, { once: true })
     }
 
-    // Safety-net: resolve after the timeout even if some images are still pending
     setTimeout(resolveOnce, timeoutMs)
   })
 }
 
 /**
- * Polls `document.body.scrollHeight` on every animation frame and resolves
- * once the height has been stable for `stableForMs` milliseconds, or the
- * hard `timeoutMs` deadline is reached.
- *
- * This is more robust than `waitForImages` for scroll-to-comment use-cases
- * because it catches late-rendered content (e.g. MarkdownRenderer behind a
- * <Suspense> boundary whose images aren't in the DOM yet at mount time) and
- * images with non-16:9 aspect ratios that shift the layout more than the CSS
- * placeholder pre-allocated.
+ * Resolves once page height holds for `stableForMs`. Unlike `waitForImages`
+ * this catches content rendered late behind <Suspense>, whose images aren't in
+ * the DOM yet at mount.
  */
 export async function waitForLayoutStability(timeoutMs = 8000, stableForMs = 120): Promise<void> {
   if (!import.meta.client)
@@ -378,9 +326,8 @@ export async function waitForLayoutStability(timeoutMs = 8000, stableForMs = 120
     const deadline = Date.now() + timeoutMs
     let lastHeight = document.body.scrollHeight
 
-    // Initialise to null so the stable window only starts once we've taken
-    // at least one rAF measurement - avoids a false "already stable" resolve
-    // before image loads have even started shifting the layout.
+    // Null until the first frame, so it can't resolve as stable before image
+    // loads have started shifting the layout.
     let stableStart: number | null = null
 
     const tick = () => {
@@ -392,7 +339,6 @@ export async function waitForLayoutStability(timeoutMs = 8000, stableForMs = 120
         stableStart = now
       }
       else {
-        // First tick with no change - begin the stable window now
         stableStart ??= now
       }
 
@@ -412,15 +358,7 @@ export function isNil(value: unknown): value is null | undefined {
   return value === null || value === undefined
 }
 
-/**
- * Extracts a plain string from a Vue Router `LocationQueryValue` (which can be
- * `string | null`) or an array thereof.  Returns the first string found, or an
- * empty string when nothing useful is present.
- *
- * Replaces the repeated inline ternary pattern:
- *   `typeof q === 'string' ? q : Array.isArray(q) && q[0] ? q[0] : ''`
- * that appears across ~12 admin / auth pages.
- */
+/** First string in a Vue Router query value, or '' when there isn't one. */
 export function getRouteQueryString(
   value: string | null | (string | null)[] | undefined,
 ): string {
@@ -435,9 +373,8 @@ export function getRouteQueryString(
 }
 
 /**
- * Same as `getRouteQueryString` but returns `null` instead of `''` when the
- * query parameter is absent or non-string.  Useful when the caller needs to
- * distinguish "not provided" from "provided as empty string".
+ * Same as `getRouteQueryString`, but absent, non-string, and empty values all
+ * come back as `null`.
  */
 export function getRouteQueryStringOrNull(
   value: string | null | (string | null)[] | undefined,
@@ -446,11 +383,7 @@ export function getRouteQueryStringOrNull(
   return result === '' ? null : result
 }
 
-/**
- * Supabase join columns can return either a single object or an array when
- * using foreign-key joins. This helper normalises both shapes to a single
- * value or null.
- */
+// Supabase foreign-key joins can come back as an object or an array.
 export function unwrapJoin<T>(value: T | T[] | null | undefined): T | null {
   if (value == null)
     return null

@@ -13,17 +13,15 @@ const props = defineProps<{
   statusOptions: SelectOption[]
 }>()
 
-// Emit is still needed for the clearFilters action
 const emit = defineEmits<{
   (e: 'clearFilters'): void
 }>()
 
-// Use defineModel with explicit type definitions
 const search = defineModel<string>('search', { default: '' })
 const _serverFilter = defineModel<SelectOption[] | undefined>('serverFilter')
 const _statusFilter = defineModel<SelectOption[] | undefined>('statusFilter')
 
-// VUI <Select show-clear> sets the model to undefined when cleared - coerce back to []
+// VUI <Select show-clear> sets the model to undefined on clear. Coerce it back to [].
 const serverFilter = computed({
   get: () => _serverFilter.value ?? [],
   set: (v) => { _serverFilter.value = v ?? [] },

@@ -39,7 +39,7 @@ const {
 )
 
 // Recurring series parent with future occurrences: UNTIL not yet passed.
-// These are never "ended" - new occurrences keep coming.
+// These are never "ended", new occurrences keep coming.
 const isRecurringSeries = computed(() => isSeriesActive(props.event))
 
 // When the user picks a status from the dropdown on a recurring occurrence,
@@ -85,7 +85,6 @@ const rsvpDisabled = computed(() => {
   if (!user.value || !props.event)
     return true
 
-  // Recurring series never closes - new occurrences always upcoming
   if (isRecurringSeries.value)
     return false
 
@@ -121,7 +120,6 @@ function cancelScopeModal() {
   pendingStatus.value = null
 }
 
-// Simple toggle for non-dropdown variant
 function toggleRsvp() {
   if (hasEventEnded.value && !isRecurringSeries.value)
     return
@@ -133,7 +131,6 @@ function toggleRsvp() {
 
 <template>
   <div v-if="canRsvp" class="rsvp-button-container">
-    <!-- Simple variant: just a toggle button -->
     <Button
       v-if="variant === 'simple'"
       :variant="rsvpButtonVariant"
@@ -148,7 +145,6 @@ function toggleRsvp() {
       {{ rsvpButtonText }}
     </Button>
 
-    <!-- Full variant: dropdown with all options -->
     <template v-else>
       <Dropdown>
         <template #trigger="{ toggle }">
@@ -217,7 +213,7 @@ function toggleRsvp() {
     </template>
   </div>
 
-  <!-- Scope choice modal - shown when RSVPing on a child occurrence -->
+  <!-- Scope choice modal, shown when RSVPing on a child occurrence -->
   <Modal
     :open="showScopeModal"
     centered

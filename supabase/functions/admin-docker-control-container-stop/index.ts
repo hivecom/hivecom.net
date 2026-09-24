@@ -13,7 +13,6 @@ import { responseMethodNotAllowed } from "../_shared/response.ts";
 import type { Database } from "database-types";
 
 Deno.serve(async (req: Request) => {
-  // This is needed if you're planning to invoke your function from a browser.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -23,7 +22,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Get container name from request path
     const containerName = extractContainerNameFromPath(req);
 
     if (!containerName) {
@@ -39,7 +37,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify user has permission to manage servers
     const authResponse = await authorizeAuthenticatedHasPermissionAal2(
       req,
       ["network.update"],
@@ -49,16 +46,14 @@ Deno.serve(async (req: Request) => {
       return authResponse;
     }
 
-    // Get the Docker Control token from environment variables
     const DOCKER_CONTROL_TOKEN = getDockerControlToken();
 
-    // Create a Supabase client
+    // Service role client, created only after the permission check
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       getSecretKey(),
     );
 
-    // Get container details including the server it's hosted on
     const { container, error: containerError } = await getContainerWithServer(
       supabaseClient,
       containerName,
@@ -68,7 +63,6 @@ Deno.serve(async (req: Request) => {
       return containerError;
     }
 
-    // Build the Docker control URL for stopping the container
     const dockerControlUrl = buildDockerControlActionUrl(
       container!.server,
       containerName,
@@ -77,15 +71,13 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Making request to Docker Control at: ${dockerControlUrl}`);
 
-    // Update container in database to indicate it's stopping
-    // Set running to false and healthy to null since it will be checked/reported by a separate process
+    // healthy is left null for the health check to report
     await updateContainerStatus(supabaseClient, containerName, {
       running: false,
       healthy: null,
     });
 
-    // Send the request to docker-control service asynchronously
-    // Don't wait for the response - just fire and forget
+    // Fire and forget
     fetch(dockerControlUrl, {
       method: "POST",
       headers: {
@@ -98,16 +90,15 @@ Deno.serve(async (req: Request) => {
           `Error stopping container ${containerName}: ${response.status} ${response.statusText}`,
         );
 
-        // Since the stop command failed, container is likely still running
+        // A failed stop most likely left it running
         await updateContainerStatus(supabaseClient, containerName, {
-          running: true, // Container likely still running if stop failed
-          healthy: null, // Health needs to be checked again
+          running: true,
+          healthy: null,
         });
       } else {
         const result = await response.json();
         console.log(`Container ${containerName} stop result:`, result);
 
-        // Confirm container stopped state in database
         await updateContainerStatus(supabaseClient, containerName, {
           running: false,
           healthy: null,
@@ -115,16 +106,14 @@ Deno.serve(async (req: Request) => {
       }
     }).catch((error) => {
       console.error(`Error stopping container ${containerName}:`, error);
-      // If there was an exception, update the container state
       updateContainerStatus(supabaseClient, containerName, {
         healthy: null,
-        // Not updating running status since we don't know if stop succeeded
+        // Unknown whether the stop succeeded, so running is left alone
       }).catch((dbError) => {
         console.error(`Failed to update container status: ${dbError.error}`);
       });
     });
 
-    // Return immediate success response
     return new Response(
       JSON.stringify({
         success: true,

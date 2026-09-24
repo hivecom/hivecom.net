@@ -2,7 +2,6 @@
 import { Button, Card, Divider } from '@dolanske/vui'
 import LayoutLoading from '@/components/Layout/Loading.vue'
 
-// Error state setup
 const error = useError()
 const errorCode = computed(() => error.value?.statusCode || 404)
 const errorMessage = computed(() => error.value?.message || 'Page not found')
@@ -17,10 +16,8 @@ const friendlyMessage = computed(() => {
   return messages[errorCode.value as keyof typeof messages] || messages.default
 })
 
-// Lightning effect setup
 const isFlickering = ref(false)
 
-// Create flickering effect at random intervals
 onMounted(() => {
   if (import.meta.client) {
     const startFlickerEffect = () => {
@@ -28,13 +25,11 @@ onMounted(() => {
       setTimeout(() => {
         isFlickering.value = false
 
-        // Schedule next flicker after a random delay
-        const nextFlicker = Math.random() * 1000 + 3000 // Between 3-4 seconds
+        const nextFlicker = Math.random() * 1000 + 3000
         setTimeout(startFlickerEffect, nextFlicker)
-      }, Math.random() * 450 + 50) // Flicker lasts between 50-500ms
+      }, Math.random() * 450 + 50)
     }
 
-    // Start the effect after a short delay
     setTimeout(startFlickerEffect, 1000)
   }
 })
@@ -92,10 +87,10 @@ onMounted(() => {
 }
 
 .error-card {
-  max-width: 800px; // Increased size
+  max-width: 800px;
   width: 100%;
   text-align: center;
-  padding: 3rem 2rem; // Added padding for more space
+  padding: 3rem 2rem;
   position: relative;
   z-index: 10;
 

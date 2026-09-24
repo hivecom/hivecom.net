@@ -12,19 +12,16 @@ interface Alert {
   timestamp: Date
 }
 
-// Setup
 const supabase = useSupabaseClient()
 const loading = ref(true)
 const alerts = ref<Alert[]>([])
 
-// Fetch alert data
 async function fetchAlerts() {
   loading.value = true
   const newAlerts: Alert[] = []
   const now = new Date()
 
   try {
-    // Check for multiple pending complaints
     const { data: complaints } = await supabase
       .from('complaints')
       .select('id, created_at')
@@ -33,7 +30,6 @@ async function fetchAlerts() {
       .order('created_at', { ascending: false })
 
     if (complaints && complaints.length > 0) {
-      // Use the timestamp of the most recent complaint
       const latestComplaintTime = new Date(complaints[0].created_at)
       const severity = complaints.length > 1 ? 'critical' : 'warning'
       const title = complaints.length > 1 ? 'Multiple Pending Complaints' : 'Pending Complaint'
@@ -48,7 +44,6 @@ async function fetchAlerts() {
       })
     }
 
-    // Check for inaccessible Docker Control servers
     const { data: inaccessibleServers, error: inaccessibleServersError } = await supabase
       .from('network_servers')
       .select('id, last_accessed')
@@ -84,7 +79,6 @@ async function fetchAlerts() {
   }
 }
 
-// Get severity indicator class
 function getSeverityClass(severity: string) {
   switch (severity) {
     case 'critical': return 'alert-row--critical'
@@ -94,7 +88,6 @@ function getSeverityClass(severity: string) {
   }
 }
 
-// Get severity icon color
 function getSeverityIconColor(severity: string) {
   switch (severity) {
     case 'critical': return 'var(--color-text-red)'
@@ -104,7 +97,6 @@ function getSeverityIconColor(severity: string) {
   }
 }
 
-// Load data on mount
 onBeforeMount(() => {
   fetchAlerts()
 })

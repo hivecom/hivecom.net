@@ -61,7 +61,6 @@ const isMobile = useBreakpoint('<s')
 const { user } = useDataUser(userId, { includeRole: true })
 const { isAdminOrMod } = useEffectiveRole()
 
-// Track which topics/discussions have new content since last visit
 const forumUnread = useDataForumUnread()
 
 const addingTopic = ref(false)
@@ -79,7 +78,7 @@ const forumCache = useCache(CACHE_NAMESPACES.forum)
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000
 const ONLINE_USERS_CACHE_KEY = 'online-users'
-const ONLINE_USERS_TTL = 60 * 1000 // 1 minute
+const ONLINE_USERS_TTL = 60 * 1000
 const onlineUserIds = ref<string[]>([])
 const onlineUsersLoading = ref(false)
 const onlineCount = computed(() => onlineUserIds.value.length > 0 ? onlineUserIds.value.length : (latestMetrics.value?.users.online ?? null))
@@ -132,7 +131,6 @@ watch(addingDiscussion, (open) => {
 })
 
 async function requestCreate(action: 'discussion' | 'topic') {
-  // Wait for the initial fetch to settle before checking
   if (contentRulesLoading.value) {
     await until(contentRulesLoading).toBe(false)
   }
@@ -165,9 +163,6 @@ function handleContentRulesCanceled() {
   pendingCreateAction.value = null
 }
 
-// Topic tree, lazy discussion loading, pagination, sort, active-topic
-// navigation and mutations all live in useForumTopics. The page consumes its
-// state/actions and keeps the activity-feed wiring, modals and template.
 const {
   topics,
   allDiscussions,
@@ -196,7 +191,6 @@ const {
   handleBreadcrumbMiddleClick,
 } = useForumTopics()
 
-// Bulk-fetch topic icons for all topics so we can show them inline next to titles
 const allTopicIds = computed(() => topics.value.map(t => t.id))
 const { icons: topicIcons, refresh: refreshTopicIcon } = useBulkTopicIcons(allTopicIds)
 
@@ -246,7 +240,6 @@ const visibleDiscussionIds = computed(() => {
 const discussionLookup = computed(() => {
   const lookup = new Map<string, ForumDiscussion>()
 
-  // Seed from the global index first
   allDiscussions.value.forEach(d => lookup.set(d.id, d))
 
   // Overwrite with lazily-loaded per-topic data which may have fresher counts
@@ -283,8 +276,7 @@ const {
 
 watch(() => route.fullPath, () => fetchUserActivity(userId.value))
 
-// Capture the timestamp from the *previous* visit before we update it.
-// recordFeedVisit() reads the stored value, updates it to now, and returns the old one.
+// The *previous* visit's timestamp. recordFeedVisit() returns it while storing now.
 const lastFeedVisitedAt = ref<string | null>(null)
 
 const feedOptions = computed(() => ({
@@ -317,7 +309,7 @@ const {
   onTopicClick: (id: string) => setActiveTopicById(id),
 })
 
-const FEED_STALE_MS = 15 * 60 * 1000 // 15 minutes
+const FEED_STALE_MS = 15 * 60 * 1000
 let hiddenAt: number | null = null
 
 function onVisibilityChange() {
@@ -340,7 +332,7 @@ onMounted(() => {
   lastFeedVisitedAt.value = forumUnread.recordFeedVisit()
 
   // Server-side count for the "since last visit" badge so it isn't capped by
-  // the carousel slice (16) or the latest-replies fetch (30).
+  // the carousel slice or the latest-replies fetch
   void fetchSinceLastVisitCount(lastFeedVisitedAt.value)
   document.addEventListener('visibilitychange', onVisibilityChange)
 })
@@ -367,8 +359,6 @@ const { subscribe: subscribeForumFeed } = useRealtimeForumFeed({
   onReply: (item) => {
     prependReplyItem(item)
 
-    // Bump the "since last visit" badge if the item is newer than the
-    // watermark and not authored by the current user.
     if (lastFeedVisitedAt.value != null
       && new Date(item.timestampRaw).getTime() > new Date(lastFeedVisitedAt.value).getTime()
       && item.user !== userId.value) {
@@ -416,11 +406,9 @@ const mentionLookup = computed<Record<string, string>>(() => {
 })
 
 onBeforeMount(async () => {
-  // Topics + discussion index (owns the `loading` flag and active-topic resolution).
   await loadTopics()
 
-  // Activity feed is page-owned; fetch it after topics so the lookups it needs
-  // are populated.
+  // The feed needs the topic lookups, so fetch it after topics
   await Promise.all([fetchLatestReplies(), fetchTodayCount()])
 
   // Start realtime subscription after initial data is loaded so that the
@@ -431,9 +419,8 @@ onBeforeMount(async () => {
 // Search implementation
 const { openCommand } = useCommand()
 
-// Allow external navigation (e.g. command palette) to open the create discussion modal
-// by passing ?new=discussion in the URL. Clean up the param immediately after.
-// Watched rather than onMounted so it also fires when already on the page.
+// ?new=discussion (e.g. from the command palette) opens the create modal and is then
+// cleared. Watched rather than onMounted so it also fires when already on the page.
 watch(
   () => route.query.new,
   async (val) => {
@@ -618,7 +605,6 @@ onBeforeMount(() => {
               <Switch v-model="settings.show_forum_recently_visited" label="Show recently visited" />
               <Switch v-model="settings.show_forum_archived" label="Show archived topics & discussions" />
               <Switch v-model="settings.show_forum_unread_bubbles" label="Show unread bubbles" />
-              <!-- <Switch v-model="settings.showNsfw" label="Show NSFW in latest activity" /> -->
             </Flex>
           </Popout>
         </Flex>

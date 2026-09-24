@@ -3,16 +3,14 @@ import type { GlowCardHandle } from '@/components/Shared/glowGroup'
 import { onUnmounted, provide, ref } from 'vue'
 import { glowGroupKey } from '@/components/Shared/glowGroup'
 
-// GlowGroup tracks mousemove on a shared container and broadcasts per-card-relative
-// coordinates to all child GlowCard instances via provide/inject. This produces the
-// Vercel "cards light up as you sweep across them" effect.
+// Tracks mousemove on a shared container and broadcasts card-relative coordinates
+// to child GlowCards via provide/inject.
 //
-// Performance: pointer events fire far faster than the display refresh rate, so we
-// coalesce them into a single update per animation frame. Within that frame we read
-// every card's rect first and only then write positions, which avoids the
-// read/write/read layout thrashing that made Chrome stutter on pages with many cards.
-// Rects are cached and only re-measured when the cache is marked dirty (scroll/resize
-// or card registration changes) so a sweep doesn't re-measure every card every frame.
+// Pointer events fire far faster than the display refresh, so updates coalesce into
+// one per animation frame. Each frame reads every card's rect before writing
+// positions, which avoids the read/write layout thrashing that made Chrome stutter
+// on pages with many cards. Rects are cached and only re-measured when marked dirty
+// (scroll/resize or card registration changes).
 
 const cards = ref<GlowCardHandle[]>([])
 
@@ -104,8 +102,8 @@ function handleTouchEnd() {
   deactivateAll()
 }
 
-// Scroll/resize move the cards relative to the viewport, so the cached rects
-// become stale - mark them for re-measurement on the next frame.
+// Scroll/resize move the cards relative to the viewport, so mark the cached rects
+// for re-measurement on the next frame.
 if (import.meta.client) {
   window.addEventListener('scroll', markDirty, { passive: true, capture: true })
   window.addEventListener('resize', markDirty, { passive: true })

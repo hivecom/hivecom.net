@@ -10,7 +10,7 @@ let _autoSaveWatcherRegistered = false
 
 const GUEST_SETTINGS_KEY = 'hivecom.guest.settings'
 
-/** Default quick-reaction emoji - also used by the settings "reset" action. */
+/** Also used by the settings "reset" action. */
 export const DEFAULT_QUICK_REACTIONS = ['👍', '❤️', '😂', '🔥']
 
 // Single source of truth for user settings
@@ -172,8 +172,7 @@ export function useDataUserSettings() {
     }
   }
 
-  // Auto save when settings update - only register once across all callers,
-  // and only on the client (the watcher does a Supabase write which requires auth).
+  // Registered once across all callers, and client only since it writes to Supabase.
   if (import.meta.client && !_autoSaveWatcherRegistered) {
     _autoSaveWatcherRegistered = true
     watch(settings, async (newSettings) => {

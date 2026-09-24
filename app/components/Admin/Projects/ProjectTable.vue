@@ -43,7 +43,7 @@ const projectsQuery = supabase.from('projects').select(`
 
 type QueryProject = QueryData<typeof projectsQuery>[0]
 
-// Tag filter kept local - goes beyond simple search
+// The tag filter goes beyond the composable's search, so it stays local.
 const tagFilter = ref<SelectOption[]>([])
 
 const {
@@ -84,7 +84,6 @@ const {
   defaultSort: { column: 'Title', direction: 'desc' },
 })
 
-// Compute tag options from loaded data
 const tagOptions = computed<SelectOption[]>(() => {
   const allTags = new Set<string>()
   projects.value.forEach((project) => {
@@ -93,7 +92,6 @@ const tagOptions = computed<SelectOption[]>(() => {
   return [...allTags].toSorted().map(tag => ({ label: tag, value: tag }))
 })
 
-// Apply tag filter on top of the composable's search-filtered rows
 const filteredData = computed(() => {
   return searchFilteredRows.value.filter((row) => {
     if ((tagFilter.value ?? []).length > 0) {

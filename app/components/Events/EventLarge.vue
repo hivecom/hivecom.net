@@ -75,7 +75,6 @@ const avatarSize = computed(() => isBelowMedium.value
         <div class="event-large__container p-m">
           <!-- Left: content -->
           <div class="event-large__content">
-            <!-- Title row: title + link button + badge -->
             <Flex x-between y-center gap="xs" :class="isBelowMedium ? 'mb-s' : 'mb-xs'">
               <strong class="event-large__title" :class="{ 'event-large__title--highlight': props.isHighlight }">
                 {{ props.data.title }}
@@ -85,7 +84,6 @@ const avatarSize = computed(() => isBelowMedium.value
               </Badge>
             </Flex>
 
-            <!-- Description -->
             <p class="event-large__description">
               {{ props.data.description }}
             </p>

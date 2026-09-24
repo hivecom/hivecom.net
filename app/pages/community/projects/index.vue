@@ -7,7 +7,6 @@ import GlowGroup from '@/components/Shared/GlowGroup.vue'
 import { useDataProjects } from '@/composables/useDataProjects'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-// Interface for Select options
 interface SelectOption {
   label: string
   value: string
@@ -15,7 +14,6 @@ interface SelectOption {
 
 const isBelowExtraSmall = useBreakpoint('<xs')
 
-// Reactive data
 const { projects, error } = useDataProjects()
 const supabase = useSupabaseClient<Database>()
 const { data: ssrProjects, status } = await useAsyncData('projects:all', async () => {
@@ -29,7 +27,6 @@ if (ssrProjects.value && ssrProjects.value.length > 0 && projects.value.length =
 const isLoading = computed(() => status.value === 'pending' || (status.value === 'success' && projects.value.length === 0 && (ssrProjects.value?.length ?? 0) > 0))
 const isAtLeastM = useBreakpoint('>=m')
 
-// Filters
 const search = ref('')
 const tagFilter = ref<SelectOption[]>([])
 
@@ -43,7 +40,6 @@ const sortOptions: SelectOption[] = [
 const sortSelection = ref<SelectOption[]>([sortOptions[0]!])
 const currentSort = computed<SortOption>(() => (sortSelection.value[0]?.value as SortOption) ?? 'title-asc')
 
-// Compute unique tag options from all projects
 const tagOptions = computed<SelectOption[]>(() => {
   const allTags = new Set<string>()
   projects.value.forEach((project) => {
@@ -57,7 +53,6 @@ const tagOptions = computed<SelectOption[]>(() => {
   }))
 })
 
-// Filtered projects
 const filteredProjects = computed(() => {
   if (!projects.value.length)
     return []
@@ -72,7 +67,6 @@ const filteredProjects = computed(() => {
         )
       : true
 
-    // Filter by tags
     const matchesTags = tagFilter.value && tagFilter.value.length > 0
       ? tagFilter.value.some(selectedTag =>
           project.tags?.includes(selectedTag.value),
@@ -91,14 +85,12 @@ const filteredProjects = computed(() => {
   })
 })
 
-// Clear filters
 function clearFilters() {
   search.value = ''
   tagFilter.value = []
   sortSelection.value = [sortOptions[0]!]
 }
 
-// SEO and page metadata
 useSeoMeta({
   title: 'Community Projects',
   description: 'Explore community projects and initiatives from the Hivecom community.',
@@ -122,12 +114,10 @@ defineOgImage('Default', {
     </section>
 
     <Flex column gap="l" class="projects">
-      <!-- Error message -->
       <template v-if="error">
         <ErrorAlert message="An error occurred while fetching projects." :error="error" />
       </template>
 
-      <!-- Loading skeletons -->
       <Flex v-if="isLoading" column gap="l" class="projects__loading" expand>
         <Flex gap="s" x-start y-center wrap expand>
           <Skeleton width="100%" :height="36" :radius="8" />
@@ -143,7 +133,6 @@ defineOgImage('Default', {
       </Flex>
 
       <template v-if="!isLoading && !error">
-        <!-- Filters -->
         <Flex gap="s" x-start y-center wrap expand>
           <Input v-model="search" placeholder="Search projects" :expand="isBelowExtraSmall">
             <template #start>
@@ -176,9 +165,7 @@ defineOgImage('Default', {
           </Button>
         </Flex>
 
-        <!-- Content -->
         <template v-if="filteredProjects.length > 0">
-          <!-- All projects at full width -->
           <GlowGroup>
             <Grid :columns="isAtLeastM ? 2 : 1" column gap="m" class="projects__section" expand>
               <ProjectCard
@@ -190,7 +177,6 @@ defineOgImage('Default', {
           </GlowGroup>
         </template>
 
-        <!-- No content -->
         <template v-else>
           <Alert variant="info">
             <template v-if="search || tagFilter.length > 0">

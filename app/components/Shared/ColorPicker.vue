@@ -2,7 +2,7 @@
 import { Button, Color, Flex } from '@dolanske/vui'
 
 /**
- * ColorPicker - two layout variants around VUI's <Color> input:
+ * Two layout variants around VUI's <Color> input:
  *
  * Stacked: label above, Color input below. Pass `clearable` for a clear button.
  *   <ColorPicker v-model="color" label="Accent Color" stacked clearable />
@@ -31,7 +31,6 @@ function clear() {
 </script>
 
 <template>
-  <!-- Stacked: label above -->
   <Flex v-if="props.stacked" column gap="xs" expand>
     <label v-if="props.label" class="color-picker__label">{{ props.label }}</label>
     <Flex y-center gap="xs" expand>
@@ -48,7 +47,6 @@ function clear() {
     </Flex>
   </Flex>
 
-  <!-- Inline: label alongside -->
   <Flex v-else expand y-center gap="xs" class="color-picker__inline">
     <Color v-model="model" />
     <span v-if="props.label" class="color-picker__inline-label">{{ props.label }}</span>

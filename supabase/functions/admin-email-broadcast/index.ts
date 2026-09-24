@@ -13,10 +13,10 @@ import type { Database } from "database-types";
 
 interface BroadcastRequest {
   subject: string;
-  text: string; // Plain text body, always required as the fallback part
-  html?: string; // Optional inner HTML rendered by the admin portal, wrapped here
+  text: string; // Always required as the plain-text fallback part
+  html?: string; // Inner HTML from the admin portal, wrapped here
   mode: "test" | "send"; // "test" only mails the caller, "send" goes to everyone
-  centered?: boolean; // Content alignment in the email shell, defaults to centered
+  centered?: boolean;
 }
 
 interface BroadcastFailure {
@@ -35,9 +35,8 @@ const LT_RE = /</g;
 const GT_RE = />/g;
 
 /**
- * Fallback inner HTML for text-only broadcasts: one paragraph per blank-line
- * separated block, single newlines kept as line breaks. The text part is raw
- * user input, so it gets escaped before it lands in the HTML part.
+ * One paragraph per blank-line block. The text is raw user input, so it gets
+ * escaped before it lands in the HTML part.
  */
 function textToInnerHtml(text: string): string {
   return text
@@ -110,10 +109,8 @@ async function sendOne(
 }
 
 /**
- * Collects every account email via the Auth Admin API, paired with the
- * profile's bounce flag so hard-bounced addresses can be skipped. Broadcasts
- * are service notices, so the opt-out style notification preference does not
- * apply - only deliverability problems exclude an address.
+ * Broadcasts are service notices, so the notification opt-out doesn't apply.
+ * Only hard-bounced addresses are skipped.
  */
 async function collectRecipients(
   supabase: ReturnType<typeof createPublicServiceRoleClient>,
@@ -161,7 +158,6 @@ async function collectRecipients(
 }
 
 Deno.serve(async (req: Request) => {
-  // This is needed if you're planning to invoke your function from a browser. Which we are.
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -212,7 +208,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify user has permission to send broadcasts (includes ban + aal2 checks)
+    // Also enforces the ban and aal2 checks
     const authResponse = await authorizeAuthenticatedHasPermissionAal2(
       req,
       ["broadcasts.create"],
@@ -248,7 +244,6 @@ Deno.serve(async (req: Request) => {
     const supabase = createPublicServiceRoleClient();
     const { client: ses, from } = requireSesConfig();
 
-    // Resolve the recipient list
     let recipients: string[];
     let skipped: string[] = [];
 
@@ -274,15 +269,14 @@ Deno.serve(async (req: Request) => {
       `Broadcast (${mode}) "${subject}" starting: ${recipients.length} recipients, ${skipped.length} skipped as bounced`,
     );
 
-    // The request carries the inner body only. Everything visual (the dark card,
-    // the logo header, the footer) is added here so every broadcast matches the
-    // hand-crafted templates in supabase/email.
+    // The request carries only the inner body. The shell is added here so every
+    // broadcast matches the templates in supabase/email.
     const innerHtml = html && html.trim() ? html : textToInnerHtml(text);
     const wrappedHtml = renderBroadcastEmail(subject.trim(), innerHtml, {
       centered: centered ?? true,
     });
 
-    // Send in small concurrent batches, collecting failures instead of aborting
+    // Collect failures instead of aborting the whole send
     let sent = 0;
     const failures: BroadcastFailure[] = [];
 

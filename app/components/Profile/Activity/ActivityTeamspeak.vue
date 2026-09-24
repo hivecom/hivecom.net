@@ -44,14 +44,12 @@ function buildChannelPath(row: { channel_path: string[] | null, channel_name: st
   return cleanedName || 'Unknown channel'
 }
 
-// Normalized identities
 const normalizedIdentities = computed<TeamSpeakIdentityRecord[]>(() =>
   normalizeTeamSpeakIdentities(props.teamspeakIdentities),
 )
 const hasIdentities = computed(() => normalizedIdentities.value.length > 0)
 
-// Cache presence with a short TTL - presence is transient but we don't need
-// to hit Supabase every time the sheet opens
+// Presence is transient, but there's no need to hit Supabase every time the sheet opens
 const PRESENCE_TTL_MS = 60 * 1000
 
 const presenceEnabled = computed(() => props.richPresenceEnabled && hasIdentities.value)
@@ -103,7 +101,6 @@ function mapPresenceRow(row: TeamspeakPresenceData, now: number): PresenceEntry 
   }
 }
 
-// Process presence entries
 const presenceEntries = computed<PresenceEntry[]>(() => {
   const now = Date.now()
   const rows = presenceList.value
@@ -116,16 +113,12 @@ const presenceEntries = computed<PresenceEntry[]>(() => {
 
 const hasPresence = computed(() => presenceEntries.value.length > 0)
 
-// Find the first online presence entry (for display)
 const activePresence = computed(() => presenceEntries.value.find(entry => entry.online))
 
-// Any user is online?
 const isOnline = computed(() => presenceEntries.value.some(entry => entry.online))
 
-// Should we show the activity card?
 const shouldShow = computed(() => hasIdentities.value)
 
-// Format last seen time
 function formatLastSeen(lastSeenAt: string | null): string {
   if (!lastSeenAt)
     return 'Unknown'
@@ -152,7 +145,6 @@ function formatLastSeen(lastSeenAt: string | null): string {
   return displayDate(date)
 }
 
-// Last seen formatted for the most recent entry
 const lastSeenFormatted = computed(() => {
   if (!presenceEntries.value.length)
     return null
@@ -160,7 +152,6 @@ const lastSeenFormatted = computed(() => {
   return formatLastSeen(presenceEntries.value[0]?.lastSeenAt ?? null)
 })
 
-// Status color
 const statusColor = computed(() => {
   if (isOnline.value)
     return 'var(--color-text-green)'
@@ -168,7 +159,7 @@ const statusColor = computed(() => {
   return 'var(--color-text-lighter)'
 })
 
-// Watch for profile changes - refetch bypasses cache to get fresh data
+// Refetch bypasses the cache when the profile changes
 watch(() => props.profileId, () => {
   void refetchPresence()
 })
@@ -186,8 +177,8 @@ watch(() => props.profileId, () => {
     <template #trigger>
       <div class="activity-item">
         <Flex expand y-center x-between gap="s">
-          <!-- Loading state - only before the first result, so a background
-               refresh doesn't blank a row we already have data for -->
+          <!-- Only before the first result, so a background refresh doesn't blank
+               a row we already have data for -->
           <template v-if="initialLoading">
             <div>
               <span class="activity-item__label">
@@ -198,7 +189,6 @@ watch(() => props.profileId, () => {
             </div>
           </template>
 
-          <!-- Online with presence data -->
           <template v-else-if="isOnline && activePresence">
             <div>
               <span class="activity-item__label">
@@ -222,7 +212,6 @@ watch(() => props.profileId, () => {
             />
           </template>
 
-          <!-- Offline or no presence data -->
           <template v-else>
             <div>
               <span class="activity-item__label">

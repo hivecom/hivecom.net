@@ -8,7 +8,7 @@ import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 type RsvpStatus = Database['public']['Enums']['events_rsvp_status']
 type RsvpRow = Pick<Database['public']['Tables']['event_rsvps']['Row'], 'event_id' | 'rsvp'>
 
-const TTL = 3 * 60 * 1000 // 3 min - own RSVPs change rarely outside explicit writes
+const TTL = 3 * 60 * 1000 // own RSVPs rarely change outside explicit writes
 
 function cacheKey(userId: string): string {
   return `user-rsvps:${userId}`
@@ -20,14 +20,8 @@ function cacheKey(userId: string): string {
 // useRSVP.
 const STATUS_RANK: Record<RsvpStatus, number> = { yes: 2, tentative: 1, no: 0 }
 
-/**
- * All of the current user's event RSVPs as one map (event id -> status).
- *
- * useRSVP answers "what is my RSVP for this one event" and needs an event per
- * call. Cross-event consumers (e.g. the home dashboard picking the next event
- * the user is attending) need the reverse lookup, so this fetches the user's
- * rows once and caches them.
- */
+// The current user's RSVPs as event id to status, for cross-event lookups.
+// useRSVP handles a single event.
 export function useDataUserRsvps() {
   const { withCache, cache, loading, error } = useCacheModule(CACHE_NAMESPACES.rsvps)
   const supabase = useSupabaseClient<Database>()
@@ -81,8 +75,7 @@ export function useDataUserRsvps() {
       void fetch()
   })
 
-  // RSVP writes elsewhere (RSVPButton, event modals) announce on the bus -
-  // force-refresh so the map tracks the write immediately.
+  // RSVP writes elsewhere announce on the bus, so force-refresh to track them immediately.
   const { onRsvpUpdated } = useRsvpBus()
   onRsvpUpdated(() => {
     void fetch(true)

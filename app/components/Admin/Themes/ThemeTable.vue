@@ -219,7 +219,6 @@ async function handleThemeUpdate(themeId: string, data: TablesUpdate<'themes'>) 
 
 // ─── Watchers ─────────────────────────────────────────────────────────────────
 
-// Debounced search
 let searchDebounce: ReturnType<typeof setTimeout> | null = null
 watch(search, () => {
   if (searchDebounce)

@@ -10,25 +10,22 @@ import {
 import type { Database, Tables } from "database-types";
 
 Deno.serve(async (req: Request) => {
-  // Skip CORS preflight check for OPTIONS requests as this should not originate from a browser.
+  // No CORS preflight, cron requests never come from a browser
   try {
-    // Authorize the request using the system cron authorization function
     const authResponse = authorizeSystemCron(req);
     if (authResponse) {
       console.error("Authorization failed:", authResponse.statusText);
       return authResponse;
     }
 
-    // Get the Docker Control token from environment variables
     const DOCKER_CONTROL_TOKEN = getDockerControlToken();
 
-    // Create a Supabase client with the service role key (full admin access)
+    // Service role client, full admin access
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       getSecretKey(),
     );
 
-    // Fetch all active servers with docker control enabled from the database
     const { servers, error: serversError } =
       await getActiveDockerControlServers(supabaseClient);
 
@@ -48,26 +45,23 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Process each server in parallel
     const results = await Promise.all(
       servers.map(async (server) => {
         try {
           console.log(`Processing server ${server.address}...`);
 
-          // Build the Docker control URL for server status endpoint
           const dockerControlUrl = buildDockerControlServerUrl(
             server,
             "status",
           );
 
-          // Make a request to the Docker Control service
           const fetchResponse = await fetch(dockerControlUrl, {
             method: "GET",
             headers: {
               Authorization: `Bearer ${DOCKER_CONTROL_TOKEN}`,
               "Content-Type": "application/json",
             },
-            signal: AbortSignal.timeout(5000), // 5 seconds timeout
+            signal: AbortSignal.timeout(5000),
           });
 
           if (!fetchResponse.ok) {
@@ -76,23 +70,19 @@ Deno.serve(async (req: Request) => {
             );
           }
 
-          // Parse the response JSON
           const containers = await fetchResponse
             .json() as DockerControlResponse;
 
-          // Current timestamp for reporting
           const now = new Date().toISOString();
 
-          // Process each container and upsert to the containers table
           const containerUpserts = await Promise.all(
             containers.map(async (container) => {
-              // Determine running and healthy state from the health and status fields
               const running = container.health === "running";
-              // Check if the status contains "healthy" text
               const hasHealth = container.status.includes("healthy") ||
                 container.status.includes("unhealthy");
+              // "unhealthy" contains "healthy", so test for the negative.
               const healthy = hasHealth
-                ? container.status.includes("healthy")
+                ? !container.status.includes("unhealthy")
                 : null;
 
               const { error: dbError } = await supabaseClient

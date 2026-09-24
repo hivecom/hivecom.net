@@ -24,7 +24,6 @@ const user = useSupabaseUser()
 
 <template>
   <div>
-    <!-- Voting section -->
     <section v-if="user" class="mb-xl">
       <Card class="card-bg" :class="{ 'p-l': !isBelowSmall }">
         <template #header>
@@ -101,7 +100,6 @@ const user = useSupabaseUser()
       </Card>
     </section>
 
-    <!-- Login prompt -->
     <section v-else class="mb-xl">
       <Card class="text-center" :class="{ 'p-l': !isBelowSmall }">
         <Icon name="ph:sign-in" size="2rem" class="text-color-light mb-m" />

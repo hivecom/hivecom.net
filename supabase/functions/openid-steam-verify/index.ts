@@ -5,15 +5,10 @@ import { getAuthenticatedUserId } from "../_shared/auth.ts";
 import type { Database } from "database-types";
 
 /**
- * Steam OpenID verification endpoint
- * Verifies the Steam OpenID response and links/validates the Steam account
- *
- * POST body:
- * - openIdParams: Object containing all openid.* query params from Steam callback
- * - mode: 'login' | 'link'
+ * POST { openIdParams, mode }. openIdParams holds every openid.* param from the
+ * Steam callback.
  */
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -31,7 +26,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user cancelled
     if (openIdParams["openid.mode"] === "cancel") {
       return new Response(
         JSON.stringify({ success: false, error: "cancelled" }),
@@ -42,7 +36,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify the OpenID response with Steam
     const isValid = await verifySteamOpenId(openIdParams);
     if (!isValid) {
       return new Response(
@@ -54,7 +47,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Extract Steam ID from the claimed_id
     const claimedId = openIdParams["openid.claimed_id"] as string;
     const steamIdMatch = claimedId?.match(/\/id\/(\d+)$/);
     if (!steamIdMatch) {
@@ -69,7 +61,6 @@ Deno.serve(async (req) => {
 
     const steamId = steamIdMatch[1];
 
-    // For link mode, we need the user's auth token to update their profile
     if (mode === "link") {
       const authHeader = req.headers.get("Authorization");
       if (!authHeader) {
@@ -96,7 +87,6 @@ Deno.serve(async (req) => {
       if ("response" in auth) return auth.response;
       const user = { id: auth.userId };
 
-      // Update profile with Steam ID
       const { error: updateError } = await supabaseClient
         .from("profiles")
         .update({ steam_id: steamId })
@@ -124,8 +114,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // For login mode, just return the verified Steam ID
-    // The frontend will check if this Steam ID is linked to an account
+    // Login mode only returns the verified Steam ID. The frontend works out which
+    // account it belongs to.
     return new Response(
       JSON.stringify({ success: true, steamId, mode: "login" }),
       {
@@ -148,22 +138,18 @@ Deno.serve(async (req) => {
   }
 });
 
-/**
- * Verify Steam OpenID response by sending it back to Steam
- */
+// Posts the params back to Steam with check_authentication to confirm the signature
 async function verifySteamOpenId(
   params: Record<string, string>,
 ): Promise<boolean> {
   const verifyParams = new URLSearchParams();
 
-  // Copy all openid params
   for (const [key, value] of Object.entries(params)) {
     if (key.startsWith("openid.") && typeof value === "string") {
       verifyParams.set(key, value);
     }
   }
 
-  // Change mode to check_authentication
   verifyParams.set("openid.mode", "check_authentication");
 
   try {

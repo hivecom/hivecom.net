@@ -2,11 +2,7 @@
 // https://day.js.org/docs/en/durations/durations
 
 /**
- * Formats a number of seconds as a clock timecode for media players: `M:SS`,
- * or `H:MM:SS` once it passes an hour. Non-finite or negative input reads `0:00`.
- *
- * @param seconds Elapsed or total seconds.
- * @returns e.g. "0:00", "1:08", "1:02:34".
+ * `M:SS`, or `H:MM:SS` past an hour. Non-finite or negative input reads `0:00`.
  */
 export function formatClock(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0)
@@ -44,11 +40,7 @@ export function formatTimeAgo(diffMs: number): string {
   return 'Just now'
 }
 
-/**
- * Formats a duration in milliseconds to a human-readable string
- * @param milliseconds The duration in milliseconds
- * @returns Formatted duration string (e.g., "2 weeks 3 days", "1 day 2 hours", "45 minutes", "1 hour")
- */
+/** e.g. "2 weeks 3 days", "1 day 2 hours", "45 minutes" */
 export function formatDuration(milliseconds: number | null): string {
   if (milliseconds === null || milliseconds === undefined || milliseconds <= 0)
     return ''
@@ -71,35 +63,24 @@ export function formatDuration(milliseconds: number | null): string {
   if (days > 0) {
     parts.push(`${days} day${days === 1 ? '' : 's'}`)
   }
-  if (hours > 0 && weeks === 0) { // Don't show hours if we have weeks
+  if (hours > 0 && weeks === 0) {
     parts.push(`${hours} hour${hours === 1 ? '' : 's'}`)
   }
-  if (minutes > 0 && weeks === 0 && days === 0) { // Only show minutes if no weeks or days
+  if (minutes > 0 && weeks === 0 && days === 0) {
     parts.push(`${minutes} minute${minutes === 1 ? '' : 's'}`)
   }
 
   return parts.join(' ')
 }
 
-/**
- * Formats a duration in minutes to a human-readable string
- * @param minutes The duration in minutes
- * @returns Formatted duration string (e.g., "2 weeks 3 days", "1 day 2 hours", "45 minutes", "1 hour")
- */
 export function formatDurationFromMinutes(minutes: number | null): string {
   if (minutes === null || minutes === undefined || minutes <= 0)
     return ''
 
-  // Convert minutes to milliseconds and use the main formatter
   return formatDuration(minutes * 60 * 1000)
 }
 
-/**
- * Calculates and formats the duration between two date strings (or from a start date to now).
- * Produces human-readable prose: "3 days", "2 months", "1y 3m", etc.
- * @param startDate ISO date string for the start of the period
- * @param endDate ISO date string for the end of the period (defaults to now)
- */
+/** e.g. "3 days" or "1 year, 3 months". `endDate` defaults to now. */
 export function calculateDurationBetweenDates(startDate: string, endDate?: string | null): string {
   const start = new Date(startDate)
   const end = endDate != null && endDate.length > 0 ? new Date(endDate) : new Date()
@@ -123,10 +104,7 @@ export function calculateDurationBetweenDates(startDate: string, endDate?: strin
   return parts.join(', ')
 }
 
-/**
- * Formats a duration in milliseconds to a compact string suitable for small UI badges.
- * Examples: "23h", "3d"
- */
+/** e.g. "23h", "3d" */
 export function formatDurationCompact(milliseconds: number | null): string {
   if (milliseconds === null || milliseconds === undefined || milliseconds <= 0)
     return ''

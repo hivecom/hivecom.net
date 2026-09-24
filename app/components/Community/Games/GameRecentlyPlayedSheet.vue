@@ -8,9 +8,8 @@ import RecentGameActivityTile from '@/components/Community/Games/RecentGameActiv
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { buildNowPlaying, buildRecentlyPlayedMap } from '@/lib/games/recentActivity'
 
-// The full "recently played" list, opened from anywhere that shows a slice of
-// it. One component rather than one per surface, so the games page and the
-// dashboard card can't end up disagreeing about what the community has played.
+// One component for every surface that shows a slice of the list, so they can't
+// disagree about what the community has played.
 const props = defineProps<{
   open: boolean
   games: Tables<'games'>[]
@@ -135,7 +134,6 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" scoped>
-// Infinite-scroll sentinel
 .recently-played-sheet__sentinel {
   display: flex;
   align-items: center;

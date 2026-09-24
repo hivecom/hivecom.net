@@ -1,7 +1,3 @@
-/**
- * Utility functions for handling user activity status
- */
-
 import type { User } from '@supabase/supabase-js'
 import type { WatchStopHandle } from 'vue'
 import { isRef, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -10,9 +6,6 @@ import { displayDate } from '@/lib/utils/date'
 
 export type LastSeenVariant = 'online' | 'fresh' | 'light' | 'lighter' | 'lightest'
 
-/**
- * Maps a UserActivityStatus to a VUI color-variant string for last-seen indicators.
- */
 export function getLastSeenVariant(status: UserActivityStatus | null): LastSeenVariant {
   if (!status)
     return 'lightest'
@@ -25,25 +18,18 @@ export function getLastSeenVariant(status: UserActivityStatus | null): LastSeenV
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  // Last 24 hours
   if (diffHours < 24)
     return 'fresh'
 
-  // Last 3 days
   if (diffDays < 3)
     return 'light'
 
-  // Last 14 days
   if (diffDays < 14)
     return 'lighter'
 
-  // > 14 days
   return 'lightest'
 }
 
-/**
- * Maps a LastSeenVariant to the corresponding CSS text-color utility class.
- */
 export function getLastSeenTextClass(variant: LastSeenVariant): string {
   switch (variant) {
     case 'online':
@@ -71,11 +57,8 @@ export interface UserActivityStatus {
 }
 
 /**
- * Determines if a user is considered "active" based on their last seen timestamp
- * A user is considered active if they were last seen within the last 15 minutes
- *
- * Pass `nowMs` (usually the shared tick from useNow) to keep the derived text
- * live. Without it the result is computed once and never ages.
+ * Active means seen in the last 15 minutes, away in the last 30. Pass `nowMs`,
+ * usually the shared tick from useNow, or the text never ages.
  */
 export function getUserActivityStatus(lastSeen: string | Date, nowMs: number = Date.now()): UserActivityStatus {
   const lastSeenDate = typeof lastSeen === 'string' ? new Date(lastSeen) : lastSeen
@@ -86,7 +69,6 @@ export function getUserActivityStatus(lastSeen: string | Date, nowMs: number = D
   const isActive = lastSeenDate > fifteenMinutesAgo
   const isAway = !isActive && lastSeenDate > thirtyMinutesAgo
 
-  // Format the "last seen" text
   const timeDiff = now.getTime() - lastSeenDate.getTime()
   const minutes = Math.floor(timeDiff / (1000 * 60))
   const hours = Math.floor(timeDiff / (1000 * 60 * 60))
@@ -121,10 +103,6 @@ export function getUserActivityStatus(lastSeen: string | Date, nowMs: number = D
   }
 }
 
-/**
- * Updates the current user's last seen timestamp
- * This should be called periodically while the user is active in the app
- */
 export async function updateCurrentUserLastSeen() {
   const supabase = useSupabaseClient()
 
@@ -135,7 +113,7 @@ export async function updateCurrentUserLastSeen() {
       console.warn('Failed to update last seen:', error.message)
     }
     else {
-      // Invalidate cached profile data so the online indicator updates immediately
+      // So the online indicator updates right away.
       const { invalidateTable } = useCache()
       invalidateTable('profiles')
     }
@@ -145,12 +123,8 @@ export async function updateCurrentUserLastSeen() {
   }
 }
 
-/**
- * Sets up automatic last seen updates while the user is active
- * This composable should be used in the app layout or main component
- */
+// Meant for the app layout.
 export function useLastSeenTracking() {
-  // Return user or null if we can't access it
   function isRefUser(val: unknown): val is globalThis.Ref<User | null> {
     return isRef(val)
   }
@@ -173,17 +147,14 @@ export function useLastSeenTracking() {
   let unwatchUser: WatchStopHandle | null = null
 
   const startTracking = () => {
-    // Only run on client side
     if (import.meta.server === true || user.value === null || intervalId !== null)
       return
 
-    // Update immediately
     void updateCurrentUserLastSeen()
 
-    // Update every 5 minutes while active
     intervalId = setInterval(() => {
       void updateCurrentUserLastSeen()
-    }, 5 * 60 * 1000) // 5 minutes
+    }, 5 * 60 * 1000)
   }
 
   const stopTracking = () => {
@@ -193,7 +164,6 @@ export function useLastSeenTracking() {
     }
   }
 
-  // Update on visibility change (when user returns to tab)
   const handleVisibilityChange = () => {
     if (import.meta.server === true)
       return
@@ -203,7 +173,6 @@ export function useLastSeenTracking() {
     }
   }
 
-  // Update on focus (when user returns to window)
   const handleFocus = () => {
     if (import.meta.server === true)
       return
@@ -213,7 +182,6 @@ export function useLastSeenTracking() {
     }
   }
 
-  // Start tracking when mounted
   onMounted(() => {
     if (import.meta.server === true)
       return
@@ -231,7 +199,6 @@ export function useLastSeenTracking() {
       { immediate: true },
     )
 
-    // These are client-side only APIs
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('focus', handleFocus)
   })

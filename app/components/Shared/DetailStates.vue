@@ -15,7 +15,6 @@ defineProps<Props>()
 </script>
 
 <template>
-  <!-- Loading State -->
   <div v-if="loading" class="detail-states__loading">
     <Card>
       <Flex column gap="l">
@@ -27,7 +26,6 @@ defineProps<Props>()
     </Card>
   </div>
 
-  <!-- Error State -->
   <div v-else-if="error" class="detail-states__error">
     <Flex>
       <Button

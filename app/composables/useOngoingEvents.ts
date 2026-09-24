@@ -19,7 +19,6 @@ export function useOngoingEvents() {
 
       const hasRRule = event.recurrence_rule != null && event.recurrence_rule !== ''
       if (!hasRRule) {
-        // Non-recurring: check if now is within [start, start + duration]
         const start = new Date(event.date).getTime()
         const end = start + durationMs
         if (nowMs >= start && nowMs <= end) {
@@ -27,7 +26,6 @@ export function useOngoingEvents() {
         }
       }
       else {
-        // Recurring: expand a window from (now - duration) to (now + 1 min)
         const windowStart = new Date(nowMs - Math.max(durationMs, 0))
         const windowEnd = new Date(nowMs + 60_000)
         const occurrences = expandRecurringEvent(event, windowStart, windowEnd)

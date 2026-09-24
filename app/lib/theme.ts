@@ -15,13 +15,12 @@
 
 import type { Theme } from '@/types/theme'
 
-/** Pre-compiled regex for underscore-to-hyphen conversion. */
 const UNDERSCORE_RE = /_/g
 
 /** Pre-compiled regex for hyphen-to-underscore conversion. */
 const HYPHEN_RE = /-/g
 
-/** Metadata fields on the themes table that are NOT color columns. */
+/** themeToCustomProperties treats every column not listed here as a colour. */
 const THEME_META_KEYS = new Set([
   'id',
   'created_at',
@@ -30,16 +29,17 @@ const THEME_META_KEYS = new Set([
   'modified_by',
   'name',
   'description',
+  'custom_css',
+  'forked_from',
+  'is_official',
+  'is_unmaintained',
   'spacing',
   'rounding',
   'transitions',
   'widening',
 ])
 
-/**
- * The palette-independent 0-100 scale columns.
- * These are stored separately from colors and are not mapped to CSS color vars.
- */
+/** The palette-independent 0-100 scale columns. */
 export const THEME_SCALE_KEYS = ['spacing', 'rounding', 'transitions', 'widening'] as const
 export type ThemeScaleKey = (typeof THEME_SCALE_KEYS)[number]
 
@@ -137,10 +137,8 @@ export const VUI_DEFAULT_COLORS: Record<'dark' | 'light', Record<string, string>
 }
 
 /**
- * The VUI color variable suffixes (without `--dark-color-` / `--light-color-` prefix).
- *
- * Column names in the DB use underscores where VUI uses hyphens, and drop the
- * `color-` segment (e.g. column `dark_bg_raised` -> CSS var `--dark-color-bg-raised`).
+ * DB columns use underscores and drop the `color-` segment, so column
+ * `dark_bg_raised` is CSS var `--dark-color-bg-raised`.
  */
 export const VUI_COLOR_KEYS = [
   'bg',
@@ -237,7 +235,6 @@ const TRANSITION_TOKENS: ScaleConfig['tokens'] = [
   { varName: '--transition-slow', defaultValue: 0.25 },
 ]
 
-/** Maps each transition shorthand token to its companion duration-only token */
 const TRANSITION_DURATION_COMPANIONS: Record<string, string> = {
   '--transition-fast': '--transition-fast-duration',
   '--transition': '--transition-duration',
@@ -366,8 +363,8 @@ export function applyScale(
       const shorthand = scaleTransition(token, dbValue)
       target.style.setProperty(token.varName, shorthand)
 
-      // Also set the companion duration-only token so it can be used in
-      // places like transition-delay where a bare time value is required
+      // The duration-only companion is for places like transition-delay that
+      // need a bare time value.
       const companion = TRANSITION_DURATION_COMPANIONS[token.varName] ?? null
       if (companion != null)
         target.style.setProperty(companion, shorthand.split(' ')[0] ?? '')
@@ -381,25 +378,14 @@ export function applyScale(
   }
 }
 
-/**
- * Convert a DB column name (e.g. `dark_bg_accent_raised`) to its
- * corresponding VUI CSS custom property name (e.g. `--dark-color-bg-accent-raised`).
- */
+/** `dark_bg_accent_raised` to `--dark-color-bg-accent-raised`. */
 export function columnToCssVar(column: string): string {
-  // Column format: `{dark|light}_{suffix_with_underscores}`
-  // CSS var format: `--{dark|light}-color-{suffix-with-hyphens}`
   const firstUnderscore = column.indexOf('_')
-  const prefix = column.slice(0, firstUnderscore) // 'dark' or 'light'
+  const prefix = column.slice(0, firstUnderscore)
   const suffix = column.slice(firstUnderscore + 1).replace(UNDERSCORE_RE, '-')
   return `--${prefix}-color-${suffix}`
 }
 
-/**
- * Convert a theme row into a `Record<css-variable-name, color-value>` map
- * ready to be applied to `:root` via `style.setProperty()`.
- *
- * Only color columns are included - metadata fields are stripped.
- */
 export function themeToCustomProperties(theme: Theme): Record<string, string> {
   const vars: Record<string, string> = {}
 
@@ -483,8 +469,7 @@ export function applyTheme(theme: Theme | null, target: HTMLElement = document.d
     for (const token of SCALE_CONFIGS[scaleKey].tokens) {
       target.style.removeProperty(token.varName)
 
-      // Also clear any companion duration tokens so they fall back to the
-      // values defined in index.scss rather than stale theme overrides
+      // Companions fall back to index.scss rather than a stale theme value.
       if (scaleKey === 'transitions') {
         const companion = TRANSITION_DURATION_COMPANIONS[token.varName] ?? null
         if (companion != null)
@@ -510,10 +495,6 @@ export function applyTheme(theme: Theme | null, target: HTMLElement = document.d
 
 const RGB_RE = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/
 
-/**
- * Convert any supported color string (rgb, rgba, hex) to a 6-digit hex string.
- * Returns the fallback if the value cannot be parsed.
- */
 export function colorToHex(value: string, fallback: string = '#000000'): string {
   const trimmed = value.trim()
 
@@ -572,26 +553,21 @@ export function getCssVarAsHex(varName: string, fallback: string = '#000000'): s
   return fallback
 }
 
-/**
- * Strip constructs that could be used for XSS or data exfiltration.
- * Returns the sanitized string, or empty string if the result is blank.
- */
+/** Strips user CSS constructs that could be used for XSS or data exfiltration. */
 export function sanitizeCustomCss(css: string | null | undefined): string {
   if (css == null || css === '')
     return ''
 
   return css
-    // Strip @import rules entirely - external CSS loading is not allowed
+    // No external CSS loading.
     .replace(/@import\s[^;]+;?/gi, '')
 
-    // Strip javascript: URI scheme wherever it appears
     .replace(/javascript\s*:/gi, '')
 
-    // Strip expression() - old IE JS execution in CSS
+    // expression() runs JS in old IE.
     .replace(/expression\s*\(/gi, '')
 
-    // Strip url() that reference data: or javascript: schemes
-    // Note: \s+ avoids backtracking exchange with adjacent \s*; quote capture used in replacement
+    // Neutralize url() pointing at data: or javascript:, keeping the quote style
     .replace(/url\s*\(\s*(['"]?)(?:data:|javascript:)/gi, 'url($1about:')
     .trim()
 }

@@ -6,14 +6,8 @@ import { useDataVotes } from '@/composables/useDataVotes'
 
 dayjs.extend(relativeTime)
 
-// Votes as a single strip above the grid rather than a card in it. A vote is
-// usually one line of information and often none at all, so it was the card
-// most likely to sit there empty while the cards that always have something to
-// say were squeezed into a narrower column.
-//
-// Three states, in priority order: a vote you still have to cast, a vote you
-// have cast that is still running, and the most recent result, which only shows
-// when nothing is live. Nothing in any of those means the banner does not render.
+// Priority: a vote you still have to cast, a running vote you've cast, then the
+// latest result when nothing is live. With none of those it doesn't render.
 
 const RESULTS_WINDOW_DAYS = 30
 
@@ -34,23 +28,19 @@ onMounted(() => {
   void fetchUserVotedIds()
 })
 
-// Pull counts once the lists are in so turnout shows on whatever we land on.
-// Immediate, because on a warm cache both lists are already filled during
-// setup and a plain watcher never fires, which left the banner at 0 votes.
+// Immediate, since a warm cache fills both lists during setup and a plain watcher never fires
 watch([activePublicItems, concludedPublicItems], ([active, concluded]) => {
   const ids = [...active, ...concluded].map(r => r.id)
   if (ids.length > 0)
     void fetchVoteCounts(ids)
 }, { immediate: true })
 
-// The active list is "not ended yet", which includes votes that haven't opened.
-// Only the ones already running count as in progress.
+// The active list includes votes that haven't opened yet
 const inProgress = computed(() => activePublicItems.value.filter(r => dayjs(r.date_start).isBefore(dayjs())))
 
 const needsDeciding = computed(() => inProgress.value.filter(r => !hasVoted(r.id)))
 const alreadyVoted = computed(() => inProgress.value.filter(r => hasVoted(r.id)))
 
-// Results go stale fast, so anything older than the window is not news.
 const latestResult = computed(() => {
   const cutoff = dayjs().subtract(RESULTS_WINDOW_DAYS, 'day')
 
@@ -72,7 +62,6 @@ const state = computed<BannerState | null>(() => {
   return latestResult.value ? 'result' : null
 })
 
-// How many other live votes are waiting behind the one on show.
 const remaining = computed(() => Math.max(0, inProgress.value.length - 1))
 
 const label = computed(() => {
@@ -128,7 +117,7 @@ const detail = computed(() => {
   padding: var(--space-s) var(--space-m);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-m);
-  // Same fill as the VUI cards under it, so the strip reads as one of them.
+  // Matches the VUI cards under it
   background-color: var(--color-bg);
   color: var(--color-text);
   transition:
@@ -146,8 +135,7 @@ const detail = computed(() => {
   }
 }
 
-// Only the state that wants something from you gets the accent. The other two
-// are news, and news in the accent colour reads as a call to action.
+// Only the state that wants something from you gets the accent. The others are news.
 .votes-banner--deciding {
   border-color: var(--color-accent);
 
@@ -200,8 +188,7 @@ const detail = computed(() => {
     transform var(--transition-duration) ease;
 }
 
-// One line is the point of the banner, so the parts that are nice-to-have drop
-// off before the title starts wrapping.
+// Extras drop off before the title wraps
 @media screen and (max-width: $breakpoint-m) {
   .votes-banner__meta--turnout,
   .votes-banner__arrow {

@@ -241,8 +241,8 @@ async function handleGameSave(gameData: Partial<Tables<'games'>>) {
       if (error)
         throw error
 
-      // Shorthand changed - move existing assets to the new folder so they
-      // don't get orphaned under the old shorthand.
+      // Shorthand changed, so move the assets to the new folder before they get
+      // orphaned under the old one.
       if (previousShorthand && normalizedData.shorthand && normalizedData.shorthand !== previousShorthand) {
         const moveResult = await moveGameAssets(supabase, previousShorthand, normalizedData.shorthand)
         if (!moveResult.success)

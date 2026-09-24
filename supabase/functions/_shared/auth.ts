@@ -6,11 +6,7 @@ import type { Database } from "database-types";
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ------------------------------------------------------------------------
-/**
- * Checks whether the authenticated user currently has an active ban in their
- * profile. Uses the service role client so RLS never interferes with the
- * lookup. Returns a 403 Response when banned, undefined when clear.
- */
+// Service role client so RLS never interferes with the ban lookup
 async function checkBanStatus(userId: string): Promise<Response | undefined> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = getSecretKey();
@@ -24,7 +20,7 @@ async function checkBanStatus(userId: string): Promise<Response | undefined> {
     .single();
 
   if (error) {
-    // Fail open - don't block legitimate users if the lookup fails
+    // Fail open so a lookup error doesn't lock out legitimate users
     console.warn("Unable to fetch ban status for user:", userId, error);
     return undefined;
   }
@@ -49,11 +45,7 @@ async function checkBanStatus(userId: string): Promise<Response | undefined> {
   return undefined;
 }
 
-/**
- * Checks whether the caller's session satisfies aal2 when they have MFA
- * enrolled. If the user has no MFA factors this is a no-op. Returns a 403
- * Response when MFA is required but not satisfied, undefined when clear.
- */
+// Requires aal2 only when the user has MFA enrolled
 export async function checkAssuranceLevel(
   supabaseClient: ReturnType<typeof createClient<Database>>,
 ): Promise<Response | undefined> {
@@ -61,7 +53,7 @@ export async function checkAssuranceLevel(
     .getAuthenticatorAssuranceLevel();
 
   if (error) {
-    // Fail open - don't block if we can't determine the level
+    // Fail open when the level can't be determined
     console.warn("Unable to determine MFA assurance level:", error);
     return undefined;
   }
@@ -86,19 +78,8 @@ export async function checkAssuranceLevel(
   return undefined;
 }
 
-/**
- * Verifies the caller's access token using local JWKS signature + expiry
- * checks (auth.getClaims) and returns the authenticated user id.
- *
- * Unlike auth.getUser, this does not require the session row to still exist
- * server-side. With asymmetric JWT signing keys the access token is
- * cryptographically verifiable on its own, so a token that is still valid and
- * unexpired must be accepted even if its originating session has since been
- * revoked. Returns the user id on success or a 401 Response on failure.
- */
-// Structural type so callers can pass any Supabase client regardless of how
-// the @supabase/supabase-js module is resolved (jsr vs npm), which otherwise
-// produces a nominal SupabaseClient type mismatch.
+// Structural so any Supabase client fits. jsr and npm resolutions of
+// supabase-js otherwise produce mismatched nominal SupabaseClient types.
 interface ClaimsVerifier {
   auth: {
     getClaims(
@@ -109,6 +90,9 @@ interface ClaimsVerifier {
   };
 }
 
+// Local JWKS signature and expiry check via getClaims. Unlike getUser it doesn't
+// need the session row, so a valid unexpired token is accepted even after its
+// session is revoked.
 export async function getAuthenticatedUserId(
   supabaseClient: ClaimsVerifier,
   authHeader: string,
@@ -173,7 +157,6 @@ export function authorizeSystemCron(req: Request): Response | undefined {
     );
   }
 
-  // Extract token from Authorization header
   const authHeader = req.headers.get("System-Cron-Secret");
   if (!authHeader) {
     return new Response(
@@ -190,7 +173,6 @@ export function authorizeSystemCron(req: Request): Response | undefined {
     );
   }
 
-  // Check if the provided token matches our system token from the vault
   if (!timingSafeEqualString(authHeader, systemCronSecret)) {
     return new Response(
       JSON.stringify({ success: false, message: "Unauthorized" }),
@@ -203,16 +185,10 @@ export function authorizeSystemCron(req: Request): Response | undefined {
   }
 }
 
-/**
- * Authorizes a request by checking if the user is authenticated
- * @param req The request object
- * @returns Response with error if unauthorized, undefined if authorized
- */
 export async function authorizeAuthenticated(
   req: Request,
 ): Promise<Response | undefined> {
   console.log("Authorizing authenticated user...");
-  // Get the authorization header
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
     return new Response(
@@ -229,7 +205,6 @@ export async function authorizeAuthenticated(
   }
 
   try {
-    // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       getPublishableKey(),
@@ -240,16 +215,13 @@ export async function authorizeAuthenticated(
       },
     );
 
-    // Verify the token and resolve the user id
     const auth = await getAuthenticatedUserId(supabaseClient, authHeader);
     if ("response" in auth) return auth.response;
     const userId = auth.userId;
 
-    // Check active ban before allowing access
     const banResponse = await checkBanStatus(userId);
     if (banResponse) return banResponse;
 
-    // User is authenticated
     return undefined;
   } catch (error) {
     console.error("Authentication error:", error);
@@ -268,17 +240,10 @@ export async function authorizeAuthenticated(
   }
 }
 
-/**
- * Authorizes a request by checking if the user has any of the specified permissions
- * @param req The request object
- * @param requiredPermissions Array of app_permission values that are required for this endpoint
- * @returns Response with error if unauthorized, undefined if authorized
- */
 export async function authorizeAuthenticatedHasPermission(
   req: Request,
   requiredPermissions: Array<Database["public"]["Enums"]["app_permission"]>,
 ): Promise<Response | undefined> {
-  // Get the authorization header
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
     return new Response(
@@ -295,7 +260,6 @@ export async function authorizeAuthenticatedHasPermission(
   }
 
   try {
-    // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient<Database>(
       Deno.env.get("SUPABASE_URL") ?? "",
       getPublishableKey(),
@@ -306,16 +270,13 @@ export async function authorizeAuthenticatedHasPermission(
       },
     );
 
-    // Verify the token and resolve the user id
     const auth = await getAuthenticatedUserId(supabaseClient, authHeader);
     if ("response" in auth) return auth.response;
     const userId = auth.userId;
 
-    // Check active ban before allowing access
     const banResponse = await checkBanStatus(userId);
     if (banResponse) return banResponse;
 
-    // Get the user_role claim from the token
     const { data: userRole, error: roleError } = await supabaseClient
       .from("user_roles")
       .select("role")
@@ -352,7 +313,6 @@ export async function authorizeAuthenticatedHasPermission(
       );
     }
 
-    // Query the role_permissions table to check if the user's role has any of the required permissions
     const { data: permissions, error: permissionsError } = await supabaseClient
       .from("role_permissions")
       .select("permission")
@@ -375,7 +335,6 @@ export async function authorizeAuthenticatedHasPermission(
       );
     }
 
-    // Check if the user's role has any of the required permissions
     if (!permissions || permissions.length === 0) {
       return new Response(
         JSON.stringify({
@@ -390,7 +349,6 @@ export async function authorizeAuthenticatedHasPermission(
       );
     }
 
-    // User is authorized
     return undefined;
   } catch (error) {
     console.error("Authorization error:", error);
@@ -412,11 +370,7 @@ export async function authorizeAuthenticatedHasPermission(
 // ---------------------------------------------------------------------------
 // Admin-level guard: permission check + ban check + aal2 assurance
 // ------------------------------------------------------------------------
-/**
- * Like authorizeAuthenticatedHasPermission, but also enforces that the caller
- * has reached assurance level 2 when their account has MFA enrolled. Use this
- * for any admin action that should require completed 2FA.
- */
+// Use for any admin action that should require completed 2FA
 export async function authorizeAuthenticatedHasPermissionAal2(
   req: Request,
   requiredPermissions: Array<Database["public"]["Enums"]["app_permission"]>,
@@ -447,20 +401,16 @@ export async function authorizeAuthenticatedHasPermissionAal2(
       },
     );
 
-    // Verify the token and resolve the user id
     const auth = await getAuthenticatedUserId(supabaseClient, authHeader);
     if ("response" in auth) return auth.response;
     const userId = auth.userId;
 
-    // Check active ban
     const banResponse = await checkBanStatus(userId);
     if (banResponse) return banResponse;
 
-    // Enforce aal2 when MFA is enrolled
     const aalResponse = await checkAssuranceLevel(supabaseClient);
     if (aalResponse) return aalResponse;
 
-    // Check role permissions
     const { data: userRole, error: roleError } = await supabaseClient
       .from("user_roles")
       .select("role")
@@ -569,7 +519,6 @@ export function authorizeSystemTrigger(req: Request): Response | undefined {
     );
   }
 
-  // Extract token from the System-Trigger-Secret header
   const triggerHeader = req.headers.get("System-Trigger-Secret");
   if (!triggerHeader) {
     return new Response(
@@ -587,7 +536,6 @@ export function authorizeSystemTrigger(req: Request): Response | undefined {
     );
   }
 
-  // Check if the provided token matches our system token from the vault
   if (!timingSafeEqualString(triggerHeader, systemTriggerSecret)) {
     return new Response(
       JSON.stringify({ success: false, message: "Unauthorized" }),

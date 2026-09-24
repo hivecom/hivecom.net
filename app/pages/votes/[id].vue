@@ -26,9 +26,8 @@ const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userId = useUserId()
 
-// Resolve the session once on mount so we know whether the visitor is truly
-// unauthenticated before redirecting. Without this, a hard reload causes
-// useSupabaseUser() to be null while the session is still being restored.
+// Resolve the session on mount before redirecting. On a hard reload
+// useSupabaseUser() is null while the session restores.
 const { waitForSessionReady } = useSessionReady()
 const { navigateToSignIn } = useAuthRedirect()
 const authReady = ref(false)
@@ -43,7 +42,7 @@ onMounted(async () => {
 
 const isAuthenticated = computed(() => !!(userId.value ?? sessionUser.value))
 
-// Votes are members-only - redirect unauthenticated visitors to sign-in.
+// Votes are members-only, so send signed-out visitors to sign-in
 watch(
   [authReady, userId, sessionUser],
   ([isAuthReady]) => {
@@ -58,7 +57,6 @@ watch(
 
 const referendumId = computed(() => Number(route.params.id))
 
-// Fetch referendum details
 const { data: referendum, loading: loadingReferendum, refetch: refetchReferendum } = useCachedFetch<Tables<'referendums'>>(
   () => !Number.isNaN(referendumId.value) && !!user.value
     ? {
@@ -69,7 +67,7 @@ const { data: referendum, loading: loadingReferendum, refetch: refetchReferendum
       }
     : null,
   {
-    ttl: 60000, // 1 minute cache
+    ttl: 60000,
   },
 )
 
@@ -90,11 +88,9 @@ const canManage = computed(() => {
   return isOwnReferendum.value || hasPermission('referendums.update')
 })
 
-// Page-level delete
 const deleteConfirm = ref(false)
 const deleteLoading = ref(false)
 
-// Close / re-open
 const closeConfirm = ref(false)
 const closeLoading = ref(false)
 const reopenConfirm = ref(false)
@@ -185,7 +181,6 @@ function handleDeleted() {
   navigateTo('/votes')
 }
 
-// Fetch user's existing vote
 const { data: userVote, loading: _loadingVote, refetch: refetchVote } = useCachedFetch<Tables<'referendum_votes'>>(
   () => !Number.isNaN(referendumId.value) && !!userId.value
     ? {
@@ -199,11 +194,10 @@ const { data: userVote, loading: _loadingVote, refetch: refetchVote } = useCache
       }
     : null,
   {
-    ttl: 30000, // 30 second cache for votes
+    ttl: 30000,
   },
 )
 
-// Fetch all votes for this referendum (for displaying results)
 const { data: fetchedVotes, loading: loadingAllVotes, refetch: refetchAllVotes } = useCachedFetch<Tables<'referendum_votes'>[]>(
   () => !Number.isNaN(referendumId.value) && !!user.value
     ? {
@@ -213,37 +207,32 @@ const { data: fetchedVotes, loading: loadingAllVotes, refetch: refetchAllVotes }
       }
     : null,
   {
-    ttl: 30000, // 30 second cache
+    ttl: 30000,
   },
 )
 
-// Keep allVotes live via realtime subscription - starts from the cache query
-// result and patches in INSERT/UPDATE/DELETE events from other tabs/users.
+// Realtime keeps allVotes live, starting from the cached result and patching in
+// changes from other tabs and users
 const { votes: allVotes } = useRealtimeReferendumVotes(
   computed(() => referendumId.value),
   computed(() => fetchedVotes.value as Tables<'referendum_votes'>[] | null | undefined),
 )
 
-// Voting state
 const selectedChoices = ref<number[]>([])
 const isSubmitting = ref(false)
 
-// Results visibility state
 const showResults = ref(false)
 const showConfirmModal = ref(false)
 
-// Remove vote state
 const showRemoveVoteModal = ref(false)
 const isRemovingVote = ref(false)
 
-// Initialize voting state when user vote loads
 watch([userVote], ([vote]) => {
   if (vote) {
     selectedChoices.value = (vote.choices as Array<number | string>).map(Number)
   }
 }, { immediate: true })
 
-// Computed properties
 const isActive = computed(() => {
   if (!referendum.value)
     return false
@@ -316,7 +305,6 @@ const timeAgo = computed(() => {
 const totalVoters = computed(() => allVotes.value.length)
 
 const shouldShowResults = computed(() => {
-  // Always show results if user has voted or if the referendum has concluded
   return hasVoted.value || (!isActive.value && !isUpcoming.value) || showResults.value
 })
 
@@ -324,7 +312,6 @@ const isLoadingResults = computed(() => {
   return shouldShowResults.value && (loadingAllVotes.value || (shouldShowResults.value && !allVotes.value))
 })
 
-// Handle choice selection for multiple choice
 function updateMultipleChoice(choiceIndex: number, isSelected: boolean) {
   if (isSelected) {
     if (!selectedChoices.value.includes(choiceIndex)) {
@@ -339,12 +326,10 @@ function updateMultipleChoice(choiceIndex: number, isSelected: boolean) {
   }
 }
 
-// Handle choice selection for single choice
 function updateSingleChoice(choiceIndex: number) {
   selectedChoices.value = [choiceIndex]
 }
 
-// Submit vote
 async function submitVote() {
   if (!user.value || !referendum.value || selectedChoices.value.length === 0)
     return
@@ -365,8 +350,7 @@ async function submitVote() {
     if (error)
       throw error
 
-    // Refetch data - realtime will also patch allVotes, but an explicit
-    // refetch ensures the user's own vote is reflected immediately.
+    // Realtime also patches allVotes, but refetch so the user's own vote shows immediately
     await Promise.all([
       refetchVote(),
       refetchAllVotes(),
@@ -382,7 +366,6 @@ async function submitVote() {
   }
 }
 
-// Handle revealing results
 function requestRevealResults() {
   showConfirmModal.value = true
 }
@@ -391,7 +374,6 @@ function confirmRevealResults() {
   showResults.value = true
 }
 
-// Handle removing vote
 function requestRemoveVote() {
   showRemoveVoteModal.value = true
 }
@@ -411,10 +393,8 @@ async function confirmRemoveVote() {
     if (error)
       throw error
 
-    // Reset voting state
     selectedChoices.value = []
 
-    // Refetch data
     await Promise.all([
       refetchVote(),
       refetchAllVotes(),
@@ -430,7 +410,6 @@ async function confirmRemoveVote() {
   }
 }
 
-// Page metadata
 useHead({
   title: computed(() => referendum.value ? `${referendum.value.title} - Vote` : 'Vote'),
 })
@@ -453,12 +432,9 @@ function handleChoiceClick(index: number) {
   <div class="page">
     <div :class="!isMobile && 'container-m'">
       <ClientOnly>
-        <!-- Loading state: show skeleton while auth is unresolved OR data is loading -->
-        <!-- Show skeleton while auth is unresolved, user is unauthenticated
-             (redirect is in flight), or data is still loading -->
+        <!-- Skeleton while auth is unresolved, the sign-in redirect is in flight, or data is loading -->
         <VoteLoadingSkeleton v-if="loadingReferendum || !authReady || !isAuthenticated" />
 
-        <!-- Referendum not found -->
         <Flex v-else-if="!referendum" column class="text-center p-xl" x-center y-center>
           <Icon name="ph:question" size="3rem" class="text-color-light mb-m" />
           <h2>Vote not found</h2>
@@ -475,9 +451,7 @@ function handleChoiceClick(index: number) {
           </NuxtLink>
         </Flex>
 
-        <!-- Referendum content -->
         <template v-else>
-          <!-- Back Button -->
           <Flex class="mb-m" x-between wrap y-center>
             <NuxtLink to="/votes">
               <Button
@@ -515,7 +489,6 @@ function handleChoiceClick(index: number) {
             </Flex>
           </Flex>
 
-          <!-- Header -->
           <VoteHeader
             :referendum="referendum as Tables<'referendums'>"
             :is-active="isActive"
@@ -528,7 +501,6 @@ function handleChoiceClick(index: number) {
             :time-ago="timeAgo"
           />
 
-          <!-- Voting / login prompt -->
           <VoteChoices
             v-if="isActive"
             :referendum="referendum as Tables<'referendums'>"
@@ -541,7 +513,6 @@ function handleChoiceClick(index: number) {
             @request-remove-vote="requestRemoveVote"
           />
 
-          <!-- Results Section -->
           <VoteResults
             :referendum="referendum as Tables<'referendums'>"
             :votes="allVotes"
@@ -551,7 +522,6 @@ function handleChoiceClick(index: number) {
             @request-reveal-results="requestRevealResults"
           />
 
-          <!-- Edit Modal -->
           <ReferendumModal
             v-if="canManage && referendum"
             :open="editModalOpen"
@@ -561,7 +531,6 @@ function handleChoiceClick(index: number) {
             @deleted="handleDeleted"
           />
 
-          <!-- Close Vote Confirmation Modal -->
           <ConfirmModal
             v-if="referendum"
             v-model:open="closeConfirm"
@@ -573,7 +542,6 @@ function handleChoiceClick(index: number) {
             @confirm="confirmClose"
           />
 
-          <!-- Re-open Vote Confirmation Modal -->
           <ConfirmModal
             v-if="referendum"
             v-model:open="reopenConfirm"
@@ -585,7 +553,6 @@ function handleChoiceClick(index: number) {
             @confirm="confirmReopen"
           />
 
-          <!-- Delete Confirmation Modal -->
           <ConfirmModal
             v-if="referendum"
             v-model:open="deleteConfirm"
@@ -597,7 +564,6 @@ function handleChoiceClick(index: number) {
             @confirm="confirmDelete"
           />
 
-          <!-- Reveal Results Confirmation Modal -->
           <ConfirmModal
             v-model:open="showConfirmModal"
             :confirm="confirmRevealResults"
@@ -608,7 +574,6 @@ function handleChoiceClick(index: number) {
             :destructive="false"
           />
 
-          <!-- Remove Vote Confirmation Modal -->
           <ConfirmModal
             v-model:open="showRemoveVoteModal"
             :confirm="confirmRemoveVote"

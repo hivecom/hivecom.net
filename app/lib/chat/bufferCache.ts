@@ -22,9 +22,8 @@ export interface StoredMessage {
   bufferKey: string
 
   /**
-   * Compound-key id within a buffer. Chat/tagmsg lines use the server msgid;
-   * presence events (join/part) have none, so they're keyed on a synthetic
-   * `evt:...` id derived from their content + server-time (see buildStoredMessage).
+   * Server msgid for chat lines. Presence events have none, so they get a
+   * synthetic `evt:...` id from their content and server time.
    */
   msgid: string
   ts: number
@@ -72,7 +71,7 @@ async function openDb(): Promise<IDBDatabase | null> {
     req.onupgradeneeded = () => {
       const db = req.result
 
-      // Remove old v1 store if present
+      // The v1 single-blob store.
       if (db.objectStoreNames.contains('buffers'))
         db.deleteObjectStore('buffers')
       if (!db.objectStoreNames.contains(MSG_STORE)) {
@@ -91,14 +90,13 @@ async function openDb(): Promise<IDBDatabase | null> {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Build the bufferKey string used as cache namespace for a given user+buffer. */
 export function makeBufferKey(userKey: string, bufferName: string): string {
   return `${userKey}:${bufferName.toLowerCase()}`
 }
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 
-/** Batch-upsert messages. All in one IDB transaction. Mutations (same [bufferKey, msgid]) overwrite. Never throws. */
+/** One IDB transaction. The same [bufferKey, msgid] overwrites. */
 export async function upsertMessages(msgs: StoredMessage[]): Promise<void> {
   if (!msgs.length)
     return
@@ -123,10 +121,7 @@ export async function upsertMessages(msgs: StoredMessage[]): Promise<void> {
   })
 }
 
-/**
- * Load the most recent `limit` messages for a buffer, in chronological order
- * (oldest first). Used for hydrating the live buffer on startup.
- */
+/** The most recent `limit` messages, oldest first. */
 export async function loadRecentMessages(
   userKey: string,
   bufferName: string,
@@ -167,10 +162,7 @@ export async function loadRecentMessages(
   })
 }
 
-/**
- * Load up to `limit` messages for a buffer with ts < beforeTs (exclusive),
- * newest-first then reversed to chronological. Used for cache-first scroll-back.
- */
+/** Up to `limit` messages with ts < beforeTs, oldest first. */
 export async function loadOlderMessages(
   userKey: string,
   bufferName: string,
@@ -212,10 +204,7 @@ export async function loadOlderMessages(
   })
 }
 
-/**
- * Load up to `limit` messages for a buffer with ts > afterTs (exclusive),
- * in chronological order (oldest first). Used for forward cache-loading.
- */
+/** Up to `limit` messages with ts > afterTs, oldest first. */
 export async function loadNewerMessages(
   userKey: string,
   bufferName: string,
@@ -256,7 +245,6 @@ export async function loadNewerMessages(
   })
 }
 
-/** Delete all messages for a specific buffer (by bufferKey). Used when closing a buffer. */
 export async function deleteBufferMessages(bufferKey: string): Promise<void> {
   const db = await openDb()
   if (!db)
@@ -281,7 +269,6 @@ export async function deleteBufferMessages(bufferKey: string): Promise<void> {
 
 // ── Buffer metadata ───────────────────────────────────────────────────────────
 
-/** Upsert buffer metadata. Never throws. */
 export async function upsertBufferMeta(meta: StoredBufferMeta): Promise<void> {
   const db = await openDb()
   if (!db)
@@ -301,7 +288,6 @@ export async function upsertBufferMeta(meta: StoredBufferMeta): Promise<void> {
   })
 }
 
-/** Load all buffer metadata entries for a user. Used during hydration. */
 export async function loadAllBufferMeta(userKey: string): Promise<StoredBufferMeta[]> {
   const db = await openDb()
   if (!db)
@@ -321,7 +307,6 @@ export async function loadAllBufferMeta(userKey: string): Promise<StoredBufferMe
   })
 }
 
-/** Delete a buffer's metadata entry. Call when a buffer is explicitly closed. */
 export async function deleteBufferMeta(key: string): Promise<void> {
   const db = await openDb()
   if (!db)
@@ -343,11 +328,7 @@ export async function deleteBufferMeta(key: string): Promise<void> {
 
 // ── Buffer stats, pruning, export ───────────────────────────────────────────
 
-/**
- * Count messages per buffer and estimate their storage size for a given user.
- * Returns one entry per bufferMeta row that has at least one message.
- * Size is estimated at 350 bytes per message (covers text, msgid, reactions, etc.).
- */
+/** Size is an estimate at 350 bytes per message. Empty buffers are left out. */
 export async function getBufferStats(userKey: string): Promise<Array<{
   meta: StoredBufferMeta
   count: number
@@ -399,10 +380,7 @@ export async function getBufferStats(userKey: string): Promise<Array<{
   return results
 }
 
-/**
- * Delete the oldest messages for a buffer, keeping at most `keepCount`.
- * No-op when the buffer already has fewer than keepCount messages.
- */
+/** Deletes the oldest messages, keeping at most `keepCount`. */
 export async function pruneBuffer(bufferKey: string, keepCount: number): Promise<void> {
   const db = await openDb()
   if (!db)
@@ -447,10 +425,7 @@ export async function pruneBuffer(bufferKey: string, keepCount: number): Promise
   })
 }
 
-/**
- * Load ALL messages for a buffer in chronological order. Used for JSON export.
- * No limit - can be large; caller is responsible for download handling.
- */
+/** Every message, oldest first, with no limit. Can be large. */
 export async function exportBufferMessages(bufferKey: string): Promise<StoredMessage[]> {
   const db = await openDb()
   if (!db)
@@ -480,14 +455,13 @@ export async function exportBufferMessages(bufferKey: string): Promise<StoredMes
 
 // ── Cache eviction ────────────────────────────────────────────────────────────
 
-/** Clear all cached data for a user (sign-out). Pass no args to wipe everything. */
+/** No argument wipes every user. */
 export async function clearChatCache(userKey?: string): Promise<void> {
   const db = await openDb()
   if (!db)
     return
 
   if (!userKey) {
-    // Wipe both stores entirely
     return new Promise((resolve) => {
       try {
         const tx = db.transaction([MSG_STORE, META_STORE], 'readwrite')
@@ -503,7 +477,6 @@ export async function clearChatCache(userKey?: string): Promise<void> {
     })
   }
 
-  // User-scoped clear: load all metas then delete messages + metas per buffer
   const metas = await loadAllBufferMeta(userKey)
   for (const m of metas) {
     await deleteBufferMessages(m.key)

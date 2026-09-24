@@ -23,15 +23,12 @@ const props = withDefaults(defineProps<Props>(), {
   expand: false,
 })
 
-// Convert userIds array to reactive ref
 const userIdsRef = ref(props.userIds)
 
-// Watch for prop changes and update ref
 watch(() => props.userIds, (newIds) => {
   userIdsRef.value = newIds
 }, { immediate: true })
 
-// Use bulk user data composable
 const {
   users,
   loading,
@@ -40,11 +37,10 @@ const {
 } = useBulkDataUser(userIdsRef, {
   includeRole: props.showRole,
   includeAvatar: true,
-  userTtl: 10 * 60 * 1000, // 10 minutes
-  avatarTtl: 30 * 60 * 1000, // 30 minutes
+  userTtl: 10 * 60 * 1000,
+  avatarTtl: 30 * 60 * 1000,
 })
 
-// Convert users map to array for template iteration
 const usersList = computed(() => {
   return props.userIds
     .map(id => ({
@@ -54,7 +50,6 @@ const usersList = computed(() => {
     .filter(user => user.profile !== null)
 })
 
-// Expose refetch for parent components
 defineExpose({
   refetch,
 })
@@ -62,7 +57,6 @@ defineExpose({
 
 <template>
   <div class="bulk-user-display">
-    <!-- Loading State -->
     <Grid
       v-if="loading && userIds.length > 0"
       :columns="columns"
@@ -80,7 +74,6 @@ defineExpose({
       </div>
     </Grid>
 
-    <!-- Error State -->
     <div v-else-if="error" class="bulk-user-display__error">
       <p class="text-color-danger">
         {{ error }}
@@ -90,7 +83,6 @@ defineExpose({
       </button>
     </div>
 
-    <!-- Empty State -->
     <Flex v-else-if="userIds.length === 0" expand x-center y-center class="bulk-user-display__empty">
       <slot name="empty">
         <p class="text-color-light">
@@ -99,7 +91,6 @@ defineExpose({
       </slot>
     </Flex>
 
-    <!-- Users Grid -->
     <Grid
       v-else
       :columns="columns"

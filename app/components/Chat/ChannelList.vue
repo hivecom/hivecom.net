@@ -54,7 +54,7 @@ const sortedBuffers = computed(() => {
 
 const listRef = ref<ComponentPublicInstance | HTMLElement | null>(null)
 
-// <component :is="Overflow"> gives a component instance, not a DOM node - unwrap $el.
+// <component :is="Overflow"> gives a component instance, not a DOM node, so unwrap $el.
 function getListEl(): HTMLElement | null {
   const v = listRef.value
   if (!v)
@@ -269,26 +269,23 @@ const channelTree = computed<ChannelTreeNode[]>(() => {
     )
   }
 
-  // Resolve a channel's metadata from its open buffer, falling back to the
-  // metadata cache (covers parents we've fetched but not joined).
-  // Cache keys include the channel prefix (e.g. "#playground"), so try both
-  // "#path" and bare "path" to handle # and & channels.
+  // Metadata from the open buffer, else the cache (parents fetched but not
+  // joined). Cache keys include the prefix, so try "#path" and bare "path".
   function channelMeta(path: string): Map<string, string> | undefined {
     return findChannelBuffer(path)?.metadata
       ?? channelMetaCache.value.get(`#${path}`.toLowerCase())
       ?? channelMetaCache.value.get(path.toLowerCase())
   }
 
-  // A parent authorizes a direct child leaf when its `subchannels` metadata
-  // (comma-separated) lists that leaf. Only ops/founder can set channel
-  // metadata, so the parent's allowlist is the authority - a squatter cannot
-  // make #playground claim their #playground/2.
+  // A parent authorizes a child leaf when its `subchannels` metadata lists it.
+  // Only ops/founder can set channel metadata, so a squatter can't make
+  // #playground claim their #playground/2.
   function parentAuthorizes(parentPath: string, childSegment: string): boolean {
     const resolvedKey1 = `#${parentPath}`.toLowerCase()
     const resolvedKey2 = parentPath.toLowerCase()
     const meta = channelMeta(parentPath)
 
-    // Metadata not yet received (joined or not) - assume authorized (pending).
+    // Metadata not received yet: assume authorized while pending.
     if (!meta && !channelMetaResolved.value.has(resolvedKey1) && !channelMetaResolved.value.has(resolvedKey2))
       return true
 
@@ -450,12 +447,12 @@ function treeNodeKey(node: ChannelTreeNode): string {
 const menuBuffer = ref<ChatBuffer | null>(null)
 const mobileMenuOpen = ref(false)
 
-// Long-press detection for mobile - mirrors MessageLog.vue behaviour.
+// Long-press detection for mobile.
 let _longPressTimer: ReturnType<typeof setTimeout> | null = null
 let _touchStartX = 0
 let _touchStartY = 0
 const LONG_PRESS_MS = 500
-const LONG_PRESS_SLOP = 8 // px - cancel if finger drifts (user is scrolling)
+const LONG_PRESS_SLOP = 8 // px of drift before it counts as a scroll
 
 function onTouchStart(event: TouchEvent) {
   const touch = event.touches[0]
@@ -506,16 +503,15 @@ function onContextMenu(event: MouseEvent) {
   const name = el?.dataset.channelName ?? null
   menuBuffer.value = name ? (buffers.value.find(b => b.name === name) ?? null) : null
 
-  // Force-close any other open VUI ContextMenu (user list, message log) and our
-  // own stale popout before this one opens. VUI ContextMenu only closes on an
-  // outside pointerdown, and a right-click inside its own anchor doesn't count -
-  // so sibling menus and empty-space clicks leave stale menus open (see VUI issue).
+  // Force-close any other open VUI ContextMenu and our own stale popout first.
+  // VUI only closes on an outside pointerdown, and a right-click inside its own
+  // anchor doesn't count, so sibling menus would stay open.
   if (import.meta.client) {
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
     document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
   }
 
-  // No channel/PM under the cursor (empty space or server) - suppress the menu entirely.
+  // Nothing under the cursor (empty space or server): suppress the menu.
   if (!menuBuffer.value || menuBuffer.value.kind === 'server') {
     event.stopPropagation()
     return

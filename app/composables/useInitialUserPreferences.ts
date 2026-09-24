@@ -20,15 +20,13 @@ export function useInitialUserPreferences() {
   const { fetchAndApply } = useUserTheme()
 
   async function applyUserPreferences(): Promise<void> {
-    // Wait for auth session to resolve before branching on userId.
-    // useSupabaseUser starts as null even for logged-in users until the
-    // session is restored asynchronously - checking userId.value before this
-    // completes would incorrectly treat an authenticated user as a guest.
+    // useSupabaseUser starts null even for signed-in users until the session
+    // restores. Checking userId before that treats them as a guest.
     if (import.meta.client) {
       await supabase.auth.getSession()
     }
 
-    // For guests, restore persisted settings and theme from localStorage.
+    // Guests restore settings and theme from localStorage.
     if (userId.value == null) {
       await Promise.all([fetchSettings(), fetchAndApply()])
       return

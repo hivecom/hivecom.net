@@ -6,7 +6,7 @@ import { useCacheModule } from '@/composables/useCacheModule'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 const CACHE_KEY = 'discussion_topics:all'
-const CACHE_TTL = 30 * 60 * 1000 // 30 minutes - topics almost never change
+const CACHE_TTL = 30 * 60 * 1000 // topics almost never change
 
 // Module-level singleton for cache invalidation from outside the composable.
 const _forumTopicsCache = useCache(CACHE_NAMESPACES.forum)
@@ -16,17 +16,8 @@ export function invalidateForumTopicsCache(): void {
 }
 
 /**
- * Shared cached discussion_topics composable.
- *
- * Previously fetched independently by 3 call sites with no coordination:
- * - components/Forum/ForumModalAddDiscussion.vue (plain list for topic picker, with fallback query)
- * - components/Admin/Discussions/DiscussionDetails.vue (plain list for reassign picker)
- * - pages/forum/index.vue (full topic tree with nested discussions - that fetch stays separate
- *   since it's user-data-dependent; this composable covers the lightweight picker uses)
- *
- * - TTL: 30 minutes (topics change on the scale of days/weeks)
- * - `invalidate()` should be called after admin writes to discussion_topics
- * - `refresh()` forces a cache-busting re-fetch
+ * Flat topic list for pickers. The forum index fetches its own topic tree since
+ * that one depends on the user. Call `invalidate()` after admin writes.
  */
 export function useDataForumTopics() {
   const { withCache, cache, loading, error, onExternalInvalidation } = useCacheModule(CACHE_NAMESPACES.forum)
@@ -53,9 +44,6 @@ export function useDataForumTopics() {
       topics.value = result
   }
 
-  /**
-   * Look up a single topic from the cached list by ID.
-   */
   function getById(id: string): Tables<'discussion_topics'> | null {
     return topics.value.find(t => t.id === id) ?? null
   }

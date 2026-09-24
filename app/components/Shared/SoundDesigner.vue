@@ -299,8 +299,8 @@ function ms(seconds: number): string {
 <style lang="scss" scoped>
 .sound-designer {
   // Slim the slider handles down from the 20px default for a tighter editor.
-  // The token must be set on `.vui-slider` itself - VUI declares the 20px
-  // default there, which beats any value merely inherited from an ancestor.
+  // The token must be set on `.vui-slider` itself. VUI declares the 20px default
+  // there, which beats any value merely inherited from an ancestor.
   :deep(.vui-slider) {
     --vui-slider-handle-size: 14px;
   }

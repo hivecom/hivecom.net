@@ -51,7 +51,7 @@
   },
   "files": [
     "content.config.ts",
-    "mdc.config.ts"
+    "app/mdc.config.ts"
   ],
   "exclude": [
     "supabase"

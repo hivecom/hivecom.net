@@ -12,8 +12,7 @@ import { expandRecurringEvent } from '@/lib/utils/rrule'
 
 const props = defineProps<{
   event?: Tables<'events'> | null
-  /** Seeds the date when opening in create mode, for entry points that already
-   *  know the day (the dashboard calendar). Ignored in edit mode. */
+  /** Seeds the date in create mode. Ignored in edit mode. */
   initialDate?: Date | null
 }>()
 
@@ -26,7 +25,6 @@ const fullscreen = ref(false)
 
 const formFieldsRef = ref<InstanceType<typeof EventFormFields> | null>(null)
 
-// Form state
 const eventForm = ref<FormState>({
   title: '',
   description: '',
@@ -53,10 +51,8 @@ const deleteError = ref<string | null>(null)
 const showDeleteConfirm = ref(false)
 const showForkConfirm = ref(false)
 
-// Computed
 const isEditMode = computed(() => !!props.event)
 
-// Validation
 const validation = computed(() => ({
   title: !!eventForm.value.title.trim(),
   description: !!eventForm.value.description.trim(),
@@ -156,7 +152,6 @@ watch(() => props.event, (event) => {
   }
 })
 
-// Auth
 const supabase = useSupabaseClient()
 const userId = useUserId()
 const { isAdminOrMod: isPrivileged } = useEffectiveRole()
@@ -216,9 +211,8 @@ async function doSave() {
   saveError.value = null
 
   try {
-    // Upload any pending blob-placeholder media before reading the markdown,
-    // otherwise blob: URLs get persisted and render as missing media. The editor
-    // surfaces its own error toast on failure, so we just abort here.
+    // Upload pending blob-placeholder media before reading the markdown, or blob: URLs
+    // get persisted. The editor shows its own error toast on failure, so just abort.
     const uploaded = await formFieldsRef.value?.flushPendingUploads()
     if (uploaded === false)
       return
@@ -272,9 +266,8 @@ async function doFork() {
   saveError.value = null
 
   try {
-    // Upload any pending blob-placeholder media before reading the markdown,
-    // otherwise blob: URLs get persisted and render as missing media. The editor
-    // surfaces its own error toast on failure, so we just abort here.
+    // Upload pending blob-placeholder media before reading the markdown, or blob: URLs
+    // get persisted. The editor shows its own error toast on failure, so just abort.
     const uploaded = await formFieldsRef.value?.flushPendingUploads()
     if (uploaded === false)
       return
@@ -282,7 +275,6 @@ async function doFork() {
     const now = new Date()
     const payload = buildPayload()
 
-    // Find last occurrence before now
     const pastOccurrences = expandRecurringEvent(props.event, new Date(props.event.date), now)
     const lastOccurrence = pastOccurrences[pastOccurrences.length - 1]
     if (!lastOccurrence)
@@ -302,8 +294,8 @@ async function doFork() {
     if (capError)
       throw capError
 
-    // Insert new forked event - use the user's chosen date/time from the form
-    // as the new series start date, not the computed next old occurrence.
+    // The new series starts at the user's chosen date/time from the form, not the
+    // computed next occurrence of the old one.
     const { data: forked, error: insertError } = await supabase.from('events').insert({
       ...payload,
       is_official: isPrivileged.value ? isOfficial.value : false,
@@ -313,7 +305,7 @@ async function doFork() {
     if (insertError)
       throw insertError
 
-    // Same default as a fresh create - the organizer attends the new series.
+    // Same default as a fresh create: the organizer attends the new series
     if (forked && userId.value)
       await rsvpEventOrganizer(forked.id, userId.value, payload.recurrence_rule != null)
 
@@ -386,7 +378,6 @@ async function handleDelete() {
       </Flex>
     </template>
 
-    <!-- Form -->
     <EventFormFields
       ref="formFieldsRef"
       v-model="eventForm"
@@ -398,7 +389,6 @@ async function handleDelete() {
       :validation="validation"
     />
 
-    <!-- Save error -->
     <p v-if="saveError" class="text-xs text-color-red">
       {{ saveError }}
     </p>

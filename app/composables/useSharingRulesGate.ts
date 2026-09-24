@@ -1,15 +1,8 @@
 /**
- * Gate any Depot upload behind the sharing-rules agreement.
- *
- * The modal open state and the held action are module-level singletons so a
- * single <SharingRulesModal> mounted on a surface (the sharing page, the chat
- * app) can be driven from anywhere - including non-component code like
- * useChatAttachments. Callers wrap the upload-triggering action in `run()`:
- * if the user has agreed it fires immediately, otherwise it's stashed and the
- * modal opens, resuming on agree.
- *
- *   const { open, agreed, run, openRules, handleAgreed, handleCancelled } = useSharingRulesGate()
- *   run(() => startUpload(files)) // prompts first if not agreed
+ * Gates Depot uploads behind the sharing-rules agreement. The modal state and
+ * held action are module-level so one mounted SharingRulesModal can be driven
+ * from anywhere, including non-component code. run() fires the action right
+ * away once agreed, otherwise holds it and opens the modal.
  */
 
 import { ref } from 'vue'
@@ -21,7 +14,6 @@ let pendingAction: (() => void) | null = null
 export function useSharingRulesGate() {
   const { agreed, ensure, markAgreed } = useSharingRulesAgreement()
 
-  // Run `action` if the user has agreed; otherwise hold it and open the modal.
   function run(action: () => void) {
     // Fast path stays synchronous so actions that need the click's user
     // activation (opening the file picker) keep it.

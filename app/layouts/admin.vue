@@ -18,8 +18,7 @@ const isMac = import.meta.client && /Mac/i.test(navigator.platform)
 const user = useSupabaseUser()
 const userId = useUserId()
 
-// resolvedUserId is just userId - we wait for useSupabaseUser() to populate
-// before running the auth check, so no sessionUserId fallback is needed.
+// No sessionUserId fallback needed: the auth check waits for useSupabaseUser()
 const resolvedUserId = userId
 
 // Permissions follow the effective role, so impersonation swaps them too
@@ -41,16 +40,11 @@ defineOgImage('Default', {
 
 const isBelowExtraLarge = useBreakpoint('<xl')
 
-// Check user role and permissions, redirect if not authorized.
-// Role is read from useDataUser (shared with UserDropdown etc.) so no extra query fires.
 onMounted(async () => {
   try {
-    // On a cold SPA load, useSupabaseUser() starts null and is only populated once
-    // the INITIAL_SESSION auth state event fires. We must wait for it before
-    // proceeding - if we trigger useDataUser's fetch while currentUser is still null,
-    // fetchRole() will bail out early to avoid caching a null role for unauthenticated
-    // requests. That causes role to come back null and the layout to incorrectly
-    // redirect an authenticated admin to home.
+    // On a cold SPA load useSupabaseUser() stays null until INITIAL_SESSION fires.
+    // Fetching before then makes fetchRole() bail with a null role, and a real
+    // admin gets redirected home.
     if (!user.value) {
       await until(user).toMatch(u => u !== null, { timeout: 5000 }).catch(() => null)
     }
@@ -62,9 +56,6 @@ onMounted(async () => {
       return
     }
 
-    // Wait for cachedUserData to populate. Now that useSupabaseUser() is set,
-    // fetchRole() will actually query the database instead of short-circuiting.
-    // If the role is already cached this resolves synchronously via the computed.
     await until(cachedUserData).toMatch(d => d !== null, { timeout: 8000 }).catch(() => null)
 
     const role = userRole.value
@@ -89,16 +80,13 @@ onMounted(async () => {
   }
 })
 
-// Watch for user changes (login/logout)
 watch(user, async (newUser) => {
   if (!newUser) {
-    // User logged out, redirect to landing page
     isAuthorized.value = false
     await navigateTo('/')
   }
 })
 
-// Menu items with their required permissions
 interface MenuItem {
   name: string
   path: string
@@ -111,7 +99,7 @@ const menuItems: MenuItem[] = [
     name: 'Dashboard',
     path: '/admin/',
     icon: 'ph:squares-four',
-    permissions: [], // Dashboard is always accessible to admin/moderator
+    permissions: [],
     dividerAfter: false,
   },
   {
@@ -213,19 +201,15 @@ const menuItems: MenuItem[] = [
   },
 ]
 
-// Filter menu items based on user permissions
 const accessibleMenuItems = computed(() => {
   return menuItems.filter((item) => {
-    // If no permissions required, always show (like Dashboard)
     if (item.permissions.length === 0)
       return true
 
-    // Check if user has any of the required permissions for this menu item
     return hasAnyPermission(item.permissions)
   })
 })
 
-// Provide permissions to child components
 provide('userPermissions', readonly(userPermissions))
 provide('userRole', readonly(effectiveUserRole))
 provide('hasPermission', hasPermission)
@@ -289,12 +273,10 @@ watch(() => route.path, () => {
     <!-- Single element root for the layout transition, same as default.vue.
          It also keeps the loading/authorized swap below from inheriting the
          transition hooks and fading the whole console once auth resolves. -->
-    <!-- Show loading spinner while checking authorization -->
     <div v-if="isLoading" class="admin-layout__loading">
       <Spinner />
     </div>
 
-    <!-- Show admin layout only if authorized -->
     <div v-else-if="isAuthorized" class="admin-layout vui-sidebar-layout">
       <div v-if="isMobile" class="admin-layout__mobile-bar">
         <div class="admin-layout__mobile-bar-items">
@@ -403,7 +385,6 @@ watch(() => route.path, () => {
               <Divider />
             </template>
 
-            <!-- Only show menu items the user has permissions for -->
             <template
               v-for="item in accessibleMenuItems"
               :key="item.path"
@@ -601,7 +582,7 @@ watch(() => route.path, () => {
   }
 
   &__mobile-right-group {
-    // placeholder to balance left group for centering
+    // Empty, balances the left group for centering
     display: flex;
   }
 

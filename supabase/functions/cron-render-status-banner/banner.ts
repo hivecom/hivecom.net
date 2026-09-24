@@ -43,15 +43,15 @@ const FOOTER_HEIGHT = 52;
 
 // Explicit card dimensions derived from banner/grid constants so takumi
 // doesn't have to resolve flexGrow across nested containers.
-const CARD_W = (BANNER_WIDTH - GRID_PADDING * 2 - GRID_GAP) / 2; // 284
+const CARD_W = (BANNER_WIDTH - GRID_PADDING * 2 - GRID_GAP) / 2;
 const CARD_H = (BANNER_HEIGHT - FOOTER_HEIGHT - GRID_PADDING * 2 - GRID_GAP) /
-  2; // 118
+  2;
 
-const _TEXT = "rgb(240, 240, 240)"; // white
-const ACCENT = "rgb(167, 252, 47)"; // green  - website
-const PLAYING_BLUE = "rgb(59, 130, 246)"; // blue   - playing
-const GAME_YELLOW = "rgb(234, 179, 8)"; // yellow - servers
-const LIVE = "rgb(239, 68, 68)"; // red    - live event
+const _TEXT = "rgb(240, 240, 240)";
+const ACCENT = "rgb(167, 252, 47)"; // website
+const PLAYING_BLUE = "rgb(59, 130, 246)"; // playing
+const GAME_YELLOW = "rgb(234, 179, 8)"; // servers
+const LIVE = "rgb(239, 68, 68)"; // live event
 
 const MONO_FAMILY = "Consolas, 'Courier New', monospace";
 
@@ -239,7 +239,6 @@ export function buildScene(
               }),
             ],
           }),
-          // Footer slot - always reserved at FOOTER_HEIGHT
           ...(live
             ? [liveFooter(live)]
             : [container({ style: { width: "100%", height: FOOTER_HEIGHT } })]),
@@ -299,9 +298,8 @@ export const PLACEHOLDER_LIVE: LiveInfo = {
   title: "Team Fortress 2",
   subtitle: "16 playing",
 };
-// Next upcoming event date, shaped like the `events.date` timestamp the DB
-// returns. The countdown string is derived from it via `formatCountdown`,
-// so the CLI exercises the same code path as the edge function.
+// Shaped like `events.date` so the CLI runs through formatCountdown the same
+// way the edge function does
 export const PLACEHOLDER_NEXT_EVENT_DATE = new Date(
   Date.now() + 2.5 * 60 * 60 * 1000,
 ).toISOString();

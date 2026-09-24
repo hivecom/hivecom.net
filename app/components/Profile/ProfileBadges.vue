@@ -59,7 +59,6 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
       </Flex>
     </template>
 
-    <!-- Loading State -->
     <div v-if="loading" class="badges-skeleton__grid">
       <Skeleton v-for="i in 4" :key="`badge-skeleton-${i}`" height="150px" width="100%" style="border-radius: var(--border-radius-m);" />
     </div>
@@ -122,7 +121,6 @@ const goToBadgeDirectory = () => navigateTo('/community/badges')
 }
 
 .badges-card {
-  // min-height: 360px;
   overflow: hidden;
 }
 

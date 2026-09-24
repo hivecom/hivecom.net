@@ -29,31 +29,22 @@ interface FeedRow {
   created_by: string | null
 }
 
-const DEFAULT_TTL = 3 * 60 * 1000 // 3 minutes
+const DEFAULT_TTL = 3 * 60 * 1000
 
 export interface UseForumFeedPreviewOptions {
   /** How many items to surface after filtering. */
   limit: number
-  /** Cache key for the fetched rows. Unique per caller. */
+  /** Unique per caller. */
   cacheKey: string
-  /** Row cache TTL in ms. */
+  /** ms */
   ttl?: number
-  /** Drop rows authored by the signed-in user. */
   excludeOwn?: boolean
 }
 
 /**
- * Short, read-only slice of the forum activity feed for preview surfaces
- * (dashboard cards, sidebars) that don't want the full forum page wiring.
- *
- * Unlike `useForumActivityFeedPaginated` this doesn't need the topic tree or
- * the discussion index up front. It fetches the feed, warms the discussion
- * cache for the rows it got back, and maps them into `ActivityItem`s that
- * `ForumLatestItem` can render directly.
- *
- * `items` is the preview slice. `allItems` and `loadMore` are for the surface
- * that opens the rest of the feed behind it (the dashboard's sheet), paging on
- * from wherever the preview's fetch stopped.
+ * Read-only slice of the forum activity feed for preview surfaces. Needs no
+ * topic tree or discussion index up front. allItems and loadMore serve the
+ * sheet behind the preview, paging on from where the preview's fetch stopped.
  */
 export function useForumFeedPreview(options: UseForumFeedPreviewOptions) {
   const { limit, cacheKey, ttl = DEFAULT_TTL, excludeOwn = false } = options

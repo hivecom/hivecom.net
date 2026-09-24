@@ -1,13 +1,9 @@
 import { pushToast } from '@dolanske/vui'
 import { reloadWithCacheBust, stripCacheBustParam } from '@/lib/utils/common'
 
-// sessionStorage guard key. Set right before a stale-chunk recovery reload so a
-// second `vite:preloadError` (on a genuinely broken deploy) doesn't trigger an
-// infinite reload loop. Cleared once the app boots successfully.
+// Stops a genuinely broken deploy from looping on reloads. Cleared on a good boot.
 const RELOAD_GUARD_KEY = 'chunk-reload-attempted'
 
-// Minimum gap between build-version checks so focus/visibility churn can't spam
-// network requests.
 const VERSION_CHECK_THROTTLE_MS = 60_000
 
 export default defineNuxtPlugin((nuxtApp) => {
@@ -16,11 +12,8 @@ export default defineNuxtPlugin((nuxtApp) => {
   const currentBuildId = String(config.app.buildId ?? '')
 
   // --- 1. Stale chunk recovery -------------------------------------------
-  // Every deploy replaces `_nuxt/` with new content-hashed filenames and
-  // deletes the old ones. A returning user on stale cached HTML requests a
-  // now-deleted chunk -> 404 -> Vue never hydrates -> frozen splash. Vite
-  // fires `vite:preloadError` when a dynamic import fails; intercept it and
-  // do a single cache-busting reload to pull fresh HTML.
+  // Each deploy deletes the old hashed `_nuxt/` chunks, so stale cached HTML 404s
+  // on import and never hydrates. One cache-busting reload pulls fresh HTML.
   window.addEventListener('vite:preloadError', (event) => {
     event.preventDefault()
 
@@ -29,8 +22,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       alreadyAttempted = sessionStorage.getItem(RELOAD_GUARD_KEY) === '1'
     }
     catch {
-      // sessionStorage can throw (private mode, blocked storage); fall through
-      // and attempt the reload anyway since a frozen app is worse.
+      // sessionStorage can throw in private mode. Reload anyway, a frozen app is worse.
     }
 
     if (alreadyAttempted)
@@ -40,15 +32,13 @@ export default defineNuxtPlugin((nuxtApp) => {
       sessionStorage.setItem(RELOAD_GUARD_KEY, '1')
     }
     catch {
-      // Ignore - the reload below is still worth attempting once.
+      // The reload is still worth one attempt
     }
 
     reloadWithCacheBust()
   })
 
-  // Once the app has actually mounted, the chunks loaded fine, so clear the
-  // guard. This lets a future genuine stale-chunk event (after the next
-  // deploy, same session) recover again instead of being suppressed.
+  // Clear the guard so the next deploy in this session can recover again
   nuxtApp.hook('app:mounted', () => {
     try {
       sessionStorage.removeItem(RELOAD_GUARD_KEY)
@@ -57,15 +47,10 @@ export default defineNuxtPlugin((nuxtApp) => {
       // Ignore.
     }
 
-    // The reload landed fine, so the cache-bust param has served its purpose.
-    // Strip it so it doesn't sit in the address bar.
     stripCacheBustParam()
   })
 
   // --- 2. Outdated build prompt ------------------------------------------
-  // When the user returns to a backgrounded tab, check whether a newer build
-  // has been deployed. If so, surface a NON-forced toast offering a reload so
-  // they can pick up the new version before they hit a stale-chunk 404.
   let lastCheck = 0
   let promptShown = false
 
@@ -100,8 +85,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       })
     }
     catch {
-      // Network error, offline, dev server, or 404 (manifest absent): fail
-      // silently. This check is best-effort and must never surface noise.
+      // Best-effort. Offline, dev server and a missing manifest all land here.
     }
   }
 

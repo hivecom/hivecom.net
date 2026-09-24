@@ -19,7 +19,6 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-// Form state
 const complaintMessage = ref(props.initialMessage ?? '')
 
 watch(() => props.open, (isOpen) => {
@@ -31,7 +30,6 @@ const isSubmitting = ref(false)
 const submitError = ref('')
 const isBelowSmall = useBreakpoint('<xs')
 
-// Get current user
 const user = useSupabaseUser()
 const userId = useUserId()
 const supabase = useSupabaseClient()
@@ -56,7 +54,6 @@ async function handleSubmit() {
       message: complaintMessage.value.trim(),
     }
 
-    // Add context fields if provided
     if (props.targetUserId) {
       complaintData.context_user = props.targetUserId
     }
@@ -85,10 +82,8 @@ async function handleSubmit() {
       return
     }
 
-    // Emit success event
     emit('submit', { message: complaintMessage.value.trim() })
 
-    // Close modal and reset form
     resetForm()
     emit('close')
   }

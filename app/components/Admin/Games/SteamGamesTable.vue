@@ -44,7 +44,7 @@ const trackedSteamIds = ref<Set<number>>(new Set())
 const search = ref('')
 const isBelowMedium = useBreakpoint('<m')
 
-// Tracked filter - '' means no filter
+// Tracked filter: '' means no filter
 interface SelectOption {
   label: string
   value: string
@@ -57,7 +57,7 @@ const trackedOptions: SelectOption[] = [
 
 const trackedFilter = ref<'' | 'tracked' | 'untracked'>('')
 
-// VUI Select speaks SelectOption[] - bridge to/from the plain string model
+// VUI Select speaks SelectOption[], so bridge it to the plain string model.
 const trackedSelectModel = computed({
   get: () => trackedFilter.value ? trackedOptions.filter(o => o.value === trackedFilter.value) : [],
   set: (val: SelectOption[] | undefined) => {

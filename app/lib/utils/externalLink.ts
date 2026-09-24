@@ -1,14 +1,10 @@
 /**
- * Determines whether a link points off-site (i.e. somewhere other than
- * hivecom.net, its subdomains, or localhost while developing).
+ * Only http(s) counts. mailto:, tel: and in-page anchors return false so they
+ * keep their default behaviour.
  *
- * Only http(s) links are considered - schemes like mailto:, tel:, or in-page
- * anchors return false so they keep their default behaviour.
- *
- * NOTE: This intentionally uses a stricter host check than
- * `parseInternalUrl` in `useDataLinkPreview` (which uses
- * `endsWith('hivecom.net')`). Here the check is exact-or-subdomain so a
- * lookalike host such as `evilhivecom.net` is correctly treated as external.
+ * The host check is exact-or-subdomain on purpose, so a lookalike like
+ * `evilhivecom.net` counts as external. A bare `endsWith('hivecom.net')` would
+ * let it through.
  */
 export function isExternalUrl(raw: string): boolean {
   if (!raw)

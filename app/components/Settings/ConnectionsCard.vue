@@ -243,7 +243,6 @@ function toggleRichPresence() {
     </template>
 
     <div>
-      <!-- Rich presence toggle -->
       <Flex expand class="account-connection-row">
         <Flex
           :row="!isBelowSmall"
@@ -290,7 +289,6 @@ function toggleRichPresence() {
         </Flex>
       </Flex>
 
-      <!-- Discord -->
       <Flex expand class="account-connection-row">
         <Flex
           :row="!isBelowSmall"
@@ -347,7 +345,6 @@ function toggleRichPresence() {
         </Flex>
       </Flex>
 
-      <!-- Patreon -->
       <Flex expand class="account-connection-row">
         <Flex
           :row="!isBelowSmall"
@@ -404,7 +401,6 @@ function toggleRichPresence() {
         </Flex>
       </Flex>
 
-      <!-- Steam -->
       <Flex expand class="account-connection-row">
         <Flex
           :row="!isBelowSmall"
@@ -461,7 +457,6 @@ function toggleRichPresence() {
         </Flex>
       </Flex>
 
-      <!-- Last.fm -->
       <Flex expand class="account-connection-row">
         <Flex
           :row="!isBelowSmall"
@@ -518,7 +513,6 @@ function toggleRichPresence() {
         </Flex>
       </Flex>
 
-      <!-- TeamSpeak -->
       <Flex expand class="account-connection-row">
         <Flex
           :row="!isBelowSmall"

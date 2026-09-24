@@ -17,11 +17,9 @@ import { getPlaceholderBannerProject } from '@/lib/projectBannerPlaceholders'
 
 const isMobile = useBreakpoint('<s')
 
-// Get route parameter
 const route = useRoute()
 const projectId = Number.parseInt(route.params.id as string)
 
-// Reactive data
 const { projects, loading, error: projectsError, getById, refresh } = useDataProjects()
 const project = ref<Tables<'projects'> | null>(null)
 const error = ref<string | null>(null)
@@ -47,8 +45,8 @@ const heroBannerStyle = computed(() => {
   return style
 })
 
-// Resolve project from cache once loaded - deferred to onMounted to avoid
-// hydration mismatches caused by synchronous cache hits on the client.
+// Deferred to onMounted because synchronous cache hits on the client cause
+// hydration mismatches
 function resolveProject() {
   watch([projects, loading], () => {
     const found = getById(projectId)
@@ -79,7 +77,6 @@ async function handleDeleted() {
   await navigateTo('/community/projects')
 }
 
-// Propagate projects fetch error
 watch(projectsError, (err) => {
   if (err != null)
     error.value = err
@@ -105,10 +102,8 @@ const displayErrorDetail = computed(() => {
   return error.value ?? undefined
 })
 
-// Fetch minimal project data at SSR/prerender time so meta tags are populated.
-// useDataProjects fetches client-only (onMounted), so during prerendering
-// project.value stays null and every card falls back to "Project Details" /
-// "Community project details" - the doubled label crawlers were seeing.
+// Minimal SSR/prerender fetch for meta tags. useDataProjects is client-only, so
+// prerendered pages would otherwise all fall back to "Project Details".
 const supabase = useSupabaseClient()
 const { data: seoProject } = await useAsyncData(`project-seo-${projectId}`, async () => {
   const { data } = await supabase
@@ -129,7 +124,6 @@ const seoDescription = computed(() => {
   return source?.description || 'Community project details'
 })
 
-// SEO and page metadata
 useSeoMeta({
   title: seoTitle,
   description: seoDescription,
@@ -137,7 +131,6 @@ useSeoMeta({
   ogDescription: seoDescription,
 })
 
-// Page title
 useHead({
   title: computed(() => (project.value ?? seoProject.value)?.title ?? 'Project Details'),
 })
@@ -158,9 +151,7 @@ defineOgImage('Project', {
         :error-message="displayErrorDetail"
       />
 
-      <!-- Project Content -->
       <div v-if="project && !loading && !error" class="page-content">
-        <!-- Back Button -->
         <Flex x-between>
           <NuxtLink to="/community/projects">
             <Button
@@ -188,7 +179,6 @@ defineOgImage('Project', {
           </Dropdown>
         </Flex>
 
-        <!-- Header -->
         <Card class="project-header card-bg" expand>
           <div class="project-header__banner">
             <div
@@ -214,7 +204,6 @@ defineOgImage('Project', {
                 {{ project.description }}
               </p>
 
-              <!-- Meta information -->
               <Flex :column="isMobile" :gap="isMobile ? 's' : 'l'" :x-between="!isMobile" :x-center="isMobile" y-center wrap expand>
                 <Flex gap="xs" :expand="isMobile" class="project-header__actions">
                   <Button
@@ -250,12 +239,10 @@ defineOgImage('Project', {
 
           <Divider class="project-divider" />
 
-          <!-- Project Content (Markdown) -->
           <MarkdownRenderer :md="project.markdown" />
         </Card>
 
         <Flex column>
-          <!-- Project Metadata -->
           <MetadataCard
             :tags="project.tags"
             :created-at="project.created_at"

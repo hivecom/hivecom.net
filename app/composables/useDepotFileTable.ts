@@ -6,18 +6,16 @@ import { watchDebounced } from '@vueuse/core'
 import { computed, onBeforeMount, ref, watch } from 'vue'
 import { depotFileToStorageAsset } from '@/composables/useDepot'
 
-// The two depot sort columns, shared by the self and admin listings.
 export type DepotFileSortCol = 'uploaded_at' | 'file_size'
 
 export interface UseDepotFileTableOptions<T extends DepotFile> {
-  // The listing call. Both the self (listFiles) and admin (adminListFiles)
-  // endpoints fit; the admin-only params are ignored by the self endpoint.
+  // Fits both the self and admin endpoints. The self one ignores admin-only params.
   listFiles: (opts: AdminListFilesOptions) => Promise<DepotFilePage<T>>
   deleteFile: (objectKey: string) => Promise<void>
   perPage: Ref<number>
   // Bumped after a mutation so the page's KPI/quota cards refetch.
   refreshSignal: Ref<number>
-  // Surfaced so the page can show the upload count (the self page binds this).
+  // Surfaced so the page can show the upload count.
   total: Ref<number>
   // Extra listing params layered on top of limit/offset/sort/order/q, e.g. the
   // admin content-type and owner filters.
@@ -28,10 +26,8 @@ export interface UseDepotFileTableOptions<T extends DepotFile> {
   loadErrorMessage?: string
 }
 
-// Shared state and behavior behind the depot file tables: fetch, sort,
-// pagination, row selection, the details drawer, and single/bulk delete. The
-// self (Sharing) and admin (Depot) tables differ only in their toolbar,
-// columns, and copy, so those live in the components; everything else is here.
+// The self and admin depot tables differ only in toolbar, columns and copy,
+// which live in the components. Everything else is here.
 export function useDepotFileTable<T extends DepotFile>(options: UseDepotFileTableOptions<T>) {
   const {
     listFiles,
@@ -195,7 +191,6 @@ export function useDepotFileTable<T extends DepotFile>(options: UseDepotFileTabl
       pushToast('Upload deleted')
       fileToDelete.value = null
 
-      // Close the drawer if it was showing the file we just removed.
       if (selectedAsset.value?.path === target.object_key)
         showDetailsDrawer.value = false
 
@@ -257,7 +252,6 @@ export function useDepotFileTable<T extends DepotFile>(options: UseDepotFileTabl
   // Driven by the owning component after an action it owns (the Sharing table's
   // upload and wipe-all), so the table state stays consistent in one place.
 
-  // After an upload: jump to the first page sorted newest-first, refetch, signal.
   async function handleUploaded() {
     page.value = 1
     sortCol.value = 'uploaded_at'
@@ -266,8 +260,6 @@ export function useDepotFileTable<T extends DepotFile>(options: UseDepotFileTabl
     refreshSignal.value++
   }
 
-  // After an external bulk removal (wipe-all): clear selection, close the
-  // drawer, reset to the first page, refetch, signal.
   async function handleExternalWipe() {
     deselectAllRows()
     showDetailsDrawer.value = false

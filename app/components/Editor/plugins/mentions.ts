@@ -76,16 +76,8 @@ export const MentionWithMarkdown = Mention.extend({
     return `@{${id}}`
   },
 
-  /**
-   * Override the built-in Backspace / Delete shortcuts so that mention nodes
-   * inside list items are deleted in a single step rather than going through
-   * ProseMirror's two-step "select atom → delete selection" dance, which
-   * allows the list keymap to intercept the second keypress and create a new
-   * list item instead of deleting the mention.
-   *
-   * Outside of list items the parent extension's original behaviour is
-   * preserved via `this.parent?.()`.
-   */
+  // Mentions inside list items delete in one step. ProseMirror's two-step
+  // select-then-delete lets the list keymap turn the second press into a new list item.
   addKeyboardShortcuts() {
     const parentShortcuts = this.parent?.() ?? {}
 
@@ -97,7 +89,6 @@ export const MentionWithMarkdown = Mention.extend({
         const { selection } = state
         const { $from, empty } = selection
 
-        // NodeSelection on a mention inside a list → delete it directly
         if (!empty) {
           const ns = selection as { node?: PmNode }
           if (ns.node?.type.name === 'mention' && isInsideListItem($from)) {
@@ -105,26 +96,22 @@ export const MentionWithMarkdown = Mention.extend({
             return true
           }
 
-          // Non-mention selection – fall through to parent
           return parentShortcuts.Backspace?.({ editor }) ?? false
         }
 
-        // Collapsed cursor immediately after a mention inside a list
         const nodeBefore = $from.nodeBefore
         if (nodeBefore?.type.name === 'mention' && isInsideListItem($from)) {
           view.dispatch(state.tr.delete($from.pos - nodeBefore.nodeSize, $from.pos))
           return true
         }
 
-        // Cursor is after trailing whitespace that was inserted right after a mention
-        // (the suggestion command always appends a space). Delete both the whitespace
-        // and the mention in one step so the list structure is never touched.
+        // The suggestion command always appends a space after a mention, so
+        // delete the whitespace and the mention together.
         if (
           isInsideListItem($from)
           && nodeBefore?.isText
           && nodeBefore.text?.trim() === ''
         ) {
-          // Walk back past the whitespace to find an adjacent mention
           const wsSize = nodeBefore.nodeSize
           const posBeforeWs = $from.pos - wsSize
           const $beforeWs = state.doc.resolve(posBeforeWs)
@@ -137,9 +124,8 @@ export const MentionWithMarkdown = Mention.extend({
           }
         }
 
-        // Cursor is at offset 0 of a list item paragraph and the first child is a
-        // mention – delete it instead of letting joinBackward fire (which would
-        // restructure the list rather than removing the mention).
+        // At the start of a list item, joinBackward would restructure the list
+        // instead of removing a leading mention.
         if ($from.parentOffset === 0 && isInsideListItem($from)) {
           const firstChild = $from.parent.firstChild
           if (firstChild?.type.name === 'mention') {
@@ -148,7 +134,6 @@ export const MentionWithMarkdown = Mention.extend({
           }
         }
 
-        // All other cases – delegate to the parent Mention handler
         return parentShortcuts.Backspace?.({ editor }) ?? false
       },
 
@@ -157,7 +142,6 @@ export const MentionWithMarkdown = Mention.extend({
         const { selection } = state
         const { $from, empty } = selection
 
-        // NodeSelection on a mention inside a list → delete it directly
         if (!empty) {
           const ns = selection as { node?: PmNode }
           if (ns.node?.type.name === 'mention' && isInsideListItem($from)) {
@@ -167,7 +151,6 @@ export const MentionWithMarkdown = Mention.extend({
           return parentShortcuts.Delete?.({ editor }) ?? false
         }
 
-        // Collapsed cursor immediately before a mention inside a list
         const nodeAfter = $from.nodeAfter
         if (nodeAfter?.type.name === 'mention' && isInsideListItem($from)) {
           view.dispatch(state.tr.delete($from.pos, $from.pos + nodeAfter.nodeSize))
@@ -219,17 +202,8 @@ export function createMentionExtension(
   })
 }
 
-/**
- * Resolves plain-text @username mentions in a markdown string to their
- * canonical @{uuid} form by looking up matching profiles in Supabase.
- *
- * This is intended for content written in plain-text mode where the Tiptap
- * suggestion flow never ran, so mentions are stored as bare @username tokens
- * rather than the structured @{uuid} format.
- *
- * Already-resolved @{uuid} patterns are left untouched because `{` is not a
- * word character and therefore won't be captured by the @\w+ pattern.
- */
+// Resolves @username to @{uuid} for plain-text mode, where the Tiptap
+// suggestion flow never ran
 export async function resolvePlainTextMentions(
   content: string,
   supabase: SupabaseClient<Database>,
@@ -237,7 +211,7 @@ export async function resolvePlainTextMentions(
   if (!content)
     return content
 
-  // Matches @username - @{uuid} is NOT matched because { is not a \w char.
+  // Skips @{uuid}, since { isn't a \w char
   const plainMentionPattern = PLAIN_MENTION_RE
 
   const usernames = new Set<string>()
@@ -252,7 +226,7 @@ export async function resolvePlainTextMentions(
 
   const usernameList = [...usernames]
 
-  // Use ilike per username so the lookup is case-insensitive.
+  // ilike per username for a case-insensitive lookup
   const { data, error } = await supabase
     .from('profiles')
     .select('id, username')
@@ -261,7 +235,6 @@ export async function resolvePlainTextMentions(
   if (error !== null || data.length === 0)
     return content
 
-  // Build a lowercase username → id lookup.
   const lookup: Record<string, string> = {}
   for (const p of data) {
     if (typeof p.username === 'string' && p.username.trim() !== '') {
@@ -312,10 +285,8 @@ export async function hydrateMentionLabels(
       .map(profile => [profile.id.toLowerCase(), profile.username]),
   )
 
-  // Guard against the component unmounting while the async fetch was in flight.
-  // Tiptap sets isDestroyed when the editor is torn down; dispatching a command
-  // on a destroyed editor causes ProseMirror to walk a detached DOM and throws
-  // "can't access property nextSibling, e is null".
+  // The editor can be torn down mid-fetch. Dispatching on it walks a detached
+  // DOM and throws "can't access property nextSibling, e is null".
   if (currentEditor.isDestroyed) {
     return
   }

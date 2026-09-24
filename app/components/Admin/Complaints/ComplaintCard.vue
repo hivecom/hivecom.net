@@ -30,7 +30,6 @@ onMounted(() => {
   }
 })
 
-// Computed properties for status
 const status = computed(() => {
   if (props.complaint.response) {
     return 'responded'
@@ -77,7 +76,6 @@ const statusConfig = computed(() => {
   }
 })
 
-// Truncate message for preview
 const truncatedMessage = computed(() => {
   const maxLength = 132
   if (props.complaint.message.length <= maxLength) {
@@ -86,7 +84,6 @@ const truncatedMessage = computed(() => {
   return `${props.complaint.message.substring(0, maxLength)}...`
 })
 
-// Derive context type + the ID needed to render the target
 const contextType = computed(() => {
   if (props.complaint.context_discussion_reply)
     return { label: 'Reply', icon: 'ph:flag', userId: null, isServer: false }
@@ -100,12 +97,10 @@ const contextType = computed(() => {
   return null
 })
 
-// Handle card click
 function handleCardClick() {
   emit('select', props.complaint)
 }
 
-// Handle acknowledge action
 function handleAcknowledge(event: Event) {
   event.stopPropagation() // Prevent card selection
   emit('acknowledge', props.complaint.id)
@@ -122,7 +117,6 @@ const isMobile = useBreakpoint('<s')
     separators
     @click="handleCardClick"
   >
-    <!-- Header with status and date -->
     <template #header>
       <Flex y-center gap="s" class="complaint-card__header" expand>
         <div class="complaint-status" />
@@ -342,7 +336,6 @@ const isMobile = useBreakpoint('<s')
   transition: color 0.2s ease;
 }
 
-/* New complaint pulse animation */
 .complaint-card--pending .complaint-card__header::before {
   content: '';
   position: absolute;

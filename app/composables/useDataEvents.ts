@@ -9,40 +9,27 @@ import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 const CACHE_KEY = 'events:all'
 
 // Module-level singleton for cache invalidation from outside the composable.
-// Follows the same pattern as useDataProjectBanner's _bannerCache.
 const _eventsCache = useCache(CACHE_NAMESPACES.events)
 
 export function invalidateEventsCache(): void {
-  // Clear entire events namespace so calendar windows and paginated pages are
-  // also busted when admin writes to the events table.
+  // Clears the whole namespace so calendar windows and paginated pages go too.
   _eventsCache.clearCache()
 }
 
-/**
- * Shared cached events composable.
- *
- * All three consumers (NavEventBadge, pages/events/index.vue, pages/index.vue) previously
- * issued independent queries with no coordination. This composable owns the single fetch
- * and serves the result from cache on subsequent calls within the TTL window.
- *
- * - TTL: 5 minutes (events change infrequently relative to navigation frequency)
- * - `invalidate()` should be called after admin writes to the events table
- * - `refresh()` forces a cache-busting re-fetch (e.g. after RSVP mutations)
- */
+/** Call `invalidate()` after admin writes to the events table. */
 export function useDataEvents() {
   const { withCache, cache, loading, error, onExternalInvalidation } = useCacheModule(CACHE_NAMESPACES.events)
   const supabase = useSupabaseClient<Database>()
 
   const events = ref<Tables<'events'>[]>([])
 
-  // Pre-populate synchronously from cache so the first render has data -
-  // avoids a flash of empty/skeleton state on back-navigation within TTL.
+  // Seed from cache so back-navigation within the TTL doesn't flash a skeleton.
   const _initialCached = cache.getInitial<Tables<'events'>[]>(CACHE_KEY)
   if (_initialCached !== null)
     events.value = _initialCached
 
-  // Note: events is not wrapped in readonly() - DeepReadonly conflicts with mutable
-  // array expectations at call sites. The ref itself is not re-exported as writable.
+  // Not wrapped in readonly(): DeepReadonly conflicts with mutable array types at
+  // call sites.
 
   async function fetch(force = false): Promise<void> {
     const result = await withCache(CACHE_KEY, async () => {
@@ -77,12 +64,10 @@ export function useDataEvents() {
     void fetch()
   })
 
-  // Bust cache and re-fetch when user signs in - auth state changes what events
-  // are visible (e.g. private/restricted events), so stale guest cache must not persist.
+  // Auth changes which events are visible, so a guest cache must not survive sign-in.
   const currentUser = useSupabaseUser()
 
-  // Initialize from current auth state so back-navigation doesn't falsely trigger
-  // a cache invalidation (the watcher fires immediately with the already-resolved user).
+  // Seeded from the current auth state so back-navigation doesn't count as a sign-in.
   let _wasAuthed = currentUser.value != null
   watch(currentUser, (newUser) => {
     const isAuthed = newUser != null

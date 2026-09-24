@@ -10,10 +10,8 @@ const props = defineProps<{
   funding: Tables<'funding_history'> | null
 }>()
 
-// Define model for sheet visibility
 const isOpen = defineModel<boolean>('isOpen')
 
-// Handle closing the sheet
 function handleClose() {
   isOpen.value = false
 }
@@ -34,7 +32,6 @@ function handleClose() {
     </template>
 
     <Flex v-if="props.funding" column gap="m" class="funding-details">
-      <!-- Overview -->
       <DetailTable>
         <template #header>
           <Icon name="ph:currency-dollar" />
@@ -51,7 +48,6 @@ function handleClose() {
         </DetailRow>
       </DetailTable>
 
-      <!-- Patreon Funding -->
       <DetailTable>
         <template #header>
           <Icon name="ph:patreon-logo" size="1.6rem" class="color-accent" />
@@ -68,7 +64,6 @@ function handleClose() {
         </DetailRow>
       </DetailTable>
 
-      <!-- Single Donations -->
       <DetailTable>
         <template #header>
           <Icon name="ph:coin-fill" size="1.6rem" class="color-accent" />

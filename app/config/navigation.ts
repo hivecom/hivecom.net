@@ -10,33 +10,25 @@ export interface CommandLink {
 }
 
 export const commandLinks: CommandLink[] = [
-  // General
   { path: '/', label: 'Home', group: 'General', icon: 'ph:house' },
   { path: '/themes', label: 'Themes', group: 'General', icon: 'ph:circle-half-tilt-fill', requiresAuth: true },
-  // Community
   { path: '/community', label: 'Community', group: 'Community', icon: 'ph:users' },
   { path: '/community/funding', label: 'Funding', group: 'Community', icon: 'ph:coins' },
   { path: '/community/games', label: 'Games', group: 'Community', icon: 'ph:game-controller' },
   { path: '/community/badges', label: 'Badges', group: 'Community', icon: 'ph:medal' },
   { path: '/community/projects', label: 'Projects', group: 'Community', icon: 'ph:code' },
   { path: '/chat', label: 'Chat', group: 'Community', icon: 'ph:chats', requiresAuth: true },
-  // Forum
   { path: '/forum', label: 'Forum', group: 'Forum', icon: 'ph:chats-circle' },
   { path: '/forum/stats', label: 'Forum Statistics / Leaderboard', group: 'Forum', icon: 'ph:chart-bar' },
-  // Events
   { path: '/events?tab=list', label: 'Events', group: 'Events', icon: 'ph:calendar' },
   { path: '/events?tab=calendar', label: 'Event Calendar', group: 'Events', icon: 'ph:calendar-dots' },
-  // Servers
   { path: '/servers/gameservers', label: 'Game Servers', group: 'Servers', icon: 'ph:game-controller' },
   { path: '/servers/voiceservers', label: 'Voice Servers', group: 'Servers', icon: 'ph:microphone' },
-  // Legal
   { path: '/legal/privacy', label: 'Privacy Policy', group: 'Legal', icon: 'ph:shield' },
   { path: '/legal/terms', label: 'Terms of Service', group: 'Legal', icon: 'ph:file-text' },
-  // Account
   { path: '/votes', label: 'Votes', group: 'Account', icon: 'ph:check-square', requiresAuth: true },
   { path: '/profile', label: 'My Profile', group: 'Account', icon: 'ph:user', requiresAuth: true },
   { path: '/profile/settings', label: 'Settings', group: 'Account', icon: 'ph:gear', requiresAuth: true },
-  // Admin
   { path: '/admin', label: 'Admin Dashboard', group: 'Admin', icon: 'ph:gauge', requiresRole: ['admin', 'moderator'] },
   { path: '/admin/metrics', label: 'Admin Metrics', group: 'Admin', icon: 'ph:chart-line', requiresRole: ['admin', 'moderator'] },
   { path: '/admin/users', label: 'Admin Users', group: 'Admin', icon: 'ph:users-three', requiresRole: ['admin', 'moderator'] },
@@ -51,7 +43,6 @@ export const commandLinks: CommandLink[] = [
   { path: '/admin/games', label: 'Admin Games', group: 'Admin', icon: 'ph:game-controller', requiresRole: ['admin'] },
   { path: '/admin/motds', label: 'Admin MOTDs', group: 'Admin', icon: 'ph:megaphone', requiresRole: ['admin'] },
   { path: '/admin/kvstore', label: 'Admin KV Store', group: 'Admin', icon: 'ph:database', requiresRole: ['admin'] },
-  // Dev only
   ...(isDev ? [{ path: '/playground', label: 'Playground', group: 'Dev', icon: 'ph:flask' }] : []),
 ]
 

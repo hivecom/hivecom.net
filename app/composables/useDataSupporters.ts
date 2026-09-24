@@ -4,7 +4,7 @@ import { useCache } from '@/composables/useCache'
 import { CACHE_NAMESPACES } from '@/lib/cache/namespaces'
 
 const CACHE_KEY = 'supporters:ids'
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const CACHE_TTL = 5 * 60 * 1000
 
 // Module-level cache instance for external invalidation.
 const _supportersCache = useCache(CACHE_NAMESPACES.community)
@@ -13,15 +13,6 @@ export function invalidateSupportersCache(): void {
   _supportersCache.delete(CACHE_KEY)
 }
 
-/**
- * Shared cached supporters composable.
- *
- * Fetches IDs of all lifetime + patreon supporters (non-banned).
- * Used by SupportCTA and funding.vue - both previously fetched independently.
- *
- * - TTL: 5 minutes
- * - Namespace: community (shared with funding/expenses/metrics)
- */
 export function useDataSupporters() {
   const cache = useCache(CACHE_NAMESPACES.community)
   const supabase = useSupabaseClient<Database>()

@@ -3,13 +3,10 @@ import { onMounted, ref, watch } from 'vue'
 import { segStyle, tokenizeForEditor } from '@/lib/ircFormat'
 
 // Contenteditable that renders IRC/markdown formatting live. The canonical value
-// is the wire string (control codes + markers); every source character is kept
-// in the DOM (formatting characters rendered zero-width) so the DOM text stays
-// 1:1 with the wire string and caret offsets map directly. Multi-line: Shift+Enter
-// inserts a literal '\n' (never a browser-inserted <br>/<div>, which would break
-// that 1:1 mapping); plain Enter is left to the parent to send.
-// It exposes an input-like API (focus / getCaret / setCaret) so the composer's
-// autocomplete, history and selection toolbar keep working unchanged.
+// is the wire string (control codes + markers). Every source character stays in
+// the DOM (formatting characters render zero-width), so DOM text is 1:1 with the
+// wire string and caret offsets map directly. Shift+Enter inserts a literal '\n',
+// never a browser <br>/<div>, which would break that mapping.
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -42,11 +39,9 @@ const root = ref<HTMLElement>()
 let composing = false
 
 // --- rendering -------------------------------------------------------------
-// The composer's value is markdown: emphasis is real marker characters (** * __ ~~
-// `), so they're real, navigable text in both modes. Classic/IRC mode shows the
-// markers; modern mode hides them (tokenizeForEditor flags them hidden) and the
-// caret skips the hidden run so it never rests on a zero-width char. Color is the
-// one format with no marker, so it stays an invisible control code either way.
+// Emphasis is real marker characters (** * __ ~~ `). Classic/IRC mode shows them.
+// Modern mode hides them and the caret skips the hidden run so it never rests on
+// a zero-width char. Color has no marker, so it's always an invisible control code.
 function render(value: string) {
   const el = root.value
   if (!el)
@@ -68,16 +63,14 @@ function render(value: string) {
   }
 
   // The browser collapses a trailing newline in pre-wrap content, so the caret
-  // can't move onto the new (empty) last line and the box won't grow. A <br>
-  // sentinel forces that line to render. It has no text content, so textContent
-  // length and Range offsets stay 1:1 with the wire string - caret math intact.
+  // can't reach the new last line and the box won't grow. A <br> sentinel forces
+  // the line to render. It has no text content, so offsets stay 1:1.
   if (value.endsWith('\n')) {
     frag.appendChild(document.createElement('br'))
 
-    // Empty text node on the new line so the caret has a downstream position to
-    // land in. Without it, a caret at the end of the '\n' text node renders with
-    // upstream affinity - clinging to the end of the line above (see nodeAt). It
-    // contributes nothing to textContent, so the 1:1 mapping stays intact.
+    // Empty text node on the new line gives the caret a downstream position.
+    // Without it, a caret at the end of the '\n' node clings to the line above
+    // (see nodeAt).
     frag.appendChild(document.createTextNode(''))
   }
   el.replaceChildren(frag)
@@ -120,11 +113,9 @@ function nodeAt(target: number): { node: Node, offset: number } {
     last = n
     const end = count + n.length
 
-    // At a boundary right after a hard line break (the node ends with '\n'), fall
-    // through to the next text node so the caret lands at the START of the new line
-    // (downstream affinity) rather than clinging to the end of the line above. The
-    // trailing-'\n' render() appends an empty text node precisely so this has
-    // somewhere to go. Everywhere else, the earliest node reaching `target` wins.
+    // Right after a hard line break, fall through to the next text node so the
+    // caret lands at the start of the new line instead of clinging to the line
+    // above. render() appends an empty text node so there's always somewhere to go.
     if (target < end || (target === end && !n.data.endsWith('\n')))
       return { node: n, offset: target - count }
 
@@ -160,10 +151,8 @@ function focus() {
   root.value?.focus()
 }
 
-// Viewport-space bounding box of the current selection, for floating UI (the
-// composer's format toolbar anchors above it). Null when there's no selection
-// inside this input or the range has no measurable box (e.g. it spans only
-// zero-width control spans).
+// Viewport-space box of the current selection for the format toolbar. Null when
+// there's no selection here or it spans only zero-width control spans.
 function getSelectionRect(): DOMRect | null {
   const el = root.value
   const sel = window.getSelection()
@@ -202,9 +191,9 @@ function syncFromDom() {
   emit('input')
 }
 
-// Insert text at the caret, replacing any selection, then re-sync. Used for both
-// paste and Shift+Enter so newlines enter as a single '\n' text node - keeping
-// the DOM 1:1 with the wire string instead of letting the browser inject blocks.
+// Insert text at the caret, replacing any selection, then re-sync. Paste and
+// Shift+Enter go through here so newlines enter as a single '\n' text node
+// instead of browser-injected blocks.
 function insertTextAtCaret(text: string) {
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0)
@@ -297,17 +286,15 @@ function hiddenAtOffsets(value: string, strip: boolean): boolean[] {
   return map
 }
 
-// Shift+Enter. If the (collapsed) caret sits inside an open formatting wrapper,
-// drop the newline AFTER the wrapper's trailing hidden run (the closing control
-// codes + consumed **/__/~~ markers) so Enter exits the formatting cleanly. Left
-// as-is, the newline would split the marker pair across lines - orphaning literal
-// markers and malforming the per-line PRIVMSGs of a multiline send.
+// Shift+Enter. Inside an open formatting wrapper, place the newline after the
+// wrapper's closing hidden run so Enter exits the formatting. Otherwise the marker
+// pair splits across lines and malforms the per-line PRIVMSGs of a multiline send.
 function insertNewline() {
   const value = root.value?.textContent ?? props.modelValue
   const { start, end } = getCaret()
   if (start === end && hasActiveFormatting(value, end)) {
-    // Always treat consumed markers as part of the closing run here, even in
-    // classic mode where they render - the newline must clear the whole wrapper.
+    // Count consumed markers as part of the closing run even in classic mode,
+    // since the newline must clear the whole wrapper.
     const hidden = hiddenAtOffsets(value, true)
     let at = end
     while (at < value.length && hidden[at])
@@ -318,12 +305,9 @@ function insertNewline() {
   insertTextAtCaret('\n')
 }
 
-// Step the caret across a contiguous run of zero-width formatting characters in one
-// move, so it never rests inside a zero-width span (where it would vanish) and
-// arrowing past a hidden run feels like one keystroke. Uses the display mode, so
-// visible markdown markers in classic/IRC mode are NOT skipped - they're real
-// characters you step through. Returns true when it handled the move; false leaves
-// the native single-char step alone.
+// Step the caret across a run of zero-width formatting characters in one move,
+// so it never vanishes inside one. Uses the display mode, so visible markers in
+// classic/IRC mode are stepped through normally. False leaves the native step.
 function skipHiddenCaret(forward: boolean): boolean {
   const value = root.value?.textContent ?? props.modelValue
   const { start, end } = getCaret()
@@ -462,15 +446,11 @@ defineExpose({ focus, getCaret, setCaret, getSelectionRect, getEl: () => root.va
   min-width: 0;
   // One line by default; a host can reserve more (--composer-input-min-height).
   min-height: var(--composer-input-min-height, var(--interactive-el-height));
-  // box-sizing is border-box (global reset), so a single line must budget for
-  // the 1px top/bottom border too - otherwise the field grows by 2px the moment
-  // a line box appears. The `- 1px` per side offsets that border. Left and right
-  // padding are overridable (--composer-input-pad-left/-right) so a host can
-  // reserve room for overlaid controls (the chat composer's attach/send buttons).
-  // Explicit (numeric) line-height so 1lh and the rendered line box match exactly
-  // regardless of which font a span resolves to. With line-height: normal the two
-  // diverge whenever a span's font metrics differ from the element's, which makes
-  // the box grow by a pixel or two the moment the first line of text appears.
+  // box-sizing is border-box, so a single line budgets for the 1px top/bottom
+  // border (the `- 1px` per side) or the field grows 2px when a line box appears.
+  // Left/right padding are overridable so a host can make room for overlaid
+  // controls. A numeric line-height keeps 1lh and the rendered line box equal
+  // whatever font a span resolves to.
   line-height: 1.4;
   $v-pad: calc((var(--interactive-el-height) - 1lh) / 2 - 1px);
   padding: $v-pad var(--composer-input-pad-right, var(--space-s)) $v-pad var(--composer-input-pad-left, var(--space-s));
@@ -489,12 +469,9 @@ defineExpose({ focus, getCaret, setCaret, getSelectionRect, getEl: () => root.va
     opacity: 0.6;
   }
 
-  // The formatting spans are created imperatively (document.createElement), so
-  // they carry no scoped-style attribute and DON'T inherit through Vue's scoping.
-  // Without this, VUI's global reset (`span { font-size: var(--font-size-m) }`)
-  // wins over the element's size - the typed text renders a notch larger than the
-  // placeholder, which both looks wrong and nudges the box height on first input.
-  // :deep targets the dynamic descendants to pin them back to the input's size.
+  // Formatting spans are created imperatively, so they carry no scoped attribute.
+  // Without this, VUI's global `span { font-size }` reset renders typed text a
+  // notch larger than the placeholder and nudges the box height on first input.
   :deep(span) {
     font-size: var(--chat-font-size, var(--font-size-s));
   }

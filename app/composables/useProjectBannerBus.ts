@@ -1,33 +1,15 @@
-/**
- * Typed bus for the `project-banner-updated` custom window event.
- *
- * Previously dispatched as an untyped CustomEvent from `lib/projectBanner.ts`
- * and listened to with raw `window.addEventListener` + manual `as CustomEvent`
- * cast in `useDataProjectBanner.ts`.
- *
- * Usage:
- *   // Dispatching (from lib/projectBanner.ts or any non-composable context):
- *   import { dispatchProjectBannerUpdated } from '@/composables/useProjectBannerBus'
- *   dispatchProjectBannerUpdated({ projectId, url })
- *
- *   // Listening (inside a component or composable setup context):
- *   const { onProjectBannerUpdated } = useProjectBannerBus()
- *   onProjectBannerUpdated(({ projectId, url }) => { ... })
- */
+// Typed bus for the `project-banner-updated` window event.
 
 const PROJECT_BANNER_UPDATED_EVENT = 'project-banner-updated'
 
 export interface ProjectBannerUpdatedPayload {
   projectId: number
 
-  /** New public URL, or null if the banner was deleted */
+  /** null when the banner was deleted. */
   url: string | null
 }
 
-/**
- * Dispatch the project-banner-updated event. Safe to call from lib functions
- * and composables alike - no Vue dependency.
- */
+// No Vue dependency, so lib code can dispatch it too.
 export function dispatchProjectBannerUpdated(payload: ProjectBannerUpdatedPayload): void {
   if (typeof window === 'undefined')
     return
@@ -37,14 +19,8 @@ export function dispatchProjectBannerUpdated(payload: ProjectBannerUpdatedPayloa
   )
 }
 
-/**
- * Composable for subscribing to project-banner-updated events inside Vue
- * components or composables.
- *
- * - `onProjectBannerUpdated(handler)` registers a listener and auto-cleans up
- *   on unmount when called inside a component setup context. Returns an `off()`
- *   function for manual teardown if called outside a component.
- */
+// Listeners clean up on unmount inside a component. Outside one, call the
+// returned off().
 export function useProjectBannerBus() {
   function onProjectBannerUpdated(handler: (payload: ProjectBannerUpdatedPayload) => void): () => void {
     function listener(event: Event) {

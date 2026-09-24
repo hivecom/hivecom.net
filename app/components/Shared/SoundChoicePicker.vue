@@ -12,8 +12,6 @@ const props = withDefaults(defineProps<{
   // 0-100, used only for the preview button.
   volume?: number
 
-  // Label text size token; defaults to `m` (general settings). The chat modal
-  // passes `s` to match its denser sibling labels.
   labelSize?: 'xs' | 's' | 'm'
 }>(), {
   description: '',

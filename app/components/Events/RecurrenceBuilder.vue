@@ -6,8 +6,7 @@ import { fullDate } from '@/lib/utils/date'
 const props = defineProps<{
   modelValue: string | null
 
-  // The currently selected event date - used to derive smart defaults
-  // for BYMONTHDAY (monthly) and BYDAY (weekly) when no rule exists yet.
+  // Derives defaults for BYMONTHDAY (monthly) and BYDAY (weekly) when no rule exists yet
   eventDate?: Date | null
 }>()
 
@@ -229,7 +228,6 @@ const untilDateLabel = computed(() => {
   <Flex column gap="s" expand>
     <span class="text-s font-medium">Recurrence</span>
 
-    <!-- Frequency + interval on one row -->
     <Flex gap="xs" y-center wrap>
       <Select
         v-model="freqModel"
@@ -251,7 +249,6 @@ const untilDateLabel = computed(() => {
         />
         <span class="text-s text-color-light">{{ intervalLabel }}</span>
 
-        <!-- Weekly: day toggles inline -->
         <template v-if="freq === 'WEEKLY'">
           <button
             v-for="day in DAYS"
@@ -266,7 +263,6 @@ const untilDateLabel = computed(() => {
           </button>
         </template>
 
-        <!-- Monthly: day of month inline -->
         <template v-if="freq === 'MONTHLY'">
           <span class="text-s text-color-light">on day</span>
           <Input
@@ -281,7 +277,6 @@ const untilDateLabel = computed(() => {
       </template>
     </Flex>
 
-    <!-- End date row -->
     <template v-if="freq !== 'NONE'">
       <Flex gap="xs" y-center>
         <span class="text-s text-color-light">until</span>

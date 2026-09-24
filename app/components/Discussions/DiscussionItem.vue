@@ -31,23 +31,19 @@ interface Props {
   data: Comment
   model?: 'comment' | 'forum'
 
-  /** ID prefix for the wrapper element. Defaults to 'comment'. Use a different
-   *  value (e.g. 'pinned-comment') for pinned duplicates so querySelector
-   *  can distinguish the list instance from the pinned banner. */
+  /** Pinned duplicates use their own prefix so '#comment-{id}' only matches the list instance */
   idPrefix?: string
 
-  // Flat mode: the node for this comment (used for inline reply preview)
+  // Flat mode only
   threadNode?: ThreadNode
 
-  // Threaded mode: pre-resolved direct children to render recursively
+  // Threaded mode only
   children?: ThreadNode[]
   depth?: number
   showOfftopic?: boolean
   staggerIndex?: number
 
-  // When true (propagated from a flat-mode inline expansion), this item
-  // auto-expands inline and passes the flag to its own children so the
-  // whole subtree opens without manual clicks.
+  // Set by a flat-mode inline expansion and passed down, so the whole subtree opens
   forceInlineExpand?: boolean
 }
 
@@ -66,15 +62,13 @@ const isActive = computed(() => data.id === route.query.comment)
 
 onMounted(async () => {
   if (isActive.value) {
-    // scrollToIdWhenStable scrolls immediately on the first rAF tick then
-    // keeps re-anchoring every frame until the element's position has been
-    // stable for 500ms. If the user scrolls manually the loop exits and cedes
-    // control to them.
+    // Re-anchors every frame until the position holds for 500ms. A manual
+    // scroll hands control back to the user.
     await scrollToIdWhenStable(`#${idPrefix}-${data.id}`, 'center', 12000, 500)
   }
 })
 
-// Scroll into view whenever another comment's scrollReply() sets ?comment=<this id> in the URL.
+// Another comment's scrollReply() can set ?comment to this id
 watch(isActive, async (active) => {
   if (!active)
     return
@@ -93,16 +87,12 @@ function copyLinkForComment(id: string) {
   const url = new URL(window.location.href)
   url.searchParams.set('comment', id)
 
-  // A comment link is reachable in either view and resolves its own page, so it
-  // shouldn't pin the recipient's view or page. Drop both from the copied URL.
+  // A comment link works in either view and resolves its own page
   url.searchParams.delete('view')
   url.searchParams.delete('page')
 
-  // Anchor the link on this comment's timestamp. In chronological (ascending
-  // forum) view a reply's position is stable, so the deep-link load can fetch
-  // the target block straight from this timestamp and skip the page-lookup RPC.
-  // Consumed in useDataDiscussionReplies; ignored in threaded/comment views.
-  // Only ever called for this item's own id, so data.created_at is the match.
+  // A reply's position is stable in ascending forum view, so the deep-link load
+  // can skip the page-lookup RPC with this timestamp. Other views ignore it.
   if (id === data.id && data.created_at)
     url.searchParams.set('ts', String(new Date(data.created_at).getTime()))
   copy(url.toString())
@@ -111,9 +101,7 @@ function copyLinkForComment(id: string) {
   })
 }
 
-// Scroll to reply - if the reply is in the DOM, scroll to it directly.
-// If it's not (loaded via lazy fetch but not in the current window), use
-// navigateToComment to load the surrounding page and then scroll to it.
+// A reply outside the loaded window needs navigateToComment to load its page first
 async function scrollReply() {
   const replyId = data.reply?.id ?? data.reply_to_id
   if (!replyId)
@@ -132,13 +120,9 @@ async function scrollReply() {
 
 // ── Inline thread-reply preview (flat mode) ───────────────────────────────────
 
-// Always use whichever children source is populated so both the flat inline
-// preview and the threaded recursive subtree stay mounted at all times.
-// This means MarkdownRenderer resolves while hidden and no flash occurs on switch.
-//   threaded list items → children prop is populated, threadNode is undefined
-//   flat list items     → threadNode.children is populated, children is []
-// For the comment model, children are stored in childrenMap (not merged into the
-// flat comments list), so we read directly from there instead of threadNode.
+// Threaded items get the children prop, flat items get threadNode.children.
+// Using whichever is populated keeps both views mounted, so MarkdownRenderer
+// resolves while hidden. The comment model keeps children in childrenMap instead.
 const sourceChildren = computed((): ThreadNode[] => {
   if (model === 'comment' && childrenMap != null) {
     const raw = childrenMap.value.get(data.id) ?? []
@@ -147,12 +131,9 @@ const sourceChildren = computed((): ThreadNode[] => {
   return children.length > 0 ? children : (threadNode?.children ?? [])
 })
 
-// Whether children have been requested at least once (threaded lazy load).
-// Separate from sourceChildren.length > 0 because a root can legitimately
-// have zero children even after a successful fetch.
+// Separate from sourceChildren.length, since a root can have zero children after a fetch
 const childrenRequested = ref(children.length > 0)
 
-// Filter for off-topic visibility
 const visibleChildren = computed((): ThreadNode[] =>
   sourceChildren.value.filter(n => !n.comment.is_offtopic || showOfftopic),
 )
@@ -161,11 +142,9 @@ const hasReplies = computed(() =>
   visibleChildren.value.length > 0 || (replyCountMap?.value?.get(data.id) ?? 0) > 0,
 )
 
-// Flat mode: sheet always starts closed - only opens on explicit user click.
 const repliesExpanded = ref(false)
 const flatInlineExpanded = ref(false)
 
-// When the flat-mode sheet opens, lazily load children if not yet fetched.
 watch(repliesExpanded, (open) => {
   if (open && !childrenRequested.value && loadChildren != null) {
     childrenRequested.value = true
@@ -173,10 +152,7 @@ watch(repliesExpanded, (open) => {
   }
 })
 
-// Threaded mode: whether this node's sub-tree is folded closed.
-// - Root replies (depth 0): driven by the showThreadReplies setting.
-// - Sub-replies (depth > 0): always start expanded so clicking a root toggle
-//   reveals the full thread without needing additional clicks per level.
+// Sub-replies start expanded, so opening a root reveals the whole thread
 function computeThreadCollapsed() {
   if (viewMode.value !== 'threaded')
     return false
@@ -194,7 +170,6 @@ function onOpenReplies() {
     return
   }
 
-  // threaded: always expand inline - the subtree renders here, no sheet needed.
   threadCollapsed.value = false
   flatInlineExpanded.value = true
   if (!childrenRequested.value && loadChildren != null) {
@@ -203,8 +178,6 @@ function onOpenReplies() {
   }
 }
 
-// When forceInlineExpand is propagated from a parent's flat inline expansion,
-// auto-expand this item and load its children.
 watch(() => forceInlineExpand, (force) => {
   if (force && !flatInlineExpanded.value && hasReplies.value) {
     flatInlineExpanded.value = true
@@ -215,15 +188,12 @@ watch(() => forceInlineExpand, (force) => {
   }
 }, { immediate: true })
 
-// Re-evaluate collapsed state whenever the view mode or the expand-threads setting
-// changes. The IIFE only ran once at setup, so items mounted in flat mode (or while
-// the setting had a different value) need this to get the correct collapsed state.
+// threadCollapsed is only computed once at setup, so recompute when the view
+// mode or the expand-threads setting changes
 watch([viewMode, showThreadRepliesInjected], ([, showReplies], [, prevShowReplies]) => {
   threadCollapsed.value = computeThreadCollapsed()
 
-  // When the global "expand reply threads" toggle is turned on, lazily load
-  // children if they haven't been fetched yet - the visibility watcher won't
-  // fire again because threadCollapsed was already true when it last ran.
+  // The visibility watcher won't re-fire here, since threadCollapsed was true when it last ran
   if (showReplies && !prevShowReplies && !childrenRequested.value && loadChildren != null) {
     childrenRequested.value = true
     void loadChildren(data.id)
@@ -232,7 +202,6 @@ watch([viewMode, showThreadRepliesInjected], ([, showReplies], [, prevShowReplie
 
 async function toggleThreadCollapsed() {
   if (threadCollapsed.value) {
-    // Expanding: lazily load children if not yet fetched
     if (!childrenRequested.value && loadChildren != null) {
       childrenRequested.value = true
       await loadChildren(data.id)
@@ -249,8 +218,6 @@ async function toggleThreadCollapsed() {
 
 const wrapperEl = useTemplateRef<HTMLDivElement>('wrapperEl')
 
-// Becomes true the first time this item enters the viewport.
-// The observer stops itself after the first intersection so it only fires once.
 const isVisible = ref(false)
 const { stop: stopVisibilityObserver } = useIntersectionObserver(
   wrapperEl,
@@ -262,14 +229,8 @@ const { stop: stopVisibilityObserver } = useIntersectionObserver(
   },
 )
 
-// Trigger child fetch when:
-//   • the item scrolls into view while already in threaded mode, OR
-//   • the mode switches to threaded while the item is already visible.
-// Guards prevent double-fetching and respect the collapsed state.
-//
-// NOTE: childrenMap in the composable is cleared whenever the view mode changes,
-// so we must reset childrenRequested here too - otherwise the guard below would
-// permanently block re-fetching after a flat→threaded switch.
+// The composable clears childrenMap on every view mode change. Without this reset
+// the guard below would block re-fetching after switching back to threaded.
 watch(viewMode, (mode, prev) => {
   if (mode === 'threaded' && prev !== 'threaded')
     childrenRequested.value = false
@@ -288,13 +249,8 @@ watch(
 
 // ── Showing replies ───────────────────────────────────
 
-// This signal asks an item to reveal its thread. How depends on the view:
-// - flat: open the thread sheet (flat has no inline nesting).
-// - threaded + expand reply threads ON: the subtree is already inline, so just
-//   make sure this root is open in place.
-// - threaded + expand reply threads OFF: open the sheet. Inline expansion only
-//   loads one level, so a nested deep-link target wouldn't render - the sheet
-//   pulls the thread in on its own.
+// Threaded view with expanded threads reveals inline. Everything else opens the
+// sheet: inline expansion only loads one level, so a nested target wouldn't render.
 const openThreadSheetId = inject(DISCUSSION_KEYS.openThreadSheet, ref(null))
 const supabase = useSupabaseClient()
 
@@ -304,8 +260,6 @@ watch(openThreadSheetId, async (id) => {
 
   openThreadSheetId.value = null
   if (viewMode.value === 'threaded' && showThreadRepliesInjected.value) {
-    // Expanded threads: reveal inline. If this root is collapsed, load its
-    // children then expand; if already open, the target is on screen.
     if (threadCollapsed.value) {
       if (!childrenRequested.value && loadChildren != null) {
         childrenRequested.value = true
@@ -316,7 +270,6 @@ watch(openThreadSheetId, async (id) => {
     return
   }
 
-  // Flat, or threaded with reply threads collapsed: use the sheet.
   repliesExpanded.value = true
 })
 
@@ -327,18 +280,15 @@ async function openFullThread() {
 
   repliesExpanded.value = false
 
-  // Ensure the root item is loaded (may be on a different page) before signalling.
-  // nextTick lets Vue mount the newly loaded DiscussionItem components so their
-  // watch is set up before we write the signal.
+  // The root may be on another page. nextTick lets its DiscussionItem mount and
+  // set up its watcher before the signal is written.
   if (navigateToComment)
     await navigateToComment(rootId as string)
   await nextTick()
   openThreadSheetId.value = rootId as string
 }
 
-// Close the sheet and jump to this thread's root in the main discussion view.
-// The root is a top-level entry, so it's already on the loaded page/window - the
-// ?comment change drives the scroll. Only offered when this sheet is a root's.
+// A root is already on the loaded page, so the ?comment change drives the scroll
 function goToThreadInDiscussion() {
   repliesExpanded.value = false
   void router.replace({ query: { ...route.query, comment: data.id } })
@@ -376,7 +326,6 @@ function goToThreadInDiscussion() {
       @open-replies="onOpenReplies"
     />
 
-    <!-- Flat mode: sheet for thread replies (triggered from within the model components) -->
     <Sheet :open="repliesExpanded" :size="model === 'forum' ? 756 : 512" separators @close="repliesExpanded = false">
       <template #header>
         <Flex gap="m">
@@ -401,8 +350,6 @@ function goToThreadInDiscussion() {
       </template>
 
       <DiscussionThreadedScope>
-        <!-- Thread root: keep the top-level entry visible in the sheet, not just
-             its replies. Highlighted when the root is itself the linked comment. -->
         <DiscussionModelComment
           :data
           :class="{ 'discussion-comment--highlight': isActive }"
@@ -422,24 +369,20 @@ function goToThreadInDiscussion() {
       </DiscussionThreadedScope>
     </Sheet>
 
-    <!-- Threaded mode: recursively render children as full DiscussionItems -->
-    <!-- v-show keeps nested DiscussionItems mounted across mode switches so -->
-    <!-- MarkdownRenderer never re-suspends and the skeleton/fade-in flash doesn't appear. -->
+    <!-- v-show keeps nested items mounted across mode switches, so MarkdownRenderer
+         never re-suspends and flashes the skeleton -->
     <div v-show="(viewMode === 'threaded' && hasReplies) || (viewMode === 'flat' && flatInlineExpanded)">
-      <!-- Collapsed summary pill -->
       <DiscussionThreadToggle
         v-if="threadCollapsed"
         :count="replyCountMap?.get(data.id) ?? visibleChildren.length"
         @toggle="toggleThreadCollapsed"
       />
 
-      <!-- Expanded children with clickable left border line -->
       <div
         v-else
         class="discussion-comment-wrapper__children"
         :style="{ '--nest-depth': Math.min(depth + 1, 6) }"
       >
-        <!-- Invisible button over the left border - click to collapse -->
         <button
           class="discussion-comment-wrapper__thread-line"
           title="Collapse thread"
@@ -484,12 +427,11 @@ function goToThreadInDiscussion() {
     margin-top: 2px;
     margin-bottom: var(--space-m);
 
-    // Comment model: indent to align with the text content past the avatar
+    // Aligns with the text past the avatar
     &--comment {
       margin-left: 40px;
     }
 
-    // Forum model: full-width, sits below the card with a small top gap
     &--forum {
       margin-left: 0;
       margin-top: -12px;
@@ -498,14 +440,12 @@ function goToThreadInDiscussion() {
   }
 
   &__children {
-    // Threaded mode: indent children; the visible left border is rendered by
-    // __thread-line::after so it can respond to hover state on the button.
     position: relative;
     padding-left: var(--space-m);
   }
 
   &__thread-line {
-    // Invisible button sitting exactly over the left border - click to collapse/expand
+    // Invisible click target over the left border
     position: absolute;
     top: 0;
     left: 0;
@@ -517,7 +457,7 @@ function goToThreadInDiscussion() {
     cursor: pointer;
     z-index: 2;
 
-    // The visible border line lives inside the button so it reacts to hover
+    // The visible line lives in the button so it reacts to hover
     &::after {
       content: '';
       display: block;

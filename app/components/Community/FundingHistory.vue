@@ -15,7 +15,6 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// Define transformed funding data interface for table
 interface TransformedFunding {
   'Month': string
   'Patreon': number
@@ -27,7 +26,6 @@ interface TransformedFunding {
   '_original': Tables<'funding_history'>
 }
 
-// Year filter
 const selectedYear = ref<number>(new Date().getFullYear())
 
 const selectedYearOption = computed({
@@ -41,12 +39,11 @@ const selectedYearOption = computed({
   },
 })
 
-// Get available years from data
 const availableYears = computed(() => {
   const years = new Set(
     props.monthlyFunding.map(funding => new Date(`${funding.month}T00:00:00`).getFullYear()),
   )
-  return [...years].toSorted((a, b) => b - a) // Most recent first
+  return [...years].toSorted((a, b) => b - a)
 })
 
 const yearOptions = computed(() =>
@@ -55,9 +52,7 @@ const yearOptions = computed(() =>
 
 const isCurrentYear = computed(() => selectedYear.value === new Date().getFullYear())
 
-// Process historical data for display
 const historicalData = computed(() => {
-  // Filter by year if selected
   const filteredData = props.monthlyFunding.filter((funding) => {
     const year = new Date(`${funding.month}T00:00:00`).getFullYear()
     return year === selectedYear.value
@@ -113,7 +108,6 @@ const transformedTableData = computed<TransformedFunding[]>(() => {
   })
 })
 
-// Table configuration
 const { headers, rows } = defineTable(transformedTableData, {
   pagination: {
     enabled: false,
@@ -121,7 +115,6 @@ const { headers, rows } = defineTable(transformedTableData, {
   select: false,
 })
 
-// Calculate growth from previous month
 function getGrowthFromPrevious(currentAmount: number, index: number) {
   if (index === historicalData.value.length - 1)
     return null
@@ -140,9 +133,7 @@ function getGrowthFromPrevious(currentAmount: number, index: number) {
 
 <template>
   <Flex v-if="historicalData.length > 0 || props.monthlyFunding.length > 0" expand>
-    <!-- Funding History -->
     <Flex v-if="historicalData.length > 0" column gap="s" expand>
-      <!-- Previous Months - Table -->
       <Flex
         v-if="isCurrentYear ? historicalData.length > 1 : historicalData.length > 0" column expand gap="s"
       >
@@ -201,7 +192,6 @@ function getGrowthFromPrevious(currentAmount: number, index: number) {
       </Flex>
     </Flex>
 
-    <!-- Show more message if there's more data -->
     <Card v-if="historicalData.length > 25" class="mt-m">
       <Flex x-center>
         <p class="text-color-light text-s">
@@ -210,7 +200,6 @@ function getGrowthFromPrevious(currentAmount: number, index: number) {
       </Flex>
     </Card>
 
-    <!-- No data for selected year -->
     <Alert v-if="historicalData.length === 0" variant="info">
       No funding data available for {{ selectedYear }}
     </Alert>

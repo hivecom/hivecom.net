@@ -1,18 +1,5 @@
-/**
- * Wires the chat client into the host app:
- *
- * 1. Registers the identity provider seam - resolving the current Supabase
- *    session into `{ username, token }` for SASL auth. This is the only place
- *    that knows the JWT comes from Supabase; when Orbit replaces this chat with
- *    a cross-origin iframe, only this function changes (token via postMessage).
- * 2. Auto-connects on site open when the user has enabled the setting.
- * 3. Boots the Ergo Web Push orchestrator so the chat-push subscription is
- *    re-registered on reconnect and on browser subscription rotation, even when
- *    no chat surface (and thus no SettingsModal) is mounted.
- *
- * Lives at plugin scope (not in a chat component) so the seam is registered
- * before any surface mounts and a manual connect can authenticate immediately.
- */
+// Plugin scope so the identity provider is registered before any chat surface
+// mounts. It's the only place that knows the SASL token is a Supabase JWT.
 import { useDataUser } from '@/composables/useDataUser'
 import { useDataUserSettings } from '@/composables/useDataUserSettings'
 import { useErgoPush } from '@/composables/useErgoPush'
@@ -26,8 +13,7 @@ export default defineNuxtPlugin(() => {
   const { settings } = useDataUserSettings()
   const { registerIdentityProvider, connect, connState, setMentionKeywords } = useIrcChat()
 
-  // On mobile the device/OS volume governs playback, so a separate in-app slider
-  // is confusing. Always play notification sounds at full volume there.
+  // Mobile plays at full volume since the OS volume governs playback there
   const isMobile = useMobileViewport()
 
   const currentUsername = computed<string>(() => {
@@ -37,9 +23,6 @@ export default defineNuxtPlugin(() => {
 
   const autoConnectEnabled = computed<boolean>(() => settings.value.chat_autoconnect === true)
 
-  // Keep the chat client's mention keywords in sync with user settings so
-  // self-highlighting reflects the configured list without coupling the chat
-  // store to the settings composable.
   watch(
     () => settings.value.chat_mention_keywords,
     keywords => setMentionKeywords(Array.isArray(keywords) ? keywords : []),
@@ -75,8 +58,7 @@ export default defineNuxtPlugin(() => {
     { immediate: true },
   )
 
-  // Initialise the Ergo Web Push orchestrator (idempotent): registers the
-  // reconnect/rotation watchers once, app-wide, independent of chat UI mounting.
+  // App-wide so the push subscription re-registers even with no chat UI mounted
   useErgoPush()
 
   registerIdentityProvider(async () => {
@@ -89,8 +71,7 @@ export default defineNuxtPlugin(() => {
     return { username, token }
   })
 
-  // One-shot auto-connect once the user, their settings, and an enabled flag are
-  // all present. Guarded so it never fires twice or connects unauthenticated.
+  // One-shot, and never without a user
   let autoConnected = false
   watch(
     () => ({ auto: autoConnectEnabled.value, username: currentUsername.value, uid: userId.value }),

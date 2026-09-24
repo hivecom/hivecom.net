@@ -1,27 +1,9 @@
 <script setup lang="ts">
-import type { Database } from '@/types/database.overrides'
+import type { Tables } from '@/types/database.overrides'
 import { Flex, Tooltip } from '@dolanske/vui'
 import RichPresenceLastfm from '@/components/Profile/RichPresenceLastfm.vue'
 import { useCachedFetch } from '@/composables/useCache'
 import { displayDate } from '@/lib/utils/date'
-
-// Cast helper - table name won't be in the type until the migration runs and
-// database.types.ts is regenerated.
-type KnownTable = keyof Database['public']['Tables']
-
-// Local type until migration is applied and database.types.ts is regenerated
-interface LastfmPresence {
-  profile_id: string
-  lastfm_username: string
-  now_playing: boolean
-  track_name: string | null
-  artist_name: string | null
-  album_name: string | null
-  album_art_url: string | null
-  track_url: string | null
-  played_at: string | null
-  updated_at: string
-}
 
 interface Props {
   profileId: string
@@ -41,9 +23,9 @@ const {
   data: presence,
   initialLoading,
   refetch: refetchPresence,
-} = useCachedFetch<LastfmPresence>(
+} = useCachedFetch<Tables<'presences_lastfm'>>(
   () => ({
-    table: 'presences_lastfm' as KnownTable,
+    table: 'presences_lastfm',
     select: '*',
     filters: { profile_id: props.profileId },
     single: true,
@@ -56,7 +38,6 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 const isNowPlaying = computed(() => presence.value?.now_playing === true)
 
-// Lazy-load fade-in for the album art (mirrors GameIcon.vue behaviour)
 const albumArtReady = ref(false)
 const albumArtRef = ref<HTMLImageElement | null>(null)
 
@@ -178,8 +159,8 @@ watch(() => props.profileId, () => {
     <template #trigger>
       <div class="activity-item">
         <Flex expand y-center x-between gap="s">
-          <!-- Loading state - only before the first result, so a background
-               refresh doesn't blank a row we already have data for -->
+          <!-- Only before the first result, so a background refresh doesn't blank
+               a row we already have data for -->
           <template v-if="initialLoading">
             <div>
               <span class="activity-item__label">
@@ -190,7 +171,6 @@ watch(() => props.profileId, () => {
             </div>
           </template>
 
-          <!-- Has presence data -->
           <template v-else-if="presence">
             <div class="activity-item__text">
               <span class="activity-item__label">
@@ -229,7 +209,6 @@ watch(() => props.profileId, () => {
               </strong>
             </div>
 
-            <!-- Album art -->
             <a
               v-if="presence.album_art_url"
               :href="presence.track_url ?? undefined"
@@ -251,7 +230,6 @@ watch(() => props.profileId, () => {
             </a>
           </template>
 
-          <!-- No presence data -->
           <template v-else>
             <div>
               <span class="activity-item__label">

@@ -1,15 +1,13 @@
 /*
  * Hivecom chat (Ergo) push service worker.
  *
- * Separate from the main `/sw.js` so it can own its own push subscription: a
- * service worker registration may only hold one subscription bound to one
- * `applicationServerKey`, and `/sw.js` already uses the app's VAPID key for
- * platform notifications. This worker registers under the `/chat-push/` scope
- * and subscribes with Ergo's server-advertised VAPID key instead.
+ * Separate from `/sw.js` because a registration can hold only one subscription
+ * bound to one `applicationServerKey`, and `/sw.js` uses the app's VAPID key.
+ * This worker lives under the `/chat-push/` scope and subscribes with Ergo's
+ * advertised key instead.
  *
- * Per the draft/webpush (soju.im/webpush) spec, each push payload is exactly one
- * raw IRC message (no trailing CRLF) - NOT JSON. We parse it just enough to build
- * a useful notification (sender, channel, text).
+ * Per draft/webpush (soju.im/webpush), each payload is one raw IRC message with
+ * no trailing CRLF, not JSON.
  */
 
 globalThis.addEventListener('install', () => {
@@ -93,13 +91,10 @@ function buildNotification({ tags, nick, command, params }) {
   const title = isChannel ? target : (nick || 'Hivecom')
   const body = isChannel ? formatBody(nick, `${nick}: ${text}`) : formatBody(nick, text)
 
-  // Deep-link so tapping lands in the conversation that pinged, not the bare
-  // server tab. Channels read `?channel=` (without the `#`, which would otherwise
-  // be parsed as a URL fragment); DMs read `?dm=<sender>` and open by the sender's
-  // nick, since for a DM `target` is us and the message `nick` is the other party.
-  // Non-`#` channel prefixes (& + !) have no deep-link route, so they fall back to
-  // the chat root. `notify=1` tells the chat page this open came from a
-  // notification tap, so it connects immediately and skips the connect dialog.
+  // Deep-link to the conversation that pinged. Channels use `?channel=` without
+  // the `#`, which would parse as a URL fragment. DMs use `?dm=<sender>`, since
+  // `target` is us. Non-`#` prefixes have no route and fall back to the chat
+  // root. `notify=1` makes the chat page connect immediately without the dialog.
   let href = '/chat?notify=1'
   if (isChannel) {
     if (target.startsWith('#'))
@@ -120,9 +115,8 @@ function buildNotification({ tags, nick, command, params }) {
       // Coalesce repeated pings from the same conversation.
       tag: tags.msgid || target || undefined,
       renotify: true,
-      // `conversation` + `ts` are what a later MARKREAD matches against to
-      // retire this notification. For a DM the conversation is the sender, not
-      // `target` (which is us) - same name the client buffers it under.
+      // A later MARKREAD matches `conversation` + `ts` to retire this. For a DM
+      // the conversation is the sender, not `target` (us).
       data: {
         href,
         conversation: casefold(isChannel ? target : nick),
@@ -132,12 +126,10 @@ function buildNotification({ tags, nick, command, params }) {
   }
 }
 
-// Ergo pushes a MARKREAD line once a conversation has been read, so devices can
-// drop pings the user has already dealt with. That happens when the read came
-// from another device, and also from this one when the read lands before the
-// session has registered its subscription (Ergo only skips the endpoint that
-// sent the MARKREAD). Clear what it covers and show nothing - the ping this
-// retires already satisfied the userVisibleOnly contract.
+// Ergo pushes MARKREAD once a conversation has been read, including to this
+// device when the read lands before its subscription registered (Ergo only
+// skips the endpoint that sent it). Clear what it covers and show nothing. The
+// ping it retires already satisfied userVisibleOnly.
 async function clearRead(params) {
   const conversation = casefold(params[0] ?? '')
   if (!conversation)
@@ -158,13 +150,11 @@ async function clearRead(params) {
   }
 }
 
-// The page drops a timestamp in this cache right before it sends WEBPUSH
-// REGISTER for a subscription the user just enabled. Ergo's registration flow
-// sends a "PING webpush" test push to the new endpoint before acking, and the
-// keepalive PINGs it sends later are byte-identical, so this flag is the only
-// way to tell "you just subscribed" apart from "still alive?". Consumed (and
-// deleted) on first read; the TTL covers the flag going stale when no test
-// push arrives, e.g. Ergo already knew the endpoint and skipped it.
+// The page drops a timestamp here right before WEBPUSH REGISTER for a freshly
+// enabled subscription. Ergo sends a "PING webpush" test push before acking, and
+// its later keepalive PINGs are byte-identical, so this flag is the only way to
+// tell them apart. Consumed on first read. The TTL covers Ergo skipping the test
+// push for an endpoint it already knew.
 const WELCOME_CACHE = 'ergo-push-meta'
 const WELCOME_KEY = '/ergo-push/welcome-pending'
 const WELCOME_TTL_MS = 2 * 60 * 1000
@@ -205,14 +195,11 @@ globalThis.addEventListener('push', (event) => {
     return
   }
 
-  // Ergo sends a "PING webpush" payload to verify the endpoint on a fresh
-  // WEBPUSH REGISTER and as a periodic keepalive from push maintenance. It's a
-  // health check, not activity - showing it is what produced the stray "New
-  // activity" notifications. The one PING worth surfacing is the verification
-  // push right after the user enabled notifications: the page flags that moment
-  // (see consumeWelcomePending), and we greet it so the user sees end-to-end
-  // delivery actually works. Every other PING is dropped silently; like
-  // MARKREAD, the occasional non-visible push stays within the browsers'
+  // Ergo sends "PING webpush" to verify a fresh WEBPUSH REGISTER and as a
+  // periodic keepalive. It's a health check, not activity. The only one worth
+  // showing is the verification push right after the user enabled notifications
+  // (see consumeWelcomePending), so they see delivery works. Other PINGs are
+  // dropped. Like MARKREAD, the occasional silent push stays within
   // userVisibleOnly tolerance.
   if (parsed?.command === 'PING') {
     event.waitUntil((async () => {
@@ -296,12 +283,10 @@ globalThis.addEventListener('notificationclick', (event) => {
       const url = new URL(client.url)
       if (url.origin === globalThis.location.origin) {
         await client.focus()
-        // Route via the app's own router (postMessage -> router.push) rather than
-        // client.navigate(). This worker runs under the /chat-push/ scope and does
-        // not control the page, so navigate() rejects on spec-compliant engines and
-        // - worse - on WebKit/iOS PWAs soft-updates the URL without triggering the
-        // SPA router, leaving the user on the previous channel. postMessage is the
-        // reliable path: the page listener reads ?channel= and switches buffers.
+        // Route via postMessage to the app's router, not client.navigate(). This
+        // worker's /chat-push/ scope doesn't control the page, so navigate()
+        // rejects on spec-compliant engines, and WebKit/iOS PWAs update the URL
+        // without triggering the SPA router.
         client.postMessage({ type: 'navigate', href })
         return
       }

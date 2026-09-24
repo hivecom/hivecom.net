@@ -65,21 +65,18 @@ const replyMentionLookup = computed<Record<string, string>>(() => {
 
 defineExpose({
   focus: () => editorRef.value?.focus(),
-  // Root element so the parent can measure the floating composer's height and
-  // lift the "jump to latest" pill above it.
+  // The parent measures this to lift the "Jump to latest" pill above the floating composer
   rootEl: rootRef,
 })
 </script>
 
 <template>
-  <!-- Authenticated: show editor -->
   <div
     v-if="userId"
     ref="root"
     class="discussion__add"
     :class="{ 'discussion__add--floating': floating }"
   >
-    <!-- Replying-to preview banner -->
     <Alert v-if="replyingTo">
       <Flex y-start gap="xl" x-between>
         <div>
@@ -100,7 +97,6 @@ defineExpose({
       </Flex>
     </Alert>
 
-    <!-- Archived state -->
     <div v-if="discussion?.is_archived">
       <Alert variant="warning">
         <template #icon>
@@ -110,7 +106,6 @@ defineExpose({
       </Alert>
     </div>
 
-    <!-- Locked state - user cannot bypass -->
     <div v-else-if="discussion?.is_locked && !canBypassLock">
       <Alert variant="neutral">
         <template #icon>
@@ -120,7 +115,6 @@ defineExpose({
       </Alert>
     </div>
 
-    <!-- Editor (shown when open, or when locked but user can bypass) -->
     <template v-else>
       <Alert v-if="discussion?.is_locked && canBypassLock" variant="warning">
         <template #icon>
@@ -171,7 +165,6 @@ defineExpose({
     </template>
   </div>
 
-  <!-- Unauthenticated nudge -->
   <div v-else class="discussion__add">
     <Alert variant="neutral">
       <Flex y-center x-between gap="m">

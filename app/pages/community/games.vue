@@ -56,10 +56,8 @@ defineOgImage('Default', {
 
 const { currentPlayersBySteamId, presencesLoading, presencesReady, currentPlayersForSteamId } = useDataSteamPresences()
 
-// The recent section draws from presences (live), history (recently played)
-// and the games list, so it stays on its skeleton until all three have landed.
-// presencesReady rather than presencesLoading, since the latter starts false
-// and flips during background refetches.
+// The recent section needs presences, history and the games list, so it waits for all
+// three. presencesReady because presencesLoading starts false and flips on background refetches.
 const recentActivityLoading = computed(() => !presencesReady.value || loadingHistory.value || gamesLoading.value)
 
 function currentPlayersForGame(game: Tables<'games'>): string[] {
@@ -109,7 +107,6 @@ const gamePlayTotals = computed(() => {
   return totals
 })
 
-// Aggregate usersByGame across all history buckets, pick top 3
 const top3Games = computed(() => {
   if (!games.value.length || !metricsHistory.value.length)
     return []
@@ -163,7 +160,6 @@ const marqueeGames = computed(() => {
   return shuffled.slice(0, 100)
 })
 
-// Load covers for marquee games
 watch(marqueeGames, (list) => {
   if (list.length > 0)
     loadAssetsForGames(list)
@@ -191,7 +187,6 @@ function gameserverPlayersForGame(gameId: number): number {
   return total
 }
 
-// Gameserver modal
 const activityModalOpen = ref(false)
 const showServerModal = ref(false)
 const serverModalGame = ref<typeof games.value[0] | null>(null)
@@ -206,7 +201,6 @@ function closeServerModal() {
   serverModalGame.value = null
 }
 
-// Game details modal
 const showDetailsModal = ref(false)
 const selectedDetailsGameId = ref<number | null>(null)
 
@@ -267,7 +261,6 @@ watch(poppedOffGameId, async (id) => {
     await loadAssetsForGames([game])
 }, { immediate: true })
 
-// Popped-off game is "live" when there's an ongoing event featuring it
 const isPoppedOffLive = computed(() => {
   const gameId = poppedOffGameId.value
   if (gameId == null)
@@ -284,7 +277,7 @@ const isPoppedOffLive = computed(() => {
   })
 })
 
-// Convenience ref - TS can't narrow top3Games[0] through v-if in template
+// TS can't narrow top3Games[0] through v-if in the template
 const topGame = computed(() => top3Games.value[0] ?? null)
 const runnerUpGames = computed(() => top3Games.value.slice(1))
 
@@ -316,7 +309,6 @@ const metricsGameTotal = computed<number | null>(() => {
   return Object.values(byGame).reduce((a, b) => a + b, 0)
 })
 
-// Whichever count is appropriate for the current auth state
 const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value : metricsGameTotal.value)
 </script>
 
@@ -356,9 +348,7 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
     </section>
 
     <ClientOnly>
-      <!-- Top 3 games this week -->
       <section class="mb-xl">
-        <!-- Loading -->
         <template v-if="loadingHistory || gamesLoading">
           <Skeleton :height="isMobile ? 160 : 220" :radius="8" class="mb-m" />
           <Grid :columns="isMobile ? 1 : 2" gap="m">
@@ -368,7 +358,6 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
 
         <template v-else-if="topGame">
           <GlowGroup>
-            <!-- #1 - hero card -->
             <GameTopCard
               :game="topGame"
               :rank="1"
@@ -383,7 +372,6 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
               @open-details="openDetailsModal"
             />
 
-            <!-- #2 and #3 - smaller cards -->
             <Grid v-if="runnerUpGames.length > 0" :columns="isMobile ? 1 : 2" gap="m" align="stretch" class="mt-m">
               <GameRunnerUpCard
                 v-for="(game, i) in runnerUpGames"
@@ -416,7 +404,6 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
         />
       </section>
 
-      <!-- Game activity chart (no controls, always 14d) -->
       <section class="mt-m chart-section">
         <ChartGameActivity
           :period="HISTORY_PERIOD"
@@ -438,10 +425,9 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
         </ChartGameActivity>
       </section>
 
-      <!-- Marquee: game covers -->
       <GameMarquee v-if="marqueeGames.length > 0" :games="marqueeGames" :speed="marqueeSpeed" class="mb-xl" @select="openDetailsModalById" />
 
-      <!-- Popped off (live) - rendered above events when an ongoing event features the game -->
+      <!-- Popped off (live) renders above events when an ongoing event features the game -->
       <section v-if="isPoppedOffLive && (poppedOffGameId !== null || loadingHistory30d)">
         <GamePoppedOffCard
           :metrics-history30d="metricsHistory30d"
@@ -454,7 +440,6 @@ const displayPlayerCount = computed(() => user.value ? totalCurrentPlayers.value
         />
       </section>
 
-      <!-- Game events -->
       <section class="mt-m">
         <Flex y-center x-between class="mb-s">
           <h3 class="section-title">

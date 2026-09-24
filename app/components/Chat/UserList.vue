@@ -15,8 +15,8 @@ import { useNow } from '@/composables/useNow'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const props = defineProps<{
-  // When set, render a static (non-scrolling) list capped to this many users,
-  // with a "show all" button opening the full modal. Used in the mobile nav sheet.
+  // When set, render a static list capped to this many users, with a "show all"
+  // button that opens the full modal.
   limit?: number
 }>()
 
@@ -107,12 +107,12 @@ function openWhois(name: string) {
 }
 const mobileMenuOpen = ref(false)
 
-// Long-press detection for mobile - mirrors MessageLog.vue behaviour.
+// Long-press detection for mobile.
 let _longPressTimer: ReturnType<typeof setTimeout> | null = null
 let _touchStartX = 0
 let _touchStartY = 0
 const LONG_PRESS_MS = 500
-const LONG_PRESS_SLOP = 8 // px - cancel if finger drifts (user is scrolling)
+const LONG_PRESS_SLOP = 8 // px of drift before it counts as a scroll
 
 function onTouchStart(event: TouchEvent) {
   const touch = event.touches[0]

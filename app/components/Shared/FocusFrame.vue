@@ -5,17 +5,12 @@ import { onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { focusFrameKey } from '@/components/Shared/focusFrame'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
-// FocusFrame draws one set of corner brackets fixed to the viewport and eases
-// them onto whichever registered FocusTarget currently has focus, like a camera
-// reticle settling on its subject. Nothing shows until a target first scrolls
-// into view. Focus then sticks to that target until another one fills enough
-// of the viewport to take it, so the brackets ride along with the focused tile
-// while it scrolls and only travel on a hand-off. Hovering a target takes focus
-// until the cursor leaves it.
-//
-// The easing runs on the offset between the brackets and their goal rather
-// than on the position itself. Scrolling moves goal and brackets together with
-// zero lag, and a hand-off leaves an offset that decays frame by frame.
+// Draws one set of corner brackets fixed to the viewport and eases them onto the
+// focused FocusTarget, like a camera reticle settling on its subject. Nothing shows
+// until a target first scrolls into view. Focus sticks to a target until another
+// fills enough of the viewport to take it, and hovering a target takes focus until
+// the cursor leaves. The easing runs on the offset between brackets and goal, so
+// scrolling moves both with zero lag and a hand-off decays frame by frame.
 
 interface Rect {
   x: number
@@ -38,10 +33,9 @@ const props = withDefaults(defineProps<{
 const EASE = 0.16
 const SETTLE_PX = 0.5
 
-// Must match the corner size in the styles below. The box is drawn by
-// translating three of the corners rather than sizing the overlay, so the
-// travel never touches width/height - those dirty layout every frame of an
-// ease and register as layout shifts, right when scroll needs the budget.
+// Must match the corner size in the styles below. The box is drawn by translating
+// three corners instead of sizing the overlay, since width/height changes dirty
+// layout every frame of an ease and register as layout shifts.
 const CORNER_SIZE = 18
 
 const ZERO: Rect = { x: 0, y: 0, w: 0, h: 0 }
@@ -108,10 +102,8 @@ function notifyLeave(target: FocusTargetHandle) {
 provide(focusFrameKey, { register, unregister, notifyEnter, notifyLeave })
 
 // The fixed nav covers the top strip of the viewport, so visibility is judged
-// against the part below it. The nav doesn't move with scroll, so its bottom
-// edge is measured once (and again on resize) rather than queried every tick -
-// the tick runs per scroll event, and a querySelector plus rect read there
-// forces layout right when the frame budget is tightest.
+// against the part below it. Its bottom edge is measured once (and on resize)
+// because the tick runs per scroll event, and a rect read there forces layout.
 let navBottomCache: number | null = null
 
 function navBottom(): number {

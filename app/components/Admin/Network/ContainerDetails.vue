@@ -38,11 +38,9 @@ const props = defineProps<{
   actionLoading: Record<string, Record<string, boolean>>
 }>()
 
-// Define models for two-way binding with proper type definitions
 const isOpen = defineModel<boolean>('isOpen', { default: false })
 const refreshLogsConfig = defineModel<{ tail?: number, since?: string, from?: string, to?: string } | null>('refreshLogsConfig', { default: null })
 
-// Define container with server interface
 interface ContainerWithServer {
   name: string
   running: boolean
@@ -71,7 +69,6 @@ const refreshContainer = defineModel<boolean>('refreshContainer', { default: fal
 
 const isMobile = useBreakpoint('<s')
 
-// Computed property for container status
 const containerStatus = computed(() => {
   if (!props.container)
     return 'unknown'
@@ -92,7 +89,6 @@ const containerStatus = computed(() => {
     : 'unknown'
 })
 
-// Watch for containerAction changes to trigger a data refresh after action is performed
 watch(() => containerAction.value, (action) => {
   if (action) {
     setTimeout(() => {
@@ -154,12 +150,10 @@ const logsVisible = computed(() =>
 
     <Flex v-if="container" column gap="m" class="container-detail">
       <Flex column gap="m" expand>
-        <!-- Stale warning -->
         <Alert v-if="containerStatus === 'stale'" variant="warning" class="w-100">
           <p>This container appears to be stale. It hasn't reported status in {{ constants.CONTAINERS.STALE_HOURS }} hours and may no longer exist.</p>
         </Alert>
 
-        <!-- Basic info -->
         <DetailTable>
           <template #header>
             <Icon name="ph:cube" />
@@ -194,7 +188,6 @@ const logsVisible = computed(() =>
           </DetailRow>
         </DetailTable>
 
-        <!-- Log viewer -->
         <Alert
           v-if="containerStatus === 'control_offline' || containerStatus === 'unknown'"
           variant="danger"

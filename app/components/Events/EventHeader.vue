@@ -72,7 +72,6 @@ const displayDate = computed(() => {
 
 const seriesStillActive = computed(() => isSeriesActive(props.event))
 
-// Parse UNTIL from the recurrence_rule for display
 const seriesUntilDate = computed<string | null>(() => {
   const rule = props.event.recurrence_rule
   if (!rule)
@@ -85,7 +84,6 @@ const seriesUntilDate = computed<string | null>(() => {
   return `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}Z`
 })
 
-// Get current user for authentication checks
 const user = useSupabaseUser()
 
 // Fetch organizer profile to check public visibility
@@ -96,10 +94,8 @@ const { user: organizer } = useDataUser(
 
 const showOrganizer = computed(() => !!user.value || organizer.value?.isPublic === true)
 
-// State for RSVP modal
 const showRSVPModal = ref(false)
 
-// State for RSVP counts
 const supabase = useSupabaseClient()
 const rsvpCountsCache = useCache(CACHE_NAMESPACES.rsvps)
 
@@ -112,7 +108,6 @@ const rsvpCounts = ref<RsvpCountsEntry>({
   total: 0,
 })
 
-// Fetch RSVP counts
 async function fetchRSVPCounts(force = false) {
   if (!props.event?.id)
     return
@@ -163,10 +158,7 @@ onRsvpUpdated(({ eventId }) => {
   }
 })
 
-// Subscribe to cross-tab realtime RSVP changes for this event.
-// useRsvpBus.onRsvpUpdated is already wired in EventRSVPCount and
-// EventRSVPModal, so dispatching through the bus here is enough to
-// keep all child components in sync without any further changes.
+// Dispatches through the RSVP bus, which keeps the child components in sync
 useRealtimeRsvp(computed(() => props.event?.id ?? null))
 
 onMounted(() => {
@@ -176,7 +168,6 @@ onMounted(() => {
 
 <template>
   <Flex column expand gap="l" class="event-header">
-    <!-- Title and actions row -->
     <Flex
       :x-between="!isBelowSmall"
       :x-center="isBelowSmall"
@@ -202,13 +193,11 @@ onMounted(() => {
         <p v-if="event.description" class="event-header__description">
           {{ props.event.description }}
         </p>
-        <!-- Games Section -->
         <template v-if="games && games.length > 0">
           <EventGames :games="games" :show-label="false" />
         </template>
       </Flex>
 
-      <!-- Timing/Countdown Section -->
       <Flex
         column
         :y-center="isBelowSmall"
@@ -217,7 +206,6 @@ onMounted(() => {
         class="event-header__timing-section"
         :style="{ width: isBelowSmall ? '100%' : undefined }"
       >
-        <!-- Enhanced Countdown for upcoming events or NOW for ongoing -->
         <CountdownTimer
           v-if="isUpcoming || isOngoing"
           :countdown="countdown"
@@ -246,7 +234,7 @@ onMounted(() => {
           </Flex>
         </CountdownTimer>
 
-        <!-- Time ago for past events - styled like CountdownTimer -->
+        <!-- Time ago for past events, styled like CountdownTimer -->
         <div v-else-if="!isUpcoming && !isOngoing && timeAgo" class="countdown-timer countdown-timer--past">
           <Flex gap="s" y-center x-center>
             <Flex column y-center x-center gap="xxs" class="countdown-timer__item">
@@ -282,7 +270,6 @@ onMounted(() => {
       </Flex>
     </Flex>
 
-    <!-- Organizer and reactions -->
     <Flex v-if="showOrganizer || discussionId" expand :x-between="!isMobile" y-center gap="m" class="event-header__organizer" :column="isMobile">
       <Flex v-if="showOrganizer" y-center gap="xs">
         <span class="event-header__organizer-label">Organized by</span>
@@ -299,7 +286,6 @@ onMounted(() => {
 
     <Divider />
 
-    <!-- Event meta information -->
     <Flex gap="m" x-between expand :column="isBelowSmall">
       <Flex :gap="isBelowSmall ? 'xxs' : 's'" wrap class="event-header__badges-section" :x-center="isBelowSmall" :expand="isBelowSmall">
         <Badge v-if="props.event.is_official" variant="accent">
@@ -350,15 +336,12 @@ onMounted(() => {
           {{ humanizeRrule(props.event.recurrence_rule) }}
         </Badge>
 
-        <!-- RSVP Count Badge -->
         <EventRSVPCount :event="props.event" variant="accent" size="l" :show-when-zero="false" />
       </Flex>
 
       <Flex gap="xs" class="event-header__actions" :x-center="isBelowSmall" :expand="isBelowSmall" wrap>
-        <!-- RSVP button -->
         <RSVPButton :event="props.event" :size="isBelowSmall ? 'm' : 's'" />
 
-        <!-- View RSVPs button -->
         <Button
           v-if="user"
           :size="isBelowSmall ? 'm' : 's'"
@@ -370,7 +353,6 @@ onMounted(() => {
           View RSVPs
         </Button>
 
-        <!-- External Link -->
         <NuxtLink
           v-if="event.link"
           :to="event.link"
@@ -388,7 +370,6 @@ onMounted(() => {
       </Flex>
     </Flex>
 
-    <!-- RSVP Modal -->
     <EventRSVPModal
       v-model:open="showRSVPModal"
       :event="event"

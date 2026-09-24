@@ -1,9 +1,7 @@
 <script setup lang="ts">
-// Custom MDC component for <img> tags in rendered markdown.
-// Registered as the 'img' component in MarkdownRendererInner's mdcComponents map.
-// Uses the same JS preload pattern as AvatarMedia: a hidden Image() preloads the
-// src so the browser caches it fully before the visible <img> mounts, then
-// <Transition> fades it in cleanly with no partial top-to-bottom paint.
+// MDC override for <img> in rendered markdown. A hidden Image() preloads the src
+// so the browser has it fully before the visible <img> mounts, then <Transition>
+// fades it in with no partial top-to-bottom paint.
 
 import { computed, ref, watch } from 'vue'
 
@@ -20,7 +18,7 @@ function preload(url: string) {
   if (!import.meta.client)
     return
 
-  // blob: URLs are session-scoped and always fail on reload - treat as missing immediately
+  // blob: URLs are session-scoped and always fail on reload, so treat them as missing
   if (url.startsWith('blob:')) {
     hasError.value = true
     return

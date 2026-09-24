@@ -24,29 +24,23 @@ const ChartGameActivity = defineAsyncComponent(() => import('@/components/Shared
 const ChartActivityHistogramModal = defineAsyncComponent(() => import('@/components/Shared/Charts/ChartActivityHistogramModal.vue'))
 const GameDetailsModal = defineAsyncComponent(() => import('@/components/Shared/GameDetailsModal.vue'))
 
-// Games card: the two games I played last as artwork, a short community
-// aggregate as rows, and one game from our catalog I haven't touched. Whoever
-// is in a game right now rides along on that game's own row as avatars, so the
-// card never spends a section repeating a name it already shows. Friends lead
-// the clusters and pin their games to the top. Counts stay small on purpose so
-// this reads as a glance rather than a list to work through.
+// Live players ride along on their game's row as avatars, so no section repeats
+// a name the card already shows. Counts stay small so it reads as a glance.
 
 const SHOWN_RECENT = 2
 const SHOWN_COMMUNITY = 3
 
 interface CommunityGame extends RecentlyPlayedGame {
   appId: number
-  /** Our games row, since untracked apps never make it into this list. */
   game: Tables<'games'>
   appName: string
-  /** Mutual friends in it right now, which is what pins it to the top. */
+  /** Mutual friends in it right now, which pins it to the top */
   friends: number
 }
 
 const userId = useUserId()
 const { games, loading: gamesLoading } = useDataGames()
-// An empty recent list is usually setup rather than idleness, so the section
-// says which half of it is missing instead of sitting there blank.
+// An empty recent list usually means incomplete setup, so the section says what's missing
 const { state: steamSetupState, shortBody: steamSetupBody, buttonLabel: steamSetupLabel } = useSteamPresenceSetup()
 const { mutualFriendIds } = useDataNotifications()
 const {
@@ -58,9 +52,7 @@ const {
   myRecentAppsLoading,
 } = useDataSteamPresences()
 
-// Steam hands us app ids, but this card only ever shows games we track. The
-// map is both the lookup the details modal needs and the filter that keeps
-// whatever else a member happens to have running off the card.
+// Both the details modal lookup and the filter that keeps untracked apps off the card
 const gameBySteamId = computed(() => {
   const map = new Map<number, Tables<'games'>>()
 
@@ -82,14 +74,11 @@ interface TrackedRecentApp {
   name: string
 }
 
-// Our row's title wins so a game reads the same here as it does anywhere else
-// on the site. Steam's string is only there for a tracked game nobody has
-// named yet.
+// Our title wins so a game reads the same as elsewhere on the site
 function displayName(game: Tables<'games'>, steamName: string | null, appId: number): string {
   return game.name ?? steamName ?? String(appId)
 }
 
-// My own tiles, cut down to the games we track.
 const myTrackedApps = computed<TrackedRecentApp[]>(() =>
   myRecentApps.value
     .flatMap((app) => {
@@ -114,9 +103,7 @@ function openDetails(gameId: number): void {
   detailsOpen.value = true
 }
 
-// Badge count: everyone the roster has in a game we track right now, me
-// included. An untracked app gets no row on this card, so counting a head for
-// it would leave a number with nothing on the card to explain it.
+// Tracked games only. An untracked app has no row to explain its head in the count.
 const playingIds = computed(() =>
   [...currentGameByProfileId.value.entries()]
     .filter(([, game]) => trackedGame(game.appId) !== null)
@@ -129,8 +116,7 @@ function playersIn(appId: number): string[] {
   return currentPlayersBySteamId.value.get(appId) ?? []
 }
 
-// My own tiles drop me from the cluster. I know I play my games, and the row is
-// there to say who else showed up.
+// My own tiles drop me from the cluster
 function othersIn(appId: number): string[] {
   return playersIn(appId).filter(id => id !== userId.value)
 }
@@ -139,8 +125,6 @@ function friendsIn(appId: number): number {
   return playersIn(appId).filter(id => id !== userId.value && mutualFriendIds.value.includes(id)).length
 }
 
-// Friends first, then live players, then headcount, so the top of the list is
-// where the people I know actually are rather than where anyone was.
 const rankedCommunity = computed<CommunityGame[]>(() =>
   [...recentlyPlayedByAppId.value.entries()]
     .flatMap(([appId, entry]) => {
@@ -161,35 +145,29 @@ const rankedCommunity = computed<CommunityGame[]>(() =>
     }),
 )
 
-// My own games already have a card of their own at the top of the card, so the
-// sections below them drop those apps rather than printing the same title
-// twice. The full ranked list still lives behind the sheet, where a view-all
-// that hides rows would be the wrong call.
+// My own games already have tiles, so the rows below drop them. The sheet keeps
+// the full list.
 const communityPool = computed(() => {
   const mine = new Set(myTrackedApps.value.map(entry => entry.app.app_id))
 
   return rankedCommunity.value.filter(entry => !mine.has(entry.appId))
 })
 
-// The slice grows to cover every game a friend is in, since dropping a friend
-// off the bottom is the one thing this list shouldn't do.
+// Grows to cover every game a friend is in, so no friend drops off the bottom
 const communityRecent = computed(() => {
   const withFriends = communityPool.value.filter(entry => entry.friends > 0).length
 
   return communityPool.value.slice(0, Math.max(SHOWN_COMMUNITY, withFriends))
 })
 
-// Rotates the discovery pick so the slot isn't the same game every time the
-// dashboard loads. Seeded once on mount rather than read inline, so a presence
-// refetch elsewhere can't swap the game out from under the cursor.
+// Seeded once on mount, so a presence refetch can't swap the pick out from under the cursor
 const discoverSeed = ref(0)
 
 onMounted(() => {
   discoverSeed.value = Math.floor(Math.random() * 1000)
 })
 
-// Genres I've been in lately, read off every tracked game on my recent list
-// rather than just the two tiles, so the pick leans toward what I actually play.
+// Every tracked recent game, not just the two tiles
 const myRecentGenres = computed(() => {
   const tags = new Set<string>()
 
@@ -201,11 +179,8 @@ const myRecentGenres = computed(() => {
   return tags
 })
 
-// One game from the whole catalog that isn't already on the card: not on my
-// recent list, not in the community rows above. Candidates rank by how many
-// genre tags they share with my recent games and the rotation runs inside the
-// top bucket, so the slot still changes between loads. With no overlap anywhere
-// (untagged games, or a fresh account) the bucket is the whole pool.
+// A catalog game not already on the card. Candidates rank by genre overlap with
+// my recent games, and the seed rotates within the top bucket.
 const discoverGame = computed<Tables<'games'> | null>(() => {
   const onCard = new Set<number>()
 
@@ -233,9 +208,6 @@ const discoverGame = computed<Tables<'games'> | null>(() => {
   return bucket[discoverSeed.value % bucket.length] ?? null
 })
 
-// The discover row comes from the games table, so its community stats are a
-// lookup by Steam app rather than fields on the entry. Nothing there means the
-// row stands on its name and icon alone.
 const discoverActivity = computed<RecentlyPlayedGame | undefined>(() =>
   discoverGame.value?.steam_id != null
     ? recentlyPlayedByAppId.value.get(discoverGame.value.steam_id)
@@ -246,9 +218,7 @@ const discoverPlayers = computed(() =>
   discoverGame.value?.steam_id != null ? playersIn(discoverGame.value.steam_id) : [],
 )
 
-// Right-hand line per row, same shape as the gameservers card. A row with
-// people in it right now says so with their avatars, so the count line would
-// only repeat them and drops out.
+// Rows with live players show avatars instead, so the count would only repeat them
 function activityLabel(entry: RecentlyPlayedGame): string | undefined {
   if (entry.playing > 0)
     return undefined
