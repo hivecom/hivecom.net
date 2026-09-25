@@ -2,6 +2,7 @@
 import type { ReferendumFormState, ReferendumFormValidation } from '@/lib/referendums'
 import { Badge, Button, Calendar, Checkbox, Flex, Grid, Input, Textarea, Tooltip } from '@dolanske/vui'
 import { computed, ref } from 'vue'
+import { useFieldUpdate } from '@/composables/useFieldUpdate'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { displayDateTime } from '@/lib/utils/date'
 
@@ -22,9 +23,7 @@ const emit = defineEmits<{
 
 const isMobile = useBreakpoint('<s')
 
-function update<K extends keyof ReferendumFormState>(key: K, value: ReferendumFormState[K]) {
-  emit('update:modelValue', { ...props.modelValue, [key]: value })
-}
+const update = useFieldUpdate(() => props.modelValue, value => emit('update:modelValue', value))
 
 // Calendar emits on every hour and minute scroll. Only propagate a real change,
 // otherwise the new modelValue object feeds back into Calendar and it emits again.

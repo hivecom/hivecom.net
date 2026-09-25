@@ -2,6 +2,7 @@
 import type { GameServerDetailsFormState } from '@/lib/gameservers'
 import { Button, Flex, Input, Textarea } from '@dolanske/vui'
 import { defineAsyncComponent, ref } from 'vue'
+import { useFieldUpdate } from '@/composables/useFieldUpdate'
 import { STATIC_BUCKET_ID } from '@/lib/storageAssets'
 
 const props = defineProps<{
@@ -16,9 +17,7 @@ const emit = defineEmits<{
 
 const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
-function update<K extends keyof GameServerDetailsFormState>(key: K, value: GameServerDetailsFormState[K]) {
-  emit('update:modelValue', { ...props.modelValue, [key]: value })
-}
+const update = useFieldUpdate(() => props.modelValue, value => emit('update:modelValue', value))
 
 // Addresses
 

@@ -5,6 +5,7 @@ import { defineAsyncComponent, ref, watch } from 'vue'
 import FileUpload from '@/components/Shared/FileUpload.vue'
 import ProfileSelect from '@/components/Shared/ProfileSelect.vue'
 import TagInput from '@/components/Shared/TagInput.vue'
+import { useFieldUpdate } from '@/composables/useFieldUpdate'
 import { deleteProjectBanner, getProjectBannerUrl, uploadProjectBanner } from '@/lib/storage'
 import { STATIC_BUCKET_ID } from '@/lib/storageAssets'
 
@@ -24,9 +25,7 @@ const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/Ri
 const supabase = useSupabaseClient()
 const userId = useUserId()
 
-function update<K extends keyof ProjectFormState>(key: K, value: ProjectFormState[K]) {
-  emit('update:modelValue', { ...props.modelValue, [key]: value })
-}
+const update = useFieldUpdate(() => props.modelValue, value => emit('update:modelValue', value))
 
 // Banner
 // Uploads write straight to storage and broadcast on the banner bus, so any

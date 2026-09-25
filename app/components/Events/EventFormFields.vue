@@ -6,6 +6,7 @@ import RichTextEditor from '@/components/Editor/RichTextEditor.vue'
 import RecurrenceBuilder from '@/components/Events/RecurrenceBuilder.vue'
 import GameSelect from '@/components/Shared/GameSelect.vue'
 import { useDataGames } from '@/composables/useDataGames'
+import { useFieldUpdate } from '@/composables/useFieldUpdate'
 import { useBreakpoint } from '@/lib/mediaQuery'
 import { displayDateTime, fullDateTimeWeekday } from '@/lib/utils/date'
 import { expandRecurringEvent, isOccurrenceExcluded } from '@/lib/utils/rrule'
@@ -69,9 +70,7 @@ const { games } = useDataGames()
 
 // ── Field helpers ──────────────────────────────────────────────────────────────
 
-function update<K extends keyof FormState>(key: K, value: FormState[K]) {
-  emit('update:modelValue', { ...props.modelValue, [key]: value })
-}
+const update = useFieldUpdate(() => props.modelValue, value => emit('update:modelValue', value))
 
 // ── Local date ref ─────────────────────────────────────────────────────────────
 // Calendar emits on every intermediate interaction, and binding it straight to
@@ -95,7 +94,7 @@ function onDateUpdate(val: Date | null) {
   const inMs = val?.getTime() ?? null
   const currentMs = props.modelValue.date?.getTime() ?? null
   if (inMs !== currentMs)
-    emit('update:modelValue', { ...props.modelValue, date: val })
+    update('date', val)
 }
 
 // ── Upcoming occurrences ─────────────────────────────────────────────────────

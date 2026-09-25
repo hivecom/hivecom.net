@@ -782,28 +782,28 @@ async function processPendingFile(originalFile: File, uploadId: string, currentB
   if (file === originalFile)
     return
 
-  // The placeholder may have been deleted while converting
+  // The placeholder may have been deleted while converting. Match on src too:
+  // a re-parsed node (drag, paste, content round trip) keeps its blob src but
+  // loses the uploadId, and missing it here forgets a file the doc still shows.
   const newBlobUrl = URL.createObjectURL(file)
   let swapped = false
-  if (editor.value) {
-    editor.value.state.doc.descendants((node, nodePos) => {
-      if (swapped)
-        return false
+  editor.value
+    ?.chain()
+    .command(({ tr }) => {
+      tr.doc.descendants((node, nodePos) => {
+        if (!MEDIA_NODE_TYPES.has(node.type.name))
+          return
 
-      const isMedia = MEDIA_NODE_TYPES.has(node.type.name)
-      if (isMedia && node.attrs.uploadId === uploadId) {
-        editor.value!
-          .chain()
-          .command(({ tr }) => {
-            tr.setNodeAttribute(nodePos, 'src', newBlobUrl)
-            return true
-          })
-          .run()
+        if (node.attrs.uploadId !== uploadId && node.attrs.src !== currentBlobUrl)
+          return
+
+        tr.setNodeAttribute(nodePos, 'src', newBlobUrl)
+        tr.setNodeAttribute(nodePos, 'uploadId', uploadId)
         swapped = true
-        return false
-      }
+      })
+      return true
     })
-  }
+    .run()
 
   if (swapped) {
     pendingBlobs.set(uploadId, { file, blobUrl: newBlobUrl })
@@ -920,6 +920,11 @@ const UPLOAD_RETRY_BACKOFF_MS = 1_000
 async function flushPendingUploads(): Promise<boolean> {
   if (pendingConversions.size > 0)
     await Promise.allSettled([...pendingConversions])
+
+  // Blob media this instance lost track of would skip the upload and save as a
+  // dead link. Relink it first, and stop the submit if any had to be removed.
+  if (!await adoptOrphanMedia())
+    return false
 
   if (pendingBlobs.size === 0)
     return true
@@ -1131,10 +1136,11 @@ async function resolveOrphanMedia(src: string): Promise<AdoptedMedia | null> {
 
 // Content from outside the editor (a restored draft, the fullscreen editor, a
 // plain-text round trip) can carry blob: media this instance never registered.
-// Link each back to its file so it uploads on submit. Media whose file is gone gets removed.
-async function adoptOrphanMedia() {
+// Link each back to its file so it uploads on submit. Media whose file is gone
+// gets removed, and the result is false when anything was.
+async function adoptOrphanMedia(): Promise<boolean> {
   if (!editor.value || !props.mediaContext)
-    return
+    return true
 
   const blobSrcs = new Set<string>()
   const orphans = new Set<string>()
@@ -1163,7 +1169,7 @@ async function adoptOrphanMedia() {
 
   if (orphans.size === 0) {
     uploadProgress.value = new Map(uploadProgress.value)
-    return
+    return true
   }
 
   const resolved = new Map(await Promise.all([...orphans].map(async src => [src, await resolveOrphanMedia(src)] as const)))
@@ -1232,6 +1238,8 @@ async function adoptOrphanMedia() {
       description: 'An attachment in your draft couldn\'t be restored and was removed.',
     })
   }
+
+  return !dropped
 }
 
 const fileInput = useTemplateRef('file-input')
@@ -1522,11 +1530,10 @@ async function handleSubmit() {
   isSubmitting.value = true
 
   try {
-    if (pendingBlobs.size > 0) {
-      const ok = await flushPendingUploads()
-      if (!ok)
-        return
-    }
+    // Always flush: untracked blob media leaves pendingBlobs empty
+    const ok = await flushPendingUploads()
+    if (!ok)
+      return
 
     if (editorMode.value === 'plain') {
       // The textarea binds the decoded text, so re-encode before submit

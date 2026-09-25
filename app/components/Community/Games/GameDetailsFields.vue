@@ -4,6 +4,7 @@ import { Flex, Input } from '@dolanske/vui'
 import { defineAsyncComponent } from 'vue'
 import ColorPicker from '@/components/Shared/ColorPicker.vue'
 import TagInput from '@/components/Shared/TagInput.vue'
+import { useFieldUpdate } from '@/composables/useFieldUpdate'
 import { GAME_DESCRIPTION_MAX } from '@/lib/games/details'
 
 const props = defineProps<{
@@ -17,9 +18,7 @@ const emit = defineEmits<{
 
 const RichTextEditor = defineAsyncComponent(() => import('@/components/Editor/RichTextEditor.vue'))
 
-function update<K extends keyof GameDetailsFormState>(key: K, value: GameDetailsFormState[K]) {
-  emit('update:modelValue', { ...props.modelValue, [key]: value })
-}
+const update = useFieldUpdate(() => props.modelValue, value => emit('update:modelValue', value))
 </script>
 
 <template>
