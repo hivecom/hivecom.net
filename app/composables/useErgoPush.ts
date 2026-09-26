@@ -66,6 +66,39 @@ async function ergoRegistration(): Promise<ServiceWorkerRegistration | null> {
   }
 }
 
+const PREVIEW_TTL_MS = 2 * 60 * 1000
+
+/**
+ * The raw IRC line of the push notification that was just tapped, if its msgid
+ * matches. Consumed on read. Only the worker writes this stash, which is why a
+ * msgid from the URL is safe to look up but never enough on its own.
+ */
+export async function takePushPreview(msgid: string): Promise<string | null> {
+  if (!import.meta.client || typeof caches === 'undefined')
+    return null
+
+  try {
+    const cache = await caches.open('ergo-push-meta')
+    const hit = await cache.match('/ergo-push/preview')
+    if (!hit)
+      return null
+
+    await cache.delete('/ergo-push/preview')
+    const { line, at } = await hit.json() as { line?: unknown, at?: unknown }
+
+    if (typeof line !== 'string' || typeof at !== 'number' || Date.now() - at > PREVIEW_TTL_MS)
+      return null
+
+    // Match on the msgid tag itself so a stale stash from another ping can't stand in.
+    return line.startsWith('@') && line.slice(1, line.indexOf(' ')).split(';').includes(`msgid=${msgid}`)
+      ? line
+      : null
+  }
+  catch {
+    return null
+  }
+}
+
 export function useErgoPush() {
   // Access via the object rather than destructuring: the huge useIrcChat()
   // return widens destructured refs to `any`, but property access stays typed.

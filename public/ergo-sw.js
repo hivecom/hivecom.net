@@ -77,7 +77,7 @@ function casefold(name) {
   return name.toLowerCase()
 }
 
-function buildNotification({ tags, nick, command, params }) {
+function buildNotification(line, { tags, nick, command, params }) {
   // Only PRIVMSG/NOTICE carry a target + body worth surfacing.
   if (command !== 'PRIVMSG' && command !== 'NOTICE')
     return null
@@ -104,6 +104,12 @@ function buildNotification({ tags, nick, command, params }) {
     href = `/chat?dm=${encodeURIComponent(nick)}&notify=1`
   }
 
+  // `msgid` pairs the link with the line stashed on click (stashPreview), so the
+  // page can show this message before history loads.
+  const previewable = command === 'PRIVMSG' && !!tags.msgid
+  if (previewable)
+    href += `&msgid=${encodeURIComponent(tags.msgid)}`
+
   const ts = Date.parse(tags.time ?? '')
 
   return {
@@ -121,6 +127,7 @@ function buildNotification({ tags, nick, command, params }) {
         href,
         conversation: casefold(isChannel ? target : nick),
         ts: Number.isFinite(ts) ? ts : null,
+        line: previewable ? line : null,
       },
     },
   }
@@ -155,13 +162,28 @@ async function clearRead(params) {
 // its later keepalive PINGs are byte-identical, so this flag is the only way to
 // tell them apart. Consumed on first read. The TTL covers Ergo skipping the test
 // push for an endpoint it already knew.
-const WELCOME_CACHE = 'ergo-push-meta'
+const META_CACHE = 'ergo-push-meta'
 const WELCOME_KEY = '/ergo-push/welcome-pending'
 const WELCOME_TTL_MS = 2 * 60 * 1000
 
+// The raw line of the last tapped ping, read once by the chat page. It lives
+// here because only this worker can write it: the page trusts the stash, never
+// the URL, so a crafted `/chat?msgid=` link can't put words in anyone's mouth.
+const PREVIEW_KEY = '/ergo-push/preview'
+
+async function stashPreview(line) {
+  try {
+    const cache = await caches.open(META_CACHE)
+    await cache.put(PREVIEW_KEY, new Response(JSON.stringify({ line, at: Date.now() })))
+  }
+  catch {
+    // No stash just means the page waits for history like before.
+  }
+}
+
 async function consumeWelcomePending() {
   try {
-    const cache = await caches.open(WELCOME_CACHE)
+    const cache = await caches.open(META_CACHE)
     const hit = await cache.match(WELCOME_KEY)
     if (!hit)
       return false
@@ -218,7 +240,7 @@ globalThis.addEventListener('push', (event) => {
 
   let notification
   try {
-    notification = parsed ? buildNotification(parsed) : null
+    notification = parsed ? buildNotification(line, parsed) : null
   }
   catch {
     notification = null
@@ -275,8 +297,13 @@ globalThis.addEventListener('notificationclick', (event) => {
   event.notification.close()
 
   const href = (event.notification.data && event.notification.data.href) || '/chat?notify=1'
+  const line = event.notification.data && event.notification.data.line
 
   event.waitUntil((async () => {
+    // Stash before routing so the page never looks before it's there.
+    if (line)
+      await stashPreview(line)
+
     const clientList = await globalThis.clients.matchAll({ type: 'window', includeUncontrolled: true })
 
     for (const client of clientList) {

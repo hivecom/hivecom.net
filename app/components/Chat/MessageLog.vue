@@ -4,6 +4,7 @@ import type { ChatMessage } from '@/composables/useIrcChat'
 import type { Segment } from '@/lib/ircFormat'
 import { Badge, Button, ContextMenu, Divider, DropdownItem, Flex, pushToast, Sheet, Skeleton, Spinner } from '@dolanske/vui'
 import dayjs from 'dayjs'
+import ChatHistoryLoading from '@/components/Chat/HistoryLoading.vue'
 import IrcWhoisModal from '@/components/Chat/IrcWhoisModal.vue'
 import ChatMessageReactions from '@/components/Chat/MessageReactions.vue'
 import RelaySourceIcon from '@/components/Chat/RelaySourceIcon.vue'
@@ -220,6 +221,10 @@ const isLoadingInitialHistory = computed(() =>
   && activeBuffer.value.messages.length === 0,
 )
 
+// A buffer that's already showing messages gets the loader line at its tail
+// instead, where LATEST lands.
+const isLoadingLatest = computed(() => !!activeBuffer.value?.loadingLatest && !isLoadingInitialHistory.value)
+
 // --- Modern mode -------------------------------------------------------
 interface MessageGroup {
   id: number
@@ -258,10 +263,11 @@ const groupedMessages = computed((): MessageGroup[] => {
       continue
     }
 
-    // Consecutive messages from the same nick share one header.
+    // Consecutive messages from the same nick share one header. A push preview
+    // starts its own, since the loader line above it would split a group.
     const last = groups[groups.length - 1]
 
-    if (last && !last.isSystem && !last.isAction && last.from === msg.from) {
+    if (last && !last.isSystem && !last.isAction && last.from === msg.from && !msg.preview) {
       last.messages.push(msg)
     }
     else {
@@ -1345,9 +1351,7 @@ onBeforeUnmount(() => {
         :style="!isModernMode ? { '--irc-nick-col': `${nickColWidth}px` } : {}"
       >
         <div ref="topSentinel" class="chat-log__history-sentinel" />
-        <Flex v-if="activeBuffer?.loadingOlderHistory" x-center class="chat-log__history-loading">
-          <Spinner size="s" />
-        </Flex>
+        <ChatHistoryLoading v-if="activeBuffer?.loadingOlderHistory" />
         <div v-else-if="activeBuffer?.historyExhausted" class="chat-log__history-start">
           Beginning of history
         </div>
@@ -1356,6 +1360,8 @@ onBeforeUnmount(() => {
             <div v-if="msg.id === readLineFirstMsgId" class="chat-log__new-divider" role="button" tabindex="0" aria-label="Mark as read" title="Mark as read" @click="markRead" @keydown.enter.prevent="markRead" @keydown.space.prevent="markRead">
               <span>new messages</span>
             </div>
+            <!-- Whatever LATEST brings from before a push preview lands above it. -->
+            <ChatHistoryLoading v-if="msg.preview && isLoadingLatest" />
             <div
               class="chat-log__msg chat-log__msg--irc"
               :class="[isServiceNick(msg.from) ? undefined : msgClass(msg), {
@@ -1565,6 +1571,7 @@ onBeforeUnmount(() => {
             <div v-if="group.id === readLineFirstGroupId" class="chat-log__new-divider" role="button" tabindex="0" aria-label="Mark as read" title="Mark as read" @click="markRead" @keydown.enter.prevent="markRead" @keydown.space.prevent="markRead">
               <span>new messages</span>
             </div>
+            <ChatHistoryLoading v-if="group.messages[0].preview && isLoadingLatest" />
             <!-- HistServ chat announcement dividers (one per message in the group) -->
             <template v-if="!group.isSystem && group.from === 'HistServ'">
               <div
@@ -1843,6 +1850,8 @@ onBeforeUnmount(() => {
             </div>
           </template>
         </template>
+        <ChatHistoryLoading v-if="isLoadingLatest" />
+
         <Flex v-if="messages.length === 0 && !isLoadingInitialHistory" y-center x-center class="chat-log__empty" expand>
           No messages yet.
         </Flex>
@@ -2207,12 +2216,6 @@ onBeforeUnmount(() => {
   &__history-sentinel {
     height: 1px;
     flex-shrink: 0;
-  }
-
-  &__history-loading {
-    padding: var(--space-xs) 0;
-    flex-shrink: 0;
-    color: var(--color-text-lighter);
   }
 
   &__history-start {

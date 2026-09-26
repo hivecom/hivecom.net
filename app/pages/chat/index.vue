@@ -4,11 +4,12 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import ChatChannelBrowserModal from '@/components/Chat/ChannelBrowserModal.vue'
 import ChatApp from '@/components/Chat/ChatApp.vue'
 import ChatNavSheet from '@/components/Layout/ChatNavSheet.vue'
+import { takePushPreview } from '@/composables/useErgoPush'
 import { useIrcChat } from '@/composables/useIrcChat'
 import { useBreakpoint } from '@/lib/mediaQuery'
 
 const isMobile = useBreakpoint('<s')
-const { setChatVisible, channelBrowserOpen, joinChannel, setActive, seedChannel, openPm, isConnected, connState, connect } = useIrcChat()
+const { setChatVisible, channelBrowserOpen, joinChannel, setActive, seedChannel, openPm, showPushPreview, isConnected, connState, connect } = useIrcChat()
 
 const route = useRoute()
 const router = useRouter()
@@ -22,6 +23,9 @@ onUnmounted(() => setChatVisible(false))
 const pendingChannel = ref<string | null>(null)
 const pendingDm = ref<string | null>(null)
 
+// The raw line of a tapped push notification, shown once its buffer is open.
+const pendingPreview = ref<string | null>(null)
+
 function applyPending() {
   if (!isConnected.value)
     return
@@ -34,6 +38,12 @@ function applyPending() {
   if (pendingDm.value) {
     openPm(pendingDm.value)
     pendingDm.value = null
+  }
+
+  // After the channel/DM above, so the preview has a buffer to land in.
+  if (pendingPreview.value) {
+    showPushPreview(pendingPreview.value)
+    pendingPreview.value = null
   }
 }
 
@@ -64,10 +74,20 @@ function consumeQueryParams() {
 
   maybeConnectFromNotification(route.query.notify)
 
+  // The stash read is async, so it re-runs applyPending in case the connection
+  // came up first.
+  const msgidParam = route.query.msgid
+  if (typeof msgidParam === 'string' && msgidParam) {
+    void takePushPreview(msgidParam).then((line) => {
+      pendingPreview.value = line
+      applyPending()
+    })
+  }
+
   // Strip the consumed params so the URL stays clean and a refresh/back doesn't
   // re-trigger a connect; the pending target survives in component state.
-  if (route.query.channel != null || route.query.dm != null || route.query.notify != null) {
-    const { channel: _channel, dm: _dm, notify: _notify, ...rest } = route.query
+  if (route.query.channel != null || route.query.dm != null || route.query.notify != null || route.query.msgid != null) {
+    const { channel: _channel, dm: _dm, notify: _notify, msgid: _msgid, ...rest } = route.query
     void router.replace({ query: rest })
   }
 
@@ -75,7 +95,7 @@ function consumeQueryParams() {
 }
 
 onMounted(consumeQueryParams)
-watch(() => [route.query.channel, route.query.dm, route.query.notify], consumeQueryParams)
+watch(() => [route.query.channel, route.query.dm, route.query.notify, route.query.msgid], consumeQueryParams)
 
 // Apply once the connection comes up (cold open mounts before connect).
 watch(isConnected, (connected) => {

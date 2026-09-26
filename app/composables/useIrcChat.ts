@@ -194,6 +194,12 @@ export interface ChatMessage {
    * the message most likely never made it to the server.
    */
   failed?: boolean
+
+  /**
+   * Local-only: shown from a tapped push notification before history loaded.
+   * History swaps in the server's copy, and the first LATEST drops any it didn't.
+   */
+  preview?: boolean
 }
 
 export type BufferKind = 'server' | 'channel' | 'pm'
@@ -222,6 +228,9 @@ export interface ChatBuffer {
 
   /** True while a CHATHISTORY BEFORE request is in-flight for this buffer. */
   loadingOlderHistory?: boolean
+
+  /** True from queueing a CHATHISTORY LATEST until its batch closes (or the request fails). */
+  loadingLatest?: boolean
 
   /** Number of consecutive auto-fetch retries after sparse batches. Capped to prevent runaway loops. */
   autoFetchRetries?: number
@@ -949,6 +958,7 @@ function resetBuffers() {
       historyReady: undefined,
       historyExhausted: undefined,
       loadingOlderHistory: undefined,
+      loadingLatest: undefined,
       autoFetchRetries: undefined,
       historyAnchorMsgid: undefined,
       historyAnchorTs: undefined,
@@ -1053,6 +1063,10 @@ function addToBuffer(
     backlog: opts.backlog,
   }
 
+  const previewIdx = !opts.prepend && newMsg.msgid != null
+    ? buf.messages.findIndex(m => m.preview && m.msgid === newMsg.msgid)
+    : -1
+
   if (opts.prepend) {
     // BEFORE batches stage here and splice in once at BATCH end, so the page is
     // one DOM update instead of one per line.
@@ -1072,6 +1086,12 @@ function addToBuffer(
 
       buf.messages.unshift(newMsg)
     }
+  }
+  else if (previewIdx !== -1) {
+    // The server's copy of a push preview. Keep the row id so it swaps in place.
+    newMsg.id = buf.messages[previewIdx]!.id
+    buf.messages[previewIdx] = newMsg
+    scheduleMsgWrite(name, newMsg)
   }
   else {
     // Catches cache-hydrated lines overlapping a LATEST replay, and msgid-less
@@ -1202,6 +1222,60 @@ function addToActive(msg: Omit<ChatMessage, 'id' | 'ts'>, opts: { ts?: Date } = 
     addToBuffer(name, buf.kind, msg, opts)
   else
     addServer(msg, opts)
+}
+
+/**
+ * Show the line a tapped push notification was about, before LATEST replays it.
+ * Only while that LATEST is still pending, since it's what confirms or drops the
+ * preview. No cache write, badge, or DM cursor bump until the server's copy lands.
+ */
+function showPushPreview(line: string): void {
+  if (!chatHistorySupported.value)
+    return
+
+  const { tags, command, params, nickFrom } = parseIrc(line)
+  const target = params[0] ?? ''
+  const text = params[1] ?? ''
+  const msgid = tags.msgid
+  const ts = new Date(tags.time ?? '')
+
+  if (command !== 'PRIVMSG' || !msgid || !target || !nickFrom || Number.isNaN(ts.getTime()))
+    return
+
+  // The page opened this buffer already. Creating one here would race the cache
+  // hydration, which skips buffers that exist.
+  const isChannel = target.startsWith('#') || target.startsWith('&')
+  const buf = findBuffer(isChannel ? target : nickFrom)
+
+  if (!buf || buf.historyReady || buf.tailTrimmed || buf.messages.some(m => m.msgid === msgid))
+    return
+
+  // Same placement rule as addToBuffer: by server-time, and never older than the
+  // loaded window.
+  const tMs = ts.getTime()
+  let idx = buf.messages.length
+
+  while (idx > 0 && buf.messages[idx - 1]!.ts.getTime() > tMs)
+    idx--
+
+  if (idx === 0 && buf.messages.length > 0)
+    return
+
+  const isAction = text.startsWith('\x01ACTION ') && text.endsWith('\x01')
+
+  buf.messages.splice(idx, 0, {
+    id: msgCounter.value++,
+    ts,
+    type: 'chat',
+    from: nickFrom,
+    channel: target,
+    text: isAction ? text.slice(8, -1) : text,
+    msgid,
+    replyTo: tags['+reply'],
+    relayedBy: tags['draft/relaymsg'],
+    ...(isAction && { action: true }),
+    preview: true,
+  })
 }
 
 /**
@@ -2384,7 +2458,7 @@ function dispatchHistoryRequest(req: QueuedHistory) {
   if (existing !== undefined)
     clearTimeout(existing)
   req.onSend?.()
-  historyInFlight.set(key, setTimeout(releaseHistorySlot, HISTORY_SLOT_TIMEOUT_MS, req.target))
+  historyInFlight.set(key, setTimeout(abandonHistoryRequest, HISTORY_SLOT_TIMEOUT_MS, req.target))
   send(req.line)
 }
 
@@ -2430,6 +2504,18 @@ function releaseHistorySlot(target: string) {
   drainHistoryQueue()
 }
 
+/** No batch is coming for this target's request (FAIL or timeout), so its loaders stop too. */
+function abandonHistoryRequest(target: string) {
+  const buf = findBuffer(target)
+
+  if (buf) {
+    buf.loadingLatest = false
+    buf.loadingOlderHistory = false
+  }
+
+  releaseHistorySlot(target)
+}
+
 /**
  * Send any queued history for `target` right now. Called when the user switches
  * buffers mid-restore: waiting for a slot would mean staring at an empty channel
@@ -2459,7 +2545,8 @@ function resetHistoryQueue() {
  * via BEFORE pagination. A live (non-backlog) tail means we never went offline.
  */
 function markPendingBridge(buf: ChatBuffer) {
-  const last = buf.messages[buf.messages.length - 1]
+  // A push preview sits past the cached tail, so it must not pass for the tail.
+  const last = buf.messages.findLast(m => !m.preview)
   if (last?.backlog)
     buf.pendingBridgeFromTs = last.ts.getTime()
 }
@@ -2467,6 +2554,10 @@ function markPendingBridge(buf: ChatBuffer) {
 function requestHistory(target: string, since?: number) {
   if (!chatHistorySupported.value)
     return
+
+  const buf = findBuffer(target)
+  if (buf)
+    buf.loadingLatest = true
 
   if (since != null && since > 0) {
     queueHistoryRequest({
@@ -3146,6 +3237,8 @@ function handleMessage(raw: string) {
 
           if (batchBuf) {
             batchBuf.loadingOlderHistory = false
+            if (!info.isPrepend)
+              batchBuf.loadingLatest = false
 
             // Mark ready after the first batch (LATEST) completes so lazy-load
             // won't fire before initial history has settled.
@@ -3192,6 +3285,12 @@ function handleMessage(raw: string) {
                 batchBuf.historyAnchorTs = new Date(oldest).toISOString()
               }
             }
+
+            // A push preview LATEST didn't confirm is out of the window (the seam
+            // above already cut it) or gone from the server. Either way it's not
+            // ours to keep, and scroll-back brings it in if it still exists.
+            if (!info.isPrepend && batchBuf.messages.some(m => m.preview))
+              batchBuf.messages = batchBuf.messages.filter(m => !m.preview)
 
             // One splice so the reactive array updates once. Staging keeps the
             // server's oldest-first order.
@@ -4076,7 +4175,7 @@ function handleMessage(raw: string) {
         // No batch will arrive for this request, so nothing else frees its
         // scheduler slot. The target sits in a middle param when Ergo names it;
         // releasing by every param is harmless since unknown ones no-op.
-        for (const p of params.slice(1)) releaseHistorySlot(p)
+        for (const p of params.slice(1)) abandonHistoryRequest(p)
       }
       else if (failCmd === 'WEBPUSH') {
         // draft/webpush failures (INVALID_PARAMS, INTERNAL_ERROR).
@@ -5561,6 +5660,7 @@ export function useIrcChat() {
     closeServerLog,
     chatSheetOpen,
     seedChannel,
+    showPushPreview,
     fetchOlderHistory,
     seekToPresent,
     fetchNewerFromCache,
