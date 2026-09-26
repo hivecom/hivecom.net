@@ -219,6 +219,18 @@ html.disable-zoom body {
   touch-action: pan-x pan-y;
 }
 
+// Set by the chat page on mobile. main's 100vh min-height is taller than the
+// visible viewport while the mobile address bar shows, which leaves the document
+// a few dozen pixels of scroll behind the fixed chat.
+html.chat-fullscreen,
+html.chat-fullscreen body {
+  overflow: hidden;
+}
+
+html.chat-fullscreen main {
+  min-height: 0;
+}
+
 // VUI's reset sets a font-size on every span, so nested spans in a size mark
 // would lose the mark's size
 [data-text-size] span {

@@ -2139,10 +2139,14 @@ onBeforeUnmount(() => {
 
     // Emoji buttons (direct children) and the picker trigger all grow equally
     // and wrap. min-width: 0 lets them shrink below the default button width.
+    // size="l" sets 16px of inline padding, which leaves a narrow button too
+    // little room for the emoji. It overflows the slot to the right and reads
+    // off-center, so drop the padding and let the slot center it.
     :deep(.vui-button) {
       flex: 1 1 44px;
       width: auto;
       min-width: 0;
+      padding-inline: 0;
     }
   }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 
 import ChatChannelBrowserModal from '@/components/Chat/ChannelBrowserModal.vue'
 import ChatApp from '@/components/Chat/ChatApp.vue'
@@ -16,6 +16,15 @@ const router = useRouter()
 
 onMounted(() => setChatVisible(true))
 onUnmounted(() => setChatVisible(false))
+
+// Mobile chat is a fixed full-screen app, so the document behind it must not
+// scroll. A stray document scroll swallows touches on the header and composer.
+if (import.meta.client) {
+  watchEffect(() => {
+    document.documentElement.classList.toggle('chat-fullscreen', isMobile.value)
+  })
+  onUnmounted(() => document.documentElement.classList.remove('chat-fullscreen'))
+}
 
 // ?channel=staff or ?channel=dev/frontend joins and focuses the channel, ?dm=<nick>
 // opens that DM. Both wait for the connection, since a cold open mounts this page
