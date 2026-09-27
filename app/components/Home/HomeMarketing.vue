@@ -12,7 +12,6 @@ import FocusFrame from '@/components/Shared/FocusFrame.vue'
 import FocusTarget from '@/components/Shared/FocusTarget.vue'
 import GlowCard from '@/components/Shared/GlowCard.vue'
 import GlowGroup from '@/components/Shared/GlowGroup.vue'
-import { nextOccurrenceDate } from '@/lib/utils/rrule'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -69,26 +68,16 @@ onBeforeMount(() => {
       }
     })
 
-  // Future-dated events plus every recurring series, since a series that started
-  // in the past can still have upcoming occurrences.
+  // Get the 3 most upcoming events
   supabase.from('events')
     .select('*')
     .eq('is_official', true)
-    .or(`date.gte.${new Date().toISOString()},recurrence_rule.not.is.null`)
+    .order('date', { ascending: false })
+    .limit(3)
     .then(({ data }) => {
-      if (!data)
-        return
-
-      // Same rule as the events page: a series counts down to its next occurrence.
-      const now = new Date()
-      events.value = data
-        .map((event) => {
-          const next = event.recurrence_rule ? nextOccurrenceDate(event, now) : new Date(event.date)
-          return next != null && next > now ? { ...event, date: next.toISOString() } : null
-        })
-        .filter(event => event != null)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .slice(0, 3)
+      if (data) {
+        events.value = data
+      }
     })
 })
 
