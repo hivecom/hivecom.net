@@ -228,8 +228,11 @@ const MOBILE_HEIGHT = 339
 // lags a frame behind the page and jitters, worst on touch.
 
 // The diamonds meet the stars once the SVG's bottom edge reaches this fraction
-// of the viewport. At the bottom edge the stars would barely be on screen.
-const SETTLE_AT = 0.65
+// of the viewport. On desktop the bottom edge would leave the stars barely on
+// screen. The mobile block is three times as tall, so it settles as soon as the
+// whole constellation is in view instead of waiting until it's up under the header.
+const DESKTOP_SETTLE_AT = 0.65
+const MOBILE_SETTLE_AT = 0.95
 // Half the dot, so the sticky edge lands the star's centre on the diamond.
 const STAR_RADIUS = 1.25
 // How long a star takes to glide into its diamond on hover.
@@ -239,7 +242,9 @@ const STAR_FLICKER = [[0, 2400], [1300, 3100], [2600, 2700], [700, 3500], [2000,
 
 // Distance from the viewport bottom the stars hold at, before each one's own
 // offset within the block. dvh so it follows the browser chrome on phones.
-const HOLD_FROM_BOTTOM = `${(100 - SETTLE_AT * 100).toFixed(2)}dvh`
+function holdFromBottom(settleAt: number): string {
+  return `${(100 - settleAt * 100).toFixed(2)}dvh`
+}
 
 const constellationEl = ref<HTMLElement | null>(null)
 
@@ -315,13 +320,13 @@ function slotStyle(star: number[]): CSSProperties {
   }
 }
 
-function starStyle(star: number[], index: number, height: number): CSSProperties {
+function starStyle(star: number[], index: number, height: number, settleAt: number): CSSProperties {
   const [, y = 0] = star
   const [delay = 0, duration = 2000] = STAR_FLICKER[index] ?? []
 
   return {
     // Sticky edge, measured so every star lands the moment the block settles.
-    '--star-hold': `calc(${HOLD_FROM_BOTTOM} + ${(height - y - STAR_RADIUS).toFixed(3)}px)`,
+    '--star-hold': `calc(${holdFromBottom(settleAt)} + ${(height - y - STAR_RADIUS).toFixed(3)}px)`,
     '--star-glide': glidingStar.value === index ? `${glideOffset.value}px` : '0px',
     '--star-animation-offset': `${delay}ms`,
     '--star-animation-duration': `${duration}ms`,
@@ -606,7 +611,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
             <div v-for="(star, index) in DESKTOP_STARS" :key="index" class="constellation-star-slot" :style="slotStyle(star)">
               <div
                 class="constellation-star" :data-star="index" :class="{ 'is-aligned': alignedStar === index,
-                                                                        'is-gliding': glideEasing && glidingStar === index }" :style="starStyle(star, index, DESKTOP_HEIGHT)"
+                                                                        'is-gliding': glideEasing && glidingStar === index }" :style="starStyle(star, index, DESKTOP_HEIGHT, DESKTOP_SETTLE_AT)"
               />
             </div>
           </div>
@@ -614,7 +619,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
             <div v-for="(star, index) in MOBILE_STARS" :key="index" class="constellation-star-slot" :style="slotStyle(star)">
               <div
                 class="constellation-star" :data-star="index" :class="{ 'is-aligned': alignedStar === index,
-                                                                        'is-gliding': glideEasing && glidingStar === index }" :style="starStyle(star, index, MOBILE_HEIGHT)"
+                                                                        'is-gliding': glideEasing && glidingStar === index }" :style="starStyle(star, index, MOBILE_HEIGHT, MOBILE_SETTLE_AT)"
               />
             </div>
           </div>
@@ -846,7 +851,7 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
     }
 
     @media screen and (max-width: $breakpoint-m) {
-      padding-bottom: 128px;
+      padding-bottom: 48px;
       margin-top: 96px;
 
       .desktop-constellation,
