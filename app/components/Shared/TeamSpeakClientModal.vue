@@ -104,9 +104,9 @@ watch(avatarUrl, (url) => {
   image.src = url
 }, { immediate: true })
 
-const showAvatarSlot = computed(() => {
+const avatarLoading = computed(() => {
   if (avatarUrl.value)
-    return !avatarFailed.value
+    return !avatarReady.value && !avatarFailed.value
 
   return props.refreshing
 })
@@ -130,16 +130,19 @@ const showAvatarSlot = computed(() => {
 
     <Flex v-if="client" column gap="l">
       <Flex gap="m">
-        <template v-if="showAvatarSlot">
-          <Avatar
-            v-if="avatarUrl && avatarReady"
-            :size="AVATAR_SIZE"
-            :url="avatarUrl"
-            radius="m"
-            :alt="`${client.nickname} TeamSpeak avatar`"
-          />
-          <Skeleton v-else class="ts-client__avatar-skeleton" :width="AVATAR_SIZE" :height="AVATAR_SIZE" :radius="8" />
-        </template>
+        <Avatar
+          v-if="avatarUrl && avatarReady"
+          :size="AVATAR_SIZE"
+          :url="avatarUrl"
+          radius="m"
+          :alt="`${client.nickname} TeamSpeak avatar`"
+        />
+        <Skeleton v-else-if="avatarLoading" class="ts-client__avatar-skeleton" :width="AVATAR_SIZE" :height="AVATAR_SIZE" :radius="8" />
+        <Avatar v-else :size="AVATAR_SIZE" radius="m">
+          <template #icon>
+            <Icon name="ph:user" :size="40" />
+          </template>
+        </Avatar>
 
         <Flex column gap="s" expand>
           <Flex v-if="userId" y-center gap="xs">
