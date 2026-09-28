@@ -56,6 +56,8 @@ Deno.serve(async (req) => {
     const snapshots = await collectSnapshots({
       servers: availableServers,
       credentials,
+      supabase,
+      previous: cached,
     });
 
     const payload = {

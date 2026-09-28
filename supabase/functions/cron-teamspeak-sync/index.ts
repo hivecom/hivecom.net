@@ -6,6 +6,7 @@ import {
   buildTeamSpeakCredentials,
   collectSnapshots,
   ensureTeamSpeakGroupAssignments,
+  fetchSnapshotFromStorage,
   getTeamSpeakServers,
   loadTeamSpeakProfileMap,
   loadTeamSpeakRoleMap,
@@ -45,6 +46,8 @@ Deno.serve(async (req) => {
     const snapshots = await collectSnapshots({
       servers: availableServers,
       credentials,
+      supabase,
+      previous: await fetchSnapshotFromStorage(supabase),
     });
 
     const profileMap = await loadTeamSpeakProfileMap(supabase);

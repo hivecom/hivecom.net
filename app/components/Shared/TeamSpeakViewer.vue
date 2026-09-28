@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TeamSpeakIdentityRecord, TeamSpeakNormalizedChannel, TeamSpeakServerSnapshot, TeamSpeakSnapshot } from '@/types/teamspeak'
+import type { TeamSpeakIdentityRecord, TeamSpeakNormalizedChannel, TeamSpeakNormalizedClient, TeamSpeakServerSnapshot, TeamSpeakSnapshot } from '@/types/teamspeak'
 import { Alert, Badge, Button, Card, Flex, Grid, PopoutHover, Select, Skeleton, Tooltip } from '@dolanske/vui'
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import constants from '~~/constants.json'
@@ -8,6 +8,7 @@ import ChartActivityHistogramModal from '@/components/Shared/Charts/ChartActivit
 import ChartTeamSpeakOnline from '@/components/Shared/Charts/ChartTeamSpeakOnline.vue'
 import ErrorAlert from '@/components/Shared/ErrorAlert.vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
+import TeamSpeakClientModal from '@/components/Shared/TeamSpeakClientModal.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
 import UserLink from '@/components/Shared/UserLink.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
@@ -136,7 +137,17 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
         maxClients: 32,
         totalClients: 2,
         totalChannels: 4,
+        defaultChannelGroupId: 8,
       },
+      serverGroups: [
+        { id: 6, name: 'Server Admin' },
+        { id: 7, name: 'Registered' },
+        { id: 14, name: 'Moderator' },
+      ],
+      channelGroups: [
+        { id: 5, name: 'Channel Admin' },
+        { id: 8, name: 'Guest' },
+      ],
       channels: [
         {
           id: '1',
@@ -168,6 +179,14 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
               channelModerated: false,
               channelMuted: false,
               country: 'DE',
+              channelGroupId: 5,
+              createdAt: 1_380_000_000,
+              connectedTimeMs: 1_105_000,
+              idleTimeMs: 61_000,
+              version: '3.6.2 [Build: 1695203293]',
+              platform: 'Windows',
+              description: 'infinite segfault',
+              totalConnections: 439,
             },
           ],
         },
@@ -781,6 +800,17 @@ const renderRowsByServer = computed(() => {
   return map
 })
 
+const lookupOpen = ref(false)
+const lookupTarget = shallowRef<{
+  client: TeamSpeakNormalizedClient
+  channelLabel: string
+} | null>(null)
+
+function openClientLookup(client: TeamSpeakNormalizedClient, channelLabel: string) {
+  lookupTarget.value = { client, channelLabel }
+  lookupOpen.value = true
+}
+
 function serverClientCountNoBots(server: TeamSpeakServerSnapshot): number {
   const channelMap = clientsByServerChannel.value[server.id]
   if (!channelMap)
@@ -1022,6 +1052,12 @@ function _openRawSnapshot() {
                   y-center
                   class="ts-viewer__client-bubble"
                   :class="{ 'full-mute': client.inputMuted && client.outputMuted }"
+                  role="button"
+                  tabindex="0"
+                  :aria-label="`Look up ${client.nickname}`"
+                  @click="openClientLookup(client, row.display.label)"
+                  @keydown.enter="openClientLookup(client, row.display.label)"
+                  @keydown.space.prevent="openClientLookup(client, row.display.label)"
                 >
                   <Icon
                     v-if="client.muted || client.inputMuted || client.outputMuted || client.channelMuted"
@@ -1039,6 +1075,7 @@ function _openRawSnapshot() {
                       :user-id="getUserIdForClient(selectedServer.id, client.uniqueId)"
                       :placeholder="client.nickname"
                       class="ts-viewer__client-name"
+                      @click.stop
                     />
                   </template>
                   <span v-else class="ts-viewer__client-name"> {{ client.nickname }}</span>
@@ -1072,6 +1109,15 @@ function _openRawSnapshot() {
       <ChartTeamSpeakOnline :period :window :utc :color :server-name="selectedServer?.id ?? undefined" hide-title />
     </template>
   </ChartActivityHistogramModal>
+
+  <TeamSpeakClientModal
+    v-model:open="lookupOpen"
+    :client="lookupTarget?.client ?? null"
+    :channel-label="lookupTarget?.channelLabel"
+    :role="selectedServer && lookupTarget ? clientRole(selectedServer.id, lookupTarget.client) : null"
+    :user-id="selectedServer && lookupTarget ? getUserIdForClient(selectedServer.id, lookupTarget.client.uniqueId) : null"
+    :server="selectedServer"
+  />
 </template>
 
 <style lang="scss">
@@ -1147,9 +1193,15 @@ function _openRawSnapshot() {
   padding-block: var(--space-xs);
   background: var(--color-bg);
   color: var(--color-text-light);
+  cursor: pointer;
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--color-bg-medium);
+  }
 }
 
 .ts-viewer__client-name {

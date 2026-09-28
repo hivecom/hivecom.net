@@ -4,6 +4,8 @@ import { parseEnvMap } from "./env.ts";
 import { sleep } from "./utils.ts";
 import type { Tables } from "database-types";
 import type {
+  TeamSpeakClientAvatar,
+  TeamSpeakGroup,
   TeamSpeakNormalizedChannel,
   TeamSpeakNormalizedClient,
   TeamSpeakServerInfo,
@@ -104,6 +106,12 @@ interface AppConstants {
 export const TEAMSPEAK_TIMEOUT_MS = 15_000;
 export const BUCKET = "hivecom-content-static";
 export const SNAPSHOT_PATH = "teamspeak/state.json";
+const AVATAR_PREFIX = "teamspeak/avatars";
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const FILE_TRANSFER_CONNECT_TIMEOUT_MS = 5_000;
+
+// ServerQuery's "insufficient client permissions".
+const PERMISSION_ERROR_ID = 2568;
 
 const appConstants =
   (constants as unknown as { default: AppConstants }).default;
@@ -192,11 +200,24 @@ export function isSnapshotFresh(
 export async function collectSnapshots(args: {
   servers: TeamSpeakServerDefinition[];
   credentials: CredentialsMap;
+  supabase: SupabaseDbClient;
+
+  /** The last stored snapshot, so unchanged avatars aren't downloaded again. */
+  previous: SnapshotPayload | null;
 }): Promise<TeamSpeakServerSnapshot[]> {
-  const { servers, credentials } = args;
+  const { servers, credentials, supabase, previous } = args;
 
   if (!servers.length) {
     throw new Error("No TeamSpeak servers configured");
+  }
+
+  const knownAvatars = new Map<string, TeamSpeakClientAvatar>();
+  for (const snapshot of previous?.servers ?? []) {
+    for (const entry of snapshot.clients ?? []) {
+      if (entry.avatar) {
+        knownAvatars.set(`${snapshot.id}:${entry.uniqueId}`, entry.avatar);
+      }
+    }
   }
 
   const snapshots: TeamSpeakServerSnapshot[] = [];
@@ -204,6 +225,8 @@ export async function collectSnapshots(args: {
     const snapshot = await processServer({
       server,
       credentials,
+      supabase,
+      knownAvatars,
     });
     snapshots.push(snapshot);
   }
@@ -476,8 +499,10 @@ function computeDesiredGroups(args: {
 async function processServer(args: {
   server: TeamSpeakServerDefinition;
   credentials: CredentialsMap;
+  supabase: SupabaseDbClient;
+  knownAvatars: Map<string, TeamSpeakClientAvatar>;
 }): Promise<TeamSpeakServerSnapshot> {
-  const { server, credentials } = args;
+  const { server, credentials, supabase, knownAvatars } = args;
   const username = credentials.usernames.get(server.id);
   const password = credentials.passwords.get(server.id);
 
@@ -525,17 +550,18 @@ async function processServer(args: {
     const channelResponse = channelsQuery.response ?? [];
     const channelsNormalized = normalizeChannels(channelResponse);
 
-    const clientListQuery = (await sendRawCommand(
-      client,
-      "clientlist",
-      {},
-      ["uid", "voice", "away", "groups", "times", "country"],
-    )) as QueryResponse<TeamSpeakClientEntry>;
+    const serverGroups = await fetchGroups(client, "servergrouplist");
+    const channelGroups = await fetchGroups(client, "channelgrouplist");
+
+    const clientListQuery = await listClients(client);
 
     const onlineClients = (clientListQuery.response ?? []).filter((c) =>
       String(c.client_type ?? "0") === "0" &&
       (c.client_unique_identifier || c.client_database_id || c.clid)
     );
+
+    const details = await fetchClientDetails(client, onlineClients);
+    const transfer = { disabled: false };
 
     const normalizedClients: TeamSpeakServerSnapshot["clients"] = [];
 
@@ -583,6 +609,17 @@ async function processServer(args: {
         ? String(entry.client_database_id)
         : null;
 
+      const info = details.get(String(entry.clid));
+      const avatar = await resolveAvatar({
+        query: client,
+        server,
+        uniqueId,
+        info,
+        supabase,
+        knownAvatars,
+        transfer,
+      });
+
       const normalizedClient: TeamSpeakNormalizedClient = {
         uniqueId,
         databaseId,
@@ -602,6 +639,14 @@ async function processServer(args: {
         country,
         createdAt,
         lastConnectedAt,
+        channelGroupId: safeNumber(entry.client_channel_group_id) ?? null,
+        idleTimeMs: safeNumber(entry.client_idle_time) ?? null,
+        version: optionalString(entry.client_version),
+        platform: optionalString(entry.client_platform),
+        description: optionalString(info?.client_description),
+        totalConnections: safeNumber(info?.client_totalconnections) ?? null,
+        connectedTimeMs: safeNumber(info?.connection_connected_time) ?? null,
+        avatar,
       };
 
       normalizedClients.push(normalizedClient);
@@ -619,6 +664,8 @@ async function processServer(args: {
       title: server.title,
       collectedAt,
       serverInfo,
+      serverGroups,
+      channelGroups,
       channels: channelsNormalized.tree,
       clients: normalizedClients,
     };
@@ -633,6 +680,285 @@ async function shutdownClient(client: TeamSpeakClient) {
   } catch (error) {
     console.warn("Failed to quit TeamSpeak session", error);
   }
+}
+
+// Group names are cosmetic for the viewer, so a failure here (say the viewer
+// query account lacks the list permission) drops them instead of the snapshot.
+async function fetchGroups(
+  client: TeamSpeakClient,
+  command: "servergrouplist" | "channelgrouplist",
+): Promise<TeamSpeakGroup[]> {
+  try {
+    const query = (await sendRawCommand(
+      client,
+      command,
+    )) as QueryResponse<GroupRecord>;
+
+    // Type 1 is a regular group. Templates (0) and query groups (2) never
+    // show up on a voice client.
+    return (query.response ?? [])
+      .filter((group) => String(group.type) === "1")
+      .map((group) => ({
+        id: Number(group.sgid ?? group.cgid),
+        name: String(group.name ?? ""),
+      }))
+      .filter((group) => Number.isFinite(group.id) && group.name.length > 0);
+  } catch (error) {
+    console.warn(`Failed to run TeamSpeak ${command}`, error);
+    return [];
+  }
+}
+
+// Description, total connections, session length and the avatar only come
+// back from clientinfo, one client per call. The pause keeps a full server
+// (32 slots) well inside the query flood limit, in case our address isn't
+// whitelisted on the server.
+async function fetchClientDetails(
+  client: TeamSpeakClient,
+  entries: TeamSpeakClientEntry[],
+): Promise<Map<string, ClientInfoRecord>> {
+  const map = new Map<string, ClientInfoRecord>();
+
+  for (const entry of entries) {
+    if (entry.clid === undefined || entry.clid === null) continue;
+
+    await sleep(100);
+
+    try {
+      const query = (await sendRawCommand(client, "clientinfo", {
+        clid: entry.clid,
+      })) as QueryResponse<ClientInfoRecord>;
+
+      const record = query.response?.[0];
+      if (record) map.set(String(entry.clid), record);
+    } catch (error) {
+      // Without the permission every other call fails the same way.
+      if (queryErrorId(error) === PERMISSION_ERROR_ID) {
+        console.warn("TeamSpeak query account can't use clientinfo", error);
+        break;
+      }
+
+      // The client can disconnect between clientlist and clientinfo.
+      console.warn(
+        `Failed to fetch TeamSpeak clientinfo for ${entry.clid}`,
+        error,
+      );
+    }
+  }
+
+  return map;
+}
+
+// -info only adds version and platform. If the query account can't use it,
+// the viewer still needs the list itself.
+async function listClients(
+  client: TeamSpeakClient,
+): Promise<QueryResponse<TeamSpeakClientEntry>> {
+  const options = ["uid", "voice", "away", "groups", "times", "country"];
+
+  try {
+    return (await sendRawCommand(client, "clientlist", {}, [
+      ...options,
+      "info",
+    ])) as QueryResponse<TeamSpeakClientEntry>;
+  } catch (error) {
+    if (queryErrorId(error) !== PERMISSION_ERROR_ID) throw error;
+
+    console.warn("TeamSpeak query account can't use clientlist -info", error);
+    return (await sendRawCommand(
+      client,
+      "clientlist",
+      {},
+      options,
+    )) as QueryResponse<TeamSpeakClientEntry>;
+  }
+}
+
+function queryErrorId(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null) return undefined;
+
+  return (error as { error?: { id?: number } }).error?.id;
+}
+
+// The stored avatar is keyed by the client's file id and versioned by
+// client_flag_avatar (an md5 of the image), so it's only downloaded when the
+// client changes it or wasn't in the last snapshot.
+async function resolveAvatar(args: {
+  query: TeamSpeakClient;
+  server: TeamSpeakServerDefinition;
+  uniqueId: string;
+  info: ClientInfoRecord | undefined;
+  supabase: SupabaseDbClient;
+  knownAvatars: Map<string, TeamSpeakClientAvatar>;
+
+  /** Flipped on the first failure so the rest of the run skips downloads. */
+  transfer: { disabled: boolean };
+}): Promise<TeamSpeakClientAvatar | null> {
+  const { query, server, uniqueId, info, supabase, knownAvatars, transfer } =
+    args;
+
+  const hash = optionalString(info?.client_flag_avatar);
+  const fileId = optionalString(info?.client_base64HashClientUID);
+  if (!hash || !fileId) return null;
+
+  const known = knownAvatars.get(`${server.id}:${uniqueId}`);
+  if (known?.hash === hash) return known;
+  if (transfer.disabled) return null;
+
+  try {
+    const bytes = await downloadAvatar(query, server.queryHost, fileId);
+    if (!bytes) return null;
+
+    // The bucket is public and serves files with the type we give them, so
+    // anything that isn't recognizably an image never gets stored.
+    const contentType = imageContentType(bytes);
+    if (!contentType) {
+      console.warn(`Skipping TeamSpeak avatar for ${uniqueId}: not an image`);
+      return null;
+    }
+
+    const path = `${AVATAR_PREFIX}/${server.id}/${fileId}`;
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, new Blob([bytes], { type: contentType }), {
+        upsert: true,
+        contentType,
+        cacheControl: "86400",
+      });
+
+    if (error) throw error;
+
+    return { path, hash };
+  } catch (error) {
+    // A missing permission, a closed port or a storage outage hits every
+    // client the same way, and each blocked connect costs a full timeout.
+    transfer.disabled = true;
+    console.warn(
+      `Failed to store TeamSpeak avatar for ${uniqueId}, skipping the rest this run`,
+      error,
+    );
+    return null;
+  }
+}
+
+async function downloadAvatar(
+  query: TeamSpeakClient,
+  queryHost: string,
+  fileId: string,
+): Promise<Uint8Array<ArrayBuffer> | null> {
+  const init = (await sendRawCommand(query, "ftinitdownload", {
+    clientftfid: Math.floor(Math.random() * 0xffff),
+    name: `/avatar_${fileId}`,
+    cid: 0,
+    cpw: "",
+    seekpos: 0,
+  })) as QueryResponse<FileTransferRecord>;
+
+  const record = init.response?.[0];
+  const status = safeNumber(record?.status) ?? 0;
+  if (!record || status !== 0) {
+    throw new Error(`ftinitdownload failed: ${record?.msg ?? status}`);
+  }
+
+  const size = safeNumber(record.size) ?? 0;
+  const port = safeNumber(record.port);
+  const key = optionalString(record.ftkey);
+  if (size <= 0 || !port || !key) return null;
+
+  if (size > MAX_AVATAR_BYTES) {
+    console.warn(`Skipping TeamSpeak avatar ${fileId}: ${size} bytes`);
+    return null;
+  }
+
+  // The server may list several addresses, or 0.0.0.0 when the file
+  // transfer listens on the same host as the query.
+  const advertised = optionalString(record.ip)?.split(",")[0]?.trim();
+  const host = advertised && !advertised.startsWith("0.0.0.0")
+    ? advertised
+    : queryHost;
+
+  return await readTransfer(host, port, key, size);
+}
+
+// The file transfer protocol is a raw TCP stream: send the key, then the
+// server writes exactly `size` bytes and closes.
+async function readTransfer(
+  hostname: string,
+  port: number,
+  key: string,
+  size: number,
+): Promise<Uint8Array<ArrayBuffer>> {
+  const conn = await connectWithTimeout(hostname, port);
+  const timer = setTimeout(() => closeQuietly(conn), TEAMSPEAK_TIMEOUT_MS);
+
+  try {
+    await conn.write(new TextEncoder().encode(key));
+
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+
+    while (offset < size) {
+      const read = await conn.read(bytes.subarray(offset));
+      if (read === null) {
+        throw new Error(`Transfer ended at ${offset} of ${size} bytes`);
+      }
+      offset += read;
+    }
+
+    return bytes;
+  } finally {
+    clearTimeout(timer);
+    closeQuietly(conn);
+  }
+}
+
+// Deno.connect has no timeout of its own, and a firewall that drops packets
+// leaves it hanging for minutes.
+async function connectWithTimeout(
+  hostname: string,
+  port: number,
+): Promise<Deno.Conn> {
+  const connecting = Deno.connect({ hostname, port });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      // Close the socket if it does connect after we've given up on it.
+      connecting.then(closeQuietly, () => {});
+      reject(new Error(`Timed out connecting to ${hostname}:${port}`));
+    }, FILE_TRANSFER_CONNECT_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([connecting, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function closeQuietly(conn: Deno.Conn) {
+  try {
+    conn.close();
+  } catch {
+    // Already closed by the timeout or the server.
+  }
+}
+
+function imageContentType(bytes: Uint8Array): string | null {
+  const startsWith = (signature: number[], offset = 0) =>
+    signature.every((byte, i) => bytes[offset + i] === byte);
+
+  if (startsWith([0x89, 0x50, 0x4e, 0x47])) return "image/png";
+  if (startsWith([0xff, 0xd8, 0xff])) return "image/jpeg";
+  if (startsWith([0x47, 0x49, 0x46, 0x38])) return "image/gif";
+  if (
+    startsWith([0x52, 0x49, 0x46, 0x46]) &&
+    startsWith([0x57, 0x45, 0x42, 0x50], 8)
+  ) {
+    return "image/webp";
+  }
+
+  return null;
 }
 
 function resolveUniqueId(entry: TeamSpeakClientEntry): string | null {
@@ -780,6 +1106,7 @@ function normalizeServerInfo(
       (safeNumber(raw.virtualserver_clientsonline) ?? 0) - 1,
     ),
     totalChannels: safeNumber(raw.virtualserver_channelsonline),
+    defaultChannelGroupId: safeNumber(raw.virtualserver_default_channel_group),
   };
 }
 
@@ -792,6 +1119,41 @@ function flagTrue(value: unknown): boolean {
   return String(value) === "1";
 }
 
+// node-ts turns anything that looks like an integer into a number, so a
+// description of "1337" arrives as one.
+function optionalString(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+
+  const text = String(value).trim();
+  return text.length > 0 ? text : null;
+}
+
+type GroupRecord = {
+  sgid?: number | string;
+  cgid?: number | string;
+  name?: string;
+  type?: number | string;
+};
+
+// clientinfo also returns connection_client_ip. Only the fields named here
+// make it into the snapshot, which is public.
+type ClientInfoRecord = {
+  client_description?: string | number;
+  client_totalconnections?: number | string;
+  connection_connected_time?: number | string;
+  client_flag_avatar?: string | number;
+  client_base64HashClientUID?: string;
+};
+
+type FileTransferRecord = {
+  ftkey?: string;
+  port?: number | string;
+  size?: number | string;
+  ip?: string;
+  status?: number | string;
+  msg?: string;
+};
+
 type TeamSpeakClientEntry = {
   clid?: number | string;
   client_unique_identifier?: string;
@@ -800,12 +1162,15 @@ type TeamSpeakClientEntry = {
   cid?: number | string;
   client_type?: number | string;
   client_servergroups?: string;
+  client_channel_group_id?: number | string;
   client_away?: string;
   client_input_muted?: string;
   client_output_muted?: string;
   client_talk_power?: string;
   client_talk_request?: string;
-  client_idle_time?: string;
+  client_idle_time?: number | string;
+  client_version?: string;
+  client_platform?: string;
   client_country?: string;
   client_created?: number | string;
   client_lastconnected?: number | string;

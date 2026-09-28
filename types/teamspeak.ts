@@ -23,6 +23,27 @@ export interface TeamSpeakNormalizedClient {
   country?: string | null
   createdAt?: number | null
   lastConnectedAt?: number | null
+  channelGroupId?: number | null
+  idleTimeMs?: number | null
+  version?: string | null
+  platform?: string | null
+  description?: string | null
+  totalConnections?: number | null
+  connectedTimeMs?: number | null
+  avatar?: TeamSpeakClientAvatar | null
+}
+
+export interface TeamSpeakClientAvatar {
+  /** Object path in the static content bucket. */
+  path: string
+
+  /** TeamSpeak's md5 of the image, for cache busting. */
+  hash: string
+}
+
+export interface TeamSpeakGroup {
+  id: number
+  name: string
 }
 
 export interface TeamSpeakNormalizedChannel {
@@ -49,6 +70,7 @@ export interface TeamSpeakServerInfo {
   maxClients?: number
   totalClients?: number
   totalChannels?: number
+  defaultChannelGroupId?: number
 }
 
 export interface TeamSpeakServerSnapshot {
@@ -56,6 +78,8 @@ export interface TeamSpeakServerSnapshot {
   title?: string
   collectedAt: string
   serverInfo?: TeamSpeakServerInfo
+  serverGroups?: TeamSpeakGroup[]
+  channelGroups?: TeamSpeakGroup[]
   channels: TeamSpeakNormalizedChannel[]
   clients: TeamSpeakNormalizedClient[]
 }

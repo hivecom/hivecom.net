@@ -2,7 +2,7 @@ import type { Database } from '@/types/database.types'
 import type { TeamSpeakSnapshot } from '@/types/teamspeak'
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
 
-const SNAPSHOT_BUCKET = 'hivecom-content-static'
+export const SNAPSHOT_BUCKET = 'hivecom-content-static'
 const SNAPSHOT_PATH = 'teamspeak/state.json'
 const STALE_AUTO_REFRESH_MS = 300_000
 
