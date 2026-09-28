@@ -1,6 +1,6 @@
 import type { Database } from '@/types/database.types'
 import type { TeamSpeakSnapshot } from '@/types/teamspeak'
-import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
+import { computed, onMounted, onScopeDispose, readonly, ref, watch } from 'vue'
 
 export const SNAPSHOT_BUCKET = 'hivecom-content-static'
 const SNAPSHOT_PATH = 'teamspeak/state.json'
@@ -164,5 +164,8 @@ export function useDataTeamSpeakSnapshot(options: UseTeamSpeakSnapshotOptions = 
     execute,
     clear,
     lastUpdated,
+
+    /** True while a fresh snapshot is being collected from the server. */
+    refreshing: readonly(refreshingEndpoint),
   }
 }

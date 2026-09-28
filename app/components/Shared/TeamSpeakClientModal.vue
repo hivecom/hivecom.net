@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TeamSpeakNormalizedClient, TeamSpeakServerSnapshot } from '@/types/teamspeak'
-import { Avatar, Badge, Flex, Grid, Modal } from '@dolanske/vui'
-import { computed } from 'vue'
+import { Avatar, Badge, Flex, Grid, Modal, Skeleton } from '@dolanske/vui'
+import { computed, ref, watch } from 'vue'
 import RoleIndicator from '@/components/Shared/RoleIndicator.vue'
 import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import UserAvatar from '@/components/Shared/UserAvatar.vue'
@@ -21,6 +21,9 @@ const props = defineProps<{
 
   /** The server the client is on, for its group names. */
   server?: TeamSpeakServerSnapshot | null
+
+  /** A fresh snapshot is on its way, which may bring the avatar with it. */
+  refreshing?: boolean
 }>()
 
 const open = defineModel<boolean>('open', { default: false })
@@ -74,6 +77,39 @@ const avatarUrl = computed(() => {
   const { data } = supabase.storage.from(SNAPSHOT_BUCKET).getPublicUrl(avatar.path)
   return `${data.publicUrl}?v=${avatar.hash}`
 })
+
+const AVATAR_SIZE = 96
+
+// Preload the image so the slot holds a skeleton until it can paint whole,
+// rather than an empty frame filling in.
+const avatarReady = ref(false)
+const avatarFailed = ref(false)
+
+watch(avatarUrl, (url) => {
+  avatarReady.value = false
+  avatarFailed.value = false
+
+  if (!url || !import.meta.client)
+    return
+
+  const image = new Image()
+  image.onload = () => {
+    if (avatarUrl.value === url)
+      avatarReady.value = true
+  }
+  image.onerror = () => {
+    if (avatarUrl.value === url)
+      avatarFailed.value = true
+  }
+  image.src = url
+}, { immediate: true })
+
+const showAvatarSlot = computed(() => {
+  if (avatarUrl.value)
+    return !avatarFailed.value
+
+  return props.refreshing
+})
 </script>
 
 <template>
@@ -92,72 +128,85 @@ const avatarUrl = computed(() => {
       </Flex>
     </template>
 
-    <Flex v-if="client" gap="l" x-between :column="isMobile">
-      <Flex column gap="m" expand>
-        <Flex v-if="userId" y-center gap="s">
-          <UserAvatar :user-id="userId" size="l" linked show-preview />
-          <UserLink :user-id="userId" :placeholder="client.nickname" />
+    <Flex v-if="client" column gap="l">
+      <Flex gap="m">
+        <template v-if="showAvatarSlot">
+          <Avatar
+            v-if="avatarUrl && avatarReady"
+            :size="AVATAR_SIZE"
+            :url="avatarUrl"
+            radius="m"
+            :alt="`${client.nickname} TeamSpeak avatar`"
+          />
+          <Skeleton v-else class="ts-client__avatar-skeleton" :width="AVATAR_SIZE" :height="AVATAR_SIZE" :radius="8" />
+        </template>
+
+        <Flex column gap="s" expand>
+          <Flex v-if="userId" y-center gap="xs">
+            <UserAvatar :user-id="userId" size="s" linked show-preview />
+            <UserLink :user-id="userId" :placeholder="client.nickname" />
+          </Flex>
+
+          <Flex v-if="groups.length" wrap gap="xs">
+            <Badge v-for="group in groups" :key="`${group.id}-${group.name}`" variant="neutral">
+              {{ group.name }}
+            </Badge>
+          </Flex>
+
+          <p v-if="client.description" class="text-color-light">
+            {{ client.description }}
+          </p>
         </Flex>
-
-        <Flex v-if="groups.length" wrap gap="xs">
-          <Badge v-for="group in groups" :key="`${group.id}-${group.name}`" variant="neutral">
-            {{ group.name }}
-          </Badge>
-        </Flex>
-
-        <p v-if="client.description" class="text-color-light">
-          {{ client.description }}
-        </p>
-
-        <Grid columns="auto 1fr" gap="xs">
-          <template v-if="channelLabel">
-            <span class="text-s text-color-light">Channel</span>
-            <span class="text-s">{{ channelLabel }}</span>
-          </template>
-
-          <template v-if="countryName">
-            <span class="text-s text-color-light">Country</span>
-            <span class="text-s">{{ countryName }}</span>
-          </template>
-
-          <template v-if="connectedAt">
-            <span class="text-s text-color-light">Connected</span>
-            <TimestampDate :date="connectedAt" relative />
-          </template>
-
-          <template v-if="idleLabel">
-            <span class="text-s text-color-light">Idle</span>
-            <span class="text-s">{{ idleLabel }}</span>
-          </template>
-
-          <template v-if="client.totalConnections">
-            <span class="text-s text-color-light">Total connections</span>
-            <span class="text-s">{{ client.totalConnections.toLocaleString() }}</span>
-          </template>
-
-          <template v-if="firstSeenAt">
-            <span class="text-s text-color-light">First seen</span>
-            <TimestampDate :date="firstSeenAt" type="displayDate" />
-          </template>
-
-          <template v-if="client.version">
-            <span class="text-s text-color-light">Version</span>
-            <span class="text-s">{{ client.version }}</span>
-          </template>
-
-          <template v-if="client.platform">
-            <span class="text-s text-color-light">Platform</span>
-            <span class="text-s">{{ client.platform }}</span>
-          </template>
-        </Grid>
       </Flex>
 
-      <Avatar
-        v-if="avatarUrl"
-        :size="112"
-        :url="avatarUrl"
-        :alt="`${client.nickname} TeamSpeak avatar`"
-      />
+      <Grid columns="auto 1fr" gap="xs">
+        <template v-if="channelLabel">
+          <span class="text-s text-color-light">Channel</span>
+          <span class="text-s">{{ channelLabel }}</span>
+        </template>
+
+        <template v-if="countryName">
+          <span class="text-s text-color-light">Country</span>
+          <span class="text-s">{{ countryName }}</span>
+        </template>
+
+        <template v-if="connectedAt">
+          <span class="text-s text-color-light">Connected</span>
+          <TimestampDate :date="connectedAt" relative />
+        </template>
+
+        <template v-if="idleLabel">
+          <span class="text-s text-color-light">Idle</span>
+          <span class="text-s">{{ idleLabel }}</span>
+        </template>
+
+        <template v-if="client.totalConnections">
+          <span class="text-s text-color-light">Total connections</span>
+          <span class="text-s">{{ client.totalConnections.toLocaleString() }}</span>
+        </template>
+
+        <template v-if="firstSeenAt">
+          <span class="text-s text-color-light">First seen</span>
+          <TimestampDate :date="firstSeenAt" type="displayDate" />
+        </template>
+
+        <template v-if="client.version">
+          <span class="text-s text-color-light">Version</span>
+          <span class="text-s">{{ client.version }}</span>
+        </template>
+
+        <template v-if="client.platform">
+          <span class="text-s text-color-light">Platform</span>
+          <span class="text-s">{{ client.platform }}</span>
+        </template>
+      </Grid>
     </Flex>
   </Modal>
 </template>
+
+<style scoped lang="scss">
+// vui's Avatar won't shrink in a row, but its Skeleton will.
+.ts-client__avatar-skeleton {
+  flex-shrink: 0;
+}
+</style>

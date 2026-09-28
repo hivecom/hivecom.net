@@ -360,7 +360,7 @@ const MOCK_SNAPSHOT: TeamSpeakSnapshot = {
   ],
 }
 
-const { data, pending, error, refresh, lastUpdated, status } = useDataTeamSpeakSnapshot({
+const { data, pending, error, refresh, lastUpdated, status, refreshing } = useDataTeamSpeakSnapshot({
   refreshInterval: props.refreshInterval,
 })
 
@@ -802,14 +802,43 @@ const renderRowsByServer = computed(() => {
 
 const lookupOpen = ref(false)
 const lookupTarget = shallowRef<{
+  serverId: string
   client: TeamSpeakNormalizedClient
-  channelLabel: string
 } | null>(null)
 
-function openClientLookup(client: TeamSpeakNormalizedClient, channelLabel: string) {
-  lookupTarget.value = { client, channelLabel }
+function openClientLookup(serverId: string, client: TeamSpeakNormalizedClient) {
+  lookupTarget.value = { serverId, client }
   lookupOpen.value = true
 }
+
+// Resolved against the live snapshot so a refresh landing while the modal is
+// open (bringing the avatar, say) shows up in place. Falls back to the clicked
+// entry if they've left since.
+const lookupClient = computed<TeamSpeakNormalizedClient | null>(() => {
+  const target = lookupTarget.value
+  if (!target)
+    return null
+
+  const server = servers.value.find(s => s.id === target.serverId)
+  const live = server?.clients.find(c => c.uniqueId === target.client.uniqueId)
+    ?? channelRowsByServer.value[target.serverId]
+      ?.flatMap(channel => channel.clients)
+      .find(c => c.uniqueId === target.client.uniqueId)
+
+  return live ?? target.client
+})
+
+const lookupServer = computed(() => servers.value.find(s => s.id === lookupTarget.value?.serverId) ?? null)
+
+const lookupChannelLabel = computed(() => {
+  const channelId = lookupClient.value?.channelId
+  const serverId = lookupTarget.value?.serverId
+  if (!channelId || !serverId)
+    return null
+
+  const channel = channelRowsByServer.value[serverId]?.find(c => c.id === channelId)
+  return channel ? displayChannelName(channel).label : lookupClient.value?.channelName ?? null
+})
 
 function serverClientCountNoBots(server: TeamSpeakServerSnapshot): number {
   const channelMap = clientsByServerChannel.value[server.id]
@@ -1055,9 +1084,9 @@ function _openRawSnapshot() {
                   role="button"
                   tabindex="0"
                   :aria-label="`Look up ${client.nickname}`"
-                  @click="openClientLookup(client, row.display.label)"
-                  @keydown.enter="openClientLookup(client, row.display.label)"
-                  @keydown.space.prevent="openClientLookup(client, row.display.label)"
+                  @click="openClientLookup(selectedServer.id, client)"
+                  @keydown.enter="openClientLookup(selectedServer.id, client)"
+                  @keydown.space.prevent="openClientLookup(selectedServer.id, client)"
                 >
                   <Icon
                     v-if="client.muted || client.inputMuted || client.outputMuted || client.channelMuted"
@@ -1112,11 +1141,12 @@ function _openRawSnapshot() {
 
   <TeamSpeakClientModal
     v-model:open="lookupOpen"
-    :client="lookupTarget?.client ?? null"
-    :channel-label="lookupTarget?.channelLabel"
-    :role="selectedServer && lookupTarget ? clientRole(selectedServer.id, lookupTarget.client) : null"
-    :user-id="selectedServer && lookupTarget ? getUserIdForClient(selectedServer.id, lookupTarget.client.uniqueId) : null"
-    :server="selectedServer"
+    :client="lookupClient"
+    :channel-label="lookupChannelLabel"
+    :role="lookupServer && lookupClient ? clientRole(lookupServer.id, lookupClient) : null"
+    :user-id="lookupServer && lookupClient ? getUserIdForClient(lookupServer.id, lookupClient.uniqueId) : null"
+    :server="lookupServer"
+    :refreshing="refreshing"
   />
 </template>
 
