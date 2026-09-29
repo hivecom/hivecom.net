@@ -110,6 +110,13 @@ const avatarLoading = computed(() => {
 
   return props.refreshing
 })
+
+const showAvatarLightbox = ref(false)
+
+// A lightbox left open would come back with the next client lookup.
+watch([open, avatarUrl], () => {
+  showAvatarLightbox.value = false
+})
 </script>
 
 <template>
@@ -136,6 +143,8 @@ const avatarLoading = computed(() => {
           :url="avatarUrl"
           radius="m"
           :alt="`${client.nickname} TeamSpeak avatar`"
+          class="ts-client__avatar--clickable"
+          @click="showAvatarLightbox = true"
         />
         <Skeleton v-else-if="avatarLoading" class="ts-client__avatar-skeleton" :width="AVATAR_SIZE" :height="AVATAR_SIZE" :radius="8" />
         <Avatar v-else :size="AVATAR_SIZE" radius="m">
@@ -203,6 +212,13 @@ const avatarLoading = computed(() => {
           <span class="text-s">{{ client.platform }}</span>
         </template>
       </Grid>
+
+      <Modal v-if="avatarUrl" size="l" :open="showAvatarLightbox" @close="showAvatarLightbox = false">
+        <template #header>
+          <h4>{{ client.nickname }}'s avatar</h4>
+        </template>
+        <img :src="avatarUrl" :alt="`${client.nickname} TeamSpeak avatar`" class="ts-client__avatar-lightbox" decoding="async">
+      </Modal>
     </Flex>
   </Modal>
 </template>
@@ -211,5 +227,17 @@ const avatarLoading = computed(() => {
 // vui's Avatar won't shrink in a row, but its Skeleton will.
 .ts-client__avatar-skeleton {
   flex-shrink: 0;
+}
+
+.ts-client__avatar--clickable {
+  cursor: pointer;
+}
+
+.ts-client__avatar-lightbox {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
+  border-radius: var(--border-radius-m);
 }
 </style>
