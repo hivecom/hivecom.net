@@ -1108,7 +1108,11 @@ function addToBuffer(
 
     const tMs = ts.getTime()
     const newest = buf.messages[buf.messages.length - 1]
-    const oldest = buf.messages[0]
+
+    // A push preview doesn't mark the window's lower edge. With no cache it's the
+    // only row when LATEST starts, and the history older than it still belongs
+    // on screen.
+    const oldest = buf.messages.find(m => !m.preview)
 
     if (buf.tailTrimmed) {
       // Window is scrolled away from the live tip: don't disturb it. The line is
@@ -1117,7 +1121,7 @@ function addToBuffer(
     else if (newest == null || tMs >= newest.ts.getTime()) {
       buf.messages.push(newMsg)
     }
-    else if (oldest != null && tMs > oldest.ts.getTime()) {
+    else if (oldest == null || tMs > oldest.ts.getTime()) {
       // Out-of-order delivery inside the loaded window (event-playback replaying an
       // old JOIN/PART live). Insert at its server-time position, and flag presence
       // as backlog so it collapses into a summary.
