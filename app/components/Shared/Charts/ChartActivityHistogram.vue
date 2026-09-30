@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SpaceSize } from '@dolanske/vui'
-import { Flex, Tooltip } from '@dolanske/vui'
+import { Flex, Popout, Tooltip, viewport } from '@dolanske/vui'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 interface Props {
@@ -123,6 +123,28 @@ const cells = computed(() => Array.from({ length: loading ? count : data.length 
     secondaryHeight: `${secondaryValue / highestSecondary.value * 100}%`,
   }
 }))
+
+// VUI's Tooltip turns itself off below its `m` breakpoint, and a tap has no
+// hover to give it anyway. There a tap pins the bar and shows the same tooltip
+// content in a Popout, until the next tap elsewhere.
+const pinned = ref<{ index: number, el: HTMLElement } | null>(null)
+
+function pinCell(index: number, event: MouseEvent): void {
+  if (!viewport.m || !slots.tooltip || loading)
+    return
+
+  pinned.value = pinned.value?.index === index
+    ? null
+    : { index, el: event.currentTarget as HTMLElement }
+}
+
+const pinnedCell = computed(() => pinned.value ? cells.value[pinned.value.index] ?? null : null)
+
+// A pin on a strip that goes back to loading, or grows past the viewport, would
+// point at a cell that no longer holds what it showed.
+watch([() => loading, () => viewport.m], () => {
+  pinned.value = null
+})
 </script>
 
 <template>
@@ -156,7 +178,13 @@ const cells = computed(() => Array.from({ length: loading ? count : data.length 
                                            'vui-histogram--loading': loading }" :gap
   >
     <Tooltip v-for="cell in cells" :key="cell.index" :disabled="!slots.tooltip || loading">
-      <div class="vui-histogram-cell" :class="{ 'vui-histogram-cell--compact': compact }" :style="cellStyle">
+      <div
+        class="vui-histogram-cell"
+        :class="{ 'vui-histogram-cell--compact': compact,
+                  'vui-histogram-cell--pinned': pinned?.index === cell.index }"
+        :style="cellStyle"
+        @click="pinCell(cell.index, $event)"
+      >
         <div class="vui-histogram-datacell" :style="{ height: cell.height }" />
         <div v-if="secondary && !loading" class="vui-histogram-datacell vui-histogram-datacell--secondary" :style="{ height: cell.secondaryHeight }" />
       </div>
@@ -164,6 +192,24 @@ const cells = computed(() => Array.from({ length: loading ? count : data.length 
         <slot name="tooltip" :value="cell.value" :secondary-value="cell.secondaryValue" :index="cell.index" :highest-value :days-ago="getDaysAgo(cell.index)" />
       </template>
     </Tooltip>
+
+    <Popout
+      :visible="pinnedCell !== null"
+      :anchor="pinned?.el ?? null"
+      placement="top"
+      class="vui-tooltip"
+      @click-outside="pinned = null"
+    >
+      <slot
+        v-if="pinnedCell"
+        name="tooltip"
+        :value="pinnedCell.value"
+        :secondary-value="pinnedCell.secondaryValue"
+        :index="pinnedCell.index"
+        :highest-value
+        :days-ago="getDaysAgo(pinnedCell.index)"
+      />
+    </Popout>
   </Flex>
 </template>
 
@@ -261,7 +307,8 @@ const cells = computed(() => Array.from({ length: loading ? count : data.length 
     opacity: 0.7;
   }
 
-  .vui-histogram-cell:hover {
+  .vui-histogram-cell:hover,
+  .vui-histogram-cell--pinned {
     background-color: var(--color-border);
   }
 

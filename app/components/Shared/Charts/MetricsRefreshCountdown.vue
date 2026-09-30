@@ -1,9 +1,27 @@
 <script setup lang="ts">
-import { Flex, Tooltip } from '@dolanske/vui'
+import { Button, Flex, Modal, Tooltip, viewport } from '@dolanske/vui'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { METRICS_COLLECTION_INTERVAL, METRICS_REFRESH_BUFFER_MS, useDataMetrics } from '@/composables/useDataMetrics'
 
 const { metrics, lastFetchedAt } = useDataMetrics()
+
+const REFRESH_INTERVALS = [
+  { label: 'Online Users', interval: '5 min' },
+  { label: 'Played Games (Steam)', interval: '5 min' },
+  { label: 'Game Servers', interval: '5 min' },
+  { label: 'Voice Servers', interval: '15 min' },
+  { label: 'IRC', interval: '5 min' },
+]
+
+// VUI's Tooltip turns itself off below its `m` breakpoint, so a tap anywhere
+// on the row opens the same list in a modal instead. The icon's click bubbles
+// up here too, which keeps it the keyboard route in.
+const intervalsOpen = ref(false)
+
+function openIntervals(): void {
+  if (viewport.m)
+    intervalsOpen.value = true
+}
 
 const now = ref(Date.now())
 let ticker: ReturnType<typeof setInterval> | null = null
@@ -39,26 +57,26 @@ const nextUpdateLabel = computed(() => {
 </script>
 
 <template>
-  <Flex v-if="dataFromLabel || nextUpdateLabel" y-start gap="xs" class="metrics-refresh-countdown">
+  <Flex
+    v-if="dataFromLabel || nextUpdateLabel"
+    y-start
+    gap="xs"
+    class="metrics-refresh-countdown"
+    @click="openIntervals"
+  >
     <Tooltip placement="top">
-      <Icon name="ph:info" :size="12" class="metrics-refresh-countdown__info" />
+      <button
+        type="button"
+        class="metrics-refresh-countdown__info"
+        aria-label="Refresh intervals"
+      >
+        <Icon name="ph:info" :size="12" />
+      </button>
       <template #tooltip>
         <Flex column gap="xxs" class="metrics-refresh-countdown__tooltip">
           <p>Refresh intervals</p>
-          <Flex x-between expand gap="s">
-            <span>Online Users</span><span>5 min</span>
-          </Flex>
-          <Flex x-between expand gap="s">
-            <span>Played Games (Steam)</span><span>5 min</span>
-          </Flex>
-          <Flex x-between expand gap="s">
-            <span>Game Servers</span><span>5 min</span>
-          </Flex>
-          <Flex x-between expand gap="s">
-            <span>Voice Servers</span><span>15 min</span>
-          </Flex>
-          <Flex x-between expand gap="s">
-            <span>IRC</span><span>5 min</span>
+          <Flex v-for="row in REFRESH_INTERVALS" :key="row.label" x-between expand gap="s">
+            <span>{{ row.label }}</span><span>{{ row.interval }}</span>
           </Flex>
         </Flex>
       </template>
@@ -74,13 +92,40 @@ const nextUpdateLabel = computed(() => {
         <span aria-hidden="true" class="metrics-refresh-countdown__widest">0m 00s</span>
       </span>
     </span>
+
+    <Modal :open="intervalsOpen" size="s" centered @close="intervalsOpen = false">
+      <template #header>
+        <h4 style="margin: 0">
+          Refresh intervals
+        </h4>
+      </template>
+
+      <Flex column gap="s" expand class="metrics-refresh-countdown__intervals">
+        <Flex v-for="row in REFRESH_INTERVALS" :key="row.label" x-between expand gap="s">
+          <span>{{ row.label }}</span><span>{{ row.interval }}</span>
+        </Flex>
+      </Flex>
+
+      <template #footer>
+        <Flex expand x-end>
+          <Button expand variant="gray" @click="intervalsOpen = false">
+            Close
+          </Button>
+        </Flex>
+      </template>
+    </Modal>
   </Flex>
 </template>
 
 <style scoped lang="scss">
 .metrics-refresh-countdown {
   &__info {
+    display: inline-flex;
+    align-items: center;
     color: var(--color-text-lightest);
+    padding: 0;
+    border: 0;
+    background: none;
   }
 
   span {
@@ -106,6 +151,12 @@ const nextUpdateLabel = computed(() => {
 </style>
 
 <style lang="scss">
+// Unscoped because the modal teleports out of the component
+.metrics-refresh-countdown__intervals span {
+  font-size: var(--font-size-s);
+  color: var(--color-text-light);
+}
+
 .metrics-refresh-countdown__tooltip {
   min-width: 160px;
 
