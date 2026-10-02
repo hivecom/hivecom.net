@@ -213,10 +213,10 @@ const DESKTOP_STARS = [
 
 const MOBILE_STARS = [
   [9.192, 9.192],
-  [38.192, 106.192],
-  [96.192, 176.192],
-  [169.192, 222.192],
-  [255.192, 329.192],
+  [50.192, 106.192],
+  [180.192, 180.192],
+  [114.192, 262.192],
+  [200.192, 329.192],
 ]
 
 // Heights of the two SVGs. Each star's hold is measured up from the bottom edge.
@@ -588,8 +588,8 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
             </g>
           </svg>
 
-          <svg class="mobile-constellation" width="265" height="339" viewBox="0 0 265 339" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M29.707 86.707L11.707 26.707M83.707 162.707L49.707 120.707M153.707 211.707L112.707 187.707M242.707 314.707L183.707 236.707M0.707031 9.19231L9.19231 0.707031L17.6776 9.19231L9.19231 17.6776L0.707031 9.19231ZM29.707 106.192L38.1923 97.707L46.6776 106.192L38.1923 114.678L29.707 106.192ZM87.707 176.192L96.1923 167.707L104.678 176.192L96.1923 184.678L87.707 176.192ZM160.707 222.192L169.192 213.707L177.678 222.192L169.192 230.678L160.707 222.192ZM246.707 329.192L255.192 320.707L263.678 329.192L255.192 337.678L246.707 329.192Z" stroke="currentColor" stroke-opacity="0.5" stroke-dasharray="2 2" />
+          <svg class="mobile-constellation" width="305" height="339" viewBox="0 0 305 339" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M42.795 88.691L16.589 26.693M163.68 170.793L66.704 115.591M126.105 247.391L168.279 194.993M185.204 317.515L129.18 273.869M0.707 9.192L9.192 0.707L17.678 9.192L9.192 17.678L0.707 9.192ZM41.707 106.192L50.192 97.707L58.678 106.192L50.192 114.678L41.707 106.192ZM171.707 180.192L180.192 171.707L188.678 180.192L180.192 188.678L171.707 180.192ZM105.707 262.192L114.192 253.707L122.678 262.192L114.192 270.678L105.707 262.192ZM191.707 329.192L200.192 320.707L208.678 329.192L200.192 337.678L191.707 329.192Z" stroke="currentColor" stroke-opacity="0.5" stroke-dasharray="2 2" />
             <defs>
               <radialGradient id="constellation-glow-mobile">
                 <stop class="flare-glow-hot" offset="0%" stop-opacity="0.9" />
@@ -864,38 +864,37 @@ onBeforeUnmount(() => clearTimeout(glideTimer))
         display: block;
       }
 
+      // Each label's centre sits on its star's y, whatever the spacing and font
+      // size resolve to on the device
       a {
-        padding-bottom: var(--space-l) !important;
-        padding-left: 56px !important;
+        padding: var(--space-l) var(--space-l) var(--space-l) 56px !important;
+        white-space: nowrap;
+        transform: translateY(-50%);
 
         // Media query for some reason does not override default styles here
         &:nth-child(1) {
-          top: -4.8% !important;
-          left: -7.2% !important;
+          top: 9.192px !important;
+          left: -19.808px !important;
         }
 
         &:nth-child(2) {
-          top: 15% !important;
-          left: 3.3% !important;
+          top: 106.192px !important;
+          left: 21.192px !important;
         }
 
         &:nth-child(3) {
-          top: 28% !important;
-          left: 25% !important;
-          white-space: nowrap;
-          padding-top: var(--space-l) !important;
+          top: 180.192px !important;
+          left: 151.192px !important;
         }
 
         &:nth-child(4) {
-          top: 38% !important;
-          left: 51.4% !important;
+          top: 262.192px !important;
+          left: 85.192px !important;
         }
 
         &:nth-child(5) {
-          top: 67% !important;
-          left: 59% !important;
-          padding-right: 56px !important;
-          padding-left: var(--space-l) !important;
+          top: 329.192px !important;
+          left: 171.192px !important;
         }
       }
     }
