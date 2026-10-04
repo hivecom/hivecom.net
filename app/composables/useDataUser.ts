@@ -158,10 +158,15 @@ export function useDataUser(userId: string | Ref<string | null | undefined>, opt
           .from('profiles')
           .select('id, username, username_set, supporter_lifetime, supporter_patreon, introduction, country, created_at, public, has_banner, avatar_extension, banner_extension, last_seen')
           .eq('id', id)
-          .single(),
+          .maybeSingle(),
       ).then(({ data, error: profileError }) => {
         if (profileError)
           throw profileError
+
+        // RLS hides private profiles from anon, so a missing row is expected
+        // there. .single() would turn it into a 406.
+        if (data == null)
+          return null
 
         const result: ProfileCacheEntry = {
           id: data.id,
