@@ -79,7 +79,10 @@ const gridLabel = computed(() => {
   if (isLive.value)
     return 'On the radar'
 
-  return gridIsMine.value ? 'Your upcoming events' : 'You could join these'
+  if (gridIsMine.value)
+    return 'Your upcoming events'
+
+  return gridEvents.value.length ? 'You could join these' : 'What\'s ahead'
 })
 
 const eventsSheetOpen = ref(false)
@@ -95,7 +98,7 @@ const createDate = ref<Date | null>(null)
 
 const { agreed: contentRulesAgreed, markAgreed } = useContentRulesAgreement()
 
-function openCreate(date: Date) {
+function openCreate(date: Date | null) {
   createDate.value = date
 
   if (contentRulesAgreed.value === true)
@@ -120,11 +123,11 @@ function handleContentRulesConfirmed() {
         <HomeDashboardEventItem v-for="event in gridEvents" :key="event.id" :data="event" />
 
         <HomeDashboardPlaceholder v-if="!gridEvents.length" full message="Nothing on the calendar yet.">
-          <Button size="s" variant="gray" @click="navigateTo('/events')">
+          <Button size="s" variant="gray" @click="openCreate(null)">
             <template #start>
               <Icon name="ph:calendar-plus" />
             </template>
-            Find an event
+            Organize an event
           </Button>
         </HomeDashboardPlaceholder>
       </div>

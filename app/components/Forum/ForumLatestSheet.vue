@@ -147,7 +147,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Sheet :open="open" :size="456" @close="emit('close')">
+  <Sheet :open="open" :size="456" :card="{ headerAlign: 'start' }" @close="emit('close')">
     <template #header>
       <Flex y-center x-between expand class="mb-s">
         <h4>

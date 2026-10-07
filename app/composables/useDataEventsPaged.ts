@@ -1,4 +1,3 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/types/database.overrides'
 import type { Database } from '@/types/database.types'
 import { ref, watch } from 'vue'
@@ -8,16 +7,6 @@ import { expandRecurringEvent } from '@/lib/utils/rrule'
 
 // Shares the events namespace so invalidateEventsCache() also busts paged results.
 const _pagedEventsCache = useCache(CACHE_NAMESPACES.events)
-
-// RPCs with a no-arg overload first in the union make TypeScript reject the
-// args object. This cast avoids `any`.
-async function rpc<T>(
-  client: SupabaseClient<Database>,
-  fn: string,
-  args: Record<string, unknown>,
-) {
-  return (client.rpc as (fn: string, args: Record<string, unknown>) => ReturnType<SupabaseClient<Database>['rpc']>)(fn, args) as ReturnType<SupabaseClient<Database>['rpc']> & Promise<{ data: T | null, error: unknown }>
-}
 
 /**
  * Past events are paginated server-side with the filters passed to the RPCs.
@@ -180,11 +169,11 @@ export function useDataEventsPaged(
 
     const ids = gameFilter?.value ?? []
 
-    const { data, error } = await rpc<number>(supabase, 'get_past_events_count', {
-      p_search: search?.value.trim() !== '' ? search?.value.trim() : null,
-      p_is_official: officialFilter?.value ?? null,
+    const { data, error } = await supabase.rpc('get_past_events_count', {
+      p_search: search?.value.trim() !== '' ? search?.value.trim() : undefined,
+      p_is_official: officialFilter?.value ?? undefined,
       p_hide_recurring: recurringFilter?.value === true,
-      p_game_ids: ids.length > 0 ? ids : null,
+      p_game_ids: ids.length > 0 ? ids : undefined,
     })
 
     if (!error && data != null) {
@@ -208,19 +197,19 @@ export function useDataEventsPaged(
       const ids = gameFilter?.value ?? []
       const from = (page - 1) * pageSize.value
 
-      const { data, error } = await rpc<Tables<'events'>[]>(supabase, 'get_past_events_paginated', {
+      const { data, error } = await supabase.rpc('get_past_events_paginated', {
         p_limit: pageSize.value,
         p_offset: from,
-        p_search: search?.value.trim() !== '' ? search?.value.trim() : null,
-        p_is_official: officialFilter?.value ?? null,
+        p_search: search?.value.trim() !== '' ? search?.value.trim() : undefined,
+        p_is_official: officialFilter?.value ?? undefined,
         p_hide_recurring: recurringFilter?.value === true,
-        p_game_ids: ids.length > 0 ? ids : null,
+        p_game_ids: ids.length > 0 ? ids : undefined,
       })
 
       if (error)
         throw error
 
-      const rows: Tables<'events'>[] = data ?? []
+      const rows = (data ?? []) as Tables<'events'>[]
       pastEvents.value = rows
       _pagedEventsCache.set(key, rows)
     }

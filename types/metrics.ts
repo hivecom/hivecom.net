@@ -170,6 +170,16 @@ export function metricsCurrentMap(
   return null
 }
 
+export function metricsServerVersion(
+  detail: MetricsServerDetail | null | undefined,
+): string | null {
+  if (!detail?.data)
+    return null
+  if (detail.protocol === 'minecraft')
+    return detail.data.version
+  return null
+}
+
 export interface MetricsUsers {
   total: number
   online: number

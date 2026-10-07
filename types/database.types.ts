@@ -3063,244 +3063,58 @@ export type Database = {
           users_total: number
         }[]
       }
-      get_past_events_count:
-        | { Args: never; Returns: number }
-        | {
-            Args: { p_is_official?: boolean; p_search?: string }
-            Returns: number
-          }
-        | {
-            Args: {
-              p_hide_recurring?: boolean
-              p_is_official?: boolean
-              p_search?: string
-            }
-            Returns: number
-          }
-        | {
-            Args: {
-              p_game_id?: number
-              p_hide_recurring?: boolean
-              p_is_official?: boolean
-              p_search?: string
-            }
-            Returns: number
-          }
-        | {
-            Args: {
-              p_game_ids?: number[]
-              p_hide_recurring?: boolean
-              p_is_official?: boolean
-              p_search?: string
-            }
-            Returns: number
-          }
-      get_past_events_paginated:
-        | {
-            Args: { p_limit?: number; p_offset?: number }
-            Returns: {
-              created_at: string
-              created_by: string | null
-              date: string
-              description: string
-              discord_event_id: string | null
-              discord_last_synced_at: string | null
-              duration_minutes: number | null
-              excluded_dates: string[]
-              games: number[] | null
-              google_community_event_id: string | null
-              google_community_last_synced_at: string | null
-              google_event_id: string | null
-              google_last_synced_at: string | null
-              id: number
-              is_official: boolean
-              link: string | null
-              location: string | null
-              markdown: string | null
-              modified_at: string | null
-              modified_by: string | null
-              note: string | null
-              recurrence_exception: boolean
-              recurrence_parent_id: number | null
-              recurrence_rule: string | null
-              title: string
-            }[]
-            SetofOptions: {
-              from: "*"
-              to: "events"
-              isOneToOne: false
-              isSetofReturn: true
-            }
-          }
-        | {
-            Args: {
-              p_is_official?: boolean
-              p_limit?: number
-              p_offset?: number
-              p_search?: string
-            }
-            Returns: {
-              created_at: string
-              created_by: string | null
-              date: string
-              description: string
-              discord_event_id: string | null
-              discord_last_synced_at: string | null
-              duration_minutes: number | null
-              excluded_dates: string[]
-              games: number[] | null
-              google_community_event_id: string | null
-              google_community_last_synced_at: string | null
-              google_event_id: string | null
-              google_last_synced_at: string | null
-              id: number
-              is_official: boolean
-              link: string | null
-              location: string | null
-              markdown: string | null
-              modified_at: string | null
-              modified_by: string | null
-              note: string | null
-              recurrence_exception: boolean
-              recurrence_parent_id: number | null
-              recurrence_rule: string | null
-              title: string
-            }[]
-            SetofOptions: {
-              from: "*"
-              to: "events"
-              isOneToOne: false
-              isSetofReturn: true
-            }
-          }
-        | {
-            Args: {
-              p_hide_recurring?: boolean
-              p_is_official?: boolean
-              p_limit?: number
-              p_offset?: number
-              p_search?: string
-            }
-            Returns: {
-              created_at: string
-              created_by: string | null
-              date: string
-              description: string
-              discord_event_id: string | null
-              discord_last_synced_at: string | null
-              duration_minutes: number | null
-              excluded_dates: string[]
-              games: number[] | null
-              google_community_event_id: string | null
-              google_community_last_synced_at: string | null
-              google_event_id: string | null
-              google_last_synced_at: string | null
-              id: number
-              is_official: boolean
-              link: string | null
-              location: string | null
-              markdown: string | null
-              modified_at: string | null
-              modified_by: string | null
-              note: string | null
-              recurrence_exception: boolean
-              recurrence_parent_id: number | null
-              recurrence_rule: string | null
-              title: string
-            }[]
-            SetofOptions: {
-              from: "*"
-              to: "events"
-              isOneToOne: false
-              isSetofReturn: true
-            }
-          }
-        | {
-            Args: {
-              p_game_id?: number
-              p_hide_recurring?: boolean
-              p_is_official?: boolean
-              p_limit?: number
-              p_offset?: number
-              p_search?: string
-            }
-            Returns: {
-              created_at: string
-              created_by: string | null
-              date: string
-              description: string
-              discord_event_id: string | null
-              discord_last_synced_at: string | null
-              duration_minutes: number | null
-              excluded_dates: string[]
-              games: number[] | null
-              google_community_event_id: string | null
-              google_community_last_synced_at: string | null
-              google_event_id: string | null
-              google_last_synced_at: string | null
-              id: number
-              is_official: boolean
-              link: string | null
-              location: string | null
-              markdown: string | null
-              modified_at: string | null
-              modified_by: string | null
-              note: string | null
-              recurrence_exception: boolean
-              recurrence_parent_id: number | null
-              recurrence_rule: string | null
-              title: string
-            }[]
-            SetofOptions: {
-              from: "*"
-              to: "events"
-              isOneToOne: false
-              isSetofReturn: true
-            }
-          }
-        | {
-            Args: {
-              p_game_ids?: number[]
-              p_hide_recurring?: boolean
-              p_is_official?: boolean
-              p_limit?: number
-              p_offset?: number
-              p_search?: string
-            }
-            Returns: {
-              created_at: string
-              created_by: string | null
-              date: string
-              description: string
-              discord_event_id: string | null
-              discord_last_synced_at: string | null
-              duration_minutes: number | null
-              excluded_dates: string[]
-              games: number[] | null
-              google_community_event_id: string | null
-              google_community_last_synced_at: string | null
-              google_event_id: string | null
-              google_last_synced_at: string | null
-              id: number
-              is_official: boolean
-              link: string | null
-              location: string | null
-              markdown: string | null
-              modified_at: string | null
-              modified_by: string | null
-              note: string | null
-              recurrence_exception: boolean
-              recurrence_parent_id: number | null
-              recurrence_rule: string | null
-              title: string
-            }[]
-            SetofOptions: {
-              from: "*"
-              to: "events"
-              isOneToOne: false
-              isSetofReturn: true
-            }
-          }
+      get_past_events_count: {
+        Args: {
+          p_game_ids?: number[]
+          p_hide_recurring?: boolean
+          p_is_official?: boolean
+          p_search?: string
+        }
+        Returns: number
+      }
+      get_past_events_paginated: {
+        Args: {
+          p_game_ids?: number[]
+          p_hide_recurring?: boolean
+          p_is_official?: boolean
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          date: string
+          description: string
+          discord_event_id: string | null
+          discord_last_synced_at: string | null
+          duration_minutes: number | null
+          excluded_dates: string[]
+          games: number[] | null
+          google_community_event_id: string | null
+          google_community_last_synced_at: string | null
+          google_event_id: string | null
+          google_last_synced_at: string | null
+          id: number
+          is_official: boolean
+          link: string | null
+          location: string | null
+          markdown: string | null
+          modified_at: string | null
+          modified_by: string | null
+          note: string | null
+          recurrence_exception: boolean
+          recurrence_parent_id: number | null
+          recurrence_rule: string | null
+          title: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_private_config: { Args: { config_key: string }; Returns: Json }
       get_random_forum_discussion: {
         Args: never

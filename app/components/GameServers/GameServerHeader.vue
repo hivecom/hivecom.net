@@ -10,7 +10,7 @@ import TimestampDate from '@/components/Shared/TimestampDate.vue'
 import { useDataMetrics } from '@/composables/useDataMetrics'
 import { buildConnectContext } from '@/composables/useGameConnect'
 import { useBreakpoint } from '@/lib/mediaQuery'
-import { metricsCurrentMap } from '@/types/metrics'
+import { metricsCurrentMap, metricsServerVersion } from '@/types/metrics'
 import UserLink from '../Shared/UserLink.vue'
 import GameServerStats from './GameServerStats.vue'
 
@@ -73,6 +73,11 @@ onMounted(() => {
 const currentMap = computed<string | null>(() => {
   const detail = metrics.value?.gameservers.byServer[String(_props.gameserver.id)]
   return metricsCurrentMap(detail)
+})
+
+const serverVersion = computed<string | null>(() => {
+  const detail = metrics.value?.gameservers.byServer[String(_props.gameserver.id)]
+  return metricsServerVersion(detail)
 })
 </script>
 
@@ -238,6 +243,14 @@ const currentMap = computed<string | null>(() => {
               <Badge variant="neutral">
                 <Icon name="ph:map-pin" />
                 {{ currentMap }}
+              </Badge>
+            </div>
+
+            <div v-if="serverVersion" class="gameserver-header__status-item">
+              <span class="gameserver-header__status-label">Version</span>
+              <Badge variant="neutral">
+                <Icon name="ph:tag" />
+                {{ serverVersion }}
               </Badge>
             </div>
           </Flex>
