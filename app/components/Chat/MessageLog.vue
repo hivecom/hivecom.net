@@ -863,6 +863,44 @@ async function copyText(text: string, label: string) {
   closeMenu()
 }
 
+function copyLine(msg: ChatMessage): string {
+  const ts = showTimestamps.value ? `${fmtTime(msg.ts)} ` : ''
+  const text = msg.redacted
+    ? redactedLabel(msg)
+    : parseIrcFormatting(msg.text).map(seg => seg.value).join('')
+
+  if (!msg.from)
+    return `${ts}${text}`
+
+  if (msg.action)
+    return `${ts}* ${displayNick(msg.from)} ${text}`
+
+  return `${ts}${displayNick(msg.from)}: ${text}`
+}
+
+// A native copy over several messages serialises the DOM, so the nick lands on
+// its own line and the hover toolbars leak in. Rebuild the clipboard as log
+// lines instead. Inside a single message we leave the browser's text alone so a
+// partial selection still copies just the part that was dragged.
+function onCopy(event: ClipboardEvent) {
+  const sel = window.getSelection()
+  if (!logEl.value || !sel || sel.isCollapsed || !sel.rangeCount)
+    return
+
+  const range = sel.getRangeAt(0)
+  const ids = new Set<number>()
+  for (const el of logEl.value.querySelectorAll<HTMLElement>('[data-msg-id]')) {
+    if (range.intersectsNode(el))
+      ids.add(Number(el.dataset.msgId))
+  }
+  if (ids.size < 2)
+    return
+
+  const lines = messages.value.filter(m => ids.has(m.id)).map(copyLine)
+  event.clipboardData?.setData('text/plain', lines.join('\n'))
+  event.preventDefault()
+}
+
 function viewProfile(name: string) {
   const user = resolvedUser(name.toLowerCase())
   if (!user)
@@ -1342,6 +1380,7 @@ onBeforeUnmount(() => {
       @touchend="cancelLongPress"
       @touchcancel="cancelLongPress"
       @click="handleContentClick"
+      @copy="onCopy"
       @scroll.passive="updateScrollState"
     >
       <div
@@ -2663,6 +2702,7 @@ onBeforeUnmount(() => {
     right: 0;
     top: 0;
     opacity: 0;
+    user-select: none;
     display: flex;
     align-items: center;
     gap: 1px;
