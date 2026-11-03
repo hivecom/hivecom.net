@@ -257,6 +257,9 @@ export default defineNuxtConfig({
     },
   },
   components: false,
+  // Pinned to the commit so the cron rebuilds don't prompt open tabs to reload.
+  // Unset outside Actions, where Nuxt falls back to a random ID.
+  buildId: process.env.GITHUB_SHA,
   compatibilityDate: '2024-09-25',
   typescript: {
     typeCheck: false,
