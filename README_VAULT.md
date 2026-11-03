@@ -17,15 +17,9 @@ SUPABASE_DB_URL='postgresql://postgres:<password>@db.<ref>.supabase.co:5432/post
 
 The script rotates both secrets: function env first via `supabase secrets set`, then Vault via `vault.update_secret`. Ticks that fire between the two steps will 401 and self-heal on the next run; check the `stability-pg-net-failures` snippet afterwards to confirm the 401s stopped.
 
-## `anon_key`
-
-The legacy anon JWT, still sent as the `Authorization` header by existing trigger and cron SQL. Nothing verifies it anymore: the legacy key was disabled in April 2026 and gateway JWT verification is off for the internally invoked functions, so the `System-Cron-Secret` / `System-Trigger-Secret` headers carry the actual auth. The header is inert and only kept because the SQL that sends it hasn't been rewritten.
-
-**Used by:** all trigger and cron functions that call edge functions from within the database, as a vestigial header.
-
 ## `project_url`
 
-The Supabase project URL (e.g. `https://<ref>.supabase.co`). Used alongside `anon_key` to construct the full edge function URL in trigger and cron SQL functions.
+The Supabase project URL (e.g. `https://<ref>.supabase.co`). Used to construct the full edge function URL in trigger and cron SQL functions.
 
 **Used by:** all trigger and cron functions that call edge functions from within the database.
 

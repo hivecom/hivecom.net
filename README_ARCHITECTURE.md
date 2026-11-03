@@ -29,7 +29,7 @@ All deletion paths are covered:
 - **Reply hard-delete:** `cleanup_reply_media_on_hard_delete_trigger` fires `AFTER DELETE`. Skips rows that were already soft-deleted since their markdown was already wiped (and their media already cleaned up).
 - **Discussion hard-delete:** `cleanup_discussion_media_on_hard_delete_trigger` fires `AFTER DELETE`. Discussions have no soft-delete mechanism, so this covers all discussion deletions - both direct admin deletes and CASCADE deletes from parent entity rows.
 
-**Required Vault secrets:** `project_url`, `anon_key`, `system_trigger_secret`
+**Required Vault secrets:** `project_url`, `system_trigger_secret`
 
 ## Event External Sync (Google Calendar + Discord)
 
@@ -51,9 +51,9 @@ Three triggers on `public.events` call `/functions/v1/trigger-discord-event-sync
 - `trigger_sync_discord_events_update` on `AFTER UPDATE` (column-scoped to avoid feedback loops)
 - `trigger_sync_discord_events_delete` on `AFTER DELETE` - only fires when a `discord_event_id` exists on the row
 
-Both groups use vault-stored `project_url`, `anon_key`, and `system_trigger_secret` for the async `net.http_post` calls. Neither blocks the originating transaction.
+Both groups use vault-stored `project_url` and `system_trigger_secret` for the async `net.http_post` calls. Neither blocks the originating transaction.
 
-**Required Vault secrets:** `project_url`, `anon_key`, `system_trigger_secret`
+**Required Vault secrets:** `project_url`, `system_trigger_secret`
 
 ## Steam Identity Sync (Background Queue)
 
@@ -76,6 +76,6 @@ Runs every minute. Calls `private.queue_dispatch_worker_sync_steam()`, which:
 
 See [README_KVSTORE.md](README_KVSTORE.md) for the full dispatcher configuration reference, and [README_CRON.md](README_CRON.md) for the cron job schedules.
 
-**Required Vault secrets:** `project_url`, `anon_key`, `system_cron_secret`
+**Required Vault secrets:** `project_url`, `system_cron_secret`
 
 **Required environment variables:** `STEAM_API_KEY`

@@ -340,7 +340,7 @@ Fires `AFTER INSERT`. Creates an in-app notification for the author of the reply
 
 All three media cleanup triggers call `/functions/v1/trigger-cleanup-discussion-media` via `net.http_post` and are non-blocking.
 
-**Required Vault secrets:** `project_url`, `anon_key`, `system_trigger_secret`
+**Required Vault secrets:** `project_url`, `system_trigger_secret`
 
 ### `public.discussion_topics`
 
@@ -394,7 +394,7 @@ Fire `AFTER INSERT`, `AFTER UPDATE`, and `AFTER DELETE` respectively. Call `/fun
 
 Fire `AFTER INSERT`, `AFTER UPDATE`, and `AFTER DELETE` respectively. Call `/functions/v1/trigger-discord-event-sync` to manage the corresponding Discord scheduled event. Updates are column-scoped to avoid feedback loops; the delete trigger only fires when a `discord_event_id` exists.
 
-Both trigger groups use vault-stored `project_url`, `anon_key`, and `system_trigger_secret` for the async `net.http_post` calls. See [README_ARCHITECTURE.md](README_ARCHITECTURE.md) for a broader description of the event sync system.
+Both trigger groups use vault-stored `project_url` and `system_trigger_secret` for the async `net.http_post` calls. See [README_ARCHITECTURE.md](README_ARCHITECTURE.md) for a broader description of the event sync system.
 
 ### `public.funding_history`
 
