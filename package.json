@@ -99,5 +99,29 @@
     "supabase": "^3.0.0",
     "typescript": "^6.0.3",
     "vue-tsc": "3.3.11"
+  },
+  "overrides": {
+    "rehype-katex": {
+      "katex": "$katex"
+    },
+    "micromark-extension-math": {
+      "katex": "$katex"
+    },
+    "@vercel/nft": {
+      "glob": "^14.0.2"
+    },
+    "eslint-plugin-format": {
+      "tinypool": "^2.2.0"
+    },
+    "bumpp": {
+      "tar": "^7.5.22"
+    }
+  },
+  "//overrides": {
+    "rehype-katex > katex": "Security fix (KaTeX trust bypass, fixed in 0.18.2) and keeps markdown math on the same KaTeX as katex.min.css, whose 0.18 classes are prefixed. Remove once rehype-katex depends on katex >=0.18.",
+    "micromark-extension-math > katex": "Same as rehype-katex. Remove once micromark-extension-math depends on katex >=0.18.",
+    "@vercel/nft > glob": "Security fix (glob AbortSignal bypass, fixed in 14.0.2). @vercel/nft 1.11.0 asks for ^13. Remove once @vercel/nft depends on glob >=14.0.2.",
+    "eslint-plugin-format > tinypool": "Security fix (tinypool prototype pollution RCE). eslint-plugin-format 2.0.1 pulls oxfmt 0.35, which pins tinypool 2.1.0. Remove once eslint-plugin-format moves to a newer oxfmt.",
+    "bumpp > tar": "Security fix (node-tar path traversal, no 6.x patch). bumpp 9 pulls giget 1, which wants tar 6. Remove once @olrtg/emmet-language-server moves off bumpp 9."
   }
 }
