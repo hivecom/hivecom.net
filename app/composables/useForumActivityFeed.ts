@@ -98,7 +98,7 @@ export function useForumActivityFeed({
             href: `/forum/${item.discussion_id}?comment=${item.id}`,
             isNsfw: !!item.is_nsfw,
             isOfftopic: !!item.is_offtopic,
-          } as ActivityItem))
+          }))
 
           latestReplies.value = mapped
           forumCache.set(FORUM_REPLIES_CACHE_KEY, mapped, FORUM_REPLIES_TTL)

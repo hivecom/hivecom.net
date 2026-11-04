@@ -63,7 +63,7 @@ ever reaches the browser.
 # applies user_push_subscriptions + the user_notifications push trigger
 npx supabase migration up                 # local
 # or, against production, however you currently ship migrations:
-npx supabase db push
+npx supabase db push --remote
 ```
 
 Migrations:

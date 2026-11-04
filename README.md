@@ -197,11 +197,11 @@ npm run types
 Only after local validation:
 
 ```bash
-npm run supabase db push
+npm run supabase db push -- --remote
 ```
 
 > [!WARNING]
-> `npm run supabase db push` applies migrations to **production**. Treat it as a production release step.
+> `npm run supabase db push -- --remote` applies migrations to **production**. Without `--remote` it targets the local stack. Treat it as a production release step.
 > Always review your migration SQL and confirm it’s safe before pushing.
 
 ## Further Reading

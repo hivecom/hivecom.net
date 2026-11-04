@@ -93,13 +93,13 @@ export function useForumUserActivity({ userId, settings, discussionLookup }: Use
       const discussion = unwrapJoin<ReplyJoinedDiscussion>(item.discussions)
       const slug = discussion?.slug ?? item.discussion_id
       return {
-        id: (item.id ?? item.discussion_id)!,
+        id: item.id ?? item.discussion_id,
         type: 'Reply',
-        discussionId: item.discussion_id!,
+        discussionId: item.discussion_id,
         discussionTopicId: discussion?.discussion_topic_id ?? null,
         discussionTitle: discussion?.title ?? 'Discussion',
         discussionHref: `/forum/${slug}?comment=${item.id}`,
-        timestampRaw: item.created_at!,
+        timestampRaw: item.created_at,
         timestamp: dayjs(item.created_at).fromNow(),
         isArchived: !!discussion?.is_archived,
       }

@@ -1,7 +1,7 @@
 {
   "name": "admin-docker-control-container-logs",
   "imports": {
-    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@^2.118.0",
     "database-types": "../../../types/database.types.ts"
   },
   "exports": {}
