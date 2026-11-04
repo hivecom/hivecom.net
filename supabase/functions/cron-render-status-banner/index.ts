@@ -143,7 +143,12 @@ Deno.serve(async (req: Request) => {
     // -----------------------------------------------------------------------
     // Render and upload
     // -----------------------------------------------------------------------
-    const png = renderBanner(metrics, live, nextEventCountdown, eventOngoing);
+    const png = await renderBanner(
+      metrics,
+      live,
+      nextEventCountdown,
+      eventOngoing,
+    );
 
     const { error: uploadError } = await supabaseClient.storage
       .from(METRICS_BUCKET)

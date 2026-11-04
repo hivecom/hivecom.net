@@ -17,8 +17,9 @@ export type Database = {
           modified_at: string | null
           modified_by: string | null
           type: Database["public"]["Enums"]["kvstore_type"]
-          value: Json
+          value: NonNullable<Json>
         }
+        ComputedFields: never
         Insert: {
           created_at?: string | null
           created_by?: string | null
@@ -26,7 +27,7 @@ export type Database = {
           modified_at?: string | null
           modified_by?: string | null
           type?: Database["public"]["Enums"]["kvstore_type"]
-          value: Json
+          value: NonNullable<Json>
         }
         Update: {
           created_at?: string | null
@@ -35,7 +36,7 @@ export type Database = {
           modified_at?: string | null
           modified_by?: string | null
           type?: Database["public"]["Enums"]["kvstore_type"]
-          value?: Json
+          value?: NonNullable<Json>
         }
         Relationships: []
       }
@@ -49,6 +50,7 @@ export type Database = {
           unique_id: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           attempts?: number
           created_at?: string
@@ -84,10 +86,22 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["badge_tier"]
       }
-      queue_dispatch_worker_sync_lastfm: { Args: never; Returns: undefined }
-      queue_dispatch_worker_sync_steam: { Args: never; Returns: undefined }
-      queue_enqueue_worker_sync_lastfm: { Args: never; Returns: undefined }
-      queue_enqueue_worker_sync_steam: { Args: never; Returns: undefined }
+      queue_dispatch_worker_sync_lastfm: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      queue_dispatch_worker_sync_steam: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      queue_enqueue_worker_sync_lastfm: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      queue_enqueue_worker_sync_steam: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       remove_profile_badge: {
         Args: { p_profile_id: string; p_slug: string }
         Returns: undefined
@@ -128,6 +142,7 @@ export type Database = {
           severity: string
           title: string
         }
+        ComputedFields: never
         Insert: {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
@@ -173,6 +188,7 @@ export type Database = {
           responded_by: string | null
           response: string | null
         }
+        ComputedFields: never
         Insert: {
           acknowledged?: boolean
           context_discussion?: string | null
@@ -239,6 +255,7 @@ export type Database = {
           steam_id: number
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           name: string
@@ -267,9 +284,10 @@ export type Database = {
           meta: Json | null
           modified_at: string
           modified_by: string | null
-          reactions: Json
+          reactions: NonNullable<Json>
           reply_to_id: string | null
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           created_by?: string | null
@@ -283,7 +301,7 @@ export type Database = {
           meta?: Json | null
           modified_at?: string
           modified_by?: string | null
-          reactions?: Json
+          reactions?: NonNullable<Json>
           reply_to_id?: string | null
         }
         Update: {
@@ -299,7 +317,7 @@ export type Database = {
           meta?: Json | null
           modified_at?: string
           modified_by?: string | null
-          reactions?: Json
+          reactions?: NonNullable<Json>
           reply_to_id?: string | null
         }
         Relationships: [
@@ -350,6 +368,7 @@ export type Database = {
           modified_by: string | null
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           discussion_id: string
@@ -398,6 +417,7 @@ export type Database = {
           total_reply_count: number
           total_view_count: number
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           created_by?: string | null
@@ -490,7 +510,7 @@ export type Database = {
           pinned_reply_id: string | null
           profile_id: string | null
           project_id: number | null
-          reactions: Json
+          reactions: NonNullable<Json>
           referendum_id: number | null
           reply_count: number
           slug: string | null
@@ -498,6 +518,7 @@ export type Database = {
           title: string | null
           view_count: number
         }
+        ComputedFields: never
         Insert: {
           accepted_reply_id?: string | null
           created_at?: string
@@ -520,7 +541,7 @@ export type Database = {
           pinned_reply_id?: string | null
           profile_id?: string | null
           project_id?: number | null
-          reactions?: Json
+          reactions?: NonNullable<Json>
           referendum_id?: number | null
           reply_count?: number
           slug?: string | null
@@ -550,7 +571,7 @@ export type Database = {
           pinned_reply_id?: string | null
           profile_id?: string | null
           project_id?: number | null
-          reactions?: Json
+          reactions?: NonNullable<Json>
           referendum_id?: number | null
           reply_count?: number
           slug?: string | null
@@ -672,6 +693,7 @@ export type Database = {
           scope: Database["public"]["Enums"]["events_rsvp_scope"]
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           created_by?: string | null
@@ -734,6 +756,7 @@ export type Database = {
           recurrence_rule: string | null
           title: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           created_by?: string | null
@@ -812,6 +835,7 @@ export type Database = {
           started_at: string
           url: string | null
         }
+        ComputedFields: never
         Insert: {
           amount_cents?: number
           created_at?: string
@@ -850,6 +874,7 @@ export type Database = {
           patreon_lifetime_amount_cents: number
           patreon_month_amount_cents: number
         }
+        ComputedFields: never
         Insert: {
           donation_count?: number
           donation_lifetime_amount_cents?: number
@@ -892,6 +917,7 @@ export type Database = {
           steam_id: number | null
           website: string | null
         }
+        ComputedFields: never
         Insert: {
           automated?: boolean
           color?: string | null
@@ -951,15 +977,16 @@ export type Database = {
           modified_at: string | null
           modified_by: string | null
           type: Database["public"]["Enums"]["kvstore_type"]
-          value: Json
+          value: NonNullable<Json>
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           key: string
           modified_at?: string | null
           modified_by?: string | null
           type?: Database["public"]["Enums"]["kvstore_type"]
-          value: Json
+          value: NonNullable<Json>
         }
         Update: {
           created_at?: string
@@ -967,26 +994,27 @@ export type Database = {
           modified_at?: string | null
           modified_by?: string | null
           type?: Database["public"]["Enums"]["kvstore_type"]
-          value?: Json
+          value?: NonNullable<Json>
         }
         Relationships: []
       }
       metrics: {
         Row: {
           captured_at: string
-          data: Json
+          data: NonNullable<Json>
           id: number
           is_aggregated: boolean
         }
+        ComputedFields: never
         Insert: {
           captured_at?: string
-          data: Json
+          data: NonNullable<Json>
           id?: number
           is_aggregated?: boolean
         }
         Update: {
           captured_at?: string
-          data?: Json
+          data?: NonNullable<Json>
           id?: number
           is_aggregated?: boolean
         }
@@ -1001,10 +1029,11 @@ export type Database = {
           name: string
           secret: boolean
         }
+        ComputedFields: never
         Insert: {
           first_seen?: string
           id?: string
-          key?: string | null
+          key?: never
           last_seen?: string
           name: string
           secret?: boolean
@@ -1012,7 +1041,7 @@ export type Database = {
         Update: {
           first_seen?: string
           id?: string
-          key?: string | null
+          key?: never
           last_seen?: string
           name?: string
           secret?: boolean
@@ -1028,6 +1057,7 @@ export type Database = {
           modified_at: string | null
           modified_by: string | null
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           created_by?: string
@@ -1056,6 +1086,7 @@ export type Database = {
           server: number | null
           started_at: string | null
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           healthy?: boolean | null
@@ -1107,6 +1138,7 @@ export type Database = {
             | null
           region: Database["public"]["Enums"]["region"] | null
         }
+        ComputedFields: never
         Insert: {
           addresses?: string[] | null
           administrator?: string | null
@@ -1184,6 +1216,7 @@ export type Database = {
           modified_at: string | null
           modified_by: string | null
         }
+        ComputedFields: never
         Insert: {
           accessible?: boolean
           active: boolean
@@ -1231,6 +1264,7 @@ export type Database = {
           status: string | null
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           activity_details?: string | null
           activity_ended_at?: string | null
@@ -1282,6 +1316,7 @@ export type Database = {
           track_url: string | null
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           album_art_url?: string | null
           album_name?: string | null
@@ -1329,12 +1364,13 @@ export type Database = {
           last_app_name: string | null
           last_online_at: string | null
           profile_id: string
-          recent_apps: Json
+          recent_apps: NonNullable<Json>
           status: Database["public"]["Enums"]["presence_steam_status"] | null
           steam_name: string | null
           updated_at: string
           visibility: string | null
         }
+        ComputedFields: never
         Insert: {
           current_app_id?: number | null
           current_app_name?: string | null
@@ -1347,7 +1383,7 @@ export type Database = {
           last_app_name?: string | null
           last_online_at?: string | null
           profile_id: string
-          recent_apps?: Json
+          recent_apps?: NonNullable<Json>
           status?: Database["public"]["Enums"]["presence_steam_status"] | null
           steam_name?: string | null
           updated_at?: string
@@ -1365,7 +1401,7 @@ export type Database = {
           last_app_name?: string | null
           last_online_at?: string | null
           profile_id?: string
-          recent_apps?: Json
+          recent_apps?: NonNullable<Json>
           status?: Database["public"]["Enums"]["presence_steam_status"] | null
           steam_name?: string | null
           updated_at?: string
@@ -1394,6 +1430,7 @@ export type Database = {
           status: string | null
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           channel_id?: string | null
           channel_name?: string | null
@@ -1436,6 +1473,7 @@ export type Database = {
           slug: string
           sort_order: number
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           is_active?: boolean
@@ -1455,7 +1493,7 @@ export type Database = {
       profile_badges: {
         Row: {
           earned_at: string
-          metadata: Json
+          metadata: NonNullable<Json>
           profile_id: string
           progress: number | null
           slug: string
@@ -1463,9 +1501,10 @@ export type Database = {
           tier: Database["public"]["Enums"]["badge_tier"]
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           earned_at?: string
-          metadata?: Json
+          metadata?: NonNullable<Json>
           profile_id: string
           progress?: number | null
           slug: string
@@ -1475,7 +1514,7 @@ export type Database = {
         }
         Update: {
           earned_at?: string
-          metadata?: Json
+          metadata?: NonNullable<Json>
           profile_id?: string
           progress?: number | null
           slug?: string
@@ -1507,6 +1546,7 @@ export type Database = {
           friender: string
           id: number
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           friend: string
@@ -1531,6 +1571,7 @@ export type Database = {
           points: number
           source: Database["public"]["Enums"]["point_source"]
         }
+        ComputedFields: never
         Insert: {
           claimed_at?: string | null
           claimed_by?: string | null
@@ -1568,6 +1609,7 @@ export type Database = {
           profile_trade: string | null
           source: Database["public"]["Enums"]["point_source"]
         }
+        ComputedFields: never
         Insert: {
           amount: number
           created_at?: string
@@ -1614,6 +1656,7 @@ export type Database = {
           profile_id: string
           public: boolean
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           modified_at?: string | null
@@ -1622,7 +1665,7 @@ export type Database = {
           points_loyalty?: number
           points_patreon?: number
           points_spent?: number
-          points_total?: number | null
+          points_total?: never
           profile_id: string
           public?: boolean
         }
@@ -1634,7 +1677,7 @@ export type Database = {
           points_loyalty?: number
           points_patreon?: number
           points_spent?: number
-          points_total?: number | null
+          points_total?: never
           profile_id?: string
           public?: boolean
         }
@@ -1658,6 +1701,7 @@ export type Database = {
           note: string | null
           username: string
         }
+        ComputedFields: never
         Insert: {
           assigned_to?: string | null
           created_at?: string
@@ -1723,12 +1767,13 @@ export type Database = {
           steam_id: string | null
           supporter_lifetime: boolean
           supporter_patreon: boolean
-          teamspeak_identities: Json
+          teamspeak_identities: NonNullable<Json>
           theme_id: string | null
           username: string
           username_set: boolean
           website: string | null
         }
+        ComputedFields: never
         Insert: {
           agreed_content_rules?: boolean
           agreed_sharing_rules?: boolean
@@ -1758,7 +1803,7 @@ export type Database = {
           steam_id?: string | null
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
-          teamspeak_identities?: Json
+          teamspeak_identities?: NonNullable<Json>
           theme_id?: string | null
           username: string
           username_set?: boolean
@@ -1793,7 +1838,7 @@ export type Database = {
           steam_id?: string | null
           supporter_lifetime?: boolean
           supporter_patreon?: boolean
-          teamspeak_identities?: Json
+          teamspeak_identities?: NonNullable<Json>
           theme_id?: string | null
           username?: string
           username_set?: boolean
@@ -1824,6 +1869,7 @@ export type Database = {
           tags: string[] | null
           title: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           created_by?: string
@@ -1871,6 +1917,7 @@ export type Database = {
           referendum_id: number | null
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           choices?: number[]
           created_at?: string
@@ -1912,6 +1959,7 @@ export type Database = {
           multiple_choice: boolean
           title: string
         }
+        ComputedFields: never
         Insert: {
           choices: string[]
           created_at?: string
@@ -1948,6 +1996,7 @@ export type Database = {
           permission: Database["public"]["Enums"]["app_permission"]
           role: Database["public"]["Enums"]["app_role"]
         }
+        ComputedFields: never
         Insert: {
           id?: number
           permission: Database["public"]["Enums"]["app_permission"]
@@ -2046,6 +2095,7 @@ export type Database = {
           transitions: number
           widening: number
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           created_by?: string | null
@@ -2241,6 +2291,7 @@ export type Database = {
           title: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           body?: string | null
           created_at?: string
@@ -2283,6 +2334,7 @@ export type Database = {
           user_agent: string | null
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           auth: string
           created_at?: string
@@ -2313,6 +2365,7 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           id?: number
           role: Database["public"]["Enums"]["app_role"]
@@ -2328,19 +2381,20 @@ export type Database = {
       user_settings: {
         Row: {
           created_at: string
-          data: Json
+          data: NonNullable<Json>
           id: string
           modified_at: string | null
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
-          data?: Json
+          data?: NonNullable<Json>
           id?: string
           modified_at?: string | null
         }
         Update: {
           created_at?: string
-          data?: Json
+          data?: NonNullable<Json>
           id?: string
           modified_at?: string | null
         }
@@ -2350,21 +2404,22 @@ export type Database = {
     Views: {
       forum_discussion_replies: {
         Row: {
-          created_at: string | null
+          created_at: string
           created_by: string | null
-          discussion_id: string | null
-          id: string | null
-          is_deleted: boolean | null
-          is_forum_reply: boolean | null
-          is_nsfw: boolean | null
-          is_offtopic: boolean | null
-          markdown: string | null
+          discussion_id: string
+          id: string
+          is_deleted: boolean
+          is_forum_reply: boolean
+          is_nsfw: boolean
+          is_offtopic: boolean
+          markdown: string
           meta: Json | null
-          modified_at: string | null
+          modified_at: string
           modified_by: string | null
-          reactions: Json | null
+          reactions: NonNullable<Json>
           reply_to_id: string | null
         }
+        ComputedFields: never
         Insert: {
           created_at?: string | null
           created_by?: string | null
@@ -2440,6 +2495,7 @@ export type Database = {
           theme_id: string | null
           user_count: number | null
         }
+        ComputedFields: never
         Relationships: [
           {
             foreignKeyName: "profiles_theme_id_fkey"
@@ -2475,13 +2531,25 @@ export type Database = {
         }
         Returns: boolean
       }
-      claim_profile_points: { Args: never; Returns: number }
+      claim_profile_points: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       contains_html_tags: { Args: { input_text: string }; Returns: boolean }
-      cron_metrics_daily_rollup: { Args: never; Returns: undefined }
-      cron_points_birthday_award: { Args: never; Returns: undefined }
-      cron_points_loyalty_award: { Args: never; Returns: undefined }
+      cron_metrics_daily_rollup: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cron_points_birthday_award: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cron_points_loyalty_award: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       current_user_role: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
       }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
@@ -2500,7 +2568,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      generate_username: { Args: never; Returns: string }
+      generate_username: { Args: Record<PropertyKey, never>; Returns: string }
       get_admin_complaints_paginated: {
         Args: {
           p_context?: string[]
@@ -2771,13 +2839,13 @@ export type Database = {
         }[]
       }
       get_admin_user_countries: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           country: string
         }[]
       }
       get_admin_user_overview: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           auth_provider: string
           auth_providers: string[]
@@ -2985,7 +3053,7 @@ export type Database = {
             }[]
           }
       get_flagged_email_profiles: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           email: string
           email_notifications_bounced: boolean
@@ -3021,7 +3089,7 @@ export type Database = {
         Args: { p_exclude?: string }
         Returns: number
       }
-      get_forum_stats: { Args: never; Returns: Json }
+      get_forum_stats: { Args: Record<PropertyKey, never>; Returns: Json }
       get_game_playtime_minutes: {
         Args: {
           p_game_id: number
@@ -3117,7 +3185,7 @@ export type Database = {
       }
       get_private_config: { Args: { config_key: string }; Returns: Json }
       get_random_forum_discussion: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           id: string
           slug: string
@@ -3134,7 +3202,7 @@ export type Database = {
       }
       get_thread_root: { Args: { p_reply_id: string }; Returns: string }
       get_user_emails: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           email: string
           user_id: string
@@ -3146,7 +3214,10 @@ export type Database = {
           id: string
         }[]
       }
-      has_agreed_content_rules: { Args: never; Returns: boolean }
+      has_agreed_content_rules: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       has_gameserver_query_secret: {
         Args: { p_gameserver_id: number }
         Returns: boolean
@@ -3155,13 +3226,13 @@ export type Database = {
         Args: { permission_name: Database["public"]["Enums"]["app_permission"] }
         Returns: boolean
       }
-      has_verified_mfa: { Args: never; Returns: boolean }
+      has_verified_mfa: { Args: Record<PropertyKey, never>; Returns: boolean }
       increment_discussion_view_count: {
         Args: { target_discussion_id: string }
         Returns: undefined
       }
-      is_aal2_if_mfa: { Args: never; Returns: boolean }
-      is_not_banned: { Args: never; Returns: boolean }
+      is_aal2_if_mfa: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_not_banned: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_owner: { Args: { record_user_id: string }; Returns: boolean }
       is_profile_owner: { Args: { profile_id: string }; Returns: boolean }
       is_valid_hex_color: { Args: { value: string }; Returns: boolean }
@@ -3305,7 +3376,10 @@ export type Database = {
         Returns: Json
       }
       unique_discussion_slug: { Args: { base_slug: string }; Returns: string }
-      update_user_last_seen: { Args: never; Returns: undefined }
+      update_user_last_seen: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       validate_github_repo: { Args: { github_repo: string }; Returns: boolean }
       validate_tag_format: { Args: { tag: string }; Returns: boolean }
       validate_tags_array: { Args: { tags: string[] }; Returns: boolean }
@@ -3648,4 +3722,3 @@ export const Constants = {
     },
   },
 } as const
-

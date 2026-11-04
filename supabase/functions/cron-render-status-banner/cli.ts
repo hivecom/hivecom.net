@@ -24,7 +24,7 @@ const live = idle ? null : PLACEHOLDER_LIVE;
 const nextEventCountdown = idle ? null : formatCountdown(
   new Date(PLACEHOLDER_NEXT_EVENT_DATE).getTime() - Date.now(),
 );
-const png = renderBanner(
+const png = await renderBanner(
   PLACEHOLDER_METRICS,
   live,
   nextEventCountdown,

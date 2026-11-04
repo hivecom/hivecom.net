@@ -1287,7 +1287,12 @@ async function submitReply() {
   formLoading.value = true
 
   validate()
-    .then(async () => {
+    .then(async (valid) => {
+      if (!valid) {
+        formLoading.value = false
+        return
+      }
+
       if (!discussion.value) {
         addError('message', {
           key: 'required',

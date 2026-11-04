@@ -609,6 +609,9 @@ export default defineNuxtConfig({
       disableLocalFallbacks: true,
     },
   },
+  // Nuxt SEO v6 bundles these and turns them on by default
+  aiReady: false,
+  skewProtection: false,
   ogImage: {
     // Static site, so every OG image renders at build time
     zeroRuntime: true,

@@ -284,7 +284,10 @@ async function submitForm() {
   }
 
   try {
-    await validate()
+    if (!await validate()) {
+      loading.value = false
+      return
+    }
 
     const trimmedSlug = form.slug.trim()
     const resolvedSlug = trimmedSlug ? slugify(trimmedSlug) : slugify(form.name)

@@ -1,5 +1,5 @@
 import type { Tables } from '@/types/database.overrides'
-import { useNow } from '@vueuse/core'
+import { useIntervalFn, useNow } from '@vueuse/core'
 import dayjs from 'dayjs'
 import { computed } from 'vue'
 import { useDataEvents } from '@/composables/useDataEvents'
@@ -7,7 +7,7 @@ import { expandRecurringEvent } from '@/lib/utils/rrule'
 
 export function useOngoingEvents() {
   const { events } = useDataEvents()
-  const now = useNow({ interval: 60_000 })
+  const now = useNow({ scheduler: cb => useIntervalFn(cb, 60_000) })
 
   const ongoingEvents = computed<Tables<'events'>[]>(() => {
     const nowMs = now.value.getTime()

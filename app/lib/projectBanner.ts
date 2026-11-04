@@ -7,7 +7,7 @@ export const PROJECT_BANNER_EXTENSIONS = ['webp', 'png', 'jpg', 'jpeg'] as const
 export function normalizeProjectId(projectId: number | string): number {
   const normalized = Number(projectId)
   if (!Number.isFinite(normalized))
-    throw new Error('Invalid project id')
+    throw new TypeError('Invalid project id')
 
   return normalized
 }

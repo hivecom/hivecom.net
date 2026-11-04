@@ -261,7 +261,10 @@ async function submitForm(options: { skipPublishConfirm?: boolean } = {}) {
       return
     }
 
-    await validate()
+    if (!await validate()) {
+      loading.value = false
+      return
+    }
 
     const trimmedSlug = form.slug.trim()
     const resolvedSlug = trimmedSlug ? slugify(trimmedSlug) : null

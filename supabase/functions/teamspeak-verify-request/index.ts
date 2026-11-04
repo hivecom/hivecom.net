@@ -11,7 +11,7 @@ import {
   type PrivateServiceClient,
   type PublicServiceClient,
 } from "../_shared/serviceRoleClients.ts";
-import { parseEnvMap } from "../_shared/env.ts";
+import { getPublishableKey, parseEnvMap } from "../_shared/env.ts";
 import { normalizeTeamSpeakIdentities } from "../_shared/teamspeak.ts";
 
 // TextMessageTargetMode.CLIENT = 1 (enum from node-ts, re-declared here as

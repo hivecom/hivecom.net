@@ -210,8 +210,7 @@ function openSubmitModal() {
 async function submitForm() {
   submitError.value = ''
 
-  const validationError = await validate()
-  if (validationError.name.invalid)
+  if (!await validate())
     return
 
   submitLoading.value = true

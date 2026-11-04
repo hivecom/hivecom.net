@@ -21,6 +21,9 @@ export default antfu({
       ignoreRestSiblings: true,
     }],
     'ts/strict-boolean-expressions': 'off',
+    // New in @antfu/eslint-config v10. Its autofix reflows ~400 files, so it waits
+    // for a dedicated formatting pass rather than landing with the upgrade.
+    'antfu/reasonable-newline': 'off',
   },
   ignores: [
     'app/global.d.ts',

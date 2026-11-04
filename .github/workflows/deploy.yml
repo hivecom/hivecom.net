@@ -30,13 +30,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
 
       - name: Enable Corepack
         run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -55,22 +55,22 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
 
+      # No version: installs the supabase version pinned in package-lock.json
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1.6.0
-        with:
-          version: latest
+        uses: supabase/setup-cli@v3.2.0
 
       - name: Link Supabase project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password
-          "$SUPABASE_DB_PASSWORD"
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
+      # CLI v3 targets the local stack unless told otherwise, and refuses hosted
+      # changes in CI without --yes
       - name: Push DB migrations
-        run: supabase db push
+        run: supabase db push --remote --yes
 
       - name: Deploy Supabase functions
-        run: supabase functions deploy
+        run: supabase functions deploy --yes
 
   pages_build:
     name: Build static site
@@ -89,13 +89,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
 
       - name: Enable Corepack
         run: corepack enable
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -104,10 +104,11 @@ jobs:
         run: npm install
 
       - name: Cache Nuxt build artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
-            node_modules/.cache/nuxt-fonts
+            node_modules/.cache/nuxt/fonts
+            node_modules/.cache/nuxt-og-image
             node_modules/.cache/nuxt-seo
           key: nuxt-caches-${{ runner.os }}-${{ hashFiles('nuxt.config.ts') }}
           restore-keys: |
@@ -120,7 +121,7 @@ jobs:
         run: cp ./.output/public/200.html ./.output/public/404.html
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./.output/public
 

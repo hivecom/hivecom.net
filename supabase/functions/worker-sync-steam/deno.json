@@ -3,7 +3,7 @@
   "imports": {
     "constants": "../../../constants.json",
     "database-types": "../../../types/database.types.ts",
-    "@supabase/supabase-js": "npm:@supabase/supabase-js@2"
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@^2.118.0"
   },
   "exports": {}
 }

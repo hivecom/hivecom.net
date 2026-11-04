@@ -256,7 +256,7 @@ export function renderBanner(
   live: LiveInfo | null,
   nextEventCountdown: string | null,
   eventOngoing = false,
-): Uint8Array {
+): Promise<Uint8Array<ArrayBuffer>> {
   return renderer.render(
     buildScene(metrics, live, nextEventCountdown, eventOngoing) as any,
     {

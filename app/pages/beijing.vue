@@ -34,7 +34,10 @@ function handleSubmit() {
   loading.value = true
 
   validate()
-    .then(async () => {
+    .then(async (valid) => {
+      if (!valid)
+        return
+
       const key = generateShortURLKey()
 
       const result = await client.from('kvstore')
