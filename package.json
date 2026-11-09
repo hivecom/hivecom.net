@@ -42,7 +42,7 @@
     "@tiptap/extension-file-handler": "^3.32.2",
     "@tiptap/extension-image": "^3.32.2",
     "@tiptap/extension-mathematics": "^3.32.2",
-    "@tiptap/extension-mention": "^3.32.2",
+    "@tiptap/extension-mention": "^3.33.0",
     "@tiptap/extension-table": "^3.32.2",
     "@tiptap/extension-task-item": "^3.32.2",
     "@tiptap/extension-task-list": "^3.32.2",
